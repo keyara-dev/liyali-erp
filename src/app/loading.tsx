@@ -1,0 +1,111 @@
+export default function Loading() {
+  return (
+    <>
+      <div className="max-w-6xl mx-auto">
+        {/* Page Header Skeleton */}
+        <div className="mb-8">
+          <div className="h-10 bg-gray-200 rounded-lg w-80 mb-2 animate-pulse"></div>
+          <div className="h-6 bg-gray-200 rounded-lg w-64 animate-pulse"></div>
+        </div>
+
+        {/* Key Metrics Overview Skeleton */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="glass rounded-2xl p-6 text-center">
+              <div className="h-8 bg-gray-200 rounded-lg w-16 mx-auto mb-2 animate-pulse"></div>
+              <div className="h-5 bg-gray-200 rounded-lg w-24 mx-auto mb-1 animate-pulse"></div>
+              <div className="h-4 bg-gray-200 rounded-lg w-20 mx-auto animate-pulse"></div>
+            </div>
+          ))}
+        </div>
+
+        {/* Charts Section Skeleton */}
+        <div className="mb-8">
+          <div className="h-8 bg-gray-200 rounded-lg w-72 mb-6 animate-pulse"></div>
+
+          {/* Chart Grid Skeleton */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            {[1, 2].map((i) => (
+              <div key={i} className="glass rounded-2xl p-6">
+                <div className="flex items-center justify-between mb-6">
+                  <div className="h-6 bg-gray-200 rounded-lg w-48 animate-pulse"></div>
+                  <div className="h-4 bg-gray-200 rounded-lg w-24 animate-pulse"></div>
+                </div>
+                <div className="h-[250px] bg-gray-100 rounded-lg animate-pulse flex items-center justify-center">
+                  <div className="text-gray-500">Loading chart...</div>
+                </div>
+                <div className="mt-4 p-3 bg-gray-50 rounded-lg">
+                  <div className="h-4 bg-gray-200 rounded-lg w-full animate-pulse"></div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Second Chart Row Skeleton */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            {[1, 2].map((i) => (
+              <div key={i} className="glass rounded-2xl p-6">
+                <div className="flex items-center justify-between mb-6">
+                  <div className="h-6 bg-gray-200 rounded-lg w-48 animate-pulse"></div>
+                  <div className="h-4 bg-gray-200 rounded-lg w-24 animate-pulse"></div>
+                </div>
+                {i === 1 ? (
+                  <div className="h-[250px] bg-gray-100 rounded-lg animate-pulse flex items-center justify-center">
+                    <div className="text-gray-500">Loading chart...</div>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {[1, 2, 3, 4, 5].map((j) => (
+                      <div
+                        key={j}
+                        className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                      >
+                        <div className="flex items-center space-x-3">
+                          <div className="w-8 h-8 bg-gray-200 rounded-full animate-pulse"></div>
+                          <div>
+                            <div className="h-4 bg-gray-200 rounded-lg w-24 mb-1 animate-pulse"></div>
+                            <div className="h-3 bg-gray-200 rounded-lg w-16 animate-pulse"></div>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="h-5 bg-gray-200 rounded-lg w-8 mb-1 animate-pulse"></div>
+                          <div className="h-3 bg-gray-200 rounded-lg w-12 animate-pulse"></div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <div className="mt-4 p-3 bg-gray-50 rounded-lg">
+                  <div className="h-4 bg-gray-200 rounded-lg w-full animate-pulse"></div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Critical Actions Section Skeleton */}
+        <div>
+          <div className="h-8 bg-gray-200 rounded-lg w-48 mb-6 animate-pulse"></div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {[1, 2, 3, 4].map((i) => (
+              <div
+                key={i}
+                className="p-6 rounded-2xl bg-gray-50 border border-gray-200"
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center space-x-2">
+                    <div className="w-3 h-3 bg-gray-300 rounded-full animate-pulse"></div>
+                    <div className="h-5 bg-gray-200 rounded-lg w-32 animate-pulse"></div>
+                  </div>
+                  <div className="h-4 bg-gray-200 rounded-lg w-20 animate-pulse"></div>
+                </div>
+                <div className="h-5 bg-gray-200 rounded-lg w-full mb-2 animate-pulse"></div>
+                <div className="h-4 bg-gray-200 rounded-lg w-3/4 animate-pulse"></div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
