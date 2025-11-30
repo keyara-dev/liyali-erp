@@ -18,7 +18,7 @@ export default async function LoginPage() {
   return (
     <div className="w-full max-w-md">
       {/* Card */}
-      <div className="bg-card rounded-lg shadow-2xl p-8 space-y-6">
+      <div className="bg-card rounded-lg p-8 space-y-6">
         {/* Logo/Title */}
         <div className="text-center space-y-2">
           <Logo isFull />
@@ -82,12 +82,12 @@ export default async function LoginPage() {
               </code>
             </p>
           </div>
-        </div>
 
         {/* Footer */}
         <div className="text-center text-xs text-muted-foreground">
           <p>🔒 Simulated Authentication System</p>
           <p>For development and testing purposes only</p>
+        </div>
         </div>
       </div>
     </div>

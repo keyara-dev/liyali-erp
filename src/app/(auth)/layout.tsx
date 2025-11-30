@@ -8,7 +8,7 @@ function AuthLayout({ children }: PropsWithChildren) {
   return (
     <div className="min-h-screen w-screen bg-white">
       {/* Navigation */}
-
+      {/* 
       <nav className="px-8 md:px-12 py-1 w-screen  flex justify-between fixed top-0 left-0 right-0 items-center">
         <Link href="/" className="text-black font-bold text-2xl">
           <div className="flex items-center">
@@ -28,32 +28,39 @@ function AuthLayout({ children }: PropsWithChildren) {
           <ArrowLeftIcon className="inline w-6 h-6 mr-2" />
           <span className="hidden sm:inline">Go back </span>Home
         </Link>
-      </nav>
+      </nav> */}
 
-      <div className="h-screen  bg-background flex flex-row">
+      <div className="h-screen flex flex-row p-4">
         {/* Left Panel - Auth Forms */}
         <div
-          className="hidden lg:flex w-full items-center justify-center"
-          style={{
-            background:
-              "linear-gradient(135deg, #111827 0%, #374151 50%, #000000 100%)",
-          }}
+          className="bg-primary-700 overflow-clip hidden rounded-[50px] lg:flex w-full items-center justify-center relative"
+          // style={{
+          //   background:
+          //     "linear-gradient(135deg, #111827 0%, #374151 50%, #000000 100%)",
+          // }}
         >
-          <div className="h-full flex items-center justify-center p-8 relative overflow-hidden">
-            <div className="relative z-10">
-              <div className="w-80 h-80 bg-gradient-to-br from-gray-800 to-black rounded-3xl shadow-2xl flex items-center justify-center transform rotate-12 hover:rotate-6 transition-transform duration-200">
-                <div className="w-64 h-64 bg-gradient-to-br from-gray-700 to-gray-900 rounded-2xl shadow-inner flex items-center justify-center">
-                  <div className="w-32 h-32 bg-white rounded-full shadow-lg flex items-center justify-center">
-                    <Logo isIcon className="w-16 h-16 text-black" />
-                  </div>
-                </div>
-              </div>
+          <Image
+            src="/images/pattern.svg"
+            alt="liyali-pattern"
+            width={800}
+            height={800}
+            className="w-full aspect-square object-cover opacity-20! absolute inset-0 h-full"
+          />
+          <div className="h-full w-full flex items-center justify-center p-8 relative overflow-clip">
+            <div className="w-96 h-96 relative z-10 aspect-square  rounded-3xl overflow-clip justify-center px-8 pl-12 grid place-items-center">
+              <Image
+                src="/images/logo/logo-icon-plain.svg"
+                alt="liyali-logo"
+                width={400}
+                height={400}
+                className="w-full aspect-square object-contain"
+              />
             </div>
 
             {/* Background Elements */}
-            <div className="absolute top-20 left-20 w-32 h-32 bg-white/10 rounded-full blur-xl"></div>
+            <div className="absolute top-20 left-8 w-60 h-60 bg-white/10 rounded-full blur-xl"></div>
             <div className="absolute bottom-20 right-20 w-48 h-48 bg-white/5 rounded-full blur-2xl"></div>
-            <div className="absolute top-1/2 left-10 w-24 h-24 bg-white/20 rounded-full blur-lg"></div>
+            <div className="absolute top-1/2 left-24 w-48 h-48 bg-white/10 rounded-full blur-lg"></div>
           </div>
         </div>
 

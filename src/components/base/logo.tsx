@@ -40,7 +40,7 @@ function Logo({
     if (isIcon) {
       logoType =
         theme === "light" || theme === "dark"
-          ? `/images/logo/logo-${theme}.svg`
+          ? `/images/logo/logo-icon-${theme}.svg`
           : `/images/logo/logo-icon.svg`;
     } else if (isWhite) {
       logoType = "/images/logo/logo-light.svg";
