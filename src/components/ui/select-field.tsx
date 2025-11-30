@@ -5,7 +5,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { cn } from "@bgs-tickety/shared";
+import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 import * as React from "react";
 

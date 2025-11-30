@@ -12,16 +12,16 @@ import {
 } from "@/components/ui/dialog";
 import { PASSWORD_PATTERN } from "@/lib/constants";
 import { ChangePassword, ErrorState } from "@/types";
-import CustomAlert from "./ui/custom-alert";
+import CustomAlert from "../ui/custom-alert";
 import { cn, notify } from "@/lib/utils";
-import { Input } from "./ui/input";
-import { Button } from "./ui/button";
+import { Input } from "../ui/input";
+import { Button } from "../ui/button";
 import { changePassword } from "@/app/_actions/auth-actions";
 import { Eye, EyeOff, LockIcon } from "lucide-react";
 
 export default function FirstLogin({ open }: { open?: boolean }) {
   const queryClient = useQueryClient();
-  const [error, setError] = useState<ErrorState>({});
+  const [error, setError] = useState<ErrorState>({ status: false, message: '' });
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState<ChangePassword>({
     oldPassword: "",
@@ -69,7 +69,7 @@ export default function FirstLogin({ open }: { open?: boolean }) {
     }
 
     // Send New password details to the backend
-    const res = await changePassword(formData);
+    const res = await changePassword(formData.oldPassword, formData.newPassword);
 
     // If password change success - invalidate query caches - close modals
     if (res.success) {
@@ -97,7 +97,7 @@ export default function FirstLogin({ open }: { open?: boolean }) {
 
   return (
     <Dialog open={open}>
-      <DialogContent hideCloseButton className="sm:max-w-md">
+      <DialogContent showCloseButton={false} className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Change Your Password</DialogTitle>
           <DialogDescription className="text-foreground/70 text-sm leading-6 font-medium italic">
@@ -179,7 +179,7 @@ export default function FirstLogin({ open }: { open?: boolean }) {
               isInvalid={
                 (formData?.confirmPassword !== formData?.newPassword &&
                   String(formData?.confirmPassword)?.length > 6) ||
-                error?.onConfirmPassword
+                Boolean(error?.onConfirmPassword)
               }
               label="Confirm New Password"
               type={showPassword.confirmPassword ? "text" : "password"}

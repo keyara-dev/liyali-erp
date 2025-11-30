@@ -2,7 +2,7 @@
 
 import * as React from "react";
 
-import { cn } from "@bgs-tickety/shared";
+import { cn } from "@/lib/utils";
 import { Button } from "./button";
 
 interface DropdownProps {

@@ -263,6 +263,22 @@ export const WORKFLOW_STEPS: Record<WorkflowDocumentType, WorkflowStep[]> = {
       isRequired: true,
     },
   ],
+  GOODS_RECEIVED_NOTE: [
+    {
+      workflowType: 'GOODS_RECEIVED_NOTE',
+      stepOrder: 1,
+      roleName: 'DEPARTMENT_MANAGER',
+      description: 'Goods Receipt Verification',
+      isRequired: true,
+    },
+    {
+      workflowType: 'GOODS_RECEIVED_NOTE',
+      stepOrder: 2,
+      roleName: 'FINANCE_OFFICER',
+      description: 'Finance Verification',
+      isRequired: true,
+    },
+  ],
 };
 
 // RBAC Utility Functions

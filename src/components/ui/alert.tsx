@@ -2,7 +2,7 @@
  * Alert component for showing important messages
  */
 
-import { cn } from "@bgs-tickety/shared";
+import { cn } from "@/lib/utils";
 import { cva, type VariantProps } from "class-variance-authority";
 import * as React from "react";
 

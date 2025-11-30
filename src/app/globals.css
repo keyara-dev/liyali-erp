@@ -33,22 +33,48 @@
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.13 0.028 261.692);
 
-  /* Brand Colors - Updated Primary */
-  /* Primary: #0c54e7 → oklch(52.4% 0.21 265.5) */
-  --primary: oklch(52.4% 0.21 265.5);
+  /* Brand Colors - Cerulean Blue Palette */
+  /* Primary shades for flexible color usage */
+  --primary-50: #eef7ff;
+  --primary-100: #d8edff;
+  --primary-200: #b9dfff;
+  --primary-300: #89ccff;
+  --primary-400: #52b0ff;
+  --primary-500: #2a8cff;
+  --primary-600: #136cfd;
+  --primary-700: #0c54e7;
+  --primary-800: #1144bc;
+  --primary-900: #143e94;
+  --primary-950: #11275a;
+
+  /* Primary (base): Use 700 as default */
+  --primary: #0c54e7;
   --primary-foreground: oklch(100% 0 0);
 
-  /* Secondary: #10b981 (Emerald) → oklch(67.3% 0.157 155.8) */
-  --secondary: oklch(67.3% 0.157 155.8);
+  /* Secondary (Gamboge) - Warm Gold Palette */
+  --secondary-50: #fefaec;
+  --secondary-100: #fbf1ca;
+  --secondary-200: #f7e390;
+  --secondary-300: #f3cf56;
+  --secondary-400: #f1bb2e;
+  --secondary-500: #e49815;
+  --secondary-600: #cf7710;
+  --secondary-700: #ac5511;
+  --secondary-800: #8c4314;
+  --secondary-900: #733614;
+  --secondary-950: #421b06;
+
+  /* Secondary (base): Use 500 as default */
+  --secondary: #e49815;
   --secondary-foreground: oklch(100% 0 0);
 
   /* UI States */
   --muted: oklch(0.967 0.003 264.542);
   --muted-foreground: oklch(0.551 0.027 264.364);
 
-  /* Accent: #f59e0b (Amber) → oklch(71.5% 0.167 73.5) */
-  --accent: oklch(71.5% 0.167 73.5);
-  --accent-foreground: oklch(0.13 0.028 261.692);
+  /* Accent: #e49815 (Warm Gold) */
+  --accent: #e49815;
+  --accent-foreground: oklch(100% 0 0);
 
   --destructive: oklch(0.577 0.245 27.325);
   --destructive-foreground: oklch(100% 0 0);
@@ -88,19 +114,45 @@
   --popover: oklch(0.21 0.034 264.665);
   --popover-foreground: oklch(0.985 0.002 247.839);
 
-  /* Primary: #0c54e7 - Brighter for dark mode visibility */
-  --primary: oklch(64% 0.22 265.5);
+  /* Primary shades for dark mode */
+  --primary-50: #0a1f4f;
+  --primary-100: #0a2e6f;
+  --primary-200: #0c3fa5;
+  --primary-300: #1144bc;
+  --primary-400: #1855d4;
+  --primary-500: #2a8cff;
+  --primary-600: #52b0ff;
+  --primary-700: #89ccff;
+  --primary-800: #b9dfff;
+  --primary-900: #d8edff;
+  --primary-950: #eef7ff;
+
+  /* Primary (base) - Same as light mode for consistency */
+  --primary: #0c54e7;
   --primary-foreground: oklch(100% 0 0);
 
-  /* Secondary: #10b981 - Brighter for dark mode */
-  --secondary: oklch(75% 0.165 155.8);
+  /* Secondary (Gamboge) - Dark mode variants */
+  --secondary-50: #421b06;
+  --secondary-100: #733614;
+  --secondary-200: #8c4314;
+  --secondary-300: #ac5511;
+  --secondary-400: #cf7710;
+  --secondary-500: #e49815;
+  --secondary-600: #f1bb2e;
+  --secondary-700: #f3cf56;
+  --secondary-800: #f7e390;
+  --secondary-900: #fbf1ca;
+  --secondary-950: #fefaec;
+
+  /* Secondary - Lighter for dark mode visibility */
+  --secondary: #f1bb2e;
   --secondary-foreground: oklch(0.13 0.028 261.692);
 
   --muted: oklch(0.278 0.033 256.848);
   --muted-foreground: oklch(0.707 0.022 261.325);
 
-  /* Accent: #f59e0b - Brighter for dark mode */
-  --accent: oklch(78% 0.175 73.5);
+  /* Accent: #e49815 - Brighter for dark mode */
+  --accent: #fbbf24;
   --accent-foreground: oklch(0.13 0.028 261.692);
 
   --destructive: oklch(0.704 0.191 22.216);
@@ -236,8 +288,30 @@
   --color-popover-foreground: var(--popover-foreground);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
+  --color-primary-50: var(--primary-50);
+  --color-primary-100: var(--primary-100);
+  --color-primary-200: var(--primary-200);
+  --color-primary-300: var(--primary-300);
+  --color-primary-400: var(--primary-400);
+  --color-primary-500: var(--primary-500);
+  --color-primary-600: var(--primary-600);
+  --color-primary-700: var(--primary-700);
+  --color-primary-800: var(--primary-800);
+  --color-primary-900: var(--primary-900);
+  --color-primary-950: var(--primary-950);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary-50: var(--secondary-50);
+  --color-secondary-100: var(--secondary-100);
+  --color-secondary-200: var(--secondary-200);
+  --color-secondary-300: var(--secondary-300);
+  --color-secondary-400: var(--secondary-400);
+  --color-secondary-500: var(--secondary-500);
+  --color-secondary-600: var(--secondary-600);
+  --color-secondary-700: var(--secondary-700);
+  --color-secondary-800: var(--secondary-800);
+  --color-secondary-900: var(--secondary-900);
+  --color-secondary-950: var(--secondary-950);
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
   --color-accent: var(--accent);

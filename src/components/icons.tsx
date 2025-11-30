@@ -1,4 +1,4 @@
-import { cn } from "@bgs-tickety/shared";
+import { cn } from "@/lib/utils";
 import * as React from "react";
 
 export interface IconSvgProps extends React.SVGProps<SVGSVGElement> {

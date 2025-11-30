@@ -3,7 +3,7 @@ import { useTheme } from "next-themes";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
-import { cn } from "@bgs-tickety/shared";
+import { cn } from "@/lib/utils";
 import Image from "next/image";
 import { Skeleton } from "../ui/skeleton";
 
@@ -22,7 +22,7 @@ type LogoProps = {
 };
 
 function Logo({
-  href = "#",
+  href = "/",
   src,
   alt,
   isWhite = false,

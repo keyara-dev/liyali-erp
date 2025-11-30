@@ -1,6 +1,6 @@
 import * as React from "react";
 
-import { cn } from "@bgs-tickety/shared";
+import { cn } from "@/lib/utils";
 
 export interface ToggleProps
   extends Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "onChange"> {

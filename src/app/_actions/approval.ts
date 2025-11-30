@@ -1,4 +1,4 @@
-'use server';
+'use server'
 
 import {
   ApproveDocumentRequest,
@@ -19,6 +19,7 @@ import {
   commentsRequiredForApproval,
 } from '@/lib/approval-config';
 import { store } from '@/lib/mock-data';
+import { generatePaymentReference } from '@/lib/payment-utils';
 
 /**
  * Generic Approval Handler
@@ -280,7 +281,7 @@ export async function reverseDocument(
 
     // Check if user is the one who approved at this stage
     const lastApproval = state.stageHistory
-      .filter((r) => r.stageNumber === currentStage.stageNumber && r.status === 'APPROVED')
+      .filter((r: any) => r.stageNumber === currentStage.stageNumber && r.status === 'APPROVED')
       .pop();
 
     if (!lastApproval || lastApproval.actionTakenBy !== request.reversingUserId) {
@@ -336,7 +337,7 @@ export async function reverseDocument(
     // 7. Reset approval state if configured
     if (currentStage.reversalResetsPreviousStages) {
       state.stageHistory = state.stageHistory.filter(
-        (r) => r.stageNumber < currentStage.stageNumber
+        (r: any) => r.stageNumber < currentStage.stageNumber
       );
     }
 
@@ -406,16 +407,6 @@ async function generateQRCode(document: any): Promise<string> {
   // In production, use qrcode library
   // For now, return a mock QR code string
   return `QR_${btoa(JSON.stringify(qrData)).substring(0, 50)}`;
-}
-
-/**
- * Generate unique payment reference number
- */
-function generatePaymentReference(): string {
-  const year = new Date().getFullYear();
-  const month = String(new Date().getMonth() + 1).padStart(2, '0');
-  const random = Math.random().toString(36).substring(2, 8).toUpperCase();
-  return `PV-${year}${month}-${random}`;
 }
 
 /**

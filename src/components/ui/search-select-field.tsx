@@ -12,7 +12,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { cn } from "@bgs-tickety/shared";
+import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 import { Check, ChevronsUpDown } from "lucide-react";
 import * as React from "react";

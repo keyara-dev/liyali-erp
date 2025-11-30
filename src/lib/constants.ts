@@ -90,6 +90,14 @@ export const QUERY_KEYS = {
   WORKFLOW_INSTANCES: "workflow-instances",
   WORKFLOW_APPROVALS: "workflow-approvals",
   WORKFLOW_HISTORY: "workflow-history",
+  SELLERS: "sellers",
+  CURRENCIES: "currencies",
+  WHATSAPP_CONFIG: "whatsapp-config",
+  ADMIN_USERS: "admin-users",
+  EVENT_HOSTS: "event-hosts",
+  PREMIUM_PLANS: "premium-plans",
+  PREMIUM_CONFIG: "premium-config",
+  PREMIUM_STATS: "premium-stats",
 };
 
 // ANIMATION_VARIANTS

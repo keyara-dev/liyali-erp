@@ -1,26 +1,13 @@
-'use server';
+'use server'
 
 import { auth } from '@/auth';
-import { APIResponse } from '@/types';
+import { APIResponse, UserRoleAssignment } from '@/types';
 import { User, UserRole } from '@/types/workflow';
 import { MOCK_USERS } from '@/lib/mock-data';
 import { getCustomRole, getAllCustomRoles } from '@/lib/rbac';
 import { handleError, unauthorizedResponse } from '@/app/_actions/api-config';
-
-// In-memory store for user-role assignments (in production, this would be a database)
-interface UserRoleAssignment {
-  userId: string;
-  customRoleId: string;
-  assignedAt: Date;
-  assignedBy: string;
-}
-
-const userRoleAssignmentsStore = new Map<string, UserRoleAssignment>();
-
-// Helper to check if user is admin
-function isAdmin(userRole: string | undefined): boolean {
-  return userRole === 'ADMIN';
-}
+import { userRoleAssignmentsStore } from '@/lib/user-role-store';
+import { isAdmin } from '@/lib/auth-helpers';
 
 // =============== USER MANAGEMENT ===============
 
@@ -64,7 +51,7 @@ export async function getUsersByRole(role: UserRole): Promise<APIResponse<User[]
   }
 }
 
-export async function getUserById(userId: string): Promise<APIResponse<User>> {
+export async function getUserById(userId: string): Promise<APIResponse<User | null>> {
   const session = await auth();
   if (!session?.user) return unauthorizedResponse();
 
@@ -129,7 +116,7 @@ export async function searchUsers(query: string): Promise<APIResponse<User[]>> {
 export async function assignCustomRoleToUser(
   userId: string,
   customRoleId: string
-): Promise<APIResponse<UserRoleAssignment>> {
+): Promise<APIResponse<UserRoleAssignment | null>> {
   const session = await auth();
   if (!session?.user) return unauthorizedResponse();
 
@@ -295,7 +282,7 @@ export async function getUserCustomRoles(userId: string): Promise<APIResponse> {
   }
 }
 
-export async function getUsersWithRole(customRoleId: string): Promise<APIResponse<User[]>> {
+export async function getUsersWithRole(customRoleId: string): Promise<APIResponse<User[] | null>> {
   const session = await auth();
   if (!session?.user) return unauthorizedResponse();
 

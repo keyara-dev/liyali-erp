@@ -137,9 +137,9 @@ export async function isAdminAction(): Promise<boolean> {
 /**
  * Get demo users for login page
  */
-export async function getDemoUsersAction(): Promise<APIResponse<any[]>> {
+export async function getDemoUsersAction(): Promise<APIResponse<any[] | null>> {
   try {
-    const users = getDemoUsers()
+    const users = await getDemoUsers()
     return {
       success: true,
       message: 'Demo users retrieved',

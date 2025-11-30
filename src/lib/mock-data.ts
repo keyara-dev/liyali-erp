@@ -11,7 +11,7 @@ import {
   UserRole,
   DocumentStatus,
 } from '@/types/workflow';
-import { v4 as uuidv4 } from 'crypto';
+import { v4 as uuidv4 } from 'uuid';
 
 // Mock Users by Role
 export const MOCK_USERS: Record<UserRole, User[]> = {
@@ -107,6 +107,7 @@ export function generateDocumentNumber(type: WorkflowDocumentType): string {
     PURCHASE_ORDER: 'PO',
     PAYMENT_VOUCHER: 'PV',
     REQUISITION: 'REQ',
+    GOODS_RECEIVED_NOTE: 'GRN',
   }[type];
 
   const timestamp = Date.now().toString().slice(-6);
@@ -304,3 +305,11 @@ export function getRandomUserByRole(role: UserRole): User {
 export function getAllMockUsers(): User[] {
   return Object.values(MOCK_USERS).flat();
 }
+
+// Mock data store for server actions
+export const store = {
+  documents: new Map(),
+  approvalStates: new Map(),
+  users: new Map(),
+  auditLogs: new Map(),
+};

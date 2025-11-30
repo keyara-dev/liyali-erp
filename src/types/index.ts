@@ -52,9 +52,15 @@ export type {
 export type {
   Currency,
   AccountTier,
-  SignupSettings,
   SettingsData,
 } from "./settings";
+
+// Re-export all dashboard types
+export type {
+  DashboardMetrics,
+  SignupSettings,
+  SignupAnalytics,
+} from "./dashboard";
 
 // Re-export form types
 export type {
@@ -63,22 +69,57 @@ export type {
   ChangePasswordResponse,
 } from "./forms";
 
+// Re-export currency types
+export type {
+  CurrencyData,
+} from "./currencies";
+
+// Re-export event host types
+export type {
+  EventHost,
+} from "./event-hosts";
+
+// Re-export premium types
+export type {
+  PremiumPlan,
+} from "./premium";
+
+// Re-export premium config types
+export type {
+  PremiumConfig,
+} from "./premium-config";
+
+// Re-export WhatsApp types
+export type {
+  WhatsAppConfig,
+} from "./whatsapp";
+
+// Re-export user management types
+export type {
+  UserRoleAssignment,
+} from "./user-management";
+
 // Additional common types
 export type CurrencyKey = "USD" | "ZMW";
 
 export type Pagination = {
   page: number;
-  limit: number;
-  total: number;
-  totalPages: number;
-  hasNext: boolean;
-  hasPrev: boolean;
+  limit?: number;
+  page_size?: number;
+  total?: number;
+  totalCount?: number;
+  total_pages?: number;
+  totalPages?: number;
+  has_next?: boolean;
+  hasNext?: boolean;
+  has_prev?: boolean;
+  hasPrev?: boolean;
 };
 
-export type APIResponse = {
+export type APIResponse<T = any> = {
   success: boolean;
   message: string;
-  data: any;
+  data: T;
   status: number;
   [x: string]: unknown;
 };

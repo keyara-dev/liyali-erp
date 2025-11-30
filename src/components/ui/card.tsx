@@ -1,6 +1,6 @@
 import * as React from "react";
 
-import { cn } from "@bgs-tickety/shared";
+import { cn } from "@/lib/utils";
 
 const Card = React.forwardRef<
   HTMLDivElement,
@@ -9,7 +9,7 @@ const Card = React.forwardRef<
   <div
     ref={ref}
     className={cn(
-      "rounded-lg border border-gray-200 bg-white shadow-sm",
+      "rounded-lg border border-border bg-card shadow-sm",
       className
     )}
     {...props}
@@ -36,7 +36,7 @@ const CardTitle = React.forwardRef<
   <h3
     ref={ref}
     className={cn(
-      "text-2xl font-semibold leading-none tracking-tight text-black",
+      "text-2xl font-semibold leading-none tracking-tight text-foreground",
       className
     )}
     {...props}
@@ -48,7 +48,7 @@ const CardDescription = React.forwardRef<
   HTMLParagraphElement,
   React.HTMLAttributes<HTMLParagraphElement>
 >(({ className, ...props }, ref) => (
-  <p ref={ref} className={cn("text-sm text-gray-600", className)} {...props} />
+  <p ref={ref} className={cn("text-sm text-muted-foreground", className)} {...props} />
 ));
 CardDescription.displayName = "CardDescription";
 
@@ -72,8 +72,21 @@ const CardFooter = React.forwardRef<
 ));
 CardFooter.displayName = "CardFooter";
 
+const CardAction = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ className, ...props }, ref) => (
+  <div
+    ref={ref}
+    className={cn("flex items-center justify-end", className)}
+    {...props}
+  />
+));
+CardAction.displayName = "CardAction";
+
 export {
   Card,
+  CardAction,
   CardContent,
   CardDescription,
   CardFooter,

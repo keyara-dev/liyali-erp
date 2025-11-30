@@ -1,10 +1,11 @@
-'use server';
+'use server'
 
 import { auth } from '@/auth';
 import { APIResponse } from '@/types';
 import {
   WorkflowDocument,
   WorkflowDocumentType,
+  DocumentStatus,
   ApprovalLogEntry,
   Attachment,
   Approver,
@@ -25,77 +26,23 @@ import {
 } from '@/lib/mock-data';
 import { getWorkflowStepsForType, getApprovalChain, getNextApproverRole, isLastApprovalStep } from '@/lib/rbac';
 import { unauthorizedResponse, handleError } from '@/app/_actions/api-config';
+import {
+  documentStore,
+  approversStore,
+  approvalLogsStore,
+  attachmentsStore,
+} from '@/lib/workflow-stores';
 
-// In-memory store for demo purposes
-export const documentStore = new Map<string, WorkflowDocument>();
-const approversStore = new Map<string, Approver[]>();
-const approvalLogsStore = new Map<string, ApprovalLogEntry[]>();
-const attachmentsStore = new Map<string, Attachment[]>();
-
-// =============== INITIALIZATION ===============
-
-// Initialize with sample data on first load
-let isInitialized = false;
-
-function initializeSampleData() {
-  if (isInitialized) return;
-
-  const statuses: DocumentStatus[] = ['DRAFT', 'SUBMITTED', 'IN_APPROVAL', 'APPROVED', 'REJECTED', 'REVERSED'];
-  const documentTypes: WorkflowDocumentType[] = ['REQUISITION', 'PURCHASE_ORDER', 'PAYMENT_VOUCHER'];
-
-  // Create 25 sample documents with varied data
-  for (let i = 0; i < 25; i++) {
-    const status = statuses[i % statuses.length];
-    const type = documentTypes[i % documentTypes.length];
-    const daysAgo = Math.floor(i / 2);
-    const createdDate = new Date(Date.now() - daysAgo * 24 * 60 * 60 * 1000);
-
-    let doc: WorkflowDocument;
-
-    switch (type) {
-      case 'PURCHASE_ORDER':
-        doc = createMockPurchaseOrder({
-          status,
-          currentStage: status === 'DRAFT' ? 0 : Math.min(i % 4, 3),
-          createdAt: createdDate,
-          updatedAt: createdDate,
-          createdBy: MOCK_USERS.REQUESTER[i % MOCK_USERS.REQUESTER.length].id,
-        });
-        break;
-      case 'PAYMENT_VOUCHER':
-        doc = createMockPaymentVoucher({
-          status,
-          currentStage: status === 'DRAFT' ? 0 : Math.min(i % 4, 3),
-          createdAt: createdDate,
-          updatedAt: createdDate,
-          createdBy: MOCK_USERS.REQUESTER[i % MOCK_USERS.REQUESTER.length].id,
-        });
-        break;
-      default:
-        doc = createMockRequisitionForm({
-          status,
-          currentStage: status === 'DRAFT' ? 0 : Math.min(i % 4, 3),
-          createdAt: createdDate,
-          updatedAt: createdDate,
-          createdBy: MOCK_USERS.REQUESTER[i % MOCK_USERS.REQUESTER.length].id,
-        });
-    }
-
-    documentStore.set(doc.id, doc);
-  }
-
-  isInitialized = true;
-}
-
-// Initialize on module load
-initializeSampleData();
+// Note: documentStore is not exported from this server action file
+// It's available directly from @/lib/workflow-stores for non-server code
+// Initialization happens in @/lib/workflow-initialization
 
 // =============== DOCUMENT OPERATIONS ===============
 
 export async function createWorkflowDocument(
   documentType: WorkflowDocumentType,
   formData: Record<string, any>
-): Promise<APIResponse<WorkflowDocument>> {
+): Promise<APIResponse<WorkflowDocument | null>> {
   const session = await auth();
   if (!session?.user) return unauthorizedResponse();
 
@@ -107,19 +54,16 @@ export async function createWorkflowDocument(
       case 'PURCHASE_ORDER':
         document = createMockPurchaseOrder({
           createdBy: session.user.id,
-          metadata: formData,
         });
         break;
       case 'PAYMENT_VOUCHER':
         document = createMockPaymentVoucher({
           createdBy: session.user.id,
-          metadata: formData,
         });
         break;
       case 'REQUISITION':
         document = createMockRequisitionForm({
           createdBy: session.user.id,
-          metadata: formData,
         });
         break;
       default:
@@ -155,7 +99,7 @@ export async function createWorkflowDocument(
 
 export async function submitDocument(
   documentId: string
-): Promise<APIResponse<WorkflowDocument>> {
+): Promise<APIResponse<WorkflowDocument | null>> {
   const session = await auth();
   if (!session?.user) return unauthorizedResponse();
 
@@ -207,7 +151,7 @@ export async function submitDocument(
 
 export async function getDocument(
   documentId: string
-): Promise<APIResponse<WorkflowDocument>> {
+): Promise<APIResponse<WorkflowDocument | null>> {
   const session = await auth();
   if (!session?.user) return unauthorizedResponse();
 
@@ -239,7 +183,7 @@ export async function getDocument(
 export async function updateDocumentDraft(
   documentId: string,
   formData: Record<string, any>
-): Promise<APIResponse<WorkflowDocument>> {
+): Promise<APIResponse<WorkflowDocument | null>> {
   const session = await auth();
   if (!session?.user) return unauthorizedResponse();
 
@@ -330,7 +274,7 @@ export async function getDocumentsByCreator(
 export async function approveDocument(
   documentId: string,
   comments?: string
-): Promise<APIResponse<ApprovalLogEntry>> {
+): Promise<APIResponse<ApprovalLogEntry | null>> {
   const session = await auth();
   if (!session?.user) return unauthorizedResponse();
 
@@ -422,7 +366,7 @@ export async function approveDocument(
 export async function rejectDocument(
   documentId: string,
   reason: string
-): Promise<APIResponse<ApprovalLogEntry>> {
+): Promise<APIResponse<ApprovalLogEntry | null>> {
   const session = await auth();
   if (!session?.user) return unauthorizedResponse();
 
@@ -549,7 +493,7 @@ export async function assignApprover(
   stepOrder: number,
   userId: string,
   role: string
-): Promise<APIResponse<Approver>> {
+): Promise<APIResponse<Approver | null>> {
   const session = await auth();
   if (!session?.user) return unauthorizedResponse();
 
@@ -606,7 +550,7 @@ export async function reassignApprover(
   documentId: string,
   approverId: string,
   newUserId: string
-): Promise<APIResponse<Approver>> {
+): Promise<APIResponse<Approver | null>> {
   const session = await auth();
   if (!session?.user) return unauthorizedResponse();
 
@@ -713,7 +657,7 @@ export async function uploadAttachment(
   fileSize: number,
   fileType: string,
   visibleToRoles: string[]
-): Promise<APIResponse<Attachment>> {
+): Promise<APIResponse<Attachment | null>> {
   const session = await auth();
   if (!session?.user) return unauthorizedResponse();
 

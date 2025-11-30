@@ -1,19 +1,17 @@
-'use server'
+import "server-only";
 
-import 'server-only'
+import { SignJWT, jwtVerify } from "jose";
+import { cookies } from "next/headers";
+import { cache } from "react";
 
-import { SignJWT, jwtVerify } from 'jose'
-import { cookies } from 'next/headers'
-import { cache } from 'react'
-
-import type { AuthSession, Permission, User, UserType } from '@/types'
-import { SESSION_CONFIG } from '@/lib/session-config'
+import type { AuthSession, Permission, User, UserType } from "@/types";
+import { SESSION_CONFIG } from "@/lib/session-config";
 import {
   AUTH_SESSION,
   USER_SESSION,
   PERMISSIONS_SESSION,
-  SCREEN_LOCK_SESSION
-} from '@/lib/constants'
+  SCREEN_LOCK_SESSION,
+} from "@/lib/constants";
 
 /**
  * Consolidated Authentication System
@@ -25,26 +23,26 @@ import {
 // ============================================================================
 
 export interface AuthUser {
-  id: string
-  name: string
-  email: string
-  role: UserRole
-  department?: string
-  avatar?: string
+  id: string;
+  name: string;
+  email: string;
+  role: UserRole;
+  department?: string;
+  avatar?: string;
 }
 
 export type UserRole =
-  | 'REQUESTER'
-  | 'DEPARTMENT_MANAGER'
-  | 'FINANCE_OFFICER'
-  | 'DIRECTOR'
-  | 'CFO'
-  | 'COMPLIANCE_OFFICER'
-  | 'ADMIN'
+  | "REQUESTER"
+  | "DEPARTMENT_MANAGER"
+  | "FINANCE_OFFICER"
+  | "DIRECTOR"
+  | "CFO"
+  | "COMPLIANCE_OFFICER"
+  | "ADMIN";
 
 interface Session {
-  user: AuthUser
-  expiresAt: number
+  user: AuthUser;
+  expiresAt: number;
 }
 
 // ============================================================================
@@ -52,96 +50,96 @@ interface Session {
 // ============================================================================
 
 const getSecretKey = () => {
-  const secretKey = process.env.AUTH_SECRET
+  const secretKey = process.env.AUTH_SECRET;
   if (!secretKey || secretKey.length < 32) {
     throw new Error(
-      'JWT_SECRET or AUTH_SECRET environment variable must be at least 32 characters'
-    )
+      "JWT_SECRET or AUTH_SECRET environment variable must be at least 32 characters"
+    );
   }
-  return secretKey
-}
+  return secretKey;
+};
 
-const getKey = () => new TextEncoder().encode(getSecretKey())
+const getKey = () => new TextEncoder().encode(getSecretKey());
 
 /**
  * Encrypt payload into JWT token
  */
-export async function encrypt(payload: any, expirationTime: string = '1h') {
-  if (!payload || typeof payload !== 'object') {
-    throw new Error('Payload must be a non-empty object')
+export async function encrypt(payload: any, expirationTime: string = "1h") {
+  if (!payload || typeof payload !== "object") {
+    throw new Error("Payload must be a non-empty object");
   }
 
-  const key = getKey()
+  const key = getKey();
   return new SignJWT(payload)
-    .setProtectedHeader({ alg: 'HS256' })
+    .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime(expirationTime)
-    .sign(key)
+    .sign(key);
 }
 
 /**
  * Decrypt JWT token
  */
 export async function decrypt(token: any) {
-  if (!token || typeof token !== 'string') {
+  if (!token || typeof token !== "string") {
     return {
       success: false,
-      message: 'No session token provided',
+      message: "No session token provided",
       data: null,
       status: 500,
-      statusText: 'UNAUTHENTICATED'
-    }
+      statusText: "UNAUTHENTICATED",
+    };
   }
 
-  const parts = token.split('.')
+  const parts = token.split(".");
   if (parts.length !== 3) {
     return {
       success: false,
-      message: 'Invalid token format',
+      message: "Invalid token format",
       data: null,
       status: 500,
-      statusText: 'INVALID_TOKEN_FORMAT'
-    }
+      statusText: "INVALID_TOKEN_FORMAT",
+    };
   }
 
   try {
-    const key = getKey()
+    const key = getKey();
     const { payload } = await jwtVerify(token, key, {
-      algorithms: ['HS256'],
-      clockTolerance: 15
-    })
+      algorithms: ["HS256"],
+      clockTolerance: 15,
+    });
 
-    return payload
+    return payload;
   } catch (error: Error | any) {
-    console.error(error)
+    console.error(error);
 
-    if (error.code === 'ERR_JWS_INVALID') {
+    if (error.code === "ERR_JWS_INVALID") {
       return {
         success: false,
-        message: 'Invalid token signature',
+        message: "Invalid token signature",
         data: null,
         status: 500,
-        statusText: 'INVALID_TOKEN_SIGNATURE'
-      }
+        statusText: "INVALID_TOKEN_SIGNATURE",
+      };
     }
 
-    if (error.code === 'ERR_JWT_EXPIRED') {
+    if (error.code === "ERR_JWT_EXPIRED") {
       return {
         success: false,
-        message: 'Token expired',
+        message: "Token expired",
         data: null,
         status: 500,
-        statusText: 'TOKEN_EXPIRED'
-      }
+        statusText: "TOKEN_EXPIRED",
+      };
     }
 
     return {
       success: false,
-      message: 'Failed to verify session',
+      message: "Failed to verify session",
       data: null,
       status: 500,
-      statusText: 'TOKEN_VERIFICATION_FAILED'
-    }
+      statusText: "TOKEN_VERIFICATION_FAILED",
+    };
   }
 }
 
@@ -149,85 +147,86 @@ export async function decrypt(token: any) {
 // DEMO USERS (SIMULATED AUTH)
 // ============================================================================
 
-export const DEMO_USERS: Record<string, { password: string; user: AuthUser }> = {
-  'requester@liyali.com': {
-    password: 'password123',
-    user: {
-      id: 'user-001',
-      name: 'John Requester',
-      email: 'requester@liyali.com',
-      role: 'REQUESTER',
-      department: 'Operations',
-      avatar: '👤'
-    }
-  },
-  'manager@liyali.com': {
-    password: 'password123',
-    user: {
-      id: 'user-002',
-      name: 'Sarah Manager',
-      email: 'manager@liyali.com',
-      role: 'DEPARTMENT_MANAGER',
-      department: 'Finance',
-      avatar: '👥'
-    }
-  },
-  'finance@liyali.com': {
-    password: 'password123',
-    user: {
-      id: 'user-003',
-      name: 'James Finance',
-      email: 'finance@liyali.com',
-      role: 'FINANCE_OFFICER',
-      department: 'Finance',
-      avatar: '💼'
-    }
-  },
-  'director@liyali.com': {
-    password: 'password123',
-    user: {
-      id: 'user-004',
-      name: 'Paul Director',
-      email: 'director@liyali.com',
-      role: 'DIRECTOR',
-      department: 'Executive',
-      avatar: '👔'
-    }
-  },
-  'cfo@liyali.com': {
-    password: 'password123',
-    user: {
-      id: 'user-005',
-      name: 'Michelle CFO',
-      email: 'cfo@liyali.com',
-      role: 'CFO',
-      department: 'Finance',
-      avatar: '💎'
-    }
-  },
-  'compliance@liyali.com': {
-    password: 'password123',
-    user: {
-      id: 'user-006',
-      name: 'David Compliance',
-      email: 'compliance@liyali.com',
-      role: 'COMPLIANCE_OFFICER',
-      department: 'Compliance',
-      avatar: '✅'
-    }
-  },
-  'admin@liyali.com': {
-    password: 'password123',
-    user: {
-      id: 'user-007',
-      name: 'Admin User',
-      email: 'admin@liyali.com',
-      role: 'ADMIN',
-      department: 'Administration',
-      avatar: '⚙️'
-    }
-  }
-}
+export const DEMO_USERS: Record<string, { password: string; user: AuthUser }> =
+  {
+    "requester@liyali.com": {
+      password: "password123",
+      user: {
+        id: "user-001",
+        name: "John Requester",
+        email: "requester@liyali.com",
+        role: "REQUESTER",
+        department: "Operations",
+        avatar: "👤",
+      },
+    },
+    "manager@liyali.com": {
+      password: "password123",
+      user: {
+        id: "user-002",
+        name: "Sarah Manager",
+        email: "manager@liyali.com",
+        role: "DEPARTMENT_MANAGER",
+        department: "Finance",
+        avatar: "👥",
+      },
+    },
+    "finance@liyali.com": {
+      password: "password123",
+      user: {
+        id: "user-003",
+        name: "James Finance",
+        email: "finance@liyali.com",
+        role: "FINANCE_OFFICER",
+        department: "Finance",
+        avatar: "💼",
+      },
+    },
+    "director@liyali.com": {
+      password: "password123",
+      user: {
+        id: "user-004",
+        name: "Paul Director",
+        email: "director@liyali.com",
+        role: "DIRECTOR",
+        department: "Executive",
+        avatar: "👔",
+      },
+    },
+    "cfo@liyali.com": {
+      password: "password123",
+      user: {
+        id: "user-005",
+        name: "Michelle CFO",
+        email: "cfo@liyali.com",
+        role: "CFO",
+        department: "Finance",
+        avatar: "💎",
+      },
+    },
+    "compliance@liyali.com": {
+      password: "password123",
+      user: {
+        id: "user-006",
+        name: "David Compliance",
+        email: "compliance@liyali.com",
+        role: "COMPLIANCE_OFFICER",
+        department: "Compliance",
+        avatar: "✅",
+      },
+    },
+    "admin@liyali.com": {
+      password: "password123",
+      user: {
+        id: "user-007",
+        name: "Admin User",
+        email: "admin@liyali.com",
+        role: "ADMIN",
+        department: "Administration",
+        avatar: "⚙️",
+      },
+    },
+  };
 
 // ============================================================================
 // BASIC AUTH FUNCTIONS (SIMULATED)
@@ -237,32 +236,32 @@ export const DEMO_USERS: Record<string, { password: string; user: AuthUser }> = 
  * Get the current authenticated session
  */
 export async function getSession(): Promise<Session | null> {
-  const cookieStore = await cookies()
-  const sessionToken = cookieStore.get(AUTH_SESSION)?.value
+  const cookieStore = await cookies();
+  const sessionToken = cookieStore.get(AUTH_SESSION)?.value;
 
   if (!sessionToken) {
-    return null
+    return null;
   }
 
   try {
-    const decrypted = await decrypt(sessionToken)
+    const decrypted = await decrypt(sessionToken);
 
     // Check if decryption returned an error object
     if (!decrypted || decrypted.success === false) {
-      return null
+      return null;
     }
 
-    const session = decrypted as any
+    const session = decrypted as any;
 
     // Check if session has expired
     if (session.expiresAt && new Date(session.expiresAt) < new Date()) {
-      cookieStore.delete(AUTH_SESSION)
-      return null
+      cookieStore.delete(AUTH_SESSION);
+      return null;
     }
 
-    return { user: session.user || {}, expiresAt: session.expiresAt }
+    return { user: session.user || {}, expiresAt: session.expiresAt };
   } catch (error) {
-    return null
+    return null;
   }
 }
 
@@ -270,8 +269,8 @@ export async function getSession(): Promise<Session | null> {
  * Get current authenticated user
  */
 export async function getCurrentUser(): Promise<AuthUser | null> {
-  const session = await getSession()
-  return session?.user || null
+  const session = await getSession();
+  return session?.user || null;
 }
 
 /**
@@ -281,47 +280,50 @@ export async function login(
   email: string,
   password: string
 ): Promise<{ success: boolean; user?: AuthUser; error?: string }> {
-  const userConfig = DEMO_USERS[email.toLowerCase()]
+  const userConfig = DEMO_USERS[email.toLowerCase()];
 
   if (!userConfig) {
-    return { success: false, error: 'User not found' }
+    return { success: false, error: "User not found" };
   }
 
   if (userConfig.password !== password) {
-    return { success: false, error: 'Invalid password' }
+    return { success: false, error: "Invalid password" };
   }
 
-  const user = userConfig.user
+  const user = userConfig.user;
 
   // Create JWT session with 30-minute expiration
   try {
-    const accessToken = `token_${user.id}_${Date.now()}`
-    const expiresAt = new Date(Date.now() + SESSION_CONFIG.SESSION_TTL)
+    const accessToken = `token_${user.id}_${Date.now()}`;
+    const expiresAt = new Date(Date.now() + SESSION_CONFIG.SESSION_TTL);
 
     const newSession: AuthSession = {
       accessToken,
       user_type: user.role,
       user_id: user.id,
       user,
-      expiresAt
-    }
+      expiresAt,
+    };
 
-    const token = await encrypt(newSession, '30m')
+    const token = await encrypt(newSession, "30m");
 
     if (token) {
-      const cookieStore = await cookies()
+      const cookieStore = await cookies();
       cookieStore.set(AUTH_SESSION, token, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
+        secure: process.env.NODE_ENV === "production",
         expires: expiresAt,
-        sameSite: 'strict',
-        path: '/'
-      })
+        sameSite: "strict",
+        path: "/",
+      });
     }
 
-    return { success: true, user }
+    return { success: true, user };
   } catch (error: any) {
-    return { success: false, error: error.message || 'Failed to create session' }
+    return {
+      success: false,
+      error: error.message || "Failed to create session",
+    };
   }
 }
 
@@ -330,44 +332,46 @@ export async function login(
  */
 export async function logout(): Promise<void> {
   try {
-    const cookieStore = await cookies()
-    cookieStore.delete(AUTH_SESSION)
-    cookieStore.delete(USER_SESSION)
-    cookieStore.delete(PERMISSIONS_SESSION)
-    cookieStore.delete(SCREEN_LOCK_SESSION)
+    const cookieStore = await cookies();
+    cookieStore.delete(AUTH_SESSION);
+    cookieStore.delete(USER_SESSION);
+    cookieStore.delete(PERMISSIONS_SESSION);
+    cookieStore.delete(SCREEN_LOCK_SESSION);
   } catch (error) {
-    console.error('Logout error:', error)
+    console.error("Logout error:", error);
   }
 }
 
 /**
  * Check if user has required role
  */
-export async function hasRole(requiredRole: UserRole | UserRole[]): Promise<boolean> {
-  const user = await getCurrentUser()
-  if (!user) return false
+export async function hasRole(
+  requiredRole: UserRole | UserRole[]
+): Promise<boolean> {
+  const user = await getCurrentUser();
+  if (!user) return false;
 
-  const roles = Array.isArray(requiredRole) ? requiredRole : [requiredRole]
-  return roles.includes(user.role)
+  const roles = Array.isArray(requiredRole) ? requiredRole : [requiredRole];
+  return roles.includes(user.role);
 }
 
 /**
  * Check if user has admin role
  */
 export async function isAdmin(): Promise<boolean> {
-  const user = await getCurrentUser()
-  return user?.role === 'ADMIN'
+  const user = await getCurrentUser();
+  return user?.role === "ADMIN";
 }
 
 /**
  * Get all demo users (for development)
  */
-export function getDemoUsers() {
+export async function getDemoUsers() {
   return Object.entries(DEMO_USERS).map(([email, config]) => ({
-    email,
     ...config.user,
-    password: config.password
-  }))
+    email: email,
+    password: config.password,
+  }));
 }
 
 // ============================================================================
@@ -383,40 +387,40 @@ export async function createAuthSession({
   user_id,
   change_password,
   mfa_required,
-  organization_id
+  organization_id,
 }: {
-  accessToken: string
-  user_type: UserType
-  user_id?: string
-  change_password?: boolean
-  mfa_required?: boolean
-  organization_id?: string
+  accessToken: string;
+  user_type: UserType;
+  user_id?: string;
+  change_password?: boolean;
+  mfa_required?: boolean;
+  organization_id?: string;
 }): Promise<void> {
-  const expiresAt = new Date(Date.now() + SESSION_CONFIG.SESSION_TTL)
+  const expiresAt = new Date(Date.now() + SESSION_CONFIG.SESSION_TTL);
 
   const newSession: AuthSession = {
-    accessToken: accessToken || '',
+    accessToken: accessToken || "",
     user_type,
     user_id,
     change_password,
     mfa_required,
     organization_id,
-    expiresAt
-  }
+    expiresAt,
+  };
 
-  const token = await encrypt(newSession, '30m')
+  const token = await encrypt(newSession, "30m");
 
   if (token) {
-    const cookieStore = await cookies()
+    const cookieStore = await cookies();
     cookieStore.set(AUTH_SESSION, token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: process.env.NODE_ENV === "production",
       expires: expiresAt,
-      sameSite: 'strict',
-      path: '/'
-    })
+      sameSite: "strict",
+      path: "/",
+    });
   } else {
-    throw new Error('Failed to create session token.')
+    throw new Error("Failed to create session token.");
   }
 }
 
@@ -424,143 +428,148 @@ export async function createAuthSession({
  * Create user session cookie
  */
 export async function createUserSession(user: User): Promise<void> {
-  const expiresAt = new Date(Date.now() + 1 * 60 * 60 * 1000)
+  const expiresAt = new Date(Date.now() + 1 * 60 * 60 * 1000);
 
-  const newSession = { ...user, expiresAt }
+  const newSession = { ...user, expiresAt };
 
-  const token = await encrypt(newSession, '1h')
+  const token = await encrypt(newSession, "1h");
 
   if (token) {
-    const cookieStore = await cookies()
+    const cookieStore = await cookies();
     cookieStore.set(USER_SESSION, token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: process.env.NODE_ENV === "production",
       expires: expiresAt,
-      sameSite: 'strict',
-      path: '/'
-    })
+      sameSite: "strict",
+      path: "/",
+    });
   } else {
-    throw new Error('Failed to create session token.')
+    throw new Error("Failed to create session token.");
   }
 }
 
 /**
  * Create permissions session cookie
  */
-export async function createPermissionsSession(pem: Permission[]): Promise<void> {
-  const expiresAt = new Date(Date.now() + 1 * 60 * 60 * 1000)
+export async function createPermissionsSession(
+  pem: Permission[]
+): Promise<void> {
+  const expiresAt = new Date(Date.now() + 1 * 60 * 60 * 1000);
 
-  const newSession = { ...pem, expiresAt }
+  const newSession = { ...pem, expiresAt };
 
-  const token = await encrypt(newSession, '1h')
+  const token = await encrypt(newSession, "1h");
 
   if (token) {
-    const cookieStore = await cookies()
+    const cookieStore = await cookies();
     cookieStore.set(PERMISSIONS_SESSION, token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: process.env.NODE_ENV === "production",
       expires: expiresAt,
-      sameSite: 'strict',
-      path: '/'
-    })
+      sameSite: "strict",
+      path: "/",
+    });
   } else {
-    throw new Error('Failed to create session token.')
+    throw new Error("Failed to create session token.");
   }
 }
 
 /**
  * Update auth session with new fields
  */
-export async function updateAuthSession(fields: any): Promise<AuthSession | undefined> {
-  const { isAuthenticated: isLoggedIn, session: oldSession } = await verifySession()
+export async function updateAuthSession(
+  fields: any
+): Promise<AuthSession | undefined> {
+  const { isAuthenticated: isLoggedIn, session: oldSession } =
+    await verifySession();
 
   if (isLoggedIn && oldSession) {
     const cleanedOldSession = Object.fromEntries(
       Object.entries(oldSession).filter(([_, value]) => value !== null)
-    ) as AuthSession
+    ) as AuthSession;
 
     const newSession: AuthSession = {
       ...cleanedOldSession,
-      ...fields
-    }
+      ...fields,
+    };
 
     const expiresAt = fields?.expiresAt
       ? new Date(fields.expiresAt)
       : oldSession?.expiresAt
         ? new Date(oldSession.expiresAt)
-        : new Date(Date.now() + 30 * 60 * 1000)
+        : new Date(Date.now() + 30 * 60 * 1000);
 
-    newSession.expiresAt = expiresAt
+    newSession.expiresAt = expiresAt;
 
-    const session = await encrypt(newSession, '30m')
+    const session = await encrypt(newSession, "30m");
 
     if (session) {
-      const cookieStore = await cookies()
+      const cookieStore = await cookies();
       cookieStore.set(AUTH_SESSION, session, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
+        secure: process.env.NODE_ENV === "production",
         expires: expiresAt,
-        sameSite: 'strict',
-        path: '/'
-      })
-      return newSession
+        sameSite: "strict",
+        path: "/",
+      });
+      return newSession;
     } else {
-      throw new Error('Failed to update session token.')
+      throw new Error("Failed to update session token.");
     }
   }
-  return
+  return;
 }
 
 /**
  * Verify the current session is valid
  */
 export async function verifySession(): Promise<{
-  isAuthenticated: boolean
-  session: AuthSession | null
-  user?: Partial<User> | null
-  user_type?: UserType
-  permissions?: any[]
-  [key: string]: any
+  isAuthenticated: boolean;
+  session: AuthSession | null;
+  user?: Partial<User> | null;
+  user_type?: UserType;
+  permissions?: any[];
+  [key: string]: any;
 }> {
   try {
-    const cookieStore = await cookies()
-    const cookie = cookieStore.get(AUTH_SESSION)?.value
+    const cookieStore = await cookies();
+    const cookie = cookieStore.get(AUTH_SESSION)?.value;
 
     if (!cookie) {
-      return { isAuthenticated: false, session: null }
+      return { isAuthenticated: false, session: null };
     }
 
-    const decrypted = await decrypt(cookie)
+    const decrypted = await decrypt(cookie);
 
     if (!decrypted || decrypted.success === false) {
-      await deleteSession()
-      return { isAuthenticated: false, session: null }
+      await deleteSession();
+      return { isAuthenticated: false, session: null };
     }
 
-    const session = decrypted as AuthSession
+    const session = decrypted as unknown as AuthSession;
 
     if (!session?.accessToken) {
-      return { isAuthenticated: false, session: null }
+      return { isAuthenticated: false, session: null };
     }
 
     if (session?.expiresAt) {
-      const expiresAt = new Date(session.expiresAt)
-      const now = new Date()
+      const expiresAt = new Date(session.expiresAt);
+      const now = new Date();
 
       if (expiresAt < now) {
-        await deleteSession()
-        return { isAuthenticated: false, session: null }
+        await deleteSession();
+        return { isAuthenticated: false, session: null };
       }
     }
 
     return {
       isAuthenticated: true,
       session: session,
-      user_type: session.user_type
-    }
+      user_type: session.user_type,
+    };
   } catch (error) {
-    console.error('[verifySession] Error:', error)
-    return { isAuthenticated: false, session: null }
+    console.error("[verifySession] Error:", error);
+    return { isAuthenticated: false, session: null };
   }
 }
 
@@ -570,24 +579,24 @@ export async function verifySession(): Promise<{
 export async function verifySessions(
   sessionNames: string[] = [AUTH_SESSION]
 ): Promise<{ isAuthenticated: boolean; session: any }> {
-  const cookieStore = await cookies()
+  const cookieStore = await cookies();
   const sessionPromises = sessionNames.map(async (name) => {
-    const cookie = cookieStore.get(name)?.value
-    if (!cookie) return null
-    const data = await decrypt(cookie)
-    return data && !data.success === false ? data : null
-  })
+    const cookie = cookieStore.get(name)?.value;
+    if (!cookie) return null;
+    const data = await decrypt(cookie);
+    return data && !data.success === false ? data : null;
+  });
 
-  const decryptedSessions = await Promise.all(sessionPromises)
+  const decryptedSessions = await Promise.all(sessionPromises);
 
   const consolidatedSession = decryptedSessions.reduce((acc, curr) => {
-    if (curr) return { ...acc, ...curr }
-    return acc
-  }, {})
+    if (curr) return { ...acc, ...curr };
+    return acc;
+  }, {});
 
-  const isAuthenticated = !!consolidatedSession?.accessToken
+  const isAuthenticated = !!consolidatedSession?.accessToken;
 
-  return { isAuthenticated, session: consolidatedSession }
+  return { isAuthenticated, session: consolidatedSession };
 }
 
 /**
@@ -595,20 +604,20 @@ export async function verifySessions(
  */
 export async function deleteSession() {
   try {
-    const cookieStore = await cookies()
-    cookieStore.delete(AUTH_SESSION)
-    cookieStore.delete(USER_SESSION)
-    cookieStore.delete(PERMISSIONS_SESSION)
-    cookieStore.delete(SCREEN_LOCK_SESSION)
+    const cookieStore = await cookies();
+    cookieStore.delete(AUTH_SESSION);
+    cookieStore.delete(USER_SESSION);
+    cookieStore.delete(PERMISSIONS_SESSION);
+    cookieStore.delete(SCREEN_LOCK_SESSION);
 
-    return { success: true, message: 'Logout Success' }
+    return { success: true, message: "Logout Success" };
   } catch (error: any) {
-    console.error('Failed to delete session cookies:', error)
+    console.error("Failed to delete session cookies:", error);
     return {
       success: false,
-      message: 'Failed to clear session cookies',
-      error: error?.message || 'Unknown error'
-    }
+      message: "Failed to clear session cookies",
+      error: error?.message || "Unknown error",
+    };
   }
 }
 
@@ -619,34 +628,39 @@ export async function deleteSession() {
 /**
  * Get auth session (contains access token)
  */
-export async function getAuthSession(): Promise<Omit<AuthSession, 'user' | 'permissions'> | null> {
-  const cookieStore = await cookies()
-  const cookie = cookieStore.get(AUTH_SESSION)?.value
-  if (!cookie) return null
-  const decrypted = await decrypt(cookie)
-  return decrypted as Omit<AuthSession, 'user' | 'permissions'>
+export async function getAuthSession(): Promise<Omit<
+  AuthSession,
+  "user" | "permissions"
+> | null> {
+  const cookieStore = await cookies();
+  const cookie = cookieStore.get(AUTH_SESSION)?.value;
+  if (!cookie) return null;
+  const decrypted = await decrypt(cookie);
+  return decrypted as Omit<AuthSession, "user" | "permissions">;
 }
 
 /**
  * Get user session (contains user profile)
  */
-async function _getUserSession(): Promise<AuthSession['user'] | null> {
-  const cookieStore = await cookies()
-  const cookie = cookieStore.get(USER_SESSION)?.value
-  if (!cookie) return null
-  return decrypt(cookie) as AuthSession['user']
+async function _getUserSession(): Promise<AuthSession["user"] | null> {
+  const cookieStore = await cookies();
+  const cookie = cookieStore.get(USER_SESSION)?.value;
+  if (!cookie) return null;
+  return decrypt(cookie) as AuthSession["user"];
 }
 
-export const getUserSession = cache(_getUserSession)
+export const getUserSession = cache(_getUserSession);
 
 /**
  * Get permissions session
  */
-export async function getPermissionsSession(): Promise<AuthSession['permissions'] | null> {
-  const cookieStore = await cookies()
-  const cookie = cookieStore.get(PERMISSIONS_SESSION)?.value
-  if (!cookie) return null
-  return decrypt(cookie) as unknown as AuthSession['permissions']
+export async function getPermissionsSession(): Promise<
+  AuthSession["permissions"] | null
+> {
+  const cookieStore = await cookies();
+  const cookie = cookieStore.get(PERMISSIONS_SESSION)?.value;
+  if (!cookie) return null;
+  return decrypt(cookie) as unknown as AuthSession["permissions"];
 }
 
 // ============================================================================
@@ -657,24 +671,24 @@ export async function getPermissionsSession(): Promise<AuthSession['permissions'
  * Set screen lock state cookie
  */
 export async function setScreenLockCookie(isLocked: boolean): Promise<void> {
-  const expiresAt = new Date(Date.now() + SESSION_CONFIG.SCREEN_LOCK_COUNTDOWN)
+  const expiresAt = new Date(Date.now() + SESSION_CONFIG.SCREEN_LOCK_COUNTDOWN);
 
   const lockState = {
     locked: isLocked,
-    timestamp: new Date().toISOString()
-  }
+    timestamp: new Date().toISOString(),
+  };
 
-  const token = await encrypt(lockState, '90s')
+  const token = await encrypt(lockState, "90s");
 
   if (token) {
-    const cookieStore = await cookies()
+    const cookieStore = await cookies();
     cookieStore.set(SCREEN_LOCK_SESSION, token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: process.env.NODE_ENV === "production",
       expires: expiresAt,
-      sameSite: 'strict',
-      path: '/'
-    })
+      sameSite: "strict",
+      path: "/",
+    });
   }
 }
 
@@ -682,71 +696,77 @@ export async function setScreenLockCookie(isLocked: boolean): Promise<void> {
  * Get screen lock state from cookie
  */
 export async function getScreenLockState(): Promise<boolean> {
-  const cookieStore = await cookies()
-  const cookie = cookieStore.get(SCREEN_LOCK_SESSION)?.value
-  if (!cookie) return false
+  const cookieStore = await cookies();
+  const cookie = cookieStore.get(SCREEN_LOCK_SESSION)?.value;
+  if (!cookie) return false;
 
-  const lockState = await decrypt(cookie)
+  const lockState = await decrypt(cookie);
 
   if (!lockState || (lockState as any)?.success === false) {
-    return false
+    return false;
   }
 
   if ((lockState as any)?.locked !== true) {
-    return false
+    return false;
   }
 
-  const timestamp = (lockState as any)?.timestamp
+  const timestamp = (lockState as any)?.timestamp;
   if (timestamp) {
     try {
-      const lockTime = new Date(timestamp).getTime()
-      const nowTime = Date.now()
-      const ageMs = nowTime - lockTime
+      const lockTime = new Date(timestamp).getTime();
+      const nowTime = Date.now();
+      const ageMs = nowTime - lockTime;
 
       if (ageMs > 95000) {
-        return false
+        return false;
       }
     } catch (error) {
       // If timestamp parsing fails, still return true if locked flag is set
     }
   }
 
-  return true
+  return true;
 }
 
 /**
  * Clear screen lock cookie
  */
 export async function clearScreenLockCookie(): Promise<void> {
-  const cookieStore = await cookies()
-  cookieStore.delete(SCREEN_LOCK_SESSION)
+  const cookieStore = await cookies();
+  cookieStore.delete(SCREEN_LOCK_SESSION);
 }
 
 /**
  * Verify that a session field was updated
  */
-export async function verifySessionUpdate(field: string, expectedValue: any): Promise<boolean> {
+export async function verifySessionUpdate(
+  field: string,
+  expectedValue: any
+): Promise<boolean> {
   try {
-    const { session } = await verifySessions()
+    const { session } = await verifySessions();
 
     if (!session) {
-      console.warn(`❌ Cannot verify session update: no active session`)
-      return false
+      console.warn(`❌ Cannot verify session update: no active session`);
+      return false;
     }
 
-    const actualValue = (session as any)[field]
+    const actualValue = (session as any)[field];
 
     if (actualValue === expectedValue) {
-      console.log(`✅ Session field '${field}' verified: ${expectedValue}`)
-      return true
+      console.log(`✅ Session field '${field}' verified: ${expectedValue}`);
+      return true;
     } else {
       console.warn(
         `❌ Session field '${field}' mismatch. Expected: ${expectedValue}, Got: ${actualValue}`
-      )
-      return false
+      );
+      return false;
     }
   } catch (error) {
-    console.error(`❌ Failed to verify session update for field '${field}':`, error)
-    return false
+    console.error(
+      `❌ Failed to verify session update for field '${field}':`,
+      error
+    );
+    return false;
   }
 }

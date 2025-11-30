@@ -1,7 +1,7 @@
 // components/RichTextDialog.tsx
 "use client";
 
-import { RichTextEditor } from "@/app/dashboard/_components/product-full-description";
+import { RichTextEditor } from "./rich-text-editor";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -12,7 +12,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 
-import { cn } from "@bgs-tickety/shared";
+import { cn } from "@/lib/utils";
 
 interface RichTextDialogProps {
   initialData?: any;

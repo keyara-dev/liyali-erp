@@ -1,7 +1,7 @@
-'use server';
+'use server'
 
 import { auth } from '@/auth';
-import { SearchFilters, WorkflowDocument, PaginatedResponse, APIResponse } from '@/types/workflow';
+import { APIResponse, SearchFilters, WorkflowDocument, PaginatedResponse } from '@/types';
 import { getDocumentsByCreator, getPendingApprovals } from './workflow';
 import { unauthorizedResponse, handleError } from '@/app/_actions/api-config';
 
@@ -27,8 +27,8 @@ export async function searchDocuments(
       allDocuments = [...allDocuments, ...createdResult.data.data];
     }
 
-    if (pendingResult.success && pendingResult.data?.data) {
-      allDocuments = [...allDocuments, ...pendingResult.data.data];
+    if (pendingResult.success && pendingResult.data) {
+      allDocuments = [...allDocuments, ...pendingResult.data];
     }
 
     // Remove duplicates by ID
@@ -84,6 +84,7 @@ export async function searchDocuments(
 
     return {
       success: true,
+      message: 'Documents search completed',
       data: {
         data: paginatedData,
         pagination: {
@@ -93,6 +94,7 @@ export async function searchDocuments(
           totalPages,
         },
       },
+      status: 200,
     };
   } catch (error) {
     return handleError(error, 'GET', '/search') as any;

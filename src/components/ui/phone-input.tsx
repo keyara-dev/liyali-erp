@@ -1,14 +1,8 @@
-import { cn } from "@bgs-tickety/shared";
+import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 import * as React from "react";
-import {
-  PhoneInput as PhoneInputField,
-  PhoneInputProps,
-} from "react-international-phone";
 
-import "react-international-phone/style.css";
-
-type InputProps = PhoneInputProps & {
+type InputProps = React.InputHTMLAttributes<HTMLInputElement> & {
   id?: string;
   label?: string;
   name?: string;
@@ -29,7 +23,7 @@ type InputProps = PhoneInputProps & {
   };
 };
 
-const PhoneInput = React.forwardRef<PhoneInputProps, InputProps>(
+const PhoneInput = React.forwardRef<HTMLInputElement, InputProps>(
   (
     {
       id,
@@ -53,7 +47,6 @@ const PhoneInput = React.forwardRef<PhoneInputProps, InputProps>(
       <div
         className={cn(
           "flex w-full max-w-lg flex-col",
-
           classNames?.wrapper,
           {
             "cursor-not-allowed opacity-50": isDisabled,
@@ -77,16 +70,15 @@ const PhoneInput = React.forwardRef<PhoneInputProps, InputProps>(
             )}
           </label>
         )}
-        <PhoneInputField
-          countrySelectorStyleProps={{
-            className: "!border-none !outline-none ",
-            buttonClassName: "!border-none !outline-none ",
-            buttonContentWrapperClassName: "pl-2  ",
-            flagClassName: "",
-          }}
-          inputClassName="w-full text-lg rounded-lg font-sans !border-none !outline-none px-2"
+        <input
+          ref={ref}
+          id={id}
+          name={name}
+          placeholder={placeholder}
+          type="tel"
+          disabled={isDisabled || props?.disabled}
           className={cn(
-            "flex items-center h-12 text-lg rounded-lg border border-gray-200 bg-white px-1 text-foreground placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent disabled:cursor-not-allowed disabled:opacity-50",
+            "flex items-center h-12 text-lg rounded-lg border border-gray-200 bg-white px-3 text-foreground placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent disabled:cursor-not-allowed disabled:opacity-50",
             {
               "border-red-500 focus:border-red-500/70 focus-visible:ring-red-500/30":
                 onError || isInvalid,
@@ -94,8 +86,6 @@ const PhoneInput = React.forwardRef<PhoneInputProps, InputProps>(
             className,
             classNames?.input
           )}
-          value={props.value}
-          disabled={isDisabled || props?.disabled}
           {...props}
         />
 

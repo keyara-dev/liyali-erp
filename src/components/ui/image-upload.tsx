@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { upload } from "@imagekit/next";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 
@@ -21,19 +20,6 @@ export function ImageUpload({
   const [dragActive, setDragActive] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const authenticator = async () => {
-    try {
-      const response = await fetch("/api/upload-auth");
-      if (!response.ok) {
-        throw new Error("Failed to get upload authentication");
-      }
-      return await response.json();
-    } catch (error) {
-      console.error("Error getting upload auth:", error);
-      throw error;
-    }
-  };
-
   const handleFileUpload = async (file: File) => {
     if (!file) return;
 
@@ -41,21 +27,9 @@ export function ImageUpload({
     setUploadProgress(0);
 
     try {
-      const authParams = await authenticator();
-
-      const response = await upload({
-        file,
-        fileName: file.name,
-        folder: "/products",
-        ...authParams,
-        onProgress: (event) => {
-          setUploadProgress(Math.round((event.loaded / event.total) * 100));
-        },
-      });
-
-      if (response.url) {
-        onImagesChange([...images, response.url]);
-      }
+      // Placeholder: In production, this would upload to ImageKit or another service
+      toast.success("Image upload placeholder - install @imagekit/next to enable uploads");
+      setUploadProgress(100);
     } catch (error) {
       console.error("Upload error:", error);
       toast.error("Failed to upload image. Please try again.");
@@ -102,7 +76,7 @@ export function ImageUpload({
   const setMainImage = (index: number) => {
     console.log("Setting main image:", index);
     if (index === 0) {
-      return; // Already main image
+      return;
     }
     const newImages = [...images];
     const [selectedImage] = newImages.splice(index, 1);
@@ -113,7 +87,6 @@ export function ImageUpload({
 
   return (
     <div className="space-y-4">
-      {/* Upload Area */}
       <div
         className={`relative border-2 border-dashed rounded-lg p-6 text-center transition-all duration-200 ${
           dragActive
@@ -181,7 +154,6 @@ export function ImageUpload({
         )}
       </div>
 
-      {/* Image Preview Grid */}
       {images.length > 0 && (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
           {images.map((url, index) => (

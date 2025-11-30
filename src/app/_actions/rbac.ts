@@ -1,8 +1,8 @@
-'use server';
+'use server'
 
 import { auth } from '@/auth';
 import { APIResponse } from '@/types';
-import { Permission, UserRole } from '@/types/workflow';
+import { UserRole, WorkflowPermission as Permission } from '@/types/workflow';
 import {
   createCustomRole,
   updateCustomRole,
@@ -18,11 +18,7 @@ import {
   CustomRole,
 } from '@/lib/rbac';
 import { handleError, unauthorizedResponse } from '@/app/_actions/api-config';
-
-// Helper to check if user is admin
-function isAdmin(userRole: string | undefined): boolean {
-  return userRole === 'ADMIN';
-}
+import { isAdmin } from '@/lib/auth-helpers';
 
 // =============== ROLE MANAGEMENT ===============
 
@@ -86,7 +82,7 @@ export async function getCustomRoles(): Promise<APIResponse<CustomRole[]>> {
   }
 }
 
-export async function getRoleById(roleId: string): Promise<APIResponse<CustomRole>> {
+export async function getRoleById(roleId: string): Promise<APIResponse<CustomRole | null>> {
   const session = await auth();
   if (!session?.user) return unauthorizedResponse();
 
@@ -120,7 +116,7 @@ export async function createRole(
   name: string,
   description: string,
   permissions: Permission[]
-): Promise<APIResponse<CustomRole>> {
+): Promise<APIResponse<CustomRole | null>> {
   const session = await auth();
   if (!session?.user) return unauthorizedResponse();
 
@@ -191,7 +187,7 @@ export async function updateRole(
   roleId: string,
   name?: string,
   description?: string
-): Promise<APIResponse<CustomRole>> {
+): Promise<APIResponse<CustomRole | null>> {
   const session = await auth();
   if (!session?.user) return unauthorizedResponse();
 
@@ -360,7 +356,7 @@ export async function getAllPermissions(): Promise<
 export async function addRolePermission(
   roleId: string,
   permission: Permission
-): Promise<APIResponse<CustomRole>> {
+): Promise<APIResponse<CustomRole | null>> {
   const session = await auth();
   if (!session?.user) return unauthorizedResponse();
 
@@ -428,7 +424,7 @@ export async function addRolePermission(
 export async function removeRolePermission(
   roleId: string,
   permission: Permission
-): Promise<APIResponse<CustomRole>> {
+): Promise<APIResponse<CustomRole | null>> {
   const session = await auth();
   if (!session?.user) return unauthorizedResponse();
 
@@ -486,7 +482,7 @@ export async function removeRolePermission(
 export async function updateRolePermissions(
   roleId: string,
   permissions: Permission[]
-): Promise<APIResponse<CustomRole>> {
+): Promise<APIResponse<CustomRole | null>> {
   const session = await auth();
   if (!session?.user) return unauthorizedResponse();
 

@@ -50,6 +50,9 @@ export type WorkflowPermission =
   | "manage_approvers"
   | "manage_workflows";
 
+// Alias for backward compatibility
+export type Permission = WorkflowPermission;
+
 // Base Workflow Document
 export type WorkflowDocument = {
   id: string;

@@ -11,7 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { cn } from "@bgs-tickety/shared";
+import { cn } from "@/lib/utils";
 
 function Command({
   className,

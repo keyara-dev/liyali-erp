@@ -123,7 +123,7 @@ function ScreenLock({
 
   return (
     <Dialog open={open}>
-      <DialogContent className="sm:max-w-md" hideCloseButton>
+      <DialogContent className="sm:max-w-md" showCloseButton={false}>
         <DialogHeader>
           <DialogTitle>Are you still there?</DialogTitle>
           <DialogDescription>
