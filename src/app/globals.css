@@ -75,7 +75,7 @@
   --accent: #e49815;
   --accent-foreground: oklch(100% 0 0);
 
-  --destructive: oklch(0.577 0.245 27.325);
+  --destructive: oklch(62.826% 0.25721 28.495);
   --destructive-foreground: oklch(100% 0 0);
 
   /* Borders & Inputs */
@@ -113,35 +113,7 @@
   --popover: oklch(0.21 0.034 264.665);
   --popover-foreground: oklch(0.985 0.002 247.839);
 
-  /* Primary shades for dark mode */
-  --primary-50: #0a1f4f;
-  --primary-100: #0a2e6f;
-  --primary-200: #0c3fa5;
-  --primary-300: #1144bc;
-  --primary-400: #1855d4;
-  --primary-500: #2a8cff;
-  --primary-600: #52b0ff;
-  --primary-700: #89ccff;
-  --primary-800: #b9dfff;
-  --primary-900: #d8edff;
-  --primary-950: #eef7ff;
-
-  /* Primary (base) - Same as light mode for consistency */
-  --primary: #0c54e7;
   --primary-foreground: oklch(100% 0 0);
-
-  /* Secondary (Gamboge) - Dark mode variants */
-  --secondary-50: #421b06;
-  --secondary-100: #733614;
-  --secondary-200: #8c4314;
-  --secondary-300: #ac5511;
-  --secondary-400: #cf7710;
-  --secondary-500: #e49815;
-  --secondary-600: #f1bb2e;
-  --secondary-700: #f3cf56;
-  --secondary-800: #f7e390;
-  --secondary-900: #fbf1ca;
-  --secondary-950: #fefaec;
 
   /* Secondary - Lighter for dark mode visibility */
   --secondary: #f1bb2e;
@@ -154,7 +126,7 @@
   --accent: #fbbf24;
   --accent-foreground: oklch(0.13 0.028 261.692);
 
-  --destructive: oklch(0.704 0.191 22.216);
+  --destructive: oklch(60.935% 0.23114 27.123);
   --destructive-foreground: oklch(0.985 0.002 247.839);
 
   --border: oklch(1 0 0 / 10%);

@@ -22,6 +22,8 @@ import {
   QrCode,
   Zap,
   FileCheck,
+  CheckSquare,
+  DollarSign,
   type LucideIcon
 } from "lucide-react";
 import Link from "next/link";
@@ -48,6 +50,11 @@ export const navItems: NavGroup[] = [
         icon: LayoutDashboard
       },
       {
+        title: "Tasks",
+        href: "/workflows/tasks",
+        icon: CheckSquare
+      },
+      {
         title: "Search Transactions",
         href: "/workflows/search",
         icon: Search
@@ -71,6 +78,16 @@ export const navItems: NavGroup[] = [
         title: "Goods Received Notes",
         href: "/workflows/grn",
         icon: FileCheck
+      }
+    ]
+  },
+  {
+    title: "Budget Management",
+    items: [
+      {
+        title: "Budgets",
+        href: "/workflows/budgets",
+        icon: DollarSign
       }
     ]
   },

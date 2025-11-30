@@ -1,0 +1,31 @@
+import { auth } from '@/auth'
+import { redirect } from 'next/navigation'
+import { BudgetDetailClient } from './_components/budget-detail-client'
+
+export const metadata = {
+  title: 'Budget Details',
+  description: 'View and manage budget details',
+}
+
+interface BudgetDetailPageProps {
+  params: Promise<{
+    id: string
+  }>
+}
+
+export default async function BudgetDetailPage({ params }: BudgetDetailPageProps) {
+  const session = await auth()
+  const resolvedParams = await params
+
+  if (!session?.user) {
+    redirect('/login')
+  }
+
+  return (
+    <BudgetDetailClient
+      budgetId={resolvedParams.id}
+      userId={session.user.id}
+      userRole={(session.user as any).role}
+    />
+  )
+}
