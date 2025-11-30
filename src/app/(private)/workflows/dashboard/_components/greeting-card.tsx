@@ -84,7 +84,7 @@ export function GreetingCard({
     : [];
 
   return (
-    <Card className="bg-primary border-0 overflow-hidden">
+    <Card className="gradient-primary border-0 overflow-hidden">
       <CardContent className="p-8">
         <div className="grid grid-cols-1 gap-6">
           {/* Row 1, Col 1 - Greeting */}

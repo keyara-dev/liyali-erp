@@ -73,7 +73,8 @@ const SelectField = React.forwardRef<HTMLSelectElement, SelectInputProps>(
               {
                 "text-red-500": onError || isInvalid,
                 "opacity-50": isDisabled || props?.disabled,
-              }
+              },
+              classNames?.label
             )}
             htmlFor={name}
           >
@@ -97,7 +98,11 @@ const SelectField = React.forwardRef<HTMLSelectElement, SelectInputProps>(
                 ? props.size
                 : "default"
             }
-            className={cn("!h-12 capitalize", className, classNames?.input)}
+            className={cn(
+              "!h-12 capitalize w-full",
+              className,
+              classNames?.input
+            )}
           >
             <SelectValue placeholder={placeholder} />
           </SelectTrigger>

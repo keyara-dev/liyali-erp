@@ -15,7 +15,7 @@ import {
   useReactTable,
 } from '@tanstack/react-table'
 import { useRouter } from 'next/navigation'
-import { ArrowUpDown, Eye, ChevronLeft, ChevronRight } from 'lucide-react'
+import { ArrowUpDown, Eye, ChevronLeft, ChevronRight, SearchX } from 'lucide-react'
 
 import {
   Table,
@@ -28,6 +28,13 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from '@/components/ui/empty'
 import { searchDocuments } from '@/app/_actions/search'
 import { WorkflowDocument, SearchFilters, PaginatedResponse } from '@/types/workflow'
 import { DownloadButton } from './download-button'
@@ -224,9 +231,17 @@ export function TransactionResults({
             <div className="text-muted-foreground">Loading documents...</div>
           </div>
         ) : documents.length === 0 ? (
-          <div className="flex justify-center items-center py-8">
-            <div className="text-muted-foreground">No documents found matching your search criteria.</div>
-          </div>
+          <Empty>
+            <EmptyMedia variant="icon">
+              <SearchX className="h-6 w-6" />
+            </EmptyMedia>
+            <EmptyHeader>
+              <EmptyTitle>No documents found</EmptyTitle>
+              <EmptyDescription>
+                Try adjusting your search filters to find what you're looking for.
+              </EmptyDescription>
+            </EmptyHeader>
+          </Empty>
         ) : (
           <>
             {/* Table */}

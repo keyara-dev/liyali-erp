@@ -1,4 +1,3 @@
-
 /* ========================================
    TAILWIND V4 IMPORTS
    ======================================== */
@@ -343,6 +342,13 @@
   --radius-2xl: calc(var(--radius) + 8px);
   --radius-full: 9999px;
 
+  --gradient-primary: linear-gradient(
+    to bottom right,
+    var(--primary-400),
+    var(--primary-600),
+    var(--primary-700)
+  );
+
   /* ========================================
      ANIMATIONS
      ======================================== */
@@ -616,6 +622,10 @@
     .no-print {
       display: none !important;
     }
+  }
+
+  .gradient-primary {
+    @apply bg-linear-to-br from-primary via-primary-600 to-primary-700;
   }
 }
 

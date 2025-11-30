@@ -112,3 +112,53 @@ export const verifyAdminRole = cache(async (): Promise<APIResponse> => {
     }
   }
 })
+
+/**
+ * Send password reset email
+ */
+export async function sendResetEmail(email: string): Promise<APIResponse> {
+  try {
+    // This is a stub implementation for password reset
+    // In a production system, this would send an actual email
+    return {
+      success: true,
+      message: 'Password reset email sent successfully',
+      data: { email },
+      status: 200,
+      statusText: 'OK'
+    }
+  } catch (error: any) {
+    return {
+      success: false,
+      message: error.message || 'Failed to send reset email',
+      data: null,
+      status: 500,
+      statusText: 'ERROR'
+    }
+  }
+}
+
+/**
+ * Reset password with token
+ */
+export async function resetPassword(token: string, newPassword: string): Promise<APIResponse> {
+  try {
+    // This is a stub implementation for password reset
+    // In a production system, this would validate the token and update the password
+    return {
+      success: true,
+      message: 'Password reset successfully',
+      data: { token },
+      status: 200,
+      statusText: 'OK'
+    }
+  } catch (error: any) {
+    return {
+      success: false,
+      message: error.message || 'Failed to reset password',
+      data: null,
+      status: 500,
+      statusText: 'ERROR'
+    }
+  }
+}

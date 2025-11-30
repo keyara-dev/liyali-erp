@@ -24,3 +24,5 @@ export function Spinner({ className }: { className?: string }) {
     </svg>
   );
 }
+
+export default Spinner;
