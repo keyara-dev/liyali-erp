@@ -1,21 +1,21 @@
 import { auth } from '@/auth'
 import { redirect } from 'next/navigation'
-import { GRNDetailClient } from './_components/grn-detail-client'
+import { GRNConfirmationClient } from './_components/grn-confirmation-client'
 
 export const metadata = {
-  title: 'Goods Received Note Details',
-  description: 'View and confirm goods received',
+  title: 'GRN Confirmation',
+  description: 'Confirm goods received',
 }
 
-interface GRNDetailPageProps {
+interface GRNConfirmationPageProps {
   params: {
     id: string
   }
 }
 
-export default async function GRNDetailPage({
+export default async function GRNConfirmationPage({
   params,
-}: GRNDetailPageProps) {
+}: GRNConfirmationPageProps) {
   const session = await auth()
 
   if (!session?.user) {
@@ -23,7 +23,7 @@ export default async function GRNDetailPage({
   }
 
   return (
-    <GRNDetailClient
+    <GRNConfirmationClient
       grnId={params.id}
       userId={session.user.id}
       userRole={(session.user as any).role}

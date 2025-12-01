@@ -1,21 +1,21 @@
 import { auth } from '@/auth'
 import { redirect } from 'next/navigation'
-import { GRNDetailClient } from './_components/grn-detail-client'
+import { PODetailClient } from './_components/po-detail-client'
 
 export const metadata = {
-  title: 'Goods Received Note Details',
-  description: 'View and confirm goods received',
+  title: 'Purchase Order Details',
+  description: 'View and manage purchase order details',
 }
 
-interface GRNDetailPageProps {
+interface PODetailPageProps {
   params: {
     id: string
   }
 }
 
-export default async function GRNDetailPage({
+export default async function PODetailPage({
   params,
-}: GRNDetailPageProps) {
+}: PODetailPageProps) {
   const session = await auth()
 
   if (!session?.user) {
@@ -23,8 +23,8 @@ export default async function GRNDetailPage({
   }
 
   return (
-    <GRNDetailClient
-      grnId={params.id}
+    <PODetailClient
+      poId={params.id}
       userId={session.user.id}
       userRole={(session.user as any).role}
     />

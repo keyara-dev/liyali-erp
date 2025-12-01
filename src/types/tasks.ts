@@ -68,3 +68,45 @@ export interface TaskWithDocument extends Task {
     description?: string;
   };
 }
+
+/**
+ * ApprovalTask - Task data for approval workflows
+ * Used in approval pages and action panels
+ */
+export interface ApprovalTask {
+  id: string;
+  entityId: string;
+  entityType: "REQUISITION" | "BUDGET" | "PURCHASE_ORDER" | "PAYMENT_VOUCHER";
+  entityNumber: string;
+  status: "pending" | "approved" | "rejected";
+  stageName: string;
+  stageIndex: number;
+  importance: "HIGH" | "MEDIUM" | "LOW";
+  approverName?: string;
+  approverUserId?: string;
+  createdAt: Date;
+  actionDate?: Date;
+  dueDate?: Date;
+  workflowId?: string;
+  workflowName?: string;
+}
+
+/**
+ * ApprovalTaskDetail - Full approval task with related data
+ * Returned from approval detail endpoints
+ */
+export interface ApprovalTaskDetail {
+  task: ApprovalTask;
+  workflow?: {
+    id: string;
+    name: string;
+    totalStages: number;
+    stages: Array<{
+      stageNumber: number;
+      name: string;
+      description?: string;
+    }>;
+  };
+  entity?: Record<string, any>; // The actual requisition/budget data
+  relatedApprovals?: ApprovalTask[]; // Other approvals in the same workflow
+}

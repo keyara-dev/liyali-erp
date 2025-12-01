@@ -42,7 +42,7 @@ type NavGroup = {
 
 export const navItems: NavGroup[] = [
   {
-    title: "Workflows",
+    title: "Main",
     items: [
       {
         title: "Dashboard",

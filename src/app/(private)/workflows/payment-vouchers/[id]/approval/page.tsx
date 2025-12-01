@@ -1,21 +1,21 @@
 import { auth } from '@/auth'
 import { redirect } from 'next/navigation'
-import { GRNDetailClient } from './_components/grn-detail-client'
+import { PVApprovalClient } from './_components/pv-approval-client'
 
 export const metadata = {
-  title: 'Goods Received Note Details',
-  description: 'View and confirm goods received',
+  title: 'Payment Voucher Approval',
+  description: 'Review and approve payment voucher',
 }
 
-interface GRNDetailPageProps {
+interface PVApprovalPageProps {
   params: {
     id: string
   }
 }
 
-export default async function GRNDetailPage({
+export default async function PVApprovalPage({
   params,
-}: GRNDetailPageProps) {
+}: PVApprovalPageProps) {
   const session = await auth()
 
   if (!session?.user) {
@@ -23,8 +23,8 @@ export default async function GRNDetailPage({
   }
 
   return (
-    <GRNDetailClient
-      grnId={params.id}
+    <PVApprovalClient
+      pvId={params.id}
       userId={session.user.id}
       userRole={(session.user as any).role}
     />

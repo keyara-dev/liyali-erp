@@ -1,21 +1,21 @@
 import { auth } from '@/auth'
 import { redirect } from 'next/navigation'
-import { GRNDetailClient } from './_components/grn-detail-client'
+import { POApprovalClient } from './_components/po-approval-client'
 
 export const metadata = {
-  title: 'Goods Received Note Details',
-  description: 'View and confirm goods received',
+  title: 'Purchase Order Approval',
+  description: 'Review and approve purchase order',
 }
 
-interface GRNDetailPageProps {
+interface POApprovalPageProps {
   params: {
     id: string
   }
 }
 
-export default async function GRNDetailPage({
+export default async function POApprovalPage({
   params,
-}: GRNDetailPageProps) {
+}: POApprovalPageProps) {
   const session = await auth()
 
   if (!session?.user) {
@@ -23,8 +23,8 @@ export default async function GRNDetailPage({
   }
 
   return (
-    <GRNDetailClient
-      grnId={params.id}
+    <POApprovalClient
+      poId={params.id}
       userId={session.user.id}
       userRole={(session.user as any).role}
     />

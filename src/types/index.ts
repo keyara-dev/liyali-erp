@@ -48,6 +48,28 @@ export type {
   SearchFilters,
 } from "./workflow";
 
+// Re-export all custom workflow types
+export type {
+  WorkflowEntityType,
+  ApproverAssignmentType,
+  StageTransition,
+  WorkflowStage,
+  CustomWorkflow,
+  WorkflowAssignment,
+  StageExecution,
+  StageAssignment,
+  WorkflowDefault,
+  WorkflowStats,
+  WorkflowValidationError,
+  CreateWorkflowRequest,
+  UpdateWorkflowRequest,
+  AssignWorkflowRequest,
+  ApproveStageRequest,
+  RejectStageRequest,
+  ReassignStageRequest,
+  ReverseStageRequest,
+} from "./custom-workflow";
+
 // Re-export all settings types
 export type {
   Currency,
@@ -130,3 +152,47 @@ export type ErrorState = {
   type?: "error" | "success" | "info" | "warning";
   [x: string]: unknown;
 };
+
+// Re-export task types
+export type {
+  Task,
+  TaskType,
+  TaskPriority,
+  TaskStatus,
+  TaskFilters,
+  TaskStats,
+  TaskWithDocument,
+  ApprovalTask,
+  ApprovalTaskDetail,
+} from "./tasks";
+
+// Re-export notification types
+export type {
+  NotificationType,
+  QuickActionType,
+  NotificationImportance,
+  QuickAction,
+  Notification,
+  NotificationPreferences,
+  GetNotificationsRequest,
+  GetNotificationsResponse,
+  CreateNotificationRequest,
+  CreateNotificationResponse,
+  MarkNotificationReadRequest,
+  MarkNotificationReadResponse,
+  MarkAllNotificationsReadRequest,
+  MarkAllNotificationsReadResponse,
+  DeleteNotificationRequest,
+  DeleteNotificationResponse,
+  GetUnreadCountRequest,
+  GetUnreadCountResponse,
+  GetNotificationPreferencesRequest,
+  GetNotificationPreferencesResponse,
+  UpdateNotificationPreferencesRequest,
+  UpdateNotificationPreferencesResponse,
+  TaskAssignedEvent,
+  TaskReassignedEvent,
+  TaskApprovedEvent,
+  TaskRejectedEvent,
+  WorkflowCompleteEvent,
+} from "./notifications";

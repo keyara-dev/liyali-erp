@@ -153,6 +153,14 @@ export const QUERY_KEYS = {
   WORKFLOW_HISTORY: "workflow-history",
   APPROVALS_PENDING: "approvals-pending",
 
+  // Notifications
+  NOTIFICATIONS: {
+    ALL: "notifications-all",
+    UNREAD: "notifications-unread",
+    UNREAD_COUNT: "notifications-unread-count",
+    PREFERENCES: "notification-preferences",
+  },
+
   // Search
   SEARCH: "search",
   SEARCH_RESULTS: "search-results",
