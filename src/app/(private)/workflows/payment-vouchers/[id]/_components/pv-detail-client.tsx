@@ -5,17 +5,12 @@ import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import {
   ArrowLeft,
-  AlertCircle,
-  DollarSign,
-  User,
-  FileText,
-  Clock,
   TrendingUp,
 } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
+import { PageHeader } from '@/components/base/page-header'
 
 interface PVDetailClientProps {
   pvId: string
@@ -26,7 +21,7 @@ interface PVDetailClientProps {
 interface PaymentVoucher {
   id: string
   voucherNumber: string
-  status: 'DRAFT' | 'SUBMITTED' | 'IN_APPROVAL' | 'APPROVED' | 'REJECTED'
+  status: 'DRAFT' | 'SUBMITTED' | 'IN_REVIEW' | 'APPROVED' | 'REJECTED'
   invoiceNumber: string
   invoiceDate: string
   vendorName: string
@@ -57,14 +52,6 @@ interface PaymentVoucher {
   updatedAt: string
 }
 
-const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
-  DRAFT: { bg: 'bg-gray-100', text: 'text-gray-800' },
-  SUBMITTED: { bg: 'bg-blue-100', text: 'text-blue-800' },
-  IN_APPROVAL: { bg: 'bg-yellow-100', text: 'text-yellow-800' },
-  APPROVED: { bg: 'bg-green-100', text: 'text-green-800' },
-  REJECTED: { bg: 'bg-red-100', text: 'text-red-800' },
-}
-
 const STAGE_NAMES: Record<number, string> = {
   1: 'Department Manager Review',
   2: 'Finance Officer Review',
@@ -87,7 +74,7 @@ function generateMockPV(pvId: string): PaymentVoucher {
   return {
     id: pvId,
     voucherNumber: `PV-2024-${String(Math.floor(Math.random() * 9000) + 1000).padStart(4, '0')}`,
-    status: 'IN_APPROVAL',
+    status: 'IN_REVIEW',
     invoiceNumber: `INV-${Math.random().toString(36).substring(7).toUpperCase()}`,
     invoiceDate: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(),
     vendorName: 'Office Supplies Ltd.',
@@ -189,25 +176,21 @@ export function PVDetailClient({
     )
   }
 
-  const colors = STATUS_COLORS[pv.status] || STATUS_COLORS['DRAFT']
-
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="sm" onClick={handleBack}>
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-          <div>
-            <h1 className="text-3xl font-bold">{pv.voucherNumber}</h1>
-            <p className="text-muted-foreground">Payment Voucher Details</p>
-          </div>
-        </div>
-        <Badge className={colors.bg + ' ' + colors.text}>
-          {pv.status}
-        </Badge>
-      </div>
+      <PageHeader
+        title={pv.voucherNumber}
+        subtitle="Payment Voucher Details"
+        badges={[
+          {
+            status: pv.status,
+            type: "document",
+          },
+        ]}
+        onBackClick={handleBack}
+        showBackButton={true}
+      />
 
       {/* Status and Stage Info */}
       <div className="grid gap-4 md:grid-cols-2">
@@ -392,7 +375,7 @@ export function PVDetailClient({
         <Button variant="outline" onClick={handleBack}>
           Cancel
         </Button>
-        {pv.status === 'IN_APPROVAL' && (
+        {pv.status === 'IN_REVIEW' && (
           <Button onClick={handleApprove} className="bg-blue-600 hover:bg-blue-700">
             Review & Approve
           </Button>

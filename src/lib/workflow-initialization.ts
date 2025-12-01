@@ -24,7 +24,7 @@ let isInitialized = checkInitialized;
 export function initializeSampleData() {
   if (isInitialized) return;
 
-  const statuses: DocumentStatus[] = ['DRAFT', 'SUBMITTED', 'IN_APPROVAL', 'APPROVED', 'REJECTED', 'REVERSED'];
+  const statuses: DocumentStatus[] = ['DRAFT', 'SUBMITTED', 'IN_REVIEW', 'APPROVED', 'REJECTED', 'REVERSED'];
   const documentTypes: WorkflowDocumentType[] = ['REQUISITION', 'PURCHASE_ORDER', 'PAYMENT_VOUCHER'];
 
   // Create 25 sample documents with varied data

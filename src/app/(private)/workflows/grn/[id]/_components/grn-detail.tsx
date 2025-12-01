@@ -36,7 +36,7 @@ export function GrnDetail({ grnId, userId, userRole }: GrnDetailProps) {
         id: grnId,
         type: 'GOODS_RECEIVED_NOTE',
         documentNumber: 'GRN-2024-001',
-        status: 'IN_APPROVAL',
+        status: 'IN_REVIEW',
         currentStage: 1,
         createdBy: 'user-1',
         createdAt: new Date('2024-11-27'),
@@ -110,13 +110,13 @@ export function GrnDetail({ grnId, userId, userRole }: GrnDetailProps) {
     return <div className="text-center py-8 text-red-600">GRN not found</div>
   }
 
-  const canApprove = grn.status === 'IN_APPROVAL'
+  const canApprove = grn.status === 'IN_REVIEW'
   const statusVariant =
     grn.status === 'APPROVED'
       ? 'default'
       : grn.status === 'REJECTED'
         ? 'destructive'
-        : grn.status === 'IN_APPROVAL'
+        : grn.status === 'IN_REVIEW'
           ? 'secondary'
           : 'outline'
 

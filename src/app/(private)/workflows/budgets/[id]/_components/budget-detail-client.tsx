@@ -6,7 +6,7 @@ import { ArrowLeft, Send, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { StatusBadge } from '@/components/status-badge'
+import { PageHeader } from '@/components/base/page-header'
 import { BudgetItemsTable } from './budget-items-table'
 import { ApprovalChainPanel } from './approval-chain-panel'
 import { AddBudgetItemDialog } from './add-budget-item-dialog'
@@ -132,22 +132,18 @@ export function BudgetDetailClient({
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-start justify-between">
-        <div className="space-y-2">
-          <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => router.back()}
-            >
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-            <h1 className="text-3xl font-bold tracking-tight">{budget.name}</h1>
-          </div>
-          <p className="text-sm text-muted-foreground">{budget.budgetNumber}</p>
-        </div>
-        <StatusBadge status={budget.status} type="document" />
-      </div>
+      <PageHeader
+        title={budget.name}
+        subtitle={budget.budgetNumber}
+        badges={[
+          {
+            status: budget.status,
+            type: "document",
+          },
+        ]}
+        onBackClick={() => router.back()}
+        showBackButton={true}
+      />
 
       {/* Tabs Container */}
       <Tabs defaultValue="overview" className="w-full">

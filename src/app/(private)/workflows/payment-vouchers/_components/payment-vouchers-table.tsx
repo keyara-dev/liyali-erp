@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { ColumnDef } from '@tanstack/react-table'
 import {
   ArrowUpDown,
@@ -23,6 +24,8 @@ import {
 import { DataTable } from '@/components/ui/data-table'
 import { StatusBadge as CentralizedStatusBadge } from '@/components/status-badge'
 import { WorkflowDocument } from '@/types/workflow'
+import { usePaymentVouchersAsWorkflowDocuments } from '@/hooks/use-payment-voucher-storage'
+import { convertPaymentVoucherToWorkflowDocument } from '@/hooks/use-payment-voucher-storage'
 
 interface PaymentVouchersTableProps {
   userId: string
@@ -171,7 +174,7 @@ function getColumns(onViewClick: (id: string) => void): ColumnDef<WorkflowDocume
                 View QR Code
               </DropdownMenuItem>
             )}
-            {row.original.status === 'IN_APPROVAL' && (
+            {row.original.status === 'IN_REVIEW' && (
               <>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem className="flex items-center gap-2 text-green-600">
@@ -197,94 +200,22 @@ export function PaymentVouchersTable({
   refreshTrigger,
   onRefresh,
 }: PaymentVouchersTableProps) {
+  const router = useRouter()
+  const { data: paymentVouchers, isLoading } = usePaymentVouchersAsWorkflowDocuments(true)
   const [data, setData] = useState<WorkflowDocument[]>([])
-  const [isLoading, setIsLoading] = useState(false)
 
   useEffect(() => {
-    loadPaymentVouchers()
-  }, [refreshTrigger])
-
-  const loadPaymentVouchers = async () => {
-    setIsLoading(true)
-    try {
-      // Mock data - will be replaced with API call
-      const mockPVs: WorkflowDocument[] = [
-        {
-          id: 'pv-1',
-          type: 'PAYMENT_VOUCHER',
-          documentNumber: 'PV-2024-001',
-          status: 'IN_APPROVAL',
-          currentStage: 2,
-          createdBy: 'user-1',
-          createdAt: new Date('2024-11-25'),
-          updatedAt: new Date('2024-11-29'),
-          metadata: {
-            grnId: 'grn-1',
-            poId: 'po-1',
-            requisitionId: 'req-1',
-            vendorName: 'Broadway Ventures',
-            vendorId: 'vendor-1',
-            grossAmount: 7500.00,
-            tax: 1125.00,
-            netAmount: 6375.00,
-            paymentMethod: 'BANK_TRANSFER',
-          },
-        },
-        {
-          id: 'pv-2',
-          type: 'PAYMENT_VOUCHER',
-          documentNumber: 'PV-2024-002',
-          status: 'APPROVED',
-          currentStage: 4,
-          createdBy: 'user-2',
-          createdAt: new Date('2024-11-20'),
-          updatedAt: new Date('2024-11-28'),
-          metadata: {
-            grnId: 'grn-2',
-            poId: 'po-2',
-            requisitionId: 'req-2',
-            vendorName: 'Tech Solutions Ltd',
-            vendorId: 'vendor-2',
-            grossAmount: 15000.00,
-            tax: 2250.00,
-            netAmount: 12750.00,
-            paymentReference: 'PV-202411-A1B2C3',
-            paymentMethod: 'BANK_TRANSFER',
-          },
-        },
-        {
-          id: 'pv-3',
-          type: 'PAYMENT_VOUCHER',
-          documentNumber: 'PV-2024-003',
-          status: 'DRAFT',
-          currentStage: 0,
-          createdBy: 'user-accountant',
-          createdAt: new Date('2024-11-29'),
-          updatedAt: new Date('2024-11-29'),
-          metadata: {
-            grnId: 'grn-3',
-            poId: 'po-3',
-            requisitionId: 'req-3',
-            vendorName: 'Office Supplies Co',
-            vendorId: 'vendor-3',
-            grossAmount: 2500.00,
-            tax: 375.00,
-            netAmount: 2125.00,
-            paymentMethod: 'BANK_TRANSFER',
-          },
-        },
-      ]
-      setData(mockPVs)
-    } catch (error) {
-      console.error('Error loading payment vouchers:', error)
-    } finally {
-      setIsLoading(false)
+    if (paymentVouchers && paymentVouchers.length > 0) {
+      // Filter by current user's payment vouchers
+      const userPVs = paymentVouchers.filter(pv => pv.createdBy === userId)
+      setData(userPVs)
+    } else {
+      setData([])
     }
-  }
+  }, [paymentVouchers, userId, refreshTrigger])
 
   const handleViewClick = (id: string) => {
-    // Navigate to detail page
-    window.location.href = `/workflows/payment-vouchers/${id}`
+    router.push(`/workflows/payment-vouchers/${id}`)
   }
 
   const columns = getColumns(handleViewClick)

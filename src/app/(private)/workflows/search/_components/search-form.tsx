@@ -30,7 +30,7 @@ const STATUSES: { id: string; name: string }[] = [
   { id: "ALL", name: "All Statuses" },
   { id: "DRAFT", name: "Draft" },
   { id: "SUBMITTED", name: "Submitted" },
-  { id: "IN_APPROVAL", name: "In Approval" },
+  { id: "IN_REVIEW", name: "In Approval" },
   { id: "APPROVED", name: "Approved" },
   { id: "REJECTED", name: "Rejected" },
   { id: "REVERSED", name: "Reversed" },

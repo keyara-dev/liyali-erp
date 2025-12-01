@@ -290,7 +290,7 @@ export async function approveDocument(
       };
     }
 
-    if (document.status !== 'IN_APPROVAL') {
+    if (document.status !== 'IN_REVIEW') {
       return {
         success: false,
         message: 'Document is not pending approval',
@@ -329,7 +329,7 @@ export async function approveDocument(
       const nextRole = getNextApproverRole(document.type, document.currentStage);
       if (nextRole) {
         document.currentStage += 1;
-        document.status = 'IN_APPROVAL';
+        document.status = 'IN_REVIEW';
 
         // Assign next approver
         const nextApprover = getRandomUserByRole(nextRole);
@@ -382,7 +382,7 @@ export async function rejectDocument(
       };
     }
 
-    if (document.status !== 'IN_APPROVAL') {
+    if (document.status !== 'IN_REVIEW') {
       return {
         success: false,
         message: 'Document is not pending approval',
@@ -463,7 +463,7 @@ export async function getPendingApprovals(
 
   try {
     const pendingDocs = Array.from(documentStore.values())
-      .filter((doc) => doc.status === 'IN_APPROVAL')
+      .filter((doc) => doc.status === 'IN_REVIEW')
       .filter((doc) => {
         const approvers = approversStore.get(doc.id) || [];
         return approvers.some(
@@ -797,7 +797,7 @@ export async function getDashboardStats(
     const createdDocuments = allDocs.filter((d) => d.createdBy === userId).length;
     const approvedDocuments = allDocs.filter((d) => d.status === 'APPROVED').length;
     const rejectedDocuments = allDocs.filter((d) => d.status === 'REJECTED').length;
-    const pendingApprovals = allDocs.filter((d) => d.status === 'IN_APPROVAL').length;
+    const pendingApprovals = allDocs.filter((d) => d.status === 'IN_REVIEW').length;
 
     return {
       success: true,

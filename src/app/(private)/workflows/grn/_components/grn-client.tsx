@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { PageHeader } from '@/components/base/page-header'
 import { GrnTable } from './grn-table'
 
 interface GrnClientProps {
@@ -17,12 +18,11 @@ export function GrnClient({ userId, userRole }: GrnClientProps) {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Goods Received Notes</h1>
-        <p className="text-gray-600 mt-2">
-          View and manage goods received notes from purchase orders
-        </p>
-      </div>
+      <PageHeader
+        title="Goods Received Notes"
+        subtitle="View and manage goods received notes from purchase orders"
+        showBackButton={false}
+      />
 
       <GrnTable
         userId={userId}

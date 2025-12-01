@@ -104,6 +104,8 @@
   --radius: 0.625rem;
 }
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 /* Dark Mode */
 .dark {
   --background: oklch(0.13 0.028 261.692);

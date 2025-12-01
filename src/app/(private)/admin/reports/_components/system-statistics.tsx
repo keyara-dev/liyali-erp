@@ -153,7 +153,7 @@ export function SystemStatistics() {
             {[
               { label: 'Draft', value: metrics.draftDocuments, variant: 'outline' as const },
               { label: 'Submitted', value: metrics.submittedDocuments, variant: 'secondary' as const },
-              { label: 'In Approval', value: metrics.statusBreakdown.IN_APPROVAL, variant: 'default' as const },
+              { label: 'In Approval', value: metrics.statusBreakdown.IN_REVIEW, variant: 'default' as const },
               { label: 'Approved', value: metrics.approvedDocuments, variant: 'default' as const },
               { label: 'Rejected', value: metrics.rejectedDocuments, variant: 'destructive' as const },
             ].map((item) => (

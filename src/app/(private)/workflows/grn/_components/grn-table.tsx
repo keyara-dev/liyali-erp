@@ -49,7 +49,7 @@ const mockGRNs: WorkflowDocument[] = [
     id: "grn-1",
     type: "GOODS_RECEIVED_NOTE",
     documentNumber: "GRN-2024-001",
-    status: "IN_APPROVAL",
+    status: "IN_REVIEW",
     currentStage: 1,
     createdBy: "user-1",
     createdAt: new Date("2024-11-27"),
@@ -177,7 +177,7 @@ const columns: ColumnDef<WorkflowDocument>[] = [
             <Download className="h-4 w-4" />
             Download PDF
           </DropdownMenuItem>
-          {row.original.status === "IN_APPROVAL" && (
+          {row.original.status === "IN_REVIEW" && (
             <>
               <DropdownMenuSeparator />
               <DropdownMenuItem className="text-green-600">

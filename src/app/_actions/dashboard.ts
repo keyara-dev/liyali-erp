@@ -19,7 +19,7 @@ export async function getDashboardMetrics(): Promise<APIResponse<DashboardMetric
     const statusBreakdown: Record<string, number> = {
       DRAFT: 0,
       SUBMITTED: 0,
-      IN_APPROVAL: 0,
+      IN_REVIEW: 0,
       APPROVED: 0,
       REJECTED: 0,
       REVERSED: 0,
@@ -41,7 +41,7 @@ export async function getDashboardMetrics(): Promise<APIResponse<DashboardMetric
       statusBreakdown[doc.status]++;
       documentTypeBreakdown[doc.type]++;
 
-      if (doc.status === 'IN_APPROVAL') {
+      if (doc.status === 'IN_REVIEW') {
         pendingApproval++;
         documentsNeedingAction++;
       } else if (doc.status === 'SUBMITTED') {

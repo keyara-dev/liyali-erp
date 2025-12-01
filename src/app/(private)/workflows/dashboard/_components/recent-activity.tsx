@@ -22,7 +22,7 @@ interface RecentActivityProps {
 const STATUS_COLORS: Record<string, string> = {
   DRAFT: 'outline',
   SUBMITTED: 'secondary',
-  IN_APPROVAL: 'default',
+  IN_REVIEW: 'default',
   APPROVED: 'default',
   REJECTED: 'destructive',
   REVERSED: 'secondary',
@@ -31,7 +31,7 @@ const STATUS_COLORS: Record<string, string> = {
 const STATUS_LABELS: Record<string, string> = {
   DRAFT: 'Draft',
   SUBMITTED: 'Submitted',
-  IN_APPROVAL: 'In Review',
+  IN_REVIEW: 'IN_REVIEW',
   APPROVED: 'Approved',
   REJECTED: 'Rejected',
   REVERSED: 'Reversed',

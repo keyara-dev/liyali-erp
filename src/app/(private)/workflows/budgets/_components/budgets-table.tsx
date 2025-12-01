@@ -29,7 +29,7 @@ import { StatusBadge } from '@/components/status-badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { CustomPagination } from '@/components/ui/custom-pagination'
-import { getBudgets } from '@/app/_actions/budgets'
+import { useBudgetsWithStorage } from '@/hooks/use-budget-storage'
 import { Budget } from '@/types/budget'
 import { Pagination } from '@/types'
 
@@ -47,8 +47,21 @@ export function BudgetsTable({
   onBudgetAction,
 }: BudgetsTableProps) {
   const router = useRouter()
+  const { data: budgetsFromHook = [], isLoading: hookLoading } = useBudgetsWithStorage(true)
   const [budgets, setBudgets] = useState<Budget[]>([])
   const [isLoading, setIsLoading] = useState(true)
+
+  useEffect(() => {
+    if (budgetsFromHook && budgetsFromHook.length > 0) {
+      // Filter by current user's budgets
+      const userBudgets = budgetsFromHook.filter(budget => budget.createdBy === userId)
+      setBudgets(userBudgets)
+      setIsLoading(false)
+    } else {
+      setBudgets([])
+      setIsLoading(false)
+    }
+  }, [budgetsFromHook, userId, refreshTrigger])
   const [sorting, setSorting] = React.useState<SortingState>([])
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({})
@@ -61,23 +74,6 @@ export function BudgetsTable({
     has_prev: false,
   })
 
-  useEffect(() => {
-    async function fetchBudgets() {
-      setIsLoading(true)
-      try {
-        const result = await getBudgets(userId)
-        if (result.success && result.data) {
-          setBudgets(result.data)
-        }
-      } catch (error) {
-        console.error('Failed to fetch budgets:', error)
-      } finally {
-        setIsLoading(false)
-      }
-    }
-
-    fetchBudgets()
-  }, [userId, refreshTrigger])
 
   const formatCurrency = (amount: number, currency: string = 'USD') => {
     return new Intl.NumberFormat('en-US', {

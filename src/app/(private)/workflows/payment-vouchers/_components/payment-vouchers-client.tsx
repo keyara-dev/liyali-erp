@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
+import { PageHeader } from '@/components/base/page-header'
 import { PaymentVouchersTable } from './payment-vouchers-table'
 
 interface PaymentVouchersClientProps {
@@ -28,18 +29,13 @@ export function PaymentVouchersClient({
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {/* Page Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold tracking-tight lg:text-2xl">
-            Payment Vouchers
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            Manage payment vouchers for approved goods and services
-          </p>
-        </div>
-      </div>
+      <PageHeader
+        title="Payment Vouchers"
+        subtitle="Manage payment vouchers for approved goods and services"
+        showBackButton={false}
+      />
 
       {/* Payment Vouchers Table */}
       <PaymentVouchersTable

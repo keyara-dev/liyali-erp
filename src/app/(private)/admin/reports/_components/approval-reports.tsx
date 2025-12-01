@@ -55,7 +55,7 @@ export function ApprovalReports() {
   const statusColors: Record<string, string> = {
     APPROVED: 'default',
     REJECTED: 'destructive',
-    IN_APPROVAL: 'default',
+    IN_REVIEW: 'default',
     SUBMITTED: 'secondary',
     DRAFT: 'outline',
   }

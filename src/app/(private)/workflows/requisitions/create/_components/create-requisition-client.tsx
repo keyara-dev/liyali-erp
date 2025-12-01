@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { PageHeader } from '@/components/base/page-header'
 import { CreateRequisitionForm } from './create-form'
 import { FormPreview } from './form-preview'
 import { RequisitionItem } from '@/types/workflow'
@@ -56,17 +57,15 @@ export function CreateRequisitionClient({
 
   return (
     <div className="space-y-6">
-      {/* Page Header */}
-      <div>
-        <h1 className="text-xl font-bold tracking-tight lg:text-2xl">
-          {currentStep === 'form' ? 'Create Requisition' : 'Preview & Submit'}
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          {currentStep === 'form'
+      <PageHeader
+        title={currentStep === 'form' ? 'Create Requisition' : 'Preview & Submit'}
+        subtitle={
+          currentStep === 'form'
             ? 'Fill in the requisition details and items'
-            : 'Review your requisition before submitting'}
-        </p>
-      </div>
+            : 'Review your requisition before submitting'
+        }
+        showBackButton={false}
+      />
 
       {/* Progress Indicator */}
       <div className="flex items-center gap-4">

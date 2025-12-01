@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { PlusCircledIcon } from '@radix-ui/react-icons'
 import { Button } from '@/components/ui/button'
+import { PageHeader } from '@/components/base/page-header'
 import { RequisitionsTable } from './requisitions-table'
 import { CreateRequisitionDialog } from './create-requisition-dialog'
 
@@ -24,11 +25,15 @@ export function RequisitionsClient({
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {/* Page Header */}
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold tracking-tight lg:text-2xl">Requisitions</h1>
-        <Button onClick={() => setIsCreateDialogOpen(true)}>
+      <div className="flex items-start justify-between gap-4">
+        <PageHeader
+          title="Requisitions"
+          subtitle="Request and track requisition forms through the approval workflow"
+          showBackButton={false}
+        />
+        <Button onClick={() => setIsCreateDialogOpen(true)} className="mt-2 h-11">
           <PlusCircledIcon className="h-4 w-4" />
           Create Requisition
         </Button>

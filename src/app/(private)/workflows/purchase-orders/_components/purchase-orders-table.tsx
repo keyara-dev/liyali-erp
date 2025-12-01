@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { ColumnDef } from '@tanstack/react-table'
 import {
   ArrowUpDown,
@@ -23,6 +24,7 @@ import {
 import { DataTable } from '@/components/ui/data-table'
 import { StatusBadge as CentralizedStatusBadge } from '@/components/status-badge'
 import { WorkflowDocument } from '@/types/workflow'
+import { usePurchaseOrdersAsWorkflowDocuments } from '@/hooks/use-purchase-order-storage'
 
 interface PurchaseOrdersTableProps {
   userId: string
@@ -155,7 +157,7 @@ function getColumns(onViewClick: (id: string) => void): ColumnDef<WorkflowDocume
               <Download className="h-4 w-4" />
               Download PDF
             </DropdownMenuItem>
-            {row.original.status === 'IN_APPROVAL' && (
+            {row.original.status === 'IN_REVIEW' && (
               <>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem className="flex items-center gap-2 text-green-600">
@@ -181,79 +183,22 @@ export function PurchaseOrdersTable({
   refreshTrigger,
   onRefresh,
 }: PurchaseOrdersTableProps) {
+  const router = useRouter()
+  const { data: purchaseOrders, isLoading } = usePurchaseOrdersAsWorkflowDocuments(true)
   const [data, setData] = useState<WorkflowDocument[]>([])
-  const [isLoading, setIsLoading] = useState(false)
 
   useEffect(() => {
-    // Load purchase orders from mock data
-    loadPurchaseOrders()
-  }, [refreshTrigger])
-
-  const loadPurchaseOrders = async () => {
-    setIsLoading(true)
-    try {
-      // Mock data - will be replaced with API call
-      const mockPOs: WorkflowDocument[] = [
-        {
-          id: 'po-1',
-          type: 'PURCHASE_ORDER',
-          documentNumber: 'PO-2024-001',
-          status: 'IN_APPROVAL',
-          currentStage: 2,
-          createdBy: 'user-1',
-          createdAt: new Date('2024-11-25'),
-          updatedAt: new Date('2024-11-29'),
-          metadata: {
-            vendorName: 'Broadway Ventures',
-            vendorId: 'vendor-1',
-            totalAmount: 7500.00,
-            deliveryType: 'Standard',
-          },
-        },
-        {
-          id: 'po-2',
-          type: 'PURCHASE_ORDER',
-          documentNumber: 'PO-2024-002',
-          status: 'APPROVED',
-          currentStage: 4,
-          createdBy: 'user-2',
-          createdAt: new Date('2024-11-20'),
-          updatedAt: new Date('2024-11-28'),
-          metadata: {
-            vendorName: 'Tech Solutions Ltd',
-            vendorId: 'vendor-2',
-            totalAmount: 15000.00,
-            deliveryType: 'Express',
-          },
-        },
-        {
-          id: 'po-3',
-          type: 'PURCHASE_ORDER',
-          documentNumber: 'PO-2024-003',
-          status: 'IN_APPROVAL',
-          currentStage: 1,
-          createdBy: 'user-1',
-          createdAt: new Date('2024-11-29'),
-          updatedAt: new Date('2024-11-29'),
-          metadata: {
-            vendorName: 'Office Supplies Co',
-            vendorId: 'vendor-3',
-            totalAmount: 2500.00,
-            deliveryType: 'Standard',
-          },
-        },
-      ]
-      setData(mockPOs)
-    } catch (error) {
-      console.error('Error loading purchase orders:', error)
-    } finally {
-      setIsLoading(false)
+    if (purchaseOrders && purchaseOrders.length > 0) {
+      // Filter by current user's purchase orders
+      const userPOs = purchaseOrders.filter(po => po.createdBy === userId)
+      setData(userPOs)
+    } else {
+      setData([])
     }
-  }
+  }, [purchaseOrders, userId, refreshTrigger])
 
   const handleViewClick = (id: string) => {
-    // Navigate to detail page
-    window.location.href = `/workflows/purchase-orders/${id}`
+    router.push(`/workflows/purchase-orders/${id}`)
   }
 
   const columns = getColumns(handleViewClick)

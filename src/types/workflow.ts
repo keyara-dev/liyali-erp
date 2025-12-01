@@ -13,7 +13,7 @@ export type WorkflowDocumentType =
 export type DocumentStatus =
   | "DRAFT"
   | "SUBMITTED"
-  | "IN_APPROVAL"
+  | "IN_REVIEW"
   | "APPROVED"
   | "REJECTED"
   | "REVERSED";

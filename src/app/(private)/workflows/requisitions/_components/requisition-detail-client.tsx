@@ -1,31 +1,31 @@
-'use client'
+"use client";
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { toast } from 'sonner'
-import { Card } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { ArrowLeft, Send, AlertCircle } from 'lucide-react'
-import { useRequisitionById } from '@/hooks/use-requisition-queries'
-import { Requisition } from '@/types/requisition'
-import { ApprovalHistoryPanel } from './approval-history-panel'
-import { EditRequisitionPanel } from './edit-requisition-panel'
-import { DocumentLinks } from '@/components/document-links'
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Send, AlertCircle } from "lucide-react";
+import { PageHeader } from "@/components/base/page-header";
+import { useRequisitionById } from "@/hooks/use-requisition-queries";
+import { Requisition } from "@/types/requisition";
+import { ApprovalHistoryPanel } from "./approval-history-panel";
+import { EditRequisitionPanel } from "./edit-requisition-panel";
+import { DocumentLinks } from "@/components/document-links";
+import { WorkflowDocument } from "@/types";
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyMedia,
+} from "@/components/ui/empty";
+import { Package } from "lucide-react";
 
 interface RequisitionDetailClientProps {
-  requisitionId: string
-  userId: string
-  userRole: string
-  initialRequisition?: Requisition
-}
-
-const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
-  DRAFT: { bg: 'bg-gray-100', text: 'text-gray-800' },
-  SUBMITTED: { bg: 'bg-blue-100', text: 'text-blue-800' },
-  IN_APPROVAL: { bg: 'bg-yellow-100', text: 'text-yellow-800' },
-  APPROVED: { bg: 'bg-green-100', text: 'text-green-800' },
-  REJECTED: { bg: 'bg-red-100', text: 'text-red-800' },
+  requisitionId: string;
+  userId: string;
+  userRole: string;
+  initialRequisition?: Requisition;
 }
 
 export function RequisitionDetailClient({
@@ -34,34 +34,38 @@ export function RequisitionDetailClient({
   userRole,
   initialRequisition,
 }: RequisitionDetailClientProps) {
-  const router = useRouter()
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  const router = useRouter();
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Use the new hook with initialData from server component
-  const { data: requisition, isLoading, refetch } = useRequisitionById(requisitionId)
-  const displayRequisition = requisition || initialRequisition
+  const {
+    data: requisition,
+    isLoading,
+    refetch,
+  } = useRequisitionById(requisitionId, initialRequisition);
 
   const handleSubmitForApproval = async () => {
-    if (!displayRequisition) return
+    if (!requisition) return;
 
-    setIsSubmitting(true)
+    setIsSubmitting(true);
     try {
       // Call the refetch to update the data
-      await refetch()
-      toast.success('Requisition submitted for approval')
+      await refetch();
+      toast.success("Requisition submitted for approval");
     } catch (error) {
-      toast.error('Failed to submit requisition')
+      toast.error("Failed to submit requisition");
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
-  }
+  };
 
-  const isCreator = displayRequisition?.requestedBy === userId
+  const isCreator = requisition?.requestedBy === userId;
   const canEdit =
-    isCreator && (displayRequisition?.status === 'DRAFT' || displayRequisition?.status === 'REJECTED')
-  const canSubmit = canEdit
+    isCreator &&
+    (requisition?.status === "DRAFT" || requisition?.status === "REJECTED");
+  const canSubmit = canEdit;
 
-  if (isLoading && !displayRequisition) {
+  if (isLoading && !requisition) {
     return (
       <div className="flex items-center justify-center py-12">
         <div className="text-center">
@@ -69,10 +73,10 @@ export function RequisitionDetailClient({
           <p className="text-gray-600">Loading requisition...</p>
         </div>
       </div>
-    )
+    );
   }
 
-  if (!displayRequisition) {
+  if (!requisition) {
     return (
       <div className="flex items-center justify-center py-12">
         <Card className="p-8 max-w-md text-center">
@@ -86,45 +90,36 @@ export function RequisitionDetailClient({
           </Button>
         </Card>
       </div>
-    )
+    );
   }
 
-  const totalItems = displayRequisition?.items?.length || 0
-
-  const colors = STATUS_COLORS[displayRequisition?.status || 'DRAFT'] || STATUS_COLORS['DRAFT']
+  const totalItems = requisition?.items?.length || 0;
+  const totalEstimatedCost = requisition?.totalAmount || 0;
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-4">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => router.back()}
-          className="gap-2"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back
-        </Button>
-        <div className="flex-1">
-          <div className="flex items-center gap-3 mb-2">
-            <h1 className="text-3xl font-bold">{requisition.documentNumber}</h1>
-            <Badge className={`${colors.bg} ${colors.text} border-0`}>
-              {requisition.status}
-            </Badge>
-          </div>
-          <p className="text-gray-600">
-            Created on {new Date(requisition.createdAt).toLocaleString()}
-          </p>
-        </div>
+      <div className="flex items-start justify-between gap-4">
+        <PageHeader
+          title={requisition.requisitionNumber}
+          subtitle={`Created ${new Date(requisition.createdAt).toLocaleDateString("en-ZM", { year: "numeric", month: "long", day: "numeric" })}`}
+          badges={[
+            {
+              status: requisition.status,
+              type: "document",
+            },
+          ]}
+          onBackClick={() => router.back()}
+          showBackButton={true}
+        />
         {canSubmit && (
           <Button
             onClick={handleSubmitForApproval}
             disabled={isSubmitting}
-            className="gap-2"
+            className="gap-2 h-11 mt-2"
           >
             <Send className="h-4 w-4" />
-            {isSubmitting ? 'Submitting...' : 'Submit for Approval'}
+            {isSubmitting ? "Submitting..." : "Submit for Approval"}
           </Button>
         )}
       </div>
@@ -133,129 +128,154 @@ export function RequisitionDetailClient({
         {/* Main Content */}
         <div className="lg:col-span-2 space-y-6">
           {/* Requisition Details */}
-          <Card className="p-6">
-            <h2 className="text-xl font-semibold mb-4">Requisition Details</h2>
+          <div className="gradient-primary border-0 overflow-hidden rounded-lg p-6">
+            <h2 className="text-lg font-semibold mb-6 text-primary-foreground">
+              Requisition Details
+            </h2>
 
-            <div className="grid grid-cols-2 gap-6">
-              <div>
-                <label className="text-sm font-medium text-gray-600">
+            <div className="grid grid-cols-2 gap-8">
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-primary-foreground/80 uppercase tracking-wider">
                   Department
                 </label>
-                <p className="text-lg font-semibold mt-1">
-                  {requisition.metadata?.department}
+                <p className="text-base font-medium text-primary-foreground">
+                  {requisition.department || "—"}
                 </p>
               </div>
 
-              <div>
-                <label className="text-sm font-medium text-gray-600">
-                  Requested For
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-primary-foreground/80 uppercase tracking-wider">
+                  Priority
                 </label>
-                <p className="text-lg font-semibold mt-1">
-                  {requisition.metadata?.requestedFor}
+                <p className="text-base font-medium text-primary-foreground">
+                  {requisition.priority || "—"}
                 </p>
               </div>
 
-              <div className="col-span-2">
-                <label className="text-sm font-medium text-gray-600">
-                  Justification
+              <div className="col-span-2 space-y-1">
+                <label className="text-xs font-semibold text-primary-foreground/80 uppercase tracking-wider">
+                  Description
                 </label>
-                <p className="text-base mt-1 whitespace-pre-wrap">
-                  {requisition.metadata?.justification}
+                <p className="text-sm text-primary-foreground leading-relaxed">
+                  {requisition.description || "No description provided"}
                 </p>
               </div>
 
-              <div>
-                <label className="text-sm font-medium text-gray-600">
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-primary-foreground/80 uppercase tracking-wider">
                   Budget Code
                 </label>
-                <p className="text-lg font-semibold mt-1">
-                  {requisition.metadata?.budgetCode}
+                <p className="text-sm font-medium font-mono bg-white/10 px-2 py-1 rounded text-primary-foreground">
+                  {requisition.budgetCode || "—"}
                 </p>
               </div>
 
-              <div>
-                <label className="text-sm font-medium text-gray-600">
-                  Current Approval Stage
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-primary-foreground/80 uppercase tracking-wider">
+                  Approval Stage
                 </label>
-                <p className="text-lg font-semibold mt-1">
-                  Stage {requisition.currentStage}
+                <p className="text-sm font-medium font-mono bg-white/10 px-2 py-1 rounded text-primary-foreground">
+                  {requisition.currentApprovalStage &&
+                  requisition.totalApprovalStages
+                    ? `${requisition.currentApprovalStage}/${requisition.totalApprovalStages}`
+                    : "—"}
                 </p>
               </div>
             </div>
-          </Card>
+          </div>
 
           {/* Document Links */}
-          {requisition.status === 'APPROVED' && (
+          {requisition.status === "APPROVED" && (
             <DocumentLinks
               currentDocument={requisition as unknown as WorkflowDocument}
               linkedDocuments={{
                 purchaseOrder: requisition.metadata?.purchaseOrderId
-                  ? { id: requisition.metadata.purchaseOrderId, number: 'PO-2024-001' }
+                  ? {
+                      id: requisition.metadata.purchaseOrderId,
+                      number: "PO-2024-001",
+                    }
                   : undefined,
               }}
             />
           )}
 
           {/* Items Section */}
-          <Card className="p-6">
-            <h2 className="text-xl font-semibold mb-4">Requisition Items</h2>
+          <Card className="p-6 border-0 shadow-sm">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-lg font-semibold">
+                Items ({requisition.items?.length || 0})
+              </h2>
+            </div>
 
-            <div className="space-y-3">
-              {requisition.metadata?.items?.map((item, index) => (
-                <div
-                  key={item.id}
-                  className="border rounded-lg p-4 hover:bg-gray-50 transition"
-                >
-                  <div className="flex items-start justify-between mb-2">
-                    <span className="font-semibold">Item {index + 1}</span>
-                    <span className="text-sm text-gray-600">
-                      Qty: {item.quantity}
-                    </span>
-                  </div>
-                  <p className="text-gray-700 mb-2">{item.itemDescription}</p>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-600">
-                      Unit Cost: ZMW{' '}
-                      {item.estimatedCost.toLocaleString('en-ZM', {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2,
-                      })}
-                    </span>
-                    <span className="font-semibold text-blue-600">
-                      ZMW{' '}
-                      {(item.quantity * item.estimatedCost).toLocaleString(
-                        'en-ZM',
-                        {
-                          minimumFractionDigits: 2,
-                          maximumFractionDigits: 2,
-                        }
-                      )}
-                    </span>
-                  </div>
+            {requisition.items && requisition.items.length > 0 ? (
+              <>
+                <div className="space-y-3">
+                  {requisition.items.map((item: any, index: number) => (
+                    <div
+                      key={item.id}
+                      className="flex items-start justify-between p-4 rounded-lg border border-slate-200/10 hover:border-slate-300/20 hover:bg-slate-50/20 transition"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-slate-100 dark:bg-slate-600/10 text-xs font-semibold">
+                            {index + 1}
+                          </span>
+                          <p className="font-medium text-foreground truncate">
+                            {item.description}
+                          </p>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          {item.quantity} × ZMW{" "}
+                          {item.unitPrice.toLocaleString("en-ZM", {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          })}
+                        </p>
+                      </div>
+                      <div className="text-right ml-4">
+                        <p className="font-semibold text-sm">
+                          ZMW{" "}
+                          {item.totalPrice.toLocaleString("en-ZM", {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          })}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
 
-            {/* Total */}
-            <div className="mt-4 pt-4 border-t flex items-center justify-between">
-              <span className="font-semibold text-gray-700">
-                Total Estimated Cost:
-              </span>
-              <span className="text-2xl font-bold text-blue-600">
-                ZMW{' '}
-                {totalEstimatedCost.toLocaleString('en-ZM', {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
-                })}
-              </span>
-            </div>
+                {/* Total */}
+                <div className="mt-6 pt-6 border-t flex items-center justify-between bg-slate-50 dark:bg-slate-950  -mx-6 -mb-6 px-6 py-4 rounded-b-lg">
+                  <span className="font-semibold text-foreground">
+                    Total Estimated Cost
+                  </span>
+                  <span className="text-2xl font-bold text-emerald-700 dark:text-emerald-400">
+                    ZMW{" "}
+                    {totalEstimatedCost.toLocaleString("en-ZM", {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })}
+                  </span>
+                </div>
+              </>
+            ) : (
+              <Empty>
+                <EmptyMedia variant="icon">
+                  <Package className="h-6 w-6" />
+                </EmptyMedia>
+                <EmptyContent>
+                  <EmptyDescription>No items added yet</EmptyDescription>
+                </EmptyContent>
+              </Empty>
+            )}
           </Card>
 
           {/* Edit Panel - Only for Creator in DRAFT/REJECTED status */}
           {canEdit && (
             <EditRequisitionPanel
               requisition={requisition}
-              onRequisitionUpdated={fetchRequisition}
+              onRequisitionUpdated={refetch}
             />
           )}
         </div>
@@ -270,5 +290,5 @@ export function RequisitionDetailClient({
         </div>
       </div>
     </div>
-  )
+  );
 }

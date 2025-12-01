@@ -204,7 +204,7 @@ export const getBudgets = cache(async (
             updatedAt: new Date()
           }
         ],
-        status: 'IN_APPROVAL',
+        status: 'IN_REVIEW',
         createdBy: userId,
         createdAt: new Date('2024-02-01'),
         updatedAt: new Date('2024-02-05'),
@@ -404,7 +404,7 @@ export async function approveBudget(
 
     const updatedBudget: Budget = {
       ...budget.data,
-      status: isLastStage ? 'APPROVED' : 'IN_APPROVAL',
+      status: isLastStage ? 'APPROVED' : 'IN_REVIEW',
       approvedAt: isLastStage ? new Date() : budget.data.approvedAt,
       currentApprovalStage: isLastStage ? currentStage : currentStage + 1,
       updatedAt: new Date(),

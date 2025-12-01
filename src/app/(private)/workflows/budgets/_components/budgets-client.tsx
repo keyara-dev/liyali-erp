@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { PlusCircledIcon } from '@radix-ui/react-icons'
 import { Button } from '@/components/ui/button'
+import { PageHeader } from '@/components/base/page-header'
 import { BudgetsTable } from './budgets-table'
 import { CreateBudgetDialog } from './create-budget-dialog'
 
@@ -28,16 +29,15 @@ export function BudgetsClient({
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {/* Page Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold tracking-tight lg:text-2xl">Budgets</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Manage and track departmental budgets
-          </p>
-        </div>
-        <Button onClick={() => setIsCreateDialogOpen(true)}>
+      <div className="flex items-start justify-between gap-4">
+        <PageHeader
+          title="Budgets"
+          subtitle="Manage and track departmental budgets"
+          showBackButton={false}
+        />
+        <Button onClick={() => setIsCreateDialogOpen(true)} className="mt-2 h-11">
           <PlusCircledIcon className="h-4 w-4" />
           Create Budget
         </Button>

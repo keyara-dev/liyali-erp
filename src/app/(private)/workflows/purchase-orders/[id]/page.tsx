@@ -1,32 +1,32 @@
-import { auth } from '@/auth'
-import { redirect } from 'next/navigation'
-import { PODetailClient } from './_components/po-detail-client'
+import { auth } from "@/auth";
+import { redirect } from "next/navigation";
+import { PODetailClient } from "./_components/po-detail-client";
 
 export const metadata = {
-  title: 'Purchase Order Details',
-  description: 'View and manage purchase order details',
-}
+  title: "Purchase Order Details",
+  description: "View and manage purchase order details",
+};
 
 interface PODetailPageProps {
-  params: {
-    id: string
-  }
+  params: Promise<{
+    id: string;
+  }>;
 }
 
-export default async function PODetailPage({
-  params,
-}: PODetailPageProps) {
-  const session = await auth()
+export default async function PODetailPage({ params }: PODetailPageProps) {
+  const session = await auth();
 
   if (!session?.user) {
-    redirect('/login')
+    redirect("/login");
   }
+
+  const POId = (await params).id;
 
   return (
     <PODetailClient
-      poId={params.id}
+      poId={POId}
       userId={session.user.id}
       userRole={(session.user as any).role}
     />
-  )
+  );
 }

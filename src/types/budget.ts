@@ -6,7 +6,7 @@
 export type BudgetStatus =
   | "DRAFT"
   | "SUBMITTED"
-  | "IN_APPROVAL"
+  | "IN_REVIEW"
   | "APPROVED"
   | "REJECTED"
   | "ACTIVE"

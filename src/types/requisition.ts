@@ -3,7 +3,7 @@
  * Handles purchase request documents with approval workflows
  */
 
-export type RequisitionStatus = 'DRAFT' | 'SUBMITTED' | 'IN_APPROVAL' | 'APPROVED' | 'REJECTED';
+export type RequisitionStatus = 'DRAFT' | 'SUBMITTED' | 'IN_REVIEW' | 'APPROVED' | 'REJECTED';
 export type RequisitionPriority = 'URGENT' | 'HIGH' | 'MEDIUM' | 'LOW';
 
 /**

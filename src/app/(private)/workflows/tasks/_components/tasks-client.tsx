@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
+import { PageHeader } from '@/components/base/page-header'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { TasksTable } from './tasks-table'
@@ -36,13 +37,11 @@ export function TasksClient({
 
   return (
     <div className="space-y-6">
-      {/* Page Header */}
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Workflows</h1>
-        <p className="text-muted-foreground">
-          Manage your tasks and approvals
-        </p>
-      </div>
+      <PageHeader
+        title="Workflows"
+        subtitle="Manage your tasks and approvals"
+        showBackButton={false}
+      />
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'tasks' | 'approvals')} className="space-y-6">

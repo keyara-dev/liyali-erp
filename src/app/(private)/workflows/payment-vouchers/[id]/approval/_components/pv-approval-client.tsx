@@ -6,8 +6,9 @@ import { toast } from 'sonner'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { ArrowLeft, DollarSign, FileText, TrendingUp } from 'lucide-react'
+import { DollarSign, FileText, TrendingUp, ArrowLeft } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
+import { PageHeader } from '@/components/base/page-header'
 import { ApprovalActionPanel } from '@/components/workflows/approval-action-panel'
 
 interface PVApprovalClientProps {
@@ -19,7 +20,7 @@ interface PVApprovalClientProps {
 interface PaymentVoucher {
   id: string
   voucherNumber: string
-  status: 'DRAFT' | 'SUBMITTED' | 'IN_APPROVAL' | 'APPROVED' | 'REJECTED'
+  status: 'DRAFT' | 'SUBMITTED' | 'IN_REVIEW' | 'APPROVED' | 'REJECTED'
   invoiceNumber: string
   invoiceDate: string
   vendorName: string
@@ -72,7 +73,7 @@ function generateMockPV(pvId: string): PaymentVoucher {
   return {
     id: pvId,
     voucherNumber: `PV-2024-${String(Math.floor(Math.random() * 9000) + 1000).padStart(4, '0')}`,
-    status: 'IN_APPROVAL',
+    status: 'IN_REVIEW',
     invoiceNumber: `INV-${Math.random().toString(36).substring(7).toUpperCase()}`,
     invoiceDate: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(),
     vendorName: 'Office Supplies Ltd.',
@@ -177,10 +178,6 @@ export function PVApprovalClient({
   if (isLoading || !pv) {
     return (
       <div className="space-y-6">
-        <Button variant="ghost" size="sm" onClick={handleBack}>
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Back
-        </Button>
         <div className="space-y-4">
           <Skeleton className="h-12 w-48" />
           <Skeleton className="h-96 w-full" />
@@ -194,16 +191,12 @@ export function PVApprovalClient({
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="sm" onClick={handleBack}>
-          <ArrowLeft className="h-4 w-4" />
-        </Button>
-        <div>
-          <h1 className="text-3xl font-bold">{pv.voucherNumber}</h1>
-          <p className="text-muted-foreground">Payment Voucher Approval</p>
-        </div>
-      </div>
+      <PageHeader
+        title={pv.voucherNumber}
+        subtitle="Payment Voucher Approval"
+        onBackClick={handleBack}
+        showBackButton={true}
+      />
 
       <div className="grid gap-6 md:grid-cols-3">
         {/* Main Content */}

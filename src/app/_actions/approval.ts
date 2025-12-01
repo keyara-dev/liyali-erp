@@ -150,7 +150,7 @@ export async function approveDocument(
 
     state.lastModifiedAt = new Date();
     state.lastModifiedBy = request.approvingUserId;
-    state.status = isFinal ? 'APPROVED' : 'IN_APPROVAL';
+    state.status = isFinal ? 'APPROVED' : 'IN_REVIEW';
 
     // 9. Execute stage-specific actions
     let qrCode: string | undefined;
@@ -461,7 +461,7 @@ async function autoCreatePaymentVoucher(grnId: string): Promise<string> {
 
 /**
  * Submit document for approval
- * Moves document from DRAFT to SUBMITTED/IN_APPROVAL
+ * Moves document from DRAFT to SUBMITTED/IN_REVIEW
  */
 export async function submitDocumentForApproval(
   documentId: string,
@@ -497,7 +497,7 @@ export async function submitDocumentForApproval(
       state.lastModifiedBy = submittingUserId;
     }
 
-    document.status = 'IN_APPROVAL';
+    document.status = 'IN_REVIEW';
     document.updatedAt = new Date();
 
     store.documents.set(documentId, document);

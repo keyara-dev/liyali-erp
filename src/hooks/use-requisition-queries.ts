@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { QUERY_KEYS } from '@/lib/constants';
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { QUERY_KEYS } from "@/lib/constants";
 import {
   getRequisitions,
   getRequisitionById,
@@ -12,7 +12,7 @@ import {
   rejectRequisition,
   deleteRequisition,
   getRequisitionStats,
-} from '@/app/_actions/requisitions';
+} from "@/app/_actions/requisitions";
 import {
   Requisition,
   RequisitionStats,
@@ -21,8 +21,8 @@ import {
   SubmitRequisitionRequest,
   ApproveRequisitionRequest,
   RejectRequisitionRequest,
-} from '@/types/requisition';
-import { toast } from 'sonner';
+} from "@/types/requisition";
+import { toast } from "sonner";
 
 /**
  * Fetch all requisitions
@@ -54,7 +54,10 @@ export const useRequisitions = (initialRequisitions?: Requisition[]) =>
  * @example
  * const { data: requisition } = useRequisitionById(requisitionId)
  */
-export const useRequisitionById = (requisitionId: string) =>
+export const useRequisitionById = (
+  requisitionId: string,
+  initialData?: Requisition
+) =>
   useQuery({
     queryKey: [QUERY_KEYS.REQUISITIONS.BY_ID, requisitionId],
     queryFn: async () => {
@@ -62,6 +65,7 @@ export const useRequisitionById = (requisitionId: string) =>
       if (!response.success) throw new Error(response.message);
       return response.data;
     },
+    initialData,
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
@@ -118,11 +122,14 @@ export const useSaveRequisition = (onSuccess?: () => void) => {
 
   return useMutation({
     mutationFn: async (
-      data: CreateRequisitionRequest | (UpdateRequisitionRequest & { requisitionId?: string })
+      data:
+        | CreateRequisitionRequest
+        | (UpdateRequisitionRequest & { requisitionId?: string })
     ) => {
-      const response = 'requisitionId' in data && data.requisitionId
-        ? await updateRequisition(data as UpdateRequisitionRequest)
-        : await createRequisition(data as CreateRequisitionRequest);
+      const response =
+        "requisitionId" in data && data.requisitionId
+          ? await updateRequisition(data as UpdateRequisitionRequest)
+          : await createRequisition(data as CreateRequisitionRequest);
 
       if (!response.success) {
         throw new Error(response.message);
@@ -130,19 +137,27 @@ export const useSaveRequisition = (onSuccess?: () => void) => {
       return response;
     },
     onSuccess: (response) => {
-      const isUpdate = (response.data as Requisition & { requisitionId?: string })?.requisitionId;
+      const isUpdate = (
+        response.data as Requisition & { requisitionId?: string }
+      )?.requisitionId;
       toast.success(
-        isUpdate ? 'Requisition updated successfully' : 'Requisition created successfully'
+        isUpdate
+          ? "Requisition updated successfully"
+          : "Requisition created successfully"
       );
 
       // Invalidate requisition queries
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.REQUISITIONS.ALL] });
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.REQUISITIONS.STATS] });
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.REQUISITIONS.ALL],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.REQUISITIONS.STATS],
+      });
 
       onSuccess?.();
     },
     onError: (error: Error) => {
-      toast.error(error.message || 'Failed to save requisition');
+      toast.error(error.message || "Failed to save requisition");
     },
   });
 };
@@ -170,7 +185,9 @@ export const useSubmitRequisitionForApproval = (
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (data: Omit<SubmitRequisitionRequest, 'requisitionId'>) => {
+    mutationFn: async (
+      data: Omit<SubmitRequisitionRequest, "requisitionId">
+    ) => {
       const response = await submitRequisitionForApproval({
         requisitionId,
         ...data,
@@ -182,15 +199,19 @@ export const useSubmitRequisitionForApproval = (
       return response;
     },
     onSuccess: () => {
-      toast.success('Requisition submitted for approval');
+      toast.success("Requisition submitted for approval");
 
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.REQUISITIONS.BY_ID, requisitionId] });
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.REQUISITIONS.ALL] });
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.REQUISITIONS.BY_ID, requisitionId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.REQUISITIONS.ALL],
+      });
 
       onSuccess?.();
     },
     onError: (error: Error) => {
-      toast.error(error.message || 'Failed to submit requisition');
+      toast.error(error.message || "Failed to submit requisition");
     },
   });
 };
@@ -212,11 +233,16 @@ export const useSubmitRequisitionForApproval = (
  *   comments: 'Approved'
  * })
  */
-export const useApproveRequisition = (requisitionId: string, onSuccess?: () => void) => {
+export const useApproveRequisition = (
+  requisitionId: string,
+  onSuccess?: () => void
+) => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (data: Omit<ApproveRequisitionRequest, 'requisitionId'>) => {
+    mutationFn: async (
+      data: Omit<ApproveRequisitionRequest, "requisitionId">
+    ) => {
       const response = await approveRequisition({
         requisitionId,
         ...data,
@@ -228,16 +254,22 @@ export const useApproveRequisition = (requisitionId: string, onSuccess?: () => v
       return response;
     },
     onSuccess: () => {
-      toast.success('Requisition approved successfully');
+      toast.success("Requisition approved successfully");
 
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.REQUISITIONS.BY_ID, requisitionId] });
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.REQUISITIONS.ALL] });
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.APPROVALS_PENDING] });
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.REQUISITIONS.BY_ID, requisitionId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.REQUISITIONS.ALL],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.APPROVALS_PENDING],
+      });
 
       onSuccess?.();
     },
     onError: (error: Error) => {
-      toast.error(error.message || 'Failed to approve requisition');
+      toast.error(error.message || "Failed to approve requisition");
     },
   });
 };
@@ -259,11 +291,16 @@ export const useApproveRequisition = (requisitionId: string, onSuccess?: () => v
  *   signature: signatureDataUrl
  * })
  */
-export const useRejectRequisition = (requisitionId: string, onSuccess?: () => void) => {
+export const useRejectRequisition = (
+  requisitionId: string,
+  onSuccess?: () => void
+) => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (data: Omit<RejectRequisitionRequest, 'requisitionId'>) => {
+    mutationFn: async (
+      data: Omit<RejectRequisitionRequest, "requisitionId">
+    ) => {
       const response = await rejectRequisition({
         requisitionId,
         ...data,
@@ -275,16 +312,22 @@ export const useRejectRequisition = (requisitionId: string, onSuccess?: () => vo
       return response;
     },
     onSuccess: () => {
-      toast.success('Requisition rejected and returned to draft');
+      toast.success("Requisition rejected and returned to draft");
 
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.REQUISITIONS.BY_ID, requisitionId] });
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.REQUISITIONS.ALL] });
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.APPROVALS_PENDING] });
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.REQUISITIONS.BY_ID, requisitionId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.REQUISITIONS.ALL],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.APPROVALS_PENDING],
+      });
 
       onSuccess?.();
     },
     onError: (error: Error) => {
-      toast.error(error.message || 'Failed to reject requisition');
+      toast.error(error.message || "Failed to reject requisition");
     },
   });
 };
@@ -301,7 +344,10 @@ export const useRejectRequisition = (requisitionId: string, onSuccess?: () => vo
  * const deleteMutation = useDeleteRequisition(requisitionId)
  * await deleteMutation.mutateAsync()
  */
-export const useDeleteRequisition = (requisitionId: string, onSuccess?: () => void) => {
+export const useDeleteRequisition = (
+  requisitionId: string,
+  onSuccess?: () => void
+) => {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -314,15 +360,19 @@ export const useDeleteRequisition = (requisitionId: string, onSuccess?: () => vo
       return response;
     },
     onSuccess: () => {
-      toast.success('Requisition deleted successfully');
+      toast.success("Requisition deleted successfully");
 
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.REQUISITIONS.ALL] });
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.REQUISITIONS.STATS] });
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.REQUISITIONS.ALL],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.REQUISITIONS.STATS],
+      });
 
       onSuccess?.();
     },
     onError: (error: Error) => {
-      toast.error(error.message || 'Failed to delete requisition');
+      toast.error(error.message || "Failed to delete requisition");
     },
   });
 };

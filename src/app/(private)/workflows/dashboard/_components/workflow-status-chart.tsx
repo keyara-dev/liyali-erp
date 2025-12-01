@@ -19,7 +19,7 @@ export function WorkflowStatusChart({ metrics }: WorkflowStatusChartProps) {
   const data = [
     { name: 'Draft', value: metrics.draftDocuments },
     { name: 'Submitted', value: metrics.submittedDocuments },
-    { name: 'In Approval', value: metrics.statusBreakdown.IN_APPROVAL },
+    { name: 'In Approval', value: metrics.statusBreakdown.IN_REVIEW },
     { name: 'Approved', value: metrics.approvedDocuments },
     { name: 'Rejected', value: metrics.rejectedDocuments },
   ].filter((item) => item.value > 0)

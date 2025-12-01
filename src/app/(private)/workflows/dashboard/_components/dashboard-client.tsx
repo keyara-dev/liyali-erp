@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { getDashboardMetrics } from "@/app/_actions/dashboard";
 import { DashboardMetrics } from "@/types";
-import { MetricsCards } from "./metrics-cards";
+import { PageHeader } from "@/components/base/page-header";
 import { WorkflowStatusChart } from "./workflow-status-chart";
 import { ApprovalTimeChart } from "./approval-time-chart";
 import { QuickActions } from "./quick-actions";
@@ -45,14 +45,11 @@ export function DashboardClient({ userId, userRole }: DashboardClientProps) {
   if (isLoading) {
     return (
       <div className="space-y-6">
-        <div>
-          <h1 className="text-xl font-bold tracking-tight lg:text-2xl">
-            Dashboard
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            Loading workflow metrics...
-          </p>
-        </div>
+        <PageHeader
+          title="Dashboard"
+          subtitle="Loading workflow metrics..."
+          showBackButton={false}
+        />
       </div>
     );
   }
@@ -60,20 +57,23 @@ export function DashboardClient({ userId, userRole }: DashboardClientProps) {
   if (error || !metrics) {
     return (
       <div className="space-y-6">
-        <div>
-          <h1 className="text-xl font-bold tracking-tight lg:text-2xl">
-            Dashboard
-          </h1>
-          <p className="text-sm text-destructive">
-            {error || "Failed to load dashboard"}
-          </p>
-        </div>
+        <PageHeader
+          title="Dashboard"
+          subtitle={error || "Failed to load dashboard"}
+          showBackButton={false}
+        />
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
+      <PageHeader
+        title="Dashboard"
+        subtitle="View your workflow metrics and recent activity"
+        showBackButton={false}
+      />
+
       {/* Greeting Card with Quick Actions and Analytics */}
       <GreetingCard userName="User" userRole={userRole} metrics={metrics} />
 

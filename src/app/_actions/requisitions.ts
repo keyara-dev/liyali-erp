@@ -31,7 +31,7 @@ let mockRequisitions: Requisition[] = [
     requestedDate: new Date('2024-11-20'),
     requiredByDate: new Date('2024-12-15'),
     priority: 'MEDIUM',
-    status: 'IN_APPROVAL',
+    status: 'IN_REVIEW',
     items: [
       {
         id: 'item-1',
@@ -571,7 +571,7 @@ export async function approveRequisition(
       requisition.approvedAt = new Date();
     } else {
       // Move to next stage
-      requisition.status = 'IN_APPROVAL';
+      requisition.status = 'IN_REVIEW';
       const nextStage = requisition.approvalChain.find((s) => s.status === 'PENDING');
       if (nextStage) {
         requisition.currentApprovalStage = nextStage.stageNumber;
@@ -696,7 +696,7 @@ export async function getRequisitionStats(): Promise<APIResponse<RequisitionStat
       total: mockRequisitions.length,
       draft: mockRequisitions.filter((r) => r.status === 'DRAFT').length,
       submitted: mockRequisitions.filter((r) => r.status === 'SUBMITTED').length,
-      inApproval: mockRequisitions.filter((r) => r.status === 'IN_APPROVAL').length,
+      inApproval: mockRequisitions.filter((r) => r.status === 'IN_REVIEW').length,
       approved: mockRequisitions.filter((r) => r.status === 'APPROVED').length,
       rejected: mockRequisitions.filter((r) => r.status === 'REJECTED').length,
       totalValue: mockRequisitions.reduce((sum, r) => sum + r.totalAmount, 0),

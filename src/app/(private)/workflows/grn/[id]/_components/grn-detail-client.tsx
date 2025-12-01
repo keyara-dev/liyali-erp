@@ -5,16 +5,14 @@ import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import {
   ArrowLeft,
-  AlertCircle,
   Package,
-  Calendar,
   FileText,
   AlertTriangle,
 } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
+import { PageHeader } from '@/components/base/page-header'
 import { GRNItemsMatchingTable } from './grn-items-matching-table'
 
 interface GRNDetailClientProps {
@@ -57,13 +55,6 @@ interface GoodsReceivedNote {
   stageName: string
   createdAt: string
   updatedAt: string
-}
-
-const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
-  DRAFT: { bg: 'bg-gray-100', text: 'text-gray-800' },
-  SUBMITTED: { bg: 'bg-blue-100', text: 'text-blue-800' },
-  CONFIRMED: { bg: 'bg-green-100', text: 'text-green-800' },
-  REJECTED: { bg: 'bg-red-100', text: 'text-red-800' },
 }
 
 const STAGE_NAMES: Record<number, string> = {
@@ -180,27 +171,24 @@ export function GRNDetailClient({
     )
   }
 
-  const colors = STATUS_COLORS[grn.status] || STATUS_COLORS['DRAFT']
   const hasQualityIssues = grn.qualityIssues.length > 0
   const hasVariances = grn.items.some((item) => item.variance !== 0)
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="sm" onClick={handleBack}>
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-          <div>
-            <h1 className="text-3xl font-bold">{grn.grnNumber}</h1>
-            <p className="text-muted-foreground">Goods Received Note</p>
-          </div>
-        </div>
-        <Badge className={colors.bg + ' ' + colors.text}>
-          {grn.status}
-        </Badge>
-      </div>
+      <PageHeader
+        title={grn.grnNumber}
+        subtitle="Goods Received Note"
+        badges={[
+          {
+            status: grn.status,
+            type: "document",
+          },
+        ]}
+        onBackClick={handleBack}
+        showBackButton={true}
+      />
 
       {/* Status and Stage Info */}
       <div className="grid gap-4 md:grid-cols-2">

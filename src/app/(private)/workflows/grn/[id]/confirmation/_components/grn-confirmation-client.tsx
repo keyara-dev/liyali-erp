@@ -8,8 +8,9 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Textarea } from '@/components/ui/textarea'
-import { ArrowLeft, AlertTriangle, CheckCircle2, Package, Signature } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, Package, Signature } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
+import { PageHeader } from '@/components/base/page-header'
 import { GRNItemsMatchingTable } from '../_components/grn-items-matching-table'
 
 interface GRNConfirmationClientProps {
@@ -202,10 +203,6 @@ export function GRNConfirmationClient({
   if (isLoading || !grn) {
     return (
       <div className="space-y-6">
-        <Button variant="ghost" size="sm" onClick={handleBack}>
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Back
-        </Button>
         <div className="space-y-4">
           <Skeleton className="h-12 w-48" />
           <Skeleton className="h-96 w-full" />
@@ -219,16 +216,12 @@ export function GRNConfirmationClient({
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="sm" onClick={handleBack}>
-          <ArrowLeft className="h-4 w-4" />
-        </Button>
-        <div>
-          <h1 className="text-3xl font-bold">{grn.grnNumber}</h1>
-          <p className="text-muted-foreground">Goods Received Confirmation</p>
-        </div>
-      </div>
+      <PageHeader
+        title={grn.grnNumber}
+        subtitle="Goods Received Confirmation"
+        onBackClick={handleBack}
+        showBackButton={true}
+      />
 
       <div className="grid gap-6 md:grid-cols-3">
         {/* Main Content */}

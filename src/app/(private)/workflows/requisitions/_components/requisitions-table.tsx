@@ -30,6 +30,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { getDocumentsByCreator } from '@/app/_actions/workflow'
 import { WorkflowDocument } from '@/types/workflow'
+import { useRequisitionsWithStorage, convertRequisitionToWorkflowDocument } from '@/hooks/use-requisition-storage'
 
 interface RequisitionsTableProps {
   userId: string
@@ -43,32 +44,23 @@ export function RequisitionsTable({
   refreshTrigger,
 }: RequisitionsTableProps) {
   const router = useRouter()
+  const { data: apiRequisitions, isLoading: isFetching } = useRequisitionsWithStorage(true)
   const [requisitions, setRequisitions] = useState<WorkflowDocument[]>([])
-  const [isLoading, setIsLoading] = useState(true)
   const [sorting, setSorting] = React.useState<SortingState>([])
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({})
 
   useEffect(() => {
-    async function fetchRequisitions() {
-      setIsLoading(true)
-      try {
-        const result = await getDocumentsByCreator(userId, 1, 100)
-        if (result.success) {
-          const filteredReqs = result.data?.data.filter(
-            (doc) => doc.type === 'REQUISITION'
-          ) || []
-          setRequisitions(filteredReqs)
-        }
-      } catch (error) {
-        console.error('Failed to fetch requisitions:', error)
-      } finally {
-        setIsLoading(false)
-      }
+    if (apiRequisitions && apiRequisitions.length > 0) {
+      // Convert requisitions to workflow documents and filter by current user
+      const workflowDocs = apiRequisitions
+        .map(req => convertRequisitionToWorkflowDocument(req))
+        .filter(doc => doc.createdBy === userId)
+      setRequisitions(workflowDocs)
+    } else {
+      setRequisitions([])
     }
-
-    fetchRequisitions()
-  }, [userId, refreshTrigger])
+  }, [apiRequisitions, userId, refreshTrigger])
 
   const columns: ColumnDef<WorkflowDocument>[] = [
     {
@@ -102,7 +94,7 @@ export function RequisitionsTable({
       ),
     },
     {
-      accessorKey: 'totalAmount',
+      id: 'totalAmount',
       header: ({ column }) => (
         <Button
           variant="ghost"
@@ -117,7 +109,7 @@ export function RequisitionsTable({
         const amount = row.original.metadata?.totalAmount || row.original.metadata?.amount
         return (
           <div className="font-medium">
-            {amount ? `${amount.toLocaleString()}` : '-'}
+            {amount ? `ZMW ${amount.toLocaleString('en-ZM', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-'}
           </div>
         )
       },
@@ -187,7 +179,7 @@ export function RequisitionsTable({
     },
   })
 
-  if (isLoading) {
+  if (isFetching) {
     return (
       <div className="rounded-lg border bg-white p-8 text-center">
         <p className="text-muted-foreground">Loading requisitions...</p>

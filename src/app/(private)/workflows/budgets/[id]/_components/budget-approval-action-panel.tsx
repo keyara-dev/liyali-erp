@@ -29,7 +29,7 @@ export function BudgetApprovalActionPanel({
   const [success, setSuccess] = useState<string | null>(null)
 
   // Only show for budgets that are in approval
-  if (budgetStatus !== 'IN_APPROVAL' && budgetStatus !== 'SUBMITTED') {
+  if (budgetStatus !== 'IN_REVIEW' && budgetStatus !== 'SUBMITTED') {
     return null
   }
 

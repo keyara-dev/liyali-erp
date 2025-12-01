@@ -171,7 +171,7 @@ export function ApprovalHistoryPanel({
       </Tabs>
 
       {/* Approval Action Panel */}
-      {requisition.status === 'IN_APPROVAL' && (
+      {requisition.status === 'IN_REVIEW' && (
         <div className="mt-6 pt-6 border-t">
           <ApprovalActionPanel
             requisitionId={requisitionId}
