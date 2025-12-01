@@ -23,7 +23,7 @@ import {
 } from '@/app/_actions/workflows';
 
 import {
-  markNotificationAsRead,
+  markAsRead,
   markActionTaken,
 } from '@/app/_actions/notifications';
 
@@ -149,7 +149,7 @@ export function useQuickApprove() {
       // Mark notification as read and action taken
       if (params.notificationId) {
         await Promise.all([
-          markNotificationAsRead({ notificationId: params.notificationId }),
+          markAsRead({ notificationId: params.notificationId }),
           markActionTaken(params.notificationId),
         ]);
       }

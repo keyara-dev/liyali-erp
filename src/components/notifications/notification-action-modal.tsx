@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useRef } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import {
   Dialog,
   DialogContent,
@@ -13,8 +15,9 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2, AlertCircle } from "lucide-react";
+import { Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
 import { Notification } from "@/types";
+import { approveTaskSchema, rejectTaskSchema } from "@/lib/validation-schemas";
 
 interface SignatureCanvasProps {
   onSignatureChange: (signature: string) => void;
@@ -142,66 +145,76 @@ export function NotificationActionModal({
   onReject,
   actionType = "both",
 }: NotificationActionModalProps) {
-  const [remarks, setRemarks] = useState("");
-  const [signature, setSignature] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [action, setAction] = useState<"approve" | "reject" | null>(null);
+  const [serverError, setServerError] = useState<string | null>(null);
+  const [signature, setSignature] = useState("");
+
+  // Approval form with validation
+  const approveForm = useForm({
+    resolver: zodResolver(approveTaskSchema),
+    defaultValues: {
+      signature: "",
+      comments: "",
+    },
+  });
+
+  // Rejection form with validation
+  const rejectForm = useForm({
+    resolver: zodResolver(rejectTaskSchema),
+    defaultValues: {
+      signature: "",
+      remarks: "",
+    },
+  });
 
   if (!notification) return null;
 
   const handleApprove = async () => {
-    setError(null);
+    setServerError(null);
 
-    if (!signature) {
-      setError("Signature is required");
-      return;
-    }
+    const isValid = await approveForm.trigger();
+    if (!isValid) return;
 
     if (!onApprove) {
-      setError("Approve action not available");
+      setServerError("Approve action not available");
       return;
     }
 
-    setIsSubmitting(true);
-    try {
-      await onApprove(signature, remarks);
-      setRemarks("");
-      setSignature("");
-      setAction(null);
-      onOpenChange(false);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to approve");
-    } finally {
-      setIsSubmitting(false);
-    }
+    approveForm.handleSubmit(async (data) => {
+      try {
+        await onApprove(data.signature, data.comments);
+        approveForm.reset();
+        setAction(null);
+        setSignature("");
+        onOpenChange(false);
+      } catch (err) {
+        setServerError(err instanceof Error ? err.message : "Failed to approve task");
+      }
+    })();
   };
 
   const handleReject = async () => {
-    setError(null);
+    setServerError(null);
 
-    if (!remarks.trim()) {
-      setError("Rejection reason is required");
-      return;
-    }
+    const isValid = await rejectForm.trigger();
+    if (!isValid) return;
 
     if (!onReject) {
-      setError("Reject action not available");
+      setServerError("Reject action not available");
       return;
     }
 
-    setIsSubmitting(true);
-    try {
-      await onReject(remarks);
-      setRemarks("");
-      setSignature("");
-      setAction(null);
-      onOpenChange(false);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to reject");
-    } finally {
-      setIsSubmitting(false);
-    }
+    rejectForm.handleSubmit(async (data) => {
+      try {
+        await onReject(data.remarks);
+        rejectForm.reset();
+        setAction(null);
+        setSignature("");
+        onOpenChange(false);
+      } catch (err) {
+        setServerError(err instanceof Error ? err.message : "Failed to reject task");
+      }
+    })();
   };
 
   const getTitle = () => {

@@ -2,12 +2,13 @@
 
 import { useState } from "react";
 import { ApprovalTask } from "@/types";
+import { notify } from "@/lib/utils";
 import {
   useApproveStage,
   useRejectStage,
   useReassignStage,
 } from "@/hooks/use-approval-flow";
-import { NotificationActionModal } from "@/components/notifications/notification-action-modal";
+import { NotificationActionModal } from "@/components/notifications/notification-action-modal-v2";
 import { ReassignmentModal } from "@/components/workflows/reassignment-modal";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
