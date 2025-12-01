@@ -2,9 +2,8 @@ import "server-only";
 
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
-import { cache } from "react";
 
-import type { AuthSession, Permission, User, UserType } from "@/types";
+import type { AuthSession, User, UserType } from "@/types";
 import { SESSION_CONFIG } from "@/lib/session-config";
 import {
   AUTH_SESSION,
@@ -379,102 +378,6 @@ export async function getDemoUsers() {
 // ============================================================================
 
 /**
- * Create authenticated session with JWT token
- */
-export async function createAuthSession({
-  accessToken,
-  user_type,
-  user_id,
-  change_password,
-  mfa_required,
-  organization_id,
-}: {
-  accessToken: string;
-  user_type: UserType;
-  user_id?: string;
-  change_password?: boolean;
-  mfa_required?: boolean;
-  organization_id?: string;
-}): Promise<void> {
-  const expiresAt = new Date(Date.now() + SESSION_CONFIG.SESSION_TTL);
-
-  const newSession: AuthSession = {
-    accessToken: accessToken || "",
-    user_type,
-    user_id,
-    change_password,
-    mfa_required,
-    organization_id,
-    expiresAt,
-  };
-
-  const token = await encrypt(newSession, "30m");
-
-  if (token) {
-    const cookieStore = await cookies();
-    cookieStore.set(AUTH_SESSION, token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      expires: expiresAt,
-      sameSite: "strict",
-      path: "/",
-    });
-  } else {
-    throw new Error("Failed to create session token.");
-  }
-}
-
-/**
- * Create user session cookie
- */
-export async function createUserSession(user: User): Promise<void> {
-  const expiresAt = new Date(Date.now() + 1 * 60 * 60 * 1000);
-
-  const newSession = { ...user, expiresAt };
-
-  const token = await encrypt(newSession, "1h");
-
-  if (token) {
-    const cookieStore = await cookies();
-    cookieStore.set(USER_SESSION, token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      expires: expiresAt,
-      sameSite: "strict",
-      path: "/",
-    });
-  } else {
-    throw new Error("Failed to create session token.");
-  }
-}
-
-/**
- * Create permissions session cookie
- */
-export async function createPermissionsSession(
-  pem: Permission[]
-): Promise<void> {
-  const expiresAt = new Date(Date.now() + 1 * 60 * 60 * 1000);
-
-  const newSession = { ...pem, expiresAt };
-
-  const token = await encrypt(newSession, "1h");
-
-  if (token) {
-    const cookieStore = await cookies();
-    cookieStore.set(PERMISSIONS_SESSION, token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      expires: expiresAt,
-      sameSite: "strict",
-      path: "/",
-    });
-  } else {
-    throw new Error("Failed to create session token.");
-  }
-}
-
-/**
  * Update auth session with new fields
  */
 export async function updateAuthSession(
@@ -574,32 +477,6 @@ export async function verifySession(): Promise<{
 }
 
 /**
- * Verify multiple session cookies
- */
-export async function verifySessions(
-  sessionNames: string[] = [AUTH_SESSION]
-): Promise<{ isAuthenticated: boolean; session: any }> {
-  const cookieStore = await cookies();
-  const sessionPromises = sessionNames.map(async (name) => {
-    const cookie = cookieStore.get(name)?.value;
-    if (!cookie) return null;
-    const data = await decrypt(cookie);
-    return data && !data.success === false ? data : null;
-  });
-
-  const decryptedSessions = await Promise.all(sessionPromises);
-
-  const consolidatedSession = decryptedSessions.reduce((acc, curr) => {
-    if (curr) return { ...acc, ...curr };
-    return acc;
-  }, {});
-
-  const isAuthenticated = !!consolidatedSession?.accessToken;
-
-  return { isAuthenticated, session: consolidatedSession };
-}
-
-/**
  * Delete all session cookies
  */
 export async function deleteSession() {
@@ -621,47 +498,6 @@ export async function deleteSession() {
   }
 }
 
-// ============================================================================
-// SESSION GETTER FUNCTIONS
-// ============================================================================
-
-/**
- * Get auth session (contains access token)
- */
-export async function getAuthSession(): Promise<Omit<
-  AuthSession,
-  "user" | "permissions"
-> | null> {
-  const cookieStore = await cookies();
-  const cookie = cookieStore.get(AUTH_SESSION)?.value;
-  if (!cookie) return null;
-  const decrypted = await decrypt(cookie);
-  return decrypted as Omit<AuthSession, "user" | "permissions">;
-}
-
-/**
- * Get user session (contains user profile)
- */
-async function _getUserSession(): Promise<AuthSession["user"] | null> {
-  const cookieStore = await cookies();
-  const cookie = cookieStore.get(USER_SESSION)?.value;
-  if (!cookie) return null;
-  return decrypt(cookie) as AuthSession["user"];
-}
-
-export const getUserSession = cache(_getUserSession);
-
-/**
- * Get permissions session
- */
-export async function getPermissionsSession(): Promise<
-  AuthSession["permissions"] | null
-> {
-  const cookieStore = await cookies();
-  const cookie = cookieStore.get(PERMISSIONS_SESSION)?.value;
-  if (!cookie) return null;
-  return decrypt(cookie) as unknown as AuthSession["permissions"];
-}
 
 // ============================================================================
 // SCREEN LOCK FUNCTIONS
@@ -734,39 +570,4 @@ export async function getScreenLockState(): Promise<boolean> {
 export async function clearScreenLockCookie(): Promise<void> {
   const cookieStore = await cookies();
   cookieStore.delete(SCREEN_LOCK_SESSION);
-}
-
-/**
- * Verify that a session field was updated
- */
-export async function verifySessionUpdate(
-  field: string,
-  expectedValue: any
-): Promise<boolean> {
-  try {
-    const { session } = await verifySessions();
-
-    if (!session) {
-      console.warn(`❌ Cannot verify session update: no active session`);
-      return false;
-    }
-
-    const actualValue = (session as any)[field];
-
-    if (actualValue === expectedValue) {
-      console.log(`✅ Session field '${field}' verified: ${expectedValue}`);
-      return true;
-    } else {
-      console.warn(
-        `❌ Session field '${field}' mismatch. Expected: ${expectedValue}, Got: ${actualValue}`
-      );
-      return false;
-    }
-  } catch (error) {
-    console.error(
-      `❌ Failed to verify session update for field '${field}':`,
-      error
-    );
-    return false;
-  }
 }

@@ -14,7 +14,6 @@ import {
   clearScreenLockCookie,
   getScreenLockState,
   deleteSession,
-  verifySessionUpdate,
   updateAuthSession
 } from '@/lib/auth'
 import { APIResponse } from '@/types'
@@ -202,9 +201,7 @@ export async function lockScreenOnUserIdle(isLocked: boolean): Promise<boolean> 
       await clearScreenLockCookie()
     }
 
-    // Verify the update was successful
-    const verified = await verifySessionUpdate('locked', isLocked)
-    return verified
+    return true
   } catch (error: any) {
     console.error('Error locking screen on idle:', error)
     return false

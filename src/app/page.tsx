@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { getAuthSession } from "@/lib/auth";
+import { verifySession } from "@/lib/auth";
 
 /**
  * Home Page - Authentication & Role-Based Redirect
@@ -16,9 +16,9 @@ import { getAuthSession } from "@/lib/auth";
  */
 export default async function HomePage() {
   // Check if user is authenticated
-  const session = await getAuthSession();
+  const { isAuthenticated, session } = await verifySession();
 
-  if (!session || !session.user_id) {
+  if (!isAuthenticated || !session?.user_id) {
     // Not logged in - redirect to login
     redirect("/login");
   }
