@@ -1,6 +1,8 @@
 import { auth } from '@/auth'
 import { redirect } from 'next/navigation'
+import { getRequisitionById } from '@/app/_actions/requisitions'
 import { RequisitionDetailClient } from '../_components/requisition-detail-client'
+import { Requisition } from '@/types/requisition'
 
 export const metadata = {
   title: 'Requisition Details',
@@ -22,11 +24,16 @@ export default async function RequisitionDetailPage({
     redirect('/login')
   }
 
+  // Server-side data fetching for SSR
+  const requisitionResult = await getRequisitionById(params.id)
+  const initialRequisition = requisitionResult.success ? requisitionResult.data : undefined
+
   return (
     <RequisitionDetailClient
       requisitionId={params.id}
       userId={session.user.id}
       userRole={(session.user as any).role}
+      initialRequisition={initialRequisition}
     />
   )
 }

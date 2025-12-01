@@ -12,7 +12,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { useRefreshToken } from "@/hooks/use-users-query-data";
+import { useRefreshToken } from "@/hooks/use-auth-queries";
 import {
   lockScreenOnUserIdle,
   logUserOut,

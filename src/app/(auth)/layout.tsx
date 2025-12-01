@@ -6,7 +6,7 @@ import React, { PropsWithChildren } from "react";
 
 function AuthLayout({ children }: PropsWithChildren) {
   return (
-    <div className="min-h-screen w-screen bg-white">
+    <div className="min-h-screen w-screen ">
       {/* Navigation */}
       {/* 
       <nav className="px-8 md:px-12 py-1 w-screen  flex justify-between fixed top-0 left-0 right-0 items-center">

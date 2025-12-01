@@ -5,6 +5,7 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
+import { SignatureCanvas } from '@/components/ui/signature-canvas'
 import { AlertCircle, Upload, Send, XCircle } from 'lucide-react'
 import { approveDocument, rejectDocument } from '@/app/_actions/workflow'
 import {
@@ -26,16 +27,25 @@ export function ApprovalActionPanel({
 }: ApprovalActionPanelProps) {
   const [action, setAction] = useState<'approve' | 'reject' | null>(null)
   const [comments, setComments] = useState('')
+  const [remarks, setRemarks] = useState('')
+  const [signature, setSignature] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [showAttachmentDialog, setShowAttachmentDialog] = useState(false)
 
   const handleApprove = async () => {
+    if (!signature) {
+      toast.error('Signature is required to approve')
+      return
+    }
+
     setIsLoading(true)
     try {
-      const result = await approveDocument(requisitionId, comments)
+      const result = await approveDocument(requisitionId, comments, signature)
       if (result.success) {
         toast.success('Requisition approved successfully')
         setComments('')
+        setRemarks('')
+        setSignature('')
         setAction(null)
         onApprovalComplete()
       } else {
@@ -49,17 +59,19 @@ export function ApprovalActionPanel({
   }
 
   const handleReject = async () => {
-    if (!comments.trim()) {
-      toast.error('Please provide a reason for rejection')
+    if (!remarks.trim()) {
+      toast.error('Remarks are required for rejection')
       return
     }
 
     setIsLoading(true)
     try {
-      const result = await rejectDocument(requisitionId, comments)
+      const result = await rejectDocument(requisitionId, remarks)
       if (result.success) {
         toast.success('Requisition rejected successfully')
         setComments('')
+        setRemarks('')
+        setSignature('')
         setAction(null)
         onApprovalComplete()
       } else {
@@ -107,34 +119,57 @@ export function ApprovalActionPanel({
         </h3>
         <p className="text-sm text-gray-600 mb-4">
           {action === 'approve'
-            ? 'Add any approval comments or recommendations'
-            : 'Please provide a reason for rejecting this requisition'}
+            ? 'Add a signature and optional comments to approve'
+            : 'Provide remarks explaining the rejection reason'}
         </p>
       </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="comments">
-          Comments {action === 'reject' && '*'}
-        </Label>
-        <Textarea
-          id="comments"
-          placeholder={
-            action === 'approve'
-              ? 'Optional approval comments...'
-              : 'Required reason for rejection...'
-          }
-          value={comments}
-          onChange={(e) => setComments(e.target.value)}
-          rows={3}
-          className="resize-none"
-        />
-      </div>
+      {action === 'approve' ? (
+        <>
+          <div className="space-y-2">
+            <Label htmlFor="comments">Comments (Optional)</Label>
+            <Textarea
+              id="comments"
+              placeholder="Add any approval comments or recommendations..."
+              value={comments}
+              onChange={(e) => setComments(e.target.value)}
+              rows={3}
+              className="resize-none"
+              disabled={isLoading}
+            />
+          </div>
+
+          <SignatureCanvas
+            onSignatureChange={setSignature}
+            disabled={isLoading}
+          />
+        </>
+      ) : (
+        <div className="space-y-2">
+          <Label htmlFor="remarks">
+            Remarks *
+          </Label>
+          <Textarea
+            id="remarks"
+            placeholder="Required: Please explain why this requisition is being rejected..."
+            value={remarks}
+            onChange={(e) => setRemarks(e.target.value)}
+            rows={4}
+            className="resize-none"
+            disabled={isLoading}
+          />
+          <p className="text-xs text-muted-foreground">
+            Detailed remarks are required for rejection to help the requester understand the issues
+          </p>
+        </div>
+      )}
 
       <Button
         variant="outline"
         size="sm"
         onClick={() => setShowAttachmentDialog(true)}
         className="gap-2 w-full text-gray-700"
+        disabled={isLoading}
       >
         <Upload className="h-4 w-4" />
         Add Supporting Documents
@@ -143,7 +178,7 @@ export function ApprovalActionPanel({
       <div className="flex gap-2">
         <Button
           onClick={action === 'approve' ? handleApprove : handleReject}
-          disabled={isLoading || (action === 'reject' && !comments.trim())}
+          disabled={isLoading || (action === 'reject' && !remarks.trim()) || (action === 'approve' && !signature)}
           className={
             action === 'approve'
               ? 'bg-green-600 hover:bg-green-700 flex-1'
@@ -158,7 +193,12 @@ export function ApprovalActionPanel({
         </Button>
         <Button
           variant="outline"
-          onClick={() => setAction(null)}
+          onClick={() => {
+            setAction(null)
+            setComments('')
+            setRemarks('')
+            setSignature('')
+          }}
           disabled={isLoading}
         >
           Cancel

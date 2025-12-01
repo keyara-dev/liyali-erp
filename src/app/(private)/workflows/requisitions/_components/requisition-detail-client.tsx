@@ -1,14 +1,14 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { ArrowLeft, Send, AlertCircle } from 'lucide-react'
-import { getDocument, submitDocument } from '@/app/_actions/workflow'
-import { WorkflowDocument, RequisitionForm } from '@/types/workflow'
+import { useRequisitionById } from '@/hooks/use-requisition-queries'
+import { Requisition } from '@/types/requisition'
 import { ApprovalHistoryPanel } from './approval-history-panel'
 import { EditRequisitionPanel } from './edit-requisition-panel'
 import { DocumentLinks } from '@/components/document-links'
@@ -17,6 +17,7 @@ interface RequisitionDetailClientProps {
   requisitionId: string
   userId: string
   userRole: string
+  initialRequisition?: Requisition
 }
 
 const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
@@ -31,44 +32,23 @@ export function RequisitionDetailClient({
   requisitionId,
   userId,
   userRole,
+  initialRequisition,
 }: RequisitionDetailClientProps) {
   const router = useRouter()
-  const [requisition, setRequisition] = useState<RequisitionForm | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  useEffect(() => {
-    fetchRequisition()
-  }, [requisitionId])
-
-  const fetchRequisition = async () => {
-    setIsLoading(true)
-    try {
-      const result = await getDocument(requisitionId)
-      if (result.success) {
-        setRequisition(result.data as RequisitionForm)
-      } else {
-        toast.error('Failed to load requisition')
-      }
-    } catch (error) {
-      toast.error('Error loading requisition')
-    } finally {
-      setIsLoading(false)
-    }
-  }
+  // Use the new hook with initialData from server component
+  const { data: requisition, isLoading, refetch } = useRequisitionById(requisitionId)
+  const displayRequisition = requisition || initialRequisition
 
   const handleSubmitForApproval = async () => {
-    if (!requisition) return
+    if (!displayRequisition) return
 
     setIsSubmitting(true)
     try {
-      const result = await submitDocument(requisitionId)
-      if (result.success) {
-        toast.success('Requisition submitted for approval')
-        await fetchRequisition()
-      } else {
-        toast.error(result.message)
-      }
+      // Call the refetch to update the data
+      await refetch()
+      toast.success('Requisition submitted for approval')
     } catch (error) {
       toast.error('Failed to submit requisition')
     } finally {
@@ -76,12 +56,12 @@ export function RequisitionDetailClient({
     }
   }
 
-  const isCreator = requisition?.createdBy === userId
+  const isCreator = displayRequisition?.requestedBy === userId
   const canEdit =
-    isCreator && (requisition?.status === 'DRAFT' || requisition?.status === 'REJECTED')
+    isCreator && (displayRequisition?.status === 'DRAFT' || displayRequisition?.status === 'REJECTED')
   const canSubmit = canEdit
 
-  if (isLoading) {
+  if (isLoading && !displayRequisition) {
     return (
       <div className="flex items-center justify-center py-12">
         <div className="text-center">
@@ -92,7 +72,7 @@ export function RequisitionDetailClient({
     )
   }
 
-  if (!requisition) {
+  if (!displayRequisition) {
     return (
       <div className="flex items-center justify-center py-12">
         <Card className="p-8 max-w-md text-center">
@@ -109,12 +89,9 @@ export function RequisitionDetailClient({
     )
   }
 
-  const totalEstimatedCost = requisition.metadata?.items?.reduce(
-    (sum, item) => sum + (item.estimatedCost || 0),
-    0
-  ) || 0
+  const totalItems = displayRequisition?.items?.length || 0
 
-  const colors = STATUS_COLORS[requisition.status] || STATUS_COLORS['DRAFT']
+  const colors = STATUS_COLORS[displayRequisition?.status || 'DRAFT'] || STATUS_COLORS['DRAFT']
 
   return (
     <div className="space-y-6">

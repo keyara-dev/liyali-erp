@@ -5,6 +5,15 @@ import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { ThemeProvider as NextThemesProvider } from "next-themes";
 import { Toaster } from "sonner";
 
+import { SiteHeader } from "@/components/layout/header";
+import { AppSidebar } from "@/components/layout/sidebar/app-sidebar";
+import { IdleTimerContainer } from "@/components/base/screen-lock";
+import {
+  SidebarInset,
+  SidebarProvider,
+  useSidebar,
+} from "@/components/ui/sidebar";
+
 const queryClient = new QueryClient();
 
 export function Providers({ children }: { children: React.ReactNode }) {

@@ -100,7 +100,8 @@ export type ApprovalLogEntry = {
   action: ApprovalAction;
   timestamp: Date;
   comments?: string;
-  signature?: string;
+  remarks?: string; // Required for rejections, optional for approvals
+  signature?: string; // Digital signature (base64 encoded)
   ipAddress?: string;
 };
 

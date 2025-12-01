@@ -74,10 +74,14 @@ export const WORKFLOW_TRIGGER_TYPES = [
   "RISK_ACCEPTANCE",
 ] as const;
 
-// QUERY KEYS
+// QUERY KEYS - Single source of truth for all React Query keys
 export const QUERY_KEYS = {
-  USER_DATA: "user",
+  // User & Auth
   USERS: "users",
+  USER_PROFILE: "user-profile",
+  USER_SESSIONS: "user-sessions",
+
+  // Configuration
   CONFIGS: "configs",
   USER_ROLES: "user-roles",
   DEPARTMENTS: "departments",
@@ -86,18 +90,76 @@ export const QUERY_KEYS = {
   DEPARTMENT_MODULES: "department-modules",
   ROLES: "roles",
   ROLE_PERMISSIONS: "role-permissions",
+  CURRENCIES: "currencies",
+
+  // Dashboard
+  DASHBOARD: {
+    METRICS: "dashboard-metrics",
+    ACTIVITIES: "dashboard-activities",
+    OVERVIEW: "dashboard-overview",
+  },
+
+  // Budgets
+  BUDGETS: {
+    ALL: "budgets-all",
+    BY_ID: "budget-by-id",
+    BY_USER: "budgets-by-user",
+    STATS: "budgets-stats",
+    OVERVIEW: "budget-overview",
+  },
+
+  // Tasks
+  TASKS: {
+    ALL: "tasks-all",
+    BY_USER: "tasks-by-user",
+    BY_STATUS: "tasks-by-status",
+    STATS: "tasks-stats",
+  },
+
+  // Requisitions
+  REQUISITIONS: {
+    ALL: "requisitions-all",
+    BY_ID: "requisition-by-id",
+    BY_USER: "requisitions-by-user",
+    STATS: "requisitions-stats",
+    DASHBOARD: "requisitions-dashboard",
+  },
+
+  // Purchase Orders
+  PURCHASE_ORDERS: {
+    ALL: "purchase-orders-all",
+    BY_ID: "purchase-order-by-id",
+    BY_USER: "purchase-orders-by-user",
+  },
+
+  // Payment Vouchers
+  PAYMENT_VOUCHERS: {
+    ALL: "payment-vouchers-all",
+    BY_ID: "payment-voucher-by-id",
+    BY_USER: "payment-vouchers-by-user",
+  },
+
+  // GRN
+  GRN: {
+    ALL: "grn-all",
+    BY_ID: "grn-by-id",
+    BY_USER: "grn-by-user",
+  },
+
+  // Approvals & Workflows
   WORKFLOWS: "workflows",
   WORKFLOW_INSTANCES: "workflow-instances",
   WORKFLOW_APPROVALS: "workflow-approvals",
   WORKFLOW_HISTORY: "workflow-history",
-  SELLERS: "sellers",
-  CURRENCIES: "currencies",
-  WHATSAPP_CONFIG: "whatsapp-config",
-  ADMIN_USERS: "admin-users",
-  EVENT_HOSTS: "event-hosts",
-  PREMIUM_PLANS: "premium-plans",
-  PREMIUM_CONFIG: "premium-config",
-  PREMIUM_STATS: "premium-stats",
+  APPROVALS_PENDING: "approvals-pending",
+
+  // Search
+  SEARCH: "search",
+  SEARCH_RESULTS: "search-results",
+
+  // Reports & Analytics
+  REPORTS: "reports",
+  ANALYTICS: "analytics",
 };
 
 // ANIMATION_VARIANTS

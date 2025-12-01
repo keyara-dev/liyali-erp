@@ -58,6 +58,8 @@ export interface ApprovalRecord {
   actionTakenAt?: Date;
   actionTakenBy?: string;
   comments?: string;
+  remarks?: string; // Required for rejections, optional for approvals
+  signature?: string; // Digital signature (base64 encoded)
   reversedAt?: Date;
   reversalReason?: string;
 }

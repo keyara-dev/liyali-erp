@@ -96,7 +96,24 @@ export function ApprovalChainPanel({ approvalChain }: ApprovalChainPanelProps) {
                   )}
                   {record.comments && (
                     <div className="mt-2 p-2 bg-white rounded text-sm italic">
+                      <p className="font-medium text-xs text-gray-600 mb-1">Comments:</p>
                       "{record.comments}"
+                    </div>
+                  )}
+                  {record.remarks && (
+                    <div className="mt-2 p-2 bg-white rounded text-sm italic border-l-2 border-red-400">
+                      <p className="font-medium text-xs text-gray-600 mb-1">Remarks:</p>
+                      "{record.remarks}"
+                    </div>
+                  )}
+                  {record.signature && (
+                    <div className="mt-2 p-2 bg-white rounded">
+                      <p className="font-medium text-xs text-gray-600 mb-1">Digital Signature:</p>
+                      <img
+                        src={record.signature}
+                        alt="Digital signature"
+                        className="h-12 border border-gray-300 rounded"
+                      />
                     </div>
                   )}
                 </div>
