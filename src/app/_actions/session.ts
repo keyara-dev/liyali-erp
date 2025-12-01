@@ -1,13 +1,13 @@
 'use server';
 
 import { getCurrentUser, hasRole, isAdmin } from '@/lib/auth';
-import type { AuthUser } from '@/lib/auth';
+import type { User } from '@/types/auth';
 
 /**
  * Get the current authenticated user session
  * Server action that can be called from client components using React Query
  *
- * @returns {Promise<{user: AuthUser | null, isAuthenticated: boolean}>}
+ * @returns {Promise<{user: User | null, isAuthenticated: boolean}>}
  *
  * @example
  * ```typescript
@@ -18,7 +18,7 @@ import type { AuthUser } from '@/lib/auth';
  * ```
  */
 export async function getSessionAction(): Promise<{
-  user: AuthUser | null;
+  user: User | null;
   isAuthenticated: boolean;
 }> {
   try {

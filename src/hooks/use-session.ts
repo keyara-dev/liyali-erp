@@ -2,10 +2,10 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { getSessionAction, checkUserRoleAction, checkIsAdminAction } from '@/app/_actions/session';
-import type { AuthUser } from '@/lib/auth';
+import type { User } from '@/types/auth';
 
 export interface SessionData {
-  user: AuthUser | null;
+  user: User | null;
   isLoading: boolean;
   isAuthenticated: boolean;
   error: Error | null;
@@ -98,7 +98,7 @@ export function useIsAuthenticated(): boolean {
  * Client-side hook to get the current user
  * Uses React Query to fetch session data
  *
- * @returns {AuthUser | null} Current authenticated user or null
+ * @returns {User | null} Current authenticated user or null
  *
  * @example
  * ```typescript
@@ -109,7 +109,7 @@ export function useIsAuthenticated(): boolean {
  * }
  * ```
  */
-export function useCurrentUser(): AuthUser | null {
+export function useCurrentUser(): User | null {
   const { user } = useSession();
   return user;
 }
