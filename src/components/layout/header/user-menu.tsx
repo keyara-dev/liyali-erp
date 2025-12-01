@@ -1,6 +1,6 @@
 "use client";
 
-import { BadgeCheck, Bell, ChevronRightIcon, CreditCard, LogOut, Sparkles } from "lucide-react";
+import { BadgeCheck, Bell, CreditCard, LogOut } from "lucide-react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -13,16 +13,7 @@ import {
   DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu";
 import Link from "next/link";
-import * as React from "react";
-import { Progress } from "@/components/ui/progress";
-import { getCurrentUserAction } from "@/app/_actions/auth-actions";
-import { useEffect, useState } from "react";
-
-interface UserData {
-  name: string;
-  email: string;
-  avatar?: string;
-}
+import { useCurrentUser } from "@/hooks/use-session";
 
 const getInitials = (name: string) => {
   return name
@@ -33,31 +24,9 @@ const getInitials = (name: string) => {
 };
 
 export default function UserMenu() {
-  const [user, setUser] = useState<UserData | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const user = useCurrentUser();
 
-  useEffect(() => {
-    async function loadUser() {
-      try {
-        const response = await getCurrentUserAction();
-        if (response.success && response.data) {
-          setUser({
-            name: response.data.name || "User",
-            email: response.data.email || "",
-            avatar: response.data.avatar
-          });
-        }
-      } catch (error) {
-        console.error("Failed to load user data:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    }
-
-    loadUser();
-  }, []);
-
-  if (isLoading || !user) {
+  if (!user) {
     return (
       <Avatar className="rounded-full">
         <AvatarFallback>...</AvatarFallback>
