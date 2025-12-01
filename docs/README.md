@@ -1,392 +1,179 @@
 # Liyali Gateway Documentation
 
-Welcome to the Liyali Gateway documentation hub. This folder contains comprehensive guides for features, API, implementation status, and user instructions.
-
-## 📚 Documentation Files
-
-### 1. [FEATURES.md](./FEATURES.md)
-**Comprehensive feature documentation covering all platform capabilities**
-
-- Core modules overview (Budgets, Tasks, Settings, Approvals)
-- Detailed feature descriptions
-- Data structures and type definitions
-- Component architecture
-- Technical stack information
-- Security features
-- Performance optimizations
-- Accessibility standards
-
-**Best For**: Developers, Product Managers, Architects
+**Current Status**: Phases 1-11 Complete ✅ | Phase 12 Planned 📋
+**Last Updated**: 2024-12-01
 
 ---
 
-### 2. [API.md](./API.md)
-**Complete API reference for all server actions**
+## 📚 Documentation Overview
 
-- Budget API (CRUD, approval, rejection)
-- Tasks API (retrieval, statistics, actions)
-- Workflow approval API
-- Settings & profile API
-- Authentication API
-- Error handling standards
-- Usage patterns and examples
+This folder contains complete documentation for the Liyali Gateway workflow approval system. Use this index to find what you need.
 
-**Best For**: Developers, Integration Engineers
+### Quick Navigation
 
----
-
-### 3. [IMPLEMENTATION_STATUS.md](./IMPLEMENTATION_STATUS.md)
-**Project status tracking and roadmap**
-
-#### Current Status: Phase 2 - Core Features (75% Complete)
-
-**Completed Features:**
-- ✅ Authentication & Authorization
-- ✅ User Settings & Profile Management
-- ✅ Budget Management
-- ✅ Tasks Management
-- ✅ Approval Workflow System
-- ✅ UI Components & Navigation
-
-**In Progress:**
-- 📝 User documentation
-
-**Pending Features (Phase 3):**
-- Requisition Management
-- Purchase Order Management
-- Payment Voucher System
-- Goods Received Notes
-
-**Contents:**
-- Feature completion tracking
-- Phase breakdown
-- Deployment readiness checklist
-- Performance metrics
-- Resource requirements
-- Timeline estimates
-- Known issues & limitations
-- Technology debt
-- Success metrics
-
-**Best For**: Project Managers, Stakeholders, Team Leads
+- **[Getting Started](#getting-started)** - Start here if you're new
+- **[Architecture](#architecture)** - System design and structure
+- **[Features](#features)** - What the system does
+- **[Demo Guide](#demo-guide)** - How to demonstrate to stakeholders
+- **[Implementation](#implementation)** - Building and deploying
+- **[Roadmap](#roadmap)** - What's next
 
 ---
 
-### 4. [USER_GUIDE.md](./USER_GUIDE.md)
-**End-user documentation and how-to guide**
+## Getting Started
 
-#### Includes:
-- Getting started (login, first-time setup)
-- Navigation guide
-- Feature walkthroughs:
-  - Tasks management
-  - Budget management
-  - Approval workflows
-  - Settings & profile
-- Common tasks
-- Tips & best practices
-- Troubleshooting
-- Security tips
-- FAQ
-- Keyboard shortcuts
-
-**Best For**: End Users, Support Staff, Trainers
-
----
-
-### 5. [QUERY_HOOKS_PATTERNS.md](./QUERY_HOOKS_PATTERNS.md)
-**Standardized patterns for React Query hooks and mutations**
-
-#### Includes:
-- Query key management (QUERY_KEYS in constants)
-- Query hooks patterns and examples
-- Mutation hooks patterns and examples
-- File organization and naming conventions
-- SSR support with initialData
-- Combined create/update mutations
-- Cache invalidation strategies
-- Best practices
-- Troubleshooting guide
-- Migration guide from old patterns
-
-**Contents:**
-- Query hooks for fetching data
-- Mutation hooks for creating, updating, deleting
-- Approval mutation patterns
-- Error handling with toast notifications
-- Automatic cache invalidation
-- TypeScript support
-
-**Best For**: Frontend Developers, Architects
-
----
-
-### 6. [APPROVAL_MODAL_PATTERNS.md](./APPROVAL_MODAL_PATTERNS.md)
-**Standardized ApprovalConfirmationModal component patterns**
-
-#### Includes:
-- ApprovalConfirmationModal component overview
-- Required digital signatures for all approvals
-- Required remarks for rejections
-- Optional comments for both actions
-- Step-by-step usage examples
-- Integration with query hooks
-- Validation rules
-- Error handling patterns
-- Accessibility features
-- Testing examples
-- Integration checklist
-
-**Contents:**
-- Basic and advanced usage patterns
-- Props reference and types
-- Three real-world examples (budgets, requisitions, dual-action)
-- Best practices and common pitfalls
-- Component architecture
-- Validation rules (signature required, remarks for rejection)
-- Styling and customization
-
-**Best For**: Frontend Developers, UI/UX Designers
-
----
-
-### 7. [IMPLEMENTATION_GUIDE.md](./IMPLEMENTATION_GUIDE.md)
-**Step-by-step guide for implementing new features and workflows**
-
-#### Includes:
-- Quick start for implementing new document workflows
-- Implementation phases (Query Keys → Hooks → Server Component → Client Component)
-- Complete workflow examples
-- Common patterns (optimistic updates, dependent queries, pagination)
-- Troubleshooting guide with solutions
-- Performance optimization strategies
-- Security considerations for approvals and signatures
-- Testing examples and patterns
-- Comprehensive feature implementation checklist
-
-**Contents:**
-- Phase-by-phase implementation instructions
-- Real-world code examples for each phase
-- Multi-stage approval workflow patterns
-- Caching strategies by data type
-- Authorization and permission patterns
-- Complete test examples
-- Integration checklist for new features
-
-**Best For**: Frontend Developers, New Team Members, Feature Implementers
-
----
-
-## 🎯 Quick Navigation
-
-### I want to...
-
-**...understand what features are available**
-→ Start with [FEATURES.md](./FEATURES.md)
-
-**...integrate with the API**
-→ Check [API.md](./API.md)
-
-**...track project progress**
-→ Review [IMPLEMENTATION_STATUS.md](./IMPLEMENTATION_STATUS.md)
-
-**...learn how to use the platform**
-→ Read [USER_GUIDE.md](./USER_GUIDE.md)
-
-**...understand the codebase**
-→ See FEATURES.md section on file structure
-
-**...create query and mutation hooks**
-→ Review [QUERY_HOOKS_PATTERNS.md](./QUERY_HOOKS_PATTERNS.md)
-
-**...understand data fetching patterns**
-→ Check [QUERY_HOOKS_PATTERNS.md](./QUERY_HOOKS_PATTERNS.md) with SSR support examples
-
-**...implement a new feature or workflow**
-→ Follow [IMPLEMENTATION_GUIDE.md](./IMPLEMENTATION_GUIDE.md) step-by-step
-
-**...understand approval modal patterns**
-→ Review [APPROVAL_MODAL_PATTERNS.md](./APPROVAL_MODAL_PATTERNS.md) for signature and remarks requirements
-
----
-
-## 📊 Project Status Summary
-
-| Phase | Status | Completion |
-|-------|--------|-----------|
-| Phase 1: Foundation | ✅ Complete | 100% |
-| Phase 2: Core Workflows | 🚀 In Progress | 75% |
-| Phase 3: Document Management | 📅 Planned | 0% |
-| Phase 4: Advanced Features | 📅 Planned | 0% |
-| Phase 5: Optimization | 📅 Planned | 0% |
-
----
-
-## 🎓 Learning Path
+### For First Time Users
+1. **Start**: Read `01-OVERVIEW.md` - 10 min read
+2. **Setup**: Follow `02-QUICK-START.md` - 5 min setup
+3. **Demo**: Use `03-DEMO-GUIDE.md` - See it in action
 
 ### For Developers
-1. Read [FEATURES.md](./FEATURES.md) - Understand platform architecture
-2. Review [API.md](./API.md) - Learn API endpoints and patterns
-3. Study [QUERY_HOOKS_PATTERNS.md](./QUERY_HOOKS_PATTERNS.md) - Learn data fetching patterns
-4. Review [APPROVAL_MODAL_PATTERNS.md](./APPROVAL_MODAL_PATTERNS.md) - Understand approval workflows
-5. Follow [IMPLEMENTATION_GUIDE.md](./IMPLEMENTATION_GUIDE.md) - Step-by-step feature implementation
-6. Check codebase structure mentioned in FEATURES.md
-7. Run the application and explore
-8. Reference guides when creating new hooks and features
+1. **Architecture**: Read `04-ARCHITECTURE.md` - System design
+2. **Code**: Check `05-CODE-STRUCTURE.md` - File organization
+3. **Development**: See `06-DEVELOPMENT-GUIDE.md` - How to extend
 
-### For Product Managers
-1. Read [FEATURES.md](./FEATURES.md) overview section
-2. Review [IMPLEMENTATION_STATUS.md](./IMPLEMENTATION_STATUS.md)
-3. Check feature completion and roadmap
-4. Review user feedback and metrics
-
-### For End Users
-1. Start with [USER_GUIDE.md](./USER_GUIDE.md) - Getting Started section
-2. Review feature walkthroughs for your role
-3. Check FAQ for common questions
-4. Bookmark troubleshooting section
-
-### For Support Staff
-1. Read [USER_GUIDE.md](./USER_GUIDE.md) thoroughly
-2. Understand troubleshooting section
-3. Review [IMPLEMENTATION_STATUS.md](./IMPLEMENTATION_STATUS.md) for known issues
-4. Know how to guide users on common tasks
+### For Project Managers
+1. **Status**: Read `PROJECT-STATUS.md` - Current progress
+2. **Roadmap**: Check `ROADMAP.md` - What's coming
+3. **Demo**: Follow `03-DEMO-GUIDE.md` - For stakeholders
 
 ---
 
-## 🔍 Key Sections
+## Architecture
 
-### Authentication & Security
-- **File**: FEATURES.md → Security Features section
-- **Guide**: USER_GUIDE.md → Security Tips section
-- **Status**: ✅ Implemented
+### System Overview
+```
+Frontend (Next.js 13+)
+├── UI Components (React)
+├── Server Actions
+└── React Query Hooks
 
-### Budget Management
-- **Features**: FEATURES.md → Budget Management section
-- **API**: API.md → Budget API section
-- **User Guide**: USER_GUIDE.md → Budget Management section
-- **Status**: ✅ 95% Complete
+Data Layer
+├── localStorage (Current: Phase 11)
+└── PostgreSQL (Planned: Phase 12)
 
-### Task Management
-- **Features**: FEATURES.md → Tasks Management section
-- **API**: API.md → Tasks API section
-- **User Guide**: USER_GUIDE.md → Tasks Management section
-- **Status**: ✅ 100% Complete
+Features
+├── 5 Workflow Types
+├── Multi-stage Approvals (2-3 stages)
+├── Bulk Operations
+├── Real-time Analytics
+└── Data Persistence
+```
 
-### Approval Workflows
-- **Features**: FEATURES.md → Approval Workflow System section
-- **Implementation**: Digital signatures, remarks, audit trails
-- **User Guide**: USER_GUIDE.md → Approval Workflows section
-- **Status**: ✅ 100% Complete
-
-### Settings & Profile
-- **Features**: FEATURES.md → Settings & Profile Management section
-- **API**: API.md → Settings API section
-- **User Guide**: USER_GUIDE.md → Settings & Profile section
-- **Status**: ✅ 100% Complete
+See `04-ARCHITECTURE.md` for details.
 
 ---
 
-## 📅 Documentation Updates
+## Features
 
-| File | Last Updated | Version |
-|------|-------------|---------|
-| FEATURES.md | 2025-11-30 | 1.0.0 |
-| API.md | 2025-11-30 | 1.0.0 |
-| IMPLEMENTATION_STATUS.md | 2025-11-30 | 1.0.0 |
-| USER_GUIDE.md | 2025-11-30 | 1.0.0 |
-| QUERY_HOOKS_PATTERNS.md | 2025-11-30 | 1.0.0 |
-| APPROVAL_MODAL_PATTERNS.md | 2025-11-30 | 1.0.0 |
-| IMPLEMENTATION_GUIDE.md | 2025-11-30 | 1.0.0 |
-| README.md | 2025-11-30 | 1.0.1 |
+### ✅ Complete (Phases 1-11)
+- Core UI Components
+- Workflow Types (5: Requisition, Budget, PO, PV, GRN)
+- Multi-stage Approvals (2-3 stages)
+- Server Actions with mock data
+- React Query integration
+- Data Persistence (localStorage)
+- Signature Capture
+- Bulk Operations
+- Analytics Dashboard
+- Notification System
 
----
+### ⏳ Planned (Phase 12)
+- PostgreSQL Database
+- OAuth 2.0 Authentication
+- Email Notifications
+- Audit Logging
+- RBAC Enforcement
+- Permission Enforcement
 
-## 💡 Tips for Documentation
-
-### Keeping Documentation Updated
-1. Update docs when adding new features
-2. Add API changes to API.md immediately
-3. Update status in IMPLEMENTATION_STATUS.md weekly
-4. Gather user feedback for USER_GUIDE.md improvements
-
-### Reporting Documentation Issues
-- Found a typo or unclear section?
-- Contact the development team
-- Submit via GitHub issues
-- Email: docs@liyaligateway.com
+See `FEATURES.md` for complete list.
 
 ---
 
-## 🔗 Related Resources
+## Demo Guide
 
-- **GitHub Repository**: [liyali-gateway](https://github.com/your-org/liyali-gateway)
-- **Live Demo**: https://demo.liyaligateway.com
-- **Support Portal**: https://support.liyaligateway.com
-- **API Status**: https://status.liyaligateway.com
+### Quick Demo (5 minutes)
+```
+1. Open http://localhost:3000/workflows/tasks
+2. Click Approvals tab
+3. Select any card and approve with signature
+Done!
+```
 
----
-
-## 📞 Getting Help
-
-### Finding Answers
-1. Search documentation (Ctrl+F)
-2. Check FAQ sections
-3. Review troubleshooting guides
-4. Contact support
-
-### Providing Feedback
-- Documentation quality: docs@liyaligateway.com
-- Feature requests: features@liyaligateway.com
-- Bug reports: bugs@liyaligateway.com
+See `03-DEMO-GUIDE.md` for complete instructions.
 
 ---
 
-## 📝 Documentation Standards
+## Implementation
 
-All documentation in Liyali Gateway follows:
-- Clear, concise language
-- Organized with headings and sections
-- Code examples where applicable
-- Keyboard shortcuts and tips
-- Visual organization with tables and lists
-- Plain English (US spelling)
+### Build & Run
+```bash
+npm install
+npm run dev          # Development
+npm run build        # Production build
+npm run test         # Run tests
+npm run type-check   # TypeScript check
+```
 
----
+### Code Organization
+```
+src/
+├── app/                    # Next.js pages
+├── components/            # React components
+├── hooks/                # Custom hooks
+├── lib/                  # Utilities and stores
+└── types/               # TypeScript interfaces
+```
 
-## 🎯 Next Steps
-
-### For New Users
-1. Read USER_GUIDE.md "Getting Started"
-2. Complete first-time setup
-3. Review your assigned tasks
-4. Start with a simple action (e.g., approve a document)
-
-### For New Developers
-1. Review FEATURES.md architecture
-2. Explore the codebase structure
-3. Read relevant API documentation
-4. Check implementation status for context
-
-### For Project Teams
-1. Review IMPLEMENTATION_STATUS.md
-2. Understand current phase and roadmap
-3. Plan next phase work
-4. Schedule stakeholder review
+See `05-CODE-STRUCTURE.md` for details.
 
 ---
 
-## 📞 Contact & Support
+## Roadmap
 
-**Documentation Owner**: Development Team
-**Last Updated**: 2025-11-30
-**Feedback**: Please submit via GitHub issues or email support@liyaligateway.com
+### Status
+- ✅ Phases 1-11: Complete
+- ⏳ Phase 12: Database Integration (20-30 hours)
+
+### Phase 12 Tasks
+- PostgreSQL schema setup
+- OAuth 2.0 configuration
+- Data migration
+- Email notifications
+- Audit logging
+- Permission enforcement
+
+See `PHASE-12-PLAN.md` for full details.
 
 ---
 
-**Welcome to Liyali Gateway! 🚀**
+## File Index
 
-For a quick overview, start with [FEATURES.md](./FEATURES.md).
-For detailed usage, see [USER_GUIDE.md](./USER_GUIDE.md).
-For development, check [API.md](./API.md).
+### Essential
+- `01-OVERVIEW.md` - System overview
+- `02-QUICK-START.md` - Setup guide
+- `03-DEMO-GUIDE.md` - Demo instructions
+- `PROJECT-STATUS.md` - Current status
 
+### Architecture
+- `04-ARCHITECTURE.md` - System design
+- `05-CODE-STRUCTURE.md` - Code organization
+- `FEATURES.md` - Feature list
+
+### Development
+- `06-DEVELOPMENT-GUIDE.md` - How to extend
+- `API-REFERENCE.md` - API docs
+
+### Planning
+- `ROADMAP.md` - Future plans
+- `PHASE-12-PLAN.md` - Next phase
+- `IMPLEMENTATION-CHECKLIST.md` - Tasks
+
+### Testing
+- `TESTING-GUIDE.md` - Testing procedures
+- `APPROVAL-GUIDE.md` - Workflow guide
+
+---
+
+**Status**: ✅ Phase 11 Complete | Ready for Demo
+**Next**: Phase 12 - Database Integration
