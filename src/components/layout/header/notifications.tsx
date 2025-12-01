@@ -1,10 +1,8 @@
-"use client";
-
 import { Suspense } from "react";
 import { NotificationBell } from "@/components/notifications/notification-bell";
 import { Button } from "@/components/ui/button";
 import { BellIcon } from "lucide-react";
-import { Skeleton } from "@/components/ui/skeleton";
+import { getCurrentUser } from "@/lib/auth";
 
 // Fallback while loading user
 function NotificationFallback() {
@@ -15,10 +13,8 @@ function NotificationFallback() {
   );
 }
 
-// Client component that will be wrapped by server component
+// Server component that fetches user data
 async function NotificationsContent() {
-  // Import here to avoid circular dependencies
-  const { getCurrentUser } = await import("@/lib/auth");
   const user = await getCurrentUser();
 
   if (!user) {
@@ -32,13 +28,13 @@ async function NotificationsContent() {
   return <NotificationBell userId={user.id} />;
 }
 
-const Notifications = () => {
-  
+// Server component - no "use client" directive
+async function Notifications() {
   return (
     <Suspense fallback={<NotificationFallback />}>
       <NotificationsContent />
     </Suspense>
   );
-};
+}
 
 export default Notifications;
