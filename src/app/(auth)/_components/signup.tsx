@@ -15,6 +15,7 @@ import { PhoneInput } from "@/components/ui/phone-input";
 import { Textarea } from "@/components/ui/textarea";
 import { EyeIcon, EyeOffIcon } from "lucide-react";
 import Link from "next/link";
+import { Input } from "@/components";
 
 export default function Signup() {
   const router = useRouter();
@@ -276,24 +277,12 @@ export default function Signup() {
                 WhatsApp Number <span className="text-red-500">*</span>
               </label>
               <div className="flex gap-2">
-                <PhoneInput
+                <Input
                   required
-                  inputProps={{
-                    id: "phone",
-                    name: "phone",
-                    type: "tel",
-                    required: true,
-                    placeholder: "Enter your phone number",
-                  }}
                   value={whatsapp}
-                  defaultCountry={"zm"}
-                  className="h-14"
-                  classNames={{
-                    input: "font-semibold text-black placeholder:text-gray-400",
-                  }}
-                  onChange={(phone, meta) => {
-                    setWhatsapp(phone);
-                    setPhoneInputValue(meta.inputValue);
+                  onChange={(e) => {
+                    setWhatsapp(e.target.value);
+                    setPhoneInputValue(e.target.value);
                   }}
                   descriptionText="Required for store notifications and customer support"
                 />
@@ -408,14 +397,13 @@ export default function Signup() {
                 Back
               </Button>
 
-              <Button type="submit" disabled={isSubmitting} className="w-full">
-                {isSubmitting ? (
-                  <span className="flex items-center gap-1 ">
-                    <Spinner size={"sm"} color="white" /> Creating Store...
-                  </span>
-                ) : (
-                  "Create Store"
-                )}
+              <Button
+                type="submit"
+                disabled={isSubmitting}
+                isLoading={isSubmitting}
+                className="w-full"
+              >
+                Register
               </Button>
             </div>
           </>
