@@ -1,62 +1,57 @@
-'use client'
+"use client";
 
-import { useRouter } from 'next/navigation'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import {
-  PlusCircle,
-  FileText,
-  Search,
-  Settings,
-} from 'lucide-react'
+import { useRouter } from "next/navigation";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { PlusCircle, FileText, Search, Settings } from "lucide-react";
 
 interface QuickActionsProps {
-  userRole: string
+  userRole: string;
 }
 
 export function QuickActions({ userRole }: QuickActionsProps) {
-  const router = useRouter()
+  const router = useRouter();
 
   const actions = [
     {
-      title: 'Create Requisition',
-      description: 'Start a new requisition',
+      title: "Create Requisition",
+      description: "Start a new requisition",
       icon: PlusCircle,
-      href: '/workflows/requisitions/create',
-      color: 'text-primary',
-      bgColor: 'bg-primary/10',
+      href: "/requisitions/create",
+      color: "text-primary",
+      bgColor: "bg-primary/10",
       visible: true,
     },
     {
-      title: 'View Search',
-      description: 'Search all transactions',
+      title: "View Search",
+      description: "Search all transactions",
       icon: Search,
-      href: '/workflows/search',
-      color: 'text-secondary',
-      bgColor: 'bg-secondary/10',
+      href: "/search",
+      color: "text-secondary",
+      bgColor: "bg-secondary/10",
       visible: true,
     },
     {
-      title: 'My Documents',
-      description: 'View your requisitions',
+      title: "My Documents",
+      description: "View your requisitions",
       icon: FileText,
-      href: '/workflows/requisitions',
-      color: 'text-accent',
-      bgColor: 'bg-accent/10',
+      href: "/requisitions",
+      color: "text-accent",
+      bgColor: "bg-accent/10",
       visible: true,
     },
     {
-      title: 'Settings',
-      description: 'Configure preferences',
+      title: "Settings",
+      description: "Configure preferences",
       icon: Settings,
-      href: '/settings',
-      color: 'text-muted-foreground',
-      bgColor: 'bg-muted/10',
-      visible: userRole === 'ADMIN',
+      href: "/settings",
+      color: "text-muted-foreground",
+      bgColor: "bg-muted/10",
+      visible: userRole === "ADMIN",
     },
-  ]
+  ];
 
-  const visibleActions = actions.filter((action) => action.visible)
+  const visibleActions = actions.filter((action) => action.visible);
 
   return (
     <Card>
@@ -66,7 +61,7 @@ export function QuickActions({ userRole }: QuickActionsProps) {
       <CardContent>
         <div className="space-y-3">
           {visibleActions.map((action, index) => {
-            const Icon = action.icon
+            const Icon = action.icon;
             return (
               <Button
                 key={index}
@@ -79,13 +74,15 @@ export function QuickActions({ userRole }: QuickActionsProps) {
                 </div>
                 <div className="text-left">
                   <p className="text-sm font-medium">{action.title}</p>
-                  <p className="text-xs text-muted-foreground">{action.description}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {action.description}
+                  </p>
                 </div>
               </Button>
-            )
+            );
           })}
         </div>
       </CardContent>
     </Card>
-  )
+  );
 }

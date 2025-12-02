@@ -1,10 +1,10 @@
-'use client'
+"use client";
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import {
   Table,
   TableBody,
@@ -12,53 +12,53 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table'
-import { Loader2 } from 'lucide-react'
-import { createWorkflowDocument } from '@/app/_actions/workflow'
-import { RequisitionFormData } from './create-requisition-client'
+} from "@/components/ui/table";
+import { Loader2 } from "lucide-react";
+import { createWorkflowDocument } from "@/app/_actions/workflow";
+import { RequisitionFormData } from "./create-requisition-client";
 
 interface FormPreviewProps {
-  formData: RequisitionFormData
-  onBack: () => void
-  onSubmit: (data: RequisitionFormData) => void
+  formData: RequisitionFormData;
+  onBack: () => void;
+  onSubmit: (data: RequisitionFormData) => void;
 }
 
 export function FormPreview({ formData, onBack, onSubmit }: FormPreviewProps) {
-  const router = useRouter()
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const router = useRouter();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const totalAmount = formData.items.reduce(
     (sum, item) => sum + item.estimatedCost * item.quantity,
     0
-  )
+  );
 
   const handleSubmit = async () => {
-    setIsSubmitting(true)
-    setError(null)
+    setIsSubmitting(true);
+    setError(null);
 
     try {
-      const result = await createWorkflowDocument('REQUISITION', {
+      const result = await createWorkflowDocument("REQUISITION", {
         department: formData.department,
         requestedFor: formData.requestedFor,
         items: formData.items,
         justification: formData.justification,
         budgetCode: formData.budgetCode,
-      })
+      });
 
       if (result.success) {
         // Redirect to requisitions list
-        router.push('/workflows/requisitions')
+        router.push("//requisitions");
       } else {
-        setError(result.message || 'Failed to create requisition')
+        setError(result.message || "Failed to create requisition");
       }
     } catch (err) {
-      console.error('Submit error:', err)
-      setError('An error occurred while submitting the requisition')
+      console.error("Submit error:", err);
+      setError("An error occurred while submitting the requisition");
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
-  }
+  };
 
   return (
     <div className="space-y-6">
@@ -89,7 +89,9 @@ export function FormPreview({ formData, onBack, onSubmit }: FormPreviewProps) {
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Total Amount</p>
-              <p className="text-base font-bold text-primary">K{totalAmount.toFixed(2)}</p>
+              <p className="text-base font-bold text-primary">
+                K{totalAmount.toFixed(2)}
+              </p>
             </div>
           </div>
 
@@ -122,8 +124,12 @@ export function FormPreview({ formData, onBack, onSubmit }: FormPreviewProps) {
               <TableBody>
                 {formData.items.map((item, index) => (
                   <TableRow key={item.id}>
-                    <TableCell className="font-medium">{item.itemDescription}</TableCell>
-                    <TableCell className="text-right">{item.quantity}</TableCell>
+                    <TableCell className="font-medium">
+                      {item.itemDescription}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {item.quantity}
+                    </TableCell>
                     <TableCell className="text-right">
                       {item.estimatedCost.toFixed(2)}
                     </TableCell>
@@ -141,7 +147,9 @@ export function FormPreview({ formData, onBack, onSubmit }: FormPreviewProps) {
             <div className="space-y-2">
               <div className="flex gap-8">
                 <span className="font-medium">Grand Total:</span>
-                <span className="font-bold text-lg text-primary">K{totalAmount.toFixed(2)}</span>
+                <span className="font-bold text-lg text-primary">
+                  K{totalAmount.toFixed(2)}
+                </span>
               </div>
             </div>
           </div>
@@ -165,17 +173,18 @@ export function FormPreview({ formData, onBack, onSubmit }: FormPreviewProps) {
           className="gap-2"
         >
           {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
-          {isSubmitting ? 'Submitting...' : 'Submit Requisition'}
+          {isSubmitting ? "Submitting..." : "Submit Requisition"}
         </Button>
       </div>
 
       {/* Info */}
       <div className="bg-primary/5 border border-primary/20 rounded-lg p-4">
         <p className="text-sm">
-          <span className="font-medium">Note:</span> Once submitted, your requisition will enter
-          the approval workflow. You will be notified when it progresses to the next stage.
+          <span className="font-medium">Note:</span> Once submitted, your
+          requisition will enter the approval workflow. You will be notified
+          when it progresses to the next stage.
         </p>
       </div>
     </div>
-  )
+  );
 }

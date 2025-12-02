@@ -22,7 +22,7 @@ export const getTasksForUser = cache(async (
     const mockTasks: Task[] = [
       {
         id: 'task-1',
-        type: 'BUDGET_APPROVAL',
+        taskType: 'BUDGET_APPROVAL',
         title: 'Approve IT Department Budget 2024',
         description: 'Review and approve the annual budget allocation for IT department',
         assignedTo: userId,
@@ -33,12 +33,12 @@ export const getTasksForUser = cache(async (
         documentId: 'budget-1',
         documentNumber: 'BDG-2024-00001',
         createdAt: new Date('2024-02-05'),
-        dueAt: new Date('2024-02-15'),
-        actionUrl: '/workflows/budgets/budget-1'
+        dueDate: new Date('2024-02-15'),
+        metadata: { currentApprovalStage: 1, totalApprovalStages: 4, approvalStageName: 'Stage Name' }
       },
       {
         id: 'task-2',
-        type: 'REQUISITION_APPROVAL',
+        taskType: 'REQUISITION_APPROVAL',
         title: 'Approve Purchase Requisition PR-2024-001',
         description: 'Review and approve the purchase requisition for office equipment',
         assignedTo: userId,
@@ -49,12 +49,12 @@ export const getTasksForUser = cache(async (
         documentId: 'req-1001',
         documentNumber: 'PR-2024-001',
         createdAt: new Date('2024-02-06'),
-        dueAt: new Date('2024-02-20'),
-        actionUrl: '/workflows/requisitions/req-1001'
+        dueDate: new Date('2024-02-20'),
+        metadata: { currentApprovalStage: 1, totalApprovalStages: 4, approvalStageName: 'Stage Name' }
       },
       {
         id: 'task-3',
-        type: 'PURCHASE_ORDER_APPROVAL',
+        taskType: 'PURCHASE_ORDER_APPROVAL',
         title: 'Approve Purchase Order PO-2024-042',
         description: 'Review and approve the purchase order for software licenses',
         assignedTo: userId,
@@ -65,12 +65,12 @@ export const getTasksForUser = cache(async (
         documentId: 'po-2024-042',
         documentNumber: 'PO-2024-042',
         createdAt: new Date('2024-02-07'),
-        dueAt: new Date('2024-02-17'),
-        actionUrl: '/workflows/purchase-orders/po-2024-042'
+        dueDate: new Date('2024-02-17'),
+        metadata: { currentApprovalStage: 1, totalApprovalStages: 4, approvalStageName: 'Stage Name' }
       },
       {
         id: 'task-4',
-        type: 'PAYMENT_VOUCHER_APPROVAL',
+        taskType: 'PAYMENT_VOUCHER_APPROVAL',
         title: 'Approve Payment Voucher PV-2024-125',
         description: 'Review and approve payment for vendor invoice INV-20240205',
         assignedTo: userId,
@@ -81,12 +81,12 @@ export const getTasksForUser = cache(async (
         documentId: 'pv-2024-125',
         documentNumber: 'PV-2024-125',
         createdAt: new Date('2024-02-08'),
-        dueAt: new Date('2024-02-12'),
-        actionUrl: '/workflows/payment-vouchers/pv-2024-125'
+        dueDate: new Date('2024-02-12'),
+        metadata: { currentApprovalStage: 1, totalApprovalStages: 4, approvalStageName: 'Stage Name' }
       },
       {
         id: 'task-5',
-        type: 'GOODS_RECEIVED_NOTE_CONFIRMATION',
+        taskType: 'GOODS_RECEIVED_NOTE_CONFIRMATION',
         title: 'Confirm Goods Received Note GRN-2024-89',
         description: 'Verify receipt of goods for purchase order PO-2024-035',
         assignedTo: userId,
@@ -97,12 +97,12 @@ export const getTasksForUser = cache(async (
         documentId: 'grn-2024-89',
         documentNumber: 'GRN-2024-89',
         createdAt: new Date('2024-02-09'),
-        dueAt: new Date('2024-02-14'),
-        actionUrl: '/workflows/grn/grn-2024-89'
+        dueDate: new Date('2024-02-14'),
+        metadata: { currentApprovalStage: 1, totalApprovalStages: 4, approvalStageName: 'Stage Name' }
       },
       {
         id: 'task-6',
-        type: 'BUDGET_APPROVAL',
+        taskType: 'BUDGET_APPROVAL',
         title: 'Approve HR Department Budget 2024',
         description: 'Review and approve the annual budget allocation for HR department',
         assignedTo: userId,
@@ -113,12 +113,12 @@ export const getTasksForUser = cache(async (
         documentId: 'budget-3',
         documentNumber: 'BDG-2024-00003',
         createdAt: new Date('2024-02-10'),
-        dueAt: new Date('2024-02-11'),
-        actionUrl: '/workflows/budgets/budget-3'
+        dueDate: new Date('2024-02-11'),
+        metadata: { currentApprovalStage: 1, totalApprovalStages: 4, approvalStageName: 'Stage Name' }
       },
       {
         id: 'task-7',
-        type: 'REQUISITION_APPROVAL',
+        taskType: 'REQUISITION_APPROVAL',
         title: 'Approve Purchase Requisition PR-2024-002',
         description: 'Review and approve the purchase requisition for IT infrastructure',
         assignedTo: userId,
@@ -129,8 +129,8 @@ export const getTasksForUser = cache(async (
         documentId: 'req-1002',
         documentNumber: 'PR-2024-002',
         createdAt: new Date('2024-02-03'),
-        dueAt: new Date('2024-02-16'),
-        actionUrl: '/workflows/requisitions/req-1002'
+        dueDate: new Date('2024-02-16'),
+        metadata: { currentApprovalStage: 1, totalApprovalStages: 4, approvalStageName: 'Stage Name' }
       }
     ]
 
@@ -180,22 +180,27 @@ export async function getTaskStats(userId: string): Promise<APIResponse<TaskStat
     const stats: TaskStats = {
       totalTasks: tasks.length,
       pendingTasks: tasks.filter(t => t.status === 'PENDING').length,
-      inProgressTasks: tasks.filter(t => t.status === 'IN_PROGRESS').length,
       completedTasks: tasks.filter(t => t.status === 'COMPLETED').length,
       overdueTasks: tasks.filter(
-        t => t.dueAt && t.dueAt < now && t.status !== 'COMPLETED'
+        t => t.dueDate && t.dueDate < now && t.status !== 'COMPLETED'
       ).length,
-      urgentTasks: tasks.filter(
-        t => t.priority === 'URGENT' && t.status !== 'COMPLETED'
+      highPriorityTasks: tasks.filter(
+        t => t.priority === 'HIGH' || t.priority === 'URGENT'
       ).length,
-      tasksByType: {
-        BUDGET_APPROVAL: tasks.filter(t => t.type === 'BUDGET_APPROVAL').length,
-        REQUISITION_APPROVAL: tasks.filter(t => t.type === 'REQUISITION_APPROVAL').length,
-        PURCHASE_ORDER_APPROVAL: tasks.filter(t => t.type === 'PURCHASE_ORDER_APPROVAL').length,
-        PAYMENT_VOUCHER_APPROVAL: tasks.filter(t => t.type === 'PAYMENT_VOUCHER_APPROVAL').length,
+      byType: {
+        BUDGET_APPROVAL: tasks.filter(t => t.taskType === 'BUDGET_APPROVAL').length,
+        REQUISITION_APPROVAL: tasks.filter(t => t.taskType === 'REQUISITION_APPROVAL').length,
+        PURCHASE_ORDER_APPROVAL: tasks.filter(t => t.taskType === 'PURCHASE_ORDER_APPROVAL').length,
+        PAYMENT_VOUCHER_APPROVAL: tasks.filter(t => t.taskType === 'PAYMENT_VOUCHER_APPROVAL').length,
         GOODS_RECEIVED_NOTE_CONFIRMATION: tasks.filter(
-          t => t.type === 'GOODS_RECEIVED_NOTE_CONFIRMATION'
-        ).length
+          t => t.taskType === 'GOODS_RECEIVED_NOTE_CONFIRMATION'
+        ).length,
+      } as Record<any, number>,
+      byPriority: {
+        LOW: tasks.filter(t => t.priority === 'LOW').length,
+        MEDIUM: tasks.filter(t => t.priority === 'MEDIUM').length,
+        HIGH: tasks.filter(t => t.priority === 'HIGH').length,
+        URGENT: tasks.filter(t => t.priority === 'URGENT').length,
       }
     }
 
@@ -320,9 +325,7 @@ export async function startTask(
 
     const updatedTask: Task = {
       ...taskResponse.data,
-      status: 'IN_PROGRESS',
-      startedAt: new Date(),
-      startedBy: userId
+      status: 'IN_PROGRESS'
     }
 
     return {

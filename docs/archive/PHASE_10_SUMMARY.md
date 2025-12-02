@@ -3,34 +3,40 @@
 ## What Was Built
 
 ### 3 New Files Created
+
 1. **approval-store.ts** - Mock database with localStorage persistence
 2. **approval-actions.ts** - Server actions for approval operations
 3. **use-approval-mutations.ts** - React Query mutations
 
 ### 2 Files Modified
+
 1. **use-approval-task-queries.ts** - Now calls server actions
 2. **approval-action-panel.tsx** - Uses new mutation hooks
 
 ## Key Features
 
 ### ✅ Approval Operations
+
 - **Approve** with digital signature and remarks
 - **Reject** with reason and signature
 - **Reassign** to different approver with reason
 
 ### ✅ Data Persistence
+
 - All approval data stored in localStorage
 - Survives page refreshes
 - Automatic serialization/deserialization
 - ISO date string conversion for JSON compatibility
 
 ### ✅ React Query Integration
+
 - All mutations handle cache invalidation
 - Automatic refetch every 30 seconds
 - Error handling with console logging
 - Success callbacks for UI updates
 
 ### ✅ Workflow Support
+
 - 3 sample tasks included (requisition, budget, software)
 - Multi-stage workflows (2-3 stages)
 - Complete workflow data and entity information
@@ -41,6 +47,7 @@
 ### For Testing End-to-End Flows
 
 1. **User Approves a Task**:
+
    ```
    User clicks "Approve"
    → ApprovalActionPanel opens modal
@@ -65,6 +72,7 @@
 ## Sample Tasks to Test
 
 ### Task 1: Requisition (HIGH Priority)
+
 - **ID**: task-req-001
 - **Entity**: REQ-2024-001
 - **Amount**: 25,000
@@ -72,6 +80,7 @@
 - **Status**: Pending
 
 ### Task 2: Budget (MEDIUM Priority)
+
 - **ID**: task-budget-001
 - **Entity**: BUD-2024-Q1-001
 - **Amount**: 500,000
@@ -79,6 +88,7 @@
 - **Status**: Pending
 
 ### Task 3: Requisition (LOW Priority)
+
 - **ID**: task-req-002
 - **Entity**: REQ-2024-002
 - **Amount**: 5,000
@@ -88,6 +98,7 @@
 ## Testing Scenarios
 
 ### Scenario 1: Full Approval Chain
+
 1. Navigate to Approvals Dashboard
 2. Click "Review" on REQ-2024-001
 3. Click "Approve" button
@@ -96,6 +107,7 @@
 6. Return to dashboard, still shows as pending (waiting for director)
 
 ### Scenario 2: Rejection
+
 1. Navigate to Budget approval page
 2. Click "Reject" button
 3. Enter reason: "Needs budget justification"
@@ -104,6 +116,7 @@
 6. Refresh page - rejection persists
 
 ### Scenario 3: Reassignment
+
 1. Go to pending approval
 2. Click "Reassign" button
 3. Select "Jane Smith"
@@ -115,25 +128,29 @@
 ## Files to Review
 
 ### Main Files
+
 - `src/lib/approval-store.ts` - Core mock database
 - `src/app/_actions/approval-actions.ts` - Server actions
 - `src/hooks/use-approval-mutations.ts` - Mutations for UI
 
 ### Integration Points
-- `src/app/(private)/workflows/approvals/page.tsx` - Uses queries
+
+- `src/app/(private)/(main)/approvals/page.tsx` - Uses queries
 - `src/components/workflows/approval-action-panel.tsx` - Uses mutations
-- `src/app/(private)/workflows/requisitions/[id]/approval/page.tsx` - Full workflow
-- `src/app/(private)/workflows/budgets/[id]/approval/page.tsx` - Full workflow
+- `src/app/(private)/(main)/requisitions/[id]/approval/page.tsx` - Full workflow
+- `src/app/(private)/(main)/budgets/[id]/approval/page.tsx` - Full workflow
 
 ## Production Migration
 
 All TODO comments in the code show exactly where to:
+
 1. Call real database
 2. Add authentication checks
 3. Send notifications
 4. Create audit logs
 
 Example:
+
 ```typescript
 // TODO: In production, replace with:
 // const taskDetail = await db.approvalTasks.findUnique({ ... });
@@ -143,21 +160,25 @@ const taskDetail = approvalStore.getTaskDetail(taskId);
 ## What This Enables
 
 ✅ **Complete End-to-End Testing**
+
 - Users can approve/reject/reassign without backend
 - Data persists across page reloads
 - Full approval workflows testable
 
 ✅ **Design Validation**
+
 - Verify UI flows make sense
 - Test user interactions
 - Validate approval sequences
 
 ✅ **Easy Migration**
+
 - Replacement points clearly marked
 - No breaking changes needed
 - Drop-in real database integration
 
 ✅ **Development Continuity**
+
 - No backend required to test UI
 - Multiple developers can work independently
 - localStorage provides data isolation per browser
@@ -165,6 +186,7 @@ const taskDetail = approvalStore.getTaskDetail(taskId);
 ## Next Phase
 
 Phase 11 will add:
+
 - Analytics dashboard
 - Approval metrics and KPIs
 - Workflow trend analysis

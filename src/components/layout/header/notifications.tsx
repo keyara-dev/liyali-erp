@@ -1,3 +1,4 @@
+'use client';
 import { Suspense } from "react";
 import { NotificationBell } from "@/components/notifications/notification-bell";
 import { Button } from "@/components/ui/button";

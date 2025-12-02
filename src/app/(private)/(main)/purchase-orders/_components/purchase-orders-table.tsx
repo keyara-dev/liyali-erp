@@ -1,8 +1,8 @@
-'use client'
+"use client";
 
-import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-import { ColumnDef } from '@tanstack/react-table'
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { ColumnDef } from "@tanstack/react-table";
 import {
   ArrowUpDown,
   MoreHorizontal,
@@ -11,8 +11,8 @@ import {
   CheckCircle2,
   XCircle,
   Clock,
-} from 'lucide-react'
-import { Button } from '@/components/ui/button'
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -20,17 +20,17 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import { DataTable } from '@/components/ui/data-table'
-import { StatusBadge as CentralizedStatusBadge } from '@/components/status-badge'
-import { WorkflowDocument } from '@/types/workflow'
-import { usePurchaseOrdersAsWorkflowDocuments } from '@/hooks/use-purchase-order-storage'
+} from "@/components/ui/dropdown-menu";
+import { DataTable } from "@/components/ui/data-table";
+import { StatusBadge as CentralizedStatusBadge } from "@/components/status-badge";
+import { WorkflowDocument } from "@/types/workflow";
+import { usePurchaseOrdersAsWorkflowDocuments } from "@/hooks/use-purchase-order-storage";
 
 interface PurchaseOrdersTableProps {
-  userId: string
-  userRole: string
-  refreshTrigger: number
-  onRefresh: () => void
+  userId: string;
+  userRole: string;
+  refreshTrigger: number;
+  onRefresh: () => void;
 }
 
 // Stage indicator
@@ -38,27 +38,29 @@ function StageIndicator({
   currentStage,
   totalStages,
 }: {
-  currentStage: number
-  totalStages: number
+  currentStage: number;
+  totalStages: number;
 }) {
   return (
     <div className="flex items-center gap-1">
       <span className="text-sm font-medium">{currentStage}</span>
       <span className="text-xs text-muted-foreground">of {totalStages}</span>
     </div>
-  )
+  );
 }
 
 // Columns definition
-function getColumns(onViewClick: (id: string) => void): ColumnDef<WorkflowDocument>[] {
+function getColumns(
+  onViewClick: (id: string) => void
+): ColumnDef<WorkflowDocument>[] {
   return [
     {
-      id: 'documentNumber',
-      accessorKey: 'documentNumber',
+      id: "documentNumber",
+      accessorKey: "documentNumber",
       header: ({ column }) => (
         <Button
           variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
           className="h-8 p-0"
         >
           PO Number
@@ -66,24 +68,22 @@ function getColumns(onViewClick: (id: string) => void): ColumnDef<WorkflowDocume
         </Button>
       ),
       cell: ({ row }) => (
-        <div className="font-medium">{row.getValue('documentNumber')}</div>
+        <div className="font-medium">{row.getValue("documentNumber")}</div>
       ),
     },
     {
-      id: 'vendor',
-      accessorKey: 'metadata.vendorName',
-      header: 'Vendor',
-      cell: ({ row }) => (
-        <div>{row.original.metadata?.vendorName || '-'}</div>
-      ),
+      id: "vendor",
+      accessorKey: "metadata.vendorName",
+      header: "Vendor",
+      cell: ({ row }) => <div>{row.original.metadata?.vendorName || "-"}</div>,
     },
     {
-      id: 'amount',
-      accessorKey: 'metadata.totalAmount',
+      id: "amount",
+      accessorKey: "metadata.totalAmount",
       header: ({ column }) => (
         <Button
           variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
           className="h-8 p-0"
         >
           Amount
@@ -97,15 +97,20 @@ function getColumns(onViewClick: (id: string) => void): ColumnDef<WorkflowDocume
       ),
     },
     {
-      id: 'status',
-      accessorKey: 'status',
-      header: 'Status',
-      cell: ({ row }) => <CentralizedStatusBadge status={row.getValue('status')} type="document" />,
+      id: "status",
+      accessorKey: "status",
+      header: "Status",
+      cell: ({ row }) => (
+        <CentralizedStatusBadge
+          status={row.getValue("status")}
+          type="document"
+        />
+      ),
     },
     {
-      id: 'stage',
-      accessorKey: 'currentStage',
-      header: 'Stage',
+      id: "stage",
+      accessorKey: "currentStage",
+      header: "Stage",
       cell: ({ row }) => (
         <StageIndicator
           currentStage={row.original.currentStage || 1}
@@ -114,12 +119,12 @@ function getColumns(onViewClick: (id: string) => void): ColumnDef<WorkflowDocume
       ),
     },
     {
-      id: 'createdDate',
-      accessorKey: 'createdAt',
+      id: "createdDate",
+      accessorKey: "createdAt",
       header: ({ column }) => (
         <Button
           variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
           className="h-8 p-0"
         >
           Created
@@ -133,8 +138,8 @@ function getColumns(onViewClick: (id: string) => void): ColumnDef<WorkflowDocume
       ),
     },
     {
-      id: 'actions',
-      header: 'Actions',
+      id: "actions",
+      header: "Actions",
       cell: ({ row }) => (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -157,7 +162,7 @@ function getColumns(onViewClick: (id: string) => void): ColumnDef<WorkflowDocume
               <Download className="h-4 w-4" />
               Download PDF
             </DropdownMenuItem>
-            {row.original.status === 'IN_REVIEW' && (
+            {row.original.status === "IN_REVIEW" && (
               <>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem className="flex items-center gap-2 text-green-600">
@@ -174,7 +179,7 @@ function getColumns(onViewClick: (id: string) => void): ColumnDef<WorkflowDocume
         </DropdownMenu>
       ),
     },
-  ]
+  ];
 }
 
 export function PurchaseOrdersTable({
@@ -183,29 +188,30 @@ export function PurchaseOrdersTable({
   refreshTrigger,
   onRefresh,
 }: PurchaseOrdersTableProps) {
-  const router = useRouter()
-  const { data: purchaseOrders, isLoading } = usePurchaseOrdersAsWorkflowDocuments(true)
-  const [data, setData] = useState<WorkflowDocument[]>([])
+  const router = useRouter();
+  const { data: purchaseOrders, isLoading } =
+    usePurchaseOrdersAsWorkflowDocuments(true);
+  const [data, setData] = useState<WorkflowDocument[]>([]);
 
   useEffect(() => {
     if (purchaseOrders && purchaseOrders.length > 0) {
       // Filter by current user's purchase orders
-      const userPOs = purchaseOrders.filter(po => po.createdBy === userId)
-      setData(userPOs)
+      const userPOs = purchaseOrders.filter((po) => po.createdBy === userId);
+      setData(userPOs);
     } else {
-      setData([])
+      setData([]);
     }
-  }, [purchaseOrders, userId, refreshTrigger])
+  }, [purchaseOrders, userId, refreshTrigger]);
 
   const handleViewClick = (id: string) => {
-    router.push(`/workflows/purchase-orders/${id}`)
-  }
+    router.push(`/purchase-orders/${id}`);
+  };
 
-  const columns = getColumns(handleViewClick)
+  const columns = getColumns(handleViewClick);
 
   return (
     <div className="space-y-4">
       <DataTable columns={columns} data={data} />
     </div>
-  )
+  );
 }

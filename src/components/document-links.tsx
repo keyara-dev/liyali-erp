@@ -1,19 +1,25 @@
-'use client'
+"use client";
 
-import { Link as LinkIcon } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { WorkflowDocument } from '@/types/workflow'
-import Link from 'next/link'
+import { Link as LinkIcon } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { WorkflowDocument } from "@/types/workflow";
+import Link from "next/link";
 
 interface DocumentLinksProps {
-  currentDocument: WorkflowDocument
+  currentDocument: WorkflowDocument;
   linkedDocuments?: {
-    requisition?: { id: string; number: string }
-    purchaseOrder?: { id: string; number: string }
-    grn?: { id: string; number: string }
-    paymentVoucher?: { id: string; number: string }
-  }
+    requisition?: { id: string; number: string };
+    purchaseOrder?: { id: string; number: string };
+    grn?: { id: string; number: string };
+    paymentVoucher?: { id: string; number: string };
+  };
 }
 
 /**
@@ -25,14 +31,14 @@ export function DocumentLinks({
   linkedDocuments,
 }: DocumentLinksProps) {
   if (!linkedDocuments) {
-    return null
+    return null;
   }
 
-  const { requisition, purchaseOrder, grn, paymentVoucher } = linkedDocuments
+  const { requisition, purchaseOrder, grn, paymentVoucher } = linkedDocuments;
 
   // Only show if there are linked documents
   if (!requisition && !purchaseOrder && !grn && !paymentVoucher) {
-    return null
+    return null;
   }
 
   return (
@@ -55,7 +61,7 @@ export function DocumentLinks({
                 <p className="text-sm text-muted-foreground">Requisition</p>
                 <p className="font-medium">{requisition.number}</p>
               </div>
-              <Link href={`/workflows/requisitions/${requisition.id}`}>
+              <Link href={`//requisitions/${requisition.id}`}>
                 <Button variant="outline" size="sm">
                   View
                 </Button>
@@ -70,7 +76,7 @@ export function DocumentLinks({
                 <p className="text-sm text-muted-foreground">Purchase Order</p>
                 <p className="font-medium">{purchaseOrder.number}</p>
               </div>
-              <Link href={`/workflows/purchase-orders/${purchaseOrder.id}`}>
+              <Link href={`//purchase-orders/${purchaseOrder.id}`}>
                 <Button variant="outline" size="sm">
                   View
                 </Button>
@@ -82,10 +88,12 @@ export function DocumentLinks({
           {grn && (
             <div className="flex items-center justify-between bg-white dark:bg-slate-900 p-3 rounded border">
               <div>
-                <p className="text-sm text-muted-foreground">Goods Received Note</p>
+                <p className="text-sm text-muted-foreground">
+                  Goods Received Note
+                </p>
                 <p className="font-medium">{grn.number}</p>
               </div>
-              <Link href={`/workflows/grn/${grn.id}`}>
+              <Link href={`//grn/${grn.id}`}>
                 <Button variant="outline" size="sm">
                   View
                 </Button>
@@ -100,7 +108,7 @@ export function DocumentLinks({
                 <p className="text-sm text-muted-foreground">Payment Voucher</p>
                 <p className="font-medium">{paymentVoucher.number}</p>
               </div>
-              <Link href={`/workflows/payment-vouchers/${paymentVoucher.id}`}>
+              <Link href={`//payment-vouchers/${paymentVoucher.id}`}>
                 <Button variant="outline" size="sm">
                   View
                 </Button>
@@ -112,11 +120,9 @@ export function DocumentLinks({
         {/* Legend */}
         <div className="mt-4 p-3 bg-blue-100 dark:bg-blue-900/30 rounded text-sm text-blue-900 dark:text-blue-100">
           <p className="font-medium mb-2">Workflow Process:</p>
-          <p>
-            Requisition → Purchase Order → Goods Receipt → Payment Voucher
-          </p>
+          <p>Requisition → Purchase Order → Goods Receipt → Payment Voucher</p>
         </div>
       </CardContent>
     </Card>
-  )
+  );
 }

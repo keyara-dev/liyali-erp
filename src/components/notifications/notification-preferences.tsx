@@ -69,7 +69,16 @@ export function NotificationPreferences({
 
   useEffect(() => {
     if (preferences?.preferences) {
-      setLocalPreferences(preferences.preferences);
+      const prefs = preferences.preferences;
+      setLocalPreferences({
+        TASK_ASSIGNED: prefs.notifyOn?.taskAssigned ?? true,
+        TASK_REASSIGNED: prefs.notifyOn?.taskReassigned ?? true,
+        TASK_APPROVED: prefs.notifyOn?.taskApproved ?? true,
+        TASK_REJECTED: prefs.notifyOn?.taskRejected ?? true,
+        WORKFLOW_COMPLETE: prefs.notifyOn?.workflowComplete ?? true,
+        APPROVAL_OVERDUE: prefs.notifyOn?.approvalOverdue ?? true,
+        COMMENT_ADDED: prefs.notifyOn?.commentsAdded ?? true,
+      });
     }
   }, [preferences]);
 
@@ -85,7 +94,17 @@ export function NotificationPreferences({
     try {
       await updateMutation.mutateAsync({
         userId,
-        preferences: localPreferences,
+        preferences: {
+          notifyOn: {
+            taskAssigned: localPreferences.TASK_ASSIGNED,
+            taskReassigned: localPreferences.TASK_REASSIGNED,
+            taskApproved: localPreferences.TASK_APPROVED,
+            taskRejected: localPreferences.TASK_REJECTED,
+            workflowComplete: localPreferences.WORKFLOW_COMPLETE,
+            approvalOverdue: localPreferences.APPROVAL_OVERDUE,
+            commentsAdded: localPreferences.COMMENT_ADDED,
+          },
+        },
       });
       setSavedMessage(true);
       onSaved?.();

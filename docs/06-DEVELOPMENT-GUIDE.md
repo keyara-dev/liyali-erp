@@ -5,9 +5,10 @@
 ### Step 1: Create Type Definition
 
 Add to `src/types/tasks.ts`:
+
 ```typescript
 interface NewWorkflowTask extends ApprovalTask {
-  specificField: string
+  specificField: string;
   // ... other fields
 }
 ```
@@ -15,8 +16,9 @@ interface NewWorkflowTask extends ApprovalTask {
 ### Step 2: Create Pages
 
 Create folder structure:
+
 ```
-src/app/(private)/workflows/new-workflow/[id]/
+src/app/(private)/(main)/new-workflow/[id]/
 ├── page.tsx
 ├── _components/
 │   └── new-workflow-detail-client.tsx
@@ -29,7 +31,7 @@ src/app/(private)/workflows/new-workflow/[id]/
 ### Step 3: Create Detail Component
 
 ```typescript
-// src/app/(private)/workflows/new-workflow/[id]/_components/new-workflow-detail-client.tsx
+// src/app/(private)/(main)/new-workflow/[id]/_components/new-workflow-detail-client.tsx
 
 'use client'
 
@@ -55,16 +57,17 @@ export function NewWorkflowDetailClient({ id }: { id: string }) {
 ### Step 5: Update Stores
 
 Add mock data to `src/lib/approval-store.ts`:
+
 ```typescript
 const INITIAL_TASKS = [
   // ... existing tasks
   {
-    id: 'new-1',
-    entityType: 'NEW_WORKFLOW',
-    entityNumber: 'NEW-2024-001',
+    id: "new-1",
+    entityType: "NEW_WORKFLOW",
+    entityNumber: "NEW-2024-001",
     // ... other fields
-  }
-]
+  },
+];
 ```
 
 ### Step 6: Update Routes
@@ -76,17 +79,17 @@ Add to navigation in `src/components/layout/sidebar/nav-main.tsx`
 All server actions follow this structure:
 
 ```typescript
-'use server'
+"use server";
 
 interface ActionRequest {
-  field1: string
-  field2: number
+  field1: string;
+  field2: number;
 }
 
 interface ActionResponse {
-  success: boolean
-  data?: any
-  error?: string
+  success: boolean;
+  data?: any;
+  error?: string;
 }
 
 export async function myServerAction(
@@ -95,20 +98,20 @@ export async function myServerAction(
   try {
     // 1. Validate
     if (!request.field1) {
-      return { success: false, error: 'field1 required' }
+      return { success: false, error: "field1 required" };
     }
 
     // 2. Process (Phase 11: store, Phase 12: database)
-    const result = approvalStore.operation(request)
+    const result = approvalStore.operation(request);
 
     // 3. Log
-    console.log('[ACTION]', result)
+    console.log("[ACTION]", result);
 
     // 4. Return
-    return { success: true, data: result }
+    return { success: true, data: result };
   } catch (error) {
-    console.error('[ERROR]', error)
-    return { success: false, error: 'Operation failed' }
+    console.error("[ERROR]", error);
+    return { success: false, error: "Operation failed" };
   }
 }
 ```
@@ -116,48 +119,51 @@ export async function myServerAction(
 ## React Query Hook Pattern
 
 ### Query Hook
+
 ```typescript
 export function useMyQuery(id: string) {
   return useQuery({
-    queryKey: ['namespace', id],
+    queryKey: ["namespace", id],
     queryFn: async () => {
-      const result = await getMyData({ id })
-      if (!result.success) throw new Error(result.error)
-      return result.data
+      const result = await getMyData({ id });
+      if (!result.success) throw new Error(result.error);
+      return result.data;
     },
     refetchInterval: 30000, // Auto-refresh every 30s
-  })
+  });
 }
 ```
 
 ### Mutation Hook
+
 ```typescript
 export function useMyMutation() {
-  const queryClient = useQueryClient()
+  const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: myServerAction,
     onSuccess: (data) => {
       // Invalidate related queries
       queryClient.invalidateQueries({
-        queryKey: ['namespace'],
-      })
+        queryKey: ["namespace"],
+      });
 
       // Show feedback
-      toast.success('Success!')
+      toast.success("Success!");
     },
     onError: (error) => {
-      toast.error(error.message)
+      toast.error(error.message);
     },
-  })
+  });
 }
 ```
 
 ## Component Structure
 
 ### Page Component (Server)
+
 ```typescript
-// src/app/(private)/workflows/type/[id]/page.tsx
+// src/app/(private)/(main)/type/[id]/page.tsx
 
 import { getWorkflowData } from '@/actions'
 import { DetailClient } from './_components/detail-client'
@@ -170,6 +176,7 @@ export default async function Page({ params }: { params: { id: string } }) {
 ```
 
 ### Detail Component (Client)
+
 ```typescript
 'use client'
 
@@ -190,6 +197,7 @@ export function DetailClient({ data }: { data: any }) {
 ```
 
 ### Approval Component (Client)
+
 ```typescript
 'use client'
 
@@ -222,26 +230,27 @@ export function ApprovalClient({ taskId }: { taskId: string }) {
 // src/types/tasks.ts
 
 interface WorkflowTask {
-  id: string
-  entityId: string
-  entityType: 'REQUISITION' | 'BUDGET' | 'PO' | 'PV' | 'GRN'
-  status: 'pending' | 'approved' | 'rejected'
-  stageName: string
-  stageIndex: number
+  id: string;
+  entityId: string;
+  entityType: "REQUISITION" | "BUDGET" | "PO" | "PV" | "GRN";
+  status: "pending" | "approved" | "rejected";
+  stageName: string;
+  stageIndex: number;
   // ... more fields
 }
 
 // For specific workflows
 interface PurchaseOrderTask extends WorkflowTask {
-  vendorName: string
-  totalAmount: number
-  itemCount: number
+  vendorName: string;
+  totalAmount: number;
+  itemCount: number;
 }
 ```
 
 ## Testing Your Changes
 
 ### Manual Testing
+
 1. Add route to sidebar navigation
 2. Create sample data in approval-store.ts
 3. Navigate to page
@@ -250,6 +259,7 @@ interface PurchaseOrderTask extends WorkflowTask {
 6. Refresh page - data should persist
 
 ### Build Testing
+
 ```bash
 npm run build        # Check for TypeScript errors
 npm run type-check   # Verify types
@@ -266,15 +276,16 @@ When migrating to database:
 4. Test with real database
 
 Example migration:
+
 ```typescript
 // Phase 11 (current)
-const result = approvalStore.approveTask(request)
+const result = approvalStore.approveTask(request);
 
 // Phase 12 (database)
 const result = await db.approvalTask.update({
   where: { id: request.taskId },
-  data: { status: 'approved' }
-})
+  data: { status: "approved" },
+});
 ```
 
 ## Debugging Tips

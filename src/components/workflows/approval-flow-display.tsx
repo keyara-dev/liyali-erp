@@ -1,6 +1,6 @@
 "use client";
 
-import { Workflow, WorkflowStage, ApprovalTask } from "@/types";
+import { CustomWorkflow, WorkflowStage } from "@/types";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -14,9 +14,9 @@ import {
 } from "lucide-react";
 
 export interface ApprovalFlowDisplayProps {
-  workflow: Workflow;
+  workflow: CustomWorkflow | any;
   currentStageIndex: number;
-  approvals: ApprovalTask[];
+  approvals?: any[];
   isCompleted?: boolean;
 }
 
@@ -36,7 +36,7 @@ export function ApprovalFlowDisplay({
   };
 
   const getStageApprovals = (stageIndex: number) => {
-    return approvals.filter((a) => a.stageIndex === stageIndex);
+    return (approvals || []).filter((a) => a.stageIndex === stageIndex);
   };
 
   const getStatusIcon = (status: string) => {
@@ -91,7 +91,7 @@ export function ApprovalFlowDisplay({
         <div className="space-y-6">
           {/* Timeline View */}
           <div className="relative">
-            {stages.map((stage, index) => {
+            {stages.map((stage: any, index: number) => {
               const status = getStageStatus(index);
               const stageApprovals = getStageApprovals(index);
 
@@ -141,7 +141,7 @@ export function ApprovalFlowDisplay({
                               Approvers
                             </h4>
                             <div className="flex flex-wrap gap-2">
-                              {stage.approvers.map((approver) => (
+                              {stage.approvers.map((approver: any) => (
                                 <div
                                   key={approver.id}
                                   className="flex items-center gap-1 bg-background px-2 py-1 rounded border text-xs"

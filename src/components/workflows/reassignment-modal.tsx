@@ -56,11 +56,11 @@ export function ReassignmentModal({
 
   // Filter users - exclude current approver and get available users
   const availableUsers = useMemo(() => {
-    if (!usersData?.users) return [];
-    return usersData.users.filter(
-      (u) => u.id !== task.approverId && u.status === "active"
+    if (!usersData) return [];
+    return usersData.filter(
+      (u: any) => u.id !== task.approverUserId
     );
-  }, [usersData?.users, task.approverId]);
+  }, [usersData, task.approverUserId]);
 
   // Filter by search query
   const filteredUsers = useMemo(() => {

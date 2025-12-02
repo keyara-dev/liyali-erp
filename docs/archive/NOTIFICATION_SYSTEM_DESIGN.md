@@ -9,6 +9,7 @@ Users must receive **real-time notifications** when new tasks are assigned, with
 ## Part 1: Requirements
 
 ### Notification Types
+
 ```
 1. TASK_ASSIGNED
    - New workflow task created for user
@@ -39,51 +40,55 @@ Users must receive **real-time notifications** when new tasks are assigned, with
 ### Display Locations
 
 **1. Top App Bar Notification Component**
-   - Bell icon with unread count badge
-   - Dropdown showing latest 5 notifications
-   - Each with:
-     - Icon (task type)
-     - Title & message
-     - Time ago
-     - Quick action button
-     - Mark as read on hover
-   - "View All" link → Full page
+
+- Bell icon with unread count badge
+- Dropdown showing latest 5 notifications
+- Each with:
+  - Icon (task type)
+  - Title & message
+  - Time ago
+  - Quick action button
+  - Mark as read on hover
+- "View All" link → Full page
 
 **2. Quick Actions (In Notification Dropdown)**
-   ```
-   For TASK_ASSIGNED / TASK_REASSIGNED:
-     Button: "Review Now"
-     → Opens approval modal with signature/remarks
 
-   For TASK_APPROVED / WORKFLOW_COMPLETE:
-     Button: "View"
-     → Opens entity detail read-only
+```
+For TASK_ASSIGNED / TASK_REASSIGNED:
+  Button: "Review Now"
+  → Opens approval modal with signature/remarks
 
-   For TASK_REJECTED:
-     Button: "Revise & Resubmit"
-     → Opens entity for editing
-   ```
+For TASK_APPROVED / WORKFLOW_COMPLETE:
+  Button: "View"
+  → Opens entity detail read-only
+
+For TASK_REJECTED:
+  Button: "Revise & Resubmit"
+  → Opens entity for editing
+```
 
 **3. Confirmation Modal (When Clicking Quick Action)**
-   - Show task details
-   - Pre-fill action (approve/reject)
-   - Optional remarks field
-   - Signature capture
-   - "Confirm" button submits approval
+
+- Show task details
+- Pre-fill action (approve/reject)
+- Optional remarks field
+- Signature capture
+- "Confirm" button submits approval
 
 **4. Notifications Page**
-   - `/workflows/notifications` (new page)
-   - All notifications (read + unread)
-   - Filters: Type, Date, Read Status
-   - Pagination (20 per page)
-   - Bulk actions: Mark all read, Delete old
-   - Each notification shows:
-     - Icon & type badge
-     - Full message
-     - Timestamp
-     - Read/unread indicator
-     - Action button
-     - Delete button
+
+- `/workflows/notifications` (new page)
+- All notifications (read + unread)
+- Filters: Type, Date, Read Status
+- Pagination (20 per page)
+- Bulk actions: Mark all read, Delete old
+- Each notification shows:
+  - Icon & type badge
+  - Full message
+  - Timestamp
+  - Read/unread indicator
+  - Action button
+  - Delete button
 
 ---
 
@@ -94,70 +99,71 @@ Users must receive **real-time notifications** when new tasks are assigned, with
 ```typescript
 interface Notification {
   // Identity
-  id: string                              // UUID
-  userId: string                          // Who receives it
+  id: string; // UUID
+  userId: string; // Who receives it
 
   // Content
-  type: NotificationType
-  title: string                           // "New approval task"
-  message: string                         // Full message
-  icon?: string                           // Icon name
+  type: NotificationType;
+  title: string; // "New approval task"
+  message: string; // Full message
+  icon?: string; // Icon name
 
   // Context
-  entityId?: string                       // req-001, budget-002, etc.
-  entityType?: WorkflowEntityType
-  entityNumber?: string                   // REQ-2024-001
-  relatedUserId?: string                  // Who caused the notification
+  entityId?: string; // req-001, budget-002, etc.
+  entityType?: WorkflowEntityType;
+  entityNumber?: string; // REQ-2024-001
+  relatedUserId?: string; // Who caused the notification
 
   // State
-  isRead: boolean                         // User viewed it
-  readAt?: Date
-  actionTaken?: boolean                   // Did user act on it?
-  actionTakenAt?: Date
+  isRead: boolean; // User viewed it
+  readAt?: Date;
+  actionTaken?: boolean; // Did user act on it?
+  actionTakenAt?: Date;
 
   // Quick Action
-  quickAction: QuickAction
-  quickActionData?: Record<string, any>   // Context for action
+  quickAction: QuickAction;
+  quickActionData?: Record<string, any>; // Context for action
 
   // Metadata
-  createdAt: Date
-  expiresAt?: Date                        // Auto-delete old notifications
-  importance: 'LOW' | 'MEDIUM' | 'HIGH'   // Affects display priority
+  createdAt: Date;
+  expiresAt?: Date; // Auto-delete old notifications
+  importance: "LOW" | "MEDIUM" | "HIGH"; // Affects display priority
 }
 
 type NotificationType =
-  | 'TASK_ASSIGNED'
-  | 'TASK_REASSIGNED'
-  | 'TASK_APPROVED'
-  | 'TASK_REJECTED'
-  | 'WORKFLOW_COMPLETE'
-  | 'APPROVAL_OVERDUE'                   // SLA breach
-  | 'COMMENT_ADDED'                      // Someone commented
+  | "TASK_ASSIGNED"
+  | "TASK_REASSIGNED"
+  | "TASK_APPROVED"
+  | "TASK_REJECTED"
+  | "WORKFLOW_COMPLETE"
+  | "APPROVAL_OVERDUE" // SLA breach
+  | "COMMENT_ADDED"; // Someone commented
 
 interface QuickAction {
-  type: 'REVIEW_AND_APPROVE'              // Opens approval modal
-       | 'VIEW_ONLY'                      // Opens entity read-only
-       | 'REVISE_AND_RESUBMIT'            // Opens for editing
-       | 'NONE'                           // No action button
-  label: string                           // Button text: "Review Now", "Revise"
-  route?: string                          // Navigation path
-  params?: Record<string, string>         // URL params
+  type:
+    | "REVIEW_AND_APPROVE" // Opens approval modal
+    | "VIEW_ONLY" // Opens entity read-only
+    | "REVISE_AND_RESUBMIT" // Opens for editing
+    | "NONE"; // No action button
+  label: string; // Button text: "Review Now", "Revise"
+  route?: string; // Navigation path
+  params?: Record<string, string>; // URL params
 }
 
 interface NotificationPreferences {
-  userId: string
-  emailNotifications: boolean             // Send email?
-  pushNotifications: boolean              // Browser push?
-  inAppNotifications: boolean             // Show in app?
+  userId: string;
+  emailNotifications: boolean; // Send email?
+  pushNotifications: boolean; // Browser push?
+  inAppNotifications: boolean; // Show in app?
   notifyOn: {
-    taskAssigned: boolean
-    taskReassigned: boolean
-    taskApproved: boolean
-    taskRejected: boolean
-    workflowComplete: boolean
-    approvalOverdue: boolean
-    commentsAdded: boolean
-  }
+    taskAssigned: boolean;
+    taskReassigned: boolean;
+    taskApproved: boolean;
+    taskRejected: boolean;
+    workflowComplete: boolean;
+    approvalOverdue: boolean;
+    commentsAdded: boolean;
+  };
 }
 ```
 
@@ -214,41 +220,45 @@ interface NotificationPreferences {
 
 ```typescript
 // Save, query, mark read
-export async function createNotification(notification: Notification)
-export async function getNotification(id: string)
-export async function getUserNotifications(userId: string, limit: number)
-export async function getUserUnreadCount(userId: string)
-export async function markAsRead(notificationId: string)
-export async function markAllAsRead(userId: string)
-export async function deleteNotification(id: string)
-export async function deleteOldNotifications(olderThanDays: number)
+export async function createNotification(notification: Notification);
+export async function getNotification(id: string);
+export async function getUserNotifications(userId: string, limit: number);
+export async function getUserUnreadCount(userId: string);
+export async function markAsRead(notificationId: string);
+export async function markAllAsRead(userId: string);
+export async function deleteNotification(id: string);
+export async function deleteOldNotifications(olderThanDays: number);
 ```
 
 ### New Actions: `src/app/_actions/notifications.ts`
 
 ```typescript
 // Server actions for notification operations
-export async function getNotifications(userId: string, page: number)
-export async function markNotificationRead(id: string)
-export async function deleteNotification(id: string)
-export async function getUserNotificationPreferences(userId: string)
-export async function updateNotificationPreferences(userId: string, prefs: Partial<NotificationPreferences>)
+export async function getNotifications(userId: string, page: number);
+export async function markNotificationRead(id: string);
+export async function deleteNotification(id: string);
+export async function getUserNotificationPreferences(userId: string);
+export async function updateNotificationPreferences(
+  userId: string,
+  prefs: Partial<NotificationPreferences>
+);
 ```
 
 ### New Hooks: `src/hooks/use-notifications.ts`
 
 ```typescript
 // React Query hooks for notifications
-export function useUserNotifications(userId: string)
-export function useUnreadNotificationCount(userId: string)
-export function useMarkNotificationRead()
-export function useNotificationPreferences(userId: string)
+export function useUserNotifications(userId: string);
+export function useUnreadNotificationCount(userId: string);
+export function useMarkNotificationRead();
+export function useNotificationPreferences(userId: string);
 ```
 
 ### New Components
 
 **1. App Bar Notification Bell**
 `src/components/notifications/notification-bell.tsx`
+
 ```typescript
 - Show bell icon
 - Unread count badge
@@ -265,6 +275,7 @@ export function useNotificationPreferences(userId: string)
 
 **2. Notification Dropdown Component**
 `src/components/notifications/notification-dropdown.tsx`
+
 ```typescript
 - List of latest notifications
 - Scrollable
@@ -276,6 +287,7 @@ export function useNotificationPreferences(userId: string)
 
 **3. Single Notification Item**
 `src/components/notifications/notification-item.tsx`
+
 ```typescript
 - Icon based on type
 - Title & message
@@ -287,6 +299,7 @@ export function useNotificationPreferences(userId: string)
 
 **4. Notification Modal for Quick Actions**
 `src/components/notifications/notification-action-modal.tsx`
+
 ```typescript
 When user clicks "Review Now":
   - Show entity summary (Requisition #REQ-001)
@@ -308,7 +321,8 @@ When user clicks "Review Now":
 ```
 
 **5. Notifications Page**
-`src/app/(private)/workflows/notifications/page.tsx`
+`src/app/(private)/(main)/notifications/page.tsx`
+
 ```typescript
 - Header: "Notifications" with total count
 - Filters section:
@@ -336,6 +350,7 @@ When user clicks "Review Now":
 
 **6. Notification Client Component (Real-time)**
 `src/components/notifications/notification-provider.tsx`
+
 ```typescript
 - React context provider
 - Hooks into useUserNotifications
@@ -352,6 +367,7 @@ When user clicks "Review Now":
 ### When Notification is Created
 
 **Trigger 1: Task Assigned**
+
 ```typescript
 When: progressToNextStage() moves to next stage
 What: Create TASK_ASSIGNED notification
@@ -371,6 +387,7 @@ Data: {
 ```
 
 **Trigger 2: Task Reassigned**
+
 ```typescript
 When: reassignStage() happens
 What: Create TASK_REASSIGNED notification
@@ -385,6 +402,7 @@ Data: {
 ```
 
 **Trigger 3: Task Approved**
+
 ```typescript
 When: approveDocument() completes
 What: Create TASK_APPROVED notification
@@ -399,6 +417,7 @@ Data: {
 ```
 
 **Trigger 4: Task Rejected**
+
 ```typescript
 When: rejectDocument() completes
 What: Create TASK_REJECTED notification
@@ -413,6 +432,7 @@ Data: {
 ```
 
 **Trigger 5: Workflow Complete**
+
 ```typescript
 When: progressToNextStage() hits FINAL
 What: Create WORKFLOW_COMPLETE notification
@@ -430,6 +450,7 @@ Data: {
 ## Part 6: Integration Points
 
 ### In approval.ts (When Approving)
+
 ```typescript
 async function approveDocument(...) {
   // Existing approval logic
@@ -458,6 +479,7 @@ async function approveDocument(...) {
 ```
 
 ### In reassignment handler
+
 ```typescript
 async function reassignStage(...) {
   const result = await reassignStage(...)
@@ -474,6 +496,7 @@ async function reassignStage(...) {
 ```
 
 ### In layout/provider
+
 ```typescript
 // Add notification provider to wrap app
 // Starts polling for notifications
@@ -517,22 +540,26 @@ async function reassignStage(...) {
 ## Part 8: Implementation Phases
 
 ### Phase 5A: Notification Types & Persistence
+
 - [ ] Create `src/types/notifications.ts`
 - [ ] Create `src/lib/notification-persistence.ts`
 - [ ] Add notification columns to data model
 - [ ] Seed sample notifications
 
 ### Phase 5B: Server Actions
+
 - [ ] Create `src/app/_actions/notifications.ts`
 - [ ] Create notification creation trigger helpers
 - [ ] Integrate into existing approval flows
 
 ### Phase 5C: React Query Hooks
+
 - [ ] Create `src/hooks/use-notifications.ts`
 - [ ] Real-time polling setup
 - [ ] Unread count tracking
 
 ### Phase 5D: UI Components
+
 - [ ] Notification bell component
 - [ ] Dropdown component
 - [ ] Notification item component
@@ -540,12 +567,14 @@ async function reassignStage(...) {
 - [ ] Notifications page
 
 ### Phase 5E: Integration
+
 - [ ] Add notification provider to layout
 - [ ] Integrate with approval actions
 - [ ] Integrate with reassignment actions
 - [ ] Add bell to app bar
 
 ### Phase 5F: Features
+
 - [ ] Real-time notification updates
 - [ ] Mark as read functionality
 - [ ] Notification preferences
@@ -600,6 +629,7 @@ Done ✅
 ## Part 10: Summary
 
 **What Will Be Built:**
+
 - ✅ Notification data model
 - ✅ Persistence layer
 - ✅ Real-time notification generation
@@ -611,6 +641,7 @@ Done ✅
 - ✅ Notification preferences
 
 **User Experience:**
+
 - Gets notification immediately when task assigned
 - Can approve right from notification (2-click approval)
 - Can see notification history anytime

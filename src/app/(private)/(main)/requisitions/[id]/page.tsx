@@ -28,7 +28,7 @@ export default async function RequisitionDetailPage({
 
   // Server-side data fetching for SSR
   const requisitionResult = await getRequisitionById(requisitionId);
-  const initialRequisition = requisitionResult.success
+  const initialRequisition = requisitionResult.success && requisitionResult.data
     ? requisitionResult.data
     : undefined;
 

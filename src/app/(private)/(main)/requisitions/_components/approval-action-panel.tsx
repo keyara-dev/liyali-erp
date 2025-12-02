@@ -40,7 +40,7 @@ export function ApprovalActionPanel({
 
     setIsLoading(true)
     try {
-      const result = await approveDocument(requisitionId, comments, signature)
+      const result = await approveDocument(requisitionId, comments)
       if (result.success) {
         toast.success('Requisition approved successfully')
         setComments('')

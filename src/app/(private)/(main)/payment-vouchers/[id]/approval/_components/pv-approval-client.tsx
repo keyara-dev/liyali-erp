@@ -1,155 +1,159 @@
-'use client'
+"use client";
 
-import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-import { toast } from 'sonner'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { DollarSign, FileText, TrendingUp, ArrowLeft } from 'lucide-react'
-import { Skeleton } from '@/components/ui/skeleton'
-import { PageHeader } from '@/components/base/page-header'
-import { ApprovalActionPanel } from '@/components/workflows/approval-action-panel'
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { DollarSign, FileText, TrendingUp, ArrowLeft } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { PageHeader } from "@/components/base/page-header";
+import { ApprovalActionPanel } from "@/components/workflows/approval-action-panel";
+import type { ApprovalTask } from "@/types";
 
 interface PVApprovalClientProps {
-  pvId: string
-  userId: string
-  userRole: string
+  pvId: string;
+  userId: string;
+  userRole: string;
 }
 
 interface PaymentVoucher {
-  id: string
-  voucherNumber: string
-  status: 'DRAFT' | 'SUBMITTED' | 'IN_REVIEW' | 'APPROVED' | 'REJECTED'
-  invoiceNumber: string
-  invoiceDate: string
-  vendorName: string
-  vendorId: string
-  amount: number
-  description: string
-  paymentMethod: 'CHEQUE' | 'BANK_TRANSFER' | 'CASH'
+  id: string;
+  voucherNumber: string;
+  status: "DRAFT" | "SUBMITTED" | "IN_REVIEW" | "APPROVED" | "REJECTED";
+  invoiceNumber: string;
+  invoiceDate: string;
+  vendorName: string;
+  vendorId: string;
+  amount: number;
+  description: string;
+  paymentMethod: "CHEQUE" | "BANK_TRANSFER" | "CASH";
   bankDetails?: {
-    bankName: string
-    accountNumber: string
-    accountHolder: string
-  }
-  glCode: string
-  costCenter: string
-  requestedBy: string
-  requestDate: string
-  dueDate: string
-  currentStage: number
-  stageName: string
+    bankName: string;
+    accountNumber: string;
+    accountHolder: string;
+  };
+  glCode: string;
+  costCenter: string;
+  requestedBy: string;
+  requestDate: string;
+  dueDate: string;
+  currentStage: number;
+  stageName: string;
   expenses: Array<{
-    id: string
-    description: string
-    amount: number
-    category: string
-    glCode: string
-  }>
-  createdAt: string
-  updatedAt: string
+    id: string;
+    description: string;
+    amount: number;
+    category: string;
+    glCode: string;
+  }>;
+  createdAt: string;
+  updatedAt: string;
 }
 
 const STAGE_NAMES: Record<number, string> = {
-  1: 'Department Manager Review',
-  2: 'Finance Officer Review',
-  3: 'CFO Approval',
-}
+  1: "Department Manager Review",
+  2: "Finance Officer Review",
+  3: "CFO Approval",
+};
 
 const PAYMENT_METHODS: Record<string, string> = {
-  CHEQUE: 'Cheque',
-  BANK_TRANSFER: 'Bank Transfer',
-  CASH: 'Cash',
-}
+  CHEQUE: "Cheque",
+  BANK_TRANSFER: "Bank Transfer",
+  CASH: "Cash",
+};
 
 // Mock data generator
 function generateMockPV(pvId: string): PaymentVoucher {
-  const paymentMethod = ['CHEQUE', 'BANK_TRANSFER', 'CASH'][
+  const paymentMethod = ["CHEQUE", "BANK_TRANSFER", "CASH"][
     Math.floor(Math.random() * 3)
-  ] as 'CHEQUE' | 'BANK_TRANSFER' | 'CASH'
-  const currentStage = Math.floor(Math.random() * 3) + 1
+  ] as "CHEQUE" | "BANK_TRANSFER" | "CASH";
+  const currentStage = Math.floor(Math.random() * 3) + 1;
 
   return {
     id: pvId,
-    voucherNumber: `PV-2024-${String(Math.floor(Math.random() * 9000) + 1000).padStart(4, '0')}`,
-    status: 'IN_REVIEW',
+    voucherNumber: `PV-2024-${String(Math.floor(Math.random() * 9000) + 1000).padStart(4, "0")}`,
+    status: "IN_REVIEW",
     invoiceNumber: `INV-${Math.random().toString(36).substring(7).toUpperCase()}`,
     invoiceDate: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(),
-    vendorName: 'Office Supplies Ltd.',
-    vendorId: 'VENDOR-001',
+    vendorName: "Office Supplies Ltd.",
+    vendorId: "VENDOR-001",
     amount: 15500,
-    description: 'Office supplies and equipment procurement',
+    description: "Office supplies and equipment procurement",
     paymentMethod,
     bankDetails:
-      paymentMethod === 'BANK_TRANSFER'
+      paymentMethod === "BANK_TRANSFER"
         ? {
-            bankName: 'First National Bank',
-            accountNumber: '1234567890',
-            accountHolder: 'Office Supplies Ltd.',
+            bankName: "First National Bank",
+            accountNumber: "1234567890",
+            accountHolder: "Office Supplies Ltd.",
           }
         : undefined,
-    glCode: '5100',
-    costCenter: 'CC-002',
-    requestedBy: 'REQ-USER-002',
+    glCode: "5100",
+    costCenter: "CC-002",
+    requestedBy: "REQ-USER-002",
     requestDate: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
     dueDate: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString(),
     currentStage,
     stageName: STAGE_NAMES[currentStage],
     expenses: [
       {
-        id: 'exp-1',
-        description: 'Printer paper and cartridges',
+        id: "exp-1",
+        description: "Printer paper and cartridges",
         amount: 5500,
-        category: 'Supplies',
-        glCode: '5100',
+        category: "Supplies",
+        glCode: "5100",
       },
       {
-        id: 'exp-2',
-        description: 'Desk organizers and filing systems',
+        id: "exp-2",
+        description: "Desk organizers and filing systems",
         amount: 4200,
-        category: 'Office Equipment',
-        glCode: '5100',
+        category: "Office Equipment",
+        glCode: "5100",
       },
       {
-        id: 'exp-3',
-        description: 'Cleaning and maintenance supplies',
+        id: "exp-3",
+        description: "Cleaning and maintenance supplies",
         amount: 3500,
-        category: 'Facilities',
-        glCode: '5200',
+        category: "Facilities",
+        glCode: "5200",
       },
       {
-        id: 'exp-4',
-        description: 'Miscellaneous office items',
+        id: "exp-4",
+        description: "Miscellaneous office items",
         amount: 2300,
-        category: 'Supplies',
-        glCode: '5100',
+        category: "Supplies",
+        glCode: "5100",
       },
     ],
     createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
     updatedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-  }
+  };
 }
 
 // Convert PV to ApprovalTask format
-function convertPVToApprovalTask(pv: PaymentVoucher, userId: string) {
+function convertPVToApprovalTask(
+  pv: PaymentVoucher,
+  userId: string
+): ApprovalTask {
   return {
     id: pv.id,
     entityId: pv.id,
-    entityType: 'PAYMENT_VOUCHER',
+    entityType: "PAYMENT_VOUCHER",
     entityNumber: pv.voucherNumber,
-    status: 'pending',
+    status: "pending",
     stageName: pv.stageName,
     stageIndex: pv.currentStage,
-    importance: pv.amount > 10000 ? 'HIGH' : 'MEDIUM',
-    approverName: 'Current Approver',
+    importance: pv.amount > 10000 ? "HIGH" : "MEDIUM",
+    approverName: "Current Approver",
     approverUserId: userId,
-    createdAt: pv.createdAt,
-    actionDate: new Date().toISOString(),
-    dueDate: pv.dueDate,
-    workflowId: 'pv-workflow-v1',
-    workflowName: '3-Stage Payment Voucher Approval',
-  }
+    createdAt: new Date(pv.createdAt),
+    actionDate: new Date(),
+    dueDate: new Date(pv.dueDate),
+    workflowId: "pv-workflow-v1",
+    workflowName: "3-Stage Payment Voucher Approval",
+  };
 }
 
 export function PVApprovalClient({
@@ -157,23 +161,23 @@ export function PVApprovalClient({
   userId,
   userRole,
 }: PVApprovalClientProps) {
-  const router = useRouter()
-  const [pv, setPV] = useState<PaymentVoucher | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
+  const router = useRouter();
+  const [pv, setPV] = useState<PaymentVoucher | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     // Simulate data loading
     const timer = setTimeout(() => {
-      setPV(generateMockPV(pvId))
-      setIsLoading(false)
-    }, 500)
+      setPV(generateMockPV(pvId));
+      setIsLoading(false);
+    }, 500);
 
-    return () => clearTimeout(timer)
-  }, [pvId])
+    return () => clearTimeout(timer);
+  }, [pvId]);
 
   const handleBack = () => {
-    router.back()
-  }
+    router.back();
+  };
 
   if (isLoading || !pv) {
     return (
@@ -184,10 +188,10 @@ export function PVApprovalClient({
           <Skeleton className="h-96 w-full" />
         </div>
       </div>
-    )
+    );
   }
 
-  const approvalTask = convertPVToApprovalTask(pv, userId)
+  const approvalTask = convertPVToApprovalTask(pv, userId);
 
   return (
     <div className="space-y-6">
@@ -242,7 +246,9 @@ export function PVApprovalClient({
             <CardContent className="grid gap-4 md:grid-cols-2">
               <div>
                 <p className="text-sm text-muted-foreground">Payment Method</p>
-                <p className="font-semibold">{PAYMENT_METHODS[pv.paymentMethod]}</p>
+                <p className="font-semibold">
+                  {PAYMENT_METHODS[pv.paymentMethod]}
+                </p>
               </div>
               {pv.bankDetails && (
                 <>
@@ -251,11 +257,17 @@ export function PVApprovalClient({
                     <p className="font-semibold">{pv.bankDetails.bankName}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-muted-foreground">Account Holder</p>
-                    <p className="font-semibold">{pv.bankDetails.accountHolder}</p>
+                    <p className="text-sm text-muted-foreground">
+                      Account Holder
+                    </p>
+                    <p className="font-semibold">
+                      {pv.bankDetails.accountHolder}
+                    </p>
                   </div>
                   <div>
-                    <p className="text-sm text-muted-foreground">Account Number</p>
+                    <p className="text-sm text-muted-foreground">
+                      Account Number
+                    </p>
                     <p className="font-semibold font-mono text-sm">
                       {pv.bankDetails.accountNumber}
                     </p>
@@ -307,31 +319,51 @@ export function PVApprovalClient({
                 <table className="w-full text-sm">
                   <thead className="border-b bg-muted/50">
                     <tr>
-                      <th className="text-left font-semibold py-3 px-4">Description</th>
-                      <th className="text-left font-semibold py-3 px-4">Category</th>
-                      <th className="text-left font-semibold py-3 px-4">GL Code</th>
-                      <th className="text-right font-semibold py-3 px-4">Amount</th>
+                      <th className="text-left font-semibold py-3 px-4">
+                        Description
+                      </th>
+                      <th className="text-left font-semibold py-3 px-4">
+                        Category
+                      </th>
+                      <th className="text-left font-semibold py-3 px-4">
+                        GL Code
+                      </th>
+                      <th className="text-right font-semibold py-3 px-4">
+                        Amount
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
                     {pv.expenses.map((expense) => (
-                      <tr key={expense.id} className="border-b hover:bg-muted/30">
-                        <td className="py-3 px-4 font-medium">{expense.description}</td>
-                        <td className="py-3 px-4 text-muted-foreground">{expense.category}</td>
-                        <td className="py-3 px-4 font-mono text-sm">{expense.glCode}</td>
+                      <tr
+                        key={expense.id}
+                        className="border-b hover:bg-muted/30"
+                      >
+                        <td className="py-3 px-4 font-medium">
+                          {expense.description}
+                        </td>
+                        <td className="py-3 px-4 text-muted-foreground">
+                          {expense.category}
+                        </td>
+                        <td className="py-3 px-4 font-mono text-sm">
+                          {expense.glCode}
+                        </td>
                         <td className="py-3 px-4 text-right font-semibold">
-                          K{expense.amount.toLocaleString('en-ZM')}
+                          K{expense.amount.toLocaleString("en-ZM")}
                         </td>
                       </tr>
                     ))}
                   </tbody>
                   <tfoot className="border-t bg-muted/30">
                     <tr>
-                      <td colSpan={3} className="py-3 px-4 font-semibold text-right">
+                      <td
+                        colSpan={3}
+                        className="py-3 px-4 font-semibold text-right"
+                      >
                         Total:
                       </td>
                       <td className="py-3 px-4 text-right font-bold text-green-600">
-                        K{pv.amount.toLocaleString('en-ZM')}
+                        K{pv.amount.toLocaleString("en-ZM")}
                       </td>
                     </tr>
                   </tfoot>
@@ -345,16 +377,13 @@ export function PVApprovalClient({
         <div>
           <ApprovalActionPanel
             task={approvalTask}
-            onSuccess={() => {
-              toast.success('Payment voucher approved successfully')
-              router.push('/workflows/payment-vouchers')
-            }}
-            onError={(error) => {
-              toast.error(error || 'Failed to process approval')
+            onApprovalComplete={() => {
+              toast.success("Payment voucher approved successfully");
+              router.push("/payment-vouchers");
             }}
           />
         </div>
       </div>
     </div>
-  )
+  );
 }

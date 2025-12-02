@@ -60,9 +60,7 @@ export function WorkflowBuilder({
   const [formErrors, setFormErrors] = useState<Record<string, string>>({})
 
   const sensors = useSensors(
-    useSensor(PointerSensor, {
-      distance: 8,
-    }),
+    useSensor(PointerSensor),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
     })

@@ -1,31 +1,31 @@
-import { auth } from '@/auth'
-import { redirect } from 'next/navigation'
-import { EditWorkflowClient } from './_components/edit-workflow-client'
+import { auth } from "@/auth";
+import { redirect } from "next/navigation";
+import { EditWorkflowClient } from "./_components/edit-workflow-client";
 
 export const metadata = {
-  title: 'Edit Workflow',
-  description: 'Edit an existing approval workflow',
-}
+  title: "Edit Workflow",
+  description: "Edit an existing approval workflow",
+};
 
 interface EditWorkflowPageProps {
   params: {
-    id: string
-  }
+    id: string;
+  };
 }
 
 export default async function EditWorkflowPage({
   params,
 }: EditWorkflowPageProps) {
-  const session = await auth()
+  const session = await auth();
 
   if (!session?.user) {
-    redirect('/login')
+    redirect("/login");
   }
 
   // Only allow admin users
-  const userRole = (session.user as any).role
-  if (userRole !== 'ADMIN') {
-    redirect('/workflows/dashboard')
+  const userRole = (session.user as any).role;
+  if (userRole !== "ADMIN") {
+    redirect("/home");
   }
 
   return (
@@ -34,5 +34,5 @@ export default async function EditWorkflowPage({
       userId={session.user.id}
       userRole={userRole}
     />
-  )
+  );
 }

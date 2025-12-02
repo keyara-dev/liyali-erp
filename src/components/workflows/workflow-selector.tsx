@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Workflow } from "@/types";
+import { CustomWorkflow } from "@/types";
 import { useWorkflows } from "@/hooks/use-workflows";
 import {
   Select,
@@ -29,7 +29,7 @@ import {
 
 export interface WorkflowSelectorProps {
   entityType: string;
-  onSelect: (workflow: Workflow) => void;
+  onSelect: (workflow: CustomWorkflow) => void;
   disabled?: boolean;
   showRecent?: boolean;
 }
@@ -45,14 +45,13 @@ export function WorkflowSelector({
 
   const { data: workflows, isLoading } = useWorkflows();
 
-  // Filter workflows by entity type and get published ones
+  // Filter workflows by entity type
   const availableWorkflows = useMemo(() => {
     if (!workflows) return [];
     return workflows.filter(
-      (w) =>
-        w.entityType === entityType &&
-        w.status === "published" &&
-        !w.isDeleted
+      (w: any) =>
+        w.applicableEntityTypes?.includes(entityType) ||
+        w.entityType === entityType
     );
   }, [workflows, entityType]);
 
@@ -71,7 +70,7 @@ export function WorkflowSelector({
     }
   }, [availableWorkflows, showRecent, entityType]);
 
-  const handleSelect = (workflow: Workflow) => {
+  const handleSelect = (workflow: CustomWorkflow) => {
     setSelectedId(workflow.id);
     setIsExpanded(false);
     onSelect(workflow);
@@ -239,13 +238,7 @@ export function WorkflowSelector({
                       <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-primary/20 text-primary font-semibold">
                         {index + 1}
                       </span>
-                      <span className="font-medium">{stage.name}</span>
-                      {stage.approvers && stage.approvers.length > 0 && (
-                        <span className="text-muted-foreground">
-                          ({stage.approvers.length} approver
-                          {stage.approvers.length !== 1 ? "s" : ""})
-                        </span>
-                      )}
+                      <span className="font-medium">{stage.stageName}</span>
                     </div>
                   ))}
                 </div>

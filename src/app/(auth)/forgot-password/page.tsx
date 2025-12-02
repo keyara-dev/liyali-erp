@@ -32,7 +32,7 @@ export default function ForgotPasswordPage() {
 
     setIsSubmitting(true);
 
-    const response = await sendResetEmail({ username, email });
+    const response = await sendResetEmail(email);
 
     if (response.success) {
       const token = response.data.token;
@@ -60,7 +60,7 @@ export default function ForgotPasswordPage() {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4 w-full ">
-        <RadioGroup
+        {/* <RadioGroup
           labelText="Email/Username"
           required
           options={["email ", "username"]?.map((item, index) => (
@@ -78,7 +78,7 @@ export default function ForgotPasswordPage() {
               index,
             });
           }}
-        />
+        /> */}
         <Input
           type={selectedOption.name === "username" ? "text" : "email"}
           id={selectedOption.name}
@@ -100,14 +100,13 @@ export default function ForgotPasswordPage() {
           }
           disabled={isSubmitting}
         />
-        <Button type="submit" disabled={isSubmitting} className="w-full">
-          {isSubmitting ? (
-            <span className="flex items-center gap-1">
-              <Spinner size={"sm"} color="white" /> Submitting...
-            </span>
-          ) : (
-            "Submit"
-          )}
+        <Button
+          type="submit"
+          disabled={isSubmitting}
+          isLoading={isSubmitting}
+          className="w-full"
+        >
+          Submit
         </Button>
 
         {message && (

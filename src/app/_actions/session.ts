@@ -56,7 +56,7 @@ export async function checkUserRoleAction(
   requiredRole: string | string[]
 ): Promise<boolean> {
   try {
-    return await hasRole(requiredRole);
+    return await hasRole(requiredRole as any);
   } catch (error) {
     console.error('Failed to check user role:', error);
     return false;

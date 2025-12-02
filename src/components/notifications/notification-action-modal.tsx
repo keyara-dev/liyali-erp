@@ -148,6 +148,8 @@ export function NotificationActionModal({
   const [action, setAction] = useState<"approve" | "reject" | null>(null);
   const [serverError, setServerError] = useState<string | null>(null);
   const [signature, setSignature] = useState("");
+  const [remarks, setRemarks] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Approval form with validation
   const approveForm = useForm({
@@ -293,10 +295,10 @@ export function NotificationActionModal({
         ) : (
           // Action Mode
           <div className="space-y-4 py-4">
-            {error && (
+            {serverError && (
               <Alert variant="destructive">
                 <AlertCircle className="h-4 w-4" />
-                <AlertDescription>{error}</AlertDescription>
+                <AlertDescription>{serverError}</AlertDescription>
               </Alert>
             )}
 
@@ -343,7 +345,7 @@ export function NotificationActionModal({
                 variant="outline"
                 onClick={() => {
                   setAction(null);
-                  setError(null);
+                  setServerError(null);
                 }}
                 disabled={isSubmitting}
               >

@@ -11,7 +11,7 @@ export default async function AdminLayout({ children }: PropsWithChildren) {
 
   // Check if user is admin
   if (user.role !== "ADMIN") {
-    redirect("/workflows/dashboard");
+    redirect("/home");
   }
 
   return <>{children}</>;

@@ -3,6 +3,7 @@
 ## ✅ Completed Phases
 
 ### Phase 1: Data Types & Models ✅
+
 - [x] Create `src/types/custom-workflow.ts`
   - [x] CustomWorkflow type with all properties
   - [x] WorkflowStage with admin-defined transitions (onApprove, onReject, onReverse)
@@ -19,6 +20,7 @@
   - [x] Reassignment audit trail (StageAssignment records)
 
 ### Phase 2: Persistence Layer ✅
+
 - [x] Create `src/lib/workflow-persistence.ts`
   - [x] In-memory Maps for workflows, assignments, defaults
   - [x] saveWorkflow() - add/update
@@ -39,6 +41,7 @@
   - [x] seedSampleWorkflows() - demo data
 
 ### Phase 3: Validation Layer ✅
+
 - [x] Create `src/lib/workflow-validation.ts`
   - [x] validateWorkflow() - comprehensive validation
   - [x] validateStage() - individual stage validation
@@ -55,6 +58,7 @@
   - [x] formatValidationErrors() - user-friendly display
 
 ### Phase 4: Workflow Resolution & Orchestration ✅
+
 - [x] Create `src/lib/workflow-resolution.ts`
   - [x] resolveWorkflowForEntity() - priority-based resolution
   - [x] getFirstStage() / getStage() - stage lookup
@@ -94,6 +98,7 @@
 ## 📋 Pending Phases
 
 ### Phase 5: Server Actions (Week 2)
+
 - [ ] Create `src/app/_actions/workflows.ts`
   - [ ] createWorkflow(data) - validate and save new workflow
   - [ ] updateWorkflow(id, data) - create new version
@@ -112,10 +117,10 @@
 - [ ] Create `src/app/_actions/workflow-reassignments.ts` ⭐ **NEW**
   - [ ] canUserReassign(assignmentId, stageNumber, userId) - permission check
   - [ ] reassignApproval(request: ReassignStageRequest) - perform reassignment
-      - Request includes: assignmentId, stageNumber, newApproverId, reassignedBy, reason
+    - Request includes: assignmentId, stageNumber, newApproverId, reassignedBy, reason
   - [ ] getReassignmentHistory(assignmentId, stageNumber) - show trail
   - [ ] getAllReassignableApprovals(userId) - for admin view
-      - Show all pending approvals that can be reassigned
+    - Show all pending approvals that can be reassigned
   - [ ] validateReassignmentTarget(userId) - verify user can approve stage
 
 - [ ] Modify `src/app/_actions/requisitions.ts`
@@ -131,6 +136,7 @@
   - [ ] Use stage config for approval routing
 
 ### Phase 6: React Query Hooks (Week 2-3)
+
 - [ ] Create `src/hooks/use-workflow-queries.ts`
   - [ ] useWorkflows(filters) - list all workflows
   - [ ] useWorkflow(id) - single workflow with caching
@@ -156,7 +162,8 @@
   - [ ] useAllReassignableApprovals() - for admin dashboard
 
 ### Phase 7: UI - Workflow Management Pages (Week 3-4)
-- [ ] Create `src/app/(private)/workflows/custom/page.tsx`
+
+- [ ] Create `src/app/(private)/(main)/custom/page.tsx`
   - [ ] Display workflows in table with columns:
     - [ ] Name, Description, Version
     - [ ] Applicable entity types
@@ -169,13 +176,13 @@
   - [ ] Pagination
 
 - [ ] Create workflow list component
-  - [ ] `src/app/(private)/workflows/custom/_components/workflow-list.tsx`
+  - [ ] `src/app/(private)/(main)/custom/_components/workflow-list.tsx`
 
-- [ ] Create `src/app/(private)/workflows/custom/create/page.tsx`
+- [ ] Create `src/app/(private)/(main)/custom/create/page.tsx`
   - [ ] New workflow form
 
 - [ ] Create workflow designer component
-  - [ ] `src/app/(private)/workflows/custom/_components/workflow-designer.tsx`
+  - [ ] `src/app/(private)/(main)/custom/_components/workflow-designer.tsx`
   - [ ] Form for workflow metadata
     - [ ] Name, description
     - [ ] Applicable entity types (multi-select)
@@ -187,7 +194,7 @@
     - [ ] Visual preview of transitions
 
 - [ ] Create stage editor component
-  - [ ] `src/app/(private)/workflows/custom/_components/stage-editor.tsx`
+  - [ ] `src/app/(private)/(main)/custom/_components/stage-editor.tsx`
   - [ ] Modal/panel for editing individual stage
   - [ ] Fields:
     - [ ] Stage name, description
@@ -209,13 +216,14 @@
       - [ ] Can be reversed checkbox
   - [ ] Real-time validation errors
 
-- [ ] Create `src/app/(private)/workflows/custom/[id]/page.tsx`
+- [ ] Create `src/app/(private)/(main)/custom/[id]/page.tsx`
   - [ ] View/edit existing workflow
   - [ ] Show version history
   - [ ] Can only edit if not deprecated and no active usage
   - [ ] Preview of workflow visualization
 
 ### Phase 8: UI - Workflow Assignment in Entity Creation (Week 4)
+
 - [ ] Modify `/workflows/requisitions/create/page.tsx`
   - [ ] Add workflow selector dropdown
   - [ ] Show applicable workflows for REQUISITION type
@@ -229,6 +237,7 @@
 - [ ] Update entity creation in all modules that support workflows
 
 ### Phase 9: UI - Approval Display & Reassignment (Week 4) ⭐ **NEW**
+
 - [ ] Modify `/workflows/requisitions/[id]/page.tsx`
   - [ ] Show workflow stages panel
     - [ ] Display all stages with status badges
@@ -268,6 +277,7 @@
 - [ ] Update task display to show reassignment info
 
 ### Phase 9A: Notifications System ⭐ **NEW - CRITICAL**
+
 **Real-time notifications for task assignments with quick actions**
 
 - [ ] Create `src/types/notifications.ts`
@@ -351,7 +361,7 @@
 
 - [ ] Create notifications history page
   - [ ] Route: `/workflows/notifications`
-  - [ ] `src/app/(private)/workflows/notifications/page.tsx`
+  - [ ] `src/app/(private)/(main)/notifications/page.tsx`
   - [ ] Header: "Notifications" with total count
   - [ ] Filters:
     - [ ] Type dropdown (All, Task Assigned, Approved, etc.)
@@ -383,6 +393,7 @@
   - [ ] Real-time updates
 
 ### Phase 10: UI - Admin Dashboard (Week 5)
+
 - [ ] Add "Workflows" section to admin dashboard
   - [ ] Workflow management panel:
     - [ ] Set default workflows per entity type
@@ -399,6 +410,7 @@
     - [ ] Filter by date, user, reason
 
 ### Phase 11: Integration & Testing (Week 5)
+
 - [ ] Unit tests
   - [ ] workflow-validation.ts (80%+ coverage)
   - [ ] workflow-resolution.ts (80%+ coverage)
@@ -438,6 +450,7 @@
   - [ ] No N+1 query problems (when DB added)
 
 ### Phase 12: Documentation (Week 5)
+
 - [ ] Create `docs/CUSTOM_WORKFLOWS_USER_GUIDE.md`
   - [ ] Step-by-step workflow creation
   - [ ] Screenshots of designer UI
@@ -478,11 +491,13 @@
 ## 🔄 Data Flow Summary
 
 ### 1. Workflow Creation
+
 ```
 User → Designer UI → validateWorkflow() → persistWorkflow() → Workflow created ✅
 ```
 
 ### 2. Entity Submission
+
 ```
 User creates requisition → Select workflow
               ↓
@@ -498,6 +513,7 @@ Create Task for approver ✅
 ```
 
 ### 3. Approval Flow
+
 ```
 Approver views task → Open entity detail
               ↓
@@ -519,6 +535,7 @@ Else:
 ```
 
 ### 4. Rejection Flow
+
 ```
 Approver clicks "Reject"
               ↓
@@ -532,6 +549,7 @@ Notify requester ✅
 ```
 
 ### 5. Reassignment Flow ⭐ **NEW**
+
 ```
 Approver unavailable → Clicks "Reassign"
               ↓
@@ -558,6 +576,7 @@ getReassignmentHistory() shows trail:
 ```
 
 ### 6. Admin Reassignment Flow ⭐ **NEW**
+
 ```
 Admin views dashboard
               ↓
@@ -581,6 +600,7 @@ reassignApproval() from admin context:
 ## 🎯 Key Implementation Notes
 
 ### Reassignment Architecture
+
 - **StageExecution.assignedTo**: Current approver
 - **StageAssignment (in assignmentHistory)**: Historical record
   - Who was assigned
@@ -590,6 +610,7 @@ reassignApproval() from admin context:
   - Status: ASSIGNED / REASSIGNED_TO_OTHER / COMPLETED
 
 ### Permissions Model
+
 ```
 Can reassign:
   ✓ Currently assigned user (if stage.canBeReassigned = true)
@@ -604,6 +625,7 @@ Visible to:
 ```
 
 ### Audit Trail Records
+
 ```
 Each reassignment creates:
 - StageAssignment record with:

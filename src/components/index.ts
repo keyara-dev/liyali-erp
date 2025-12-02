@@ -24,6 +24,21 @@ export * from "./ui/textarea";
 export * from "./base/empty-state";
 export * from "./base/error-display";
 
+// Workflow Components
+export { ApprovalFlowDisplay } from "./workflows/approval-flow-display";
+export { ApprovalActionPanel } from "./workflows/approval-action-panel";
+export { ApprovalHistory } from "./workflows/approval-history";
+export { WorkflowSelector } from "./workflows/workflow-selector";
+export { WorkflowStageForm } from "./workflows/workflow-stage-form";
+export { ReassignmentModal } from "./workflows/reassignment-modal";
+
+// Approval Components
+export { ApprovalConfirmationModal } from "./approval-confirmation-modal";
+
+// Notification Components
+export { NotificationPreferences } from "./notifications/notification-preferences";
+export { NotificationActionModal } from "./notifications/notification-action-modal";
+
 // Charts
 // export * from "./charts";
 

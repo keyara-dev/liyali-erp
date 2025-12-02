@@ -188,14 +188,7 @@ export function RequisitionDetailClient({
           {requisition.status === "APPROVED" && (
             <DocumentLinks
               currentDocument={requisition as unknown as WorkflowDocument}
-              linkedDocuments={{
-                purchaseOrder: requisition.metadata?.purchaseOrderId
-                  ? {
-                      id: requisition.metadata.purchaseOrderId,
-                      number: "PO-2024-001",
-                    }
-                  : undefined,
-              }}
+              linkedDocuments={{}}
             />
           )}
 
@@ -274,7 +267,7 @@ export function RequisitionDetailClient({
           {/* Edit Panel - Only for Creator in DRAFT/REJECTED status */}
           {canEdit && (
             <EditRequisitionPanel
-              requisition={requisition}
+              requisition={requisition as any}
               onRequisitionUpdated={refetch}
             />
           )}
@@ -284,7 +277,7 @@ export function RequisitionDetailClient({
         <div className="lg:col-span-1">
           <ApprovalHistoryPanel
             requisitionId={requisitionId}
-            requisition={requisition}
+            requisition={requisition as any}
             userRole={userRole}
           />
         </div>

@@ -1,24 +1,24 @@
-'use client'
+"use client";
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { PageHeader } from '@/components/base/page-header'
-import { CreateRequisitionForm } from './create-form'
-import { FormPreview } from './form-preview'
-import { RequisitionItem } from '@/types/workflow'
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { PageHeader } from "@/components/base/page-header";
+import { CreateRequisitionForm } from "./create-form";
+import { FormPreview } from "./form-preview";
+import { RequisitionItem } from "@/types/workflow";
 
 interface CreateRequisitionClientProps {
-  userId: string
-  userRole: string
-  userName: string
+  userId: string;
+  userRole: string;
+  userName: string;
 }
 
 export interface RequisitionFormData {
-  department: string
-  requestedFor: string
-  justification: string
-  budgetCode: string
-  items: RequisitionItem[]
+  department: string;
+  requestedFor: string;
+  justification: string;
+  budgetCode: string;
+  items: RequisitionItem[];
 }
 
 export function CreateRequisitionClient({
@@ -26,43 +26,45 @@ export function CreateRequisitionClient({
   userRole,
   userName,
 }: CreateRequisitionClientProps) {
-  const router = useRouter()
-  const [currentStep, setCurrentStep] = useState<'form' | 'preview'>('form')
+  const router = useRouter();
+  const [currentStep, setCurrentStep] = useState<"form" | "preview">("form");
   const [formData, setFormData] = useState<RequisitionFormData>({
-    department: '',
+    department: "",
     requestedFor: userName,
-    justification: '',
-    budgetCode: '',
+    justification: "",
+    budgetCode: "",
     items: [],
-  })
+  });
 
   const handleFormSubmit = (data: RequisitionFormData) => {
-    setFormData(data)
-    setCurrentStep('preview')
-  }
+    setFormData(data);
+    setCurrentStep("preview");
+  };
 
   const handleBack = () => {
-    setCurrentStep('form')
-  }
+    setCurrentStep("form");
+  };
 
   const handleSubmit = async (data: RequisitionFormData) => {
     // Submit to server action
     try {
       // TODO: Call createWorkflowDocument server action
-      router.push('/workflows/requisitions')
+      router.push("/requisitions");
     } catch (error) {
-      console.error('Failed to create requisition:', error)
+      console.error("Failed to create requisition:", error);
     }
-  }
+  };
 
   return (
     <div className="space-y-6">
       <PageHeader
-        title={currentStep === 'form' ? 'Create Requisition' : 'Preview & Submit'}
+        title={
+          currentStep === "form" ? "Create Requisition" : "Preview & Submit"
+        }
         subtitle={
-          currentStep === 'form'
-            ? 'Fill in the requisition details and items'
-            : 'Review your requisition before submitting'
+          currentStep === "form"
+            ? "Fill in the requisition details and items"
+            : "Review your requisition before submitting"
         }
         showBackButton={false}
       />
@@ -71,9 +73,9 @@ export function CreateRequisitionClient({
       <div className="flex items-center gap-4">
         <div
           className={`flex h-8 w-8 items-center justify-center rounded-full border-2 ${
-            currentStep === 'form'
-              ? 'border-primary bg-primary text-primary-foreground'
-              : 'border-secondary bg-secondary text-secondary-foreground'
+            currentStep === "form"
+              ? "border-primary bg-primary text-primary-foreground"
+              : "border-secondary bg-secondary text-secondary-foreground"
           }`}
         >
           1
@@ -81,9 +83,9 @@ export function CreateRequisitionClient({
         <div className="flex-1 h-1 bg-border" />
         <div
           className={`flex h-8 w-8 items-center justify-center rounded-full border-2 ${
-            currentStep === 'preview'
-              ? 'border-primary bg-primary text-primary-foreground'
-              : 'border-muted bg-muted text-muted-foreground'
+            currentStep === "preview"
+              ? "border-primary bg-primary text-primary-foreground"
+              : "border-muted bg-muted text-muted-foreground"
           }`}
         >
           2
@@ -91,8 +93,11 @@ export function CreateRequisitionClient({
       </div>
 
       {/* Content */}
-      {currentStep === 'form' ? (
-        <CreateRequisitionForm onSubmit={handleFormSubmit} initialData={formData} />
+      {currentStep === "form" ? (
+        <CreateRequisitionForm
+          onSubmit={handleFormSubmit}
+          initialData={formData}
+        />
       ) : (
         <FormPreview
           formData={formData}
@@ -101,5 +106,5 @@ export function CreateRequisitionClient({
         />
       )}
     </div>
-  )
+  );
 }

@@ -17,7 +17,7 @@ import {
  */
 export async function createBudget(
   request: CreateBudgetRequest
-): Promise<APIResponse<Budget>> {
+): Promise<APIResponse<Budget | null>> {
   try {
     const budgetNumber = `BDG-${new Date().getFullYear()}-${Math.floor(Math.random() * 10000).toString().padStart(5, '0')}`
 
@@ -75,7 +75,7 @@ export async function createBudget(
 export const getBudgets = cache(async (
   userId: string,
   filters?: BudgetFilters
-): Promise<APIResponse<Budget[]>> => {
+): Promise<APIResponse<Budget[] | null>> => {
   try {
     // Mock data - in production, fetch from database
     const mockBudgets: Budget[] = [
@@ -292,7 +292,7 @@ export const getBudgets = cache(async (
 /**
  * Get budget by ID
  */
-export async function getBudgetById(budgetId: string): Promise<APIResponse<Budget>> {
+export async function getBudgetById(budgetId: string): Promise<APIResponse<Budget | null>> {
   try {
     // In production, fetch from database
     const budgets = await getBudgets('user-1') // dummy userId
@@ -331,7 +331,7 @@ export async function getBudgetById(budgetId: string): Promise<APIResponse<Budge
  */
 export async function submitBudgetForApproval(
   request: SubmitBudgetRequest
-): Promise<APIResponse<Budget>> {
+): Promise<APIResponse<Budget | null>> {
   try {
     const budget = await getBudgetById(request.budgetId)
 
@@ -385,7 +385,7 @@ export async function submitBudgetForApproval(
  */
 export async function approveBudget(
   request: ApproveBudgetRequest
-): Promise<APIResponse<Budget>> {
+): Promise<APIResponse<Budget | null>> {
   try {
     const budget = await getBudgetById(request.budgetId)
 
@@ -446,7 +446,7 @@ export async function approveBudget(
  */
 export async function rejectBudget(
   request: RejectBudgetRequest
-): Promise<APIResponse<Budget>> {
+): Promise<APIResponse<Budget | null>> {
   try {
     const budget = await getBudgetById(request.budgetId)
 

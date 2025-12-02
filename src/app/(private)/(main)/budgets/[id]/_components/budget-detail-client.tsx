@@ -1,22 +1,22 @@
-'use client'
+"use client";
 
-import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { ArrowLeft, Send, Plus } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { PageHeader } from '@/components/base/page-header'
-import { BudgetItemsTable } from './budget-items-table'
-import { ApprovalChainPanel } from './approval-chain-panel'
-import { AddBudgetItemDialog } from './add-budget-item-dialog'
-import { getBudgetById, submitBudgetForApproval } from '@/app/_actions/budgets'
-import { Budget, BudgetItem } from '@/types/budget'
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { ArrowLeft, Send, Plus } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { PageHeader } from "@/components/base/page-header";
+import { BudgetItemsTable } from "./budget-items-table";
+import { ApprovalChainPanel } from "./approval-chain-panel";
+import { AddBudgetItemDialog } from "./add-budget-item-dialog";
+import { getBudgetById, submitBudgetForApproval } from "@/app/_actions/budgets";
+import { Budget, BudgetItem } from "@/types/budget";
 
 interface BudgetDetailClientProps {
-  budgetId: string
-  userId: string
-  userRole: string
+  budgetId: string;
+  userId: string;
+  userRole: string;
 }
 
 export function BudgetDetailClient({
@@ -24,57 +24,56 @@ export function BudgetDetailClient({
   userId,
   userRole,
 }: BudgetDetailClientProps) {
-  const router = useRouter()
-  const [budget, setBudget] = useState<Budget | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [isAddItemDialogOpen, setIsAddItemDialogOpen] = useState(false)
+  const router = useRouter();
+  const [budget, setBudget] = useState<Budget | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isAddItemDialogOpen, setIsAddItemDialogOpen] = useState(false);
 
   useEffect(() => {
     async function fetchBudget() {
-      setIsLoading(true)
+      setIsLoading(true);
       try {
-        const result = await getBudgetById(budgetId)
+        const result = await getBudgetById(budgetId);
         if (result.success && result.data) {
-          setBudget(result.data)
+          setBudget(result.data);
         }
       } catch (error) {
-        console.error('Failed to fetch budget:', error)
+        console.error("Failed to fetch budget:", error);
       } finally {
-        setIsLoading(false)
+        setIsLoading(false);
       }
     }
 
-    fetchBudget()
-  }, [budgetId])
+    fetchBudget();
+  }, [budgetId]);
 
   const handleSubmitForApproval = async () => {
-    if (!budget) return
+    if (!budget) return;
 
-    setIsSubmitting(true)
+    setIsSubmitting(true);
     try {
       const result = await submitBudgetForApproval({
         budgetId: budget.id,
-        submittedBy: userId,
-        comments: 'Budget submitted for approval',
-      })
+        submittingUserId: userId,
+      });
 
       if (result.success && result.data) {
-        setBudget(result.data)
+        setBudget(result.data);
       }
     } catch (error) {
-      console.error('Failed to submit budget:', error)
+      console.error("Failed to submit budget:", error);
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
-  }
+  };
 
   const handleAddBudgetItem = (newItem: {
-    category: string
-    description: string
-    allocatedAmount: number
+    category: string;
+    description: string;
+    allocatedAmount: number;
   }) => {
-    if (!budget) return
+    if (!budget) return;
 
     const budgetItem: BudgetItem = {
       id: `item-${Date.now()}-${Math.random()}`,
@@ -85,20 +84,20 @@ export function BudgetDetailClient({
       remainingAmount: newItem.allocatedAmount,
       createdAt: new Date(),
       updatedAt: new Date(),
-    }
+    };
 
     setBudget({
       ...budget,
       items: [...budget.items, budgetItem],
-    })
-  }
+    });
+  };
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: budget?.currency || 'USD',
-    }).format(amount)
-  }
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: budget?.currency || "USD",
+    }).format(amount);
+  };
 
   if (isLoading) {
     return (
@@ -110,7 +109,7 @@ export function BudgetDetailClient({
           ))}
         </div>
       </div>
-    )
+    );
   }
 
   if (!budget) {
@@ -122,12 +121,15 @@ export function BudgetDetailClient({
           Go Back
         </Button>
       </div>
-    )
+    );
   }
 
-  const totalSpent = budget.items.reduce((sum, item) => sum + item.spentAmount, 0)
-  const totalRemaining = budget.totalAmount - totalSpent
-  const spentPercentage = (totalSpent / budget.totalAmount) * 100
+  const totalSpent = budget.items.reduce(
+    (sum, item) => sum + item.spentAmount,
+    0
+  );
+  const totalRemaining = budget.totalAmount - totalSpent;
+  const spentPercentage = (totalSpent / budget.totalAmount) * 100;
 
   return (
     <div className="space-y-6">
@@ -160,10 +162,14 @@ export function BudgetDetailClient({
             {/* Total Budget */}
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">Total Budget</CardTitle>
+                <CardTitle className="text-sm font-medium">
+                  Total Budget
+                </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{formatCurrency(budget.totalAmount)}</div>
+                <div className="text-2xl font-bold">
+                  {formatCurrency(budget.totalAmount)}
+                </div>
                 <p className="text-xs text-muted-foreground mt-1">
                   Fiscal Year {budget.fiscalYear}
                 </p>
@@ -173,10 +179,14 @@ export function BudgetDetailClient({
             {/* Spent Amount */}
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">Spent Amount</CardTitle>
+                <CardTitle className="text-sm font-medium">
+                  Spent Amount
+                </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-orange-600">{formatCurrency(totalSpent)}</div>
+                <div className="text-2xl font-bold text-orange-600">
+                  {formatCurrency(totalSpent)}
+                </div>
                 <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
                   <div
                     className="bg-orange-600 h-2 rounded-full"
@@ -192,10 +202,14 @@ export function BudgetDetailClient({
             {/* Remaining Amount */}
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">Remaining Amount</CardTitle>
+                <CardTitle className="text-sm font-medium">
+                  Remaining Amount
+                </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-green-600">{formatCurrency(totalRemaining)}</div>
+                <div className="text-2xl font-bold text-green-600">
+                  {formatCurrency(totalRemaining)}
+                </div>
                 <p className="text-xs text-muted-foreground mt-1">
                   Available for allocation
                 </p>
@@ -204,7 +218,7 @@ export function BudgetDetailClient({
           </div>
 
           {/* Actions Section */}
-          {budget.status === 'DRAFT' && (
+          {budget.status === "DRAFT" && (
             <Card>
               <CardHeader>
                 <CardTitle>Actions</CardTitle>
@@ -216,7 +230,7 @@ export function BudgetDetailClient({
                   size="lg"
                 >
                   <Send className="mr-2 h-4 w-4" />
-                  {isSubmitting ? 'Submitting...' : 'Submit for Approval'}
+                  {isSubmitting ? "Submitting..." : "Submit for Approval"}
                 </Button>
               </CardContent>
             </Card>
@@ -245,7 +259,9 @@ export function BudgetDetailClient({
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Created At</p>
-                  <p className="font-medium">{budget.createdAt.toLocaleDateString()}</p>
+                  <p className="font-medium">
+                    {budget.createdAt.toLocaleDateString()}
+                  </p>
                 </div>
               </div>
               {budget.description && (
@@ -263,25 +279,25 @@ export function BudgetDetailClient({
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>Budget Items ({budget.items.length})</CardTitle>
-              {budget.status === 'DRAFT' && (
-                <Button
-                  size="sm"
-                  onClick={() => setIsAddItemDialogOpen(true)}
-                >
+              {budget.status === "DRAFT" && (
+                <Button size="sm" onClick={() => setIsAddItemDialogOpen(true)}>
                   <Plus className="h-4 w-4 mr-1" />
                   Add Item
                 </Button>
               )}
             </CardHeader>
             <CardContent>
-              <BudgetItemsTable items={budget.items} currency={budget.currency} />
+              <BudgetItemsTable
+                items={budget.items}
+                currency={budget.currency}
+              />
             </CardContent>
           </Card>
         </TabsContent>
 
         {/* Approvals Tab */}
         <TabsContent value="approvals">
-          <ApprovalChainPanel approvalChain={budget.approvalChain} />
+          <ApprovalChainPanel approvalChain={budget?.approvalChain as any} />
         </TabsContent>
       </Tabs>
 
@@ -292,5 +308,5 @@ export function BudgetDetailClient({
         onItemAdded={handleAddBudgetItem}
       />
     </div>
-  )
+  );
 }

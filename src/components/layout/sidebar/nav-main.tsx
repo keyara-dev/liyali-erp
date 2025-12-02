@@ -6,7 +6,7 @@ import {
   SidebarGroupLabel,
   SidebarMenu,
   SidebarMenuButton,
-  SidebarMenuItem
+  SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import {
   ActivityIcon,
@@ -25,7 +25,7 @@ import {
   CheckSquare,
   DollarSign,
   GitBranch,
-  type LucideIcon
+  type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -47,50 +47,50 @@ export const navItems: NavGroup[] = [
     items: [
       {
         title: "Dashboard",
-        href: "/workflows/dashboard",
-        icon: LayoutDashboard
+        href: "/home",
+        icon: LayoutDashboard,
       },
       {
         title: "Tasks",
-        href: "/workflows/tasks",
-        icon: CheckSquare
+        href: "//tasks",
+        icon: CheckSquare,
       },
       {
         title: "Search Transactions",
-        href: "/workflows/search",
-        icon: Search
+        href: "//search",
+        icon: Search,
       },
       {
         title: "Requisitions",
-        href: "/workflows/requisitions",
-        icon: FileText
+        href: "//requisitions",
+        icon: FileText,
       },
       {
         title: "Purchase Orders",
-        href: "/workflows/purchase-orders",
-        icon: FileCheck
+        href: "//purchase-orders",
+        icon: FileCheck,
       },
       {
         title: "Payment Vouchers",
-        href: "/workflows/payment-vouchers",
-        icon: FileText
+        href: "//payment-vouchers",
+        icon: FileText,
       },
       {
         title: "Goods Received Notes",
-        href: "/workflows/grn",
-        icon: FileCheck
-      }
-    ]
+        href: "//grn",
+        icon: FileCheck,
+      },
+    ],
   },
   {
     title: "Budget Management",
     items: [
       {
         title: "Budgets",
-        href: "/workflows/budgets",
-        icon: DollarSign
-      }
-    ]
+        href: "//budgets",
+        icon: DollarSign,
+      },
+    ],
   },
   {
     title: "Admin",
@@ -98,24 +98,24 @@ export const navItems: NavGroup[] = [
       {
         title: "Reports",
         href: "/admin/reports",
-        icon: BarChart3Icon
+        icon: BarChart3Icon,
       },
       {
         title: "User Management",
         href: "/admin/users",
-        icon: UsersIcon
+        icon: UsersIcon,
       },
       {
         title: "Activity Logs",
         href: "/admin/logs",
-        icon: ActivityIcon
+        icon: ActivityIcon,
       },
       {
         title: "Workflow Management",
-        href: "/admin/workflows",
-        icon: GitBranch
-      }
-    ]
+        href: "/admin/",
+        icon: GitBranch,
+      },
+    ],
   },
   {
     title: "Compliance & Monitoring",
@@ -123,19 +123,19 @@ export const navItems: NavGroup[] = [
       {
         title: "Compliance Tracking",
         href: "/compliance/tracking",
-        icon: ShieldAlert
+        icon: ShieldAlert,
       },
       {
         title: "System Monitoring",
         href: "/monitoring",
-        icon: Zap
+        icon: Zap,
       },
       {
         title: "QR Verification",
         href: "/verification/qr",
-        icon: QrCode
-      }
-    ]
+        icon: QrCode,
+      },
+    ],
   },
   {
     title: "Settings",
@@ -143,10 +143,10 @@ export const navItems: NavGroup[] = [
       {
         title: "Settings",
         href: "/settings",
-        icon: SettingsIcon
-      }
-    ]
-  }
+        icon: SettingsIcon,
+      },
+    ],
+  },
 ];
 
 export function NavMain() {

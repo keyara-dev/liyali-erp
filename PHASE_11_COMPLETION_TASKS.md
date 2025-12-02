@@ -11,6 +11,7 @@
 You have **3 options**:
 
 ### Option A: Ship as-is to Phase 12 (2 hours)
+
 - ✅ Core workflows work
 - ⚠️ No user feedback (toasts)
 - ⚠️ No advanced form validation
@@ -18,6 +19,7 @@ You have **3 options**:
 - **Use when**: You want to move to Phase 12 database work ASAP
 
 ### Option B: Quick Polish (4 hours)
+
 - ✅ Add toast notifications
 - ✅ Add basic error boundaries
 - ✅ Better loading states
@@ -25,6 +27,7 @@ You have **3 options**:
 - **Use when**: You want better UX but need to move quickly
 
 ### Option C: Complete Polish (8 hours)
+
 - ✅ Add toast notifications
 - ✅ Add form validation (Zod + React Hook Form)
 - ✅ Add error boundaries
@@ -37,16 +40,19 @@ You have **3 options**:
 ## Task 1: Add Toast Notifications (30 min) ⏱️
 
 ### Why
+
 Users need feedback when they approve/reject tasks. Currently: no confirmation message.
 
 ### How
 
 **Step 1: Install Sonner**
+
 ```bash
 npm install sonner
 ```
 
 **Step 2: Add toast provider to layout**
+
 ```typescript
 // src/app/layout.tsx
 import { Toaster } from 'sonner'
@@ -68,6 +74,7 @@ export default function RootLayout({
 ```
 
 **Step 3: Update approval-action-panel.tsx**
+
 ```typescript
 import { toast } from 'sonner'
 
@@ -117,6 +124,7 @@ const handleRejectSubmit = async (signature: string, reason?: string) => {
 ```
 
 **Step 4: Test**
+
 1. Go to tasks → Approvals
 2. Click a task
 3. Approve with signature
@@ -129,39 +137,44 @@ const handleRejectSubmit = async (signature: string, reason?: string) => {
 ## Task 2: Add Form Validation (1 hour) ⏱️
 
 ### Why
+
 More robust form checking. Currently only checks signature exists.
 
 ### How
 
 **Step 1: Install Dependencies**
+
 ```bash
 npm install react-hook-form zod @hookform/resolvers
 ```
 
 **Step 2: Create validation schemas**
+
 ```typescript
 // src/lib/validation-schemas.ts
-import { z } from 'zod'
+import { z } from "zod";
 
 export const approveSchema = z.object({
-  signature: z.string().min(1, 'Signature is required'),
+  signature: z.string().min(1, "Signature is required"),
   remarks: z.string().optional(),
-})
+});
 
 export const rejectSchema = z.object({
-  signature: z.string().min(1, 'Signature is required'),
-  reason: z.string()
-    .min(1, 'Rejection reason is required')
-    .min(10, 'Please provide a detailed reason (at least 10 characters)'),
-})
+  signature: z.string().min(1, "Signature is required"),
+  reason: z
+    .string()
+    .min(1, "Rejection reason is required")
+    .min(10, "Please provide a detailed reason (at least 10 characters)"),
+});
 
 export const reassignSchema = z.object({
-  newApproverId: z.string().min(1, 'Please select an approver'),
+  newApproverId: z.string().min(1, "Please select an approver"),
   reason: z.string().optional(),
-})
+});
 ```
 
 **Step 3: Update NotificationActionModal**
+
 ```typescript
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -209,6 +222,7 @@ const form = useForm({
 ```
 
 **Step 4: Test**
+
 1. Click Approve → Try to submit without signature
 2. ✅ Should see: "Signature is required"
 3. Click Reject → Try to submit without reason
@@ -221,11 +235,13 @@ const form = useForm({
 ## Task 3: Add Error Boundaries (30 min) ⏱️
 
 ### Why
+
 Catch unexpected errors and show user-friendly message instead of white screen.
 
 ### How
 
 **Step 1: Create error boundary component**
+
 ```typescript
 // src/components/error-boundary.tsx
 'use client'
@@ -292,8 +308,9 @@ export function ErrorBoundary({ children, fallback }: ErrorBoundaryProps) {
 ```
 
 **Step 2: Wrap components**
+
 ```typescript
-// src/app/(private)/workflows/tasks/page.tsx
+// src/app/(private)/(main)/tasks/page.tsx
 import { ErrorBoundary } from '@/components/error-boundary'
 
 export default function TasksPage() {
@@ -306,6 +323,7 @@ export default function TasksPage() {
 ```
 
 **Step 3: Test**
+
 1. Throw error intentionally to verify boundary catches it
 2. Error should show in alert, not crash entire app
 
@@ -314,11 +332,13 @@ export default function TasksPage() {
 ## Task 4: Add Loading Skeletons (1 hour) ⏱️
 
 ### Why
+
 Better visual feedback while data loads. Currently shows nothing while loading.
 
 ### How
 
 **Step 1: Create skeleton component**
+
 ```typescript
 // src/components/ui/skeleton.tsx (already exists with shadcn)
 import { Skeleton } from '@/components/ui/skeleton'
@@ -340,8 +360,9 @@ export function ApprovalCardSkeleton() {
 ```
 
 **Step 2: Update ApprovalsList component**
+
 ```typescript
-// src/app/(private)/workflows/tasks/_components/approvals-list.tsx
+// src/app/(private)/(main)/tasks/_components/approvals-list.tsx
 import { useGetApprovalTasks } from '@/hooks/use-approval-queries'
 import { ApprovalCardSkeleton } from '@/components/ui/skeleton'
 
@@ -385,22 +406,25 @@ export function ApprovalsList({ userId }: { userId: string }) {
 ## Task 5: Add E2E Tests (2-4 hours) ⏱️
 
 ### Why
+
 Automated testing ensures workflows work before shipping to Phase 12.
 
 ### How
 
 **Step 1: Setup Jest & React Testing Library**
+
 ```bash
 npm install --save-dev @testing-library/react @testing-library/jest-dom jest @types/jest
 npx jest --init
 ```
 
 **Step 2: Create test file**
+
 ```typescript
 // __tests__/approval-workflow.test.tsx
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { TasksClient } from '@/app/(private)/workflows/tasks/_components/tasks-client'
+import { TasksClient } from '@/app/(private)/(main)/tasks/_components/tasks-client'
 
 describe('Approval Workflow E2E', () => {
   beforeEach(() => {
@@ -491,6 +515,7 @@ describe('Approval Workflow E2E', () => {
 ```
 
 **Step 3: Run tests**
+
 ```bash
 npm test
 ```
@@ -500,6 +525,7 @@ npm test
 ## Implementation Checklist
 
 ### Toast Notifications
+
 - [ ] Install sonner: `npm install sonner`
 - [ ] Add Toaster to layout.tsx
 - [ ] Add toast.success() after approve
@@ -508,6 +534,7 @@ npm test
 - [ ] Test: Error → see red toast
 
 ### Form Validation
+
 - [ ] Install: `npm install react-hook-form zod @hookform/resolvers`
 - [ ] Create validation-schemas.ts
 - [ ] Update NotificationActionModal with useForm
@@ -516,16 +543,19 @@ npm test
 - [ ] Test: Submit with reason < 10 chars → error
 
 ### Error Boundaries
+
 - [ ] Create error-boundary.tsx
 - [ ] Wrap TasksClient in error boundary
 - [ ] Test: Throw error → see alert, not crash
 
 ### Loading Skeletons
+
 - [ ] Create ApprovalCardSkeleton component
 - [ ] Update ApprovalsList to show skeleton while loading
 - [ ] Test: Page loading → see skeleton, then content
 
 ### E2E Tests
+
 - [ ] Setup Jest and Testing Library
 - [ ] Create test files
 - [ ] Write 4-5 test cases
@@ -588,6 +618,7 @@ npm test
 ## Summary
 
 **What you're adding**:
+
 1. ✅ Toast notifications on success/error
 2. ✅ Form validation with better error messages
 3. ✅ Error boundaries to catch crashes

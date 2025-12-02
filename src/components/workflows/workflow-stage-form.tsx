@@ -51,7 +51,7 @@ export function WorkflowStageForm({
       placeholder?: string;
     }> = [];
 
-    if (stage.requiresRemarks) {
+    if ((stage as any).requiresRemarks) {
       fields.push({
         name: "remarks",
         label: "Approval Remarks",
@@ -61,7 +61,7 @@ export function WorkflowStageForm({
       });
     }
 
-    if (stage.requiresAttachments) {
+    if ((stage as any).requiresAttachments) {
       fields.push({
         name: "attachments",
         label: "Supporting Documents",
@@ -71,8 +71,8 @@ export function WorkflowStageForm({
       });
     }
 
-    if (stage.customFields && Array.isArray(stage.customFields)) {
-      stage.customFields.forEach((field: any) => {
+    if ((stage as any).customFields && Array.isArray((stage as any).customFields)) {
+      ((stage as any).customFields as any[]).forEach((field: any) => {
         fields.push({
           name: field.name || "custom_field",
           label: field.label || "Field",
@@ -148,7 +148,7 @@ export function WorkflowStageForm({
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <CheckCircle2 className="h-5 w-5 text-blue-600" />
-          {stage.name}
+          {stage.stageName}
         </CardTitle>
         <CardDescription>{stage.description}</CardDescription>
       </CardHeader>

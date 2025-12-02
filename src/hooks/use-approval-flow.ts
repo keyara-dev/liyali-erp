@@ -51,7 +51,7 @@ export function useApproveStage() {
       });
 
       // Invalidate pending approvals for current user
-      invalidatePending(variables.approverId);
+      invalidatePending(variables.approvingUserId);
 
       // Invalidate pending for next approver if exists
       if (data.nextApprover) {
@@ -83,7 +83,7 @@ export function useRejectStage() {
       });
 
       // Invalidate pending for rejector
-      invalidatePending(variables.rejectorId);
+      invalidatePending(variables.rejectingUserId);
 
       // Invalidate for creator (might be returned to them)
       queryClient.invalidateQueries({
@@ -161,7 +161,7 @@ export function useQuickApprove() {
       queryClient.invalidateQueries({
         queryKey: ['notifications'],
       });
-      invalidatePending(variables.approveRequest.approverId);
+      invalidatePending(variables.approveRequest.approvingUserId);
     },
   });
 }
@@ -243,7 +243,7 @@ export function useRejectionModal() {
       try {
         await rejectMutation.mutateAsync({
           ...request,
-          rejectionRemarks: remarks,
+          remarks: remarks,
         });
 
         // Reset form
@@ -357,7 +357,7 @@ export function useApprovalPermissions(
   const canReassign =
     canApprove &&
     (currentStage?.canBeReassigned ?? true) &&
-    (userId === assignment.currentStageNumber ||
+    ((currentStage as any)?.assignedTo === userId ||
       userRole === 'ADMIN');
 
   return {
@@ -461,8 +461,8 @@ export function useStageCompletion(
   return {
     isCompleted: !!execution,
     status: execution?.status || 'PENDING',
-    completedAt: execution?.createdAt,
-    approvedBy: execution?.approvedBy,
+    completedAt: execution?.completedAt,
+    approvedBy: execution?.completedBy,
     remarks: execution?.remarks,
     signature: execution?.signature,
   };

@@ -12,26 +12,31 @@
 ### 1. Core Files
 
 #### `src/lib/validation-schemas.ts` ✅
+
 - Zod validation schemas for all forms
 - Approval, rejection, and reassignment validation
 - Type-safe form data types
 
 #### `src/components/error-boundary.tsx` ✅
+
 - Error boundary component
 - Catches unexpected errors
 - Shows user-friendly error message with retry button
 
 #### `src/components/ui/skeleton-loaders.tsx` ✅
+
 - Skeleton loading components
 - ApprovalCardSkeleton, ApprovalListSkeleton, TaskDetailSkeleton
 - FormFieldSkeleton, ModalSkeleton, StatsSkeleton
 
 #### `src/components/providers/toast-provider.tsx` ✅
+
 - Toast provider component
 - Already integrated in `src/app/providers.tsx` (Toaster from Sonner)
 - Provides toast notification infrastructure for `notify()` function
 
 #### `src/components/notifications/notification-action-modal-v2.tsx` ✅
+
 - New improved notification action modal
 - Full form validation with React Hook Form + Zod
 - Error handling and user feedback
@@ -45,12 +50,14 @@
 ### Step 1: npm dependencies ✅ DONE
 
 All dependencies successfully installed:
+
 - ✅ `sonner@2.0.7` - Toast notifications
 - ✅ `zod` - Runtime validation
 - ✅ `@hookform/resolvers@5.2.2` - React Hook Form + Zod integration
 - ✅ `react-hook-form@7.67.0` - Form state management
 
 Verify with:
+
 ```bash
 npm list sonner zod react-hook-form @hookform/resolvers
 ```
@@ -58,6 +65,7 @@ npm list sonner zod react-hook-form @hookform/resolvers
 ### Step 2: Toast Provider ✅ DONE
 
 Toast provider is already configured in `src/app/providers.tsx`:
+
 ```typescript
 import { Toaster } from 'sonner'
 
@@ -79,12 +87,14 @@ export function Providers({ children }: { children: React.ReactNode }) {
 **File**: `src/components/workflows/approval-action-panel.tsx`
 
 Successfully updated to use v2 modal with notify() function:
+
 ```typescript
 import { NotificationActionModal } from "@/components/notifications/notification-action-modal-v2";
 import { notify } from "@/lib/utils";
 ```
 
 The new modal automatically includes:
+
 - ✅ Form validation (Zod + React Hook Form)
 - ✅ Real-time error messages under fields
 - ✅ Toast notifications using `notify()` function
@@ -96,7 +106,7 @@ The new modal automatically includes:
 
 The `src/components/error-boundary.tsx` is ready for use. To wrap pages with it:
 
-**File**: `src/app/(private)/workflows/tasks/page.tsx`
+**File**: `src/app/(private)/(main)/tasks/page.tsx`
 
 ```typescript
 import { ErrorBoundary } from '@/components/error-boundary'
@@ -112,6 +122,7 @@ export default function TasksPage() {
 ```
 
 **Benefits**:
+
 - Catches unexpected React errors
 - Shows friendly error message
 - User can retry or reload page
@@ -121,7 +132,7 @@ export default function TasksPage() {
 
 Skeleton components are available at `src/components/ui/skeleton-loaders.tsx` for use:
 
-**File**: `src/app/(private)/workflows/tasks/_components/approvals-list.tsx`
+**File**: `src/app/(private)/(main)/tasks/_components/approvals-list.tsx`
 
 ```typescript
 import { ApprovalListSkeleton } from '@/components/ui/skeleton-loaders'
@@ -148,6 +159,7 @@ export function ApprovalsList({ userId }: { userId: string }) {
 ```
 
 **Available Skeletons**:
+
 - `ApprovalCardSkeleton` - Single approval card placeholder
 - `ApprovalListSkeleton` - List of 3 approval cards
 - `TaskDetailSkeleton` - Task detail page placeholder
@@ -161,6 +173,7 @@ export function ApprovalsList({ userId }: { userId: string }) {
 ### Form Validation ✅
 
 **Signature Validation**:
+
 ```
 ❌ User tries to submit without signature
 → Error message: "Signature is required"
@@ -169,6 +182,7 @@ export function ApprovalsList({ userId }: { userId: string }) {
 ```
 
 **Rejection Reason Validation**:
+
 ```
 ❌ User enters reason < 10 characters
 → Error message: "Please provide a detailed reason (at least 10 characters)"
@@ -181,6 +195,7 @@ export function ApprovalsList({ userId }: { userId: string }) {
 ### Error Handling ✅
 
 **On Approval Failure**:
+
 ```
 ❌ Server error occurs
 → Error alert shown in modal
@@ -190,6 +205,7 @@ export function ApprovalsList({ userId }: { userId: string }) {
 ```
 
 **Unhandled Errors**:
+
 ```
 ❌ Unexpected JavaScript error
 → Error boundary catches it
@@ -201,6 +217,7 @@ export function ApprovalsList({ userId }: { userId: string }) {
 ### Notifications ✅
 
 **Success Messages**:
+
 ```
 ✅ Task approved
 → Green toast: "Task approved successfully!"
@@ -213,6 +230,7 @@ export function ApprovalsList({ userId }: { userId: string }) {
 ```
 
 **Error Messages**:
+
 ```
 ❌ Network error
 → Red toast: "Failed to approve task"
@@ -223,6 +241,7 @@ export function ApprovalsList({ userId }: { userId: string }) {
 ### Loading States ✅
 
 **Form Submission**:
+
 ```
 User clicks "Submit Approval"
 → Button becomes disabled
@@ -237,6 +256,7 @@ After submission:
 ```
 
 **List Loading**:
+
 ```
 Page loads
 → Shows ApprovalListSkeleton
@@ -378,11 +398,13 @@ src/
 ### npm install still running?
 
 Wait for it to complete. Check status:
+
 ```bash
 npm list sonner
 ```
 
 If stuck, try:
+
 ```bash
 npm install --force
 ```
@@ -447,7 +469,7 @@ export const notify = ({
   title,
   description,
   action,
-  type = "default"
+  type = "default",
 }: {
   title?: string;
   description?: string;
@@ -456,41 +478,44 @@ export const notify = ({
     onClick: () => void;
   };
   type?: "default" | "success" | "warning" | "error";
-}) => {}
+}) => {};
 ```
 
 ### Usage Examples
 
 **Success Notification:**
+
 ```typescript
-import { notify } from '@/lib/utils'
+import { notify } from "@/lib/utils";
 
 notify({
-  title: 'Task approved successfully!',
-  type: 'success'
-})
+  title: "Task approved successfully!",
+  type: "success",
+});
 ```
 
 **Error Notification:**
+
 ```typescript
 notify({
-  title: 'Failed to approve task',
-  description: 'Please check your connection and try again',
-  type: 'error'
-})
+  title: "Failed to approve task",
+  description: "Please check your connection and try again",
+  type: "error",
+});
 ```
 
 **With Action Button:**
+
 ```typescript
 notify({
-  title: 'Changes saved',
-  description: 'Your changes have been saved',
+  title: "Changes saved",
+  description: "Your changes have been saved",
   action: {
-    label: 'Undo',
-    onClick: () => console.log('Undoing...')
+    label: "Undo",
+    onClick: () => console.log("Undoing..."),
   },
-  type: 'success'
-})
+  type: "success",
+});
 ```
 
 ### Where It's Used
@@ -515,6 +540,7 @@ notify({
 ## Questions?
 
 Reference files:
+
 - `PHASE_11_COMPLETION_TASKS.md` - Implementation details
 - `E2E_IMPLEMENTATION_ASSESSMENT.md` - Full assessment
 - `QUICK_E2E_TEST.md` - Manual testing

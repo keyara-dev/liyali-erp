@@ -74,6 +74,7 @@ src/
 ### Workflow Management Admin Panel
 
 #### 1. Workflows List Page
+
 - **Route:** `/admin/workflows`
 - **File:** `src/app/(private)/admin/workflows/page.tsx`
 - **Component:** `WorkflowsClient`
@@ -85,6 +86,7 @@ src/
   - Shows workflow details: name, document type, stages, status, last updated
 
 #### 2. Create Workflow Page
+
 - **Route:** `/admin/workflows/create`
 - **File:** `src/app/(private)/admin/workflows/create/page.tsx`
 - **Component:** `CreateWorkflowClient` → `WorkflowBuilder`
@@ -99,6 +101,7 @@ src/
     - Permissions (can reject, can reassign)
 
 #### 3. Edit Workflow Page
+
 - **Route:** `/admin/workflows/[id]/edit`
 - **File:** `src/app/(private)/admin/workflows/[id]/edit/page.tsx`
 - **Component:** `EditWorkflowClient` → `WorkflowBuilder`
@@ -111,34 +114,36 @@ src/
 
 The following routes are for document workflow execution (not definition):
 
-| Route | Purpose | File |
-|-------|---------|------|
-| `/home` | Dashboard/Home | `src/app/(private)/(main)/home/page.tsx` |
-| `/requisitions` | Requisition list | `src/app/(private)/(main)/requisitions/page.tsx` |
-| `/requisitions/create` | Create requisition | `src/app/(private)/(main)/requisitions/create/page.tsx` |
-| `/requisitions/[id]` | Requisition details | `src/app/(private)/(main)/requisitions/[id]/page.tsx` |
-| `/purchase-orders` | PO list | `src/app/(private)/(main)/purchase-orders/page.tsx` |
-| `/purchase-orders/[id]` | PO details | `src/app/(private)/(main)/purchase-orders/[id]/page.tsx` |
-| `/purchase-orders/[id]/approval` | PO approval | `src/app/(private)/(main)/purchase-orders/[id]/approval/page.tsx` |
-| `/payment-vouchers` | PV list | `src/app/(private)/(main)/payment-vouchers/page.tsx` |
-| `/payment-vouchers/[id]` | PV details | `src/app/(private)/(main)/payment-vouchers/[id]/page.tsx` |
-| `/payment-vouchers/[id]/approval` | PV approval | `src/app/(private)/(main)/payment-vouchers/[id]/approval/page.tsx` |
-| `/grn` | GRN list | `src/app/(private)/(main)/grn/page.tsx` |
-| `/grn/[id]` | GRN details | `src/app/(private)/(main)/grn/[id]/page.tsx` |
-| `/grn/[id]/confirmation` | GRN confirmation | `src/app/(private)/(main)/grn/[id]/confirmation/page.tsx` |
-| `/budgets` | Budget list | `src/app/(private)/(main)/budgets/page.tsx` |
-| `/budgets/[id]` | Budget details | `src/app/(private)/(main)/budgets/[id]/page.tsx` |
-| `/budgets/[id]/approval` | Budget approval | `src/app/(private)/(main)/budgets/[id]/approval/page.tsx` |
-| `/tasks` | Task list | `src/app/(private)/(main)/tasks/page.tsx` |
-| `/search` | Search documents | `src/app/(private)/(main)/search/page.tsx` |
-| `/notifications` | View notifications | `src/app/(private)/(main)/notifications/page.tsx` |
+| Route                             | Purpose             | File                                                               |
+| --------------------------------- | ------------------- | ------------------------------------------------------------------ |
+| `/home`                           | Dashboard/Home      | `src/app/(private)/(main)/home/page.tsx`                           |
+| `/requisitions`                   | Requisition list    | `src/app/(private)/(main)/requisitions/page.tsx`                   |
+| `/requisitions/create`            | Create requisition  | `src/app/(private)/(main)/requisitions/create/page.tsx`            |
+| `/requisitions/[id]`              | Requisition details | `src/app/(private)/(main)/requisitions/[id]/page.tsx`              |
+| `/purchase-orders`                | PO list             | `src/app/(private)/(main)/purchase-orders/page.tsx`                |
+| `/purchase-orders/[id]`           | PO details          | `src/app/(private)/(main)/purchase-orders/[id]/page.tsx`           |
+| `/purchase-orders/[id]/approval`  | PO approval         | `src/app/(private)/(main)/purchase-orders/[id]/approval/page.tsx`  |
+| `/payment-vouchers`               | PV list             | `src/app/(private)/(main)/payment-vouchers/page.tsx`               |
+| `/payment-vouchers/[id]`          | PV details          | `src/app/(private)/(main)/payment-vouchers/[id]/page.tsx`          |
+| `/payment-vouchers/[id]/approval` | PV approval         | `src/app/(private)/(main)/payment-vouchers/[id]/approval/page.tsx` |
+| `/grn`                            | GRN list            | `src/app/(private)/(main)/grn/page.tsx`                            |
+| `/grn/[id]`                       | GRN details         | `src/app/(private)/(main)/grn/[id]/page.tsx`                       |
+| `/grn/[id]/confirmation`          | GRN confirmation    | `src/app/(private)/(main)/grn/[id]/confirmation/page.tsx`          |
+| `/budgets`                        | Budget list         | `src/app/(private)/(main)/budgets/page.tsx`                        |
+| `/budgets/[id]`                   | Budget details      | `src/app/(private)/(main)/budgets/[id]/page.tsx`                   |
+| `/budgets/[id]/approval`          | Budget approval     | `src/app/(private)/(main)/budgets/[id]/approval/page.tsx`          |
+| `/tasks`                          | Task list           | `src/app/(private)/(main)/tasks/page.tsx`                          |
+| `/search`                         | Search documents    | `src/app/(private)/(main)/search/page.tsx`                         |
+| `/notifications`                  | View notifications  | `src/app/(private)/(main)/notifications/page.tsx`                  |
 
 ## Component Architecture
 
 ### WorkflowBuilder (Main Container)
+
 **File:** `src/app/(private)/admin/workflows/_components/workflow-builder.tsx`
 
 Orchestrates the complete workflow creation/editing experience:
+
 - Manages form state for workflow data
 - Handles drag-and-drop stage ordering
 - Validates all inputs
@@ -146,28 +151,33 @@ Orchestrates the complete workflow creation/editing experience:
 - Submits to parent component via callback
 
 **Props:**
+
 ```typescript
 interface WorkflowBuilderProps {
-  onSubmit: (data: WorkflowFormData) => Promise<void>
-  isSubmitting: boolean
-  mode: 'create' | 'edit'
-  initialData?: WorkflowFormData
+  onSubmit: (data: WorkflowFormData) => Promise<void>;
+  isSubmitting: boolean;
+  mode: "create" | "edit";
+  initialData?: WorkflowFormData;
 }
 ```
 
 ### WorkflowDetailsForm
+
 **File:** `src/app/(private)/admin/workflows/_components/workflow-details-form.tsx`
 
 Handles basic workflow information:
+
 - Workflow name (required)
 - Description
 - Document type selection
 - Default workflow toggle
 
 ### StageForm
+
 **File:** `src/app/(private)/admin/workflows/_components/stage-form.tsx`
 
 Modal form for adding/editing individual stages:
+
 - Stage name and description
 - Approver role selection
 - Required approvals count
@@ -175,9 +185,11 @@ Modal form for adding/editing individual stages:
 - Input validation with error display
 
 ### StageItem (Draggable)
+
 **File:** `src/app/(private)/admin/workflows/_components/stage-item.tsx`
 
 Visual representation of a single stage:
+
 - Shows stage number, name, description
 - Displays approver role and requirements
 - Drag handle for reordering
@@ -185,9 +197,11 @@ Visual representation of a single stage:
 - Integrated with dnd-kit for drag-and-drop
 
 ### WorkflowsClient (List Page)
+
 **File:** `src/app/(private)/admin/workflows/_components/workflows-client.tsx`
 
 Displays all created workflows:
+
 - Searchable/filterable table
 - Duplicate workflow functionality
 - Delete with confirmation dialog
@@ -197,31 +211,34 @@ Displays all created workflows:
 ## Data Types
 
 ### WorkflowFormData
+
 ```typescript
 interface WorkflowFormData {
-  name: string
-  description: string
-  documentType: string
-  stages: WorkflowStage[]
-  isDefault: boolean
+  name: string;
+  description: string;
+  documentType: string;
+  stages: WorkflowStage[];
+  isDefault: boolean;
 }
 ```
 
 ### WorkflowStage
+
 ```typescript
 interface WorkflowStage {
-  id: string
-  order: number
-  name: string
-  description: string
-  approverRole: string
-  requiredApprovals: number
-  canReject: boolean
-  canReassign: boolean
+  id: string;
+  order: number;
+  name: string;
+  description: string;
+  approverRole: string;
+  requiredApprovals: number;
+  canReject: boolean;
+  canReassign: boolean;
 }
 ```
 
 ### Supported Document Types
+
 - `REQUISITION` - Purchase requisitions
 - `PURCHASE_ORDER` - Purchase orders
 - `PAYMENT_VOUCHER` - Payment vouchers
@@ -229,6 +246,7 @@ interface WorkflowStage {
 - `BUDGET` - Budget documents
 
 ### Supported Approver Roles
+
 - `DEPARTMENT_MANAGER` - Department manager
 - `FINANCE_OFFICER` - Finance officer
 - `CFO` - Chief Financial Officer
@@ -239,28 +257,33 @@ interface WorkflowStage {
 ## Key Features
 
 ### 1. Drag-and-Drop Stage Ordering
+
 - Uses `@dnd-kit` library for accessible drag-and-drop
 - Stages automatically renumbered when order changes
 - Visual feedback during dragging
 
 ### 2. Form Validation
+
 - Real-time error display
 - Required field validation
 - Stage validation before adding
 - Workflow-level validation before submit
 
 ### 3. Workflow Duplication
+
 - Quick way to create similar workflows
 - Copies all stages and configuration
 - Creates new workflow with "(Copy)" suffix
 - Useful for creating variations
 
 ### 4. Admin-Only Access
+
 - Routes protected with authentication
 - Admin role check on both server and client
 - Non-admin users redirected to dashboard
 
 ### 5. Mock Data
+
 - All components use mock data for demonstration
 - Ready for integration with server actions
 - TODO comments marking where to connect to actual API
@@ -268,6 +291,7 @@ interface WorkflowStage {
 ## Integration Points
 
 ### Server Actions (To Be Implemented)
+
 The following server actions need to be connected:
 
 1. **Create Workflow**
@@ -291,7 +315,9 @@ The following server actions need to be connected:
    - Called from: `WorkflowsClient.handleDelete()`
 
 ### React Query Hooks (Already Implemented)
+
 Available in `src/hooks/use-workflows.ts`:
+
 - `useWorkflows()` - Fetch all workflows
 - `useWorkflow()` - Fetch single workflow
 - `useCreateWorkflow()` - Create mutation
@@ -300,16 +326,19 @@ Available in `src/hooks/use-workflows.ts`:
 ## Navigation Integration
 
 ### Sidebar Navigation
+
 The workflow management route has been added to the sidebar navigation:
 
 **File:** `src/components/layout/sidebar/nav-main.tsx`
 
 **Admin Section:**
+
 - **Title:** Workflow Management
 - **Icon:** GitBranch
 - **Route:** `/admin/workflows`
 
 **Main Navigation Groups:**
+
 1. **Main** - Dashboard, Tasks, Search, and document lists
 2. **Budget Management** - Budget operations
 3. **Admin** - Reports, Users, Logs, Workflows
@@ -317,19 +346,23 @@ The workflow management route has been added to the sidebar navigation:
 5. **Settings** - User preferences
 
 ### Route Structure Changes
+
 The application uses the following route organization:
 
 **Route Group: `(main)`**
+
 - Encapsulates main application workflow document routes
 - Keeps document workflows separate from admin/settings areas
 - Routes accessible to users with appropriate permissions
 
 **Route Group: `(private)`**
+
 - Wrapper for all authenticated routes
 - Protects all child routes with authentication middleware
 - Requires active session
 
 **Admin Routes: `/admin/*`**
+
 - Separate admin section for configuration and management
 - Admin-only access (role-based authorization)
 - Includes: reports, users, logs, workflows
@@ -337,6 +370,7 @@ The application uses the following route organization:
 ## Database Schema (Backend)
 
 The backend is prepared to handle:
+
 - Custom workflows storage
 - Stage definitions
 - Workflow assignments to documents
@@ -348,17 +382,20 @@ See `src/types/custom-workflow.ts` for complete type definitions.
 ## Route Reference Guide
 
 ### Important Route Mapping
+
 When navigating or creating links in the application, use these routes:
 
 **Note:** The folder structure was reorganized to group routes logically:
+
 - Main workflow documents moved to `(main)` route group
 - Original `/workflows/*` routes map to `/(main)/*` in folder structure
 - Sidebar navigation automatically handles the routing
 
 **Example Route Mappings:**
+
 ```
 OLD: /workflows/requisitions  →  NEW: /requisitions (via (main) group)
-OLD: /workflows/dashboard     →  NEW: /home (via (main) group)
+OLD: /home     →  NEW: /home (via (main) group)
 OLD: /workflows/purchase-orders/[id]  →  NEW: /purchase-orders/[id]
 OLD: /workflows/tasks         →  NEW: /tasks
 ```
@@ -403,6 +440,7 @@ The sidebar and all components automatically use the correct routes.
 ## Testing
 
 ### Components to Test
+
 1. **WorkflowsClient** - List display, actions
 2. **WorkflowBuilder** - Form state, validation
 3. **WorkflowDetailsForm** - Input validation
@@ -410,6 +448,7 @@ The sidebar and all components automatically use the correct routes.
 5. **StageItem** - Drag-and-drop functionality
 
 ### Mock Data
+
 All components use mock data defined in respective files. Replace with real API calls when backend is ready.
 
 ## Future Enhancements
@@ -465,6 +504,7 @@ All components use mock data defined in respective files. Replace with real API 
 ## File Summary
 
 ### New Files Created
+
 - `src/app/(private)/admin/workflows/page.tsx`
 - `src/app/(private)/admin/workflows/_components/workflows-client.tsx`
 - `src/app/(private)/admin/workflows/_components/workflow-builder.tsx`
@@ -477,9 +517,11 @@ All components use mock data defined in respective files. Replace with real API 
 - `src/app/(private)/admin/workflows/[id]/edit/_components/edit-workflow-client.tsx`
 
 ### Modified Files
+
 - `src/components/layout/sidebar/nav-main.tsx` - Added Workflow Management menu item
 
 ### Existing Files (Already Implemented)
+
 - `src/types/custom-workflow.ts`
 - `src/app/_actions/workflows.ts`
 - `src/hooks/use-workflows.ts`
@@ -488,6 +530,7 @@ All components use mock data defined in respective files. Replace with real API 
 ## Support and Questions
 
 For questions about the workflow system, see:
+
 - Type definitions: `src/types/custom-workflow.ts`
 - Server actions: `src/app/_actions/workflows.ts`
 - React hooks: `src/hooks/use-workflows.ts`

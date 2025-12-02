@@ -1,8 +1,8 @@
-'use client'
+"use client";
 
-import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-import { ColumnDef } from '@tanstack/react-table'
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { ColumnDef } from "@tanstack/react-table";
 import {
   ArrowUpDown,
   MoreHorizontal,
@@ -11,8 +11,8 @@ import {
   CheckCircle2,
   XCircle,
   QrCode,
-} from 'lucide-react'
-import { Button } from '@/components/ui/button'
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -20,18 +20,18 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import { DataTable } from '@/components/ui/data-table'
-import { StatusBadge as CentralizedStatusBadge } from '@/components/status-badge'
-import { WorkflowDocument } from '@/types/workflow'
-import { usePaymentVouchersAsWorkflowDocuments } from '@/hooks/use-payment-voucher-storage'
-import { convertPaymentVoucherToWorkflowDocument } from '@/hooks/use-payment-voucher-storage'
+} from "@/components/ui/dropdown-menu";
+import { DataTable } from "@/components/ui/data-table";
+import { StatusBadge as CentralizedStatusBadge } from "@/components/status-badge";
+import { WorkflowDocument } from "@/types/workflow";
+import { usePaymentVouchersAsWorkflowDocuments } from "@/hooks/use-payment-voucher-storage";
+import { convertPaymentVoucherToWorkflowDocument } from "@/hooks/use-payment-voucher-storage";
 
 interface PaymentVouchersTableProps {
-  userId: string
-  userRole: string
-  refreshTrigger: number
-  onRefresh: () => void
+  userId: string;
+  userRole: string;
+  refreshTrigger: number;
+  onRefresh: () => void;
 }
 
 // Stage indicator
@@ -39,27 +39,29 @@ function StageIndicator({
   currentStage,
   totalStages,
 }: {
-  currentStage: number
-  totalStages: number
+  currentStage: number;
+  totalStages: number;
 }) {
   return (
     <div className="flex items-center gap-1">
       <span className="text-sm font-medium">{currentStage}</span>
       <span className="text-xs text-muted-foreground">of {totalStages}</span>
     </div>
-  )
+  );
 }
 
 // Columns definition
-function getColumns(onViewClick: (id: string) => void): ColumnDef<WorkflowDocument>[] {
+function getColumns(
+  onViewClick: (id: string) => void
+): ColumnDef<WorkflowDocument>[] {
   return [
     {
-      id: 'voucherNumber',
-      accessorKey: 'documentNumber',
+      id: "voucherNumber",
+      accessorKey: "documentNumber",
       header: ({ column }) => (
         <Button
           variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
           className="h-8 p-0"
         >
           Voucher No.
@@ -67,24 +69,22 @@ function getColumns(onViewClick: (id: string) => void): ColumnDef<WorkflowDocume
         </Button>
       ),
       cell: ({ row }) => (
-        <div className="font-medium">{row.getValue('voucherNumber')}</div>
+        <div className="font-medium">{row.getValue("voucherNumber")}</div>
       ),
     },
     {
-      id: 'vendor',
-      accessorKey: 'metadata.vendorName',
-      header: 'Vendor',
-      cell: ({ row }) => (
-        <div>{row.original.metadata?.vendorName || '-'}</div>
-      ),
+      id: "vendor",
+      accessorKey: "metadata.vendorName",
+      header: "Vendor",
+      cell: ({ row }) => <div>{row.original.metadata?.vendorName || "-"}</div>,
     },
     {
-      id: 'netAmount',
-      accessorKey: 'metadata.netAmount',
+      id: "netAmount",
+      accessorKey: "metadata.netAmount",
       header: ({ column }) => (
         <Button
           variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
           className="h-8 p-0"
         >
           Amount
@@ -98,25 +98,30 @@ function getColumns(onViewClick: (id: string) => void): ColumnDef<WorkflowDocume
       ),
     },
     {
-      id: 'reference',
-      accessorKey: 'metadata.paymentReference',
-      header: 'Reference',
+      id: "reference",
+      accessorKey: "metadata.paymentReference",
+      header: "Reference",
       cell: ({ row }) => (
         <div className="text-sm font-mono">
-          {row.original.metadata?.paymentReference || '-'}
+          {row.original.metadata?.paymentReference || "-"}
         </div>
       ),
     },
     {
-      id: 'status',
-      accessorKey: 'status',
-      header: 'Status',
-      cell: ({ row }) => <CentralizedStatusBadge status={row.getValue('status')} type="document" />,
+      id: "status",
+      accessorKey: "status",
+      header: "Status",
+      cell: ({ row }) => (
+        <CentralizedStatusBadge
+          status={row.getValue("status")}
+          type="document"
+        />
+      ),
     },
     {
-      id: 'stage',
-      accessorKey: 'currentStage',
-      header: 'Stage',
+      id: "stage",
+      accessorKey: "currentStage",
+      header: "Stage",
       cell: ({ row }) => (
         <StageIndicator
           currentStage={row.original.currentStage || 1}
@@ -125,12 +130,12 @@ function getColumns(onViewClick: (id: string) => void): ColumnDef<WorkflowDocume
       ),
     },
     {
-      id: 'createdDate',
-      accessorKey: 'createdAt',
+      id: "createdDate",
+      accessorKey: "createdAt",
       header: ({ column }) => (
         <Button
           variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
           className="h-8 p-0"
         >
           Created
@@ -144,8 +149,8 @@ function getColumns(onViewClick: (id: string) => void): ColumnDef<WorkflowDocume
       ),
     },
     {
-      id: 'actions',
-      header: 'Actions',
+      id: "actions",
+      header: "Actions",
       cell: ({ row }) => (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -174,7 +179,7 @@ function getColumns(onViewClick: (id: string) => void): ColumnDef<WorkflowDocume
                 View QR Code
               </DropdownMenuItem>
             )}
-            {row.original.status === 'IN_REVIEW' && (
+            {row.original.status === "IN_REVIEW" && (
               <>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem className="flex items-center gap-2 text-green-600">
@@ -191,7 +196,7 @@ function getColumns(onViewClick: (id: string) => void): ColumnDef<WorkflowDocume
         </DropdownMenu>
       ),
     },
-  ]
+  ];
 }
 
 export function PaymentVouchersTable({
@@ -200,29 +205,30 @@ export function PaymentVouchersTable({
   refreshTrigger,
   onRefresh,
 }: PaymentVouchersTableProps) {
-  const router = useRouter()
-  const { data: paymentVouchers, isLoading } = usePaymentVouchersAsWorkflowDocuments(true)
-  const [data, setData] = useState<WorkflowDocument[]>([])
+  const router = useRouter();
+  const { data: paymentVouchers, isLoading } =
+    usePaymentVouchersAsWorkflowDocuments(true);
+  const [data, setData] = useState<WorkflowDocument[]>([]);
 
   useEffect(() => {
     if (paymentVouchers && paymentVouchers.length > 0) {
       // Filter by current user's payment vouchers
-      const userPVs = paymentVouchers.filter(pv => pv.createdBy === userId)
-      setData(userPVs)
+      const userPVs = paymentVouchers.filter((pv) => pv.createdBy === userId);
+      setData(userPVs);
     } else {
-      setData([])
+      setData([]);
     }
-  }, [paymentVouchers, userId, refreshTrigger])
+  }, [paymentVouchers, userId, refreshTrigger]);
 
   const handleViewClick = (id: string) => {
-    router.push(`/workflows/payment-vouchers/${id}`)
-  }
+    router.push(`/payment-vouchers/${id}`);
+  };
 
-  const columns = getColumns(handleViewClick)
+  const columns = getColumns(handleViewClick);
 
   return (
     <div className="space-y-4">
       <DataTable columns={columns} data={data} />
     </div>
-  )
+  );
 }

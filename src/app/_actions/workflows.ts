@@ -33,6 +33,7 @@ import {
   deprecateWorkflow,
   createWorkflowVersion,
   saveAssignment,
+  getAssignment,
   getAssignmentByEntityId,
   updateAssignment,
   setWorkflowDefault,
@@ -66,6 +67,7 @@ import {
   notifyWorkflowComplete,
 } from './notifications';
 
+import { type UserRole } from '@/lib/auth';
 import { v4 as uuid } from 'uuid';
 
 /**
@@ -97,7 +99,7 @@ export async function createWorkflow(
     // Validate workflow
     const errors = validateWorkflow(workflow);
     if (errors.length > 0) {
-      throw new Error(`Workflow validation failed: ${errors.map((e) => e.message).join(', ')}`);
+      throw new Error(`Workflow validation failed: ${errors.map((e) => e.error).join(', ')}`);
     }
 
     // Save workflow
@@ -180,15 +182,19 @@ export async function updateWorkflowAction(
     // Create new version
     const updated: CustomWorkflow = {
       ...existing,
-      ...request.updates,
+      ...(request.name && { name: request.name }),
+      ...(request.description && { description: request.description }),
+      ...(request.applicableEntityTypes && { applicableEntityTypes: request.applicableEntityTypes }),
+      ...(request.stages && { stages: request.stages }),
       version: existing.version + 1,
       updatedAt: new Date(),
+      updatedBy: request.updatedBy,
     };
 
     // Validate
     const errors = validateWorkflow(updated);
     if (errors.length > 0) {
-      throw new Error(`Workflow validation failed: ${errors.map((e) => e.message).join(', ')}`);
+      throw new Error(`Workflow validation failed: ${errors.map((e) => e.error).join(', ')}`);
     }
 
     // Save new version
@@ -268,7 +274,6 @@ export async function assignWorkflowAction(
       stageHistory: [],
       assignedAt: new Date(),
       assignedBy: request.assignedBy,
-      isComplete: false,
     };
 
     await saveAssignment(assignment);
@@ -286,15 +291,16 @@ export async function assignWorkflowAction(
 /**
  * Get assignment for an entity
  * @param entityId Entity ID
+ * @param entityType Entity type
  * @returns Assignment or null
  */
-export async function getAssignmentAction(entityId: string): Promise<WorkflowAssignment | null> {
+export async function getAssignmentAction(entityId: string, entityType: WorkflowEntityType): Promise<WorkflowAssignment | null> {
   try {
     if (!entityId) {
       throw new Error('Entity ID is required');
     }
 
-    const assignment = await getAssignmentByEntityId(entityId);
+    const assignment = await getAssignmentByEntityId(entityId, entityType);
     return assignment || null;
   } catch (error) {
     console.error('[getAssignment] Error:', error);
@@ -309,14 +315,14 @@ export async function getAssignmentAction(entityId: string): Promise<WorkflowAss
  */
 export async function approveStageAction(
   request: ApproveStageRequest
-): Promise<{ assignment: WorkflowAssignment; nextApprover?: { userId: string; name: string } | null; isComplete: boolean }> {
+): Promise<{ assignment: WorkflowAssignment; nextApprover?: { userId: string; userName: string; role?: UserRole } | null; isComplete: boolean }> {
   try {
     if (!request.assignmentId) {
       throw new Error('Assignment ID is required');
     }
 
     // Get assignment and workflow
-    const assignment = await getAssignmentByEntityId(request.assignmentId);
+    const assignment = await getAssignment(request.assignmentId);
     if (!assignment) {
       throw new Error('Assignment not found');
     }
@@ -330,9 +336,9 @@ export async function approveStageAction(
     const result = await progressToNextStage(
       assignment,
       workflow,
-      request.approverId,
-      request.approverName,
-      request.approverRole,
+      request.approvingUserId,
+      '', // approverName not available in request
+      'USER' as any, // approverRole not available in request, using default
       request.comments,
       request.signature
     );
@@ -343,10 +349,10 @@ export async function approveStageAction(
       if (currentStage) {
         await notifyTaskAssigned(
           result.nextApprover.userId,
-          result.nextApprover.name,
+          result.nextApprover.userName,
           assignment.entityId,
           assignment.entityType,
-          request.entityNumber || assignment.entityId,
+          assignment.entityId,
           currentStage.stageName
         );
       }
@@ -358,9 +364,9 @@ export async function approveStageAction(
         assignment.assignedBy,
         assignment.entityId,
         assignment.entityType,
-        request.entityNumber || assignment.entityId,
-        request.approverId,
-        request.approverName
+        assignment.entityId,
+        request.approvingUserId,
+        ''
       );
     }
 
@@ -370,14 +376,17 @@ export async function approveStageAction(
         assignment.assignedBy,
         assignment.entityId,
         assignment.entityType,
-        request.entityNumber || assignment.entityId,
-        request.approverId,
-        request.approverName
+        assignment.entityId,
+        request.approvingUserId,
+        ''
       );
     }
 
     // Update assignment in storage
-    const updated = await updateAssignment(result.assignment);
+    const updated = await updateAssignment(assignment.id, assignment);
+    if (!updated) {
+      throw new Error('Failed to update assignment');
+    }
 
     return {
       assignment: updated,
@@ -404,7 +413,7 @@ export async function rejectStageAction(
     }
 
     // Get assignment and workflow
-    const assignment = await getAssignmentByEntityId(request.assignmentId);
+    const assignment = await getAssignment(request.assignmentId);
     if (!assignment) {
       throw new Error('Assignment not found');
     }
@@ -418,9 +427,11 @@ export async function rejectStageAction(
     const result = await rejectAtStage(
       assignment,
       workflow,
-      request.rejectorId,
-      request.rejectorName,
-      request.rejectionRemarks
+      request.rejectingUserId,
+      '', // rejectorUserName not available in request
+      'USER' as any, // rejectorUserRole not available in request, using default
+      request.remarks,
+      request.signature
     );
 
     // Notify creator of rejection
@@ -428,18 +439,21 @@ export async function rejectStageAction(
       assignment.assignedBy,
       assignment.entityId,
       assignment.entityType,
-      request.entityNumber || assignment.entityId,
-      request.rejectorId,
-      request.rejectorName,
-      request.rejectionRemarks
+      assignment.entityId,
+      request.rejectingUserId,
+      '',
+      request.remarks
     );
 
     // Update assignment
-    const updated = await updateAssignment(result.assignment);
+    const updated = await updateAssignment(assignment.id, assignment);
+    if (!updated) {
+      throw new Error('Failed to update assignment');
+    }
 
     return {
       assignment: updated,
-      targetStage: result.targetStage,
+      targetStage: result.rejectedToStage.toString(),
     };
   } catch (error) {
     console.error('[rejectStage] Error:', error);
@@ -465,7 +479,7 @@ export async function reassignStageAction(
     }
 
     // Get assignment and workflow
-    const assignment = await getAssignmentByEntityId(request.assignmentId);
+    const assignment = await getAssignment(request.assignmentId);
     if (!assignment) {
       throw new Error('Assignment not found');
     }
@@ -497,22 +511,25 @@ export async function reassignStageAction(
     // Notify new approver
     await notifyTaskReassigned(
       request.newApproverId,
-      result.newApprover.name,
+      '', // newApprover name not available in result
       assignment.entityId,
       assignment.entityType,
-      request.entityNumber || assignment.entityId,
+      assignment.entityId,
       request.reassignedBy,
-      request.reassignedByName,
+      '',
       request.reassignmentReason
     );
 
     // Update assignment
-    const updated = await updateAssignment(result.assignment);
+    const updated = await updateAssignment(assignment.id, assignment);
+    if (!updated) {
+      throw new Error('Failed to update assignment');
+    }
 
     return {
       assignment: updated,
-      oldApprover: result.oldApprover,
-      newApprover: result.newApprover,
+      oldApprover: result.previousApprover ? { userId: result.previousApprover, name: result.previousApprover } : null,
+      newApprover: { userId: request.newApproverId, name: '' },
     };
   } catch (error) {
     console.error('[reassignStage] Error:', error);
@@ -544,15 +561,17 @@ export async function getPendingApprovalsAction(
  * Set default workflow for entity type
  * @param entityType Entity type
  * @param workflowId Workflow ID
+ * @param userId User ID setting the default
  * @returns Success status
  */
 export async function setDefaultWorkflowAction(
   entityType: WorkflowEntityType,
-  workflowId: string
+  workflowId: string,
+  userId: string
 ): Promise<{ success: boolean }> {
   try {
-    if (!entityType || !workflowId) {
-      throw new Error('Entity type and workflow ID are required');
+    if (!entityType || !workflowId || !userId) {
+      throw new Error('Entity type, workflow ID, and user ID are required');
     }
 
     const workflow = await getWorkflow(workflowId);
@@ -560,7 +579,7 @@ export async function setDefaultWorkflowAction(
       throw new Error('Workflow not found');
     }
 
-    await setWorkflowDefault(entityType, workflowId);
+    await setWorkflowDefault(entityType, workflowId, workflow.version, userId);
 
     return { success: true };
   } catch (error) {
@@ -582,12 +601,12 @@ export async function getDefaultWorkflowAction(
       throw new Error('Entity type is required');
     }
 
-    const workflowId = await getWorkflowDefault(entityType);
-    if (!workflowId) {
+    const workflowDefault = await getWorkflowDefault(entityType);
+    if (!workflowDefault) {
       return null;
     }
 
-    return await getWorkflow(workflowId);
+    return await getWorkflow(workflowDefault.defaultWorkflowId);
   } catch (error) {
     console.error('[getDefaultWorkflow] Error:', error);
     throw new Error('Failed to fetch default workflow');

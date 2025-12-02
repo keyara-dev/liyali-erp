@@ -11,7 +11,7 @@ import {
   RejectRequisitionRequest,
   RequisitionStats,
 } from '@/types/requisition';
-import { APIResponse } from '@/types/api';
+import { APIResponse } from '@/types';
 
 /**
  * Mock requisitions database
@@ -316,6 +316,7 @@ export async function createRequisition(
     return {
       success: false,
       message: error instanceof Error ? error.message : 'Failed to create requisition',
+      data: null,
       status: 500,
       statusText: 'ERROR',
     };
@@ -338,6 +339,7 @@ export const getRequisitions = cache(async (): Promise<APIResponse<Requisition[]
     return {
       success: false,
       message: error instanceof Error ? error.message : 'Failed to fetch requisitions',
+      data: null,
       status: 500,
       statusText: 'ERROR',
     };
@@ -355,6 +357,7 @@ export async function getRequisitionById(requisitionId: string): Promise<APIResp
       return {
         success: false,
         message: 'Requisition not found',
+        data: null,
         status: 404,
         statusText: 'NOT_FOUND',
       };
@@ -371,6 +374,7 @@ export async function getRequisitionById(requisitionId: string): Promise<APIResp
     return {
       success: false,
       message: error instanceof Error ? error.message : 'Failed to fetch requisition',
+      data: null,
       status: 500,
       statusText: 'ERROR',
     };
@@ -390,6 +394,7 @@ export async function updateRequisition(
       return {
         success: false,
         message: 'Requisition not found',
+        data: null,
         status: 404,
         statusText: 'NOT_FOUND',
       };
@@ -399,6 +404,7 @@ export async function updateRequisition(
       return {
         success: false,
         message: 'Cannot update requisition that is not in DRAFT status',
+        data: null,
         status: 400,
         statusText: 'BAD_REQUEST',
       };
@@ -409,10 +415,10 @@ export async function updateRequisition(
     if (data.requiredByDate) requisition.requiredByDate = new Date(data.requiredByDate);
     if (data.priority) requisition.priority = data.priority;
     if (data.items) {
-      requisition.items = data.items.map((item, index) => ({
+      requisition.items = data.items.map((item) => ({
         ...item,
         requisitionId: requisition.id,
-        createdAt: item.createdAt || new Date(),
+        createdAt: new Date(),
         updatedAt: new Date(),
       }));
       requisition.totalAmount = requisition.items.reduce((sum, item) => sum + item.totalPrice, 0);
@@ -433,6 +439,7 @@ export async function updateRequisition(
     return {
       success: false,
       message: error instanceof Error ? error.message : 'Failed to update requisition',
+      data: null,
       status: 500,
       statusText: 'ERROR',
     };
@@ -452,6 +459,7 @@ export async function submitRequisitionForApproval(
       return {
         success: false,
         message: 'Requisition not found',
+        data: null,
         status: 404,
         statusText: 'NOT_FOUND',
       };
@@ -461,6 +469,7 @@ export async function submitRequisitionForApproval(
       return {
         success: false,
         message: 'Only DRAFT requisitions can be submitted',
+        data: null,
         status: 400,
         statusText: 'BAD_REQUEST',
       };
@@ -470,6 +479,7 @@ export async function submitRequisitionForApproval(
       return {
         success: false,
         message: 'Requisition must have at least one item',
+        data: null,
         status: 400,
         statusText: 'BAD_REQUEST',
       };
@@ -491,6 +501,7 @@ export async function submitRequisitionForApproval(
     return {
       success: false,
       message: error instanceof Error ? error.message : 'Failed to submit requisition',
+      data: null,
       status: 500,
       statusText: 'ERROR',
     };
@@ -510,6 +521,7 @@ export async function approveRequisition(
       return {
         success: false,
         message: 'Requisition not found',
+        data: null,
         status: 404,
         statusText: 'NOT_FOUND',
       };
@@ -519,6 +531,7 @@ export async function approveRequisition(
       return {
         success: false,
         message: 'Approval chain not configured',
+        data: null,
         status: 400,
         statusText: 'BAD_REQUEST',
       };
@@ -528,6 +541,7 @@ export async function approveRequisition(
       return {
         success: false,
         message: 'Signature is required for approval',
+        data: null,
         status: 400,
         statusText: 'BAD_REQUEST',
       };
@@ -541,6 +555,7 @@ export async function approveRequisition(
       return {
         success: false,
         message: 'Approval stage not found',
+        data: null,
         status: 404,
         statusText: 'NOT_FOUND',
       };
@@ -550,6 +565,7 @@ export async function approveRequisition(
       return {
         success: false,
         message: `Stage already ${stage.status.toLowerCase()}`,
+        data: null,
         status: 400,
         statusText: 'BAD_REQUEST',
       };
@@ -591,6 +607,7 @@ export async function approveRequisition(
     return {
       success: false,
       message: error instanceof Error ? error.message : 'Failed to approve requisition',
+      data: null,
       status: 500,
       statusText: 'ERROR',
     };
@@ -610,6 +627,7 @@ export async function rejectRequisition(
       return {
         success: false,
         message: 'Requisition not found',
+        data: null,
         status: 404,
         statusText: 'NOT_FOUND',
       };
@@ -619,6 +637,7 @@ export async function rejectRequisition(
       return {
         success: false,
         message: 'Approval chain not configured',
+        data: null,
         status: 400,
         statusText: 'BAD_REQUEST',
       };
@@ -628,6 +647,7 @@ export async function rejectRequisition(
       return {
         success: false,
         message: 'Rejection remarks are required',
+        data: null,
         status: 400,
         statusText: 'BAD_REQUEST',
       };
@@ -637,6 +657,7 @@ export async function rejectRequisition(
       return {
         success: false,
         message: 'Signature is required for rejection',
+        data: null,
         status: 400,
         statusText: 'BAD_REQUEST',
       };
@@ -650,6 +671,7 @@ export async function rejectRequisition(
       return {
         success: false,
         message: 'Approval stage not found',
+        data: null,
         status: 404,
         statusText: 'NOT_FOUND',
       };
@@ -681,6 +703,7 @@ export async function rejectRequisition(
     return {
       success: false,
       message: error instanceof Error ? error.message : 'Failed to reject requisition',
+      data: null,
       status: 500,
       statusText: 'ERROR',
     };
@@ -714,6 +737,7 @@ export async function getRequisitionStats(): Promise<APIResponse<RequisitionStat
     return {
       success: false,
       message: error instanceof Error ? error.message : 'Failed to fetch statistics',
+      data: null,
       status: 500,
       statusText: 'ERROR',
     };
@@ -731,6 +755,7 @@ export async function deleteRequisition(requisitionId: string): Promise<APIRespo
       return {
         success: false,
         message: 'Requisition not found',
+        data: null,
         status: 404,
         statusText: 'NOT_FOUND',
       };
@@ -742,6 +767,7 @@ export async function deleteRequisition(requisitionId: string): Promise<APIRespo
       return {
         success: false,
         message: 'Only DRAFT requisitions can be deleted',
+        data: null,
         status: 400,
         statusText: 'BAD_REQUEST',
       };
@@ -752,6 +778,7 @@ export async function deleteRequisition(requisitionId: string): Promise<APIRespo
     return {
       success: true,
       message: 'Requisition deleted successfully',
+      data: null,
       status: 200,
       statusText: 'OK',
     };
@@ -759,6 +786,7 @@ export async function deleteRequisition(requisitionId: string): Promise<APIRespo
     return {
       success: false,
       message: error instanceof Error ? error.message : 'Failed to delete requisition',
+      data: null,
       status: 500,
       statusText: 'ERROR',
     };

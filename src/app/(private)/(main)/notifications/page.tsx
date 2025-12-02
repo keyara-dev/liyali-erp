@@ -28,6 +28,16 @@ import { CheckIcon, SearchIcon, MailIcon } from "lucide-react";
 import type { NotificationType } from "@/types";
 import { useSession } from "@/hooks";
 
+const notificationTypeLabels: Record<NotificationType, string> = {
+  TASK_ASSIGNED: "Task Assigned",
+  TASK_REASSIGNED: "Task Reassigned",
+  TASK_APPROVED: "Task Approved",
+  TASK_REJECTED: "Task Rejected",
+  WORKFLOW_COMPLETE: "Workflow Complete",
+  APPROVAL_OVERDUE: "Approval Overdue",
+  COMMENT_ADDED: "Comment Added",
+};
+
 const NotificationSkeleton = () => (
   <div className="border rounded-lg p-4">
     <div className="flex gap-4">

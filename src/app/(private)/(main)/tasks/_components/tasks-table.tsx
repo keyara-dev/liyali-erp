@@ -127,10 +127,10 @@ export function TasksTable({
       ),
     },
     {
-      accessorKey: 'type',
+      accessorKey: 'taskType',
       header: 'Type',
       cell: ({ row }) => (
-        <div className="text-sm">{getTaskTypeLabel(row.original.type)}</div>
+        <div className="text-sm">{getTaskTypeLabel(row.original.taskType)}</div>
       ),
     },
     {
@@ -162,12 +162,12 @@ export function TasksTable({
         </Button>
       ),
       cell: ({ row }) => {
-        const dueAt = row.original.dueAt as Date
+        const dueDate = row.original.dueDate as Date
         const now = new Date()
-        const isOverdue = dueAt < now && row.original.status !== 'COMPLETED'
+        const isOverdue = dueDate < now && row.original.status !== 'COMPLETED'
         return (
           <div className={isOverdue ? 'text-red-600 font-semibold' : ''}>
-            {dueAt.toLocaleDateString()}
+            {dueDate.toLocaleDateString()}
             {isOverdue && <span className="ml-2 text-xs">Overdue</span>}
           </div>
         )
@@ -180,7 +180,20 @@ export function TasksTable({
           <Button
             size="sm"
             variant="outline"
-            onClick={() => router.push(row.original.actionUrl)}
+            onClick={() => {
+              // Navigate based on document type
+              const docType = row.original.documentType?.toLowerCase()
+              const docId = row.original.documentId
+              const routes: Record<string, string> = {
+                'requisition': `/requisitions/${docId}`,
+                'purchase_order': `/purchase-orders/${docId}`,
+                'payment_voucher': `/payment-vouchers/${docId}`,
+                'goods_received_note': `/grn/${docId}`,
+                'budget': `/budgets/${docId}`,
+              }
+              const url = routes[docType || ''] || `/tasks/${row.original.id}`
+              router.push(url)
+            }}
           >
             <Eye className="h-4 w-4 mr-1" />
             View
@@ -188,7 +201,20 @@ export function TasksTable({
           {row.original.status === 'PENDING' && (
             <Button
               size="sm"
-              onClick={() => router.push(row.original.actionUrl)}
+              onClick={() => {
+                // Navigate based on task type
+                const taskType = row.original.taskType?.toLowerCase()
+                const docId = row.original.documentId
+                const actionRoutes: Record<string, string> = {
+                  'requisition_approval': `/requisitions/${docId}/approval`,
+                  'purchase_order_approval': `/purchase-orders/${docId}/approval`,
+                  'payment_voucher_approval': `/payment-vouchers/${docId}/approval`,
+                  'goods_received_note_confirmation': `/grn/${docId}/confirmation`,
+                  'budget_approval': `/budgets/${docId}/approval`,
+                }
+                const url = actionRoutes[taskType || ''] || `/tasks/${row.original.id}`
+                router.push(url)
+              }}
             >
               <CheckCircle2 className="h-4 w-4 mr-1" />
               Act

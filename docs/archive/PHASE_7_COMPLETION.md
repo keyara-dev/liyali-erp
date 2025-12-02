@@ -13,9 +13,11 @@ Phase 7 delivers a complete notification system UI with real-time notification d
 ## Components Created
 
 ### 1. **notification-bell.tsx** (175 lines)
+
 **Path**: `src/components/notifications/notification-bell.tsx`
 
 A polished notification bell component displayed in the header with:
+
 - **Features**:
   - Bell icon with unread count badge (shows "9+" for counts over 9)
   - Dropdown menu showing recent notifications (up to 5)
@@ -31,9 +33,11 @@ A polished notification bell component displayed in the header with:
   - Styled with Tailwind CSS and shadcn/ui components
 
 ### 2. **notification-action-modal.tsx** (380 lines)
+
 **Path**: `src/components/notifications/notification-action-modal.tsx`
 
 A modal dialog for quick approval/rejection actions with signature capture:
+
 - **Features**:
   - Two-mode UI: Preview mode (choose action) → Action mode (fill details)
   - **Approve Flow**: Digital signature (required) + remarks (optional)
@@ -54,9 +58,11 @@ A modal dialog for quick approval/rejection actions with signature capture:
   - `actionType?: "approve" | "reject"` - Pre-select action type
 
 ### 3. **notification-item.tsx** (220 lines)
+
 **Path**: `src/components/notifications/notification-item.tsx`
 
 Reusable notification display component with two display variants:
+
 - **Features**:
   - **Compact Variant**: Inline display for dropdowns/lists
   - **Full Variant**: Card-style display for notification history
@@ -81,9 +87,11 @@ Reusable notification display component with two display variants:
   - `onSelectionChange?: (selected: boolean) => void` - Checkbox change handler
 
 ### 4. **notification-preferences.tsx** (150 lines)
+
 **Path**: `src/components/notifications/notification-preferences.tsx`
 
 User notification settings component with toggle controls for each notification type:
+
 - **Features**:
   - 7 notification type toggles (TASK_ASSIGNED, TASK_REASSIGNED, etc.)
   - Descriptive text for each notification type
@@ -98,9 +106,11 @@ User notification settings component with toggle controls for each notification 
   - Optimistic error handling with console logging
 
 ### 5. **notifications/page.tsx** (200+ lines)
-**Path**: `src/app/(private)/workflows/notifications/page.tsx`
+
+**Path**: `src/app/(private)/(main)/notifications/page.tsx`
 
 Full-page notifications history with advanced filtering and management:
+
 - **Features**:
   - **Server Component Wrapper**: Uses Suspense pattern to fetch current user
   - **Client Component**: Handles all UI interactions and state
@@ -128,7 +138,9 @@ Full-page notifications history with advanced filtering and management:
 ## Integration with Existing Systems
 
 ### Server Actions (Phase 5)
+
 Uses all 10+ server actions from `src/app/_actions/notifications.ts`:
+
 - `getNotifications()` - Fetch paginated notifications
 - `getUnreadNotifications()` - Fetch unread notifications list
 - `getUnreadCount()` - Fetch unread count
@@ -139,7 +151,9 @@ Uses all 10+ server actions from `src/app/_actions/notifications.ts`:
 - `updatePreferences()` - Update user preferences
 
 ### React Query Hooks (Phase 6)
+
 Uses 8 existing hooks from `src/hooks/use-notifications.ts`:
+
 - `useUserNotifications()` - Paginated notifications query
 - `useUnreadNotifications()` - Unread notifications query
 - `useUnreadNotificationCount()` - Unread count query
@@ -150,21 +164,25 @@ Uses 8 existing hooks from `src/hooks/use-notifications.ts`:
 - `useNotificationPolling()` - Auto-refresh with polling
 
 **New Hooks Added**:
+
 - `useGetNotificationPreferences()` - Fetch notification preferences
 - (Note: `useUpdateNotificationPreferences()` already existed)
 
 ### Authentication
+
 - Uses custom JWT-based auth system via `getCurrentUser()` from `src/lib/auth.ts`
 - Async server component pattern with Suspense boundaries
 - Proper server/client component separation
 
 ### Constants
+
 - Moved all notification query keys to `src/lib/constants.ts` under `QUERY_KEYS.NOTIFICATIONS`
 - Centralized for consistency with project architecture
 
 ## Type System
 
 All components properly typed with TypeScript:
+
 - `NotificationType` enum (7 types)
 - `Notification` interface with all fields
 - `NotificationItemProps` interface
@@ -174,7 +192,9 @@ All components properly typed with TypeScript:
 ## Styling & Design
 
 ### Color Scheme
+
 Each notification type has dedicated color styling:
+
 - TASK_ASSIGNED: Blue
 - TASK_REASSIGNED: Purple
 - TASK_APPROVED: Green
@@ -184,11 +204,13 @@ Each notification type has dedicated color styling:
 - COMMENT_ADDED: Cyan
 
 ### Components Used
+
 - shadcn/ui: Button, Card, CardContent, CardHeader, CardTitle, Input, Select, Badge, Switch, Label, Skeleton, DropdownMenu, ScrollArea
 - lucide-react: BellIcon, Trash2, CheckIcon, SearchIcon, MailIcon, Loader2, CheckCircle2, and 7 notification type icons
 - date-fns: `formatDistanceToNow()` for relative timestamps
 
 ### Responsive Design
+
 - Mobile-first Tailwind CSS
 - Dropdown alignment responsive (center on mobile, end on desktop)
 - Flexible grid layouts for filters
@@ -199,6 +221,7 @@ Each notification type has dedicated color styling:
 ✅ **All Phase 7 components compile successfully**
 
 **Compilation Verified**:
+
 - notification-bell.tsx - No errors
 - notification-action-modal.tsx - No errors
 - notification-item.tsx - No errors
@@ -207,24 +230,28 @@ Each notification type has dedicated color styling:
 - use-notifications.ts hooks - No errors
 
 **Pre-existing Build Errors** (not Phase 7 related):
+
 - src/lib/auth.ts - Server-only module warning (expected)
 - src/app/(auth) components - Missing imports in signup/forgot-password (pre-existing)
 
 ## Files Modified/Created
 
 ### New Files (5)
+
 1. `src/components/notifications/notification-bell.tsx` (175 lines)
 2. `src/components/notifications/notification-action-modal.tsx` (380 lines)
 3. `src/components/notifications/notification-item.tsx` (220 lines)
 4. `src/components/notifications/notification-preferences.tsx` (150 lines)
-5. `src/app/(private)/workflows/notifications/page.tsx` (210 lines)
+5. `src/app/(private)/(main)/notifications/page.tsx` (210 lines)
 
 ### Modified Files (3)
+
 1. `src/components/layout/header/notifications.tsx` - Updated to use NotificationBell component
 2. `src/hooks/use-notifications.ts` - Added 2 new preference hooks
 3. `src/lib/constants.ts` - Added QUERY_KEYS.NOTIFICATIONS object
 
 ### Lines of Code
+
 - **Components**: 1,135 lines
 - **Hooks**: 65 lines (new hooks added)
 - **Constants**: 6 lines
@@ -233,18 +260,21 @@ Each notification type has dedicated color styling:
 ## Features Implemented
 
 ### Real-time Notifications
+
 - ✅ Auto-refresh bell every 30 seconds
 - ✅ Visual unread count badge
 - ✅ Recent notifications dropdown (5 items)
 - ✅ Click-to-mark-as-read on notification
 
 ### Quick Actions
+
 - ✅ Approve with digital signature + remarks
 - ✅ Reject with required reason
 - ✅ Modal with preview and action modes
 - ✅ Form validation and error handling
 
 ### Notification Management
+
 - ✅ View all notifications with pagination
 - ✅ Filter by type (7 types)
 - ✅ Filter by status (read/unread/all)
@@ -254,6 +284,7 @@ Each notification type has dedicated color styling:
 - ✅ Bulk select with checkboxes
 
 ### User Preferences
+
 - ✅ Toggle notification types
 - ✅ Save preferences to server
 - ✅ Load preferences on component mount
@@ -261,6 +292,7 @@ Each notification type has dedicated color styling:
 - ✅ Change detection (save button state)
 
 ### UI/UX Polish
+
 - ✅ Loading states for all async operations
 - ✅ Empty states with helpful messages
 - ✅ Skeleton loading animations
@@ -318,6 +350,7 @@ Phase 7 notification components are ready for integration with Phase 8 workflow 
 ## Next Steps (Phase 8)
 
 Phase 8 will create workflow-related UI components:
+
 1. Workflow selector component
 2. Approval flow display component
 3. Reassignment modal component

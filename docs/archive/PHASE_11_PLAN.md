@@ -13,6 +13,7 @@
 ## Current System Status
 
 ### ✅ FULLY IMPLEMENTED (Ready to Use)
+
 - Requisition Approvals (3-stage: Manager → Director → CFO)
   - List page: Functional with filtering
   - Detail page: Full implementation with 274 lines
@@ -36,6 +37,7 @@
   - Reports: 52 lines (stub)
 
 ### ⏳ PARTIALLY IMPLEMENTED (Need Completion)
+
 - Purchase Orders (23-line stub)
   - Needs: 3-stage approval flow implementation
   - Needs: Detail page with PO items
@@ -60,6 +62,7 @@
   - Status: Basic structure only
 
 ### ❌ NOT STARTED
+
 - Bulk Approval Operations
 - Workflow Analytics Dashboard
 - Export/Reporting Features
@@ -72,9 +75,11 @@
 ## Phase 11 Tasks (Priority Order)
 
 ### TASK 1: Purchase Order Workflow Implementation
+
 **Priority**: HIGH | **Effort**: 6-8 hours | **Status**: Not Started
 
 **What to Build**:
+
 1. Create approval detail page: `/workflows/purchase-orders/[id]/page.tsx`
 2. Create approval flow: `/workflows/purchase-orders/[id]/approval/page.tsx`
 3. Create PO detail client component with items table
@@ -83,19 +88,21 @@
 6. Implement PDF generation for POs
 
 **Files to Create**:
+
 ```typescript
-src/app/(private)/workflows/purchase-orders/[id]/
+src/app/(private)/(main)/purchase-orders/[id]/
 ├── page.tsx (detail page)
 └── approval/
     └── page.tsx (approval flow)
 
-src/app/(private)/workflows/purchase-orders/[id]/_components/
+src/app/(private)/(main)/purchase-orders/[id]/_components/
 ├── po-detail-client.tsx (main component)
 ├── po-items-table.tsx (line items display)
 └── po-approval-modal.tsx (approval UI)
 ```
 
 **Implementation Approach**:
+
 - Base on requisition workflow (proven pattern)
 - Use same approval-action-panel component
 - Add PO-specific fields: vendor, payment terms, delivery date, etc.
@@ -103,6 +110,7 @@ src/app/(private)/workflows/purchase-orders/[id]/_components/
 - Link to PDF generator for PO documents
 
 **Testing Criteria**:
+
 - [ ] Display PO details with all line items
 - [ ] Show current approval stage
 - [ ] Allow approve/reject/reassign
@@ -113,9 +121,11 @@ src/app/(private)/workflows/purchase-orders/[id]/_components/
 ---
 
 ### TASK 2: Payment Voucher Workflow Implementation
+
 **Priority**: HIGH | **Effort**: 6-8 hours | **Status**: Not Started
 
 **What to Build**:
+
 1. Create approval detail page: `/workflows/payment-vouchers/[id]/page.tsx`
 2. Create approval flow: `/workflows/payment-vouchers/[id]/approval/page.tsx`
 3. Create payment voucher detail client component
@@ -124,19 +134,21 @@ src/app/(private)/workflows/purchase-orders/[id]/_components/
 6. Implement PDF generation for payment vouchers
 
 **Files to Create**:
+
 ```typescript
-src/app/(private)/workflows/payment-vouchers/[id]/
+src/app/(private)/(main)/payment-vouchers/[id]/
 ├── page.tsx (detail page)
 └── approval/
     └── page.tsx (approval flow)
 
-src/app/(private)/workflows/payment-vouchers/[id]/_components/
+src/app/(private)/(main)/payment-vouchers/[id]/_components/
 ├── payment-voucher-detail-client.tsx
 ├── payment-voucher-summary.tsx
 └── payment-voucher-approval-modal.tsx
 ```
 
 **Implementation Approach**:
+
 - Base on requisition workflow
 - Add PV-specific fields: invoice number, amount, GL code, cost center
 - Implement 3-stage workflow: Manager → Finance Officer → CFO
@@ -145,6 +157,7 @@ src/app/(private)/workflows/payment-vouchers/[id]/_components/
 - Link to PDF generator
 
 **Testing Criteria**:
+
 - [ ] Display payment voucher details
 - [ ] Show approval workflow with 3 stages
 - [ ] Allow digital signature on approval
@@ -155,9 +168,11 @@ src/app/(private)/workflows/payment-vouchers/[id]/_components/
 ---
 
 ### TASK 3: GRN Confirmation Workflow Implementation
+
 **Priority**: MEDIUM | **Effort**: 5-6 hours | **Status**: Not Started
 
 **What to Build**:
+
 1. Create GRN detail page: `/workflows/grn/[id]/page.tsx`
 2. Create GRN confirmation flow: `/workflows/grn/[id]/confirmation/page.tsx`
 3. Create GRN detail client component with item matching
@@ -166,19 +181,21 @@ src/app/(private)/workflows/payment-vouchers/[id]/_components/
 6. Implement PDF generation for GRN documents
 
 **Files to Create**:
+
 ```typescript
-src/app/(private)/workflows/grn/[id]/
+src/app/(private)/(main)/grn/[id]/
 ├── page.tsx (detail page)
 └── confirmation/
     └── page.tsx (confirmation flow)
 
-src/app/(private)/workflows/grn/[id]/_components/
+src/app/(private)/(main)/grn/[id]/_components/
 ├── grn-detail-client.tsx
 ├── grn-items-matching.tsx (PO items vs received items)
 └── grn-confirmation-modal.tsx
 ```
 
 **Implementation Approach**:
+
 - Unique workflow: Confirmation (not approval)
 - 2-stage: Warehouse Clerk → Dept Manager
 - Show PO items vs actual received items
@@ -188,6 +205,7 @@ src/app/(private)/workflows/grn/[id]/_components/
 - Link to PDF generator
 
 **Testing Criteria**:
+
 - [ ] Display GRN details with received items
 - [ ] Match against original PO items
 - [ ] Allow quantity variance notes
@@ -199,9 +217,11 @@ src/app/(private)/workflows/grn/[id]/_components/
 ---
 
 ### TASK 4: Complete Workflow Detail Pages
+
 **Priority**: HIGH | **Effort**: 3-4 hours | **Status**: Partial
 
 **Missing Pages**:
+
 - [x] `/workflows/requisitions/[id]/page.tsx` - DONE (274 lines)
 - [x] `/workflows/budgets/[id]/page.tsx` - DONE (300 lines)
 - [ ] `/workflows/purchase-orders/[id]/page.tsx` - NEEDED
@@ -209,6 +229,7 @@ src/app/(private)/workflows/grn/[id]/_components/
 - [ ] `/workflows/grn/[id]/page.tsx` - NEEDED
 
 **What Each Page Should Include**:
+
 ```typescript
 // Structure for all detail pages:
 1. Server-side auth and role check
@@ -225,9 +246,11 @@ src/app/(private)/workflows/grn/[id]/_components/
 ---
 
 ### TASK 5: Implement Bulk Approval Operations
+
 **Priority**: MEDIUM | **Effort**: 4-5 hours | **Status**: Not Started
 
 **What to Build**:
+
 1. Add bulk selection checkboxes to all workflow lists
 2. Create bulk action toolbar (Approve All, Reject All, etc.)
 3. Add bulk approval modal with confirmation
@@ -236,18 +259,27 @@ src/app/(private)/workflows/grn/[id]/_components/
 6. Update cache management for bulk updates
 
 **Files to Modify**:
-```typescript
-src/app/(private)/workflows/requisitions/_components/requisitions-client.tsx
-src/app/(private)/workflows/budgets/_components/budgets-client.tsx
-src/app/(private)/workflows/purchase-orders/_components/purchase-orders-client.tsx
-src/app/(private)/workflows/payment-vouchers/_components/payment-vouchers-client.tsx
-src/app/(private)/workflows/grn/_components/grn-client.tsx
 
-src/app/_actions/approval-actions.ts
+```typescript
+src / app / private / main / requisitions / _components / requisitions -
+  client.tsx;
+src / app / private / main / budgets / _components / budgets - client.tsx;
+src / app / private / main / purchase -
+  orders / _components / purchase -
+  orders -
+  client.tsx;
+src / app / private / main / payment -
+  vouchers / _components / payment -
+  vouchers -
+  client.tsx;
+src / app / private / main / grn / _components / grn - client.tsx;
+
+src / app / _actions / approval - actions.ts;
 // Add: bulkApproveWorkflows(), bulkRejectWorkflows(), bulkReassignWorkflows()
 ```
 
 **Implementation Features**:
+
 - [ ] Checkbox selection on list items
 - [ ] Bulk action toolbar with counts
 - [ ] Multi-select approve/reject/reassign modal
@@ -257,6 +289,7 @@ src/app/_actions/approval-actions.ts
 - [ ] Email notification of bulk actions
 
 **Testing Criteria**:
+
 - [ ] Select multiple items from list
 - [ ] Show selected count in toolbar
 - [ ] Bulk approve 5+ items at once
@@ -267,14 +300,17 @@ src/app/_actions/approval-actions.ts
 ---
 
 ### TASK 6: Enhanced Search & Filtering
+
 **Priority**: MEDIUM | **Effort**: 3-4 hours | **Status**: Partial (20-line stub)
 
 **Current**:
+
 - Basic search page stub (20 lines)
 - No actual search implementation
 - No cross-workflow filtering
 
 **What to Build**:
+
 1. Full-text search across all workflows
 2. Advanced filter panel:
    - Date range filters
@@ -288,8 +324,9 @@ src/app/_actions/approval-actions.ts
 5. Export search results
 
 **Files to Create**:
+
 ```typescript
-src/app/(private)/workflows/search/_components/
+src/app/(private)/(main)/search/_components/
 ├── search-client.tsx (main component - currently 20 lines)
 ├── advanced-filters.tsx (filter panel)
 ├── search-results.tsx (aggregated results)
@@ -300,6 +337,7 @@ src/app/_actions/search.ts
 ```
 
 **Implementation Features**:
+
 - [ ] Global search input with autocomplete
 - [ ] Date range picker
 - [ ] Multi-select dropdowns for filters
@@ -310,6 +348,7 @@ src/app/_actions/search.ts
 - [ ] Search performance optimization
 
 **Testing Criteria**:
+
 - [ ] Search for "REQ" returns all requisitions
 - [ ] Filter by date range works
 - [ ] Saved searches persist
@@ -320,9 +359,11 @@ src/app/_actions/search.ts
 ---
 
 ### TASK 7: Workflow Analytics & Reporting
+
 **Priority**: LOW | **Effort**: 5-6 hours | **Status**: Not Started (52-line stub)
 
 **What to Build**:
+
 1. Analytics dashboard showing:
    - Approval metrics (total, pending, approved, rejected, avg time)
    - Workflow trends (over time, by type, by approver)
@@ -336,6 +377,7 @@ src/app/_actions/search.ts
 3. Export reports to PDF/Excel
 
 **Files to Modify**:
+
 ```typescript
 src/app/(private)/admin/reports/_components/
 admin-reports-client.tsx (currently 52 lines, needs full implementation)
@@ -345,6 +387,7 @@ src/app/_actions/analytics.ts
 ```
 
 **Charts to Implement**:
+
 - [ ] Approval completion rate (pie chart)
 - [ ] Avg approval time by stage (bar chart)
 - [ ] Approvals over time (line chart)
@@ -353,6 +396,7 @@ src/app/_actions/analytics.ts
 - [ ] SLA compliance (gauge chart)
 
 **Testing Criteria**:
+
 - [ ] Dashboard loads with all metrics
 - [ ] Charts update with new data
 - [ ] Reports export to PDF
@@ -367,6 +411,7 @@ src/app/_actions/analytics.ts
 ### Phase 11 Phases A-C (Week 1-2)
 
 **Phase 11A (Days 1-2): Purchase Order & Payment Voucher**
+
 - [ ] Create PO detail page
 - [ ] Create PO approval flow
 - [ ] Create PV detail page
@@ -374,12 +419,14 @@ src/app/_actions/analytics.ts
 - [ ] Test both workflows end-to-end
 
 **Phase 11B (Days 3-4): GRN & Search**
+
 - [ ] Create GRN detail page
 - [ ] Create GRN confirmation flow
 - [ ] Implement advanced search
 - [ ] Test search across workflows
 
 **Phase 11C (Days 5-7): Bulk Operations & Analytics**
+
 - [ ] Implement bulk approval UI
 - [ ] Add bulk server actions
 - [ ] Complete analytics dashboard
@@ -390,6 +437,7 @@ src/app/_actions/analytics.ts
 ## File Structure Overview
 
 ### New Routes to Create
+
 ```
 /workflows
 ├── purchase-orders/[id]/page.tsx (NEW)
@@ -402,30 +450,31 @@ src/app/_actions/analytics.ts
 ```
 
 ### New Components to Create (40+ components)
+
 ```
 // PO Components
-src/app/(private)/workflows/purchase-orders/[id]/_components/
+src/app/(private)/(main)/purchase-orders/[id]/_components/
 ├── po-detail-client.tsx
 ├── po-items-table.tsx
 ├── po-approval-modal.tsx
 └── po-summary-card.tsx
 
 // PV Components
-src/app/(private)/workflows/payment-vouchers/[id]/_components/
+src/app/(private)/(main)/payment-vouchers/[id]/_components/
 ├── payment-voucher-detail-client.tsx
 ├── payment-voucher-summary.tsx
 ├── payment-voucher-approval-modal.tsx
 └── expense-validation.tsx
 
 // GRN Components
-src/app/(private)/workflows/grn/[id]/_components/
+src/app/(private)/(main)/grn/[id]/_components/
 ├── grn-detail-client.tsx
 ├── grn-items-matching.tsx
 ├── grn-confirmation-modal.tsx
 └── received-items-table.tsx
 
 // Search Components
-src/app/(private)/workflows/search/_components/
+src/app/(private)/(main)/search/_components/
 ├── search-client.tsx
 ├── advanced-filters.tsx
 ├── search-results.tsx
@@ -440,58 +489,53 @@ src/admin/reports/_components/
 ```
 
 ### New Server Actions (15+)
+
 ```typescript
 // Approval Actions
-- approvePurchaseOrder()
-- rejectPurchaseOrder()
-- reassignPurchaseOrder()
-- approvePaymentVoucher()
-- rejectPaymentVoucher()
-- reassignPaymentVoucher()
-- confirmGRN()
-- rejectGRN()
-- reassignGRNConfirmation()
-
-// Bulk Actions
-- bulkApproveWorkflows()
-- bulkRejectWorkflows()
-- bulkReassignWorkflows()
-
-// Search Actions
-- searchWorkflows()
-- saveSearch()
-- getSavedSearches()
-
-// Analytics Actions
-- getApprovalMetrics()
-- getWorkflowTrends()
-- getBottlenecks()
+-approvePurchaseOrder() -
+  rejectPurchaseOrder() -
+  reassignPurchaseOrder() -
+  approvePaymentVoucher() -
+  rejectPaymentVoucher() -
+  reassignPaymentVoucher() -
+  confirmGRN() -
+  rejectGRN() -
+  reassignGRNConfirmation() -
+  // Bulk Actions
+  bulkApproveWorkflows() -
+  bulkRejectWorkflows() -
+  bulkReassignWorkflows() -
+  // Search Actions
+  searchWorkflows() -
+  saveSearch() -
+  getSavedSearches() -
+  // Analytics Actions
+  getApprovalMetrics() -
+  getWorkflowTrends() -
+  getBottlenecks();
 ```
 
 ### New React Hooks (10+)
+
 ```typescript
 // PO Hooks
-- useGetPurchaseOrders()
-- useGetPurchaseOrderDetail()
-- useApprovePOOperation()
-
-// PV Hooks
-- useGetPaymentVouchers()
-- useGetPaymentVoucherDetail()
-- useApprovePVOperation()
-
-// GRN Hooks
-- useGetGRNs()
-- useGetGRNDetail()
-- useConfirmGRNOperation()
-
-// Search Hooks
-- useSearchWorkflows()
-- useSavedSearches()
-
-// Analytics Hooks
-- useApprovalMetrics()
-- useWorkflowAnalytics()
+-useGetPurchaseOrders() -
+  useGetPurchaseOrderDetail() -
+  useApprovePOOperation() -
+  // PV Hooks
+  useGetPaymentVouchers() -
+  useGetPaymentVoucherDetail() -
+  useApprovePVOperation() -
+  // GRN Hooks
+  useGetGRNs() -
+  useGetGRNDetail() -
+  useConfirmGRNOperation() -
+  // Search Hooks
+  useSearchWorkflows() -
+  useSavedSearches() -
+  // Analytics Hooks
+  useApprovalMetrics() -
+  useWorkflowAnalytics();
 ```
 
 ---
@@ -499,6 +543,7 @@ src/admin/reports/_components/
 ## Success Criteria
 
 ### By End of Phase 11
+
 - [ ] All 4 workflow types fully functional (REQ, BUD, PO, PV)
 - [ ] GRN confirmation flow complete
 - [ ] Global search working across all workflows
@@ -511,6 +556,7 @@ src/admin/reports/_components/
 - [ ] Documentation updated for all new features
 
 ### Code Quality Targets
+
 - [ ] 95%+ test coverage for new code
 - [ ] 0 TypeScript errors
 - [ ] All components use proper type safety
@@ -524,6 +570,7 @@ src/admin/reports/_components/
 ## Testing Checklist
 
 ### Functional Tests
+
 - [ ] Create and approve requisition through all 3 stages
 - [ ] Create and approve budget through all 2 stages
 - [ ] Create and approve purchase order through all 3 stages
@@ -537,6 +584,7 @@ src/admin/reports/_components/
 - [ ] View analytics dashboard with real data
 
 ### Integration Tests
+
 - [ ] Approval notifications sent correctly
 - [ ] Audit trail logs all actions
 - [ ] Cache invalidation works after mutations
@@ -546,6 +594,7 @@ src/admin/reports/_components/
 - [ ] Role-based access enforced
 
 ### Performance Tests
+
 - [ ] Load requisition detail: <100ms
 - [ ] Load budget detail: <100ms
 - [ ] Load PO detail: <100ms
@@ -558,28 +607,28 @@ src/admin/reports/_components/
 
 ## Risk Factors & Mitigations
 
-| Risk | Probability | Impact | Mitigation |
-|------|-------------|--------|-----------|
-| PDF generation complexity | Medium | Medium | Use existing pdf-generators templates, test early |
-| Search performance | Medium | Low | Add pagination, implement indexing |
-| Bulk operation failures | Low | Medium | Implement rollback, transaction support |
-| Type system expansion | Low | Low | Extend existing types incrementally |
-| Browser storage quota | Very Low | Medium | Implement compression, cleanup old data |
+| Risk                      | Probability | Impact | Mitigation                                        |
+| ------------------------- | ----------- | ------ | ------------------------------------------------- |
+| PDF generation complexity | Medium      | Medium | Use existing pdf-generators templates, test early |
+| Search performance        | Medium      | Low    | Add pagination, implement indexing                |
+| Bulk operation failures   | Low         | Medium | Implement rollback, transaction support           |
+| Type system expansion     | Low         | Low    | Extend existing types incrementally               |
+| Browser storage quota     | Very Low    | Medium | Implement compression, cleanup old data           |
 
 ---
 
 ## Timeline Estimate
 
-| Task | Estimate | Start | End |
-|------|----------|-------|-----|
-| PO Workflow | 8 hours | Day 1 | Day 2 mid |
-| PV Workflow | 8 hours | Day 2 mid | Day 3 |
-| GRN Workflow | 6 hours | Day 3 | Day 4 |
-| Search & Filtering | 4 hours | Day 4 | Day 4 mid |
-| Bulk Operations | 5 hours | Day 4 mid | Day 5 |
-| Analytics | 6 hours | Day 5 | Day 6 |
-| Testing & Fixes | 8 hours | Day 6-7 | Day 7 end |
-| **Total** | **45 hours** | **Day 1** | **Day 7** |
+| Task               | Estimate     | Start     | End       |
+| ------------------ | ------------ | --------- | --------- |
+| PO Workflow        | 8 hours      | Day 1     | Day 2 mid |
+| PV Workflow        | 8 hours      | Day 2 mid | Day 3     |
+| GRN Workflow       | 6 hours      | Day 3     | Day 4     |
+| Search & Filtering | 4 hours      | Day 4     | Day 4 mid |
+| Bulk Operations    | 5 hours      | Day 4 mid | Day 5     |
+| Analytics          | 6 hours      | Day 5     | Day 6     |
+| Testing & Fixes    | 8 hours      | Day 6-7   | Day 7 end |
+| **Total**          | **45 hours** | **Day 1** | **Day 7** |
 
 ---
 

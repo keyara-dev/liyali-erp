@@ -1,7 +1,7 @@
-'use client'
+"use client";
 
-import { useEffect, useState } from 'react'
-import * as React from 'react'
+import { useEffect, useState } from "react";
+import * as React from "react";
 import {
   ColumnDef,
   ColumnFiltersState,
@@ -13,9 +13,15 @@ import {
   getPaginationRowModel,
   getSortedRowModel,
   useReactTable,
-} from '@tanstack/react-table'
-import { useRouter } from 'next/navigation'
-import { ArrowUpDown, Eye, ChevronLeft, ChevronRight, SearchX } from 'lucide-react'
+} from "@tanstack/react-table";
+import { useRouter } from "next/navigation";
+import {
+  ArrowUpDown,
+  Eye,
+  ChevronLeft,
+  ChevronRight,
+  SearchX,
+} from "lucide-react";
 
 import {
   Table,
@@ -24,97 +30,108 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
+} from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Empty,
   EmptyDescription,
   EmptyHeader,
   EmptyMedia,
   EmptyTitle,
-} from '@/components/ui/empty'
-import { searchDocuments } from '@/app/_actions/search'
-import { WorkflowDocument, SearchFilters, PaginatedResponse } from '@/types/workflow'
-import { DownloadButton } from './download-button'
+} from "@/components/ui/empty";
+import { searchDocuments } from "@/app/_actions/search";
+import {
+  WorkflowDocument,
+  SearchFilters,
+  PaginatedResponse,
+} from "@/types/workflow";
+import { DownloadButton } from "./download-button";
 
 interface TransactionResultsProps {
-  filters: SearchFilters
-  refreshTrigger: number
-  userRole: string
+  filters: SearchFilters;
+  refreshTrigger: number;
+  userRole: string;
 }
 
 const STATUS_COLORS: Record<string, string> = {
-  DRAFT: 'outline',
-  SUBMITTED: 'secondary',
-  IN_REVIEW: 'default',
-  APPROVED: 'default',
-  REJECTED: 'destructive',
-  REVERSED: 'secondary',
-}
+  DRAFT: "outline",
+  SUBMITTED: "secondary",
+  IN_REVIEW: "default",
+  APPROVED: "default",
+  REJECTED: "destructive",
+  REVERSED: "secondary",
+};
 
 const STATUS_LABELS: Record<string, string> = {
-  DRAFT: 'Draft',
-  SUBMITTED: 'Submitted',
-  IN_REVIEW: 'IN_REVIEW',
-  APPROVED: 'Approved',
-  REJECTED: 'Rejected',
-  REVERSED: 'Reversed',
-}
+  DRAFT: "Draft",
+  SUBMITTED: "Submitted",
+  IN_REVIEW: "IN_REVIEW",
+  APPROVED: "Approved",
+  REJECTED: "Rejected",
+  REVERSED: "Reversed",
+};
 
 const DOCUMENT_TYPE_LABELS: Record<string, string> = {
-  REQUISITION: 'Requisition',
-  PURCHASE_ORDER: 'Purchase Order',
-  PAYMENT_VOUCHER: 'Payment Voucher',
-  GOODS_RECEIVED_NOTE: 'GRN',
-}
+  REQUISITION: "Requisition",
+  PURCHASE_ORDER: "Purchase Order",
+  PAYMENT_VOUCHER: "Payment Voucher",
+  GOODS_RECEIVED_NOTE: "GRN",
+};
 
 export function TransactionResults({
   filters,
   refreshTrigger,
   userRole,
 }: TransactionResultsProps) {
-  const router = useRouter()
-  const [documents, setDocuments] = useState<WorkflowDocument[]>([])
+  const router = useRouter();
+  const [documents, setDocuments] = useState<WorkflowDocument[]>([]);
   const [pagination, setPagination] = useState({
     page: 1,
     limit: 10,
     total: 0,
     totalPages: 1,
-  })
-  const [isLoading, setIsLoading] = useState(false)
-  const [sorting, setSorting] = React.useState<SortingState>([])
-  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
-  const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({})
+  });
+  const [isLoading, setIsLoading] = useState(false);
+  const [sorting, setSorting] = React.useState<SortingState>([]);
+  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
+    []
+  );
+  const [columnVisibility, setColumnVisibility] =
+    React.useState<VisibilityState>({});
 
   // Fetch documents when filters or page changes
   useEffect(() => {
     async function fetchDocuments() {
-      setIsLoading(true)
+      setIsLoading(true);
       try {
-        const result = await searchDocuments(filters, pagination.page, pagination.limit)
+        const result = await searchDocuments(
+          filters,
+          pagination.page,
+          pagination.limit
+        );
         if (result.success && result.data) {
-          setDocuments(result.data.data)
-          setPagination(result.data.pagination)
+          setDocuments(result.data.data);
+          setPagination(result.data.pagination);
         }
       } catch (error) {
-        console.error('Failed to fetch documents:', error)
+        console.error("Failed to fetch documents:", error);
       } finally {
-        setIsLoading(false)
+        setIsLoading(false);
       }
     }
 
-    fetchDocuments()
-  }, [filters, pagination.page, pagination.limit, refreshTrigger])
+    fetchDocuments();
+  }, [filters, pagination.page, pagination.limit, refreshTrigger]);
 
   const columns: ColumnDef<WorkflowDocument>[] = [
     {
-      accessorKey: 'documentNumber',
+      accessorKey: "documentNumber",
       header: ({ column }) => (
         <Button
           variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
           className="-ml-3"
         >
           Document #
@@ -123,40 +140,38 @@ export function TransactionResults({
       ),
       cell: ({ row }) => (
         <span className="font-medium text-primary hover:underline cursor-pointer">
-          {row.getValue('documentNumber')}
+          {row.getValue("documentNumber")}
         </span>
       ),
     },
     {
-      accessorKey: 'type',
-      header: 'Type',
+      accessorKey: "type",
+      header: "Type",
       cell: ({ row }) => {
-        const type = row.getValue('type') as string
+        const type = row.getValue("type") as string;
         return (
-          <span className="text-sm">
-            {DOCUMENT_TYPE_LABELS[type] || type}
-          </span>
-        )
+          <span className="text-sm">{DOCUMENT_TYPE_LABELS[type] || type}</span>
+        );
       },
     },
     {
-      accessorKey: 'status',
-      header: 'Status',
+      accessorKey: "status",
+      header: "Status",
       cell: ({ row }) => {
-        const status = row.getValue('status') as string
+        const status = row.getValue("status") as string;
         return (
           <Badge variant={STATUS_COLORS[status] as any}>
             {STATUS_LABELS[status] || status}
           </Badge>
-        )
+        );
       },
     },
     {
-      accessorKey: 'createdAt',
+      accessorKey: "createdAt",
       header: ({ column }) => (
         <Button
           variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
           className="-ml-3"
         >
           Created
@@ -164,33 +179,38 @@ export function TransactionResults({
         </Button>
       ),
       cell: ({ row }) => {
-        const date = new Date(row.getValue('createdAt'))
+        const date = new Date(row.getValue("createdAt"));
         return (
           <span className="text-sm text-muted-foreground">
-            {date.toLocaleDateString()} {date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            {date.toLocaleDateString()}{" "}
+            {date.toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit",
+            })}
           </span>
-        )
+        );
       },
     },
     {
-      id: 'actions',
-      header: 'Actions',
+      id: "actions",
+      header: "Actions",
       cell: ({ row }) => {
-        const doc = row.original
+        const doc = row.original;
         // Map document type to URL slug
-        const typeSlug = {
-          REQUISITION: 'requisitions',
-          PURCHASE_ORDER: 'purchase-orders',
-          PAYMENT_VOUCHER: 'payment-vouchers',
-          GOODS_RECEIVED_NOTE: 'grn',
-        }[doc.type] || 'workflows'
+        const typeSlug =
+          {
+            REQUISITION: "requisitions",
+            PURCHASE_ORDER: "purchase-orders",
+            PAYMENT_VOUCHER: "payment-vouchers",
+            GOODS_RECEIVED_NOTE: "grn",
+          }[doc.type] || "workflows";
 
         return (
           <div className="flex gap-2">
             <Button
               variant="outline"
               size="sm"
-              onClick={() => router.push(`/workflows/${typeSlug}/${doc.id}`)}
+              onClick={() => router.push(`/${typeSlug}/${doc.id}`)}
               className="gap-1"
             >
               <Eye className="h-4 w-4" />
@@ -201,10 +221,10 @@ export function TransactionResults({
               documentNumber={doc.documentNumber}
             />
           </div>
-        )
+        );
       },
     },
-  ]
+  ];
 
   const table = useReactTable({
     data: documents,
@@ -221,7 +241,7 @@ export function TransactionResults({
       columnFilters,
       columnVisibility,
     },
-  })
+  });
 
   return (
     <Card>
@@ -238,7 +258,8 @@ export function TransactionResults({
             <EmptyHeader>
               <EmptyTitle>No documents found</EmptyTitle>
               <EmptyDescription>
-                Try adjusting your search filters to find what you're looking for.
+                Try adjusting your search filters to find what you're looking
+                for.
               </EmptyDescription>
             </EmptyHeader>
           </Empty>
@@ -254,7 +275,10 @@ export function TransactionResults({
                         <TableHead key={header.id}>
                           {header.isPlaceholder
                             ? null
-                            : flexRender(header.column.columnDef.header, header.getContext())}
+                            : flexRender(
+                                header.column.columnDef.header,
+                                header.getContext()
+                              )}
                         </TableHead>
                       ))}
                     </TableRow>
@@ -265,7 +289,10 @@ export function TransactionResults({
                     <TableRow key={row.id}>
                       {row.getVisibleCells().map((cell) => (
                         <TableCell key={cell.id}>
-                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                          {flexRender(
+                            cell.column.columnDef.cell,
+                            cell.getContext()
+                          )}
                         </TableCell>
                       ))}
                     </TableRow>
@@ -277,14 +304,24 @@ export function TransactionResults({
             {/* Pagination */}
             <div className="flex items-center justify-between gap-2 py-4">
               <div className="text-sm text-muted-foreground">
-                Showing {documents.length > 0 ? (pagination.page - 1) * pagination.limit + 1 : 0} to{' '}
-                {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total} documents
+                Showing{" "}
+                {documents.length > 0
+                  ? (pagination.page - 1) * pagination.limit + 1
+                  : 0}{" "}
+                to{" "}
+                {Math.min(pagination.page * pagination.limit, pagination.total)}{" "}
+                of {pagination.total} documents
               </div>
               <div className="flex gap-1">
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setPagination((p) => ({ ...p, page: Math.max(p.page - 1, 1) }))}
+                  onClick={() =>
+                    setPagination((p) => ({
+                      ...p,
+                      page: Math.max(p.page - 1, 1),
+                    }))
+                  }
                   disabled={pagination.page === 1 || isLoading}
                 >
                   <ChevronLeft className="h-4 w-4" />
@@ -297,8 +334,15 @@ export function TransactionResults({
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setPagination((p) => ({ ...p, page: Math.min(p.page + 1, p.totalPages) }))}
-                  disabled={pagination.page >= pagination.totalPages || isLoading}
+                  onClick={() =>
+                    setPagination((p) => ({
+                      ...p,
+                      page: Math.min(p.page + 1, p.totalPages),
+                    }))
+                  }
+                  disabled={
+                    pagination.page >= pagination.totalPages || isLoading
+                  }
                 >
                   <ChevronRight className="h-4 w-4" />
                 </Button>
@@ -308,5 +352,5 @@ export function TransactionResults({
         )}
       </CardContent>
     </Card>
-  )
+  );
 }

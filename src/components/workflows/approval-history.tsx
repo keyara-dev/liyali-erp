@@ -34,16 +34,16 @@ export function ApprovalHistory({
   entityType,
 }: ApprovalHistoryProps) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const { data: historyData, isLoading } = useGetTaskHistory(entityId);
+  const { data: historyData, isLoading } = useGetTaskHistory(entityId, entityType);
 
   const sortedHistory = useMemo(() => {
-    if (!historyData?.history) return [];
-    return [...historyData.history].sort(
-      (a, b) =>
+    if (!historyData) return [];
+    return [...historyData].sort(
+      (a: any, b: any) =>
         new Date(b.actionDate || b.createdAt || 0).getTime() -
         new Date(a.actionDate || a.createdAt || 0).getTime()
     );
-  }, [historyData?.history]);
+  }, [historyData]);
 
   const getActionIcon = (action: string) => {
     switch (action) {

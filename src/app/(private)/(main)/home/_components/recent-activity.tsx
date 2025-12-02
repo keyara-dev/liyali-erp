@@ -1,8 +1,8 @@
-'use client'
+"use client";
 
-import { useRouter } from 'next/navigation'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
+import { useRouter } from "next/navigation";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -10,49 +10,49 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table'
-import { Badge } from '@/components/ui/badge'
-import { DashboardMetrics } from '@/types'
-import { Eye } from 'lucide-react'
+} from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { DashboardMetrics } from "@/types";
+import { Eye } from "lucide-react";
 
 interface RecentActivityProps {
-  metrics: DashboardMetrics
+  metrics: DashboardMetrics;
 }
 
 const STATUS_COLORS: Record<string, string> = {
-  DRAFT: 'outline',
-  SUBMITTED: 'secondary',
-  IN_REVIEW: 'default',
-  APPROVED: 'default',
-  REJECTED: 'destructive',
-  REVERSED: 'secondary',
-}
+  DRAFT: "outline",
+  SUBMITTED: "secondary",
+  IN_REVIEW: "default",
+  APPROVED: "default",
+  REJECTED: "destructive",
+  REVERSED: "secondary",
+};
 
 const STATUS_LABELS: Record<string, string> = {
-  DRAFT: 'Draft',
-  SUBMITTED: 'Submitted',
-  IN_REVIEW: 'IN_REVIEW',
-  APPROVED: 'Approved',
-  REJECTED: 'Rejected',
-  REVERSED: 'Reversed',
-}
+  DRAFT: "Draft",
+  SUBMITTED: "Submitted",
+  IN_REVIEW: "IN_REVIEW",
+  APPROVED: "Approved",
+  REJECTED: "Rejected",
+  REVERSED: "Reversed",
+};
 
 const DOCUMENT_TYPE_LABELS: Record<string, string> = {
-  REQUISITION: 'Requisition',
-  PURCHASE_ORDER: 'Purchase Order',
-  PAYMENT_VOUCHER: 'Payment Voucher',
-  GOODS_RECEIVED_NOTE: 'GRN',
-}
+  REQUISITION: "Requisition",
+  PURCHASE_ORDER: "Purchase Order",
+  PAYMENT_VOUCHER: "Payment Voucher",
+  GOODS_RECEIVED_NOTE: "GRN",
+};
 
 export function RecentActivity({ metrics }: RecentActivityProps) {
-  const router = useRouter()
+  const router = useRouter();
 
   const typeSlugMap = {
-    REQUISITION: 'requisitions',
-    PURCHASE_ORDER: 'purchase-orders',
-    PAYMENT_VOUCHER: 'payment-vouchers',
-    GOODS_RECEIVED_NOTE: 'grn',
-  }
+    REQUISITION: "requisitions",
+    PURCHASE_ORDER: "purchase-orders",
+    PAYMENT_VOUCHER: "payment-vouchers",
+    GOODS_RECEIVED_NOTE: "grn",
+  };
 
   if (metrics.recentActivity.length === 0) {
     return (
@@ -66,7 +66,7 @@ export function RecentActivity({ metrics }: RecentActivityProps) {
           </div>
         </CardContent>
       </Card>
-    )
+    );
   }
 
   return (
@@ -89,7 +89,9 @@ export function RecentActivity({ metrics }: RecentActivityProps) {
             </TableHeader>
             <TableBody>
               {metrics.recentActivity.map((activity) => {
-                const typeSlug = typeSlugMap[activity.type as keyof typeof typeSlugMap] || 'workflows'
+                const typeSlug =
+                  typeSlugMap[activity.type as keyof typeof typeSlugMap] ||
+                  "workflows";
                 return (
                   <TableRow key={activity.id}>
                     <TableCell className="font-medium text-primary hover:underline cursor-pointer">
@@ -108,17 +110,19 @@ export function RecentActivity({ metrics }: RecentActivityProps) {
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
                       {new Date(activity.timestamp).toLocaleString([], {
-                        month: 'short',
-                        day: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit',
+                        month: "short",
+                        day: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
                       })}
                     </TableCell>
                     <TableCell>
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => router.push(`/workflows/${typeSlug}/${activity.id}`)}
+                        onClick={() =>
+                          router.push(`/tasks/${typeSlug}/${activity.id}`)
+                        }
                         className="gap-1"
                       >
                         <Eye className="h-4 w-4" />
@@ -126,12 +130,12 @@ export function RecentActivity({ metrics }: RecentActivityProps) {
                       </Button>
                     </TableCell>
                   </TableRow>
-                )
+                );
               })}
             </TableBody>
           </Table>
         </div>
       </CardContent>
     </Card>
-  )
+  );
 }

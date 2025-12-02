@@ -36,17 +36,17 @@ export function GreetingCard({
     {
       icon: <FileText className="h-5 w-5" />,
       label: "View Requisitions",
-      href: "/workflows/requisitions",
+      href: "/requisitions",
     },
     {
       icon: <PlusCircle className="h-5 w-5" />,
       label: "Create Requisition",
-      href: "/workflows/requisitions/create",
+      href: "/requisitions/create",
     },
     {
       icon: <Search className="h-5 w-5" />,
       label: "Search Documents",
-      href: "/workflows/search",
+      href: "/search",
     },
   ];
 

@@ -12,7 +12,7 @@ export default async function LoginPage() {
   // If already logged in, redirect to dashboard
   const user = await getCurrentUser();
   if (user) {
-    redirect("/workflows/dashboard");
+    redirect("/home");
   }
 
   return (

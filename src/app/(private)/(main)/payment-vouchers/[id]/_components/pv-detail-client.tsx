@@ -8,6 +8,8 @@ import { Button } from '@/components/ui/button'
 import {
   ArrowLeft,
   TrendingUp,
+  FileText,
+  DollarSign,
 } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
 import { PageHeader } from '@/components/base/page-header'
@@ -153,7 +155,7 @@ export function PVDetailClient({
 
   const handleApprove = () => {
     toast.success('Navigating to approval...')
-    router.push(`/workflows/payment-vouchers/${pvId}/approval`)
+    router.push(`//payment-vouchers/${pvId}/approval`)
   }
 
   const handleBack = () => {

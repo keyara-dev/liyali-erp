@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { SignatureCanvas } from '@/components/ui/signature-canvas';
+import { SignatureCanvas, type SignatureCanvasHandle } from '@/components/ui/signature-canvas';
 import { AlertCircle, CheckCircle2 } from 'lucide-react';
 
 export type ApprovalAction = 'approve' | 'reject';
@@ -68,7 +68,7 @@ export function ApprovalConfirmationModal({
   const [comments, setComments] = useState<string>('');
   const [error, setError] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const signatureRef = useRef<{ clearSignature: () => void }>(null);
+  const signatureRef = useRef<SignatureCanvasHandle>(null);
 
   const isApproval = action === 'approve';
   const isRejection = action === 'reject';

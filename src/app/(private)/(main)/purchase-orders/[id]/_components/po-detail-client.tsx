@@ -148,7 +148,7 @@ export function PODetailClient({
 
   const handleApprove = () => {
     toast.success("Navigating to approval...");
-    router.push(`/workflows/purchase-orders/${poId}/approval`);
+    router.push(`/purchase-orders/${poId}/approval`);
   };
 
   const handleBack = () => {

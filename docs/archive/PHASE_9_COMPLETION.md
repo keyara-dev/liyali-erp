@@ -13,25 +13,27 @@ Phase 9 successfully integrated Phase 8 workflow UI components into user-facing 
 
 ### Key Statistics
 
-| Metric | Value |
-|--------|-------|
-| Pages Created | 3 |
-| Total Lines of Code | 1,100+ |
-| Files Created | 6 (3 pages + 3 new hooks/types) |
-| Files Modified | 2 (use-workflows.ts, types/index.ts) |
-| Type Safety | 100% |
-| Build Status | ✅ Phase 9 Components Compile (0 Phase 9 errors) |
+| Metric              | Value                                            |
+| ------------------- | ------------------------------------------------ |
+| Pages Created       | 3                                                |
+| Total Lines of Code | 1,100+                                           |
+| Files Created       | 6 (3 pages + 3 new hooks/types)                  |
+| Files Modified      | 2 (use-workflows.ts, types/index.ts)             |
+| Type Safety         | 100%                                             |
+| Build Status        | ✅ Phase 9 Components Compile (0 Phase 9 errors) |
 
 ---
 
 ## Pages Delivered
 
 ### 1. **Requisition Approval Page** (370 lines)
-**File**: `src/app/(private)/workflows/requisitions/[id]/approval/page.tsx`
+
+**File**: `src/app/(private)/(main)/requisitions/[id]/approval/page.tsx`
 
 Complete approval workflow interface for requisitions.
 
 **Key Features**:
+
 - Header with status badge (Pending/Approved/Rejected)
 - Info cards: Entity, Workflow, Current Stage, Assigned To
 - Requisition details card with:
@@ -45,6 +47,7 @@ Complete approval workflow interface for requisitions.
 - Responsive 2-column grid layout
 
 **Integration Points**:
+
 - Uses `useGetApprovalTaskDetail()` to fetch task data
 - Renders `ApprovalFlowDisplay`, `ApprovalActionPanel`, `ApprovalHistory` components
 - Displays workflow progress on the right side
@@ -52,11 +55,13 @@ Complete approval workflow interface for requisitions.
 ---
 
 ### 2. **Budget Approval Page** (340 lines)
-**File**: `src/app/(private)/workflows/budgets/[id]/approval/page.tsx`
+
+**File**: `src/app/(private)/(main)/budgets/[id]/approval/page.tsx`
 
 Complete approval workflow interface for budgets.
 
 **Key Features**:
+
 - Header with status badge
 - Info cards: Entity, Workflow, Current Stage, Assigned To
 - Budget details card with:
@@ -73,6 +78,7 @@ Complete approval workflow interface for budgets.
 - Responsive layout with grid
 
 **Integration Points**:
+
 - Uses `useGetApprovalTaskDetail()` to fetch budget task data
 - Renders same Phase 8 components as requisition page
 - Budget-specific data display (allocations instead of items)
@@ -80,11 +86,13 @@ Complete approval workflow interface for budgets.
 ---
 
 ### 3. **Approvals Dashboard Page** (400+ lines)
-**File**: `src/app/(private)/workflows/approvals/page.tsx`
+
+**File**: `src/app/(private)/(main)/approvals/page.tsx`
 
 Central dashboard for managing all pending approvals.
 
 **Key Features**:
+
 - Header with "My Approvals" title
 - Statistics cards (4):
   - Total Pending: Count of pending approvals
@@ -109,6 +117,7 @@ Central dashboard for managing all pending approvals.
   - GREEN for LOW priority
 
 **Integration Points**:
+
 - Uses `useGetApprovalTasks()` to fetch task list with filtering
 - Uses `useGetApprovalStats()` to fetch statistics
 - Integrates filtering and sorting in client component
@@ -141,7 +150,7 @@ interface ApprovalTask {
 
 interface ApprovalTaskDetail {
   task: ApprovalTask;
-  workflow?: { id, name, totalStages, stages };
+  workflow?: { id; name; totalStages; stages };
   entity?: Record<string, any>;
   relatedApprovals?: ApprovalTask[];
 }
@@ -150,12 +159,14 @@ interface ApprovalTaskDetail {
 ### New Hooks (use-approval-task-queries.ts)
 
 **Hooks Created**:
+
 - `useGetApprovalTasks(params?)` - Fetch pending approval tasks with optional status filter
 - `useGetApprovalTaskDetail(taskId)` - Fetch detailed approval task with workflow and entity data
 - `useGetApprovalStats()` - Fetch approval statistics (pending, high priority, this month, overdue)
 - `useGetTaskHistory(entityId, entityType)` - Fetch task history for an entity
 
 **Features**:
+
 - React Query integration for caching and refetching
 - 30-second auto-refresh for live updates
 - Mock data implementation for development
@@ -165,6 +176,7 @@ interface ApprovalTaskDetail {
 ### Component Fixes
 
 **approval-action-panel.tsx**:
+
 - Fixed imports to use correct hooks from `use-approval-flow.ts`
 - Updated hook names: `useApproveTask` → `useApproveStage`, etc.
 - Updated mutation calls to match `ApproveStageRequest`, `RejectStageRequest`, `ReassignStageRequest` DTOs
@@ -175,6 +187,7 @@ interface ApprovalTaskDetail {
 ## Integration with Previous Phases
 
 ### Phase 8 Components Used
+
 - ✅ `ApprovalFlowDisplay` - Workflow progress visualization
 - ✅ `ApprovalActionPanel` - Approve/reject/reassign actions
 - ✅ `ApprovalHistory` - Timeline of all approvals
@@ -182,10 +195,12 @@ interface ApprovalTaskDetail {
 - ✅ `WorkflowStageForm` - Stage-specific form data
 
 ### Phase 7 Components Used
+
 - ✅ `NotificationActionModal` - Digital signature capture
 - ✅ `NotificationItem` - Notification display in approval list
 
 ### Phase 5-6 Integration
+
 - ✅ React Query hooks for data fetching
 - ✅ Server actions for approval mutations
 - ✅ Automatic cache invalidation on mutations
@@ -195,23 +210,28 @@ interface ApprovalTaskDetail {
 ## Build Verification
 
 ### Phase 9 Compilation Status
+
 **✅ All Phase 9 components compile successfully**
 
 **Verified Components**:
+
 - requisitions/[id]/approval/page.tsx ✅
 - budgets/[id]/approval/page.tsx ✅
 - approvals/page.tsx ✅
 
 **New Hooks**:
+
 - use-approval-task-queries.ts ✅
 - Re-exports from use-workflows.ts ✅
 
 **Type Additions**:
+
 - ApprovalTask type ✅
 - ApprovalTaskDetail type ✅
 - exports from types/index.ts ✅
 
 **No Phase 9-Specific Regressions**:
+
 - ✅ No new type safety violations introduced
 - ✅ All imports resolved correctly
 - ✅ Proper integration with existing hooks
@@ -220,10 +240,12 @@ interface ApprovalTaskDetail {
 ### Build Error Analysis
 
 **Pre-existing Errors (Not Phase 9)**:
+
 - `src/lib/auth.ts` - Server-only import issue (affects multiple pages)
 - These errors existed before Phase 9 and affect the entire codebase
 
 **Error Reduction**:
+
 - Starting errors: 27 (when Phase 9 pages were created)
 - Current errors: 13 (all pre-existing, none Phase 9-specific)
 - **Phase 9 contribution: 0 new errors** ✅
@@ -233,6 +255,7 @@ interface ApprovalTaskDetail {
 ## User Experience Features
 
 ### Approval Workflow UX
+
 - Clear task information display
 - Entity details in context (budget allocations, requisition items)
 - Workflow progress visualization
@@ -240,6 +263,7 @@ interface ApprovalTaskDetail {
 - Digital signature requirement shown
 
 ### Dashboard UX
+
 - Statistics overview for quick assessment
 - Advanced filtering for finding specific tasks
 - Priority-based color coding
@@ -249,6 +273,7 @@ interface ApprovalTaskDetail {
 - Real-time auto-refresh every 30 seconds
 
 ### Responsive Design
+
 - Mobile-first Tailwind CSS
 - Grid layouts that adapt to screen size
 - Card-based information architecture
@@ -256,6 +281,7 @@ interface ApprovalTaskDetail {
 - Proper spacing and hierarchy
 
 ### Accessibility
+
 - Semantic HTML
 - Proper label associations
 - Keyboard navigation support
@@ -267,14 +293,15 @@ interface ApprovalTaskDetail {
 ## Files Created and Modified
 
 ### New Files (6)
+
 ```
-src/app/(private)/workflows/requisitions/[id]/approval/
+src/app/(private)/(main)/requisitions/[id]/approval/
 ├── page.tsx                              (370 lines)
 
-src/app/(private)/workflows/budgets/[id]/approval/
+src/app/(private)/(main)/budgets/[id]/approval/
 ├── page.tsx                              (340 lines)
 
-src/app/(private)/workflows/approvals/
+src/app/(private)/(main)/approvals/
 ├── page.tsx                              (400+ lines)
 
 src/hooks/
@@ -288,6 +315,7 @@ src/types/
 ```
 
 ### Modified Files (2)
+
 ```
 src/hooks/use-workflows.ts
 - Added re-exports for approval task hooks (5 lines)
@@ -301,6 +329,7 @@ src/components/workflows/approval-action-panel.tsx
 ## Type Safety & Validation
 
 ### TypeScript Coverage
+
 - ✅ 100% TypeScript coverage for Phase 9
 - ✅ All page props properly typed
 - ✅ All hook return types defined
@@ -309,6 +338,7 @@ src/components/workflows/approval-action-panel.tsx
 - ✅ Type-safe component props
 
 ### Data Flow
+
 - ✅ Type-safe data from hooks
 - ✅ Proper component prop passing
 - ✅ Callback signatures defined
@@ -319,6 +349,7 @@ src/components/workflows/approval-action-panel.tsx
 ## Performance Optimizations
 
 ### Data Fetching
+
 - React Query caching for approval tasks
 - 30-second auto-refresh for live data
 - Stale time optimization to reduce requests
@@ -326,6 +357,7 @@ src/components/workflows/approval-action-panel.tsx
 - Memoization of filtered results
 
 ### UI Rendering
+
 - Lazy loading of modals
 - Conditional rendering to reduce DOM
 - Skeleton loading states
@@ -333,6 +365,7 @@ src/components/workflows/approval-action-panel.tsx
 - No unnecessary re-renders
 
 ### Bundle Impact
+
 - Components are tree-shakeable
 - No unused dependencies added
 - Leverages existing component library (shadcn/ui)
@@ -342,6 +375,7 @@ src/components/workflows/approval-action-panel.tsx
 ## Key Features Implemented
 
 ### Requisition Approval
+
 - ✅ View requisition details in context
 - ✅ See itemized list with quantities and prices
 - ✅ Approve with signature and remarks
@@ -351,6 +385,7 @@ src/components/workflows/approval-action-panel.tsx
 - ✅ View approval history
 
 ### Budget Approval
+
 - ✅ View budget allocations and percentages
 - ✅ See total allocated vs total budget
 - ✅ Approve with signature and remarks
@@ -360,6 +395,7 @@ src/components/workflows/approval-action-panel.tsx
 - ✅ View approval history
 
 ### Approval Dashboard
+
 - ✅ View all pending approvals
 - ✅ See approval statistics
 - ✅ Filter by status (pending/approved/rejected)
@@ -373,22 +409,23 @@ src/components/workflows/approval-action-panel.tsx
 
 ## Code Quality Metrics
 
-| Metric | Status |
-|--------|--------|
-| Type Safety | 100% ✅ |
-| Error Handling | Complete ✅ |
-| Loading States | All Covered ✅ |
-| Empty States | All Covered ✅ |
+| Metric            | Status          |
+| ----------------- | --------------- |
+| Type Safety       | 100% ✅         |
+| Error Handling    | Complete ✅     |
+| Loading States    | All Covered ✅  |
+| Empty States      | All Covered ✅  |
 | Responsive Design | Mobile-First ✅ |
-| Accessibility | Semantic ✅ |
-| Performance | Optimized ✅ |
-| Phase 9 Errors | 0 ✅ |
+| Accessibility     | Semantic ✅     |
+| Performance       | Optimized ✅    |
+| Phase 9 Errors    | 0 ✅            |
 
 ---
 
 ## Integration with Phase 8
 
 ### Component Composition
+
 ```
 Approval Pages
 ├── ApprovalFlowDisplay (workflow progress)
@@ -406,6 +443,7 @@ Dashboard Page
 ```
 
 ### Data Flow
+
 ```
 Page Load
   ↓
@@ -429,18 +467,21 @@ Auto-refresh after 30 seconds
 ## Testing Recommendations
 
 ### Unit Testing
+
 - Test filter and sort logic in dashboard
 - Test data mapping in page components
 - Test conditional rendering for empty states
 - Test hook responses and error handling
 
 ### Integration Testing
+
 - Test navigation to approval pages
 - Test approval action flow (approve/reject/reassign)
 - Test cache invalidation and refresh
 - Test filter combinations
 
 ### E2E Testing
+
 - Test complete approval workflow
 - Test task filtering and sorting
 - Test statistics calculations
@@ -453,12 +494,14 @@ Auto-refresh after 30 seconds
 ## Documentation
 
 ### Component Documentation
+
 - JSDoc comments on all pages
 - Props descriptions where applicable
 - Hook usage documented in code
 - Integration points clearly marked
 
 ### Type Documentation
+
 - ApprovalTask interface well-documented
 - ApprovalTaskDetail structure explained
 - Hook return types specified
@@ -469,6 +512,7 @@ Auto-refresh after 30 seconds
 ## Lessons Learned
 
 ### What Went Well
+
 1. ✅ Clear separation between pages and components
 2. ✅ Strong TypeScript typing from start
 3. ✅ React Query integration smooth
@@ -476,12 +520,14 @@ Auto-refresh after 30 seconds
 5. ✅ Mock data easy to implement
 
 ### Challenges Overcome
+
 1. Mapping ApprovalTask to ApproveStageRequest DTOs
 2. Ensuring hook compatibility between pages
 3. Proper type exports through the entire chain
 4. Supporting filters and sorting in dashboard
 
 ### Best Practices Established
+
 1. New types added to dedicated files (tasks.ts)
 2. New hooks separated into specific hook files
 3. Re-exports used to maintain import paths
@@ -493,6 +539,7 @@ Auto-refresh after 30 seconds
 ## Next Steps: Phase 10
 
 Phase 10 will enhance approval workflows with:
+
 1. Real server actions for approval mutations
 2. Database integration for approval history
 3. Notification triggers on approval actions
@@ -505,13 +552,13 @@ All Phase 9 pages are ready for server action integration.
 
 ## Comparison with Phase 8
 
-| Aspect | Phase 8 | Phase 9 |
-|--------|---------|---------|
-| Deliverables | 6 components | 3 pages + hooks |
-| Lines of Code | 2,100+ | 1,100+ |
-| Focus | Component library | Page integration |
-| Key Feature | Workflow UI | Approval management |
-| Integration | With Phase 5-7 | With Phase 8 |
+| Aspect        | Phase 8           | Phase 9             |
+| ------------- | ----------------- | ------------------- |
+| Deliverables  | 6 components      | 3 pages + hooks     |
+| Lines of Code | 2,100+            | 1,100+              |
+| Focus         | Component library | Page integration    |
+| Key Feature   | Workflow UI       | Approval management |
+| Integration   | With Phase 5-7    | With Phase 8        |
 
 ---
 
@@ -538,4 +585,3 @@ All Phase 9 pages are ready for server action integration.
 **Total Progress**: 9 of 12 phases complete (75%)
 
 **Status**: ✅ PHASE 9 COMPLETE - READY FOR PHASE 10
-

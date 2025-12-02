@@ -10,32 +10,42 @@
 ## 📑 Documentation Map
 
 ### For Quick Start
+
 👉 **Start here**: [PHASE_7_QUICK_START.md](PHASE_7_QUICK_START.md)
+
 - Quick integration examples
 - Common tasks
 - Copy-paste code snippets
 
 ### For Understanding Phase 7
+
 👉 **Main report**: [PHASE_7_COMPLETION.md](PHASE_7_COMPLETION.md)
+
 - Detailed feature breakdown
 - Component architecture
 - Integration points with Phase 5-6
 
 ### For Using Components
+
 👉 **Component guide**: [PHASE_7_COMPONENT_REFERENCE.md](PHASE_7_COMPONENT_REFERENCE.md)
+
 - Component APIs and props
 - Hook usage
 - Type definitions
 - Styling and colors
 
 ### For Phase 8 Planning
+
 👉 **Next steps**: [PHASE_8_READINESS.md](PHASE_8_READINESS.md)
+
 - What's available for Phase 8
 - Planned Phase 8 components
 - Integration points
 
 ### For Overall Summary
+
 👉 **Summary**: [PHASE_7_SUMMARY.md](PHASE_7_SUMMARY.md)
+
 - High-level overview
 - Statistics and metrics
 - Build verification
@@ -46,13 +56,14 @@
 ## 🎯 Component Quick Reference
 
 ### NotificationBell
+
 **File**: `src/components/notifications/notification-bell.tsx` (175 lines)
 
 Real-time notification bell for header with unread badge and dropdown.
 
 ```tsx
-import { NotificationBell } from '@/components/notifications/notification-bell';
-<NotificationBell userId={user.id} />
+import { NotificationBell } from "@/components/notifications/notification-bell";
+<NotificationBell userId={user.id} />;
 ```
 
 **Key Props**: `userId: string`
@@ -62,19 +73,20 @@ import { NotificationBell } from '@/components/notifications/notification-bell';
 ---
 
 ### NotificationActionModal
+
 **File**: `src/components/notifications/notification-action-modal.tsx` (380 lines)
 
 Modal for approve/reject actions with digital signature capture.
 
 ```tsx
-import { NotificationActionModal } from '@/components/notifications/notification-action-modal';
+import { NotificationActionModal } from "@/components/notifications/notification-action-modal";
 <NotificationActionModal
   notification={notification}
   isOpen={isOpen}
   onOpenChange={setIsOpen}
   onApprove={handleApprove}
   onReject={handleReject}
-/>
+/>;
 ```
 
 **Key Props**: `notification`, `isOpen`, `onOpenChange`, `onApprove`, `onReject`
@@ -84,18 +96,19 @@ import { NotificationActionModal } from '@/components/notifications/notification
 ---
 
 ### NotificationItem
+
 **File**: `src/components/notifications/notification-item.tsx` (220 lines)
 
 Reusable notification display component with compact and full variants.
 
 ```tsx
-import { NotificationItem } from '@/components/notifications/notification-item';
+import { NotificationItem } from "@/components/notifications/notification-item";
 <NotificationItem
   notification={notification}
   variant="full"
   onDelete={handleDelete}
   showCheckbox={true}
-/>
+/>;
 ```
 
 **Key Props**: `notification`, `variant`, `onDelete`, `showCheckbox`, `isSelected`
@@ -105,13 +118,14 @@ import { NotificationItem } from '@/components/notifications/notification-item';
 ---
 
 ### NotificationPreferences
+
 **File**: `src/components/notifications/notification-preferences.tsx` (150 lines)
 
 User notification settings with toggle controls for each type.
 
 ```tsx
-import { NotificationPreferences } from '@/components/notifications/notification-preferences';
-<NotificationPreferences userId={user.id} onSaved={handleSaved} />
+import { NotificationPreferences } from "@/components/notifications/notification-preferences";
+<NotificationPreferences userId={user.id} onSaved={handleSaved} />;
 ```
 
 **Key Props**: `userId`, `onSaved`
@@ -121,7 +135,8 @@ import { NotificationPreferences } from '@/components/notifications/notification
 ---
 
 ### NotificationsPage
-**File**: `src/app/(private)/workflows/notifications/page.tsx` (210+ lines)
+
+**File**: `src/app/(private)/(main)/notifications/page.tsx` (210+ lines)
 
 Full notifications history page with filtering and pagination.
 
@@ -134,43 +149,51 @@ Full notifications history page with filtering and pagination.
 ## 🔧 Hooks Reference
 
 ### useNotificationBell()
+
 Fetch unread count and recent notifications.
 
 ### useMarkNotificationAsRead()
+
 Mark single notification as read.
 
 ### useMarkAllNotificationsAsRead()
+
 Mark all notifications as read for user.
 
 ### useDeleteNotification()
+
 Delete a notification.
 
 ### useUserNotifications()
+
 Paginated notifications with optional filters.
 
 ### useGetNotificationPreferences()
+
 Fetch user notification preferences.
 
 ### useUpdateNotificationPreferences()
+
 Update notification preferences.
 
 ### useNotificationPolling()
+
 Set up auto-refresh polling (30-second intervals).
 
 ---
 
 ## 📊 Statistics
 
-| Metric | Value |
-|--------|-------|
-| Components | 5 |
-| Lines of Code | 1,200+ |
-| Files Created | 5 |
-| Files Modified | 3 |
-| Hooks Added | 2 |
-| Type Safety | 100% |
-| Build Status | ✅ Pass |
-| Documentation Files | 5 |
+| Metric              | Value   |
+| ------------------- | ------- |
+| Components          | 5       |
+| Lines of Code       | 1,200+  |
+| Files Created       | 5       |
+| Files Modified      | 3       |
+| Hooks Added         | 2       |
+| Type Safety         | 100%    |
+| Build Status        | ✅ Pass |
+| Documentation Files | 5       |
 
 ---
 
@@ -210,21 +233,26 @@ Documentation/
 ## 🚀 Getting Started
 
 ### 1. Read Quick Start
+
 Read [PHASE_7_QUICK_START.md](PHASE_7_QUICK_START.md) for immediate integration guide.
 
 ### 2. Add Bell to Header
+
 ```tsx
 import Notifications from "@/components/layout/header/notifications";
 // Already configured - just add to header
 ```
 
 ### 3. Use Modal for Actions
+
 See "Quick Approve with Modal" in Quick Start guide.
 
 ### 4. Add Modal to Your Pages
+
 See "Use Notification Modal for Actions" in Quick Start guide.
 
 ### 5. Display Notifications
+
 See "Display Notifications Using NotificationItem" in Quick Start guide.
 
 ---
@@ -232,6 +260,7 @@ See "Display Notifications Using NotificationItem" in Quick Start guide.
 ## 📚 All Hooks Available
 
 **Query Hooks**:
+
 - `useUserNotifications(userId, page, pageSize, filters)`
 - `useUnreadNotifications(userId)`
 - `useUnreadNotificationCount(userId)`
@@ -239,6 +268,7 @@ See "Display Notifications Using NotificationItem" in Quick Start guide.
 - `useGetNotificationPreferences(request)`
 
 **Mutation Hooks**:
+
 - `useMarkNotificationAsRead()`
 - `useMarkAllNotificationsAsRead()`
 - `useDeleteNotification()`
@@ -247,6 +277,7 @@ See "Display Notifications Using NotificationItem" in Quick Start guide.
 - `useMarkNotificationActionTaken()`
 
 **Utility Hooks**:
+
 - `useNotificationPolling(userId, interval)`
 - `useQuickActionHandler()`
 - `useInvalidateNotifications()`
@@ -256,21 +287,25 @@ See "Display Notifications Using NotificationItem" in Quick Start guide.
 ## 🎓 Learning Path
 
 **Day 1**: Quick Start
+
 1. Read PHASE_7_QUICK_START.md
 2. Add NotificationBell to header
 3. Test notification display
 
 **Day 2**: Integration
+
 1. Read PHASE_7_COMPONENT_REFERENCE.md
 2. Implement NotificationActionModal
 3. Wire up hooks to your approval flows
 
 **Day 3**: Advanced
+
 1. Implement preferences page
 2. Add notification filtering
 3. Customize colors and styling
 
 **Day 4**: Phase 8
+
 1. Read PHASE_8_READINESS.md
 2. Plan workflow components
 3. Start Phase 8 development
@@ -303,19 +338,22 @@ See "Display Notifications Using NotificationItem" in Quick Start guide.
 ## 📞 Quick Links
 
 ### Documentation
+
 - [Completion Report](PHASE_7_COMPLETION.md)
 - [Component Reference](PHASE_7_COMPONENT_REFERENCE.md)
 - [Quick Start Guide](PHASE_7_QUICK_START.md)
 - [Phase 8 Readiness](PHASE_8_READINESS.md)
 
 ### Code
+
 - [notification-bell.tsx](src/components/notifications/notification-bell.tsx)
 - [notification-action-modal.tsx](src/components/notifications/notification-action-modal.tsx)
 - [notification-item.tsx](src/components/notifications/notification-item.tsx)
 - [notification-preferences.tsx](src/components/notifications/notification-preferences.tsx)
-- [notifications/page.tsx](src/app/(private)/workflows/notifications/page.tsx)
+- [notifications/page.tsx](<src/app/(private)/(main)/notifications/page.tsx>)
 
 ### Hooks & Actions
+
 - [use-notifications.ts](src/hooks/use-notifications.ts)
 - [notifications.ts actions](src/app/_actions/notifications.ts)
 

@@ -28,7 +28,7 @@ export function LoginForm() {
       }
 
       // Redirect to dashboard on success
-      router.push("/workflows/dashboard");
+      router.push("/home");
     } catch (err: any) {
       setError(err.message || "An error occurred");
     } finally {
@@ -51,7 +51,7 @@ export function LoginForm() {
         return;
       }
 
-      router.push("/workflows/dashboard");
+      router.push("/home");
     } catch (err: any) {
       setError(err.message || "An error occurred");
       setIsLoading(false);

@@ -11,6 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { PageHeader } from "@/components/base/page-header";
 import { ApprovalActionPanel } from "@/components/workflows/approval-action-panel";
 import { POItemsTable } from "./po-items-table";
+import type { ApprovalTask } from "@/types";
 
 interface POApprovalClientProps {
   poId: string;
@@ -20,6 +21,7 @@ interface POApprovalClientProps {
 
 interface POItem {
   id: string;
+  itemCode: string;
   itemNumber: number;
   description: string;
   quantity: number;
@@ -82,6 +84,7 @@ function generateMockPO(poId: string): PurchaseOrder {
     items: [
       {
         id: "item-1",
+        itemCode: "OFFICE-CHAIRS-001",
         itemNumber: 1,
         description: "Office Chairs - Ergonomic",
         quantity: 10,
@@ -94,6 +97,7 @@ function generateMockPO(poId: string): PurchaseOrder {
       },
       {
         id: "item-2",
+        itemCode: "STANDING-DESKS-001",
         itemNumber: 2,
         description: "Standing Desks - Electric",
         quantity: 5,
@@ -106,6 +110,7 @@ function generateMockPO(poId: string): PurchaseOrder {
       },
       {
         id: "item-3",
+        itemCode: "MONITORS-27IN-001",
         itemNumber: 3,
         description: "Computer Monitors - 27 inch",
         quantity: 8,
@@ -128,7 +133,10 @@ function generateMockPO(poId: string): PurchaseOrder {
 }
 
 // Convert PO to ApprovalTask format
-function convertPOToApprovalTask(po: PurchaseOrder, userId: string) {
+function convertPOToApprovalTask(
+  po: PurchaseOrder,
+  userId: string
+): ApprovalTask {
   return {
     id: po.id,
     entityId: po.id,
@@ -140,9 +148,9 @@ function convertPOToApprovalTask(po: PurchaseOrder, userId: string) {
     importance: "MEDIUM",
     approverName: "Current Approver",
     approverUserId: userId,
-    createdAt: po.createdAt,
-    actionDate: new Date().toISOString(),
-    dueDate: po.deliveryDate,
+    createdAt: new Date(po.createdAt),
+    actionDate: new Date(),
+    dueDate: new Date(po.deliveryDate),
     workflowId: "po-workflow-v1",
     workflowName: "3-Stage PO Approval",
   };
@@ -266,12 +274,9 @@ export function POApprovalClient({
         <div>
           <ApprovalActionPanel
             task={approvalTask}
-            onSuccess={() => {
+            onApprovalComplete={() => {
               toast.success("Purchase order approved successfully");
-              router.push("/workflows/purchase-orders");
-            }}
-            onError={(error) => {
-              toast.error(error || "Failed to process approval");
+              router.push("/purchase-orders");
             }}
           />
         </div>

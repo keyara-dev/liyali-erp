@@ -1,7 +1,10 @@
-'use client'
+"use client";
 
 import { useState } from "react";
-import { useGetApprovalTasks, useGetApprovalStats } from "@/hooks/use-workflows";
+import {
+  useGetApprovalTasks,
+  useGetApprovalStats,
+} from "@/hooks/use-workflows";
 import {
   Card,
   CardContent,
@@ -38,7 +41,8 @@ const PRIORITY_COLORS = {
 
 const PRIORITY_BG = {
   HIGH: "bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800",
-  MEDIUM: "bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800",
+  MEDIUM:
+    "bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800",
   LOW: "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800",
 };
 
@@ -47,8 +51,12 @@ interface ApprovalsListProps {
 }
 
 export function ApprovalsList({ userId }: ApprovalsListProps) {
-  const [statusFilter, setStatusFilter] = useState<"all" | "pending" | "approved" | "rejected">("pending");
-  const [priorityFilter, setPriorityFilter] = useState<"all" | "HIGH" | "MEDIUM" | "LOW">("all");
+  const [statusFilter, setStatusFilter] = useState<
+    "all" | "pending" | "approved" | "rejected"
+  >("pending");
+  const [priorityFilter, setPriorityFilter] = useState<
+    "all" | "HIGH" | "MEDIUM" | "LOW"
+  >("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState<"date" | "priority" | "name">("date");
 
@@ -58,7 +66,7 @@ export function ApprovalsList({ userId }: ApprovalsListProps) {
 
   const { data: statsData, isLoading: isStatsLoading } = useGetApprovalStats();
 
-  const tasks = tasksData?.tasks || [];
+  const tasks = tasksData || [];
 
   // Filter tasks
   const filteredTasks = tasks
@@ -111,7 +119,7 @@ export function ApprovalsList({ userId }: ApprovalsListProps) {
     );
   }
 
-  const stats = statsData?.stats;
+  const stats = statsData;
 
   return (
     <div className="space-y-6">
@@ -193,7 +201,10 @@ export function ApprovalsList({ userId }: ApprovalsListProps) {
             {/* Status Filter */}
             <div className="space-y-2">
               <label className="text-sm font-medium">Status</label>
-              <Select value={statusFilter} onValueChange={(value: any) => setStatusFilter(value)}>
+              <Select
+                value={statusFilter}
+                onValueChange={(value: any) => setStatusFilter(value)}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="All statuses" />
                 </SelectTrigger>
@@ -209,7 +220,10 @@ export function ApprovalsList({ userId }: ApprovalsListProps) {
             {/* Priority Filter */}
             <div className="space-y-2">
               <label className="text-sm font-medium">Priority</label>
-              <Select value={priorityFilter} onValueChange={(value: any) => setPriorityFilter(value)}>
+              <Select
+                value={priorityFilter}
+                onValueChange={(value: any) => setPriorityFilter(value)}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="All priorities" />
                 </SelectTrigger>
@@ -225,7 +239,10 @@ export function ApprovalsList({ userId }: ApprovalsListProps) {
             {/* Sort By */}
             <div className="space-y-2">
               <label className="text-sm font-medium">Sort By</label>
-              <Select value={sortBy} onValueChange={(value: any) => setSortBy(value)}>
+              <Select
+                value={sortBy}
+                onValueChange={(value: any) => setSortBy(value)}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Sort" />
                 </SelectTrigger>
@@ -279,7 +296,9 @@ export function ApprovalsList({ userId }: ApprovalsListProps) {
             <div
               key={task.id}
               className={`border rounded-lg p-4 hover:shadow-sm transition-shadow cursor-pointer ${
-                task.importance ? PRIORITY_BG[task.importance as keyof typeof PRIORITY_BG] : ""
+                task.importance
+                  ? PRIORITY_BG[task.importance as keyof typeof PRIORITY_BG]
+                  : ""
               }`}
             >
               <div className="flex items-start justify-between gap-4">
@@ -305,7 +324,9 @@ export function ApprovalsList({ userId }: ApprovalsListProps) {
                     <div>
                       <span className="text-muted-foreground">Created</span>
                       <p className="font-medium">
-                        {new Date(task.createdAt || new Date()).toLocaleDateString()}
+                        {new Date(
+                          task.createdAt || new Date()
+                        ).toLocaleDateString()}
                       </p>
                     </div>
                     <div>
@@ -328,8 +349,8 @@ export function ApprovalsList({ userId }: ApprovalsListProps) {
                         {task.status === "pending"
                           ? "Pending"
                           : task.status === "approved"
-                          ? "Approved"
-                          : "Rejected"}
+                            ? "Approved"
+                            : "Rejected"}
                       </p>
                     </div>
                   </div>
@@ -342,7 +363,7 @@ export function ApprovalsList({ userId }: ApprovalsListProps) {
                     className="flex-shrink-0"
                     onClick={() => {
                       // Navigate to approval page
-                      window.location.href = `/workflows/${task.entityType.toLowerCase()}s/${task.entityId}/approval`;
+                      window.location.href = `/${task.entityType.toLowerCase()}s/${task.entityId}/approval`;
                     }}
                   >
                     Review

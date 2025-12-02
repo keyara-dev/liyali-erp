@@ -1,19 +1,6 @@
 import { redirect } from "next/navigation";
 import { verifySession } from "@/lib/auth";
 
-/**
- * Home Page - Authentication & Role-Based Redirect
- *
- * Checks if user is logged in and redirects them to their respective dashboard
- * based on their role:
- * - ADMIN: /workflows/dashboard
- * - FINANCE_OFFICER: /workflows/dashboard
- * - DIRECTOR: /workflows/dashboard
- * - CFO: /workflows/dashboard
- * - DEPARTMENT_MANAGER: /workflows/requisitions
- * - REQUESTER: /workflows/requisitions
- * - COMPLIANCE_OFFICER: /compliance/tracking
- */
 export default async function HomePage() {
   // Check if user is authenticated
   const { isAuthenticated, session } = await verifySession();
@@ -28,15 +15,15 @@ export default async function HomePage() {
 
   // Map roles to their respective pages
   const roleRoutes: Record<string, string> = {
-    ADMIN: "/workflows/dashboard",
-    FINANCE_OFFICER: "/workflows/dashboard",
-    DIRECTOR: "/workflows/dashboard",
-    CFO: "/workflows/dashboard",
-    DEPARTMENT_MANAGER: "/workflows/requisitions",
-    REQUESTER: "/workflows/requisitions",
-    COMPLIANCE_OFFICER: "/compliance/tracking",
+    ADMIN: "/home",
+    FINANCE_OFFICER: "/home",
+    DIRECTOR: "/home",
+    CFO: "/home",
+    DEPARTMENT_MANAGER: "/home/requisitions",
+    REQUESTER: "/requisitions",
+    COMPLIANCE_OFFICER: "/admin/compliance/tracking",
   };
 
-  const redirectUrl = roleRoutes[userRole] ?? "/workflows/dashboard";
+  const redirectUrl = roleRoutes[userRole] ?? "/home";
   redirect(redirectUrl);
 }

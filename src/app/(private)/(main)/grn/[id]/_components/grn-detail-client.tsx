@@ -1,130 +1,132 @@
-'use client'
+"use client";
 
-import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-import { toast } from 'sonner'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import {
   ArrowLeft,
   Package,
   FileText,
   AlertTriangle,
-} from 'lucide-react'
-import { Skeleton } from '@/components/ui/skeleton'
-import { PageHeader } from '@/components/base/page-header'
-import { GRNItemsMatchingTable } from './grn-items-matching-table'
+  AlertCircle,
+} from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { PageHeader } from "@/components/base/page-header";
+import { GRNItemsMatchingTable } from "./grn-items-matching-table";
+import { Badge } from "@/components";
 
 interface GRNDetailClientProps {
-  grnId: string
-  userId: string
-  userRole: string
+  grnId: string;
+  userId: string;
+  userRole: string;
 }
 
 interface ReceivedItem {
-  id: string
-  itemNumber: number
-  description: string
-  poQuantity: number
-  receivedQuantity: number
-  unit: string
-  variance: number
-  damage: number
-  damageNotes?: string
-  condition: 'GOOD' | 'DAMAGED' | 'PARTIAL'
+  id: string;
+  itemNumber: number;
+  description: string;
+  poQuantity: number;
+  receivedQuantity: number;
+  unit: string;
+  variance: number;
+  damage: number;
+  damageNotes?: string;
+  condition: "GOOD" | "DAMAGED" | "PARTIAL";
 }
 
 interface GoodsReceivedNote {
-  id: string
-  grnNumber: string
-  poNumber: string
-  status: 'DRAFT' | 'SUBMITTED' | 'CONFIRMED' | 'REJECTED'
-  warehouseLocation: string
-  receivedDate: string
-  receivedBy: string
-  approvedBy?: string
-  items: ReceivedItem[]
+  id: string;
+  grnNumber: string;
+  poNumber: string;
+  status: "DRAFT" | "SUBMITTED" | "CONFIRMED" | "REJECTED";
+  warehouseLocation: string;
+  receivedDate: string;
+  receivedBy: string;
+  approvedBy?: string;
+  items: ReceivedItem[];
   qualityIssues: Array<{
-    id: string
-    itemId: string
-    description: string
-    severity: 'LOW' | 'MEDIUM' | 'HIGH'
-  }>
-  notes?: string
-  currentStage: number
-  stageName: string
-  createdAt: string
-  updatedAt: string
+    id: string;
+    itemId: string;
+    description: string;
+    severity: "LOW" | "MEDIUM" | "HIGH";
+  }>;
+  notes?: string;
+  currentStage: number;
+  stageName: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 const STAGE_NAMES: Record<number, string> = {
-  1: 'Warehouse Clerk Receipt',
-  2: 'Department Manager Confirmation',
-}
+  1: "Warehouse Clerk Receipt",
+  2: "Department Manager Confirmation",
+};
 
 // Mock data generator
 function generateMockGRN(grnId: string): GoodsReceivedNote {
-  const currentStage = Math.floor(Math.random() * 2) + 1
+  const currentStage = Math.floor(Math.random() * 2) + 1;
 
   return {
     id: grnId,
-    grnNumber: `GRN-2024-${String(Math.floor(Math.random() * 9000) + 1000).padStart(4, '0')}`,
-    poNumber: `PO-2024-${String(Math.floor(Math.random() * 9000) + 1000).padStart(4, '0')}`,
-    status: currentStage === 2 ? 'SUBMITTED' : 'SUBMITTED',
-    warehouseLocation: 'Warehouse A - Section 3',
+    grnNumber: `GRN-2024-${String(Math.floor(Math.random() * 9000) + 1000).padStart(4, "0")}`,
+    poNumber: `PO-2024-${String(Math.floor(Math.random() * 9000) + 1000).padStart(4, "0")}`,
+    status: currentStage === 2 ? "SUBMITTED" : "SUBMITTED",
+    warehouseLocation: "Warehouse A - Section 3",
     receivedDate: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-    receivedBy: 'WAREHOUSE-USER-001',
-    approvedBy: currentStage === 2 ? 'DEPT-MANAGER-001' : undefined,
+    receivedBy: "WAREHOUSE-USER-001",
+    approvedBy: currentStage === 2 ? "DEPT-MANAGER-001" : undefined,
     items: [
       {
-        id: 'item-1',
+        id: "item-1",
         itemNumber: 1,
-        description: 'Office Chairs - Ergonomic',
+        description: "Office Chairs - Ergonomic",
         poQuantity: 10,
         receivedQuantity: 10,
-        unit: 'units',
+        unit: "units",
         variance: 0,
         damage: 0,
-        condition: 'GOOD',
+        condition: "GOOD",
       },
       {
-        id: 'item-2',
+        id: "item-2",
         itemNumber: 2,
-        description: 'Standing Desks - Electric',
+        description: "Standing Desks - Electric",
         poQuantity: 5,
         receivedQuantity: 4,
-        unit: 'units',
+        unit: "units",
         variance: -1,
         damage: 1,
-        damageNotes: 'One unit arrived with damaged motor',
-        condition: 'DAMAGED',
+        damageNotes: "One unit arrived with damaged motor",
+        condition: "DAMAGED",
       },
       {
-        id: 'item-3',
+        id: "item-3",
         itemNumber: 3,
-        description: 'Computer Monitors - 27 inch',
+        description: "Computer Monitors - 27 inch",
         poQuantity: 8,
         receivedQuantity: 8,
-        unit: 'units',
+        unit: "units",
         variance: 0,
         damage: 0,
-        condition: 'GOOD',
+        condition: "GOOD",
       },
     ],
     qualityIssues: [
       {
-        id: 'issue-1',
-        itemId: 'item-2',
-        description: 'Standing Desk motor malfunction',
-        severity: 'HIGH',
+        id: "issue-1",
+        itemId: "item-2",
+        description: "Standing Desk motor malfunction",
+        severity: "HIGH",
       },
     ],
-    notes: 'General inspection completed. One standing desk has motor issues.',
+    notes: "General inspection completed. One standing desk has motor issues.",
     currentStage,
     stageName: STAGE_NAMES[currentStage],
     createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
     updatedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-  }
+  };
 }
 
 export function GRNDetailClient({
@@ -132,28 +134,28 @@ export function GRNDetailClient({
   userId,
   userRole,
 }: GRNDetailClientProps) {
-  const router = useRouter()
-  const [grn, setGRN] = useState<GoodsReceivedNote | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
+  const router = useRouter();
+  const [grn, setGRN] = useState<GoodsReceivedNote | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     // Simulate data loading
     const timer = setTimeout(() => {
-      setGRN(generateMockGRN(grnId))
-      setIsLoading(false)
-    }, 500)
+      setGRN(generateMockGRN(grnId));
+      setIsLoading(false);
+    }, 500);
 
-    return () => clearTimeout(timer)
-  }, [grnId])
+    return () => clearTimeout(timer);
+  }, [grnId]);
 
   const handleConfirm = () => {
-    toast.success('Navigating to confirmation...')
-    router.push(`/workflows/grn/${grnId}/confirmation`)
-  }
+    toast.success("Navigating to confirmation...");
+    router.push(`//grn/${grnId}/confirmation`);
+  };
 
   const handleBack = () => {
-    router.back()
-  }
+    router.back();
+  };
 
   if (isLoading || !grn) {
     return (
@@ -168,11 +170,11 @@ export function GRNDetailClient({
           <Skeleton className="h-96 w-full" />
         </div>
       </div>
-    )
+    );
   }
 
-  const hasQualityIssues = grn.qualityIssues.length > 0
-  const hasVariances = grn.items.some((item) => item.variance !== 0)
+  const hasQualityIssues = grn.qualityIssues.length > 0;
+  const hasVariances = grn.items.some((item) => item.variance !== 0);
 
   return (
     <div className="space-y-6">
@@ -206,7 +208,7 @@ export function GRNDetailClient({
                 <div
                   key={stage}
                   className={`h-2 flex-1 rounded-full ${
-                    stage <= grn.currentStage ? 'bg-blue-600' : 'bg-gray-200'
+                    stage <= grn.currentStage ? "bg-blue-600" : "bg-gray-200"
                   }`}
                 />
               ))}
@@ -221,7 +223,8 @@ export function GRNDetailClient({
           <CardContent>
             <div className="text-2xl font-bold">{grn.items.length}</div>
             <p className="text-xs text-muted-foreground mt-1">
-              {grn.items.filter((i) => i.condition === 'GOOD').length} in good condition
+              {grn.items.filter((i) => i.condition === "GOOD").length} in good
+              condition
             </p>
           </CardContent>
         </Card>
@@ -233,11 +236,14 @@ export function GRNDetailClient({
           {hasQualityIssues && (
             <Card className="border-yellow-200 bg-yellow-50">
               <CardContent className="pt-4 flex gap-3">
-                <AlertTriangle className="h-5 w-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+                <AlertTriangle className="h-5 w-5 text-yellow-600 shrink-0 mt-0.5" />
                 <div>
-                  <p className="font-semibold text-yellow-900">Quality Issues Detected</p>
+                  <p className="font-semibold text-yellow-900">
+                    Quality Issues Detected
+                  </p>
                   <p className="text-sm text-yellow-800">
-                    {grn.qualityIssues.length} issue(s) reported during inspection
+                    {grn.qualityIssues.length} issue(s) reported during
+                    inspection
                   </p>
                 </div>
               </CardContent>
@@ -246,9 +252,11 @@ export function GRNDetailClient({
           {hasVariances && (
             <Card className="border-orange-200 bg-orange-50">
               <CardContent className="pt-4 flex gap-3">
-                <AlertCircle className="h-5 w-5 text-orange-600 flex-shrink-0 mt-0.5" />
+                <AlertCircle className="h-5 w-5 text-orange-600 shrink-0 mt-0.5" />
                 <div>
-                  <p className="font-semibold text-orange-900">Quantity Variances</p>
+                  <p className="font-semibold text-orange-900">
+                    Quantity Variances
+                  </p>
                   <p className="text-sm text-orange-800">
                     Some items received differ from PO quantities
                   </p>
@@ -320,12 +328,12 @@ export function GRNDetailClient({
           <CardContent>
             <div className="space-y-3">
               {grn.qualityIssues.map((issue) => {
-                const item = grn.items.find((i) => i.id === issue.itemId)
+                const item = grn.items.find((i) => i.id === issue.itemId);
                 const severityColors = {
-                  LOW: 'bg-yellow-100 text-yellow-800 border-yellow-200',
-                  MEDIUM: 'bg-orange-100 text-orange-800 border-orange-200',
-                  HIGH: 'bg-red-100 text-red-800 border-red-200',
-                }
+                  LOW: "bg-yellow-100 text-yellow-800 border-yellow-200",
+                  MEDIUM: "bg-orange-100 text-orange-800 border-orange-200",
+                  HIGH: "bg-red-100 text-red-800 border-red-200",
+                };
                 return (
                   <div
                     key={issue.id}
@@ -341,7 +349,7 @@ export function GRNDetailClient({
                       </Badge>
                     </div>
                   </div>
-                )
+                );
               })}
             </div>
           </CardContent>
@@ -365,12 +373,15 @@ export function GRNDetailClient({
         <Button variant="outline" onClick={handleBack}>
           Cancel
         </Button>
-        {grn.status === 'SUBMITTED' && (
-          <Button onClick={handleConfirm} className="bg-blue-600 hover:bg-blue-700">
+        {grn.status === "SUBMITTED" && (
+          <Button
+            onClick={handleConfirm}
+            className="bg-blue-600 hover:bg-blue-700"
+          >
             Confirm Receipt
           </Button>
         )}
       </div>
     </div>
-  )
+  );
 }

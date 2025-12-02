@@ -118,7 +118,7 @@ const columns: ColumnDef<WorkflowDocument>[] = [
     cell: ({ row }) => (
       <div className="text-sm">
         <Link
-          href={`/workflows/purchase-orders/${row.original.metadata?.poId}`}
+          href={`/purchase-orders/${row.original.metadata?.poId}`}
           className="text-blue-600 hover:underline"
         >
           {row.original.metadata?.poNumber}
@@ -169,7 +169,7 @@ const columns: ColumnDef<WorkflowDocument>[] = [
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           <DropdownMenuLabel>Actions</DropdownMenuLabel>
-          <Link href={`/workflows/grn/${row.original.id}`}>
+          <Link href={`/grn/${row.original.id}`}>
             <DropdownMenuItem>View Details</DropdownMenuItem>
           </Link>
           <DropdownMenuSeparator />

@@ -7,6 +7,7 @@ Complete implementation roadmap for finishing the custom workflow management sys
 ## Current Status
 
 ✅ **Phases 1-5 Complete**: 6,725+ lines of code and documentation
+
 - Phase 1-4: Foundation (types, persistence, validation, orchestration)
 - Phase 5: Server Actions & Notifications (2,225 lines)
 
@@ -17,6 +18,7 @@ Complete implementation roadmap for finishing the custom workflow management sys
 ## Phase 6: React Query Hooks Enhancement (1-2 days)
 
 ### Objectives
+
 - Additional workflow query hooks
 - Batch operations support
 - Pagination utilities
@@ -25,35 +27,37 @@ Complete implementation roadmap for finishing the custom workflow management sys
 ### Files to Create
 
 **src/hooks/use-workflows.ts** (~400 lines)
+
 ```typescript
 // Query hooks
-useWorkflows()           // List with filters
-useWorkflow()           // Single workflow
-useWorkflowAssignment()  // Get assignment
-useWorkflowDefault()     // Get default for entity type
-usePendingApprovals()    // User's pending queue
+useWorkflows(); // List with filters
+useWorkflow(); // Single workflow
+useWorkflowAssignment(); // Get assignment
+useWorkflowDefault(); // Get default for entity type
+usePendingApprovals(); // User's pending queue
 
 // Mutation hooks
-useCreateWorkflow()
-useUpdateWorkflow()
-useDeprecateWorkflow()
-useAssignWorkflow()
-useApproveStage()
-useRejectStage()
-useReassignStage()
+useCreateWorkflow();
+useUpdateWorkflow();
+useDeprecateWorkflow();
+useAssignWorkflow();
+useApproveStage();
+useRejectStage();
+useReassignStage();
 
 // Advanced hooks
-useWorkflowPolling()     // Auto-refetch
-useInvalidateWorkflows()
+useWorkflowPolling(); // Auto-refetch
+useInvalidateWorkflows();
 ```
 
 **src/hooks/use-approval-flow.ts** (~350 lines)
+
 ```typescript
 // Combined hooks for approval workflows
-useApprovalModal()       // Handle modal state + submission
-useReassignmentFlow()    // Permission check + reassign
-useQuickApprove()        // 2-click approval
-useApprovalHistory()     // Stage execution history
+useApprovalModal(); // Handle modal state + submission
+useReassignmentFlow(); // Permission check + reassign
+useQuickApprove(); // 2-click approval
+useApprovalHistory(); // Stage execution history
 ```
 
 ### Tasks
@@ -67,6 +71,7 @@ useApprovalHistory()     // Stage execution history
 - [ ] Update index.ts exports
 
 ### Testing
+
 - Mock React Query setup
 - Test cache updates
 - Test error scenarios
@@ -77,6 +82,7 @@ useApprovalHistory()     // Stage execution history
 ## Phase 7: UI Components - Notifications (2-3 days)
 
 ### Objectives
+
 - Notification display components
 - Quick action interface
 - Real-time updates
@@ -85,6 +91,7 @@ useApprovalHistory()     // Stage execution history
 ### Files to Create
 
 **src/components/notifications/notification-bell.tsx** (~200 lines)
+
 ```typescript
 // Bell icon with badge
 // Shows unread count
@@ -93,6 +100,7 @@ useApprovalHistory()     // Stage execution history
 ```
 
 **src/components/notifications/notification-dropdown.tsx** (~250 lines)
+
 ```typescript
 // Dropdown showing recent notifications
 // Scrollable list
@@ -102,6 +110,7 @@ useApprovalHistory()     // Stage execution history
 ```
 
 **src/components/notifications/notification-item.tsx** (~180 lines)
+
 ```typescript
 // Single notification display
 // Icon + type
@@ -113,6 +122,7 @@ useApprovalHistory()     // Stage execution history
 ```
 
 **src/components/notifications/notification-action-modal.tsx** (~300 lines)
+
 ```typescript
 // Modal for quick actions
 // Shows entity summary
@@ -122,7 +132,8 @@ useApprovalHistory()     // Stage execution history
 // Form validation
 ```
 
-**src/app/(private)/workflows/notifications/page.tsx** (~400 lines)
+**src/app/(private)/(main)/notifications/page.tsx** (~400 lines)
+
 ```typescript
 // Full notifications page
 // List of all notifications
@@ -134,6 +145,7 @@ useApprovalHistory()     // Stage execution history
 ```
 
 **src/components/notifications/notification-preferences.tsx** (~250 lines)
+
 ```typescript
 // User notification settings
 // Email toggle
@@ -169,6 +181,7 @@ useApprovalHistory()     // Stage execution history
 ## Phase 8: UI Components - Workflows (2-3 days)
 
 ### Objectives
+
 - Workflow display and selection
 - Approval flow visualization
 - Reassignment interface
@@ -177,6 +190,7 @@ useApprovalHistory()     // Stage execution history
 ### Files to Create
 
 **src/components/workflows/workflow-selector.tsx** (~250 lines)
+
 ```typescript
 // Dropdown to select workflow for entity
 // Shows default and custom workflows
@@ -185,6 +199,7 @@ useApprovalHistory()     // Stage execution history
 ```
 
 **src/components/workflows/approval-flow-display.tsx** (~300 lines)
+
 ```typescript
 // Visual representation of workflow stages
 // Current stage highlight
@@ -194,6 +209,7 @@ useApprovalHistory()     // Stage execution history
 ```
 
 **src/components/workflows/stage-execution-display.tsx** (~200 lines)
+
 ```typescript
 // Details of current stage
 // Approver name and role
@@ -203,6 +219,7 @@ useApprovalHistory()     // Stage execution history
 ```
 
 **src/components/workflows/reassignment-modal.tsx** (~280 lines)
+
 ```typescript
 // Modal for reassigning approval task
 // Current approver display
@@ -213,6 +230,7 @@ useApprovalHistory()     // Stage execution history
 ```
 
 **src/components/workflows/approval-history.tsx** (~250 lines)
+
 ```typescript
 // Timeline of all approvals/rejections
 // Approver info
@@ -223,6 +241,7 @@ useApprovalHistory()     // Stage execution history
 ```
 
 **src/components/workflows/approval-action-panel.tsx** (~300 lines)
+
 ```typescript
 // Action buttons for current approver
 // Approve button → Opens approval modal
@@ -247,7 +266,7 @@ useApprovalHistory()     // Stage execution history
 
 ### Integration Points
 
-- Add to [src/app/(private)/workflows/requisitions/[id]/page.tsx](src/app/(private)/workflows/requisitions/[id]/page.tsx)
+- Add to [src/app/(private)/(main)/requisitions/[id]/page.tsx](<src/app/(private)/(main)/requisitions/[id]/page.tsx>)
 - Add to budget detail page
 - Add to dashboard approval view
 - Connect to `useApprovalFlow()` hook
@@ -258,6 +277,7 @@ useApprovalHistory()     // Stage execution history
 ## Phase 9: Integration & Testing (2 days)
 
 ### Objectives
+
 - Connect all components and hooks
 - E2E workflow scenarios
 - Error handling and fallbacks
@@ -266,6 +286,7 @@ useApprovalHistory()     // Stage execution history
 ### Integration Tasks
 
 **Requisition Flow:**
+
 - [ ] Select workflow when creating requisition
 - [ ] Show approval flow on requisition detail
 - [ ] Enable approve/reject actions
@@ -274,16 +295,19 @@ useApprovalHistory()     // Stage execution history
 - [ ] Redirect on workflow complete
 
 **Budget Flow:**
+
 - [ ] Repeat requisition flow for budgets
 - [ ] Support same workflows or different workflows
 
 **Dashboard Integration:**
+
 - [ ] Show pending approvals dashboard
 - [ ] Quick stats (pending count, avg time, etc.)
 - [ ] Reassignment interface
 - [ ] Notification bell in top nav
 
 **Admin Dashboard:**
+
 - [ ] Workflow management page
 - [ ] Workflow usage statistics
 - [ ] Pending approvals overview
@@ -317,6 +341,7 @@ useApprovalHistory()     // Stage execution history
 ## Phase 10: Admin Dashboard (1-2 days)
 
 ### Objectives
+
 - Workflow management interface
 - System monitoring
 - Analytics and reporting
@@ -325,6 +350,7 @@ useApprovalHistory()     // Stage execution history
 ### Files to Create
 
 **src/app/(private)/admin/workflows/page.tsx** (~400 lines)
+
 ```typescript
 // Workflow management dashboard
 // Create new workflow button
@@ -339,6 +365,7 @@ useApprovalHistory()     // Stage execution history
 ```
 
 **src/app/(private)/admin/workflows/[id]/page.tsx** (~350 lines)
+
 ```typescript
 // Workflow detail page
 // Workflow definition view
@@ -350,6 +377,7 @@ useApprovalHistory()     // Stage execution history
 ```
 
 **src/app/(private)/admin/workflows/designer/page.tsx** (~500 lines)
+
 ```typescript
 // Visual workflow designer
 // Drag-and-drop stage creation
@@ -365,6 +393,7 @@ useApprovalHistory()     // Stage execution history
 ```
 
 **src/app/(private)/admin/approvals/page.tsx** (~300 lines)
+
 ```typescript
 // All pending approvals dashboard
 // Filter by: User, Entity type, Stage
@@ -379,6 +408,7 @@ useApprovalHistory()     // Stage execution history
 ```
 
 **src/app/(private)/admin/analytics/page.tsx** (~300 lines)
+
 ```typescript
 // Workflow analytics dashboard
 // Charts:
@@ -417,6 +447,7 @@ useApprovalHistory()     // Stage execution history
 ## Phase 11: Documentation & User Guides (1 day)
 
 ### Objectives
+
 - Complete system documentation
 - User guides
 - Admin guides
@@ -425,6 +456,7 @@ useApprovalHistory()     // Stage execution history
 ### Documents to Create
 
 **User Guides:**
+
 - [ ] How to submit for approval
 - [ ] How to approve/reject
 - [ ] How to reassign
@@ -432,6 +464,7 @@ useApprovalHistory()     // Stage execution history
 - [ ] How to manage preferences
 
 **Admin Guides:**
+
 - [ ] How to create workflows
 - [ ] How to configure stages
 - [ ] How to set defaults
@@ -439,6 +472,7 @@ useApprovalHistory()     // Stage execution history
 - [ ] How to analyze bottlenecks
 
 **Developer Guides:**
+
 - [ ] API reference
 - [ ] Hook usage
 - [ ] Component integration
@@ -446,6 +480,7 @@ useApprovalHistory()     // Stage execution history
 - [ ] Testing guide
 
 **System Documentation:**
+
 - [ ] Architecture diagram
 - [ ] Data flow diagrams
 - [ ] Database schema
@@ -457,6 +492,7 @@ useApprovalHistory()     // Stage execution history
 ## Phase 12: Testing, Polish & Deployment (1-2 days)
 
 ### Objectives
+
 - Comprehensive testing
 - Bug fixes
 - Performance optimization
@@ -465,24 +501,28 @@ useApprovalHistory()     // Stage execution history
 ### Testing Tasks
 
 **Unit Tests:**
+
 - [ ] Workflow validation rules
 - [ ] Stage progression logic
 - [ ] Permission checks
 - [ ] Notification creation
 
 **Integration Tests:**
+
 - [ ] Complete approval flows
 - [ ] Reassignment workflows
 - [ ] Notification triggers
 - [ ] Hook behavior
 
 **E2E Tests:**
+
 - [ ] Create requisition → Approve → Complete
 - [ ] Create workflow → Use in entity → Verify
 - [ ] Reassign approval task
 - [ ] Reject and return to draft
 
 **Performance Tests:**
+
 - [ ] Load time under 2s
 - [ ] Database queries < 100ms
 - [ ] Notification polling not wasteful
@@ -514,6 +554,7 @@ useApprovalHistory()     // Stage execution history
 ## Database Migration (During Phase 12)
 
 ### Current: In-Memory Maps
+
 ```typescript
 const notificationStore = new Map<string, Notification>();
 const preferencesStore = new Map<string, NotificationPreferences>();
@@ -522,6 +563,7 @@ const preferencesStore = new Map<string, NotificationPreferences>();
 ### Target: PostgreSQL Tables
 
 **notifications table:**
+
 ```sql
 CREATE TABLE notifications (
   id UUID PRIMARY KEY,
@@ -558,6 +600,7 @@ CREATE TABLE notification_preferences (
 ```
 
 **workflows table:**
+
 ```sql
 CREATE TABLE custom_workflows (
   id UUID PRIMARY KEY,
@@ -593,24 +636,25 @@ CREATE TABLE custom_workflows (
 
 ## Timeline Estimate
 
-| Phase | Scope | Est. Time | Status |
-|-------|-------|-----------|--------|
-| 1-4 | Types, Persistence, Validation, Orchestration | Complete | ✅ Done |
-| 5 | Server Actions & Notifications | Complete | ✅ Done |
-| 6 | React Query Hooks | 1-2 days | 🚀 Next |
-| 7 | Notification UI Components | 2-3 days | ⏳ Pending |
-| 8 | Workflow UI Components | 2-3 days | ⏳ Pending |
-| 9 | Integration & Testing | 2 days | ⏳ Pending |
-| 10 | Admin Dashboard | 1-2 days | ⏳ Pending |
-| 11 | Documentation | 1 day | ⏳ Pending |
-| 12 | Testing, Polish, Deployment | 1-2 days | ⏳ Pending |
-| **Total** | **Complete System** | **~13-17 days** | **In Progress** |
+| Phase     | Scope                                         | Est. Time       | Status          |
+| --------- | --------------------------------------------- | --------------- | --------------- |
+| 1-4       | Types, Persistence, Validation, Orchestration | Complete        | ✅ Done         |
+| 5         | Server Actions & Notifications                | Complete        | ✅ Done         |
+| 6         | React Query Hooks                             | 1-2 days        | 🚀 Next         |
+| 7         | Notification UI Components                    | 2-3 days        | ⏳ Pending      |
+| 8         | Workflow UI Components                        | 2-3 days        | ⏳ Pending      |
+| 9         | Integration & Testing                         | 2 days          | ⏳ Pending      |
+| 10        | Admin Dashboard                               | 1-2 days        | ⏳ Pending      |
+| 11        | Documentation                                 | 1 day           | ⏳ Pending      |
+| 12        | Testing, Polish, Deployment                   | 1-2 days        | ⏳ Pending      |
+| **Total** | **Complete System**                           | **~13-17 days** | **In Progress** |
 
 ---
 
 ## Success Criteria
 
 ### Functional
+
 - ✅ Users create custom workflows graphically
 - ✅ Workflows are global and reusable
 - ✅ Approvals follow workflow config
@@ -620,12 +664,14 @@ CREATE TABLE custom_workflows (
 - ✅ Complete workflow history visible
 
 ### Performance
+
 - ✅ Workflow resolution < 100ms
 - ✅ Notification polling < 500ms response
 - ✅ Page loads < 2s
 - ✅ Database queries < 100ms
 
 ### User Experience
+
 - ✅ New workflow created in < 10 minutes
 - ✅ Approval via notification in < 2 clicks
 - ✅ Reassignment from dashboard UI
@@ -634,6 +680,7 @@ CREATE TABLE custom_workflows (
 - ✅ Accessible to screen readers
 
 ### Reliability
+
 - ✅ Zero data inconsistency
 - ✅ All operations audit-logged
 - ✅ No lost notifications
@@ -642,6 +689,7 @@ CREATE TABLE custom_workflows (
 - ✅ Graceful degradation
 
 ### Security
+
 - ✅ Only ADMIN creates workflows
 - ✅ Role validation enforced
 - ✅ Permission checks on actions

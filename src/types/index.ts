@@ -141,7 +141,7 @@ export type Pagination = {
 export type APIResponse<T = any> = {
   success: boolean;
   message: string;
-  data: T;
+  data?: T | null;
   status: number;
   [x: string]: unknown;
 };

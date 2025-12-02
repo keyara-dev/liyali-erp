@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useEffect, useState } from 'react'
+import { useRef, useEffect, useState, forwardRef, useImperativeHandle } from 'react'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { RotateCcw, Download } from 'lucide-react'
@@ -10,10 +10,28 @@ interface SignatureCanvasProps {
   disabled?: boolean
 }
 
-export function SignatureCanvas({ onSignatureChange, disabled }: SignatureCanvasProps) {
+export interface SignatureCanvasHandle {
+  clearSignature: () => void
+}
+
+export const SignatureCanvas = forwardRef<SignatureCanvasHandle, SignatureCanvasProps>(
+  function SignatureCanvasForwardRef({ onSignatureChange, disabled }, ref) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [isDrawing, setIsDrawing] = useState(false)
   const [hasSignature, setHasSignature] = useState(false)
+
+  useImperativeHandle(ref, () => ({
+    clearSignature: () => {
+      const canvas = canvasRef.current
+      if (!canvas) return
+      const ctx = canvas.getContext('2d')
+      if (ctx) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height)
+        setHasSignature(false)
+        onSignatureChange?.('')
+      }
+    },
+  }), [onSignatureChange])
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -138,4 +156,5 @@ export function SignatureCanvas({ onSignatureChange, disabled }: SignatureCanvas
       </div>
     </div>
   )
-}
+  }
+)

@@ -7,8 +7,14 @@ import {
   ApprovalFlowDisplay,
   ApprovalActionPanel,
   ApprovalHistory,
-} from "@/components/workflows";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+} from "@/components/";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -28,7 +34,8 @@ export default function RequisitionApprovalPage() {
 
   // In a real app, fetch task details from server
   // For now, we'll use the hook and handle loading state
-  const { data: taskData, isLoading: isTaskLoading } = useGetApprovalTaskDetail(taskId);
+  const { data: taskData, isLoading: isTaskLoading } =
+    useGetApprovalTaskDetail(taskId);
 
   useEffect(() => {
     setIsLoading(isTaskLoading);
@@ -77,15 +84,15 @@ export default function RequisitionApprovalPage() {
               task.status === "pending"
                 ? "default"
                 : task.status === "approved"
-                ? "secondary"
-                : "destructive"
+                  ? "secondary"
+                  : "destructive"
             }
           >
             {task.status === "pending"
               ? "Pending Approval"
               : task.status === "approved"
-              ? "Approved"
-              : "Rejected"}
+                ? "Approved"
+                : "Rejected"}
           </Badge>
         </div>
       </div>
@@ -115,7 +122,9 @@ export default function RequisitionApprovalPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="font-semibold text-sm">{workflow?.name || "Unknown"}</p>
+            <p className="font-semibold text-sm">
+              {workflow?.name || "Unknown"}
+            </p>
           </CardContent>
         </Card>
 
@@ -247,9 +256,23 @@ export default function RequisitionApprovalPage() {
 
           {/* Completed Approval Alert */}
           {task.status !== "pending" && (
-            <Alert className={task.status === "approved" ? "bg-green-50 border-green-200 dark:bg-green-900/20" : "bg-red-50 border-red-200 dark:bg-red-900/20"}>
-              <CheckCircle2 className={`h-4 w-4 ${task.status === "approved" ? "text-green-600" : "text-red-600"}`} />
-              <AlertDescription className={task.status === "approved" ? "text-green-700 dark:text-green-200" : "text-red-700 dark:text-red-200"}>
+            <Alert
+              className={
+                task.status === "approved"
+                  ? "bg-green-50 border-green-200 dark:bg-green-900/20"
+                  : "bg-red-50 border-red-200 dark:bg-red-900/20"
+              }
+            >
+              <CheckCircle2
+                className={`h-4 w-4 ${task.status === "approved" ? "text-green-600" : "text-red-600"}`}
+              />
+              <AlertDescription
+                className={
+                  task.status === "approved"
+                    ? "text-green-700 dark:text-green-200"
+                    : "text-red-700 dark:text-red-200"
+                }
+              >
                 {task.status === "approved"
                   ? "This requisition has been approved and is proceeding to the next stage."
                   : "This requisition has been rejected. Contact the requester for more information."}

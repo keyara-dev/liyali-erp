@@ -6,12 +6,11 @@ import {
   getBudgets,
   getBudgetById,
   createBudget,
-  updateBudget,
   submitBudgetForApproval,
   approveBudget,
   rejectBudget,
 } from '@/app/_actions/budgets';
-import { Budget, CreateBudgetRequest, UpdateBudgetRequest, ApproveBudgetRequest, RejectBudgetRequest } from '@/types/budget';
+import { Budget, CreateBudgetRequest, ApproveBudgetRequest, RejectBudgetRequest } from '@/types/budget';
 import { toast } from 'sonner';
 
 /**
@@ -57,8 +56,7 @@ export const useBudgetById = (budgetId: string) =>
   });
 
 /**
- * Create or update budget mutation
- * Handles both create (no ID) and update (with ID) operations
+ * Create budget mutation
  *
  * @param onSuccess - Callback after successful mutation
  * @returns Mutation object with mutate and mutateAsync
@@ -70,18 +68,13 @@ export const useBudgetById = (budgetId: string) =>
  *
  * // Create
  * await saveMutation.mutateAsync({ name: 'Q1 Budget' })
- *
- * // Update
- * await saveMutation.mutateAsync({ id: 'budget-1', name: 'Q1 Budget Updated' })
  */
 export const useSaveBudget = (onSuccess?: () => void) => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (data: CreateBudgetRequest | (UpdateBudgetRequest & { id?: string })) => {
-      const response = 'id' in data && data.id
-        ? await updateBudget(data as UpdateBudgetRequest)
-        : await createBudget(data as CreateBudgetRequest);
+    mutationFn: async (data: CreateBudgetRequest) => {
+      const response = await createBudget(data);
 
       if (!response.success) {
         throw new Error(response.message);

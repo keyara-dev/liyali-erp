@@ -164,7 +164,7 @@ export function GRNConfirmationClient({
       // Simulate confirmation process
       await new Promise((resolve) => setTimeout(resolve, 1000));
       toast.success("GRN confirmed successfully");
-      router.push("/workflows/grn");
+      router.push("/grn");
     } catch (error) {
       toast.error("Failed to confirm GRN");
     } finally {
@@ -188,7 +188,7 @@ export function GRNConfirmationClient({
       // Simulate rejection process
       await new Promise((resolve) => setTimeout(resolve, 1000));
       toast.success("GRN rejected successfully");
-      router.push("/workflows/grn");
+      router.push("/grn");
     } catch (error) {
       toast.error("Failed to reject GRN");
     } finally {
@@ -294,7 +294,7 @@ export function GRNConfirmationClient({
               <CardTitle>Items Received vs. Ordered</CardTitle>
             </CardHeader>
             <CardContent>
-              <GRNItemsMatchingTable items={grn.items} />
+              <GRNItemsMatchingTable items={(grn.items || []) as any} />
             </CardContent>
           </Card>
 

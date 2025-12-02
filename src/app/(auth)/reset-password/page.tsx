@@ -43,7 +43,7 @@ export default function ResetForgotPasswordPage() {
 
     setIsSubmitting(true);
 
-    const response = await resetPassword({ newPassword, token });
+    const response = await resetPassword(token, newPassword);
 
     if (response.success) {
       const token = response.data.token;
@@ -93,14 +93,13 @@ export default function ResetForgotPasswordPage() {
           disabled={isSubmitting}
         />
 
-        <Button type="submit" disabled={isSubmitting} className="w-full">
-          {isSubmitting ? (
-            <span className="flex items-center gap-1 ">
-              <Spinner size={"sm"} color="white" /> Submitting...
-            </span>
-          ) : (
-            "Change Password"
-          )}
+        <Button
+          type="submit"
+          disabled={isSubmitting}
+          className="w-full"
+          isLoading={isSubmitting}
+        >
+          Change Password
         </Button>
 
         {message && (

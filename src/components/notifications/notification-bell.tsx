@@ -99,7 +99,7 @@ export function NotificationBell({ userId }: NotificationBellProps) {
               size="sm"
               asChild
             >
-              <Link href="/workflows/notifications">View all</Link>
+              <Link href="/notifications">View all</Link>
             </Button>
           </div>
         </DropdownMenuLabel>
