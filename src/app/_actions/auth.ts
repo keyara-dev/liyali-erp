@@ -162,3 +162,72 @@ export async function resetPassword(token: string, newPassword: string): Promise
     }
   }
 }
+
+/**
+ * Create new user account
+ */
+export async function createNewAccount(data: {
+  email: string
+  username: string
+  password: string
+  [key: string]: any
+}): Promise<APIResponse> {
+  try {
+    // This is a stub implementation for account creation
+    // In a production system, this would:
+    // - Validate email uniqueness
+    // - Hash password
+    // - Store user in database
+    // - Send verification email
+
+    return {
+      success: true,
+      message: 'Account created successfully',
+      data: {
+        email: data.email,
+        username: data.username
+      },
+      status: 201,
+      statusText: 'CREATED'
+    }
+  } catch (error: any) {
+    return {
+      success: false,
+      message: error.message || 'Failed to create account',
+      data: null,
+      status: 500,
+      statusText: 'ERROR'
+    }
+  }
+}
+
+/**
+ * Check if signup is available
+ */
+export async function checkSignupAvailability(): Promise<APIResponse> {
+  try {
+    // This is a stub implementation for signup availability check
+    // In a production system, this would check:
+    // - If signup feature is enabled
+    // - System capacity limits
+    // - Any maintenance windows
+
+    return {
+      success: true,
+      message: 'Signup is available',
+      data: {
+        available: true
+      },
+      status: 200,
+      statusText: 'OK'
+    }
+  } catch (error: any) {
+    return {
+      success: false,
+      message: error.message || 'Failed to check signup availability',
+      data: null,
+      status: 500,
+      statusText: 'ERROR'
+    }
+  }
+}

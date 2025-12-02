@@ -1,128 +1,128 @@
-'use client'
+"use client";
 
-import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-import { toast } from 'sonner'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Checkbox } from '@/components/ui/checkbox'
-import { Textarea } from '@/components/ui/textarea'
-import { AlertTriangle, CheckCircle2, Package, Signature } from 'lucide-react'
-import { Skeleton } from '@/components/ui/skeleton'
-import { PageHeader } from '@/components/base/page-header'
-import { GRNItemsMatchingTable } from '../_components/grn-items-matching-table'
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
+import { AlertTriangle, CheckCircle2, Package, Signature } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { PageHeader } from "@/components/base/page-header";
+import { GRNItemsMatchingTable } from "./grn-items-matching-table";
 
 interface GRNConfirmationClientProps {
-  grnId: string
-  userId: string
-  userRole: string
+  grnId: string;
+  userId: string;
+  userRole: string;
 }
 
 interface ReceivedItem {
-  id: string
-  itemNumber: number
-  description: string
-  poQuantity: number
-  receivedQuantity: number
-  unit: string
-  variance: number
-  damage: number
-  damageNotes?: string
-  condition: 'GOOD' | 'DAMAGED' | 'PARTIAL'
+  id: string;
+  itemNumber: number;
+  description: string;
+  poQuantity: number;
+  receivedQuantity: number;
+  unit: string;
+  variance: number;
+  damage: number;
+  damageNotes?: string;
+  condition: "GOOD" | "DAMAGED" | "PARTIAL";
 }
 
 interface GoodsReceivedNote {
-  id: string
-  grnNumber: string
-  poNumber: string
-  status: 'DRAFT' | 'SUBMITTED' | 'CONFIRMED' | 'REJECTED'
-  warehouseLocation: string
-  receivedDate: string
-  receivedBy: string
-  approvedBy?: string
-  items: ReceivedItem[]
+  id: string;
+  grnNumber: string;
+  poNumber: string;
+  status: "DRAFT" | "SUBMITTED" | "CONFIRMED" | "REJECTED";
+  warehouseLocation: string;
+  receivedDate: string;
+  receivedBy: string;
+  approvedBy?: string;
+  items: ReceivedItem[];
   qualityIssues: Array<{
-    id: string
-    itemId: string
-    description: string
-    severity: 'LOW' | 'MEDIUM' | 'HIGH'
-  }>
-  notes?: string
-  currentStage: number
-  stageName: string
-  createdAt: string
-  updatedAt: string
+    id: string;
+    itemId: string;
+    description: string;
+    severity: "LOW" | "MEDIUM" | "HIGH";
+  }>;
+  notes?: string;
+  currentStage: number;
+  stageName: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 const STAGE_NAMES: Record<number, string> = {
-  1: 'Warehouse Clerk Receipt',
-  2: 'Department Manager Confirmation',
-}
+  1: "Warehouse Clerk Receipt",
+  2: "Department Manager Confirmation",
+};
 
 // Mock data generator
 function generateMockGRN(grnId: string): GoodsReceivedNote {
-  const currentStage = Math.floor(Math.random() * 2) + 1
+  const currentStage = Math.floor(Math.random() * 2) + 1;
 
   return {
     id: grnId,
-    grnNumber: `GRN-2024-${String(Math.floor(Math.random() * 9000) + 1000).padStart(4, '0')}`,
-    poNumber: `PO-2024-${String(Math.floor(Math.random() * 9000) + 1000).padStart(4, '0')}`,
-    status: 'SUBMITTED',
-    warehouseLocation: 'Warehouse A - Section 3',
+    grnNumber: `GRN-2024-${String(Math.floor(Math.random() * 9000) + 1000).padStart(4, "0")}`,
+    poNumber: `PO-2024-${String(Math.floor(Math.random() * 9000) + 1000).padStart(4, "0")}`,
+    status: "SUBMITTED",
+    warehouseLocation: "Warehouse A - Section 3",
     receivedDate: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-    receivedBy: 'WAREHOUSE-USER-001',
+    receivedBy: "WAREHOUSE-USER-001",
     approvedBy: undefined,
     items: [
       {
-        id: 'item-1',
+        id: "item-1",
         itemNumber: 1,
-        description: 'Office Chairs - Ergonomic',
+        description: "Office Chairs - Ergonomic",
         poQuantity: 10,
         receivedQuantity: 10,
-        unit: 'units',
+        unit: "units",
         variance: 0,
         damage: 0,
-        condition: 'GOOD',
+        condition: "GOOD",
       },
       {
-        id: 'item-2',
+        id: "item-2",
         itemNumber: 2,
-        description: 'Standing Desks - Electric',
+        description: "Standing Desks - Electric",
         poQuantity: 5,
         receivedQuantity: 4,
-        unit: 'units',
+        unit: "units",
         variance: -1,
         damage: 1,
-        damageNotes: 'One unit arrived with damaged motor',
-        condition: 'DAMAGED',
+        damageNotes: "One unit arrived with damaged motor",
+        condition: "DAMAGED",
       },
       {
-        id: 'item-3',
+        id: "item-3",
         itemNumber: 3,
-        description: 'Computer Monitors - 27 inch',
+        description: "Computer Monitors - 27 inch",
         poQuantity: 8,
         receivedQuantity: 8,
-        unit: 'units',
+        unit: "units",
         variance: 0,
         damage: 0,
-        condition: 'GOOD',
+        condition: "GOOD",
       },
     ],
     qualityIssues: [
       {
-        id: 'issue-1',
-        itemId: 'item-2',
-        description: 'Standing Desk motor malfunction',
-        severity: 'HIGH',
+        id: "issue-1",
+        itemId: "item-2",
+        description: "Standing Desk motor malfunction",
+        severity: "HIGH",
       },
     ],
-    notes: 'General inspection completed. One standing desk has motor issues.',
+    notes: "General inspection completed. One standing desk has motor issues.",
     currentStage,
     stageName: STAGE_NAMES[currentStage],
     createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
     updatedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-  }
+  };
 }
 
 export function GRNConfirmationClient({
@@ -130,75 +130,75 @@ export function GRNConfirmationClient({
   userId,
   userRole,
 }: GRNConfirmationClientProps) {
-  const router = useRouter()
-  const [grn, setGRN] = useState<GoodsReceivedNote | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [confirmCheckbox, setConfirmCheckbox] = useState(false)
-  const [confirmationNotes, setConfirmationNotes] = useState('')
-  const [signature, setSignature] = useState('')
+  const router = useRouter();
+  const [grn, setGRN] = useState<GoodsReceivedNote | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [confirmCheckbox, setConfirmCheckbox] = useState(false);
+  const [confirmationNotes, setConfirmationNotes] = useState("");
+  const [signature, setSignature] = useState("");
 
   useEffect(() => {
     // Simulate data loading
     const timer = setTimeout(() => {
-      setGRN(generateMockGRN(grnId))
-      setIsLoading(false)
-    }, 500)
+      setGRN(generateMockGRN(grnId));
+      setIsLoading(false);
+    }, 500);
 
-    return () => clearTimeout(timer)
-  }, [grnId])
+    return () => clearTimeout(timer);
+  }, [grnId]);
 
   const handleConfirm = async () => {
     if (!confirmCheckbox) {
-      toast.error('Please confirm all items have been checked')
-      return
+      toast.error("Please confirm all items have been checked");
+      return;
     }
 
     if (!signature) {
-      toast.error('Please provide your signature')
-      return
+      toast.error("Please provide your signature");
+      return;
     }
 
-    setIsSubmitting(true)
+    setIsSubmitting(true);
     try {
       // Simulate confirmation process
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-      toast.success('GRN confirmed successfully')
-      router.push('/workflows/grn')
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      toast.success("GRN confirmed successfully");
+      router.push("/workflows/grn");
     } catch (error) {
-      toast.error('Failed to confirm GRN')
+      toast.error("Failed to confirm GRN");
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
-  }
+  };
 
   const handleReject = async () => {
     if (!confirmationNotes) {
-      toast.error('Please provide rejection reason')
-      return
+      toast.error("Please provide rejection reason");
+      return;
     }
 
     if (!signature) {
-      toast.error('Please provide your signature')
-      return
+      toast.error("Please provide your signature");
+      return;
     }
 
-    setIsSubmitting(true)
+    setIsSubmitting(true);
     try {
       // Simulate rejection process
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-      toast.success('GRN rejected successfully')
-      router.push('/workflows/grn')
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      toast.success("GRN rejected successfully");
+      router.push("/workflows/grn");
     } catch (error) {
-      toast.error('Failed to reject GRN')
+      toast.error("Failed to reject GRN");
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
-  }
+  };
 
   const handleBack = () => {
-    router.back()
-  }
+    router.back();
+  };
 
   if (isLoading || !grn) {
     return (
@@ -209,10 +209,10 @@ export function GRNConfirmationClient({
           <Skeleton className="h-96 w-full" />
         </div>
       </div>
-    )
+    );
   }
 
-  const hasQualityIssues = grn.qualityIssues.length > 0
+  const hasQualityIssues = grn.qualityIssues.length > 0;
 
   return (
     <div className="space-y-6">
@@ -232,10 +232,12 @@ export function GRNConfirmationClient({
               <CardContent className="pt-4 flex gap-3">
                 <AlertTriangle className="h-5 w-5 text-yellow-600 flex-shrink-0 mt-0.5" />
                 <div>
-                  <p className="font-semibold text-yellow-900">Quality Issues Detected</p>
+                  <p className="font-semibold text-yellow-900">
+                    Quality Issues Detected
+                  </p>
                   <p className="text-sm text-yellow-800 mt-1">
-                    {grn.qualityIssues.length} quality issue(s) have been reported. Please review
-                    before confirming.
+                    {grn.qualityIssues.length} quality issue(s) have been
+                    reported. Please review before confirming.
                   </p>
                 </div>
               </CardContent>
@@ -256,7 +258,9 @@ export function GRNConfirmationClient({
                 <p className="font-semibold">{grn.poNumber}</p>
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Warehouse Location</p>
+                <p className="text-sm text-muted-foreground">
+                  Warehouse Location
+                </p>
                 <p className="font-semibold">{grn.warehouseLocation}</p>
               </div>
               <div>
@@ -272,13 +276,13 @@ export function GRNConfirmationClient({
               <div>
                 <p className="text-sm text-muted-foreground">Good Condition</p>
                 <p className="font-semibold text-green-600">
-                  {grn.items.filter((i) => i.condition === 'GOOD').length}
+                  {grn.items.filter((i) => i.condition === "GOOD").length}
                 </p>
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Damaged</p>
                 <p className="font-semibold text-red-600">
-                  {grn.items.filter((i) => i.condition === 'DAMAGED').length}
+                  {grn.items.filter((i) => i.condition === "DAMAGED").length}
                 </p>
               </div>
             </CardContent>
@@ -319,14 +323,18 @@ export function GRNConfirmationClient({
                 <Checkbox
                   id="confirm"
                   checked={confirmCheckbox}
-                  onCheckedChange={(checked) => setConfirmCheckbox(checked as boolean)}
+                  onCheckedChange={(checked) =>
+                    setConfirmCheckbox(checked as boolean)
+                  }
                   className="mt-1"
                 />
                 <label htmlFor="confirm" className="cursor-pointer flex-1">
-                  <p className="font-medium">I have checked all items and confirm</p>
+                  <p className="font-medium">
+                    I have checked all items and confirm
+                  </p>
                   <p className="text-sm text-muted-foreground mt-1">
-                    I certify that all items listed above have been physically inspected and match
-                    the quantities and conditions recorded
+                    I certify that all items listed above have been physically
+                    inspected and match the quantities and conditions recorded
                   </p>
                 </label>
               </div>
@@ -384,8 +392,8 @@ export function GRNConfirmationClient({
                   <span
                     className={
                       confirmCheckbox
-                        ? 'text-sm font-medium text-green-600'
-                        : 'text-sm text-muted-foreground'
+                        ? "text-sm font-medium text-green-600"
+                        : "text-sm text-muted-foreground"
                     }
                   >
                     Items Checked
@@ -401,8 +409,8 @@ export function GRNConfirmationClient({
                   <span
                     className={
                       signature
-                        ? 'text-sm font-medium text-green-600'
-                        : 'text-sm text-muted-foreground'
+                        ? "text-sm font-medium text-green-600"
+                        : "text-sm text-muted-foreground"
                     }
                   >
                     Signature Provided
@@ -416,7 +424,7 @@ export function GRNConfirmationClient({
                   disabled={isSubmitting}
                   className="w-full bg-green-600 hover:bg-green-700"
                 >
-                  {isSubmitting ? 'Confirming...' : 'Confirm Receipt'}
+                  {isSubmitting ? "Confirming..." : "Confirm Receipt"}
                 </Button>
 
                 <Button
@@ -425,10 +433,14 @@ export function GRNConfirmationClient({
                   variant="destructive"
                   className="w-full"
                 >
-                  {isSubmitting ? 'Rejecting...' : 'Reject GRN'}
+                  {isSubmitting ? "Rejecting..." : "Reject GRN"}
                 </Button>
 
-                <Button onClick={handleBack} variant="outline" className="w-full">
+                <Button
+                  onClick={handleBack}
+                  variant="outline"
+                  className="w-full"
+                >
                   Cancel
                 </Button>
               </div>
@@ -437,8 +449,9 @@ export function GRNConfirmationClient({
                 <div className="pt-4 border-t text-xs text-muted-foreground">
                   <p className="font-medium mb-2">⚠️ Quality Issues Present</p>
                   <p>
-                    This GRN has {grn.qualityIssues.length} reported quality issue(s). Please address
-                    before confirming if they affect acceptance.
+                    This GRN has {grn.qualityIssues.length} reported quality
+                    issue(s). Please address before confirming if they affect
+                    acceptance.
                   </p>
                 </div>
               )}
@@ -447,5 +460,5 @@ export function GRNConfirmationClient({
         </div>
       </div>
     </div>
-  )
+  );
 }

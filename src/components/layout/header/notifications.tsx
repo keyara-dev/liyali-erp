@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import { NotificationBell } from "@/components/notifications/notification-bell";
 import { Button } from "@/components/ui/button";
 import { BellIcon } from "lucide-react";
-import { getCurrentUser } from "@/lib/auth";
+import { useSession } from "@/hooks";
 
 // Fallback while loading user
 function NotificationFallback() {
@@ -15,7 +15,7 @@ function NotificationFallback() {
 
 // Server component that fetches user data
 async function NotificationsContent() {
-  const user = await getCurrentUser();
+  const { user } = useSession();
 
   if (!user) {
     return (

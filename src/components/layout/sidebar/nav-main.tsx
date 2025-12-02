@@ -24,6 +24,7 @@ import {
   FileCheck,
   CheckSquare,
   DollarSign,
+  GitBranch,
   type LucideIcon
 } from "lucide-react";
 import Link from "next/link";
@@ -108,6 +109,11 @@ export const navItems: NavGroup[] = [
         title: "Activity Logs",
         href: "/admin/logs",
         icon: ActivityIcon
+      },
+      {
+        title: "Workflow Management",
+        href: "/admin/workflows",
+        icon: GitBranch
       }
     ]
   },

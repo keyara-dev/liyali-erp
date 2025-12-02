@@ -1,8 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { useUserNotifications, useMarkAllNotificationsAsRead, useDeleteNotification } from "@/hooks/use-notifications";
-import { getCurrentUser } from "@/lib/auth";
+import {
+  useUserNotifications,
+  useMarkAllNotificationsAsRead,
+  useDeleteNotification,
+} from "@/hooks/use-notifications";
 import { NotificationItem } from "@/components/notifications/notification-item";
 import {
   Select,
@@ -13,10 +16,17 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CheckIcon, SearchIcon, MailIcon } from "lucide-react";
 import type { NotificationType } from "@/types";
+import { useSession } from "@/hooks";
 
 const NotificationSkeleton = () => (
   <div className="border rounded-lg p-4">
@@ -38,19 +48,16 @@ interface NotificationsPageProps {
 function NotificationsPageContent({ userId }: NotificationsPageProps) {
   const [page, setPage] = useState(1);
   const [typeFilter, setTypeFilter] = useState<NotificationType | "all">("all");
-  const [statusFilter, setStatusFilter] = useState<"all" | "read" | "unread">("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | "read" | "unread">(
+    "all"
+  );
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
-  const { data: result, isLoading } = useUserNotifications(
-    userId,
-    page,
-    10,
-    {
-      type: typeFilter === "all" ? undefined : typeFilter,
-      isRead: statusFilter === "all" ? undefined : statusFilter === "read",
-    }
-  );
+  const { data: result, isLoading } = useUserNotifications(userId, page, 10, {
+    type: typeFilter === "all" ? undefined : typeFilter,
+    isRead: statusFilter === "all" ? undefined : statusFilter === "read",
+  });
 
   const markAllAsReadMutation = useMarkAllNotificationsAsRead();
   const deleteNotificationMutation = useDeleteNotification();
@@ -71,12 +78,16 @@ function NotificationsPageContent({ userId }: NotificationsPageProps) {
     }
   };
 
-  const filteredNotifications = result?.notifications.filter((n) => {
-    if (searchQuery && !n.message.toLowerCase().includes(searchQuery.toLowerCase())) {
-      return false;
-    }
-    return true;
-  }) || [];
+  const filteredNotifications =
+    result?.notifications.filter((n) => {
+      if (
+        searchQuery &&
+        !n.message.toLowerCase().includes(searchQuery.toLowerCase())
+      ) {
+        return false;
+      }
+      return true;
+    }) || [];
 
   return (
     <div className="space-y-6">
@@ -109,11 +120,13 @@ function NotificationsPageContent({ userId }: NotificationsPageProps) {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All types</SelectItem>
-                  {Object.entries(notificationTypeLabels).map(([key, label]) => (
-                    <SelectItem key={key} value={key}>
-                      {label}
-                    </SelectItem>
-                  ))}
+                  {Object.entries(notificationTypeLabels).map(
+                    ([key, label]) => (
+                      <SelectItem key={key} value={key}>
+                        {label}
+                      </SelectItem>
+                    )
+                  )}
                 </SelectContent>
               </Select>
             </div>
@@ -198,7 +211,9 @@ function NotificationsPageContent({ userId }: NotificationsPageProps) {
                 if (checked) {
                   setSelectedIds([...selectedIds, notification.id]);
                 } else {
-                  setSelectedIds(selectedIds.filter((id) => id !== notification.id));
+                  setSelectedIds(
+                    selectedIds.filter((id) => id !== notification.id)
+                  );
                 }
               }}
             />
@@ -209,10 +224,7 @@ function NotificationsPageContent({ userId }: NotificationsPageProps) {
       {/* Pagination */}
       {result && result.hasMore && (
         <div className="flex justify-center">
-          <Button
-            variant="outline"
-            onClick={() => setPage(page + 1)}
-          >
+          <Button variant="outline" onClick={() => setPage(page + 1)}>
             Load more
           </Button>
         </div>
@@ -223,13 +235,14 @@ function NotificationsPageContent({ userId }: NotificationsPageProps) {
 
 // Server component wrapper to get user
 async function NotificationsPage() {
-  const { getCurrentUser } = await import("@/lib/auth");
-  const user = await getCurrentUser();
+  const { user } = useSession();
 
   if (!user) {
     return (
       <div className="text-center py-12">
-        <p className="text-muted-foreground">Please log in to view notifications</p>
+        <p className="text-muted-foreground">
+          Please log in to view notifications
+        </p>
       </div>
     );
   }
