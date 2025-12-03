@@ -85,13 +85,14 @@ export function useDefaultWorkflow(entityType: WorkflowEntityType) {
 /**
  * Hook: Get assignment for an entity
  * @param entityId Entity ID
+ * @param entityType Entity type
  * @returns Query result with assignment
  */
-export function useAssignment(entityId: string) {
+export function useAssignment(entityId: string, entityType: WorkflowEntityType) {
   return useQuery({
-    queryKey: [ASSIGNMENTS_QUERY_KEY, entityId],
-    queryFn: async () => getAssignmentAction(entityId),
-    enabled: !!entityId,
+    queryKey: [ASSIGNMENTS_QUERY_KEY, entityId, entityType],
+    queryFn: async () => getAssignmentAction(entityId, entityType),
+    enabled: !!entityId && !!entityType,
     staleTime: 1 * 60 * 1000, // 1 minute (frequently updated)
     refetchInterval: 30 * 1000, // Auto-refresh every 30 seconds
   });
@@ -245,7 +246,8 @@ export function useSetDefaultWorkflow() {
     mutationFn: async (params: {
       entityType: WorkflowEntityType;
       workflowId: string;
-    }) => setDefaultWorkflowAction(params.entityType, params.workflowId),
+      userId: string;
+    }) => setDefaultWorkflowAction(params.entityType, params.workflowId, params.userId),
     onSuccess: (data, variables) => {
       // Invalidate defaults
       queryClient.invalidateQueries({
@@ -383,10 +385,11 @@ export function useWorkflowStages(workflowId: string) {
  * Hook: Get assignment with workflow details
  * Combines assignment and workflow queries
  * @param entityId Entity ID
+ * @param entityType Entity type
  * @returns Assignment with resolved workflow
  */
-export function useAssignmentWithWorkflow(entityId: string) {
-  const assignmentQuery = useAssignment(entityId);
+export function useAssignmentWithWorkflow(entityId: string, entityType: WorkflowEntityType) {
+  const assignmentQuery = useAssignment(entityId, entityType);
   const assignment = assignmentQuery.data;
 
   const workflowQuery = useWorkflow(

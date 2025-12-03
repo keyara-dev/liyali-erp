@@ -107,13 +107,13 @@ export const useSaveBudget = (onSuccess?: () => void) => {
  *
  * @example
  * const submitMutation = useSubmitBudgetForApproval(budgetId)
- * await submitMutation.mutateAsync({ submittedBy: userId, comments: 'Please review' })
+ * await submitMutation.mutateAsync({ submittingUserId: userId })
  */
 export const useSubmitBudgetForApproval = (budgetId: string, onSuccess?: () => void) => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (data: { submittedBy: string; comments?: string }) => {
+    mutationFn: async (data: { submittingUserId: string }) => {
       const response = await submitBudgetForApproval({
         budgetId,
         ...data,

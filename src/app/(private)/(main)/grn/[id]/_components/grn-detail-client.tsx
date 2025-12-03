@@ -150,7 +150,7 @@ export function GRNDetailClient({
 
   const handleConfirm = () => {
     toast.success("Navigating to confirmation...");
-    router.push(`//grn/${grnId}/confirmation`);
+    router.push(`/grn/${grnId}/confirmation`);
   };
 
   const handleBack = () => {

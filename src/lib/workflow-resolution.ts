@@ -483,10 +483,9 @@ export async function getPendingApprovalsForUserId(userId: string): Promise<Work
  * Get all approvals that admin can reassign
  */
 export async function getAllPendingApprovals(): Promise<WorkflowAssignment[]> {
-  const allAssignments = Array.from(
-    // This would come from persistence layer
-    // For now, return empty - would be implemented in Phase 2
-  );
+  // This would come from persistence layer
+  // For now, return empty - would be implemented in Phase 2
+  const allAssignments: WorkflowAssignment[] = [];
   return allAssignments.filter((a) => {
     const currentStage = a.stageHistory.find((s) => s.stageNumber === a.currentStageNumber);
     return currentStage && currentStage.status === "PENDING";

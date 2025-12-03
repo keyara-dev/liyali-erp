@@ -95,6 +95,10 @@ function clearBudgetsStorage(): void {
  * Convert a Budget to a WorkflowDocument for display in tables
  */
 function budgetToWorkflowDocument(budget: Budget): WorkflowDocument {
+  const allocated = budget.items.reduce((sum, item) => sum + item.allocatedAmount, 0);
+  const spent = budget.items.reduce((sum, item) => sum + item.spentAmount, 0);
+  const remaining = allocated - spent;
+
   return {
     id: budget.id,
     type: 'PURCHASE_ORDER', // Use PURCHASE_ORDER as budget workflow type
@@ -108,9 +112,9 @@ function budgetToWorkflowDocument(budget: Budget): WorkflowDocument {
       department: budget.department,
       amount: budget.totalAmount,
       totalAmount: budget.totalAmount,
-      allocated: budget.allocated,
-      spent: budget.spent,
-      remaining: budget.remaining,
+      allocated,
+      spent,
+      remaining,
       fiscalYear: budget.fiscalYear,
     },
   };

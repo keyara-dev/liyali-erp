@@ -151,7 +151,7 @@ export function BudgetsTable({
         <Button
           size="sm"
           variant="outline"
-          onClick={() => router.push(`/home/budgets/${row.original.id}`)}
+          onClick={() => router.push(`/budgets/${row.original.id}`)}
         >
           <Eye className="h-4 w-4 mr-1" />
           View Details

@@ -91,6 +91,8 @@ export const QUERY_KEYS = {
   ROLES: "roles",
   ROLE_PERMISSIONS: "role-permissions",
   CURRENCIES: "currencies",
+  SELLERS: "sellers",
+  WHATSAPP_CONFIG: "whatsapp-config",
 
   // Dashboard
   DASHBOARD: {

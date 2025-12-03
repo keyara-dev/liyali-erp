@@ -334,17 +334,19 @@ export function useReassignmentModal() {
 /**
  * Hook: Check permissions for approval actions
  * @param entityId Entity ID
+ * @param entityType Entity type
  * @param userId Current user ID
  * @param userRole Current user role
  * @returns Permissions object
  */
 export function useApprovalPermissions(
   entityId: string,
+  entityType: any,
   userId: string,
   userRole: string
 ) {
   const { assignment, workflow, currentStage } =
-    useAssignmentWithWorkflow(entityId);
+    useAssignmentWithWorkflow(entityId, entityType);
 
   const canApprove =
     assignment &&
@@ -393,16 +395,18 @@ export function useApprovalHistory(assignment: WorkflowAssignment | undefined) {
  * Hook: Approval action buttons state
  * Determines which buttons to show based on permissions
  * @param entityId Entity ID
+ * @param entityType Entity type
  * @param userId Current user ID
  * @param userRole Current user role
  * @returns Button states
  */
 export function useApprovalActions(
   entityId: string,
+  entityType: any,
   userId: string,
   userRole: string
 ) {
-  const permissions = useApprovalPermissions(entityId, userId, userRole);
+  const permissions = useApprovalPermissions(entityId, entityType, userId, userRole);
   const approveMutation = useApproveStage();
   const rejectMutation = useRejectStage();
   const reassignMutation = useReassignStage();

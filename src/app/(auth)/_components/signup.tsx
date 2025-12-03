@@ -96,8 +96,8 @@ export default function Signup() {
 
       if (response.success) {
         // Account created and user is automatically logged in
-        // Redirect to dashboard
-        router.push("/dashboard?account=new");
+        // Redirect to home dashboard
+        router.push("/home?account=new");
       } else {
         setMessage(`Error: ${response.message}`);
         setIsSubmitting(false);

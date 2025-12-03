@@ -169,15 +169,15 @@ export function useMarkAllNotificationsAsRead() {
   return useMutation({
     mutationFn: async (request: MarkAllNotificationsReadRequest) =>
       markAllAsRead(request),
-    onSuccess: (data) => {
+    onSuccess: (data, variables) => {
       // Invalidate all notification queries for this user
       queryClient.invalidateQueries({
-        queryKey: [NOTIFICATIONS_QUERY_KEY, data.userId],
+        queryKey: [NOTIFICATIONS_QUERY_KEY, variables.userId],
       });
 
       // Invalidate unread count
       queryClient.invalidateQueries({
-        queryKey: [UNREAD_COUNT_QUERY_KEY, data.userId],
+        queryKey: [UNREAD_COUNT_QUERY_KEY, variables.userId],
       });
     },
     onError: (error) => {
@@ -223,9 +223,11 @@ export function useMarkNotificationActionTaken() {
       markActionTaken(notificationId),
     onSuccess: (notification) => {
       // Update notification queries
-      queryClient.invalidateQueries({
-        queryKey: [NOTIFICATIONS_QUERY_KEY, notification.userId],
-      });
+      if (notification) {
+        queryClient.invalidateQueries({
+          queryKey: [NOTIFICATIONS_QUERY_KEY, notification.userId],
+        });
+      }
     },
     onError: (error) => {
       console.error('Failed to mark action taken:', error);

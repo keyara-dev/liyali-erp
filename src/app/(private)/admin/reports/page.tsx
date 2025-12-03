@@ -16,7 +16,7 @@ export default async function AdminReportsPage() {
 
   // Check if user is admin
   if (!['ADMIN', 'COMPLIANCE_OFFICER'].includes(user.role)) {
-    redirect('/workflows')
+    redirect('/home')
   }
 
   return (

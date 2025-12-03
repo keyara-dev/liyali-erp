@@ -177,7 +177,7 @@ export async function requireRole(allowedRoles: string[]) {
     redirect('/login')
   }
   if (!allowedRoles.includes(user.role)) {
-    redirect('/workflows')
+    redirect('/home')
   }
   return user
 }

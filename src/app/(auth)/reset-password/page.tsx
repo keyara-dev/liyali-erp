@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { resetPassword } from "@/app/_actions/auth";
@@ -10,7 +10,7 @@ import Spinner from "@/components/ui/spinner";
 import LoadingPage from "../register/loading";
 import { toast } from "sonner";
 
-export default function ResetForgotPasswordPage() {
+function ResetPasswordContent() {
   const router = useRouter();
   const params = useSearchParams();
   const token = params.get("token") || "";
@@ -115,5 +115,13 @@ export default function ResetForgotPasswordPage() {
         )}
       </form>
     </div>
+  );
+}
+
+export default function ResetForgotPasswordPage() {
+  return (
+    <Suspense fallback={<LoadingPage />}>
+      <ResetPasswordContent />
+    </Suspense>
   );
 }

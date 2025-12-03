@@ -48,7 +48,7 @@ export function FormPreview({ formData, onBack, onSubmit }: FormPreviewProps) {
 
       if (result.success) {
         // Redirect to requisitions list
-        router.push("//requisitions");
+        router.push("/requisitions");
       } else {
         setError(result.message || "Failed to create requisition");
       }

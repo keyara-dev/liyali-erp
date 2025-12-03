@@ -146,7 +146,7 @@ export function RequisitionsTable({
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => router.push(`/workflows/requisitions/${row.original.id}`)}
+            onClick={() => router.push(`/requisitions/${row.original.id}`)}
             className="gap-2"
           >
             <Eye className="h-4 w-4" />

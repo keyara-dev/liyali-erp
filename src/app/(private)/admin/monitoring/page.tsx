@@ -16,7 +16,7 @@ export default async function MonitoringPage() {
 
   // Check if user is admin or compliance officer
   if (!['ADMIN', 'COMPLIANCE_OFFICER'].includes(user.role)) {
-    redirect('/workflows')
+    redirect('/home')
   }
 
   return (

@@ -155,7 +155,7 @@ export function PVDetailClient({
 
   const handleApprove = () => {
     toast.success('Navigating to approval...')
-    router.push(`//payment-vouchers/${pvId}/approval`)
+    router.push(`/payment-vouchers/${pvId}/approval`)
   }
 
   const handleBack = () => {
