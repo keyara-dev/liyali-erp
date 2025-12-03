@@ -248,6 +248,7 @@ export async function createRequisition(
     const totalAmount = data.items.reduce((sum, item) => sum + item.totalPrice, 0);
 
     // Create requisition with approval chain (3 stages by default)
+    const now = new Date();
     const requisition: Requisition = {
       id: requisitionId,
       requisitionNumber,
@@ -258,7 +259,7 @@ export async function createRequisition(
       requestedBy: data.createdBy,
       requestedByName: data.createdByName,
       requestedByRole: data.createdByRole,
-      requestedDate: new Date(),
+      requestedDate: now,
       requiredByDate: new Date(data.requiredByDate),
       priority: data.priority,
       status: 'DRAFT',
@@ -266,8 +267,8 @@ export async function createRequisition(
         ...item,
         id: `item-${requisitionId}-${index + 1}`,
         requisitionId,
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        createdAt: now,
+        updatedAt: now,
       })),
       totalAmount,
       currency: 'ZMW',
@@ -299,8 +300,21 @@ export async function createRequisition(
       budgetCode: data.budgetCode,
       costCenter: data.costCenter,
       projectCode: data.projectCode,
-      createdAt: new Date(),
-      updatedAt: new Date(),
+      createdAt: now,
+      updatedAt: now,
+      // Initialize action history with creation entry
+      actionHistory: [
+        {
+          id: `action-${Date.now()}-1`,
+          actionType: 'CREATE',
+          performedBy: data.createdBy,
+          performedByName: data.createdByName,
+          performedByRole: data.createdByRole,
+          performedAt: now,
+          newStatus: 'DRAFT',
+          comments: `Requisition created with ${data.items.length} item(s)`,
+        },
+      ],
     };
 
     mockRequisitions.push(requisition);
@@ -490,6 +504,22 @@ export async function submitRequisitionForApproval(
     requisition.submittedAt = new Date();
     requisition.updatedAt = new Date();
 
+    // Add action to history
+    if (!requisition.actionHistory) {
+      requisition.actionHistory = [];
+    }
+    requisition.actionHistory.push({
+      id: `action-${Date.now()}-${requisition.actionHistory.length + 1}`,
+      actionType: 'SUBMIT',
+      performedBy: data.submittedBy,
+      performedByName: data.submittedByName,
+      performedByRole: data.submittedByRole,
+      performedAt: requisition.submittedAt,
+      previousStatus: 'DRAFT',
+      newStatus: 'SUBMITTED',
+      comments: data.comments || 'Requisition submitted for approval',
+    });
+
     return {
       success: true,
       message: 'Requisition submitted for approval',
@@ -581,6 +611,7 @@ export async function approveRequisition(
 
     // Check if all stages approved
     const allApproved = requisition.approvalChain.every((s) => s.status === 'APPROVED');
+    const previousStatus = requisition.status;
 
     if (allApproved) {
       requisition.status = 'APPROVED';
@@ -595,6 +626,25 @@ export async function approveRequisition(
     }
 
     requisition.updatedAt = new Date();
+
+    // Add action to history
+    if (!requisition.actionHistory) {
+      requisition.actionHistory = [];
+    }
+    requisition.actionHistory.push({
+      id: `action-${Date.now()}-${requisition.actionHistory.length + 1}`,
+      actionType: 'APPROVE',
+      performedBy: data.approvingUserId,
+      performedByName: data.approvingUserName,
+      performedByRole: data.approvingUserRole,
+      performedAt: stage.actionTakenAt,
+      stageNumber: stage.stageNumber,
+      stageName: stage.stageName,
+      previousStatus: previousStatus as any,
+      newStatus: requisition.status,
+      comments: data.comments || `Approved at stage ${stage.stageNumber}: ${stage.stageName}`,
+      signature: data.signature,
+    });
 
     return {
       success: true,
@@ -687,10 +737,31 @@ export async function rejectRequisition(
     stage.signature = data.signature;
 
     // Reset requisition to DRAFT for resubmission
+    const previousStatus = requisition.status;
     requisition.status = 'REJECTED';
     requisition.rejectedAt = new Date();
     requisition.currentApprovalStage = 0;
     requisition.updatedAt = new Date();
+
+    // Add action to history
+    if (!requisition.actionHistory) {
+      requisition.actionHistory = [];
+    }
+    requisition.actionHistory.push({
+      id: `action-${Date.now()}-${requisition.actionHistory.length + 1}`,
+      actionType: 'REJECT',
+      performedBy: data.rejectingUserId,
+      performedByName: data.rejectingUserName,
+      performedByRole: data.rejectingUserRole,
+      performedAt: stage.actionTakenAt,
+      stageNumber: stage.stageNumber,
+      stageName: stage.stageName,
+      previousStatus: previousStatus as any,
+      newStatus: 'REJECTED',
+      remarks: data.remarks,
+      comments: data.comments,
+      signature: data.signature,
+    });
 
     return {
       success: true,

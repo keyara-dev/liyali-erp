@@ -103,6 +103,9 @@ export function CreateRequisitionClient({
           formData={formData}
           onBack={handleBack}
           onSubmit={handleSubmit}
+          userId={userId}
+          userName={userName}
+          userRole={userRole}
         />
       )}
     </div>

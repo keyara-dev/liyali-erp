@@ -1,15 +1,15 @@
 "use client";
 
-import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { toast } from "sonner";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Send, AlertCircle } from "lucide-react";
 import { PageHeader } from "@/components/base/page-header";
-import { useRequisitionById } from "@/hooks/use-requisition-queries";
+import { useRequisitionById, useSubmitRequisitionForApproval } from "@/hooks/use-requisition-queries";
+import { useRequisitionStorage } from "@/hooks/use-requisition-storage";
 import { Requisition } from "@/types/requisition";
 import { ApprovalHistoryPanel } from "./approval-history-panel";
+import { ActionHistoryPanel } from "./action-history-panel";
 import { EditRequisitionPanel } from "./edit-requisition-panel";
 import { DocumentLinks } from "@/components/document-links";
 import { WorkflowDocument } from "@/types";
@@ -35,7 +35,7 @@ export function RequisitionDetailClient({
   initialRequisition,
 }: RequisitionDetailClientProps) {
   const router = useRouter();
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { saveToStorage } = useRequisitionStorage();
 
   // Use the new hook with initialData from server component
   const {
@@ -44,18 +44,29 @@ export function RequisitionDetailClient({
     refetch,
   } = useRequisitionById(requisitionId, initialRequisition);
 
+  // Submit mutation
+  const submitMutation = useSubmitRequisitionForApproval(requisitionId, () => {
+    // After successful submission, refetch to get updated data
+    refetch();
+  });
+
   const handleSubmitForApproval = async () => {
     if (!requisition) return;
 
-    setIsSubmitting(true);
     try {
-      // Call the refetch to update the data
-      await refetch();
-      toast.success("Requisition submitted for approval");
+      await submitMutation.mutateAsync({
+        submittedBy: userId,
+        submittedByName: (requisition.requestedByName || 'User'),
+        submittedByRole: (requisition.requestedByRole || userRole),
+        comments: `Submitted for approval on ${new Date().toLocaleDateString()}`,
+      });
+
+      // Also save to localStorage
+      if (submitMutation.data?.data) {
+        saveToStorage(submitMutation.data.data);
+      }
     } catch (error) {
-      toast.error("Failed to submit requisition");
-    } finally {
-      setIsSubmitting(false);
+      console.error('Submit error:', error);
     }
   };
 
@@ -115,11 +126,11 @@ export function RequisitionDetailClient({
         {canSubmit && (
           <Button
             onClick={handleSubmitForApproval}
-            disabled={isSubmitting}
+            disabled={submitMutation.isPending}
             className="gap-2 h-11 mt-2"
           >
             <Send className="h-4 w-4" />
-            {isSubmitting ? "Submitting..." : "Submit for Approval"}
+            {submitMutation.isPending ? "Submitting..." : "Submit for Approval"}
           </Button>
         )}
       </div>
@@ -271,6 +282,12 @@ export function RequisitionDetailClient({
               onRequisitionUpdated={refetch}
             />
           )}
+
+          {/* Action History Panel */}
+          <ActionHistoryPanel
+            actionHistory={requisition.actionHistory}
+            approvalChain={requisition.approvalChain}
+          />
         </div>
 
         {/* Sidebar - Approval History */}

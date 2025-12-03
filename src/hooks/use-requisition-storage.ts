@@ -2,15 +2,16 @@
 
 import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Requisition } from '@/types/requisition';
+import { Requisition, ActionHistoryEntry } from '@/types/requisition';
 import { WorkflowDocument } from '@/types/workflow';
 import { getRequisitions } from '@/app/_actions/requisitions';
 import { QUERY_KEYS } from '@/lib/constants';
 
 const REQUISITIONS_STORAGE_KEY = 'liyali_requisitions';
+const ACTION_HISTORY_STORAGE_KEY = 'liyali_action_history';
 
 // ============================================================================
-// STORAGE UTILITIES
+// STORAGE UTILITIES - BASIC OPERATIONS
 // ============================================================================
 
 /**
@@ -30,7 +31,7 @@ function loadRequisitionsFromStorage(): Requisition[] {
 }
 
 /**
- * Save requisition to localStorage
+ * Save requisition to localStorage with deep merge of existing data
  */
 function saveRequisitionToStorage(requisition: Requisition): void {
   try {
@@ -38,7 +39,12 @@ function saveRequisitionToStorage(requisition: Requisition): void {
     const requisitions = loadRequisitionsFromStorage();
     const index = requisitions.findIndex(r => r.id === requisition.id);
     if (index >= 0) {
-      requisitions[index] = requisition;
+      // Deep merge: preserve actionHistory if not provided
+      requisitions[index] = {
+        ...requisitions[index],
+        ...requisition,
+        actionHistory: requisition.actionHistory || requisitions[index].actionHistory,
+      };
     } else {
       requisitions.push(requisition);
     }
@@ -101,6 +107,96 @@ function clearRequisitionsStorage(): void {
 }
 
 // ============================================================================
+// ACTION HISTORY UTILITIES
+// ============================================================================
+
+/**
+ * Generate unique ID for action history entries
+ */
+function generateActionId(): string {
+  return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+}
+
+/**
+ * Load all action history from localStorage
+ */
+function loadActionHistoryFromStorage(): ActionHistoryEntry[] {
+  try {
+    if (typeof window === 'undefined') return [];
+    const stored = localStorage.getItem(ACTION_HISTORY_STORAGE_KEY);
+    if (!stored) return [];
+    const parsed = JSON.parse(stored);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (error) {
+    console.error('Failed to load action history from storage:', error);
+    return [];
+  }
+}
+
+/**
+ * Get action history for a specific requisition
+ */
+function getActionHistoryForRequisition(requisitionId: string): ActionHistoryEntry[] {
+  try {
+    if (typeof window === 'undefined') return [];
+    const requisition = getRequisitionFromStorage(requisitionId);
+    return requisition?.actionHistory || [];
+  } catch (error) {
+    console.error('Failed to get action history for requisition:', error);
+    return [];
+  }
+}
+
+/**
+ * Add action to requisition's action history
+ */
+function addActionToRequisition(requisitionId: string, action: Omit<ActionHistoryEntry, 'id' | 'performedAt'>): ActionHistoryEntry | null {
+  try {
+    if (typeof window === 'undefined') return null;
+
+    const requisition = getRequisitionFromStorage(requisitionId);
+    if (!requisition) {
+      console.error('Requisition not found:', requisitionId);
+      return null;
+    }
+
+    const actionEntry: ActionHistoryEntry = {
+      ...action,
+      id: generateActionId(),
+      performedAt: new Date(),
+    };
+
+    if (!requisition.actionHistory) {
+      requisition.actionHistory = [];
+    }
+
+    requisition.actionHistory.push(actionEntry);
+    saveRequisitionToStorage(requisition);
+
+    return actionEntry;
+  } catch (error) {
+    console.error('Failed to add action to requisition:', error);
+    return null;
+  }
+}
+
+/**
+ * Clear action history for a requisition
+ */
+function clearActionHistoryForRequisition(requisitionId: string): void {
+  try {
+    if (typeof window === 'undefined') return;
+    const requisition = getRequisitionFromStorage(requisitionId);
+    if (requisition) {
+      requisition.actionHistory = [];
+      saveRequisitionToStorage(requisition);
+    }
+  } catch (error) {
+    console.error('Failed to clear action history:', error);
+  }
+}
+
+// ============================================================================
 // DATA CONVERSION
 // ============================================================================
 
@@ -150,7 +246,7 @@ export function convertRequisitionToWorkflowDocument(requisition: Requisition): 
  * @returns Object with hydration state and storage functions
  *
  * @example
- * const { isHydrated, loadFromStorage, saveToStorage } = useRequisitionStorage()
+ * const { isHydrated, loadFromStorage, saveToStorage, addAction } = useRequisitionStorage()
  */
 export function useRequisitionStorage() {
   const [isHydrated, setIsHydrated] = useState(false);
@@ -161,14 +257,106 @@ export function useRequisitionStorage() {
 
   return {
     isHydrated,
+    // Basic operations
     loadFromStorage: loadRequisitionsFromStorage,
     loadOneFromStorage: getRequisitionFromStorage,
     saveToStorage: saveRequisitionToStorage,
     saveMultiple: saveRequisitionsToStorage,
     deleteFromStorage: deleteRequisitionFromStorage,
     clearStorage: clearRequisitionsStorage,
+    // Action history operations
+    getActionHistory: getActionHistoryForRequisition,
+    addAction: addActionToRequisition,
+    clearActionHistory: clearActionHistoryForRequisition,
   };
 }
+
+/**
+ * Hook to sync requisition changes to localStorage automatically
+ * Useful for auto-save functionality
+ *
+ * @param requisitionId - ID of requisition to sync
+ * @param requisition - The requisition data to sync
+ * @param enabled - Whether syncing is enabled (default: true)
+ * @param debounceMs - Debounce time in milliseconds (default: 500)
+ *
+ * @example
+ * const { syncedAt } = useSyncRequisitionToStorage(requisitionId, requisition)
+ */
+export function useSyncRequisitionToStorage(
+  requisitionId: string,
+  requisition: Requisition | null | undefined,
+  enabled = true,
+  debounceMs = 500
+) {
+  const [syncedAt, setSyncedAt] = useState<Date | null>(null);
+  const [isSyncing, setIsSyncing] = useState(false);
+
+  useEffect(() => {
+    if (!enabled || !requisition) return;
+
+    const timer = setTimeout(() => {
+      setIsSyncing(true);
+      saveRequisitionToStorage(requisition);
+      setSyncedAt(new Date());
+      setIsSyncing(false);
+    }, debounceMs);
+
+    return () => clearTimeout(timer);
+  }, [requisition, enabled, debounceMs]);
+
+  return {
+    syncedAt,
+    isSyncing,
+  };
+}
+
+/**
+ * Hook to manage action history for a requisition
+ * Provides functions to add, retrieve, and clear actions
+ *
+ * @param requisitionId - ID of the requisition
+ * @returns Object with action history functions
+ *
+ * @example
+ * const { actions, addAction, clearActions } = useRequisitionActionHistory(requisitionId)
+ */
+export function useRequisitionActionHistory(requisitionId: string) {
+  const [actions, setActions] = useState<ActionHistoryEntry[]>([]);
+  const [isHydrated, setIsHydrated] = useState(false);
+
+  // Load initial action history
+  useEffect(() => {
+    const history = getActionHistoryForRequisition(requisitionId);
+    setActions(history);
+    setIsHydrated(true);
+  }, [requisitionId]);
+
+  const addAction = (action: Omit<ActionHistoryEntry, 'id' | 'performedAt'>): ActionHistoryEntry | null => {
+    const newAction = addActionToRequisition(requisitionId, action);
+    if (newAction) {
+      setActions(prev => [...prev, newAction]);
+    }
+    return newAction;
+  };
+
+  const clearActions = () => {
+    clearActionHistoryForRequisition(requisitionId);
+    setActions([]);
+  };
+
+  return {
+    actions,
+    isHydrated,
+    addAction,
+    clearActions,
+    actionCount: actions.length,
+  };
+}
+
+// ============================================================================
+// REACT QUERY HOOKS
+// ============================================================================
 
 /**
  * React Query hook for fetching all requisitions with localStorage fallback

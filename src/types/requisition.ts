@@ -26,6 +26,28 @@ export interface RequisitionItem {
 }
 
 /**
+ * Action History Entry
+ * Track every action performed on a requisition for audit trail
+ */
+export interface ActionHistoryEntry {
+  id: string; // UUID
+  actionType: 'CREATE' | 'UPDATE' | 'SUBMIT' | 'APPROVE' | 'REJECT' | 'REVERSE' | 'DELETE' | 'REVERT_TO_DRAFT';
+  performedBy: string; // User ID
+  performedByName: string;
+  performedByRole: string;
+  performedAt: Date;
+  stageNumber?: number; // For approval-related actions
+  stageName?: string;
+  comments?: string;
+  remarks?: string; // For rejections
+  signature?: string; // Digital signature (base64 encoded PNG)
+  previousStatus?: RequisitionStatus;
+  newStatus?: RequisitionStatus;
+  changedFields?: Record<string, { oldValue: any; newValue: any }>; // Track specific field changes
+  metadata?: Record<string, any>; // Any additional metadata
+}
+
+/**
  * Approval Record
  * Track each approval stage in the requisition workflow
  */
@@ -73,6 +95,9 @@ export interface Requisition {
   approvalChain?: ApprovalRecord[];
   currentApprovalStage?: number;
   totalApprovalStages?: number;
+
+  // Action history for audit trail
+  actionHistory?: ActionHistoryEntry[];
 
   // Metadata
   budgetCode?: string;

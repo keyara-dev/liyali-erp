@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -14,17 +15,32 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Loader2 } from "lucide-react";
-import { createWorkflowDocument } from "@/app/_actions/workflow";
+import { createRequisition } from "@/app/_actions/requisitions";
+import { useRequisitionStorage } from "@/hooks/use-requisition-storage";
+import { QUERY_KEYS } from "@/lib/constants";
 import { RequisitionFormData } from "./create-requisition-client";
+import { toast } from "sonner";
 
 interface FormPreviewProps {
   formData: RequisitionFormData;
   onBack: () => void;
   onSubmit: (data: RequisitionFormData) => void;
+  userId: string;
+  userName: string;
+  userRole: string;
 }
 
-export function FormPreview({ formData, onBack, onSubmit }: FormPreviewProps) {
+export function FormPreview({
+  formData,
+  onBack,
+  onSubmit,
+  userId,
+  userName,
+  userRole,
+}: FormPreviewProps) {
   const router = useRouter();
+  const queryClient = useQueryClient();
+  const { saveToStorage } = useRequisitionStorage();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -38,23 +54,54 @@ export function FormPreview({ formData, onBack, onSubmit }: FormPreviewProps) {
     setError(null);
 
     try {
-      const result = await createWorkflowDocument("REQUISITION", {
+      // Create requisition with proper structure
+      const result = await createRequisition({
+        title: formData.requestedFor,
+        description: formData.justification,
         department: formData.department,
-        requestedFor: formData.requestedFor,
-        items: formData.items,
-        justification: formData.justification,
+        departmentId: formData.department.toLowerCase(),
+        requiredByDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
+        priority: 'MEDIUM',
+        items: formData.items.map((item, index) => ({
+          itemNumber: index + 1,
+          description: item.itemDescription,
+          category: 'General',
+          quantity: item.quantity,
+          unitPrice: item.estimatedCost,
+          unit: 'unit',
+          totalPrice: item.quantity * item.estimatedCost,
+          notes: '',
+        })),
         budgetCode: formData.budgetCode,
+        costCenter: '',
+        projectCode: '',
+        createdBy: userId,
+        createdByName: userName,
+        createdByRole: userRole,
       });
 
-      if (result.success) {
-        // Redirect to requisitions list
-        router.push("/requisitions");
+      if (result.success && result.data) {
+        // Save to localStorage for persistence
+        saveToStorage(result.data);
+
+        // Invalidate React Query cache
+        queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.REQUISITIONS.ALL] });
+        queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.REQUISITIONS.BY_USER] });
+
+        // Show success message
+        toast.success('Requisition created successfully!');
+
+        // Redirect to the newly created requisition details
+        router.push(`/requisitions/${result.data.id}`);
       } else {
-        setError(result.message || "Failed to create requisition");
+        setError(result.message || 'Failed to create requisition');
+        toast.error(result.message || 'Failed to create requisition');
       }
     } catch (err) {
-      console.error("Submit error:", err);
-      setError("An error occurred while submitting the requisition");
+      console.error('Submit error:', err);
+      const errorMessage = 'An error occurred while submitting the requisition';
+      setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
