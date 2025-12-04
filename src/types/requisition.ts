@@ -76,6 +76,8 @@ export interface Requisition {
   requisitionNumber: string; // e.g., "REQ-2024-001"
   title: string;
   description?: string;
+  vendorId?: string; // Optional vendor for PO creation
+  vendorName?: string; // Optional vendor name for PO creation
   department: string;
   departmentId: string;
   requestedBy: string; // User ID
@@ -98,6 +100,9 @@ export interface Requisition {
 
   // Action history for audit trail
   actionHistory?: ActionHistoryEntry[];
+
+  // Related Purchase Orders (created from this requisition when approved)
+  relatedPurchaseOrders?: string[]; // Array of PO IDs
 
   // Metadata
   budgetCode?: string;

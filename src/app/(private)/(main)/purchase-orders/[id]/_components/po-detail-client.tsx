@@ -5,10 +5,11 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Building2, TrendingUp } from "lucide-react";
+import { ArrowLeft, Building2, TrendingUp, Download } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PageHeader } from "@/components/base/page-header";
 import { POItemsTable } from "./po-items-table";
+import { exportPurchaseOrderPDF } from "@/lib/pdf/pdf-export";
 
 interface PODetailClientProps {
   poId: string;
@@ -135,6 +136,7 @@ export function PODetailClient({
   const router = useRouter();
   const [po, setPO] = useState<PurchaseOrder | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isExporting, setIsExporting] = useState(false);
 
   useEffect(() => {
     // Simulate data loading
@@ -145,6 +147,21 @@ export function PODetailClient({
 
     return () => clearTimeout(timer);
   }, [poId]);
+
+  const handleExportPDF = async () => {
+    if (!po) return;
+    try {
+      setIsExporting(true);
+      // Convert mock PO to PurchaseOrder type from types
+      await exportPurchaseOrderPDF(po as any);
+      toast.success('Purchase Order exported as PDF');
+    } catch (error) {
+      console.error('PDF export error:', error);
+      toast.error('Failed to export PDF');
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   const handleApprove = () => {
     toast.success("Navigating to approval...");
@@ -174,18 +191,29 @@ export function PODetailClient({
   return (
     <div className="space-y-6">
       {/* Header */}
-      <PageHeader
-        title={po.poNumber}
-        subtitle="Purchase Order Details"
-        badges={[
-          {
-            status: po.status,
-            type: "document",
-          },
-        ]}
-        onBackClick={handleBack}
-        showBackButton={true}
-      />
+      <div className="flex items-start justify-between gap-4">
+        <PageHeader
+          title={po.poNumber}
+          subtitle="Purchase Order Details"
+          badges={[
+            {
+              status: po.status,
+              type: "document",
+            },
+          ]}
+          onBackClick={handleBack}
+          showBackButton={true}
+        />
+        <Button
+          onClick={handleExportPDF}
+          disabled={isExporting}
+          variant="outline"
+          className="gap-2 h-11 mt-2"
+        >
+          <Download className="h-4 w-4" />
+          {isExporting ? "Exporting..." : "Export PDF"}
+        </Button>
+      </div>
 
       {/* Vendor Information */}
       <Card>

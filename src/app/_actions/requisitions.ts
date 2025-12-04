@@ -12,6 +12,7 @@ import {
   RequisitionStats,
 } from '@/types/requisition';
 import { APIResponse } from '@/types';
+import { createPurchaseOrderFromRequisition } from './purchase-orders';
 
 /**
  * Mock requisitions database
@@ -646,9 +647,22 @@ export async function approveRequisition(
       signature: data.signature,
     });
 
+    // CRITICAL: Create Purchase Order from fully approved requisition
+    if (allApproved) {
+      const poResult = await createPurchaseOrderFromRequisition(requisition);
+      if (poResult.success && poResult.data) {
+        // Initialize relatedPurchaseOrders array if not present
+        if (!requisition.relatedPurchaseOrders) {
+          requisition.relatedPurchaseOrders = [];
+        }
+        // Link the created PO back to this requisition
+        requisition.relatedPurchaseOrders.push(poResult.data.id);
+      }
+    }
+
     return {
       success: true,
-      message: allApproved ? 'Requisition approved' : 'Approval recorded, moving to next stage',
+      message: allApproved ? 'Requisition approved and Purchase Order created' : 'Approval recorded, moving to next stage',
       data: requisition,
       status: 200,
       statusText: 'OK',

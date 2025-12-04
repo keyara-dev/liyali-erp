@@ -10,9 +10,11 @@ import {
   TrendingUp,
   FileText,
   DollarSign,
+  Download,
 } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
 import { PageHeader } from '@/components/base/page-header'
+import { exportPaymentVoucherPDF } from '@/lib/pdf/pdf-export'
 
 interface PVDetailClientProps {
   pvId: string
@@ -142,6 +144,7 @@ export function PVDetailClient({
   const router = useRouter()
   const [pv, setPV] = useState<PaymentVoucher | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [isExporting, setIsExporting] = useState(false)
 
   useEffect(() => {
     // Simulate data loading
@@ -152,6 +155,21 @@ export function PVDetailClient({
 
     return () => clearTimeout(timer)
   }, [pvId])
+
+  const handleExportPDF = async () => {
+    if (!pv) return
+    try {
+      setIsExporting(true)
+      // Convert mock PV to PaymentVoucher type from types
+      await exportPaymentVoucherPDF(pv as any)
+      toast.success('Payment Voucher exported as PDF')
+    } catch (error) {
+      console.error('PDF export error:', error)
+      toast.error('Failed to export PDF')
+    } finally {
+      setIsExporting(false)
+    }
+  }
 
   const handleApprove = () => {
     toast.success('Navigating to approval...')
@@ -181,18 +199,29 @@ export function PVDetailClient({
   return (
     <div className="space-y-6">
       {/* Header */}
-      <PageHeader
-        title={pv.voucherNumber}
-        subtitle="Payment Voucher Details"
-        badges={[
-          {
-            status: pv.status,
-            type: "document",
-          },
-        ]}
-        onBackClick={handleBack}
-        showBackButton={true}
-      />
+      <div className="flex items-start justify-between gap-4">
+        <PageHeader
+          title={pv.voucherNumber}
+          subtitle="Payment Voucher Details"
+          badges={[
+            {
+              status: pv.status,
+              type: "document",
+            },
+          ]}
+          onBackClick={handleBack}
+          showBackButton={true}
+        />
+        <Button
+          onClick={handleExportPDF}
+          disabled={isExporting}
+          variant="outline"
+          className="gap-2 h-11 mt-2"
+        >
+          <Download className="h-4 w-4" />
+          {isExporting ? "Exporting..." : "Export PDF"}
+        </Button>
+      </div>
 
       {/* Status and Stage Info */}
       <div className="grid gap-4 md:grid-cols-2">

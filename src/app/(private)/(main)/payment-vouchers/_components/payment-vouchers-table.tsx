@@ -10,7 +10,6 @@ import {
   Eye,
   CheckCircle2,
   XCircle,
-  QrCode,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -23,9 +22,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { DataTable } from "@/components/ui/data-table";
 import { StatusBadge as CentralizedStatusBadge } from "@/components/status-badge";
-import { WorkflowDocument } from "@/types/workflow";
 import { usePaymentVouchersAsWorkflowDocuments } from "@/hooks/use-payment-voucher-storage";
-import { convertPaymentVoucherToWorkflowDocument } from "@/hooks/use-payment-voucher-storage";
 
 interface PaymentVouchersTableProps {
   userId: string;
@@ -50,10 +47,29 @@ function StageIndicator({
   );
 }
 
+// PV Document type for table display
+interface PVDocumentRow {
+  id: string;
+  documentNumber: string;
+  title: string;
+  status: string;
+  priority: string;
+  vendorName: string;
+  department: string;
+  totalAmount: number;
+  currency: string;
+  createdAt: Date;
+  createdBy: string;
+  submittedAt?: Date;
+  approvedAt?: Date;
+  currentApprovalStage?: number;
+  totalApprovalStages?: number;
+}
+
 // Columns definition
 function getColumns(
   onViewClick: (id: string) => void
-): ColumnDef<WorkflowDocument>[] {
+): ColumnDef<PVDocumentRow>[] {
   return [
     {
       id: "voucherNumber",
@@ -74,13 +90,13 @@ function getColumns(
     },
     {
       id: "vendor",
-      accessorKey: "metadata.vendorName",
+      accessorKey: "vendorName",
       header: "Vendor",
-      cell: ({ row }) => <div>{row.original.metadata?.vendorName || "-"}</div>,
+      cell: ({ row }) => <div>{row.original.vendorName || "-"}</div>,
     },
     {
-      id: "netAmount",
-      accessorKey: "metadata.netAmount",
+      id: "amount",
+      accessorKey: "totalAmount",
       header: ({ column }) => (
         <Button
           variant="ghost"
@@ -93,17 +109,7 @@ function getColumns(
       ),
       cell: ({ row }) => (
         <div className="font-medium">
-          K {(row.original.metadata?.netAmount || 0).toLocaleString()}
-        </div>
-      ),
-    },
-    {
-      id: "reference",
-      accessorKey: "metadata.paymentReference",
-      header: "Reference",
-      cell: ({ row }) => (
-        <div className="text-sm font-mono">
-          {row.original.metadata?.paymentReference || "-"}
+          {row.original.currency} {(row.original.totalAmount || 0).toLocaleString()}
         </div>
       ),
     },
@@ -120,12 +126,12 @@ function getColumns(
     },
     {
       id: "stage",
-      accessorKey: "currentStage",
+      accessorKey: "currentApprovalStage",
       header: "Stage",
       cell: ({ row }) => (
         <StageIndicator
-          currentStage={row.original.currentStage || 1}
-          totalStages={4}
+          currentStage={row.original.currentApprovalStage || 1}
+          totalStages={row.original.totalApprovalStages || 3}
         />
       ),
     },
@@ -173,12 +179,6 @@ function getColumns(
               <Download className="h-4 w-4" />
               Download PDF
             </DropdownMenuItem>
-            {row.original.metadata?.paymentReference && (
-              <DropdownMenuItem className="flex items-center gap-2">
-                <QrCode className="h-4 w-4" />
-                View QR Code
-              </DropdownMenuItem>
-            )}
             {row.original.status === "IN_REVIEW" && (
               <>
                 <DropdownMenuSeparator />
@@ -208,7 +208,7 @@ export function PaymentVouchersTable({
   const router = useRouter();
   const { data: paymentVouchers, isLoading } =
     usePaymentVouchersAsWorkflowDocuments(true);
-  const [data, setData] = useState<WorkflowDocument[]>([]);
+  const [data, setData] = useState<PVDocumentRow[]>([]);
 
   useEffect(() => {
     if (paymentVouchers && paymentVouchers.length > 0) {

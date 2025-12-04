@@ -1,9 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Send, AlertCircle } from "lucide-react";
+import { Send, AlertCircle, Download } from "lucide-react";
 import { PageHeader } from "@/components/base/page-header";
 import { useRequisitionById, useSubmitRequisitionForApproval } from "@/hooks/use-requisition-queries";
 import { useRequisitionStorage } from "@/hooks/use-requisition-storage";
@@ -20,6 +21,8 @@ import {
   EmptyMedia,
 } from "@/components/ui/empty";
 import { Package } from "lucide-react";
+import { exportRequisitionPDF } from "@/lib/pdf/pdf-export";
+import { toast } from "sonner";
 
 interface RequisitionDetailClientProps {
   requisitionId: string;
@@ -36,6 +39,7 @@ export function RequisitionDetailClient({
 }: RequisitionDetailClientProps) {
   const router = useRouter();
   const { saveToStorage } = useRequisitionStorage();
+  const [isExporting, setIsExporting] = useState(false);
 
   // Use the new hook with initialData from server component
   const {
@@ -49,6 +53,20 @@ export function RequisitionDetailClient({
     // After successful submission, refetch to get updated data
     refetch();
   });
+
+  const handleExportPDF = async () => {
+    if (!requisition) return;
+    try {
+      setIsExporting(true);
+      await exportRequisitionPDF(requisition);
+      toast.success('Requisition exported as PDF');
+    } catch (error) {
+      console.error('PDF export error:', error);
+      toast.error('Failed to export PDF');
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   const handleSubmitForApproval = async () => {
     if (!requisition) return;
@@ -123,16 +141,27 @@ export function RequisitionDetailClient({
           onBackClick={() => router.back()}
           showBackButton={true}
         />
-        {canSubmit && (
+        <div className="flex gap-2 mt-2">
           <Button
-            onClick={handleSubmitForApproval}
-            disabled={submitMutation.isPending}
-            className="gap-2 h-11 mt-2"
+            onClick={handleExportPDF}
+            disabled={isExporting}
+            variant="outline"
+            className="gap-2 h-11"
           >
-            <Send className="h-4 w-4" />
-            {submitMutation.isPending ? "Submitting..." : "Submit for Approval"}
+            <Download className="h-4 w-4" />
+            {isExporting ? "Exporting..." : "Export PDF"}
           </Button>
-        )}
+          {canSubmit && (
+            <Button
+              onClick={handleSubmitForApproval}
+              disabled={submitMutation.isPending}
+              className="gap-2 h-11"
+            >
+              <Send className="h-4 w-4" />
+              {submitMutation.isPending ? "Submitting..." : "Submit for Approval"}
+            </Button>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

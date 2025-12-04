@@ -1,10 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { PaymentVoucher } from '@/types/workflow';
-import { WorkflowDocument } from '@/types/workflow';
+import { PaymentVoucher, PVActionHistoryEntry } from '@/types/payment-voucher';
 import { QUERY_KEYS } from '@/lib/constants';
+import { getPaymentVouchers, getPaymentVoucherById } from '@/app/_actions/payment-vouchers';
 
 const PV_STORAGE_KEY = 'liyali_payment_vouchers';
 
@@ -92,26 +92,32 @@ function clearPaymentVouchersStorage(): void {
 // ============================================================================
 
 /**
- * Convert a PaymentVoucher to a WorkflowDocument for display in tables
+ * Convert a PaymentVoucher to workflow document format for display in tables
  */
-function paymentVoucherToWorkflowDocument(pv: PaymentVoucher): WorkflowDocument {
+function paymentVoucherToWorkflowDocument(pv: PaymentVoucher) {
   return {
     id: pv.id,
-    type: 'PAYMENT_VOUCHER',
-    documentNumber: `PV-${pv.id.substring(0, 8).toUpperCase()}`,
-    status: pv.status as any,
-    currentStage: pv.currentStage || 1,
-    createdBy: pv.createdBy,
+    documentNumber: pv.pvNumber,
+    title: pv.title,
+    status: pv.status,
+    priority: pv.priority,
+    vendorName: pv.vendorName,
+    department: pv.department,
+    totalAmount: pv.totalAmount,
+    currency: pv.currency,
     createdAt: pv.createdAt instanceof Date ? pv.createdAt : new Date(pv.createdAt),
-    updatedAt: pv.updatedAt instanceof Date ? pv.updatedAt : new Date(pv.updatedAt),
-    metadata: pv.metadata,
+    createdBy: pv.requestedByName,
+    submittedAt: pv.submittedAt,
+    approvedAt: pv.approvedAt,
+    currentApprovalStage: pv.currentApprovalStage,
+    totalApprovalStages: pv.totalApprovalStages,
   };
 }
 
 /**
  * Public export of conversion function for use in components
  */
-export function convertPaymentVoucherToWorkflowDocument(pv: PaymentVoucher): WorkflowDocument {
+export function convertPaymentVoucherToWorkflowDocument(pv: PaymentVoucher) {
   return paymentVoucherToWorkflowDocument(pv);
 }
 
@@ -123,55 +129,135 @@ export function convertPaymentVoucherToWorkflowDocument(pv: PaymentVoucher): Wor
  * Hook to manage payment voucher data with localStorage persistence
  */
 export function usePaymentVoucherStorage() {
+  const [pvs, setPVs] = useState<PaymentVoucher[]>([]);
   const [isHydrated, setIsHydrated] = useState(false);
 
   useEffect(() => {
+    setPVs(loadPaymentVouchersFromStorage());
     setIsHydrated(true);
   }, []);
 
+  // Update single PV in storage
+  const updatePV = useCallback(
+    (updatedPV: PaymentVoucher) => {
+      const updated = pvs.map((pv) => (pv.id === updatedPV.id ? updatedPV : pv));
+      setPVs(updated);
+      localStorage.setItem(PV_STORAGE_KEY, JSON.stringify(updated));
+    },
+    [pvs]
+  );
+
+  // Add PV to storage
+  const addPV = useCallback(
+    (newPV: PaymentVoucher) => {
+      const updated = [...pvs, newPV];
+      setPVs(updated);
+      localStorage.setItem(PV_STORAGE_KEY, JSON.stringify(updated));
+    },
+    [pvs]
+  );
+
+  // Find PV by ID
+  const findById = useCallback(
+    (pvId: string): PaymentVoucher | undefined => {
+      return pvs.find((pv) => pv.id === pvId);
+    },
+    [pvs]
+  );
+
   return {
+    pvs,
     isHydrated,
     loadFromStorage: loadPaymentVouchersFromStorage,
     loadOneFromStorage: getPaymentVoucherFromStorage,
     saveToStorage: savePaymentVoucherToStorage,
     deleteFromStorage: deletePaymentVoucherFromStorage,
     clearStorage: clearPaymentVouchersStorage,
+    updatePV,
+    addPV,
+    findById,
   };
+}
+
+/**
+ * Action history management for PVs
+ */
+export const usePaymentVoucherActionHistory = (pvId: string) => {
+  const { findById, updatePV } = usePaymentVoucherStorage();
+
+  const addAction = useCallback(
+    (action: PVActionHistoryEntry) => {
+      const pv = findById(pvId);
+      if (pv) {
+        if (!pv.actionHistory) {
+          pv.actionHistory = [];
+        }
+        pv.actionHistory.push(action);
+        pv.updatedAt = new Date();
+        updatePV(pv);
+      }
+    },
+    [pvId, findById, updatePV]
+  );
+
+  const getHistory = useCallback(() => {
+    const pv = findById(pvId);
+    return pv?.actionHistory || [];
+  }, [pvId, findById]);
+
+  return { addAction, getHistory };
 }
 
 /**
  * React Query hook for fetching all payment vouchers with localStorage fallback
  */
-export const usePaymentVouchersWithStorage = (includeStorageData = true) =>
-  useQuery({
-    queryKey: [QUERY_KEYS.PAYMENT_VOUCHERS?.ALL || 'PAYMENT_VOUCHERS', 'with-storage'],
+export const usePaymentVouchersWithStorage = (initialData?: PaymentVoucher[]) => {
+  const { pvs } = usePaymentVoucherStorage();
+
+  return useQuery({
+    queryKey: [QUERY_KEYS.PAYMENT_VOUCHERS.ALL],
     queryFn: async () => {
-      let allVouchers: PaymentVoucher[] = [];
-
-      // Load from localStorage only (mock data)
-      if (typeof window !== 'undefined') {
-        try {
-          const storedVouchers = loadPaymentVouchersFromStorage();
-          if (storedVouchers && storedVouchers.length > 0) {
-            allVouchers = storedVouchers;
-          }
-        } catch (storageError) {
-          console.error('Failed to load payment vouchers from storage:', storageError);
-        }
+      const response = await getPaymentVouchers();
+      if (response.success && response.data) {
+        // Save all to localStorage
+        localStorage.setItem(PV_STORAGE_KEY, JSON.stringify(response.data));
+        return response.data;
       }
-
-      return allVouchers;
+      return pvs;
     },
+    initialData: initialData || pvs,
     staleTime: 5 * 60 * 1000,
-    gcTime: 10 * 60 * 1000,
   });
+};
+
+/**
+ * React Query hook for fetching single PV with localStorage fallback
+ */
+export const usePaymentVoucherWithStorage = (pvId: string, initialData?: PaymentVoucher) => {
+  const { findById, updatePV } = usePaymentVoucherStorage();
+  const storagePV = findById(pvId);
+
+  return useQuery({
+    queryKey: [QUERY_KEYS.PAYMENT_VOUCHERS.BY_ID, pvId],
+    queryFn: async () => {
+      const response = await getPaymentVoucherById(pvId);
+      if (response.success && response.data) {
+        updatePV(response.data);
+        return response.data;
+      }
+      return storagePV;
+    },
+    initialData: initialData || storagePV,
+    staleTime: 5 * 60 * 1000,
+  });
+};
 
 /**
  * React Query hook for fetching payment vouchers as workflow documents
  */
 export const usePaymentVouchersAsWorkflowDocuments = (includeStorageData = true) =>
   useQuery({
-    queryKey: [QUERY_KEYS.PAYMENT_VOUCHERS?.ALL || 'PAYMENT_VOUCHERS', 'as-documents'],
+    queryKey: [QUERY_KEYS.PAYMENT_VOUCHERS.ALL, 'as-documents'],
     queryFn: async () => {
       const vouchers = loadPaymentVouchersFromStorage();
       return vouchers.map(paymentVoucherToWorkflowDocument);

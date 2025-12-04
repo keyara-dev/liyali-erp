@@ -132,6 +132,7 @@ export const QUERY_KEYS = {
     ALL: "purchase-orders-all",
     BY_ID: "purchase-order-by-id",
     BY_USER: "purchase-orders-by-user",
+    STATS: "purchase-orders-stats",
   },
 
   // Payment Vouchers
@@ -139,6 +140,7 @@ export const QUERY_KEYS = {
     ALL: "payment-vouchers-all",
     BY_ID: "payment-voucher-by-id",
     BY_USER: "payment-vouchers-by-user",
+    STATS: "payment-vouchers-stats",
   },
 
   // GRN
