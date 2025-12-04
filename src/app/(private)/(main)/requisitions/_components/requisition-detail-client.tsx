@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Send, AlertCircle, Download } from "lucide-react";
+import { Send, AlertCircle, Download, Eye } from "lucide-react";
 import { PageHeader } from "@/components/base/page-header";
 import { useRequisitionById, useSubmitRequisitionForApproval } from "@/hooks/use-requisition-queries";
 import { useRequisitionStorage } from "@/hooks/use-requisition-storage";
@@ -21,8 +21,9 @@ import {
   EmptyMedia,
 } from "@/components/ui/empty";
 import { Package } from "lucide-react";
-import { exportRequisitionPDF } from "@/lib/pdf/pdf-export";
+import { exportRequisitionPDF, getRequisitionPDFBlob } from "@/lib/pdf/pdf-export";
 import { toast } from "sonner";
+import { PDFPreviewDialog } from "@/components/pdf-preview-dialog";
 
 interface RequisitionDetailClientProps {
   requisitionId: string;
@@ -40,6 +41,8 @@ export function RequisitionDetailClient({
   const router = useRouter();
   const { saveToStorage } = useRequisitionStorage();
   const [isExporting, setIsExporting] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewBlob, setPreviewBlob] = useState<Blob | null>(null);
 
   // Use the new hook with initialData from server component
   const {
@@ -53,6 +56,21 @@ export function RequisitionDetailClient({
     // After successful submission, refetch to get updated data
     refetch();
   });
+
+  const handlePreviewPDF = async () => {
+    if (!requisition) return;
+    try {
+      setIsExporting(true);
+      const blob = await getRequisitionPDFBlob(requisition);
+      setPreviewBlob(blob);
+      setPreviewOpen(true);
+    } catch (error) {
+      console.error('PDF preview error:', error);
+      toast.error('Failed to generate PDF preview');
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   const handleExportPDF = async () => {
     if (!requisition) return;
@@ -142,6 +160,15 @@ export function RequisitionDetailClient({
           showBackButton={true}
         />
         <div className="flex gap-2 mt-2">
+          <Button
+            onClick={handlePreviewPDF}
+            disabled={isExporting}
+            variant="outline"
+            className="gap-2 h-11"
+          >
+            <Eye className="h-4 w-4" />
+            {isExporting ? "Loading..." : "Preview"}
+          </Button>
           <Button
             onClick={handleExportPDF}
             disabled={isExporting}
@@ -328,6 +355,17 @@ export function RequisitionDetailClient({
           />
         </div>
       </div>
+
+      {/* PDF Preview Dialog */}
+      {previewBlob && (
+        <PDFPreviewDialog
+          open={previewOpen}
+          onOpenChange={setPreviewOpen}
+          pdfBlob={previewBlob}
+          fileName={`REQ-${requisition.requisitionNumber}.pdf`}
+          onDownload={handleExportPDF}
+        />
+      )}
     </div>
   );
 }

@@ -11,10 +11,12 @@ import {
   FileText,
   DollarSign,
   Download,
+  Eye,
 } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
 import { PageHeader } from '@/components/base/page-header'
-import { exportPaymentVoucherPDF } from '@/lib/pdf/pdf-export'
+import { PDFPreviewDialog } from '@/components/pdf-preview-dialog'
+import { exportPaymentVoucherPDF, getPaymentVoucherPDFBlob } from '@/lib/pdf/pdf-export'
 
 interface PVDetailClientProps {
   pvId: string
@@ -145,6 +147,8 @@ export function PVDetailClient({
   const [pv, setPV] = useState<PaymentVoucher | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isExporting, setIsExporting] = useState(false)
+  const [previewOpen, setPreviewOpen] = useState(false)
+  const [previewBlob, setPreviewBlob] = useState<Blob | null>(null)
 
   useEffect(() => {
     // Simulate data loading
@@ -166,6 +170,22 @@ export function PVDetailClient({
     } catch (error) {
       console.error('PDF export error:', error)
       toast.error('Failed to export PDF')
+    } finally {
+      setIsExporting(false)
+    }
+  }
+
+
+  const handlePreviewPDF = async () => {
+    if (!pv) return
+    try {
+      setIsExporting(true)
+      const blob = await getPaymentVoucherPDFBlob(pv as any)
+      setPreviewBlob(blob)
+      setPreviewOpen(true)
+    } catch (error) {
+      console.error('PDF preview error:', error)
+      toast.error('Failed to generate PDF preview')
     } finally {
       setIsExporting(false)
     }
@@ -213,6 +233,15 @@ export function PVDetailClient({
           showBackButton={true}
         />
         <Button
+        <Button
+          onClick={handlePreviewPDF}
+          disabled={isExporting}
+          variant="outline"
+          className="gap-2 h-11 mt-2 mr-2"
+        >
+          <Eye className="h-4 w-4" />
+          {isExporting ? "Loading..." : "Preview"}
+        </Button>
           onClick={handleExportPDF}
           disabled={isExporting}
           variant="outline"
@@ -412,6 +441,19 @@ export function PVDetailClient({
           </Button>
         )}
       </div>
+    </div>
+  )
+}
+
+      {/* PDF Preview Dialog */}
+      {previewBlob && (
+        <PDFPreviewDialog
+          open={previewOpen}
+          onOpenChange={setPreviewOpen}
+          pdfBlob={previewBlob}
+          fileName={`PV-${pv.voucherNumber}.pdf`}
+          onDownload={handleExportPDF}
+        />
     </div>
   )
 }

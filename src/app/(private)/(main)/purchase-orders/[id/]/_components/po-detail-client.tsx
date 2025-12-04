@@ -25,6 +25,8 @@ import {
   ArrowLeft,
   Calendar,
   DollarSign,
+  Download,
+  Eye,
   FileText,
   Package,
   User,
@@ -34,6 +36,9 @@ import { usePurchaseOrderStorage } from '@/hooks/use-purchase-order-storage'
 import { usePurchaseOrderById } from '@/hooks/use-purchase-order-queries'
 import { POActionHistoryPanel } from '../../../_components/po-action-history-panel'
 import { POApprovalActionPanel } from '../../../_components/po-approval-action-panel'
+import { exportPurchaseOrderPDF, getPurchaseOrderPDFBlob } from '@/lib/pdf/pdf-export'
+import { toast } from 'sonner'
+import { PDFPreviewDialog } from '@/components/pdf-preview-dialog'
 
 interface PODetailClientProps {
   poId: string
@@ -45,6 +50,9 @@ export function PODetailClient({ poId, initialPO }: PODetailClientProps) {
   const { saveToStorage } = usePurchaseOrderStorage()
   const { data: purchaseOrder, isLoading, refetch } = usePurchaseOrderById(poId, initialPO)
   const [isRefreshing, setIsRefreshing] = useState(false)
+  const [isExporting, setIsExporting] = useState(false)
+  const [previewOpen, setPreviewOpen] = useState(false)
+  const [previewBlob, setPreviewBlob] = useState<Blob | null>(null)
 
   const handleRefresh = async () => {
     setIsRefreshing(true)
@@ -52,6 +60,35 @@ export function PODetailClient({ poId, initialPO }: PODetailClientProps) {
       await refetch()
     } finally {
       setIsRefreshing(false)
+    }
+  }
+
+  const handlePreviewPDF = async () => {
+    if (!purchaseOrder) return
+    try {
+      setIsExporting(true)
+      const blob = await getPurchaseOrderPDFBlob(purchaseOrder)
+      setPreviewBlob(blob)
+      setPreviewOpen(true)
+    } catch (error) {
+      console.error('PDF preview error:', error)
+      toast.error('Failed to generate PDF preview')
+    } finally {
+      setIsExporting(false)
+    }
+  }
+
+  const handleExportPDF = async () => {
+    if (!purchaseOrder) return
+    try {
+      setIsExporting(true)
+      await exportPurchaseOrderPDF(purchaseOrder)
+      toast.success('Purchase order exported as PDF')
+    } catch (error) {
+      console.error('PDF export error:', error)
+      toast.error('Failed to export PDF')
+    } finally {
+      setIsExporting(false)
     }
   }
 
@@ -131,6 +168,26 @@ export function PODetailClient({ poId, initialPO }: PODetailClientProps) {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <Button
+            onClick={handlePreviewPDF}
+            disabled={isExporting}
+            variant="outline"
+            size="sm"
+            className="gap-2"
+          >
+            <Eye className="h-4 w-4" />
+            {isExporting ? 'Loading...' : 'Preview'}
+          </Button>
+          <Button
+            onClick={handleExportPDF}
+            disabled={isExporting}
+            variant="outline"
+            size="sm"
+            className="gap-2"
+          >
+            <Download className="h-4 w-4" />
+            {isExporting ? 'Exporting...' : 'Export PDF'}
+          </Button>
           <Badge className={getStatusColor(purchaseOrder.status)}>
             {purchaseOrder.status}
           </Badge>
@@ -399,6 +456,17 @@ export function PODetailClient({ poId, initialPO }: PODetailClientProps) {
         <POActionHistoryPanel
           actionHistory={purchaseOrder.actionHistory}
           approvalChain={purchaseOrder.approvalChain}
+        />
+      )}
+
+      {/* PDF Preview Dialog */}
+      {previewBlob && (
+        <PDFPreviewDialog
+          open={previewOpen}
+          onOpenChange={setPreviewOpen}
+          pdfBlob={previewBlob}
+          fileName={`PO-${purchaseOrder.poNumber}.pdf`}
+          onDownload={handleExportPDF}
         />
       )}
     </div>

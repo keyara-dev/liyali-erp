@@ -50,6 +50,8 @@ export function WorkflowsClient({ userId, userRole }: WorkflowsClientProps) {
   const [workflows, setWorkflows] = useState<Workflow[]>([])
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [duplicateId, setDuplicateId] = useState<string | null>(null)
+  const [isDuplicating, setIsDuplicating] = useState(false)
 
   // Load workflows from localStorage on mount
   useEffect(() => {
@@ -90,26 +92,46 @@ export function WorkflowsClient({ userId, userRole }: WorkflowsClientProps) {
     }
   }
 
-  const handleDuplicate = (workflow: Workflow) => {
-    const duplicated = duplicateWorkflow(workflow.id)
-    if (duplicated) {
-      setWorkflows([
-        ...workflows,
-        {
-          id: duplicated.id,
-          name: duplicated.name,
-          description: duplicated.description,
-          documentType: duplicated.documentType,
-          stages: duplicated.stages,
-          status: duplicated.status,
-          createdAt: duplicated.createdAt,
-          updatedAt: duplicated.updatedAt,
-          createdBy: duplicated.createdBy,
-        },
-      ])
-      toast.success(`${workflow.name} duplicated successfully`)
-    } else {
+  const handleDuplicateClick = (workflowId: string) => {
+    setDuplicateId(workflowId)
+  }
+
+  const handleDuplicate = async () => {
+    if (!duplicateId) return
+
+    setIsDuplicating(true)
+    try {
+      const workflow = workflows.find((w) => w.id === duplicateId)
+      if (!workflow) {
+        toast.error('Workflow not found')
+        return
+      }
+
+      const duplicated = duplicateWorkflow(duplicateId)
+      if (duplicated) {
+        setWorkflows([
+          ...workflows,
+          {
+            id: duplicated.id,
+            name: duplicated.name,
+            description: duplicated.description,
+            documentType: duplicated.documentType,
+            stages: duplicated.stages,
+            status: duplicated.status,
+            createdAt: duplicated.createdAt,
+            updatedAt: duplicated.updatedAt,
+            createdBy: duplicated.createdBy,
+          },
+        ])
+        toast.success(`${workflow.name} duplicated successfully`)
+        setDuplicateId(null)
+      } else {
+        toast.error('Failed to duplicate workflow')
+      }
+    } catch (error) {
       toast.error('Failed to duplicate workflow')
+    } finally {
+      setIsDuplicating(false)
     }
   }
 
@@ -207,7 +229,7 @@ export function WorkflowsClient({ userId, userRole }: WorkflowsClientProps) {
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => handleDuplicate(workflow)}
+                            onClick={() => handleDuplicateClick(workflow.id)}
                             className="gap-2"
                           >
                             <Copy className="h-4 w-4" />
@@ -248,6 +270,27 @@ export function WorkflowsClient({ userId, userRole }: WorkflowsClientProps) {
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {isDeleting ? 'Deleting...' : 'Delete'}
+            </AlertDialogAction>
+          </div>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={!!duplicateId} onOpenChange={() => setDuplicateId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Duplicate Workflow?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will create a copy of the workflow with &quot;(Copy)&quot; appended to the name.
+              You can edit the duplicate independently.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="flex gap-2 justify-end">
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDuplicate}
+              disabled={isDuplicating}
+            >
+              {isDuplicating ? 'Duplicating...' : 'Duplicate'}
             </AlertDialogAction>
           </div>
         </AlertDialogContent>

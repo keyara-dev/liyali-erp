@@ -357,3 +357,188 @@ export function duplicateWorkflow(id: string): StoredWorkflow | null {
     return null;
   }
 }
+
+export function updateWorkflowStatus(
+  id: string,
+  status: 'ACTIVE' | 'DEPRECATED'
+): StoredWorkflow | null {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  try {
+    const workflows = getAllWorkflows();
+    const index = workflows.findIndex((w) => w.id === id);
+
+    if (index < 0) {
+      console.error('Workflow not found:', id);
+      return null;
+    }
+
+    workflows[index].status = status;
+    workflows[index].updatedAt = new Date().toISOString();
+
+    localStorage.setItem(WORKFLOWS_KEY, JSON.stringify(workflows));
+    return workflows[index];
+  } catch (error) {
+    console.error('Error updating workflow status:', error);
+    return null;
+  }
+}
+
+export function cloneWorkflowAsTemplate(id: string, newName: string): StoredWorkflow | null {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  try {
+    const workflow = getWorkflowById(id);
+    if (!workflow) return null;
+
+    const clonedWorkflow: StoredWorkflow = {
+      ...workflow,
+      id: `wf-${Date.now()}`,
+      name: newName,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      status: 'ACTIVE',
+      fullData: {
+        ...workflow.fullData,
+        name: newName,
+        isDefault: false,
+        stages: workflow.fullData.stages.map((stage) => ({
+          ...stage,
+          id: `stage-${Date.now()}-${Math.random()}`,
+        })),
+      },
+    };
+
+    return saveWorkflow(clonedWorkflow);
+  } catch (error) {
+    console.error('Error cloning workflow:', error);
+    return null;
+  }
+}
+
+export function exportWorkflows(): string {
+  if (typeof window === 'undefined') {
+    return '';
+  }
+
+  try {
+    const workflows = getAllWorkflows();
+    return JSON.stringify(workflows, null, 2);
+  } catch (error) {
+    console.error('Error exporting workflows:', error);
+    return '';
+  }
+}
+
+export function importWorkflows(data: string): { success: boolean; count: number } {
+  if (typeof window === 'undefined') {
+    return { success: false, count: 0 };
+  }
+
+  try {
+    const imported: StoredWorkflow[] = JSON.parse(data);
+
+    if (!Array.isArray(imported)) {
+      throw new Error('Invalid workflow data format');
+    }
+
+    const workflows = getAllWorkflows();
+    let importedCount = 0;
+
+    for (const workflow of imported) {
+      // Check if workflow exists, if so update, else add
+      const existingIndex = workflows.findIndex((w) => w.id === workflow.id);
+
+      if (existingIndex >= 0) {
+        workflows[existingIndex] = {
+          ...workflow,
+          updatedAt: new Date().toISOString(),
+        };
+      } else {
+        workflows.push({
+          ...workflow,
+          createdAt: workflow.createdAt || new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        });
+      }
+
+      importedCount++;
+    }
+
+    localStorage.setItem(WORKFLOWS_KEY, JSON.stringify(workflows));
+    return { success: true, count: importedCount };
+  } catch (error) {
+    console.error('Error importing workflows:', error);
+    return { success: false, count: 0 };
+  }
+}
+
+export function getWorkflowsByDocumentType(
+  documentType: string
+): StoredWorkflow[] {
+  if (typeof window === 'undefined') {
+    return [];
+  }
+
+  try {
+    const workflows = getAllWorkflows();
+    return workflows.filter((w) => w.documentType === documentType && w.status === 'ACTIVE');
+  } catch (error) {
+    console.error('Error filtering workflows:', error);
+    return [];
+  }
+}
+
+export function searchWorkflows(query: string): StoredWorkflow[] {
+  if (typeof window === 'undefined') {
+    return [];
+  }
+
+  try {
+    const workflows = getAllWorkflows();
+    const lowerQuery = query.toLowerCase();
+
+    return workflows.filter(
+      (w) =>
+        w.name.toLowerCase().includes(lowerQuery) ||
+        w.description.toLowerCase().includes(lowerQuery) ||
+        w.documentType.toLowerCase().includes(lowerQuery)
+    );
+  } catch (error) {
+    console.error('Error searching workflows:', error);
+    return [];
+  }
+}
+
+export function clearAllWorkflows(): boolean {
+  if (typeof window === 'undefined') {
+    return false;
+  }
+
+  try {
+    localStorage.removeItem(WORKFLOWS_KEY);
+    return true;
+  } catch (error) {
+    console.error('Error clearing workflows:', error);
+    return false;
+  }
+}
+
+export function resetToMockData(): boolean {
+  if (typeof window === 'undefined') {
+    return false;
+  }
+
+  try {
+    const mockData = initializeWithMockData();
+    localStorage.setItem(WORKFLOWS_KEY, JSON.stringify(mockData));
+    return true;
+  } catch (error) {
+    console.error('Error resetting to mock data:', error);
+    return false;
+  }
+}
