@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -26,6 +26,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { toast } from 'sonner'
 import { StatusBadge } from '@/components/status-badge'
+import { getAllWorkflows, deleteWorkflow, duplicateWorkflow } from '@/lib/workflow-storage'
 
 interface WorkflowsClientProps {
   userId: string
@@ -44,69 +45,43 @@ interface Workflow {
   createdBy: string
 }
 
-// Mock workflows data
-const mockWorkflows: Workflow[] = [
-  {
-    id: 'wf-1',
-    name: 'Standard Requisition Approval',
-    description: '4-stage approval process for purchase requisitions',
-    documentType: 'REQUISITION',
-    stages: 4,
-    status: 'ACTIVE',
-    createdAt: '2024-01-15T10:30:00Z',
-    updatedAt: '2024-11-20T14:22:00Z',
-    createdBy: 'admin@example.com',
-  },
-  {
-    id: 'wf-2',
-    name: 'Purchase Order Approval',
-    description: '4-stage approval with CFO override capability',
-    documentType: 'PURCHASE_ORDER',
-    stages: 4,
-    status: 'ACTIVE',
-    createdAt: '2024-02-10T08:15:00Z',
-    updatedAt: '2024-11-18T11:45:00Z',
-    createdBy: 'admin@example.com',
-  },
-  {
-    id: 'wf-3',
-    name: 'Payment Voucher Review',
-    description: 'Finance review workflow for payment processing',
-    documentType: 'PAYMENT_VOUCHER',
-    stages: 3,
-    status: 'ACTIVE',
-    createdAt: '2024-03-05T09:20:00Z',
-    updatedAt: '2024-11-19T13:10:00Z',
-    createdBy: 'finance-admin@example.com',
-  },
-  {
-    id: 'wf-4',
-    name: 'GRN Confirmation Flow',
-    description: 'Simple goods receipt confirmation workflow',
-    documentType: 'GOODS_RECEIVED_NOTE',
-    stages: 2,
-    status: 'ACTIVE',
-    createdAt: '2024-04-12T11:00:00Z',
-    updatedAt: '2024-11-17T10:30:00Z',
-    createdBy: 'warehouse@example.com',
-  },
-]
-
 export function WorkflowsClient({ userId, userRole }: WorkflowsClientProps) {
   const router = useRouter()
-  const [workflows, setWorkflows] = useState<Workflow[]>(mockWorkflows)
+  const [workflows, setWorkflows] = useState<Workflow[]>([])
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
+
+  // Load workflows from localStorage on mount
+  useEffect(() => {
+    const stored = getAllWorkflows()
+    setWorkflows(
+      stored.map((w) => ({
+        id: w.id,
+        name: w.name,
+        description: w.description,
+        documentType: w.documentType,
+        stages: w.stages,
+        status: w.status,
+        createdAt: w.createdAt,
+        updatedAt: w.updatedAt,
+        createdBy: w.createdBy,
+      }))
+    )
+  }, [])
 
   const handleDelete = async () => {
     if (!deleteId) return
 
     setIsDeleting(true)
     try {
-      // Simulate delete
-      await new Promise((resolve) => setTimeout(resolve, 500))
-      setWorkflows(workflows.filter((w) => w.id !== deleteId))
-      toast.success('Workflow deleted successfully')
+      // Delete from localStorage
+      const success = deleteWorkflow(deleteId)
+      if (success) {
+        setWorkflows(workflows.filter((w) => w.id !== deleteId))
+        toast.success('Workflow deleted successfully')
+      } else {
+        toast.error('Failed to delete workflow')
+      }
       setDeleteId(null)
     } catch (error) {
       toast.error('Failed to delete workflow')
@@ -116,17 +91,26 @@ export function WorkflowsClient({ userId, userRole }: WorkflowsClientProps) {
   }
 
   const handleDuplicate = (workflow: Workflow) => {
-    const newWorkflow = {
-      ...workflow,
-      id: `wf-${Date.now()}`,
-      name: `${workflow.name} (Copy)`,
-      status: 'ACTIVE' as const,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      createdBy: userId,
+    const duplicated = duplicateWorkflow(workflow.id)
+    if (duplicated) {
+      setWorkflows([
+        ...workflows,
+        {
+          id: duplicated.id,
+          name: duplicated.name,
+          description: duplicated.description,
+          documentType: duplicated.documentType,
+          stages: duplicated.stages,
+          status: duplicated.status,
+          createdAt: duplicated.createdAt,
+          updatedAt: duplicated.updatedAt,
+          createdBy: duplicated.createdBy,
+        },
+      ])
+      toast.success(`${workflow.name} duplicated successfully`)
+    } else {
+      toast.error('Failed to duplicate workflow')
     }
-    setWorkflows([...workflows, newWorkflow])
-    toast.success(`${workflow.name} duplicated successfully`)
   }
 
   const getDocumentTypeLabel = (type: string) => {

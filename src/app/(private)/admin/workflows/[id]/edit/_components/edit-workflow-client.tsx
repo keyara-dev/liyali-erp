@@ -6,6 +6,7 @@ import { PageHeader } from '@/components/base/page-header'
 import { WorkflowBuilder } from '../../../_components/workflow-builder'
 import { toast } from 'sonner'
 import { WorkflowFormData } from '../../../create/_components/create-workflow-client'
+import { getWorkflowById, saveWorkflow } from '@/lib/workflow-storage'
 
 interface EditWorkflowClientProps {
   workflowId: string
@@ -13,47 +14,6 @@ interface EditWorkflowClientProps {
   userRole: string
 }
 
-// Mock workflow data - in real app, fetch from server
-const mockWorkflows: Record<string, WorkflowFormData> = {
-  'wf-1': {
-    name: 'Standard Requisition Approval',
-    description: '4-stage approval process for purchase requisitions',
-    documentType: 'REQUISITION',
-    isDefault: true,
-    stages: [
-      {
-        id: 'stage-1',
-        order: 1,
-        name: 'Department Manager Review',
-        description: 'Initial review by department manager',
-        approverRole: 'DEPARTMENT_MANAGER',
-        requiredApprovals: 1,
-        canReject: true,
-        canReassign: true,
-      },
-      {
-        id: 'stage-2',
-        order: 2,
-        name: 'Finance Officer Review',
-        description: 'Budget and finance validation',
-        approverRole: 'FINANCE_OFFICER',
-        requiredApprovals: 1,
-        canReject: true,
-        canReassign: true,
-      },
-      {
-        id: 'stage-3',
-        order: 3,
-        name: 'CFO Approval',
-        description: 'Final approval by CFO',
-        approverRole: 'CFO',
-        requiredApprovals: 1,
-        canReject: true,
-        canReassign: false,
-      },
-    ],
-  },
-}
 
 export function EditWorkflowClient({
   workflowId,
@@ -66,12 +26,14 @@ export function EditWorkflowClient({
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   useEffect(() => {
-    // Simulate loading workflow data
+    // Load workflow data from localStorage
     const timer = setTimeout(() => {
-      const data = mockWorkflows[workflowId]
-      if (data) {
-        setInitialData(data)
+      console.log('Requested workflowId:', workflowId)
+      const workflow = getWorkflowById(workflowId)
+      if (workflow) {
+        setInitialData(workflow.fullData)
       } else {
+        console.log('Workflow not found for ID:', workflowId)
         toast.error('Workflow not found')
         router.push('/admin/workflows')
       }
@@ -88,14 +50,27 @@ export function EditWorkflowClient({
   const handleSubmit = async (formData: WorkflowFormData) => {
     setIsSubmitting(true)
     try {
-      // TODO: Call updateWorkflow server action
-      console.log('Updating workflow:', workflowId, formData)
+      // Prepare workflow for storage
+      const workflow = {
+        id: workflowId,
+        name: formData.name,
+        description: formData.description,
+        documentType: formData.documentType,
+        stages: formData.stages.length,
+        status: 'ACTIVE' as const,
+        updatedAt: new Date().toISOString(),
+        fullData: formData,
+      }
 
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000))
+      // Save to localStorage
+      const result = saveWorkflow(workflow)
 
-      toast.success('Workflow updated successfully')
-      router.push('/admin/workflows')
+      if (result) {
+        toast.success('Workflow updated successfully')
+        router.push('/admin/workflows')
+      } else {
+        toast.error('Failed to save workflow')
+      }
     } catch (error) {
       console.error('Failed to update workflow:', error)
       toast.error('Failed to update workflow')

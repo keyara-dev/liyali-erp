@@ -237,17 +237,15 @@ export function WorkflowBuilder({
               >
                 <div className="space-y-3">
                   {formData.stages.map((stage, index) => (
-                    <div key={stage.id} className="flex items-start gap-3">
-                      <div className="flex flex-col items-center gap-2 pt-3">
-                        <StageItem
-                          stage={stage}
-                          onEdit={() => handleEditStage(stage.id)}
-                          onDelete={() => handleDeleteStage(stage.id)}
-                        />
-                        {index < formData.stages.length - 1 && (
-                          <ArrowRight className="h-4 w-4 text-muted-foreground rotate-90 mt-2" />
-                        )}
-                      </div>
+                    <div key={stage.id} className="flex flex-col items-center w-full">
+                      <StageItem
+                        stage={stage}
+                        onEdit={() => handleEditStage(stage.id)}
+                        onDelete={() => handleDeleteStage(stage.id)}
+                      />
+                      {index < formData.stages.length - 1 && (
+                        <ArrowRight className="h-4 w-4 text-muted-foreground rotate-90 mt-2" />
+                      )}
                     </div>
                   ))}
                 </div>

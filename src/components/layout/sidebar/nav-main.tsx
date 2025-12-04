@@ -52,32 +52,32 @@ export const navItems: NavGroup[] = [
       },
       {
         title: "Tasks",
-        href: "//tasks",
+        href: "/tasks",
         icon: CheckSquare,
       },
       {
         title: "Search Transactions",
-        href: "//search",
+        href: "/search",
         icon: Search,
       },
       {
         title: "Requisitions",
-        href: "//requisitions",
+        href: "/requisitions",
         icon: FileText,
       },
       {
         title: "Purchase Orders",
-        href: "//purchase-orders",
+        href: "/purchase-orders",
         icon: FileCheck,
       },
       {
         title: "Payment Vouchers",
-        href: "//payment-vouchers",
+        href: "/payment-vouchers",
         icon: FileText,
       },
       {
         title: "Goods Received Notes",
-        href: "//grn",
+        href: "/grn",
         icon: FileCheck,
       },
     ],
@@ -87,7 +87,7 @@ export const navItems: NavGroup[] = [
     items: [
       {
         title: "Budgets",
-        href: "//budgets",
+        href: "/budgets",
         icon: DollarSign,
       },
     ],
@@ -112,7 +112,7 @@ export const navItems: NavGroup[] = [
       },
       {
         title: "Workflow Management",
-        href: "/admin/",
+        href: "/admin/workflows",
         icon: GitBranch,
       },
     ],

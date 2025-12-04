@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { PageHeader } from '@/components/base/page-header'
 import { WorkflowBuilder } from '../../_components/workflow-builder'
 import { toast } from 'sonner'
+import { saveWorkflow } from '@/lib/workflow-storage'
 
 interface CreateWorkflowClientProps {
   userId: string
@@ -44,14 +45,30 @@ export function CreateWorkflowClient({
   const handleSubmit = async (formData: WorkflowFormData) => {
     setIsSubmitting(true)
     try {
-      // TODO: Call createWorkflow server action
-      console.log('Creating workflow:', formData)
+      // Generate workflow ID
+      const workflowId = `wf-${Date.now()}`
 
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000))
+      // Prepare workflow for storage
+      const workflow = {
+        id: workflowId,
+        name: formData.name,
+        description: formData.description,
+        documentType: formData.documentType,
+        stages: formData.stages.length,
+        status: 'ACTIVE' as const,
+        updatedAt: new Date().toISOString(),
+        fullData: formData,
+      }
 
-      toast.success('Workflow created successfully')
-      router.push('/admin/workflows')
+      // Save to localStorage
+      const result = saveWorkflow(workflow)
+
+      if (result) {
+        toast.success('Workflow created successfully')
+        router.push('/admin/workflows')
+      } else {
+        toast.error('Failed to save workflow')
+      }
     } catch (error) {
       console.error('Failed to create workflow:', error)
       toast.error('Failed to create workflow')

@@ -1,6 +1,7 @@
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import { EditWorkflowClient } from "./_components/edit-workflow-client";
+import { verifySession } from "@/lib/auth";
 
 export const metadata = {
   title: "Edit Workflow",
@@ -8,30 +9,28 @@ export const metadata = {
 };
 
 interface EditWorkflowPageProps {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 }
 
 export default async function EditWorkflowPage({
   params,
 }: EditWorkflowPageProps) {
-  const session = await auth();
+  const { session } = await verifySession();
 
-  if (!session?.user) {
-    redirect("/login");
-  }
+  const { id } = await params;
 
   // Only allow admin users
-  const userRole = (session.user as any).role;
+  const userRole = (session?.user as any).role;
   if (userRole !== "ADMIN") {
     redirect("/home");
   }
 
   return (
     <EditWorkflowClient
-      workflowId={params.id}
-      userId={session.user.id}
+      workflowId={id}
+      userId={String(session?.user?.id)}
       userRole={userRole}
     />
   );
