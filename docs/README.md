@@ -26,8 +26,8 @@
 
 ### Specialized Guides
 - [**03-DEMO-GUIDE.md**](03-DEMO-GUIDE.md) - Demo instructions for stakeholders
+- [**WORKFLOWS.md**](WORKFLOWS.md) - Complete workflow system (core workflows, custom workflows, builder, management)
 - [**APPROVAL-GUIDE.md**](APPROVAL-GUIDE.md) - Approval workflow walkthrough
-- [**WORKFLOW_MANAGEMENT_GUIDE.md**](WORKFLOW_MANAGEMENT_GUIDE.md) - Creating custom workflows
 - [**PDF_ENHANCEMENTS_SUMMARY.md**](PDF_ENHANCEMENTS_SUMMARY.md) - PDF export system (preview, email, batch, QR verification, watermarks)
 - [**REQUISITION_TO_PO_INTEGRATION.md**](REQUISITION_TO_PO_INTEGRATION.md) - Document flow from requisition to payment
 
@@ -91,8 +91,8 @@ Core system documentation needed to understand and use the platform.
 Detailed guides for using and extending specific features.
 
 - `FEATURES.md` - Complete feature list
+- `WORKFLOWS.md` - Workflow system guide (core, custom, builder, management)
 - `APPROVAL-GUIDE.md` - Using approval workflows
-- `WORKFLOW_MANAGEMENT_GUIDE.md` - Creating workflows
 - `PDF_ENHANCEMENTS_SUMMARY.md` - PDF export features
 - `REQUISITION_TO_PO_INTEGRATION.md` - Document flow
 
@@ -120,9 +120,8 @@ Materials for demonstrating to stakeholders.
 Future work and enhancements.
 
 - `ROADMAP.md` - Long-term vision
-- `PHASE-12-PLAN.md` - Upcoming Phase 12 work
-- `WORKFLOW_IMPLEMENTATION_PLAN.md` - Workflow system details
-- `WORKFLOW_BUILDER_SUMMARY.md` - Workflow builder overview
+- `PHASE-12-PLAN.md` - Upcoming Phase 13 work (database integration)
+- (Detailed workflow plans archived in archive/ folder)
 
 ---
 
