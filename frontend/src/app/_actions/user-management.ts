@@ -1,18 +1,18 @@
-'use server'
+"use server";
 
-import { auth } from '@/auth';
-import { APIResponse, UserRoleAssignment } from '@/types';
-import { User, UserRole } from '@/types/workflow';
-import { MOCK_USERS } from '@/lib/mock-data';
-import { getCustomRole, getAllCustomRoles } from '@/lib/rbac';
-import { handleError, unauthorizedResponse } from '@/app/_actions/api-config';
-import { userRoleAssignmentsStore } from '@/lib/user-role-store';
-import { isAdmin } from '@/lib/auth-helpers';
+import { verifySession } from "@/lib/auth";
+import { APIResponse, UserRoleAssignment } from "@/types";
+import { User, UserRole } from "@/types/workflow";
+import { MOCK_USERS } from "@/lib/mock-data";
+import { getCustomRole, getAllCustomRoles } from "@/lib/rbac";
+import { handleError, unauthorizedResponse } from "@/app/_actions/api-config";
+import { userRoleAssignmentsStore } from "@/lib/user-role-store";
+import { isAdmin } from "@/lib/auth-helpers";
 
 // =============== USER MANAGEMENT ===============
 
 export async function getAllUsers(): Promise<APIResponse<User[]>> {
-  const session = await auth();
+  const { session } = await verifySession();
   if (!session?.user) return unauthorizedResponse();
 
   try {
@@ -20,19 +20,21 @@ export async function getAllUsers(): Promise<APIResponse<User[]>> {
 
     return {
       success: true,
-      message: 'All users retrieved successfully',
+      message: "All users retrieved successfully",
       data: allUsers,
       status: 200,
-      statusText: 'OK',
+      statusText: "OK",
     };
   } catch (error) {
-    console.error('Error fetching users:', error);
-    return handleError(error, 'GET', '/users');
+    console.error("Error fetching users:", error);
+    return handleError(error, "GET", "/users");
   }
 }
 
-export async function getUsersByRole(role: UserRole): Promise<APIResponse<User[]>> {
-  const session = await auth();
+export async function getUsersByRole(
+  role: UserRole
+): Promise<APIResponse<User[]>> {
+  const { session } = await verifySession();
   if (!session?.user) return unauthorizedResponse();
 
   try {
@@ -43,16 +45,18 @@ export async function getUsersByRole(role: UserRole): Promise<APIResponse<User[]
       message: `Users with role ${role} retrieved successfully`,
       data: users,
       status: 200,
-      statusText: 'OK',
+      statusText: "OK",
     };
   } catch (error) {
-    console.error('Error fetching users by role:', error);
-    return handleError(error, 'GET', `/users?role=${role}`);
+    console.error("Error fetching users by role:", error);
+    return handleError(error, "GET", `/users?role=${role}`);
   }
 }
 
-export async function getUserById(userId: string): Promise<APIResponse<User | null>> {
-  const session = await auth();
+export async function getUserById(
+  userId: string
+): Promise<APIResponse<User | null>> {
+  const { session } = await verifySession();
   if (!session?.user) return unauthorizedResponse();
 
   try {
@@ -63,28 +67,28 @@ export async function getUserById(userId: string): Promise<APIResponse<User | nu
     if (!user) {
       return {
         success: false,
-        message: 'User not found',
+        message: "User not found",
         data: null,
         status: 404,
-        statusText: 'NOT FOUND',
+        statusText: "NOT FOUND",
       };
     }
 
     return {
       success: true,
-      message: 'User retrieved successfully',
+      message: "User retrieved successfully",
       data: user,
       status: 200,
-      statusText: 'OK',
+      statusText: "OK",
     };
   } catch (error) {
-    console.error('Error fetching user:', error);
-    return handleError(error, 'GET', `/users/${userId}`);
+    console.error("Error fetching user:", error);
+    return handleError(error, "GET", `/users/${userId}`);
   }
 }
 
 export async function searchUsers(query: string): Promise<APIResponse<User[]>> {
-  const session = await auth();
+  const { session } = await verifySession();
   if (!session?.user) return unauthorizedResponse();
 
   try {
@@ -103,11 +107,11 @@ export async function searchUsers(query: string): Promise<APIResponse<User[]>> {
       message: `Found ${results.length} user(s)`,
       data: results,
       status: 200,
-      statusText: 'OK',
+      statusText: "OK",
     };
   } catch (error) {
-    console.error('Error searching users:', error);
-    return handleError(error, 'GET', `/users/search?q=${query}`);
+    console.error("Error searching users:", error);
+    return handleError(error, "GET", `/users/search?q=${query}`);
   }
 }
 
@@ -117,17 +121,17 @@ export async function assignCustomRoleToUser(
   userId: string,
   customRoleId: string
 ): Promise<APIResponse<UserRoleAssignment | null>> {
-  const session = await auth();
+  const { session } = await verifySession();
   if (!session?.user) return unauthorizedResponse();
 
   const userRole = (session.user as any).role;
   if (!isAdmin(userRole)) {
     return {
       success: false,
-      message: 'You do not have permission to assign roles',
+      message: "You do not have permission to assign roles",
       data: null,
       status: 403,
-      statusText: 'FORBIDDEN',
+      statusText: "FORBIDDEN",
     };
   }
 
@@ -140,10 +144,10 @@ export async function assignCustomRoleToUser(
     if (!user) {
       return {
         success: false,
-        message: 'User not found',
+        message: "User not found",
         data: null,
         status: 404,
-        statusText: 'NOT FOUND',
+        statusText: "NOT FOUND",
       };
     }
 
@@ -152,10 +156,10 @@ export async function assignCustomRoleToUser(
     if (!role) {
       return {
         success: false,
-        message: 'Role not found',
+        message: "Role not found",
         data: null,
         status: 404,
-        statusText: 'NOT FOUND',
+        statusText: "NOT FOUND",
       };
     }
 
@@ -176,11 +180,11 @@ export async function assignCustomRoleToUser(
       message: `Role ${role.name} assigned to ${user.name}`,
       data: assignment,
       status: 201,
-      statusText: 'CREATED',
+      statusText: "CREATED",
     };
   } catch (error) {
-    console.error('Error assigning role:', error);
-    return handleError(error, 'POST', `/users/${userId}/roles`);
+    console.error("Error assigning role:", error);
+    return handleError(error, "POST", `/users/${userId}/roles`);
   }
 }
 
@@ -188,17 +192,17 @@ export async function removeCustomRoleFromUser(
   userId: string,
   customRoleId: string
 ): Promise<APIResponse> {
-  const session = await auth();
+  const { session } = await verifySession();
   if (!session?.user) return unauthorizedResponse();
 
   const userRole = (session.user as any).role;
   if (!isAdmin(userRole)) {
     return {
       success: false,
-      message: 'You do not have permission to remove roles',
+      message: "You do not have permission to remove roles",
       data: null,
       status: 403,
-      statusText: 'FORBIDDEN',
+      statusText: "FORBIDDEN",
     };
   }
 
@@ -209,10 +213,10 @@ export async function removeCustomRoleFromUser(
     if (!assignment) {
       return {
         success: false,
-        message: 'User role assignment not found',
+        message: "User role assignment not found",
         data: null,
         status: 404,
-        statusText: 'NOT FOUND',
+        statusText: "NOT FOUND",
       };
     }
 
@@ -223,25 +227,27 @@ export async function removeCustomRoleFromUser(
       .find((u) => u.id === userId);
     const role = getCustomRole(customRoleId);
 
-    console.log(
-      `✅ Role removed from user: ${user?.name} -> ${role?.name}`
-    );
+    console.log(`✅ Role removed from user: ${user?.name} -> ${role?.name}`);
 
     return {
       success: true,
       message: `Role removed from user`,
       data: null,
       status: 200,
-      statusText: 'OK',
+      statusText: "OK",
     };
   } catch (error) {
-    console.error('Error removing role:', error);
-    return handleError(error, 'DELETE', `/users/${userId}/roles/${customRoleId}`);
+    console.error("Error removing role:", error);
+    return handleError(
+      error,
+      "DELETE",
+      `/users/${userId}/roles/${customRoleId}`
+    );
   }
 }
 
 export async function getUserCustomRoles(userId: string): Promise<APIResponse> {
-  const session = await auth();
+  const { session } = await verifySession();
   if (!session?.user) return unauthorizedResponse();
 
   try {
@@ -252,10 +258,10 @@ export async function getUserCustomRoles(userId: string): Promise<APIResponse> {
     if (!user) {
       return {
         success: false,
-        message: 'User not found',
+        message: "User not found",
         data: null,
         status: 404,
-        statusText: 'NOT FOUND',
+        statusText: "NOT FOUND",
       };
     }
 
@@ -271,19 +277,21 @@ export async function getUserCustomRoles(userId: string): Promise<APIResponse> {
 
     return {
       success: true,
-      message: 'User custom roles retrieved successfully',
+      message: "User custom roles retrieved successfully",
       data: roles,
       status: 200,
-      statusText: 'OK',
+      statusText: "OK",
     };
   } catch (error) {
-    console.error('Error fetching user custom roles:', error);
-    return handleError(error, 'GET', `/users/${userId}/custom-roles`);
+    console.error("Error fetching user custom roles:", error);
+    return handleError(error, "GET", `/users/${userId}/custom-roles`);
   }
 }
 
-export async function getUsersWithRole(customRoleId: string): Promise<APIResponse<User[] | null>> {
-  const session = await auth();
+export async function getUsersWithRole(
+  customRoleId: string
+): Promise<APIResponse<User[] | null>> {
+  const { session } = await verifySession();
   if (!session?.user) return unauthorizedResponse();
 
   try {
@@ -292,10 +300,10 @@ export async function getUsersWithRole(customRoleId: string): Promise<APIRespons
     if (!role) {
       return {
         success: false,
-        message: 'Role not found',
+        message: "Role not found",
         data: null,
         status: 404,
-        statusText: 'NOT FOUND',
+        statusText: "NOT FOUND",
       };
     }
 
@@ -318,11 +326,11 @@ export async function getUsersWithRole(customRoleId: string): Promise<APIRespons
       message: `Found ${users.length} user(s) with role ${role.name}`,
       data: users,
       status: 200,
-      statusText: 'OK',
+      statusText: "OK",
     };
   } catch (error) {
-    console.error('Error fetching users with role:', error);
-    return handleError(error, 'GET', `/roles/${customRoleId}/users`);
+    console.error("Error fetching users with role:", error);
+    return handleError(error, "GET", `/roles/${customRoleId}/users`);
   }
 }
 
@@ -330,17 +338,17 @@ export async function bulkAssignRolesToUser(
   userId: string,
   customRoleIds: string[]
 ): Promise<APIResponse> {
-  const session = await auth();
+  const { session } = await verifySession();
   if (!session?.user) return unauthorizedResponse();
 
   const userRole = (session.user as any).role;
   if (!isAdmin(userRole)) {
     return {
       success: false,
-      message: 'You do not have permission to assign roles',
+      message: "You do not have permission to assign roles",
       data: null,
       status: 403,
-      statusText: 'FORBIDDEN',
+      statusText: "FORBIDDEN",
     };
   }
 
@@ -352,10 +360,10 @@ export async function bulkAssignRolesToUser(
     if (!user) {
       return {
         success: false,
-        message: 'User not found',
+        message: "User not found",
         data: null,
         status: 404,
-        statusText: 'NOT FOUND',
+        statusText: "NOT FOUND",
       };
     }
 
@@ -365,7 +373,7 @@ export async function bulkAssignRolesToUser(
     for (const customRoleId of customRoleIds) {
       const role = getCustomRole(customRoleId);
       if (!role) {
-        failedRoles.push({ roleId: customRoleId, reason: 'Role not found' });
+        failedRoles.push({ roleId: customRoleId, reason: "Role not found" });
         continue;
       }
 
@@ -394,18 +402,18 @@ export async function bulkAssignRolesToUser(
         failedRoles,
       },
       status: failedRoles.length === 0 ? 201 : 207,
-      statusText: failedRoles.length === 0 ? 'CREATED' : 'MULTI_STATUS',
+      statusText: failedRoles.length === 0 ? "CREATED" : "MULTI_STATUS",
     };
   } catch (error) {
-    console.error('Error bulk assigning roles:', error);
-    return handleError(error, 'POST', `/users/${userId}/roles/bulk`);
+    console.error("Error bulk assigning roles:", error);
+    return handleError(error, "POST", `/users/${userId}/roles/bulk`);
   }
 }
 
 export async function getAvailableRolesForUser(
   userId: string
 ): Promise<APIResponse> {
-  const session = await auth();
+  const { session } = await verifySession();
   if (!session?.user) return unauthorizedResponse();
 
   try {
@@ -416,10 +424,10 @@ export async function getAvailableRolesForUser(
     if (!user) {
       return {
         success: false,
-        message: 'User not found',
+        message: "User not found",
         data: null,
         status: 404,
-        statusText: 'NOT FOUND',
+        statusText: "NOT FOUND",
       };
     }
 
@@ -427,27 +435,29 @@ export async function getAvailableRolesForUser(
     const allRoles = getAllCustomRoles();
 
     // Get user's currently assigned roles
-    const userAssignments = Array.from(userRoleAssignmentsStore.values()).filter(
-      (a) => a.userId === userId
-    );
+    const userAssignments = Array.from(
+      userRoleAssignmentsStore.values()
+    ).filter((a) => a.userId === userId);
     const assignedRoleIds = new Set(userAssignments.map((a) => a.customRoleId));
 
     // Return roles not yet assigned to the user
-    const availableRoles = allRoles.filter((role) => !assignedRoleIds.has(role.id));
+    const availableRoles = allRoles.filter(
+      (role) => !assignedRoleIds.has(role.id)
+    );
 
     return {
       success: true,
-      message: 'Available roles retrieved successfully',
+      message: "Available roles retrieved successfully",
       data: {
         allRoles,
         assignedRoleIds: Array.from(assignedRoleIds),
         availableRoles,
       },
       status: 200,
-      statusText: 'OK',
+      statusText: "OK",
     };
   } catch (error) {
-    console.error('Error fetching available roles:', error);
-    return handleError(error, 'GET', `/users/${userId}/available-roles`);
+    console.error("Error fetching available roles:", error);
+    return handleError(error, "GET", `/users/${userId}/available-roles`);
   }
 }

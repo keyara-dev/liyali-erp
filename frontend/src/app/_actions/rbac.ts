@@ -1,8 +1,8 @@
-'use server'
+"use server";
 
-import { auth } from '@/auth';
-import { APIResponse } from '@/types';
-import { UserRole, WorkflowPermission as Permission } from '@/types/workflow';
+import { verifySession } from "@/lib/auth";
+import { APIResponse } from "@/types";
+import { UserRole, WorkflowPermission as Permission } from "@/types/workflow";
 import {
   createCustomRole,
   updateCustomRole,
@@ -16,14 +16,14 @@ import {
   ALL_PERMISSIONS,
   PERMISSION_DESCRIPTIONS,
   CustomRole,
-} from '@/lib/rbac';
-import { handleError, unauthorizedResponse } from '@/app/_actions/api-config';
-import { isAdmin } from '@/lib/auth-helpers';
+} from "@/lib/rbac";
+import { handleError, unauthorizedResponse } from "@/app/_actions/api-config";
+import { isAdmin } from "@/lib/auth-helpers";
 
 // =============== ROLE MANAGEMENT ===============
 
 export async function getAllRoles(): Promise<APIResponse<CustomRole[]>> {
-  const session = await auth();
+  const { session } = await verifySession();
   if (!session?.user) return unauthorizedResponse();
 
   try {
@@ -31,19 +31,19 @@ export async function getAllRoles(): Promise<APIResponse<CustomRole[]>> {
 
     return {
       success: true,
-      message: 'All roles retrieved successfully',
+      message: "All roles retrieved successfully",
       data: roles,
       status: 200,
-      statusText: 'OK',
+      statusText: "OK",
     };
   } catch (error) {
-    console.error('Error fetching roles:', error);
-    return handleError(error, 'GET', '/rbac/roles');
+    console.error("Error fetching roles:", error);
+    return handleError(error, "GET", "/rbac/roles");
   }
 }
 
 export async function getBuiltInRoles(): Promise<APIResponse<CustomRole[]>> {
-  const session = await auth();
+  const { session } = await verifySession();
   if (!session?.user) return unauthorizedResponse();
 
   try {
@@ -51,19 +51,19 @@ export async function getBuiltInRoles(): Promise<APIResponse<CustomRole[]>> {
 
     return {
       success: true,
-      message: 'Built-in roles retrieved successfully',
+      message: "Built-in roles retrieved successfully",
       data: roles,
       status: 200,
-      statusText: 'OK',
+      statusText: "OK",
     };
   } catch (error) {
-    console.error('Error fetching built-in roles:', error);
-    return handleError(error, 'GET', '/rbac/roles/builtin');
+    console.error("Error fetching built-in roles:", error);
+    return handleError(error, "GET", "/rbac/roles/builtin");
   }
 }
 
 export async function getCustomRoles(): Promise<APIResponse<CustomRole[]>> {
-  const session = await auth();
+  const { session } = await verifySession();
   if (!session?.user) return unauthorizedResponse();
 
   try {
@@ -71,19 +71,21 @@ export async function getCustomRoles(): Promise<APIResponse<CustomRole[]>> {
 
     return {
       success: true,
-      message: 'Custom roles retrieved successfully',
+      message: "Custom roles retrieved successfully",
       data: roles,
       status: 200,
-      statusText: 'OK',
+      statusText: "OK",
     };
   } catch (error) {
-    console.error('Error fetching custom roles:', error);
-    return handleError(error, 'GET', '/rbac/roles/custom');
+    console.error("Error fetching custom roles:", error);
+    return handleError(error, "GET", "/rbac/roles/custom");
   }
 }
 
-export async function getRoleById(roleId: string): Promise<APIResponse<CustomRole | null>> {
-  const session = await auth();
+export async function getRoleById(
+  roleId: string
+): Promise<APIResponse<CustomRole | null>> {
+  const { session } = await verifySession();
   if (!session?.user) return unauthorizedResponse();
 
   try {
@@ -92,23 +94,23 @@ export async function getRoleById(roleId: string): Promise<APIResponse<CustomRol
     if (!role) {
       return {
         success: false,
-        message: 'Role not found',
+        message: "Role not found",
         data: null,
         status: 404,
-        statusText: 'NOT FOUND',
+        statusText: "NOT FOUND",
       };
     }
 
     return {
       success: true,
-      message: 'Role retrieved successfully',
+      message: "Role retrieved successfully",
       data: role,
       status: 200,
-      statusText: 'OK',
+      statusText: "OK",
     };
   } catch (error) {
-    console.error('Error fetching role:', error);
-    return handleError(error, 'GET', `/rbac/roles/${roleId}`);
+    console.error("Error fetching role:", error);
+    return handleError(error, "GET", `/rbac/roles/${roleId}`);
   }
 }
 
@@ -117,7 +119,7 @@ export async function createRole(
   description: string,
   permissions: Permission[]
 ): Promise<APIResponse<CustomRole | null>> {
-  const session = await auth();
+  const { session } = await verifySession();
   if (!session?.user) return unauthorizedResponse();
 
   // Check if user has permission to manage workflows (typically admin)
@@ -125,10 +127,10 @@ export async function createRole(
   if (!isAdmin(userRole)) {
     return {
       success: false,
-      message: 'You do not have permission to create roles',
+      message: "You do not have permission to create roles",
       data: null,
       status: 403,
-      statusText: 'FORBIDDEN',
+      statusText: "FORBIDDEN",
     };
   }
 
@@ -137,49 +139,51 @@ export async function createRole(
     if (!name || name.trim().length === 0) {
       return {
         success: false,
-        message: 'Role name is required',
+        message: "Role name is required",
         data: null,
         status: 400,
-        statusText: 'BAD REQUEST',
+        statusText: "BAD REQUEST",
       };
     }
 
     if (!Array.isArray(permissions) || permissions.length === 0) {
       return {
         success: false,
-        message: 'At least one permission is required',
+        message: "At least one permission is required",
         data: null,
         status: 400,
-        statusText: 'BAD REQUEST',
+        statusText: "BAD REQUEST",
       };
     }
 
     // Validate permissions
-    const invalidPermissions = permissions.filter((p) => !ALL_PERMISSIONS.includes(p));
+    const invalidPermissions = permissions.filter(
+      (p) => !ALL_PERMISSIONS.includes(p)
+    );
     if (invalidPermissions.length > 0) {
       return {
         success: false,
-        message: `Invalid permissions: ${invalidPermissions.join(', ')}`,
+        message: `Invalid permissions: ${invalidPermissions.join(", ")}`,
         data: null,
         status: 400,
-        statusText: 'BAD REQUEST',
+        statusText: "BAD REQUEST",
       };
     }
 
-    const newRole = createCustomRole(name, description || '', permissions);
+    const newRole = createCustomRole(name, description || "", permissions);
 
     console.log(`✅ Custom role created: ${name}`);
 
     return {
       success: true,
-      message: 'Role created successfully',
+      message: "Role created successfully",
       data: newRole,
       status: 201,
-      statusText: 'CREATED',
+      statusText: "CREATED",
     };
   } catch (error) {
-    console.error('Error creating role:', error);
-    return handleError(error, 'POST', '/rbac/roles');
+    console.error("Error creating role:", error);
+    return handleError(error, "POST", "/rbac/roles");
   }
 }
 
@@ -188,17 +192,17 @@ export async function updateRole(
   name?: string,
   description?: string
 ): Promise<APIResponse<CustomRole | null>> {
-  const session = await auth();
+  const { session } = await verifySession();
   if (!session?.user) return unauthorizedResponse();
 
   const userRole = (session.user as any).role;
   if (!isAdmin(userRole)) {
     return {
       success: false,
-      message: 'You do not have permission to update roles',
+      message: "You do not have permission to update roles",
       data: null,
       status: 403,
-      statusText: 'FORBIDDEN',
+      statusText: "FORBIDDEN",
     };
   }
 
@@ -208,20 +212,20 @@ export async function updateRole(
     if (!role) {
       return {
         success: false,
-        message: 'Role not found',
+        message: "Role not found",
         data: null,
         status: 404,
-        statusText: 'NOT FOUND',
+        statusText: "NOT FOUND",
       };
     }
 
     if (role.isBuiltIn) {
       return {
         success: false,
-        message: 'Built-in roles cannot be modified',
+        message: "Built-in roles cannot be modified",
         data: null,
         status: 400,
-        statusText: 'BAD REQUEST',
+        statusText: "BAD REQUEST",
       };
     }
 
@@ -234,10 +238,10 @@ export async function updateRole(
     if (!updatedRole) {
       return {
         success: false,
-        message: 'Failed to update role',
+        message: "Failed to update role",
         data: null,
         status: 500,
-        statusText: 'INTERNAL SERVER ERROR',
+        statusText: "INTERNAL SERVER ERROR",
       };
     }
 
@@ -245,29 +249,29 @@ export async function updateRole(
 
     return {
       success: true,
-      message: 'Role updated successfully',
+      message: "Role updated successfully",
       data: updatedRole,
       status: 200,
-      statusText: 'OK',
+      statusText: "OK",
     };
   } catch (error) {
-    console.error('Error updating role:', error);
-    return handleError(error, 'PUT', `/rbac/roles/${roleId}`);
+    console.error("Error updating role:", error);
+    return handleError(error, "PUT", `/rbac/roles/${roleId}`);
   }
 }
 
 export async function deleteRole(roleId: string): Promise<APIResponse> {
-  const session = await auth();
+  const { session } = await verifySession();
   if (!session?.user) return unauthorizedResponse();
 
   const userRole = (session.user as any).role;
   if (!isAdmin(userRole)) {
     return {
       success: false,
-      message: 'You do not have permission to delete roles',
+      message: "You do not have permission to delete roles",
       data: null,
       status: 403,
-      statusText: 'FORBIDDEN',
+      statusText: "FORBIDDEN",
     };
   }
 
@@ -277,20 +281,20 @@ export async function deleteRole(roleId: string): Promise<APIResponse> {
     if (!role) {
       return {
         success: false,
-        message: 'Role not found',
+        message: "Role not found",
         data: null,
         status: 404,
-        statusText: 'NOT FOUND',
+        statusText: "NOT FOUND",
       };
     }
 
     if (role.isBuiltIn) {
       return {
         success: false,
-        message: 'Built-in roles cannot be deleted',
+        message: "Built-in roles cannot be deleted",
         data: null,
         status: 400,
-        statusText: 'BAD REQUEST',
+        statusText: "BAD REQUEST",
       };
     }
 
@@ -299,10 +303,10 @@ export async function deleteRole(roleId: string): Promise<APIResponse> {
     if (!deleted) {
       return {
         success: false,
-        message: 'Failed to delete role',
+        message: "Failed to delete role",
         data: null,
         status: 500,
-        statusText: 'INTERNAL SERVER ERROR',
+        statusText: "INTERNAL SERVER ERROR",
       };
     }
 
@@ -310,14 +314,14 @@ export async function deleteRole(roleId: string): Promise<APIResponse> {
 
     return {
       success: true,
-      message: 'Role deleted successfully',
+      message: "Role deleted successfully",
       data: null,
       status: 200,
-      statusText: 'OK',
+      statusText: "OK",
     };
   } catch (error) {
-    console.error('Error deleting role:', error);
-    return handleError(error, 'DELETE', `/rbac/roles/${roleId}`);
+    console.error("Error deleting role:", error);
+    return handleError(error, "DELETE", `/rbac/roles/${roleId}`);
   }
 }
 
@@ -331,7 +335,7 @@ export async function getAllPermissions(): Promise<
     }>
   >
 > {
-  const session = await auth();
+  const { session } = await verifySession();
   if (!session?.user) return unauthorizedResponse();
 
   try {
@@ -342,14 +346,14 @@ export async function getAllPermissions(): Promise<
 
     return {
       success: true,
-      message: 'All permissions retrieved successfully',
+      message: "All permissions retrieved successfully",
       data: permissions,
       status: 200,
-      statusText: 'OK',
+      statusText: "OK",
     };
   } catch (error) {
-    console.error('Error fetching permissions:', error);
-    return handleError(error, 'GET', '/rbac/permissions');
+    console.error("Error fetching permissions:", error);
+    return handleError(error, "GET", "/rbac/permissions");
   }
 }
 
@@ -357,17 +361,17 @@ export async function addRolePermission(
   roleId: string,
   permission: Permission
 ): Promise<APIResponse<CustomRole | null>> {
-  const session = await auth();
+  const { session } = await verifySession();
   if (!session?.user) return unauthorizedResponse();
 
   const userRole = (session.user as any).role;
   if (!isAdmin(userRole)) {
     return {
       success: false,
-      message: 'You do not have permission to manage permissions',
+      message: "You do not have permission to manage permissions",
       data: null,
       status: 403,
-      statusText: 'FORBIDDEN',
+      statusText: "FORBIDDEN",
     };
   }
 
@@ -377,10 +381,10 @@ export async function addRolePermission(
     if (!role) {
       return {
         success: false,
-        message: 'Role not found',
+        message: "Role not found",
         data: null,
         status: 404,
-        statusText: 'NOT FOUND',
+        statusText: "NOT FOUND",
       };
     }
 
@@ -390,7 +394,7 @@ export async function addRolePermission(
         message: `Invalid permission: ${permission}`,
         data: null,
         status: 400,
-        statusText: 'BAD REQUEST',
+        statusText: "BAD REQUEST",
       };
     }
 
@@ -399,10 +403,10 @@ export async function addRolePermission(
     if (!updatedRole) {
       return {
         success: false,
-        message: 'Failed to add permission',
+        message: "Failed to add permission",
         data: null,
         status: 500,
-        statusText: 'INTERNAL SERVER ERROR',
+        statusText: "INTERNAL SERVER ERROR",
       };
     }
 
@@ -410,14 +414,14 @@ export async function addRolePermission(
 
     return {
       success: true,
-      message: 'Permission added successfully',
+      message: "Permission added successfully",
       data: updatedRole,
       status: 200,
-      statusText: 'OK',
+      statusText: "OK",
     };
   } catch (error) {
-    console.error('Error adding permission:', error);
-    return handleError(error, 'POST', `/rbac/roles/${roleId}/permissions`);
+    console.error("Error adding permission:", error);
+    return handleError(error, "POST", `/rbac/roles/${roleId}/permissions`);
   }
 }
 
@@ -425,17 +429,17 @@ export async function removeRolePermission(
   roleId: string,
   permission: Permission
 ): Promise<APIResponse<CustomRole | null>> {
-  const session = await auth();
+  const { session } = await verifySession();
   if (!session?.user) return unauthorizedResponse();
 
   const userRole = (session.user as any).role;
   if (!isAdmin(userRole)) {
     return {
       success: false,
-      message: 'You do not have permission to manage permissions',
+      message: "You do not have permission to manage permissions",
       data: null,
       status: 403,
-      statusText: 'FORBIDDEN',
+      statusText: "FORBIDDEN",
     };
   }
 
@@ -445,10 +449,10 @@ export async function removeRolePermission(
     if (!role) {
       return {
         success: false,
-        message: 'Role not found',
+        message: "Role not found",
         data: null,
         status: 404,
-        statusText: 'NOT FOUND',
+        statusText: "NOT FOUND",
       };
     }
 
@@ -457,10 +461,10 @@ export async function removeRolePermission(
     if (!updatedRole) {
       return {
         success: false,
-        message: 'Failed to remove permission',
+        message: "Failed to remove permission",
         data: null,
         status: 500,
-        statusText: 'INTERNAL SERVER ERROR',
+        statusText: "INTERNAL SERVER ERROR",
       };
     }
 
@@ -468,14 +472,18 @@ export async function removeRolePermission(
 
     return {
       success: true,
-      message: 'Permission removed successfully',
+      message: "Permission removed successfully",
       data: updatedRole,
       status: 200,
-      statusText: 'OK',
+      statusText: "OK",
     };
   } catch (error) {
-    console.error('Error removing permission:', error);
-    return handleError(error, 'DELETE', `/rbac/roles/${roleId}/permissions/${permission}`);
+    console.error("Error removing permission:", error);
+    return handleError(
+      error,
+      "DELETE",
+      `/rbac/roles/${roleId}/permissions/${permission}`
+    );
   }
 }
 
@@ -483,17 +491,17 @@ export async function updateRolePermissions(
   roleId: string,
   permissions: Permission[]
 ): Promise<APIResponse<CustomRole | null>> {
-  const session = await auth();
+  const { session } = await verifySession();
   if (!session?.user) return unauthorizedResponse();
 
   const userRole = (session.user as any).role;
   if (!isAdmin(userRole)) {
     return {
       success: false,
-      message: 'You do not have permission to manage permissions',
+      message: "You do not have permission to manage permissions",
       data: null,
       status: 403,
-      statusText: 'FORBIDDEN',
+      statusText: "FORBIDDEN",
     };
   }
 
@@ -503,32 +511,34 @@ export async function updateRolePermissions(
     if (!role) {
       return {
         success: false,
-        message: 'Role not found',
+        message: "Role not found",
         data: null,
         status: 404,
-        statusText: 'NOT FOUND',
+        statusText: "NOT FOUND",
       };
     }
 
     if (role.isBuiltIn) {
       return {
         success: false,
-        message: 'Built-in role permissions cannot be modified',
+        message: "Built-in role permissions cannot be modified",
         data: null,
         status: 400,
-        statusText: 'BAD REQUEST',
+        statusText: "BAD REQUEST",
       };
     }
 
     // Validate permissions
-    const invalidPermissions = permissions.filter((p) => !ALL_PERMISSIONS.includes(p));
+    const invalidPermissions = permissions.filter(
+      (p) => !ALL_PERMISSIONS.includes(p)
+    );
     if (invalidPermissions.length > 0) {
       return {
         success: false,
-        message: `Invalid permissions: ${invalidPermissions.join(', ')}`,
+        message: `Invalid permissions: ${invalidPermissions.join(", ")}`,
         data: null,
         status: 400,
-        statusText: 'BAD REQUEST',
+        statusText: "BAD REQUEST",
       };
     }
 
@@ -537,10 +547,10 @@ export async function updateRolePermissions(
     if (!updatedRole) {
       return {
         success: false,
-        message: 'Failed to update permissions',
+        message: "Failed to update permissions",
         data: null,
         status: 500,
-        statusText: 'INTERNAL SERVER ERROR',
+        statusText: "INTERNAL SERVER ERROR",
       };
     }
 
@@ -548,13 +558,13 @@ export async function updateRolePermissions(
 
     return {
       success: true,
-      message: 'Role permissions updated successfully',
+      message: "Role permissions updated successfully",
       data: updatedRole,
       status: 200,
-      statusText: 'OK',
+      statusText: "OK",
     };
   } catch (error) {
-    console.error('Error updating role permissions:', error);
-    return handleError(error, 'PUT', `/rbac/roles/${roleId}/permissions`);
+    console.error("Error updating role permissions:", error);
+    return handleError(error, "PUT", `/rbac/roles/${roleId}/permissions`);
   }
 }

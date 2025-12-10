@@ -1,4 +1,4 @@
-import { auth } from '@/auth'
+import { verifySession } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import { SettingsClient } from './_components/settings-client'
 
@@ -8,7 +8,7 @@ export const metadata = {
 }
 
 export default async function SettingsPage() {
-  const session = await auth()
+  const { session } = await verifySession()
 
   if (!session?.user) {
     redirect('/login')

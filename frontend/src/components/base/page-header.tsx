@@ -1,4 +1,4 @@
-import React from "lucide-react";
+"use client";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "../ui/button";
 import { StatusBadge } from "../status-badge";
@@ -23,7 +23,6 @@ interface PageHeaderProps {
   onBackClick?: () => void;
   showBackButton?: boolean;
 }
-
 
 export function PageHeader({
   title,

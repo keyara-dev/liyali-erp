@@ -124,7 +124,7 @@ export function SearchForm({ onSearch, isSearching }: SearchFormProps) {
             />
 
             <DatePicker
-              value={startDate}
+              value={startDate as any}
               label="Start Date"
               placeholder="-- Select Start Date --"
               onValueChange={setStartDate}
@@ -136,7 +136,7 @@ export function SearchForm({ onSearch, isSearching }: SearchFormProps) {
             />
 
             <DatePicker
-              value={endDate}
+              value={endDate as any}
               label="End Date"
               placeholder="-- Select End Date --"
               onValueChange={setEndDate}

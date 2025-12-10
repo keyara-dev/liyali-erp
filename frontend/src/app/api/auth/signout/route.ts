@@ -5,12 +5,11 @@ export async function GET() {
   try {
     // Clear the session using the logout action
     await logoutAction()
-
-    // Redirect to login page after successful logout
-    redirect('/login')
   } catch (error) {
     console.error('Logout error:', error)
-    // Still redirect to login even if logout fails
-    redirect('/login')
   }
+
+  // Redirect to login page after logout (handles both success and failure)
+  // Note: redirect() throws a special Next.js error that must not be caught
+  redirect('/login')
 }

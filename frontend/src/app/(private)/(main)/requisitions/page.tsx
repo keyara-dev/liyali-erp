@@ -1,20 +1,20 @@
-import { auth } from '@/auth'
-import { redirect } from 'next/navigation'
-import { RequisitionsClient } from './_components/requisitions-client'
+import { redirect } from "next/navigation";
+import { RequisitionsClient } from "./_components/requisitions-client";
+import { verifySession } from "@/lib/auth";
 
 export const metadata = {
-  title: 'Requisitions',
-  description: 'Manage and approve requisition forms',
-}
+  title: "Requisitions",
+  description: "Manage and approve requisition forms",
+};
 
 export default async function RequisitionsPage() {
-  const session = await auth()
+  const { session, isAuthenticated } = await verifySession();
 
-  if (!session?.user) {
-    redirect('/login')
+  if (!session || !isAuthenticated) {
+    redirect("/login");
   }
 
   return (
-    <RequisitionsClient userId={session.user.id} userRole={(session.user as any).role} />
-  )
+    <RequisitionsClient userId={session.user.id} userRole={session.user.role} />
+  );
 }

@@ -1,4 +1,4 @@
-import { auth } from "@/auth";
+import { verifySession } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { PODetailClient } from "./_components/po-detail-client";
 
@@ -14,7 +14,7 @@ interface PODetailPageProps {
 }
 
 export default async function PODetailPage({ params }: PODetailPageProps) {
-  const session = await auth();
+  const { session } = await verifySession();
 
   if (!session?.user) {
     redirect("/login");

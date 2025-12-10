@@ -45,38 +45,54 @@ const RequisitionPDF: React.FC<RequisitionPDFProps> = ({ requisition, qrCodeUrl 
     <Document>
       <Page size="A4" style={pdfStyles.page}>
         {/* Header with Republic of Zambia and Logo */}
-        <View style={{ marginBottom: 20, textAlign: 'center' }}>
-          <Text style={{ fontSize: 11, fontWeight: 'bold', marginBottom: 5 }}>
-            REPUBLIC OF ZAMBIA
-          </Text>
-          <Text style={{ fontSize: 14, fontWeight: 'bold', marginBottom: 8 }}>
-            PURCHASE REQUISITION
-          </Text>
+        <View style={{ marginBottom: 15, textAlign: 'center', display: 'flex', flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 10 }}>
+          {/* Logo */}
+          <View style={{ width: 40, height: 40 }}>
+            <Image
+              src="/icon1.png"
+              style={{ width: 40, height: 40 }}
+            />
+          </View>
+          {/* Text */}
+          <View style={{ textAlign: 'center' }}>
+            <Text style={{ fontSize: 11, fontWeight: 'bold', marginBottom: 3 }}>
+              REPUBLIC OF ZAMBIA
+            </Text>
+            <Text style={{ fontSize: 13, fontWeight: 'bold' }}>
+              PURCHASE REQUISITION
+            </Text>
+          </View>
         </View>
 
         {/* Main Header Section */}
-        <View style={[pdfStyles.header, { marginBottom: 20, flexDirection: 'row', justifyContent: 'space-between' }]}>
-          <View>
-            <Text style={{ fontSize: 14, fontWeight: 'bold', marginBottom: 3 }}>Liyali</Text>
-            <Text style={{ fontSize: 9, color: '#666' }}>Finance & Procurement System</Text>
+        <View style={[pdfStyles.header, { marginBottom: 15, flexDirection: 'row', justifyContent: 'space-between' }]}>
+          <View style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+            <View style={{ marginBottom: 5 }}>
+              <Image
+                src="/icon1.png"
+                style={{ width: 30, height: 30 }}
+              />
+            </View>
+            <Text style={{ fontSize: 13, fontWeight: 'bold', marginBottom: 2, color: '#1e40af' }}>Liyali</Text>
+            <Text style={{ fontSize: 8, color: '#666' }}>Finance & Procurement System</Text>
           </View>
           <View style={{ textAlign: 'right' }}>
-            <Text style={{ fontSize: 11, fontWeight: 'bold', marginBottom: 2 }}>
+            <Text style={{ fontSize: 10, fontWeight: 'bold', marginBottom: 2 }}>
               Requisition No: {requisition.requisitionNumber}
             </Text>
-            <Text style={{ fontSize: 9, color: '#666', marginBottom: 4 }}>
+            <Text style={{ fontSize: 8, color: '#666', marginBottom: 3 }}>
               Date: {new Date(requisition.createdAt).toLocaleDateString()}
             </Text>
             <View style={{
               borderWidth: 1,
               borderColor: '#ddd',
-              padding: 6,
-              width: 80,
+              padding: 4,
+              width: 75,
               textAlign: 'center',
               marginLeft: 'auto'
             }}>
-              <Text style={{ fontSize: 8, fontWeight: 'bold', marginBottom: 2 }}>TRACKING CODE</Text>
-              <Text style={{ fontSize: 7 }}>{trackingCode}</Text>
+              <Text style={{ fontSize: 7, fontWeight: 'bold', marginBottom: 1 }}>TRACKING CODE</Text>
+              <Text style={{ fontSize: 6 }}>{trackingCode}</Text>
             </View>
           </View>
         </View>
@@ -165,44 +181,51 @@ const RequisitionPDF: React.FC<RequisitionPDFProps> = ({ requisition, qrCodeUrl 
             </Text>
 
             {/* Table Header */}
-            <View style={[pdfStyles.tableHeaderRow, { paddingVertical: 6 }]}>
-              <Text style={{ ...pdfStyles.tableHeaderCell, width: '8%' }}>Item</Text>
-              <Text style={{ ...pdfStyles.tableHeaderCell, width: '28%' }}>Description</Text>
-              <Text style={{ ...pdfStyles.tableHeaderCell, width: '12%' }}>Category</Text>
-              <Text style={{ ...pdfStyles.tableHeaderCell, width: '14%', textAlign: 'right' }}>Qty/Unit</Text>
-              <Text style={{ ...pdfStyles.tableHeaderCell, width: '19%', textAlign: 'right' }}>Unit Price</Text>
-              <Text style={{ ...pdfStyles.tableHeaderCell, width: '19%', textAlign: 'right' }}>Total</Text>
+            <View style={{ borderWidth: 1, borderColor: '#1e40af', marginBottom: 0 }}>
+              <View style={{ display: 'flex', flexDirection: 'row', backgroundColor: '#f3f4f6', borderBottomWidth: 1, borderBottomColor: '#1e40af' }}>
+                <Text style={{ flex: 0.5, padding: 5, fontSize: 8, fontWeight: 'bold', color: '#1e40af', textAlign: 'center' }}>Item</Text>
+                <Text style={{ flex: 2, padding: 5, fontSize: 8, fontWeight: 'bold', color: '#1e40af', borderLeftWidth: 1, borderLeftColor: '#1e40af' }}>Description</Text>
+                <Text style={{ flex: 1, padding: 5, fontSize: 8, fontWeight: 'bold', color: '#1e40af', textAlign: 'center', borderLeftWidth: 1, borderLeftColor: '#1e40af' }}>Qty</Text>
+                <Text style={{ flex: 1, padding: 5, fontSize: 8, fontWeight: 'bold', color: '#1e40af', textAlign: 'right', borderLeftWidth: 1, borderLeftColor: '#1e40af' }}>Unit Price</Text>
+                <Text style={{ flex: 1, padding: 5, fontSize: 8, fontWeight: 'bold', color: '#1e40af', textAlign: 'right', borderLeftWidth: 1, borderLeftColor: '#1e40af' }}>Total</Text>
+              </View>
+
+              {/* Table Rows */}
+              {requisition.items.map((item: any, index: number) => {
+                // Handle both naming conventions (description/itemDescription, unitPrice/estimatedCost)
+                const itemDescription = item.description || item.itemDescription || ''
+                const unitPrice = item.unitPrice || item.estimatedCost || 0
+                const totalPrice = (item.totalPrice) || (item.quantity * unitPrice) || 0
+
+                return (
+                  <View key={item.id} style={{ display: 'flex', flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#e5e7eb' }}>
+                    <Text style={{ flex: 0.5, padding: 5, fontSize: 8, color: '#1f2937', textAlign: 'center' }}>{index + 1}</Text>
+                    <Text style={{ flex: 2, padding: 5, fontSize: 8, color: '#1f2937', borderLeftWidth: 1, borderLeftColor: '#e5e7eb' }}>
+                      {itemDescription}
+                    </Text>
+                    <Text style={{ flex: 1, padding: 5, fontSize: 8, color: '#1f2937', textAlign: 'center', borderLeftWidth: 1, borderLeftColor: '#e5e7eb' }}>
+                      {item.quantity}
+                    </Text>
+                    <Text style={{ flex: 1, padding: 5, fontSize: 8, color: '#1f2937', textAlign: 'right', borderLeftWidth: 1, borderLeftColor: '#e5e7eb' }}>
+                      {requisition.currency} {unitPrice?.toLocaleString() || '0'}
+                    </Text>
+                    <Text style={{ flex: 1, padding: 5, fontSize: 8, color: '#1f2937', textAlign: 'right', borderLeftWidth: 1, borderLeftColor: '#e5e7eb' }}>
+                      {requisition.currency} {totalPrice?.toLocaleString() || '0'}
+                    </Text>
+                  </View>
+                )
+              })}
             </View>
 
-            {/* Table Rows */}
-            {requisition.items.map((item: any, index: number) => (
-              <View key={item.id} style={[pdfStyles.tableRow, { paddingVertical: 5 }]}>
-                <Text style={{ ...pdfStyles.tableCell, width: '8%' }}>{index + 1}</Text>
-                <Text style={{ ...pdfStyles.tableCell, width: '28%' }}>
-                  {item.description}
-                </Text>
-                <Text style={{ ...pdfStyles.tableCell, width: '12%' }}>
-                  {item.category || '—'}
-                </Text>
-                <Text style={{ ...pdfStyles.tableCell, width: '14%', textAlign: 'right' }}>
-                  {item.quantity} {item.unit}
-                </Text>
-                <Text style={{ ...pdfStyles.tableCell, width: '19%', textAlign: 'right' }}>
-                  {requisition.currency} {item.unitPrice?.toLocaleString() || '0'}
-                </Text>
-                <Text style={{ ...pdfStyles.tableCell, width: '19%', textAlign: 'right' }}>
-                  {requisition.currency} {item.totalPrice?.toLocaleString() || '0'}
-                </Text>
-              </View>
-            ))}
-
             {/* Totals */}
-            <View style={[pdfStyles.totalsRow, { paddingVertical: 6 }]}>
-              <View style={pdfStyles.totalItem}>
-                <Text style={pdfStyles.totalLabel}>TOTAL AMOUNT:</Text>
-                <Text style={pdfStyles.totalAmount}>
-                  {requisition.currency} {requisition.totalAmount?.toLocaleString() || '0'}
-                </Text>
+            <View style={{ display: 'flex', flexDirection: 'row', justifyContent: 'flex-end', marginTop: 15, paddingTop: 10 }}>
+              <View style={{ width: '35%' }}>
+                <View style={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', paddingBottom: 5, borderBottomWidth: 2, borderBottomColor: '#1e40af' }}>
+                  <Text style={{ fontSize: 9, fontWeight: 'bold', color: '#1f2937' }}>TOTAL AMOUNT:</Text>
+                  <Text style={{ fontSize: 11, fontWeight: 'bold', color: '#166534' }}>
+                    {requisition.currency} {requisition.totalAmount?.toLocaleString() || '0'}
+                  </Text>
+                </View>
               </View>
             </View>
           </View>

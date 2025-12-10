@@ -1,16 +1,21 @@
-'use server'
+"use server";
 
-import { auth } from '@/auth';
-import { APIResponse, SearchFilters, WorkflowDocument, PaginatedResponse } from '@/types';
-import { getDocumentsByCreator, getPendingApprovals } from './workflow';
-import { unauthorizedResponse, handleError } from '@/app/_actions/api-config';
+import { verifySession } from "@/lib/auth";
+import {
+  APIResponse,
+  SearchFilters,
+  WorkflowDocument,
+  PaginatedResponse,
+} from "@/types";
+import { getDocumentsByCreator, getPendingApprovals } from "./workflow";
+import { unauthorizedResponse, handleError } from "@/app/_actions/api-config";
 
 export async function searchDocuments(
   filters: SearchFilters,
   page: number = 1,
   limit: number = 10
 ): Promise<APIResponse<PaginatedResponse<WorkflowDocument>>> {
-  const session = await auth();
+  const { session } = await verifySession();
 
   if (!session?.user) {
     return unauthorizedResponse();
@@ -33,23 +38,28 @@ export async function searchDocuments(
 
     // Remove duplicates by ID
     const uniqueMap = new Map<string, WorkflowDocument>();
-    allDocuments.forEach(doc => uniqueMap.set(doc.id, doc));
+    allDocuments.forEach((doc) => uniqueMap.set(doc.id, doc));
     const uniqueDocuments = Array.from(uniqueMap.values());
 
     // Apply filters
     let filtered = uniqueDocuments.filter((doc) => {
       // Filter by document number (case-insensitive, partial match)
-      if (filters.documentNumber && !doc.documentNumber.toLowerCase().includes(filters.documentNumber.toLowerCase())) {
+      if (
+        filters.documentNumber &&
+        !doc.documentNumber
+          .toLowerCase()
+          .includes(filters.documentNumber.toLowerCase())
+      ) {
         return false;
       }
 
       // Filter by document type
-      if (filters.documentType !== 'ALL' && doc.type !== filters.documentType) {
+      if (filters.documentType !== "ALL" && doc.type !== filters.documentType) {
         return false;
       }
 
       // Filter by status
-      if (filters.status !== 'ALL' && doc.status !== filters.status) {
+      if (filters.status !== "ALL" && doc.status !== filters.status) {
         return false;
       }
 
@@ -74,7 +84,10 @@ export async function searchDocuments(
     });
 
     // Sort by created date (newest first)
-    filtered.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    filtered.sort(
+      (a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
 
     // Calculate pagination
     const total = filtered.length;
@@ -84,7 +97,7 @@ export async function searchDocuments(
 
     return {
       success: true,
-      message: 'Documents search completed',
+      message: "Documents search completed",
       data: {
         data: paginatedData,
         pagination: {
@@ -97,14 +110,14 @@ export async function searchDocuments(
       status: 200,
     };
   } catch (error) {
-    return handleError(error, 'GET', '/search') as any;
+    return handleError(error, "GET", "/search") as any;
   }
 }
 
 export async function downloadDocumentPDF(
   documentId: string
 ): Promise<APIResponse<{ downloadUrl: string }>> {
-  const session = await auth();
+  const { session } = await verifySession();
 
   if (!session?.user) {
     return unauthorizedResponse() as any;
@@ -112,13 +125,13 @@ export async function downloadDocumentPDF(
 
   try {
     // Try to fetch document to verify it exists
-    const { getDocument } = await import('./workflow');
+    const { getDocument } = await import("./workflow");
     const result = await getDocument(documentId);
 
     if (!result.success || !result.data) {
       return {
         success: false,
-        message: 'Document not found',
+        message: "Document not found",
       } as any;
     }
 
@@ -127,12 +140,16 @@ export async function downloadDocumentPDF(
 
     return {
       success: true,
-      message: 'Download URL generated',
+      message: "Download URL generated",
       data: {
         downloadUrl,
       },
     } as any;
   } catch (error) {
-    return handleError(error, 'GET', `/documents/${documentId}/download`) as any;
+    return handleError(
+      error,
+      "GET",
+      `/documents/${documentId}/download`
+    ) as any;
   }
 }

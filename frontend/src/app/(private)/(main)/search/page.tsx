@@ -1,4 +1,4 @@
-import { getCurrentUser } from '@/auth'
+import { getCurrentUser } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import { SearchClient } from './_components/search-client'
 

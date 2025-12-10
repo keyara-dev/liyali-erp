@@ -13,6 +13,8 @@ import {
 } from '@/types/requisition';
 import { APIResponse } from '@/types';
 import { createPurchaseOrderFromRequisition } from './purchase-orders';
+import { documentStore } from '@/lib/workflow-stores';
+import { WorkflowDocument } from '@/types/workflow';
 
 /**
  * Mock requisitions database
@@ -340,13 +342,68 @@ export async function createRequisition(
 
 /**
  * Get all requisitions (cached)
+ * Includes both mock data and workflow document store data
  */
 export const getRequisitions = cache(async (): Promise<APIResponse<Requisition[]>> => {
   try {
+    let allRequisitions: Requisition[] = [...mockRequisitions];
+
+    // Also fetch from workflow document store
+    try {
+      const workflowDocs = Array.from(documentStore.values()).filter(
+        (doc: WorkflowDocument) => doc.type === 'REQUISITION'
+      );
+
+      // Convert workflow documents to requisitions
+      const workflowRequisitions = workflowDocs.map((doc: WorkflowDocument): Requisition => ({
+        id: doc.id,
+        requisitionNumber: doc.documentNumber,
+        title: doc.metadata?.title || doc.metadata?.requestedFor || 'Untitled Requisition',
+        description: doc.metadata?.description || '',
+        department: doc.metadata?.department || 'Unknown',
+        departmentId: 'dept-unknown',
+        requestedBy: doc.createdBy,
+        requestedByName: doc.createdByUser?.name || 'Unknown User',
+        requestedByRole: doc.createdByUser?.role || 'REQUESTER',
+        requestedDate: doc.createdAt,
+        requiredByDate: new Date(),
+        priority: (doc.metadata?.priority as any) || 'MEDIUM',
+        status: (doc.status as any) || 'DRAFT',
+        items: (doc.metadata?.items || []).map((item: any, idx: number) => ({
+          id: item.id || `item-${doc.id}-${idx}`,
+          requisitionId: doc.id,
+          itemNumber: idx + 1,
+          description: item.itemDescription || item.description || '',
+          category: 'General',
+          quantity: item.quantity || 1,
+          unitPrice: item.estimatedCost || 0,
+          unit: 'pcs',
+          totalPrice: (item.quantity || 1) * (item.estimatedCost || 0),
+          createdAt: doc.createdAt,
+          updatedAt: doc.updatedAt,
+        })),
+        totalAmount: doc.metadata?.amount || 0,
+        currency: 'ZMW',
+        currentApprovalStage: doc.currentStage || 0,
+        totalApprovalStages: 3,
+        budgetCode: doc.metadata?.budgetCode || '',
+        createdAt: doc.createdAt,
+        updatedAt: doc.updatedAt,
+      }));
+
+      // Merge requisitions, avoiding duplicates by ID
+      const ids = new Set(allRequisitions.map(r => r.id));
+      const newRequisitions = workflowRequisitions.filter(r => !ids.has(r.id));
+      allRequisitions = [...allRequisitions, ...newRequisitions];
+    } catch (storeError) {
+      // If document store is not available, just use mock data
+      console.log('Document store not available, using mock data only');
+    }
+
     return {
       success: true,
       message: 'Requisitions retrieved successfully',
-      data: mockRequisitions,
+      data: allRequisitions,
       status: 200,
       statusText: 'OK',
     };

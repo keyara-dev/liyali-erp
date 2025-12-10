@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
-import { getCurrentUser } from "@/auth";
 import { LoginForm } from "./_components/login-form";
 import Logo from "@/components/base/logo";
+import { verifySession } from "@/lib/auth";
 
 export const metadata = {
   title: "Login - Liyali Gateway",
@@ -10,8 +10,9 @@ export const metadata = {
 
 export default async function LoginPage() {
   // If already logged in, redirect to dashboard
-  const user = await getCurrentUser();
-  if (user) {
+  const { session } = await verifySession();
+
+  if (session && session.user) {
     redirect("/home");
   }
 
@@ -83,11 +84,11 @@ export default async function LoginPage() {
             </p>
           </div>
 
-        {/* Footer */}
-        <div className="text-center text-xs text-muted-foreground">
-          <p>🔒 Simulated Authentication System</p>
-          <p>For development and testing purposes only</p>
-        </div>
+          {/* Footer */}
+          <div className="text-center text-xs text-muted-foreground">
+            <p>🔒 Simulated Authentication System</p>
+            <p>For development and testing purposes only</p>
+          </div>
         </div>
       </div>
     </div>

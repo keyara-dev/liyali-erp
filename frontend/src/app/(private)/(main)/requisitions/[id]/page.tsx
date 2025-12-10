@@ -1,8 +1,7 @@
-import { auth } from "@/auth";
+import { verifySession } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { getRequisitionById } from "@/app/_actions/requisitions";
 import { RequisitionDetailClient } from "../_components/requisition-detail-client";
-import { Requisition } from "@/types/requisition";
 
 export const metadata = {
   title: "Requisition Details",
@@ -18,7 +17,7 @@ interface RequisitionDetailPageProps {
 export default async function RequisitionDetailPage({
   params,
 }: RequisitionDetailPageProps) {
-  const session = await auth();
+  const { session } = await verifySession();
 
   if (!session?.user) {
     redirect("/login");
@@ -28,9 +27,10 @@ export default async function RequisitionDetailPage({
 
   // Server-side data fetching for SSR
   const requisitionResult = await getRequisitionById(requisitionId);
-  const initialRequisition = requisitionResult.success && requisitionResult.data
-    ? requisitionResult.data
-    : undefined;
+  const initialRequisition =
+    requisitionResult.success && requisitionResult.data
+      ? requisitionResult.data
+      : undefined;
 
   return (
     <RequisitionDetailClient

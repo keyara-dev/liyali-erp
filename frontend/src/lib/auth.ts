@@ -26,8 +26,8 @@ export interface AuthUser {
   name: string;
   email: string;
   role: UserRole;
-  department?: string;
   avatar?: string;
+  department?: string;
 }
 
 export type UserRole =
@@ -38,11 +38,6 @@ export type UserRole =
   | "CFO"
   | "COMPLIANCE_OFFICER"
   | "ADMIN";
-
-interface Session {
-  user: AuthUser;
-  expiresAt: number;
-}
 
 // ============================================================================
 // JWT ENCRYPTION/DECRYPTION
@@ -234,42 +229,17 @@ export const DEMO_USERS: Record<string, { password: string; user: AuthUser }> =
 /**
  * Get the current authenticated session
  */
-export async function getSession(): Promise<Session | null> {
-  const cookieStore = await cookies();
-  const sessionToken = cookieStore.get(AUTH_SESSION)?.value;
-
-  if (!sessionToken) {
-    return null;
-  }
-
-  try {
-    const decrypted = await decrypt(sessionToken);
-
-    // Check if decryption returned an error object
-    if (!decrypted || decrypted.success === false) {
-      return null;
-    }
-
-    const session = decrypted as any;
-
-    // Check if session has expired
-    if (session.expiresAt && new Date(session.expiresAt) < new Date()) {
-      cookieStore.delete(AUTH_SESSION);
-      return null;
-    }
-
-    return { user: session.user || {}, expiresAt: session.expiresAt };
-  } catch (error) {
-    return null;
-  }
+export async function getSession(): Promise<AuthSession | null> {
+  const { session } = await verifySession();
+  return session;
 }
 
 /**
  * Get current authenticated user
  */
 export async function getCurrentUser(): Promise<AuthUser | null> {
-  const session = await getSession();
-  return session?.user || null;
+  const { session } = await verifySession();
+  return (session?.user as AuthUser) || null;
 }
 
 /**
@@ -323,21 +293,6 @@ export async function login(
       success: false,
       error: error.message || "Failed to create session",
     };
-  }
-}
-
-/**
- * Logout - clear all session cookies
- */
-export async function logout(): Promise<void> {
-  try {
-    const cookieStore = await cookies();
-    cookieStore.delete(AUTH_SESSION);
-    cookieStore.delete(USER_SESSION);
-    cookieStore.delete(PERMISSIONS_SESSION);
-    cookieStore.delete(SCREEN_LOCK_SESSION);
-  } catch (error) {
-    console.error("Logout error:", error);
   }
 }
 
@@ -429,8 +384,6 @@ export async function updateAuthSession(
 export async function verifySession(): Promise<{
   isAuthenticated: boolean;
   session: AuthSession | null;
-  user?: Partial<User> | null;
-  user_type?: UserType;
   permissions?: any[];
   [key: string]: any;
 }> {
@@ -497,7 +450,6 @@ export async function deleteSession() {
     };
   }
 }
-
 
 // ============================================================================
 // SCREEN LOCK FUNCTIONS

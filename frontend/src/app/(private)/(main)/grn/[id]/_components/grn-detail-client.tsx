@@ -11,10 +11,13 @@ import {
   FileText,
   AlertTriangle,
   AlertCircle,
+  Plus,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PageHeader } from "@/components/base/page-header";
 import { GRNItemsMatchingTable } from "./grn-items-matching-table";
+import { QualityIssueReportDialog } from "./quality-issue-dialog";
+import { useAddQualityIssueMutation } from "@/hooks/use-quality-issue-mutations";
 import { Badge } from "@/components";
 
 interface GRNDetailClientProps {
@@ -131,12 +134,16 @@ function generateMockGRN(grnId: string): GoodsReceivedNote {
 
 export function GRNDetailClient({
   grnId,
-  userId,
-  userRole,
+  userId: _userId,
+  userRole: _userRole,
 }: GRNDetailClientProps) {
   const router = useRouter();
   const [grn, setGRN] = useState<GoodsReceivedNote | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isQualityDialogOpen, setIsQualityDialogOpen] = useState(false);
+
+  // Mutation for adding quality issues
+  const addQualityIssueMutation = useAddQualityIssueMutation(grnId);
 
   useEffect(() => {
     // Simulate data loading
@@ -155,6 +162,26 @@ export function GRNDetailClient({
 
   const handleBack = () => {
     router.back();
+  };
+
+  const handleAddQualityIssue = async (issue: Omit<{
+    id: string;
+    itemId: string;
+    description: string;
+    severity: "LOW" | "MEDIUM" | "HIGH";
+  }, 'id'>) => {
+    try {
+      // Call mutation to save to localStorage via server action
+      const updatedGRN = await addQualityIssueMutation.mutateAsync(issue);
+
+      // Update local state with the response from server
+      setGRN(updatedGRN);
+
+      toast.success("Quality issue reported and saved");
+    } catch (error) {
+      console.error("Error saving quality issue:", error);
+      toast.error("Failed to save quality issue");
+    }
   };
 
   if (isLoading || !grn) {
@@ -317,15 +344,26 @@ export function GRNDetailClient({
       </Card>
 
       {/* Quality Issues */}
-      {hasQualityIssues && (
-        <Card>
-          <CardHeader>
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2">
               <AlertTriangle className="h-5 w-5" />
               Quality Issues Reported
             </CardTitle>
-          </CardHeader>
-          <CardContent>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setIsQualityDialogOpen(true)}
+              className="gap-2"
+            >
+              <Plus className="h-4 w-4" />
+              Report Issue
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {hasQualityIssues ? (
             <div className="space-y-3">
               {grn.qualityIssues.map((issue) => {
                 const item = grn.items.find((i) => i.id === issue.itemId);
@@ -352,9 +390,18 @@ export function GRNDetailClient({
                 );
               })}
             </div>
-          </CardContent>
-        </Card>
-      )}
+          ) : (
+            <div className="text-center py-6">
+              <p className="text-sm text-muted-foreground">
+                No quality issues reported yet
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Click "Report Issue" to add quality concerns during inspection
+              </p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Notes */}
       {grn.notes && (
@@ -382,6 +429,14 @@ export function GRNDetailClient({
           </Button>
         )}
       </div>
+
+      {/* Quality Issue Report Dialog */}
+      <QualityIssueReportDialog
+        open={isQualityDialogOpen}
+        onOpenChange={setIsQualityDialogOpen}
+        items={grn.items}
+        onAddIssue={handleAddQualityIssue}
+      />
     </div>
   );
 }

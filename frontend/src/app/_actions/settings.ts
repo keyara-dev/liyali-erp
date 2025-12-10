@@ -1,6 +1,6 @@
 'use server'
 
-import { getCurrentUser } from '@/auth'
+import { getCurrentUser } from '@/lib/auth'
 import { APIResponse } from '@/types'
 
 /**

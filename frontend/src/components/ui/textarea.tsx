@@ -30,6 +30,7 @@ const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
       errorText,
       classNames,
       descriptionText,
+      isInvalid,
       showLimit = false,
       ...props
     },
@@ -39,13 +40,10 @@ const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
       <div className={cn("w-full", classNames?.wrapper)}>
         {label && (
           <label
-            className={cn(
-              "pl-1 text-sm font-medium text-nowrap text-foreground/70",
-              {
-                "text-red-500": onError || props?.isInvalid,
-                "opacity-50": props?.disabled,
-              }
-            )}
+            className={cn("mb-0.5 pl-1 text-sm font-medium text-nowrap", {
+              "text-red-500": onError || isInvalid,
+              "opacity-50": props?.disabled,
+            })}
             htmlFor={props?.name}
           >
             {label}{" "}
@@ -60,10 +58,10 @@ const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
           data-slot="textarea"
           disabled={props?.disabled}
           className={cn(
-            "flex min-h-[80px] w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
+            "dark:bg-input/20 border-input text-foreground ring-offset-foreground placeholder:text-foreground/50 flex min-h-[60px] w-full rounded-lg border px-3 py-2 text-sm focus-visible:ring-1 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50",
             {
               "border-red-500 focus:border-red-500/70 focus-visible:ring-red-500/30":
-                onError,
+                onError || isInvalid,
               "opacity-50": props?.disabled,
             },
             className,
@@ -72,12 +70,12 @@ const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
           {...props}
         />
 
-        {(errorText || descriptionText) && (
+        {((errorText && isInvalid) || descriptionText) && (
           <motion.span
             className={cn(
-              "ml-1 text-xs text-muted-foreground flex items-center justify-between gap-2",
+              "text-muted-foreground ml-1 flex items-center justify-between gap-2 text-xs",
               {
-                "text-red-600": onError,
+                "text-red-600": onError || isInvalid,
               },
               classNames?.descriptionText,
               classNames?.errorText

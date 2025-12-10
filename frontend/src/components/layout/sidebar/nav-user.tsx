@@ -19,7 +19,7 @@ import {
 import { BellIcon, CreditCardIcon, LogOutIcon, UserCircle2Icon, MoreVertical } from "lucide-react";
 
 import Link from "next/link";
-import { useCurrentUser } from "@/hooks/use-session";
+import {  useSession } from "@/hooks/use-session";
 
 const getInitials = (name: string) => {
   return name
@@ -31,7 +31,7 @@ const getInitials = (name: string) => {
 
 export function NavUser() {
   const { isMobile } = useSidebar();
-  const user = useCurrentUser();
+    const { user } = useSession();
 
   if (!user) {
     return (

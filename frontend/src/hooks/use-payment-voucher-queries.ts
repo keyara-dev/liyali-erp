@@ -156,6 +156,14 @@ export const useSavePaymentVoucher = (onSuccess?: () => void) => {
         queryKey: [QUERY_KEYS.PAYMENT_VOUCHERS.STATS],
       });
 
+      // Invalidate dashboard metrics
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.DASHBOARD.METRICS],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.DASHBOARD.ACTIVITIES],
+      });
+
       onSuccess?.();
     },
     onError: (error: Error) => {
@@ -208,6 +216,17 @@ export const useSubmitPaymentVoucherForApproval = (
       });
       queryClient.invalidateQueries({
         queryKey: [QUERY_KEYS.PAYMENT_VOUCHERS.ALL],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.PAYMENT_VOUCHERS.STATS],
+      });
+
+      // Invalidate dashboard metrics
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.DASHBOARD.METRICS],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.DASHBOARD.ACTIVITIES],
       });
 
       onSuccess?.();
@@ -264,6 +283,17 @@ export const useApprovePaymentVoucher = (
       queryClient.invalidateQueries({
         queryKey: [QUERY_KEYS.PAYMENT_VOUCHERS.ALL],
       });
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.PAYMENT_VOUCHERS.STATS],
+      });
+
+      // Invalidate dashboard metrics
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.DASHBOARD.METRICS],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.DASHBOARD.ACTIVITIES],
+      });
 
       onSuccess?.();
     },
@@ -319,6 +349,17 @@ export const useRejectPaymentVoucher = (
       });
       queryClient.invalidateQueries({
         queryKey: [QUERY_KEYS.PAYMENT_VOUCHERS.ALL],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.PAYMENT_VOUCHERS.STATS],
+      });
+
+      // Invalidate dashboard metrics
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.DASHBOARD.METRICS],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.DASHBOARD.ACTIVITIES],
       });
 
       onSuccess?.();
@@ -380,6 +421,14 @@ export const useMarkPaymentVoucherAsPaid = (
         queryKey: [QUERY_KEYS.PAYMENT_VOUCHERS.STATS],
       });
 
+      // Invalidate dashboard metrics
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.DASHBOARD.METRICS],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.DASHBOARD.ACTIVITIES],
+      });
+
       onSuccess?.();
     },
     onError: (error: Error) => {
@@ -422,6 +471,14 @@ export const useDeletePaymentVoucher = (onSuccess?: () => void) => {
       });
       queryClient.invalidateQueries({
         queryKey: [QUERY_KEYS.APPROVALS_PENDING],
+      });
+
+      // Invalidate dashboard metrics
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.DASHBOARD.METRICS],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.DASHBOARD.ACTIVITIES],
       });
 
       onSuccess?.();

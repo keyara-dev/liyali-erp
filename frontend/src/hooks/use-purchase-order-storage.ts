@@ -98,7 +98,7 @@ function purchaseOrderToWorkflowDocument(po: PurchaseOrder): WorkflowDocument {
   return {
     id: po.id,
     type: 'PURCHASE_ORDER',
-    documentNumber: po.metadata?.vendorName ? `PO-${po.id.substring(0, 8).toUpperCase()}` : po.id,
+    documentNumber: (po as any).documentNumber || `PO-${po.id.substring(0, 8).toUpperCase()}`,
     status: po.status as any,
     currentStage: po.currentStage || 1,
     createdBy: po.createdBy,

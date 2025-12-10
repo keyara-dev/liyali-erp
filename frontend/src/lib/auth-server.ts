@@ -7,7 +7,6 @@ export {
   getSession,
   getCurrentUser,
   login,
-  logout,
   hasRole,
   isAdmin,
   getDemoUsers,

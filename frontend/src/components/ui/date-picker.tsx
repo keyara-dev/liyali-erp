@@ -12,6 +12,7 @@ import { motion } from "framer-motion";
 
 export function DatePicker({
   label,
+  name,
   isDisabled,
   isInvalid,
   onError,
@@ -23,7 +24,7 @@ export function DatePicker({
   minDate,
   maxDate,
   ...props
-}: Omit<React.InputHTMLAttributes<HTMLInputElement>, 'value'> & {
+}: React.InputHTMLAttributes<HTMLInputElement> & {
   label?: string;
   onError?: boolean;
   error?: string;
@@ -44,7 +45,6 @@ export function DatePicker({
   };
 }) {
   const [open, setOpen] = React.useState(false);
-  const inputId = (props as any).name || label?.toLowerCase().replace(/\s+/g, '-') || 'date-picker';
 
   // Create disabled matcher for dates
   const disabledDates = React.useMemo(() => {
@@ -65,7 +65,7 @@ export function DatePicker({
             "text-red-500": isInvalid,
             "opacity-50": props?.disabled
           })}
-          htmlFor={inputId}>
+          htmlFor={name}>
           {label} {props?.required && <span className="font-bold text-red-500"> *</span>}
         </label>
       )}
@@ -74,7 +74,7 @@ export function DatePicker({
           <Button
             variant="outline"
             role="combobox"
-            id={inputId}
+            id="date"
             className={cn(
               "w-full justify-between text-left font-normal",
               !value && "text-muted-foreground",

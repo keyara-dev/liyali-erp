@@ -1,4 +1,4 @@
-import { getCurrentUser } from '@/auth'
+import { getCurrentUser } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import { QRVerificationClient } from './_components/qr-verification-client'
 

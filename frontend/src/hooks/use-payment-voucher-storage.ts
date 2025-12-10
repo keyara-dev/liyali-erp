@@ -97,20 +97,23 @@ function clearPaymentVouchersStorage(): void {
 function paymentVoucherToWorkflowDocument(pv: PaymentVoucher) {
   return {
     id: pv.id,
+    type: 'PAYMENT_VOUCHER' as const,
     documentNumber: pv.pvNumber,
-    title: pv.title,
-    status: pv.status,
-    priority: pv.priority,
-    vendorName: pv.vendorName,
-    department: pv.department,
-    totalAmount: pv.totalAmount,
-    currency: pv.currency,
-    createdAt: pv.createdAt instanceof Date ? pv.createdAt : new Date(pv.createdAt),
+    status: pv.status as any,
+    currentStage: pv.currentApprovalStage || 1,
     createdBy: pv.requestedByName,
-    submittedAt: pv.submittedAt,
-    approvedAt: pv.approvedAt,
-    currentApprovalStage: pv.currentApprovalStage,
-    totalApprovalStages: pv.totalApprovalStages,
+    createdAt: pv.createdAt instanceof Date ? pv.createdAt : new Date(pv.createdAt),
+    updatedAt: new Date(),
+    metadata: {
+      title: pv.title,
+      payeeName: pv.vendorName,
+      amount: pv.totalAmount,
+      currency: pv.currency,
+      department: pv.department,
+      priority: pv.priority,
+      submittedAt: pv.submittedAt,
+      approvedAt: pv.approvedAt,
+    },
   };
 }
 

@@ -10,10 +10,10 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
-  DropdownMenuTrigger
+  DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import Link from "next/link";
-import { useCurrentUser } from "@/hooks/use-session";
+import { useSession } from "@/hooks/use-session";
 
 const getInitials = (name: string) => {
   return name
@@ -24,7 +24,7 @@ const getInitials = (name: string) => {
 };
 
 export default function UserMenu() {
-  const user = useCurrentUser();
+  const { user } = useSession();
 
   if (!user) {
     return (
@@ -41,25 +41,35 @@ export default function UserMenu() {
       <DropdownMenuTrigger asChild>
         <Avatar className="rounded-full cursor-pointer">
           <AvatarImage
-            src={user.avatar || `https://bundui-images.netlify.app/avatars/01.png`}
+            src={
+              user.avatar || `https://bundui-images.netlify.app/avatars/01.png`
+            }
             alt={user.name}
           />
           <AvatarFallback>{initials}</AvatarFallback>
         </Avatar>
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-(--radix-dropdown-menu-trigger-width) min-w-60" align="end">
+      <DropdownMenuContent
+        className="w-(--radix-dropdown-menu-trigger-width) min-w-60"
+        align="end"
+      >
         <DropdownMenuLabel className="p-0">
           <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
             <Avatar className="rounded-full">
               <AvatarImage
-                src={user.avatar || `https://bundui-images.netlify.app/avatars/01.png`}
+                src={
+                  user.avatar ||
+                  `https://bundui-images.netlify.app/avatars/01.png`
+                }
                 alt={user.name}
               />
               <AvatarFallback>{initials}</AvatarFallback>
             </Avatar>
             <div className="grid flex-1 text-left text-sm leading-tight">
               <span className="truncate font-semibold">{user.name}</span>
-              <span className="text-muted-foreground truncate text-xs">{user.email}</span>
+              <span className="text-muted-foreground truncate text-xs">
+                {user.email}
+              </span>
             </div>
           </div>
         </DropdownMenuLabel>

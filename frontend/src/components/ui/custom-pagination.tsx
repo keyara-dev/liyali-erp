@@ -195,6 +195,7 @@ const CustomPagination = ({
         <Button
           onClick={() => updatePagination({ page: pagination?.page - 1 })}
           disabled={!pagination.has_prev}
+          size={"sm"}
           variant={"outline"}
           className={cn("", classNames?.previous)}
         >

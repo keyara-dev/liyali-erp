@@ -1,117 +1,60 @@
-'use server'
+"use server";
 
-import { cache } from 'react'
-import { getCurrentUser as getAuthUser, logout, isAdmin as checkAdmin } from '@/auth'
-import { APIResponse } from '@/types'
+import { cache } from "react";
 
-/**
- * Get current authenticated user session
- */
-export const getCurrentUser = cache(async (): Promise<APIResponse> => {
-  try {
-    const user = await getAuthUser()
-
-    if (!user) {
-      return {
-        success: false,
-        message: 'No authenticated user found',
-        data: null,
-        status: 401,
-        statusText: 'UNAUTHORIZED'
-      }
-    }
-
-    return {
-      success: true,
-      message: 'User session retrieved successfully',
-      data: user,
-      status: 200,
-      statusText: 'OK'
-    }
-  } catch (error: any) {
-    return {
-      success: false,
-      message: error.message || 'Failed to get user',
-      data: null,
-      status: 500,
-      statusText: 'ERROR'
-    }
-  }
-})
-
-/**
- * Sign out user
- */
-export async function signOutAction(): Promise<APIResponse> {
-  try {
-    await logout()
-    return {
-      success: true,
-      message: 'Signed out successfully',
-      data: null,
-      status: 200,
-      statusText: 'OK'
-    }
-  } catch (error: any) {
-    return {
-      success: false,
-      message: error.message || 'Logout failed',
-      data: null,
-      status: 500,
-      statusText: 'ERROR'
-    }
-  }
-}
+import { APIResponse } from "@/types";
+import { checkIsAdminAction } from "./session";
+import { getCurrentUser } from "@/lib/auth";
 
 /**
  * Verify admin role
  */
 export const verifyAdminRole = cache(async (): Promise<APIResponse> => {
   try {
-    const user = await getAuthUser()
+    const user = await getCurrentUser();
 
     if (!user) {
       return {
         success: false,
-        message: 'Authentication required',
+        message: "Authentication required",
         data: null,
         status: 401,
-        statusText: 'UNAUTHORIZED'
-      }
+        statusText: "UNAUTHORIZED",
+      };
     }
 
-    const isAdminUser = await checkAdmin()
+    const isAdminUser = await checkIsAdminAction();
 
     if (!isAdminUser) {
       return {
         success: false,
-        message: 'Admin access required',
+        message: "Admin access required",
         data: null,
         status: 403,
-        statusText: 'FORBIDDEN'
-      }
+        statusText: "FORBIDDEN",
+      };
     }
 
     return {
       success: true,
-      message: 'Admin access verified',
+      message: "Admin access verified",
       data: {
         user,
-        role: user.role
+        role: user.role,
       },
       status: 200,
-      statusText: 'OK'
-    }
+      statusText: "OK",
+    };
   } catch (error: any) {
     return {
       success: false,
-      message: error.message || 'Verification failed',
+      message: error.message || "Verification failed",
       data: null,
       status: 500,
-      statusText: 'ERROR'
-    }
+      statusText: "ERROR",
+    };
   }
-})
+});
 
 /**
  * Send password reset email
@@ -122,44 +65,47 @@ export async function sendResetEmail(email: string): Promise<APIResponse> {
     // In a production system, this would send an actual email
     return {
       success: true,
-      message: 'Password reset email sent successfully',
+      message: "Password reset email sent successfully",
       data: { email },
       status: 200,
-      statusText: 'OK'
-    }
+      statusText: "OK",
+    };
   } catch (error: any) {
     return {
       success: false,
-      message: error.message || 'Failed to send reset email',
+      message: error.message || "Failed to send reset email",
       data: null,
       status: 500,
-      statusText: 'ERROR'
-    }
+      statusText: "ERROR",
+    };
   }
 }
 
 /**
  * Reset password with token
  */
-export async function resetPassword(token: string, newPassword: string): Promise<APIResponse> {
+export async function resetPassword(
+  token: string,
+  newPassword: string
+): Promise<APIResponse> {
   try {
     // This is a stub implementation for password reset
     // In a production system, this would validate the token and update the password
     return {
       success: true,
-      message: 'Password reset successfully',
+      message: "Password reset successfully",
       data: { token },
       status: 200,
-      statusText: 'OK'
-    }
+      statusText: "OK",
+    };
   } catch (error: any) {
     return {
       success: false,
-      message: error.message || 'Failed to reset password',
+      message: error.message || "Failed to reset password",
       data: null,
       status: 500,
-      statusText: 'ERROR'
-    }
+      statusText: "ERROR",
+    };
   }
 }
 
@@ -167,10 +113,10 @@ export async function resetPassword(token: string, newPassword: string): Promise
  * Create new user account
  */
 export async function createNewAccount(data: {
-  email: string
-  username: string
-  password: string
-  [key: string]: any
+  email: string;
+  username: string;
+  password: string;
+  [key: string]: any;
 }): Promise<APIResponse> {
   try {
     // This is a stub implementation for account creation
@@ -182,22 +128,22 @@ export async function createNewAccount(data: {
 
     return {
       success: true,
-      message: 'Account created successfully',
+      message: "Account created successfully",
       data: {
         email: data.email,
-        username: data.username
+        username: data.username,
       },
       status: 201,
-      statusText: 'CREATED'
-    }
+      statusText: "CREATED",
+    };
   } catch (error: any) {
     return {
       success: false,
-      message: error.message || 'Failed to create account',
+      message: error.message || "Failed to create account",
       data: null,
       status: 500,
-      statusText: 'ERROR'
-    }
+      statusText: "ERROR",
+    };
   }
 }
 
@@ -214,20 +160,20 @@ export async function checkSignupAvailability(): Promise<APIResponse> {
 
     return {
       success: true,
-      message: 'Signup is available',
+      message: "Signup is available",
       data: {
-        available: true
+        available: true,
       },
       status: 200,
-      statusText: 'OK'
-    }
+      statusText: "OK",
+    };
   } catch (error: any) {
     return {
       success: false,
-      message: error.message || 'Failed to check signup availability',
+      message: error.message || "Failed to check signup availability",
       data: null,
       status: 500,
-      statusText: 'ERROR'
-    }
+      statusText: "ERROR",
+    };
   }
 }

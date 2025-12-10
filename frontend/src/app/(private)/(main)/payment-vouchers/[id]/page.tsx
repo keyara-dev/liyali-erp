@@ -1,4 +1,4 @@
-import { auth } from "@/auth";
+import { verifySession } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { PVDetailClient } from "./_components/pv-detail-client";
 
@@ -14,7 +14,7 @@ interface PVDetailPageProps {
 }
 
 export default async function PVDetailPage({ params }: PVDetailPageProps) {
-  const session = await auth();
+  const { session } = await verifySession();
 
   if (!session?.user) {
     redirect("/login");
@@ -28,5 +28,5 @@ export default async function PVDetailPage({ params }: PVDetailPageProps) {
       userId={session.user.id}
       userRole={(session.user as any).role}
     />
-  )
+  );
 }

@@ -2,6 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { QUERY_KEYS } from "@/lib/constants";
+import { queryKeys } from "@/lib/query-keys";
 import {
   getRequisitions,
   getRequisitionById,
@@ -154,6 +155,14 @@ export const useSaveRequisition = (onSuccess?: () => void) => {
         queryKey: [QUERY_KEYS.REQUISITIONS.STATS],
       });
 
+      // Invalidate dashboard metrics
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.DASHBOARD.METRICS],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.DASHBOARD.ACTIVITIES],
+      });
+
       onSuccess?.();
     },
     onError: (error: Error) => {
@@ -206,6 +215,17 @@ export const useSubmitRequisitionForApproval = (
       });
       queryClient.invalidateQueries({
         queryKey: [QUERY_KEYS.REQUISITIONS.ALL],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.REQUISITIONS.STATS],
+      });
+
+      // Invalidate dashboard metrics
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.DASHBOARD.METRICS],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.DASHBOARD.ACTIVITIES],
       });
 
       onSuccess?.();
@@ -263,7 +283,27 @@ export const useApproveRequisition = (
         queryKey: [QUERY_KEYS.REQUISITIONS.ALL],
       });
       queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.REQUISITIONS.STATS],
+      });
+      queryClient.invalidateQueries({
         queryKey: [QUERY_KEYS.APPROVALS_PENDING],
+      });
+
+      // When requisition is fully approved, a PO is auto-created
+      // Invalidate PO cache to show the new PO
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.PURCHASE_ORDERS.ALL],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.PURCHASE_ORDERS.STATS],
+      });
+
+      // Invalidate dashboard metrics
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.DASHBOARD.METRICS],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.DASHBOARD.ACTIVITIES],
       });
 
       onSuccess?.();
@@ -321,7 +361,18 @@ export const useRejectRequisition = (
         queryKey: [QUERY_KEYS.REQUISITIONS.ALL],
       });
       queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.REQUISITIONS.STATS],
+      });
+      queryClient.invalidateQueries({
         queryKey: [QUERY_KEYS.APPROVALS_PENDING],
+      });
+
+      // Invalidate dashboard metrics
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.DASHBOARD.METRICS],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.DASHBOARD.ACTIVITIES],
       });
 
       onSuccess?.();
@@ -367,6 +418,14 @@ export const useDeleteRequisition = (
       });
       queryClient.invalidateQueries({
         queryKey: [QUERY_KEYS.REQUISITIONS.STATS],
+      });
+
+      // Invalidate dashboard metrics
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.DASHBOARD.METRICS],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.DASHBOARD.ACTIVITIES],
       });
 
       onSuccess?.();

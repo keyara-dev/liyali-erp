@@ -154,6 +154,14 @@ export const useSavePurchaseOrder = (onSuccess?: () => void) => {
         queryKey: [QUERY_KEYS.PURCHASE_ORDERS.STATS],
       });
 
+      // Invalidate dashboard metrics
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.DASHBOARD.METRICS],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.DASHBOARD.ACTIVITIES],
+      });
+
       onSuccess?.();
     },
     onError: (error: Error) => {
@@ -206,6 +214,17 @@ export const useSubmitPurchaseOrderForApproval = (
       });
       queryClient.invalidateQueries({
         queryKey: [QUERY_KEYS.PURCHASE_ORDERS.ALL],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.PURCHASE_ORDERS.STATS],
+      });
+
+      // Invalidate dashboard metrics
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.DASHBOARD.METRICS],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.DASHBOARD.ACTIVITIES],
       });
 
       onSuccess?.();
@@ -261,6 +280,26 @@ export const useApprovePurchaseOrder = (
       });
       queryClient.invalidateQueries({
         queryKey: [QUERY_KEYS.PURCHASE_ORDERS.ALL],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.PURCHASE_ORDERS.STATS],
+      });
+
+      // When PO is fully approved, a Payment Voucher is auto-created
+      // Invalidate PV cache to show the new PV
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.PAYMENT_VOUCHERS.ALL],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.PAYMENT_VOUCHERS.STATS],
+      });
+
+      // Invalidate dashboard metrics
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.DASHBOARD.METRICS],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.DASHBOARD.ACTIVITIES],
       });
 
       onSuccess?.();
@@ -318,6 +357,17 @@ export const useRejectPurchaseOrder = (
       queryClient.invalidateQueries({
         queryKey: [QUERY_KEYS.PURCHASE_ORDERS.ALL],
       });
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.PURCHASE_ORDERS.STATS],
+      });
+
+      // Invalidate dashboard metrics
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.DASHBOARD.METRICS],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.DASHBOARD.ACTIVITIES],
+      });
 
       onSuccess?.();
     },
@@ -361,6 +411,14 @@ export const useDeletePurchaseOrder = (onSuccess?: () => void) => {
       });
       queryClient.invalidateQueries({
         queryKey: [QUERY_KEYS.APPROVALS_PENDING],
+      });
+
+      // Invalidate dashboard metrics
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.DASHBOARD.METRICS],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.DASHBOARD.ACTIVITIES],
       });
 
       onSuccess?.();

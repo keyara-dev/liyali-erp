@@ -1,4 +1,4 @@
-import { auth } from '@/auth'
+import { verifySession } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import { BudgetDetailClient } from './_components/budget-detail-client'
 
@@ -14,7 +14,7 @@ interface BudgetDetailPageProps {
 }
 
 export default async function BudgetDetailPage({ params }: BudgetDetailPageProps) {
-  const session = await auth()
+  const { session } = await verifySession()
   const resolvedParams = await params
 
   if (!session?.user) {

@@ -1,12 +1,19 @@
-'use server'
+"use server";
 
-import { auth } from '@/auth';
-import { APIResponse, DashboardMetrics, SignupSettings, SignupAnalytics } from '@/types';
-import { documentStore } from '@/lib/workflow-stores';
-import { unauthorizedResponse, handleError } from '@/app/_actions/api-config';
+import {
+  APIResponse,
+  DashboardMetrics,
+  SignupSettings,
+  SignupAnalytics,
+} from "@/types";
+import { documentStore } from "@/lib/workflow-stores";
+import { unauthorizedResponse, handleError } from "@/app/_actions/api-config";
+import { verifySession } from "@/lib/auth";
 
-export async function getDashboardMetrics(): Promise<APIResponse<DashboardMetrics>> {
-  const session = await auth();
+export async function getDashboardMetrics(): Promise<
+  APIResponse<DashboardMetrics>
+> {
+  const { session } = await verifySession();
 
   if (!session?.user) {
     return unauthorizedResponse();
@@ -41,20 +48,23 @@ export async function getDashboardMetrics(): Promise<APIResponse<DashboardMetric
       statusBreakdown[doc.status]++;
       documentTypeBreakdown[doc.type]++;
 
-      if (doc.status === 'IN_REVIEW') {
+      if (doc.status === "IN_REVIEW") {
         pendingApproval++;
         documentsNeedingAction++;
-      } else if (doc.status === 'SUBMITTED') {
+      } else if (doc.status === "SUBMITTED") {
         documentsNeedingAction++;
       }
     });
 
     // Calculate average approval time (mock calculation)
-    const approvedDocs = allDocuments.filter((d) => d.status === 'APPROVED');
+    const approvedDocs = allDocuments.filter((d) => d.status === "APPROVED");
     const averageApprovalTime =
       approvedDocs.length > 0
         ? approvedDocs.reduce((sum, doc) => {
-            const days = Math.floor((doc.updatedAt.getTime() - doc.createdAt.getTime()) / (1000 * 60 * 60 * 24));
+            const days = Math.floor(
+              (doc.updatedAt.getTime() - doc.createdAt.getTime()) /
+                (1000 * 60 * 60 * 24)
+            );
             return sum + days;
           }, 0) / approvedDocs.length
         : 0;
@@ -69,7 +79,7 @@ export async function getDashboardMetrics(): Promise<APIResponse<DashboardMetric
         documentNumber: doc.documentNumber,
         action: doc.status,
         timestamp: doc.updatedAt,
-        user: doc.createdByUser?.name || 'Unknown User',
+        user: doc.createdByUser?.name || "Unknown User",
       }));
 
     const metrics: DashboardMetrics = {
@@ -88,31 +98,33 @@ export async function getDashboardMetrics(): Promise<APIResponse<DashboardMetric
 
     return {
       success: true,
-      message: 'Dashboard metrics retrieved',
+      message: "Dashboard metrics retrieved",
       data: metrics,
       status: 200,
     };
   } catch (error) {
-    return handleError(error, 'GET', '/dashboard/metrics') as any;
+    return handleError(error, "GET", "/dashboard/metrics") as any;
   }
 }
 
-export async function fetchSignupSettings(): Promise<APIResponse<SignupSettings | null>> {
+export async function fetchSignupSettings(): Promise<
+  APIResponse<SignupSettings | null>
+> {
   try {
     const settings: SignupSettings = {
       allowSignups: true,
       requireEmailVerification: false,
       autoApproveUsers: false,
-      defaultRole: 'USER',
+      defaultRole: "USER",
     };
     return {
       success: true,
-      message: 'Signup settings retrieved',
+      message: "Signup settings retrieved",
       data: settings,
       status: 200,
     };
   } catch (error) {
-    return handleError(error, 'GET', '/dashboard/signup-settings') as any;
+    return handleError(error, "GET", "/dashboard/signup-settings") as any;
   }
 }
 
@@ -129,12 +141,12 @@ export async function fetchSignupAnalytics(params?: {
     };
     return {
       success: true,
-      message: 'Signup analytics retrieved',
+      message: "Signup analytics retrieved",
       data: analytics,
       status: 200,
     };
   } catch (error) {
-    return handleError(error, 'GET', '/dashboard/signup-analytics') as any;
+    return handleError(error, "GET", "/dashboard/signup-analytics") as any;
   }
 }
 
@@ -147,15 +159,15 @@ export async function toggleSignupSettings(
       allowSignups: true,
       requireEmailVerification: false,
       autoApproveUsers: false,
-      defaultRole: 'USER',
+      defaultRole: "USER",
     };
     return {
       success: true,
-      message: 'Signup settings updated',
+      message: "Signup settings updated",
       data: settings,
       status: 200,
     };
   } catch (error) {
-    return handleError(error, 'PATCH', '/dashboard/signup-settings') as any;
+    return handleError(error, "PATCH", "/dashboard/signup-settings") as any;
   }
 }

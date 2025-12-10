@@ -14,6 +14,7 @@ import {
 } from '@/types/purchase-order';
 import { Requisition } from '@/types/requisition';
 import { APIResponse } from '@/types';
+import { createPaymentVoucherFromPurchaseOrder } from './payment-vouchers';
 
 /**
  * Mock purchase orders database
@@ -596,6 +597,16 @@ export async function approvePurchaseOrder(
       comments: data.comments || `Approved at stage ${stage.stageNumber}: ${stage.stageName}`,
       signature: data.signature,
     });
+
+    // When PO is fully approved, auto-create Payment Voucher
+    if (allApproved) {
+      const pvResult = await createPaymentVoucherFromPurchaseOrder(purchaseOrder);
+      if (!pvResult.success) {
+        console.error('Failed to auto-create Payment Voucher:', pvResult.message);
+      } else {
+        console.log('Auto-created Payment Voucher:', pvResult.data?.pvNumber);
+      }
+    }
 
     return {
       success: true,

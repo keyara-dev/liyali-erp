@@ -1,6 +1,5 @@
 "use server";
 
-import { auth } from "@/auth";
 import { APIResponse } from "@/types";
 import {
   WorkflowDocument,
@@ -37,6 +36,7 @@ import {
   approvalLogsStore,
   attachmentsStore,
 } from "@/lib/workflow-stores";
+import { verifySession } from "@/lib/auth";
 
 // Note: documentStore is not exported from this server action file
 // It's available directly from @/lib/workflow-stores for non-server code
@@ -48,7 +48,7 @@ export async function createWorkflowDocument(
   documentType: WorkflowDocumentType,
   formData: Record<string, any>
 ): Promise<APIResponse<WorkflowDocument | null>> {
-  const session = await auth();
+  const { session } = await verifySession();
   if (!session?.user) return unauthorizedResponse();
 
   try {
@@ -105,7 +105,7 @@ export async function createWorkflowDocument(
 export async function submitDocument(
   documentId: string
 ): Promise<APIResponse<WorkflowDocument | null>> {
-  const session = await auth();
+  const { session } = await verifySession();
   if (!session?.user) return unauthorizedResponse();
 
   try {
@@ -161,7 +161,7 @@ export async function submitDocument(
 export async function getDocument(
   documentId: string
 ): Promise<APIResponse<WorkflowDocument | null>> {
-  const session = await auth();
+  const { session } = await verifySession();
   if (!session?.user) return unauthorizedResponse();
 
   try {
@@ -193,7 +193,7 @@ export async function updateDocumentDraft(
   documentId: string,
   formData: Record<string, any>
 ): Promise<APIResponse<WorkflowDocument | null>> {
-  const session = await auth();
+  const { session } = await verifySession();
   if (!session?.user) return unauthorizedResponse();
 
   try {
@@ -244,7 +244,7 @@ export async function getDocumentsByCreator(
   page: number = 1,
   limit: number = 10
 ): Promise<APIResponse<PaginatedResponse<WorkflowDocument>>> {
-  const session = await auth();
+  const { session } = await verifySession();
   if (!session?.user) return unauthorizedResponse();
 
   try {
@@ -284,7 +284,7 @@ export async function approveDocument(
   documentId: string,
   comments?: string
 ): Promise<APIResponse<ApprovalLogEntry | null>> {
-  const session = await auth();
+  const { session } = await verifySession();
   if (!session?.user) return unauthorizedResponse();
 
   try {
@@ -383,7 +383,7 @@ export async function rejectDocument(
   documentId: string,
   reason: string
 ): Promise<APIResponse<ApprovalLogEntry | null>> {
-  const session = await auth();
+  const { session } = await verifySession();
   if (!session?.user) return unauthorizedResponse();
 
   try {
@@ -456,7 +456,7 @@ export async function rejectDocument(
 export async function getApprovalLog(
   documentId: string
 ): Promise<APIResponse<ApprovalLogEntry[]>> {
-  const session = await auth();
+  const { session } = await verifySession();
   if (!session?.user) return unauthorizedResponse();
 
   try {
@@ -482,7 +482,7 @@ export async function getApprovalLog(
 export async function getPendingApprovals(
   userRole: string
 ): Promise<APIResponse<WorkflowDocument[]>> {
-  const session = await auth();
+  const { session } = await verifySession();
   if (!session?.user) return unauthorizedResponse();
 
   try {
@@ -520,7 +520,7 @@ export async function assignApprover(
   userId: string,
   role: string
 ): Promise<APIResponse<Approver | null>> {
-  const session = await auth();
+  const { session } = await verifySession();
   if (!session?.user) return unauthorizedResponse();
 
   try {
@@ -581,7 +581,7 @@ export async function reassignApprover(
   approverId: string,
   newUserId: string
 ): Promise<APIResponse<Approver | null>> {
-  const session = await auth();
+  const { session } = await verifySession();
   if (!session?.user) return unauthorizedResponse();
 
   try {
@@ -660,7 +660,7 @@ export async function reassignApprover(
 export async function getDocumentApprovers(
   documentId: string
 ): Promise<APIResponse<Approver[]>> {
-  const session = await auth();
+  const { session } = await verifySession();
   if (!session?.user) return unauthorizedResponse();
 
   try {
@@ -692,7 +692,7 @@ export async function uploadAttachment(
   fileType: string,
   visibleToRoles: string[]
 ): Promise<APIResponse<Attachment | null>> {
-  const session = await auth();
+  const { session } = await verifySession();
   if (!session?.user) return unauthorizedResponse();
 
   try {
@@ -745,7 +745,7 @@ export async function uploadAttachment(
 export async function getAttachments(
   documentId: string
 ): Promise<APIResponse<Attachment[]>> {
-  const session = await auth();
+  const { session } = await verifySession();
   if (!session?.user) return unauthorizedResponse();
 
   try {
@@ -772,7 +772,7 @@ export async function deleteAttachment(
   documentId: string,
   attachmentId: string
 ): Promise<APIResponse> {
-  const session = await auth();
+  const { session } = await verifySession();
   if (!session?.user) return unauthorizedResponse();
 
   try {
@@ -830,7 +830,7 @@ export async function getDashboardStats(userId: string): Promise<
     rejectedDocuments: number;
   }>
 > {
-  const session = await auth();
+  const { session } = await verifySession();
   if (!session?.user) return unauthorizedResponse();
 
   try {
@@ -869,7 +869,7 @@ export async function getDashboardStats(userId: string): Promise<
 export async function getAuditLog(
   documentId: string
 ): Promise<APIResponse<ApprovalLogEntry[]>> {
-  const session = await auth();
+  const { session } = await verifySession();
   if (!session?.user) return unauthorizedResponse();
 
   try {

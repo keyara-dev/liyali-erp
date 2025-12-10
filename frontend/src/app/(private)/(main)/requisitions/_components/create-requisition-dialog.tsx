@@ -1,28 +1,30 @@
-'use client'
+"use client";
 
-import { useState } from 'react'
-import { toast } from 'sonner'
+import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
-import { Label } from '@/components/ui/label'
-import { ScrollArea } from '@/components/ui/scroll-area'
-import { Plus, Trash2 } from 'lucide-react'
-import { createWorkflowDocument } from '@/app/_actions/workflow'
-import { RequisitionItem } from '@/types/workflow'
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Plus, Trash2 } from "lucide-react";
+import { createWorkflowDocument } from "@/app/_actions/workflow";
+import { RequisitionItem } from "@/types/workflow";
+import { QUERY_KEYS } from "@/lib/constants";
 
 interface CreateRequisitionDialogProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  onRequisitionCreated: () => void
-  userId: string
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onRequisitionCreated: () => void;
+  userId: string;
 }
 
 export function CreateRequisitionDialog({
@@ -31,39 +33,41 @@ export function CreateRequisitionDialog({
   onRequisitionCreated,
   userId,
 }: CreateRequisitionDialogProps) {
-  const [isLoading, setIsLoading] = useState(false)
+  const queryClient = useQueryClient();
+  const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
-    department: '',
-    requestedFor: '',
-    justification: '',
-    budgetCode: '',
+    department: "",
+    requestedFor: "",
+    justification: "",
+    budgetCode: "",
+    program: "",
     items: [] as RequisitionItem[],
-  })
+  });
 
   const totalEstimatedCost = formData.items.reduce(
     (sum, item) => sum + (item.estimatedCost || 0),
     0
-  )
+  );
 
   const handleAddItem = () => {
     const newItem: RequisitionItem = {
       id: Date.now().toString(),
-      itemDescription: '',
+      itemDescription: "",
       quantity: 1,
       estimatedCost: 0,
-    }
+    };
     setFormData((prev) => ({
       ...prev,
       items: [...prev.items, newItem],
-    }))
-  }
+    }));
+  };
 
   const handleRemoveItem = (itemId: string) => {
     setFormData((prev) => ({
       ...prev,
       items: prev.items.filter((item) => item.id !== itemId),
-    }))
-  }
+    }));
+  };
 
   const handleUpdateItem = (
     itemId: string,
@@ -75,77 +79,82 @@ export function CreateRequisitionDialog({
       items: prev.items.map((item) =>
         item.id === itemId ? { ...item, [field]: value } : item
       ),
-    }))
-  }
+    }));
+  };
 
   const handleSubmit = async () => {
     // Validation
     if (!formData.department.trim()) {
-      toast.error('Please enter department')
-      return
+      toast.error("Please enter department");
+      return;
     }
     if (!formData.requestedFor.trim()) {
-      toast.error('Please enter who this is requested for')
-      return
+      toast.error("Please enter who this is requested for");
+      return;
     }
     if (formData.items.length === 0) {
-      toast.error('Please add at least one item')
-      return
+      toast.error("Please add at least one item");
+      return;
     }
     if (!formData.justification.trim()) {
-      toast.error('Please provide justification')
-      return
+      toast.error("Please provide justification");
+      return;
     }
     if (!formData.budgetCode.trim()) {
-      toast.error('Please enter budget code')
-      return
+      toast.error("Please enter budget code");
+      return;
     }
 
     // Validate all items have descriptions and quantities
     const allItemsValid = formData.items.every(
       (item) => item.itemDescription.trim() && item.quantity > 0
-    )
+    );
     if (!allItemsValid) {
-      toast.error('Please fill in all item details')
-      return
+      toast.error("Please fill in all item details");
+      return;
     }
 
-    setIsLoading(true)
+    setIsLoading(true);
     try {
-      const result = await createWorkflowDocument('REQUISITION', {
+      const result = await createWorkflowDocument("REQUISITION", {
         department: formData.department,
         requestedFor: formData.requestedFor,
         items: formData.items,
         justification: formData.justification,
         budgetCode: formData.budgetCode,
-      })
+      });
 
       if (result.success && result.data) {
         toast.success(
           `Requisition ${result.data.documentNumber} created successfully`
-        )
+        );
+        // Invalidate requisitions query to force refetch
+        queryClient.invalidateQueries({
+          queryKey: [QUERY_KEYS.REQUISITIONS.ALL, "with-storage"],
+        });
         // Reset form
         setFormData({
-          department: '',
-          requestedFor: '',
-          justification: '',
-          budgetCode: '',
+          department: "",
+          requestedFor: "",
+          justification: "",
+          budgetCode: "",
+          program: "",
           items: [],
-        })
-        onRequisitionCreated()
+        });
+        onRequisitionCreated();
       } else {
-        toast.error(result.message)
+        toast.error(result.message);
       }
     } catch (error) {
-      toast.error('Failed to create requisition')
+      toast.error("Failed to create requisition");
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh]">
+      <DialogContent className="max-w-2xl! max-h-[90vh]">
         <DialogHeader>
           <DialogTitle>Create New Requisition</DialogTitle>
           <DialogDescription>
@@ -160,58 +169,63 @@ export function CreateRequisitionDialog({
               <h3 className="font-semibold text-lg">Basic Information</h3>
 
               <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="department">Department *</Label>
-                  <Input
-                    id="department"
-                    placeholder="e.g., Operations"
-                    value={formData.department}
-                    onChange={(e) =>
-                      setFormData({ ...formData, department: e.target.value })
-                    }
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="requestedFor">Requested For *</Label>
-                  <Input
-                    id="requestedFor"
-                    placeholder="e.g., John Mwale"
-                    value={formData.requestedFor}
-                    onChange={(e) =>
-                      setFormData({ ...formData, requestedFor: e.target.value })
-                    }
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="budgetCode">Budget Code *</Label>
                 <Input
-                  id="budgetCode"
-                  placeholder="e.g., CAP-2024-001"
-                  value={formData.budgetCode}
+                  id="department"
+                  label="Department"
+                  required
+                  placeholder="e.g., Operations"
+                  value={formData.department}
                   onChange={(e) =>
-                    setFormData({ ...formData, budgetCode: e.target.value })
+                    setFormData({ ...formData, department: e.target.value })
+                  }
+                />
+
+                <Input
+                  id="requestedFor"
+                  label="Requested By"
+                  required
+                  placeholder="e.g., John Mwale"
+                  value={formData.requestedFor}
+                  onChange={(e) =>
+                    setFormData({ ...formData, requestedFor: e.target.value })
                   }
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="justification">Justification *</Label>
-                <Textarea
-                  id="justification"
-                  placeholder="Explain why these items are needed..."
-                  rows={3}
-                  value={formData.justification}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      justification: e.target.value,
-                    })
-                  }
-                />
-              </div>
+              <Input
+                id="budgetCode"
+                label="Budget Code"
+                required
+                placeholder="e.g., CAP-2024-001"
+                value={formData.budgetCode}
+                onChange={(e) =>
+                  setFormData({ ...formData, budgetCode: e.target.value })
+                }
+              />
+              <Input
+                id="program"
+                label="Program"
+                required
+                placeholder="e.g., Training Workshop"
+                value={formData.program}
+                onChange={(e) =>
+                  setFormData({ ...formData, program: e.target.value })
+                }
+              />
+
+              <Textarea
+                id="justification"
+                label="Justification"
+                placeholder="Explain why these items are needed..."
+                rows={3}
+                value={formData.justification}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    justification: e.target.value,
+                  })
+                }
+              />
             </div>
 
             {/* Items Section */}
@@ -260,7 +274,7 @@ export function CreateRequisitionDialog({
                           onChange={(e) =>
                             handleUpdateItem(
                               item.id,
-                              'itemDescription',
+                              "itemDescription",
                               e.target.value
                             )
                           }
@@ -268,47 +282,43 @@ export function CreateRequisitionDialog({
                       </div>
 
                       <div className="grid grid-cols-3 gap-4">
-                        <div className="space-y-2">
-                          <Label>Quantity</Label>
-                          <Input
-                            type="number"
-                            placeholder="1"
-                            min="1"
-                            value={item.quantity}
-                            onChange={(e) =>
-                              handleUpdateItem(
-                                item.id,
-                                'quantity',
-                                parseInt(e.target.value) || 1
-                              )
-                            }
-                          />
-                        </div>
+                        <Input
+                          type="number"
+                          placeholder="1"
+                          label="Quantity"
+                          min="1"
+                          value={item.quantity}
+                          onChange={(e) =>
+                            handleUpdateItem(
+                              item.id,
+                              "quantity",
+                              parseInt(e.target.value) || 1
+                            )
+                          }
+                        />
 
-                        <div className="space-y-2">
-                          <Label>Est. Unit Cost (ZMW)</Label>
-                          <Input
-                            type="number"
-                            placeholder="0.00"
-                            min="0"
-                            value={item.estimatedCost}
-                            onChange={(e) =>
-                              handleUpdateItem(
-                                item.id,
-                                'estimatedCost',
-                                parseFloat(e.target.value) || 0
-                              )
-                            }
-                          />
-                        </div>
+                        <Input
+                          type="number"
+                          placeholder="0.00"
+                          label="Est. Unit Cost (ZMW)"
+                          min="0"
+                          value={item.estimatedCost}
+                          onChange={(e) =>
+                            handleUpdateItem(
+                              item.id,
+                              "estimatedCost",
+                              parseFloat(e.target.value) || 0
+                            )
+                          }
+                        />
 
                         <div className="space-y-2">
                           <Label>Total (ZMW)</Label>
-                          <div className="flex items-center justify-center h-10 bg-gray-50 rounded border border-gray-200">
+                          <div className="flex items-center justify-center h-9 bg-gray-50 rounded-lg border border-gray-200">
                             <span className="font-semibold">
                               {(
                                 item.quantity * item.estimatedCost
-                              ).toLocaleString('en-ZM', {
+                              ).toLocaleString("en-ZM", {
                                 minimumFractionDigits: 2,
                                 maximumFractionDigits: 2,
                               })}
@@ -336,8 +346,8 @@ export function CreateRequisitionDialog({
                     Total Estimated Cost:
                   </span>
                   <span className="text-xl font-bold text-blue-600">
-                    ZMW{' '}
-                    {totalEstimatedCost.toLocaleString('en-ZM', {
+                    ZMW{" "}
+                    {totalEstimatedCost.toLocaleString("en-ZM", {
                       minimumFractionDigits: 2,
                       maximumFractionDigits: 2,
                     })}
@@ -362,10 +372,10 @@ export function CreateRequisitionDialog({
             disabled={isLoading}
             className="min-w-32"
           >
-            {isLoading ? 'Creating...' : 'Create Requisition'}
+            {isLoading ? "Creating..." : "Create Requisition"}
           </Button>
         </div>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

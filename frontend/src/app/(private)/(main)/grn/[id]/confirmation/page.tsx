@@ -1,4 +1,4 @@
-import { auth } from '@/auth'
+import { verifySession } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import { GRNConfirmationClient } from './_components/grn-confirmation-client'
 
@@ -16,7 +16,7 @@ interface GRNConfirmationPageProps {
 export default async function GRNConfirmationPage({
   params,
 }: GRNConfirmationPageProps) {
-  const session = await auth()
+  const { session } = await verifySession()
 
   if (!session?.user) {
     redirect('/login')

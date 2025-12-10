@@ -5,6 +5,7 @@
 The **Search System** is a comprehensive transaction search interface that allows users to find requisitions, purchase orders, payment vouchers, and goods received notes (GRNs) across the entire platform. It combines client-side filtering UI with server-side search logic, real-time table pagination, and document preview/download capabilities.
 
 **Key Features:**
+
 - ✅ Multi-document type search (4 document types supported)
 - ✅ Multi-filter support (document number, type, status, date range)
 - ✅ Real-time pagination (customizable page size)
@@ -30,7 +31,7 @@ If not authenticated → Redirect to /login
 If authenticated → Pass userId and userRole to SearchClient
 ```
 
-**Code Reference:** [search/page.tsx](src/app/(private)/(main)/search/page.tsx:1-20)
+**Code Reference:** [search/page.tsx](<src/app/(private)/(main)/search/page.tsx:1-20>)
 
 ### 2. Initial Page Render
 
@@ -55,7 +56,7 @@ SearchForm Component Rendered (empty state with no results yet)
 TransactionResults Component Rendered (with useEffect hook waiting for filters)
 ```
 
-**Code Reference:** [search-client.tsx](src/app/(private)/(main)/search/_components/search-client.tsx:14-50)
+**Code Reference:** [search-client.tsx](<src/app/(private)/(main)/search/_components/search-client.tsx:14-50>)
 
 ### 3. User Fills Search Form
 
@@ -82,19 +83,20 @@ User interacts with SearchForm component:
 ```
 
 **State Updates (Real-time):**
+
 ```typescript
 // As user types in document number
-setDocumentNumber('REQ-2024')  // Updates state immediately
+setDocumentNumber("REQ-2024"); // Updates state immediately
 
 // As user selects from dropdown
-setDocumentType('REQUISITION')  // Updates state
+setDocumentType("REQUISITION"); // Updates state
 
 // As user selects dates
-setStartDate(new Date('2024-01-01'))
-setEndDate(new Date('2024-12-31'))
+setStartDate(new Date("2024-01-01"));
+setEndDate(new Date("2024-12-31"));
 ```
 
-**Code Reference:** [search-form.tsx](src/app/(private)/(main)/search/_components/search-form.tsx:39-177)
+**Code Reference:** [search-form.tsx](<src/app/(private)/(main)/search/_components/search-form.tsx:39-177>)
 
 ### 4. User Clicks Search Button
 
@@ -120,7 +122,7 @@ SearchClient's handleSearch executes:
   3. setRefreshTrigger(++counter)  // Trigger useEffect in results
 ```
 
-**Code Reference:** [search-form.tsx](src/app/(private)/(main)/search/_components/search-form.tsx:46-55)
+**Code Reference:** [search-form.tsx](<src/app/(private)/(main)/search/_components/search-form.tsx:46-55>)
 
 ### 5. Server-Side Search Execution
 
@@ -173,7 +175,7 @@ export async function getDocumentsByCreator(
   userId: string,
   page: number = 1,
   limit: number = 10
-): Promise<APIResponse<PaginatedResponse<WorkflowDocument>>>
+): Promise<APIResponse<PaginatedResponse<WorkflowDocument>>>;
 
 // Implementation
 documents = Array.from(documentStore.values()).filter(
@@ -194,7 +196,7 @@ documents = Array.from(documentStore.values()).filter(
 // Signature
 export async function getPendingApprovals(
   userRole: string
-): Promise<APIResponse<WorkflowDocument[]>>
+): Promise<APIResponse<WorkflowDocument[]>>;
 
 // Implementation
 pendingDocs = Array.from(documentStore.values())
@@ -210,6 +212,7 @@ pendingDocs = Array.from(documentStore.values())
 **Code Reference:** [workflow.ts](src/app/_actions/workflow.ts:482-513)
 
 **Logic:** Find docs where:
+
 1. Status is "IN_REVIEW"
 2. Current approver for current stage has the user's role
 
@@ -222,28 +225,28 @@ Once search results come back from server, they're further processed:
 ```typescript
 // Deduplication by ID
 const uniqueMap = new Map<string, WorkflowDocument>();
-allDocuments.forEach(doc => uniqueMap.set(doc.id, doc));
+allDocuments.forEach((doc) => uniqueMap.set(doc.id, doc));
 const uniqueDocuments = Array.from(uniqueMap.values());
 
 // Filter application
 let filtered = uniqueDocuments.filter((doc) => {
   // Document number: case-insensitive substring match
-  if (filters.documentNumber &&
-      !doc.documentNumber.toLowerCase().includes(
-        filters.documentNumber.toLowerCase()
-      )) {
+  if (
+    filters.documentNumber &&
+    !doc.documentNumber
+      .toLowerCase()
+      .includes(filters.documentNumber.toLowerCase())
+  ) {
     return false;
   }
 
   // Document type: exact match or 'ALL'
-  if (filters.documentType !== 'ALL' &&
-      doc.type !== filters.documentType) {
+  if (filters.documentType !== "ALL" && doc.type !== filters.documentType) {
     return false;
   }
 
   // Status: exact match or 'ALL'
-  if (filters.status !== 'ALL' &&
-      doc.status !== filters.status) {
+  if (filters.status !== "ALL" && doc.status !== filters.status) {
     return false;
   }
 
@@ -268,8 +271,8 @@ let filtered = uniqueDocuments.filter((doc) => {
 });
 
 // Sort by newest first
-filtered.sort((a, b) =>
-  new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+filtered.sort(
+  (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
 );
 
 // Pagination slicing
@@ -291,15 +294,15 @@ setIsLoading(false);
 
 TanStack React Table is initialized with columns:
 
-| Column | Type | Sortable | Behavior |
-|--------|------|----------|----------|
-| **Document #** | String | ✅ Yes | Clickable, shows doc number |
-| **Type** | String | ❌ No | Maps REQUISITION→"Requisition" |
-| **Status** | Badge | ❌ No | Colored badge (Draft=outline, Approved=default, Rejected=destructive) |
-| **Created** | Date | ✅ Yes | Shows date + time, formatted locale |
-| **Actions** | Buttons | ❌ No | View button + Download button |
+| Column         | Type    | Sortable | Behavior                                                              |
+| -------------- | ------- | -------- | --------------------------------------------------------------------- |
+| **Document #** | String  | ✅ Yes   | Clickable, shows doc number                                           |
+| **Type**       | String  | ❌ No    | Maps REQUISITION→"Requisition"                                        |
+| **Status**     | Badge   | ❌ No    | Colored badge (Draft=outline, Approved=default, Rejected=destructive) |
+| **Created**    | Date    | ✅ Yes   | Shows date + time, formatted locale                                   |
+| **Actions**    | Buttons | ❌ No    | View button + Download button                                         |
 
-**Code Reference:** [transaction-results.tsx](src/app/(private)/(main)/search/_components/transaction-results.tsx:128-227)
+**Code Reference:** [transaction-results.tsx](<src/app/(private)/(main)/search/_components/transaction-results.tsx:128-227>)
 
 #### 8a. Status Color Mapping
 
@@ -332,12 +335,13 @@ router.push(`/${typeSlug}/${doc.id}`);
 ```
 
 **Resulting URLs:**
+
 - Requisition → `/requisitions/{id}`
 - Purchase Order → `/purchase-orders/{id}`
 - Payment Voucher → `/payment-vouchers/{id}`
 - GRN → `/grn/{id}`
 
-**Code Reference:** [transaction-results.tsx](src/app/(private)/(main)/search/_components/transaction-results.tsx:200-206)
+**Code Reference:** [transaction-results.tsx](<src/app/(private)/(main)/search/_components/transaction-results.tsx:200-206>)
 
 ### 9. Download Flow
 
@@ -369,7 +373,7 @@ Browser triggers PDF download
 setIsLoading(false) - button returns to normal
 ```
 
-**Code Reference:** [download-button.tsx](src/app/(private)/(main)/search/_components/download-button.tsx:13-56)
+**Code Reference:** [download-button.tsx](<src/app/(private)/(main)/search/_components/download-button.tsx:13-56>)
 
 **Note:** Currently returns mock download URL. In production, would need actual PDF generation.
 
@@ -388,22 +392,23 @@ Showing 1 to 10 of 47 documents
 // User clicks "Next" button
 setPagination((p) => ({
   ...p,
-  page: Math.min(p.page + 1, p.totalPages)  // Increment but don't exceed max
+  page: Math.min(p.page + 1, p.totalPages), // Increment but don't exceed max
 }));
 
 // User clicks "Previous" button
 setPagination((p) => ({
   ...p,
-  page: Math.max(p.page - 1, 1)  // Decrement but not below 1
+  page: Math.max(p.page - 1, 1), // Decrement but not below 1
 }));
 
 // This triggers useEffect because pagination.page changed
 // useEffect calls fetchDocuments() again with new page number
 ```
 
-**Code Reference:** [transaction-results.tsx](src/app/(private)/(main)/search/_components/transaction-results.tsx:305-350)
+**Code Reference:** [transaction-results.tsx](<src/app/(private)/(main)/search/_components/transaction-results.tsx:305-350>)
 
 **Disabled States:**
+
 - Previous button disabled when: `page === 1 || isLoading`
 - Next button disabled when: `page >= totalPages || isLoading`
 
@@ -529,11 +534,11 @@ SearchPage (Server Component)
 
 ```typescript
 const [filters, setFilters] = useState<SearchFilters>({
-  documentNumber: '',
-  documentType: 'ALL',
-  status: 'ALL',
-  startDate: '',
-  endDate: '',
+  documentNumber: "",
+  documentType: "ALL",
+  status: "ALL",
+  startDate: "",
+  endDate: "",
 });
 
 const [refreshTrigger, setRefreshTrigger] = useState(0);
@@ -589,11 +594,11 @@ const [endDate, setEndDate] = useState<Date | undefined>(undefined);
 
 ```typescript
 interface SearchFilters {
-  documentNumber: string;      // Partial match, case-insensitive
-  documentType: 'ALL' | WorkflowDocumentType;  // REQUISITION | PURCHASE_ORDER | PAYMENT_VOUCHER | GOODS_RECEIVED_NOTE
-  status: 'ALL' | DocumentStatus;  // DRAFT | SUBMITTED | IN_REVIEW | APPROVED | REJECTED | REVERSED
-  startDate: string;           // ISO date string (YYYY-MM-DD)
-  endDate: string;             // ISO date string (YYYY-MM-DD)
+  documentNumber: string; // Partial match, case-insensitive
+  documentType: "ALL" | WorkflowDocumentType; // REQUISITION | PURCHASE_ORDER | PAYMENT_VOUCHER | GOODS_RECEIVED_NOTE
+  status: "ALL" | DocumentStatus; // DRAFT | SUBMITTED | IN_REVIEW | APPROVED | REJECTED | REVERSED
+  startDate: string; // ISO date string (YYYY-MM-DD)
+  endDate: string; // ISO date string (YYYY-MM-DD)
 }
 ```
 
@@ -602,10 +607,10 @@ interface SearchFilters {
 ```typescript
 interface WorkflowDocument {
   id: string;
-  documentNumber: string;      // REQ-2024-0001, PO-2024-0001, etc.
+  documentNumber: string; // REQ-2024-0001, PO-2024-0001, etc.
   type: WorkflowDocumentType;
   status: DocumentStatus;
-  createdBy: string;           // User ID who created this document
+  createdBy: string; // User ID who created this document
   createdAt: Date;
   updatedAt: Date;
   // ... additional fields specific to document type
@@ -646,9 +651,9 @@ interface APIResponse<T> {
 
 Search results combine two independent queries:
 
-| Source | Query | Records | Purpose |
-|--------|-------|---------|---------|
-| **Created Documents** | `documentStore.filter(doc => doc.createdBy === userId)` | All docs user created | Users see their own submissions |
+| Source                | Query                                                                                     | Records                | Purpose                             |
+| --------------------- | ----------------------------------------------------------------------------------------- | ---------------------- | ----------------------------------- |
+| **Created Documents** | `documentStore.filter(doc => doc.createdBy === userId)`                                   | All docs user created  | Users see their own submissions     |
 | **Pending Approvals** | `documentStore.filter(doc => doc.status === IN_REVIEW && approvers includes user's role)` | All docs awaiting user | Users see what needs their approval |
 
 **Benefit:** Single search shows both "my documents" and "documents waiting for me"
@@ -660,7 +665,7 @@ Search results combine two independent queries:
 // it should only appear once in results
 
 const uniqueMap = new Map<string, WorkflowDocument>();
-allDocuments.forEach(doc => uniqueMap.set(doc.id, doc));
+allDocuments.forEach((doc) => uniqueMap.set(doc.id, doc));
 // Map automatically deduplicates by key (id)
 
 const uniqueDocuments = Array.from(uniqueMap.values());
@@ -671,19 +676,20 @@ const uniqueDocuments = Array.from(uniqueMap.values());
 ```typescript
 // Start date: Inclusive (at midnight)
 if (filters.startDate) {
-  const startDate = new Date(filters.startDate);  // 00:00:00
+  const startDate = new Date(filters.startDate); // 00:00:00
   if (doc.createdAt < startDate) return false;
 }
 
 // End date: Inclusive (through 23:59:59)
 if (filters.endDate) {
   const endDate = new Date(filters.endDate);
-  endDate.setHours(23, 59, 59, 999);  // Extend to end of day
+  endDate.setHours(23, 59, 59, 999); // Extend to end of day
   if (doc.createdAt > endDate) return false;
 }
 ```
 
 **Example:** If user selects Jan 1 to Jan 31:
+
 - Includes all docs from Jan 1 00:00:00 through Jan 31 23:59:59
 - Excludes docs from Feb 1 onwards
 
@@ -691,10 +697,12 @@ if (filters.endDate) {
 
 ```typescript
 // User can type "req" and find "REQ-2024-001"
-if (filters.documentNumber &&
-    !doc.documentNumber.toLowerCase().includes(
-      filters.documentNumber.toLowerCase()
-    )) {
+if (
+  filters.documentNumber &&
+  !doc.documentNumber
+    .toLowerCase()
+    .includes(filters.documentNumber.toLowerCase())
+) {
   return false;
 }
 ```
@@ -703,8 +711,8 @@ if (filters.documentNumber &&
 
 ```typescript
 // Results always sorted newest first
-filtered.sort((a, b) =>
-  new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+filtered.sort(
+  (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
 );
 
 // Table columns also support sorting (TanStack React Table)
@@ -767,6 +775,7 @@ Users can navigate pages without re-fetching all data (slicing already in-memory
 ### Scenario 3: Multi-Filter Search
 
 **User Action:**
+
 - Document Number: "REQ"
 - Type: "Requisition"
 - Status: "Approved"
@@ -949,6 +958,7 @@ filtered.slice(...)                               // O(m) where m = page size
 ### 3. Re-rendering
 
 **TanStack React Table** provides built-in optimizations:
+
 - Only re-renders changed rows
 - Memoizes column definitions
 - Efficient sorting/filtering
@@ -960,9 +970,9 @@ filtered.slice(...)                               // O(m) where m = page size
 ### Missing User Session
 
 ```typescript
-const session = await auth();
+const { session } = await verifySession();
 if (!session?.user) {
-  return unauthorizedResponse();  // Returns 401 error
+  return unauthorizedResponse(); // Returns 401 error
 }
 ```
 
@@ -973,7 +983,7 @@ const result = await getDocument(documentId);
 if (!result.success || !result.data) {
   return {
     success: false,
-    message: 'Document not found',
+    message: "Document not found",
   };
 }
 ```
@@ -1066,28 +1076,28 @@ test('complete search flow: form → server → table', async () => {
 ### E2E Tests
 
 ```typescript
-test('search for approved requisitions from 2024', async () => {
-  await page.goto('/search');
+test("search for approved requisitions from 2024", async () => {
+  await page.goto("/search");
 
   // Fill form
-  await page.fill('input[placeholder*="Document Number"]', 'REQ');
-  await page.selectOption('select[name="documentType"]', 'REQUISITION');
-  await page.selectOption('select[name="status"]', 'APPROVED');
-  await page.fill('input[name="startDate"]', '2024-01-01');
-  await page.fill('input[name="endDate"]', '2024-12-31');
+  await page.fill('input[placeholder*="Document Number"]', "REQ");
+  await page.selectOption('select[name="documentType"]', "REQUISITION");
+  await page.selectOption('select[name="status"]', "APPROVED");
+  await page.fill('input[name="startDate"]', "2024-01-01");
+  await page.fill('input[name="endDate"]', "2024-12-31");
 
   // Search
   await page.click('button:has-text("Search")');
 
   // Verify results
-  const rows = await page.$$('table tbody tr');
+  const rows = await page.$$("table tbody tr");
   expect(rows.length).toBeGreaterThan(0);
 
   // Click view on first result
   await rows[0].$('button:has-text("View")').click();
 
   // Should navigate to detail page
-  expect(page.url()).toContain('/requisitions/');
+  expect(page.url()).toContain("/requisitions/");
 });
 ```
 

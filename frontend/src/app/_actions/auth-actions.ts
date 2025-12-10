@@ -1,11 +1,10 @@
-'use server'
+"use server";
 
-import { redirect } from 'next/navigation'
+import { redirect } from "next/navigation";
 import {
   getSession,
   getCurrentUser,
   login as authLogin,
-  logout as authLogout,
   hasRole as checkRole,
   isAdmin as checkAdmin,
   getDemoUsers,
@@ -14,40 +13,40 @@ import {
   clearScreenLockCookie,
   getScreenLockState,
   deleteSession,
-  updateAuthSession
-} from '@/lib/auth'
-import { APIResponse } from '@/types'
+  updateAuthSession,
+} from "@/lib/auth";
+import { APIResponse } from "@/types";
 
 /**
  * Get current authenticated user
  */
 export async function getCurrentUserAction(): Promise<APIResponse<any>> {
   try {
-    const user = await getCurrentUser()
+    const user = await getCurrentUser();
     if (!user) {
       return {
         success: false,
-        message: 'No authenticated user found',
+        message: "No authenticated user found",
         data: null,
         status: 401,
-        statusText: 'UNAUTHORIZED'
-      }
+        statusText: "UNAUTHORIZED",
+      };
     }
     return {
       success: true,
-      message: 'User retrieved successfully',
+      message: "User retrieved successfully",
       data: user,
       status: 200,
-      statusText: 'OK'
-    }
+      statusText: "OK",
+    };
   } catch (error: any) {
     return {
       success: false,
-      message: error.message || 'Failed to get user',
+      message: error.message || "Failed to get user",
       data: null,
       status: 500,
-      statusText: 'ERROR'
-    }
+      statusText: "ERROR",
+    };
   }
 }
 
@@ -59,31 +58,31 @@ export async function loginAction(
   password: string
 ): Promise<APIResponse<any>> {
   try {
-    const result = await authLogin(email, password)
+    const result = await authLogin(email, password);
     if (!result.success) {
       return {
         success: false,
-        message: result.error || 'Login failed',
+        message: result.error || "Login failed",
         data: null,
         status: 401,
-        statusText: 'UNAUTHORIZED'
-      }
+        statusText: "UNAUTHORIZED",
+      };
     }
     return {
       success: true,
-      message: 'Login successful',
+      message: "Login successful",
       data: result.user,
       status: 200,
-      statusText: 'OK'
-    }
+      statusText: "OK",
+    };
   } catch (error: any) {
     return {
       success: false,
-      message: error.message || 'Login error',
+      message: error.message || "Login error",
       data: null,
       status: 500,
-      statusText: 'ERROR'
-    }
+      statusText: "ERROR",
+    };
   }
 }
 
@@ -92,22 +91,22 @@ export async function loginAction(
  */
 export async function logoutAction(): Promise<APIResponse<null>> {
   try {
-    await authLogout()
+    await deleteSession();
     return {
       success: true,
-      message: 'Logged out successfully',
+      message: "Logged out successfully",
       data: null,
       status: 200,
-      statusText: 'OK'
-    }
+      statusText: "OK",
+    };
   } catch (error: any) {
     return {
       success: false,
-      message: error.message || 'Logout failed',
+      message: error.message || "Logout failed",
       data: null,
       status: 500,
-      statusText: 'ERROR'
-    }
+      statusText: "ERROR",
+    };
   }
 }
 
@@ -116,9 +115,9 @@ export async function logoutAction(): Promise<APIResponse<null>> {
  */
 export async function hasRoleAction(role: string | string[]): Promise<boolean> {
   try {
-    return await checkRole(role as any)
+    return await checkRole(role as any);
   } catch {
-    return false
+    return false;
   }
 }
 
@@ -127,9 +126,9 @@ export async function hasRoleAction(role: string | string[]): Promise<boolean> {
  */
 export async function isAdminAction(): Promise<boolean> {
   try {
-    return await checkAdmin()
+    return await checkAdmin();
   } catch {
-    return false
+    return false;
   }
 }
 
@@ -138,22 +137,22 @@ export async function isAdminAction(): Promise<boolean> {
  */
 export async function getDemoUsersAction(): Promise<APIResponse<any[] | null>> {
   try {
-    const users = await getDemoUsers()
+    const users = await getDemoUsers();
     return {
       success: true,
-      message: 'Demo users retrieved',
+      message: "Demo users retrieved",
       data: users,
       status: 200,
-      statusText: 'OK'
-    }
+      statusText: "OK",
+    };
   } catch (error: any) {
     return {
       success: false,
-      message: error.message || 'Failed to get demo users',
+      message: error.message || "Failed to get demo users",
       data: null,
       status: 500,
-      statusText: 'ERROR'
-    }
+      statusText: "ERROR",
+    };
   }
 }
 
@@ -161,25 +160,25 @@ export async function getDemoUsersAction(): Promise<APIResponse<any[] | null>> {
  * Require authentication - redirect to login if not authenticated
  */
 export async function requireAuth() {
-  const user = await getCurrentUser()
+  const user = await getCurrentUser();
   if (!user) {
-    redirect('/login')
+    redirect("/login");
   }
-  return user
+  return user;
 }
 
 /**
  * Require specific role - redirect to workflows if user doesn't have role
  */
 export async function requireRole(allowedRoles: string[]) {
-  const user = await getCurrentUser()
+  const user = await getCurrentUser();
   if (!user) {
-    redirect('/login')
+    redirect("/login");
   }
   if (!allowedRoles.includes(user.role)) {
-    redirect('/home')
+    redirect("/home");
   }
-  return user
+  return user;
 }
 
 /**
@@ -188,23 +187,25 @@ export async function requireRole(allowedRoles: string[]) {
  * @param isLocked - true to lock, false to unlock
  * @returns true if successful, false otherwise
  */
-export async function lockScreenOnUserIdle(isLocked: boolean): Promise<boolean> {
+export async function lockScreenOnUserIdle(
+  isLocked: boolean
+): Promise<boolean> {
   try {
-    const user = await getCurrentUser()
+    const user = await getCurrentUser();
     if (!user) {
-      return false
+      return false;
     }
 
     if (isLocked) {
-      await setScreenLockCookie(true)
+      await setScreenLockCookie(true);
     } else {
-      await clearScreenLockCookie()
+      await clearScreenLockCookie();
     }
 
-    return true
+    return true;
   } catch (error: any) {
-    console.error('Error locking screen on idle:', error)
-    return false
+    console.error("Error locking screen on idle:", error);
+    return false;
   }
 }
 
@@ -214,10 +215,10 @@ export async function lockScreenOnUserIdle(isLocked: boolean): Promise<boolean> 
  */
 export async function checkScreenLockState(): Promise<boolean> {
   try {
-    return await getScreenLockState()
+    return await getScreenLockState();
   } catch (error: any) {
-    console.error('Error checking screen lock state:', error)
-    return false
+    console.error("Error checking screen lock state:", error);
+    return false;
   }
 }
 
@@ -227,30 +228,29 @@ export async function checkScreenLockState(): Promise<boolean> {
  * @param reason - reason for logout (e.g., "Session expired")
  * @returns success response
  */
-export async function logUserOut(reason: string = 'User logged out'): Promise<APIResponse<null>> {
+export async function logUserOut(
+  reason: string = "User logged out"
+): Promise<APIResponse<null>> {
   try {
     // Delete JWT sessions and screen lock state
-    await deleteSession()
-
-    // Clear simulated auth (if needed)
-    await authLogout()
+    await deleteSession();
 
     return {
       success: true,
       message: reason,
       data: null,
       status: 200,
-      statusText: 'OK'
-    }
+      statusText: "OK",
+    };
   } catch (error: any) {
-    console.error('Error logging out user:', error)
+    console.error("Error logging out user:", error);
     return {
       success: false,
-      message: error.message || 'Logout failed',
+      message: error.message || "Logout failed",
       data: null,
       status: 500,
-      statusText: 'ERROR'
-    }
+      statusText: "ERROR",
+    };
   }
 }
 
@@ -261,51 +261,51 @@ export async function logUserOut(reason: string = 'User logged out'): Promise<AP
  */
 export async function getRefreshToken(): Promise<APIResponse<any>> {
   try {
-    const user = await getCurrentUser()
+    const user = await getCurrentUser();
     if (!user) {
       return {
         success: false,
-        message: 'No active session',
+        message: "No active session",
         data: null,
         status: 401,
-        statusText: 'UNAUTHORIZED'
-      }
+        statusText: "UNAUTHORIZED",
+      };
     }
 
     // Update auth session to extend expiration
     const updatedSession = await updateAuthSession({
-      expiresAt: new Date(Date.now() + 30 * 60 * 1000) // Extend 30 minutes
-    })
+      expiresAt: new Date(Date.now() + 30 * 60 * 1000), // Extend 30 minutes
+    });
 
     if (!updatedSession) {
       return {
         success: false,
-        message: 'Failed to refresh token',
+        message: "Failed to refresh token",
         data: null,
         status: 500,
-        statusText: 'ERROR'
-      }
+        statusText: "ERROR",
+      };
     }
 
     return {
       success: true,
-      message: 'Token refreshed successfully',
+      message: "Token refreshed successfully",
       data: {
         expiresAt: updatedSession.expiresAt,
-        user_id: updatedSession.user_id
+        user_id: updatedSession.user_id,
       },
       status: 200,
-      statusText: 'OK'
-    }
+      statusText: "OK",
+    };
   } catch (error: any) {
-    console.error('Error refreshing token:', error)
+    console.error("Error refreshing token:", error);
     return {
       success: false,
-      message: error.message || 'Failed to refresh token',
+      message: error.message || "Failed to refresh token",
       data: null,
       status: 500,
-      statusText: 'ERROR'
-    }
+      statusText: "ERROR",
+    };
   }
 }
 
@@ -320,48 +320,48 @@ export async function changePassword(
   newPassword: string
 ): Promise<APIResponse<null>> {
   try {
-    const user = await getCurrentUser()
+    const user = await getCurrentUser();
     if (!user) {
       return {
         success: false,
-        message: 'User not authenticated',
+        message: "User not authenticated",
         data: null,
         status: 401,
-        statusText: 'UNAUTHORIZED'
-      }
+        statusText: "UNAUTHORIZED",
+      };
     }
 
     // Note: For demo purposes, we just validate that oldPassword matches demo password
     // In production, this would validate against hashed password in database
-    const userConfig = DEMO_USERS[user.email.toLowerCase()]
+    const userConfig = DEMO_USERS[user.email.toLowerCase()];
 
     if (!userConfig || userConfig.password !== oldPassword) {
       return {
         success: false,
-        message: 'Current password is incorrect',
+        message: "Current password is incorrect",
         data: null,
         status: 400,
-        statusText: 'BAD_REQUEST'
-      }
+        statusText: "BAD_REQUEST",
+      };
     }
 
     // In production, this would update the database
     // For now, we just return success
     return {
       success: true,
-      message: 'Password changed successfully',
+      message: "Password changed successfully",
       data: null,
       status: 200,
-      statusText: 'OK'
-    }
+      statusText: "OK",
+    };
   } catch (error: any) {
-    console.error('Error changing password:', error)
+    console.error("Error changing password:", error);
     return {
       success: false,
-      message: error.message || 'Failed to change password',
+      message: error.message || "Failed to change password",
       data: null,
       status: 500,
-      statusText: 'ERROR'
-    }
+      statusText: "ERROR",
+    };
   }
 }

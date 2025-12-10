@@ -1,23 +1,20 @@
-import { auth } from '@/auth'
-import { redirect } from 'next/navigation'
-import { GrnClient } from './_components/grn-client'
+import { redirect } from "next/navigation";
+import { GrnClient } from "./_components/grn-client";
+import { verifySession } from "@/lib/auth";
 
 export const metadata = {
-  title: 'Goods Received Notes',
-  description: 'View and manage goods received notes',
-}
+  title: "Goods Received Notes",
+  description: "View and manage goods received notes",
+};
 
 export default async function GrnPage() {
-  const session = await auth()
+  const { session } = await verifySession();
 
   if (!session?.user) {
-    redirect('/login')
+    redirect("/login");
   }
 
   return (
-    <GrnClient
-      userId={session.user.id}
-      userRole={(session.user as any).role}
-    />
-  )
+    <GrnClient userId={session.user.id} userRole={(session.user as any).role} />
+  );
 }

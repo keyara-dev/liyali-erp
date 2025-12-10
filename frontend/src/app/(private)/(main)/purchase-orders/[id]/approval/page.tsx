@@ -1,4 +1,4 @@
-import { auth } from '@/auth'
+import { verifySession } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import { POApprovalClient } from './_components/po-approval-client'
 
@@ -16,7 +16,7 @@ interface POApprovalPageProps {
 export default async function POApprovalPage({
   params,
 }: POApprovalPageProps) {
-  const session = await auth()
+  const { session } = await verifySession()
 
   if (!session?.user) {
     redirect('/login')

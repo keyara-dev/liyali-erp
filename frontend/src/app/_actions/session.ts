@@ -1,7 +1,7 @@
-'use server';
+"use server";
 
-import { getCurrentUser, hasRole, isAdmin } from '@/lib/auth';
-import type { User } from '@/types/auth';
+import { getCurrentUser, hasRole, isAdmin, verifySession } from "@/lib/auth";
+import type { User } from "@/types/auth";
 
 /**
  * Get the current authenticated user session
@@ -13,23 +13,23 @@ import type { User } from '@/types/auth';
  * ```typescript
  * const { data: session } = useQuery({
  *   queryKey: ['session'],
- *   queryFn: () => getSessionAction(),
+ *   queryFn: () => getCurrentUserSession(),
  * })
  * ```
  */
-export async function getSessionAction(): Promise<{
+export async function getCurrentUserSession(): Promise<{
   user: User | null;
   isAuthenticated: boolean;
 }> {
   try {
-    const user = await getCurrentUser();
+    const { isAuthenticated, session } = await verifySession();
 
     return {
-      user,
-      isAuthenticated: !!user,
+      user: session?.user ?? null,
+      isAuthenticated: isAuthenticated,
     };
   } catch (error) {
-    console.error('Failed to get session:', error);
+    console.error("Failed to get session:", error);
     return {
       user: null,
       isAuthenticated: false,
@@ -58,7 +58,7 @@ export async function checkUserRoleAction(
   try {
     return await hasRole(requiredRole as any);
   } catch (error) {
-    console.error('Failed to check user role:', error);
+    console.error("Failed to check user role:", error);
     return false;
   }
 }
@@ -81,7 +81,7 @@ export async function checkIsAdminAction(): Promise<boolean> {
   try {
     return await isAdmin();
   } catch (error) {
-    console.error('Failed to check admin status:', error);
+    console.error("Failed to check admin status:", error);
     return false;
   }
 }

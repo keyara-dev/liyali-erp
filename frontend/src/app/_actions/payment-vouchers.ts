@@ -267,6 +267,7 @@ export async function getPaymentVouchers(): Promise<{
   success: boolean
   data?: PaymentVoucher[]
   message: string
+  status: number
 }> {
   try {
     // Simulated cache behavior
@@ -274,11 +275,13 @@ export async function getPaymentVouchers(): Promise<{
       success: true,
       data: mockPaymentVouchers,
       message: 'Payment vouchers retrieved successfully',
+      status: 200,
     }
   } catch (error) {
     return {
       success: false,
       message: `Failed to retrieve payment vouchers: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      status: 500,
     }
   }
 }
@@ -290,6 +293,7 @@ export async function getPaymentVoucherById(pvId: string): Promise<{
   success: boolean
   data?: PaymentVoucher
   message: string
+  status: number
 }> {
   try {
     const pv = mockPaymentVouchers.find((p) => p.id === pvId)
@@ -298,6 +302,7 @@ export async function getPaymentVoucherById(pvId: string): Promise<{
       return {
         success: false,
         message: 'Payment voucher not found',
+        status: 404,
       }
     }
 
@@ -305,11 +310,13 @@ export async function getPaymentVoucherById(pvId: string): Promise<{
       success: true,
       data: pv,
       message: 'Payment voucher retrieved successfully',
+      status: 200,
     }
   } catch (error) {
     return {
       success: false,
       message: `Failed to retrieve payment voucher: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      status: 500,
     }
   }
 }
@@ -741,6 +748,7 @@ export async function getPaymentVoucherStats(): Promise<{
   success: boolean
   data?: PaymentVoucherStats
   message: string
+  status: number
 }> {
   try {
     const stats: PaymentVoucherStats = {
@@ -763,11 +771,13 @@ export async function getPaymentVoucherStats(): Promise<{
       success: true,
       data: stats,
       message: 'Payment voucher statistics retrieved successfully',
+      status: 200,
     }
   } catch (error) {
     return {
       success: false,
       message: `Failed to retrieve payment voucher statistics: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      status: 500,
     }
   }
 }

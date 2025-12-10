@@ -1,8 +1,13 @@
-'use client';
+"use client";
 
-import { useQuery } from '@tanstack/react-query';
-import { getSessionAction, checkUserRoleAction, checkIsAdminAction } from '@/app/_actions/session';
-import type { User } from '@/types/auth';
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useRef } from "react";
+import {
+  getCurrentUserSession,
+  checkUserRoleAction,
+  checkIsAdminAction,
+} from "@/app/_actions/session";
+import type { User } from "@/types/auth";
 
 export interface SessionData {
   user: User | null;
@@ -14,6 +19,7 @@ export interface SessionData {
 /**
  * Client-side hook to access session data
  * Uses React Query to fetch the current user session via server action
+ * Automatically clears cache when user logs out or updates when user logs in
  *
  * @returns {SessionData} Current user session data
  *
@@ -35,12 +41,34 @@ export interface SessionData {
  * ```
  */
 export function useSession(): SessionData {
+  const queryClient = useQueryClient();
+  const previousAuthStateRef = useRef<boolean | undefined>(undefined);
+
   const { data, isLoading, error } = useQuery({
-    queryKey: ['session'],
-    queryFn: () => getSessionAction(),
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    queryKey: ["session"],
+    queryFn: () => getCurrentUserSession(),
+    staleTime: 0, // Always treat session as stale for immediate updates on auth changes
     gcTime: 10 * 60 * 1000, // 10 minutes (formerly cacheTime)
   });
+
+  // Detect auth state changes and invalidate related queries
+  useEffect(() => {
+    const currentAuthState = data?.isAuthenticated;
+
+    // Only trigger invalidation when auth state actually changes
+    if (previousAuthStateRef.current !== undefined && previousAuthStateRef.current !== currentAuthState) {
+      console.log(
+        `[useSession] Auth state changed from ${previousAuthStateRef.current} to ${currentAuthState}, invalidating caches`
+      );
+
+      // Invalidate all related queries to force fresh data
+      queryClient.invalidateQueries({ queryKey: ["session"] });
+      queryClient.invalidateQueries({ queryKey: ["user-role"] });
+      queryClient.invalidateQueries({ queryKey: ["user-is-admin"] });
+    }
+
+    previousAuthStateRef.current = currentAuthState;
+  }, [data?.isAuthenticated, queryClient]);
 
   return {
     user: data?.user || null,
@@ -65,7 +93,7 @@ export function useSession(): SessionData {
  */
 export function useHasRole(requiredRole: string | string[]): boolean {
   const { data } = useQuery({
-    queryKey: ['user-role', requiredRole],
+    queryKey: ["user-role", requiredRole],
     queryFn: () => checkUserRoleAction(requiredRole),
     staleTime: 5 * 60 * 1000, // 5 minutes
     gcTime: 10 * 60 * 1000, // 10 minutes
@@ -95,26 +123,6 @@ export function useIsAuthenticated(): boolean {
 }
 
 /**
- * Client-side hook to get the current user
- * Uses React Query to fetch session data
- *
- * @returns {User | null} Current authenticated user or null
- *
- * @example
- * ```typescript
- * const user = useCurrentUser();
- *
- * if (user) {
- *   console.log(`Hello, ${user.name}`);
- * }
- * ```
- */
-export function useCurrentUser(): User | null {
-  const { user } = useSession();
-  return user;
-}
-
-/**
  * Client-side hook to check if user is admin
  * Uses React Query to call server action for admin check
  *
@@ -131,7 +139,7 @@ export function useCurrentUser(): User | null {
  */
 export function useIsAdmin(): boolean {
   const { data } = useQuery({
-    queryKey: ['user-is-admin'],
+    queryKey: ["user-is-admin"],
     queryFn: () => checkIsAdminAction(),
     staleTime: 5 * 60 * 1000, // 5 minutes
     gcTime: 10 * 60 * 1000, // 10 minutes

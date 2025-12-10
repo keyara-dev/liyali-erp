@@ -43,32 +43,38 @@ The data is NOT coming from localStorage, a database, or external API. It's enti
 This file contains factory functions that CREATE fake data objects:
 
 ```typescript
-export function createMockRequisitionForm(options?: Partial<RequisitionForm>): RequisitionForm {
+export function createMockRequisitionForm(
+  options?: Partial<RequisitionForm>
+): RequisitionForm {
   return {
     id: uuidv4(),
-    documentNumber: generateDocumentNumber('REQUISITION'),
-    type: 'REQUISITION',
-    status: options?.status || 'DRAFT',
+    documentNumber: generateDocumentNumber("REQUISITION"),
+    type: "REQUISITION",
+    status: options?.status || "DRAFT",
     // ... all fields populated with random/templated values
   };
 }
 
-export function createMockPurchaseOrder(options?: Partial<PurchaseOrder>): PurchaseOrder {
+export function createMockPurchaseOrder(
+  options?: Partial<PurchaseOrder>
+): PurchaseOrder {
   return {
     id: uuidv4(),
-    documentNumber: generateDocumentNumber('PURCHASE_ORDER'),
-    type: 'PURCHASE_ORDER',
-    status: options?.status || 'DRAFT',
+    documentNumber: generateDocumentNumber("PURCHASE_ORDER"),
+    type: "PURCHASE_ORDER",
+    status: options?.status || "DRAFT",
     // ... all fields populated with random/templated values
   };
 }
 
-export function createMockPaymentVoucher(options?: Partial<PaymentVoucher>): PaymentVoucher {
+export function createMockPaymentVoucher(
+  options?: Partial<PaymentVoucher>
+): PaymentVoucher {
   return {
     id: uuidv4(),
-    documentNumber: generateDocumentNumber('PAYMENT_VOUCHER'),
-    type: 'PAYMENT_VOUCHER',
-    status: options?.status || 'DRAFT',
+    documentNumber: generateDocumentNumber("PAYMENT_VOUCHER"),
+    type: "PAYMENT_VOUCHER",
+    status: options?.status || "DRAFT",
     // ... all fields populated with random/templated values
   };
 }
@@ -95,6 +101,7 @@ export let isInitialized = false;
 ```
 
 **Key Characteristics:**
+
 - ✅ No external database
 - ✅ No localStorage persistence
 - ✅ No file-based storage
@@ -113,13 +120,22 @@ When the app starts, this runs automatically:
 
 ```typescript
 export function initializeSampleData() {
-  if (isInitialized) return;  // Only run once
+  if (isInitialized) return; // Only run once
 
-  const statuses: DocumentStatus[] =
-    ['DRAFT', 'SUBMITTED', 'IN_REVIEW', 'APPROVED', 'REJECTED', 'REVERSED'];
+  const statuses: DocumentStatus[] = [
+    "DRAFT",
+    "SUBMITTED",
+    "IN_REVIEW",
+    "APPROVED",
+    "REJECTED",
+    "REVERSED",
+  ];
 
-  const documentTypes: WorkflowDocumentType[] =
-    ['REQUISITION', 'PURCHASE_ORDER', 'PAYMENT_VOUCHER'];
+  const documentTypes: WorkflowDocumentType[] = [
+    "REQUISITION",
+    "PURCHASE_ORDER",
+    "PAYMENT_VOUCHER",
+  ];
 
   // Create 25 sample documents
   for (let i = 0; i < 25; i++) {
@@ -132,19 +148,19 @@ export function initializeSampleData() {
 
     // Create mock doc based on type
     switch (type) {
-      case 'PURCHASE_ORDER':
+      case "PURCHASE_ORDER":
         doc = createMockPurchaseOrder({
           status,
-          currentStage: status === 'DRAFT' ? 0 : Math.min(i % 4, 3),
+          currentStage: status === "DRAFT" ? 0 : Math.min(i % 4, 3),
           createdAt: createdDate,
           updatedAt: createdDate,
           createdBy: MOCK_USERS.REQUESTER[i % MOCK_USERS.REQUESTER.length].id,
         });
         break;
-      case 'PAYMENT_VOUCHER':
+      case "PAYMENT_VOUCHER":
         doc = createMockPaymentVoucher({
           status,
-          currentStage: status === 'DRAFT' ? 0 : Math.min(i % 4, 3),
+          currentStage: status === "DRAFT" ? 0 : Math.min(i % 4, 3),
           createdAt: createdDate,
           updatedAt: createdDate,
           createdBy: MOCK_USERS.REQUESTER[i % MOCK_USERS.REQUESTER.length].id,
@@ -153,7 +169,7 @@ export function initializeSampleData() {
       default:
         doc = createMockRequisitionForm({
           status,
-          currentStage: status === 'DRAFT' ? 0 : Math.min(i % 4, 3),
+          currentStage: status === "DRAFT" ? 0 : Math.min(i % 4, 3),
           createdAt: createdDate,
           updatedAt: createdDate,
           createdBy: MOCK_USERS.REQUESTER[i % MOCK_USERS.REQUESTER.length].id,
@@ -172,6 +188,7 @@ initializeSampleData();
 ```
 
 **What This Does:**
+
 1. Creates 25 sample documents
 2. Varies the status (DRAFT, SUBMITTED, IN_REVIEW, APPROVED, REJECTED, REVERSED)
 3. Varies the type (REQUISITION, PURCHASE_ORDER, PAYMENT_VOUCHER)
@@ -180,6 +197,7 @@ initializeSampleData();
 6. Stores each document in the Map
 
 **When Does It Run:**
+
 - On first import of `workflow-initialization.ts` module
 - Which happens when the app starts
 - Runs ONCE (isInitialized flag prevents re-initialization)
@@ -200,7 +218,7 @@ export async function getDocumentsByCreator(
   page: number = 1,
   limit: number = 10
 ): Promise<APIResponse<PaginatedResponse<WorkflowDocument>>> {
-  const session = await auth();
+  const { session } = await verifySession();
   if (!session?.user) return unauthorizedResponse();
 
   try {
@@ -232,6 +250,7 @@ export async function getDocumentsByCreator(
 ```
 
 **What's Happening:**
+
 1. `Array.from(documentStore.values())` - Get all documents from the Map
 2. `.filter(doc => doc.createdBy === userId)` - Filter in memory
 3. Return results
@@ -339,6 +358,7 @@ JUST IN-MEMORY JAVASCRIPT ✓
 The `initializeSampleData()` function creates 25 documents with:
 
 **Document Statuses (cycle through):**
+
 - DRAFT
 - SUBMITTED
 - IN_REVIEW
@@ -347,11 +367,13 @@ The `initializeSampleData()` function creates 25 documents with:
 - REVERSED
 
 **Document Types (cycle through):**
+
 - REQUISITION
 - PURCHASE_ORDER
 - PAYMENT_VOUCHER
 
 **Creators (random from MOCK_USERS):**
+
 ```typescript
 MOCK_USERS = {
   REQUESTER: [
@@ -417,26 +439,26 @@ MOCK_USERS = {
 
 ### ✅ What Works
 
-| Feature | Status | How |
-|---------|--------|-----|
-| Search by filters | ✅ Works | Queries in-memory Map |
-| View document | ✅ Works | Retrieves from Map by ID |
-| Pagination | ✅ Works | Client-side array slicing |
-| Download | ✅ Works | Generates mock URL |
-| Create new document | ✅ Works | Adds to Map |
-| Update document | ✅ Works | Updates Map value |
-| Delete document | ✅ Works | Removes from Map |
-| Approvals | ✅ Works | Stored in approversStore Map |
+| Feature             | Status   | How                          |
+| ------------------- | -------- | ---------------------------- |
+| Search by filters   | ✅ Works | Queries in-memory Map        |
+| View document       | ✅ Works | Retrieves from Map by ID     |
+| Pagination          | ✅ Works | Client-side array slicing    |
+| Download            | ✅ Works | Generates mock URL           |
+| Create new document | ✅ Works | Adds to Map                  |
+| Update document     | ✅ Works | Updates Map value            |
+| Delete document     | ✅ Works | Removes from Map             |
+| Approvals           | ✅ Works | Stored in approversStore Map |
 
 ### ❌ What Doesn't Persist
 
-| Feature | Status | Reason |
-|---------|--------|--------|
-| Data survives refresh | ❌ Lost | In-memory only |
-| Data survives restart | ❌ Lost | Not persisted anywhere |
-| Multi-server sync | ❌ No | Each server has own Map |
-| Concurrent users | ⚠️ Conflicts | No locking mechanism |
-| Backup/Export | ❌ No | No persistence layer |
+| Feature               | Status       | Reason                  |
+| --------------------- | ------------ | ----------------------- |
+| Data survives refresh | ❌ Lost      | In-memory only          |
+| Data survives restart | ❌ Lost      | Not persisted anywhere  |
+| Multi-server sync     | ❌ No        | Each server has own Map |
+| Concurrent users      | ⚠️ Conflicts | No locking mechanism    |
+| Backup/Export         | ❌ No        | No persistence layer    |
 
 ---
 
@@ -557,18 +579,18 @@ PROJECT ROOT
 
 ## Summary
 
-| Aspect | Answer |
-|--------|--------|
+| Aspect                                | Answer                                          |
+| ------------------------------------- | ----------------------------------------------- |
 | **Where does search data come from?** | In-memory JavaScript Map called `documentStore` |
-| **Is it from localStorage?** | No |
-| **Is it from a database?** | No |
-| **Is it from a file?** | No |
-| **Is it mocked?** | Yes, completely mocked |
-| **How much data?** | 25 hardcoded sample documents |
-| **Does it persist?** | No, lost on app restart |
-| **Can multiple servers share it?** | No, each has its own copy |
-| **Is this production-ready?** | No, this is MVP/demo architecture |
-| **What would replace this?** | Real database (PostgreSQL, MongoDB, etc.) |
+| **Is it from localStorage?**          | No                                              |
+| **Is it from a database?**            | No                                              |
+| **Is it from a file?**                | No                                              |
+| **Is it mocked?**                     | Yes, completely mocked                          |
+| **How much data?**                    | 25 hardcoded sample documents                   |
+| **Does it persist?**                  | No, lost on app restart                         |
+| **Can multiple servers share it?**    | No, each has its own copy                       |
+| **Is this production-ready?**         | No, this is MVP/demo architecture               |
+| **What would replace this?**          | Real database (PostgreSQL, MongoDB, etc.)       |
 
 ---
 
@@ -577,23 +599,28 @@ PROJECT ROOT
 To move from mock data to real data:
 
 1. **Add Database**
+
    - PostgreSQL, MongoDB, or other DBMS
    - Create schema/collections for documents
 
 2. **Replace In-Memory Maps with Database Queries**
+
    - Change: `documentStore.get(id)` → `database.documents.findById(id)`
    - Change: `Array.from(documentStore.values()).filter(...)` → `database.documents.find({...})`
 
 3. **Implement Persistence**
+
    - Data survives restarts
    - Multiple servers can access same data
 
 4. **Remove Initialization Code**
+
    - Delete `workflow-initialization.ts`
    - Delete `mock-data.ts` factory functions
    - Stop auto-creating fake documents
 
 5. **Add Data Validation**
+
    - Schema validation at DB layer
    - Query optimization with indexes
 

@@ -13,8 +13,32 @@ import {
   SidebarProvider,
   useSidebar,
 } from "@/components/ui/sidebar";
+import { useInitializeStorage } from "@/hooks/use-initialize-storage";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000,        // 5 minutes - data considered fresh
+      gcTime: 10 * 60 * 1000,          // 10 minutes - kept in memory
+      retry: 3,                         // Retry failed queries 3 times
+      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000), // Exponential backoff
+      refetchOnWindowFocus: false,      // Don't auto-refetch on window focus
+      refetchOnReconnect: true,         // Refetch when network reconnects
+      refetchOnMount: true,             // Refetch on component mount if stale
+    },
+    mutations: {
+      retry: 1,                         // Retry mutations once
+      onError: (error) => {
+        console.error('Mutation error:', error);
+      },
+    },
+  },
+});
+
+function StorageInitializer({ children }: { children: React.ReactNode }) {
+  useInitializeStorage();
+  return <>{children}</>;
+}
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
@@ -25,7 +49,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
         disableTransitionOnChange
       >
         <QueryClientProvider client={queryClient}>
-          {children}
+          <StorageInitializer>
+            {children}
+          </StorageInitializer>
           <Toaster richColors position="bottom-right" />
           <ReactQueryDevtools initialIsOpen={false} />
         </QueryClientProvider>
