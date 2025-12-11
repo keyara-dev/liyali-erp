@@ -27,7 +27,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { ArrowLeft, AlertCircle, Check } from 'lucide-react'
+import { AlertCircle, Check, Plus, ClipboardListIcon } from 'lucide-react'
+import Link from 'next/link'
+import { PageHeader } from '@/components/base/page-header'
 import { usePurchaseOrders } from '@/hooks/use-purchase-order-queries'
 import { useSavePaymentVoucher } from '@/hooks/use-payment-voucher-queries'
 import { CreatePaymentVoucherRequest } from '@/types/payment-voucher'
@@ -110,31 +112,50 @@ export function PVCreateClient({ userId, userName, userRole }: PVCreateClientPro
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-4">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => router.back()}
-          className="gap-2"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back
-        </Button>
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Create Payment Voucher</h1>
-          <p className="text-muted-foreground">
-            Create a new payment voucher from an approved purchase order
-          </p>
-        </div>
-      </div>
+      <PageHeader
+        title="Create Payment Voucher"
+        subtitle="Create a new payment voucher from an approved purchase order"
+        showBackButton={true}
+      />
 
       {approvedPOs.length === 0 ? (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
-            No approved purchase orders available. Please create and approve a purchase order first.
-          </AlertDescription>
-        </Alert>
+        <Card className="bg-canvas/50 border-2 border-dashed">
+          <CardContent className="flex flex-col items-center justify-center px-8 py-12">
+            <div className="relative mb-4">
+              <div className="bg-primary/10 absolute inset-0 rounded-full blur-2xl" />
+              <div className="bg-canvas border-primary/20 relative rounded-2xl border-2 p-6">
+                <ClipboardListIcon className="text-primary h-16 w-16" strokeWidth={1.5} />
+              </div>
+            </div>
+
+            <h3 className="text-foreground mb-2 text-2xl font-semibold">No Approved Purchase Orders</h3>
+            <p className="text-muted-foreground mb-8 max-w-md text-center">
+              Payment vouchers are created from approved purchase orders. To create a payment voucher, you first need to create and approve a purchase order.
+            </p>
+
+            <div className="mb-8 grid w-full max-w-2xl grid-cols-3 gap-4 text-xs">
+              <div className="bg-canvas border-border rounded-lg border p-4 text-center">
+                <div className="text-primary mb-1 font-mono font-semibold">CREATE</div>
+                <div className="text-muted-foreground">Requisition Request</div>
+              </div>
+              <div className="bg-canvas border-border rounded-lg border p-4 text-center">
+                <div className="text-primary mb-1 font-mono font-semibold">APPROVE</div>
+                <div className="text-muted-foreground">Purchase Order</div>
+              </div>
+              <div className="bg-canvas border-border rounded-lg border p-4 text-center">
+                <div className="text-primary mb-1 font-mono font-semibold">CREATE</div>
+                <div className="text-muted-foreground">Payment Voucher</div>
+              </div>
+            </div>
+
+            <Button size="lg" className="gap-2" asChild>
+              <Link href="/purchase-orders">
+                <Plus className="h-4 w-4" />
+                Go to Purchase Orders
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
       ) : (
         <div className="grid gap-6">
           {/* PO Selection */}

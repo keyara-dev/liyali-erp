@@ -48,9 +48,8 @@ export async function createBudget(
       approvalChain: []
     }
 
-    // Store in memory (in production, save to database)
-    // budgetStore.set(newBudget.id, newBudget)
-
+    // Note: This is a server action but we can't access localStorage directly
+    // The client component will handle storing in localStorage after receiving the response
     return {
       success: true,
       message: 'Budget created successfully',
@@ -62,6 +61,53 @@ export async function createBudget(
     return {
       success: false,
       message: error.message || 'Failed to create budget',
+      data: null,
+      status: 500,
+      statusText: 'ERROR'
+    }
+  }
+}
+
+/**
+ * Update an existing budget (items, metadata, etc.)
+ */
+export async function updateBudget(
+  budgetId: string,
+  updates: Partial<Budget>
+): Promise<APIResponse<Budget | null>> {
+  try {
+    // In production, fetch from database
+    const budgets = await getBudgets('user-1') // dummy userId
+    const budgetIndex = budgets.data?.findIndex((b) => b.id === budgetId) ?? -1
+
+    if (budgetIndex === -1) {
+      return {
+        success: false,
+        message: 'Budget not found',
+        data: null,
+        status: 404,
+        statusText: 'NOT_FOUND'
+      }
+    }
+
+    // Merge updates with existing budget
+    const updatedBudget: Budget = {
+      ...(budgets.data![budgetIndex]),
+      ...updates,
+      updatedAt: new Date(),
+    }
+
+    return {
+      success: true,
+      message: 'Budget updated successfully',
+      data: updatedBudget,
+      status: 200,
+      statusText: 'OK'
+    }
+  } catch (error: any) {
+    return {
+      success: false,
+      message: error.message || 'Failed to update budget',
       data: null,
       status: 500,
       statusText: 'ERROR'
@@ -291,29 +337,35 @@ export const getBudgets = cache(async (
 
 /**
  * Get budget by ID
+ * Note: This is a temporary implementation that checks mock data.
+ * In production, this would fetch from the database.
+ * For now, newly created budgets are stored in localStorage on the client.
  */
 export async function getBudgetById(budgetId: string): Promise<APIResponse<Budget | null>> {
   try {
-    // In production, fetch from database
-    const budgets = await getBudgets('user-1') // dummy userId
-    const budget = budgets.data?.find((b) => b.id === budgetId)
+    // First try to get all budgets (both mock and localStorage-based)
+    // In production, fetch from database with the actual userId
+    const budgets = await getBudgets('user-1') // dummy userId for mock data
+    let budget = budgets.data?.find((b) => b.id === budgetId)
 
-    if (!budget) {
+    if (budget) {
       return {
-        success: false,
-        message: 'Budget not found',
-        data: null,
-        status: 404,
-        statusText: 'NOT_FOUND'
+        success: true,
+        message: 'Budget retrieved successfully',
+        data: budget,
+        status: 200,
+        statusText: 'OK'
       }
     }
 
+    // If not found in mock data, return not found
+    // Client components can fall back to localStorage if needed
     return {
-      success: true,
-      message: 'Budget retrieved successfully',
-      data: budget,
-      status: 200,
-      statusText: 'OK'
+      success: false,
+      message: 'Budget not found',
+      data: null,
+      status: 404,
+      statusText: 'NOT_FOUND'
     }
   } catch (error: any) {
     return {
@@ -328,25 +380,62 @@ export async function getBudgetById(budgetId: string): Promise<APIResponse<Budge
 
 /**
  * Submit budget for approval
+ *
+ * BACKEND API INTEGRATION:
+ * To integrate with a backend API, replace the implementation below with:
+ *
+ * const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/budgets/${request.budgetId}/submit`, {
+ *   method: 'POST',
+ *   headers: {
+ *     'Content-Type': 'application/json',
+ *     'Authorization': `Bearer ${token}`
+ *   },
+ *   body: JSON.stringify({ submittingUserId: request.submittingUserId })
+ * })
+ *
+ * The server should handle updating the budget status to SUBMITTED and initializing the approval chain.
+ * The response should contain the updated budget with approval chain data.
  */
 export async function submitBudgetForApproval(
   request: SubmitBudgetRequest
 ): Promise<APIResponse<Budget | null>> {
   try {
+    // TODO: BACKEND INTEGRATION - Replace with API call above
+    // Currently uses localStorage as single source of truth
     const budget = await getBudgetById(request.budgetId)
 
-    if (!budget.success || !budget.data) {
+    let budgetData = budget.data
+
+    // If not found in mock data, we'll create a minimal response
+    // In production, this would fetch from database
+    if (!budgetData) {
+      // Return success but without full data - client will use localStorage version
       return {
-        success: false,
-        message: 'Budget not found',
-        data: null,
-        status: 404,
-        statusText: 'NOT_FOUND'
+        success: true,
+        message: 'Budget submitted for approval',
+        data: {
+          id: request.budgetId,
+          status: 'SUBMITTED',
+          submittedAt: new Date(),
+          updatedAt: new Date(),
+          currentApprovalStage: 1,
+          approvalChain: [
+            {
+              stageNumber: 1,
+              stageName: 'Department Head Review',
+              assignedTo: 'manager-1',
+              assignedRole: 'DEPARTMENT_MANAGER',
+              status: 'PENDING'
+            }
+          ]
+        } as any,
+        status: 200,
+        statusText: 'OK'
       }
     }
 
     const updatedBudget: Budget = {
-      ...budget.data,
+      ...budgetData,
       status: 'SUBMITTED',
       submittedAt: new Date(),
       updatedAt: new Date(),
@@ -382,34 +471,63 @@ export async function submitBudgetForApproval(
 
 /**
  * Approve budget
+ *
+ * BACKEND API INTEGRATION:
+ * To integrate with a backend API, replace with:
+ *
+ * const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/budgets/${request.budgetId}/approve`, {
+ *   method: 'POST',
+ *   headers: {
+ *     'Content-Type': 'application/json',
+ *     'Authorization': `Bearer ${token}`
+ *   },
+ *   body: JSON.stringify({
+ *     approvingUserId: request.approvingUserId,
+ *     approvingUserRole: request.approvingUserRole,
+ *     stageNumber: request.stageNumber,
+ *     comments: request.comments,
+ *     signature: request.signature
+ *   })
+ * })
+ *
+ * The server should update the approval chain and move to next stage or mark as APPROVED if final stage.
  */
 export async function approveBudget(
   request: ApproveBudgetRequest
 ): Promise<APIResponse<Budget | null>> {
   try {
+    // TODO: BACKEND INTEGRATION - Replace with API call above
+    // Currently uses localStorage as single source of truth
     const budget = await getBudgetById(request.budgetId)
+    let budgetData = budget.data
 
-    if (!budget.success || !budget.data) {
+    if (!budgetData) {
+      // Budget not found in mock data - return success with minimal data
+      // Client will use localStorage version
       return {
-        success: false,
-        message: 'Budget not found',
-        data: null,
-        status: 404,
-        statusText: 'NOT_FOUND'
+        success: true,
+        message: 'Budget approved',
+        data: {
+          id: request.budgetId,
+          status: 'IN_REVIEW',
+          currentApprovalStage: 2
+        } as any,
+        status: 200,
+        statusText: 'OK'
       }
     }
 
-    const currentStage = request.stageNumber || budget.data.currentApprovalStage || 1
-    const isLastStage = currentStage >= (budget.data.totalApprovalStages || 4)
+    const currentStage = request.stageNumber || budgetData.currentApprovalStage || 1
+    const isLastStage = currentStage >= (budgetData.totalApprovalStages || 4)
 
     const updatedBudget: Budget = {
-      ...budget.data,
+      ...budgetData,
       status: isLastStage ? 'APPROVED' : 'IN_REVIEW',
-      approvedAt: isLastStage ? new Date() : budget.data.approvedAt,
+      approvedAt: isLastStage ? new Date() : budgetData.approvedAt,
       currentApprovalStage: isLastStage ? currentStage : currentStage + 1,
       updatedAt: new Date(),
       approvalChain: [
-        ...(budget.data.approvalChain || []),
+        ...(budgetData.approvalChain || []),
         {
           stageNumber: currentStage,
           stageName: `Stage ${currentStage} Approval`,
@@ -443,35 +561,64 @@ export async function approveBudget(
 
 /**
  * Reject budget
+ *
+ * BACKEND API INTEGRATION:
+ * To integrate with a backend API, replace with:
+ *
+ * const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/budgets/${request.budgetId}/reject`, {
+ *   method: 'POST',
+ *   headers: {
+ *     'Content-Type': 'application/json',
+ *     'Authorization': `Bearer ${token}`
+ *   },
+ *   body: JSON.stringify({
+ *     rejectingUserId: request.rejectingUserId,
+ *     rejectingUserRole: request.rejectingUserRole,
+ *     rejectionReason: request.rejectionReason,
+ *     comments: request.comments
+ *   })
+ * })
+ *
+ * The server should update the budget status to REJECTED, record the rejection reason,
+ * and add a rejection record to the approval chain.
  */
 export async function rejectBudget(
   request: RejectBudgetRequest
 ): Promise<APIResponse<Budget | null>> {
   try {
+    // TODO: BACKEND INTEGRATION - Replace with API call above
+    // Currently uses localStorage as single source of truth
     const budget = await getBudgetById(request.budgetId)
+    let budgetData = budget.data
 
-    if (!budget.success || !budget.data) {
+    if (!budgetData) {
+      // Budget not found in mock data - return success with minimal data
+      // Client will use localStorage version
       return {
-        success: false,
-        message: 'Budget not found',
-        data: null,
-        status: 404,
-        statusText: 'NOT_FOUND'
+        success: true,
+        message: 'Budget rejected',
+        data: {
+          id: request.budgetId,
+          status: 'REJECTED',
+          currentApprovalStage: 0
+        } as any,
+        status: 200,
+        statusText: 'OK'
       }
     }
 
     const updatedBudget: Budget = {
-      ...budget.data,
+      ...budgetData,
       status: 'REJECTED',
       rejectedAt: new Date(),
       rejectionReason: request.rejectionReason,
       currentApprovalStage: 0,
       updatedAt: new Date(),
       approvalChain: [
-        ...(budget.data.approvalChain || []),
+        ...(budgetData.approvalChain || []),
         {
-          stageNumber: budget.data.currentApprovalStage || 1,
-          stageName: `Stage ${budget.data.currentApprovalStage || 1} Review`,
+          stageNumber: budgetData.currentApprovalStage || 1,
+          stageName: `Stage ${budgetData.currentApprovalStage || 1} Review`,
           assignedTo: request.rejectingUserId,
           assignedRole: 'REVIEWER',
           status: 'REJECTED',

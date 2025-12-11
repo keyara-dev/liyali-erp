@@ -6,11 +6,13 @@ import {
   getBudgets,
   getBudgetById,
   createBudget,
+  updateBudget,
   submitBudgetForApproval,
   approveBudget,
   rejectBudget,
 } from '@/app/_actions/budgets';
 import { Budget, CreateBudgetRequest, ApproveBudgetRequest, RejectBudgetRequest } from '@/types/budget';
+import { useBudgetStorage } from '@/hooks/use-budget-storage';
 import { toast } from 'sonner';
 
 /**
@@ -226,6 +228,54 @@ export const useRejectBudget = (budgetId: string, onSuccess?: () => void) => {
     },
     onError: (error: Error) => {
       toast.error(error.message || 'Failed to reject budget');
+    },
+  });
+};
+
+/**
+ * Update budget mutation (for items, metadata, etc.)
+ *
+ * @param budgetId - Budget ID to update
+ * @param onSuccess - Callback after successful update
+ * @returns Mutation object
+ *
+ * @example
+ * const updateMutation = useUpdateBudget(budgetId)
+ * await updateMutation.mutateAsync({
+ *   items: [...updatedItems],
+ *   name: 'Updated budget name'
+ * })
+ */
+export const useUpdateBudget = (budgetId: string, onSuccess?: () => void) => {
+  const queryClient = useQueryClient();
+  const { saveToStorage } = useBudgetStorage();
+
+  return useMutation({
+    mutationFn: async (updates: Partial<Budget>) => {
+      const response = await updateBudget(budgetId, updates);
+
+      if (!response.success) {
+        throw new Error(response.message);
+      }
+      return response;
+    },
+    onSuccess: (response) => {
+      // Save to localStorage
+      if (response.data) {
+        saveToStorage(response.data);
+      }
+
+      toast.success('Budget updated successfully');
+
+      // Invalidate budget queries
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.BUDGETS.BY_ID, budgetId] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.BUDGETS.BY_USER] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.BUDGETS.ALL] });
+
+      onSuccess?.();
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to update budget');
     },
   });
 };

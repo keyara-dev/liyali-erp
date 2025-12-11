@@ -1,58 +1,58 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import * as React from "react";
-import {
-  ColumnDef,
-  ColumnFiltersState,
-  SortingState,
-  VisibilityState,
-  flexRender,
-  getCoreRowModel,
-  getFilteredRowModel,
-  getPaginationRowModel,
-  getSortedRowModel,
-  useReactTable,
-} from "@tanstack/react-table";
+import { useMutation } from "@tanstack/react-query";
+import { ColumnDef } from "@tanstack/react-table";
 import { useRouter } from "next/navigation";
-import {
-  ArrowUpDown,
-  Eye,
-  ChevronLeft,
-  ChevronRight,
-  SearchX,
-} from "lucide-react";
+import { ArrowUpDown, Eye } from "lucide-react";
 
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import {
-  Empty,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
-} from "@/components/ui/empty";
-import { searchDocuments } from "@/app/_actions/search";
+import { DataTable } from "@/components/ui/data-table";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   WorkflowDocument,
   SearchFilters,
-  PaginatedResponse,
 } from "@/types/workflow";
 import { DownloadButton } from "./download-button";
+import {
+  getPurchaseOrders,
+  getRequisitions,
+  getPaymentVouchers,
+  getGoodsReceivedNotes,
+} from "@/lib/storage";
+
+// Table skeleton loader
+function TransactionTableSkeleton() {
+  return (
+    <div className="rounded-md border overflow-hidden">
+      <div className="space-y-2 p-4">
+        {/* Header row */}
+        <div className="flex gap-4 pb-4 border-b">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <Skeleton key={i} className="h-4 flex-1" />
+          ))}
+        </div>
+        {/* Data rows */}
+        {Array.from({ length: 5 }).map((_, rowIdx) => (
+          <div key={rowIdx} className="flex gap-4 py-3 border-b last:border-0">
+            {Array.from({ length: 5 }).map((_, colIdx) => (
+              <Skeleton key={colIdx} className="h-4 flex-1" />
+            ))}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 interface TransactionResultsProps {
   filters: SearchFilters;
   refreshTrigger: number;
   userRole: string;
+  onSearchComplete?: () => void;
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -67,7 +67,7 @@ const STATUS_COLORS: Record<string, string> = {
 const STATUS_LABELS: Record<string, string> = {
   DRAFT: "Draft",
   SUBMITTED: "Submitted",
-  IN_REVIEW: "IN_REVIEW",
+  IN_REVIEW: "In Approval",
   APPROVED: "Approved",
   REJECTED: "Rejected",
   REVERSED: "Reversed",
@@ -80,50 +80,185 @@ const DOCUMENT_TYPE_LABELS: Record<string, string> = {
   GOODS_RECEIVED_NOTE: "GRN",
 };
 
+// Helper to convert stored documents to WorkflowDocument
+function convertToWorkflowDocument(doc: any): WorkflowDocument {
+  console.log("🔄 Converting document:", {
+    id: doc.id,
+    type: doc.type,
+    documentNumber: doc.documentNumber,
+    createdAt: doc.createdAt,
+    createdAtType: typeof doc.createdAt
+  });
+  const converted = {
+    id: doc.id,
+    type: doc.type,
+    documentNumber: doc.documentNumber,
+    status: doc.status,
+    currentStage: doc.currentStage || 1,
+    createdBy: doc.createdBy,
+    createdByUser: doc.createdByUser,
+    createdAt: new Date(doc.createdAt),
+    updatedAt: new Date(doc.updatedAt),
+    metadata: doc.metadata || {},
+  };
+  console.log("✅ Converted document createdAt:", converted.createdAt);
+  return converted;
+}
+
+// Search function that queries local storage
+function performSearch(
+  filters: SearchFilters,
+  page: number,
+  limit: number
+): { documents: WorkflowDocument[]; total: number; totalPages: number } {
+  console.log("🔍 Search starting with filters:", filters);
+
+  // Get all documents from unified storage
+  const pos = getPurchaseOrders();
+  const reqs = getRequisitions();
+  const pvs = getPaymentVouchers();
+  const grns = getGoodsReceivedNotes();
+
+  console.log("📦 Storage data:", { pos: pos.length, reqs: reqs.length, pvs: pvs.length, grns: grns.length });
+
+  const allDocs: WorkflowDocument[] = [
+    ...pos.map(convertToWorkflowDocument),
+    ...reqs.map(convertToWorkflowDocument),
+    ...pvs.map(convertToWorkflowDocument),
+    ...grns.map(convertToWorkflowDocument),
+  ];
+
+  console.log("📄 All documents:", allDocs.length, allDocs);
+
+  // Apply filters
+  let filtered = allDocs.filter((doc) => {
+    console.log(`\n🔍 Evaluating ${doc.documentNumber}:`);
+
+    // Filter by document number (case-insensitive, partial match)
+    if (
+      filters.documentNumber &&
+      !doc.documentNumber
+        .toLowerCase()
+        .includes(filters.documentNumber.toLowerCase())
+    ) {
+      console.log(`  ❌ documentNumber filter: "${filters.documentNumber}" not in "${doc.documentNumber}"`);
+      return false;
+    }
+    if (filters.documentNumber) {
+      console.log(`  ✓ documentNumber filter: "${filters.documentNumber}" found in "${doc.documentNumber}"`);
+    }
+
+    // Filter by document type
+    if (filters.documentType !== "ALL" && doc.type !== filters.documentType) {
+      console.log(`  ❌ type filter: doc.type="${doc.type}" !== filters.documentType="${filters.documentType}"`);
+      return false;
+    }
+    if (filters.documentType !== "ALL") {
+      console.log(`  ✓ type filter: doc.type="${doc.type}" === filters.documentType="${filters.documentType}"`);
+    }
+
+    // Filter by status
+    if (filters.status !== "ALL" && doc.status !== filters.status) {
+      console.log(`  ❌ status filter: doc.status="${doc.status}" !== filters.status="${filters.status}"`);
+      return false;
+    }
+    if (filters.status !== "ALL") {
+      console.log(`  ✓ status filter: doc.status="${doc.status}" === filters.status="${filters.status}"`);
+    }
+
+    // Filter by start date
+    if (filters.startDate) {
+      const startDate = new Date(filters.startDate);
+      if (doc.createdAt < startDate) {
+        console.log(`  ❌ startDate filter: doc.createdAt="${doc.createdAt.toISOString()}" < startDate="${startDate.toISOString()}"`);
+        return false;
+      }
+      console.log(`  ✓ startDate filter: doc.createdAt="${doc.createdAt.toISOString()}" >= startDate="${startDate.toISOString()}"`);
+    }
+
+    // Filter by end date
+    if (filters.endDate) {
+      const endDate = new Date(filters.endDate);
+      endDate.setHours(23, 59, 59, 999); // Include the entire end date
+      if (doc.createdAt > endDate) {
+        console.log(`  ❌ endDate filter: doc.createdAt="${doc.createdAt.toISOString()}" > endDate="${endDate.toISOString()}"`);
+        return false;
+      }
+      console.log(`  ✓ endDate filter: doc.createdAt="${doc.createdAt.toISOString()}" <= endDate="${endDate.toISOString()}"`);
+    }
+
+    console.log("✅ Document passed all filters:", doc.documentNumber);
+    return true;
+  });
+
+  console.log("🔎 After filtering:", filtered.length, "documents from", allDocs.length);
+
+  // Sort by created date (newest first)
+  filtered.sort(
+    (a, b) =>
+      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  );
+
+  const total = filtered.length;
+  const totalPages = Math.ceil(total / limit);
+  const skip = (page - 1) * limit;
+  const paginatedData = filtered.slice(skip, skip + limit);
+
+  return {
+    documents: paginatedData,
+    total,
+    totalPages,
+  };
+}
+
 export function TransactionResults({
   filters,
   refreshTrigger,
   userRole,
+  onSearchComplete,
 }: TransactionResultsProps) {
   const router = useRouter();
   const [documents, setDocuments] = useState<WorkflowDocument[]>([]);
-  const [pagination, setPagination] = useState({
-    page: 1,
-    limit: 10,
-    total: 0,
-    totalPages: 1,
-  });
-  const [isLoading, setIsLoading] = useState(false);
-  const [sorting, setSorting] = React.useState<SortingState>([]);
-  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
-    []
-  );
-  const [columnVisibility, setColumnVisibility] =
-    React.useState<VisibilityState>({});
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalDocuments, setTotalDocuments] = useState(0);
 
-  // Fetch documents when filters or page changes
-  useEffect(() => {
-    async function fetchDocuments() {
-      setIsLoading(true);
+  const pageSize = 10;
+
+  // Mutation for search
+  const searchMutation = useMutation({
+    mutationFn: () => {
+      console.log("🔍 Searching with filters:", filters);
       try {
-        const result = await searchDocuments(
-          filters,
-          pagination.page,
-          pagination.limit
-        );
-        if (result.success && result.data) {
-          setDocuments(result.data.data);
-          setPagination(result.data.pagination);
-        }
+        const result = performSearch(filters, currentPage, pageSize);
+        console.log("✅ Search completed:", result);
+        return Promise.resolve(result);
       } catch (error) {
-        console.error("Failed to fetch documents:", error);
-      } finally {
-        setIsLoading(false);
+        console.error("❌ Search error:", error);
+        return Promise.reject(error);
       }
-    }
+    },
+    onSuccess: (result) => {
+      console.log("📊 Setting search results:", result);
+      setDocuments(result.documents);
+      setTotalDocuments(result.total);
+      setTotalPages(result.totalPages);
+      onSearchComplete?.();
+    },
+    onError: (error) => {
+      console.error("Failed to search documents:", error);
+      setDocuments([]);
+      setTotalDocuments(0);
+      setTotalPages(1);
+      onSearchComplete?.();
+    },
+  });
 
-    fetchDocuments();
-  }, [filters, pagination.page, pagination.limit, refreshTrigger]);
+  // Trigger search when filters or pagination changes
+  React.useEffect(() => {
+    console.log("🚀 Starting search effect with:", { filters, page: currentPage });
+    searchMutation.mutate();
+  }, [filters, currentPage, refreshTrigger]);
 
   const columns: ColumnDef<WorkflowDocument>[] = [
     {
@@ -139,7 +274,7 @@ export function TransactionResults({
         </Button>
       ),
       cell: ({ row }) => (
-        <span className="font-medium text-primary hover:underline cursor-pointer">
+        <span className="font-medium text-primary">
           {row.getValue("documentNumber")}
         </span>
       ),
@@ -182,174 +317,100 @@ export function TransactionResults({
         const date = new Date(row.getValue("createdAt"));
         return (
           <span className="text-sm text-muted-foreground">
-            {date.toLocaleDateString()}{" "}
-            {date.toLocaleTimeString([], {
-              hour: "2-digit",
-              minute: "2-digit",
-            })}
+            {date.toLocaleDateString()}
           </span>
-        );
-      },
-    },
-    {
-      id: "actions",
-      header: "Actions",
-      cell: ({ row }) => {
-        const doc = row.original;
-        // Map document type to URL slug
-        const typeSlug =
-          {
-            REQUISITION: "requisitions",
-            PURCHASE_ORDER: "purchase-orders",
-            PAYMENT_VOUCHER: "payment-vouchers",
-            GOODS_RECEIVED_NOTE: "grn",
-          }[doc.type] || "workflows";
-
-        return (
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => router.push(`/${typeSlug}/${doc.id}`)}
-              className="gap-1"
-            >
-              <Eye className="h-4 w-4" />
-              View
-            </Button>
-            <DownloadButton
-              documentId={doc.id}
-              documentNumber={doc.documentNumber}
-            />
-          </div>
         );
       },
     },
   ];
 
-  const table = useReactTable({
-    data: documents,
-    columns,
-    getCoreRowModel: getCoreRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
-    onSortingChange: setSorting,
-    onColumnFiltersChange: setColumnFilters,
-    onColumnVisibilityChange: setColumnVisibility,
-    state: {
-      sorting,
-      columnFilters,
-      columnVisibility,
-    },
-  });
+  if (searchMutation.isPending) {
+    return (
+      <Card>
+        <CardContent className="pt-6">
+          <div className="space-y-4">
+            <div className="text-sm text-muted-foreground mb-4">
+              Searching documents...
+            </div>
+            <TransactionTableSkeleton />
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card>
       <CardContent className="pt-6">
-        {isLoading ? (
-          <div className="flex justify-center items-center py-8">
-            <div className="text-muted-foreground">Loading documents...</div>
-          </div>
-        ) : documents.length === 0 ? (
-          <Empty>
-            <EmptyMedia variant="icon">
-              <SearchX className="h-6 w-6" />
-            </EmptyMedia>
-            <EmptyHeader>
-              <EmptyTitle>No documents found</EmptyTitle>
-              <EmptyDescription>
-                Try adjusting your search filters to find what you're looking
-                for.
-              </EmptyDescription>
-            </EmptyHeader>
-          </Empty>
-        ) : (
-          <>
-            {/* Table */}
-            <div className="rounded-md border overflow-hidden">
-              <Table>
-                <TableHeader>
-                  {table.getHeaderGroups().map((headerGroup) => (
-                    <TableRow key={headerGroup.id}>
-                      {headerGroup.headers.map((header) => (
-                        <TableHead key={header.id}>
-                          {header.isPlaceholder
-                            ? null
-                            : flexRender(
-                                header.column.columnDef.header,
-                                header.getContext()
-                              )}
-                        </TableHead>
-                      ))}
-                    </TableRow>
-                  ))}
-                </TableHeader>
-                <TableBody>
-                  {table.getRowModel().rows.map((row) => (
-                    <TableRow key={row.id}>
-                      {row.getVisibleCells().map((cell) => (
-                        <TableCell key={cell.id}>
-                          {flexRender(
-                            cell.column.columnDef.cell,
-                            cell.getContext()
-                          )}
-                        </TableCell>
-                      ))}
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+        <div className="space-y-4">
+          <DataTable
+            columns={columns}
+            data={documents}
+            hideSearchBar={true}
+            renderRowActions={(doc: WorkflowDocument) => {
+              // Map document type to URL slug
+              const typeSlug =
+                {
+                  REQUISITION: "requisitions",
+                  PURCHASE_ORDER: "purchase-orders",
+                  PAYMENT_VOUCHER: "payment-vouchers",
+                  GOODS_RECEIVED_NOTE: "grn",
+                }[doc.type] || "workflows";
 
-            {/* Pagination */}
-            <div className="flex items-center justify-between gap-2 py-4">
-              <div className="text-sm text-muted-foreground">
-                Showing{" "}
-                {documents.length > 0
-                  ? (pagination.page - 1) * pagination.limit + 1
-                  : 0}{" "}
-                to{" "}
-                {Math.min(pagination.page * pagination.limit, pagination.total)}{" "}
-                of {pagination.total} documents
-              </div>
-              <div className="flex gap-1">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() =>
-                    setPagination((p) => ({
-                      ...p,
-                      page: Math.max(p.page - 1, 1),
-                    }))
-                  }
-                  disabled={pagination.page === 1 || isLoading}
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                <div className="flex items-center gap-1">
-                  <span className="text-sm">
-                    Page {pagination.page} of {pagination.totalPages}
-                  </span>
+              return (
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => router.push(`/${typeSlug}/${doc.id}`)}
+                    className="gap-1"
+                  >
+                    <Eye className="h-4 w-4" />
+                    View
+                  </Button>
+                  <DownloadButton
+                    documentId={doc.id}
+                    documentNumber={doc.documentNumber}
+                  />
                 </div>
+              );
+            }}
+          />
+
+          {/* Custom Pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-muted-foreground">
+                Showing {documents.length > 0 ? (currentPage - 1) * pageSize + 1 : 0} to{" "}
+                {Math.min(currentPage * pageSize, totalDocuments)} of {totalDocuments}{" "}
+                documents
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                  disabled={currentPage === 1 || searchMutation.isPending}
+                >
+                  Previous
+                </Button>
+                <span className="text-sm px-3 py-2">
+                  Page {currentPage} of {totalPages}
+                </span>
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() =>
-                    setPagination((p) => ({
-                      ...p,
-                      page: Math.min(p.page + 1, p.totalPages),
-                    }))
+                    setCurrentPage(Math.min(totalPages, currentPage + 1))
                   }
-                  disabled={
-                    pagination.page >= pagination.totalPages || isLoading
-                  }
+                  disabled={currentPage >= totalPages || searchMutation.isPending}
                 >
-                  <ChevronRight className="h-4 w-4" />
+                  Next
                 </Button>
               </div>
             </div>
-          </>
-        )}
+          )}
+        </div>
       </CardContent>
     </Card>
   );

@@ -7,7 +7,12 @@
  */
 
 import { STORAGE_KEYS, saveDocuments, isStorageInitialized } from './storage';
-import { createSeedPurchaseOrders, createSeedRequisitions, createSeedPaymentVouchers } from './seed-data';
+import {
+  createSeedPurchaseOrders,
+  createSeedRequisitions,
+  createSeedPaymentVouchers,
+  createSeedGoodsReceivedNotes,
+} from './seed-data';
 
 /**
  * Initialize localStorage with seed data if empty
@@ -37,6 +42,11 @@ export function initializeStorage(): void {
     const paymentVouchers = createSeedPaymentVouchers();
     saveDocuments(STORAGE_KEYS.PAYMENT_VOUCHERS, paymentVouchers);
     console.log(`✓ Initialized ${paymentVouchers.length} payment vouchers`);
+
+    // Initialize Goods Received Notes
+    const goodsReceivedNotes = createSeedGoodsReceivedNotes();
+    saveDocuments(STORAGE_KEYS.GOODS_RECEIVED_NOTES, goodsReceivedNotes);
+    console.log(`✓ Initialized ${goodsReceivedNotes.length} goods received notes`);
 
     console.log('✓ All storage initialized successfully');
   } catch (error) {

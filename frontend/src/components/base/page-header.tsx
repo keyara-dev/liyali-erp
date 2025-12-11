@@ -45,23 +45,23 @@ export function PageHeader({
               }
             }}
             variant={"outline"}
-            className="flex items-center h-12 w-12 aspect-square gap-2 text-foreground/70 transition-colors group"
+            className="flex items-center h-10 w-10 aspect-square gap-2 text-foreground/70 transition-colors group"
           >
             <ArrowLeft className="w-6 h-6 group-hover:-translate-x-1 transition-transform" />
           </Button>
         )}
 
-        <div className="space-y-3">
-          <div className="flex flex-wrap items-center gap-3 md:gap-4">
+        <div className="space-y-1">
+          <div className="flex flex-wrap items-end gap-2 md:gap-3">
             <h1
-              className="text-3xl md:text-4xl font-bold text-foreground
+              className="text-2xl md:text-3xl font-bold text-foreground
               dark:text-foreground/90 tracking-tight"
             >
               {title}
             </h1>
 
             {badges && badges.length > 0 && (
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-2 pb-0.5">
                 {badges.map((badge, index) => (
                   <StatusBadge
                     key={index}
@@ -74,7 +74,7 @@ export function PageHeader({
           </div>
 
           {subtitle && (
-            <p className="text-slate-600 dark:text-slate-400 font-medium text-sm md:text-base leading-relaxed">
+            <p className="text-slate-600 dark:text-slate-400 font-medium text-sm leading-relaxed">
               {subtitle}
             </p>
           )}

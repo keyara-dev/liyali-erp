@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import {
   Dialog,
@@ -14,36 +14,52 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { BudgetItem } from '@/types/budget'
-import { validateBudgetItem, calculateTotalAllocated, calculateRemainingBudget } from '@/lib/budget-validation'
+import { validateBudgetItem } from '@/lib/budget-validation'
 
-interface AddBudgetItemDialogProps {
+interface EditBudgetItemDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onItemAdded: (item: {
-    category: string
-    description: string
-    allocatedAmount: number
-    spentAmount: number
-  }) => void
+  onItemUpdated: (item: BudgetItem) => void
   existingItems: BudgetItem[]
+  itemToEdit: BudgetItem | null
   totalBudget: number
   currency: string
 }
 
-export function AddBudgetItemDialog({
+export function EditBudgetItemDialog({
   open,
   onOpenChange,
-  onItemAdded,
+  onItemUpdated,
   existingItems,
+  itemToEdit,
   totalBudget,
   currency,
-}: AddBudgetItemDialogProps) {
+}: EditBudgetItemDialogProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [formData, setFormData] = useState({
     category: '',
     description: '',
     allocatedAmount: '',
+    spentAmount: '',
   })
+
+  useEffect(() => {
+    if (itemToEdit) {
+      setFormData({
+        category: itemToEdit.category,
+        description: itemToEdit.description || '',
+        allocatedAmount: itemToEdit.allocatedAmount.toString(),
+        spentAmount: itemToEdit.spentAmount.toString(),
+      })
+    } else {
+      setFormData({
+        category: '',
+        description: '',
+        allocatedAmount: '',
+        spentAmount: '',
+      })
+    }
+  }, [itemToEdit, open])
 
   const handleInputChange = (field: string, value: string | number) => {
     setFormData((prev) => ({
@@ -52,13 +68,16 @@ export function AddBudgetItemDialog({
     }))
   }
 
-  const remainingBudget = calculateRemainingBudget(totalBudget, existingItems)
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: currency || 'USD',
     }).format(amount)
   }
+
+  const allocatedAmount = parseFloat(formData.allocatedAmount) || 0
+  const spentAmount = parseFloat(formData.spentAmount) || 0
+  const remainingAmount = allocatedAmount - spentAmount
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -68,13 +87,15 @@ export function AddBudgetItemDialog({
       return
     }
 
-    const allocatedAmount = parseFloat(formData.allocatedAmount)
+    const allocatedAmt = parseFloat(formData.allocatedAmount)
+    const spentAmt = parseFloat(formData.spentAmount) || 0
 
     // Validate the item
     const validation = validateBudgetItem(
-      { allocatedAmount, spentAmount: 0 },
+      { allocatedAmount: allocatedAmt, spentAmount: spentAmt },
       existingItems,
-      totalBudget
+      totalBudget,
+      itemToEdit?.id // Exclude current item from budget check
     )
 
     if (!validation.valid) {
@@ -82,25 +103,26 @@ export function AddBudgetItemDialog({
       return
     }
 
+    if (!itemToEdit) return
+
     setIsSubmitting(true)
     try {
-      onItemAdded({
+      const updatedItem: BudgetItem = {
+        ...itemToEdit,
         category: formData.category,
         description: formData.description,
-        allocatedAmount,
-        spentAmount: 0,
-      })
+        allocatedAmount: allocatedAmt,
+        spentAmount: spentAmt,
+        remainingAmount: remainingAmount,
+        updatedAt: new Date(),
+      }
 
-      toast.success('Budget item added successfully')
-      setFormData({
-        category: '',
-        description: '',
-        allocatedAmount: '',
-      })
+      onItemUpdated(updatedItem)
+      toast.success('Budget item updated successfully')
       onOpenChange(false)
     } catch (error) {
-      console.error('Error adding budget item:', error)
-      toast.error('An error occurred while adding the budget item')
+      console.error('Error updating budget item:', error)
+      toast.error('An error occurred while updating the budget item')
     } finally {
       setIsSubmitting(false)
     }
@@ -110,9 +132,9 @@ export function AddBudgetItemDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Add Budget Item</DialogTitle>
+          <DialogTitle>Edit Budget Item</DialogTitle>
           <DialogDescription>
-            Add a new line item to your budget allocation. Remaining budget: {formatCurrency(remainingBudget)}
+            Update the budget item details and track spending
           </DialogDescription>
         </DialogHeader>
 
@@ -156,6 +178,32 @@ export function AddBudgetItemDialog({
             />
           </div>
 
+          {/* Spent Amount */}
+          <div className="space-y-2">
+            <Label htmlFor="spentAmount">Spent Amount</Label>
+            <Input
+              id="spentAmount"
+              type="number"
+              placeholder="0.00"
+              step="0.01"
+              value={formData.spentAmount}
+              onChange={(e) => handleInputChange('spentAmount', e.target.value)}
+              disabled={isSubmitting}
+            />
+            <p className="text-xs text-muted-foreground">
+              Remaining: {formatCurrency(remainingAmount)}
+            </p>
+          </div>
+
+          {/* Warning if spent > allocated */}
+          {spentAmount > allocatedAmount && (
+            <div className="p-3 bg-amber-50 border border-amber-200 rounded-md">
+              <p className="text-sm text-amber-800">
+                ⚠️ Spent amount exceeds allocated amount by {formatCurrency(spentAmount - allocatedAmount)}
+              </p>
+            </div>
+          )}
+
           {/* Actions */}
           <div className="flex gap-2 pt-4">
             <Button
@@ -168,7 +216,7 @@ export function AddBudgetItemDialog({
               Cancel
             </Button>
             <Button type="submit" disabled={isSubmitting} className="flex-1">
-              {isSubmitting ? 'Adding...' : 'Add Item'}
+              {isSubmitting ? 'Updating...' : 'Update Item'}
             </Button>
           </div>
         </form>

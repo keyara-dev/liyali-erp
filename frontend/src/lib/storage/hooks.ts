@@ -1,14 +1,54 @@
 /**
- * Storage Hooks
- * High-level hooks for managing documents from storage
+ * Storage Hooks - Data Access Layer
  *
- * These hooks provide a clean API for components to read/write data
- * When backend APIs are ready, these hooks can be updated to use them
- * without changing component code
+ * ============================================================================
+ * PURPOSE
+ * ============================================================================
+ *
+ * These hooks provide a clean API for managing documents (Purchase Orders,
+ * Requisitions, Payment Vouchers) with localStorage as the data source.
+ *
+ * When backend APIs are ready, replace storage functions with API calls
+ * without requiring changes to component code.
+ *
+ * ============================================================================
+ * BACKEND API INTEGRATION GUIDE
+ * ============================================================================
+ *
+ * Replace storage function calls with API calls:
+ *
+ * OLD (localStorage):
+ *   export function getPurchaseOrders(): PurchaseOrder[] {
+ *     return getDocuments<PurchaseOrder>(STORAGE_KEYS.PURCHASE_ORDERS);
+ *   }
+ *
+ * NEW (Backend API):
+ *   export async function getPurchaseOrders(): Promise<PurchaseOrder[]> {
+ *     // TODO: Replace with real backend API endpoint
+ *     const response = await fetch('/api/purchase-orders');
+ *     if (!response.ok) {
+ *       console.error('API Error:', response.statusText);
+ *       // Fallback to storage for offline support
+ *       return getDocuments<PurchaseOrder>(STORAGE_KEYS.PURCHASE_ORDERS);
+ *     }
+ *     return response.json();
+ *   }
+ *
+ * Expected Backend Endpoints:
+ * - GET /api/purchase-orders - Get all purchase orders
+ * - GET /api/purchase-orders/:id - Get specific PO
+ * - POST /api/purchase-orders - Create new PO
+ * - PUT /api/purchase-orders/:id - Update PO
+ * - DELETE /api/purchase-orders/:id - Delete PO
+ * - GET /api/purchase-orders/by-creator/:userId - Filter by creator
+ * - GET /api/purchase-orders/by-status/:status - Filter by status
+ *
+ * (Similar endpoints for /api/requisitions and /api/payment-vouchers)
  */
 
 import { PurchaseOrder, PaymentVoucher, RequisitionForm } from '@/types/workflow';
 import { STORAGE_KEYS, getDocuments, getDocumentById, saveDocument, deleteDocument } from './storage';
+import type { GoodsReceivedNote } from './seed-data';
 
 // ============================================================================
 // Purchase Order Hooks
@@ -142,5 +182,71 @@ export function getDocumentsByCreator(creatorId: string) {
     purchaseOrders: getPurchaseOrdersByCreator(creatorId),
     requisitions: getRequisitionsByCreator(creatorId),
     paymentVouchers: getPaymentVouchersByCreator(creatorId),
+    goodsReceivedNotes: getGoodsReceivedNotesByCreator(creatorId),
   };
+}
+
+// ============================================================================
+// Goods Received Note Hooks
+// ============================================================================
+//
+// Backend API Integration:
+// Replace storage function calls with API calls when backend is ready
+//
+// OLD (localStorage):
+//   export function getGoodsReceivedNotes(): GoodsReceivedNote[] {
+//     return getDocuments<GoodsReceivedNote>(STORAGE_KEYS.GOODS_RECEIVED_NOTES);
+//   }
+//
+// NEW (Backend API):
+//   export async function getGoodsReceivedNotes(): Promise<GoodsReceivedNote[]> {
+//     const response = await fetch('/api/goods-received-notes');
+//     if (!response.ok) {
+//       return getDocuments<GoodsReceivedNote>(STORAGE_KEYS.GOODS_RECEIVED_NOTES);
+//     }
+//     return response.json();
+//   }
+//
+// Expected Backend Endpoints:
+// - GET /api/goods-received-notes - Get all GRNs
+// - GET /api/goods-received-notes/:id - Get specific GRN
+// - POST /api/goods-received-notes - Create new GRN
+// - PUT /api/goods-received-notes/:id - Update GRN
+// - DELETE /api/goods-received-notes/:id - Delete GRN
+// - GET /api/goods-received-notes/by-creator/:userId - Filter by creator
+// - GET /api/goods-received-notes/by-status/:status - Filter by status
+// - GET /api/goods-received-notes/by-purchase-order/:poId - Filter by purchase order
+
+export function getGoodsReceivedNotes(): GoodsReceivedNote[] {
+  return getDocuments<GoodsReceivedNote>(STORAGE_KEYS.GOODS_RECEIVED_NOTES);
+}
+
+export function getGoodsReceivedNoteById(id: string): GoodsReceivedNote | null {
+  return getDocumentById<GoodsReceivedNote>(STORAGE_KEYS.GOODS_RECEIVED_NOTES, id);
+}
+
+export function saveGoodsReceivedNote(grn: GoodsReceivedNote): GoodsReceivedNote {
+  return saveDocument<GoodsReceivedNote>(STORAGE_KEYS.GOODS_RECEIVED_NOTES, grn);
+}
+
+export function deleteGoodsReceivedNote(id: string): void {
+  deleteDocument(STORAGE_KEYS.GOODS_RECEIVED_NOTES, id);
+}
+
+export function filterGoodsReceivedNotes(
+  predicate: (grn: GoodsReceivedNote) => boolean
+): GoodsReceivedNote[] {
+  return getGoodsReceivedNotes().filter(predicate);
+}
+
+export function getGoodsReceivedNotesByStatus(status: string): GoodsReceivedNote[] {
+  return filterGoodsReceivedNotes((grn) => grn.status === status);
+}
+
+export function getGoodsReceivedNotesByCreator(creatorId: string): GoodsReceivedNote[] {
+  return filterGoodsReceivedNotes((grn) => grn.createdBy === creatorId);
+}
+
+export function getGoodsReceivedNotesByPurchaseOrder(poId: string): GoodsReceivedNote[] {
+  return filterGoodsReceivedNotes((grn) => grn.metadata?.poId === poId);
 }

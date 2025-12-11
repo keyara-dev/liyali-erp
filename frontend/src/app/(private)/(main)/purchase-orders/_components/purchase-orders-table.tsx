@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ColumnDef } from "@tanstack/react-table";
 import {
@@ -176,8 +176,13 @@ export function PurchaseOrdersTable({
   onRefresh: _onRefresh,
 }: PurchaseOrdersTableProps) {
   const router = useRouter();
-  const { data: purchaseOrders = [] } =
-    usePurchaseOrdersAsWorkflowDocumentsQuery(_userId);
+  const { data: purchaseOrders = [], refetch } =
+    usePurchaseOrdersAsWorkflowDocumentsQuery();
+
+  // Refetch when refreshTrigger changes
+  useEffect(() => {
+    refetch();
+  }, [_refreshTrigger, refetch]);
 
   // Memoize the data to prevent unnecessary re-renders
   // React Query returns a new array reference on each render,

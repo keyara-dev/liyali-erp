@@ -128,6 +128,44 @@ export function convertBudgetToWorkflowDocument(budget: Budget): WorkflowDocumen
 }
 
 // ============================================================================
+// BUDGET ITEM HELPERS
+// ============================================================================
+
+/**
+ * Update a budget item within a budget immutably
+ */
+export function updateBudgetItem(
+  budget: Budget,
+  itemId: string,
+  updates: Partial<import('@/types/budget').BudgetItem>
+): Budget {
+  return {
+    ...budget,
+    items: budget.items.map((item) =>
+      item.id === itemId
+        ? {
+            ...item,
+            ...updates,
+            updatedAt: new Date(),
+          }
+        : item
+    ),
+    updatedAt: new Date(),
+  };
+}
+
+/**
+ * Delete a budget item from a budget immutably
+ */
+export function deleteBudgetItem(budget: Budget, itemId: string): Budget {
+  return {
+    ...budget,
+    items: budget.items.filter((item) => item.id !== itemId),
+    updatedAt: new Date(),
+  };
+}
+
+// ============================================================================
 // REACT HOOKS
 // ============================================================================
 
@@ -174,7 +212,7 @@ export const useBudgetsWithStorage = (includeStorageData = true) =>
 
       return allBudgets;
     },
-    staleTime: 5 * 60 * 1000,
+    staleTime: 0, // Always refetch (since we're using localStorage)
     gcTime: 10 * 60 * 1000,
   });
 

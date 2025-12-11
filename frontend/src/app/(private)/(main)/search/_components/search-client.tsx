@@ -28,6 +28,10 @@ export function SearchClient({ userId, userRole }: SearchClientProps) {
     setRefreshTrigger((prev) => prev + 1)
   }
 
+  const handleSearchComplete = () => {
+    setIsSearching(false)
+  }
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -44,6 +48,7 @@ export function SearchClient({ userId, userRole }: SearchClientProps) {
         filters={filters}
         refreshTrigger={refreshTrigger}
         userRole={userRole}
+        onSearchComplete={handleSearchComplete}
       />
     </div>
   )

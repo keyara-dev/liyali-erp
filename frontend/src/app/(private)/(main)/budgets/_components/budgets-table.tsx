@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useMemo, useEffect } from "react";
 import * as React from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   ColumnDef,
   ColumnFiltersState,
@@ -32,6 +33,7 @@ import { CustomPagination } from "@/components/ui/custom-pagination";
 import { useBudgetsWithStorage } from "@/hooks/use-budget-storage";
 import { Budget } from "@/types/budget";
 import { Pagination } from "@/types";
+import { QUERY_KEYS } from "@/lib/constants";
 
 interface BudgetsTableProps {
   userId: string;
@@ -47,24 +49,26 @@ export function BudgetsTable({
   onBudgetAction,
 }: BudgetsTableProps) {
   const router = useRouter();
-  const { data: budgetsFromHook = [], isLoading: hookLoading } =
+  const queryClient = useQueryClient();
+  const { data: budgetsFromHook = [], isLoading: hookLoading, refetch } =
     useBudgetsWithStorage(true);
-  const [budgets, setBudgets] = useState<Budget[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
 
+  // Refetch when refreshTrigger changes (after budget creation)
   useEffect(() => {
+    if (refreshTrigger > 0) {
+      refetch();
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.BUDGETS?.ALL || 'BUDGETS'] });
+    }
+  }, [refreshTrigger, refetch, queryClient]);
+
+  const budgets = useMemo(() => {
     if (budgetsFromHook && budgetsFromHook.length > 0) {
       // Filter by current user's budgets
-      const userBudgets = budgetsFromHook.filter(
-        (budget) => budget.createdBy === userId
-      );
-      setBudgets(userBudgets);
-      setIsLoading(false);
-    } else {
-      setBudgets([]);
-      setIsLoading(false);
+      return budgetsFromHook.filter((budget) => budget.createdBy === userId);
     }
-  }, [budgetsFromHook, userId, refreshTrigger]);
+    return [];
+  }, [budgetsFromHook, userId]);
+  
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
     []
@@ -177,6 +181,21 @@ export function BudgetsTable({
     },
   });
 
+  const handleUpdatePagination = useCallback(
+    (newPagination: { page: number; page_size?: number }) => {
+      setPagination((prev) => ({
+        ...prev,
+        page: newPagination.page,
+        page_size: newPagination.page_size || prev.page_size,
+      }));
+      table.setPageIndex(newPagination.page - 1);
+      if (newPagination.page_size) {
+        table.setPageSize(newPagination.page_size);
+      }
+    },
+    [table]
+  );
+
   return (
     <div className="space-y-4">
       <div className="rounded-md border">
@@ -222,7 +241,7 @@ export function BudgetsTable({
                   colSpan={columns.length}
                   className="h-24 text-center"
                 >
-                  {isLoading ? "Loading budgets..." : "No budgets found."}
+                  {hookLoading ? "Loading budgets..." : "No budgets found."}
                 </TableCell>
               </TableRow>
             )}
@@ -232,25 +251,18 @@ export function BudgetsTable({
 
       {/* Pagination */}
       <CustomPagination
-        pagination={{
-          ...pagination,
-          total_pages: Math.ceil(budgets.length / pagination.page_size!),
-          totalCount: budgets.length,
-          has_next:
-            pagination.page < Math.ceil(budgets.length / pagination.page_size!),
-          has_prev: pagination.page > 1,
-        }}
-        updatePagination={(newPagination) => {
-          setPagination((prev) => ({
-            ...prev,
-            page: newPagination.page,
-            page_size: newPagination.page_size || prev.page_size,
-          }));
-          table.setPageIndex(newPagination.page - 1);
-          if (newPagination.page_size) {
-            table.setPageSize(newPagination.page_size);
-          }
-        }}
+        pagination={useMemo(
+          () => ({
+            ...pagination,
+            total_pages: Math.ceil(budgets.length / pagination.page_size!),
+            totalCount: budgets.length,
+            has_next:
+              pagination.page < Math.ceil(budgets.length / pagination.page_size!),
+            has_prev: pagination.page > 1,
+          }),
+          [pagination, budgets.length]
+        )}
+        updatePagination={handleUpdatePagination}
         allowSetPageSize
         showDetails
       />

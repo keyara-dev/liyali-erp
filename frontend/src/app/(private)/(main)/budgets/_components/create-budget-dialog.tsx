@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { toast } from 'sonner'
 import {
   Dialog,
   DialogContent,
@@ -20,6 +21,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { createBudget } from '@/app/_actions/budgets'
+import { useBudgetStorage } from '@/hooks/use-budget-storage'
 
 interface CreateBudgetDialogProps {
   open: boolean
@@ -49,6 +51,7 @@ export function CreateBudgetDialog({
   userId,
 }: CreateBudgetDialogProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const { saveToStorage } = useBudgetStorage()
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -84,7 +87,7 @@ export function CreateBudgetDialog({
       !formData.totalAmount ||
       !formData.fiscalYear
     ) {
-      alert('Please fill in all required fields')
+      toast.error('Please fill in all required fields')
       return
     }
 
@@ -102,7 +105,14 @@ export function CreateBudgetDialog({
         createdBy: userId,
       })
 
-      if (result.success) {
+      if (result.success && result.data) {
+        // Store the new budget in localStorage (single source of truth)
+        saveToStorage(result.data)
+
+        // Show success toast
+        toast.success(`Budget "${formData.name}" created successfully`)
+
+        // Reset form
         setFormData({
           name: '',
           description: '',
@@ -112,14 +122,20 @@ export function CreateBudgetDialog({
           totalAmount: '',
           currency: 'ZMW',
         })
-        onOpenChange(false)
-        onBudgetCreated()
+
+        // Close modal and notify parent after a brief delay to ensure toast is visible
+        setTimeout(() => {
+          onOpenChange(false)
+          onBudgetCreated()
+        }, 300)
       } else {
-        alert('Failed to create budget: ' + result.message)
+        // Show error toast but keep modal open
+        toast.error(result.message || 'Failed to create budget')
       }
     } catch (error) {
       console.error('Error creating budget:', error)
-      alert('An error occurred while creating the budget')
+      // Show error toast but keep modal open
+      toast.error('An error occurred while creating the budget')
     } finally {
       setIsSubmitting(false)
     }

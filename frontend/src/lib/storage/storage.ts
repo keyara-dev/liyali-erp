@@ -16,6 +16,7 @@ export const STORAGE_KEYS = {
   PURCHASE_ORDERS: 'liyali_purchase_orders',
   REQUISITIONS: 'liyali_requisitions',
   PAYMENT_VOUCHERS: 'liyali_payment_vouchers',
+  GOODS_RECEIVED_NOTES: 'liyali_goods_received_notes',
 } as const;
 
 type DocumentType = 'PURCHASE_ORDER' | 'REQUISITION' | 'PAYMENT_VOUCHER';
@@ -153,7 +154,8 @@ export function isStorageInitialized(): boolean {
   return (
     localStorage.getItem(STORAGE_KEYS.PURCHASE_ORDERS) !== null ||
     localStorage.getItem(STORAGE_KEYS.REQUISITIONS) !== null ||
-    localStorage.getItem(STORAGE_KEYS.PAYMENT_VOUCHERS) !== null
+    localStorage.getItem(STORAGE_KEYS.PAYMENT_VOUCHERS) !== null ||
+    localStorage.getItem(STORAGE_KEYS.GOODS_RECEIVED_NOTES) !== null
   );
 }
 
@@ -164,16 +166,19 @@ export function getStorageStats(): {
   purchaseOrders: number;
   requisitions: number;
   paymentVouchers: number;
+  goodsReceivedNotes: number;
   total: number;
 } {
   return {
     purchaseOrders: getDocuments(STORAGE_KEYS.PURCHASE_ORDERS).length,
     requisitions: getDocuments(STORAGE_KEYS.REQUISITIONS).length,
     paymentVouchers: getDocuments(STORAGE_KEYS.PAYMENT_VOUCHERS).length,
+    goodsReceivedNotes: getDocuments(STORAGE_KEYS.GOODS_RECEIVED_NOTES).length,
     total:
       getDocuments(STORAGE_KEYS.PURCHASE_ORDERS).length +
       getDocuments(STORAGE_KEYS.REQUISITIONS).length +
-      getDocuments(STORAGE_KEYS.PAYMENT_VOUCHERS).length,
+      getDocuments(STORAGE_KEYS.PAYMENT_VOUCHERS).length +
+      getDocuments(STORAGE_KEYS.GOODS_RECEIVED_NOTES).length,
   };
 }
 
@@ -185,6 +190,7 @@ export function exportStorageAsJSON(): Record<string, any> {
     purchaseOrders: getDocuments(STORAGE_KEYS.PURCHASE_ORDERS),
     requisitions: getDocuments(STORAGE_KEYS.REQUISITIONS),
     paymentVouchers: getDocuments(STORAGE_KEYS.PAYMENT_VOUCHERS),
+    goodsReceivedNotes: getDocuments(STORAGE_KEYS.GOODS_RECEIVED_NOTES),
     exportedAt: new Date().toISOString(),
   };
 }

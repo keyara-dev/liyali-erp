@@ -1,20 +1,55 @@
 'use client';
 
 /**
- * React Query Hooks for Storage
- * Provides React Query integration for storage data
+ * React Query Hooks for Storage - Unified Data Source
  *
- * These hooks wrap the storage layer with React Query for:
- * - Automatic refetching
- * - Caching
- * - Background updates
+ * ============================================================================
+ * SINGLE SOURCE OF TRUTH PATTERN
+ * ============================================================================
  *
- * When backend APIs are ready, simply update the queryFn
- * to call API endpoints instead of storage functions
+ * This module provides React Query integration for all workflow documents
+ * (Purchase Orders, Requisitions, Payment Vouchers) using localStorage as the
+ * primary data source. This ensures:
+ *
+ * - ✓ Single source of truth: localStorage is the only source of data
+ * - ✓ Automatic cache invalidation: staleTime: 0 ensures fresh data on every mount
+ * - ✓ Refetch on demand: Components can trigger refetch via refreshTrigger
+ * - ✓ Backward compatibility: Still works with seed data initialization
+ * - ✓ Ready for backend API: Easy migration when APIs are available
+ *
+ * ============================================================================
+ * BACKEND API INTEGRATION GUIDE
+ * ============================================================================
+ *
+ * When backend APIs are ready, update each hook's queryFn as follows:
+ *
+ * BEFORE (localStorage):
+ *   queryFn: () => getPurchaseOrders(),
+ *
+ * AFTER (backend API):
+ *   queryFn: async () => {
+ *     try {
+ *       const response = await fetch('/api/purchase-orders');
+ *       if (!response.ok) throw new Error('Failed to fetch');
+ *       return response.json();
+ *     } catch (error) {
+ *       console.error('API call failed, falling back to storage');
+ *       return getPurchaseOrders(); // Fallback for offline support
+ *     }
+ *   },
+ *
+ * Expected API Endpoints:
+ * - GET /api/purchase-orders - Get all POs
+ * - GET /api/purchase-orders?createdBy=userId - Filter by creator
+ * - GET /api/requisitions - Get all requisitions
+ * - GET /api/requisitions?createdBy=userId - Filter by creator
+ * - GET /api/payment-vouchers - Get all PVs
+ * - GET /api/payment-vouchers?createdBy=userId - Filter by creator
  */
 
 import { useQuery } from '@tanstack/react-query';
 import { PurchaseOrder, PaymentVoucher, RequisitionForm, WorkflowDocument } from '@/types/workflow';
+import type { GoodsReceivedNote } from '@/lib/storage/seed-data';
 import {
   getPurchaseOrders,
   getRequisitions,
@@ -22,6 +57,8 @@ import {
   getPurchaseOrdersByCreator,
   getRequisitionsByCreator,
   getPaymentVouchersByCreator,
+  getGoodsReceivedNotes,
+  getGoodsReceivedNotesByCreator,
 } from '@/lib/storage';
 
 // ============================================================================
@@ -32,7 +69,7 @@ export const usePurchaseOrdersQuery = () => {
   return useQuery({
     queryKey: ['purchaseOrders'],
     queryFn: () => getPurchaseOrders(),
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 0, // Always refetch from storage to ensure fresh data
     gcTime: 10 * 60 * 1000, // 10 minutes
   });
 };
@@ -41,7 +78,7 @@ export const usePurchaseOrdersByCreatorQuery = (userId: string) => {
   return useQuery({
     queryKey: ['purchaseOrders', 'byCreator', userId],
     queryFn: () => getPurchaseOrdersByCreator(userId),
-    staleTime: 5 * 60 * 1000,
+    staleTime: 0, // Always refetch from storage to ensure fresh data
     gcTime: 10 * 60 * 1000,
     enabled: !!userId,
   });
@@ -57,7 +94,7 @@ export const usePurchaseOrdersAsWorkflowDocumentsQuery = (userId?: string) => {
       }
       return convertToWorkflowDocuments(orders);
     },
-    staleTime: 5 * 60 * 1000,
+    staleTime: 0, // Always refetch from storage to ensure fresh data
     gcTime: 10 * 60 * 1000,
   });
 };
@@ -70,7 +107,7 @@ export const useRequisitionsQuery = () => {
   return useQuery({
     queryKey: ['requisitions'],
     queryFn: () => getRequisitions(),
-    staleTime: 5 * 60 * 1000,
+    staleTime: 0, // Always refetch from storage to ensure fresh data
     gcTime: 10 * 60 * 1000,
   });
 };
@@ -79,7 +116,7 @@ export const useRequisitionsByCreatorQuery = (userId: string) => {
   return useQuery({
     queryKey: ['requisitions', 'byCreator', userId],
     queryFn: () => getRequisitionsByCreator(userId),
-    staleTime: 5 * 60 * 1000,
+    staleTime: 0, // Always refetch from storage to ensure fresh data
     gcTime: 10 * 60 * 1000,
     enabled: !!userId,
   });
@@ -95,7 +132,7 @@ export const useRequisitionsAsWorkflowDocumentsQuery = (userId?: string) => {
       }
       return convertToWorkflowDocuments(reqs);
     },
-    staleTime: 5 * 60 * 1000,
+    staleTime: 0, // Always refetch from storage to ensure fresh data
     gcTime: 10 * 60 * 1000,
   });
 };
@@ -108,7 +145,7 @@ export const usePaymentVouchersQuery = () => {
   return useQuery({
     queryKey: ['paymentVouchers'],
     queryFn: () => getPaymentVouchers(),
-    staleTime: 5 * 60 * 1000,
+    staleTime: 0, // Always refetch from storage to ensure fresh data
     gcTime: 10 * 60 * 1000,
   });
 };
@@ -117,7 +154,7 @@ export const usePaymentVouchersByCreatorQuery = (userId: string) => {
   return useQuery({
     queryKey: ['paymentVouchers', 'byCreator', userId],
     queryFn: () => getPaymentVouchersByCreator(userId),
-    staleTime: 5 * 60 * 1000,
+    staleTime: 0, // Always refetch from storage to ensure fresh data
     gcTime: 10 * 60 * 1000,
     enabled: !!userId,
   });
@@ -133,7 +170,67 @@ export const usePaymentVouchersAsWorkflowDocumentsQuery = (userId?: string) => {
       }
       return convertToWorkflowDocuments(vouchers);
     },
-    staleTime: 5 * 60 * 1000,
+    staleTime: 0, // Always refetch from storage to ensure fresh data
+    gcTime: 10 * 60 * 1000,
+  });
+};
+
+// ============================================================================
+// Goods Received Note Queries
+// ============================================================================
+//
+// Backend API Integration Guide:
+// When backend APIs are ready, update each hook's queryFn:
+//
+// BEFORE (localStorage):
+//   queryFn: () => getGoodsReceivedNotes(),
+//
+// AFTER (backend API):
+//   queryFn: async () => {
+//     try {
+//       const response = await fetch('/api/goods-received-notes');
+//       if (!response.ok) throw new Error('Failed to fetch');
+//       return response.json();
+//     } catch (error) {
+//       console.error('API call failed, falling back to storage');
+//       return getGoodsReceivedNotes(); // Fallback for offline support
+//     }
+//   },
+//
+// Expected API Endpoints:
+// - GET /api/goods-received-notes - Get all GRNs
+// - GET /api/goods-received-notes?createdBy=userId - Filter by creator
+
+export const useGoodsReceivedNotesQuery = () => {
+  return useQuery({
+    queryKey: ['goodsReceivedNotes'],
+    queryFn: () => getGoodsReceivedNotes(),
+    staleTime: 0, // Always refetch from storage to ensure fresh data
+    gcTime: 10 * 60 * 1000, // 10 minutes
+  });
+};
+
+export const useGoodsReceivedNotesByCreatorQuery = (userId: string) => {
+  return useQuery({
+    queryKey: ['goodsReceivedNotes', 'byCreator', userId],
+    queryFn: () => getGoodsReceivedNotesByCreator(userId),
+    staleTime: 0, // Always refetch from storage to ensure fresh data
+    gcTime: 10 * 60 * 1000,
+    enabled: !!userId,
+  });
+};
+
+export const useGrnsAsWorkflowDocumentsQuery = (userId?: string) => {
+  return useQuery({
+    queryKey: ['grns', 'asDocuments', userId],
+    queryFn: () => {
+      let grns = getGoodsReceivedNotes();
+      if (userId) {
+        grns = grns.filter((grn) => grn.createdBy === userId);
+      }
+      return convertToWorkflowDocuments([...grns]);
+    },
+    staleTime: 0, // Always refetch from storage to ensure fresh data
     gcTime: 10 * 60 * 1000,
   });
 };
@@ -143,7 +240,7 @@ export const usePaymentVouchersAsWorkflowDocumentsQuery = (userId?: string) => {
 // ============================================================================
 
 function convertToWorkflowDocuments(
-  documents: (PurchaseOrder | RequisitionForm | PaymentVoucher)[]
+  documents: (PurchaseOrder | RequisitionForm | PaymentVoucher | GoodsReceivedNote)[]
 ): WorkflowDocument[] {
   return documents.map((doc) => ({
     id: doc.id,

@@ -1,25 +1,31 @@
 'use client'
 
 import { useState } from 'react'
+import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { SignatureCanvas } from '@/components/ui/signature-canvas'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { approveBudget, rejectBudget } from '@/app/_actions/budgets'
+import { useBudgetStorage } from '@/hooks/use-budget-storage'
+import { Budget } from '@/types/budget'
 import { AlertCircle, CheckCircle2 } from 'lucide-react'
 
 interface BudgetApprovalActionPanelProps {
   budgetId: string
   budgetStatus: string
+  budget?: Budget
   onApprovalComplete: () => void
 }
 
 export function BudgetApprovalActionPanel({
   budgetId,
   budgetStatus,
+  budget,
   onApprovalComplete,
 }: BudgetApprovalActionPanelProps) {
+  const { saveToStorage } = useBudgetStorage()
   const [action, setAction] = useState<'approve' | 'reject' | null>(null)
   const [comments, setComments] = useState('')
   const [remarks, setRemarks] = useState('')
@@ -52,7 +58,38 @@ export function BudgetApprovalActionPanel({
       })
 
       if (result.success) {
+        // Update localStorage with approved budget
+        if (budget) {
+          const currentStage = budget.currentApprovalStage || 1;
+          const totalStages = budget.totalApprovalStages || 4;
+          const isLastStage = currentStage >= totalStages;
+
+          const approvedBudget: Budget = {
+            ...budget,
+            status: isLastStage ? 'APPROVED' : 'IN_REVIEW',
+            approvedAt: isLastStage ? new Date() : budget.approvedAt,
+            currentApprovalStage: isLastStage ? currentStage : currentStage + 1,
+            updatedAt: new Date(),
+            approvalChain: [
+              ...(budget.approvalChain || []),
+              {
+                stageNumber: currentStage,
+                stageName: `Stage ${currentStage} Approval`,
+                assignedTo: 'current-user-id',
+                assignedRole: 'FINANCE_OFFICER',
+                status: 'APPROVED',
+                actionTakenAt: new Date(),
+                actionTakenBy: 'current-user-id',
+                comments,
+                signature
+              }
+            ]
+          };
+          saveToStorage(approvedBudget)
+        }
+
         setSuccess('Budget approved successfully')
+        toast.success('Budget approved successfully')
         setComments('')
         setRemarks('')
         setSignature('')
@@ -60,9 +97,11 @@ export function BudgetApprovalActionPanel({
         setTimeout(onApprovalComplete, 1500)
       } else {
         setError(result.message || 'Failed to approve budget')
+        toast.error(result.message || 'Failed to approve budget')
       }
     } catch (err) {
       setError('An error occurred while approving the budget')
+      toast.error('An error occurred while approving the budget')
       console.error(err)
     } finally {
       setIsLoading(false)
@@ -88,7 +127,35 @@ export function BudgetApprovalActionPanel({
       })
 
       if (result.success) {
+        // Update localStorage with rejected budget
+        if (budget) {
+          const rejectedBudget: Budget = {
+            ...budget,
+            status: 'REJECTED',
+            currentApprovalStage: 0,
+            rejectedAt: new Date(),
+            rejectionReason: remarks,
+            updatedAt: new Date(),
+            approvalChain: [
+              ...(budget.approvalChain || []),
+              {
+                stageNumber: budget.currentApprovalStage || 1,
+                stageName: `Stage ${budget.currentApprovalStage || 1} Review`,
+                assignedTo: 'current-user-id',
+                assignedRole: 'REVIEWER',
+                status: 'REJECTED',
+                actionTakenAt: new Date(),
+                actionTakenBy: 'current-user-id',
+                remarks,
+                comments
+              }
+            ]
+          }
+          saveToStorage(rejectedBudget)
+        }
+
         setSuccess('Budget rejected successfully')
+        toast.success('Budget rejected successfully')
         setComments('')
         setRemarks('')
         setSignature('')
@@ -96,9 +163,11 @@ export function BudgetApprovalActionPanel({
         setTimeout(onApprovalComplete, 1500)
       } else {
         setError(result.message || 'Failed to reject budget')
+        toast.error(result.message || 'Failed to reject budget')
       }
     } catch (err) {
       setError('An error occurred while rejecting the budget')
+      toast.error('An error occurred while rejecting the budget')
       console.error(err)
     } finally {
       setIsLoading(false)

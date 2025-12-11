@@ -1,5 +1,6 @@
 'use client'
 
+import { Pencil, Trash2 } from 'lucide-react'
 import {
   Table,
   TableBody,
@@ -8,14 +9,18 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { Button } from '@/components/ui/button'
 import { BudgetItem } from '@/types/budget'
 
 interface BudgetItemsTableProps {
   items: BudgetItem[]
   currency: string
+  status?: string
+  onEditItem?: (item: BudgetItem) => void
+  onDeleteItem?: (itemId: string) => void
 }
 
-export function BudgetItemsTable({ items, currency }: BudgetItemsTableProps) {
+export function BudgetItemsTable({ items, currency, status, onEditItem, onDeleteItem }: BudgetItemsTableProps) {
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -39,6 +44,7 @@ export function BudgetItemsTable({ items, currency }: BudgetItemsTableProps) {
               <TableHead className="text-right">Spent</TableHead>
               <TableHead className="text-right">Remaining</TableHead>
               <TableHead className="text-right">% Used</TableHead>
+              {status === 'DRAFT' && <TableHead className="text-right">Actions</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -74,6 +80,28 @@ export function BudgetItemsTable({ items, currency }: BudgetItemsTableProps) {
                       </div>
                     </div>
                   </TableCell>
+                  {status === 'DRAFT' && (
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => onEditItem?.(item)}
+                          className="h-8 w-8 p-0"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => onDeleteItem?.(item.id)}
+                          className="h-8 w-8 p-0 text-red-600 hover:text-red-700"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  )}
                 </TableRow>
               )
             })}

@@ -39,6 +39,15 @@ export {
   getPaymentVouchersByStatus,
   getPaymentVouchersByCreator,
   getPaymentVouchersByAmount,
+  // Goods Received Notes
+  getGoodsReceivedNotes,
+  getGoodsReceivedNoteById,
+  saveGoodsReceivedNote,
+  deleteGoodsReceivedNote,
+  filterGoodsReceivedNotes,
+  getGoodsReceivedNotesByStatus,
+  getGoodsReceivedNotesByCreator,
+  getGoodsReceivedNotesByPurchaseOrder,
   // Bulk operations
   getAllDocuments,
   getDocumentsByStatus,
@@ -46,4 +55,4 @@ export {
 } from './hooks';
 
 // Seed data (for testing/development)
-export { createSeedPurchaseOrders, createSeedRequisitions, createSeedPaymentVouchers } from './seed-data';
+export { createSeedPurchaseOrders, createSeedRequisitions, createSeedPaymentVouchers, createSeedGoodsReceivedNotes } from './seed-data';

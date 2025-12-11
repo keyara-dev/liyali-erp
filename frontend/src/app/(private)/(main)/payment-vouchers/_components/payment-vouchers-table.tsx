@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useCallback, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { ColumnDef } from '@tanstack/react-table';
 import {
@@ -15,7 +15,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { DataTable } from '@/components/ui/data-table';
 import { StatusBadge as CentralizedStatusBadge } from '@/components/status-badge';
-import { usePaymentVouchersAsWorkflowDocuments } from '@/hooks/use-payment-voucher-storage';
+import { usePaymentVouchersAsWorkflowDocumentsQuery } from '@/hooks/use-storage-queries';
 import { WorkflowDocument } from '@/types/workflow';
 import type { ActionButton } from '@/components/ui/action-buttons';
 import {
@@ -180,19 +180,23 @@ export function PaymentVouchersTable({
   onRefresh: _onRefresh,
 }: PaymentVouchersTableProps) {
   const router = useRouter();
-  const { data: paymentVouchers } =
-    usePaymentVouchersAsWorkflowDocuments(true);
-  const [data, setData] = useState<WorkflowDocument[]>([]);
+  const { data: paymentVouchers = [], refetch } =
+    usePaymentVouchersAsWorkflowDocumentsQuery();
 
+  // Refetch when refreshTrigger changes
   useEffect(() => {
+    refetch();
+  }, [refreshTrigger, refetch]);
+
+  // Memoize the data to prevent unnecessary re-renders
+  // React Query returns a new array reference on each render,
+  // so we memoize based on the actual content changes
+  const data = useMemo(() => {
     if (paymentVouchers && paymentVouchers.length > 0) {
-      // Filter by current user's payment vouchers
-      const userPVs = paymentVouchers.filter((pv) => pv.createdBy === _userId);
-      setData(userPVs);
-    } else {
-      setData([]);
+      return paymentVouchers;
     }
-  }, [paymentVouchers, _userId, refreshTrigger]);
+    return [];
+  }, [paymentVouchers]);
 
   const getActions = useCallback(
     (pv: WorkflowDocument): ActionButton[] => {

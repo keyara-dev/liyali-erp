@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { ColumnDef } from '@tanstack/react-table';
 import Link from 'next/link';
-import { useCallback } from 'react';
+import { useCallback, useMemo, useEffect } from 'react';
 import { DataTable } from '@/components/ui/data-table';
 import { StatusBadge } from '@/components/status-badge';
 import { Download, Eye, Pencil, Trash2, MoreVertical } from 'lucide-react';
@@ -15,6 +15,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { useGrnsAsWorkflowDocumentsQuery } from '@/hooks/use-storage-queries';
 
 interface GrnTableProps {
   userId: string;
@@ -22,67 +23,6 @@ interface GrnTableProps {
   refreshTrigger: number;
   onRefresh: () => void;
 }
-
-// Mock GRN data
-const mockGRNs: WorkflowDocument[] = [
-  {
-    id: 'grn-1',
-    type: 'GOODS_RECEIVED_NOTE',
-    documentNumber: 'GRN-2024-001',
-    status: 'IN_REVIEW',
-    currentStage: 1,
-    createdBy: 'user-1',
-    createdAt: new Date('2024-11-27'),
-    updatedAt: new Date('2024-11-28'),
-    metadata: {
-      poId: 'po-1',
-      poNumber: 'PO-2024-001',
-      vendorName: 'Broadway Ventures',
-      receivedQuantity: 5,
-      totalQuantity: 5,
-      amount: 7500.0,
-      receivedDate: '2024-11-27',
-    },
-  },
-  {
-    id: 'grn-2',
-    type: 'GOODS_RECEIVED_NOTE',
-    documentNumber: 'GRN-2024-002',
-    status: 'APPROVED',
-    currentStage: 1,
-    createdBy: 'user-2',
-    createdAt: new Date('2024-11-26'),
-    updatedAt: new Date('2024-11-27'),
-    metadata: {
-      poId: 'po-2',
-      poNumber: 'PO-2024-002',
-      vendorName: 'Tech Solutions Ltd',
-      receivedQuantity: 10,
-      totalQuantity: 10,
-      amount: 12000.0,
-      receivedDate: '2024-11-26',
-    },
-  },
-  {
-    id: 'grn-3',
-    type: 'GOODS_RECEIVED_NOTE',
-    documentNumber: 'GRN-2024-003',
-    status: 'APPROVED',
-    currentStage: 1,
-    createdBy: 'user-3',
-    createdAt: new Date('2024-11-25'),
-    updatedAt: new Date('2024-11-25'),
-    metadata: {
-      poId: 'po-3',
-      poNumber: 'PO-2024-003',
-      vendorName: 'Office Supplies Co',
-      receivedQuantity: 20,
-      totalQuantity: 20,
-      amount: 5000.0,
-      receivedDate: '2024-11-25',
-    },
-  },
-];
 
 // Options dropdown component
 function GrnOptionsMenu({ grn, router }: { grn: WorkflowDocument; router: ReturnType<typeof useRouter> }) {
@@ -180,10 +120,26 @@ const columns: ColumnDef<WorkflowDocument>[] = [
 export function GrnTable({
   userId: _userId,
   userRole: _userRole,
-  refreshTrigger: _refreshTrigger,
+  refreshTrigger,
   onRefresh: _onRefresh,
 }: GrnTableProps) {
   const router = useRouter();
+  const { data: grns = [], refetch } = useGrnsAsWorkflowDocumentsQuery();
+
+  // Refetch when refreshTrigger changes
+  useEffect(() => {
+    refetch();
+  }, [refreshTrigger, refetch]);
+
+  // Memoize the data to prevent unnecessary re-renders
+  // React Query returns a new array reference on each render,
+  // so we memoize based on the actual content changes
+  const data = useMemo(() => {
+    if (grns && grns.length > 0) {
+      return grns;
+    }
+    return [];
+  }, [grns]);
 
   const getActions = useCallback(
     (grn: WorkflowDocument): ActionButton[] => {
@@ -212,7 +168,7 @@ export function GrnTable({
   return (
     <DataTable
       columns={columns}
-      data={mockGRNs}
+      data={data}
       actions={getActions}
       hideSearchBar={false}
       renderRowActions={(grn: WorkflowDocument) => (

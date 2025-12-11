@@ -1,53 +1,102 @@
-'use client'
+"use client";
 
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { ApprovalRecord } from '@/types/budget'
-import { CheckCircle2, Clock, XCircle } from 'lucide-react'
+import { Button } from "@/components";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ApprovalRecord } from "@/types/budget";
+import {
+  CheckCircle2,
+  ClipboardListIcon,
+  Clock,
+  Plus,
+  XCircle,
+} from "lucide-react";
+import Link from "next/link";
 
 interface ApprovalChainPanelProps {
-  approvalChain: ApprovalRecord[]
+  approvalChain: ApprovalRecord[];
 }
 
 export function ApprovalChainPanel({ approvalChain }: ApprovalChainPanelProps) {
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'APPROVED':
-        return <CheckCircle2 className="h-5 w-5 text-green-600" />
-      case 'REJECTED':
-        return <XCircle className="h-5 w-5 text-red-600" />
-      case 'PENDING':
-        return <Clock className="h-5 w-5 text-yellow-600" />
+      case "APPROVED":
+        return <CheckCircle2 className="h-5 w-5 text-green-600" />;
+      case "REJECTED":
+        return <XCircle className="h-5 w-5 text-red-600" />;
+      case "PENDING":
+        return <Clock className="h-5 w-5 text-yellow-600" />;
       default:
-        return <Clock className="h-5 w-5 text-gray-400" />
+        return <Clock className="h-5 w-5 text-gray-400" />;
     }
-  }
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'APPROVED':
-        return 'bg-green-50'
-      case 'REJECTED':
-        return 'bg-red-50'
-      case 'PENDING':
-        return 'bg-yellow-50'
+      case "APPROVED":
+        return "bg-green-50";
+      case "REJECTED":
+        return "bg-red-50";
+      case "PENDING":
+        return "bg-yellow-50";
       default:
-        return 'bg-gray-50'
+        return "bg-gray-50";
     }
-  }
+  };
 
   if (!approvalChain || approvalChain.length === 0) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Approval Chain</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground">
-            No approval records yet. Submit the budget to initiate the approval process.
+      <Card className="bg-canvas/50 border-2 border-dashed">
+        <CardContent className="flex flex-col items-center justify-center px-8 py-8">
+          <div className="relative mb-4">
+            <div className="bg-primary/10 absolute inset-0 rounded-full blur-2xl" />
+            <div className="bg-canvas border-primary/20 relative rounded-2xl border-2 p-6">
+              <ClipboardListIcon
+                className="text-primary h-16 w-16"
+                strokeWidth={1.5}
+              />
+            </div>
+          </div>
+
+          <h3 className="text-foreground mb-2 text-2xl font-semibold">
+            No Approval Chain
+          </h3>
+          <p className="text-muted-foreground mb-8 max-w-md text-center">
+            No approval records yet. Submit the budget to initiate the approval
+            process.
           </p>
+
+          <div className="mb-8 grid w-full max-w-2xl grid-cols-3 gap-4 text-xs">
+            <div className="bg-canvas border-border rounded-lg border p-4 text-center">
+              <div className="text-primary mb-1 font-mono">
+                CONFIGURE WORKFLOW
+              </div>
+              <div className="text-muted-foreground">
+                Define budget approval chain
+              </div>
+            </div>
+            <div className="bg-canvas border-border rounded-lg border p-4 text-center">
+              <div className="text-primary mb-1 font-mono">CREATE BUDGET</div>
+              <div className="text-muted-foreground">create a Budget</div>
+            </div>
+            <div className="bg-canvas border-border rounded-lg border p-4 text-center">
+              <div className="text-primary mb-1 font-mono">
+                SUBMIT FOR APPROVAL
+              </div>
+              <div className="text-muted-foreground">
+                Send Budget for approval
+              </div>
+            </div>
+          </div>
+
+          <Button size="lg" className="gap-2" asChild>
+            <Link href="/admin/workflows/create">
+              <Plus className="h-4 w-4" />
+              Create Budget Workflow
+            </Link>
+          </Button>
         </CardContent>
       </Card>
-    )
+    );
   }
 
   return (
@@ -58,57 +107,80 @@ export function ApprovalChainPanel({ approvalChain }: ApprovalChainPanelProps) {
       <CardContent>
         <div className="space-y-4">
           {approvalChain.map((record, index) => (
-            <div key={index} className={`rounded-lg p-4 ${getStatusColor(record.status)}`}>
+            <div
+              key={index}
+              className={`rounded-lg p-4 ${getStatusColor(record.status)}`}
+            >
               <div className="flex items-start gap-3">
                 <div className="mt-1">{getStatusIcon(record.status)}</div>
                 <div className="flex-1">
                   <div className="flex items-center justify-between">
                     <h4 className="font-semibold">{record.stageName}</h4>
-                    <span className={`px-2 py-1 rounded text-xs font-medium ${
-                      record.status === 'APPROVED'
-                        ? 'bg-green-200 text-green-800'
-                        : record.status === 'REJECTED'
-                        ? 'bg-red-200 text-red-800'
-                        : 'bg-yellow-200 text-yellow-800'
-                    }`}>
+                    <span
+                      className={`px-2 py-1 rounded text-xs font-medium ${
+                        record.status === "APPROVED"
+                          ? "bg-green-200 text-green-800"
+                          : record.status === "REJECTED"
+                            ? "bg-red-200 text-red-800"
+                            : "bg-yellow-200 text-yellow-800"
+                      }`}
+                    >
                       {record.status}
                     </span>
                   </div>
                   <p className="text-sm text-muted-foreground mt-1">
-                    Assigned to: <span className="font-medium">{record.assignedTo}</span>
+                    Assigned to:{" "}
+                    <span className="font-medium">{record.assignedTo}</span>
                   </p>
                   {record.assignedRole && (
                     <p className="text-sm text-muted-foreground">
-                      Role: <span className="font-medium">{record.assignedRole}</span>
+                      Role:{" "}
+                      <span className="font-medium">{record.assignedRole}</span>
                     </p>
                   )}
                   {record.actionTakenAt && (
                     <p className="text-sm text-muted-foreground mt-1">
-                      Action taken on: <span className="font-medium">
-                        {record.actionTakenAt.toLocaleDateString()} {record.actionTakenAt.toLocaleTimeString()}
+                      Action taken on:{" "}
+                      <span className="font-medium">
+                        {(() => {
+                          const date =
+                            record.actionTakenAt instanceof Date
+                              ? record.actionTakenAt
+                              : new Date(record.actionTakenAt);
+                          return `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
+                        })()}
                       </span>
                     </p>
                   )}
                   {record.actionTakenBy && (
                     <p className="text-sm text-muted-foreground">
-                      By: <span className="font-medium">{record.actionTakenBy}</span>
+                      By:{" "}
+                      <span className="font-medium">
+                        {record.actionTakenBy}
+                      </span>
                     </p>
                   )}
                   {record.comments && (
                     <div className="mt-2 p-2 bg-white rounded text-sm italic">
-                      <p className="font-medium text-xs text-gray-600 mb-1">Comments:</p>
+                      <p className="font-medium text-xs text-gray-600 mb-1">
+                        Comments:
+                      </p>
                       "{record.comments}"
                     </div>
                   )}
                   {record.remarks && (
                     <div className="mt-2 p-2 bg-white rounded text-sm italic border-l-2 border-red-400">
-                      <p className="font-medium text-xs text-gray-600 mb-1">Remarks:</p>
+                      <p className="font-medium text-xs text-gray-600 mb-1">
+                        Remarks:
+                      </p>
                       "{record.remarks}"
                     </div>
                   )}
                   {record.signature && (
                     <div className="mt-2 p-2 bg-white rounded">
-                      <p className="font-medium text-xs text-gray-600 mb-1">Digital Signature:</p>
+                      <p className="font-medium text-xs text-gray-600 mb-1">
+                        Digital Signature:
+                      </p>
                       <img
                         src={record.signature}
                         alt="Digital signature"
@@ -123,5 +195,5 @@ export function ApprovalChainPanel({ approvalChain }: ApprovalChainPanelProps) {
         </div>
       </CardContent>
     </Card>
-  )
+  );
 }

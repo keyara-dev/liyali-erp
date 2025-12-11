@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useCallback, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { ColumnDef } from '@tanstack/react-table';
 import { ArrowUpDown, Eye, Pencil, CheckCircle2, XCircle, MoreVertical } from 'lucide-react';
@@ -9,10 +9,7 @@ import { StatusBadge } from '@/components/status-badge';
 import { Button } from '@/components/ui/button';
 import { DataTable } from '@/components/ui/data-table';
 import { WorkflowDocument } from '@/types/workflow';
-import {
-  useRequisitionsWithStorage,
-  convertRequisitionToWorkflowDocument,
-} from '@/hooks/use-requisition-storage';
+import { useRequisitionsAsWorkflowDocumentsQuery } from '@/hooks/use-storage-queries';
 import type { ActionButton } from '@/components/ui/action-buttons';
 import {
   DropdownMenu,
@@ -154,20 +151,23 @@ export function RequisitionsTable({
   refreshTrigger,
 }: RequisitionsTableProps) {
   const router = useRouter();
-  const { data: apiRequisitions } = useRequisitionsWithStorage(true);
-  const [requisitions, setRequisitions] = useState<WorkflowDocument[]>([]);
+  const { data: requisitions = [], refetch } =
+    useRequisitionsAsWorkflowDocumentsQuery();
 
+  // Refetch when refreshTrigger changes
   useEffect(() => {
-    if (apiRequisitions && apiRequisitions.length > 0) {
-      // Convert requisitions to workflow documents and filter by current user
-      const workflowDocs = apiRequisitions
-        .map((req) => convertRequisitionToWorkflowDocument(req))
-        .filter((doc) => doc.createdBy === userId);
-      setRequisitions(workflowDocs);
-    } else {
-      setRequisitions([]);
+    refetch();
+  }, [refreshTrigger, refetch]);
+
+  // Memoize the data to prevent unnecessary re-renders
+  // React Query returns a new array reference on each render,
+  // so we memoize based on the actual content changes
+  const data = useMemo(() => {
+    if (requisitions && requisitions.length > 0) {
+      return requisitions;
     }
-  }, [apiRequisitions, userId, refreshTrigger]);
+    return [];
+  }, [requisitions]);
 
   const getActions = useCallback(
     (req: WorkflowDocument): ActionButton[] => {
@@ -192,7 +192,7 @@ export function RequisitionsTable({
   return (
     <DataTable
       columns={columns}
-      data={requisitions}
+      data={data}
       searchKey="documentNumber"
       searchPlaceholder="Filter by document number..."
       actions={getActions}
