@@ -13,10 +13,11 @@ export function DashboardLayoutClient({ children }: DashboardLayoutClientProps) 
 
   // On mobile, sidebar is a Sheet drawer so grid is just 1fr
   // On desktop, sidebar width depends on open state
+  // When collapsed on desktop, show icon width (4rem) instead of full width
   const gridColumns = isMobile
     ? "1fr"
     : !open
-      ? "0 1fr"
+      ? "4rem 1fr"
       : "var(--sidebar-width) 1fr";
 
   return (

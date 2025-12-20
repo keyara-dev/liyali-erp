@@ -166,7 +166,7 @@ export function NavMain() {
 
                 return (
                   <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton asChild isActive={isActive}>
+                    <SidebarMenuButton asChild isActive={isActive} tooltip={item.title}>
                       <Link href={item.href}>
                         <item.icon />
                         <span>{item.title}</span>

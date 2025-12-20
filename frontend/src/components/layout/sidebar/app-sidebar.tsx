@@ -21,7 +21,7 @@ import {
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const pathname = usePathname();
-  const { setOpen, setOpenMobile, isMobile } = useSidebar();
+  const { setOpen, setOpenMobile, isMobile, open } = useSidebar();
   const isTablet = useIsTablet();
 
   useEffect(() => {
@@ -36,11 +36,16 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   }, [isTablet, setOpen]);
 
   return (
-    <Sidebar collapsible="offcanvas" {...props}>
+    <Sidebar collapsible={isMobile ? "offcanvas" : "icon"} {...props}>
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
-            <Logo isFull href="/" className="my-4" />
+            <Logo
+              isIcon={!open && !isMobile}
+              isFull={open || isMobile}
+              href="/"
+              className="my-4 mb-0"
+            />
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>
