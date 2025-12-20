@@ -49,10 +49,14 @@ export function Providers({ children }: { children: React.ReactNode }) {
         disableTransitionOnChange
       >
         <QueryClientProvider client={queryClient}>
-          <StorageInitializer>
-            {children}
-          </StorageInitializer>
-          <Toaster richColors position="bottom-right" />
+          <StorageInitializer>{children}</StorageInitializer>
+          <Toaster
+            position="top-right"
+            expand
+            richColors
+            theme="system"
+            closeButton
+          />
           <ReactQueryDevtools initialIsOpen={false} />
         </QueryClientProvider>
       </NextThemesProvider>

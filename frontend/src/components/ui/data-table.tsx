@@ -45,6 +45,12 @@ interface DataTableProps<TData, TValue> {
   actions?: (row: TData) => ActionButton[];
   renderRowActions?: (row: TData) => React.ReactNode;
   hideSearchBar?: boolean;
+  hidePagination?: boolean;
+  totalCount?: number;
+  currentPage?: number;
+  pageSize?: number;
+  totalPages?: number;
+  onPaginationChange?: (page: number, pageSize: number) => void;
 }
 
 export function DataTable<TData, TValue>({
@@ -55,6 +61,12 @@ export function DataTable<TData, TValue>({
   actions,
   renderRowActions,
   hideSearchBar = false,
+  hidePagination = false,
+  totalCount,
+  currentPage = 1,
+  pageSize = 10,
+  totalPages,
+  onPaginationChange,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
@@ -182,24 +194,25 @@ export function DataTable<TData, TValue>({
           </TableBody>
         </Table>
       </div>
-      <CustomPagination
-        pagination={{
-          page: table.getState().pagination.pageIndex + 1,
-          page_size: table.getState().pagination.pageSize,
-          total_pages: table.getPageCount(),
-          totalCount: data.length,
-          has_next: table.getCanNextPage(),
-          has_prev: table.getCanPreviousPage(),
-        }}
-        updatePagination={({ page, page_size }) => {
-          if (page_size && page_size !== table.getState().pagination.pageSize) {
-            table.setPageSize(page_size);
-          }
-          table.setPageIndex(page - 1);
-        }}
-        allowSetPageSize={true}
-        showDetails={true}
-      />
+      {!hidePagination && (
+        <CustomPagination
+          pagination={{
+            page: currentPage,
+            page_size: pageSize,
+            total_pages: totalPages ?? Math.ceil((totalCount ?? data.length) / pageSize),
+            totalCount: totalCount ?? data.length,
+            has_next: currentPage < (totalPages ?? Math.ceil((totalCount ?? data.length) / pageSize)),
+            has_prev: currentPage > 1,
+          }}
+          updatePagination={({ page, page_size }) => {
+            if (onPaginationChange) {
+              onPaginationChange(page, page_size || pageSize);
+            }
+          }}
+          allowSetPageSize={true}
+          showDetails={true}
+        />
+      )}
     </div>
   );
 }

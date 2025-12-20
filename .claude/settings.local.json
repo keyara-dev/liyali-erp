@@ -7,7 +7,8 @@
       "Bash(grep -r \"Document\\|Page\\|pdfjs\\|react-pdf\" d:devnext-appsliyali-gatewayfrontendsrccomponents* --include=\"*.tsx\" --include=\"*.ts\")",
       "Bash(package.json \")",
       "Bash(grep:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(cat:*)"
     ],
     "deny": [],
     "ask": []

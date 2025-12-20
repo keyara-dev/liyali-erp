@@ -53,10 +53,14 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
       >
         {label && (
           <label
-            className={cn("mb-0.5 pl-1 text-sm font-medium text-nowrap", {
-              "text-red-500": onError || isInvalid,
-              "opacity-50": isDisabled || props?.disabled,
-            })}
+            className={cn(
+              "mb-0.5 pl-1 text-sm font-medium text-nowrap",
+              {
+                "text-red-500": onError || isInvalid,
+                "opacity-50": isDisabled || props?.disabled,
+              },
+              classNames?.label
+            )}
             htmlFor={name}
           >
             {label}{" "}

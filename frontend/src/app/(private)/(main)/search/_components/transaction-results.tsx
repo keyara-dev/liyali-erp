@@ -347,6 +347,13 @@ export function TransactionResults({
             columns={columns}
             data={documents}
             hideSearchBar={true}
+            totalCount={totalDocuments}
+            currentPage={currentPage}
+            pageSize={pageSize}
+            totalPages={totalPages}
+            onPaginationChange={(page) => {
+              setCurrentPage(page);
+            }}
             renderRowActions={(doc: WorkflowDocument) => {
               // Map document type to URL slug
               const typeSlug =
@@ -376,40 +383,6 @@ export function TransactionResults({
               );
             }}
           />
-
-          {/* Custom Pagination */}
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between">
-              <div className="text-sm text-muted-foreground">
-                Showing {documents.length > 0 ? (currentPage - 1) * pageSize + 1 : 0} to{" "}
-                {Math.min(currentPage * pageSize, totalDocuments)} of {totalDocuments}{" "}
-                documents
-              </div>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-                  disabled={currentPage === 1 || searchMutation.isPending}
-                >
-                  Previous
-                </Button>
-                <span className="text-sm px-3 py-2">
-                  Page {currentPage} of {totalPages}
-                </span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() =>
-                    setCurrentPage(Math.min(totalPages, currentPage + 1))
-                  }
-                  disabled={currentPage >= totalPages || searchMutation.isPending}
-                >
-                  Next
-                </Button>
-              </div>
-            </div>
-          )}
         </div>
       </CardContent>
     </Card>

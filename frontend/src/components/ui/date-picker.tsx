@@ -10,7 +10,32 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 
-export function DatePicker({
+interface DatePickerProps {
+  label?: string;
+  name?: string;
+  isDisabled?: boolean;
+  isInvalid?: boolean;
+  onError?: boolean;
+  error?: string;
+  errorText?: string;
+  descriptionText?: string;
+  value?: Date;
+  onValueChange?: (value?: Date) => void;
+  minDate?: Date;
+  maxDate?: Date;
+  placeholder?: string;
+  required?: boolean;
+  disabled?: boolean;
+  classNames?: {
+    wrapper?: string;
+    input?: string;
+    label?: string;
+    errorText?: string;
+    descriptionText?: string;
+  };
+}
+
+function DatePickerComponent({
   label,
   name,
   isDisabled,
@@ -23,27 +48,10 @@ export function DatePicker({
   onValueChange,
   minDate,
   maxDate,
-  ...props
-}: React.InputHTMLAttributes<HTMLInputElement> & {
-  label?: string;
-  onError?: boolean;
-  error?: string;
-  errorText?: string;
-  descriptionText?: string;
-  isDisabled?: boolean;
-  isInvalid?: boolean;
-  value?: Date;
-  onValueChange?: (value?: Date) => void;
-  minDate?: Date;
-  maxDate?: Date;
-  classNames?: {
-    wrapper?: string;
-    input?: string;
-    label?: string;
-    errorText?: string;
-    descriptionText?: string;
-  };
-}) {
+  placeholder,
+  required,
+  disabled,
+}: DatePickerProps) {
   const [open, setOpen] = React.useState(false);
 
   // Create disabled matcher for dates
@@ -63,10 +71,10 @@ export function DatePicker({
         <label
           className={cn("mb-0.5 pl-1 text-sm font-medium", classNames?.label, {
             "text-red-500": isInvalid,
-            "opacity-50": props?.disabled
+            "opacity-50": disabled || isDisabled
           })}
           htmlFor={name}>
-          {label} {props?.required && <span className="font-bold text-red-500"> *</span>}
+          {label} {required && <span className="font-bold text-red-500"> *</span>}
         </label>
       )}
       <Popover open={open} onOpenChange={setOpen}>
@@ -74,17 +82,17 @@ export function DatePicker({
           <Button
             variant="outline"
             role="combobox"
-            id="date"
+            id={name || "date"}
             className={cn(
               "w-full justify-between text-left font-normal",
               !value && "text-muted-foreground",
               classNames?.input
             )}
-            disabled={isDisabled || props?.disabled}>
+            disabled={isDisabled || disabled}>
             {value && value instanceof Date && !isNaN(value.getTime()) ? (
               format(value, "PPP")
             ) : (
-              <span>Pick a date</span>
+              <span>{placeholder || "Pick a date"}</span>
             )}
             <ChevronDownIcon />
           </Button>
@@ -93,7 +101,7 @@ export function DatePicker({
           <Calendar
             mode="single"
             selected={value}
-            disabled={disabledDates || isDisabled || props?.disabled}
+            disabled={disabledDates || isDisabled || disabled}
             captionLayout="dropdown"
             startMonth={new Date(1900, 0)}
             endMonth={new Date(2099, 11)}
@@ -125,3 +133,7 @@ export function DatePicker({
     </div>
   );
 }
+
+DatePickerComponent.displayName = "DatePicker";
+
+export const DatePicker = DatePickerComponent;

@@ -15,8 +15,6 @@
    - Primary-600: #136cfd (Bright Blue)
    - Primary-700: #0c54e7 (Base Blue - used as primary)
 
-   Secondary Color: #10b981 (Emerald Green)
-   - Used for success states, positive actions
 
    Accent Color: #f59e0b (Amber/Gold)
    - Used for highlights, important elements, warnings
@@ -47,33 +45,16 @@
   --primary-950: #11275a;
 
   /* Primary (base): Use 700 as default */
-  --primary: #0c54e7;
+  --primary: oklch(50.989% 0.23128 262.506);
   --primary-foreground: oklch(100% 0 0);
-
-  /* Secondary (Gamboge) - Warm Gold Palette */
-  --secondary-50: #fefaec;
-  --secondary-100: #fbf1ca;
-  --secondary-200: #f7e390;
-  --secondary-300: #f3cf56;
-  --secondary-400: #f1bb2e;
-  --secondary-500: #e49815;
-  --secondary-600: #cf7710;
-  --secondary-700: #ac5511;
-  --secondary-800: #8c4314;
-  --secondary-900: #733614;
-  --secondary-950: #421b06;
-
-  /* Secondary (base): Use 500 as default */
-  --secondary: #e49815;
-  --secondary-foreground: oklch(100% 0 0);
 
   /* UI States */
   --muted: oklch(0.967 0.003 264.542);
   --muted-foreground: oklch(0.551 0.027 264.364);
 
   /* Accent: #e49815 (Warm Gold) */
-  --accent: #e49815;
-  --accent-foreground: oklch(100% 0 0);
+  --accent: oklch(89.538% 0.04321 263.71);
+  --accent-foreground: oklch(50.989% 0.23128 262.506);
 
   --destructive: oklch(62.826% 0.25721 28.495);
   --destructive-foreground: oklch(100% 0 0);
@@ -95,16 +76,14 @@
   --sidebar-foreground: oklch(0.13 0.028 261.692);
   --sidebar-primary: oklch(52.4% 0.21 265.5);
   --sidebar-primary-foreground: oklch(100% 0 0);
-  --sidebar-accent: oklch(71.5% 0.167 73.5);
+  --sidebar-accent: oklch(81.668% 0.08351 270.198);
   --sidebar-accent-foreground: oklch(0.13 0.028 261.692);
   --sidebar-border: oklch(0.928 0.006 264.531);
-  --sidebar-ring: oklch(52.4% 0.21 265.5);
+  --sidebar-ring: oklch(81.668% 0.08351 270.198);
 
   /* Border Radius */
   --radius: 0.625rem;
 }
-
-@custom-variant dark (&:where(.dark, .dark *));
 
 /* Dark Mode */
 .dark {
@@ -117,16 +96,12 @@
 
   --primary-foreground: oklch(100% 0 0);
 
-  /* Secondary - Lighter for dark mode visibility */
-  --secondary: #f1bb2e;
-  --secondary-foreground: oklch(0.13 0.028 261.692);
-
   --muted: oklch(0.278 0.033 256.848);
   --muted-foreground: oklch(0.707 0.022 261.325);
 
   /* Accent: #e49815 - Brighter for dark mode */
-  --accent: #fbbf24;
-  --accent-foreground: oklch(0.13 0.028 261.692);
+  --accent: oklch(23.705% 0.02842 257.547 / 0.815);
+  --accent-foreground: oklch(0.707 0.022 261.325);
 
   --destructive: oklch(60.935% 0.23114 27.123);
   --destructive-foreground: oklch(0.985 0.002 247.839);
@@ -152,6 +127,8 @@
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(64% 0.22 265.5);
 }
+
+@custom-variant dark (&:where(.dark, .dark *));
 
 /* ========================================
    TAILWIND V4 @theme CONFIGURATION
@@ -272,19 +249,6 @@
   --color-primary-800: var(--primary-800);
   --color-primary-900: var(--primary-900);
   --color-primary-950: var(--primary-950);
-  --color-secondary: var(--secondary);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-secondary-50: var(--secondary-50);
-  --color-secondary-100: var(--secondary-100);
-  --color-secondary-200: var(--secondary-200);
-  --color-secondary-300: var(--secondary-300);
-  --color-secondary-400: var(--secondary-400);
-  --color-secondary-500: var(--secondary-500);
-  --color-secondary-600: var(--secondary-600);
-  --color-secondary-700: var(--secondary-700);
-  --color-secondary-800: var(--secondary-800);
-  --color-secondary-900: var(--secondary-900);
-  --color-secondary-950: var(--secondary-950);
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
   --color-accent: var(--accent);
