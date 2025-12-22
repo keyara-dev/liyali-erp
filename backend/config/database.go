@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/liyali/liyali-gateway/models"
+	"github.com/liyali/liyali-gateway/utils"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
@@ -38,6 +39,13 @@ func InitDatabase() {
 
 	// Auto migrate models
 	MigrateModels()
+
+	// Seed test data if in development
+	if os.Getenv("APP_ENV") != "production" {
+		if err := utils.SeedDatabase(DB); err != nil {
+			log.Printf("Warning: Failed to seed database: %v", err)
+		}
+	}
 }
 
 // MigrateModels creates/updates all database tables
