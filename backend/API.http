@@ -1,0 +1,593 @@
+###############################################################################
+# Liyali Gateway - REST API Endpoints
+# Phase 12C Complete - Go Fiber Backend
+#
+# Usage:
+# - Use with VSCode REST Client extension
+# - Or import into Postman/Insomnia
+# - Replace <TOKEN> with JWT token from login endpoint
+# - Replace <ID> with actual resource IDs
+#
+# Base URL: http://localhost:8080
+###############################################################################
+
+### ==================== HEALTH CHECK ====================
+### Health Check (No Authentication)
+GET http://localhost:8080/health
+
+###############################################################################
+### ==================== AUTHENTICATION ====================
+###############################################################################
+
+### 1. Register New User
+POST http://localhost:8080/api/v1/auth/register
+Content-Type: application/json
+
+{
+  "email": "newuser@liyali.com",
+  "password": "SecurePass123",
+  "name": "New User",
+  "role": "requester"
+}
+
+### 2. Login User
+POST http://localhost:8080/api/v1/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@liyali.com",
+  "password": "any_password"
+}
+
+### 3. Verify Token
+POST http://localhost:8080/api/v1/auth/verify
+Content-Type: application/json
+
+{
+  "token": "<TOKEN>"
+}
+
+### 4. Refresh Token
+POST http://localhost:8080/api/v1/auth/refresh
+Content-Type: application/json
+
+{
+  "token": "<TOKEN>"
+}
+
+### 5. Get User Profile (Protected)
+GET http://localhost:8080/api/v1/auth/profile
+Authorization: Bearer <TOKEN>
+
+###############################################################################
+### ==================== REQUISITIONS (8 ENDPOINTS) ====================
+###############################################################################
+
+### 1. List Requisitions
+GET http://localhost:8080/api/v1/requisitions?page=1&page_size=10&status=draft
+Authorization: Bearer <TOKEN>
+
+### 1a. List Requisitions with Filters
+GET http://localhost:8080/api/v1/requisitions?page=1&page_size=10&status=draft&department=IT&priority=high
+Authorization: Bearer <TOKEN>
+
+### 2. Create Requisition
+POST http://localhost:8080/api/v1/requisitions
+Authorization: Bearer <TOKEN>
+Content-Type: application/json
+
+{
+  "title": "Office Supplies Requisition",
+  "description": "Monthly office supplies requisition for Q4 2025 including stationery and printing materials",
+  "department": "Administration",
+  "priority": "medium",
+  "items": [
+    {
+      "description": "A4 Paper (500 sheets)",
+      "quantity": 10,
+      "unitPrice": 5.50,
+      "amount": 55.00
+    },
+    {
+      "description": "Pens (Box of 50)",
+      "quantity": 5,
+      "unitPrice": 12.00,
+      "amount": 60.00
+    }
+  ],
+  "totalAmount": 115.00,
+  "currency": "USD"
+}
+
+### 3. Get Requisition Detail
+GET http://localhost:8080/api/v1/requisitions/<ID>
+Authorization: Bearer <TOKEN>
+
+### 4. Update Requisition
+PUT http://localhost:8080/api/v1/requisitions/<ID>
+Authorization: Bearer <TOKEN>
+Content-Type: application/json
+
+{
+  "title": "Updated Office Supplies Requisition",
+  "totalAmount": 125.00
+}
+
+### 5. Delete Requisition (Draft Only)
+DELETE http://localhost:8080/api/v1/requisitions/<ID>
+Authorization: Bearer <TOKEN>
+
+### 6. Approve Requisition
+POST http://localhost:8080/api/v1/requisitions/<ID>/approve
+Authorization: Bearer <TOKEN>
+Content-Type: application/json
+
+{
+  "comments": "Approved for procurement",
+  "signature": "John_Approver_20251222"
+}
+
+### 7. Reject Requisition
+POST http://localhost:8080/api/v1/requisitions/<ID>/reject
+Authorization: Bearer <TOKEN>
+Content-Type: application/json
+
+{
+  "remarks": "Please clarify the budget allocation for this requisition before resubmission",
+  "signature": "John_Approver_20251222"
+}
+
+### 8. Reassign Requisition
+POST http://localhost:8080/api/v1/requisitions/<ID>/reassign
+Authorization: Bearer <TOKEN>
+Content-Type: application/json
+
+{
+  "newApproverId": "user-approver-001",
+  "reason": "Escalating to senior approver for review"
+}
+
+###############################################################################
+### ==================== BUDGETS (7 ENDPOINTS) ====================
+###############################################################################
+
+### 1. List Budgets
+GET http://localhost:8080/api/v1/budgets?page=1&page_size=10
+Authorization: Bearer <TOKEN>
+
+### 1a. List Budgets with Filters
+GET http://localhost:8080/api/v1/budgets?page=1&page_size=10&fiscalYear=2025&department=IT&status=draft
+Authorization: Bearer <TOKEN>
+
+### 2. Create Budget
+POST http://localhost:8080/api/v1/budgets
+Authorization: Bearer <TOKEN>
+Content-Type: application/json
+
+{
+  "budgetCode": "BDG-2025-Q4-001",
+  "department": "IT",
+  "fiscalYear": "2025",
+  "totalBudget": 50000.00,
+  "allocatedAmount": 20000.00
+}
+
+### 3. Get Budget Detail
+GET http://localhost:8080/api/v1/budgets/<ID>
+Authorization: Bearer <TOKEN>
+
+### 4. Update Budget
+PUT http://localhost:8080/api/v1/budgets/<ID>
+Authorization: Bearer <TOKEN>
+Content-Type: application/json
+
+{
+  "allocatedAmount": 25000.00
+}
+
+### 5. Delete Budget (Draft Only)
+DELETE http://localhost:8080/api/v1/budgets/<ID>
+Authorization: Bearer <TOKEN>
+
+### 6. Approve Budget
+POST http://localhost:8080/api/v1/budgets/<ID>/approve
+Authorization: Bearer <TOKEN>
+Content-Type: application/json
+
+{
+  "comments": "Budget approved for fiscal year 2025",
+  "signature": "Finance_Officer_20251222"
+}
+
+### 7. Reject Budget
+POST http://localhost:8080/api/v1/budgets/<ID>/reject
+Authorization: Bearer <TOKEN>
+Content-Type: application/json
+
+{
+  "remarks": "Budget allocation exceeds departmental limits. Please revise and resubmit.",
+  "signature": "Finance_Officer_20251222"
+}
+
+###############################################################################
+### ==================== PURCHASE ORDERS (7 ENDPOINTS) ====================
+###############################################################################
+
+### 1. List Purchase Orders
+GET http://localhost:8080/api/v1/purchase-orders?page=1&page_size=10
+Authorization: Bearer <TOKEN>
+
+### 1a. List Purchase Orders with Filters
+GET http://localhost:8080/api/v1/purchase-orders?page=1&page_size=10&status=draft&vendorId=vendor-001
+Authorization: Bearer <TOKEN>
+
+### 2. Create Purchase Order
+POST http://localhost:8080/api/v1/purchase-orders
+Authorization: Bearer <TOKEN>
+Content-Type: application/json
+
+{
+  "vendorId": "vendor-001",
+  "items": [
+    {
+      "description": "Laptop Dell XPS 15",
+      "quantity": 2,
+      "unitPrice": 1200.00,
+      "amount": 2400.00
+    },
+    {
+      "description": "Monitor LG 27 inch",
+      "quantity": 2,
+      "unitPrice": 350.00,
+      "amount": 700.00
+    }
+  ],
+  "totalAmount": 3100.00,
+  "currency": "USD",
+  "deliveryDate": "2025-12-31T00:00:00Z",
+  "linkedRequisition": "req-uuid-here"
+}
+
+### 3. Get Purchase Order Detail
+GET http://localhost:8080/api/v1/purchase-orders/<ID>
+Authorization: Bearer <TOKEN>
+
+### 4. Update Purchase Order
+PUT http://localhost:8080/api/v1/purchase-orders/<ID>
+Authorization: Bearer <TOKEN>
+Content-Type: application/json
+
+{
+  "deliveryDate": "2025-12-29T00:00:00Z"
+}
+
+### 5. Delete Purchase Order (Draft Only)
+DELETE http://localhost:8080/api/v1/purchase-orders/<ID>
+Authorization: Bearer <TOKEN>
+
+### 6. Approve Purchase Order
+POST http://localhost:8080/api/v1/purchase-orders/<ID>/approve
+Authorization: Bearer <TOKEN>
+Content-Type: application/json
+
+{
+  "comments": "PO approved for vendor ABC Supplies Ltd",
+  "signature": "Approver_Signature_20251222"
+}
+
+### 7. Reject Purchase Order
+POST http://localhost:8080/api/v1/purchase-orders/<ID>/reject
+Authorization: Bearer <TOKEN>
+Content-Type: application/json
+
+{
+  "remarks": "Vendor pricing not competitive. Please obtain alternative quotes before resubmission.",
+  "signature": "Approver_Signature_20251222"
+}
+
+###############################################################################
+### ==================== PAYMENT VOUCHERS (7 ENDPOINTS) ====================
+###############################################################################
+
+### 1. List Payment Vouchers
+GET http://localhost:8080/api/v1/payment-vouchers?page=1&page_size=10
+Authorization: Bearer <TOKEN>
+
+### 1a. List Payment Vouchers with Filters
+GET http://localhost:8080/api/v1/payment-vouchers?page=1&page_size=10&status=draft&vendorId=vendor-001
+Authorization: Bearer <TOKEN>
+
+### 2. Create Payment Voucher
+POST http://localhost:8080/api/v1/payment-vouchers
+Authorization: Bearer <TOKEN>
+Content-Type: application/json
+
+{
+  "vendorId": "vendor-001",
+  "invoiceNumber": "INV-2025-12-001",
+  "amount": 2400.00,
+  "currency": "USD",
+  "paymentMethod": "bank_transfer",
+  "glCode": "6100",
+  "description": "Payment for laptop purchase order PO-1234567890 - Dell XPS 15 Laptops",
+  "linkedPO": "po-uuid-here"
+}
+
+### 3. Get Payment Voucher Detail
+GET http://localhost:8080/api/v1/payment-vouchers/<ID>
+Authorization: Bearer <TOKEN>
+
+### 4. Update Payment Voucher
+PUT http://localhost:8080/api/v1/payment-vouchers/<ID>
+Authorization: Bearer <TOKEN>
+Content-Type: application/json
+
+{
+  "paymentMethod": "check"
+}
+
+### 5. Delete Payment Voucher (Draft Only)
+DELETE http://localhost:8080/api/v1/payment-vouchers/<ID>
+Authorization: Bearer <TOKEN>
+
+### 6. Approve Payment Voucher
+POST http://localhost:8080/api/v1/payment-vouchers/<ID>/approve
+Authorization: Bearer <TOKEN>
+Content-Type: application/json
+
+{
+  "comments": "Payment approved. Process bank transfer to vendor account.",
+  "signature": "Finance_Officer_20251222"
+}
+
+### 7. Reject Payment Voucher
+POST http://localhost:8080/api/v1/payment-vouchers/<ID>/reject
+Authorization: Bearer <TOKEN>
+Content-Type: application/json
+
+{
+  "remarks": "Invoice does not match PO details. Please resubmit with corrected amounts.",
+  "signature": "Finance_Officer_20251222"
+}
+
+###############################################################################
+### ==================== GOODS RECEIVED NOTES - GRN (7 ENDPOINTS) ====================
+###############################################################################
+
+### 1. List GRNs
+GET http://localhost:8080/api/v1/grns?page=1&page_size=10
+Authorization: Bearer <TOKEN>
+
+### 1a. List GRNs with Filters
+GET http://localhost:8080/api/v1/grns?page=1&page_size=10&status=draft&poNumber=PO-1703350800-abcd1234
+Authorization: Bearer <TOKEN>
+
+### 2. Create GRN
+POST http://localhost:8080/api/v1/grns
+Authorization: Bearer <TOKEN>
+Content-Type: application/json
+
+{
+  "poNumber": "PO-1703350800-abcd1234",
+  "items": [
+    {
+      "description": "Laptop Dell XPS 15",
+      "quantityOrdered": 2,
+      "quantityReceived": 2,
+      "variance": 0,
+      "condition": "good"
+    },
+    {
+      "description": "Monitor LG 27 inch",
+      "quantityOrdered": 2,
+      "quantityReceived": 1,
+      "variance": -1,
+      "condition": "good"
+    }
+  ],
+  "receivedBy": "Warehouse Manager John Smith"
+}
+
+### 3. Get GRN Detail
+GET http://localhost:8080/api/v1/grns/<ID>
+Authorization: Bearer <TOKEN>
+
+### 4. Update GRN with Quality Issues
+PUT http://localhost:8080/api/v1/grns/<ID>
+Authorization: Bearer <TOKEN>
+Content-Type: application/json
+
+{
+  "qualityIssues": [
+    {
+      "itemDescription": "Monitor LG 27 inch",
+      "issueType": "cosmetic_damage",
+      "description": "Minor scratch on screen bezel - does not affect functionality",
+      "severity": "low"
+    }
+  ]
+}
+
+### 5. Delete GRN (Draft Only)
+DELETE http://localhost:8080/api/v1/grns/<ID>
+Authorization: Bearer <TOKEN>
+
+### 6. Approve GRN
+POST http://localhost:8080/api/v1/grns/<ID>/approve
+Authorization: Bearer <TOKEN>
+Content-Type: application/json
+
+{
+  "comments": "Goods received, verified, and accepted for inventory",
+  "signature": "Warehouse_Manager_20251222"
+}
+
+### 7. Reject GRN
+POST http://localhost:8080/api/v1/grns/<ID>/reject
+Authorization: Bearer <TOKEN>
+Content-Type: application/json
+
+{
+  "remarks": "Significant quantity variance detected. Units received: 1, Expected: 2. Please contact vendor regarding missing unit.",
+  "signature": "Warehouse_Manager_20251222"
+}
+
+###############################################################################
+### ==================== VENDORS (4 ENDPOINTS) ====================
+###############################################################################
+
+### 1. List Vendors
+GET http://localhost:8080/api/v1/vendors?page=1&page_size=10
+Authorization: Bearer <TOKEN>
+
+### 1a. List Active Vendors by Country
+GET http://localhost:8080/api/v1/vendors?page=1&page_size=10&active=true&country=United%20States
+Authorization: Bearer <TOKEN>
+
+### 2. Create Vendor
+POST http://localhost:8080/api/v1/vendors
+Authorization: Bearer <TOKEN>
+Content-Type: application/json
+
+{
+  "name": "Tech Solutions Ltd",
+  "email": "sales@techsolutions.com",
+  "phone": "+1-555-0123",
+  "country": "United States",
+  "city": "Boston",
+  "bankAccount": "1122334455",
+  "taxId": "12-3456789"
+}
+
+### 3. Get Vendor Detail
+GET http://localhost:8080/api/v1/vendors/<ID>
+Authorization: Bearer <TOKEN>
+
+### 4. Update Vendor
+PUT http://localhost:8080/api/v1/vendors/<ID>
+Authorization: Bearer <TOKEN>
+Content-Type: application/json
+
+{
+  "phone": "+1-555-0124",
+  "bankAccount": "5544332211"
+}
+
+### 5. Deactivate Vendor (Soft Delete)
+DELETE http://localhost:8080/api/v1/vendors/<ID>
+Authorization: Bearer <TOKEN>
+
+###############################################################################
+### ==================== RESPONSE EXAMPLES ====================
+###############################################################################
+
+# SUCCESS RESPONSE - List (with pagination):
+# {
+#   "success": true,
+#   "message": "Requisitions retrieved successfully",
+#   "data": [
+#     {
+#       "id": "req-uuid",
+#       "requesterId": "user-admin-001",
+#       "requesterName": "Admin User",
+#       "title": "Office Supplies",
+#       "description": "Monthly supplies",
+#       "department": "Administration",
+#       "status": "draft",
+#       "priority": "medium",
+#       "items": [...],
+#       "totalAmount": 115.00,
+#       "currency": "USD",
+#       "approvalStage": 0,
+#       "approvalHistory": [],
+#       "createdAt": "2025-12-22T21:30:00Z",
+#       "updatedAt": "2025-12-22T21:30:00Z"
+#     }
+#   ],
+#   "pagination": {
+#     "page": 1,
+#     "page_size": 10,
+#     "total": 45,
+#     "total_pages": 5,
+#     "has_next": true,
+#     "has_prev": false
+#   }
+# }
+
+# SUCCESS RESPONSE - Create/Detail (no pagination):
+# {
+#   "success": true,
+#   "message": "Requisition created successfully",
+#   "data": {
+#     "id": "req-new-uuid",
+#     "requesterId": "user-admin-001",
+#     "requesterName": "Admin User",
+#     "title": "Office Supplies",
+#     "status": "draft",
+#     ...
+#   },
+#   "pagination": null
+# }
+
+# ERROR RESPONSE - Validation Error:
+# {
+#   "success": false,
+#   "message": "Validation Error",
+#   "error": "Title is required and must be at least 3 characters"
+# }
+
+# ERROR RESPONSE - Not Found:
+# {
+#   "success": false,
+#   "message": "Requisition not found",
+#   "error": "record not found"
+# }
+
+# ERROR RESPONSE - Business Logic Error:
+# {
+#   "success": false,
+#   "message": "Cannot update requisition in approved status",
+#   "error": ""
+# }
+
+###############################################################################
+### ==================== USEFUL NOTES ====================
+###############################################################################
+
+# Pre-seeded Test Users (any password works):
+# - admin@liyali.com (Role: admin)
+# - approver@liyali.com (Role: approver)
+# - requester@liyali.com (Role: requester)
+# - finance@liyali.com (Role: finance)
+# - viewer@liyali.com (Role: viewer)
+
+# Pre-seeded Test Vendors:
+# - vendor-001: ABC Supplies Ltd
+# - vendor-002: Global Tech Solutions
+# - vendor-003: Premium Services Inc
+
+# HTTP Status Codes:
+# - 200: Success (GET, PUT, DELETE)
+# - 201: Created (POST)
+# - 400: Bad Request (Validation error)
+# - 401: Unauthorized (No/invalid token)
+# - 403: Forbidden (No permission)
+# - 404: Not Found (Resource not found)
+# - 409: Conflict (Duplicate entry)
+# - 422: Unprocessable Entity (Business logic error)
+# - 500: Internal Server Error
+
+# Pagination Query Parameters:
+# - page: Page number (default: 1)
+# - page_size: Items per page (default: 10, max: 100)
+
+# Common Filters:
+# - status: draft, pending, approved, rejected
+# - department: Department name
+# - priority: low, medium, high
+# - fiscalYear: Year (e.g., 2025)
+# - vendorId: Vendor ID
+# - country: Country name
+# - active: true/false
+
+###############################################################################
