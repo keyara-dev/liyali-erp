@@ -3,7 +3,6 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
-	"strconv"
 	"time"
 
 	"github.com/gofiber/fiber/v3"
@@ -11,6 +10,7 @@ import (
 	"github.com/liyali/liyali-gateway/config"
 	"github.com/liyali/liyali-gateway/models"
 	"github.com/liyali/liyali-gateway/types"
+	"github.com/liyali/liyali-gateway/utils"
 )
 
 // GetRequisitions retrieves all requisitions with pagination and filtering
@@ -19,13 +19,7 @@ func GetRequisitions(c fiber.Ctx) error {
 
 	// Extract pagination parameters
 	page := c.QueryInt("page", 1)
-	limit := c.QueryInt("limit", 10)
-	if page < 1 {
-		page = 1
-	}
-	if limit < 1 || limit > 100 {
-		limit = 10
-	}
+	pageSize := c.QueryInt("page_size", 10)
 
 	// Extract filter parameters
 	status := c.Query("status")
@@ -47,27 +41,19 @@ func GetRequisitions(c fiber.Ctx) error {
 	// Get total count
 	var total int64
 	if err := query.Model(&models.Requisition{}).Count(&total).Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"success": false,
-			"message": "Failed to count requisitions",
-			"error":   err.Error(),
-		})
+		return utils.SendInternalError(c, "Failed to count requisitions", err)
 	}
 
 	// Fetch paginated results
 	var requisitions []models.Requisition
-	offset := (page - 1) * limit
+	offset := (page - 1) * pageSize
 	if err := query.
 		Offset(offset).
-		Limit(limit).
+		Limit(pageSize).
 		Preload("Requester").
 		Order("created_at DESC").
 		Find(&requisitions).Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"success": false,
-			"message": "Failed to fetch requisitions",
-			"error":   err.Error(),
-		})
+		return utils.SendInternalError(c, "Failed to fetch requisitions", err)
 	}
 
 	// Convert to response format
@@ -76,13 +62,10 @@ func GetRequisitions(c fiber.Ctx) error {
 		responses = append(responses, modelToRequisitionResponse(req))
 	}
 
-	return c.JSON(types.ListResponse{
-		Success: true,
-		Data:    responses,
-		Total:   total,
-		Page:    page,
-		Limit:   limit,
-	})
+	// Calculate pagination
+	pagination := utils.CalculatePagination(page, pageSize, total)
+
+	return utils.SendSuccess(c, fiber.StatusOK, responses, "Requisitions retrieved successfully", pagination)
 }
 
 // CreateRequisition creates a new requisition

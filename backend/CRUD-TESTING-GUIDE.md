@@ -15,7 +15,7 @@ This guide provides detailed instructions for testing all CRUD endpoints for the
 ### Obtaining a Test Token
 
 ```bash
-curl -X POST http://localhost:8080/api/auth/login \
+curl -X POST http://localhost:8080/api/v1/auth/login \
   -H "Content-Type: application/json" \
   -d '{
     "email": "admin@liyali.com",
@@ -30,12 +30,12 @@ Save the returned `token` value for use in subsequent requests.
 ## Requisition CRUD Operations
 
 ### 1. Create Requisition
-**Endpoint**: `POST /api/requisitions`
+**Endpoint**: `POST /api/v1/requisitions`
 **Authentication**: Required
 **Status**: Draft
 
 ```bash
-curl -X POST http://localhost:8080/api/requisitions \
+curl -X POST http://localhost:8080/api/v1/requisitions \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer <token>" \
   -d '{
@@ -87,7 +87,7 @@ curl -X POST http://localhost:8080/api/requisitions \
 ```
 
 ### 2. Get Requisitions (List)
-**Endpoint**: `GET /api/requisitions`
+**Endpoint**: `GET /api/v1/requisitions`
 **Authentication**: Required
 **Query Parameters**:
 - `page` (default: 1)
@@ -97,24 +97,24 @@ curl -X POST http://localhost:8080/api/requisitions \
 - `priority` (optional: low, medium, high)
 
 ```bash
-curl -X GET "http://localhost:8080/api/requisitions?page=1&limit=10&status=draft" \
+curl -X GET "http://localhost:8080/api/v1/requisitions?page=1&limit=10&status=draft" \
   -H "Authorization: Bearer <token>"
 ```
 
 ### 3. Get Requisition (Detail)
-**Endpoint**: `GET /api/requisitions/:id`
+**Endpoint**: `GET /api/v1/requisitions/:id`
 
 ```bash
-curl -X GET http://localhost:8080/api/requisitions/req-uuid-here \
+curl -X GET http://localhost:8080/api/v1/requisitions/req-uuid-here \
   -H "Authorization: Bearer <token>"
 ```
 
 ### 4. Update Requisition
-**Endpoint**: `PUT /api/requisitions/:id`
+**Endpoint**: `PUT /api/v1/requisitions/:id`
 **Note**: Only draft and pending requisitions can be updated
 
 ```bash
-curl -X PUT http://localhost:8080/api/requisitions/req-uuid-here \
+curl -X PUT http://localhost:8080/api/v1/requisitions/req-uuid-here \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer <token>" \
   -d '{
@@ -124,19 +124,19 @@ curl -X PUT http://localhost:8080/api/requisitions/req-uuid-here \
 ```
 
 ### 5. Delete Requisition
-**Endpoint**: `DELETE /api/requisitions/:id`
+**Endpoint**: `DELETE /api/v1/requisitions/:id`
 **Note**: Only draft requisitions can be deleted
 
 ```bash
-curl -X DELETE http://localhost:8080/api/requisitions/req-uuid-here \
+curl -X DELETE http://localhost:8080/api/v1/requisitions/req-uuid-here \
   -H "Authorization: Bearer <token>"
 ```
 
 ### 6. Approve Requisition
-**Endpoint**: `POST /api/requisitions/:id/approve`
+**Endpoint**: `POST /api/v1/requisitions/:id/approve`
 
 ```bash
-curl -X POST http://localhost:8080/api/requisitions/req-uuid-here/approve \
+curl -X POST http://localhost:8080/api/v1/requisitions/req-uuid-here/approve \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer <token>" \
   -d '{
@@ -146,10 +146,10 @@ curl -X POST http://localhost:8080/api/requisitions/req-uuid-here/approve \
 ```
 
 ### 7. Reject Requisition
-**Endpoint**: `POST /api/requisitions/:id/reject`
+**Endpoint**: `POST /api/v1/requisitions/:id/reject`
 
 ```bash
-curl -X POST http://localhost:8080/api/requisitions/req-uuid-here/reject \
+curl -X POST http://localhost:8080/api/v1/requisitions/req-uuid-here/reject \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer <token>" \
   -d '{
@@ -159,10 +159,10 @@ curl -X POST http://localhost:8080/api/requisitions/req-uuid-here/reject \
 ```
 
 ### 8. Reassign Requisition
-**Endpoint**: `POST /api/requisitions/:id/reassign`
+**Endpoint**: `POST /api/v1/requisitions/:id/reassign`
 
 ```bash
-curl -X POST http://localhost:8080/api/requisitions/req-uuid-here/reassign \
+curl -X POST http://localhost:8080/api/v1/requisitions/req-uuid-here/reassign \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer <token>" \
   -d '{
@@ -176,10 +176,10 @@ curl -X POST http://localhost:8080/api/requisitions/req-uuid-here/reassign \
 ## Budget CRUD Operations
 
 ### 1. Create Budget
-**Endpoint**: `POST /api/budgets`
+**Endpoint**: `POST /api/v1/budgets`
 
 ```bash
-curl -X POST http://localhost:8080/api/budgets \
+curl -X POST http://localhost:8080/api/v1/budgets \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer <token>" \
   -d '{
@@ -193,19 +193,19 @@ curl -X POST http://localhost:8080/api/budgets \
 
 ### 2. Get Budgets (List)
 ```bash
-curl -X GET "http://localhost:8080/api/budgets?fiscalYear=2025&department=IT" \
+curl -X GET "http://localhost:8080/api/v1/budgets?fiscalYear=2025&department=IT" \
   -H "Authorization: Bearer <token>"
 ```
 
 ### 3. Get Budget (Detail)
 ```bash
-curl -X GET http://localhost:8080/api/budgets/budget-uuid-here \
+curl -X GET http://localhost:8080/api/v1/budgets/budget-uuid-here \
   -H "Authorization: Bearer <token>"
 ```
 
 ### 4. Update Budget
 ```bash
-curl -X PUT http://localhost:8080/api/budgets/budget-uuid-here \
+curl -X PUT http://localhost:8080/api/v1/budgets/budget-uuid-here \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer <token>" \
   -d '{
@@ -215,13 +215,13 @@ curl -X PUT http://localhost:8080/api/budgets/budget-uuid-here \
 
 ### 5. Delete Budget
 ```bash
-curl -X DELETE http://localhost:8080/api/budgets/budget-uuid-here \
+curl -X DELETE http://localhost:8080/api/v1/budgets/budget-uuid-here \
   -H "Authorization: Bearer <token>"
 ```
 
 ### 6. Approve Budget
 ```bash
-curl -X POST http://localhost:8080/api/budgets/budget-uuid-here/approve \
+curl -X POST http://localhost:8080/api/v1/budgets/budget-uuid-here/approve \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer <token>" \
   -d '{
@@ -232,7 +232,7 @@ curl -X POST http://localhost:8080/api/budgets/budget-uuid-here/approve \
 
 ### 7. Reject Budget
 ```bash
-curl -X POST http://localhost:8080/api/budgets/budget-uuid-here/reject \
+curl -X POST http://localhost:8080/api/v1/budgets/budget-uuid-here/reject \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer <token>" \
   -d '{
@@ -246,11 +246,11 @@ curl -X POST http://localhost:8080/api/budgets/budget-uuid-here/reject \
 ## Purchase Order CRUD Operations
 
 ### 1. Create Purchase Order
-**Endpoint**: `POST /api/purchase-orders`
+**Endpoint**: `POST /api/v1/purchase-orders`
 **Note**: Requires valid vendor ID
 
 ```bash
-curl -X POST http://localhost:8080/api/purchase-orders \
+curl -X POST http://localhost:8080/api/v1/purchase-orders \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer <token>" \
   -d '{
@@ -272,19 +272,19 @@ curl -X POST http://localhost:8080/api/purchase-orders \
 
 ### 2. Get Purchase Orders (List)
 ```bash
-curl -X GET "http://localhost:8080/api/purchase-orders?status=draft&vendorId=vendor-001" \
+curl -X GET "http://localhost:8080/api/v1/purchase-orders?status=draft&vendorId=vendor-001" \
   -H "Authorization: Bearer <token>"
 ```
 
 ### 3. Get Purchase Order (Detail)
 ```bash
-curl -X GET http://localhost:8080/api/purchase-orders/po-uuid-here \
+curl -X GET http://localhost:8080/api/v1/purchase-orders/po-uuid-here \
   -H "Authorization: Bearer <token>"
 ```
 
 ### 4. Update Purchase Order
 ```bash
-curl -X PUT http://localhost:8080/api/purchase-orders/po-uuid-here \
+curl -X PUT http://localhost:8080/api/v1/purchase-orders/po-uuid-here \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer <token>" \
   -d '{
@@ -294,13 +294,13 @@ curl -X PUT http://localhost:8080/api/purchase-orders/po-uuid-here \
 
 ### 5. Delete Purchase Order
 ```bash
-curl -X DELETE http://localhost:8080/api/purchase-orders/po-uuid-here \
+curl -X DELETE http://localhost:8080/api/v1/purchase-orders/po-uuid-here \
   -H "Authorization: Bearer <token>"
 ```
 
 ### 6. Approve Purchase Order
 ```bash
-curl -X POST http://localhost:8080/api/purchase-orders/po-uuid-here/approve \
+curl -X POST http://localhost:8080/api/v1/purchase-orders/po-uuid-here/approve \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer <token>" \
   -d '{
@@ -311,7 +311,7 @@ curl -X POST http://localhost:8080/api/purchase-orders/po-uuid-here/approve \
 
 ### 7. Reject Purchase Order
 ```bash
-curl -X POST http://localhost:8080/api/purchase-orders/po-uuid-here/reject \
+curl -X POST http://localhost:8080/api/v1/purchase-orders/po-uuid-here/reject \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer <token>" \
   -d '{
@@ -325,10 +325,10 @@ curl -X POST http://localhost:8080/api/purchase-orders/po-uuid-here/reject \
 ## Payment Voucher CRUD Operations
 
 ### 1. Create Payment Voucher
-**Endpoint**: `POST /api/payment-vouchers`
+**Endpoint**: `POST /api/v1/payment-vouchers`
 
 ```bash
-curl -X POST http://localhost:8080/api/payment-vouchers \
+curl -X POST http://localhost:8080/api/v1/payment-vouchers \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer <token>" \
   -d '{
@@ -345,19 +345,19 @@ curl -X POST http://localhost:8080/api/payment-vouchers \
 
 ### 2. Get Payment Vouchers (List)
 ```bash
-curl -X GET "http://localhost:8080/api/payment-vouchers?status=draft" \
+curl -X GET "http://localhost:8080/api/v1/payment-vouchers?status=draft" \
   -H "Authorization: Bearer <token>"
 ```
 
 ### 3. Get Payment Voucher (Detail)
 ```bash
-curl -X GET http://localhost:8080/api/payment-vouchers/pv-uuid-here \
+curl -X GET http://localhost:8080/api/v1/payment-vouchers/pv-uuid-here \
   -H "Authorization: Bearer <token>"
 ```
 
 ### 4. Update Payment Voucher
 ```bash
-curl -X PUT http://localhost:8080/api/payment-vouchers/pv-uuid-here \
+curl -X PUT http://localhost:8080/api/v1/payment-vouchers/pv-uuid-here \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer <token>" \
   -d '{
@@ -367,13 +367,13 @@ curl -X PUT http://localhost:8080/api/payment-vouchers/pv-uuid-here \
 
 ### 5. Delete Payment Voucher
 ```bash
-curl -X DELETE http://localhost:8080/api/payment-vouchers/pv-uuid-here \
+curl -X DELETE http://localhost:8080/api/v1/payment-vouchers/pv-uuid-here \
   -H "Authorization: Bearer <token>"
 ```
 
 ### 6. Approve Payment Voucher
 ```bash
-curl -X POST http://localhost:8080/api/payment-vouchers/pv-uuid-here/approve \
+curl -X POST http://localhost:8080/api/v1/payment-vouchers/pv-uuid-here/approve \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer <token>" \
   -d '{
@@ -384,7 +384,7 @@ curl -X POST http://localhost:8080/api/payment-vouchers/pv-uuid-here/approve \
 
 ### 7. Reject Payment Voucher
 ```bash
-curl -X POST http://localhost:8080/api/payment-vouchers/pv-uuid-here/reject \
+curl -X POST http://localhost:8080/api/v1/payment-vouchers/pv-uuid-here/reject \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer <token>" \
   -d '{
@@ -398,11 +398,11 @@ curl -X POST http://localhost:8080/api/payment-vouchers/pv-uuid-here/reject \
 ## GRN (Goods Received Note) CRUD Operations
 
 ### 1. Create GRN
-**Endpoint**: `POST /api/grns`
+**Endpoint**: `POST /api/v1/grns`
 **Note**: Requires valid PO number
 
 ```bash
-curl -X POST http://localhost:8080/api/grns \
+curl -X POST http://localhost:8080/api/v1/grns \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer <token>" \
   -d '{
@@ -422,19 +422,19 @@ curl -X POST http://localhost:8080/api/grns \
 
 ### 2. Get GRNs (List)
 ```bash
-curl -X GET "http://localhost:8080/api/grns?status=draft" \
+curl -X GET "http://localhost:8080/api/v1/grns?status=draft" \
   -H "Authorization: Bearer <token>"
 ```
 
 ### 3. Get GRN (Detail)
 ```bash
-curl -X GET http://localhost:8080/api/grns/grn-uuid-here \
+curl -X GET http://localhost:8080/api/v1/grns/grn-uuid-here \
   -H "Authorization: Bearer <token>"
 ```
 
 ### 4. Update GRN
 ```bash
-curl -X PUT http://localhost:8080/api/grns/grn-uuid-here \
+curl -X PUT http://localhost:8080/api/v1/grns/grn-uuid-here \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer <token>" \
   -d '{
@@ -451,13 +451,13 @@ curl -X PUT http://localhost:8080/api/grns/grn-uuid-here \
 
 ### 5. Delete GRN
 ```bash
-curl -X DELETE http://localhost:8080/api/grns/grn-uuid-here \
+curl -X DELETE http://localhost:8080/api/v1/grns/grn-uuid-here \
   -H "Authorization: Bearer <token>"
 ```
 
 ### 6. Approve GRN
 ```bash
-curl -X POST http://localhost:8080/api/grns/grn-uuid-here/approve \
+curl -X POST http://localhost:8080/api/v1/grns/grn-uuid-here/approve \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer <token>" \
   -d '{
@@ -468,7 +468,7 @@ curl -X POST http://localhost:8080/api/grns/grn-uuid-here/approve \
 
 ### 7. Reject GRN
 ```bash
-curl -X POST http://localhost:8080/api/grns/grn-uuid-here/reject \
+curl -X POST http://localhost:8080/api/v1/grns/grn-uuid-here/reject \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer <token>" \
   -d '{
@@ -482,10 +482,10 @@ curl -X POST http://localhost:8080/api/grns/grn-uuid-here/reject \
 ## Vendor CRUD Operations
 
 ### 1. Create Vendor
-**Endpoint**: `POST /api/vendors`
+**Endpoint**: `POST /api/v1/vendors`
 
 ```bash
-curl -X POST http://localhost:8080/api/vendors \
+curl -X POST http://localhost:8080/api/v1/vendors \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer <token>" \
   -d '{
@@ -501,19 +501,19 @@ curl -X POST http://localhost:8080/api/vendors \
 
 ### 2. Get Vendors (List)
 ```bash
-curl -X GET "http://localhost:8080/api/vendors?active=true&country=United%20States" \
+curl -X GET "http://localhost:8080/api/v1/vendors?active=true&country=United%20States" \
   -H "Authorization: Bearer <token>"
 ```
 
 ### 3. Get Vendor (Detail)
 ```bash
-curl -X GET http://localhost:8080/api/vendors/vendor-uuid-here \
+curl -X GET http://localhost:8080/api/v1/vendors/vendor-uuid-here \
   -H "Authorization: Bearer <token>"
 ```
 
 ### 4. Update Vendor
 ```bash
-curl -X PUT http://localhost:8080/api/vendors/vendor-uuid-here \
+curl -X PUT http://localhost:8080/api/v1/vendors/vendor-uuid-here \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer <token>" \
   -d '{
@@ -526,7 +526,7 @@ curl -X PUT http://localhost:8080/api/vendors/vendor-uuid-here \
 **Note**: Deactivates vendor (soft delete)
 
 ```bash
-curl -X DELETE http://localhost:8080/api/vendors/vendor-uuid-here \
+curl -X DELETE http://localhost:8080/api/v1/vendors/vendor-uuid-here \
   -H "Authorization: Bearer <token>"
 ```
 
@@ -580,7 +580,7 @@ curl -X DELETE http://localhost:8080/api/vendors/vendor-uuid-here \
 
 ### Step 1: Create Requisition
 ```bash
-REQ_ID=$(curl -s -X POST http://localhost:8080/api/requisitions \
+REQ_ID=$(curl -s -X POST http://localhost:8080/api/v1/requisitions \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $TOKEN" \
   -d '...' | jq -r '.data.id')
@@ -588,13 +588,13 @@ REQ_ID=$(curl -s -X POST http://localhost:8080/api/requisitions \
 
 ### Step 2: Get and Verify
 ```bash
-curl -X GET http://localhost:8080/api/requisitions/$REQ_ID \
+curl -X GET http://localhost:8080/api/v1/requisitions/$REQ_ID \
   -H "Authorization: Bearer $TOKEN" | jq
 ```
 
 ### Step 3: Approve
 ```bash
-curl -X POST http://localhost:8080/api/requisitions/$REQ_ID/approve \
+curl -X POST http://localhost:8080/api/v1/requisitions/$REQ_ID/approve \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $TOKEN" \
   -d '...' | jq
@@ -602,7 +602,7 @@ curl -X POST http://localhost:8080/api/requisitions/$REQ_ID/approve \
 
 ### Step 4: Create Purchase Order
 ```bash
-curl -X POST http://localhost:8080/api/purchase-orders \
+curl -X POST http://localhost:8080/api/v1/purchase-orders \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $TOKEN" \
   -d "{\"linkedRequisition\": \"$REQ_ID\", ...}" | jq

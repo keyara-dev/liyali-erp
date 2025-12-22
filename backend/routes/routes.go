@@ -8,16 +8,21 @@ import (
 
 // SetupRoutes configures all API routes
 func SetupRoutes(app *fiber.App) {
-	// Public routes
-	public := app.Group("/api")
+	// Health check (no versioning)
+	app.Get("/health", handlers.HealthCheck)
+
+	// API v1 - Version 1 routes
+	apiV1 := app.Group("/api/v1")
+
+	// Public routes (no authentication required)
+	public := apiV1.Group("")
 	public.Post("/auth/login", handlers.Login)
 	public.Post("/auth/register", handlers.Register)
 	public.Post("/auth/verify", handlers.VerifyToken)
 	public.Post("/auth/refresh", handlers.RefreshToken)
-	public.Get("/health", handlers.HealthCheck)
 
-	// Protected routes
-	protected := app.Group("/api", middleware.AuthMiddleware())
+	// Protected routes (authentication required)
+	protected := apiV1.Group("", middleware.AuthMiddleware())
 
 	// Auth routes (protected)
 	protected.Get("/auth/profile", handlers.GetProfile)

@@ -10,7 +10,7 @@ This guide provides detailed instructions for testing the authentication endpoin
 
 ### 1. Register a New User
 
-**Endpoint**: `POST /api/auth/register`
+**Endpoint**: `POST /api/v1/auth/register`
 **Authentication**: Public (no token required)
 
 **Request Body**:
@@ -25,7 +25,7 @@ This guide provides detailed instructions for testing the authentication endpoin
 
 **cURL Example**:
 ```bash
-curl -X POST http://localhost:8080/api/auth/register \
+curl -X POST http://localhost:8080/api/v1/auth/register \
   -H "Content-Type: application/json" \
   -d '{
     "email": "newuser@liyali.com",
@@ -63,7 +63,7 @@ curl -X POST http://localhost:8080/api/auth/register \
 
 ### 2. Login with Existing User
 
-**Endpoint**: `POST /api/auth/login`
+**Endpoint**: `POST /api/v1/auth/login`
 **Authentication**: Public (no token required)
 
 **Test Users** (seeded automatically):
@@ -83,7 +83,7 @@ curl -X POST http://localhost:8080/api/auth/register \
 
 **cURL Example**:
 ```bash
-curl -X POST http://localhost:8080/api/auth/login \
+curl -X POST http://localhost:8080/api/v1/auth/login \
   -H "Content-Type: application/json" \
   -d '{
     "email": "admin@liyali.com",
@@ -118,12 +118,12 @@ curl -X POST http://localhost:8080/api/auth/login \
 
 ### 3. Get User Profile
 
-**Endpoint**: `GET /api/auth/profile`
+**Endpoint**: `GET /api/v1/auth/profile`
 **Authentication**: Required (JWT token)
 
 **cURL Example**:
 ```bash
-curl -X GET http://localhost:8080/api/auth/profile \
+curl -X GET http://localhost:8080/api/v1/auth/profile \
   -H "Authorization: Bearer <your_token_here>"
 ```
 
@@ -151,7 +151,7 @@ curl -X GET http://localhost:8080/api/auth/profile \
 
 ### 4. Verify Token
 
-**Endpoint**: `POST /api/auth/verify`
+**Endpoint**: `POST /api/v1/auth/verify`
 **Authentication**: Public (no token required)
 
 **Request Body**:
@@ -163,7 +163,7 @@ curl -X GET http://localhost:8080/api/auth/profile \
 
 **cURL Example**:
 ```bash
-curl -X POST http://localhost:8080/api/auth/verify \
+curl -X POST http://localhost:8080/api/v1/auth/verify \
   -H "Content-Type: application/json" \
   -d '{
     "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
@@ -195,7 +195,7 @@ curl -X POST http://localhost:8080/api/auth/verify \
 
 ### 5. Refresh Token
 
-**Endpoint**: `POST /api/auth/refresh`
+**Endpoint**: `POST /api/v1/auth/refresh`
 **Authentication**: Public (no token required)
 
 **Request Body**:
@@ -207,7 +207,7 @@ curl -X POST http://localhost:8080/api/auth/verify \
 
 **cURL Example**:
 ```bash
-curl -X POST http://localhost:8080/api/auth/refresh \
+curl -X POST http://localhost:8080/api/v1/auth/refresh \
   -H "Content-Type: application/json" \
   -d '{
     "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
@@ -229,7 +229,7 @@ curl -X POST http://localhost:8080/api/auth/refresh \
 
 ### Step 1: Register New User
 ```bash
-curl -X POST http://localhost:8080/api/auth/register \
+curl -X POST http://localhost:8080/api/v1/auth/register \
   -H "Content-Type: application/json" \
   -d '{
     "email": "test@example.com",
@@ -243,7 +243,7 @@ Save the returned `token` for subsequent requests.
 
 ### Step 2: Login with Credentials
 ```bash
-curl -X POST http://localhost:8080/api/auth/login \
+curl -X POST http://localhost:8080/api/v1/auth/login \
   -H "Content-Type: application/json" \
   -d '{
     "email": "test@example.com",
@@ -253,13 +253,13 @@ curl -X POST http://localhost:8080/api/auth/login \
 
 ### Step 3: Access Protected Endpoint
 ```bash
-curl -X GET http://localhost:8080/api/auth/profile \
+curl -X GET http://localhost:8080/api/v1/auth/profile \
   -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
 ```
 
 ### Step 4: Verify Token
 ```bash
-curl -X POST http://localhost:8080/api/auth/verify \
+curl -X POST http://localhost:8080/api/v1/auth/verify \
   -H "Content-Type: application/json" \
   -d '{
     "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
@@ -268,7 +268,7 @@ curl -X POST http://localhost:8080/api/auth/verify \
 
 ### Step 5: Refresh Token
 ```bash
-curl -X POST http://localhost:8080/api/auth/refresh \
+curl -X POST http://localhost:8080/api/v1/auth/refresh \
   -H "Content-Type: application/json" \
   -d '{
     "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
@@ -367,7 +367,7 @@ The generated JWT token contains the following claims:
 
 2. **Create Login Request**:
    ```
-   POST {{base_url}}/api/auth/login
+   POST {{base_url}}/api/v1/auth/login
 
    Body (JSON):
    {
@@ -381,7 +381,7 @@ The generated JWT token contains the following claims:
 
 3. **Create Profile Request**:
    ```
-   GET {{base_url}}/api/auth/profile
+   GET {{base_url}}/api/v1/auth/profile
 
    Headers:
    Authorization: Bearer {{token}}
