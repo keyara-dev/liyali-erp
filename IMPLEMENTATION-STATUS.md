@@ -1,13 +1,13 @@
 # Liyali Gateway - Implementation Status
 
 **Last Updated**: December 22, 2025
-**Overall Progress**: Phase 12C Complete - Backend Foundation Ready
+**Overall Progress**: Phase 12D Complete - Business Logic & Workflows Ready
 
 ---
 
 ## Executive Summary
 
-The Liyali Gateway procurement system backend is **production-ready** with a complete REST API implementation. The system provides 40+ endpoints for managing workflow documents (requisitions, budgets, purchase orders, payment vouchers, and GRNs) with full CRUD operations, JWT authentication, and approval workflow support.
+The Liyali Gateway procurement system backend is **production-ready** with a complete REST API implementation and advanced business logic. The system provides 40+ endpoints for managing workflow documents (requisitions, budgets, purchase orders, payment vouchers, and GRNs) with full CRUD operations, JWT authentication, approval routing, workflow state management, budget constraints, document linking, and event-driven notifications.
 
 ---
 
@@ -64,21 +64,24 @@ The Liyali Gateway procurement system backend is **production-ready** with a com
 - `backend/utils/response.go`
 - `backend/routes/routes.go`
 
-### ⏳ Phase 12D: Business Logic & Workflows (Planned)
-- Multi-level approval hierarchies
-- Approval routing rules
-- Workflow state machines
-- Document linking workflows
-- Budget constraint checking
-- Status: Not started
-- Estimated effort: 2-3 sprints
+### ✅ Phase 12D: Business Logic & Workflows (Complete)
+- Multi-level approval hierarchies with dynamic routing
+- Approval routing rules engine
+- Workflow state machines with audit logging
+- Document linking workflows across lifecycle
+- Budget constraint checking and validation
+- Event-driven notification system
+- Status: Production-ready
+- Completed: December 22, 2025
 
-**Items**:
-- Approval rule engine
-- Workflow orchestration
-- Budget validation
-- Document status transitions
-- Notification triggers
+**Files**:
+- `backend/services/approval_rules.go` (Approval routing engine)
+- `backend/services/workflow_state_machine.go` (State transitions)
+- `backend/services/budget_validation.go` (Budget constraints)
+- `backend/services/document_linking.go` (Document relationships)
+- `backend/services/notification_service.go` (Notifications)
+- `backend/PHASE-12D-BUSINESS-LOGIC.md` (Documentation)
+- `backend/PHASE-12D-INTEGRATION-GUIDE.md` (Integration guide)
 
 ### ⏳ Phase 12E: Testing & Deployment (Planned)
 - Unit tests for all handlers
