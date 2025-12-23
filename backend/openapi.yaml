@@ -1,0 +1,1374 @@
+openapi: 3.0.0
+info:
+  title: Liyali Gateway Procurement API
+  description: |
+    Comprehensive REST API for procurement management system with approval workflows,
+    budget constraints, document linking, and multi-stage approval chains.
+  version: 1.0.0
+  contact:
+    name: Liyali Support
+    email: support@liyali.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:8080/api/v1
+    description: Development Server
+  - url: https://api.liyali.com/api/v1
+    description: Production Server
+
+tags:
+  - name: Health
+    description: System health and status endpoints
+  - name: Authentication
+    description: User authentication and authorization
+  - name: Requisitions
+    description: Purchase requisition management
+  - name: Budgets
+    description: Budget allocation and management
+  - name: Purchase Orders
+    description: Purchase order creation and tracking
+  - name: GRN
+    description: Goods Received Notes
+  - name: Payment Vouchers
+    description: Payment voucher management
+  - name: Vendors
+    description: Vendor master data management
+
+paths:
+  /health:
+    get:
+      tags:
+        - Health
+      summary: Health check endpoint
+      description: Returns the health status of the API server
+      operationId: healthCheck
+      responses:
+        '200':
+          description: Server is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+                  message:
+                    type: string
+                    example: Liyali Gateway Backend API is running
+
+  /auth/login:
+    post:
+      tags:
+        - Authentication
+      summary: User login
+      description: Authenticates user with email and password, returns JWT token
+      operationId: login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: user@company.com
+                password:
+                  type: string
+                  format: password
+                  example: securepassword123
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      token:
+                        type: string
+                        example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+                      user:
+                        $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /requisitions:
+    get:
+      tags:
+        - Requisitions
+      summary: List all requisitions
+      description: Retrieve paginated list of requisitions with optional filtering
+      operationId: getRequisitions
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [draft, pending, approved, rejected, fulfilled]
+        - name: department
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of requisitions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    post:
+      tags:
+        - Requisitions
+      summary: Create new requisition
+      description: Create a new purchase requisition in draft status
+      operationId: createRequisition
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateRequisitionRequest'
+      responses:
+        '201':
+          description: Requisition created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/RequisitionResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /requisitions/{id}:
+    get:
+      tags:
+        - Requisitions
+      summary: Get requisition by ID
+      description: Retrieve a single requisition with all details
+      operationId: getRequisition
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Requisition details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/RequisitionResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    put:
+      tags:
+        - Requisitions
+      summary: Update requisition
+      description: Update a requisition (only draft status can be updated)
+      operationId: updateRequisition
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateRequisitionRequest'
+      responses:
+        '200':
+          description: Requisition updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/RequisitionResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags:
+        - Requisitions
+      summary: Delete requisition
+      description: Delete a requisition (only draft status can be deleted)
+      operationId: deleteRequisition
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Requisition deleted
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /requisitions/{id}/submit:
+    post:
+      tags:
+        - Requisitions
+      summary: Submit requisition for approval
+      description: Move requisition from draft to pending status for approval
+      operationId: submitRequisition
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                comments:
+                  type: string
+                  example: Ready for approval
+      responses:
+        '200':
+          description: Requisition submitted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/RequisitionResponse'
+
+  /budgets:
+    get:
+      tags:
+        - Budgets
+      summary: List all budgets
+      description: Retrieve paginated list of budgets with filtering
+      operationId: getBudgets
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [draft, pending, approved, rejected]
+        - name: fiscalYear
+          in: query
+          schema:
+            type: string
+            example: "2025"
+      responses:
+        '200':
+          description: List of budgets
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    post:
+      tags:
+        - Budgets
+      summary: Create new budget
+      description: Create a new departmental budget
+      operationId: createBudget
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateBudgetRequest'
+      responses:
+        '201':
+          description: Budget created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/BudgetResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          description: Budget already exists for this department/fiscal year
+
+  /budgets/{id}:
+    get:
+      tags:
+        - Budgets
+      summary: Get budget by ID
+      operationId: getBudget
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Budget details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/BudgetResponse'
+
+    put:
+      tags:
+        - Budgets
+      summary: Update budget
+      operationId: updateBudget
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateBudgetRequest'
+      responses:
+        '200':
+          description: Budget updated
+
+  /purchase-orders:
+    get:
+      tags:
+        - Purchase Orders
+      summary: List all purchase orders
+      operationId: getPurchaseOrders
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [draft, pending, approved, rejected, fulfilled]
+      responses:
+        '200':
+          description: List of purchase orders
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListResponse'
+
+    post:
+      tags:
+        - Purchase Orders
+      summary: Create new purchase order
+      operationId: createPurchaseOrder
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePurchaseOrderRequest'
+      responses:
+        '201':
+          description: Purchase order created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/PurchaseOrderResponse'
+
+  /purchase-orders/{id}:
+    get:
+      tags:
+        - Purchase Orders
+      summary: Get purchase order by ID
+      operationId: getPurchaseOrder
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Purchase order details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/PurchaseOrderResponse'
+
+    put:
+      tags:
+        - Purchase Orders
+      summary: Update purchase order
+      operationId: updatePurchaseOrder
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdatePurchaseOrderRequest'
+      responses:
+        '200':
+          description: Purchase order updated
+
+  /purchase-orders/{id}/approve:
+    post:
+      tags:
+        - Purchase Orders
+      summary: Approve purchase order
+      operationId: approvePurchaseOrder
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApproveDocumentRequest'
+      responses:
+        '200':
+          description: Purchase order approved
+
+  /grn:
+    get:
+      tags:
+        - GRN
+      summary: List all goods received notes
+      operationId: getGRNs
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+        - name: status
+          in: query
+          schema:
+            type: string
+        - name: poNumber
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of GRNs
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListResponse'
+
+    post:
+      tags:
+        - GRN
+      summary: Create new GRN
+      operationId: createGRN
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateGRNRequest'
+      responses:
+        '201':
+          description: GRN created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/GRNResponse'
+
+  /grn/{id}:
+    get:
+      tags:
+        - GRN
+      summary: Get GRN by ID
+      operationId: getGRN
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: GRN details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/GRNResponse'
+
+  /payment-vouchers:
+    get:
+      tags:
+        - Payment Vouchers
+      summary: List all payment vouchers
+      operationId: getPaymentVouchers
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+        - name: status
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of payment vouchers
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListResponse'
+
+    post:
+      tags:
+        - Payment Vouchers
+      summary: Create new payment voucher
+      operationId: createPaymentVoucher
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePaymentVoucherRequest'
+      responses:
+        '201':
+          description: Payment voucher created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/PaymentVoucherResponse'
+
+  /vendors:
+    get:
+      tags:
+        - Vendors
+      summary: List all vendors
+      operationId: getVendors
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+        - name: active
+          in: query
+          schema:
+            type: boolean
+        - name: country
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of vendors
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListResponse'
+
+    post:
+      tags:
+        - Vendors
+      summary: Create new vendor
+      operationId: createVendor
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateVendorRequest'
+      responses:
+        '201':
+          description: Vendor created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/VendorResponse'
+
+  /vendors/{id}:
+    get:
+      tags:
+        - Vendors
+      summary: Get vendor by ID
+      operationId: getVendor
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Vendor details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/VendorResponse'
+
+    put:
+      tags:
+        - Vendors
+      summary: Update vendor
+      operationId: updateVendor
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateVendorRequest'
+      responses:
+        '200':
+          description: Vendor updated
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token obtained from /auth/login endpoint
+
+  schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        name:
+          type: string
+        role:
+          type: string
+          enum: [admin, manager, approver, user]
+        department:
+          type: string
+        active:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    ListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: array
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+        hasNext:
+          type: boolean
+        hasPrev:
+          type: boolean
+
+    CreateRequisitionRequest:
+      type: object
+      required:
+        - department
+        - totalAmount
+        - currency
+        - deliveryDate
+      properties:
+        department:
+          type: string
+        totalAmount:
+          type: number
+          format: double
+          minimum: 0
+          exclusiveMinimum: true
+        currency:
+          type: string
+          example: USD
+        deliveryDate:
+          type: string
+          format: date-time
+        description:
+          type: string
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              description:
+                type: string
+              quantity:
+                type: number
+              unitPrice:
+                type: number
+              amount:
+                type: number
+
+    UpdateRequisitionRequest:
+      type: object
+      properties:
+        department:
+          type: string
+        totalAmount:
+          type: number
+        currency:
+          type: string
+        deliveryDate:
+          type: string
+          format: date-time
+        description:
+          type: string
+
+    RequisitionResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        reqNumber:
+          type: string
+        userId:
+          type: string
+          format: uuid
+        department:
+          type: string
+        status:
+          type: string
+          enum: [draft, pending, approved, rejected, fulfilled]
+        totalAmount:
+          type: number
+        currency:
+          type: string
+        deliveryDate:
+          type: string
+          format: date-time
+        approvalStage:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    CreateBudgetRequest:
+      type: object
+      required:
+        - budgetCode
+        - department
+        - fiscalYear
+        - totalBudget
+      properties:
+        budgetCode:
+          type: string
+        department:
+          type: string
+        fiscalYear:
+          type: string
+          pattern: '^\d{4}$'
+        totalBudget:
+          type: number
+          format: double
+          minimum: 0
+          exclusiveMinimum: true
+        allocatedAmount:
+          type: number
+          default: 0
+
+    UpdateBudgetRequest:
+      type: object
+      properties:
+        totalBudget:
+          type: number
+        allocatedAmount:
+          type: number
+
+    BudgetResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        budgetCode:
+          type: string
+        department:
+          type: string
+        fiscalYear:
+          type: string
+        status:
+          type: string
+          enum: [draft, pending, approved, rejected]
+        totalBudget:
+          type: number
+        allocatedAmount:
+          type: number
+        remainingAmount:
+          type: number
+        approvalStage:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    CreatePurchaseOrderRequest:
+      type: object
+      required:
+        - vendorId
+        - totalAmount
+        - currency
+        - deliveryDate
+      properties:
+        vendorId:
+          type: string
+          format: uuid
+        totalAmount:
+          type: number
+        currency:
+          type: string
+        deliveryDate:
+          type: string
+          format: date-time
+        linkedRequisition:
+          type: string
+          format: uuid
+        items:
+          type: array
+          items:
+            type: object
+
+    UpdatePurchaseOrderRequest:
+      type: object
+      properties:
+        vendorId:
+          type: string
+        totalAmount:
+          type: number
+        currency:
+          type: string
+        deliveryDate:
+          type: string
+
+    PurchaseOrderResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        poNumber:
+          type: string
+        vendorId:
+          type: string
+          format: uuid
+        status:
+          type: string
+        totalAmount:
+          type: number
+        currency:
+          type: string
+        deliveryDate:
+          type: string
+          format: date-time
+        linkedRequisition:
+          type: string
+          format: uuid
+        approvalStage:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+
+    CreateGRNRequest:
+      type: object
+      required:
+        - poNumber
+        - receivedBy
+        - items
+      properties:
+        poNumber:
+          type: string
+        receivedBy:
+          type: string
+        items:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            properties:
+              itemNo:
+                type: integer
+              description:
+                type: string
+              quantity:
+                type: number
+              receivedQty:
+                type: number
+
+    GRNResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        grnNumber:
+          type: string
+        poNumber:
+          type: string
+        status:
+          type: string
+        receivedDate:
+          type: string
+          format: date-time
+        receivedBy:
+          type: string
+        items:
+          type: array
+        qualityIssues:
+          type: array
+        approvalStage:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+
+    CreatePaymentVoucherRequest:
+      type: object
+      required:
+        - vendorId
+        - invoiceNumber
+        - amount
+        - currency
+        - description
+      properties:
+        vendorId:
+          type: string
+          format: uuid
+        invoiceNumber:
+          type: string
+        amount:
+          type: number
+          format: double
+          minimum: 0
+          exclusiveMinimum: true
+        currency:
+          type: string
+        paymentMethod:
+          type: string
+          enum: [bank_transfer, check, cash, credit_card, wire]
+        glCode:
+          type: string
+        description:
+          type: string
+          minLength: 10
+        linkedPO:
+          type: string
+          format: uuid
+
+    PaymentVoucherResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        voucherNumber:
+          type: string
+        vendorId:
+          type: string
+          format: uuid
+        invoiceNumber:
+          type: string
+        status:
+          type: string
+        amount:
+          type: number
+        currency:
+          type: string
+        paymentMethod:
+          type: string
+        glCode:
+          type: string
+        approvalStage:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+
+    CreateVendorRequest:
+      type: object
+      required:
+        - name
+        - email
+        - phone
+        - country
+        - city
+        - bankAccount
+        - taxID
+      properties:
+        name:
+          type: string
+          minLength: 3
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+        country:
+          type: string
+        city:
+          type: string
+        bankAccount:
+          type: string
+          minLength: 8
+        taxID:
+          type: string
+
+    UpdateVendorRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 3
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+        country:
+          type: string
+        city:
+          type: string
+        bankAccount:
+          type: string
+        taxID:
+          type: string
+
+    VendorResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        vendorCode:
+          type: string
+        name:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
+        country:
+          type: string
+        city:
+          type: string
+        bankAccount:
+          type: string
+        taxID:
+          type: string
+        active:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    ApproveDocumentRequest:
+      type: object
+      required:
+        - signature
+      properties:
+        comments:
+          type: string
+        signature:
+          type: string
+
+    ApprovalRecord:
+      type: object
+      properties:
+        approverId:
+          type: string
+          format: uuid
+        approverName:
+          type: string
+        status:
+          type: string
+          enum: [approved, rejected, pending]
+        comments:
+          type: string
+        signature:
+          type: string
+        approvedAt:
+          type: string
+          format: date-time
+
+  responses:
+    BadRequest:
+      description: Invalid request parameters
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+                example: Invalid request body
+
+    Unauthorized:
+      description: Authentication required or invalid token
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+                example: Unauthorized
+
+    Forbidden:
+      description: Operation not allowed for current user
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+                example: Forbidden
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+                example: Resource not found
