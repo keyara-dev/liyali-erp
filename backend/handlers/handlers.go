@@ -1,8 +1,13 @@
 package handlers
 
 import (
+	"log"
+	"time"
+
 	"github.com/gofiber/fiber/v3"
 	"github.com/liyali/liyali-gateway/config"
+	"github.com/liyali/liyali-gateway/services"
+	"github.com/liyali/liyali-gateway/types"
 )
 
 // Health check endpoint
@@ -330,21 +335,151 @@ func BulkReassign(c fiber.Ctx) error {
 }
 
 // Analytics Handlers
-func GetDashboard(c fiber.Ctx) error {
-	return c.Status(fiber.StatusNotImplemented).JSON(fiber.Map{
-		"error": "GetDashboard endpoint not yet implemented",
-	})
-}
 
+// GetRequisitionMetrics returns comprehensive requisition analytics
 func GetRequisitionMetrics(c fiber.Ctx) error {
-	return c.Status(fiber.StatusNotImplemented).JSON(fiber.Map{
-		"error": "GetRequisitionMetrics endpoint not yet implemented",
+	// Parse query parameters
+	startDateStr := c.Query("start_date")
+	endDateStr := c.Query("end_date")
+	period := c.Query("period", "daily")
+	department := c.Query("department")
+
+	params := types.AnalyticsQueryParams{
+		Period:     period,
+		Department: department,
+	}
+
+	// Parse dates if provided
+	if startDateStr != "" {
+		if t, err := time.Parse(time.RFC3339, startDateStr); err == nil {
+			params.StartDate = &t
+		} else if t, err := time.Parse("2006-01-02", startDateStr); err == nil {
+			params.StartDate = &t
+		}
+	}
+
+	if endDateStr != "" {
+		if t, err := time.Parse(time.RFC3339, endDateStr); err == nil {
+			params.EndDate = &t
+		} else if t, err := time.Parse("2006-01-02", endDateStr); err == nil {
+			params.EndDate = &t
+		}
+	}
+
+	// Create service and get metrics
+	service := services.NewAnalyticsService(config.DB)
+	metrics, err := service.GetRequisitionMetrics(params)
+	if err != nil {
+		log.Printf("Error getting requisition metrics: %v", err)
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"success": false,
+			"message": "Failed to get metrics",
+			"error":   err.Error(),
+		})
+	}
+
+	return c.JSON(types.DetailResponse{
+		Success: true,
+		Data:    metrics,
 	})
 }
 
+// GetApprovalMetrics returns approval-specific analytics
 func GetApprovalMetrics(c fiber.Ctx) error {
-	return c.Status(fiber.StatusNotImplemented).JSON(fiber.Map{
-		"error": "GetApprovalMetrics endpoint not yet implemented",
+	// Parse query parameters
+	startDateStr := c.Query("start_date")
+	endDateStr := c.Query("end_date")
+	period := c.Query("period", "daily")
+	department := c.Query("department")
+
+	params := types.AnalyticsQueryParams{
+		Period:     period,
+		Department: department,
+	}
+
+	// Parse dates if provided
+	if startDateStr != "" {
+		if t, err := time.Parse(time.RFC3339, startDateStr); err == nil {
+			params.StartDate = &t
+		} else if t, err := time.Parse("2006-01-02", startDateStr); err == nil {
+			params.StartDate = &t
+		}
+	}
+
+	if endDateStr != "" {
+		if t, err := time.Parse(time.RFC3339, endDateStr); err == nil {
+			params.EndDate = &t
+		} else if t, err := time.Parse("2006-01-02", endDateStr); err == nil {
+			params.EndDate = &t
+		}
+	}
+
+	// Create service and get metrics
+	service := services.NewAnalyticsService(config.DB)
+	metrics, err := service.GetRequisitionMetrics(params)
+	if err != nil {
+		log.Printf("Error getting approval metrics: %v", err)
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"success": false,
+			"message": "Failed to get metrics",
+			"error":   err.Error(),
+		})
+	}
+
+	return c.JSON(types.DetailResponse{
+		Success: true,
+		Data:    metrics,
+	})
+}
+
+// GetDashboard returns dashboard overview with aggregated metrics
+func GetDashboard(c fiber.Ctx) error {
+	// Parse query parameters
+	startDateStr := c.Query("start_date")
+	endDateStr := c.Query("end_date")
+	department := c.Query("department")
+
+	params := types.AnalyticsQueryParams{
+		Period:     "daily",
+		Department: department,
+	}
+
+	// Parse dates if provided
+	if startDateStr != "" {
+		if t, err := time.Parse(time.RFC3339, startDateStr); err == nil {
+			params.StartDate = &t
+		} else if t, err := time.Parse("2006-01-02", startDateStr); err == nil {
+			params.StartDate = &t
+		}
+	}
+
+	if endDateStr != "" {
+		if t, err := time.Parse(time.RFC3339, endDateStr); err == nil {
+			params.EndDate = &t
+		} else if t, err := time.Parse("2006-01-02", endDateStr); err == nil {
+			params.EndDate = &t
+		}
+	}
+
+	// Create service and get metrics
+	service := services.NewAnalyticsService(config.DB)
+	metrics, err := service.GetRequisitionMetrics(params)
+	if err != nil {
+		log.Printf("Error getting dashboard metrics: %v", err)
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"success": false,
+			"message": "Failed to get dashboard metrics",
+			"error":   err.Error(),
+		})
+	}
+
+	return c.JSON(types.DetailResponse{
+		Success: true,
+		Data: fiber.Map{
+			"metrics":       metrics,
+			"generatedAt":   time.Now(),
+			"dataSourceUrl": "/api/v1/analytics/requisitions/metrics",
+		},
 	})
 }
 

@@ -37,6 +37,7 @@
 
 ```typescript
 // NEEDS TO BE ADDED to create-form.tsx
+// These Requisition categories need to be added from the admin portal
 const categories = [
   "Capital Equipment",
   "Office Supplies",

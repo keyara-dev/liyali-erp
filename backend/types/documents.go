@@ -6,24 +6,30 @@ import "time"
 
 // CreateRequisitionRequest represents a requisition creation request
 type CreateRequisitionRequest struct {
-	Title       string                 `json:"title" validate:"required,min=3"`
-	Description string                 `json:"description" validate:"required,min=10"`
-	Department  string                 `json:"department" validate:"required"`
-	Priority    string                 `json:"priority" validate:"required,oneof=low medium high"`
-	Items       []RequisitionItem       `json:"items" validate:"required,min=1"`
-	TotalAmount float64                `json:"totalAmount" validate:"required,gt=0"`
-	Currency    string                 `json:"currency" validate:"required"`
+	Title             string                 `json:"title" validate:"required,min=3"`
+	Description       string                 `json:"description" validate:"required,min=10"`
+	Department        string                 `json:"department" validate:"required"`
+	Priority          string                 `json:"priority" validate:"required,oneof=low medium high"`
+	Items             []RequisitionItem       `json:"items" validate:"required,min=1"`
+	TotalAmount       float64                `json:"totalAmount" validate:"required,gt=0"`
+	Currency          string                 `json:"currency" validate:"required"`
+	CategoryID        *string                `json:"categoryId" validate:"omitempty,uuid"`
+	PreferredVendorID *string                `json:"preferredVendorId" validate:"omitempty,uuid"`
+	IsEstimate        bool                   `json:"isEstimate"`
 }
 
 // UpdateRequisitionRequest represents a requisition update request
 type UpdateRequisitionRequest struct {
-	Title       string           `json:"title"`
-	Description string           `json:"description"`
-	Department  string           `json:"department"`
-	Priority    string           `json:"priority"`
-	Items       []RequisitionItem `json:"items"`
-	TotalAmount float64          `json:"totalAmount"`
-	Currency    string           `json:"currency"`
+	Title             string           `json:"title"`
+	Description       string           `json:"description"`
+	Department        string           `json:"department"`
+	Priority          string           `json:"priority"`
+	Items             []RequisitionItem `json:"items"`
+	TotalAmount       float64          `json:"totalAmount"`
+	Currency          string           `json:"currency"`
+	CategoryID        *string          `json:"categoryId" validate:"omitempty,uuid"`
+	PreferredVendorID *string          `json:"preferredVendorId" validate:"omitempty,uuid"`
+	IsEstimate        *bool            `json:"isEstimate"`
 }
 
 // RequisitionItem represents an item in a requisition
@@ -36,21 +42,26 @@ type RequisitionItem struct {
 
 // RequisitionResponse represents a requisition in responses
 type RequisitionResponse struct {
-	ID              string            `json:"id"`
-	RequesterID     string            `json:"requesterId"`
-	RequesterName   string            `json:"requesterName"`
-	Title           string            `json:"title"`
-	Description     string            `json:"description"`
-	Department      string            `json:"department"`
-	Status          string            `json:"status"`
-	Priority        string            `json:"priority"`
-	Items           []RequisitionItem  `json:"items"`
-	TotalAmount     float64           `json:"totalAmount"`
-	Currency        string            `json:"currency"`
-	ApprovalStage   int               `json:"approvalStage"`
-	ApprovalHistory []ApprovalRecord  `json:"approvalHistory"`
-	CreatedAt       time.Time         `json:"createdAt"`
-	UpdatedAt       time.Time         `json:"updatedAt"`
+	ID                  string            `json:"id"`
+	RequesterID         string            `json:"requesterId"`
+	RequesterName       string            `json:"requesterName"`
+	Title               string            `json:"title"`
+	Description         string            `json:"description"`
+	Department          string            `json:"department"`
+	Status              string            `json:"status"`
+	Priority            string            `json:"priority"`
+	Items               []RequisitionItem  `json:"items"`
+	TotalAmount         float64           `json:"totalAmount"`
+	Currency            string            `json:"currency"`
+	CategoryID          *string           `json:"categoryId,omitempty"`
+	CategoryName        string            `json:"categoryName,omitempty"`
+	PreferredVendorID   *string           `json:"preferredVendorId,omitempty"`
+	PreferredVendorName string            `json:"preferredVendorName,omitempty"`
+	IsEstimate          bool              `json:"isEstimate"`
+	ApprovalStage       int               `json:"approvalStage"`
+	ApprovalHistory     []ApprovalRecord  `json:"approvalHistory"`
+	CreatedAt           time.Time         `json:"createdAt"`
+	UpdatedAt           time.Time         `json:"updatedAt"`
 }
 
 // ================== BUDGET TYPES ==================

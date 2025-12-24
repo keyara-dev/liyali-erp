@@ -84,6 +84,17 @@ func SetupRoutes(app *fiber.App) {
 	grns.Post("/:id/approve", handlers.ApproveGRN)
 	grns.Post("/:id/reject", handlers.RejectGRN)
 
+	// Category routes
+	categories := protected.Group("/categories")
+	categories.Get("/", handlers.GetCategories)
+	categories.Post("/", handlers.CreateCategory)
+	categories.Get("/:id", handlers.GetCategory)
+	categories.Put("/:id", handlers.UpdateCategory)
+	categories.Delete("/:id", handlers.DeleteCategory)
+	categories.Get("/:id/budget-codes", handlers.GetCategoryBudgetCodes)
+	categories.Post("/:id/budget-codes", handlers.AddBudgetCodeToCategory)
+	categories.Delete("/:id/budget-codes/:budgetCode", handlers.RemoveBudgetCodeFromCategory)
+
 	// Vendor routes
 	vendors := protected.Group("/vendors")
 	vendors.Get("/", handlers.GetVendors)

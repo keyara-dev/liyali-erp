@@ -1,0 +1,604 @@
+{
+  "info": {
+    "name": "Liyali Gateway API - Phase 2 Features",
+    "description": "API tests for Category Management, Requisition Enhancements, Last Login, and Analytics",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@liyali.com\",\n  \"password\": \"admin123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "login"]
+            },
+            "description": "Login and get JWT token. Save token to {{auth_token}} variable."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Category Management",
+      "item": [
+        {
+          "name": "Create Category",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Office Supplies\",\n  \"description\": \"General office supplies and materials\",\n  \"budgetCodes\": [\"BDG-001\", \"BDG-002\"]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/categories",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "categories"]
+            },
+            "description": "Create a new category with budget code associations. Save categoryId for later tests."
+          },
+          "response": []
+        },
+        {
+          "name": "List Categories",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/categories?page=1&limit=10&active=true",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "categories"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "active",
+                  "value": "true"
+                }
+              ]
+            },
+            "description": "List all categories with pagination"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Category by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/categories/{{category_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "categories", "{{category_id}}"]
+            },
+            "description": "Get a single category with all its budget codes"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Category Budget Codes",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/categories/{{category_id}}/budget-codes",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "categories", "{{category_id}}", "budget-codes"]
+            },
+            "description": "Get all budget codes linked to a category"
+          },
+          "response": []
+        },
+        {
+          "name": "Add Budget Code to Category",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"budgetCode\": \"BDG-003\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/categories/{{category_id}}/budget-codes",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "categories", "{{category_id}}", "budget-codes"]
+            },
+            "description": "Add a new budget code to an existing category"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Category",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Office Supplies Updated\",\n  \"description\": \"Updated description\",\n  \"budgetCodes\": [\"BDG-001\", \"BDG-003\"],\n  \"active\": true\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/categories/{{category_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "categories", "{{category_id}}"]
+            },
+            "description": "Update category details and budget code associations"
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Category",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/categories/{{category_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "categories", "{{category_id}}"]
+            },
+            "description": "Soft delete a category (sets Active=false)"
+          },
+          "response": []
+        },
+        {
+          "name": "Remove Budget Code from Category",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/categories/{{category_id}}/budget-codes/BDG-003",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "categories", "{{category_id}}", "budget-codes", "BDG-003"]
+            },
+            "description": "Remove a budget code association from a category"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Requisitions with Enhancements",
+      "item": [
+        {
+          "name": "Create Requisition with Category & Supplier",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Office Supplies Purchase\",\n  \"description\": \"Monthly office supplies purchase for the finance department\",\n  \"department\": \"Finance\",\n  \"priority\": \"high\",\n  \"items\": [\n    {\n      \"description\": \"A4 Paper (500 sheets)\",\n      \"quantity\": 10,\n      \"unitPrice\": 5.50,\n      \"amount\": 55.00\n    },\n    {\n      \"description\": \"Pens (Box of 50)\",\n      \"quantity\": 5,\n      \"unitPrice\": 12.00,\n      \"amount\": 60.00\n    }\n  ],\n  \"totalAmount\": 115.00,\n  \"currency\": \"USD\",\n  \"categoryId\": \"{{category_id}}\",\n  \"preferredVendorId\": \"{{vendor_id}}\",\n  \"isEstimate\": true\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/requisitions",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "requisitions"]
+            },
+            "description": "Create a requisition with category selection, preferred supplier, and estimate flag. Save requisitionId for later tests."
+          },
+          "response": []
+        },
+        {
+          "name": "List Requisitions",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/requisitions?page=1&page_size=10&status=draft",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "requisitions"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "page_size",
+                  "value": "10"
+                },
+                {
+                  "key": "status",
+                  "value": "draft"
+                }
+              ]
+            },
+            "description": "List requisitions - note new fields in response"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Requisition by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/requisitions/{{requisition_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "requisitions", "{{requisition_id}}"]
+            },
+            "description": "Get a single requisition - verify categoryId, categoryName, preferredVendorId, preferredVendorName, isEstimate are present"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Requisition",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Updated Office Supplies Purchase\",\n  \"totalAmount\": 150.00,\n  \"isEstimate\": false\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/requisitions/{{requisition_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "requisitions", "{{requisition_id}}"]
+            },
+            "description": "Update a requisition - can update category, preferred vendor, and estimate flag"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "User Profile & Last Login",
+      "item": [
+        {
+          "name": "Get User Profile",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/profile",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "profile"]
+            },
+            "description": "Get current user profile - should include lastLogin timestamp"
+          },
+          "response": []
+        },
+        {
+          "name": "Login (Check LastLogin in Response)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Test that lastLogin is included in response",
+                  "pm.test('Response includes lastLogin', function() {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.user.lastLogin).to.not.be.null;",
+                  "});",
+                  "",
+                  "// Save token for other requests",
+                  "pm.environment.set('auth_token', pm.response.json().token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@liyali.com\",\n  \"password\": \"admin123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "login"]
+            },
+            "description": "Login and verify lastLogin timestamp is returned in response"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Analytics",
+      "item": [
+        {
+          "name": "Get Requisition Metrics (All Time)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/analytics/requisitions/metrics",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "analytics", "requisitions", "metrics"]
+            },
+            "description": "Get comprehensive requisition analytics - status counts, rejection rate, rejections over time, rejection reasons, top rejecting approvers"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Requisition Metrics (Date Range)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/analytics/requisitions/metrics?start_date=2025-12-01&end_date=2025-12-31&period=daily",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "analytics", "requisitions", "metrics"],
+              "query": [
+                {
+                  "key": "start_date",
+                  "value": "2025-12-01"
+                },
+                {
+                  "key": "end_date",
+                  "value": "2025-12-31"
+                },
+                {
+                  "key": "period",
+                  "value": "daily"
+                }
+              ]
+            },
+            "description": "Get metrics for a specific date range with daily aggregation"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Requisition Metrics (By Department)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/analytics/requisitions/metrics?department=Finance",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "analytics", "requisitions", "metrics"],
+              "query": [
+                {
+                  "key": "department",
+                  "value": "Finance"
+                }
+              ]
+            },
+            "description": "Get metrics filtered by department"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Requisition Metrics (Weekly)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/analytics/requisitions/metrics?period=weekly",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "analytics", "requisitions", "metrics"],
+              "query": [
+                {
+                  "key": "period",
+                  "value": "weekly"
+                }
+              ]
+            },
+            "description": "Get metrics aggregated weekly instead of daily"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Requisition Metrics (Monthly)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/analytics/requisitions/metrics?period=monthly",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "analytics", "requisitions", "metrics"],
+              "query": [
+                {
+                  "key": "period",
+                  "value": "monthly"
+                }
+              ]
+            },
+            "description": "Get metrics aggregated monthly"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Approval Metrics",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/analytics/approvals/metrics",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "analytics", "approvals", "metrics"]
+            },
+            "description": "Get approval-specific analytics"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Dashboard",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/analytics/dashboard",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "analytics", "dashboard"]
+            },
+            "description": "Get dashboard overview with aggregated metrics"
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "auth_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "category_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "vendor_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "requisition_id",
+      "value": "",
+      "type": "string"
+    }
+  ]
+}

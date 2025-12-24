@@ -52,6 +52,8 @@ func InitDatabase() {
 func MigrateModels() {
 	tables := []interface{}{
 		&models.User{},
+		&models.Category{},
+		&models.CategoryBudgetCode{},
 		&models.Requisition{},
 		&models.Budget{},
 		&models.PurchaseOrder{},

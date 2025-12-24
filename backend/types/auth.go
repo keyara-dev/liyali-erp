@@ -24,12 +24,13 @@ type AuthResponse struct {
 
 // UserResponse represents user data in responses
 type UserResponse struct {
-	ID        string `json:"id"`
-	Email     string `json:"email"`
-	Name      string `json:"name"`
-	Role      string `json:"role"`
-	Active    bool   `json:"active"`
-	CreatedAt string `json:"createdAt"`
+	ID        string  `json:"id"`
+	Email     string  `json:"email"`
+	Name      string  `json:"name"`
+	Role      string  `json:"role"`
+	Active    bool    `json:"active"`
+	LastLogin *string `json:"lastLogin,omitempty"`
+	CreatedAt string  `json:"createdAt"`
 }
 
 // ErrorResponse represents an error response

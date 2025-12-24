@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"log"
+	"time"
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/liyali/liyali-gateway/config"
@@ -67,6 +68,14 @@ func Login(c fiber.Ctx) error {
 	// 	})
 	// }
 
+	// Update last login timestamp
+	now := time.Now()
+	if err := config.DB.Model(&user).Update("last_login", now).Error; err != nil {
+		log.Printf("Warning: Failed to update last login time: %v", err)
+		// Don't fail the login if this update fails
+	}
+	user.LastLogin = &now
+
 	// Generate JWT token
 	token, err := utils.GenerateToken(user.ID, user.Email, user.Name, user.Role)
 	if err != nil {
@@ -80,6 +89,13 @@ func Login(c fiber.Ctx) error {
 
 	log.Printf("User logged in: %s (%s)", user.Email, user.ID)
 
+	// Format last login for response
+	var lastLogin *string
+	if user.LastLogin != nil {
+		formatted := user.LastLogin.Format(time.RFC3339)
+		lastLogin = &formatted
+	}
+
 	return c.Status(fiber.StatusOK).JSON(types.AuthResponse{
 		Success: true,
 		Message: "Login successful",
@@ -90,6 +106,7 @@ func Login(c fiber.Ctx) error {
 			Name:      user.Name,
 			Role:      user.Role,
 			Active:    user.Active,
+			LastLogin: lastLogin,
 			CreatedAt: user.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
 		},
 	})

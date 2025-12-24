@@ -51,6 +51,8 @@ func GetRequisitions(c fiber.Ctx) error {
 		Offset(offset).
 		Limit(pageSize).
 		Preload("Requester").
+		Preload("Category").
+		Preload("PreferredVendor").
 		Order("created_at DESC").
 		Find(&requisitions).Error; err != nil {
 		return utils.SendInternalError(c, "Failed to fetch requisitions", err)
@@ -125,20 +127,45 @@ func CreateRequisition(c fiber.Ctx) error {
 		})
 	}
 
+	// Validate CategoryID if provided
+	if req.CategoryID != nil && *req.CategoryID != "" {
+		var category models.Category
+		if err := config.DB.Where("id = ?", *req.CategoryID).First(&category).Error; err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"success": false,
+				"message": "Category not found",
+			})
+		}
+	}
+
+	// Validate PreferredVendorID if provided
+	if req.PreferredVendorID != nil && *req.PreferredVendorID != "" {
+		var vendor models.Vendor
+		if err := config.DB.Where("id = ?", *req.PreferredVendorID).First(&vendor).Error; err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"success": false,
+				"message": "Preferred vendor not found",
+			})
+		}
+	}
+
 	// Create requisition
 	requisition := models.Requisition{
-		ID:            uuid.New().String(),
-		RequesterID:   userID,
-		Title:         req.Title,
-		Description:   req.Description,
-		Department:    req.Department,
-		Status:        "draft",
-		Priority:      req.Priority,
-		TotalAmount:   req.TotalAmount,
-		Currency:      req.Currency,
-		ApprovalStage: 0,
-		CreatedAt:     time.Now(),
-		UpdatedAt:     time.Now(),
+		ID:                uuid.New().String(),
+		RequesterID:       userID,
+		Title:             req.Title,
+		Description:       req.Description,
+		Department:        req.Department,
+		Status:            "draft",
+		Priority:          req.Priority,
+		TotalAmount:       req.TotalAmount,
+		Currency:          req.Currency,
+		CategoryID:        req.CategoryID,
+		PreferredVendorID: req.PreferredVendorID,
+		IsEstimate:        req.IsEstimate,
+		ApprovalStage:     0,
+		CreatedAt:         time.Now(),
+		UpdatedAt:         time.Now(),
 	}
 
 	// Marshal items to JSON
@@ -166,8 +193,8 @@ func CreateRequisition(c fiber.Ctx) error {
 		})
 	}
 
-	// Preload requester
-	config.DB.Preload("Requester").First(&requisition)
+	// Preload requester, category, and vendor
+	config.DB.Preload("Requester").Preload("Category").Preload("PreferredVendor").First(&requisition)
 
 	return c.Status(fiber.StatusCreated).JSON(types.DetailResponse{
 		Success: true,
@@ -188,6 +215,8 @@ func GetRequisition(c fiber.Ctx) error {
 	var requisition models.Requisition
 	if err := config.DB.
 		Preload("Requester").
+		Preload("Category").
+		Preload("PreferredVendor").
 		Where("id = ?", id).
 		First(&requisition).Error; err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
@@ -268,6 +297,35 @@ func UpdateRequisition(c fiber.Ctx) error {
 	if req.Currency != "" {
 		requisition.Currency = req.Currency
 	}
+	if req.CategoryID != nil {
+		// Validate category if provided
+		if *req.CategoryID != "" {
+			var category models.Category
+			if err := config.DB.Where("id = ?", *req.CategoryID).First(&category).Error; err != nil {
+				return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+					"success": false,
+					"message": "Category not found",
+				})
+			}
+		}
+		requisition.CategoryID = req.CategoryID
+	}
+	if req.PreferredVendorID != nil {
+		// Validate vendor if provided
+		if *req.PreferredVendorID != "" {
+			var vendor models.Vendor
+			if err := config.DB.Where("id = ?", *req.PreferredVendorID).First(&vendor).Error; err != nil {
+				return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+					"success": false,
+					"message": "Preferred vendor not found",
+				})
+			}
+		}
+		requisition.PreferredVendorID = req.PreferredVendorID
+	}
+	if req.IsEstimate != nil {
+		requisition.IsEstimate = *req.IsEstimate
+	}
 
 	requisition.UpdatedAt = time.Now()
 
@@ -280,8 +338,8 @@ func UpdateRequisition(c fiber.Ctx) error {
 		})
 	}
 
-	// Preload requester
-	config.DB.Preload("Requester").First(&requisition)
+	// Preload requester, category, and vendor
+	config.DB.Preload("Requester").Preload("Category").Preload("PreferredVendor").First(&requisition)
 
 	return c.JSON(types.DetailResponse{
 		Success: true,
@@ -591,21 +649,36 @@ func modelToRequisitionResponse(req models.Requisition) types.RequisitionRespons
 		requesterName = req.Requester.Name
 	}
 
+	categoryName := ""
+	if req.Category != nil {
+		categoryName = req.Category.Name
+	}
+
+	preferredVendorName := ""
+	if req.PreferredVendor != nil {
+		preferredVendorName = req.PreferredVendor.Name
+	}
+
 	return types.RequisitionResponse{
-		ID:              req.ID,
-		RequesterID:     req.RequesterID,
-		RequesterName:   requesterName,
-		Title:           req.Title,
-		Description:     req.Description,
-		Department:      req.Department,
-		Status:          req.Status,
-		Priority:        req.Priority,
-		Items:           items,
-		TotalAmount:     req.TotalAmount,
-		Currency:        req.Currency,
-		ApprovalStage:   req.ApprovalStage,
-		ApprovalHistory: approvalHistory,
-		CreatedAt:       req.CreatedAt,
-		UpdatedAt:       req.UpdatedAt,
+		ID:                  req.ID,
+		RequesterID:         req.RequesterID,
+		RequesterName:       requesterName,
+		Title:               req.Title,
+		Description:         req.Description,
+		Department:          req.Department,
+		Status:              req.Status,
+		Priority:            req.Priority,
+		Items:               items,
+		TotalAmount:         req.TotalAmount,
+		Currency:            req.Currency,
+		CategoryID:          req.CategoryID,
+		CategoryName:        categoryName,
+		PreferredVendorID:   req.PreferredVendorID,
+		PreferredVendorName: preferredVendorName,
+		IsEstimate:          req.IsEstimate,
+		ApprovalStage:       req.ApprovalStage,
+		ApprovalHistory:     approvalHistory,
+		CreatedAt:           req.CreatedAt,
+		UpdatedAt:           req.UpdatedAt,
 	}
 }

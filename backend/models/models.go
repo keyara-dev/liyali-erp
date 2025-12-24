@@ -12,32 +12,38 @@ import (
 
 // User represents a system user
 type User struct {
-	ID        string    `gorm:"primaryKey" json:"id"`
-	Email     string    `gorm:"uniqueIndex" json:"email"`
-	Name      string    `json:"name"`
-	Role      string    `json:"role"` // admin, approver, requester, finance, viewer
-	Active    bool      `json:"active"`
-	CreatedAt time.Time `json:"createdAt"`
-	UpdatedAt time.Time `json:"updatedAt"`
+	ID        string     `gorm:"primaryKey" json:"id"`
+	Email     string     `gorm:"uniqueIndex" json:"email"`
+	Name      string     `json:"name"`
+	Role      string     `json:"role"` // admin, approver, requester, finance, viewer
+	Active    bool       `json:"active"`
+	LastLogin *time.Time `json:"lastLogin,omitempty"`
+	CreatedAt time.Time  `json:"createdAt"`
+	UpdatedAt time.Time  `json:"updatedAt"`
 }
 
 // Requisition workflow document
 type Requisition struct {
-	ID              string          `gorm:"primaryKey" json:"id"`
-	RequesterID     string          `json:"requesterId"`
-	Requester       *User           `json:"requester,omitempty"`
-	Title           string          `json:"title"`
-	Description     string          `json:"description"`
-	Department      string          `json:"department"`
-	Status          string          `json:"status"` // draft, pending, approved, rejected
-	Priority        string          `json:"priority"` // low, medium, high
-	Items           datatypes.JSONType `gorm:"type:jsonb" json:"items"`
-	TotalAmount     float64         `json:"totalAmount"`
-	Currency        string          `json:"currency"`
-	ApprovalStage   int             `json:"approvalStage"`
-	ApprovalHistory datatypes.JSONType `gorm:"type:jsonb" json:"approvalHistory"`
-	CreatedAt       time.Time       `json:"createdAt"`
-	UpdatedAt       time.Time       `json:"updatedAt"`
+	ID                string          `gorm:"primaryKey" json:"id"`
+	RequesterID       string          `json:"requesterId"`
+	Requester         *User           `json:"requester,omitempty"`
+	Title             string          `json:"title"`
+	Description       string          `json:"description"`
+	Department        string          `json:"department"`
+	Status            string          `json:"status"` // draft, pending, approved, rejected
+	Priority          string          `json:"priority"` // low, medium, high
+	Items             datatypes.JSONType `gorm:"type:jsonb" json:"items"`
+	TotalAmount       float64         `json:"totalAmount"`
+	Currency          string          `json:"currency"`
+	ApprovalStage     int             `json:"approvalStage"`
+	ApprovalHistory   datatypes.JSONType `gorm:"type:jsonb" json:"approvalHistory"`
+	CategoryID        *string         `json:"categoryId,omitempty"`
+	Category          *Category       `json:"category,omitempty"`
+	PreferredVendorID *string         `json:"preferredVendorId,omitempty"`
+	PreferredVendor   *Vendor         `json:"preferredVendor,omitempty"`
+	IsEstimate        bool            `json:"isEstimate"`
+	CreatedAt         time.Time       `json:"createdAt"`
+	UpdatedAt         time.Time       `json:"updatedAt"`
 }
 
 // Budget workflow document
@@ -113,6 +119,27 @@ type GoodsReceivedNote struct {
 	UpdatedAt         time.Time       `json:"updatedAt"`
 }
 
+// Category master data for requisition categorization
+type Category struct {
+	ID          string    `gorm:"primaryKey" json:"id"`
+	Name        string    `gorm:"uniqueIndex" json:"name"`
+	Description string    `json:"description"`
+	Active      bool      `json:"active"`
+	CreatedAt   time.Time `json:"createdAt"`
+	UpdatedAt   time.Time `json:"updatedAt"`
+}
+
+// CategoryBudgetCode links categories to budget codes (one-to-many relationship)
+type CategoryBudgetCode struct {
+	ID         string    `gorm:"primaryKey" json:"id"`
+	CategoryID string    `gorm:"index" json:"categoryId"`
+	Category   *Category `json:"category,omitempty"`
+	BudgetCode string    `gorm:"index" json:"budgetCode"`
+	Active     bool      `json:"active"`
+	CreatedAt  time.Time `json:"createdAt"`
+	UpdatedAt  time.Time `json:"updatedAt"`
+}
+
 // Vendor master data
 type Vendor struct {
 	ID             string    `gorm:"primaryKey" json:"id"`
@@ -178,6 +205,8 @@ func (Budget) TableName() string { return "budgets" }
 func (PurchaseOrder) TableName() string { return "purchase_orders" }
 func (PaymentVoucher) TableName() string { return "payment_vouchers" }
 func (GoodsReceivedNote) TableName() string { return "goods_received_notes" }
+func (Category) TableName() string { return "categories" }
+func (CategoryBudgetCode) TableName() string { return "category_budget_codes" }
 func (Vendor) TableName() string { return "vendors" }
 func (ApprovalTask) TableName() string { return "approval_tasks" }
 func (AuditLog) TableName() string { return "audit_logs" }
