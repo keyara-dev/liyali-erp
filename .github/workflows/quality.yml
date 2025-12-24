@@ -1,0 +1,103 @@
+name: Code Quality
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  quality:
+    name: Code Quality Analysis
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Full history for better analysis
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.21'
+
+    - name: Run Go report card
+      run: |
+        go install github.com/gojp/goreportcard/cmd/goreportcard-cli@latest
+        goreportcard-cli -v
+      working-directory: backend
+
+    - name: Check for TODO/FIXME comments
+      run: |
+        echo "Checking for TODO/FIXME comments..."
+        if grep -r "TODO\|FIXME" --include="*.go" . | grep -v "vendor\|.git"; then
+          echo "Found TODO/FIXME comments. Consider addressing them."
+        fi
+      working-directory: backend
+      continue-on-error: true
+
+    - name: Check code duplication
+      run: |
+        go install github.com/mibk/dupl@latest
+        dupl -t 100 ./...
+      working-directory: backend
+      continue-on-error: true
+
+    - name: Check for forbidden imports
+      run: |
+        echo "Checking for forbidden imports..."
+        if grep -r "import.*unsafe\|import.*crypto/md5\|import.*crypto/sha1" --include="*.go" .; then
+          echo "⚠️  Found potentially problematic imports"
+        fi
+      working-directory: backend
+      continue-on-error: true
+
+    - name: Run complexity check
+      run: |
+        go install github.com/fzipp/gocyclo/cmd/gocyclo@latest
+        gocyclo -over 15 ./...
+      working-directory: backend
+      continue-on-error: true
+
+    - name: SonarQube Scan
+      uses: SonarSource/sonarqube-scan-action@master
+      env:
+        SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+        SONAR_LOGIN: ${{ secrets.SONAR_LOGIN }}
+      continue-on-error: true
+
+    - name: Generate test coverage badge
+      run: |
+        make test-coverage
+        go run github.com/boumenot/files-to-coverage@latest \
+          -filename coverage.out \
+          -badge coverage-badge.svg
+      working-directory: backend
+      continue-on-error: true
+
+    - name: Upload coverage badge
+      uses: actions/upload-artifact@v3
+      with:
+        name: coverage-badge
+        path: backend/coverage-badge.svg
+      continue-on-error: true
+
+    - name: Comment coverage on PR
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const fs = require('fs');
+          const coverage = fs.readFileSync('backend/coverage.out', 'utf8');
+
+          // Extract coverage percentage
+          const match = coverage.match(/coverage: (\d+\.\d+)%/);
+          const percent = match ? match[1] : 'unknown';
+
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: `📊 Test Coverage: ${percent}%`
+          });
+      continue-on-error: true

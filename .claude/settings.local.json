@@ -8,7 +8,12 @@
       "Bash(package.json \")",
       "Bash(grep:*)",
       "Bash(find:*)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(git checkout:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(echo:*)",
+      "Bash(go test:*)"
     ],
     "deny": [],
     "ask": []
