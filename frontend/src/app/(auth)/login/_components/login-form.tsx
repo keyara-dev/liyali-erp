@@ -27,8 +27,8 @@ export function LoginForm() {
         return;
       }
 
-      // Redirect to dashboard on success
-      router.push("/home");
+      // Redirect to welcome screen for organization selection
+      router.push("/welcome");
     } catch (err: any) {
       setError(err.message || "An error occurred");
     } finally {

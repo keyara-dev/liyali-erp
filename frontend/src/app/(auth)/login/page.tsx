@@ -13,7 +13,7 @@ export default async function LoginPage() {
   const { session } = await verifySession();
 
   if (session && session.user) {
-    redirect("/home");
+    redirect("/welcome");
   }
 
   return (
