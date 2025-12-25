@@ -107,3 +107,71 @@ func (OrganizationMember) TableName() string {
 func (OrganizationDepartment) TableName() string {
 	return "organization_departments"
 }
+
+// OrganizationRole represents a custom role defined by organization admin
+// Allows organizations to create their own role definitions beyond the default ones
+type OrganizationRole struct {
+	ID             string    `gorm:"primaryKey" json:"id"`
+	OrganizationID string    `gorm:"index;not null" json:"organizationId"`
+	Organization   *Organization `gorm:"foreignKey:OrganizationID" json:"organization,omitempty"`
+
+	// Role Details
+	Name        string `gorm:"not null" json:"name"` // e.g., "Senior Manager", "Budget Controller"
+	Description string `json:"description,omitempty"`
+
+	// Role Classification
+	IsDefault bool `gorm:"default:false" json:"isDefault"` // Whether this is a default system role
+	IsActive  bool `gorm:"default:true" json:"isActive"`
+
+	// Permissions will be managed through PermissionAssignment table
+	// Not stored directly here for normalization and flexibility
+
+	CreatedAt time.Time `json:"createdAt"`
+	UpdatedAt time.Time `json:"updatedAt"`
+}
+
+// OrganizationPermission represents an available permission in the organization
+// These are the granular permissions that can be assigned to roles
+type OrganizationPermission struct {
+	ID             string    `gorm:"primaryKey" json:"id"`
+	OrganizationID string    `gorm:"index;not null" json:"organizationId"`
+	Organization   *Organization `gorm:"foreignKey:OrganizationID" json:"organization,omitempty"`
+
+	// Permission Details
+	Resource    string `gorm:"not null" json:"resource"` // e.g., "requisition", "budget"
+	Action      string `gorm:"not null" json:"action"`   // e.g., "create", "approve"
+	Description string `json:"description,omitempty"`
+
+	// Status
+	IsActive bool `gorm:"default:true" json:"isActive"`
+
+	CreatedAt time.Time `json:"createdAt"`
+	UpdatedAt time.Time `json:"updatedAt"`
+}
+
+// PermissionAssignment represents the mapping between roles and permissions
+// A role can have multiple permissions, and a permission can be assigned to multiple roles
+type PermissionAssignment struct {
+	ID                  string              `gorm:"primaryKey" json:"id"`
+	OrganizationRoleID  string              `gorm:"index;not null" json:"organizationRoleId"`
+	OrganizationRole    *OrganizationRole   `gorm:"foreignKey:OrganizationRoleID" json:"organizationRole,omitempty"`
+	OrganizationPermissionID string         `gorm:"index;not null" json:"organizationPermissionId"`
+	OrganizationPermission  *OrganizationPermission `gorm:"foreignKey:OrganizationPermissionId" json:"organizationPermission,omitempty"`
+
+	// Track assignment metadata
+	CreatedAt time.Time `json:"createdAt"`
+	UpdatedAt time.Time `json:"updatedAt"`
+}
+
+// TableName methods for GORM
+func (OrganizationRole) TableName() string {
+	return "organization_roles"
+}
+
+func (OrganizationPermission) TableName() string {
+	return "organization_permissions"
+}
+
+func (PermissionAssignment) TableName() string {
+	return "permission_assignments"
+}
