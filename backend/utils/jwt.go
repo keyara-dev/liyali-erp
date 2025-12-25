@@ -17,6 +17,16 @@ type CustomClaims struct {
 	Role         string `json:"role"`
 	CurrentOrgID string `json:"currentOrgId,omitempty"` // Current organization ID
 	jwt.RegisteredClaims
+	// JTI (JWT ID) is in RegisteredClaims.ID for token revocation
+}
+
+// TokenInfo holds information about a generated token
+type TokenInfo struct {
+	Token     string    `json:"token"`
+	JTI       string    `json:"jti"`    // JWT ID for revocation
+	Subject   string    `json:"subject"`
+	IssuedAt  time.Time `json:"issuedAt"`
+	ExpiresAt time.Time `json:"expiresAt"`
 }
 
 // GenerateToken generates a new JWT token
@@ -31,6 +41,9 @@ func GenerateToken(userID, email, name, role string, currentOrgID *string) (stri
 		orgID = *currentOrgID
 	}
 
+	now := time.Now()
+	expiresAt := now.Add(24 * time.Hour)
+
 	claims := CustomClaims{
 		UserID:       userID,
 		Email:        email,
@@ -38,11 +51,12 @@ func GenerateToken(userID, email, name, role string, currentOrgID *string) (stri
 		Role:         role,
 		CurrentOrgID: orgID,
 		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)), // 24 hour expiration
-			IssuedAt:  jwt.NewNumericDate(time.Now()),
-			NotBefore: jwt.NewNumericDate(time.Now()),
+			ExpiresAt: jwt.NewNumericDate(expiresAt),
+			IssuedAt:  jwt.NewNumericDate(now),
+			NotBefore: jwt.NewNumericDate(now),
 			Issuer:    "liyali-gateway",
 			Subject:   userID,
+			ID:        uuid.New().String(), // JTI (JWT ID) for token revocation
 		},
 	}
 
@@ -95,6 +109,53 @@ func RefreshToken(claims *CustomClaims) (string, error) {
 	}
 
 	return GenerateToken(claims.UserID, claims.Email, claims.Name, claims.Role, orgID)
+}
+
+// GenerateTokenWithInfo generates a token and returns token info including JTI
+func GenerateTokenWithInfo(userID, email, name, role string, currentOrgID *string) (*TokenInfo, error) {
+	secret := os.Getenv("JWT_SECRET")
+	if secret == "" {
+		return nil, fmt.Errorf("JWT_SECRET not configured")
+	}
+
+	orgID := ""
+	if currentOrgID != nil {
+		orgID = *currentOrgID
+	}
+
+	now := time.Now()
+	expiresAt := now.Add(24 * time.Hour)
+	jti := uuid.New().String()
+
+	claims := CustomClaims{
+		UserID:       userID,
+		Email:        email,
+		Name:         name,
+		Role:         role,
+		CurrentOrgID: orgID,
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(expiresAt),
+			IssuedAt:  jwt.NewNumericDate(now),
+			NotBefore: jwt.NewNumericDate(now),
+			Issuer:    "liyali-gateway",
+			Subject:   userID,
+			ID:        jti, // JTI (JWT ID) for token revocation
+		},
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	tokenString, err := token.SignedString([]byte(secret))
+	if err != nil {
+		return nil, fmt.Errorf("failed to sign token: %v", err)
+	}
+
+	return &TokenInfo{
+		Token:     tokenString,
+		JTI:       jti,
+		Subject:   userID,
+		IssuedAt:  now,
+		ExpiresAt: expiresAt,
+	}, nil
 }
 
 // GenerateUserID generates a unique user ID
