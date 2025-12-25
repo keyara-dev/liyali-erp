@@ -14,6 +14,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { useInitializeStorage } from "@/hooks/use-initialize-storage";
+import { OrganizationProvider } from "@/contexts/organization-context";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -49,15 +50,17 @@ export function Providers({ children }: { children: React.ReactNode }) {
         disableTransitionOnChange
       >
         <QueryClientProvider client={queryClient}>
-          <StorageInitializer>{children}</StorageInitializer>
-          <Toaster
-            position="top-right"
-            expand
-            richColors
-            theme="system"
-            closeButton
-          />
-          <ReactQueryDevtools initialIsOpen={false} />
+          <OrganizationProvider>
+            <StorageInitializer>{children}</StorageInitializer>
+            <Toaster
+              position="top-right"
+              expand
+              richColors
+              theme="system"
+              closeButton
+            />
+            <ReactQueryDevtools initialIsOpen={false} />
+          </OrganizationProvider>
         </QueryClientProvider>
       </NextThemesProvider>
     </>

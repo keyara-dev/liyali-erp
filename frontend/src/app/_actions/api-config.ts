@@ -89,19 +89,26 @@ export type RequestType = AxiosRequestConfig & {
 const authenticatedApiClient = async (request: RequestType) => {
   const { session } = await verifySession();
 
-  if (!session?.accessToken) {
+  if (!session?.access_token) {
     throw new Error("No valid session found");
+  }
+
+  const headers: any = {
+    "Content-type": request.contentType
+      ? request.contentType
+      : "application/json",
+    Authorization: `Bearer ${session?.access_token}`,
+    Cookie: `${AUTH_SESSION}=${session.access_token}`, // Forward the session cookie to API
+  };
+
+  // Add organization context if available
+  if (session.organization_id) {
+    headers["X-Organization-ID"] = session.organization_id;
   }
 
   const config = {
     method: "GET",
-    headers: {
-      "Content-type": request.contentType
-        ? request.contentType
-        : "application/json",
-      Authorization: `Bearer ${session?.accessToken}`,
-      Cookie: `${AUTH_SESSION}=${session.accessToken}`, // Forward the session cookie to API
-    },
+    headers,
     withCredentials: true,
     ...request,
   };

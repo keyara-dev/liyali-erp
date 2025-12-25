@@ -35,7 +35,7 @@ type FormData = {
   department_id?: string;
   department?: string;
   is_active: boolean;
-  user_type: UserType;
+  role: UserType;
   password?: string;
 };
 
@@ -47,14 +47,14 @@ type Role = {
 };
 
 export default function CreateUserForm({
-  user_type,
+  role,
   user,
   showTrigger,
   isOpenModal,
   setIsOpenModal,
 }: {
   showTrigger?: boolean;
-  user_type: UserType;
+  role: UserType;
   user: User | null;
   isOpenModal?: boolean;
   setIsOpenModal?: Dispatch<SetStateAction<boolean>>;
@@ -85,7 +85,7 @@ export default function CreateUserForm({
         role: user.role || "",
         department_id: user.department_id || "",
         is_active: user.is_active ?? true,
-        user_type,
+        role,
         password: "",
       };
     }
@@ -97,13 +97,14 @@ export default function CreateUserForm({
       role: "",
       department_id: "",
       is_active: true,
-      user_type,
+      role,
       password: generateRandomString(),
     };
-  }, [isEditMode, user?.id, user_type]);
+  }, [isEditMode, user?.id, role]);
 
-  const [formData, setFormData] =
-    useState<FormData>(initialFormState as FormData);
+  const [formData, setFormData] = useState<FormData>(
+    initialFormState as FormData
+  );
 
   // Get departments from mock data
   const departments = useMemo(() => {
@@ -122,7 +123,7 @@ export default function CreateUserForm({
         department: user.department || "",
         department_id: user.department_id || "",
         is_active: user.is_active ?? true,
-        user_type,
+        role,
       });
     } else if (!isEditMode && dialogOpen) {
       setFormData({
@@ -134,10 +135,10 @@ export default function CreateUserForm({
         department: "",
         department_id: "",
         is_active: true,
-        user_type,
+        role,
       });
     }
-  }, [user?.id, dialogOpen, isEditMode, user_type]);
+  }, [user?.id, dialogOpen, isEditMode, role]);
 
   const handleCopyPassword = async () => {
     try {
@@ -208,7 +209,7 @@ export default function CreateUserForm({
           last_name: formData.last_name,
           department_id: formData.department_id,
           is_active: formData.is_active,
-          user_type,
+          role,
         };
         response = await updateUserMutation.mutateAsync({
           userId: user!.id,
@@ -222,7 +223,7 @@ export default function CreateUserForm({
           first_name: formData.first_name,
           last_name: formData.last_name,
           department_id: formData.department_id || "",
-          user_type,
+          role,
           username: String(formData.username || ""),
           branch_id: "",
           role_id: "",
@@ -534,8 +535,6 @@ export default function CreateUserForm({
 }
 
 // Convenience wrapper component for just showing the button trigger
-export function CreateUserButton({ user_type }: { user_type: UserType }) {
-  return (
-    <CreateUserForm showTrigger={true} user_type={user_type} user={null} />
-  );
+export function CreateUserButton({ role }: { role: UserType }) {
+  return <CreateUserForm showTrigger={true} role={role} user={null} />;
 }

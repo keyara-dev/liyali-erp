@@ -18,13 +18,23 @@ type User struct {
 	Role      string     `json:"role"` // admin, approver, requester, finance, viewer
 	Active    bool       `json:"active"`
 	LastLogin *time.Time `json:"lastLogin,omitempty"`
+
+	// Multi-tenancy fields
+	CurrentOrganizationID *string        `json:"currentOrganizationId,omitempty"`
+	CurrentOrganization   *Organization `gorm:"foreignKey:CurrentOrganizationID" json:"currentOrganization,omitempty"`
+	IsSuperAdmin          bool           `gorm:"default:false" json:"isSuperAdmin"`
+	Preferences           datatypes.JSON `gorm:"type:jsonb" json:"preferences,omitempty"`
+
 	CreatedAt time.Time  `json:"createdAt"`
 	UpdatedAt time.Time  `json:"updatedAt"`
+	DeletedAt *time.Time `gorm:"index" json:"deletedAt,omitempty"` // Soft delete
 }
 
 // Requisition workflow document
 type Requisition struct {
 	ID                string          `gorm:"primaryKey" json:"id"`
+	OrganizationID    string          `gorm:"index;not null" json:"organizationId"`
+	Organization      *Organization   `gorm:"foreignKey:OrganizationID" json:"organization,omitempty"`
 	RequesterID       string          `json:"requesterId"`
 	Requester         *User           `json:"requester,omitempty"`
 	Title             string          `json:"title"`
@@ -49,6 +59,8 @@ type Requisition struct {
 // Budget workflow document
 type Budget struct {
 	ID              string          `gorm:"primaryKey" json:"id"`
+	OrganizationID  string          `gorm:"index;not null" json:"organizationId"`
+	Organization    *Organization   `gorm:"foreignKey:OrganizationID" json:"organization,omitempty"`
 	OwnerID         string          `json:"ownerId"`
 	Owner           *User           `json:"owner,omitempty"`
 	BudgetCode      string          `gorm:"index" json:"budgetCode"`
@@ -67,6 +79,8 @@ type Budget struct {
 // PurchaseOrder workflow document
 type PurchaseOrder struct {
 	ID                string          `gorm:"primaryKey" json:"id"`
+	OrganizationID    string          `gorm:"index;not null" json:"organizationId"`
+	Organization      *Organization   `gorm:"foreignKey:OrganizationID" json:"organization,omitempty"`
 	PONumber          string          `gorm:"uniqueIndex" json:"poNumber"`
 	VendorID          string          `json:"vendorId"`
 	Vendor            *Vendor         `json:"vendor,omitempty"`
@@ -85,6 +99,8 @@ type PurchaseOrder struct {
 // PaymentVoucher workflow document
 type PaymentVoucher struct {
 	ID              string          `gorm:"primaryKey" json:"id"`
+	OrganizationID  string          `gorm:"index;not null" json:"organizationId"`
+	Organization    *Organization   `gorm:"foreignKey:OrganizationID" json:"organization,omitempty"`
 	VoucherNumber   string          `gorm:"uniqueIndex" json:"voucherNumber"`
 	VendorID        string          `json:"vendorId"`
 	Vendor          *Vendor         `json:"vendor,omitempty"`
@@ -105,6 +121,8 @@ type PaymentVoucher struct {
 // GoodsReceivedNote workflow document
 type GoodsReceivedNote struct {
 	ID                string          `gorm:"primaryKey" json:"id"`
+	OrganizationID    string          `gorm:"index;not null" json:"organizationId"`
+	Organization      *Organization   `gorm:"foreignKey:OrganizationID" json:"organization,omitempty"`
 	GRNNumber         string          `gorm:"uniqueIndex" json:"grnNumber"`
 	PONumber          string          `json:"poNumber"`
 	PurchaseOrder     *PurchaseOrder  `json:"purchaseOrder,omitempty"`
@@ -121,12 +139,14 @@ type GoodsReceivedNote struct {
 
 // Category master data for requisition categorization
 type Category struct {
-	ID          string    `gorm:"primaryKey" json:"id"`
-	Name        string    `gorm:"uniqueIndex" json:"name"`
-	Description string    `json:"description"`
-	Active      bool      `json:"active"`
-	CreatedAt   time.Time `json:"createdAt"`
-	UpdatedAt   time.Time `json:"updatedAt"`
+	ID             string        `gorm:"primaryKey" json:"id"`
+	OrganizationID string        `gorm:"index;not null" json:"organizationId"`
+	Organization   *Organization `gorm:"foreignKey:OrganizationID" json:"organization,omitempty"`
+	Name           string        `gorm:"uniqueIndex:idx_org_category_name;index:idx_org_category_name" json:"name"`
+	Description    string        `json:"description"`
+	Active         bool          `json:"active"`
+	CreatedAt      time.Time     `json:"createdAt"`
+	UpdatedAt      time.Time     `json:"updatedAt"`
 }
 
 // CategoryBudgetCode links categories to budget codes (one-to-many relationship)
@@ -142,33 +162,37 @@ type CategoryBudgetCode struct {
 
 // Vendor master data
 type Vendor struct {
-	ID             string    `gorm:"primaryKey" json:"id"`
-	VendorCode     string    `gorm:"uniqueIndex" json:"vendorCode"`
-	Name           string    `json:"name"`
-	Email          string    `json:"email"`
-	Phone          string    `json:"phone"`
-	Country        string    `json:"country"`
-	City           string    `json:"city"`
-	BankAccount    string    `json:"bankAccount"`
-	TaxID          string    `json:"taxId"`
-	Active         bool      `json:"active"`
-	CreatedAt      time.Time `json:"createdAt"`
-	UpdatedAt      time.Time `json:"updatedAt"`
+	ID             string        `gorm:"primaryKey" json:"id"`
+	OrganizationID string        `gorm:"index;not null" json:"organizationId"`
+	Organization   *Organization `gorm:"foreignKey:OrganizationID" json:"organization,omitempty"`
+	VendorCode     string        `gorm:"uniqueIndex:idx_org_vendor_code;index:idx_org_vendor_code" json:"vendorCode"`
+	Name           string        `json:"name"`
+	Email          string        `json:"email"`
+	Phone          string        `json:"phone"`
+	Country        string        `json:"country"`
+	City           string        `json:"city"`
+	BankAccount    string        `json:"bankAccount"`
+	TaxID          string        `json:"taxId"`
+	Active         bool          `json:"active"`
+	CreatedAt      time.Time     `json:"createdAt"`
+	UpdatedAt      time.Time     `json:"updatedAt"`
 }
 
 // ApprovalTask represents a pending approval action
 type ApprovalTask struct {
-	ID             string    `gorm:"primaryKey" json:"id"`
-	DocumentID     string    `gorm:"index" json:"documentId"`
-	DocumentType   string    `json:"documentType"` // requisition, budget, po, pv, grn
-	ApproverID     string    `json:"approverId"`
-	Approver       *User     `json:"approver,omitempty"`
-	Status         string    `json:"status"` // pending, approved, rejected
-	Stage          int       `json:"stage"`
-	Comments       string    `json:"comments"`
-	Signature      string    `json:"signature"`
-	CreatedAt      time.Time `json:"createdAt"`
-	UpdatedAt      time.Time `json:"updatedAt"`
+	ID             string        `gorm:"primaryKey" json:"id"`
+	OrganizationID string        `gorm:"index;not null" json:"organizationId"`
+	Organization   *Organization `gorm:"foreignKey:OrganizationID" json:"organization,omitempty"`
+	DocumentID     string        `gorm:"index" json:"documentId"`
+	DocumentType   string        `json:"documentType"` // requisition, budget, po, pv, grn
+	ApproverID     string        `json:"approverId"`
+	Approver       *User         `json:"approver,omitempty"`
+	Status         string        `json:"status"` // pending, approved, rejected
+	Stage          int           `json:"stage"`
+	Comments       string        `json:"comments"`
+	Signature      string        `json:"signature"`
+	CreatedAt      time.Time     `json:"createdAt"`
+	UpdatedAt      time.Time     `json:"updatedAt"`
 }
 
 // AuditLog tracks all document changes
@@ -184,18 +208,20 @@ type AuditLog struct {
 
 // Notification for email/SMS delivery
 type Notification struct {
-	ID            string    `gorm:"primaryKey" json:"id"`
-	RecipientID   string    `json:"recipientId"`
-	Recipient     *User     `json:"recipient,omitempty"`
-	Type          string    `json:"type"` // approval_required, approved, rejected, assigned
-	DocumentID    string    `json:"documentId"`
-	DocumentType  string    `json:"documentType"`
-	Subject       string    `json:"subject"`
-	Body          string    `json:"body"`
-	Sent          bool      `json:"sent"`
-	SentAt        *time.Time `json:"sentAt,omitempty"`
-	CreatedAt     time.Time `json:"createdAt"`
-	UpdatedAt     time.Time `json:"updatedAt"`
+	ID             string        `gorm:"primaryKey" json:"id"`
+	OrganizationID string        `gorm:"index;not null" json:"organizationId"`
+	Organization   *Organization `gorm:"foreignKey:OrganizationID" json:"organization,omitempty"`
+	RecipientID    string        `json:"recipientId"`
+	Recipient      *User         `json:"recipient,omitempty"`
+	Type           string        `json:"type"` // approval_required, approved, rejected, assigned
+	DocumentID     string        `json:"documentId"`
+	DocumentType   string        `json:"documentType"`
+	Subject        string        `json:"subject"`
+	Body           string        `json:"body"`
+	Sent           bool          `json:"sent"`
+	SentAt         *time.Time    `json:"sentAt,omitempty"`
+	CreatedAt      time.Time     `json:"createdAt"`
+	UpdatedAt      time.Time     `json:"updatedAt"`
 }
 
 // TableName specifies table names for GORM

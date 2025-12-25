@@ -1,13 +1,13 @@
-'use client'
+"use client";
 
-import { useEffect, useState } from 'react'
-import { getRefreshToken } from '@/app/_actions/auth-actions'
-import type { APIResponse } from '@/types'
+import { useEffect, useState } from "react";
+import { getRefreshToken } from "@/app/_actions/auth";
+import type { APIResponse } from "@/types";
 
 interface UseRefreshTokenResponse {
-  data: any
-  error: Error | null
-  isLoading: boolean
+  data: any;
+  error: Error | null;
+  isLoading: boolean;
 }
 
 /**
@@ -21,46 +21,48 @@ export function useRefreshToken(
   shouldRefresh: boolean = true,
   interval: number = 20 * 60 * 1000
 ): UseRefreshTokenResponse {
-  const [data, setData] = useState<any>(null)
-  const [error, setError] = useState<Error | null>(null)
-  const [isLoading, setIsLoading] = useState(false)
+  const [data, setData] = useState<any>(null);
+  const [error, setError] = useState<Error | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     if (!shouldRefresh) {
-      return
+      return;
     }
 
-    setIsLoading(true)
+    setIsLoading(true);
 
     // Perform initial refresh
     const performRefresh = async () => {
       try {
-        const response = await getRefreshToken()
+        const response = await getRefreshToken();
 
         if (response.success) {
-          setData(response.data)
-          setError(null)
+          setData(response.data);
+          setError(null);
         } else {
-          setError(new Error(response.message || 'Failed to refresh token'))
-          setData(null)
+          setError(new Error(response.message || "Failed to refresh token"));
+          setData(null);
         }
       } catch (err: any) {
-        setError(err instanceof Error ? err : new Error('Token refresh failed'))
-        setData(null)
+        setError(
+          err instanceof Error ? err : new Error("Token refresh failed")
+        );
+        setData(null);
       } finally {
-        setIsLoading(false)
+        setIsLoading(false);
       }
-    }
+    };
 
-    performRefresh()
+    performRefresh();
 
     // Setup interval for periodic refresh
     const refreshInterval = setInterval(() => {
-      performRefresh()
-    }, interval)
+      performRefresh();
+    }, interval);
 
-    return () => clearInterval(refreshInterval)
-  }, [shouldRefresh, interval])
+    return () => clearInterval(refreshInterval);
+  }, [shouldRefresh, interval]);
 
-  return { data, error, isLoading }
+  return { data, error, isLoading };
 }

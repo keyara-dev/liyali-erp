@@ -2,11 +2,13 @@ package handlers
 
 import (
 	"log"
+	"strings"
 	"time"
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/liyali/liyali-gateway/config"
 	"github.com/liyali/liyali-gateway/models"
+	"github.com/liyali/liyali-gateway/services"
 	"github.com/liyali/liyali-gateway/types"
 	"github.com/liyali/liyali-gateway/utils"
 	"gorm.io/gorm"
@@ -59,14 +61,13 @@ func Login(c fiber.Ctx) error {
 		})
 	}
 
-	// Verify password - For now, we'll accept any password for demo
-	// In production, passwords should be hashed in database
-	// if !utils.VerifyPassword(user.Password, req.Password) {
-	// 	return c.Status(fiber.StatusUnauthorized).JSON(types.ErrorResponse{
-	// 		Success: false,
-	// 		Message: "Invalid email or password",
-	// 	})
-	// }
+	// Verify password
+	if !utils.VerifyPassword(user.Password, req.Password) {
+		return c.Status(fiber.StatusUnauthorized).JSON(types.ErrorResponse{
+			Success: false,
+			Message: "Invalid email or password",
+		})
+	}
 
 	// Update last login timestamp
 	now := time.Now()
@@ -76,8 +77,8 @@ func Login(c fiber.Ctx) error {
 	}
 	user.LastLogin = &now
 
-	// Generate JWT token
-	token, err := utils.GenerateToken(user.ID, user.Email, user.Name, user.Role)
+	// Generate JWT token with organization context
+	token, err := utils.GenerateToken(user.ID, user.Email, user.Name, user.Role, user.CurrentOrganizationID)
 	if err != nil {
 		log.Printf("Error generating token: %v", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(types.ErrorResponse{
@@ -190,13 +191,10 @@ func Register(c fiber.Ctx) error {
 		ID:       utils.GenerateUserID(),
 		Email:    req.Email,
 		Name:     req.Name,
+		Password: hashedPassword,
 		Role:     req.Role,
 		Active:   true,
 	}
-
-	// Note: In a full implementation, you'd want to store the hashedPassword
-	// For now, we're storing the plain password for demo purposes
-	// In production, use: newUser.Password = hashedPassword
 
 	if err := config.DB.Create(&newUser).Error; err != nil {
 		log.Printf("Error creating user: %v", err)
@@ -207,8 +205,20 @@ func Register(c fiber.Ctx) error {
 		})
 	}
 
-	// Generate JWT token
-	token, err := utils.GenerateToken(newUser.ID, newUser.Email, newUser.Name, newUser.Role)
+	// Auto-create personal organization for new user
+	orgService := services.NewOrganizationService(config.DB)
+	org, err := orgService.CreateOrganization(newUser.Name, "Personal Organization", newUser.ID)
+	if err != nil {
+		log.Printf("Warning: Failed to create personal organization for user %s: %v", newUser.Email, err)
+		// Log but continue - organization creation is non-blocking
+	}
+
+	// Generate JWT token with organization context
+	var orgID *string
+	if org != nil && org.ID != "" {
+		orgID = &org.ID
+	}
+	token, err := utils.GenerateToken(newUser.ID, newUser.Email, newUser.Name, newUser.Role, orgID)
 	if err != nil {
 		log.Printf("Error generating token: %v", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(types.ErrorResponse{
@@ -220,7 +230,8 @@ func Register(c fiber.Ctx) error {
 
 	log.Printf("User registered: %s (%s)", newUser.Email, newUser.ID)
 
-	return c.Status(fiber.StatusCreated).JSON(types.AuthResponse{
+	// Build response with organization data if org was created
+	authResponse := types.AuthResponse{
 		Success: true,
 		Message: "Registration successful",
 		Token:   token,
@@ -232,7 +243,22 @@ func Register(c fiber.Ctx) error {
 			Active:    newUser.Active,
 			CreatedAt: newUser.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
 		},
-	})
+	}
+
+	// Include organization in response if it was created
+	if org != nil {
+		authResponse.Organization = &types.OrganizationResponse{
+			ID:          org.ID,
+			Name:        org.Name,
+			Slug:        org.Slug,
+			Description: org.Description,
+			Active:      org.Active,
+			Tier:        org.Tier,
+			CreatedAt:   org.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+		}
+	}
+
+	return c.Status(fiber.StatusCreated).JSON(authResponse)
 }
 
 // VerifyToken verifies a JWT token

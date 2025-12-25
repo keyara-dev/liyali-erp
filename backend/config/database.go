@@ -52,6 +52,14 @@ func InitDatabase() {
 func MigrateModels() {
 	tables := []interface{}{
 		&models.User{},
+
+		// Organization tables (must come before business tables)
+		&models.Organization{},
+		&models.OrganizationSettings{},
+		&models.OrganizationMember{},
+		&models.OrganizationDepartment{},
+
+		// Business tables (now with organization_id)
 		&models.Category{},
 		&models.CategoryBudgetCode{},
 		&models.Requisition{},
@@ -68,6 +76,34 @@ func MigrateModels() {
 	for _, table := range tables {
 		if err := DB.AutoMigrate(table); err != nil {
 			log.Fatalf("Migration failed for %v: %v", table, err)
+		}
+	}
+
+	// Create unique constraint on organization_members (organization_id, user_id)
+	if !DB.Migrator().HasConstraint(&models.OrganizationMember{}, "uk_org_user") {
+		DB.Migrator().CreateConstraint(&models.OrganizationMember{}, "uk_org_user")
+	}
+
+	// Create index on organization_id for better query performance
+	indexes := []struct {
+		model     interface{}
+		indexName string
+		columns   string
+	}{
+		{&models.Requisition{}, "idx_req_org_id", "organization_id"},
+		{&models.Budget{}, "idx_budget_org_id", "organization_id"},
+		{&models.PurchaseOrder{}, "idx_po_org_id", "organization_id"},
+		{&models.PaymentVoucher{}, "idx_pv_org_id", "organization_id"},
+		{&models.GoodsReceivedNote{}, "idx_grn_org_id", "organization_id"},
+		{&models.Category{}, "idx_cat_org_id", "organization_id"},
+		{&models.Vendor{}, "idx_vendor_org_id", "organization_id"},
+		{&models.ApprovalTask{}, "idx_approval_org_id", "organization_id"},
+		{&models.Notification{}, "idx_notif_org_id", "organization_id"},
+	}
+
+	for _, idx := range indexes {
+		if !DB.Migrator().HasIndex(idx.model, idx.indexName) {
+			DB.Migrator().CreateIndex(idx.model, idx.indexName)
 		}
 	}
 

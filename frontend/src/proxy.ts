@@ -54,19 +54,19 @@ export default async function proxy(request: NextRequest) {
   }
 
   // If has auth cookie and on auth page, let the (auth)/layout.tsx handle routing
-  // The layout will check user_type and redirect appropriately
+  // The layout will check role and redirect appropriately
   // We don't redirect here to avoid conflicts
 
   // ✅ NEW: Admin route protection
-  // Verify user_type for admin routes (requires JWT decode - acceptable for security)
+  // Verify role for admin routes (requires JWT decode - acceptable for security)
   if (isAdminRoute && hasAuthCookie) {
     try {
-      const { session, isAuthenticated, user_type } = await verifySession();
+      const { session, isAuthenticated, role } = await verifySession();
 
       console.log("[Proxy] Admin route check:", "session");
 
       // If not authenticated or not an ADMIN, redirect to access denied page
-      if (!isAuthenticated || user_type !== "ADMIN") {
+      if (!isAuthenticated || role !== "ADMIN") {
         console.log(
           "[Proxy] Non-admin user attempting to access admin route, redirecting to /access-denied"
         );

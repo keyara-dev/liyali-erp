@@ -67,7 +67,7 @@ export default async function UserManagementPage({ searchParams }: PageProps) {
               subtitle="Manage your team members and their account roles"
             />
             <div>
-              <CreateUserForm user={null} showTrigger user_type="ADMIN" />
+              <CreateUserForm user={null} showTrigger role="ADMIN" />
             </div>
           </div>
         </div>

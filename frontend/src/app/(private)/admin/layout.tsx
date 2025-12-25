@@ -11,7 +11,7 @@ export default async function AdminLayout({ children }: PropsWithChildren) {
 
   // Check if user is admin
   if (
-    session.user_type != "ADMIN" ||
+    session.role != "ADMIN" ||
     session.user.role !== "ADMIN" ||
     !session.user
   ) {

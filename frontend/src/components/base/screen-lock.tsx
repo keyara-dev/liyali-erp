@@ -18,7 +18,7 @@ import {
   logUserOut,
   getRefreshToken,
   checkScreenLockState,
-} from "@/app/_actions/auth-actions";
+} from "@/app/_actions/auth";
 import { AuthSession } from "@/types";
 import { toast } from "sonner";
 import {
@@ -206,7 +206,7 @@ export function IdleTimerContainer({
   // Separate state for dialog rendering - ensures dialog opens immediately
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
-  const loggedIn = session?.accessToken || false;
+  const loggedIn = session?.access_token || false;
   const isIdle = state === "Idle";
 
   // ✅ Debug: Log when loggedIn status changes
@@ -214,11 +214,11 @@ export function IdleTimerContainer({
     logger.debug("📋 IdleTimerContainer logged-in status", {
       component: "IdleTimerContainer",
       loggedIn,
-      hasAccessToken: !!session?.accessToken,
+      hasAccessToken: !!session?.access_token,
       session: session
         ? {
             user_id: (session as any)?.user_id,
-            user_type: (session as any)?.user_type,
+            role: (session as any)?.role,
           }
         : null,
     });

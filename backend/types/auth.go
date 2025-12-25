@@ -14,12 +14,24 @@ type RegisterRequest struct {
 	Role     string `json:"role" validate:"required,oneof=admin approver requester finance viewer"`
 }
 
+// OrganizationResponse represents organization data in responses
+type OrganizationResponse struct {
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	Slug        string `json:"slug"`
+	Description string `json:"description,omitempty"`
+	Active      bool   `json:"active"`
+	Tier        string `json:"tier"`
+	CreatedAt   string `json:"createdAt"`
+}
+
 // AuthResponse represents an authentication response
 type AuthResponse struct {
-	Success bool   `json:"success"`
-	Message string `json:"message"`
-	Token   string `json:"token,omitempty"`
-	User    *UserResponse `json:"user,omitempty"`
+	Success      bool                   `json:"success"`
+	Message      string                 `json:"message"`
+	Token        string                 `json:"token,omitempty"`
+	User         *UserResponse          `json:"user,omitempty"`
+	Organization *OrganizationResponse   `json:"organization,omitempty"`
 }
 
 // UserResponse represents user data in responses

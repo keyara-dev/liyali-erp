@@ -25,7 +25,7 @@ export type User = {
   department?: string;
   avatar?: string;
   is_active?: boolean;
-  user_type?: UserType;
+  role?: UserType;
   mfa_enabled?: boolean;
   is_ldap_user?: boolean;
   created_at?: Date | string;
@@ -35,13 +35,14 @@ export type User = {
 };
 
 export interface AuthSession {
-  accessToken: string;
+  access_token: string;
   user: User;
-  user_type?: UserType;
+  role?: UserType;
   user_id?: string;
   change_password?: boolean;
   mfa_required?: boolean;
   institution_id?: string;
+  organization_id?: string;
   expiresAt?: Date | string;
   permissions?: Permission[];
 }
@@ -60,4 +61,20 @@ export interface SessionResponse {
   data?: any;
   status?: number;
   statusText?: string;
+}
+
+export interface Organization {
+  id: string;
+  name: string;
+  slug: string;
+  description?: string;
+  active: boolean;
+  tier: string;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface RegistrationResponse {
+  user: User;
+  organization: Organization;
 }

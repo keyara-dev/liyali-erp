@@ -11,7 +11,7 @@ export default async function HomePage() {
   }
 
   // User is authenticated - redirect based on their role
-  const userRole = session.user_type || "REQUESTER";
+  const userRole = session.role || "REQUESTER";
 
   // Map roles to their respective pages
   const roleRoutes: Record<string, string> = {

@@ -24,17 +24,35 @@ func SetupRoutes(app *fiber.App) {
 	// Protected routes (authentication required)
 	protected := apiV1.Group("", middleware.AuthMiddleware())
 
-	// Auth routes (protected)
+	// Auth routes (protected, no tenant required)
 	protected.Get("/auth/profile", handlers.GetProfile)
 
-	// User routes
-	users := protected.Group("/users")
+	// Organization routes (authentication required, no tenant middleware)
+	orgs := protected.Group("/organizations")
+	orgs.Get("/", handlers.GetUserOrganizations)
+	orgs.Post("/", handlers.CreateOrganization)
+	orgs.Put("/:id", handlers.UpdateOrganization)
+	orgs.Post("/:id/switch", handlers.SwitchOrganization)
+
+	// Tenant-scoped routes (authentication + tenant context required)
+	tenant := apiV1.Group("", middleware.AuthMiddleware(), middleware.TenantMiddleware())
+
+	// Organization management (within tenant context)
+	orgMgmt := tenant.Group("/organization")
+	orgMgmt.Get("/members", handlers.GetOrganizationMembers)
+	orgMgmt.Post("/members", handlers.AddOrganizationMember)
+	orgMgmt.Delete("/members/:userId", handlers.RemoveOrganizationMember)
+	orgMgmt.Get("/settings", handlers.GetOrganizationSettings)
+	orgMgmt.Put("/settings", handlers.UpdateOrganizationSettings)
+
+	// User routes (now tenant-scoped)
+	users := tenant.Group("/users")
 	users.Get("/", handlers.GetUsers)
 	users.Get("/:id", handlers.GetUser)
 	users.Put("/:id", handlers.UpdateUser)
 
-	// Requisition routes
-	requisitions := protected.Group("/requisitions")
+	// Requisition routes (tenant-scoped)
+	requisitions := tenant.Group("/requisitions")
 	requisitions.Get("/", handlers.GetRequisitions)
 	requisitions.Post("/", handlers.CreateRequisition)
 	requisitions.Get("/:id", handlers.GetRequisition)
@@ -44,8 +62,8 @@ func SetupRoutes(app *fiber.App) {
 	requisitions.Post("/:id/reject", handlers.RejectRequisition)
 	requisitions.Post("/:id/reassign", handlers.ReassignRequisition)
 
-	// Budget routes
-	budgets := protected.Group("/budgets")
+	// Budget routes (tenant-scoped)
+	budgets := tenant.Group("/budgets")
 	budgets.Get("/", handlers.GetBudgets)
 	budgets.Post("/", handlers.CreateBudget)
 	budgets.Get("/:id", handlers.GetBudget)
@@ -54,8 +72,8 @@ func SetupRoutes(app *fiber.App) {
 	budgets.Post("/:id/approve", handlers.ApproveBudget)
 	budgets.Post("/:id/reject", handlers.RejectBudget)
 
-	// Purchase Order routes
-	pos := protected.Group("/purchase-orders")
+	// Purchase Order routes (tenant-scoped)
+	pos := tenant.Group("/purchase-orders")
 	pos.Get("/", handlers.GetPurchaseOrders)
 	pos.Post("/", handlers.CreatePurchaseOrder)
 	pos.Get("/:id", handlers.GetPurchaseOrder)
@@ -64,8 +82,8 @@ func SetupRoutes(app *fiber.App) {
 	pos.Post("/:id/approve", handlers.ApprovePurchaseOrder)
 	pos.Post("/:id/reject", handlers.RejectPurchaseOrder)
 
-	// Payment Voucher routes
-	pvs := protected.Group("/payment-vouchers")
+	// Payment Voucher routes (tenant-scoped)
+	pvs := tenant.Group("/payment-vouchers")
 	pvs.Get("/", handlers.GetPaymentVouchers)
 	pvs.Post("/", handlers.CreatePaymentVoucher)
 	pvs.Get("/:id", handlers.GetPaymentVoucher)
@@ -74,8 +92,8 @@ func SetupRoutes(app *fiber.App) {
 	pvs.Post("/:id/approve", handlers.ApprovePaymentVoucher)
 	pvs.Post("/:id/reject", handlers.RejectPaymentVoucher)
 
-	// GRN routes
-	grns := protected.Group("/grns")
+	// GRN routes (tenant-scoped)
+	grns := tenant.Group("/grns")
 	grns.Get("/", handlers.GetGRNs)
 	grns.Post("/", handlers.CreateGRN)
 	grns.Get("/:id", handlers.GetGRN)
@@ -84,8 +102,8 @@ func SetupRoutes(app *fiber.App) {
 	grns.Post("/:id/approve", handlers.ApproveGRN)
 	grns.Post("/:id/reject", handlers.RejectGRN)
 
-	// Category routes
-	categories := protected.Group("/categories")
+	// Category routes (tenant-scoped)
+	categories := tenant.Group("/categories")
 	categories.Get("/", handlers.GetCategories)
 	categories.Post("/", handlers.CreateCategory)
 	categories.Get("/:id", handlers.GetCategory)
@@ -95,39 +113,39 @@ func SetupRoutes(app *fiber.App) {
 	categories.Post("/:id/budget-codes", handlers.AddBudgetCodeToCategory)
 	categories.Delete("/:id/budget-codes/:budgetCode", handlers.RemoveBudgetCodeFromCategory)
 
-	// Vendor routes
-	vendors := protected.Group("/vendors")
+	// Vendor routes (tenant-scoped)
+	vendors := tenant.Group("/vendors")
 	vendors.Get("/", handlers.GetVendors)
 	vendors.Post("/", handlers.CreateVendor)
 	vendors.Get("/:id", handlers.GetVendor)
 	vendors.Put("/:id", handlers.UpdateVendor)
 
-	// Approval Tasks routes
-	approvals := protected.Group("/approvals")
+	// Approval Tasks routes (tenant-scoped)
+	approvals := tenant.Group("/approvals")
 	approvals.Get("/", handlers.GetApprovalTasks)
 	approvals.Get("/:id", handlers.GetApprovalTask)
 	approvals.Get("/pending/:userId", handlers.GetPendingApprovals)
 
-	// Bulk operations
-	bulk := protected.Group("/bulk")
+	// Bulk operations (tenant-scoped)
+	bulk := tenant.Group("/bulk")
 	bulk.Post("/approve", handlers.BulkApprove)
 	bulk.Post("/reject", handlers.BulkReject)
 	bulk.Post("/reassign", handlers.BulkReassign)
 
-	// Analytics routes
-	analytics := protected.Group("/analytics")
+	// Analytics routes (tenant-scoped)
+	analytics := tenant.Group("/analytics")
 	analytics.Get("/dashboard", handlers.GetDashboard)
 	analytics.Get("/requisitions/metrics", handlers.GetRequisitionMetrics)
 	analytics.Get("/approvals/metrics", handlers.GetApprovalMetrics)
 
-	// Notifications
-	notifications := protected.Group("/notifications")
+	// Notifications (tenant-scoped)
+	notifications := tenant.Group("/notifications")
 	notifications.Get("/", handlers.GetNotifications)
 	notifications.Get("/:id", handlers.GetNotification)
 	notifications.Put("/:id/read", handlers.MarkNotificationAsRead)
 
-	// Audit Logs
-	audit := protected.Group("/audit-logs")
+	// Audit Logs (tenant-scoped)
+	audit := tenant.Group("/audit-logs")
 	audit.Get("/", handlers.GetAuditLogs)
 	audit.Get("/document/:documentId", handlers.GetDocumentAuditLogs)
 }

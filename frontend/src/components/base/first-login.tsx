@@ -16,12 +16,15 @@ import CustomAlert from "../ui/custom-alert";
 import { cn, notify } from "@/lib/utils";
 import { Input } from "../ui/input";
 import { Button } from "../ui/button";
-import { changePassword } from "@/app/_actions/auth-actions";
+import { changePassword } from "@/app/_actions/auth";
 import { Eye, EyeOff, LockIcon } from "lucide-react";
 
 export default function FirstLogin({ open }: { open?: boolean }) {
   const queryClient = useQueryClient();
-  const [error, setError] = useState<ErrorState>({ status: false, message: '' });
+  const [error, setError] = useState<ErrorState>({
+    status: false,
+    message: "",
+  });
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState<ChangePassword>({
     oldPassword: "",
@@ -69,7 +72,10 @@ export default function FirstLogin({ open }: { open?: boolean }) {
     }
 
     // Send New password details to the backend
-    const res = await changePassword(formData.oldPassword, formData.newPassword);
+    const res = await changePassword(
+      formData.oldPassword,
+      formData.newPassword
+    );
 
     // If password change success - invalidate query caches - close modals
     if (res.success) {

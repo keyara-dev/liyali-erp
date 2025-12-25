@@ -26,9 +26,11 @@
 ## 1. Authentication & Auth
 
 ### POST /auth/login
+
 Authenticate user with email and password.
 
 **Request Body:**
+
 ```json
 {
   "email": "user@example.com",
@@ -37,6 +39,7 @@ Authenticate user with email and password.
 ```
 
 **Response (200 OK):**
+
 ```json
 {
   "success": true,
@@ -47,17 +50,14 @@ Authenticate user with email and password.
     "email": "user@example.com",
     "role": "approver",
     "department": "Finance",
-    "permissions": [
-      "APPROVE_DOCUMENTS",
-      "VIEW_REPORTS",
-      "MANAGE_USERS"
-    ]
+    "permissions": ["APPROVE_DOCUMENTS", "VIEW_REPORTS", "MANAGE_USERS"]
   },
   "status": 200
 }
 ```
 
 **Error (401 Unauthorized):**
+
 ```json
 {
   "success": false,
@@ -69,9 +69,11 @@ Authenticate user with email and password.
 ---
 
 ### POST /auth/logout
+
 Logout current user and invalidate session.
 
 **Response (200 OK):**
+
 ```json
 {
   "success": true,
@@ -83,9 +85,11 @@ Logout current user and invalidate session.
 ---
 
 ### GET /auth/me
+
 Get current authenticated user profile.
 
 **Response (200 OK):**
+
 ```json
 {
   "success": true,
@@ -105,6 +109,7 @@ Get current authenticated user profile.
 ```
 
 **Error (401 Unauthorized):**
+
 ```json
 {
   "success": false,
@@ -116,15 +121,17 @@ Get current authenticated user profile.
 ---
 
 ### POST /auth/refresh-token
+
 Refresh JWT access token.
 
 **Response (200 OK):**
+
 ```json
 {
   "success": true,
   "message": "Token refreshed",
   "data": {
-    "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+    "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
     "expiresIn": 3600
   },
   "status": 200
@@ -134,9 +141,11 @@ Refresh JWT access token.
 ---
 
 ### POST /auth/change-password
+
 Change password for authenticated user.
 
 **Request Body:**
+
 ```json
 {
   "currentPassword": "oldPassword123",
@@ -145,6 +154,7 @@ Change password for authenticated user.
 ```
 
 **Response (200 OK):**
+
 ```json
 {
   "success": true,
@@ -156,9 +166,11 @@ Change password for authenticated user.
 ---
 
 ### POST /auth/send-reset-email
+
 Send password reset email.
 
 **Request Body:**
+
 ```json
 {
   "email": "user@example.com"
@@ -166,6 +178,7 @@ Send password reset email.
 ```
 
 **Response (200 OK):**
+
 ```json
 {
   "success": true,
@@ -177,9 +190,11 @@ Send password reset email.
 ---
 
 ### POST /auth/reset-password
+
 Reset password using reset token.
 
 **Request Body:**
+
 ```json
 {
   "token": "reset-token-abc123",
@@ -188,6 +203,7 @@ Reset password using reset token.
 ```
 
 **Response (200 OK):**
+
 ```json
 {
   "success": true,
@@ -199,9 +215,11 @@ Reset password using reset token.
 ---
 
 ### POST /auth/register
+
 Create new user account.
 
 **Request Body:**
+
 ```json
 {
   "name": "Jane Smith",
@@ -212,6 +230,7 @@ Create new user account.
 ```
 
 **Response (201 Created):**
+
 ```json
 {
   "success": true,
@@ -229,9 +248,11 @@ Create new user account.
 ---
 
 ### GET /auth/demo-users
+
 Get list of available demo users for testing.
 
 **Response (200 OK):**
+
 ```json
 {
   "success": true,
@@ -259,9 +280,11 @@ Get list of available demo users for testing.
 ---
 
 ### GET /auth/check-signup-availability
+
 Check if new user registration is available.
 
 **Response (200 OK):**
+
 ```json
 {
   "success": true,
@@ -277,9 +300,11 @@ Check if new user registration is available.
 ---
 
 ### POST /auth/screen-lock
+
 Lock screen on user idle timeout.
 
 **Request Body:**
+
 ```json
 {
   "idleTimeMinutes": 15
@@ -287,6 +312,7 @@ Lock screen on user idle timeout.
 ```
 
 **Response (200 OK):**
+
 ```json
 {
   "success": true,
@@ -298,9 +324,11 @@ Lock screen on user idle timeout.
 ---
 
 ### GET /auth/screen-lock-state
+
 Check if screen is locked.
 
 **Response (200 OK):**
+
 ```json
 {
   "success": true,
@@ -318,9 +346,11 @@ Check if screen is locked.
 ### 2.1 Purchase Orders
 
 #### GET /api/purchase-orders
+
 List all purchase orders with filtering and pagination.
 
 **Query Parameters:**
+
 ```
 limit=10, page=1, status=ALL, creatorId=user-123
 startDate=2024-01-01, endDate=2024-12-31
@@ -328,6 +358,7 @@ sortBy=createdAt, sortOrder=DESC, search=PO-2024
 ```
 
 **Response (200 OK):**
+
 ```json
 {
   "success": true,
@@ -360,9 +391,11 @@ sortBy=createdAt, sortOrder=DESC, search=PO-2024
 ```
 
 #### POST /api/purchase-orders
+
 Create new purchase order.
 
 **Request Body:**
+
 ```json
 {
   "documentNumber": "PO-2024-NEW",
@@ -383,12 +416,15 @@ Create new purchase order.
 **Response (201 Created):** Same format as GET
 
 #### GET /api/purchase-orders/:id
+
 Get specific purchase order.
 
 #### PUT /api/purchase-orders/:id
+
 Update purchase order (DRAFT only).
 
 #### DELETE /api/purchase-orders/:id
+
 Delete purchase order (DRAFT only).
 
 ---
@@ -396,12 +432,15 @@ Delete purchase order (DRAFT only).
 ### 2.2 Requisitions
 
 #### GET /api/requisitions
+
 List all requisitions.
 
 #### POST /api/requisitions
+
 Create new requisition.
 
 **Request Body:**
+
 ```json
 {
   "documentNumber": "REQ-2024-NEW",
@@ -420,12 +459,15 @@ Create new requisition.
 ```
 
 #### GET /api/requisitions/:id
+
 Get specific requisition.
 
 #### PUT /api/requisitions/:id
+
 Update requisition.
 
 #### DELETE /api/requisitions/:id
+
 Delete requisition.
 
 ---
@@ -433,12 +475,15 @@ Delete requisition.
 ### 2.3 Payment Vouchers
 
 #### GET /api/payment-vouchers
+
 List all payment vouchers.
 
 #### POST /api/payment-vouchers
+
 Create new payment voucher.
 
 **Request Body:**
+
 ```json
 {
   "documentNumber": "PV-2024-NEW",
@@ -452,12 +497,15 @@ Create new payment voucher.
 ```
 
 #### GET /api/payment-vouchers/:id
+
 Get specific payment voucher.
 
 #### PUT /api/payment-vouchers/:id
+
 Update payment voucher.
 
 #### DELETE /api/payment-vouchers/:id
+
 Delete payment voucher.
 
 ---
@@ -465,12 +513,15 @@ Delete payment voucher.
 ### 2.4 Goods Received Notes
 
 #### GET /api/goods-received-notes
+
 List all GRNs.
 
 #### POST /api/goods-received-notes
+
 Create new GRN.
 
 **Request Body:**
+
 ```json
 {
   "documentNumber": "GRN-2024-NEW",
@@ -485,12 +536,15 @@ Create new GRN.
 ```
 
 #### GET /api/goods-received-notes/:id
+
 Get specific GRN.
 
 #### PUT /api/goods-received-notes/:id
+
 Update GRN.
 
 #### DELETE /api/goods-received-notes/:id
+
 Delete GRN.
 
 ---
@@ -498,12 +552,15 @@ Delete GRN.
 ### 2.5 Budgets
 
 #### GET /api/budgets
+
 List all budgets.
 
 #### POST /api/budgets
+
 Create new budget.
 
 **Request Body:**
+
 ```json
 {
   "name": "Q1 2025 IT Budget",
@@ -517,12 +574,15 @@ Create new budget.
 ```
 
 #### GET /api/budgets/:id
+
 Get specific budget.
 
 #### PUT /api/budgets/:id
+
 Update budget.
 
 #### DELETE /api/budgets/:id
+
 Delete budget.
 
 ---
@@ -530,9 +590,11 @@ Delete budget.
 ## 3. Search & Filter
 
 ### GET /api/search
+
 Unified search across all document types.
 
 **Query Parameters:**
+
 ```
 documentNumber=PO-2024
 documentType=PURCHASE_ORDER  (or ALL)
@@ -544,6 +606,7 @@ sortBy=createdAt, sortOrder=DESC
 ```
 
 **Response (200 OK):**
+
 ```json
 {
   "success": true,
@@ -575,9 +638,11 @@ sortBy=createdAt, sortOrder=DESC
 ## 4. Approval Workflows
 
 ### GET /api/approvals/tasks
+
 Get approval tasks assigned to current user.
 
 **Query Parameters:**
+
 ```
 status=pending  (pending, approved, rejected)
 limit=10, page=1
@@ -585,6 +650,7 @@ sortBy=createdAt
 ```
 
 **Response (200 OK):**
+
 ```json
 {
   "success": true,
@@ -616,9 +682,11 @@ sortBy=createdAt
 ---
 
 ### GET /api/approvals/tasks/:taskId
+
 Get specific approval task details.
 
 **Response (200 OK):**
+
 ```json
 {
   "success": true,
@@ -642,9 +710,11 @@ Get specific approval task details.
 ---
 
 ### POST /api/approvals/tasks/:taskId/approve
+
 Approve a task.
 
 **Request Body:**
+
 ```json
 {
   "approverId": "user-5",
@@ -655,6 +725,7 @@ Approve a task.
 ```
 
 **Response (200 OK):**
+
 ```json
 {
   "success": true,
@@ -673,9 +744,11 @@ Approve a task.
 ---
 
 ### POST /api/approvals/tasks/:taskId/reject
+
 Reject a task.
 
 **Request Body:**
+
 ```json
 {
   "rejectingUserId": "user-5",
@@ -685,6 +758,7 @@ Reject a task.
 ```
 
 **Response (200 OK):**
+
 ```json
 {
   "success": true,
@@ -701,9 +775,11 @@ Reject a task.
 ---
 
 ### POST /api/approvals/tasks/:taskId/reassign
+
 Reassign task to another approver.
 
 **Request Body:**
+
 ```json
 {
   "reassignedBy": "user-5",
@@ -714,6 +790,7 @@ Reassign task to another approver.
 ```
 
 **Response (200 OK):**
+
 ```json
 {
   "success": true,
@@ -730,9 +807,11 @@ Reassign task to another approver.
 ---
 
 ### POST /api/approvals/submit
+
 Submit document for approval.
 
 **Request Body:**
+
 ```json
 {
   "documentId": "po-550e8400",
@@ -742,6 +821,7 @@ Submit document for approval.
 ```
 
 **Response (200 OK):**
+
 ```json
 {
   "success": true,
@@ -758,9 +838,11 @@ Submit document for approval.
 ---
 
 ### GET /api/approvals/history/:documentId
+
 Get approval history for a document.
 
 **Response (200 OK):**
+
 ```json
 {
   "success": true,
@@ -784,9 +866,11 @@ Get approval history for a document.
 ---
 
 ### POST /api/approvals/reverse
+
 Reverse an approved document (return to draft).
 
 **Request Body:**
+
 ```json
 {
   "documentId": "po-550e8400",
@@ -796,6 +880,7 @@ Reverse an approved document (return to draft).
 ```
 
 **Response (200 OK):**
+
 ```json
 {
   "success": true,
@@ -812,9 +897,11 @@ Reverse an approved document (return to draft).
 ---
 
 ### POST /api/approvals/validate-signature
+
 Validate signature for document approval.
 
 **Request Body:**
+
 ```json
 {
   "signature": "base64-encoded-signature",
@@ -823,6 +910,7 @@ Validate signature for document approval.
 ```
 
 **Response (200 OK):**
+
 ```json
 {
   "success": true,
@@ -837,9 +925,11 @@ Validate signature for document approval.
 ---
 
 ### GET /api/approvals/available-approvers/:taskId
+
 Get list of available approvers for reassignment.
 
 **Response (200 OK):**
+
 ```json
 {
   "success": true,
@@ -860,9 +950,11 @@ Get list of available approvers for reassignment.
 ## 5. Bulk Operations
 
 ### POST /api/approvals/bulk/approve
+
 Approve multiple tasks at once.
 
 **Request Body:**
+
 ```json
 {
   "taskIds": ["task-550e8400", "task-550e8401", "task-550e8402"],
@@ -873,6 +965,7 @@ Approve multiple tasks at once.
 ```
 
 **Response (200 OK):**
+
 ```json
 {
   "success": true,
@@ -894,9 +987,11 @@ Approve multiple tasks at once.
 ---
 
 ### POST /api/approvals/bulk/reject
+
 Reject multiple tasks at once.
 
 **Request Body:**
+
 ```json
 {
   "taskIds": ["task-550e8400", "task-550e8401"],
@@ -907,6 +1002,7 @@ Reject multiple tasks at once.
 ```
 
 **Response (200 OK):**
+
 ```json
 {
   "success": true,
@@ -922,9 +1018,11 @@ Reject multiple tasks at once.
 ---
 
 ### POST /api/approvals/bulk/reassign
+
 Reassign multiple tasks to another approver.
 
 **Request Body:**
+
 ```json
 {
   "taskIds": ["task-550e8400", "task-550e8401"],
@@ -936,6 +1034,7 @@ Reassign multiple tasks to another approver.
 ```
 
 **Response (200 OK):**
+
 ```json
 {
   "success": true,
@@ -953,9 +1052,11 @@ Reassign multiple tasks to another approver.
 ## 6. User Management
 
 ### GET /api/users
+
 List all users in the system.
 
 **Query Parameters:**
+
 ```
 role=approver  (requester, approver, admin, finance, warehouse)
 department=IT
@@ -965,6 +1066,7 @@ search=john
 ```
 
 **Response (200 OK):**
+
 ```json
 {
   "success": true,
@@ -994,9 +1096,11 @@ search=john
 ---
 
 ### GET /api/users/:userId
+
 Get specific user profile.
 
 **Response (200 OK):**
+
 ```json
 {
   "success": true,
@@ -1017,9 +1121,11 @@ Get specific user profile.
 ---
 
 ### POST /api/users
+
 Create new user (admin only).
 
 **Request Body:**
+
 ```json
 {
   "name": "Jane Smith",
@@ -1031,6 +1137,7 @@ Create new user (admin only).
 ```
 
 **Response (201 Created):**
+
 ```json
 {
   "success": true,
@@ -1047,9 +1154,11 @@ Create new user (admin only).
 ---
 
 ### PUT /api/users/:userId
+
 Update user information (admin or self).
 
 **Request Body:**
+
 ```json
 {
   "name": "Jane Doe",
@@ -1059,6 +1168,7 @@ Update user information (admin or self).
 ```
 
 **Response (200 OK):**
+
 ```json
 {
   "success": true,
@@ -1076,9 +1186,11 @@ Update user information (admin or self).
 ---
 
 ### DELETE /api/users/:userId
+
 Deactivate or delete user (admin only).
 
 **Response (200 OK):**
+
 ```json
 {
   "success": true,
@@ -1090,9 +1202,11 @@ Deactivate or delete user (admin only).
 ---
 
 ### POST /api/users/:userId/activate
+
 Activate a deactivated user.
 
 **Response (200 OK):**
+
 ```json
 {
   "success": true,
@@ -1104,9 +1218,11 @@ Activate a deactivated user.
 ---
 
 ### POST /api/users/:userId/reset-password
+
 Admin reset user password.
 
 **Request Body:**
+
 ```json
 {
   "newPassword": "tempPassword456"
@@ -1114,6 +1230,7 @@ Admin reset user password.
 ```
 
 **Response (200 OK):**
+
 ```json
 {
   "success": true,
@@ -1127,9 +1244,11 @@ Admin reset user password.
 ## 7. Role-Based Access Control (RBAC)
 
 ### GET /api/rbac/roles
+
 Get all roles in system.
 
 **Response (200 OK):**
+
 ```json
 {
   "success": true,
@@ -1156,19 +1275,23 @@ Get all roles in system.
 ---
 
 ### GET /api/rbac/roles/builtin
+
 Get built-in roles only.
 
 ---
 
 ### GET /api/rbac/roles/custom
+
 Get custom roles only.
 
 ---
 
 ### GET /api/rbac/roles/:roleId
+
 Get specific role details.
 
 **Response (200 OK):**
+
 ```json
 {
   "success": true,
@@ -1191,22 +1314,21 @@ Get specific role details.
 ---
 
 ### POST /api/rbac/roles
+
 Create custom role (admin only).
 
 **Request Body:**
+
 ```json
 {
   "name": "Department Manager",
   "description": "Manage department requisitions",
-  "permissions": [
-    "CREATE_REQUISITION",
-    "APPROVE_REQUISITION",
-    "VIEW_REPORTS"
-  ]
+  "permissions": ["CREATE_REQUISITION", "APPROVE_REQUISITION", "VIEW_REPORTS"]
 }
 ```
 
 **Response (201 Created):**
+
 ```json
 {
   "success": true,
@@ -1222,9 +1344,11 @@ Create custom role (admin only).
 ---
 
 ### PUT /api/rbac/roles/:roleId
+
 Update custom role.
 
 **Request Body:**
+
 ```json
 {
   "name": "Updated Role Name",
@@ -1234,6 +1358,7 @@ Update custom role.
 ```
 
 **Response (200 OK):**
+
 ```json
 {
   "success": true,
@@ -1248,14 +1373,17 @@ Update custom role.
 ---
 
 ### DELETE /api/rbac/roles/:roleId
+
 Delete custom role (built-in roles cannot be deleted).
 
 ---
 
 ### POST /api/rbac/roles/:roleId/permissions
+
 Add permission to role.
 
 **Request Body:**
+
 ```json
 {
   "permission": "EXPORT_DOCUMENTS"
@@ -1265,14 +1393,17 @@ Add permission to role.
 ---
 
 ### DELETE /api/rbac/roles/:roleId/permissions/:permission
+
 Remove permission from role.
 
 ---
 
 ### GET /api/rbac/permissions
+
 Get all available permissions.
 
 **Response (200 OK):**
+
 ```json
 {
   "success": true,
@@ -1297,9 +1428,11 @@ Get all available permissions.
 ---
 
 ### POST /api/rbac/check
+
 Check if user has specific permission.
 
 **Request Body:**
+
 ```json
 {
   "userId": "user-1",
@@ -1308,6 +1441,7 @@ Check if user has specific permission.
 ```
 
 **Response (200 OK):**
+
 ```json
 {
   "success": true,
@@ -1325,9 +1459,11 @@ Check if user has specific permission.
 ## 8. Notifications
 
 ### GET /api/notifications
+
 Get notifications for current user.
 
 **Query Parameters:**
+
 ```
 page=1, pageSize=20
 type=ASSIGNMENT  (type filter)
@@ -1336,6 +1472,7 @@ startDate=2024-12-01, endDate=2024-12-31
 ```
 
 **Response (200 OK):**
+
 ```json
 {
   "success": true,
@@ -1363,9 +1500,11 @@ startDate=2024-12-01, endDate=2024-12-31
 ---
 
 ### GET /api/notifications/unread-count
+
 Get count of unread notifications.
 
 **Response (200 OK):**
+
 ```json
 {
   "success": true,
@@ -1379,9 +1518,11 @@ Get count of unread notifications.
 ---
 
 ### POST /api/notifications/:notificationId/read
+
 Mark notification as read.
 
 **Response (200 OK):**
+
 ```json
 {
   "success": true,
@@ -1393,9 +1534,11 @@ Mark notification as read.
 ---
 
 ### POST /api/notifications/read-all
+
 Mark all notifications as read.
 
 **Response (200 OK):**
+
 ```json
 {
   "success": true,
@@ -1407,14 +1550,17 @@ Mark all notifications as read.
 ---
 
 ### DELETE /api/notifications/:notificationId
+
 Delete notification.
 
 ---
 
 ### GET /api/notifications/preferences
+
 Get user notification preferences.
 
 **Response (200 OK):**
+
 ```json
 {
   "success": true,
@@ -1436,9 +1582,11 @@ Get user notification preferences.
 ---
 
 ### PUT /api/notifications/preferences
+
 Update notification preferences.
 
 **Request Body:**
+
 ```json
 {
   "emailNotifications": true,
@@ -1455,9 +1603,11 @@ Update notification preferences.
 ## 9. Analytics & Reporting
 
 ### GET /api/analytics/dashboard
+
 Get dashboard metrics and KPIs.
 
 **Query Parameters:**
+
 ```
 startDate=2024-01-01
 endDate=2024-12-31
@@ -1465,6 +1615,7 @@ groupBy=week  (day, week, month)
 ```
 
 **Response (200 OK):**
+
 ```json
 {
   "success": true,
@@ -1506,9 +1657,11 @@ groupBy=week  (day, week, month)
 ---
 
 ### GET /api/analytics/bottlenecks
+
 Identify approval workflow bottlenecks.
 
 **Response (200 OK):**
+
 ```json
 {
   "success": true,
@@ -1530,9 +1683,11 @@ Identify approval workflow bottlenecks.
 ---
 
 ### GET /api/analytics/metrics
+
 Get approval metrics by user/department.
 
 **Query Parameters:**
+
 ```
 userId=user-5
 department=Finance
@@ -1540,6 +1695,7 @@ startDate=2024-01-01, endDate=2024-12-31
 ```
 
 **Response (200 OK):**
+
 ```json
 {
   "success": true,
@@ -1557,9 +1713,11 @@ startDate=2024-01-01, endDate=2024-12-31
 ---
 
 ### GET /api/analytics/trends
+
 Get workflow trends over time.
 
 **Query Parameters:**
+
 ```
 startDate=2024-01-01
 endDate=2024-12-31
@@ -1571,9 +1729,11 @@ groupBy=week
 ## 10. Configuration Management
 
 ### GET /api/config/branches
+
 List all branches/locations.
 
 **Response (200 OK):**
+
 ```json
 {
   "success": true,
@@ -1598,14 +1758,17 @@ List all branches/locations.
 ---
 
 ### GET /api/config/branches/:id
+
 Get specific branch.
 
 ---
 
 ### POST /api/config/branches
+
 Create new branch (admin only).
 
 **Request Body:**
+
 ```json
 {
   "name": "Southern Region",
@@ -1617,19 +1780,23 @@ Create new branch (admin only).
 ---
 
 ### PUT /api/config/branches/:id
+
 Update branch.
 
 ---
 
 ### DELETE /api/config/branches/:id
+
 Delete branch.
 
 ---
 
 ### GET /api/config/currencies
+
 Get list of supported currencies.
 
 **Response (200 OK):**
+
 ```json
 {
   "success": true,
@@ -1652,11 +1819,13 @@ Get list of supported currencies.
 ---
 
 ### GET /api/config/event-hosts
+
 Get event hosts for calendar.
 
 ---
 
 ### GET /api/config/premium
+
 Get premium configuration settings.
 
 ---
@@ -1664,9 +1833,11 @@ Get premium configuration settings.
 ## 11. System & Health
 
 ### GET /api/health
+
 Health check endpoint.
 
 **Response (200 OK):**
+
 ```json
 {
   "success": true,
@@ -1685,9 +1856,11 @@ Health check endpoint.
 ---
 
 ### GET /api/config
+
 Get system configuration.
 
 **Response (200 OK):**
+
 ```json
 {
   "success": true,
@@ -1723,6 +1896,7 @@ Get system configuration.
 All endpoints follow this standardized response format:
 
 ### Success Response
+
 ```json
 {
   "success": true,
@@ -1734,6 +1908,7 @@ All endpoints follow this standardized response format:
 ```
 
 ### Error Response
+
 ```json
 {
   "success": false,
@@ -1751,17 +1926,17 @@ All endpoints follow this standardized response format:
 
 ## HTTP Status Codes
 
-| Code | Meaning | Usage |
-|------|---------|-------|
-| 200 | OK | Successful GET/PUT/DELETE |
-| 201 | Created | Successful POST |
-| 400 | Bad Request | Invalid parameters |
-| 401 | Unauthorized | Missing/invalid authentication |
-| 403 | Forbidden | Insufficient permissions |
-| 404 | Not Found | Resource doesn't exist |
-| 409 | Conflict | Resource conflict |
-| 500 | Server Error | Unexpected server error |
-| 503 | Unavailable | Service unavailable |
+| Code | Meaning      | Usage                          |
+| ---- | ------------ | ------------------------------ |
+| 200  | OK           | Successful GET/PUT/DELETE      |
+| 201  | Created      | Successful POST                |
+| 400  | Bad Request  | Invalid parameters             |
+| 401  | Unauthorized | Missing/invalid authentication |
+| 403  | Forbidden    | Insufficient permissions       |
+| 404  | Not Found    | Resource doesn't exist         |
+| 409  | Conflict     | Resource conflict              |
+| 500  | Server Error | Unexpected server error        |
+| 503  | Unavailable  | Service unavailable            |
 
 ---
 
@@ -1791,39 +1966,43 @@ X-RateLimit-Reset: 1702400400
 
 **Total Endpoints: 80+**
 
-| Category | Count | Examples |
-|----------|-------|----------|
-| Authentication | 11 | Login, Register, Password Reset |
-| Documents | 25 | CRUD for 5 document types |
-| Approvals | 10 | Approve, Reject, Reassign, History |
-| Bulk Operations | 3 | Bulk Approve, Reject, Reassign |
-| Users | 8 | List, Create, Update, Delete, Reset |
-| RBAC | 9 | Roles, Permissions, Check Access |
-| Notifications | 6 | Get, Mark Read, Preferences |
-| Analytics | 4 | Dashboard, Bottlenecks, Metrics, Trends |
-| Configuration | 6 | Branches, Currencies, Hosts |
-| System | 2 | Health, Config |
+| Category        | Count | Examples                                |
+| --------------- | ----- | --------------------------------------- |
+| Authentication  | 11    | Login, Register, Password Reset         |
+| Documents       | 25    | CRUD for 5 document types               |
+| Approvals       | 10    | Approve, Reject, Reassign, History      |
+| Bulk Operations | 3     | Bulk Approve, Reject, Reassign          |
+| Users           | 8     | List, Create, Update, Delete, Reset     |
+| RBAC            | 9     | Roles, Permissions, Check Access        |
+| Notifications   | 6     | Get, Mark Read, Preferences             |
+| Analytics       | 4     | Dashboard, Bottlenecks, Metrics, Trends |
+| Configuration   | 6     | Branches, Currencies, Hosts             |
+| System          | 2     | Health, Config                          |
 
 ---
 
 ## Implementation Roadmap
 
 ### Phase 12a (Weeks 1-2)
+
 - [ ] Implement auth endpoints
 - [ ] Implement document CRUD endpoints
 - [ ] Implement user management
 
 ### Phase 12b (Weeks 3-4)
+
 - [ ] Implement approval workflow endpoints
 - [ ] Implement RBAC endpoints
 - [ ] Add authentication/authorization middleware
 
 ### Phase 12c (Weeks 5-6)
+
 - [ ] Implement bulk operations
 - [ ] Implement notifications
 - [ ] Implement analytics endpoints
 
 ### Phase 12d (Weeks 7-8)
+
 - [ ] Implement configuration endpoints
 - [ ] Add comprehensive testing
 - [ ] Performance optimization

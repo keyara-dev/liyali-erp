@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { loginAction } from "@/app/_actions/auth-actions";
+import { loginAction } from "@/app/_actions/auth";
 import { AlertCircle } from "lucide-react";
 
 export function LoginForm() {
@@ -36,27 +36,6 @@ export function LoginForm() {
     }
   };
 
-  const handleDemoLogin = async (demoEmail: string) => {
-    setEmail(demoEmail);
-    setPassword("password123");
-    setError("");
-    setIsLoading(true);
-
-    try {
-      const result = await loginAction(demoEmail, "password123");
-
-      if (!result.success) {
-        setError(result.message || "Login failed");
-        setIsLoading(false);
-        return;
-      }
-
-      router.push("/home");
-    } catch (err: any) {
-      setError(err.message || "An error occurred");
-      setIsLoading(false);
-    }
-  };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
@@ -103,55 +82,6 @@ export function LoginForm() {
       >
         Sign In
       </Button>
-
-      {/* Quick Demo Buttons */}
-      <div className="space-y-2 pt-2">
-        <p className="text-xs text-muted-foreground text-center">
-          Or use a demo account:
-        </p>
-        <div className="grid grid-cols-2 gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => handleDemoLogin("requester@liyali.com")}
-            disabled={isLoading}
-            className="text-xs"
-          >
-            👤 Requester
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => handleDemoLogin("admin@liyali.com")}
-            disabled={isLoading}
-            className="text-xs"
-          >
-            ⚙️ Admin
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => handleDemoLogin("finance@liyali.com")}
-            disabled={isLoading}
-            className="text-xs"
-          >
-            💼 Finance
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => handleDemoLogin("director@liyali.com")}
-            disabled={isLoading}
-            className="text-xs"
-          >
-            👔 Director
-          </Button>
-        </div>
-      </div>
     </form>
   );
 }

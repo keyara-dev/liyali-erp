@@ -508,9 +508,7 @@ export default function UsersDataTable({
   // Get unique roles from data
   const uniqueRoles = React.useMemo(() => {
     return Array.from(
-      new Set(
-        data.filter((user) => user.role).map((user) => user.role)
-      )
+      new Set(data.filter((user) => user.role).map((user) => user.role))
     ).sort();
   }, [data]);
 
@@ -518,9 +516,7 @@ export default function UsersDataTable({
   const uniqueDepartments = React.useMemo(() => {
     return Array.from(
       new Set(
-        data
-          .filter((user) => user.department)
-          .map((user) => user.department!)
+        data.filter((user) => user.department).map((user) => user.department!)
       )
     ).sort();
   }, [data]);
@@ -756,7 +752,7 @@ export default function UsersDataTable({
       />
       <CreateUserForm
         showTrigger={false}
-        user_type="ADMIN"
+        role="ADMIN"
         isOpenModal={!!editingUser}
         user={editingUser}
         setIsOpenModal={(open) => {

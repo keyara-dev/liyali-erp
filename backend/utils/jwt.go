@@ -11,25 +11,32 @@ import (
 
 // CustomClaims represents JWT claims
 type CustomClaims struct {
-	UserID string `json:"sub"`
-	Email  string `json:"email"`
-	Name   string `json:"name"`
-	Role   string `json:"role"`
+	UserID       string `json:"sub"`
+	Email        string `json:"email"`
+	Name         string `json:"name"`
+	Role         string `json:"role"`
+	CurrentOrgID string `json:"currentOrgId,omitempty"` // Current organization ID
 	jwt.RegisteredClaims
 }
 
 // GenerateToken generates a new JWT token
-func GenerateToken(userID, email, name, role string) (string, error) {
+func GenerateToken(userID, email, name, role string, currentOrgID *string) (string, error) {
 	secret := os.Getenv("JWT_SECRET")
 	if secret == "" {
 		return "", fmt.Errorf("JWT_SECRET not configured")
 	}
 
+	orgID := ""
+	if currentOrgID != nil {
+		orgID = *currentOrgID
+	}
+
 	claims := CustomClaims{
-		UserID: userID,
-		Email:  email,
-		Name:   name,
-		Role:   role,
+		UserID:       userID,
+		Email:        email,
+		Name:         name,
+		Role:         role,
+		CurrentOrgID: orgID,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)), // 24 hour expiration
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
@@ -82,7 +89,12 @@ func RefreshToken(claims *CustomClaims) (string, error) {
 	claims.ExpiresAt = jwt.NewNumericDate(time.Now().Add(24 * time.Hour))
 	claims.IssuedAt = jwt.NewNumericDate(time.Now())
 
-	return GenerateToken(claims.UserID, claims.Email, claims.Name, claims.Role)
+	var orgID *string
+	if claims.CurrentOrgID != "" {
+		orgID = &claims.CurrentOrgID
+	}
+
+	return GenerateToken(claims.UserID, claims.Email, claims.Name, claims.Role, orgID)
 }
 
 // GenerateUserID generates a unique user ID

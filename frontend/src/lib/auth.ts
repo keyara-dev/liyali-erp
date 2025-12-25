@@ -138,91 +138,6 @@ export async function decrypt(token: any) {
 }
 
 // ============================================================================
-// DEMO USERS (SIMULATED AUTH)
-// ============================================================================
-
-export const DEMO_USERS: Record<string, { password: string; user: AuthUser }> =
-  {
-    "requester@liyali.com": {
-      password: "password123",
-      user: {
-        id: "user-001",
-        name: "John Requester",
-        email: "requester@liyali.com",
-        role: "REQUESTER",
-        department: "Operations",
-        avatar: "👤",
-      },
-    },
-    "manager@liyali.com": {
-      password: "password123",
-      user: {
-        id: "user-002",
-        name: "Sarah Manager",
-        email: "manager@liyali.com",
-        role: "DEPARTMENT_MANAGER",
-        department: "Finance",
-        avatar: "👥",
-      },
-    },
-    "finance@liyali.com": {
-      password: "password123",
-      user: {
-        id: "user-003",
-        name: "James Finance",
-        email: "finance@liyali.com",
-        role: "FINANCE_OFFICER",
-        department: "Finance",
-        avatar: "💼",
-      },
-    },
-    "director@liyali.com": {
-      password: "password123",
-      user: {
-        id: "user-004",
-        name: "Paul Director",
-        email: "director@liyali.com",
-        role: "DIRECTOR",
-        department: "Executive",
-        avatar: "👔",
-      },
-    },
-    "cfo@liyali.com": {
-      password: "password123",
-      user: {
-        id: "user-005",
-        name: "Michelle CFO",
-        email: "cfo@liyali.com",
-        role: "CFO",
-        department: "Finance",
-        avatar: "💎",
-      },
-    },
-    "compliance@liyali.com": {
-      password: "password123",
-      user: {
-        id: "user-006",
-        name: "David Compliance",
-        email: "compliance@liyali.com",
-        role: "COMPLIANCE_OFFICER",
-        department: "Compliance",
-        avatar: "✅",
-      },
-    },
-    "admin@liyali.com": {
-      password: "password123",
-      user: {
-        id: "user-007",
-        name: "Admin User",
-        email: "admin@liyali.com",
-        role: "ADMIN",
-        department: "Administration",
-        avatar: "⚙️",
-      },
-    },
-  };
-
-// ============================================================================
 // BASIC AUTH FUNCTIONS (SIMULATED)
 // ============================================================================
 
@@ -242,57 +157,48 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
   return (session?.user as AuthUser) || null;
 }
 
-/**
- * Simulate login - validate credentials and create JWT session
- */
-export async function login(
-  email: string,
-  password: string
-): Promise<{ success: boolean; user?: AuthUser; error?: string }> {
-  const userConfig = DEMO_USERS[email.toLowerCase()];
+export async function createAuthSession({
+  access_token,
+  role,
+  user_id,
+  change_password,
+  mfa_required,
+  organization_id,
+}: {
+  access_token: string;
+  role: UserType;
+  user_id?: string;
+  change_password?: boolean;
+  mfa_required?: boolean;
+  organization_id?: string;
+}): Promise<void> {
+  // Use centralized session config for 30-minute session
+  const expiresAt = new Date(Date.now() + SESSION_CONFIG.SESSION_TTL);
 
-  if (!userConfig) {
-    return { success: false, error: "User not found" };
-  }
+  const newSession: AuthSession = {
+    access_token: access_token || "",
+    role,
+    user_id,
+    change_password,
+    mfa_required,
+    organization_id,
+    expiresAt,
+  };
 
-  if (userConfig.password !== password) {
-    return { success: false, error: "Invalid password" };
-  }
+  // Call `encrypt` to generate the session token (30 minutes)
+  const token = await encrypt(newSession, "30m");
 
-  const user = userConfig.user;
-
-  // Create JWT session with 30-minute expiration
-  try {
-    const accessToken = `token_${user.id}_${Date.now()}`;
-    const expiresAt = new Date(Date.now() + SESSION_CONFIG.SESSION_TTL);
-
-    const newSession: AuthSession = {
-      accessToken,
-      user_type: user.role,
-      user_id: user.id,
-      user,
-      expiresAt,
-    };
-
-    const token = await encrypt(newSession, "30m");
-
-    if (token) {
-      const cookieStore = await cookies();
-      cookieStore.set(AUTH_SESSION, token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        expires: expiresAt,
-        sameSite: "strict",
-        path: "/",
-      });
-    }
-
-    return { success: true, user };
-  } catch (error: any) {
-    return {
-      success: false,
-      error: error.message || "Failed to create session",
-    };
+  // Ensure `session` is successfully created before setting the cookie
+  if (token) {
+    (await cookies()).set(AUTH_SESSION, token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      expires: expiresAt,
+      sameSite: "strict",
+      path: "/",
+    });
+  } else {
+    throw new Error("Failed to create session token.");
   }
 }
 
@@ -315,17 +221,6 @@ export async function hasRole(
 export async function isAdmin(): Promise<boolean> {
   const user = await getCurrentUser();
   return user?.role === "ADMIN";
-}
-
-/**
- * Get all demo users (for development)
- */
-export async function getDemoUsers() {
-  return Object.entries(DEMO_USERS).map(([email, config]) => ({
-    ...config.user,
-    email: email,
-    password: config.password,
-  }));
 }
 
 // ============================================================================
@@ -404,7 +299,7 @@ export async function verifySession(): Promise<{
 
     const session = decrypted as unknown as AuthSession;
 
-    if (!session?.accessToken) {
+    if (!session?.access_token) {
       return { isAuthenticated: false, session: null };
     }
 
@@ -421,7 +316,7 @@ export async function verifySession(): Promise<{
     return {
       isAuthenticated: true,
       session: session,
-      user_type: session.user_type,
+      role: session.role,
     };
   } catch (error) {
     console.error("[verifySession] Error:", error);

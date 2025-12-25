@@ -2,7 +2,10 @@
 
 import { revalidatePath } from "next/cache";
 import type { APIResponse } from "@/types";
-import authenticatedApiClient, { handleError, successResponse } from "./api-config";
+import authenticatedApiClient, {
+  handleError,
+  successResponse,
+} from "./api-config";
 import { User, UserType } from "@/types/auth";
 
 export async function createNewUser({
@@ -14,7 +17,7 @@ export async function createNewUser({
   last_name,
   branch_id,
   department_id,
-  role_id
+  role_id,
 }: {
   username: string;
   email: string;
@@ -25,7 +28,7 @@ export async function createNewUser({
   branch_id: string;
   department_id: string;
   role_id: string;
-  user_type?: UserType;
+  role?: UserType;
 }): Promise<APIResponse> {
   const url = `/api/v1/users`;
 
@@ -40,9 +43,9 @@ export async function createNewUser({
         last_name,
         branch_id,
         department_id,
-        role_id
+        role_id,
       },
-      method: "POST"
+      method: "POST",
     });
     revalidatePath("/dashboard/system-configs/users");
 
@@ -66,15 +69,18 @@ export async function getUsers(params?: {
   const queryParams = new URLSearchParams();
 
   if (params?.branchId) queryParams.append("branch_id", params.branchId);
-  if (params?.departmentId) queryParams.append("department_id", params.departmentId);
+  if (params?.departmentId)
+    queryParams.append("department_id", params.departmentId);
   if (params?.roleId) queryParams.append("role_id", params.roleId);
-  if (params?.isActive !== undefined) queryParams.append("is_active", String(params.isActive));
+  if (params?.isActive !== undefined)
+    queryParams.append("is_active", String(params.isActive));
   if (params?.isLdapUser !== undefined)
     queryParams.append("is_ldap_user", String(params.isLdapUser));
   if (params?.search) queryParams.append("search", params.search);
   if (params?.role) queryParams.append("role", params.role);
   if (params?.page) queryParams.append("page", String(params.page));
-  if (params?.page_size) queryParams.append("page_size", String(params.page_size));
+  if (params?.page_size)
+    queryParams.append("page_size", String(params.page_size));
 
   const url = `/api/v1/users${queryParams.toString() ? `?${queryParams.toString()}` : ""}`;
 
@@ -94,11 +100,14 @@ export async function getHeadsOfDepartments(params?: {
 }): Promise<APIResponse> {
   const queryParams = new URLSearchParams();
 
-  if (params?.department_id) queryParams.append("department_id", params.department_id);
+  if (params?.department_id)
+    queryParams.append("department_id", params.department_id);
   if (params?.role_id) queryParams.append("role_id", params.role_id);
-  if (params?.is_active !== undefined) queryParams.append("is_active", String(params.is_active));
+  if (params?.is_active !== undefined)
+    queryParams.append("is_active", String(params.is_active));
   if (params?.page) queryParams.append("page", String(params.page));
-  if (params?.page_size) queryParams.append("page_size", String(params.page_size));
+  if (params?.page_size)
+    queryParams.append("page_size", String(params.page_size));
 
   const url = `/api/v1/users/department-heads/list${queryParams.toString() ? `?${queryParams.toString()}` : ""}`;
 
@@ -110,9 +119,12 @@ export async function getHeadsOfDepartments(params?: {
   }
 }
 
-export async function getDepartmentHeads(params?: { departmentId?: string }): Promise<APIResponse> {
+export async function getDepartmentHeads(params?: {
+  departmentId?: string;
+}): Promise<APIResponse> {
   const queryParams = new URLSearchParams();
-  if (params?.departmentId) queryParams.append("department_id", params.departmentId);
+  if (params?.departmentId)
+    queryParams.append("department_id", params.departmentId);
   const url = `/api/v1/users/department-heads/list${queryParams.toString() ? `?${queryParams.toString()}` : ""}`;
   try {
     const response = await authenticatedApiClient({ url: url, method: "GET" });
@@ -127,19 +139,32 @@ export async function getUserById(id: string): Promise<APIResponse> {
 
   try {
     const response = await authenticatedApiClient({ url: url, method: "GET" });
-    return successResponse(response.data.data?.data || response.data, "User fetched successfully");
+    return successResponse(
+      response.data.data?.data || response.data,
+      "User fetched successfully"
+    );
   } catch (error) {
     return handleError(error, "GET", url);
   }
 }
 
-export async function updateUser(id: string, data: Partial<User>): Promise<APIResponse> {
+export async function updateUser(
+  id: string,
+  data: Partial<User>
+): Promise<APIResponse> {
   const url = `/api/v1/users/${id}`;
 
   try {
-    const response = await authenticatedApiClient({ url: url, data: data, method: "PUT" });
+    const response = await authenticatedApiClient({
+      url: url,
+      data: data,
+      method: "PUT",
+    });
     revalidatePath("/dashboard/system-configs/users");
-    return successResponse(response.data.data || response.data, "User updated successfully");
+    return successResponse(
+      response.data.data || response.data,
+      "User updated successfully"
+    );
   } catch (error) {
     return handleError(error, "PUT", url);
   }
@@ -149,7 +174,10 @@ export async function deleteUser(id: string): Promise<APIResponse> {
   const url = `/api/v1/users/${id}`;
 
   try {
-    const response = await authenticatedApiClient({ url: url, method: "DELETE" });
+    const response = await authenticatedApiClient({
+      url: url,
+      method: "DELETE",
+    });
     revalidatePath("/dashboard/system-configs/users");
     return successResponse(response.data.data, "User deleted successfully");
   } catch (error) {
@@ -160,7 +188,10 @@ export async function deleteUser(id: string): Promise<APIResponse> {
 /**
  * Toggle user active status
  */
-export async function toggleUserStatus(id: string, isActive: boolean): Promise<APIResponse> {
+export async function toggleUserStatus(
+  id: string,
+  isActive: boolean
+): Promise<APIResponse> {
   try {
     // Fetch current user data first
     const userResponse = await getUserById(id);
@@ -170,7 +201,7 @@ export async function toggleUserStatus(id: string, isActive: boolean): Promise<A
         success: false,
         message: "Failed to fetch user data",
         data: null,
-        status: 400
+        status: 400,
       };
     }
 
@@ -183,14 +214,14 @@ export async function toggleUserStatus(id: string, isActive: boolean): Promise<A
       first_name: user.first_name,
       last_name: user.last_name,
       department_id: user.department_id,
-      is_active: isActive
+      is_active: isActive,
     });
   } catch (error) {
     return {
       success: false,
       message: "Failed to toggle user status",
       data: null,
-      status: 500
+      status: 500,
     };
   }
 }
@@ -198,7 +229,10 @@ export async function toggleUserStatus(id: string, isActive: boolean): Promise<A
 export async function deactivateUser(id: string): Promise<APIResponse> {
   const url = `/api/v1/users/${id}/deactivate`;
   try {
-    const response = await authenticatedApiClient({ url: url, method: "PATCH" });
+    const response = await authenticatedApiClient({
+      url: url,
+      method: "PATCH",
+    });
     revalidatePath("/dashboard/system-configs/users");
     return successResponse(response.data.data);
   } catch (error) {
@@ -209,7 +243,10 @@ export async function deactivateUser(id: string): Promise<APIResponse> {
 export async function activateUser(id: string): Promise<APIResponse> {
   const url = `/api/v1/users/${id}/activate`;
   try {
-    const response = await authenticatedApiClient({ url: url, method: "PATCH" });
+    const response = await authenticatedApiClient({
+      url: url,
+      method: "PATCH",
+    });
     revalidatePath("/dashboard/system-configs/users");
     return successResponse(response.data.data);
   } catch (error) {
@@ -220,7 +257,10 @@ export async function activateUser(id: string): Promise<APIResponse> {
 /**
  * Toggle user MFA
  */
-export async function toggleUserMFA(id: string, enabled: boolean): Promise<APIResponse> {
+export async function toggleUserMFA(
+  id: string,
+  enabled: boolean
+): Promise<APIResponse> {
   try {
     // Fetch current user data first
     const userResponse = await getUserById(id);
@@ -230,7 +270,7 @@ export async function toggleUserMFA(id: string, enabled: boolean): Promise<APIRe
         success: false,
         message: "Failed to fetch user data",
         data: null,
-        status: 400
+        status: 400,
       };
     }
 
@@ -243,14 +283,14 @@ export async function toggleUserMFA(id: string, enabled: boolean): Promise<APIRe
       first_name: user.first_name,
       last_name: user.last_name,
       department_id: user.department_id,
-      mfa_enabled: enabled
+      mfa_enabled: enabled,
     });
   } catch (error) {
     return {
       success: false,
       message: "Failed to toggle user MFA",
       data: null,
-      status: 500
+      status: 500,
     };
   }
 }
@@ -258,15 +298,18 @@ export async function toggleUserMFA(id: string, enabled: boolean): Promise<APIRe
 /**
  * Reset user password
  */
-export async function resetUserPassword(id: string, password: string): Promise<APIResponse> {
+export async function resetUserPassword(
+  id: string,
+  password: string
+): Promise<APIResponse> {
   const url = `/api/v1/users/${id}/reset-password`;
   try {
     const response = await authenticatedApiClient({
       url: url,
       method: "POST",
       data: {
-        new_password: password
-      }
+        new_password: password,
+      },
     });
     return successResponse(response.data, "Password reset successfully");
   } catch (error) {
