@@ -1,42 +1,28 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { useOrganizationContext } from '@/contexts/organization-context';
 import { useSession } from '@/hooks/use-session';
+import { useSelectOrganization, useLogout } from '@/hooks/use-organization-mutations';
 import { LogOut, Loader2, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { logoutAction } from '@/app/_actions/auth';
 import { cn } from '@/lib/utils';
 
 export default function WelcomePage() {
-  const router = useRouter();
   const { user } = useSession();
-  const { userOrganizations, currentOrganization, switchWorkspace, isLoading } = useOrganizationContext();
+  const { userOrganizations, currentOrganization, isLoading } = useOrganizationContext();
+  const { selectOrganization, isPending: isNavigating } = useSelectOrganization();
+  const { logout } = useLogout();
   const [selectedOrgId, setSelectedOrgId] = useState<string | null>(currentOrganization?.id ?? null);
-  const [isNavigating, setIsNavigating] = useState(false);
 
   const handleSelectOrganization = async (orgId: string) => {
     if (isNavigating) return;
-
     setSelectedOrgId(orgId);
-    setIsNavigating(true);
-    try {
-      await switchWorkspace(orgId);
-      router.push('/home');
-    } catch (error) {
-      console.error('Failed to switch organization:', error);
-      setIsNavigating(false);
-    }
+    await selectOrganization(orgId);
   };
 
   const handleLogout = async () => {
-    try {
-      await logoutAction();
-      router.push('/login');
-    } catch (error) {
-      console.error('Logout failed:', error);
-    }
+    await logout();
   };
 
   if (isLoading) {
