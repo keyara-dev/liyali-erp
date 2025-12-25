@@ -46,6 +46,36 @@ func SetupRoutes(app *fiber.App) {
 	orgMgmt.Get("/settings", handlers.GetOrganizationSettings)
 	orgMgmt.Put("/settings", handlers.UpdateOrganizationSettings)
 
+	// Organization role management (Phase 3.5)
+	orgRoles := tenant.Group("/organization/roles")
+	orgRoles.Get("/",
+		middleware.RequirePermission(config.DB, "organization", "manage_workflows"),
+		handlers.GetOrganizationRoles)
+	orgRoles.Post("/",
+		middleware.RequirePermission(config.DB, "organization", "manage_workflows"),
+		handlers.CreateOrganizationRole)
+	orgRoles.Put("/:roleId",
+		middleware.RequirePermission(config.DB, "organization", "manage_workflows"),
+		handlers.UpdateOrganizationRole)
+	orgRoles.Delete("/:roleId",
+		middleware.RequirePermission(config.DB, "organization", "manage_workflows"),
+		handlers.DeleteOrganizationRole)
+	orgRoles.Get("/:roleId/permissions",
+		middleware.RequirePermission(config.DB, "organization", "manage_workflows"),
+		handlers.GetRolePermissions)
+	orgRoles.Post("/:roleId/permissions/:permissionId",
+		middleware.RequirePermission(config.DB, "organization", "manage_workflows"),
+		handlers.AssignPermissionToRole)
+	orgRoles.Delete("/:roleId/permissions/:permissionId",
+		middleware.RequirePermission(config.DB, "organization", "manage_workflows"),
+		handlers.RemovePermissionFromRole)
+
+	// Organization permissions (Phase 3.5)
+	permissions := tenant.Group("/organization/permissions")
+	permissions.Get("/",
+		middleware.RequirePermission(config.DB, "organization", "manage_workflows"),
+		handlers.GetOrganizationPermissions)
+
 	// User routes (now tenant-scoped)
 	users := tenant.Group("/users")
 	users.Get("/", handlers.GetUsers)

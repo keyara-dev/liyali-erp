@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/liyali/liyali-gateway/models"
 	"gorm.io/gorm"
 )
 
@@ -206,14 +207,44 @@ func (ps *PermissionService) permissionExists(permissions []Permission, resource
 	return false
 }
 
-// getCustomPermissions retrieves custom permissions from the database for a user
-// This will be implemented in Phase 3.5 when custom roles are added
-// For Phase 3, this returns empty and we fall back to hardcoded permissions
+// getCustomPermissions retrieves custom permissions from the database for a user (Phase 3.5)
+// Queries the database for OrganizationRole and PermissionAssignment
+// to get the custom permissions defined for this role in this organization
 func (ps *PermissionService) getCustomPermissions(userID, organizationID, role string) ([]Permission, error) {
-	// TODO: Implement in Phase 3.5
-	// This would query the database for OrganizationRole and PermissionAssignment
-	// to get the custom permissions defined for this role in this organization
-	return nil, fmt.Errorf("custom permissions not yet implemented")
+	// Find the organization role by name in this organization
+	var orgRole models.OrganizationRole
+	if err := ps.db.Where("organization_id = ? AND name = ? AND is_active = ?",
+		organizationID, role, true).
+		First(&orgRole).Error; err != nil {
+		// Role not found in database (may be using system default role)
+		return nil, fmt.Errorf("custom role not found in database")
+	}
+
+	// Get all permissions for this role
+	var orgPerms []models.OrganizationPermission
+	if err := ps.db.
+		Joins("INNER JOIN permission_assignments ON permission_assignments.organization_permission_id = organization_permissions.id").
+		Where("permission_assignments.organization_role_id = ? AND organization_permissions.is_active = ?",
+			orgRole.ID, true).
+		Find(&orgPerms).Error; err != nil {
+		log.Printf("Error fetching permissions for role %s: %v", orgRole.ID, err)
+		return nil, fmt.Errorf("failed to fetch permissions")
+	}
+
+	// Convert to Permission structs
+	permissions := make([]Permission, 0, len(orgPerms))
+	for _, perm := range orgPerms {
+		permissions = append(permissions, Permission{
+			Resource: perm.Resource,
+			Action:   perm.Action,
+		})
+	}
+
+	if len(permissions) == 0 {
+		return nil, fmt.Errorf("no permissions found for role")
+	}
+
+	return permissions, nil
 }
 
 // GetRolePermissions returns all permissions for a given role
