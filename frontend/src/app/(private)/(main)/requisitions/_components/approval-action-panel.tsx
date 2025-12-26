@@ -1,13 +1,13 @@
 'use client'
 
 import { useState } from 'react'
-import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { SignatureCanvas } from '@/components/ui/signature-canvas'
-import { AlertCircle, Upload, Send, XCircle } from 'lucide-react'
-import { approveDocument, rejectDocument } from '@/app/_actions/workflow'
+import { Upload, Send, XCircle, Loader2 } from 'lucide-react'
+import { useApprovalTasks } from '@/hooks/use-approval-workflow'
+import { useApproveTask, useRejectTask } from '@/hooks/use-approval-workflow'
 import {
   Dialog,
   DialogContent,
@@ -29,60 +29,68 @@ export function ApprovalActionPanel({
   const [comments, setComments] = useState('')
   const [remarks, setRemarks] = useState('')
   const [signature, setSignature] = useState('')
-  const [isLoading, setIsLoading] = useState(false)
   const [showAttachmentDialog, setShowAttachmentDialog] = useState(false)
+
+  // Fetch approval tasks for this requisition
+  const { data: approvalTasks } = useApprovalTasks(
+    { documentType: 'REQUISITION', assignedToMe: true },
+    1,
+    100
+  )
+
+  // Find the approval task for this requisition
+  const task = approvalTasks?.find((t) => t.documentId === requisitionId)
+  const taskId = task?.id || ''
+
+  const approveMutation = useApproveTask(taskId, () => {
+    setComments('')
+    setRemarks('')
+    setSignature('')
+    setAction(null)
+    onApprovalComplete()
+  })
+
+  const rejectMutation = useRejectTask(taskId, () => {
+    setComments('')
+    setRemarks('')
+    setSignature('')
+    setAction(null)
+    onApprovalComplete()
+  })
 
   const handleApprove = async () => {
     if (!signature) {
-      toast.error('Signature is required to approve')
       return
     }
 
-    setIsLoading(true)
     try {
-      const result = await approveDocument(requisitionId, comments)
-      if (result.success) {
-        toast.success('Requisition approved successfully')
-        setComments('')
-        setRemarks('')
-        setSignature('')
-        setAction(null)
-        onApprovalComplete()
-      } else {
-        toast.error(result.message)
-      }
+      await approveMutation.mutateAsync({
+        comments,
+        signature,
+        stageNumber: task?.stage || 1,
+      })
     } catch (error) {
-      toast.error('Failed to approve requisition')
-    } finally {
-      setIsLoading(false)
+      // Error handled by hook's onError callback
     }
   }
 
   const handleReject = async () => {
     if (!remarks.trim()) {
-      toast.error('Remarks are required for rejection')
       return
     }
 
-    setIsLoading(true)
     try {
-      const result = await rejectDocument(requisitionId, remarks)
-      if (result.success) {
-        toast.success('Requisition rejected successfully')
-        setComments('')
-        setRemarks('')
-        setSignature('')
-        setAction(null)
-        onApprovalComplete()
-      } else {
-        toast.error(result.message)
-      }
+      await rejectMutation.mutateAsync({
+        remarks,
+        comments: remarks,
+        signature,
+      })
     } catch (error) {
-      toast.error('Failed to reject requisition')
-    } finally {
-      setIsLoading(false)
+      // Error handled by hook's onError callback
     }
   }
+
+  const isLoading = approveMutation.isPending || rejectMutation.isPending
 
   if (action === null) {
     return (
@@ -91,6 +99,7 @@ export function ApprovalActionPanel({
         <div className="grid grid-cols-2 gap-2">
           <Button
             onClick={() => setAction('approve')}
+            disabled={isLoading || !task}
             className="bg-green-600 hover:bg-green-700 gap-2"
           >
             <Send className="h-4 w-4" />
@@ -98,6 +107,7 @@ export function ApprovalActionPanel({
           </Button>
           <Button
             onClick={() => setAction('reject')}
+            disabled={isLoading || !task}
             variant="destructive"
             className="gap-2"
           >
@@ -185,11 +195,16 @@ export function ApprovalActionPanel({
               : 'bg-red-600 hover:bg-red-700 flex-1'
           }
         >
-          {isLoading
-            ? 'Processing...'
-            : action === 'approve'
-            ? 'Confirm Approval'
-            : 'Confirm Rejection'}
+          {isLoading ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Processing...
+            </>
+          ) : action === 'approve' ? (
+            'Confirm Approval'
+          ) : (
+            'Confirm Rejection'
+          )}
         </Button>
         <Button
           variant="outline"

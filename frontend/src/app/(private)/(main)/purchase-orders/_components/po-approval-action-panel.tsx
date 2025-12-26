@@ -1,13 +1,12 @@
 'use client'
 
 import { useState } from 'react'
-import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { SignatureCanvas } from '@/components/ui/signature-canvas'
-import { AlertCircle, Upload, Send, XCircle, Loader2 } from 'lucide-react'
-import { useApprovePurchaseOrder, useRejectPurchaseOrder } from '@/hooks/use-purchase-order-queries'
+import { Upload, Send, XCircle, Loader2 } from 'lucide-react'
+import { useApprovalTasks, useApproveTask, useRejectTask } from '@/hooks/use-approval-workflow'
 import {
   Dialog,
   DialogContent,
@@ -19,17 +18,11 @@ import {
 interface POApprovalActionPanelProps {
   poId: string
   onApprovalComplete: () => void
-  userId?: string
-  userName?: string
-  userRole?: string
 }
 
 export function POApprovalActionPanel({
   poId,
   onApprovalComplete,
-  userId = 'user-' + Math.random().toString(36).substr(2, 9),
-  userName = 'Approver',
-  userRole = 'APPROVER',
 }: POApprovalActionPanelProps) {
   const [action, setAction] = useState<'approve' | 'reject' | null>(null)
   const [comments, setComments] = useState('')
@@ -37,7 +30,18 @@ export function POApprovalActionPanel({
   const [signature, setSignature] = useState('')
   const [showAttachmentDialog, setShowAttachmentDialog] = useState(false)
 
-  const approveMutation = useApprovePurchaseOrder(poId, () => {
+  // Fetch approval tasks for POs
+  const { data: approvalTasks } = useApprovalTasks(
+    { documentType: 'PURCHASE_ORDER', assignedToMe: true },
+    1,
+    100
+  )
+
+  // Find the approval task for this PO
+  const task = approvalTasks?.find((t) => t.documentId === poId)
+  const taskId = task?.id || ''
+
+  const approveMutation = useApproveTask(taskId, () => {
     setComments('')
     setRemarks('')
     setSignature('')
@@ -45,7 +49,7 @@ export function POApprovalActionPanel({
     onApprovalComplete()
   })
 
-  const rejectMutation = useRejectPurchaseOrder(poId, () => {
+  const rejectMutation = useRejectTask(taskId, () => {
     setComments('')
     setRemarks('')
     setSignature('')
@@ -55,17 +59,14 @@ export function POApprovalActionPanel({
 
   const handleApprove = async () => {
     if (!signature) {
-      toast.error('Signature is required to approve')
       return
     }
 
     try {
       await approveMutation.mutateAsync({
-        approvingUserId: userId,
-        approvingUserName: userName,
-        approvingUserRole: userRole,
+        comments,
         signature,
-        comments: comments || undefined,
+        stageNumber: task?.stage || 1,
       })
     } catch (error) {
       console.error('Approval error:', error)
@@ -74,18 +75,14 @@ export function POApprovalActionPanel({
 
   const handleReject = async () => {
     if (!remarks.trim()) {
-      toast.error('Remarks are required for rejection')
       return
     }
 
     try {
       await rejectMutation.mutateAsync({
-        rejectingUserId: userId,
-        rejectingUserName: userName,
-        rejectingUserRole: userRole,
         remarks,
-        signature: signature || '',
-        comments: comments || undefined,
+        comments: remarks,
+        signature,
       })
     } catch (error) {
       console.error('Rejection error:', error)
@@ -102,7 +99,7 @@ export function POApprovalActionPanel({
           <Button
             onClick={() => setAction('approve')}
             className="bg-green-600 hover:bg-green-700 gap-2"
-            disabled={isLoading}
+            disabled={isLoading || !task}
           >
             <Send className="h-4 w-4" />
             Approve
@@ -111,7 +108,7 @@ export function POApprovalActionPanel({
             onClick={() => setAction('reject')}
             variant="destructive"
             className="gap-2"
-            disabled={isLoading}
+            disabled={isLoading || !task}
           >
             <XCircle className="h-4 w-4" />
             Reject

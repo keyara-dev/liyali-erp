@@ -1,13 +1,12 @@
 'use client'
 
 import { useState } from 'react'
-import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { SignatureCanvas } from '@/components/ui/signature-canvas'
-import { AlertCircle, Upload, Send, XCircle, Loader2 } from 'lucide-react'
-import { useApprovePaymentVoucher, useRejectPaymentVoucher } from '@/hooks/use-payment-voucher-queries'
+import { Upload, Send, XCircle, Loader2 } from 'lucide-react'
+import { useApprovalTasks, useApproveTask, useRejectTask } from '@/hooks/use-approval-workflow'
 import {
   Dialog,
   DialogContent,
@@ -19,17 +18,11 @@ import {
 interface PVApprovalActionPanelProps {
   pvId: string
   onApprovalComplete: () => void
-  userId?: string
-  userName?: string
-  userRole?: string
 }
 
 export function PVApprovalActionPanel({
   pvId,
   onApprovalComplete,
-  userId = 'user-' + Math.random().toString(36).substr(2, 9),
-  userName = 'Approver',
-  userRole = 'APPROVER',
 }: PVApprovalActionPanelProps) {
   const [action, setAction] = useState<'approve' | 'reject' | null>(null)
   const [comments, setComments] = useState('')
@@ -37,7 +30,18 @@ export function PVApprovalActionPanel({
   const [signature, setSignature] = useState('')
   const [showAttachmentDialog, setShowAttachmentDialog] = useState(false)
 
-  const approveMutation = useApprovePaymentVoucher(pvId, () => {
+  // Fetch approval tasks for payment vouchers
+  const { data: approvalTasks } = useApprovalTasks(
+    { documentType: 'PAYMENT_VOUCHER', assignedToMe: true },
+    1,
+    100
+  )
+
+  // Find the approval task for this PV
+  const task = approvalTasks?.find((t) => t.documentId === pvId)
+  const taskId = task?.id || ''
+
+  const approveMutation = useApproveTask(taskId, () => {
     setComments('')
     setRemarks('')
     setSignature('')
@@ -45,7 +49,7 @@ export function PVApprovalActionPanel({
     onApprovalComplete()
   })
 
-  const rejectMutation = useRejectPaymentVoucher(pvId, () => {
+  const rejectMutation = useRejectTask(taskId, () => {
     setComments('')
     setRemarks('')
     setSignature('')
@@ -55,17 +59,14 @@ export function PVApprovalActionPanel({
 
   const handleApprove = async () => {
     if (!signature) {
-      toast.error('Signature is required to approve')
       return
     }
 
     try {
       await approveMutation.mutateAsync({
-        approvingUserId: userId,
-        approvingUserName: userName,
-        approvingUserRole: userRole,
+        comments,
         signature,
-        comments: comments || undefined,
+        stageNumber: task?.stage || 1,
       })
     } catch (error) {
       console.error('Approval error:', error)
@@ -74,18 +75,14 @@ export function PVApprovalActionPanel({
 
   const handleReject = async () => {
     if (!remarks.trim()) {
-      toast.error('Remarks are required for rejection')
       return
     }
 
     try {
       await rejectMutation.mutateAsync({
-        rejectingUserId: userId,
-        rejectingUserName: userName,
-        rejectingUserRole: userRole,
         remarks,
-        signature: signature || '',
-        comments: comments || undefined,
+        comments: remarks,
+        signature,
       })
     } catch (error) {
       console.error('Rejection error:', error)
@@ -102,7 +99,7 @@ export function PVApprovalActionPanel({
           <Button
             onClick={() => setAction('approve')}
             className="bg-green-600 hover:bg-green-700 gap-2"
-            disabled={isLoading}
+            disabled={isLoading || !task}
           >
             <Send className="h-4 w-4" />
             Approve
@@ -111,7 +108,7 @@ export function PVApprovalActionPanel({
             onClick={() => setAction('reject')}
             variant="destructive"
             className="gap-2"
-            disabled={isLoading}
+            disabled={isLoading || !task}
           >
             <XCircle className="h-4 w-4" />
             Reject
