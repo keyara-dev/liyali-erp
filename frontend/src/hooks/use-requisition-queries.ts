@@ -26,23 +26,31 @@ import {
 import { toast } from "sonner";
 
 /**
- * Fetch all requisitions
+ * Fetch all requisitions with pagination
  * Standard data - 5 minute refresh interval
  *
- * @param initialRequisitions - Optional initial data from server component
+ * @param page - Page number (default: 1)
+ * @param limit - Items per page (default: 10)
+ * @param filters - Optional filters (status, department)
  * @returns Query result with requisitions array
  *
  * @example
- * const { data: requisitions } = useRequisitions(initialRequisitions)
+ * const { data: requisitions } = useRequisitions(1, 10, { status: 'DRAFT' })
  */
-export const useRequisitions = (initialRequisitions?: Requisition[]) =>
+export const useRequisitions = (
+  page: number = 1,
+  limit: number = 10,
+  filters?: {
+    status?: string;
+    department?: string;
+  }
+) =>
   useQuery({
-    queryKey: [QUERY_KEYS.REQUISITIONS.ALL],
+    queryKey: [QUERY_KEYS.REQUISITIONS.ALL, page, limit, filters],
     queryFn: async () => {
-      const response = await getRequisitions();
+      const response = await getRequisitions(page, limit, filters);
       return response.success ? response.data : [];
     },
-    initialData: initialRequisitions,
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
@@ -50,6 +58,7 @@ export const useRequisitions = (initialRequisitions?: Requisition[]) =>
  * Fetch a specific requisition by ID
  *
  * @param requisitionId - Requisition ID to fetch
+ * @param initialData - Optional initial data
  * @returns Query result with single requisition
  *
  * @example
@@ -68,6 +77,7 @@ export const useRequisitionById = (
     },
     initialData,
     staleTime: 5 * 60 * 1000, // 5 minutes
+    enabled: !!requisitionId,
   });
 
 /**
