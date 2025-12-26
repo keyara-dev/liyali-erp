@@ -1,4 +1,5 @@
 import { ActivityLogsClient } from './_components/activity-logs-client'
+import { requireAdminRole } from '@/lib/admin-guard'
 
 export const metadata = {
   title: 'Activity Logs',
@@ -8,7 +9,9 @@ export const metadata = {
 // Disable static generation for this page
 export const dynamic = 'force-dynamic'
 
-export default function ActivityLogsPage() {
-  // Use default values for client rendering
-  return <ActivityLogsClient userId="system" userRole="ADMIN" />
+export default async function ActivityLogsPage() {
+  // Verify admin role at server level
+  const { userId, userRole } = await requireAdminRole()
+
+  return <ActivityLogsClient userId={userId} userRole={userRole} />
 }

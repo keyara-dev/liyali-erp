@@ -1,4 +1,6 @@
 import { AdminReportsClient } from './_components/admin-reports-client'
+import { verifySession } from '@/lib/auth'
+import { redirect } from 'next/navigation'
 
 export const metadata = {
   title: 'Admin Reports',
@@ -8,7 +10,24 @@ export const metadata = {
 // Disable static generation for this page
 export const dynamic = 'force-dynamic'
 
-export default function AdminReportsPage() {
-  // Use default values for client rendering
-  return <AdminReportsClient userId="system" userRole="ADMIN" />
+export default async function AdminReportsPage() {
+  // Get authenticated user context
+  const { session, isAuthenticated } = await verifySession()
+
+  if (!isAuthenticated || !session?.user) {
+    redirect('/login')
+  }
+
+  // Verify admin role
+  if (session.user.role !== 'ADMIN' && session.user.role !== 'SUPERADMIN') {
+    redirect('/unauthorized')
+  }
+
+  // Pass actual user context from session
+  return (
+    <AdminReportsClient
+      userId={session.user.id}
+      userRole={session.user.role}
+    />
+  )
 }

@@ -1,4 +1,5 @@
 import { EditWorkflowClient } from "./_components/edit-workflow-client";
+import { requireAdminRole } from "@/lib/admin-guard";
 
 export const metadata = {
   title: "Edit Workflow",
@@ -17,13 +18,16 @@ export const dynamic = 'force-dynamic'
 export default async function EditWorkflowPage({
   params,
 }: EditWorkflowPageProps) {
+  // Verify admin role at server level
+  const { userId, userRole } = await requireAdminRole()
+
   const { id } = await params;
 
   return (
     <EditWorkflowClient
       workflowId={id}
-      userId="system"
-      userRole="ADMIN"
+      userId={userId}
+      userRole={userRole}
     />
   );
 }

@@ -2,11 +2,12 @@ import { Suspense } from "react";
 import { UserManagementClient } from "./_components/user-management-client";
 import UsersDataTable from "./_components/data-table";
 import { Card, CardContent } from "@/components/ui/card";
-
 import CreateUserForm from "./_components/create-user-dialog";
 import { User } from "@/types";
 import { PageHeader } from "@/components/base/page-header";
 import { getUsers } from "@/app/_actions/user-actions";
+import { verifySession } from "@/lib/auth";
+import { redirect } from "next/navigation";
 
 export const metadata = {
   title: "User Management",
@@ -28,6 +29,18 @@ type PageProps = {
 };
 
 export default async function UserManagementPage({ searchParams }: PageProps) {
+  // Get authenticated user context
+  const { session, isAuthenticated } = await verifySession()
+
+  if (!isAuthenticated || !session?.user) {
+    redirect('/login')
+  }
+
+  // Verify admin role
+  if (session.user.role !== 'ADMIN' && session.user.role !== 'SUPERADMIN') {
+    redirect('/unauthorized')
+  }
+
   const {
     search = "",
     status = "all",
@@ -76,8 +89,8 @@ export default async function UserManagementPage({ searchParams }: PageProps) {
       <div className="container mx-auto flex flex-col space-y-6 p-4">
         {/* User Management Tabs */}
         <UserManagementClient
-          userId="system"
-          userRole="ADMIN"
+          userId={session.user.id}
+          userRole={session.user.role}
           usersTabContent={
             <Suspense
               fallback={
