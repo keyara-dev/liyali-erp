@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { getDashboardMetrics } from '@/app/_actions/dashboard'
@@ -13,10 +13,11 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { MOCK_USERS } from '@/lib/mock-data'
 import { User, Users, CheckCircle2 } from 'lucide-react'
+import { QUERY_KEYS } from '@/lib/constants'
 
 interface UserStat {
+  id: string
   name: string
   role: string
   approvedCount: number
@@ -25,42 +26,29 @@ interface UserStat {
 }
 
 export function UserActivityReports() {
-  const [metrics, setMetrics] = useState<DashboardMetrics | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-  const [userStats, setUserStats] = useState<UserStat[]>([])
-
-  useEffect(() => {
-    async function fetchMetrics() {
-      setIsLoading(true)
-      try {
-        const result = await getDashboardMetrics()
-        if (result.success && result.data) {
-          setMetrics(result.data)
-
-          // Generate mock user statistics
-          const mockUsers: UserStat[] = []
-          Object.entries(MOCK_USERS).forEach(([, users]) => {
-            users.forEach((user) => {
-              mockUsers.push({
-                name: user.name,
-                role: user.role,
-                approvedCount: Math.floor(Math.random() * 20) + 1,
-                activeDocuments: Math.floor(Math.random() * 5) + 1,
-                lastActivity: new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000).toLocaleDateString(),
-              })
-            })
-          })
-          setUserStats(mockUsers.sort((a, b) => b.approvedCount - a.approvedCount))
-        }
-      } catch (error) {
-        console.error('Failed to fetch metrics:', error)
-      } finally {
-        setIsLoading(false)
+  // Fetch dashboard metrics
+  const { data: metrics, isLoading } = useQuery<DashboardMetrics>({
+    queryKey: [QUERY_KEYS.DASHBOARD.METRICS],
+    queryFn: async () => {
+      const result = await getDashboardMetrics()
+      if (result.success && result.data) {
+        return result.data
       }
-    }
+      throw new Error('Failed to fetch metrics')
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  })
 
-    fetchMetrics()
-  }, [])
+  // Fetch user activity statistics from backend
+  const { data: userStats = [] } = useQuery<UserStat[]>({
+    queryKey: ['user-activity-stats'],
+    queryFn: async () => {
+      const response = await fetch('/api/users/activity-stats')
+      if (!response.ok) throw new Error('Failed to fetch user stats')
+      return response.json()
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  })
 
   if (isLoading || !metrics) {
     return (

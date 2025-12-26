@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { getDashboardMetrics } from '@/app/_actions/dashboard'
@@ -15,29 +16,23 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Search } from 'lucide-react'
+import { QUERY_KEYS } from '@/lib/constants'
 
 export function ApprovalReports() {
-  const [metrics, setMetrics] = useState<DashboardMetrics | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
 
-  useEffect(() => {
-    async function fetchMetrics() {
-      setIsLoading(true)
-      try {
-        const result = await getDashboardMetrics()
-        if (result.success && result.data) {
-          setMetrics(result.data)
-        }
-      } catch (error) {
-        console.error('Failed to fetch metrics:', error)
-      } finally {
-        setIsLoading(false)
+  // Fetch metrics using React Query with caching
+  const { data: metrics, isLoading } = useQuery<DashboardMetrics>({
+    queryKey: [QUERY_KEYS.DASHBOARD.METRICS],
+    queryFn: async () => {
+      const result = await getDashboardMetrics()
+      if (result.success && result.data) {
+        return result.data
       }
-    }
-
-    fetchMetrics()
-  }, [])
+      throw new Error('Failed to fetch metrics')
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  })
 
   if (isLoading || !metrics) {
     return (

@@ -133,15 +133,19 @@ export default function UserRolesConfig({
   const [pendingRoleId, setPendingRoleId] = useState<string | null>(null);
 
   // Fetch roles for this department
-  // const { data: rolesResponse, isLoading: rolesLoading } = useQuery({
-  //   queryKey: [QUERY_KEYS.ROLES, departmentId],
-  //   queryFn: () => getRoles({ departmentId }),
-  //   enabled: !!departmentId,
-  //   staleTime: 5 * 60 * 1000
-  // });
+  const { data: rolesData, isLoading: rolesLoading } = useQuery({
+    queryKey: [QUERY_KEYS.ROLES, departmentId],
+    queryFn: async () => {
+      // Fetch roles from backend via action
+      const response = await fetch(`/api/roles?departmentId=${departmentId}`);
+      if (!response.ok) throw new Error('Failed to fetch roles');
+      return response.json();
+    },
+    enabled: !!departmentId,
+    staleTime: 5 * 60 * 1000,
+  });
 
-  // const { data: rolesResponse, isLoading: rolesLoading } = useRoles({ departmentId });
-  const rolesResponse = { success: true, data: { data: [] } };
+  const rolesResponse = rolesData || { success: true, data: { data: [] } };
 
   const roles: Role[] = useMemo(
     () =>
