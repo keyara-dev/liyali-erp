@@ -1,15 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components";
-import { createNewAccount } from "@/app/_actions/auth";
+import { useSignupMutation } from "@/hooks/use-auth-mutations";
 import { EyeIcon, EyeOffIcon, AlertCircle } from "lucide-react";
 import Link from "next/link";
 
 export default function Signup() {
-  const router = useRouter();
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
@@ -19,7 +17,7 @@ export default function Signup() {
     confirmPassword: false,
   });
   const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
+  const { signup, isPending } = useSignupMutation();
 
   const validatePassword = (pwd: string): string[] => {
     const errors: string[] = [];
@@ -51,10 +49,8 @@ export default function Signup() {
       return;
     }
 
-    setLoading(true);
-
     try {
-      const result = await createNewAccount({
+      const result = await signup({
         email,
         name,
         password,
@@ -63,15 +59,9 @@ export default function Signup() {
 
       if (!result.success) {
         setError(result.message || "Registration failed");
-        setLoading(false);
-        return;
       }
-
-      // Success - redirect to dashboard
-      router.push("/home");
     } catch (err: any) {
       setError(err.message || "An error occurred");
-      setLoading(false);
     }
   };
 
@@ -90,7 +80,7 @@ export default function Signup() {
       {/* Error Message */}
       {error && (
         <div className="flex items-center gap-2 p-3 mb-6 bg-red-50 border border-red-300 rounded-lg">
-          <AlertCircle className="h-4 w-4 text-red-600 flex-shrink-0" />
+          <AlertCircle className="h-4 w-4 text-red-600 shrink-0" />
           <p className="text-sm text-red-600">{error}</p>
         </div>
       )}
@@ -112,7 +102,7 @@ export default function Signup() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
-            disabled={loading}
+            disabled={isPending}
           />
         </div>
 
@@ -132,7 +122,7 @@ export default function Signup() {
             value={name}
             onChange={(e) => setName(e.target.value)}
             required
-            disabled={loading}
+            disabled={isPending}
           />
         </div>
 
@@ -152,7 +142,7 @@ export default function Signup() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
-            disabled={loading}
+            disabled={isPending}
             autoComplete="new-password"
           />
           {password && password.length > 0 && (
@@ -165,7 +155,7 @@ export default function Signup() {
                   password: !showPassword.password,
                 }))
               }
-              disabled={loading}
+              disabled={isPending}
             >
               {showPassword.password ? (
                 <EyeOffIcon className="w-5 h-5" />
@@ -195,7 +185,7 @@ export default function Signup() {
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
             required
-            disabled={loading}
+            disabled={isPending}
             autoComplete="new-password"
           />
           {confirmPassword && confirmPassword.length > 0 && (
@@ -208,7 +198,7 @@ export default function Signup() {
                   confirmPassword: !showPassword.confirmPassword,
                 }))
               }
-              disabled={loading}
+              disabled={isPending}
             >
               {showPassword.confirmPassword ? (
                 <EyeOffIcon className="w-5 h-5" />
@@ -222,10 +212,12 @@ export default function Signup() {
         {/* Submit Button */}
         <Button
           type="submit"
-          disabled={loading}
+          disabled={isPending}
           className="w-full bg-black hover:bg-black/90 text-white"
+          isLoading={isPending}
+          loadingText="Creating account..."
         >
-          {loading ? "Creating account..." : "Sign Up"}
+          Sign Up
         </Button>
       </form>
 

@@ -20,6 +20,7 @@ import { BellIcon, CreditCardIcon, LogOutIcon, UserCircle2Icon, MoreVertical } f
 
 import Link from "next/link";
 import {  useSession } from "@/hooks/use-session";
+import { useLogout } from "@/hooks/use-organization-mutations";
 
 const getInitials = (name: string) => {
   return name
@@ -31,7 +32,8 @@ const getInitials = (name: string) => {
 
 export function NavUser() {
   const { isMobile } = useSidebar();
-    const { user } = useSession();
+  const { user } = useSession();
+  const { logout, isPending } = useLogout();
 
   if (!user) {
     return (
@@ -110,11 +112,9 @@ export function NavUser() {
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
-            <DropdownMenuItem asChild>
-              <Link href="/api/auth/signout">
-                <LogOutIcon />
-                Log out
-              </Link>
+            <DropdownMenuItem onClick={() => logout()} disabled={isPending}>
+              <LogOutIcon />
+              {isPending ? "Logging out..." : "Log out"}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

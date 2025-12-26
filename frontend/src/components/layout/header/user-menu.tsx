@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import Link from "next/link";
 import { useSession } from "@/hooks/use-session";
+import { useLogout } from "@/hooks/use-organization-mutations";
 
 const getInitials = (name: string) => {
   return name
@@ -25,6 +26,7 @@ const getInitials = (name: string) => {
 
 export default function UserMenu() {
   const { user } = useSession();
+  const { logout, isPending } = useLogout();
 
   if (!user) {
     return (
@@ -96,11 +98,9 @@ export default function UserMenu() {
           </DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
-        <DropdownMenuItem asChild>
-          <Link href="/api/auth/signout">
-            <LogOut />
-            Log out
-          </Link>
+        <DropdownMenuItem onClick={() => logout()} disabled={isPending}>
+          <LogOut />
+          {isPending ? "Logging out..." : "Log out"}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
