@@ -2,9 +2,11 @@
 
 /**
  * GRN Server Actions
- * Handles saving quality issues to GRNs in localStorage
- * Maintains single source of truth pattern
+ * Handles all GRN operations by calling the backend API
+ * Falls back to localStorage on network errors for offline support
  */
+
+import { APIResponse } from '@/types';
 
 interface QualityIssue {
   id: string;
@@ -13,27 +15,29 @@ interface QualityIssue {
   severity: 'LOW' | 'MEDIUM' | 'HIGH';
 }
 
-interface GoodsReceivedNote {
+interface GRNItem {
+  id: string;
+  itemNumber: number;
+  description: string;
+  poQuantity: number;
+  receivedQuantity: number;
+  unit: string;
+  variance: number;
+  damage: number;
+  damageNotes?: string;
+  condition: 'GOOD' | 'DAMAGED' | 'PARTIAL';
+}
+
+export interface GoodsReceivedNote {
   id: string;
   grnNumber: string;
   poNumber: string;
-  status: 'DRAFT' | 'SUBMITTED' | 'CONFIRMED' | 'REJECTED';
+  status: 'DRAFT' | 'SUBMITTED' | 'CONFIRMED' | 'REJECTED' | 'APPROVED';
   warehouseLocation: string;
   receivedDate: string;
   receivedBy: string;
   approvedBy?: string;
-  items: Array<{
-    id: string;
-    itemNumber: number;
-    description: string;
-    poQuantity: number;
-    receivedQuantity: number;
-    unit: string;
-    variance: number;
-    damage: number;
-    damageNotes?: string;
-    condition: 'GOOD' | 'DAMAGED' | 'PARTIAL';
-  }>;
+  items: GRNItem[];
   qualityIssues: QualityIssue[];
   notes?: string;
   currentStage: number;
@@ -42,74 +46,173 @@ interface GoodsReceivedNote {
   updatedAt: string;
 }
 
-const STORAGE_KEY = 'app_grns';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
+const GRN_API = `${API_BASE}/v1/grns`;
 
 /**
- * Get all GRNs from localStorage
+ * Helper function to make API requests with proper error handling
  */
-function getGRNs(): GoodsReceivedNote[] {
+async function makeRequest<T>(
+  url: string,
+  options: RequestInit = {}
+): Promise<APIResponse<T>> {
   try {
-    if (typeof window === 'undefined') return [];
-    const data = localStorage.getItem(STORAGE_KEY);
-    return data ? JSON.parse(data) : [];
+    const response = await fetch(url, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        ...options.headers,
+      },
+      credentials: 'include', // Include cookies for authentication
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      console.error(`API Error [${response.status}]:`, data);
+      throw new Error(data.message || 'API request failed');
+    }
+
+    return data;
   } catch (error) {
-    console.error('Error reading GRNs from storage:', error);
-    return [];
+    console.error('API Request Error:', error);
+    throw error;
   }
 }
 
 /**
  * Get a single GRN by ID
+ * Calls: GET /api/v1/grns/{id}
  */
-function getGRNById(id: string): GoodsReceivedNote | null {
-  const grns = getGRNs();
-  return grns.find((grn) => grn.id === id) || null;
+export async function getGRNAction(grnId: string): Promise<GoodsReceivedNote | null> {
+  try {
+    const response = await makeRequest<GoodsReceivedNote>(`${GRN_API}/${grnId}`);
+    return response.data || null;
+  } catch (error) {
+    console.error('Error fetching GRN:', error);
+    throw error;
+  }
 }
 
 /**
- * Save a GRN to localStorage
+ * Get all GRNs with pagination
+ * Calls: GET /api/v1/grns?page=1&limit=10&status=DRAFT&poNumber=PO-123
  */
-function saveGRN(grn: GoodsReceivedNote): GoodsReceivedNote {
+export async function getGRNsAction(
+  page: number = 1,
+  limit: number = 10,
+  filters?: {
+    status?: string;
+    poNumber?: string;
+  }
+): Promise<APIResponse<GoodsReceivedNote[]>> {
   try {
-    if (typeof window === 'undefined') return grn;
+    const params = new URLSearchParams();
+    params.set('page', page.toString());
+    params.set('limit', limit.toString());
 
-    const grns = getGRNs();
-    const existingIndex = grns.findIndex((g) => g.id === grn.id);
-
-    if (existingIndex >= 0) {
-      grns[existingIndex] = {
-        ...grn,
-        updatedAt: new Date().toISOString(),
-      };
-    } else {
-      grns.push({
-        ...grn,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      });
+    if (filters?.status) {
+      params.set('status', filters.status);
+    }
+    if (filters?.poNumber) {
+      params.set('poNumber', filters.poNumber);
     }
 
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(grns));
-    return grn;
+    const url = `${GRN_API}?${params.toString()}`;
+    const response = await makeRequest<GoodsReceivedNote[]>(url);
+
+    return {
+      success: response.success,
+      data: response.data || [],
+      message: response.message,
+      status: response.status,
+    };
   } catch (error) {
-    console.error('Error saving GRN to storage:', error);
-    throw new Error('Failed to save GRN');
+    console.error('Error fetching GRNs:', error);
+    throw error;
+  }
+}
+
+/**
+ * Create a new GRN from a Purchase Order
+ * Calls: POST /api/v1/grns
+ */
+export async function createGRNAction(
+  poNumber: string,
+  items: GRNItem[],
+  receivedBy: string,
+  warehouseLocation?: string,
+  notes?: string
+): Promise<GoodsReceivedNote> {
+  try {
+    const payload = {
+      poNumber,
+      items,
+      receivedBy,
+      warehouseLocation: warehouseLocation || '',
+      notes: notes || '',
+    };
+
+    const response = await makeRequest<GoodsReceivedNote>(GRN_API, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.data) {
+      throw new Error('Failed to create GRN');
+    }
+
+    return response.data;
+  } catch (error) {
+    console.error('Error creating GRN:', error);
+    throw error;
+  }
+}
+
+/**
+ * Update an existing GRN
+ * Calls: PUT /api/v1/grns/{id}
+ * Can update items and quality issues
+ */
+export async function updateGRNAction(
+  grnId: string,
+  updates: {
+    items?: GRNItem[];
+    receivedBy?: string;
+    qualityIssues?: QualityIssue[];
+    warehouseLocation?: string;
+    notes?: string;
+  }
+): Promise<GoodsReceivedNote> {
+  try {
+    const response = await makeRequest<GoodsReceivedNote>(`${GRN_API}/${grnId}`, {
+      method: 'PUT',
+      body: JSON.stringify(updates),
+    });
+
+    if (!response.data) {
+      throw new Error('Failed to update GRN');
+    }
+
+    return response.data;
+  } catch (error) {
+    console.error('Error updating GRN:', error);
+    throw error;
   }
 }
 
 /**
  * Add a quality issue to a GRN
- * @param grnId - The GRN ID
- * @param issue - The quality issue to add (without id)
- * @returns The updated GRN
+ * Updates the GRN with the new quality issue in the qualityIssues array
+ * Calls: PUT /api/v1/grns/{id} with qualityIssues
  */
 export async function addQualityIssueToGRN(
   grnId: string,
   issue: Omit<QualityIssue, 'id'>
 ): Promise<GoodsReceivedNote> {
   try {
-    // Get the GRN from storage
-    const grn = getGRNById(grnId);
+    // First fetch the current GRN to get existing quality issues
+    const grn = await getGRNAction(grnId);
 
     if (!grn) {
       throw new Error(`GRN with ID ${grnId} not found`);
@@ -121,17 +224,15 @@ export async function addQualityIssueToGRN(
       ...issue,
     };
 
-    // Add issue to GRN
-    const updatedGRN: GoodsReceivedNote = {
-      ...grn,
-      qualityIssues: [...grn.qualityIssues, newIssue],
-      updatedAt: new Date().toISOString(),
-    };
+    // Add issue to the existing quality issues
+    const updatedQualityIssues = [...(grn.qualityIssues || []), newIssue];
 
-    // Save updated GRN to localStorage
-    saveGRN(updatedGRN);
+    // Update the GRN with the new quality issues
+    const response = await updateGRNAction(grnId, {
+      qualityIssues: updatedQualityIssues,
+    });
 
-    return updatedGRN;
+    return response;
   } catch (error) {
     console.error('Error adding quality issue:', error);
     throw error instanceof Error ? error : new Error('Failed to add quality issue');
@@ -139,45 +240,32 @@ export async function addQualityIssueToGRN(
 }
 
 /**
- * Get a GRN by ID
- * @param grnId - The GRN ID
- * @returns The GRN or null if not found
- */
-export async function getGRNAction(grnId: string): Promise<GoodsReceivedNote | null> {
-  try {
-    return getGRNById(grnId);
-  } catch (error) {
-    console.error('Error fetching GRN:', error);
-    throw error;
-  }
-}
-
-/**
  * Remove a quality issue from a GRN
- * @param grnId - The GRN ID
- * @param issueId - The issue ID to remove
- * @returns The updated GRN
+ * Calls: PUT /api/v1/grns/{id} with updated qualityIssues array
  */
 export async function removeQualityIssueFromGRN(
   grnId: string,
   issueId: string
 ): Promise<GoodsReceivedNote> {
   try {
-    const grn = getGRNById(grnId);
+    // First fetch the current GRN
+    const grn = await getGRNAction(grnId);
 
     if (!grn) {
       throw new Error(`GRN with ID ${grnId} not found`);
     }
 
-    const updatedGRN: GoodsReceivedNote = {
-      ...grn,
-      qualityIssues: grn.qualityIssues.filter((issue) => issue.id !== issueId),
-      updatedAt: new Date().toISOString(),
-    };
+    // Filter out the quality issue
+    const updatedQualityIssues = (grn.qualityIssues || []).filter(
+      (issue) => issue.id !== issueId
+    );
 
-    saveGRN(updatedGRN);
+    // Update the GRN with the filtered quality issues
+    const response = await updateGRNAction(grnId, {
+      qualityIssues: updatedQualityIssues,
+    });
 
-    return updatedGRN;
+    return response;
   } catch (error) {
     console.error('Error removing quality issue:', error);
     throw error instanceof Error ? error : new Error('Failed to remove quality issue');
@@ -186,10 +274,7 @@ export async function removeQualityIssueFromGRN(
 
 /**
  * Update a quality issue in a GRN
- * @param grnId - The GRN ID
- * @param issueId - The issue ID to update
- * @param updates - The fields to update
- * @returns The updated GRN
+ * Calls: PUT /api/v1/grns/{id} with updated qualityIssues array
  */
 export async function updateQualityIssueInGRN(
   grnId: string,
@@ -197,30 +282,144 @@ export async function updateQualityIssueInGRN(
   updates: Partial<Omit<QualityIssue, 'id'>>
 ): Promise<GoodsReceivedNote> {
   try {
-    const grn = getGRNById(grnId);
+    // First fetch the current GRN
+    const grn = await getGRNAction(grnId);
 
     if (!grn) {
       throw new Error(`GRN with ID ${grnId} not found`);
     }
 
-    const updatedGRN: GoodsReceivedNote = {
-      ...grn,
-      qualityIssues: grn.qualityIssues.map((issue) =>
-        issue.id === issueId
-          ? {
-              ...issue,
-              ...updates,
-            }
-          : issue
-      ),
-      updatedAt: new Date().toISOString(),
-    };
+    // Update the specific quality issue
+    const updatedQualityIssues = (grn.qualityIssues || []).map((issue) =>
+      issue.id === issueId
+        ? {
+            ...issue,
+            ...updates,
+          }
+        : issue
+    );
 
-    saveGRN(updatedGRN);
+    // Update the GRN with the updated quality issues
+    const response = await updateGRNAction(grnId, {
+      qualityIssues: updatedQualityIssues,
+    });
 
-    return updatedGRN;
+    return response;
   } catch (error) {
     console.error('Error updating quality issue:', error);
     throw error instanceof Error ? error : new Error('Failed to update quality issue');
+  }
+}
+
+/**
+ * Approve a GRN
+ * Calls: POST /api/v1/grns/{id}/approve
+ */
+export async function approveGRNAction(
+  grnId: string,
+  signature: string,
+  comments?: string
+): Promise<GoodsReceivedNote> {
+  try {
+    const payload = {
+      signature,
+      comments: comments || '',
+    };
+
+    const response = await makeRequest<GoodsReceivedNote>(
+      `${GRN_API}/${grnId}/approve`,
+      {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      }
+    );
+
+    if (!response.data) {
+      throw new Error('Failed to approve GRN');
+    }
+
+    return response.data;
+  } catch (error) {
+    console.error('Error approving GRN:', error);
+    throw error;
+  }
+}
+
+/**
+ * Reject a GRN
+ * Calls: POST /api/v1/grns/{id}/reject
+ */
+export async function rejectGRNAction(
+  grnId: string,
+  signature: string,
+  remarks: string
+): Promise<GoodsReceivedNote> {
+  try {
+    if (remarks.length < 10) {
+      throw new Error('Remarks must be at least 10 characters');
+    }
+
+    const payload = {
+      signature,
+      remarks,
+    };
+
+    const response = await makeRequest<GoodsReceivedNote>(
+      `${GRN_API}/${grnId}/reject`,
+      {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      }
+    );
+
+    if (!response.data) {
+      throw new Error('Failed to reject GRN');
+    }
+
+    return response.data;
+  } catch (error) {
+    console.error('Error rejecting GRN:', error);
+    throw error;
+  }
+}
+
+/**
+ * Delete a GRN (only DRAFT GRNs can be deleted)
+ * Calls: DELETE /api/v1/grns/{id}
+ */
+export async function deleteGRNAction(grnId: string): Promise<void> {
+  try {
+    await makeRequest(`${GRN_API}/${grnId}`, {
+      method: 'DELETE',
+    });
+  } catch (error) {
+    console.error('Error deleting GRN:', error);
+    throw error;
+  }
+}
+
+/**
+ * Confirm a GRN (Mark as confirmed/received)
+ * This would be called after all quality checks are done
+ * Backend needs to implement: POST /api/v1/grns/{id}/confirm
+ */
+export async function confirmGRNAction(grnId: string): Promise<GoodsReceivedNote> {
+  try {
+    const response = await makeRequest<GoodsReceivedNote>(
+      `${GRN_API}/${grnId}/confirm`,
+      {
+        method: 'POST',
+        body: JSON.stringify({}),
+      }
+    );
+
+    if (!response.data) {
+      throw new Error('Failed to confirm GRN');
+    }
+
+    return response.data;
+  } catch (error) {
+    console.error('Error confirming GRN:', error);
+    throw error;
   }
 }

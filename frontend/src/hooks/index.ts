@@ -11,3 +11,7 @@ export * from './use-budget-storage';
 // Workflow hooks
 export * from './use-workflows';
 export * from './use-approval-flow';
+
+// GRN hooks
+export * from './use-grn-queries';
+export * from './use-grn-mutations';
