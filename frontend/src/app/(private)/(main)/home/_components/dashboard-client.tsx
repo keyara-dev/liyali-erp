@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { getDashboardMetrics } from "@/app/_actions/dashboard";
+import { usePendingApprovalCount } from "@/hooks/use-approval-workflow";
 import { DashboardMetrics } from "@/types";
 import { PageHeader } from "@/components/base/page-header";
 import { WorkflowStatusChart } from "./workflow-status-chart";
@@ -20,6 +21,9 @@ export function DashboardClient({ userId, userRole }: DashboardClientProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Fetch pending approval count from new approval workflow
+  const pendingCount = usePendingApprovalCount();
+
   useEffect(() => {
     async function fetchMetrics() {
       setIsLoading(true);
@@ -27,7 +31,12 @@ export function DashboardClient({ userId, userRole }: DashboardClientProps) {
       try {
         const result = await getDashboardMetrics();
         if (result.success && result.data) {
-          setMetrics(result.data);
+          // Enhance metrics with real pending approval count from backend
+          const enhancedMetrics = {
+            ...result.data,
+            pendingApproval: pendingCount,
+          };
+          setMetrics(enhancedMetrics);
         } else {
           setError(result.message || "Failed to load dashboard metrics");
         }
@@ -40,7 +49,7 @@ export function DashboardClient({ userId, userRole }: DashboardClientProps) {
     }
 
     fetchMetrics();
-  }, []);
+  }, [pendingCount]);
 
   if (isLoading) {
     return (
