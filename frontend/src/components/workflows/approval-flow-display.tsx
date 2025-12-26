@@ -1,6 +1,6 @@
 "use client";
 
-import { CustomWorkflow, WorkflowStage } from "@/types";
+import { ApprovalHistory } from "@/types/workflow";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -9,34 +9,40 @@ import {
   Clock,
   AlertCircle,
   ChevronRight,
-  User,
-  Users,
 } from "lucide-react";
 
 export interface ApprovalFlowDisplayProps {
-  workflow: CustomWorkflow | any;
-  currentStageIndex: number;
-  approvals?: any[];
+  approvalHistory: ApprovalHistory[];
+  currentStage: number;
+  totalStages?: number;
   isCompleted?: boolean;
 }
 
 export function ApprovalFlowDisplay({
-  workflow,
-  currentStageIndex,
-  approvals,
+  approvalHistory,
+  currentStage,
+  totalStages = 0,
   isCompleted = false,
 }: ApprovalFlowDisplayProps) {
-  const stages = workflow.stages || [];
+  // Build stage information from approval history
+  const stages = approvalHistory.map((entry, index) => ({
+    stage: index + 1,
+    approverName: entry.approverName,
+    approverId: entry.approverId,
+    status: entry.status?.toLowerCase(),
+    approvedAt: entry.approvedAt,
+    comments: entry.comments,
+  })) || [];
 
   const getStageStatus = (stageIndex: number) => {
     if (isCompleted) return "completed";
-    if (stageIndex < currentStageIndex) return "completed";
-    if (stageIndex === currentStageIndex) return "current";
+    if (stageIndex < currentStage) return "completed";
+    if (stageIndex === currentStage) return "current";
     return "pending";
   };
 
-  const getStageApprovals = (stageIndex: number) => {
-    return (approvals || []).filter((a) => a.stageIndex === stageIndex);
+  const getStageApproval = (stageIndex: number) => {
+    return stages[stageIndex];
   };
 
   const getStatusIcon = (status: string) => {
@@ -61,15 +67,15 @@ export function ApprovalFlowDisplay({
     }
   };
 
-  if (stages.length === 0) {
+  if (totalStages === 0 && stages.length === 0) {
     return (
       <Card>
         <CardContent className="flex items-center justify-center py-12">
           <AlertCircle className="h-8 w-8 text-yellow-600 mr-3" />
           <div>
-            <h3 className="font-semibold">No Stages Configured</h3>
+            <h3 className="font-semibold">No Approval History</h3>
             <p className="text-sm text-muted-foreground">
-              This workflow has no approval stages
+              This document has not been submitted for approval yet
             </p>
           </div>
         </CardContent>
@@ -84,16 +90,15 @@ export function ApprovalFlowDisplay({
         <CardDescription>
           {isCompleted
             ? "Workflow completed successfully"
-            : `Currently at stage ${currentStageIndex + 1} of ${stages.length}`}
+            : `Currently at stage ${currentStage + 1} of ${totalStages || stages.length}`}
         </CardDescription>
       </CardHeader>
       <CardContent>
         <div className="space-y-6">
           {/* Timeline View */}
           <div className="relative">
-            {stages.map((stage: any, index: number) => {
+            {stages.map((stageData: any, index: number) => {
               const status = getStageStatus(index);
-              const stageApprovals = getStageApprovals(index);
 
               return (
                 <div key={index}>
@@ -101,7 +106,7 @@ export function ApprovalFlowDisplay({
                   <div className={`border rounded-lg p-4 ${getStatusColor(status)}`}>
                     <div className="flex items-start gap-4">
                       {/* Status Icon */}
-                      <div className="flex-shrink-0">
+                      <div className="shrink-0">
                         {getStatusIcon(status)}
                       </div>
 
@@ -109,7 +114,7 @@ export function ApprovalFlowDisplay({
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-2">
                           <h3 className="font-semibold">
-                            Stage {index + 1}: {stage.name}
+                            Stage {index + 1}
                           </h3>
                           <Badge
                             variant={
@@ -128,67 +133,52 @@ export function ApprovalFlowDisplay({
                           </Badge>
                         </div>
 
-                        {stage.description && (
-                          <p className="text-sm text-muted-foreground mb-3">
-                            {stage.description}
-                          </p>
-                        )}
-
-                        {/* Approvers */}
-                        {stage.approvers && stage.approvers.length > 0 && (
+                        {/* Approver Info */}
+                        {stageData.approverName && (
                           <div className="mb-3">
                             <h4 className="text-xs font-semibold text-muted-foreground mb-2 uppercase">
-                              Approvers
+                              Approver
                             </h4>
-                            <div className="flex flex-wrap gap-2">
-                              {stage.approvers.map((approver: any) => (
-                                <div
-                                  key={approver.id}
-                                  className="flex items-center gap-1 bg-background px-2 py-1 rounded border text-xs"
-                                >
-                                  <Avatar className="h-4 w-4">
-                                    <AvatarImage src={approver.avatar} />
-                                    <AvatarFallback>
-                                      {approver.name?.charAt(0).toUpperCase()}
-                                    </AvatarFallback>
-                                  </Avatar>
-                                  <span>{approver.name || approver.email}</span>
-                                </div>
-                              ))}
+                            <div className="flex items-center gap-2 bg-background px-2 py-1 rounded border text-sm">
+                              <Avatar className="h-5 w-5">
+                                <AvatarFallback>
+                                  {stageData.approverName?.charAt(0).toUpperCase()}
+                                </AvatarFallback>
+                              </Avatar>
+                              <span>{stageData.approverName}</span>
                             </div>
                           </div>
                         )}
 
-                        {/* Stage Approvals History */}
-                        {stageApprovals.length > 0 && (
+                        {/* Approval Details */}
+                        {(stageData.status || status === "completed") && (
                           <div className="space-y-2 pt-3 border-t">
                             <h4 className="text-xs font-semibold text-muted-foreground uppercase">
-                              Approvals
+                              Approval Details
                             </h4>
-                            {stageApprovals.map((approval) => (
-                              <div
-                                key={approval.id}
-                                className="flex items-center justify-between bg-background px-2 py-2 rounded text-xs"
-                              >
-                                <div className="flex items-center gap-2">
-                                  <User className="h-3 w-3 text-muted-foreground" />
-                                  <span className="font-medium">
-                                    {approval.approverName || approval.approverId}
-                                  </span>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  {approval.status === "approved" && (
-                                    <CheckCircle2 className="h-3 w-3 text-green-600" />
-                                  )}
-                                  {approval.status === "rejected" && (
-                                    <AlertCircle className="h-3 w-3 text-red-600" />
-                                  )}
-                                  <span className="text-muted-foreground">
-                                    {new Date(approval.actionDate || new Date()).toLocaleDateString()}
-                                  </span>
-                                </div>
+                            <div className="flex items-center justify-between bg-background px-2 py-2 rounded text-xs">
+                              <div className="flex items-center gap-2">
+                                {stageData.status === "approved" && (
+                                  <CheckCircle2 className="h-3 w-3 text-green-600" />
+                                )}
+                                {stageData.status === "rejected" && (
+                                  <AlertCircle className="h-3 w-3 text-red-600" />
+                                )}
+                                <span className="font-medium">
+                                  {stageData.approverName || "Pending"}
+                                </span>
                               </div>
-                            ))}
+                              <span className="text-muted-foreground">
+                                {stageData.approvedAt
+                                  ? new Date(stageData.approvedAt).toLocaleDateString()
+                                  : "Awaiting"}
+                              </span>
+                            </div>
+                            {stageData.comments && (
+                              <div className="text-xs bg-muted rounded p-2 mt-2">
+                                <p className="text-muted-foreground">{stageData.comments}</p>
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>
@@ -213,20 +203,20 @@ export function ApprovalFlowDisplay({
                 <h4 className="text-xs font-semibold text-muted-foreground uppercase mb-1">
                   Total Stages
                 </h4>
-                <p className="text-lg font-bold">{stages.length}</p>
+                <p className="text-lg font-bold">{totalStages || stages.length}</p>
               </div>
               <div>
                 <h4 className="text-xs font-semibold text-muted-foreground uppercase mb-1">
                   Completed
                 </h4>
-                <p className="text-lg font-bold">{currentStageIndex}</p>
+                <p className="text-lg font-bold">{currentStage}</p>
               </div>
               <div>
                 <h4 className="text-xs font-semibold text-muted-foreground uppercase mb-1">
                   Remaining
                 </h4>
                 <p className="text-lg font-bold">
-                  {stages.length - currentStageIndex - (isCompleted ? 1 : 0)}
+                  {(totalStages || stages.length) - currentStage - (isCompleted ? 1 : 0)}
                 </p>
               </div>
             </div>

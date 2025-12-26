@@ -2,12 +2,11 @@
 
 import { useState } from "react";
 import { ApprovalTask } from "@/types";
-import { notify } from "@/lib/utils";
 import {
-  useApproveStage,
-  useRejectStage,
-  useReassignStage,
-} from "@/hooks/use-approval-flow";
+  useApproveTask,
+  useRejectTask,
+  useReassignTask,
+} from "@/hooks/use-approval-workflow";
 import { NotificationActionModal } from "@/components/notifications/notification-action-modal-v2";
 import { ReassignmentModal } from "@/components/workflows/reassignment-modal";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -36,9 +35,9 @@ export function ApprovalActionPanel({
   const [reassignModalOpen, setReassignModalOpen] = useState(false);
   const [selectedAction, setSelectedAction] = useState<"approve" | "reject" | null>(null);
 
-  const approveMutation = useApproveStage();
-  const rejectMutation = useRejectStage();
-  const reassignMutation = useReassignStage();
+  const approveMutation = useApproveTask(task.id, onApprovalComplete);
+  const rejectMutation = useRejectTask(task.id, onApprovalComplete);
+  const reassignMutation = useReassignTask(task.id, onApprovalComplete);
 
   const isLoading =
     approveMutation.isPending || rejectMutation.isPending || reassignMutation.isPending;
@@ -56,14 +55,11 @@ export function ApprovalActionPanel({
   const handleApproveSubmit = async (signature: string, remarks?: string) => {
     try {
       await approveMutation.mutateAsync({
-        assignmentId: task.id,
-        stageNumber: task.stageIndex || 0,
-        approvingUserId: task.approverUserId || "",
+        comments: remarks || "",
         signature,
-        comments: remarks,
+        stageNumber: task.stage || 1,
       });
       setApproveModalOpen(false);
-      onApprovalComplete?.();
     } catch (error) {
       console.error("Approval failed:", error);
     }
@@ -72,15 +68,11 @@ export function ApprovalActionPanel({
   const handleRejectSubmit = async (signature: string, reason?: string) => {
     try {
       await rejectMutation.mutateAsync({
-        assignmentId: task.id,
-        stageNumber: task.stageIndex || 0,
-        rejectingUserId: task.approverUserId || "",
         remarks: reason || "",
+        comments: reason || "",
         signature,
-        comments: reason,
       });
       setApproveModalOpen(false);
-      onApprovalComplete?.();
     } catch (error) {
       console.error("Rejection failed:", error);
     }
@@ -92,14 +84,10 @@ export function ApprovalActionPanel({
   ) => {
     try {
       await reassignMutation.mutateAsync({
-        assignmentId: task.id,
-        stageNumber: task.stageIndex || 0,
         newApproverId: userId,
-        reassignedBy: task.approverUserId || "",
-        reassignmentReason: reason,
+        reason,
       });
       setReassignModalOpen(false);
-      onApprovalComplete?.();
     } catch (error) {
       console.error("Reassignment failed:", error);
     }
@@ -108,8 +96,8 @@ export function ApprovalActionPanel({
   // Create notification object for modal
   const notification = {
     id: task.id,
-    title: `Approve ${task.entityType}`,
-    message: `${task.entityType} #${task.entityNumber} is pending your approval`,
+    title: `Approve Document`,
+    message: `Document ${task.documentType} is pending your approval`,
     type: "TASK_ASSIGNED",
   } as any;
 
@@ -122,7 +110,7 @@ export function ApprovalActionPanel({
             Action Required
           </CardTitle>
           <CardDescription>
-            {task.entityType} #{task.entityNumber} awaits your decision
+            {task.documentType} awaits your decision
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -130,7 +118,7 @@ export function ApprovalActionPanel({
           <Alert className="bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800">
             <Info className="h-4 w-4 text-blue-600" />
             <AlertDescription className="text-blue-700 dark:text-blue-200">
-              Review the {task.entityType.toLowerCase()} details above, then approve, reject,
+              Review the document details above, then approve, reject,
               or reassign this task.
             </AlertDescription>
           </Alert>
@@ -139,18 +127,18 @@ export function ApprovalActionPanel({
           <div className="space-y-2 p-3 bg-muted rounded-lg">
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
-                <h4 className="font-semibold text-muted-foreground">Entity</h4>
+                <h4 className="font-semibold text-muted-foreground">Document</h4>
                 <p className="font-mono">
-                  {task.entityType} #{task.entityNumber}
+                  {task.documentType}
                 </p>
               </div>
               <div>
-                <h4 className="font-semibold text-muted-foreground">Assigned To</h4>
+                <h4 className="font-semibold text-muted-foreground">Approver</h4>
                 <p>{task.approverName || "Unknown"}</p>
               </div>
               <div>
                 <h4 className="font-semibold text-muted-foreground">Stage</h4>
-                <p>{task.stageName}</p>
+                <p>Stage {task.stage}</p>
               </div>
               <div>
                 <h4 className="font-semibold text-muted-foreground">Created</h4>
@@ -162,19 +150,19 @@ export function ApprovalActionPanel({
           </div>
 
           {/* Priority Badge */}
-          {task.importance && (
+          {task.priority && (
             <div className="flex items-center gap-2">
               <span className="text-sm font-medium text-muted-foreground">Priority:</span>
               <Badge
                 variant={
-                  task.importance === "HIGH"
+                  task.priority === "HIGH"
                     ? "destructive"
-                    : task.importance === "MEDIUM"
+                    : task.priority === "MEDIUM"
                     ? "default"
                     : "secondary"
                 }
               >
-                {task.importance}
+                {task.priority}
               </Badge>
             </div>
           )}
