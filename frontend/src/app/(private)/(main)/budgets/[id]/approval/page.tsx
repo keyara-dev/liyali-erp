@@ -1,8 +1,7 @@
 "use client";
 
 import { useParams } from "next/navigation";
-import { useState, useEffect } from "react";
-import { useGetApprovalTaskDetail } from "@/hooks/use-workflows";
+import { useApprovalTaskDetail } from "@/hooks/use-approval-workflow";
 import {
   ApprovalFlowDisplay,
   ApprovalActionPanel,
@@ -25,13 +24,8 @@ import {
 export default function BudgetApprovalPage() {
   const params = useParams();
   const taskId = params.id as string;
-  const [isLoading, setIsLoading] = useState(true);
 
-  const { data: taskData, isLoading: isTaskLoading } = useGetApprovalTaskDetail(taskId);
-
-  useEffect(() => {
-    setIsLoading(isTaskLoading);
-  }, [isTaskLoading]);
+  const { data: task, isLoading } = useApprovalTaskDetail(taskId);
 
   if (isLoading) {
     return (
@@ -43,7 +37,7 @@ export default function BudgetApprovalPage() {
     );
   }
 
-  if (!taskData) {
+  if (!task) {
     return (
       <Alert variant="destructive">
         <AlertCircle className="h-4 w-4" />
@@ -53,10 +47,6 @@ export default function BudgetApprovalPage() {
       </Alert>
     );
   }
-
-  const task = taskData.task;
-  const workflow = taskData.workflow;
-  const budget = taskData.entity;
 
   return (
     <div className="space-y-6">

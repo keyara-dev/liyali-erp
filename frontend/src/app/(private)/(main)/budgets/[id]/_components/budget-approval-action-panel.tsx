@@ -1,14 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { SignatureCanvas } from '@/components/ui/signature-canvas'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { approveBudget, rejectBudget } from '@/app/_actions/budgets'
-import { useBudgetStorage } from '@/hooks/use-budget-storage'
+import { useApprovalTasks, useApproveTask, useRejectTask } from '@/hooks/use-approval-workflow'
 import { Budget } from '@/types/budget'
 import { AlertCircle, CheckCircle2 } from 'lucide-react'
 
@@ -25,18 +24,60 @@ export function BudgetApprovalActionPanel({
   budget,
   onApprovalComplete,
 }: BudgetApprovalActionPanelProps) {
-  const { saveToStorage } = useBudgetStorage()
   const [action, setAction] = useState<'approve' | 'reject' | null>(null)
   const [comments, setComments] = useState('')
   const [remarks, setRemarks] = useState('')
   const [signature, setSignature] = useState('')
-  const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
+
+  // Fetch approval tasks for this budget
+  const { data: approvalTasks = [] } = useApprovalTasks(
+    { documentType: 'BUDGET' },
+    1,
+    100
+  )
+
+  // Find the approval task for this budget
+  const approvalTask = approvalTasks.find((task) => task.documentId === budgetId)
+
+  // Setup approve/reject mutations with real backend
+  const approveMutation = useApproveTask(approvalTask?.id || '', () => {
+    setSuccess('Budget approved successfully')
+    setTimeout(onApprovalComplete, 1500)
+  })
+
+  const rejectMutation = useRejectTask(approvalTask?.id || '', () => {
+    setSuccess('Budget rejected successfully')
+    setTimeout(onApprovalComplete, 1500)
+  })
+
+  // Reset on mutation completion
+  useEffect(() => {
+    if (approveMutation.isSuccess || rejectMutation.isSuccess) {
+      setComments('')
+      setRemarks('')
+      setSignature('')
+      setAction(null)
+    }
+  }, [approveMutation.isSuccess, rejectMutation.isSuccess])
 
   // Only show for budgets that are in approval
   if (budgetStatus !== 'IN_REVIEW' && budgetStatus !== 'SUBMITTED') {
     return null
+  }
+
+  // Don't show if no approval task found
+  if (!approvalTask) {
+    return (
+      <Card>
+        <CardContent className="pt-6">
+          <div className="text-center text-muted-foreground">
+            <p>No pending approval task found for this budget.</p>
+          </div>
+        </CardContent>
+      </Card>
+    )
   }
 
   const handleApprove = async () => {
@@ -47,65 +88,12 @@ export function BudgetApprovalActionPanel({
 
     setError(null)
     setSuccess(null)
-    setIsLoading(true)
 
-    try {
-      const result = await approveBudget({
-        budgetId,
-        approvingUserId: 'current-user-id', // In production, get from session
-        approvingUserRole: 'FINANCE_OFFICER', // In production, get from session
-        comments,
-      })
-
-      if (result.success) {
-        // Update localStorage with approved budget
-        if (budget) {
-          const currentStage = budget.currentApprovalStage || 1;
-          const totalStages = budget.totalApprovalStages || 4;
-          const isLastStage = currentStage >= totalStages;
-
-          const approvedBudget: Budget = {
-            ...budget,
-            status: isLastStage ? 'APPROVED' : 'IN_REVIEW',
-            approvedAt: isLastStage ? new Date() : budget.approvedAt,
-            currentApprovalStage: isLastStage ? currentStage : currentStage + 1,
-            updatedAt: new Date(),
-            approvalChain: [
-              ...(budget.approvalChain || []),
-              {
-                stageNumber: currentStage,
-                stageName: `Stage ${currentStage} Approval`,
-                assignedTo: 'current-user-id',
-                assignedRole: 'FINANCE_OFFICER',
-                status: 'APPROVED',
-                actionTakenAt: new Date(),
-                actionTakenBy: 'current-user-id',
-                comments,
-                signature
-              }
-            ]
-          };
-          saveToStorage(approvedBudget)
-        }
-
-        setSuccess('Budget approved successfully')
-        toast.success('Budget approved successfully')
-        setComments('')
-        setRemarks('')
-        setSignature('')
-        setAction(null)
-        setTimeout(onApprovalComplete, 1500)
-      } else {
-        setError(result.message || 'Failed to approve budget')
-        toast.error(result.message || 'Failed to approve budget')
-      }
-    } catch (err) {
-      setError('An error occurred while approving the budget')
-      toast.error('An error occurred while approving the budget')
-      console.error(err)
-    } finally {
-      setIsLoading(false)
-    }
+    approveMutation.mutate({
+      comments: comments || 'Budget approved',
+      signature,
+      stageNumber: 0,
+    })
   }
 
   const handleReject = async () => {
@@ -116,63 +104,16 @@ export function BudgetApprovalActionPanel({
 
     setError(null)
     setSuccess(null)
-    setIsLoading(true)
 
-    try {
-      const result = await rejectBudget({
-        budgetId,
-        rejectingUserId: 'current-user-id', // In production, get from session
-        rejectionReason: remarks,
-        comments,
-      })
-
-      if (result.success) {
-        // Update localStorage with rejected budget
-        if (budget) {
-          const rejectedBudget: Budget = {
-            ...budget,
-            status: 'REJECTED',
-            currentApprovalStage: 0,
-            rejectedAt: new Date(),
-            rejectionReason: remarks,
-            updatedAt: new Date(),
-            approvalChain: [
-              ...(budget.approvalChain || []),
-              {
-                stageNumber: budget.currentApprovalStage || 1,
-                stageName: `Stage ${budget.currentApprovalStage || 1} Review`,
-                assignedTo: 'current-user-id',
-                assignedRole: 'REVIEWER',
-                status: 'REJECTED',
-                actionTakenAt: new Date(),
-                actionTakenBy: 'current-user-id',
-                remarks,
-                comments
-              }
-            ]
-          }
-          saveToStorage(rejectedBudget)
-        }
-
-        setSuccess('Budget rejected successfully')
-        toast.success('Budget rejected successfully')
-        setComments('')
-        setRemarks('')
-        setSignature('')
-        setAction(null)
-        setTimeout(onApprovalComplete, 1500)
-      } else {
-        setError(result.message || 'Failed to reject budget')
-        toast.error(result.message || 'Failed to reject budget')
-      }
-    } catch (err) {
-      setError('An error occurred while rejecting the budget')
-      toast.error('An error occurred while rejecting the budget')
-      console.error(err)
-    } finally {
-      setIsLoading(false)
-    }
+    rejectMutation.mutate({
+      remarks,
+      comments,
+      signature: signature || '',
+      returnTo: 'ORIGINAL_SUBMITTER',
+    })
   }
+
+  const isLoading = approveMutation.isPending || rejectMutation.isPending
 
   if (action === null) {
     return (

@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 import {
-  useGetApprovalTasks,
-  useGetApprovalStats,
-} from "@/hooks/use-workflows";
+  useApprovalTasks,
+  usePendingApprovalCount,
+} from "@/hooks/use-approval-workflow";
 import {
   Card,
   CardContent,
@@ -60,13 +60,16 @@ export function ApprovalsList({ userId }: ApprovalsListProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState<"date" | "priority" | "name">("date");
 
-  const { data: tasksData, isLoading: isTasksLoading } = useGetApprovalTasks({
-    status: statusFilter === "all" ? undefined : statusFilter,
-  });
+  // Fetch approval tasks with filter
+  const filters = statusFilter === "all" ? {} : { status: statusFilter as any };
+  const { data: tasks = [], isLoading: isTasksLoading } = useApprovalTasks(
+    filters,
+    1,
+    100
+  );
 
-  const { data: statsData, isLoading: isStatsLoading } = useGetApprovalStats();
-
-  const tasks = tasksData || [];
+  // Get pending approval count for statistics
+  const { data: pendingCount = 0 } = usePendingApprovalCount();
 
   // Filter tasks
   const filteredTasks = tasks
@@ -106,7 +109,7 @@ export function ApprovalsList({ userId }: ApprovalsListProps) {
       }
     });
 
-  if (isStatsLoading) {
+  if (isTasksLoading) {
     return (
       <div className="space-y-6">
         <Skeleton className="h-12 w-48" />
@@ -119,74 +122,84 @@ export function ApprovalsList({ userId }: ApprovalsListProps) {
     );
   }
 
-  const stats = statsData;
+  // Calculate statistics from tasks
+  const totalPending = tasks.filter((t) => t.status === "PENDING").length;
+  const highPriority = tasks.filter(
+    (t) => t.status === "PENDING" && t.priority === "HIGH"
+  ).length;
+  const now = new Date();
+  const monthAgo = new Date(now.getFullYear(), now.getMonth(), 1);
+  const thisMonth = tasks.filter(
+    (t) => new Date(t.createdAt) >= monthAgo
+  ).length;
+  const overdue = tasks.filter(
+    (t) => t.status === "PENDING" && new Date(t.dueDate) < now
+  ).length;
 
   return (
     <div className="space-y-6">
       {/* Statistics Cards */}
-      {stats && (
-        <div className="grid gap-4 md:grid-cols-4">
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Total Pending
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.totalPending}</div>
-              <p className="text-xs text-muted-foreground mt-1">
-                Awaiting your action
-              </p>
-            </CardContent>
-          </Card>
+      <div className="grid gap-4 md:grid-cols-4">
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Total Pending
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{totalPending}</div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Awaiting your action
+            </p>
+          </CardContent>
+        </Card>
 
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                High Priority
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className={`text-2xl font-bold ${PRIORITY_COLORS.HIGH}`}>
-                {stats.highPriority}
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                Require immediate attention
-              </p>
-            </CardContent>
-          </Card>
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              High Priority
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className={`text-2xl font-bold ${PRIORITY_COLORS.HIGH}`}>
+              {highPriority}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Require immediate attention
+            </p>
+          </CardContent>
+        </Card>
 
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                This Month
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.thisMonth}</div>
-              <p className="text-xs text-muted-foreground mt-1">
-                Approved this month
-              </p>
-            </CardContent>
-          </Card>
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              This Month
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{thisMonth}</div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Processed this month
+            </p>
+          </CardContent>
+        </Card>
 
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Overdue
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-red-600 dark:text-red-400">
-                {stats.overdue}
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                Past due date
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-      )}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Overdue
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-red-600 dark:text-red-400">
+              {overdue}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Past due date
+            </p>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Filters */}
       <Card>

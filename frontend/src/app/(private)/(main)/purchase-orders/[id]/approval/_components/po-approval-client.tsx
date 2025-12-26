@@ -1,159 +1,21 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { AlertCircle, CheckCircle2, XCircle } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PageHeader } from "@/components/base/page-header";
 import { ApprovalActionPanel } from "@/components/workflows/approval-action-panel";
 import { POItemsTable } from "./po-items-table";
+import { usePurchaseOrderById } from "@/hooks/use-purchase-order-queries";
+import { useApprovalTasks } from "@/hooks/use-approval-workflow";
 import type { ApprovalTask } from "@/types";
+import type { PurchaseOrder } from "@/types/purchase-order";
 
 interface POApprovalClientProps {
   poId: string;
   userId: string;
   userRole: string;
-}
-
-interface POItem {
-  id: string;
-  itemCode: string;
-  itemNumber: number;
-  description: string;
-  quantity: number;
-  unitPrice: number;
-  totalPrice: number;
-  unit: string;
-  expectedDelivery?: string;
-}
-
-interface PurchaseOrder {
-  id: string;
-  poNumber: string;
-  status: "DRAFT" | "SUBMITTED" | "IN_REVIEW" | "APPROVED" | "REJECTED";
-  vendor: {
-    name: string;
-    contactPerson: string;
-    email: string;
-    phone: string;
-    address: string;
-  };
-  requestedBy: string;
-  requestDate: string;
-  deliveryDate: string;
-  paymentTerms: string;
-  items: POItem[];
-  subtotal: number;
-  tax: number;
-  total: number;
-  currentStage: number;
-  stageName: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-const STAGE_NAMES: Record<number, string> = {
-  1: "Department Manager Review",
-  2: "Finance Officer Review",
-  3: "CFO Approval",
-};
-
-// Mock data generator
-function generateMockPO(poId: string): PurchaseOrder {
-  const currentStage = Math.floor(Math.random() * 3) + 1;
-
-  return {
-    id: poId,
-    poNumber: `PO-2024-${String(Math.floor(Math.random() * 9000) + 1000).padStart(4, "0")}`,
-    status: "IN_REVIEW",
-    vendor: {
-      name: "Global Supplies Inc.",
-      contactPerson: "John Smith",
-      email: "john.smith@globalsupplies.com",
-      phone: "+1 (555) 123-4567",
-      address: "123 Business Park, NY 10001",
-    },
-    requestedBy: "REQ-USER-001",
-    requestDate: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-    deliveryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-    paymentTerms: "Net 30",
-    items: [
-      {
-        id: "item-1",
-        itemCode: "OFFICE-CHAIRS-001",
-        itemNumber: 1,
-        description: "Office Chairs - Ergonomic",
-        quantity: 10,
-        unitPrice: 250,
-        totalPrice: 2500,
-        unit: "units",
-        expectedDelivery: new Date(
-          Date.now() + 15 * 24 * 60 * 60 * 1000
-        ).toISOString(),
-      },
-      {
-        id: "item-2",
-        itemCode: "STANDING-DESKS-001",
-        itemNumber: 2,
-        description: "Standing Desks - Electric",
-        quantity: 5,
-        unitPrice: 800,
-        totalPrice: 4000,
-        unit: "units",
-        expectedDelivery: new Date(
-          Date.now() + 20 * 24 * 60 * 60 * 1000
-        ).toISOString(),
-      },
-      {
-        id: "item-3",
-        itemCode: "MONITORS-27IN-001",
-        itemNumber: 3,
-        description: "Computer Monitors - 27 inch",
-        quantity: 8,
-        unitPrice: 350,
-        totalPrice: 2800,
-        unit: "units",
-        expectedDelivery: new Date(
-          Date.now() + 25 * 24 * 60 * 60 * 1000
-        ).toISOString(),
-      },
-    ],
-    subtotal: 9300,
-    tax: 930,
-    total: 10230,
-    currentStage,
-    stageName: STAGE_NAMES[currentStage],
-    createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-    updatedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-  };
-}
-
-// Convert PO to ApprovalTask format
-function convertPOToApprovalTask(
-  po: PurchaseOrder,
-  userId: string
-): ApprovalTask {
-  return {
-    id: po.id,
-    entityId: po.id,
-    entityType: "PURCHASE_ORDER",
-    entityNumber: po.poNumber,
-    status: "pending",
-    stageName: po.stageName,
-    stageIndex: po.currentStage,
-    importance: "MEDIUM",
-    approverName: "Current Approver",
-    approverUserId: userId,
-    createdAt: new Date(po.createdAt),
-    actionDate: new Date(),
-    dueDate: new Date(po.deliveryDate),
-    workflowId: "po-workflow-v1",
-    workflowName: "3-Stage PO Approval",
-  };
 }
 
 export function POApprovalClient({
@@ -162,18 +24,21 @@ export function POApprovalClient({
   userRole,
 }: POApprovalClientProps) {
   const router = useRouter();
-  const [po, setPO] = useState<PurchaseOrder | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    // Simulate data loading
-    const timer = setTimeout(() => {
-      setPO(generateMockPO(poId));
-      setIsLoading(false);
-    }, 500);
+  // Fetch real PO data from backend
+  const { data: po, isLoading } = usePurchaseOrderById(poId);
 
-    return () => clearTimeout(timer);
-  }, [poId]);
+  // Fetch approval tasks to find the one for this PO
+  const { data: approvalTasks = [] } = useApprovalTasks(
+    { documentType: "PURCHASE_ORDER" },
+    1,
+    100
+  );
+
+  // Find the approval task for this PO
+  const approvalTask = approvalTasks.find(
+    (task) => task.documentId === poId
+  ) as ApprovalTask | undefined;
 
   const handleBack = () => {
     router.back();
@@ -190,8 +55,6 @@ export function POApprovalClient({
       </div>
     );
   }
-
-  const approvalTask = convertPOToApprovalTask(po, userId);
 
   return (
     <div className="space-y-6">
@@ -272,13 +135,23 @@ export function POApprovalClient({
 
         {/* Approval Panel */}
         <div>
-          <ApprovalActionPanel
-            task={approvalTask}
-            onApprovalComplete={() => {
-              toast.success("Purchase order approved successfully");
-              router.push("/purchase-orders");
-            }}
-          />
+          {approvalTask ? (
+            <ApprovalActionPanel
+              task={approvalTask}
+              onApprovalComplete={() => {
+                toast.success("Purchase order approved successfully");
+                router.push("/purchase-orders");
+              }}
+            />
+          ) : (
+            <Card>
+              <CardContent className="pt-6">
+                <div className="text-center text-muted-foreground">
+                  <p>No pending approval task found for this purchase order.</p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
       </div>
     </div>
