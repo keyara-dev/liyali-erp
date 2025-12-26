@@ -155,7 +155,13 @@ func SetupRoutes(app *fiber.App) {
 	approvals := tenant.Group("/approvals")
 	approvals.Get("/", handlers.GetApprovalTasks)
 	approvals.Get("/:id", handlers.GetApprovalTask)
-	approvals.Get("/pending/:userId", handlers.GetPendingApprovals)
+	approvals.Post("/:id/approve", middleware.RequirePermission(config.DB, "approval", "approve"), handlers.ApproveTask)
+	approvals.Post("/:id/reject", middleware.RequirePermission(config.DB, "approval", "reject"), handlers.RejectTask)
+	approvals.Post("/:id/reassign", middleware.RequirePermission(config.DB, "approval", "reassign"), handlers.ReassignTask)
+
+	// Approval history routes (tenant-scoped)
+	documents := tenant.Group("/documents")
+	documents.Get("/:documentId/approval-history", handlers.GetApprovalHistory)
 
 	// Bulk operations (tenant-scoped)
 	bulk := tenant.Group("/bulk")
