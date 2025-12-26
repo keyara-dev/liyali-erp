@@ -16,3 +16,9 @@ export * from './use-workflow-queries';
 // GRN hooks
 export * from './use-grn-queries';
 export * from './use-grn-mutations';
+
+// Compliance hooks
+export * from './use-compliance-queries';
+
+// Activity logs hooks
+export * from './use-activity-logs-queries';

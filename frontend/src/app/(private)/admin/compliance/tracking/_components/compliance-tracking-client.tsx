@@ -7,82 +7,12 @@ import { Progress } from '@/components/ui/progress'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { CheckCircle2, AlertCircle, Clock, FileText } from 'lucide-react'
-
-interface ComplianceItem {
-  id: string
-  name: string
-  requirement: string
-  status: 'compliant' | 'non-compliant' | 'pending'
-  dueDate: string
-  completionDate?: string
-  evidence: string[]
-  responsible: string
-}
+import { useComplianceRequirements, type ComplianceItem } from '@/hooks/use-compliance-queries'
 
 interface ComplianceTrackingClientProps {
   userId: string
   userRole: string
 }
-
-const COMPLIANCE_REQUIREMENTS: ComplianceItem[] = [
-  {
-    id: '1',
-    name: 'WCAG 2.1 AA Accessibility',
-    requirement: 'Ensure all workflows are accessible to users with disabilities',
-    status: 'compliant',
-    dueDate: '2024-12-31',
-    completionDate: '2024-11-15',
-    evidence: ['Accessibility audit report', 'Screen reader testing'],
-    responsible: 'IT Department',
-  },
-  {
-    id: '2',
-    name: 'Data Protection Compliance',
-    requirement: 'Implement data encryption and access controls',
-    status: 'compliant',
-    dueDate: '2024-12-31',
-    completionDate: '2024-11-10',
-    evidence: ['Encryption certificate', 'Access control policy'],
-    responsible: 'Security Team',
-  },
-  {
-    id: '3',
-    name: 'Audit Trail Requirements',
-    requirement: 'Maintain complete audit logs for all transactions',
-    status: 'compliant',
-    dueDate: '2025-01-31',
-    completionDate: '2024-11-20',
-    evidence: ['Audit log system', 'Log retention policy'],
-    responsible: 'Compliance Team',
-  },
-  {
-    id: '4',
-    name: 'Approval Workflow Documentation',
-    requirement: 'Document all approval workflows and signing procedures',
-    status: 'pending',
-    dueDate: '2024-12-15',
-    evidence: [],
-    responsible: 'Process Team',
-  },
-  {
-    id: '5',
-    name: 'User Training Records',
-    requirement: 'Complete user training and maintain certification records',
-    status: 'non-compliant',
-    dueDate: '2024-11-30',
-    evidence: ['Training materials'],
-    responsible: 'HR Department',
-  },
-  {
-    id: '6',
-    name: 'System Security Assessment',
-    requirement: 'Annual security assessment and penetration testing',
-    status: 'pending',
-    dueDate: '2025-02-28',
-    evidence: [],
-    responsible: 'Security Team',
-  },
-]
 
 const STATUS_COLORS: Record<string, { bg: string; text: string; icon: React.ReactNode }> = {
   compliant: {
@@ -108,10 +38,30 @@ export function ComplianceTrackingClient({
 }: ComplianceTrackingClientProps) {
   const [selectedTab, setSelectedTab] = useState('overview')
 
-  const compliant = COMPLIANCE_REQUIREMENTS.filter((r) => r.status === 'compliant').length
-  const nonCompliant = COMPLIANCE_REQUIREMENTS.filter((r) => r.status === 'non-compliant').length
-  const pending = COMPLIANCE_REQUIREMENTS.filter((r) => r.status === 'pending').length
-  const complianceScore = Math.round((compliant / COMPLIANCE_REQUIREMENTS.length) * 100)
+  // Fetch compliance requirements
+  const { data: complianceData, isLoading } = useComplianceRequirements()
+
+  const requirements = complianceData?.requirements || []
+  const compliant = requirements.filter((r) => r.status === 'compliant').length
+  const nonCompliant = requirements.filter((r) => r.status === 'non-compliant').length
+  const pending = requirements.filter((r) => r.status === 'pending').length
+  const complianceScore = requirements.length > 0 ? Math.round((compliant / requirements.length) * 100) : 0
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-xl font-bold tracking-tight lg:text-2xl">Compliance Tracking</h1>
+          <p className="text-sm text-muted-foreground">
+            Monitor regulatory compliance and audit requirements
+          </p>
+        </div>
+        <div className="text-center py-12">
+          <p className="text-muted-foreground">Loading compliance data...</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
@@ -134,7 +84,7 @@ export function ComplianceTrackingClient({
               </div>
               <div className="text-right">
                 <p className="text-2xl font-bold text-secondary">{compliant}</p>
-                <p className="text-xs text-muted-foreground">of {COMPLIANCE_REQUIREMENTS.length} requirements</p>
+                <p className="text-xs text-muted-foreground">of {requirements.length} requirements</p>
               </div>
             </div>
             <Progress value={complianceScore} className="h-2" />
@@ -154,7 +104,7 @@ export function ComplianceTrackingClient({
           <CardContent>
             <div className="text-3xl font-bold text-secondary">{compliant}</div>
             <p className="text-xs text-muted-foreground mt-1">
-              {Math.round((compliant / COMPLIANCE_REQUIREMENTS.length) * 100)}% complete
+              {requirements.length > 0 ? Math.round((compliant / requirements.length) * 100) : 0}% complete
             </p>
           </CardContent>
         </Card>
@@ -200,7 +150,14 @@ export function ComplianceTrackingClient({
 
         {/* All Requirements Tab */}
         <TabsContent value="overview" className="space-y-4">
-          {COMPLIANCE_REQUIREMENTS.map((item) => (
+          {requirements.length === 0 ? (
+            <Card>
+              <CardContent className="pt-6 text-center">
+                <p className="text-muted-foreground">No compliance requirements found</p>
+              </CardContent>
+            </Card>
+          ) : (
+            requirements.map((item) => (
             <Card key={item.id}>
               <CardContent className="pt-6">
                 <div className="flex items-start justify-between gap-4">
@@ -252,12 +209,20 @@ export function ComplianceTrackingClient({
                 </div>
               </CardContent>
             </Card>
-          ))}
+            ))
+          )}
         </TabsContent>
 
         {/* Compliant Tab */}
         <TabsContent value="compliant" className="space-y-4">
-          {COMPLIANCE_REQUIREMENTS.filter((r) => r.status === 'compliant').map((item) => (
+          {requirements.filter((r) => r.status === 'compliant').length === 0 ? (
+            <Card>
+              <CardContent className="pt-6 text-center">
+                <p className="text-muted-foreground">No compliant items yet</p>
+              </CardContent>
+            </Card>
+          ) : (
+            requirements.filter((r) => r.status === 'compliant').map((item) => (
             <Card key={item.id}>
               <CardContent className="pt-6">
                 <div className="flex items-center justify-between">
@@ -269,12 +234,20 @@ export function ComplianceTrackingClient({
                 </div>
               </CardContent>
             </Card>
-          ))}
+            ))
+          )}
         </TabsContent>
 
         {/* Issues Tab */}
         <TabsContent value="issues" className="space-y-4">
-          {COMPLIANCE_REQUIREMENTS.filter((r) => r.status !== 'compliant').map((item) => (
+          {requirements.filter((r) => r.status !== 'compliant').length === 0 ? (
+            <Card>
+              <CardContent className="pt-6 text-center">
+                <p className="text-muted-foreground">No issues to address</p>
+              </CardContent>
+            </Card>
+          ) : (
+            requirements.filter((r) => r.status !== 'compliant').map((item) => (
             <Card key={item.id} className={item.status === 'non-compliant' ? 'border-destructive/50' : ''}>
               <CardContent className="pt-6">
                 <div className="flex items-start justify-between gap-4">
@@ -294,7 +267,8 @@ export function ComplianceTrackingClient({
                 </div>
               </CardContent>
             </Card>
-          ))}
+            ))
+          )}
         </TabsContent>
       </Tabs>
     </div>
