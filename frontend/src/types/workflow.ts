@@ -305,3 +305,87 @@ export type SearchFilters = {
   startDate: string;
   endDate: string;
 };
+
+// ==========================================
+// NEW: Backend-Powered Approval Workflow Types
+// ==========================================
+
+/**
+ * Approval Task - represents a pending approval action
+ */
+export interface ApprovalTask {
+  id: string;
+  organizationId: string;
+  documentId: string;
+  documentType: string;
+  documentNumber: string;
+  approverId: string;
+  approverName?: string;
+  approverRole?: string;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
+  stage: number;
+  totalStages?: number;
+  priority?: string;
+  comments?: string;
+  createdAt: Date;
+  updatedAt: Date;
+  dueAt?: Date;
+  overdue?: boolean;
+  document?: {
+    id: string;
+    title: string;
+    amount?: number;
+    currency?: string;
+    requester?: string;
+    status?: string;
+  };
+}
+
+/**
+ * Approval history record - single approval entry in document history
+ */
+export interface ApprovalHistory {
+  id?: string;
+  stage: number;
+  stageName?: string;
+  approverId: string;
+  approverName: string;
+  approverRole?: string;
+  status: 'APPROVED' | 'REJECTED';
+  action?: string;
+  comments?: string;
+  remarks?: string;
+  signature?: string; // Base64 encoded signature image
+  approvedAt: Date;
+  duration?: number; // Seconds to approve
+}
+
+/**
+ * Request to approve a task
+ */
+export interface ApproveTaskRequest {
+  taskId: string;
+  comments: string;
+  signature: string; // Base64 encoded signature image
+  stageNumber: number;
+}
+
+/**
+ * Request to reject a task
+ */
+export interface RejectTaskRequest {
+  taskId: string;
+  remarks: string; // Required reason for rejection
+  comments: string;
+  signature: string; // Base64 encoded signature image
+  returnTo?: string;
+}
+
+/**
+ * Request to reassign a task
+ */
+export interface ReassignTaskRequest {
+  taskId: string;
+  newApproverId: string;
+  reason: string;
+}

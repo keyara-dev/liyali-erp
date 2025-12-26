@@ -150,6 +150,15 @@ export const QUERY_KEYS = {
     BY_USER: "grn-by-user",
   },
 
+  // Approval Tasks (Backend-powered)
+  APPROVALS: {
+    ALL: "approvals-all",
+    BY_ID: "approvals-by-id",
+    PENDING: "approvals-pending",
+    PENDING_COUNT: "approvals-pending-count",
+    HISTORY: "approval-history",
+  },
+
   // Approvals & Workflows
   WORKFLOWS: "workflows",
   WORKFLOW_INSTANCES: "workflow-instances",
