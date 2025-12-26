@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -24,72 +24,40 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { toast } from 'sonner'
 import { StatusBadge } from '@/components/status-badge'
-import { getAllWorkflows, deleteWorkflow, duplicateWorkflow } from '@/lib/workflow-storage'
+import {
+  useWorkflows,
+  useDeleteWorkflow,
+  useDuplicateWorkflow,
+  type Workflow,
+} from '@/hooks/use-workflow-queries'
 
 interface WorkflowsClientProps {
   userId: string
   userRole: string
 }
 
-interface Workflow {
-  id: string
-  name: string
-  description: string
-  documentType: string
-  stages: number
-  status: 'ACTIVE' | 'DEPRECATED'
-  createdAt: string
-  updatedAt: string
-  createdBy: string
-}
-
 export function WorkflowsClient({ userId, userRole }: WorkflowsClientProps) {
   const router = useRouter()
-  const [workflows, setWorkflows] = useState<Workflow[]>([])
   const [deleteId, setDeleteId] = useState<string | null>(null)
-  const [isDeleting, setIsDeleting] = useState(false)
   const [duplicateId, setDuplicateId] = useState<string | null>(null)
-  const [isDuplicating, setIsDuplicating] = useState(false)
 
-  // Load workflows from localStorage on mount
-  useEffect(() => {
-    const stored = getAllWorkflows()
-    setWorkflows(
-      stored.map((w) => ({
-        id: w.id,
-        name: w.name,
-        description: w.description,
-        documentType: w.documentType,
-        stages: w.stages,
-        status: w.status,
-        createdAt: w.createdAt,
-        updatedAt: w.updatedAt,
-        createdBy: w.createdBy,
-      }))
-    )
-  }, [])
+  // Fetch workflows
+  const { data: workflows = [], isLoading } = useWorkflows()
+
+  // Delete workflow mutation
+  const deleteMutation = useDeleteWorkflow(() => {
+    setDeleteId(null)
+  })
+
+  // Duplicate workflow mutation
+  const duplicateMutation = useDuplicateWorkflow(() => {
+    setDuplicateId(null)
+  })
 
   const handleDelete = async () => {
     if (!deleteId) return
-
-    setIsDeleting(true)
-    try {
-      // Delete from localStorage
-      const success = deleteWorkflow(deleteId)
-      if (success) {
-        setWorkflows(workflows.filter((w) => w.id !== deleteId))
-        toast.success('Workflow deleted successfully')
-      } else {
-        toast.error('Failed to delete workflow')
-      }
-      setDeleteId(null)
-    } catch (error) {
-      toast.error('Failed to delete workflow')
-    } finally {
-      setIsDeleting(false)
-    }
+    deleteMutation.mutate(deleteId)
   }
 
   const handleDuplicateClick = (workflowId: string) => {
@@ -98,41 +66,7 @@ export function WorkflowsClient({ userId, userRole }: WorkflowsClientProps) {
 
   const handleDuplicate = async () => {
     if (!duplicateId) return
-
-    setIsDuplicating(true)
-    try {
-      const workflow = workflows.find((w) => w.id === duplicateId)
-      if (!workflow) {
-        toast.error('Workflow not found')
-        return
-      }
-
-      const duplicated = duplicateWorkflow(duplicateId)
-      if (duplicated) {
-        setWorkflows([
-          ...workflows,
-          {
-            id: duplicated.id,
-            name: duplicated.name,
-            description: duplicated.description,
-            documentType: duplicated.documentType,
-            stages: duplicated.stages,
-            status: duplicated.status,
-            createdAt: duplicated.createdAt,
-            updatedAt: duplicated.updatedAt,
-            createdBy: duplicated.createdBy,
-          },
-        ])
-        toast.success(`${workflow.name} duplicated successfully`)
-        setDuplicateId(null)
-      } else {
-        toast.error('Failed to duplicate workflow')
-      }
-    } catch (error) {
-      toast.error('Failed to duplicate workflow')
-    } finally {
-      setIsDuplicating(false)
-    }
+    duplicateMutation.mutate(duplicateId)
   }
 
   const getDocumentTypeLabel = (type: string) => {
@@ -266,10 +200,10 @@ export function WorkflowsClient({ userId, userRole }: WorkflowsClientProps) {
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
-              disabled={isDeleting}
+              disabled={deleteMutation.isPending}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {isDeleting ? 'Deleting...' : 'Delete'}
+              {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
             </AlertDialogAction>
           </div>
         </AlertDialogContent>
@@ -288,9 +222,9 @@ export function WorkflowsClient({ userId, userRole }: WorkflowsClientProps) {
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDuplicate}
-              disabled={isDuplicating}
+              disabled={duplicateMutation.isPending}
             >
-              {isDuplicating ? 'Duplicating...' : 'Duplicate'}
+              {duplicateMutation.isPending ? 'Duplicating...' : 'Duplicate'}
             </AlertDialogAction>
           </div>
         </AlertDialogContent>
