@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,6 +18,7 @@ import { PageHeader } from "@/components/base/page-header";
 import { GRNItemsMatchingTable } from "./grn-items-matching-table";
 import { QualityIssueReportDialog } from "./quality-issue-dialog";
 import { useAddQualityIssueMutation } from "@/hooks/use-quality-issue-mutations";
+import { useGRNById } from "@/hooks/use-grn-queries";
 import { Badge } from "@/components";
 
 interface GRNDetailClientProps {
@@ -67,93 +68,19 @@ const STAGE_NAMES: Record<number, string> = {
   2: "Department Manager Confirmation",
 };
 
-// Mock data generator
-function generateMockGRN(grnId: string): GoodsReceivedNote {
-  const currentStage = Math.floor(Math.random() * 2) + 1;
-
-  return {
-    id: grnId,
-    grnNumber: `GRN-2024-${String(Math.floor(Math.random() * 9000) + 1000).padStart(4, "0")}`,
-    poNumber: `PO-2024-${String(Math.floor(Math.random() * 9000) + 1000).padStart(4, "0")}`,
-    status: currentStage === 2 ? "SUBMITTED" : "SUBMITTED",
-    warehouseLocation: "Warehouse A - Section 3",
-    receivedDate: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-    receivedBy: "WAREHOUSE-USER-001",
-    approvedBy: currentStage === 2 ? "DEPT-MANAGER-001" : undefined,
-    items: [
-      {
-        id: "item-1",
-        itemNumber: 1,
-        description: "Office Chairs - Ergonomic",
-        poQuantity: 10,
-        receivedQuantity: 10,
-        unit: "units",
-        variance: 0,
-        damage: 0,
-        condition: "GOOD",
-      },
-      {
-        id: "item-2",
-        itemNumber: 2,
-        description: "Standing Desks - Electric",
-        poQuantity: 5,
-        receivedQuantity: 4,
-        unit: "units",
-        variance: -1,
-        damage: 1,
-        damageNotes: "One unit arrived with damaged motor",
-        condition: "DAMAGED",
-      },
-      {
-        id: "item-3",
-        itemNumber: 3,
-        description: "Computer Monitors - 27 inch",
-        poQuantity: 8,
-        receivedQuantity: 8,
-        unit: "units",
-        variance: 0,
-        damage: 0,
-        condition: "GOOD",
-      },
-    ],
-    qualityIssues: [
-      {
-        id: "issue-1",
-        itemId: "item-2",
-        description: "Standing Desk motor malfunction",
-        severity: "HIGH",
-      },
-    ],
-    notes: "General inspection completed. One standing desk has motor issues.",
-    currentStage,
-    stageName: STAGE_NAMES[currentStage],
-    createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-    updatedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-  };
-}
-
 export function GRNDetailClient({
   grnId,
   userId: _userId,
   userRole: _userRole,
 }: GRNDetailClientProps) {
   const router = useRouter();
-  const [grn, setGRN] = useState<GoodsReceivedNote | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
   const [isQualityDialogOpen, setIsQualityDialogOpen] = useState(false);
+
+  // Fetch GRN data from backend
+  const { data: grn, isLoading } = useGRNById(grnId);
 
   // Mutation for adding quality issues
   const addQualityIssueMutation = useAddQualityIssueMutation(grnId);
-
-  useEffect(() => {
-    // Simulate data loading
-    const timer = setTimeout(() => {
-      setGRN(generateMockGRN(grnId));
-      setIsLoading(false);
-    }, 500);
-
-    return () => clearTimeout(timer);
-  }, [grnId]);
 
   const handleConfirm = () => {
     toast.success("Navigating to confirmation...");
@@ -171,11 +98,8 @@ export function GRNDetailClient({
     severity: "LOW" | "MEDIUM" | "HIGH";
   }, 'id'>) => {
     try {
-      // Call mutation to save to localStorage via server action
-      const updatedGRN = await addQualityIssueMutation.mutateAsync(issue);
-
-      // Update local state with the response from server
-      setGRN(updatedGRN);
+      // Call mutation to save quality issue via backend
+      await addQualityIssueMutation.mutateAsync(issue);
 
       toast.success("Quality issue reported and saved");
     } catch (error) {

@@ -51,11 +51,8 @@ const NotificationSkeleton = () => (
   </div>
 );
 
-interface NotificationsPageProps {
-  userId: string;
-}
-
-function NotificationsPageContent({ userId }: NotificationsPageProps) {
+function NotificationsPageContent() {
+  const { user } = useSession();
   const [page, setPage] = useState(1);
   const [typeFilter, setTypeFilter] = useState<NotificationType | "all">("all");
   const [statusFilter, setStatusFilter] = useState<"all" | "read" | "unread">(
@@ -63,6 +60,18 @@ function NotificationsPageContent({ userId }: NotificationsPageProps) {
   );
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+
+  if (!user) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-muted-foreground">
+          Please log in to view notifications
+        </p>
+      </div>
+    );
+  }
+
+  const userId = user.id;
 
   const { data: result, isLoading } = useUserNotifications(userId, page, 10, {
     type: typeFilter === "all" ? undefined : typeFilter,
@@ -243,21 +252,4 @@ function NotificationsPageContent({ userId }: NotificationsPageProps) {
   );
 }
 
-// Server component wrapper to get user
-async function NotificationsPage() {
-  const { user } = useSession();
-
-  if (!user) {
-    return (
-      <div className="text-center py-12">
-        <p className="text-muted-foreground">
-          Please log in to view notifications
-        </p>
-      </div>
-    );
-  }
-
-  return <NotificationsPageContent userId={user.id} />;
-}
-
-export default NotificationsPage;
+export default NotificationsPageContent;

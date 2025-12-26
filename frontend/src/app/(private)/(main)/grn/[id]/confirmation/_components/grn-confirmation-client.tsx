@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,6 +12,7 @@ import { AlertTriangle, CheckCircle2, Package, Signature } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PageHeader } from "@/components/base/page-header";
 import { GRNItemsMatchingTable } from "./grn-items-matching-table";
+import { useGRNById, useConfirmGRN, useRejectGRN } from "@/hooks/use-grn-queries";
 
 interface GRNConfirmationClientProps {
   grnId: string;
@@ -60,93 +61,27 @@ const STAGE_NAMES: Record<number, string> = {
   2: "Department Manager Confirmation",
 };
 
-// Mock data generator
-function generateMockGRN(grnId: string): GoodsReceivedNote {
-  const currentStage = Math.floor(Math.random() * 2) + 1;
-
-  return {
-    id: grnId,
-    grnNumber: `GRN-2024-${String(Math.floor(Math.random() * 9000) + 1000).padStart(4, "0")}`,
-    poNumber: `PO-2024-${String(Math.floor(Math.random() * 9000) + 1000).padStart(4, "0")}`,
-    status: "SUBMITTED",
-    warehouseLocation: "Warehouse A - Section 3",
-    receivedDate: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-    receivedBy: "WAREHOUSE-USER-001",
-    approvedBy: undefined,
-    items: [
-      {
-        id: "item-1",
-        itemNumber: 1,
-        description: "Office Chairs - Ergonomic",
-        poQuantity: 10,
-        receivedQuantity: 10,
-        unit: "units",
-        variance: 0,
-        damage: 0,
-        condition: "GOOD",
-      },
-      {
-        id: "item-2",
-        itemNumber: 2,
-        description: "Standing Desks - Electric",
-        poQuantity: 5,
-        receivedQuantity: 4,
-        unit: "units",
-        variance: -1,
-        damage: 1,
-        damageNotes: "One unit arrived with damaged motor",
-        condition: "DAMAGED",
-      },
-      {
-        id: "item-3",
-        itemNumber: 3,
-        description: "Computer Monitors - 27 inch",
-        poQuantity: 8,
-        receivedQuantity: 8,
-        unit: "units",
-        variance: 0,
-        damage: 0,
-        condition: "GOOD",
-      },
-    ],
-    qualityIssues: [
-      {
-        id: "issue-1",
-        itemId: "item-2",
-        description: "Standing Desk motor malfunction",
-        severity: "HIGH",
-      },
-    ],
-    notes: "General inspection completed. One standing desk has motor issues.",
-    currentStage,
-    stageName: STAGE_NAMES[currentStage],
-    createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-    updatedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-  };
-}
-
 export function GRNConfirmationClient({
   grnId,
-  userId,
-  userRole,
+  userId: _userId,
+  userRole: _userRole,
 }: GRNConfirmationClientProps) {
   const router = useRouter();
-  const [grn, setGRN] = useState<GoodsReceivedNote | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [confirmCheckbox, setConfirmCheckbox] = useState(false);
   const [confirmationNotes, setConfirmationNotes] = useState("");
   const [signature, setSignature] = useState("");
 
-  useEffect(() => {
-    // Simulate data loading
-    const timer = setTimeout(() => {
-      setGRN(generateMockGRN(grnId));
-      setIsLoading(false);
-    }, 500);
+  // Fetch GRN data from backend
+  const { data: grn, isLoading } = useGRNById(grnId);
 
-    return () => clearTimeout(timer);
-  }, [grnId]);
+  // Setup confirm and reject mutations
+  const confirmMutation = useConfirmGRN(grnId, () => {
+    router.push("/grn");
+  });
+
+  const rejectMutation = useRejectGRN(grnId, () => {
+    router.push("/grn");
+  });
 
   const handleConfirm = async () => {
     if (!confirmCheckbox) {
@@ -159,17 +94,10 @@ export function GRNConfirmationClient({
       return;
     }
 
-    setIsSubmitting(true);
-    try {
-      // Simulate confirmation process
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      toast.success("GRN confirmed successfully");
-      router.push("/grn");
-    } catch (error) {
-      toast.error("Failed to confirm GRN");
-    } finally {
-      setIsSubmitting(false);
-    }
+    await confirmMutation.mutateAsync({
+      signature,
+      remarks: confirmationNotes || "GRN confirmed",
+    });
   };
 
   const handleReject = async () => {
@@ -183,18 +111,13 @@ export function GRNConfirmationClient({
       return;
     }
 
-    setIsSubmitting(true);
-    try {
-      // Simulate rejection process
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      toast.success("GRN rejected successfully");
-      router.push("/grn");
-    } catch (error) {
-      toast.error("Failed to reject GRN");
-    } finally {
-      setIsSubmitting(false);
-    }
+    await rejectMutation.mutateAsync({
+      signature,
+      remarks: confirmationNotes,
+    });
   };
+
+  const isSubmitting = confirmMutation.isPending || rejectMutation.isPending;
 
   const handleBack = () => {
     router.back();

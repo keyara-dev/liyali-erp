@@ -2,11 +2,12 @@
 
 import { useParams } from "next/navigation";
 import { useApprovalTaskDetail } from "@/hooks/use-approval-workflow";
+import { useRequisitionById } from "@/hooks/use-requisition-queries";
 import {
   ApprovalFlowDisplay,
   ApprovalActionPanel,
   ApprovalHistory,
-} from "@/components/";
+} from "@/components/workflows";
 import {
   Card,
   CardContent,
@@ -31,6 +32,10 @@ export default function RequisitionApprovalPage() {
   const taskId = params.id as string;
 
   const { data: task, isLoading } = useApprovalTaskDetail(taskId);
+
+  // Fetch requisition data if we have a documentId from the task
+  const requisitionId = task?.documentId;
+  const { data: requisition } = useRequisitionById(requisitionId || '', !!requisitionId);
 
   if (isLoading) {
     return (
@@ -110,7 +115,7 @@ export default function RequisitionApprovalPage() {
           </CardHeader>
           <CardContent>
             <p className="font-semibold text-sm">
-              {workflow?.name || "Unknown"}
+              Requisition Approval Workflow
             </p>
           </CardContent>
         </Card>
@@ -271,14 +276,12 @@ export default function RequisitionApprovalPage() {
         {/* Right Column - Workflow Progress */}
         <div className="space-y-6">
           {/* Workflow Timeline */}
-          {workflow && (
-            <ApprovalFlowDisplay
-              workflow={workflow}
-              currentStageIndex={task.stageIndex || 0}
-              approvals={taskData.relatedApprovals || []}
-              isCompleted={task.status !== "pending"}
-            />
-          )}
+          <ApprovalFlowDisplay
+            approvalHistory={task.approvalHistory || []}
+            currentStage={task.stage || 0}
+            totalStages={4}
+            isCompleted={task.status !== "PENDING"}
+          />
 
           {/* Quick Info */}
           <Card>

@@ -2,6 +2,7 @@
 
 import { useParams } from "next/navigation";
 import { useApprovalTaskDetail } from "@/hooks/use-approval-workflow";
+import { useBudgetById } from "@/hooks/use-budget-queries";
 import {
   ApprovalFlowDisplay,
   ApprovalActionPanel,
@@ -26,6 +27,10 @@ export default function BudgetApprovalPage() {
   const taskId = params.id as string;
 
   const { data: task, isLoading } = useApprovalTaskDetail(taskId);
+
+  // Fetch budget data if we have a documentId from the task
+  const budgetId = task?.documentId;
+  const { data: budget } = useBudgetById(budgetId || '', !!budgetId);
 
   if (isLoading) {
     return (
@@ -104,7 +109,7 @@ export default function BudgetApprovalPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="font-semibold text-sm">{workflow?.name || "Unknown"}</p>
+            <p className="font-semibold text-sm">Budget Approval Workflow</p>
           </CardContent>
         </Card>
 
@@ -267,14 +272,12 @@ export default function BudgetApprovalPage() {
         {/* Right Column - Workflow Progress */}
         <div className="space-y-6">
           {/* Workflow Timeline */}
-          {workflow && (
-            <ApprovalFlowDisplay
-              workflow={workflow}
-              currentStageIndex={task.stageIndex || 0}
-              approvals={taskData.relatedApprovals || []}
-              isCompleted={task.status !== "pending"}
-            />
-          )}
+          <ApprovalFlowDisplay
+            approvalHistory={task.approvalHistory || []}
+            currentStage={task.stage || 0}
+            totalStages={4}
+            isCompleted={task.status !== "PENDING"}
+          />
 
           {/* Quick Info */}
           <Card>
