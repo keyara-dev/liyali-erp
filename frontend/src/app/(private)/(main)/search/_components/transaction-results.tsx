@@ -1,28 +1,22 @@
-"use client";
+'use client'
 
-import { useState } from "react";
-import * as React from "react";
-import { useMutation } from "@tanstack/react-query";
-import { ColumnDef } from "@tanstack/react-table";
-import { useRouter } from "next/navigation";
-import { ArrowUpDown, Eye } from "lucide-react";
+import { useState } from 'react'
+import * as React from 'react'
+import { ColumnDef } from '@tanstack/react-table'
+import { useRouter } from 'next/navigation'
+import { ArrowUpDown, Eye } from 'lucide-react'
 
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { DataTable } from "@/components/ui/data-table";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent } from '@/components/ui/card'
+import { DataTable } from '@/components/ui/data-table'
+import { Skeleton } from '@/components/ui/skeleton'
 import {
   WorkflowDocument,
   SearchFilters,
-} from "@/types/workflow";
-import { DownloadButton } from "./download-button";
-import {
-  getPurchaseOrders,
-  getRequisitions,
-  getPaymentVouchers,
-  getGoodsReceivedNotes,
-} from "@/lib/storage";
+} from '@/types/workflow'
+import { DownloadButton } from './download-button'
+import { useSearchDocuments } from '@/hooks/use-search-queries'
 
 // Table skeleton loader
 function TransactionTableSkeleton() {
@@ -45,7 +39,7 @@ function TransactionTableSkeleton() {
         ))}
       </div>
     </div>
-  );
+  )
 }
 
 interface TransactionResultsProps {
@@ -56,159 +50,28 @@ interface TransactionResultsProps {
 }
 
 const STATUS_COLORS: Record<string, string> = {
-  DRAFT: "outline",
-  SUBMITTED: "secondary",
-  IN_REVIEW: "default",
-  APPROVED: "default",
-  REJECTED: "destructive",
-  REVERSED: "secondary",
-};
-
-const STATUS_LABELS: Record<string, string> = {
-  DRAFT: "Draft",
-  SUBMITTED: "Submitted",
-  IN_REVIEW: "In Approval",
-  APPROVED: "Approved",
-  REJECTED: "Rejected",
-  REVERSED: "Reversed",
-};
-
-const DOCUMENT_TYPE_LABELS: Record<string, string> = {
-  REQUISITION: "Requisition",
-  PURCHASE_ORDER: "Purchase Order",
-  PAYMENT_VOUCHER: "Payment Voucher",
-  GOODS_RECEIVED_NOTE: "GRN",
-};
-
-// Helper to convert stored documents to WorkflowDocument
-function convertToWorkflowDocument(doc: any): WorkflowDocument {
-  console.log("🔄 Converting document:", {
-    id: doc.id,
-    type: doc.type,
-    documentNumber: doc.documentNumber,
-    createdAt: doc.createdAt,
-    createdAtType: typeof doc.createdAt
-  });
-  const converted = {
-    id: doc.id,
-    type: doc.type,
-    documentNumber: doc.documentNumber,
-    status: doc.status,
-    currentStage: doc.currentStage || 1,
-    createdBy: doc.createdBy,
-    createdByUser: doc.createdByUser,
-    createdAt: new Date(doc.createdAt),
-    updatedAt: new Date(doc.updatedAt),
-    metadata: doc.metadata || {},
-  };
-  console.log("✅ Converted document createdAt:", converted.createdAt);
-  return converted;
+  DRAFT: 'outline',
+  SUBMITTED: 'secondary',
+  IN_REVIEW: 'default',
+  APPROVED: 'default',
+  REJECTED: 'destructive',
+  REVERSED: 'secondary',
 }
 
-// Search function that queries local storage
-function performSearch(
-  filters: SearchFilters,
-  page: number,
-  limit: number
-): { documents: WorkflowDocument[]; total: number; totalPages: number } {
-  console.log("🔍 Search starting with filters:", filters);
+const STATUS_LABELS: Record<string, string> = {
+  DRAFT: 'Draft',
+  SUBMITTED: 'Submitted',
+  IN_REVIEW: 'In Approval',
+  APPROVED: 'Approved',
+  REJECTED: 'Rejected',
+  REVERSED: 'Reversed',
+}
 
-  // Get all documents from unified storage
-  const pos = getPurchaseOrders();
-  const reqs = getRequisitions();
-  const pvs = getPaymentVouchers();
-  const grns = getGoodsReceivedNotes();
-
-  console.log("📦 Storage data:", { pos: pos.length, reqs: reqs.length, pvs: pvs.length, grns: grns.length });
-
-  const allDocs: WorkflowDocument[] = [
-    ...pos.map(convertToWorkflowDocument),
-    ...reqs.map(convertToWorkflowDocument),
-    ...pvs.map(convertToWorkflowDocument),
-    ...grns.map(convertToWorkflowDocument),
-  ];
-
-  console.log("📄 All documents:", allDocs.length, allDocs);
-
-  // Apply filters
-  let filtered = allDocs.filter((doc) => {
-    console.log(`\n🔍 Evaluating ${doc.documentNumber}:`);
-
-    // Filter by document number (case-insensitive, partial match)
-    if (
-      filters.documentNumber &&
-      !doc.documentNumber
-        .toLowerCase()
-        .includes(filters.documentNumber.toLowerCase())
-    ) {
-      console.log(`  ❌ documentNumber filter: "${filters.documentNumber}" not in "${doc.documentNumber}"`);
-      return false;
-    }
-    if (filters.documentNumber) {
-      console.log(`  ✓ documentNumber filter: "${filters.documentNumber}" found in "${doc.documentNumber}"`);
-    }
-
-    // Filter by document type
-    if (filters.documentType !== "ALL" && doc.type !== filters.documentType) {
-      console.log(`  ❌ type filter: doc.type="${doc.type}" !== filters.documentType="${filters.documentType}"`);
-      return false;
-    }
-    if (filters.documentType !== "ALL") {
-      console.log(`  ✓ type filter: doc.type="${doc.type}" === filters.documentType="${filters.documentType}"`);
-    }
-
-    // Filter by status
-    if (filters.status !== "ALL" && doc.status !== filters.status) {
-      console.log(`  ❌ status filter: doc.status="${doc.status}" !== filters.status="${filters.status}"`);
-      return false;
-    }
-    if (filters.status !== "ALL") {
-      console.log(`  ✓ status filter: doc.status="${doc.status}" === filters.status="${filters.status}"`);
-    }
-
-    // Filter by start date
-    if (filters.startDate) {
-      const startDate = new Date(filters.startDate);
-      if (doc.createdAt < startDate) {
-        console.log(`  ❌ startDate filter: doc.createdAt="${doc.createdAt.toISOString()}" < startDate="${startDate.toISOString()}"`);
-        return false;
-      }
-      console.log(`  ✓ startDate filter: doc.createdAt="${doc.createdAt.toISOString()}" >= startDate="${startDate.toISOString()}"`);
-    }
-
-    // Filter by end date
-    if (filters.endDate) {
-      const endDate = new Date(filters.endDate);
-      endDate.setHours(23, 59, 59, 999); // Include the entire end date
-      if (doc.createdAt > endDate) {
-        console.log(`  ❌ endDate filter: doc.createdAt="${doc.createdAt.toISOString()}" > endDate="${endDate.toISOString()}"`);
-        return false;
-      }
-      console.log(`  ✓ endDate filter: doc.createdAt="${doc.createdAt.toISOString()}" <= endDate="${endDate.toISOString()}"`);
-    }
-
-    console.log("✅ Document passed all filters:", doc.documentNumber);
-    return true;
-  });
-
-  console.log("🔎 After filtering:", filtered.length, "documents from", allDocs.length);
-
-  // Sort by created date (newest first)
-  filtered.sort(
-    (a, b) =>
-      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-  );
-
-  const total = filtered.length;
-  const totalPages = Math.ceil(total / limit);
-  const skip = (page - 1) * limit;
-  const paginatedData = filtered.slice(skip, skip + limit);
-
-  return {
-    documents: paginatedData,
-    total,
-    totalPages,
-  };
+const DOCUMENT_TYPE_LABELS: Record<string, string> = {
+  REQUISITION: 'Requisition',
+  PURCHASE_ORDER: 'Purchase Order',
+  PAYMENT_VOUCHER: 'Payment Voucher',
+  GOODS_RECEIVED_NOTE: 'GRN',
 }
 
 export function TransactionResults({
@@ -217,48 +80,29 @@ export function TransactionResults({
   userRole,
   onSearchComplete,
 }: TransactionResultsProps) {
-  const router = useRouter();
-  const [documents, setDocuments] = useState<WorkflowDocument[]>([]);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalDocuments, setTotalDocuments] = useState(0);
+  const router = useRouter()
+  const [currentPage, setCurrentPage] = useState(1)
+  const pageSize = 10
 
-  const pageSize = 10;
+  // Use React Query hook for searching
+  const {
+    data,
+    isLoading,
+    isError,
+    error,
+  } = useSearchDocuments(filters, currentPage, pageSize)
 
-  // Mutation for search
-  const searchMutation = useMutation({
-    mutationFn: () => {
-      console.log("🔍 Searching with filters:", filters);
-      try {
-        const result = performSearch(filters, currentPage, pageSize);
-        console.log("✅ Search completed:", result);
-        return Promise.resolve(result);
-      } catch (error) {
-        console.error("❌ Search error:", error);
-        return Promise.reject(error);
-      }
-    },
-    onSuccess: (result) => {
-      console.log("📊 Setting search results:", result);
-      setDocuments(result.documents);
-      setTotalDocuments(result.total);
-      setTotalPages(result.totalPages);
-      onSearchComplete?.();
-    },
-    onError: (error) => {
-      console.error("Failed to search documents:", error);
-      setDocuments([]);
-      setTotalDocuments(0);
-      setTotalPages(1);
-      onSearchComplete?.();
-    },
-  });
-
-  // Trigger search when filters or pagination changes
+  // Handle search completion callback
   React.useEffect(() => {
-    console.log("🚀 Starting search effect with:", { filters, page: currentPage });
-    searchMutation.mutate();
-  }, [filters, currentPage, refreshTrigger]);
+    if (!isLoading) {
+      onSearchComplete?.()
+    }
+  }, [isLoading, onSearchComplete])
+
+  // Get documents and pagination info
+  const documents = data?.documents || []
+  const totalDocuments = data?.total || 0
+  const totalPages = data?.totalPages || 0
 
   const columns: ColumnDef<WorkflowDocument>[] = [
     {
@@ -324,7 +168,8 @@ export function TransactionResults({
     },
   ];
 
-  if (searchMutation.isPending) {
+  // Show loading state
+  if (isLoading) {
     return (
       <Card>
         <CardContent className="pt-6">
@@ -336,7 +181,39 @@ export function TransactionResults({
           </div>
         </CardContent>
       </Card>
-    );
+    )
+  }
+
+  // Show error state
+  if (isError) {
+    return (
+      <Card>
+        <CardContent className="pt-6">
+          <div className="text-center py-12">
+            <p className="text-red-600 font-medium mb-2">Search Failed</p>
+            <p className="text-sm text-muted-foreground">
+              {error?.message || 'Unable to search documents. Please try again.'}
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  // Show empty state
+  if (documents.length === 0 && !isLoading) {
+    return (
+      <Card>
+        <CardContent className="pt-6">
+          <div className="text-center py-12">
+            <p className="text-muted-foreground">No documents found</p>
+            <p className="text-sm text-muted-foreground mt-1">
+              Try adjusting your search filters
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    )
   }
 
   return (
@@ -352,17 +229,17 @@ export function TransactionResults({
             pageSize={pageSize}
             totalPages={totalPages}
             onPaginationChange={(page) => {
-              setCurrentPage(page);
+              setCurrentPage(page)
             }}
             renderRowActions={(doc: WorkflowDocument) => {
               // Map document type to URL slug
               const typeSlug =
                 {
-                  REQUISITION: "requisitions",
-                  PURCHASE_ORDER: "purchase-orders",
-                  PAYMENT_VOUCHER: "payment-vouchers",
-                  GOODS_RECEIVED_NOTE: "grn",
-                }[doc.type] || "workflows";
+                  REQUISITION: 'requisitions',
+                  PURCHASE_ORDER: 'purchase-orders',
+                  PAYMENT_VOUCHER: 'payment-vouchers',
+                  GOODS_RECEIVED_NOTE: 'grn',
+                }[doc.type] || 'workflows'
 
               return (
                 <div className="flex gap-2">
@@ -380,11 +257,11 @@ export function TransactionResults({
                     documentNumber={doc.documentNumber}
                   />
                 </div>
-              );
+              )
             }}
           />
         </div>
       </CardContent>
     </Card>
-  );
+  )
 }

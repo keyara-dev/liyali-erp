@@ -55,20 +55,19 @@ export function SearchForm({ onSearch, isSearching }: SearchFormProps) {
   };
 
   const handleReset = () => {
-    
-    setDocumentNumber("");
-    setDocumentType("ALL");
-    setStatus("ALL");
-    setStartDate(undefined);
-    setEndDate(undefined);
+    setDocumentNumber('')
+    setDocumentType('ALL')
+    setStatus('ALL')
+    setStartDate(undefined)
+    setEndDate(undefined)
     onSearch({
-      documentNumber: "",
-      documentType: "ALL",
-      status: "ALL",
-      startDate: "",
-      endDate: "",
-    });
-  };
+      documentNumber: '',
+      documentType: 'ALL',
+      status: 'ALL',
+      startDate: '',
+      endDate: '',
+    })
+  }
 
   return (
     <Card className="gradient-primary border-0 shadow-lg">
@@ -86,11 +85,11 @@ export function SearchForm({ onSearch, isSearching }: SearchFormProps) {
               placeholder="e.g., REQ-2024-001"
               value={documentNumber}
               onChange={(e) => setDocumentNumber(e.target.value)}
-              className="bg-transparent! border-0 text-white placeholder:text-white/60"
+              className="bg-transparent border-0 text-white placeholder:text-white/60"
               classNames={{
-                label: "text-primary-foreground",
+                label: 'text-primary-foreground',
                 input:
-                  "backdrop-blur-md bg-white/10! rounded-lg border h-9! border-white/20! text-white placeholder:text-white/60",
+                  'backdrop-blur-md bg-white/10 rounded-lg border h-9 border-white/20 text-white placeholder:text-white/60',
               }}
             />
 
@@ -101,9 +100,9 @@ export function SearchForm({ onSearch, isSearching }: SearchFormProps) {
               options={DOCUMENT_TYPES}
               placeholder="Select Document Type"
               classNames={{
-                label: "text-primary-foreground",
+                label: 'text-primary-foreground',
                 input:
-                  "backdrop-blur-md bg-white/10! rounded-lg border h-9! border-white/20! text-white placeholder:text-white/60",
+                  'backdrop-blur-md bg-white/10 rounded-lg border h-9 border-white/20 text-white placeholder:text-white/60',
               }}
             />
           </div>
@@ -117,9 +116,9 @@ export function SearchForm({ onSearch, isSearching }: SearchFormProps) {
               options={STATUSES}
               placeholder="Select Status"
               classNames={{
-                label: "text-primary-foreground",
+                label: 'text-primary-foreground',
                 input:
-                  "backdrop-blur-md bg-white/10! rounded-lg border h-9! border-white/20! text-white placeholder:text-white/60",
+                  'backdrop-blur-md bg-white/10 rounded-lg border h-9 border-white/20 text-white placeholder:text-white/60',
               }}
             />
 
@@ -129,9 +128,9 @@ export function SearchForm({ onSearch, isSearching }: SearchFormProps) {
               placeholder="-- Select Start Date --"
               onValueChange={setStartDate}
               classNames={{
-                label: "text-primary-foreground",
+                label: 'text-primary-foreground',
                 input:
-                  "backdrop-blur-md bg-white/10 rounded-lg border h-9! border-white/20! text-white placeholder:text-white/60",
+                  'backdrop-blur-md bg-white/10 rounded-lg border h-9 border-white/20 text-white placeholder:text-white/60',
               }}
             />
 
@@ -141,9 +140,9 @@ export function SearchForm({ onSearch, isSearching }: SearchFormProps) {
               placeholder="-- Select End Date --"
               onValueChange={setEndDate}
               classNames={{
-                label: "text-primary-foreground",
+                label: 'text-primary-foreground',
                 input:
-                  "backdrop-blur-md bg-white/10 rounded-lg border h-9! border-white/20! text-white placeholder:text-white/60",
+                  'backdrop-blur-md bg-white/10 rounded-lg border h-9 border-white/20 text-white placeholder:text-white/60',
               }}
             />
           </div>
