@@ -150,8 +150,10 @@ func CreateRequisition(c fiber.Ctx) error {
 	}
 
 	// Create requisition
+	reqNumber := fmt.Sprintf("REQ-%d-%s", time.Now().Unix(), uuid.New().String()[:8])
 	requisition := models.Requisition{
 		ID:                uuid.New().String(),
+		REQNumber:         reqNumber,
 		RequesterID:       userID,
 		Title:             req.Title,
 		Description:       req.Description,

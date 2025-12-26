@@ -35,6 +35,7 @@ type Requisition struct {
 	ID                string          `gorm:"primaryKey" json:"id"`
 	OrganizationID    string          `gorm:"index;not null" json:"organizationId"`
 	Organization      *Organization   `gorm:"foreignKey:OrganizationID" json:"organization,omitempty"`
+	REQNumber         string          `gorm:"uniqueIndex" json:"reqNumber"`
 	RequesterID       string          `json:"requesterId"`
 	Requester         *User           `json:"requester,omitempty"`
 	Title             string          `json:"title"`
