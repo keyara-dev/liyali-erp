@@ -3,23 +3,16 @@ package middleware
 import (
 	"errors"
 
-	"github.com/gofiber/fiber/v3"
+	"github.com/gofiber/fiber/v2"
 	"github.com/liyali/liyali-gateway/config"
 	"github.com/liyali/liyali-gateway/models"
+	"github.com/liyali/liyali-gateway/utils"
 )
-
-// TenantContext holds the current organization context
-type TenantContext struct {
-	OrganizationID string
-	UserID         string
-	UserRole       string
-	Department     string
-}
 
 // TenantMiddleware extracts and validates organization context
 // Must be used after AuthMiddleware
 func TenantMiddleware() fiber.Handler {
-	return func(c fiber.Ctx) error {
+	return func(c *fiber.Ctx) error {
 		// 1. Get user ID from auth middleware (must come after AuthMiddleware)
 		userID, ok := c.Locals("userID").(string)
 		if !ok {
@@ -61,7 +54,7 @@ func TenantMiddleware() fiber.Handler {
 		}
 
 		// 5. Create tenant context
-		tenantCtx := &TenantContext{
+		tenantCtx := &utils.TenantContext{
 			OrganizationID: orgID,
 			UserID:         userID,
 			UserRole:       membership.Role,
@@ -77,8 +70,8 @@ func TenantMiddleware() fiber.Handler {
 }
 
 // GetTenantContext retrieves tenant context from Fiber context
-func GetTenantContext(c fiber.Ctx) (*TenantContext, error) {
-	tenant, ok := c.Locals("tenant").(*TenantContext)
+func GetTenantContext(c fiber.Ctx) (*utils.TenantContext, error) {
+	tenant, ok := c.Locals("tenant").(*utils.TenantContext)
 	if !ok {
 		return nil, errors.New("tenant context not found")
 	}

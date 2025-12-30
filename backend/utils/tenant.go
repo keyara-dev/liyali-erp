@@ -2,12 +2,19 @@ package utils
 
 import (
 	"gorm.io/gorm"
-	"github.com/liyali/liyali-gateway/middleware"
 )
+
+// TenantContext holds the current organization context
+type TenantContext struct {
+	OrganizationID string
+	UserID         string
+	UserRole       string
+	Department     string
+}
 
 // WithTenant adds automatic organization_id filtering to GORM queries
 // This ensures all queries are scoped to the current organization
-func WithTenant(db *gorm.DB, tenant *middleware.TenantContext) *gorm.DB {
+func WithTenant(db *gorm.DB, tenant *TenantContext) *gorm.DB {
 	if tenant == nil {
 		// If no tenant context, return db as-is (for system operations)
 		// This should rarely happen in production

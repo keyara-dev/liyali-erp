@@ -1,20 +1,20 @@
 package handlers
 
 import (
-	"encoding/json"
 	"fmt"
 	"time"
 
-	"github.com/gofiber/fiber/v3"
+	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 	"github.com/liyali/liyali-gateway/config"
 	"github.com/liyali/liyali-gateway/models"
 	"github.com/liyali/liyali-gateway/types"
 	"github.com/liyali/liyali-gateway/utils"
+	"gorm.io/datatypes"
 )
 
 // GetRequisitions retrieves all requisitions with pagination and filtering
-func GetRequisitions(c fiber.Ctx) error {
+func GetRequisitions(c *fiber.Ctx) error {
 	db := config.DB
 
 	// Extract pagination parameters
@@ -71,11 +71,11 @@ func GetRequisitions(c fiber.Ctx) error {
 }
 
 // CreateRequisition creates a new requisition
-func CreateRequisition(c fiber.Ctx) error {
+func CreateRequisition(c *fiber.Ctx) error {
 	var req types.CreateRequisitionRequest
 
 	// Parse request body
-	if err := c.BindJSON(&req); err != nil {
+	if err := c.BodyParser(&req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"success": false,
 			"message": "Invalid request body",
@@ -170,21 +170,10 @@ func CreateRequisition(c fiber.Ctx) error {
 		UpdatedAt:         time.Now(),
 	}
 
-	// Marshal items to JSON
-	itemsJSON, err := json.Marshal(req.Items)
-	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"success": false,
-			"message": "Failed to process items",
-			"error":   err.Error(),
-		})
-	}
-	requisition.Items = itemsJSON
+	requisition.Items = datatypes.NewJSONType(req.Items)
 
 	// Initialize empty approval history
-	emptyHistory := []types.ApprovalRecord{}
-	historyJSON, _ := json.Marshal(emptyHistory)
-	requisition.ApprovalHistory = historyJSON
+	requisition.ApprovalHistory = datatypes.NewJSONType([]types.ApprovalRecord{})
 
 	// Save to database
 	if err := config.DB.Create(&requisition).Error; err != nil {
@@ -205,7 +194,7 @@ func CreateRequisition(c fiber.Ctx) error {
 }
 
 // GetRequisition retrieves a single requisition by ID
-func GetRequisition(c fiber.Ctx) error {
+func GetRequisition(c *fiber.Ctx) error {
 	id := c.Params("id")
 	if id == "" {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
@@ -234,7 +223,7 @@ func GetRequisition(c fiber.Ctx) error {
 }
 
 // UpdateRequisition updates an existing requisition
-func UpdateRequisition(c fiber.Ctx) error {
+func UpdateRequisition(c *fiber.Ctx) error {
 	id := c.Params("id")
 	if id == "" {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
@@ -244,7 +233,7 @@ func UpdateRequisition(c fiber.Ctx) error {
 	}
 
 	var req types.UpdateRequisitionRequest
-	if err := c.BindJSON(&req); err != nil {
+	if err := c.BodyParser(&req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"success": false,
 			"message": "Invalid request body",
@@ -283,15 +272,7 @@ func UpdateRequisition(c fiber.Ctx) error {
 		requisition.Priority = req.Priority
 	}
 	if len(req.Items) > 0 {
-		itemsJSON, err := json.Marshal(req.Items)
-		if err != nil {
-			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-				"success": false,
-				"message": "Failed to process items",
-				"error":   err.Error(),
-			})
-		}
-		requisition.Items = itemsJSON
+		requisition.Items = datatypes.NewJSONType(req.Items)
 	}
 	if req.TotalAmount > 0 {
 		requisition.TotalAmount = req.TotalAmount
@@ -350,7 +331,7 @@ func UpdateRequisition(c fiber.Ctx) error {
 }
 
 // DeleteRequisition deletes a requisition (soft delete)
-func DeleteRequisition(c fiber.Ctx) error {
+func DeleteRequisition(c *fiber.Ctx) error {
 	id := c.Params("id")
 	if id == "" {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
@@ -391,7 +372,7 @@ func DeleteRequisition(c fiber.Ctx) error {
 }
 
 // ApproveRequisition approves a requisition
-func ApproveRequisition(c fiber.Ctx) error {
+func ApproveRequisition(c *fiber.Ctx) error {
 	id := c.Params("id")
 	if id == "" {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
@@ -401,7 +382,7 @@ func ApproveRequisition(c fiber.Ctx) error {
 	}
 
 	var req types.ApproveDocumentRequest
-	if err := c.BindJSON(&req); err != nil {
+	if err := c.BodyParser(&req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"success": false,
 			"message": "Invalid request body",
@@ -437,11 +418,7 @@ func ApproveRequisition(c fiber.Ctx) error {
 
 	// Unmarshal existing approval history
 	var approvalHistory []types.ApprovalRecord
-	if len(requisition.ApprovalHistory) > 0 {
-		if err := json.Unmarshal(requisition.ApprovalHistory, &approvalHistory); err != nil {
-			approvalHistory = []types.ApprovalRecord{}
-		}
-	}
+	approvalHistory = requisition.ApprovalHistory.Data()
 
 	// Add new approval record
 	approvalRecord := types.ApprovalRecord{
@@ -457,8 +434,7 @@ func ApproveRequisition(c fiber.Ctx) error {
 	// Update requisition
 	requisition.Status = "approved"
 	requisition.ApprovalStage++
-	historyJSON, _ := json.Marshal(approvalHistory)
-	requisition.ApprovalHistory = historyJSON
+	requisition.ApprovalHistory = datatypes.NewJSONType([]types.ApprovalRecord{})
 	requisition.UpdatedAt = time.Now()
 
 	if err := config.DB.Save(&requisition).Error; err != nil {
@@ -479,7 +455,7 @@ func ApproveRequisition(c fiber.Ctx) error {
 }
 
 // RejectRequisition rejects a requisition
-func RejectRequisition(c fiber.Ctx) error {
+func RejectRequisition(c *fiber.Ctx) error {
 	id := c.Params("id")
 	if id == "" {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
@@ -489,7 +465,7 @@ func RejectRequisition(c fiber.Ctx) error {
 	}
 
 	var req types.RejectDocumentRequest
-	if err := c.BindJSON(&req); err != nil {
+	if err := c.BodyParser(&req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"success": false,
 			"message": "Invalid request body",
@@ -531,11 +507,7 @@ func RejectRequisition(c fiber.Ctx) error {
 
 	// Unmarshal existing approval history
 	var approvalHistory []types.ApprovalRecord
-	if len(requisition.ApprovalHistory) > 0 {
-		if err := json.Unmarshal(requisition.ApprovalHistory, &approvalHistory); err != nil {
-			approvalHistory = []types.ApprovalRecord{}
-		}
-	}
+	approvalHistory = requisition.ApprovalHistory.Data()
 
 	// Add new rejection record
 	rejectionRecord := types.ApprovalRecord{
@@ -550,8 +522,7 @@ func RejectRequisition(c fiber.Ctx) error {
 
 	// Update requisition
 	requisition.Status = "rejected"
-	historyJSON, _ := json.Marshal(approvalHistory)
-	requisition.ApprovalHistory = historyJSON
+	requisition.ApprovalHistory = datatypes.NewJSONType([]types.ApprovalRecord{})
 	requisition.UpdatedAt = time.Now()
 
 	if err := config.DB.Save(&requisition).Error; err != nil {
@@ -572,7 +543,7 @@ func RejectRequisition(c fiber.Ctx) error {
 }
 
 // ReassignRequisition reassigns a requisition to a different approver
-func ReassignRequisition(c fiber.Ctx) error {
+func ReassignRequisition(c *fiber.Ctx) error {
 	id := c.Params("id")
 	if id == "" {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
@@ -582,7 +553,7 @@ func ReassignRequisition(c fiber.Ctx) error {
 	}
 
 	var req types.ReassignDocumentRequest
-	if err := c.BindJSON(&req); err != nil {
+	if err := c.BodyParser(&req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"success": false,
 			"message": "Invalid request body",
@@ -637,14 +608,9 @@ func ReassignRequisition(c fiber.Ctx) error {
 // Helper function to convert model to response
 func modelToRequisitionResponse(req models.Requisition) types.RequisitionResponse {
 	var items []types.RequisitionItem
-	if len(req.Items) > 0 {
-		json.Unmarshal(req.Items, &items)
-	}
+	items = req.Items.Data()
 
 	var approvalHistory []types.ApprovalRecord
-	if len(req.ApprovalHistory) > 0 {
-		json.Unmarshal(req.ApprovalHistory, &approvalHistory)
-	}
 
 	requesterName := ""
 	if req.Requester != nil {

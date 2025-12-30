@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/sidebar";
 import { useInitializeStorage } from "@/hooks/use-initialize-storage";
 import { OrganizationProvider } from "@/contexts/organization-context";
+import { TokenRefreshProvider } from "@/components/auth/token-refresh-provider";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -46,12 +47,14 @@ export function Providers({ children }: { children: React.ReactNode }) {
     <>
       <NextThemesProvider
         attribute="class"
-        defaultTheme="dark"
+        defaultTheme="light"
         disableTransitionOnChange
       >
         <QueryClientProvider client={queryClient}>
           <OrganizationProvider>
-            <StorageInitializer>{children}</StorageInitializer>
+            <StorageInitializer>  <TokenRefreshProvider>
+        {children}
+      </TokenRefreshProvider></StorageInitializer>
             <Toaster
               position="top-right"
               expand

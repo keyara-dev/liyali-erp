@@ -1,13 +1,10 @@
 package models
 
 import (
-	"database/sql/driver"
-	"encoding/json"
 	"time"
 
-	"github.com/google/uuid"
+	"github.com/liyali/liyali-gateway/types"
 	"gorm.io/datatypes"
-	"gorm.io/gorm"
 )
 
 // User represents a system user
@@ -15,6 +12,7 @@ type User struct {
 	ID        string     `gorm:"primaryKey" json:"id"`
 	Email     string     `gorm:"uniqueIndex" json:"email"`
 	Name      string     `json:"name"`
+	Password  string     `json:"-"` // Hidden from JSON responses
 	Role      string     `json:"role"` // admin, approver, requester, finance, viewer
 	Active    bool       `json:"active"`
 	LastLogin *time.Time `json:"lastLogin,omitempty"`
@@ -43,11 +41,11 @@ type Requisition struct {
 	Department        string          `json:"department"`
 	Status            string          `json:"status"` // draft, pending, approved, rejected
 	Priority          string          `json:"priority"` // low, medium, high
-	Items             datatypes.JSONType `gorm:"type:jsonb" json:"items"`
+	Items             datatypes.JSONType[[]types.RequisitionItem] `gorm:"type:jsonb" json:"items"`
 	TotalAmount       float64         `json:"totalAmount"`
 	Currency          string          `json:"currency"`
 	ApprovalStage     int             `json:"approvalStage"`
-	ApprovalHistory   datatypes.JSONType `gorm:"type:jsonb" json:"approvalHistory"`
+	ApprovalHistory   datatypes.JSONType[[]types.ApprovalRecord] `gorm:"type:jsonb" json:"approvalHistory"`
 	CategoryID        *string         `json:"categoryId,omitempty"`
 	Category          *Category       `json:"category,omitempty"`
 	PreferredVendorID *string         `json:"preferredVendorId,omitempty"`
@@ -72,7 +70,7 @@ type Budget struct {
 	AllocatedAmount float64         `json:"allocatedAmount"`
 	RemainingAmount float64         `json:"remainingAmount"`
 	ApprovalStage   int             `json:"approvalStage"`
-	ApprovalHistory datatypes.JSONType `gorm:"type:jsonb" json:"approvalHistory"`
+	ApprovalHistory datatypes.JSONType[[]types.ApprovalRecord] `gorm:"type:jsonb" json:"approvalHistory"`
 	CreatedAt       time.Time       `json:"createdAt"`
 	UpdatedAt       time.Time       `json:"updatedAt"`
 }
@@ -86,12 +84,12 @@ type PurchaseOrder struct {
 	VendorID          string          `json:"vendorId"`
 	Vendor            *Vendor         `json:"vendor,omitempty"`
 	Status            string          `json:"status"` // draft, pending, approved, rejected, fulfilled
-	Items             datatypes.JSONType `gorm:"type:jsonb" json:"items"`
+	Items             datatypes.JSONType[[]types.POItem] `gorm:"type:jsonb" json:"items"`
 	TotalAmount       float64         `json:"totalAmount"`
 	Currency          string          `json:"currency"`
 	DeliveryDate      time.Time       `json:"deliveryDate"`
 	ApprovalStage     int             `json:"approvalStage"`
-	ApprovalHistory   datatypes.JSONType `gorm:"type:jsonb" json:"approvalHistory"`
+	ApprovalHistory   datatypes.JSONType[[]types.ApprovalRecord] `gorm:"type:jsonb" json:"approvalHistory"`
 	LinkedRequisition string          `json:"linkedRequisition"`
 	CreatedAt         time.Time       `json:"createdAt"`
 	UpdatedAt         time.Time       `json:"updatedAt"`
@@ -113,7 +111,7 @@ type PaymentVoucher struct {
 	GLCode          string          `json:"glCode"`
 	Description     string          `json:"description"`
 	ApprovalStage   int             `json:"approvalStage"`
-	ApprovalHistory datatypes.JSONType `gorm:"type:jsonb" json:"approvalHistory"`
+	ApprovalHistory datatypes.JSONType[[]types.ApprovalRecord] `gorm:"type:jsonb" json:"approvalHistory"`
 	LinkedPO        string          `json:"linkedPO"`
 	CreatedAt       time.Time       `json:"createdAt"`
 	UpdatedAt       time.Time       `json:"updatedAt"`
@@ -126,14 +124,14 @@ type GoodsReceivedNote struct {
 	Organization      *Organization   `gorm:"foreignKey:OrganizationID" json:"organization,omitempty"`
 	GRNNumber         string          `gorm:"uniqueIndex" json:"grnNumber"`
 	PONumber          string          `json:"poNumber"`
-	PurchaseOrder     *PurchaseOrder  `json:"purchaseOrder,omitempty"`
+	PurchaseOrder     *PurchaseOrder  `gorm:"foreignKey:PONumber;references:PONumber" json:"purchaseOrder,omitempty"`
 	Status            string          `json:"status"` // draft, pending, approved, rejected, completed
 	ReceivedDate      time.Time       `json:"receivedDate"`
 	ReceivedBy        string          `json:"receivedBy"`
-	Items             datatypes.JSONType `gorm:"type:jsonb" json:"items"`
-	QualityIssues     datatypes.JSONType `gorm:"type:jsonb" json:"qualityIssues"`
+	Items             datatypes.JSONType[[]types.GRNItem] `gorm:"type:jsonb" json:"items"`
+	QualityIssues     datatypes.JSONType[[]types.QualityIssue] `gorm:"type:jsonb" json:"qualityIssues"`
 	ApprovalStage     int             `json:"approvalStage"`
-	ApprovalHistory   datatypes.JSONType `gorm:"type:jsonb" json:"approvalHistory"`
+	ApprovalHistory   datatypes.JSONType[[]types.ApprovalRecord] `gorm:"type:jsonb" json:"approvalHistory"`
 	CreatedAt         time.Time       `json:"createdAt"`
 	UpdatedAt         time.Time       `json:"updatedAt"`
 }
@@ -161,39 +159,44 @@ type CategoryBudgetCode struct {
 	UpdatedAt  time.Time `json:"updatedAt"`
 }
 
-// Vendor master data
+// Vendor master data - Global vendors accessible to all organizations
 type Vendor struct {
-	ID             string        `gorm:"primaryKey" json:"id"`
-	OrganizationID string        `gorm:"index;not null" json:"organizationId"`
-	Organization   *Organization `gorm:"foreignKey:OrganizationID" json:"organization,omitempty"`
-	VendorCode     string        `gorm:"uniqueIndex:idx_org_vendor_code;index:idx_org_vendor_code" json:"vendorCode"`
-	Name           string        `json:"name"`
-	Email          string        `json:"email"`
-	Phone          string        `json:"phone"`
-	Country        string        `json:"country"`
-	City           string        `json:"city"`
-	BankAccount    string        `json:"bankAccount"`
-	TaxID          string        `json:"taxId"`
-	Active         bool          `json:"active"`
-	CreatedAt      time.Time     `json:"createdAt"`
-	UpdatedAt      time.Time     `json:"updatedAt"`
+	ID          string    `gorm:"primaryKey" json:"id"`
+	VendorCode  string    `gorm:"uniqueIndex" json:"vendorCode"`
+	Name        string    `json:"name"`
+	Email       string    `json:"email"`
+	Phone       string    `json:"phone"`
+	Country     string    `json:"country"`
+	City        string    `json:"city"`
+	BankAccount string    `json:"bankAccount"`
+	TaxID       string    `json:"taxId"`
+	Active      bool      `json:"active"`
+	CreatedBy   string    `json:"createdBy"` // User who created the vendor
+	CreatedAt   time.Time `json:"createdAt"`
+	UpdatedAt   time.Time `json:"updatedAt"`
 }
 
 // ApprovalTask represents a pending approval action
 type ApprovalTask struct {
-	ID             string        `gorm:"primaryKey" json:"id"`
-	OrganizationID string        `gorm:"index;not null" json:"organizationId"`
-	Organization   *Organization `gorm:"foreignKey:OrganizationID" json:"organization,omitempty"`
-	DocumentID     string        `gorm:"index" json:"documentId"`
-	DocumentType   string        `json:"documentType"` // requisition, budget, po, pv, grn
-	ApproverID     string        `json:"approverId"`
-	Approver       *User         `json:"approver,omitempty"`
-	Status         string        `json:"status"` // pending, approved, rejected
-	Stage          int           `json:"stage"`
-	Comments       string        `json:"comments"`
-	Signature      string        `json:"signature"`
-	CreatedAt      time.Time     `json:"createdAt"`
-	UpdatedAt      time.Time     `json:"updatedAt"`
+	ID               string        `gorm:"primaryKey" json:"id"`
+	OrganizationID   string        `gorm:"index;not null" json:"organizationId"`
+	Organization     *Organization `gorm:"foreignKey:OrganizationID" json:"organization,omitempty"`
+	DocumentID       string        `gorm:"index" json:"documentId"`
+	DocumentType     string        `json:"documentType"` // requisition, budget, po, pv, grn
+	ApproverID       string        `json:"approverId"`
+	Approver         *User         `json:"approver,omitempty"`
+	AssignedTo       string        `json:"assignedTo"`       // Current assignee
+	Status           string        `json:"status"`           // pending, approved, rejected
+	Stage            int           `json:"stage"`
+	Comments         *string       `json:"comments"`
+	Signature        *string       `json:"signature"`
+	ApprovedBy       *string       `json:"approvedBy"`
+	ApprovedAt       *time.Time    `json:"approvedAt"`
+	RejectedBy       *string       `json:"rejectedBy"`
+	RejectedAt       *time.Time    `json:"rejectedAt"`
+	RejectionReason  *string       `json:"rejectionReason"`
+	CreatedAt        time.Time     `json:"createdAt"`
+	UpdatedAt        time.Time     `json:"updatedAt"`
 }
 
 // AuditLog tracks all document changes
@@ -203,7 +206,7 @@ type AuditLog struct {
 	DocumentType  string         `json:"documentType"`
 	UserID        string         `json:"userId"`
 	Action        string         `json:"action"` // create, update, approve, reject
-	Changes       datatypes.JSONType `gorm:"type:jsonb" json:"changes"`
+	Changes       datatypes.JSONType[map[string]interface{}] `gorm:"type:jsonb" json:"changes"`
 	CreatedAt     time.Time      `json:"createdAt"`
 }
 

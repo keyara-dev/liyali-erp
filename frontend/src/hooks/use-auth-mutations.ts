@@ -190,8 +190,7 @@ export function useResetPasswordMutation() {
  *   try {
  *     await changePassword({
  *       oldPassword: 'currentPassword123',
- *       newPassword: 'newPassword123',
- *       confirmPassword: 'newPassword123'
+ *       newPassword: 'newPassword123'
  *     });
  *   } catch (error) {
  *     console.error('Failed to change password:', error);
@@ -204,13 +203,11 @@ export function useChangePasswordMutation() {
     mutationFn: async ({
       oldPassword,
       newPassword,
-      confirmPassword,
     }: {
       oldPassword: string;
       newPassword: string;
-      confirmPassword: string;
     }) => {
-      return await changePassword(oldPassword, newPassword, confirmPassword);
+      return await changePassword(oldPassword, newPassword);
     },
     onError: (error) => {
       console.error('Failed to change password:', error);

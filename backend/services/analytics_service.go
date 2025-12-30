@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"log"
 	"strings"
-	"time"
 
 	"github.com/liyali/liyali-gateway/models"
 	"github.com/liyali/liyali-gateway/types"
@@ -193,21 +192,25 @@ func (s *AnalyticsService) getRejectionReasons(query *gorm.DB) ([]types.Rejectio
 	var totalRejections int64
 
 	for _, req := range requisitions {
-		if len(req.ApprovalHistory) > 0 {
-			var approvalRecords []types.ApprovalRecord
-			if err := json.Unmarshal(req.ApprovalHistory, &approvalRecords); err != nil {
-				continue
-			}
+		// Get the raw JSON data from JSONType
+		approvalHistoryBytes, err := req.ApprovalHistory.MarshalJSON()
+		if err != nil || len(approvalHistoryBytes) == 0 {
+			continue
+		}
+		
+		var approvalRecords []types.ApprovalRecord
+		if err := json.Unmarshal(approvalHistoryBytes, &approvalRecords); err != nil {
+			continue
+		}
 
-			for _, record := range approvalRecords {
-				if record.Status == "rejected" {
-					reason := strings.TrimSpace(record.Comments)
-					if reason == "" {
-						reason = "No reason provided"
-					}
-					reasonCounts[reason]++
-					totalRejections++
+		for _, record := range approvalRecords {
+			if record.Status == "rejected" {
+				reason := strings.TrimSpace(record.Comments)
+				if reason == "" {
+					reason = "No reason provided"
 				}
+				reasonCounts[reason]++
+				totalRejections++
 			}
 		}
 	}
@@ -241,31 +244,35 @@ func (s *AnalyticsService) getTopRejectingApprovers(query *gorm.DB) ([]types.App
 	approverStatsMap := make(map[string]*types.ApproverStats)
 
 	for _, req := range requisitions {
-		if len(req.ApprovalHistory) > 0 {
-			var approvalRecords []types.ApprovalRecord
-			if err := json.Unmarshal(req.ApprovalHistory, &approvalRecords); err != nil {
-				continue
+		// Get the raw JSON data from JSONType
+		approvalHistoryBytes, err := req.ApprovalHistory.MarshalJSON()
+		if err != nil || len(approvalHistoryBytes) == 0 {
+			continue
+		}
+		
+		var approvalRecords []types.ApprovalRecord
+		if err := json.Unmarshal(approvalHistoryBytes, &approvalRecords); err != nil {
+			continue
+		}
+
+		for _, record := range approvalRecords {
+			approverID := record.ApproverID
+			approverName := record.ApproverName
+
+			if _, exists := approverStatsMap[approverID]; !exists {
+				approverStatsMap[approverID] = &types.ApproverStats{
+					ApproverID:    approverID,
+					ApproverName:  approverName,
+					Rejections:    0,
+					Approvals:     0,
+					RejectionRate: 0,
+				}
 			}
 
-			for _, record := range approvalRecords {
-				approverID := record.ApproverID
-				approverName := record.ApproverName
-
-				if _, exists := approverStatsMap[approverID]; !exists {
-					approverStatsMap[approverID] = &types.ApproverStats{
-						ApproverID:    approverID,
-						ApproverName:  approverName,
-						Rejections:    0,
-						Approvals:     0,
-						RejectionRate: 0,
-					}
-				}
-
-				if record.Status == "rejected" {
-					approverStatsMap[approverID].Rejections++
-				} else if record.Status == "approved" {
-					approverStatsMap[approverID].Approvals++
-				}
+			if record.Status == "rejected" {
+				approverStatsMap[approverID].Rejections++
+			} else if record.Status == "approved" {
+				approverStatsMap[approverID].Approvals++
 			}
 		}
 	}

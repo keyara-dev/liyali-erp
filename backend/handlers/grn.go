@@ -1,19 +1,20 @@
 package handlers
 
 import (
-	"encoding/json"
 	"fmt"
 	"time"
 
-	"github.com/gofiber/fiber/v3"
+	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 	"github.com/liyali/liyali-gateway/config"
 	"github.com/liyali/liyali-gateway/models"
 	"github.com/liyali/liyali-gateway/types"
+	"github.com/liyali/liyali-gateway/utils"
+	"gorm.io/datatypes"
 )
 
 // GetGRNs retrieves all goods received notes with pagination and filtering
-func GetGRNs(c fiber.Ctx) error {
+func GetGRNs(c *fiber.Ctx) error {
 	db := config.DB
 
 	page := c.QueryInt("page", 1)
@@ -64,20 +65,14 @@ func GetGRNs(c fiber.Ctx) error {
 		responses = append(responses, modelToGRNResponse(grn))
 	}
 
-	return c.JSON(types.ListResponse{
-		Success: true,
-		Data:    responses,
-		Total:   total,
-		Page:    page,
-		Limit:   limit,
-	})
+	return utils.SendPaginatedSuccess(c, responses, "GRNs retrieved successfully", page, limit, total)
 }
 
 // CreateGRN creates a new goods received note
-func CreateGRN(c fiber.Ctx) error {
+func CreateGRN(c *fiber.Ctx) error {
 	var req types.CreateGRNRequest
 
-	if err := c.BindJSON(&req); err != nil {
+	if err := c.BodyParser(&req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"success": false,
 			"message": "Invalid request body",
@@ -128,23 +123,13 @@ func CreateGRN(c fiber.Ctx) error {
 		UpdatedAt:   time.Now(),
 	}
 
-	itemsJSON, err := json.Marshal(req.Items)
-	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"success": false,
-			"message": "Failed to process items",
-			"error":   err.Error(),
-		})
-	}
-	grn.Items = itemsJSON
+	grn.Items = datatypes.NewJSONType(req.Items)
 
 	emptyQuality := []types.QualityIssue{}
-	qualityJSON, _ := json.Marshal(emptyQuality)
-	grn.QualityIssues = qualityJSON
+	grn.QualityIssues = datatypes.NewJSONType(emptyQuality)
 
 	emptyHistory := []types.ApprovalRecord{}
-	historyJSON, _ := json.Marshal(emptyHistory)
-	grn.ApprovalHistory = historyJSON
+	grn.ApprovalHistory = datatypes.NewJSONType(emptyHistory)
 
 	if err := config.DB.Create(&grn).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
@@ -161,7 +146,7 @@ func CreateGRN(c fiber.Ctx) error {
 }
 
 // GetGRN retrieves a single GRN by ID
-func GetGRN(c fiber.Ctx) error {
+func GetGRN(c *fiber.Ctx) error {
 	id := c.Params("id")
 	if id == "" {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
@@ -185,7 +170,7 @@ func GetGRN(c fiber.Ctx) error {
 }
 
 // UpdateGRN updates an existing GRN
-func UpdateGRN(c fiber.Ctx) error {
+func UpdateGRN(c *fiber.Ctx) error {
 	id := c.Params("id")
 	if id == "" {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
@@ -195,7 +180,7 @@ func UpdateGRN(c fiber.Ctx) error {
 	}
 
 	var req types.UpdateGRNRequest
-	if err := c.BindJSON(&req); err != nil {
+	if err := c.BodyParser(&req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"success": false,
 			"message": "Invalid request body",
@@ -219,29 +204,13 @@ func UpdateGRN(c fiber.Ctx) error {
 	}
 
 	if len(req.Items) > 0 {
-		itemsJSON, err := json.Marshal(req.Items)
-		if err != nil {
-			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-				"success": false,
-				"message": "Failed to process items",
-				"error":   err.Error(),
-			})
-		}
-		grn.Items = itemsJSON
+		grn.Items = datatypes.NewJSONType(req.Items)
 	}
 	if req.ReceivedBy != "" {
 		grn.ReceivedBy = req.ReceivedBy
 	}
 	if len(req.QualityIssues) > 0 {
-		qualityJSON, err := json.Marshal(req.QualityIssues)
-		if err != nil {
-			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-				"success": false,
-				"message": "Failed to process quality issues",
-				"error":   err.Error(),
-			})
-		}
-		grn.QualityIssues = qualityJSON
+		grn.QualityIssues = datatypes.NewJSONType(req.QualityIssues)
 	}
 
 	grn.UpdatedAt = time.Now()
@@ -261,7 +230,7 @@ func UpdateGRN(c fiber.Ctx) error {
 }
 
 // DeleteGRN deletes a GRN
-func DeleteGRN(c fiber.Ctx) error {
+func DeleteGRN(c *fiber.Ctx) error {
 	id := c.Params("id")
 	if id == "" {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
@@ -300,7 +269,7 @@ func DeleteGRN(c fiber.Ctx) error {
 }
 
 // ApproveGRN approves a GRN
-func ApproveGRN(c fiber.Ctx) error {
+func ApproveGRN(c *fiber.Ctx) error {
 	id := c.Params("id")
 	if id == "" {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
@@ -310,7 +279,7 @@ func ApproveGRN(c fiber.Ctx) error {
 	}
 
 	var req types.ApproveDocumentRequest
-	if err := c.BindJSON(&req); err != nil {
+	if err := c.BodyParser(&req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"success": false,
 			"message": "Invalid request body",
@@ -343,11 +312,7 @@ func ApproveGRN(c fiber.Ctx) error {
 	}
 
 	var approvalHistory []types.ApprovalRecord
-	if len(grn.ApprovalHistory) > 0 {
-		if err := json.Unmarshal(grn.ApprovalHistory, &approvalHistory); err != nil {
-			approvalHistory = []types.ApprovalRecord{}
-		}
-	}
+	approvalHistory = grn.ApprovalHistory.Data()
 
 	approvalRecord := types.ApprovalRecord{
 		ApproverID:   approverID,
@@ -361,8 +326,7 @@ func ApproveGRN(c fiber.Ctx) error {
 
 	grn.Status = "approved"
 	grn.ApprovalStage++
-	historyJSON, _ := json.Marshal(approvalHistory)
-	grn.ApprovalHistory = historyJSON
+	grn.ApprovalHistory = datatypes.NewJSONType(approvalHistory)
 	grn.UpdatedAt = time.Now()
 
 	if err := config.DB.Save(&grn).Error; err != nil {
@@ -380,7 +344,7 @@ func ApproveGRN(c fiber.Ctx) error {
 }
 
 // RejectGRN rejects a GRN
-func RejectGRN(c fiber.Ctx) error {
+func RejectGRN(c *fiber.Ctx) error {
 	id := c.Params("id")
 	if id == "" {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
@@ -390,7 +354,7 @@ func RejectGRN(c fiber.Ctx) error {
 	}
 
 	var req types.RejectDocumentRequest
-	if err := c.BindJSON(&req); err != nil {
+	if err := c.BodyParser(&req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"success": false,
 			"message": "Invalid request body",
@@ -429,11 +393,7 @@ func RejectGRN(c fiber.Ctx) error {
 	}
 
 	var approvalHistory []types.ApprovalRecord
-	if len(grn.ApprovalHistory) > 0 {
-		if err := json.Unmarshal(grn.ApprovalHistory, &approvalHistory); err != nil {
-			approvalHistory = []types.ApprovalRecord{}
-		}
-	}
+	approvalHistory = grn.ApprovalHistory.Data()
 
 	rejectionRecord := types.ApprovalRecord{
 		ApproverID:   approverID,
@@ -446,8 +406,7 @@ func RejectGRN(c fiber.Ctx) error {
 	approvalHistory = append(approvalHistory, rejectionRecord)
 
 	grn.Status = "rejected"
-	historyJSON, _ := json.Marshal(approvalHistory)
-	grn.ApprovalHistory = historyJSON
+	grn.ApprovalHistory = datatypes.NewJSONType(approvalHistory)
 	grn.UpdatedAt = time.Now()
 
 	if err := config.DB.Save(&grn).Error; err != nil {
@@ -467,19 +426,13 @@ func RejectGRN(c fiber.Ctx) error {
 // Helper function to convert model to response
 func modelToGRNResponse(grn models.GoodsReceivedNote) types.GRNResponse {
 	var items []types.GRNItem
-	if len(grn.Items) > 0 {
-		json.Unmarshal(grn.Items, &items)
-	}
+	items = grn.Items.Data()
 
 	var qualityIssues []types.QualityIssue
-	if len(grn.QualityIssues) > 0 {
-		json.Unmarshal(grn.QualityIssues, &qualityIssues)
-	}
+	qualityIssues = grn.QualityIssues.Data()
 
 	var approvalHistory []types.ApprovalRecord
-	if len(grn.ApprovalHistory) > 0 {
-		json.Unmarshal(grn.ApprovalHistory, &approvalHistory)
-	}
+	approvalHistory = grn.ApprovalHistory.Data()
 
 	return types.GRNResponse{
 		ID:              grn.ID,

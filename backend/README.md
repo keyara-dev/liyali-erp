@@ -21,7 +21,7 @@ Backend (Go Fiber)
 ### Features
 
 - ✅ PostgreSQL integration with GORM ORM
-- ✅ Fiber v3 high-performance HTTP framework
+- ✅ Fiber v2 high-performance HTTP framework
 - ✅ JWT authentication middleware
 - ✅ CORS support for frontend communication
 - ✅ Comprehensive error handling

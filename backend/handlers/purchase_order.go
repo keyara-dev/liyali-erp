@@ -1,19 +1,20 @@
 package handlers
 
 import (
-	"encoding/json"
 	"fmt"
 	"time"
 
-	"github.com/gofiber/fiber/v3"
+	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 	"github.com/liyali/liyali-gateway/config"
 	"github.com/liyali/liyali-gateway/models"
 	"github.com/liyali/liyali-gateway/types"
+	"github.com/liyali/liyali-gateway/utils"
+	"gorm.io/datatypes"
 )
 
 // GetPurchaseOrders retrieves all purchase orders with pagination and filtering
-func GetPurchaseOrders(c fiber.Ctx) error {
+func GetPurchaseOrders(c *fiber.Ctx) error {
 	db := config.DB
 
 	page := c.QueryInt("page", 1)
@@ -65,20 +66,14 @@ func GetPurchaseOrders(c fiber.Ctx) error {
 		responses = append(responses, modelToPurchaseOrderResponse(order))
 	}
 
-	return c.JSON(types.ListResponse{
-		Success: true,
-		Data:    responses,
-		Total:   total,
-		Page:    page,
-		Limit:   limit,
-	})
+	return utils.SendPaginatedSuccess(c, responses, "Purchase orders retrieved successfully", page, limit, total)
 }
 
 // CreatePurchaseOrder creates a new purchase order
-func CreatePurchaseOrder(c fiber.Ctx) error {
+func CreatePurchaseOrder(c *fiber.Ctx) error {
 	var req types.CreatePurchaseOrderRequest
 
-	if err := c.BindJSON(&req); err != nil {
+	if err := c.BodyParser(&req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"success": false,
 			"message": "Invalid request body",
@@ -131,19 +126,9 @@ func CreatePurchaseOrder(c fiber.Ctx) error {
 		UpdatedAt:       time.Now(),
 	}
 
-	itemsJSON, err := json.Marshal(req.Items)
-	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"success": false,
-			"message": "Failed to process items",
-			"error":   err.Error(),
-		})
-	}
-	order.Items = itemsJSON
+	order.Items = datatypes.NewJSONType(req.Items)
 
-	emptyHistory := []types.ApprovalRecord{}
-	historyJSON, _ := json.Marshal(emptyHistory)
-	order.ApprovalHistory = historyJSON
+	order.ApprovalHistory = datatypes.NewJSONType([]types.ApprovalRecord{})
 
 	if err := config.DB.Create(&order).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
@@ -162,7 +147,7 @@ func CreatePurchaseOrder(c fiber.Ctx) error {
 }
 
 // GetPurchaseOrder retrieves a single purchase order by ID
-func GetPurchaseOrder(c fiber.Ctx) error {
+func GetPurchaseOrder(c *fiber.Ctx) error {
 	id := c.Params("id")
 	if id == "" {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
@@ -189,7 +174,7 @@ func GetPurchaseOrder(c fiber.Ctx) error {
 }
 
 // UpdatePurchaseOrder updates an existing purchase order
-func UpdatePurchaseOrder(c fiber.Ctx) error {
+func UpdatePurchaseOrder(c *fiber.Ctx) error {
 	id := c.Params("id")
 	if id == "" {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
@@ -199,7 +184,7 @@ func UpdatePurchaseOrder(c fiber.Ctx) error {
 	}
 
 	var req types.UpdatePurchaseOrderRequest
-	if err := c.BindJSON(&req); err != nil {
+	if err := c.BodyParser(&req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"success": false,
 			"message": "Invalid request body",
@@ -226,15 +211,7 @@ func UpdatePurchaseOrder(c fiber.Ctx) error {
 		order.VendorID = req.VendorID
 	}
 	if len(req.Items) > 0 {
-		itemsJSON, err := json.Marshal(req.Items)
-		if err != nil {
-			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-				"success": false,
-				"message": "Failed to process items",
-				"error":   err.Error(),
-			})
-		}
-		order.Items = itemsJSON
+		order.Items = datatypes.NewJSONType(req.Items)
 	}
 	if req.TotalAmount > 0 {
 		order.TotalAmount = req.TotalAmount
@@ -265,7 +242,7 @@ func UpdatePurchaseOrder(c fiber.Ctx) error {
 }
 
 // DeletePurchaseOrder deletes a purchase order
-func DeletePurchaseOrder(c fiber.Ctx) error {
+func DeletePurchaseOrder(c *fiber.Ctx) error {
 	id := c.Params("id")
 	if id == "" {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
@@ -304,7 +281,7 @@ func DeletePurchaseOrder(c fiber.Ctx) error {
 }
 
 // ApprovePurchaseOrder approves a purchase order
-func ApprovePurchaseOrder(c fiber.Ctx) error {
+func ApprovePurchaseOrder(c *fiber.Ctx) error {
 	id := c.Params("id")
 	if id == "" {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
@@ -314,7 +291,7 @@ func ApprovePurchaseOrder(c fiber.Ctx) error {
 	}
 
 	var req types.ApproveDocumentRequest
-	if err := c.BindJSON(&req); err != nil {
+	if err := c.BodyParser(&req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"success": false,
 			"message": "Invalid request body",
@@ -347,11 +324,7 @@ func ApprovePurchaseOrder(c fiber.Ctx) error {
 	}
 
 	var approvalHistory []types.ApprovalRecord
-	if len(order.ApprovalHistory) > 0 {
-		if err := json.Unmarshal(order.ApprovalHistory, &approvalHistory); err != nil {
-			approvalHistory = []types.ApprovalRecord{}
-		}
-	}
+	approvalHistory = order.ApprovalHistory.Data()
 
 	approvalRecord := types.ApprovalRecord{
 		ApproverID:   approverID,
@@ -365,8 +338,7 @@ func ApprovePurchaseOrder(c fiber.Ctx) error {
 
 	order.Status = "approved"
 	order.ApprovalStage++
-	historyJSON, _ := json.Marshal(approvalHistory)
-	order.ApprovalHistory = historyJSON
+	order.ApprovalHistory = datatypes.NewJSONType([]types.ApprovalRecord{})
 	order.UpdatedAt = time.Now()
 
 	if err := config.DB.Save(&order).Error; err != nil {
@@ -386,7 +358,7 @@ func ApprovePurchaseOrder(c fiber.Ctx) error {
 }
 
 // RejectPurchaseOrder rejects a purchase order
-func RejectPurchaseOrder(c fiber.Ctx) error {
+func RejectPurchaseOrder(c *fiber.Ctx) error {
 	id := c.Params("id")
 	if id == "" {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
@@ -396,7 +368,7 @@ func RejectPurchaseOrder(c fiber.Ctx) error {
 	}
 
 	var req types.RejectDocumentRequest
-	if err := c.BindJSON(&req); err != nil {
+	if err := c.BodyParser(&req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"success": false,
 			"message": "Invalid request body",
@@ -435,11 +407,7 @@ func RejectPurchaseOrder(c fiber.Ctx) error {
 	}
 
 	var approvalHistory []types.ApprovalRecord
-	if len(order.ApprovalHistory) > 0 {
-		if err := json.Unmarshal(order.ApprovalHistory, &approvalHistory); err != nil {
-			approvalHistory = []types.ApprovalRecord{}
-		}
-	}
+	approvalHistory = order.ApprovalHistory.Data()
 
 	rejectionRecord := types.ApprovalRecord{
 		ApproverID:   approverID,
@@ -452,8 +420,7 @@ func RejectPurchaseOrder(c fiber.Ctx) error {
 	approvalHistory = append(approvalHistory, rejectionRecord)
 
 	order.Status = "rejected"
-	historyJSON, _ := json.Marshal(approvalHistory)
-	order.ApprovalHistory = historyJSON
+	order.ApprovalHistory = datatypes.NewJSONType([]types.ApprovalRecord{})
 	order.UpdatedAt = time.Now()
 
 	if err := config.DB.Save(&order).Error; err != nil {
@@ -475,14 +442,11 @@ func RejectPurchaseOrder(c fiber.Ctx) error {
 // Helper function to convert model to response
 func modelToPurchaseOrderResponse(order models.PurchaseOrder) types.PurchaseOrderResponse {
 	var items []types.POItem
-	if len(order.Items) > 0 {
-		json.Unmarshal(order.Items, &items)
+	if len(order.Items.Data()) > 0 {
+		items = order.Items.Data()
 	}
 
 	var approvalHistory []types.ApprovalRecord
-	if len(order.ApprovalHistory) > 0 {
-		json.Unmarshal(order.ApprovalHistory, &approvalHistory)
-	}
 
 	vendorName := ""
 	if order.Vendor != nil {

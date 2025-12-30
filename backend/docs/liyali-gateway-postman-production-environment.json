@@ -1,0 +1,154 @@
+{
+  "id": "liyali-gateway-production-environment",
+  "name": "Liyali Gateway - Production",
+  "values": [
+    {
+      "key": "base_url",
+      "value": "https://api.liyali.com",
+      "description": "Production API base URL",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "auth_token",
+      "value": "",
+      "description": "JWT access token (auto-populated after login)",
+      "type": "secret",
+      "enabled": true
+    },
+    {
+      "key": "refresh_token",
+      "value": "",
+      "description": "JWT refresh token (auto-populated after login)",
+      "type": "secret",
+      "enabled": true
+    },
+    {
+      "key": "user_id",
+      "value": "",
+      "description": "Current user ID (auto-populated after login)",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "organization_id",
+      "value": "",
+      "description": "Current organization ID (auto-populated after login)",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "requisition_id",
+      "value": "",
+      "description": "Sample requisition ID for testing",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "budget_id",
+      "value": "",
+      "description": "Sample budget ID for testing",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "purchase_order_id",
+      "value": "",
+      "description": "Sample purchase order ID for testing",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "payment_voucher_id",
+      "value": "",
+      "description": "Sample payment voucher ID for testing",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "grn_id",
+      "value": "",
+      "description": "Sample GRN ID for testing",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "document_id",
+      "value": "",
+      "description": "Sample document ID for testing",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "document_number",
+      "value": "",
+      "description": "Sample document number for testing",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "workflow_id",
+      "value": "",
+      "description": "Sample workflow ID for testing",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "approval_id",
+      "value": "",
+      "description": "Sample approval ID for testing",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "category_id",
+      "value": "",
+      "description": "Sample category ID for testing",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "vendor_id",
+      "value": "",
+      "description": "Sample vendor ID for testing",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "role_id",
+      "value": "",
+      "description": "Sample role ID for testing",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "permission_id",
+      "value": "",
+      "description": "Sample permission ID for testing",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "notification_id",
+      "value": "",
+      "description": "Sample notification ID for testing",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "admin_email",
+      "value": "your-admin@company.com",
+      "description": "Production admin email",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "admin_password",
+      "value": "",
+      "description": "Production admin password (set manually)",
+      "type": "secret",
+      "enabled": true
+    }
+  ],
+  "_postman_variable_scope": "environment"
+}

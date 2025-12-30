@@ -1,50 +1,42 @@
 package handlers
 
 import (
-	"github.com/gofiber/fiber/v3"
+	"github.com/gofiber/fiber/v2"
 	"github.com/liyali/liyali-gateway/config"
 	"github.com/liyali/liyali-gateway/middleware"
+	"github.com/liyali/liyali-gateway/models"
 	"github.com/liyali/liyali-gateway/services"
 	"github.com/liyali/liyali-gateway/utils"
 )
 
 // GetUserOrganizations returns all organizations a user belongs to
 // GET /api/v1/organizations
-func GetUserOrganizations(c fiber.Ctx) error {
+func GetUserOrganizations(c *fiber.Ctx) error {
 	userID, ok := c.Locals("userID").(string)
 	if !ok {
-		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-			"error": "User context required",
-		})
+		return utils.SendUnauthorizedError(c, "User context required")
 	}
 
 	orgService := services.NewOrganizationService(config.DB)
 	orgs, err := orgService.GetUserOrganizations(userID)
 
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": "Failed to fetch organizations",
-		})
+		return utils.SendInternalError(c, "Failed to fetch organizations", err)
 	}
 
 	if len(orgs) == 0 {
-		orgs = []interface{}{}
+		orgs = []models.Organization{}
 	}
 
-	return c.JSON(fiber.Map{
-		"success": true,
-		"data":    orgs,
-	})
+	return utils.SendSimpleSuccess(c, orgs, "Organizations retrieved successfully")
 }
 
 // CreateOrganization creates a new organization
 // POST /api/v1/organizations
-func CreateOrganization(c fiber.Ctx) error {
+func CreateOrganization(c *fiber.Ctx) error {
 	userID, ok := c.Locals("userID").(string)
 	if !ok {
-		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-			"error": "User context required",
-		})
+		return utils.SendUnauthorizedError(c, "User context required")
 	}
 
 	var req struct {
@@ -52,30 +44,23 @@ func CreateOrganization(c fiber.Ctx) error {
 		Description string `json:"description"`
 	}
 
-	if err := c.BindJSON(&req); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": "Invalid request body",
-		})
+	if err := c.BodyParser(&req); err != nil {
+		return utils.SendBadRequestError(c, "Invalid request body")
 	}
 
 	orgService := services.NewOrganizationService(config.DB)
 	org, err := orgService.CreateOrganization(req.Name, req.Description, userID)
 
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": err.Error(),
-		})
+		return utils.SendInternalError(c, err.Error(), err)
 	}
 
-	return c.Status(fiber.StatusCreated).JSON(fiber.Map{
-		"success": true,
-		"data":    org,
-	})
+	return utils.SendCreatedSuccess(c, org, "Organization created successfully")
 }
 
 // SwitchOrganization sets user's current organization
 // POST /api/v1/organizations/:id/switch
-func SwitchOrganization(c fiber.Ctx) error {
+func SwitchOrganization(c *fiber.Ctx) error {
 	userID, ok := c.Locals("userID").(string)
 	if !ok {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
@@ -105,8 +90,8 @@ func SwitchOrganization(c fiber.Ctx) error {
 
 // GetOrganizationMembers returns all members of an organization
 // GET /api/v1/organization/members
-func GetOrganizationMembers(c fiber.Ctx) error {
-	tenant, err := middleware.GetTenantContext(c)
+func GetOrganizationMembers(c *fiber.Ctx) error {
+	tenant, err := middleware.GetTenantContext(*c)
 	if err != nil {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 			"error": "Organization context required",
@@ -123,7 +108,7 @@ func GetOrganizationMembers(c fiber.Ctx) error {
 	}
 
 	if len(members) == 0 {
-		members = []interface{}{}
+		members = []models.OrganizationMember{}
 	}
 
 	return c.JSON(fiber.Map{
@@ -134,8 +119,8 @@ func GetOrganizationMembers(c fiber.Ctx) error {
 
 // AddOrganizationMember adds a user to an organization
 // POST /api/v1/organization/members
-func AddOrganizationMember(c fiber.Ctx) error {
-	tenant, err := middleware.GetTenantContext(c)
+func AddOrganizationMember(c *fiber.Ctx) error {
+	tenant, err := middleware.GetTenantContext(*c)
 	if err != nil {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 			"error": "Organization context required",
@@ -154,7 +139,7 @@ func AddOrganizationMember(c fiber.Ctx) error {
 		Role   string `json:"role"`
 	}
 
-	if err := c.BindJSON(&req); err != nil {
+	if err := c.BodyParser(&req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"error": "Invalid request body",
 		})
@@ -179,8 +164,8 @@ func AddOrganizationMember(c fiber.Ctx) error {
 
 // RemoveOrganizationMember removes a user from an organization
 // DELETE /api/v1/organization/members/:userId
-func RemoveOrganizationMember(c fiber.Ctx) error {
-	tenant, err := middleware.GetTenantContext(c)
+func RemoveOrganizationMember(c *fiber.Ctx) error {
+	tenant, err := middleware.GetTenantContext(*c)
 	if err != nil {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 			"error": "Organization context required",
@@ -216,8 +201,8 @@ func RemoveOrganizationMember(c fiber.Ctx) error {
 
 // GetOrganizationSettings retrieves organization settings
 // GET /api/v1/organization/settings
-func GetOrganizationSettings(c fiber.Ctx) error {
-	tenant, err := middleware.GetTenantContext(c)
+func GetOrganizationSettings(c *fiber.Ctx) error {
+	tenant, err := middleware.GetTenantContext(*c)
 	if err != nil {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 			"error": "Organization context required",
@@ -241,8 +226,8 @@ func GetOrganizationSettings(c fiber.Ctx) error {
 
 // UpdateOrganizationSettings updates organization settings
 // PUT /api/v1/organization/settings
-func UpdateOrganizationSettings(c fiber.Ctx) error {
-	tenant, err := middleware.GetTenantContext(c)
+func UpdateOrganizationSettings(c *fiber.Ctx) error {
+	tenant, err := middleware.GetTenantContext(*c)
 	if err != nil {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 			"error": "Organization context required",
@@ -265,7 +250,7 @@ func UpdateOrganizationSettings(c fiber.Ctx) error {
 		BudgetVarianceThreshold  float64 `json:"budgetVarianceThreshold"`
 	}
 
-	if err := c.BindJSON(&settings); err != nil {
+	if err := c.BodyParser(&settings); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"error": "Invalid request body",
 		})
@@ -273,21 +258,16 @@ func UpdateOrganizationSettings(c fiber.Ctx) error {
 
 	orgService := services.NewOrganizationService(config.DB)
 
-	if err := orgService.UpdateOrganizationSettings(tenant.OrganizationID, &struct {
-		RequireDigitalSignatures bool
-		DefaultApprovalChain     string
-		Currency                 string
-		FiscalYearStart          int
-		EnableBudgetValidation   bool
-		BudgetVarianceThreshold  float64
-	}{
+	orgSettings := &models.OrganizationSettings{
 		RequireDigitalSignatures: settings.RequireDigitalSignatures,
 		DefaultApprovalChain:     settings.DefaultApprovalChain,
 		Currency:                 settings.Currency,
 		FiscalYearStart:          settings.FiscalYearStart,
 		EnableBudgetValidation:   settings.EnableBudgetValidation,
 		BudgetVarianceThreshold:  settings.BudgetVarianceThreshold,
-	}); err != nil {
+	}
+
+	if err := orgService.UpdateOrganizationSettings(tenant.OrganizationID, orgSettings); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"error": err.Error(),
 		})
@@ -301,8 +281,8 @@ func UpdateOrganizationSettings(c fiber.Ctx) error {
 
 // UpdateOrganization updates organization details
 // PUT /api/v1/organizations/:id
-func UpdateOrganization(c fiber.Ctx) error {
-	tenant, err := middleware.GetTenantContext(c)
+func UpdateOrganization(c *fiber.Ctx) error {
+	tenant, err := middleware.GetTenantContext(*c)
 	if err != nil {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 			"error": "Organization context required",
@@ -328,7 +308,7 @@ func UpdateOrganization(c fiber.Ctx) error {
 		Description string `json:"description"`
 	}
 
-	if err := c.BindJSON(&req); err != nil {
+	if err := c.BodyParser(&req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"error": "Invalid request body",
 		})

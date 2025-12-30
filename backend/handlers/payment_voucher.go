@@ -1,19 +1,20 @@
 package handlers
 
 import (
-	"encoding/json"
 	"fmt"
 	"time"
 
-	"github.com/gofiber/fiber/v3"
+	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 	"github.com/liyali/liyali-gateway/config"
 	"github.com/liyali/liyali-gateway/models"
 	"github.com/liyali/liyali-gateway/types"
+	"github.com/liyali/liyali-gateway/utils"
+	"gorm.io/datatypes"
 )
 
 // GetPaymentVouchers retrieves all payment vouchers with pagination and filtering
-func GetPaymentVouchers(c fiber.Ctx) error {
+func GetPaymentVouchers(c *fiber.Ctx) error {
 	db := config.DB
 
 	page := c.QueryInt("page", 1)
@@ -65,20 +66,14 @@ func GetPaymentVouchers(c fiber.Ctx) error {
 		responses = append(responses, modelToPaymentVoucherResponse(voucher))
 	}
 
-	return c.JSON(types.ListResponse{
-		Success: true,
-		Data:    responses,
-		Total:   total,
-		Page:    page,
-		Limit:   limit,
-	})
+	return utils.SendPaginatedSuccess(c, responses, "Payment vouchers retrieved successfully", page, limit, total)
 }
 
 // CreatePaymentVoucher creates a new payment voucher
-func CreatePaymentVoucher(c fiber.Ctx) error {
+func CreatePaymentVoucher(c *fiber.Ctx) error {
 	var req types.CreatePaymentVoucherRequest
 
-	if err := c.BindJSON(&req); err != nil {
+	if err := c.BodyParser(&req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"success": false,
 			"message": "Invalid request body",
@@ -140,9 +135,7 @@ func CreatePaymentVoucher(c fiber.Ctx) error {
 		UpdatedAt:     time.Now(),
 	}
 
-	emptyHistory := []types.ApprovalRecord{}
-	historyJSON, _ := json.Marshal(emptyHistory)
-	voucher.ApprovalHistory = historyJSON
+	voucher.ApprovalHistory = datatypes.NewJSONType([]types.ApprovalRecord{})
 
 	if err := config.DB.Create(&voucher).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
@@ -161,7 +154,7 @@ func CreatePaymentVoucher(c fiber.Ctx) error {
 }
 
 // GetPaymentVoucher retrieves a single payment voucher by ID
-func GetPaymentVoucher(c fiber.Ctx) error {
+func GetPaymentVoucher(c *fiber.Ctx) error {
 	id := c.Params("id")
 	if id == "" {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
@@ -188,7 +181,7 @@ func GetPaymentVoucher(c fiber.Ctx) error {
 }
 
 // UpdatePaymentVoucher updates an existing payment voucher
-func UpdatePaymentVoucher(c fiber.Ctx) error {
+func UpdatePaymentVoucher(c *fiber.Ctx) error {
 	id := c.Params("id")
 	if id == "" {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
@@ -198,7 +191,7 @@ func UpdatePaymentVoucher(c fiber.Ctx) error {
 	}
 
 	var req types.UpdatePaymentVoucherRequest
-	if err := c.BindJSON(&req); err != nil {
+	if err := c.BodyParser(&req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"success": false,
 			"message": "Invalid request body",
@@ -262,7 +255,7 @@ func UpdatePaymentVoucher(c fiber.Ctx) error {
 }
 
 // DeletePaymentVoucher deletes a payment voucher
-func DeletePaymentVoucher(c fiber.Ctx) error {
+func DeletePaymentVoucher(c *fiber.Ctx) error {
 	id := c.Params("id")
 	if id == "" {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
@@ -301,7 +294,7 @@ func DeletePaymentVoucher(c fiber.Ctx) error {
 }
 
 // ApprovePaymentVoucher approves a payment voucher
-func ApprovePaymentVoucher(c fiber.Ctx) error {
+func ApprovePaymentVoucher(c *fiber.Ctx) error {
 	id := c.Params("id")
 	if id == "" {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
@@ -311,7 +304,7 @@ func ApprovePaymentVoucher(c fiber.Ctx) error {
 	}
 
 	var req types.ApproveDocumentRequest
-	if err := c.BindJSON(&req); err != nil {
+	if err := c.BodyParser(&req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"success": false,
 			"message": "Invalid request body",
@@ -344,11 +337,7 @@ func ApprovePaymentVoucher(c fiber.Ctx) error {
 	}
 
 	var approvalHistory []types.ApprovalRecord
-	if len(voucher.ApprovalHistory) > 0 {
-		if err := json.Unmarshal(voucher.ApprovalHistory, &approvalHistory); err != nil {
-			approvalHistory = []types.ApprovalRecord{}
-		}
-	}
+	approvalHistory = voucher.ApprovalHistory.Data()
 
 	approvalRecord := types.ApprovalRecord{
 		ApproverID:   approverID,
@@ -362,8 +351,7 @@ func ApprovePaymentVoucher(c fiber.Ctx) error {
 
 	voucher.Status = "approved"
 	voucher.ApprovalStage++
-	historyJSON, _ := json.Marshal(approvalHistory)
-	voucher.ApprovalHistory = historyJSON
+	voucher.ApprovalHistory = datatypes.NewJSONType([]types.ApprovalRecord{})
 	voucher.UpdatedAt = time.Now()
 
 	if err := config.DB.Save(&voucher).Error; err != nil {
@@ -383,7 +371,7 @@ func ApprovePaymentVoucher(c fiber.Ctx) error {
 }
 
 // RejectPaymentVoucher rejects a payment voucher
-func RejectPaymentVoucher(c fiber.Ctx) error {
+func RejectPaymentVoucher(c *fiber.Ctx) error {
 	id := c.Params("id")
 	if id == "" {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
@@ -393,7 +381,7 @@ func RejectPaymentVoucher(c fiber.Ctx) error {
 	}
 
 	var req types.RejectDocumentRequest
-	if err := c.BindJSON(&req); err != nil {
+	if err := c.BodyParser(&req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"success": false,
 			"message": "Invalid request body",
@@ -432,11 +420,7 @@ func RejectPaymentVoucher(c fiber.Ctx) error {
 	}
 
 	var approvalHistory []types.ApprovalRecord
-	if len(voucher.ApprovalHistory) > 0 {
-		if err := json.Unmarshal(voucher.ApprovalHistory, &approvalHistory); err != nil {
-			approvalHistory = []types.ApprovalRecord{}
-		}
-	}
+	approvalHistory = voucher.ApprovalHistory.Data()
 
 	rejectionRecord := types.ApprovalRecord{
 		ApproverID:   approverID,
@@ -449,8 +433,7 @@ func RejectPaymentVoucher(c fiber.Ctx) error {
 	approvalHistory = append(approvalHistory, rejectionRecord)
 
 	voucher.Status = "rejected"
-	historyJSON, _ := json.Marshal(approvalHistory)
-	voucher.ApprovalHistory = historyJSON
+	voucher.ApprovalHistory = datatypes.NewJSONType([]types.ApprovalRecord{})
 	voucher.UpdatedAt = time.Now()
 
 	if err := config.DB.Save(&voucher).Error; err != nil {
@@ -472,8 +455,8 @@ func RejectPaymentVoucher(c fiber.Ctx) error {
 // Helper function to convert model to response
 func modelToPaymentVoucherResponse(voucher models.PaymentVoucher) types.PaymentVoucherResponse {
 	var approvalHistory []types.ApprovalRecord
-	if len(voucher.ApprovalHistory) > 0 {
-		json.Unmarshal(voucher.ApprovalHistory, &approvalHistory)
+	if len(voucher.ApprovalHistory.Data()) > 0 {
+		approvalHistory = voucher.ApprovalHistory.Data()
 	}
 
 	vendorName := ""

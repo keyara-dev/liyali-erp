@@ -1,0 +1,168 @@
+{
+  "id": "liyali-gateway-environment",
+  "name": "Liyali Gateway - Development",
+  "values": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8080",
+      "description": "Base URL for the API server",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "auth_token",
+      "value": "",
+      "description": "JWT access token (auto-populated after login)",
+      "type": "secret",
+      "enabled": true
+    },
+    {
+      "key": "refresh_token",
+      "value": "",
+      "description": "JWT refresh token (auto-populated after login)",
+      "type": "secret",
+      "enabled": true
+    },
+    {
+      "key": "user_id",
+      "value": "",
+      "description": "Current user ID (auto-populated after login)",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "organization_id",
+      "value": "",
+      "description": "Current organization ID (auto-populated after login)",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "requisition_id",
+      "value": "",
+      "description": "Sample requisition ID for testing",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "budget_id",
+      "value": "",
+      "description": "Sample budget ID for testing",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "purchase_order_id",
+      "value": "",
+      "description": "Sample purchase order ID for testing",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "payment_voucher_id",
+      "value": "",
+      "description": "Sample payment voucher ID for testing",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "grn_id",
+      "value": "",
+      "description": "Sample GRN ID for testing",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "document_id",
+      "value": "",
+      "description": "Sample document ID for testing",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "document_number",
+      "value": "",
+      "description": "Sample document number for testing",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "workflow_id",
+      "value": "",
+      "description": "Sample workflow ID for testing",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "approval_id",
+      "value": "",
+      "description": "Sample approval ID for testing",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "category_id",
+      "value": "",
+      "description": "Sample category ID for testing",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "vendor_id",
+      "value": "",
+      "description": "Sample vendor ID for testing",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "role_id",
+      "value": "",
+      "description": "Sample role ID for testing",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "permission_id",
+      "value": "",
+      "description": "Sample permission ID for testing",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "notification_id",
+      "value": "",
+      "description": "Sample notification ID for testing",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "admin_email",
+      "value": "admin@liyali.com",
+      "description": "Default admin email for testing",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "admin_password",
+      "value": "admin123",
+      "description": "Default admin password for testing",
+      "type": "secret",
+      "enabled": true
+    },
+    {
+      "key": "test_email",
+      "value": "test@example.com",
+      "description": "Test user email",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "test_password",
+      "value": "TestPassword123!",
+      "description": "Test user password",
+      "type": "secret",
+      "enabled": true
+    }
+  ],
+  "_postman_variable_scope": "environment"
+}

@@ -65,44 +65,88 @@ func SeedTestUsers(db *gorm.DB) error {
 	return nil
 }
 
+// SeedTestOrganizations creates test organizations for development
+func SeedTestOrganizations(db *gorm.DB) error {
+	testOrganizations := []models.Organization{
+		{
+			ID:          "org-demo-001",
+			Name:        "Demo Organization",
+			Slug:        "demo-org",
+			Description: "Demo organization for testing",
+			Active:      true,
+			Tier:        "pro",
+			CreatedBy:   "user-admin-001",
+		},
+		{
+			ID:          "org-acme-001",
+			Name:        "ACME Corporation",
+			Slug:        "acme-corp",
+			Description: "ACME Corporation for procurement testing",
+			Active:      true,
+			Tier:        "enterprise",
+			CreatedBy:   "user-admin-001",
+		},
+	}
+
+	for _, org := range testOrganizations {
+		// Check if organization already exists
+		var existing models.Organization
+		if err := db.Where("slug = ?", org.Slug).First(&existing).Error; err == nil {
+			log.Printf("Organization already exists: %s", org.Slug)
+			continue
+		}
+
+		if err := db.Create(&org).Error; err != nil {
+			log.Printf("Error creating seed organization %s: %v", org.Name, err)
+			return err
+		}
+		log.Printf("Created seed organization: %s (%s)", org.Name, org.Slug)
+	}
+
+	return nil
+}
+
 // SeedTestVendors creates test vendors for development
 func SeedTestVendors(db *gorm.DB) error {
 	testVendors := []models.Vendor{
 		{
-			ID:         "vendor-001",
-			VendorCode: "VND-001",
-			Name:       "ABC Supplies Ltd",
-			Email:      "contact@abcsupplies.com",
-			Phone:      "+1-555-0101",
-			Country:    "United States",
-			City:       "New York",
+			ID:          "vendor-001",
+			VendorCode:  "VND-001",
+			Name:        "ABC Supplies Ltd",
+			Email:       "contact@abcsupplies.com",
+			Phone:       "+1-555-0101",
+			Country:     "United States",
+			City:        "New York",
 			BankAccount: "1234567890",
-			TaxID:      "12-3456789",
-			Active:     true,
+			TaxID:       "12-3456789",
+			Active:      true,
+			CreatedBy:   "user-admin-001",
 		},
 		{
-			ID:         "vendor-002",
-			VendorCode: "VND-002",
-			Name:       "Global Tech Solutions",
-			Email:      "sales@globaltech.com",
-			Phone:      "+1-555-0102",
-			Country:    "United States",
-			City:       "San Francisco",
+			ID:          "vendor-002",
+			VendorCode:  "VND-002",
+			Name:        "Global Tech Solutions",
+			Email:       "sales@globaltech.com",
+			Phone:       "+1-555-0102",
+			Country:     "United States",
+			City:        "San Francisco",
 			BankAccount: "0987654321",
-			TaxID:      "98-7654321",
-			Active:     true,
+			TaxID:       "98-7654321",
+			Active:      true,
+			CreatedBy:   "user-admin-001",
 		},
 		{
-			ID:         "vendor-003",
-			VendorCode: "VND-003",
-			Name:       "Premium Services Inc",
-			Email:      "info@premiumservices.com",
-			Phone:      "+1-555-0103",
-			Country:    "Canada",
-			City:       "Toronto",
+			ID:          "vendor-003",
+			VendorCode:  "VND-003",
+			Name:        "Premium Services Inc",
+			Email:       "info@premiumservices.com",
+			Phone:       "+1-555-0103",
+			Country:     "Canada",
+			City:        "Toronto",
 			BankAccount: "5555666677",
-			TaxID:      "55-5555555",
-			Active:     true,
+			TaxID:       "55-5555555",
+			Active:      true,
+			CreatedBy:   "user-admin-001",
 		},
 	}
 
@@ -124,17 +168,75 @@ func SeedTestVendors(db *gorm.DB) error {
 	return nil
 }
 
+// SeedTestCategories creates test categories for development
+func SeedTestCategories(db *gorm.DB) error {
+	// Use the demo organization for categories
+	defaultOrgID := "org-demo-001"
+
+	testCategories := []models.Category{
+		{
+			ID:             "cat-001",
+			OrganizationID: defaultOrgID,
+			Name:           "Office Supplies",
+			Description:    "General office supplies and stationery",
+			Active:         true,
+		},
+		{
+			ID:             "cat-002",
+			OrganizationID: defaultOrgID,
+			Name:           "IT Equipment",
+			Description:    "Computers, software, and IT hardware",
+			Active:         true,
+		},
+		{
+			ID:             "cat-003",
+			OrganizationID: defaultOrgID,
+			Name:           "Facilities",
+			Description:    "Facility maintenance and utilities",
+			Active:         true,
+		},
+	}
+
+	for _, category := range testCategories {
+		// Check if category already exists
+		var existing models.Category
+		if err := db.Where("name = ? AND organization_id = ?", category.Name, category.OrganizationID).First(&existing).Error; err == nil {
+			log.Printf("Category already exists: %s", category.Name)
+			continue
+		}
+
+		if err := db.Create(&category).Error; err != nil {
+			log.Printf("Error creating seed category %s: %v", category.Name, err)
+			return err
+		}
+		log.Printf("Created seed category: %s", category.Name)
+	}
+
+	return nil
+}
+
 // SeedDatabase seeds all test data
 func SeedDatabase(db *gorm.DB) error {
 	log.Println("🌱 Seeding database with test data...")
 
+	// Seed in dependency order
 	if err := SeedTestUsers(db); err != nil {
 		log.Printf("Error seeding users: %v", err)
 		return err
 	}
 
+	if err := SeedTestOrganizations(db); err != nil {
+		log.Printf("Error seeding organizations: %v", err)
+		return err
+	}
+
 	if err := SeedTestVendors(db); err != nil {
 		log.Printf("Error seeding vendors: %v", err)
+		return err
+	}
+
+	if err := SeedTestCategories(db); err != nil {
+		log.Printf("Error seeding categories: %v", err)
 		return err
 	}
 

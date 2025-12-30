@@ -4,15 +4,16 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/gofiber/fiber/v3"
+	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 	"github.com/liyali/liyali-gateway/config"
 	"github.com/liyali/liyali-gateway/models"
 	"github.com/liyali/liyali-gateway/types"
+	"github.com/liyali/liyali-gateway/utils"
 )
 
 // GetVendors retrieves all vendors with pagination and filtering
-func GetVendors(c fiber.Ctx) error {
+func GetVendors(c *fiber.Ctx) error {
 	db := config.DB
 
 	page := c.QueryInt("page", 1)
@@ -65,20 +66,14 @@ func GetVendors(c fiber.Ctx) error {
 		responses = append(responses, modelToVendorResponse(vendor))
 	}
 
-	return c.JSON(types.ListResponse{
-		Success: true,
-		Data:    responses,
-		Total:   total,
-		Page:    page,
-		Limit:   limit,
-	})
+	return utils.SendPaginatedSuccess(c, responses, "Vendors retrieved successfully", page, limit, total)
 }
 
 // CreateVendor creates a new vendor
-func CreateVendor(c fiber.Ctx) error {
+func CreateVendor(c *fiber.Ctx) error {
 	var req types.CreateVendorRequest
 
-	if err := c.BindJSON(&req); err != nil {
+	if err := c.BodyParser(&req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"success": false,
 			"message": "Invalid request body",
@@ -171,7 +166,7 @@ func CreateVendor(c fiber.Ctx) error {
 }
 
 // GetVendor retrieves a single vendor by ID
-func GetVendor(c fiber.Ctx) error {
+func GetVendor(c *fiber.Ctx) error {
 	id := c.Params("id")
 	if id == "" {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
@@ -195,7 +190,7 @@ func GetVendor(c fiber.Ctx) error {
 }
 
 // UpdateVendor updates an existing vendor
-func UpdateVendor(c fiber.Ctx) error {
+func UpdateVendor(c *fiber.Ctx) error {
 	id := c.Params("id")
 	if id == "" {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
@@ -205,7 +200,7 @@ func UpdateVendor(c fiber.Ctx) error {
 	}
 
 	var req types.UpdateVendorRequest
-	if err := c.BindJSON(&req); err != nil {
+	if err := c.BodyParser(&req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"success": false,
 			"message": "Invalid request body",
@@ -279,7 +274,7 @@ func UpdateVendor(c fiber.Ctx) error {
 }
 
 // DeleteVendor deactivates a vendor (soft delete via active flag)
-func DeleteVendor(c fiber.Ctx) error {
+func DeleteVendor(c *fiber.Ctx) error {
 	id := c.Params("id")
 	if id == "" {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{

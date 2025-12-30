@@ -1,6 +1,8 @@
 package types
 
-import "time"
+import (
+	"time"
+)
 
 // ================== REQUISITION TYPES ==================
 
@@ -284,16 +286,6 @@ type VendorResponse struct {
 
 // ================== APPROVAL TYPES ==================
 
-// ApprovalRecord represents an approval in the history
-type ApprovalRecord struct {
-	ApproverID   string    `json:"approverId"`
-	ApproverName string    `json:"approverName"`
-	Status       string    `json:"status"` // approved, rejected
-	Comments     string    `json:"comments"`
-	Signature    string    `json:"signature"`
-	ApprovedAt   time.Time `json:"approvedAt"`
-}
-
 // ApproveDocumentRequest represents a document approval request
 type ApproveDocumentRequest struct {
 	Comments  string `json:"comments"`
@@ -314,13 +306,21 @@ type ReassignDocumentRequest struct {
 
 // ================== COMMON RESPONSE TYPES ==================
 
+// PaginationMeta represents pagination information
+type PaginationMeta struct {
+	Page       int   `json:"page"`
+	PageSize   int   `json:"pageSize"`
+	Total      int64 `json:"total"`
+	TotalPages int64 `json:"totalPages"`
+	HasNext    bool  `json:"hasNext"`
+	HasPrev    bool  `json:"hasPrev"`
+}
+
 // ListResponse represents a paginated list response
 type ListResponse struct {
-	Success bool        `json:"success"`
-	Data    interface{} `json:"data"`
-	Total   int64       `json:"total"`
-	Page    int         `json:"page"`
-	Limit   int         `json:"limit"`
+	Success    bool            `json:"success"`
+	Data       interface{}     `json:"data"`
+	Pagination *PaginationMeta `json:"pagination,omitempty"`
 }
 
 // DetailResponse represents a single resource response

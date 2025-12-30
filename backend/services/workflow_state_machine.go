@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/liyali/liyali-gateway/models"
+	"gorm.io/datatypes"
 	"gorm.io/gorm"
 )
 
@@ -160,16 +161,26 @@ func (wsm *WorkflowStateMachine) TransitionDocument(
 	}
 
 	// Create audit log entry
+	// Create changes map
+	changes := map[string]interface{}{
+		"from":    fromState,
+		"to":      toState,
+		"comment": comments,
+	}
+	
 	auditLog := models.AuditLog{
 		ID:           uuid.New().String(),
 		DocumentID:   documentID,
 		DocumentType: docType,
 		UserID:       userID,
 		Action:       action,
-		Changes: []byte(fmt.Sprintf(`{"from": "%s", "to": "%s", "comment": "%s"}`,
-			fromState, toState, comments)),
-		CreatedAt: time.Now(),
+		Changes:      datatypes.JSONType[map[string]interface{}]{},
+		CreatedAt:    time.Now(),
 	}
+	
+	// Set the changes data
+	auditLog.Changes = datatypes.JSONType[map[string]interface{}]{}
+	auditLog.Changes.Scan(changes)
 
 	if err := wsm.db.Create(&auditLog).Error; err != nil {
 		log.Printf("Error creating audit log: %v", err)

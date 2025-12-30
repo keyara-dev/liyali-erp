@@ -3,15 +3,16 @@ package handlers
 import (
 	"time"
 
-	"github.com/gofiber/fiber/v3"
+	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 	"github.com/liyali/liyali-gateway/config"
 	"github.com/liyali/liyali-gateway/models"
 	"github.com/liyali/liyali-gateway/types"
+	"github.com/liyali/liyali-gateway/utils"
 )
 
 // GetCategories retrieves all categories with pagination and filtering
-func GetCategories(c fiber.Ctx) error {
+func GetCategories(c *fiber.Ctx) error {
 	db := config.DB
 
 	page := c.QueryInt("page", 1)
@@ -34,11 +35,7 @@ func GetCategories(c fiber.Ctx) error {
 
 	var total int64
 	if err := query.Model(&models.Category{}).Count(&total).Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"success": false,
-			"message": "Failed to count categories",
-			"error":   err.Error(),
-		})
+		return utils.SendInternalError(c, "Failed to count categories", err)
 	}
 
 	var categories []models.Category
@@ -48,11 +45,7 @@ func GetCategories(c fiber.Ctx) error {
 		Limit(limit).
 		Order("created_at DESC").
 		Find(&categories).Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"success": false,
-			"message": "Failed to fetch categories",
-			"error":   err.Error(),
-		})
+		return utils.SendInternalError(c, "Failed to fetch categories", err)
 	}
 
 	responses := make([]types.CategoryResponse, 0, len(categories))
@@ -61,20 +54,14 @@ func GetCategories(c fiber.Ctx) error {
 		responses = append(responses, modelToCategoryResponse(category, budgetCodes))
 	}
 
-	return c.JSON(types.ListResponse{
-		Success: true,
-		Data:    responses,
-		Total:   total,
-		Page:    page,
-		Limit:   limit,
-	})
+	return utils.SendPaginatedSuccess(c, responses, "Categories retrieved successfully", page, limit, total)
 }
 
 // CreateCategory creates a new category with budget code mappings
-func CreateCategory(c fiber.Ctx) error {
+func CreateCategory(c *fiber.Ctx) error {
 	var req types.CreateCategoryRequest
 
-	if err := c.BindJSON(&req); err != nil {
+	if err := c.BodyParser(&req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"success": false,
 			"message": "Invalid request body",
@@ -140,7 +127,7 @@ func CreateCategory(c fiber.Ctx) error {
 }
 
 // GetCategory retrieves a single category by ID with its budget codes
-func GetCategory(c fiber.Ctx) error {
+func GetCategory(c *fiber.Ctx) error {
 	id := c.Params("id")
 	if id == "" {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
@@ -166,7 +153,7 @@ func GetCategory(c fiber.Ctx) error {
 }
 
 // UpdateCategory updates an existing category and its budget code mappings
-func UpdateCategory(c fiber.Ctx) error {
+func UpdateCategory(c *fiber.Ctx) error {
 	id := c.Params("id")
 	if id == "" {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
@@ -176,7 +163,7 @@ func UpdateCategory(c fiber.Ctx) error {
 	}
 
 	var req types.UpdateCategoryRequest
-	if err := c.BindJSON(&req); err != nil {
+	if err := c.BodyParser(&req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"success": false,
 			"message": "Invalid request body",
@@ -257,7 +244,7 @@ func UpdateCategory(c fiber.Ctx) error {
 }
 
 // DeleteCategory soft deletes a category by setting Active to false
-func DeleteCategory(c fiber.Ctx) error {
+func DeleteCategory(c *fiber.Ctx) error {
 	id := c.Params("id")
 	if id == "" {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
@@ -290,7 +277,7 @@ func DeleteCategory(c fiber.Ctx) error {
 }
 
 // GetCategoryBudgetCodes retrieves all budget codes for a category
-func GetCategoryBudgetCodes(c fiber.Ctx) error {
+func GetCategoryBudgetCodes(c *fiber.Ctx) error {
 	id := c.Params("id")
 	if id == "" {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
@@ -315,7 +302,7 @@ func GetCategoryBudgetCodes(c fiber.Ctx) error {
 }
 
 // AddBudgetCodeToCategory adds a new budget code mapping to a category
-func AddBudgetCodeToCategory(c fiber.Ctx) error {
+func AddBudgetCodeToCategory(c *fiber.Ctx) error {
 	id := c.Params("id")
 	if id == "" {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
@@ -337,7 +324,7 @@ func AddBudgetCodeToCategory(c fiber.Ctx) error {
 		BudgetCode string `json:"budgetCode" validate:"required"`
 	}
 
-	if err := c.BindJSON(&req); err != nil {
+	if err := c.BodyParser(&req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"success": false,
 			"message": "Invalid request body",
@@ -385,7 +372,7 @@ func AddBudgetCodeToCategory(c fiber.Ctx) error {
 }
 
 // RemoveBudgetCodeFromCategory removes a budget code mapping from a category
-func RemoveBudgetCodeFromCategory(c fiber.Ctx) error {
+func RemoveBudgetCodeFromCategory(c *fiber.Ctx) error {
 	id := c.Params("id")
 	budgetCode := c.Params("budgetCode")
 
