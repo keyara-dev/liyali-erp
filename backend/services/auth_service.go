@@ -1,370 +1,612 @@
 package services
 
 import (
-	"crypto/sha256"
+	"context"
+	"crypto/rand"
+	"encoding/hex"
+	"errors"
 	"fmt"
 	"log"
 	"time"
 
+	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 	"github.com/liyali/liyali-gateway/models"
+	"github.com/liyali/liyali-gateway/repository"
+	"github.com/liyali/liyali-gateway/types"
+	"github.com/liyali/liyali-gateway/utils"
 	"gorm.io/gorm"
 )
 
-// AuthService handles authentication security operations
-// This includes token blacklisting, login attempt tracking, and account lockout
+// Authentication service with session management and security features
 type AuthService struct {
-	db *gorm.DB
-}
-
-// NewAuthService creates a new auth service
-func NewAuthService(db *gorm.DB) *AuthService {
-	return &AuthService{db: db}
+	userRepo          repository.UserRepositoryInterface
+	sessionRepo       repository.SessionRepositoryInterface
+	passwordResetRepo repository.PasswordResetRepositoryInterface
+	loginAttemptRepo  repository.LoginAttemptRepositoryInterface
+	lockoutRepo       repository.AccountLockoutRepositoryInterface
+	auditService      *AuditService
+	jwtSecret         string
+	db                *gorm.DB // Add database connection for organization service
 }
 
 // Configuration constants
 const (
-	MaxFailedLoginAttempts = 5
-	AccountLockoutDuration = 15 * time.Minute
-	TokenBlacklistCleanupAge = 7 * 24 * time.Hour // Delete entries older than 7 days
+	AccessTokenDuration     = 1 * time.Hour
+	RefreshTokenDuration    = 7 * 24 * time.Hour // 7 days
+	PasswordResetExpiry     = 1 * time.Hour
+	EmailVerificationExpiry = 24 * time.Hour
+	MaxFailedAttempts       = 5
+	AccountLockoutDuration  = 15 * time.Minute // Import from auth_service
+	MaxSessionsPerUser      = 5
 )
 
-// ============== TOKEN REVOCATION ==============
+// Custom errors
+var (
+	ErrInvalidCredentials    = errors.New("invalid email or password")
+	ErrAccountLocked         = errors.New("account is locked due to too many failed login attempts")
+	ErrAccountInactive       = errors.New("account is inactive")
+	ErrEmailNotVerified      = errors.New("email not verified")
+	ErrUserNotFound          = errors.New("user not found")
+	ErrInvalidToken          = errors.New("invalid or expired token")
+	ErrEmailAlreadyExists    = errors.New("email already exists")
+	ErrTooManyFailedAttempts = errors.New("too many failed login attempts")
+	ErrSessionExpired        = errors.New("session expired")
+	ErrInvalidRefreshToken   = errors.New("invalid refresh token")
+)
 
-// BlacklistToken adds a token to the blacklist (for logout)
-func (as *AuthService) BlacklistToken(userID, tokenJTI, tokenString string, expiresAt time.Time, reason string) error {
-	// Hash the token for storage (never store raw token)
-	tokenHash := hashToken(tokenString)
-
-	blacklistedToken := models.NewTokenBlacklist(userID, tokenJTI, tokenHash, expiresAt, reason)
-
-	if err := as.db.Create(blacklistedToken).Error; err != nil {
-		log.Printf("Error blacklisting token: %v", err)
-		return fmt.Errorf("failed to blacklist token")
-	}
-
-	log.Printf("Token blacklisted for user %s: %s", userID, reason)
-	return nil
+// JWT Claims structure
+type JWTClaims struct {
+	UserID         string  `json:"user_id"`
+	Email          string  `json:"email"`
+	Name           string  `json:"name"`
+	Role           string  `json:"role"`
+	OrganizationID *string `json:"organization_id,omitempty"`
+	SessionID      string  `json:"session_id"`
+	jwt.RegisteredClaims
 }
 
-// IsTokenBlacklisted checks if a token is in the blacklist
-func (as *AuthService) IsTokenBlacklisted(tokenJTI string) bool {
-	var count int64
-	if err := as.db.Model(&models.TokenBlacklist{}).
-		Where("token_jti = ?", tokenJTI).
-		Count(&count).Error; err != nil {
-		log.Printf("Error checking token blacklist: %v", err)
-		return false // Assume not blacklisted on error (allow access)
-	}
-	return count > 0
+// Login response structure
+type LoginResponse struct {
+	AccessToken  string                `json:"accessToken"`
+	RefreshToken string                `json:"refreshToken"`
+	ExpiresIn    int64                 `json:"expiresIn"`
+	User         *types.UserResponse   `json:"user"`
+	Organization *types.OrganizationResponse `json:"organization,omitempty"`
 }
 
-// RevokeUserTokens revokes all tokens for a user (used for password change, deactivation, etc)
-func (as *AuthService) RevokeUserTokens(userID string, reason string) error {
-	// This is a simple approach - in production, you might want to track issued tokens
-	// For now, we log the revocation request
-	log.Printf("Token revocation request for user %s: %s", userID, reason)
-	return nil
+// Token refresh response
+type TokenResponse struct {
+	AccessToken string `json:"accessToken"`
+	ExpiresIn   int64  `json:"expiresIn"`
 }
 
-// CleanupExpiredTokens removes blacklist entries that have expired
-func (as *AuthService) CleanupExpiredTokens() error {
-	// Delete blacklist entries older than the cleanup age
-	if err := as.db.Where("expires_at < ?", time.Now().Add(-TokenBlacklistCleanupAge)).
-		Delete(&models.TokenBlacklist{}).Error; err != nil {
-		log.Printf("Error cleaning up expired tokens: %v", err)
-		return fmt.Errorf("failed to cleanup expired tokens")
+// NewAuthService creates a new authentication service
+func NewAuthService(
+	userRepo repository.UserRepositoryInterface,
+	sessionRepo repository.SessionRepositoryInterface,
+	passwordResetRepo repository.PasswordResetRepositoryInterface,
+	loginAttemptRepo repository.LoginAttemptRepositoryInterface,
+	lockoutRepo repository.AccountLockoutRepositoryInterface,
+	auditService *AuditService,
+	jwtSecret string,
+	db *gorm.DB,
+) *AuthService {
+	return &AuthService{
+		userRepo:          userRepo,
+		sessionRepo:       sessionRepo,
+		passwordResetRepo: passwordResetRepo,
+		loginAttemptRepo:  loginAttemptRepo,
+		lockoutRepo:       lockoutRepo,
+		auditService:      auditService,
+		jwtSecret:         jwtSecret,
+		db:                db,
 	}
-	return nil
 }
 
-// ============== LOGIN ATTEMPT TRACKING ==============
-
-// RecordLoginAttempt records a login attempt (success or failure)
-func (as *AuthService) RecordLoginAttempt(userID, email, ipAddress string, success bool, userAgent, reason string) error {
-	attempt := models.NewLoginAttempt(userID, email, ipAddress, success, userAgent, reason)
-
-	if err := as.db.Create(attempt).Error; err != nil {
-		log.Printf("Error recording login attempt: %v", err)
-		return fmt.Errorf("failed to record login attempt")
-	}
-
-	return nil
-}
-
-// GetRecentFailedAttempts gets failed login attempts for a user in recent time
-func (as *AuthService) GetRecentFailedAttempts(email string, since time.Duration) (int64, error) {
-	var count int64
-	if err := as.db.Model(&models.LoginAttempt{}).
-		Where("email = ? AND success = ? AND attempt_at > ?", email, false, time.Now().Add(-since)).
-		Count(&count).Error; err != nil {
-		log.Printf("Error counting failed login attempts: %v", err)
-		return 0, fmt.Errorf("failed to get failed login attempts")
-	}
-	return count, nil
-}
-
-// ============== ACCOUNT LOCKOUT ==============
-
-// LockAccount locks a user account
-func (as *AuthService) LockAccount(userID, email, ipAddress, reason string) error {
-	lockout := models.NewAccountLockout(userID, email, ipAddress, reason, AccountLockoutDuration)
-
-	if err := as.db.Create(lockout).Error; err != nil {
-		log.Printf("Error locking account: %v", err)
-		return fmt.Errorf("failed to lock account")
-	}
-
-	log.Printf("Account locked for user %s: %s", userID, reason)
-	return nil
-}
-
-// IsAccountLocked checks if a user account is currently locked
-func (as *AuthService) IsAccountLocked(userID string) (bool, error) {
-	var lockout models.AccountLockout
-	err := as.db.Where("user_id = ? AND active = ? AND unlocks_at > ?", userID, true, time.Now()).
-		First(&lockout).Error
-
-	if err == gorm.ErrRecordNotFound {
-		return false, nil
-	}
+// Login authenticates a user and creates a session
+func (s *AuthService) Login(ctx context.Context, email, password, ipAddress, userAgent string) (*LoginResponse, error) {
+	// Check for recent failed attempts
+	recentFailures, err := s.loginAttemptRepo.GetRecentFailedAttempts(ctx, email, time.Now().Add(-1*time.Hour))
 	if err != nil {
-		log.Printf("Error checking account lockout: %v", err)
-		return false, fmt.Errorf("failed to check account lockout")
+		log.Printf("Error checking recent failed attempts: %v", err)
 	}
 
-	return true, nil
-}
-
-// UnlockAccount unlocks a user account
-func (as *AuthService) UnlockAccount(userID string) error {
-	if err := as.db.Model(&models.AccountLockout{}).
-		Where("user_id = ?", userID).
-		Update("active", false).Error; err != nil {
-		log.Printf("Error unlocking account: %v", err)
-		return fmt.Errorf("failed to unlock account")
+	if recentFailures >= MaxFailedAttempts {
+		// Record failed attempt
+		s.recordLoginAttempt(ctx, "", email, ipAddress, userAgent, false, "too many failed attempts")
+		return nil, ErrTooManyFailedAttempts
 	}
 
-	log.Printf("Account unlocked for user %s", userID)
-	return nil
-}
-
-// GetAccountLockoutStatus gets the current lockout status for an account
-func (as *AuthService) GetAccountLockoutStatus(userID string) (*models.AccountLockout, error) {
-	var lockout models.AccountLockout
-	err := as.db.Where("user_id = ? AND active = ? AND unlocks_at > ?", userID, true, time.Now()).
-		First(&lockout).Error
-
-	if err == gorm.ErrRecordNotFound {
-		return nil, nil
-	}
+	// Get user by email
+	user, err := s.userRepo.GetByEmail(ctx, email)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get lockout status")
+		// Record failed attempt (user not found)
+		s.recordLoginAttempt(ctx, "", email, ipAddress, userAgent, false, "user not found")
+		return nil, ErrInvalidCredentials
 	}
 
-	return &lockout, nil
-}
-
-// ============== AUDIT LOGGING ==============
-
-// LogAuthEvent logs an authentication-related event
-func (as *AuthService) LogAuthEvent(userID, email string, organizationID *string, action string, success bool, details, ipAddress, userAgent string) error {
-	status := "success"
-	errorMsg := ""
-	if !success {
-		status = "failure"
+	// Check if account is locked
+	lockout, err := s.lockoutRepo.GetActiveByUserID(ctx, user.ID)
+	if err == nil && lockout != nil {
+		// Record failed attempt (account locked)
+		s.recordLoginAttempt(ctx, user.ID, email, ipAddress, userAgent, false, "account locked")
+		return nil, ErrAccountLocked
 	}
 
-	auditLog := models.NewAuditLog(
-		userID,
-		email,
-		organizationID,
-		action,
-		"authentication",
-		userID,
-		details,
-		ipAddress,
-		userAgent,
-		status,
-		errorMsg,
-	)
-
-	if err := as.db.Create(auditLog).Error; err != nil {
-		log.Printf("Error logging auth event: %v", err)
-		return fmt.Errorf("failed to log auth event")
+	// Check if account is active
+	if !user.Active {
+		// Record failed attempt (account inactive)
+		s.recordLoginAttempt(ctx, user.ID, email, ipAddress, userAgent, false, "account inactive")
+		return nil, ErrAccountInactive
 	}
 
-	return nil
-}
-
-// LogPermissionChange logs a permission-related change
-func (as *AuthService) LogPermissionChange(userID, email, organizationID string, action string, resourceID string, details, ipAddress, userAgent string) error {
-	auditLog := models.NewAuditLog(
-		userID,
-		email,
-		&organizationID,
-		action,
-		"permission",
-		resourceID,
-		details,
-		ipAddress,
-		userAgent,
-		"success",
-		"",
-	)
-
-	if err := as.db.Create(auditLog).Error; err != nil {
-		log.Printf("Error logging permission change: %v", err)
-		return fmt.Errorf("failed to log permission change")
-	}
-
-	return nil
-}
-
-// GetAuditLogs retrieves audit logs with filters
-func (as *AuthService) GetAuditLogs(userID string, organizationID *string, action string, limit int, offset int) ([]models.AuditLog, int64, error) {
-	var logs []models.AuditLog
-	var total int64
-
-	query := as.db.Model(&models.AuditLog{})
-
-	if userID != "" {
-		query = query.Where("user_id = ?", userID)
-	}
-	if organizationID != nil && *organizationID != "" {
-		query = query.Where("organization_id = ?", organizationID)
-	}
-	if action != "" {
-		query = query.Where("action = ?", action)
-	}
-
-	// Get total count
-	if err := query.Count(&total).Error; err != nil {
-		return nil, 0, fmt.Errorf("failed to count audit logs")
-	}
-
-	// Get paginated results
-	if err := query.Order("created_at DESC").
-		Limit(limit).
-		Offset(offset).
-		Find(&logs).Error; err != nil {
-		log.Printf("Error fetching audit logs: %v", err)
-		return nil, 0, fmt.Errorf("failed to fetch audit logs")
-	}
-
-	return logs, total, nil
-}
-
-// CleanupOldAuditLogs deletes old audit log entries
-func (as *AuthService) CleanupOldAuditLogs(retentionDays int) error {
-	cutoffDate := time.Now().Add(-time.Duration(retentionDays) * 24 * time.Hour)
-
-	if err := as.db.Where("created_at < ?", cutoffDate).
-		Delete(&models.AuditLog{}).Error; err != nil {
-		log.Printf("Error cleaning up audit logs: %v", err)
-		return fmt.Errorf("failed to cleanup audit logs")
-	}
-
-	return nil
-}
-
-// ============== EMAIL VERIFICATION ==============
-
-// CreateEmailVerification creates a new email verification record
-func (as *AuthService) CreateEmailVerification(userID, email, token string) (*models.EmailVerification, error) {
-	verification := models.NewEmailVerification(userID, email, token, 24*time.Hour) // 24 hour expiration
-
-	if err := as.db.Create(verification).Error; err != nil {
-		log.Printf("Error creating email verification: %v", err)
-		return nil, fmt.Errorf("failed to create email verification")
-	}
-
-	return verification, nil
-}
-
-// VerifyEmail marks an email as verified
-func (as *AuthService) VerifyEmail(token string) error {
-	var verification models.EmailVerification
-
-	// Find the verification record
-	if err := as.db.Where("token = ? AND verified_at IS NULL AND expires_at > ?", token, time.Now()).
-		First(&verification).Error; err != nil {
-		if err == gorm.ErrRecordNotFound {
-			return fmt.Errorf("verification token not found or expired")
+	// Verify password
+	if !utils.VerifyPassword(user.Password, password) {
+		// Record failed attempt
+		s.recordLoginAttempt(ctx, user.ID, email, ipAddress, userAgent, false, "invalid password")
+		
+		// Check if we should lock the account
+		recentUserFailures, _ := s.loginAttemptRepo.GetRecentFailedAttempts(ctx, email, time.Now().Add(-1*time.Hour))
+		if recentUserFailures >= MaxFailedAttempts-1 { // -1 because we just recorded one
+			s.lockAccount(ctx, user.ID, email, ipAddress, "too many failed login attempts")
 		}
-		log.Printf("Error finding verification token: %v", err)
-		return fmt.Errorf("failed to verify email")
+		
+		return nil, ErrInvalidCredentials
 	}
 
-	// Mark as verified
-	now := time.Now()
-	if err := as.db.Model(&verification).Update("verified_at", now).Error; err != nil {
-		log.Printf("Error verifying email: %v", err)
-		return fmt.Errorf("failed to mark email as verified")
+	// Generate refresh token
+	refreshToken, err := s.generateRefreshToken()
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate refresh token: %w", err)
 	}
 
-	return nil
-}
-
-// IsEmailVerified checks if an email has been verified
-func (as *AuthService) IsEmailVerified(email string) (bool, error) {
-	var count int64
-	if err := as.db.Model(&models.EmailVerification{}).
-		Where("email = ? AND verified_at IS NOT NULL", email).
-		Count(&count).Error; err != nil {
-		log.Printf("Error checking email verification status: %v", err)
-		return false, fmt.Errorf("failed to check email verification")
+	// Create session
+	session, err := s.sessionRepo.Create(ctx, user.ID, refreshToken, ipAddress, userAgent, time.Now().Add(RefreshTokenDuration))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create session: %w", err)
 	}
 
-	return count > 0, nil
-}
-
-// ============== PASSWORD RESET ==============
-
-// CreatePasswordReset creates a new password reset token
-func (as *AuthService) CreatePasswordReset(userID, email, token string) (*models.PasswordReset, error) {
-	reset := models.NewPasswordReset(userID, email, token, 24*time.Hour) // 24 hour expiration
-
-	if err := as.db.Create(reset).Error; err != nil {
-		log.Printf("Error creating password reset: %v", err)
-		return nil, fmt.Errorf("failed to create password reset")
+	// Generate access token
+	var sessionIDStr string
+	if session.ID.Valid {
+		sessionIDStr = uuid.UUID(session.ID.Bytes).String()
+	}
+	accessToken, err := s.generateAccessToken(user, sessionIDStr)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate access token: %w", err)
 	}
 
-	return reset, nil
-}
+	// Update last login
+	if err := s.userRepo.UpdateLastLogin(ctx, user.ID); err != nil {
+		log.Printf("Warning: Failed to update last login for user %s: %v", user.ID, err)
+	}
 
-// ValidatePasswordResetToken validates and retrieves a password reset token
-func (as *AuthService) ValidatePasswordResetToken(token string) (*models.PasswordReset, error) {
-	var reset models.PasswordReset
+	// Record successful login attempt
+	s.recordLoginAttempt(ctx, user.ID, email, ipAddress, userAgent, true, "")
 
-	if err := as.db.Where("token = ? AND used_at IS NULL AND expires_at > ?", token, time.Now()).
-		First(&reset).Error; err != nil {
-		if err == gorm.ErrRecordNotFound {
-			return nil, fmt.Errorf("reset token not found or expired")
+	// Log audit event
+	if s.auditService != nil {
+		s.auditService.LogAuthEvent(ctx, user.ID, user.Email, user.CurrentOrganizationID, "login", true, "successful login", ipAddress, userAgent)
+	}
+
+	// Clean up old sessions for this user (keep only the latest 5)
+	go s.cleanupOldSessions(context.Background(), user.ID)
+
+	// Build response
+	response := &LoginResponse{
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
+		ExpiresIn:    int64(AccessTokenDuration.Seconds()),
+		User: &types.UserResponse{
+			ID:        user.ID,
+			Email:     user.Email,
+			Name:      user.Name,
+			Role:      user.Role,
+			Active:    user.Active,
+			CreatedAt: user.CreatedAt.Format(time.RFC3339),
+		},
+	}
+
+	// Add organization info if available
+	if user.CurrentOrganization != nil {
+		response.Organization = &types.OrganizationResponse{
+			ID:          user.CurrentOrganization.ID,
+			Name:        user.CurrentOrganization.Name,
+			Slug:        user.CurrentOrganization.Slug,
+			Description: user.CurrentOrganization.Description,
+			Active:      user.CurrentOrganization.Active,
+			Tier:        user.CurrentOrganization.Tier,
+			CreatedAt:   user.CurrentOrganization.CreatedAt.Format(time.RFC3339),
 		}
-		log.Printf("Error validating password reset token: %v", err)
-		return nil, fmt.Errorf("failed to validate reset token")
 	}
 
-	return &reset, nil
+	return response, nil
 }
 
-// MarkPasswordResetUsed marks a password reset token as used
-func (as *AuthService) MarkPasswordResetUsed(resetID string) error {
-	now := time.Now()
-	if err := as.db.Model(&models.PasswordReset{}).
-		Where("id = ?", resetID).
-		Update("used_at", now).Error; err != nil {
-		log.Printf("Error marking password reset as used: %v", err)
-		return fmt.Errorf("failed to mark password reset as used")
+// RefreshToken generates a new access token using a refresh token
+func (s *AuthService) RefreshToken(ctx context.Context, refreshToken string) (*TokenResponse, error) {
+	// Get session by refresh token
+	session, err := s.sessionRepo.GetByRefreshToken(ctx, refreshToken)
+	if err != nil {
+		return nil, ErrInvalidRefreshToken
+	}
+
+	// Check if session is expired
+	if session.ExpiresAt.Valid && time.Now().After(session.ExpiresAt.Time) {
+		// Clean up expired session
+		if session.ID.Valid {
+			sessionUUID := uuid.UUID(session.ID.Bytes)
+			s.sessionRepo.Delete(ctx, sessionUUID)
+		}
+		return nil, ErrSessionExpired
+	}
+
+	// Get user
+	user, err := s.userRepo.GetByID(ctx, session.UserID)
+	if err != nil {
+		return nil, ErrUserNotFound
+	}
+
+	// Check if user is still active
+	if !user.Active {
+		// Invalidate session
+		if session.ID.Valid {
+			sessionUUID := uuid.UUID(session.ID.Bytes)
+			s.sessionRepo.Delete(ctx, sessionUUID)
+		}
+		return nil, ErrAccountInactive
+	}
+
+	// Generate new access token
+	var sessionIDStr string
+	if session.ID.Valid {
+		sessionIDStr = uuid.UUID(session.ID.Bytes).String()
+	}
+	accessToken, err := s.generateAccessToken(user, sessionIDStr)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate access token: %w", err)
+	}
+
+	return &TokenResponse{
+		AccessToken: accessToken,
+		ExpiresIn:   int64(AccessTokenDuration.Seconds()),
+	}, nil
+}
+
+// Logout invalidates a refresh token and deletes the session
+func (s *AuthService) Logout(ctx context.Context, refreshToken string) error {
+	return s.sessionRepo.DeleteByRefreshToken(ctx, refreshToken)
+}
+
+// LogoutAll invalidates all sessions for a user
+func (s *AuthService) LogoutAll(ctx context.Context, userID string) error {
+	return s.sessionRepo.DeleteByUserID(ctx, userID)
+}
+
+// ValidateAccessToken validates and parses a JWT access token
+func (s *AuthService) ValidateAccessToken(tokenString string) (*JWTClaims, error) {
+	token, err := jwt.ParseWithClaims(tokenString, &JWTClaims{}, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+		}
+		return []byte(s.jwtSecret), nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	claims, ok := token.Claims.(*JWTClaims)
+	if !ok || !token.Valid {
+		return nil, ErrInvalidToken
+	}
+
+	return claims, nil
+}
+
+// CreatePasswordReset creates a password reset token
+func (s *AuthService) CreatePasswordReset(ctx context.Context, email string) (string, error) {
+	// Get user by email
+	user, err := s.userRepo.GetByEmail(ctx, email)
+	if err != nil {
+		return "", ErrUserNotFound
+	}
+
+	// Generate reset token
+	token, err := s.generateSecureToken()
+	if err != nil {
+		return "", fmt.Errorf("failed to generate reset token: %w", err)
+	}
+
+	// Create password reset record
+	_, err = s.passwordResetRepo.Create(ctx, user.ID, token, time.Now().Add(PasswordResetExpiry))
+	if err != nil {
+		return "", fmt.Errorf("failed to create password reset: %w", err)
+	}
+
+	// Log audit event
+	if s.auditService != nil {
+		s.auditService.LogAuthEvent(ctx, user.ID, user.Email, user.CurrentOrganizationID, "password_reset_requested", true, "password reset token created", "", "")
+	}
+
+	return token, nil
+}
+
+// ResetPassword resets a user's password using a reset token
+func (s *AuthService) ResetPassword(ctx context.Context, token, newPassword string) error {
+	// Get password reset record
+	resetRecord, err := s.passwordResetRepo.GetByToken(ctx, token)
+	if err != nil {
+		return ErrInvalidToken
+	}
+
+	// Hash new password
+	hashedPassword, err := utils.HashPassword(newPassword)
+	if err != nil {
+		return fmt.Errorf("failed to hash password: %w", err)
+	}
+
+	// Update user password
+	if err := s.userRepo.UpdatePassword(ctx, resetRecord.UserID, hashedPassword); err != nil {
+		return fmt.Errorf("failed to update password: %w", err)
+	}
+
+	// Mark reset token as used
+	if resetRecord.ID.Valid {
+		resetUUID := uuid.UUID(resetRecord.ID.Bytes)
+		if err := s.passwordResetRepo.MarkAsUsed(ctx, resetUUID); err != nil {
+			log.Printf("Warning: Failed to mark password reset as used: %v", err)
+		}
+	}
+
+	// Invalidate all sessions for the user (force re-login)
+	if err := s.sessionRepo.DeleteByUserID(ctx, resetRecord.UserID); err != nil {
+		log.Printf("Warning: Failed to invalidate user sessions: %v", err)
+	}
+
+	// Log audit event
+	if s.auditService != nil {
+		user, _ := s.userRepo.GetByID(ctx, resetRecord.UserID)
+		if user != nil {
+			s.auditService.LogAuthEvent(ctx, user.ID, user.Email, user.CurrentOrganizationID, "password_reset_completed", true, "password reset using token", "", "")
+		}
 	}
 
 	return nil
 }
 
-// ============== HELPER FUNCTIONS ==============
+// ChangePassword changes a user's password (requires current password)
+func (s *AuthService) ChangePassword(ctx context.Context, userID, currentPassword, newPassword string) error {
+	// Get user
+	user, err := s.userRepo.GetByID(ctx, userID)
+	if err != nil {
+		return ErrUserNotFound
+	}
 
-// hashToken creates a SHA256 hash of a token
-func hashToken(token string) string {
-	hash := sha256.Sum256([]byte(token))
-	return fmt.Sprintf("%x", hash)
+	// Verify current password
+	if !utils.VerifyPassword(user.Password, currentPassword) {
+		return ErrInvalidCredentials
+	}
+
+	// Hash new password
+	hashedPassword, err := utils.HashPassword(newPassword)
+	if err != nil {
+		return fmt.Errorf("failed to hash password: %w", err)
+	}
+
+	// Update password
+	if err := s.userRepo.UpdatePassword(ctx, userID, hashedPassword); err != nil {
+		return fmt.Errorf("failed to update password: %w", err)
+	}
+
+	// Log audit event
+	if s.auditService != nil {
+		s.auditService.LogAuthEvent(ctx, user.ID, user.Email, user.CurrentOrganizationID, "password_changed", true, "password changed by user", "", "")
+	}
+
+	return nil
+}
+
+// Register creates a new user account with organization
+func (s *AuthService) Register(ctx context.Context, email, password, name, role string) (*LoginResponse, error) {
+	// Check if user already exists
+	existingUser, err := s.userRepo.GetByEmail(ctx, email)
+	if err == nil && existingUser != nil {
+		return nil, ErrEmailAlreadyExists
+	}
+
+	// Hash password
+	hashedPassword, err := utils.HashPassword(password)
+	if err != nil {
+		return nil, fmt.Errorf("failed to hash password: %w", err)
+	}
+
+	// Create user
+	user := &models.User{
+		ID:       uuid.New().String(),
+		Email:    email,
+		Name:     name,
+		Password: hashedPassword,
+		Role:     role,
+		Active:   true,
+	}
+
+	createdUser, err := s.userRepo.Create(ctx, user)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create user: %w", err)
+	}
+
+	// Create personal organization for the user
+	orgService := NewOrganizationService(s.db)
+	personalOrg, err := orgService.CreateOrganization(
+		fmt.Sprintf("%s's Organization", name),
+		fmt.Sprintf("Personal organization for %s", name),
+		createdUser.ID,
+	)
+	if err != nil {
+		log.Printf("Warning: Failed to create personal organization for user %s: %v", createdUser.ID, err)
+		// Don't fail registration if org creation fails
+	}
+
+	// Update user with organization ID if created successfully
+	if personalOrg != nil {
+		createdUser.CurrentOrganizationID = &personalOrg.ID
+		if _, err := s.userRepo.Update(ctx, createdUser); err != nil {
+			log.Printf("Warning: Failed to update user with organization ID: %v", err)
+		}
+	}
+
+	// Generate refresh token
+	refreshToken, err := s.generateRefreshToken()
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate refresh token: %w", err)
+	}
+
+	// Create session
+	session, err := s.sessionRepo.Create(ctx, createdUser.ID, refreshToken, "", "", time.Now().Add(RefreshTokenDuration))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create session: %w", err)
+	}
+
+	// Generate access token
+	var sessionIDStr string
+	if session.ID.Valid {
+		sessionIDStr = uuid.UUID(session.ID.Bytes).String()
+	}
+	accessToken, err := s.generateAccessToken(createdUser, sessionIDStr)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate access token: %w", err)
+	}
+
+	// Log audit event
+	if s.auditService != nil {
+		s.auditService.LogAuthEvent(ctx, createdUser.ID, createdUser.Email, createdUser.CurrentOrganizationID, "user_registered", true, "user account created", "", "")
+	}
+
+	// Build response
+	response := &LoginResponse{
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
+		ExpiresIn:    int64(AccessTokenDuration.Seconds()),
+		User: &types.UserResponse{
+			ID:        createdUser.ID,
+			Email:     createdUser.Email,
+			Name:      createdUser.Name,
+			Role:      createdUser.Role,
+			Active:    createdUser.Active,
+			CreatedAt: createdUser.CreatedAt.Format(time.RFC3339),
+		},
+	}
+
+	// Add organization info if available
+	if personalOrg != nil {
+		response.Organization = &types.OrganizationResponse{
+			ID:          personalOrg.ID,
+			Name:        personalOrg.Name,
+			Slug:        personalOrg.Slug,
+			Description: personalOrg.Description,
+			Active:      personalOrg.Active,
+			Tier:        personalOrg.Tier,
+			CreatedAt:   personalOrg.CreatedAt.Format(time.RFC3339),
+		}
+	}
+
+	return response, nil
+}
+
+// Helper methods
+
+func (s *AuthService) generateAccessToken(user *models.User, sessionID string) (string, error) {
+	claims := JWTClaims{
+		UserID:         user.ID,
+		Email:          user.Email,
+		Name:           user.Name,
+		Role:           user.Role,
+		OrganizationID: user.CurrentOrganizationID,
+		SessionID:      sessionID,
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(AccessTokenDuration)),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+			NotBefore: jwt.NewNumericDate(time.Now()),
+			Subject:   user.ID,
+		},
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	return token.SignedString([]byte(s.jwtSecret))
+}
+
+func (s *AuthService) generateRefreshToken() (string, error) {
+	bytes := make([]byte, 32)
+	if _, err := rand.Read(bytes); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(bytes), nil
+}
+
+func (s *AuthService) generateSecureToken() (string, error) {
+	bytes := make([]byte, 32)
+	if _, err := rand.Read(bytes); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(bytes), nil
+}
+
+func (s *AuthService) recordLoginAttempt(ctx context.Context, userID, email, ipAddress, userAgent string, success bool, failureReason string) {
+	_, err := s.loginAttemptRepo.Create(ctx, userID, email, ipAddress, userAgent, success, failureReason)
+	if err != nil {
+		log.Printf("Warning: Failed to record login attempt: %v", err)
+	}
+}
+
+func (s *AuthService) lockAccount(ctx context.Context, userID, email, ipAddress, reason string) {
+	unlocksAt := time.Now().Add(AccountLockoutDuration)
+	_, err := s.lockoutRepo.Create(ctx, userID, email, ipAddress, reason, unlocksAt)
+	if err != nil {
+		log.Printf("Warning: Failed to lock account: %v", err)
+	}
+
+	// Log audit event
+	if s.auditService != nil {
+		s.auditService.LogAuthEvent(ctx, userID, email, nil, "account_locked", true, reason, ipAddress, "")
+	}
+}
+
+func (s *AuthService) cleanupOldSessions(ctx context.Context, userID string) {
+	sessions, err := s.sessionRepo.GetByUserID(ctx, userID)
+	if err != nil {
+		log.Printf("Warning: Failed to get user sessions for cleanup: %v", err)
+		return
+	}
+
+	if len(sessions) > MaxSessionsPerUser {
+		// Sort by creation date and keep only the latest ones
+		// This is a simplified approach - in production you might want more sophisticated logic
+		for i := MaxSessionsPerUser; i < len(sessions); i++ {
+			if sessions[i].ID.Valid {
+				sessionUUID := uuid.UUID(sessions[i].ID.Bytes)
+				s.sessionRepo.Delete(ctx, sessionUUID)
+			}
+		}
+	}
+}
+
+// Cleanup methods (should be called periodically)
+
+func (s *AuthService) CleanupExpiredSessions(ctx context.Context) error {
+	return s.sessionRepo.DeleteExpired(ctx)
+}
+
+func (s *AuthService) CleanupExpiredPasswordResets(ctx context.Context) error {
+	return s.passwordResetRepo.DeleteExpired(ctx)
+}
+
+func (s *AuthService) CleanupExpiredLockouts(ctx context.Context) error {
+	return s.lockoutRepo.CleanupExpired(ctx)
+}
+
+func (s *AuthService) CleanupOldLoginAttempts(ctx context.Context, retentionDays int) error {
+	cutoff := time.Now().Add(-time.Duration(retentionDays) * 24 * time.Hour)
+	return s.loginAttemptRepo.DeleteOld(ctx, cutoff)
 }

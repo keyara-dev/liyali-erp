@@ -36,6 +36,7 @@ export type User = {
 
 export interface AuthSession {
   access_token: string;
+  refresh_token?: string; // Add refresh token support
   user: User;
   role?: UserType;
   user_id?: string;

@@ -17,7 +17,7 @@ import { cache } from "react";
 
 import { APIResponse } from "@/types";
 import { checkIsAdminAction } from "./session";
-import {
+import authenticatedApiClient, {
   axios,
   handleError,
   successResponse,
@@ -25,31 +25,7 @@ import {
   badRequestResponse,
 } from "./api-config";
 
-/**
- * Get current authenticated user
- */
-export async function getCurrentUserAction(): Promise<APIResponse<any>> {
-  const url = `/api/v1/auth/profile`;
 
-  try {
-    const { session } = await verifySession();
-
-    if (!session?.access_token) {
-      return unauthorizedResponse("No authenticated user found");
-    }
-
-    // Call backend to get current user profile
-    const response = await axios.get(url, {
-      headers: {
-        Authorization: `Bearer ${session.access_token}`,
-      },
-    });
-
-    return successResponse(response.data, "User retrieved successfully");
-  } catch (error: any) {
-    return handleError(error, "GET", url);
-  }
-}
 
 /**
  * Login with email and password using backend API
@@ -61,27 +37,29 @@ export async function loginAction(
   const url = `/api/v1/auth/login`;
 
   try {
-    const response = await axios.post(url, {
+    const query = await axios.post(url, {
       email,
       password,
     });
 
-    const data = response?.data;
+    const response = query?.data;
 
-    // Backend returns: { success, message, token, user }
-    if (!data.success || !data.token) {
-      return unauthorizedResponse(data.message || "Login failed");
+    // Backend returns: { success, message, data: { accessToken, refreshToken, expiresIn, user, organization } }
+    if (!response.success || !response.data?.accessToken) {
+      return unauthorizedResponse(response.message || "Login failed");
     }
 
-    // Create session with backend token
+    // Create session with backend token and expiration
     await createAuthSession({
-      access_token: data.token, // Backend uses "token" field
-      role: data.user.role, // Map role to role
-      user_id: data.user.id,
-      organization_id: undefined, // Will be set when user switches org
+      access_token: response.data.accessToken,
+      refresh_token: response.data.refreshToken,
+      role: response.data.user.role,
+      user_id: response.data.user.id,
+      organization_id: response.data.organization?.id,
+      expiresIn: response.data.expiresIn, // Use backend's expiration time
     });
 
-    return successResponse(data.user, data.message);
+    return successResponse(response.data.user, response.message);
   } catch (error: Error | any) {
     return handleError(error, "POST", url);
   }
@@ -217,21 +195,30 @@ export async function getRefreshToken(): Promise<APIResponse<any>> {
   try {
     const { session } = await verifySession();
 
-    if (!session?.access_token) {
-      return unauthorizedResponse("No active session");
+    if (!session?.refresh_token) {
+      return unauthorizedResponse("No refresh token available");
     }
 
-    // Call backend refresh endpoint
-    const response = await axios.post(url, {
-      token: session.access_token,
+    // Call backend refresh endpoint with the stored refresh token
+    const response = await authenticatedApiClient( {url, method: "POST",
+      data: {refreshToken: session.refresh_token}, // Use stored refresh token
     });
 
-    const newToken = response.data.token;
+    // Backend returns: { success, message, data: { accessToken, expiresIn } }
+    const newToken = response.data.data?.accessToken;
+    const expiresIn = response.data.data?.expiresIn;
 
-    // Update session with new token
+    if (!newToken) {
+      return unauthorizedResponse("Failed to refresh token");
+    }
+
+    // Calculate expiration time using backend's expiresIn value
+    const expirationMs = expiresIn ? expiresIn * 1000 : 30 * 60 * 1000; // fallback to 30 minutes
+    
+    // Update session with new access token (keep existing refresh token)
     await updateAuthSession({
       access_token: newToken,
-      expiresAt: new Date(Date.now() + 30 * 60 * 1000), // 30 minutes
+      expiresAt: new Date(Date.now() + expirationMs), // Use backend's expiration time
     });
 
     return successResponse({ token: newToken }, "Token refreshed successfully");
@@ -254,10 +241,10 @@ export async function changePassword(
   const url = `/api/v1/auth/change-password`;
 
   try {
-    await axios.post(url, {
-      old_password: oldPassword,
-      new_password: newPassword,
-    });
+    await authenticatedApiClient({url, method: "POST", data:{
+      currentPassword: oldPassword, // Match backend parameter name
+      newPassword: newPassword,
+    }});
 
     return successResponse(null, "Password changed successfully");
   } catch (error: any) {
@@ -350,7 +337,8 @@ export async function createNewAccount(data: {
 
     const responseData = response?.data;
 
-    if (!responseData.success || !responseData.token) {
+    // Backend returns: { success, message, data: { token, user, organization } }
+    if (!responseData.success || !responseData.data?.token) {
       return unauthorizedResponse(
         responseData.message || "Registration failed"
       );
@@ -358,21 +346,37 @@ export async function createNewAccount(data: {
 
     // Create session with token AND org context
     await createAuthSession({
-      access_token: responseData.token,
-      role: responseData.user.role,
-      user_id: responseData.user.id,
-      organization_id: responseData.organization?.id,
+      access_token: responseData.data.accessToken,
+      refresh_token: responseData.data.refreshToken,
+      role: responseData.data.user.role,
+      user_id: responseData.data.user.id,
+      organization_id: responseData.data.organization?.id,
+      expiresIn: responseData.data.expiresIn, // Use backend's expiration time
     });
 
     return successResponse(
       {
-        user: responseData.user,
-        organization: responseData.organization,
+        user: responseData.data.user,
+        organization: responseData.data.organization,
       },
       responseData.message
     );
   } catch (error: any) {
     return handleError(error, "POST", url);
+  }
+}
+
+/**
+ * Check if user signup is available/enabled
+ * This can be used to control registration availability
+ */
+export async function checkSignupAvailability(): Promise<APIResponse<{ enabled: boolean }>> {
+  try {
+    // For now, always allow signups
+    // In the future, this could check backend settings or environment variables
+    return successResponse({ enabled: true }, "Signup availability checked");
+  } catch (error: any) {
+    return handleError(error, "GET", "/api/v1/auth/signup-availability");
   }
 }
 

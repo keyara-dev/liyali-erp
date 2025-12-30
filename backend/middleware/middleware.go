@@ -6,15 +6,25 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gofiber/fiber/v3"
+	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/liyali/liyali-gateway/services"
-	"gorm.io/gorm"
 )
+
+// JWTClaims matches the structure from auth service
+type JWTClaims struct {
+	UserID         string  `json:"user_id"`
+	Email          string  `json:"email"`
+	Name           string  `json:"name"`
+	Role           string  `json:"role"`
+	OrganizationID *string `json:"organization_id,omitempty"`
+	SessionID      string  `json:"session_id"`
+	jwt.RegisteredClaims
+}
 
 // CORS middleware
 func CORSMiddleware() fiber.Handler {
-	return func(c fiber.Ctx) error {
+	return func(c *fiber.Ctx) error {
 		c.Set("Access-Control-Allow-Origin", os.Getenv("FRONTEND_URL"))
 		c.Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS, PATCH")
 		c.Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
@@ -28,9 +38,53 @@ func CORSMiddleware() fiber.Handler {
 	}
 }
 
-// AuthMiddleware validates JWT token
+// EnhancedAuthMiddleware validates JWT token using the enhanced auth service
+func EnhancedAuthMiddleware(authService *services.AuthService) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		authHeader := c.Get("Authorization")
+		if authHeader == "" {
+			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+				"success": false,
+				"message": "Authorization header required",
+			})
+		}
+
+		// Extract token from "Bearer <token>"
+		parts := strings.Split(authHeader, " ")
+		if len(parts) != 2 || parts[0] != "Bearer" {
+			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+				"success": false,
+				"message": "Invalid authorization header format",
+			})
+		}
+
+		tokenString := parts[1]
+
+		// Validate token using enhanced auth service
+		claims, err := authService.ValidateAccessToken(tokenString)
+		if err != nil {
+			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+				"success": false,
+				"message": "Invalid or expired token",
+				"error":   err.Error(),
+			})
+		}
+
+		// Store user information in context
+		c.Locals("userID", claims.UserID)
+		c.Locals("userEmail", claims.Email)
+		c.Locals("userName", claims.Name)
+		c.Locals("userRole", claims.Role)
+		c.Locals("organizationID", claims.OrganizationID)
+		c.Locals("sessionID", claims.SessionID)
+
+		return c.Next()
+	}
+}
+
+// AuthMiddleware - Legacy middleware for backward compatibility with proper JWT parsing
 func AuthMiddleware() fiber.Handler {
-	return func(c fiber.Ctx) error {
+	return func(c *fiber.Ctx) error {
 		authHeader := c.Get("Authorization")
 		if authHeader == "" {
 			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
@@ -47,22 +101,42 @@ func AuthMiddleware() fiber.Handler {
 		}
 
 		tokenString := parts[1]
+		jwtSecret := os.Getenv("JWT_SECRET")
+		if jwtSecret == "" {
+			jwtSecret = "your-super-secret-jwt-key-change-in-production"
+		}
 
-		// Parse and validate token
-		token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-			return []byte(os.Getenv("JWT_SECRET")), nil
+		// Parse and validate JWT token
+		token, err := jwt.ParseWithClaims(tokenString, &JWTClaims{}, func(token *jwt.Token) (interface{}, error) {
+			// Validate signing method
+			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+				return nil, jwt.ErrSignatureInvalid
+			}
+			return []byte(jwtSecret), nil
 		})
 
-		if err != nil || !token.Valid {
+		if err != nil {
 			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-				"error": "Invalid token",
+				"error": "Invalid or expired token",
 			})
 		}
 
-		// Store user ID in context for later use
-		if claims, ok := token.Claims.(jwt.MapClaims); ok {
-			c.Locals("userID", claims["sub"])
-			c.Locals("userRole", claims["role"])
+		// Extract claims
+		claims, ok := token.Claims.(*JWTClaims)
+		if !ok || !token.Valid {
+			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+				"error": "Invalid token claims",
+			})
+		}
+
+		// Set user context in fiber locals
+		c.Locals("userID", claims.UserID)
+		c.Locals("userEmail", claims.Email)
+		c.Locals("userName", claims.Name)
+		c.Locals("userRole", claims.Role)
+		c.Locals("sessionID", claims.SessionID)
+		if claims.OrganizationID != nil {
+			c.Locals("organizationID", *claims.OrganizationID)
 		}
 
 		return c.Next()
@@ -71,19 +145,21 @@ func AuthMiddleware() fiber.Handler {
 
 // LoggerMiddleware logs request details
 func LoggerMiddleware() fiber.Handler {
-	return func(c fiber.Ctx) error {
+	return func(c *fiber.Ctx) error {
 		start := time.Now()
 
 		// Process request
 		err := c.Next()
 
 		// Log request details
-		duration := time.Since(start).String()
+		duration := time.Since(start)
 		method := c.Method()
 		path := c.Path()
 		status := c.Response().StatusCode()
+		userID := c.Locals("userID")
 
-		log.Printf("[%s] %s %s - %d (%s)", method, path, status, duration)
+		log.Printf("[%s] %s %s - %d (%v) - User: %v", 
+			method, path, status, duration, userID)
 
 		return err
 	}
@@ -91,11 +167,12 @@ func LoggerMiddleware() fiber.Handler {
 
 // RoleBasedAccess checks if user has required role
 func RoleBasedAccess(requiredRoles ...string) fiber.Handler {
-	return func(c fiber.Ctx) error {
+	return func(c *fiber.Ctx) error {
 		userRole, ok := c.Locals("userRole").(string)
 		if !ok {
 			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-				"error": "User role not found in context",
+				"success": false,
+				"message": "User role not found in context",
 			})
 		}
 
@@ -107,19 +184,21 @@ func RoleBasedAccess(requiredRoles ...string) fiber.Handler {
 		}
 
 		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
-			"error": "Insufficient permissions",
+			"success": false,
+			"message": "Insufficient permissions",
 		})
 	}
 }
 
 // ErrorHandlingMiddleware handles panics and errors
 func ErrorHandlingMiddleware() fiber.Handler {
-	return func(c fiber.Ctx) error {
+	return func(c *fiber.Ctx) error {
 		defer func() {
 			if err := recover(); err != nil {
 				log.Printf("Panic recovered: %v", err)
 				c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-					"error": "Internal server error",
+					"success": false,
+					"message": "Internal server error",
 				})
 			}
 		}()
@@ -128,23 +207,57 @@ func ErrorHandlingMiddleware() fiber.Handler {
 	}
 }
 
-// RequirePermission checks if user has specific permission(s)
+// EnhancedRBACMiddleware checks permissions using the enhanced RBAC service
+func EnhancedRBACMiddleware(rbacService *services.RBACService, resource, action string) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		// Get user info from context (set by EnhancedAuthMiddleware)
+		userID, ok := c.Locals("userID").(string)
+		if !ok {
+			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+				"success": false,
+				"message": "User ID not found in context",
+			})
+		}
+
+		organizationID, ok := c.Locals("organizationID").(*string)
+		if !ok || organizationID == nil {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"success": false,
+				"message": "Organization ID not found in context",
+			})
+		}
+
+		// Check permission using enhanced RBAC service
+		hasPermission, err := rbacService.HasPermission(c.Context(), userID, *organizationID, resource, action)
+		if err != nil {
+			log.Printf("Error checking permission: %v", err)
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"success": false,
+				"message": "Error checking permissions",
+			})
+		}
+
+		if !hasPermission {
+			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
+				"success": false,
+				"message": "Insufficient permissions for this action",
+			})
+		}
+
+		return c.Next()
+	}
+}
+
+// RequirePermission checks if user has specific permission(s) using RBAC service
 // Pass permissions as (resource, action) pairs
-// Example: RequirePermission(db, "requisition", "approve")
-func RequirePermission(db *gorm.DB, requiredPermissions ...string) fiber.Handler {
-	return func(c fiber.Ctx) error {
+// Example: RequirePermission(rbacService, "requisition", "approve")
+func RequirePermission(rbacService *services.RBACService, requiredPermissions ...string) fiber.Handler {
+	return func(c *fiber.Ctx) error {
 		// Get user info from context (set by AuthMiddleware)
 		userID, ok := c.Locals("userID").(string)
 		if !ok {
 			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 				"error": "User ID not found in context",
-			})
-		}
-
-		userRole, ok := c.Locals("userRole").(string)
-		if !ok {
-			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-				"error": "User role not found in context",
 			})
 		}
 
@@ -155,9 +268,6 @@ func RequirePermission(db *gorm.DB, requiredPermissions ...string) fiber.Handler
 				"error": "Organization ID not found in context",
 			})
 		}
-
-		// Create permission service
-		permissionService := services.NewPermissionService(db)
 
 		// Check if we have pairs of (resource, action)
 		if len(requiredPermissions)%2 != 0 {
@@ -168,45 +278,40 @@ func RequirePermission(db *gorm.DB, requiredPermissions ...string) fiber.Handler
 		}
 
 		// Check each required permission
-		hasAllPermissions := true
 		for i := 0; i < len(requiredPermissions); i += 2 {
 			resource := requiredPermissions[i]
 			action := requiredPermissions[i+1]
 
-			if !permissionService.HasPermission(userID, organizationID, userRole, resource, action) {
-				hasAllPermissions = false
-				break
+			hasPermission, err := rbacService.HasPermission(c.Context(), userID, organizationID, resource, action)
+			if err != nil {
+				log.Printf("Error checking permission %s.%s for user %s: %v", resource, action, userID, err)
+				return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+					"error": "Permission check failed",
+				})
 			}
-		}
 
-		if !hasAllPermissions {
-			log.Printf("User %s with role %s denied access (missing permission)", userID, userRole)
-			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
-				"error": "Insufficient permissions for this action",
-			})
+			if !hasPermission {
+				log.Printf("User %s denied access: missing permission %s.%s", userID, resource, action)
+				return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
+					"error": "Insufficient permissions",
+				})
+			}
 		}
 
 		return c.Next()
 	}
 }
 
-// RequirePermissionOr checks if user has ANY of the required permissions
+// RequirePermissionOr checks if user has ANY of the required permissions using RBAC service
 // Pass permissions as (resource, action) pairs
-// Example: RequirePermissionOr(db, "requisition", "approve", "budget", "approve")
-func RequirePermissionOr(db *gorm.DB, requiredPermissions ...string) fiber.Handler {
-	return func(c fiber.Ctx) error {
+// Example: RequirePermissionOr(rbacService, "requisition", "approve", "budget", "approve")
+func RequirePermissionOr(rbacService *services.RBACService, requiredPermissions ...string) fiber.Handler {
+	return func(c *fiber.Ctx) error {
 		// Get user info from context (set by AuthMiddleware)
 		userID, ok := c.Locals("userID").(string)
 		if !ok {
 			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 				"error": "User ID not found in context",
-			})
-		}
-
-		userRole, ok := c.Locals("userRole").(string)
-		if !ok {
-			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-				"error": "User role not found in context",
 			})
 		}
 
@@ -218,9 +323,6 @@ func RequirePermissionOr(db *gorm.DB, requiredPermissions ...string) fiber.Handl
 			})
 		}
 
-		// Create permission service
-		permissionService := services.NewPermissionService(db)
-
 		// Check if we have pairs of (resource, action)
 		if len(requiredPermissions)%2 != 0 {
 			log.Printf("RequirePermissionOr called with odd number of arguments")
@@ -229,22 +331,19 @@ func RequirePermissionOr(db *gorm.DB, requiredPermissions ...string) fiber.Handl
 			})
 		}
 
-		// Check if user has ANY of the required permissions
-		hasAnyPermission := false
-		for i := 0; i < len(requiredPermissions); i += 2 {
-			resource := requiredPermissions[i]
-			action := requiredPermissions[i+1]
-
-			if permissionService.HasPermission(userID, organizationID, userRole, resource, action) {
-				hasAnyPermission = true
-				break
-			}
+		// Check if user has any of the required permissions
+		hasAnyPermission, err := rbacService.HasAnyPermission(c.Context(), userID, organizationID, requiredPermissions)
+		if err != nil {
+			log.Printf("Error checking permissions for user %s: %v", userID, err)
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"error": "Permission check failed",
+			})
 		}
 
 		if !hasAnyPermission {
-			log.Printf("User %s with role %s denied access (missing all permissions)", userID, userRole)
+			log.Printf("User %s denied access: missing any of the required permissions", userID)
 			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
-				"error": "Insufficient permissions for this action",
+				"error": "Insufficient permissions",
 			})
 		}
 

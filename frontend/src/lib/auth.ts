@@ -159,24 +159,30 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
 
 export async function createAuthSession({
   access_token,
+  refresh_token,
   role,
   user_id,
   change_password,
   mfa_required,
   organization_id,
+  expiresIn,
 }: {
   access_token: string;
+  refresh_token?: string;
   role: UserType;
   user_id?: string;
   change_password?: boolean;
   mfa_required?: boolean;
   organization_id?: string;
+  expiresIn?: number; // Add expiresIn parameter (in seconds)
 }): Promise<void> {
-  // Use centralized session config for 30-minute session
-  const expiresAt = new Date(Date.now() + SESSION_CONFIG.SESSION_TTL);
+  // Use backend's expiresIn value if provided, otherwise fall back to session config
+  const expirationMs = expiresIn ? expiresIn * 1000 : SESSION_CONFIG.SESSION_TTL;
+  const expiresAt = new Date(Date.now() + expirationMs);
 
   const newSession: AuthSession = {
     access_token: access_token || "",
+    refresh_token: refresh_token,
     role,
     user_id,
     change_password,
@@ -185,8 +191,9 @@ export async function createAuthSession({
     expiresAt,
   };
 
-  // Call `encrypt` to generate the session token (30 minutes)
-  const token = await encrypt(newSession, "30m");
+  // Use dynamic expiration time for JWT encryption
+  const expirationTime = `${Math.ceil(expirationMs / 1000)}s`;
+  const token = await encrypt(newSession, expirationTime);
 
   // Ensure `session` is successfully created before setting the cookie
   if (token) {
