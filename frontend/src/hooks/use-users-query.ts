@@ -1,11 +1,12 @@
 "use client";
 
+import { fetchUsers, getUserById } from "@/app/_actions/users";
 import {
   createNewUser,
   getUsers,
   updateUser,
 } from "@/app/_actions/user-actions";
-import { getUserById } from "@/app/_actions/user-management";
+import { getUserById as getUserByIdOld } from "@/app/_actions/user-management";
 import { QUERY_KEYS } from "@/lib/constants";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
@@ -19,7 +20,49 @@ export interface User {
 }
 
 /**
- * Hook to fetch all users
+ * Hook to fetch all users with backend API
+ */
+export function useUsersQuery(
+  page: number = 1,
+  limit: number = 20,
+  filters?: {
+    department?: string;
+    role?: string;
+  }
+) {
+  return useQuery({
+    queryKey: ['users', page, limit, filters],
+    queryFn: async () => {
+      const response = await fetchUsers(page, limit, filters);
+      if (!response.success) {
+        throw new Error(response.message);
+      }
+      return response.data;
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+}
+
+/**
+ * Hook to fetch a single user by ID with backend API
+ */
+export function useUserQuery(userId: string) {
+  return useQuery({
+    queryKey: ['user', userId],
+    queryFn: async () => {
+      const response = await getUserById(userId);
+      if (!response.success) {
+        throw new Error(response.message);
+      }
+      return response.data;
+    },
+    enabled: !!userId,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+}
+
+/**
+ * Hook to fetch all users (legacy - mock implementation)
  */
 export function useUsers() {
   return useQuery({
@@ -54,7 +97,7 @@ export function useUsers() {
 }
 
 /**
- * Hook to fetch a single user by ID
+ * Hook to fetch a single user by ID (legacy - mock implementation)
  */
 export function useUser(userId: string) {
   return useQuery({
@@ -85,20 +128,20 @@ export function useUser(userId: string) {
 }
 
 /**
- * Hook to fetch team members
+ * Hook to fetch team members (legacy)
  */
 export const _useUsers = (userId: string, params: any) => {
   return useQuery({
     queryKey: [QUERY_KEYS.USERS, userId, params],
     queryFn: userId
-      ? async () => await getUserById(userId)
+      ? async () => await getUserByIdOld(userId)
       : async () => await getUsers(params),
     staleTime: 5 * 60 * 1000, // Cache for 5 minutes
   });
 };
 
 /**
- * Hook to create a new user
+ * Hook to create a new user (legacy)
  */
 export const useCreateUser = () => {
   const queryClient = useQueryClient();
@@ -113,7 +156,7 @@ export const useCreateUser = () => {
 };
 
 /**
- * Hook to update an existing user
+ * Hook to update an existing user (legacy)
  */
 export const useUpdateUser = () => {
   const queryClient = useQueryClient();

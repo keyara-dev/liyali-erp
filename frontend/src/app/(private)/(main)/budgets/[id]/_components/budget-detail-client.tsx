@@ -28,7 +28,7 @@ import {
   submitBudgetForApproval,
   updateBudget,
 } from "@/app/_actions/budgets";
-import { useBudgetStorage } from "@/hooks/use-budget-storage";
+import { useBudget } from "@/hooks/use-budgets-queries";
 import { Budget, BudgetItem } from "@/types/budget";
 import {
   validateBudgetForSubmission,
@@ -48,9 +48,7 @@ export function BudgetDetailClient({
   userRole,
 }: BudgetDetailClientProps) {
   const router = useRouter();
-  const { saveToStorage, loadOneFromStorage } = useBudgetStorage();
-  const [budget, setBudget] = useState<Budget | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const { data: budget, isLoading } = useBudget(budgetId);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isAddItemDialogOpen, setIsAddItemDialogOpen] = useState(false);
   const [isEditItemDialogOpen, setIsEditItemDialogOpen] = useState(false);

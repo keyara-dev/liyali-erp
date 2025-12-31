@@ -50,11 +50,40 @@ export function useOfflineQueueProcessor() {
           try {
             await updateOperationStatus(operation.id, 'processing');
 
-            // TODO: Execute operation against real API
-            // This will be implemented when we migrate to real API
-            // For now, just mark as completed
+            // Execute operation against real API based on type and entity
+            let result;
+            switch (operation.entity) {
+              case 'user':
+                result = await executeUserOperation(operation);
+                break;
+              case 'organization':
+                result = await executeOrganizationOperation(operation);
+                break;
+              case 'requisition':
+                result = await executeRequisitionOperation(operation);
+                break;
+              case 'purchase-order':
+                result = await executePurchaseOrderOperation(operation);
+                break;
+              case 'payment-voucher':
+                result = await executePaymentVoucherOperation(operation);
+                break;
+              case 'grn':
+                result = await executeGRNOperation(operation);
+                break;
+              case 'budget':
+                result = await executeBudgetOperation(operation);
+                break;
+              case 'vendor':
+                result = await executeVendorOperation(operation);
+                break;
+              default:
+                throw new Error(`Unsupported entity type: ${operation.entity}`);
+            }
+
             await updateOperationStatus(operation.id, 'completed', {
               synced: true,
+              result,
             });
 
             await removeOperation(operation.id);
@@ -155,4 +184,204 @@ export function useQueueStats() {
   }, []);
 
   return stats;
+}
+
+// ============================================================================
+// OPERATION EXECUTION FUNCTIONS
+// ============================================================================
+
+/**
+ * Execute user operations against the API
+ */
+async function executeUserOperation(operation: any) {
+  const { createUser, updateUser, deactivateUser } = await import('@/app/_actions/users');
+  
+  switch (operation.type) {
+    case 'CREATE':
+      return await createUser(operation.data);
+    case 'UPDATE':
+      return await updateUser(operation.data);
+    case 'DELETE':
+      return await deactivateUser(operation.data.userId);
+    default:
+      throw new Error(`Unsupported user operation: ${operation.type}`);
+  }
+}
+
+/**
+ * Execute organization operations against the API
+ */
+async function executeOrganizationOperation(operation: any) {
+  const { createOrganization, updateOrganization } = await import('@/app/_actions/organizations');
+  
+  switch (operation.type) {
+    case 'CREATE':
+      return await createOrganization(operation.data);
+    case 'UPDATE':
+      return await updateOrganization(operation.data);
+    default:
+      throw new Error(`Unsupported organization operation: ${operation.type}`);
+  }
+}
+
+/**
+ * Execute requisition operations against the API
+ */
+async function executeRequisitionOperation(operation: any) {
+  const { 
+    createRequisition, 
+    updateRequisition, 
+    deleteRequisition,
+    approveRequisition,
+    rejectRequisition,
+    submitRequisitionForApproval
+  } = await import('@/app/_actions/requisitions');
+  
+  switch (operation.type) {
+    case 'CREATE':
+      return await createRequisition(operation.data);
+    case 'UPDATE':
+      return await updateRequisition(operation.data);
+    case 'DELETE':
+      return await deleteRequisition(operation.entityId);
+    case 'APPROVE':
+      return await approveRequisition(operation.data);
+    case 'REJECT':
+      return await rejectRequisition(operation.data);
+    case 'SUBMIT':
+      return await submitRequisitionForApproval(operation.data);
+    default:
+      throw new Error(`Unsupported requisition operation: ${operation.type}`);
+  }
+}
+
+/**
+ * Execute purchase order operations against the API
+ */
+async function executePurchaseOrderOperation(operation: any) {
+  // Use existing purchase order actions if available
+  try {
+    const actions = await import('@/app/_actions/purchase-orders');
+    
+    switch (operation.type) {
+      case 'CREATE':
+        return await actions.createPurchaseOrder(operation.data);
+      case 'UPDATE':
+        return await actions.updatePurchaseOrder(operation.data);
+      case 'DELETE':
+        return await actions.deletePurchaseOrder(operation.entityId);
+      case 'APPROVE':
+        return await actions.approvePurchaseOrder(operation.data);
+      case 'REJECT':
+        return await actions.rejectPurchaseOrder(operation.data);
+      default:
+        throw new Error(`Unsupported purchase order operation: ${operation.type}`);
+    }
+  } catch (importError) {
+    console.warn('Purchase order actions not available, skipping operation');
+    throw new Error('Purchase order operations not implemented yet');
+  }
+}
+
+/**
+ * Execute payment voucher operations against the API
+ */
+async function executePaymentVoucherOperation(operation: any) {
+  // Use existing payment voucher actions if available
+  try {
+    const actions = await import('@/app/_actions/payment-vouchers');
+    
+    switch (operation.type) {
+      case 'CREATE':
+        return await actions.createPaymentVoucher(operation.data);
+      case 'UPDATE':
+        return await actions.updatePaymentVoucher(operation.data);
+      case 'DELETE':
+        return await actions.deletePaymentVoucher(operation.entityId);
+      case 'APPROVE':
+        return await actions.approvePaymentVoucher(operation.data);
+      case 'REJECT':
+        return await actions.rejectPaymentVoucher(operation.data);
+      default:
+        throw new Error(`Unsupported payment voucher operation: ${operation.type}`);
+    }
+  } catch (importError) {
+    console.warn('Payment voucher actions not available, skipping operation');
+    throw new Error('Payment voucher operations not implemented yet');
+  }
+}
+
+/**
+ * Execute GRN operations against the API
+ */
+async function executeGRNOperation(operation: any) {
+  // Use existing GRN actions
+  const { createGRNAction, updateGRNAction } = await import('@/app/_actions/grn-actions');
+  
+  switch (operation.type) {
+    case 'CREATE':
+      return await createGRNAction(
+        operation.data.poNumber,
+        operation.data.items,
+        operation.data.receivedBy,
+        operation.data.warehouseLocation,
+        operation.data.notes
+      );
+    case 'UPDATE':
+      return await updateGRNAction(operation.entityId, operation.data);
+    default:
+      throw new Error(`Unsupported GRN operation: ${operation.type}`);
+  }
+}
+
+/**
+ * Execute budget operations against the API
+ */
+async function executeBudgetOperation(operation: any) {
+  // Use existing budget actions if available
+  try {
+    const actions = await import('@/app/_actions/budgets');
+    
+    switch (operation.type) {
+      case 'CREATE':
+        return await actions.createBudget(operation.data);
+      case 'UPDATE':
+        return await actions.updateBudget(operation.data);
+      case 'DELETE':
+        return await actions.deleteBudget(operation.entityId);
+      case 'APPROVE':
+        return await actions.approveBudget(operation.data);
+      case 'REJECT':
+        return await actions.rejectBudget(operation.data);
+      default:
+        throw new Error(`Unsupported budget operation: ${operation.type}`);
+    }
+  } catch (importError) {
+    console.warn('Budget actions not available, skipping operation');
+    throw new Error('Budget operations not implemented yet');
+  }
+}
+
+/**
+ * Execute vendor operations against the API
+ */
+async function executeVendorOperation(operation: any) {
+  // Use existing vendor actions if available
+  try {
+    const actions = await import('@/app/_actions/vendors');
+    
+    switch (operation.type) {
+      case 'CREATE':
+        return await actions.createVendor(operation.data);
+      case 'UPDATE':
+        return await actions.updateVendor(operation.data);
+      case 'DELETE':
+        return await actions.deactivateVendor(operation.entityId);
+      default:
+        throw new Error(`Unsupported vendor operation: ${operation.type}`);
+    }
+  } catch (importError) {
+    console.warn('Vendor actions not available, skipping operation');
+    throw new Error('Vendor operations not implemented yet');
+  }
 }

@@ -30,7 +30,7 @@ import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CustomPagination } from "@/components/ui/custom-pagination";
-import { useBudgetsWithStorage } from "@/hooks/use-budget-storage";
+import { useBudgets } from "@/hooks/use-budgets-queries";
 import { Budget } from "@/types/budget";
 import { Pagination } from "@/types";
 import { QUERY_KEYS } from "@/lib/constants";
@@ -51,7 +51,7 @@ export function BudgetsTable({
   const router = useRouter();
   const queryClient = useQueryClient();
   const { data: budgetsFromHook = [], isLoading: hookLoading, refetch } =
-    useBudgetsWithStorage(true);
+    useBudgets(1, 50); // Get first 50 budgets
 
   // Refetch when refreshTrigger changes (after budget creation)
   useEffect(() => {

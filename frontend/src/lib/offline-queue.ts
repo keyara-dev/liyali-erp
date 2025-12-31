@@ -15,7 +15,7 @@ interface OfflineQueueDB extends DBSchema {
     value: {
       id: string;
       type: 'CREATE' | 'UPDATE' | 'DELETE' | 'APPROVE' | 'REJECT' | 'SUBMIT' | 'MARK_PAID';
-      entity: 'requisition' | 'purchase-order' | 'payment-voucher' | 'grn';
+      entity: 'requisition' | 'purchase-order' | 'payment-voucher' | 'grn' | 'budget' | 'vendor' | 'user' | 'organization';
       entityId?: string;
       data: any;
       timestamp: number;

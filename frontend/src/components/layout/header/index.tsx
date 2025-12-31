@@ -8,6 +8,7 @@ import UserMenu from "./user-menu";
 import { useSidebar } from "@/components/ui/sidebar";
 
 import { NotificationBell } from "@/components/notifications/notification-bell";
+import { OfflineIndicator } from "@/components/offline/offline-indicator";
 
 import { useSession } from "@/hooks";
 
@@ -24,6 +25,7 @@ export function SiteHeader() {
           </Button>
           <Search />
           <div className="ml-auto flex items-center gap-2">
+            <OfflineIndicator />
             <ThemeSwitch />
             <Notifications />
             <Separator

@@ -30,7 +30,7 @@ import {
 import { AlertCircle, Check, Plus, ClipboardListIcon } from 'lucide-react'
 import Link from 'next/link'
 import { PageHeader } from '@/components/base/page-header'
-import { usePurchaseOrders } from '@/hooks/use-purchase-order-queries'
+import { usePurchaseOrders } from '@/hooks/use-purchase-orders-queries'
 import { useSavePaymentVoucher } from '@/hooks/use-payment-voucher-queries'
 import { CreatePaymentVoucherRequest } from '@/types/payment-voucher'
 import { PurchaseOrder } from '@/types/purchase-order'
@@ -44,7 +44,7 @@ interface PVCreateClientProps {
 
 export function PVCreateClient({ userId, userName, userRole }: PVCreateClientProps) {
   const router = useRouter()
-  const { data: purchaseOrders, isLoading: isLoadingPOs } = usePurchaseOrders()
+  const { data: purchaseOrders, isLoading: isLoadingPOs } = usePurchaseOrders(1, 100)
   const savePVMutation = useSavePaymentVoucher(() => {
     router.push('/payment-vouchers')
   })

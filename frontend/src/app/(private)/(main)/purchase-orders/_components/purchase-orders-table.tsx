@@ -16,7 +16,7 @@ import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/ui/data-table";
 import { StatusBadge as CentralizedStatusBadge } from "@/components/status-badge";
 import { WorkflowDocument } from "@/types/workflow";
-import { usePurchaseOrdersAsWorkflowDocumentsQuery } from "@/hooks/use-storage-queries";
+import { usePurchaseOrders } from "@/hooks/use-purchase-orders-queries";
 import type { ActionButton } from "@/components/ui/action-buttons";
 import {
   DropdownMenu,
@@ -177,7 +177,7 @@ export function PurchaseOrdersTable({
 }: PurchaseOrdersTableProps) {
   const router = useRouter();
   const { data: purchaseOrders = [], refetch } =
-    usePurchaseOrdersAsWorkflowDocumentsQuery();
+    usePurchaseOrders(1, 50); // Get first 50 purchase orders
 
   // Refetch when refreshTrigger changes
   useEffect(() => {

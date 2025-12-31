@@ -15,7 +15,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { useGrnsAsWorkflowDocumentsQuery } from '@/hooks/use-storage-queries';
+import { useGRNs } from '@/hooks/use-grns-queries';
 
 interface GrnTableProps {
   userId: string;
@@ -124,7 +124,7 @@ export function GrnTable({
   onRefresh: _onRefresh,
 }: GrnTableProps) {
   const router = useRouter();
-  const { data: grns = [], refetch } = useGrnsAsWorkflowDocumentsQuery();
+  const { data: grns = [], refetch } = useGRNs(1, 50); // Get first 50 GRNs
 
   // Refetch when refreshTrigger changes
   useEffect(() => {

@@ -24,6 +24,7 @@ import {
   RejectRequisitionRequest,
 } from "@/types/requisition";
 import { toast } from "sonner";
+import { handleOfflineMutation, isOfflineResult } from "@/lib/offline-mutation-helper";
 
 /**
  * Fetch all requisitions with pagination
@@ -137,25 +138,44 @@ export const useSaveRequisition = (onSuccess?: () => void) => {
         | CreateRequisitionRequest
         | (UpdateRequisitionRequest & { requisitionId?: string })
     ) => {
-      const response =
-        "requisitionId" in data && data.requisitionId
-          ? await updateRequisition(data as UpdateRequisitionRequest)
-          : await createRequisition(data as CreateRequisitionRequest);
+      const isUpdate = "requisitionId" in data && data.requisitionId;
+      
+      return await handleOfflineMutation(
+        async () => {
+          const response = isUpdate
+            ? await updateRequisition(data as UpdateRequisitionRequest)
+            : await createRequisition(data as CreateRequisitionRequest);
 
-      if (!response.success) {
-        throw new Error(response.message);
-      }
-      return response;
-    },
-    onSuccess: (response) => {
-      const isUpdate = (
-        response.data as Requisition & { requisitionId?: string }
-      )?.requisitionId;
-      toast.success(
-        isUpdate
-          ? "Requisition updated successfully"
-          : "Requisition created successfully"
+          if (!response.success) {
+            throw new Error(response.message);
+          }
+          return response;
+        },
+        {
+          operation: isUpdate ? 'UPDATE' : 'CREATE',
+          entity: 'requisition',
+          data,
+          entityId: isUpdate ? (data as UpdateRequisitionRequest).requisitionId : undefined,
+          successMessage: isUpdate ? 'Requisition updated successfully' : 'Requisition created successfully',
+          offlineMessage: isUpdate 
+            ? 'Requisition changes saved offline. Will sync when connected.'
+            : 'Requisition saved offline. Will sync when connected.',
+        }
       );
+    },
+    onSuccess: (result) => {
+      if (isOfflineResult(result)) {
+        // Already handled by offline helper
+      } else {
+        const isUpdate = (
+          result.data as Requisition & { requisitionId?: string }
+        )?.requisitionId;
+        toast.success(
+          isUpdate
+            ? "Requisition updated successfully"
+            : "Requisition created successfully"
+        );
+      }
 
       // Invalidate requisition queries
       queryClient.invalidateQueries({
@@ -207,18 +227,34 @@ export const useSubmitRequisitionForApproval = (
     mutationFn: async (
       data: Omit<SubmitRequisitionRequest, "requisitionId">
     ) => {
-      const response = await submitRequisitionForApproval({
-        requisitionId,
-        ...data,
-      });
+      return await handleOfflineMutation(
+        async () => {
+          const response = await submitRequisitionForApproval({
+            requisitionId,
+            ...data,
+          });
 
-      if (!response.success) {
-        throw new Error(response.message);
-      }
-      return response;
+          if (!response.success) {
+            throw new Error(response.message);
+          }
+          return response;
+        },
+        {
+          operation: 'SUBMIT',
+          entity: 'requisition',
+          data: { requisitionId, ...data },
+          entityId: requisitionId,
+          successMessage: 'Requisition submitted for approval',
+          offlineMessage: 'Requisition submission saved offline. Will sync when connected.',
+        }
+      );
     },
-    onSuccess: () => {
-      toast.success("Requisition submitted for approval");
+    onSuccess: (result) => {
+      if (isOfflineResult(result)) {
+        // Already handled by offline helper
+      } else {
+        toast.success("Requisition submitted for approval");
+      }
 
       queryClient.invalidateQueries({
         queryKey: [QUERY_KEYS.REQUISITIONS.BY_ID, requisitionId],

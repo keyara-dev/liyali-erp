@@ -15,7 +15,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { DataTable } from '@/components/ui/data-table';
 import { StatusBadge as CentralizedStatusBadge } from '@/components/status-badge';
-import { usePaymentVouchersAsWorkflowDocumentsQuery } from '@/hooks/use-storage-queries';
+import { usePaymentVouchers } from '@/hooks/use-payment-vouchers-queries';
 import { WorkflowDocument } from '@/types/workflow';
 import type { ActionButton } from '@/components/ui/action-buttons';
 import {
@@ -181,7 +181,7 @@ export function PaymentVouchersTable({
 }: PaymentVouchersTableProps) {
   const router = useRouter();
   const { data: paymentVouchers = [], refetch } =
-    usePaymentVouchersAsWorkflowDocumentsQuery();
+    usePaymentVouchers(1, 50); // Get first 50 payment vouchers
 
   // Refetch when refreshTrigger changes
   useEffect(() => {

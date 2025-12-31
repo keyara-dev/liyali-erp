@@ -14,6 +14,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { useInitializeStorage } from "@/hooks/use-initialize-storage";
+import { useOfflineQueueProcessor } from "@/hooks/use-offline-queue-processor";
 import { OrganizationProvider } from "@/contexts/organization-context";
 import { TokenRefreshProvider } from "@/components/auth/token-refresh-provider";
 
@@ -29,7 +30,13 @@ const queryClient = new QueryClient({
       refetchOnMount: true,             // Refetch on component mount if stale
     },
     mutations: {
-      retry: 1,                         // Retry mutations once
+      retry: (failureCount, error: any) => {
+        // Don't retry if offline - let offline queue handle it
+        if (error?.type === "Network Error" || !navigator.onLine) {
+          return false;
+        }
+        return failureCount < 1; // Retry once for other errors
+      },
       onError: (error) => {
         console.error('Mutation error:', error);
       },
@@ -39,6 +46,7 @@ const queryClient = new QueryClient({
 
 function StorageInitializer({ children }: { children: React.ReactNode }) {
   useInitializeStorage();
+  useOfflineQueueProcessor(); // Add offline sync processor
   return <>{children}</>;
 }
 

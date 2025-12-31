@@ -9,7 +9,7 @@ import { StatusBadge } from '@/components/status-badge';
 import { Button } from '@/components/ui/button';
 import { DataTable } from '@/components/ui/data-table';
 import { WorkflowDocument } from '@/types/workflow';
-import { useRequisitionsAsWorkflowDocumentsQuery } from '@/hooks/use-storage-queries';
+import { useRequisitions } from '@/hooks/use-requisition-queries';
 import type { ActionButton } from '@/components/ui/action-buttons';
 import {
   DropdownMenu,
@@ -152,7 +152,7 @@ export function RequisitionsTable({
 }: RequisitionsTableProps) {
   const router = useRouter();
   const { data: requisitions = [], refetch } =
-    useRequisitionsAsWorkflowDocumentsQuery();
+    useRequisitions(1, 50); // Get first 50 requisitions
 
   // Refetch when refreshTrigger changes
   useEffect(() => {
