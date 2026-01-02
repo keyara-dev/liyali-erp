@@ -2,13 +2,14 @@ package routes
 
 import (
 	"github.com/gofiber/fiber/v2"
+	"gorm.io/gorm"
 	"github.com/liyali/liyali-gateway/handlers"
 	"github.com/liyali/liyali-gateway/middleware"
 	"github.com/liyali/liyali-gateway/services"
 )
 
 // SetupRoutes configures all API routes
-func SetupRoutes(app *fiber.App, handlerRegistry *handlers.HandlerRegistry, rbacService *services.RBACService) {
+func SetupRoutes(app *fiber.App, handlerRegistry *handlers.HandlerRegistry, rbacService *services.RBACService, db *gorm.DB) {
 	// Health check (no versioning)
 	app.Get("/health", handlers.HealthCheck)
 
@@ -192,6 +193,21 @@ func SetupRoutes(app *fiber.App, handlerRegistry *handlers.HandlerRegistry, rbac
 	workflows.Post("/:id/activate", middleware.RequirePermission(rbacService, "workflow", "manage"), handlerRegistry.Workflow.ActivateWorkflow)
 	workflows.Post("/:id/deactivate", middleware.RequirePermission(rbacService, "workflow", "manage"), handlerRegistry.Workflow.DeactivateWorkflow)
 	workflows.Delete("/:id", middleware.RequirePermission(rbacService, "workflow", "delete"), handlerRegistry.Workflow.DeleteWorkflow)
+
+	// MVP Workflow routes (tenant-scoped) - NEW MVP SYSTEM
+	workflowsMVP := tenant.Group("/workflows-mvp")
+	workflowsMVPHandler := handlers.NewWorkflowMVPHandler(db) // We'll need to pass db here
+	workflowsMVP.Get("/", middleware.RequirePermission(rbacService, "workflow", "view"), workflowsMVPHandler.GetWorkflows)
+	workflowsMVP.Get("/:id", middleware.RequirePermission(rbacService, "workflow", "view"), workflowsMVPHandler.GetWorkflowByID)
+	workflowsMVP.Get("/default/:entityType", middleware.RequirePermission(rbacService, "workflow", "view"), workflowsMVPHandler.GetDefaultWorkflow)
+	workflowsMVP.Post("/", middleware.RequirePermission(rbacService, "workflow", "create"), workflowsMVPHandler.CreateWorkflow)
+	workflowsMVP.Put("/:id", middleware.RequirePermission(rbacService, "workflow", "edit"), workflowsMVPHandler.UpdateWorkflow)
+	workflowsMVP.Delete("/:id", middleware.RequirePermission(rbacService, "workflow", "delete"), workflowsMVPHandler.DeleteWorkflow)
+	workflowsMVP.Post("/:id/duplicate", middleware.RequirePermission(rbacService, "workflow", "create"), workflowsMVPHandler.DuplicateWorkflow)
+	workflowsMVP.Post("/:id/set-default", middleware.RequirePermission(rbacService, "workflow", "manage"), workflowsMVPHandler.SetDefaultWorkflow)
+	workflowsMVP.Post("/resolve", middleware.RequirePermission(rbacService, "workflow", "view"), workflowsMVPHandler.ResolveWorkflow)
+	workflowsMVP.Get("/:id/usage", middleware.RequirePermission(rbacService, "workflow", "view"), workflowsMVPHandler.GetWorkflowUsage)
+	workflowsMVP.Post("/validate", middleware.RequirePermission(rbacService, "workflow", "create"), workflowsMVPHandler.ValidateWorkflow)
 
 	// Analytics routes (tenant-scoped) - ENABLED
 	analytics := tenant.Group("/analytics")

@@ -96,7 +96,7 @@ func main() {
 	app.Use(middleware.CORSMiddleware())
 
 	// Setup routes with handler registry
-	routes.SetupRoutes(app, handlerRegistry, rbacService)
+	routes.SetupRoutes(app, handlerRegistry, rbacService, config.DB)
 
 	// Start server with graceful shutdown
 	go func() {

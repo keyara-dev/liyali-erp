@@ -1,6 +1,8 @@
 package models
 
 import (
+	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -102,19 +104,130 @@ type UserOrganizationRole struct {
 
 // Workflow represents a workflow definition for document approvals
 type Workflow struct {
-	ID             uuid.UUID      `gorm:"type:uuid;primary_key;default:gen_random_uuid()" json:"id"`
+	ID             string         `gorm:"primaryKey" json:"id"`
 	OrganizationID string         `gorm:"index;not null" json:"organizationId"`
 	Organization   *Organization  `gorm:"foreignKey:OrganizationID" json:"organization,omitempty"`
 	Name           string         `gorm:"not null" json:"name"`
 	Description    string         `json:"description"`
-	DocumentType   string         `gorm:"index;not null" json:"documentType"`
-	Stages         datatypes.JSON `gorm:"type:jsonb;not null;default:'[]'" json:"stages"`
+	EntityType     string         `gorm:"index;not null" json:"entityType"` // "requisition", "purchase_order", "grn", "payment_voucher"
+	Version        int            `gorm:"default:1" json:"version"`
 	IsActive       bool           `gorm:"default:true" json:"isActive"`
 	IsDefault      bool           `gorm:"default:false" json:"isDefault"`
-	CreatedBy      *string        `json:"createdBy,omitempty"`
+	Conditions     datatypes.JSON `gorm:"type:jsonb" json:"conditions,omitempty"`
+	Stages         datatypes.JSON `gorm:"type:jsonb;not null" json:"stages"`
+	CreatedBy      string         `gorm:"not null" json:"createdBy"`
 	Creator        *User          `gorm:"foreignKey:CreatedBy" json:"creator,omitempty"`
 	CreatedAt      time.Time      `json:"createdAt"`
 	UpdatedAt      time.Time      `json:"updatedAt"`
+	DeletedAt      *time.Time     `gorm:"index" json:"deletedAt,omitempty"`
+	
+	// Computed fields for frontend compatibility
+	TotalStages int `gorm:"-" json:"totalStages"`
+	UsageCount  int `gorm:"-" json:"usageCount"`
+}
+
+// WorkflowStage represents a single stage in a workflow
+type WorkflowStage struct {
+	StageNumber       int    `json:"stageNumber"`
+	StageName         string `json:"stageName"`
+	Description       string `json:"description,omitempty"`
+	RequiredRole      string `json:"requiredRole"`
+	RequiredApprovals int    `json:"requiredApprovals"`
+	TimeoutHours      *int   `json:"timeoutHours,omitempty"`
+	CanReject         bool   `json:"canReject"`
+	CanReassign       bool   `json:"canReassign"`
+}
+
+// WorkflowConditions defines when a workflow should be applied
+type WorkflowConditions struct {
+	AmountRange  *AmountRange               `json:"amountRange,omitempty"`
+	Departments  []string                   `json:"departments,omitempty"`
+	Priority     []string                   `json:"priority,omitempty"`
+	Categories   []string                   `json:"categories,omitempty"`
+	CustomFields map[string]interface{}     `json:"customFields,omitempty"`
+}
+
+// AmountRange defines monetary range conditions
+type AmountRange struct {
+	Min *float64 `json:"min,omitempty"`
+	Max *float64 `json:"max,omitempty"`
+}
+
+// WorkflowAssignment tracks workflow execution for specific entities
+type WorkflowAssignment struct {
+	ID                string         `gorm:"primaryKey" json:"id"`
+	OrganizationID    string         `gorm:"index;not null" json:"organizationId"`
+	Organization      *Organization  `gorm:"foreignKey:OrganizationID" json:"organization,omitempty"`
+	EntityID          string         `gorm:"not null;index" json:"entityId"`
+	EntityType        string         `gorm:"not null" json:"entityType"`
+	WorkflowID        string         `gorm:"not null;index" json:"workflowId"`
+	Workflow          *Workflow      `gorm:"foreignKey:WorkflowID" json:"workflow,omitempty"`
+	WorkflowVersion   int            `gorm:"not null" json:"workflowVersion"`
+	CurrentStage      int            `gorm:"default:0" json:"currentStage"`
+	Status            string         `gorm:"default:'in_progress'" json:"status"` // "in_progress", "completed", "rejected", "cancelled"
+	StageHistory      datatypes.JSON `gorm:"type:jsonb" json:"stageHistory"`
+	AssignedAt        time.Time      `json:"assignedAt"`
+	AssignedBy        string         `gorm:"not null" json:"assignedBy"`
+	Assigner          *User          `gorm:"foreignKey:AssignedBy" json:"assigner,omitempty"`
+	CompletedAt       *time.Time     `json:"completedAt,omitempty"`
+	CreatedAt         time.Time      `json:"createdAt"`
+	UpdatedAt         time.Time      `json:"updatedAt"`
+}
+
+// StageExecution represents the execution of a single workflow stage
+type StageExecution struct {
+	StageNumber  int       `json:"stageNumber"`
+	StageName    string    `json:"stageName"`
+	ApproverID   string    `json:"approverId"`
+	ApproverName string    `json:"approverName"`
+	ApproverRole string    `json:"approverRole"`
+	Action       string    `json:"action"` // "approved", "rejected", "reassigned"
+	Comments     string    `json:"comments,omitempty"`
+	Signature    string    `json:"signature,omitempty"`
+	ExecutedAt   time.Time `json:"executedAt"`
+}
+
+// WorkflowTask represents a pending approval task
+type WorkflowTask struct {
+	ID                   string             `gorm:"primaryKey" json:"id"`
+	OrganizationID       string             `gorm:"index;not null" json:"organizationId"`
+	Organization         *Organization      `gorm:"foreignKey:OrganizationID" json:"organization,omitempty"`
+	WorkflowAssignmentID string             `gorm:"not null;index" json:"workflowAssignmentId"`
+	WorkflowAssignment   *WorkflowAssignment `gorm:"foreignKey:WorkflowAssignmentID" json:"workflowAssignment,omitempty"`
+	EntityID             string             `gorm:"not null;index" json:"entityId"`
+	EntityType           string             `gorm:"not null" json:"entityType"`
+	StageNumber          int                `gorm:"not null" json:"stageNumber"`
+	StageName            string             `gorm:"not null" json:"stageName"`
+	
+	// Assignment details
+	AssignmentType string  `gorm:"default:'role'" json:"assignmentType"` // "role", "specific_user"
+	AssignedRole   *string `json:"assignedRole,omitempty"`
+	AssignedUserID *string `json:"assignedUserId,omitempty"`
+	AssignedUser   *User   `gorm:"foreignKey:AssignedUserID" json:"assignedUser,omitempty"`
+	
+	// Task lifecycle
+	Status      string     `gorm:"default:'pending'" json:"status"` // "pending", "claimed", "completed", "expired"
+	Priority    string     `gorm:"default:'medium'" json:"priority"` // "low", "medium", "high", "urgent"
+	CreatedAt   time.Time  `json:"createdAt"`
+	ClaimedAt   *time.Time `json:"claimedAt,omitempty"`
+	ClaimedBy   *string    `json:"claimedBy,omitempty"`
+	Claimer     *User      `gorm:"foreignKey:ClaimedBy" json:"claimer,omitempty"`
+	CompletedAt *time.Time `json:"completedAt,omitempty"`
+	DueDate     *time.Time `json:"dueDate,omitempty"`
+}
+
+// WorkflowDefault tracks default workflows for entity types
+type WorkflowDefault struct {
+	ID                     string    `gorm:"primaryKey" json:"id"`
+	OrganizationID         string    `gorm:"index;not null" json:"organizationId"`
+	Organization           *Organization `gorm:"foreignKey:OrganizationID" json:"organization,omitempty"`
+	EntityType             string    `gorm:"uniqueIndex:idx_org_entity_default" json:"entityType"`
+	DefaultWorkflowID      string    `gorm:"not null" json:"defaultWorkflowId"`
+	DefaultWorkflow        *Workflow `gorm:"foreignKey:DefaultWorkflowID" json:"defaultWorkflow,omitempty"`
+	DefaultWorkflowVersion int       `gorm:"not null" json:"defaultWorkflowVersion"`
+	SetBy                  string    `gorm:"not null" json:"setBy"`
+	Setter                 *User     `gorm:"foreignKey:SetBy" json:"setter,omitempty"`
+	SetAt                  time.Time `json:"setAt"`
 }
 
 // ApprovalTaskEnhanced represents an enhanced approval task with workflow support
@@ -208,6 +321,9 @@ func (AccountLockout) TableName() string            { return "account_lockouts" 
 func (OrganizationRole) TableName() string          { return "organization_roles" }
 func (UserOrganizationRole) TableName() string      { return "user_organization_roles" }
 func (Workflow) TableName() string                  { return "workflows" }
+func (WorkflowAssignment) TableName() string        { return "workflow_assignments" }
+func (WorkflowTask) TableName() string              { return "workflow_tasks" }
+func (WorkflowDefault) TableName() string           { return "workflow_defaults" }
 func (ApprovalTaskEnhanced) TableName() string      { return "approval_tasks_enhanced" }
 func (ApprovalHistory) TableName() string           { return "approval_history" }
 func (NotificationEnhanced) TableName() string      { return "notifications_enhanced" }
@@ -260,4 +376,146 @@ func (n *NotificationEnhanced) IsExpired() bool {
 
 func (n *NotificationEnhanced) IsHighPriority() bool {
 	return n.Priority == "HIGH" || n.Priority == "URGENT"
+}
+
+// Helper methods for Workflow
+func (w *Workflow) GetStages() ([]WorkflowStage, error) {
+	var stages []WorkflowStage
+	if err := json.Unmarshal(w.Stages, &stages); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal stages: %w", err)
+	}
+	return stages, nil
+}
+
+func (w *Workflow) SetStages(stages []WorkflowStage) error {
+	stagesJSON, err := json.Marshal(stages)
+	if err != nil {
+		return fmt.Errorf("failed to marshal stages: %w", err)
+	}
+	w.Stages = stagesJSON
+	w.TotalStages = len(stages)
+	return nil
+}
+
+func (w *Workflow) GetConditions() (*WorkflowConditions, error) {
+	if w.Conditions == nil {
+		return nil, nil
+	}
+	
+	var conditions WorkflowConditions
+	if err := json.Unmarshal(w.Conditions, &conditions); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal conditions: %w", err)
+	}
+	return &conditions, nil
+}
+
+func (w *Workflow) SetConditions(conditions *WorkflowConditions) error {
+	if conditions == nil {
+		w.Conditions = nil
+		return nil
+	}
+	
+	conditionsJSON, err := json.Marshal(conditions)
+	if err != nil {
+		return fmt.Errorf("failed to marshal conditions: %w", err)
+	}
+	w.Conditions = conditionsJSON
+	return nil
+}
+
+func (w *Workflow) Validate() error {
+	if w.Name == "" {
+		return fmt.Errorf("workflow name is required")
+	}
+	if w.EntityType == "" {
+		return fmt.Errorf("entity type is required")
+	}
+	if len(w.Stages) == 0 {
+		return fmt.Errorf("workflow must have at least one stage")
+	}
+	return nil
+}
+
+// Helper methods for WorkflowAssignment
+func (wa *WorkflowAssignment) GetStageHistory() ([]StageExecution, error) {
+	var history []StageExecution
+	if wa.StageHistory == nil {
+		return history, nil
+	}
+	
+	if err := json.Unmarshal(wa.StageHistory, &history); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal stage history: %w", err)
+	}
+	return history, nil
+}
+
+func (wa *WorkflowAssignment) AddStageExecution(execution StageExecution) error {
+	history, err := wa.GetStageHistory()
+	if err != nil {
+		return err
+	}
+	
+	history = append(history, execution)
+	
+	historyJSON, err := json.Marshal(history)
+	if err != nil {
+		return fmt.Errorf("failed to marshal stage history: %w", err)
+	}
+	
+	wa.StageHistory = historyJSON
+	return nil
+}
+
+func (wa *WorkflowAssignment) IsCompleted() bool {
+	return wa.Status == "completed"
+}
+
+func (wa *WorkflowAssignment) IsInProgress() bool {
+	return wa.Status == "in_progress"
+}
+
+func (wa *WorkflowAssignment) IsRejected() bool {
+	return wa.Status == "rejected"
+}
+
+// Helper methods for WorkflowTask
+func (wt *WorkflowTask) IsPending() bool {
+	return wt.Status == "pending"
+}
+
+func (wt *WorkflowTask) IsClaimed() bool {
+	return wt.Status == "claimed"
+}
+
+func (wt *WorkflowTask) IsCompleted() bool {
+	return wt.Status == "completed"
+}
+
+func (wt *WorkflowTask) IsOverdue() bool {
+	return wt.DueDate != nil && time.Now().After(*wt.DueDate) && !wt.IsCompleted()
+}
+
+// Helper methods for WorkflowStage
+func (ws *WorkflowStage) Validate() error {
+	if ws.StageName == "" {
+		return fmt.Errorf("stage name is required")
+	}
+	if ws.RequiredRole == "" {
+		return fmt.Errorf("required role is required")
+	}
+	if ws.RequiredApprovals < 1 {
+		return fmt.Errorf("required approvals must be at least 1")
+	}
+	return nil
+}
+
+// Helper methods for WorkflowConditions
+func (wc *WorkflowConditions) MatchesDocument(document interface{}) bool {
+	if wc == nil {
+		return true // No conditions means always match
+	}
+	
+	// This would need to be implemented based on your document structure
+	// For now, returning true as a placeholder
+	return true
 }
