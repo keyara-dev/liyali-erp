@@ -301,7 +301,7 @@ export const useSubmitRequisitionForApproval = (
  */
 export const useApproveRequisition = (
   requisitionId: string,
-  onSuccess?: () => void
+  onSuccess?: (data: any) => void
 ) => {
   const queryClient = useQueryClient();
 
@@ -319,9 +319,33 @@ export const useApproveRequisition = (
       }
       return response;
     },
-    onSuccess: () => {
-      toast.success("Requisition approved successfully");
+    onSuccess: (response) => {
+      const data = response.data;
+      
+      // Check if automation was used
+      if (data?.automationUsed && data?.autoCreatedPO) {
+        toast.success("Requisition approved and Purchase Order created automatically");
+        
+        // Invalidate PO queries since a new PO was created
+        queryClient.invalidateQueries({
+          queryKey: [QUERY_KEYS.PURCHASE_ORDERS.ALL],
+        });
+        queryClient.invalidateQueries({
+          queryKey: [QUERY_KEYS.PURCHASE_ORDERS.STATS],
+        });
+        
+        // Optionally set the new PO in cache
+        if (data.autoCreatedPO.id) {
+          queryClient.setQueryData(
+            [QUERY_KEYS.PURCHASE_ORDERS.BY_ID, data.autoCreatedPO.id],
+            data.autoCreatedPO
+          );
+        }
+      } else {
+        toast.success("Requisition approved successfully");
+      }
 
+      // Standard requisition cache invalidation
       queryClient.invalidateQueries({
         queryKey: [QUERY_KEYS.REQUISITIONS.BY_ID, requisitionId],
       });
@@ -335,15 +359,6 @@ export const useApproveRequisition = (
         queryKey: [QUERY_KEYS.APPROVALS_PENDING],
       });
 
-      // When requisition is fully approved, a PO is auto-created
-      // Invalidate PO cache to show the new PO
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.PURCHASE_ORDERS.ALL],
-      });
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.PURCHASE_ORDERS.STATS],
-      });
-
       // Invalidate dashboard metrics
       queryClient.invalidateQueries({
         queryKey: [QUERY_KEYS.DASHBOARD.METRICS],
@@ -352,7 +367,7 @@ export const useApproveRequisition = (
         queryKey: [QUERY_KEYS.DASHBOARD.ACTIVITIES],
       });
 
-      onSuccess?.();
+      onSuccess?.(response.data);
     },
     onError: (error: Error) => {
       toast.error(error.message || "Failed to approve requisition");

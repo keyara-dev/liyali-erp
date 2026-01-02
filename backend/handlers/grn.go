@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/liyali/liyali-gateway/config"
 	"github.com/liyali/liyali-gateway/models"
+	"github.com/liyali/liyali-gateway/services"
 	"github.com/liyali/liyali-gateway/types"
 	"github.com/liyali/liyali-gateway/utils"
 	"gorm.io/datatypes"
@@ -268,7 +269,7 @@ func DeleteGRN(c *fiber.Ctx) error {
 	})
 }
 
-// ApproveGRN approves a GRN
+// ApproveGRN approves a GRN and optionally auto-creates Payment Voucher
 func ApproveGRN(c *fiber.Ctx) error {
 	id := c.Params("id")
 	if id == "" {
@@ -337,10 +338,66 @@ func ApproveGRN(c *fiber.Ctx) error {
 		})
 	}
 
-	return c.JSON(types.DetailResponse{
+	// Auto-create Payment Voucher if enabled and prerequisites are met
+	var autoCreatedPV *models.PaymentVoucher
+	if grn.Status == "approved" {
+		// Initialize automation service
+		auditService := &services.AuditService{}
+		notificationService := &services.NotificationService{}
+		automationService := services.NewDocumentAutomationService(
+			config.DB, auditService, notificationService,
+		)
+
+		// Get automation config
+		automationConfig := automationService.GetDefaultAutomationConfig()
+
+		// Attempt to auto-create Payment Voucher
+		result, err := automationService.CreatePaymentVoucherFromGRN(
+			c.Context(), &grn, automationConfig,
+		)
+
+		if err == nil && result.Success {
+			if pv, ok := result.CreatedDocument.(models.PaymentVoucher); ok {
+				autoCreatedPV = &pv
+			}
+		}
+		// Note: We don't fail the approval if PV creation fails
+		// The GRN is still approved, PV can be created manually
+	}
+
+	// Prepare response
+	response := types.DetailResponse{
 		Success: true,
 		Data:    modelToGRNResponse(grn),
-	})
+	}
+
+	// Add auto-created PV to response if available
+	if autoCreatedPV != nil {
+		// Convert PV to response format
+		pvResponse := types.PaymentVoucherResponse{
+			ID:            autoCreatedPV.ID,
+			VoucherNumber: autoCreatedPV.VoucherNumber,
+			VendorID:      autoCreatedPV.VendorID,
+			InvoiceNumber: autoCreatedPV.InvoiceNumber,
+			Status:        autoCreatedPV.Status,
+			Amount:        autoCreatedPV.Amount,
+			Currency:      autoCreatedPV.Currency,
+			PaymentMethod: autoCreatedPV.PaymentMethod,
+			LinkedPO:      autoCreatedPV.LinkedPO,
+			ApprovalStage: autoCreatedPV.ApprovalStage,
+			CreatedAt:     autoCreatedPV.CreatedAt,
+			UpdatedAt:     autoCreatedPV.UpdatedAt,
+		}
+
+		// Add PV to response
+		response.Data = fiber.Map{
+			"grn":             modelToGRNResponse(grn),
+			"autoCreatedPV":   pvResponse,
+			"automationUsed":  true,
+		}
+	}
+
+	return c.JSON(response)
 }
 
 // RejectGRN rejects a GRN

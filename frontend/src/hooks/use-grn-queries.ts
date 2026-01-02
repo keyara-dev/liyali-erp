@@ -185,6 +185,7 @@ export const useUpdateGRN = (grnId: string, onSuccess?: (data: GoodsReceivedNote
 
 /**
  * Approve a GRN
+ * Handles automatic Payment Voucher creation when GRN is approved
  * Automatically invalidates GRN queries
  *
  * @param grnId - GRN ID to approve
@@ -216,11 +217,37 @@ export const useApproveGRN = (grnId: string, onSuccess?: (data: GoodsReceivedNot
       return response;
     },
     onSuccess: (response) => {
-      toast.success('GRN approved successfully');
+      // Check if automation was used
+      const automationUsed = response.data?.automationUsed;
+      const autoCreatedPV = response.data?.autoCreatedPV;
+
+      if (automationUsed && autoCreatedPV) {
+        toast.success('GRN approved and Payment Voucher created automatically');
+      } else {
+        toast.success('GRN approved successfully');
+      }
 
       queryClient.setQueryData([QUERY_KEYS.GRN.BY_ID, grnId], response.data);
       queryClient.invalidateQueries({
         queryKey: [QUERY_KEYS.GRN.ALL],
+      });
+
+      // If Payment Voucher was auto-created, invalidate PV cache
+      if (automationUsed && autoCreatedPV) {
+        queryClient.invalidateQueries({
+          queryKey: [QUERY_KEYS.PAYMENT_VOUCHERS.ALL],
+        });
+        queryClient.invalidateQueries({
+          queryKey: [QUERY_KEYS.PAYMENT_VOUCHERS.STATS],
+        });
+      }
+
+      // Invalidate dashboard metrics
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.DASHBOARD.METRICS],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.DASHBOARD.ACTIVITIES],
       });
 
       if (onSuccess && response.data) {

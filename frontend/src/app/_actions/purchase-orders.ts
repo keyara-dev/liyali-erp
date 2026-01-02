@@ -220,10 +220,11 @@ export async function submitPurchaseOrderForApproval(
 /**
  * Approve purchase order
  * Calls: POST /api/v1/purchase-orders/{id}/approve
+ * May return auto-created GRN if automation is enabled
  */
 export async function approvePurchaseOrder(
   data: ApprovePurchaseOrderRequest
-): Promise<APIResponse<PurchaseOrder>> {
+): Promise<APIResponse<PurchaseOrder & { autoCreatedGRN?: any; automationUsed?: boolean }>> {
   const url = `/api/v1/purchase-orders/${data.poId}/approve`;
 
   try {
@@ -240,12 +241,29 @@ export async function approvePurchaseOrder(
       },
     });
 
-    return successResponse(
-      response.data?.data,
-      response.data?.data?.status === 'APPROVED'
-        ? 'Purchase order fully approved'
-        : 'Approval recorded, moving to next stage'
-    );
+    // Handle both single PO response and automation response
+    let responseData = response.data?.data;
+    
+    // Check if automation was used (response contains multiple documents)
+    if (responseData && typeof responseData === 'object' && 'automationUsed' in responseData) {
+      // Automation response format: { purchaseOrder, autoCreatedGRN, automationUsed }
+      return successResponse(
+        {
+          ...responseData.purchaseOrder,
+          autoCreatedGRN: responseData.autoCreatedGRN,
+          automationUsed: responseData.automationUsed,
+        },
+        'Purchase order approved and GRN created automatically'
+      );
+    } else {
+      // Standard response format: just the purchase order
+      return successResponse(
+        responseData,
+        response.data?.data?.status === 'APPROVED'
+          ? 'Purchase order fully approved'
+          : 'Approval recorded, moving to next stage'
+      );
+    }
   } catch (error: any) {
     return handleError(error, 'POST', url);
   }

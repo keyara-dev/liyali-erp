@@ -237,6 +237,7 @@ export const useSubmitPurchaseOrderForApproval = (
 
 /**
  * Approve purchase order mutation
+ * Handles automatic GRN creation when PO is fully approved
  *
  * @param poId - Purchase Order ID to approve
  * @param onSuccess - Callback after successful approval
@@ -272,8 +273,16 @@ export const useApprovePurchaseOrder = (
       }
       return response;
     },
-    onSuccess: () => {
-      toast.success("Purchase order approved");
+    onSuccess: (response) => {
+      // Check if automation was used
+      const automationUsed = response.data?.automationUsed;
+      const autoCreatedGRN = response.data?.autoCreatedGRN;
+
+      if (automationUsed && autoCreatedGRN) {
+        toast.success("Purchase order approved and GRN created automatically");
+      } else {
+        toast.success("Purchase order approved");
+      }
 
       queryClient.invalidateQueries({
         queryKey: [QUERY_KEYS.PURCHASE_ORDERS.BY_ID, poId],
@@ -285,14 +294,15 @@ export const useApprovePurchaseOrder = (
         queryKey: [QUERY_KEYS.PURCHASE_ORDERS.STATS],
       });
 
-      // When PO is fully approved, a Payment Voucher is auto-created
-      // Invalidate PV cache to show the new PV
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.PAYMENT_VOUCHERS.ALL],
-      });
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.PAYMENT_VOUCHERS.STATS],
-      });
+      // If GRN was auto-created, invalidate GRN cache
+      if (automationUsed && autoCreatedGRN) {
+        queryClient.invalidateQueries({
+          queryKey: [QUERY_KEYS.GRN.ALL],
+        });
+        queryClient.invalidateQueries({
+          queryKey: [QUERY_KEYS.GRN.STATS],
+        });
+      }
 
       // Invalidate dashboard metrics
       queryClient.invalidateQueries({

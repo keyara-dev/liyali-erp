@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/liyali/liyali-gateway/config"
 	"github.com/liyali/liyali-gateway/models"
+	"github.com/liyali/liyali-gateway/services"
 	"github.com/liyali/liyali-gateway/types"
 	"github.com/liyali/liyali-gateway/utils"
 	"gorm.io/datatypes"
@@ -280,7 +281,7 @@ func DeletePurchaseOrder(c *fiber.Ctx) error {
 	})
 }
 
-// ApprovePurchaseOrder approves a purchase order
+// ApprovePurchaseOrder approves a purchase order and optionally auto-creates GRN
 func ApprovePurchaseOrder(c *fiber.Ctx) error {
 	id := c.Params("id")
 	if id == "" {
@@ -351,10 +352,62 @@ func ApprovePurchaseOrder(c *fiber.Ctx) error {
 
 	config.DB.Preload("Vendor").First(&order)
 
-	return c.JSON(types.DetailResponse{
+	// Auto-create GRN if enabled and prerequisites are met
+	var autoCreatedGRN *models.GoodsReceivedNote
+	if order.Status == "approved" {
+		// Initialize automation service
+		auditService := &services.AuditService{}
+		notificationService := &services.NotificationService{}
+		automationService := services.NewDocumentAutomationService(
+			config.DB, auditService, notificationService,
+		)
+
+		// Get automation config
+		automationConfig := automationService.GetDefaultAutomationConfig()
+
+		// Attempt to auto-create GRN
+		result, err := automationService.CreateGRNFromPurchaseOrder(
+			c.Context(), &order, automationConfig,
+		)
+
+		if err == nil && result.Success {
+			if grn, ok := result.CreatedDocument.(models.GoodsReceivedNote); ok {
+				autoCreatedGRN = &grn
+			}
+		}
+		// Note: We don't fail the approval if GRN creation fails
+		// The PO is still approved, GRN can be created manually
+	}
+
+	// Prepare response
+	response := types.DetailResponse{
 		Success: true,
 		Data:    modelToPurchaseOrderResponse(order),
-	})
+	}
+
+	// Add auto-created GRN to response if available
+	if autoCreatedGRN != nil {
+		// Convert GRN to response format
+		grnResponse := types.GRNResponse{
+			ID:           autoCreatedGRN.ID,
+			GRNNumber:    autoCreatedGRN.GRNNumber,
+			PONumber:     autoCreatedGRN.PONumber,
+			Status:       autoCreatedGRN.Status,
+			ReceivedDate: autoCreatedGRN.ReceivedDate,
+			ReceivedBy:   autoCreatedGRN.ReceivedBy,
+			CreatedAt:    autoCreatedGRN.CreatedAt,
+			UpdatedAt:    autoCreatedGRN.UpdatedAt,
+		}
+
+		// Add GRN to response
+		response.Data = fiber.Map{
+			"purchaseOrder":   modelToPurchaseOrderResponse(order),
+			"autoCreatedGRN":  grnResponse,
+			"automationUsed":  true,
+		}
+	}
+
+	return c.JSON(response)
 }
 
 // RejectPurchaseOrder rejects a purchase order

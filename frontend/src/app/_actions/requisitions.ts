@@ -170,10 +170,11 @@ export async function submitRequisitionForApproval(
 /**
  * Approve requisition
  * Calls: POST /api/v1/requisitions/{id}/approve
+ * May return auto-created Purchase Order if automation is enabled
  */
 export async function approveRequisition(
   data: ApproveRequisitionRequest
-): Promise<APIResponse<Requisition>> {
+): Promise<APIResponse<Requisition & { autoCreatedPO?: PurchaseOrder; automationUsed?: boolean }>> {
   const url = `/api/v1/requisitions/${data.requisitionId}/approve`;
 
   try {
@@ -190,10 +191,27 @@ export async function approveRequisition(
       },
     });
 
-    return successResponse(
-      response.data?.data,
-      'Requisition approved and Purchase Order created'
-    );
+    // Handle both single requisition response and automation response
+    let responseData = response.data?.data;
+    
+    // Check if automation was used (response contains multiple documents)
+    if (responseData && typeof responseData === 'object' && 'automationUsed' in responseData) {
+      // Automation response format: { requisition, autoCreatedPO, automationUsed }
+      return successResponse(
+        {
+          ...responseData.requisition,
+          autoCreatedPO: responseData.autoCreatedPO,
+          automationUsed: responseData.automationUsed,
+        },
+        'Requisition approved and Purchase Order created automatically'
+      );
+    } else {
+      // Standard response format: just the requisition
+      return successResponse(
+        responseData,
+        'Requisition approved successfully'
+      );
+    }
   } catch (error: any) {
     return handleError(error, 'POST', url);
   }

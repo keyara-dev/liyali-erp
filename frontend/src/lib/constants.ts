@@ -148,6 +148,7 @@ export const QUERY_KEYS = {
     ALL: "grn-all",
     BY_ID: "grn-by-id",
     BY_USER: "grn-by-user",
+    STATS: "grn-stats",
   },
 
   // Approval Tasks (Backend-powered)

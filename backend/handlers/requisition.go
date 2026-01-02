@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/liyali/liyali-gateway/config"
 	"github.com/liyali/liyali-gateway/models"
+	"github.com/liyali/liyali-gateway/services"
 	"github.com/liyali/liyali-gateway/types"
 	"github.com/liyali/liyali-gateway/utils"
 	"gorm.io/datatypes"
@@ -371,7 +372,7 @@ func DeleteRequisition(c *fiber.Ctx) error {
 	})
 }
 
-// ApproveRequisition approves a requisition
+// ApproveRequisition approves a requisition and optionally auto-creates PO
 func ApproveRequisition(c *fiber.Ctx) error {
 	id := c.Params("id")
 	if id == "" {
@@ -448,10 +449,65 @@ func ApproveRequisition(c *fiber.Ctx) error {
 	// Preload requester
 	config.DB.Preload("Requester").First(&requisition)
 
-	return c.JSON(types.DetailResponse{
+	// Auto-create Purchase Order if enabled and prerequisites are met
+	var autoCreatedPO *models.PurchaseOrder
+	if requisition.Status == "approved" {
+		// Initialize automation service
+		auditService := &services.AuditService{}
+		notificationService := &services.NotificationService{}
+		automationService := services.NewDocumentAutomationService(
+			config.DB, auditService, notificationService,
+		)
+
+		// Get automation config (could be from organization settings in the future)
+		automationConfig := automationService.GetDefaultAutomationConfig()
+
+		// Attempt to auto-create PO
+		result, err := automationService.CreatePurchaseOrderFromRequisition(
+			c.Context(), &requisition, automationConfig,
+		)
+
+		if err == nil && result.Success {
+			if po, ok := result.CreatedDocument.(models.PurchaseOrder); ok {
+				autoCreatedPO = &po
+			}
+		}
+		// Note: We don't fail the approval if PO creation fails
+		// The requisition is still approved, PO can be created manually
+	}
+
+	// Prepare response
+	response := types.DetailResponse{
 		Success: true,
 		Data:    modelToRequisitionResponse(requisition),
-	})
+	}
+
+	// Add auto-created PO to response if available
+	if autoCreatedPO != nil {
+		// Convert PO to response format
+		poResponse := types.PurchaseOrderResponse{
+			ID:                autoCreatedPO.ID,
+			PONumber:          autoCreatedPO.PONumber,
+			VendorID:          autoCreatedPO.VendorID,
+			Status:            autoCreatedPO.Status,
+			TotalAmount:       autoCreatedPO.TotalAmount,
+			Currency:          autoCreatedPO.Currency,
+			DeliveryDate:      autoCreatedPO.DeliveryDate,
+			ApprovalStage:     autoCreatedPO.ApprovalStage,
+			LinkedRequisition: autoCreatedPO.LinkedRequisition,
+			CreatedAt:         autoCreatedPO.CreatedAt,
+			UpdatedAt:         autoCreatedPO.UpdatedAt,
+		}
+
+		// Add PO to response
+		response.Data = fiber.Map{
+			"requisition":      modelToRequisitionResponse(requisition),
+			"autoCreatedPO":    poResponse,
+			"automationUsed":   true,
+		}
+	}
+
+	return c.JSON(response)
 }
 
 // RejectRequisition rejects a requisition
