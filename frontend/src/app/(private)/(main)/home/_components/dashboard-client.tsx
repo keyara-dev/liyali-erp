@@ -22,7 +22,7 @@ export function DashboardClient({ userId, userRole }: DashboardClientProps) {
   const [error, setError] = useState<string | null>(null);
 
   // Fetch pending approval count from new approval workflow
-  const pendingCount = usePendingApprovalCount();
+  const { data: pendingCount = 0 } = usePendingApprovalCount();
 
   useEffect(() => {
     async function fetchMetrics() {

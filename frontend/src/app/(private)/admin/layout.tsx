@@ -1,6 +1,7 @@
 import { verifySession } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { PropsWithChildren } from "react";
+import DashboardLayoutProvider from "../(main)/layout";
 
 export default async function AdminLayout({ children }: PropsWithChildren) {
   const { session, isAuthenticated } = await verifySession();
@@ -18,5 +19,5 @@ export default async function AdminLayout({ children }: PropsWithChildren) {
     redirect("/access-denied");
   }
 
-  return <>{children}</>;
+  return <DashboardLayoutProvider>{children}</DashboardLayoutProvider>;
 }

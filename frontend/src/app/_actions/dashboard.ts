@@ -6,104 +6,52 @@ import {
   SignupSettings,
   SignupAnalytics,
 } from "@/types";
-import { documentStore } from "@/lib/workflow-stores";
-import { unauthorizedResponse, handleError } from "@/app/_actions/api-config";
-import { verifySession } from "@/lib/auth";
+import { handleError, successResponse } from "@/app/_actions/api-config";
+import authenticatedApiClient from "@/app/_actions/api-config";
 
 export async function getDashboardMetrics(): Promise<
   APIResponse<DashboardMetrics>
 > {
-  const { session } = await verifySession();
-
-  if (!session?.user) {
-    return unauthorizedResponse();
-  }
+  const url = "/api/v1/analytics/dashboard";
 
   try {
-    const allDocuments = Array.from(documentStore.values());
-
-    // Calculate status breakdown
-    const statusBreakdown: Record<string, number> = {
-      DRAFT: 0,
-      SUBMITTED: 0,
-      IN_REVIEW: 0,
-      APPROVED: 0,
-      REJECTED: 0,
-      REVERSED: 0,
-    };
-
-    const documentTypeBreakdown: Record<string, number> = {
-      REQUISITION: 0,
-      PURCHASE_ORDER: 0,
-      PAYMENT_VOUCHER: 0,
-      GOODS_RECEIVED_NOTE: 0,
-    };
-
-    let totalDocuments = 0;
-    let pendingApproval = 0;
-    let documentsNeedingAction = 0;
-
-    allDocuments.forEach((doc) => {
-      totalDocuments++;
-      statusBreakdown[doc.status]++;
-      documentTypeBreakdown[doc.type]++;
-
-      if (doc.status === "IN_REVIEW") {
-        pendingApproval++;
-        documentsNeedingAction++;
-      } else if (doc.status === "SUBMITTED") {
-        documentsNeedingAction++;
-      }
+    const response = await authenticatedApiClient({
+      method: "GET",
+      url,
     });
 
-    // Calculate average approval time (mock calculation)
-    const approvedDocs = allDocuments.filter((d) => d.status === "APPROVED");
-    const averageApprovalTime =
-      approvedDocs.length > 0
-        ? approvedDocs.reduce((sum, doc) => {
-            const days = Math.floor(
-              (doc.updatedAt.getTime() - doc.createdAt.getTime()) /
-                (1000 * 60 * 60 * 24)
-            );
-            return sum + days;
-          }, 0) / approvedDocs.length
-        : 0;
+    // Transform backend data to frontend DashboardMetrics format
+    const backendData = response.data?.data;
+    if (!backendData?.requisitionMetrics) {
+      throw new Error("Invalid dashboard data received from backend");
+    }
 
-    // Get recent activity (last 5 documents by update time)
-    const recentActivity = allDocuments
-      .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime())
-      .slice(0, 5)
-      .map((doc) => ({
-        id: doc.id,
-        type: doc.type,
-        documentNumber: doc.documentNumber,
-        action: doc.status,
-        timestamp: doc.updatedAt,
-        user: doc.createdByUser?.name || "Unknown User",
-      }));
+    const reqMetrics = backendData.requisitionMetrics;
+    const statusCounts = reqMetrics.statusCounts || {};
 
+    // Map backend status counts to frontend format
     const metrics: DashboardMetrics = {
-      totalDocuments,
-      draftDocuments: statusBreakdown.DRAFT,
-      submittedDocuments: statusBreakdown.SUBMITTED,
-      approvedDocuments: statusBreakdown.APPROVED,
-      rejectedDocuments: statusBreakdown.REJECTED,
-      pendingApproval,
-      documentsNeedingAction,
-      averageApprovalTime: Math.round(averageApprovalTime),
-      statusBreakdown,
-      documentTypeBreakdown,
-      recentActivity,
+      totalDocuments: reqMetrics.totalRequisitions || 0,
+      draftDocuments: statusCounts.draft || statusCounts.DRAFT || 0,
+      submittedDocuments: statusCounts.submitted || statusCounts.SUBMITTED || 0,
+      approvedDocuments: statusCounts.approved || statusCounts.APPROVED || 0,
+      rejectedDocuments: statusCounts.rejected || statusCounts.REJECTED || 0,
+      pendingApproval: statusCounts.in_review || statusCounts.IN_REVIEW || statusCounts.pending || statusCounts.PENDING || 0,
+      documentsNeedingAction: (statusCounts.submitted || statusCounts.SUBMITTED || 0) + (statusCounts.in_review || statusCounts.IN_REVIEW || statusCounts.pending || statusCounts.PENDING || 0),
+      averageApprovalTime: 0, // TODO: Add to backend analytics
+      statusBreakdown: statusCounts,
+      documentTypeBreakdown: {
+        REQUISITION: reqMetrics.totalRequisitions || 0,
+        PURCHASE_ORDER: 0, // TODO: Add to backend analytics
+        PAYMENT_VOUCHER: 0, // TODO: Add to backend analytics
+        GOODS_RECEIVED_NOTE: 0, // TODO: Add to backend analytics
+      },
+      recentActivity: [], // TODO: Add to backend analytics
     };
 
-    return {
-      success: true,
-      message: "Dashboard metrics retrieved",
-      data: metrics,
-      status: 200,
-    };
-  } catch (error) {
-    return handleError(error, "GET", "/dashboard/metrics") as any;
+    return successResponse(metrics, "Dashboard metrics retrieved successfully");
+  } catch (error: any) {
+    return handleError(error, "GET", url);
   }
 }
 

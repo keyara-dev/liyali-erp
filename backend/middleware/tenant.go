@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/liyali/liyali-gateway/config"
@@ -14,10 +15,23 @@ import (
 func TenantMiddleware() fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		// 1. Get user ID from auth middleware (must come after AuthMiddleware)
-		userID, ok := c.Locals("userID").(string)
+		userIDRaw := c.Locals("userID")
+		if userIDRaw == nil {
+			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+				"error": "User context required - userID is nil",
+			})
+		}
+		
+		userID, ok := userIDRaw.(string)
 		if !ok {
 			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-				"error": "User context required",
+				"error": fmt.Sprintf("User context required - userID is not a string, got %T", userIDRaw),
+			})
+		}
+		
+		if userID == "" {
+			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+				"error": "User context required - userID is empty string",
 			})
 		}
 
@@ -49,11 +63,11 @@ func TenantMiddleware() fiber.Handler {
 			orgID, userID, true,
 		).First(&membership).Error; err != nil {
 			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
-				"error": "You are not a member of this organization",
+				"error": fmt.Sprintf("You are not a member of this organization: %v", err),
 			})
 		}
 
-		// 5. Create tenant context
+		// 5. Create tenant context with safe field access
 		tenantCtx := &utils.TenantContext{
 			OrganizationID: orgID,
 			UserID:         userID,
@@ -63,7 +77,7 @@ func TenantMiddleware() fiber.Handler {
 
 		// 6. Store in context
 		c.Locals("tenant", tenantCtx)
-		c.Locals("organizationId", orgID) // For easy access
+		c.Locals("organizationID", orgID) // For easy access - match RequirePermission middleware
 
 		return c.Next()
 	}

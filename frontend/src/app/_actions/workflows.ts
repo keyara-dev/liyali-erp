@@ -1,614 +1,450 @@
+"use server";
+
+import { APIResponse } from "@/types";
+import authenticatedApiClient, {
+  handleError,
+  successResponse,
+  badRequestResponse,
+} from "./api-config";
+
+// Types for workflow operations
+export interface WorkflowStage {
+  stageNumber: number;
+  stageName: string;
+  description?: string;
+  requiredRole: string;
+  requiredApprovals: number;
+  timeoutHours?: number;
+  canReject: boolean;
+  canReassign: boolean;
+}
+
+export interface WorkflowFormData {
+  name: string;
+  description: string;
+  entityType: string; // Changed from documentType to match backend
+  stages: WorkflowStage[];
+  conditions?: any;
+  isDefault: boolean;
+}
+
+export interface Workflow {
+  id: string;
+  name: string;
+  description: string;
+  entityType: string;
+  documentType?: string; // For backward compatibility
+  version: number;
+  isActive: boolean;
+  isDefault: boolean;
+  conditions?: any;
+  stages: WorkflowStage[];
+  totalStages: number;
+  usageCount: number;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt?: string;
+}
+
+export interface WorkflowListFilter {
+  entityType?: string;
+  isActive?: boolean;
+  isDefault?: boolean;
+}
+
 /**
- * Custom Workflow Server Actions
- *
- * Server actions for workflow CRUD operations, validation, and orchestration.
- * These actions handle the complete workflow lifecycle:
- * - Creating and managing reusable workflows
- * - Assigning workflows to entities (requisitions, budgets)
- * - Progressing through approval stages
- * - Handling rejections and reversals
- * - Managing task reassignments
+ * Get all workflows with optional filtering
  */
+export async function getWorkflows(
+  filter?: WorkflowListFilter
+): Promise<APIResponse<Workflow[]>> {
+  const url = `/api/v1/workflows`;
 
-'use server';
+  try {
+    // Build query parameters
+    const params = new URLSearchParams();
+    if (filter?.entityType) params.append('entityType', filter.entityType);
+    if (filter?.isActive !== undefined) params.append('isActive', filter.isActive.toString());
+    if (filter?.isDefault !== undefined) params.append('isDefault', filter.isDefault.toString());
 
-import {
-  CustomWorkflow,
-  WorkflowAssignment,
-  WorkflowEntityType,
-  CreateWorkflowRequest,
-  UpdateWorkflowRequest,
-  AssignWorkflowRequest,
-  ApproveStageRequest,
-  RejectStageRequest,
-  ReassignStageRequest,
-  ReverseStageRequest,
-  StageExecution,
-} from '@/types';
+    const queryString = params.toString();
+    const fullUrl = queryString ? `${url}?${queryString}` : url;
 
-import {
-  saveWorkflow,
-  getWorkflow,
-  listWorkflows,
-  deprecateWorkflow,
-  createWorkflowVersion,
-  saveAssignment,
-  getAssignment,
-  getAssignmentByEntityId,
-  updateAssignment,
-  setWorkflowDefault,
-  getWorkflowDefault,
-  countWorkflowUsage,
-  getPendingApprovalsForUser,
-} from '@/lib/workflow-persistence';
+    const response = await authenticatedApiClient({
+      url: fullUrl,
+      method: "GET",
+    });
 
-import {
-  validateWorkflow,
-  getWorkflowErrors,
-} from '@/lib/workflow-validation';
+    const workflows = response.data.data || response.data;
+    return successResponse(workflows, "Workflows retrieved successfully");
+  } catch (error: any) {
+    return handleError(error, "GET", url);
+  }
+}
 
-import {
-  resolveWorkflowForEntity,
-  getApproverForStage,
-  progressToNextStage,
-  rejectAtStage,
-  reassignStage,
-  canReassign,
-  getStageInfo,
-  getNextStageInfo,
-  getPendingApprovalsForUserId,
-} from '@/lib/workflow-resolution';
+/**
+ * Get a specific workflow by ID
+ */
+export async function getWorkflowById(
+  workflowId: string
+): Promise<APIResponse<Workflow>> {
+  if (!workflowId) {
+    return badRequestResponse("Workflow ID is required");
+  }
 
-import {
-  notifyTaskAssigned,
-  notifyTaskReassigned,
-  notifyTaskApproved,
-  notifyTaskRejected,
-  notifyWorkflowComplete,
-} from './notifications';
+  const url = `/api/v1/workflows/${workflowId}`;
 
-import { type UserRole } from '@/lib/auth';
-import { v4 as uuid } from 'uuid';
+  try {
+    const response = await authenticatedApiClient({
+      url,
+      method: "GET",
+    });
+
+    const workflow = response.data.data || response.data;
+    return successResponse(workflow, "Workflow retrieved successfully");
+  } catch (error: any) {
+    return handleError(error, "GET", url);
+  }
+}
 
 /**
  * Create a new workflow
- * @param request Workflow creation request
- * @returns Created workflow
  */
 export async function createWorkflow(
-  request: CreateWorkflowRequest
-): Promise<{ workflow: CustomWorkflow; success: boolean }> {
-  try {
-    // Create workflow object
-    const workflow: CustomWorkflow = {
-      id: uuid(),
-      name: request.name,
-      description: request.description,
-      version: 1,
-      applicableEntityTypes: request.applicableEntityTypes,
-      isTemplate: request.isTemplate ?? true,
-      isActive: true,
-      stages: request.stages,
-      totalStages: request.stages.length,
-      usageCount: 0,
-      createdBy: request.createdBy,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
+  formData: WorkflowFormData
+): Promise<APIResponse<Workflow>> {
+  const url = `/api/v1/workflows`;
 
-    // Validate workflow
-    const errors = validateWorkflow(workflow);
-    if (errors.length > 0) {
-      throw new Error(`Workflow validation failed: ${errors.map((e) => e.error).join(', ')}`);
+  try {
+    // Validate required fields
+    if (!formData.name || !formData.entityType || !formData.stages?.length) {
+      return badRequestResponse("Name, entity type, and stages are required");
     }
 
-    // Save workflow
-    await saveWorkflow(workflow);
-
-    return {
-      workflow,
-      success: true,
+    // Transform data to match backend expectations
+    const backendData = {
+      name: formData.name,
+      description: formData.description,
+      entityType: formData.entityType,
+      stages: formData.stages.map((stage, index) => ({
+        stageNumber: index + 1,
+        stageName: stage.stageName,
+        description: stage.description,
+        requiredRole: stage.requiredRole,
+        requiredApprovals: stage.requiredApprovals,
+        timeoutHours: stage.timeoutHours,
+        canReject: stage.canReject,
+        canReassign: stage.canReassign,
+      })),
+      conditions: formData.conditions,
+      isDefault: formData.isDefault,
     };
-  } catch (error) {
-    console.error('[createWorkflow] Error:', error);
-    throw new Error('Failed to create workflow');
-  }
-}
 
-/**
- * Get a workflow by ID
- * @param workflowId Workflow ID
- * @param version Optional specific version
- * @returns Workflow
- */
-export async function getWorkflowAction(
-  workflowId: string,
-  version?: number
-): Promise<CustomWorkflow | null> {
-  try {
-    if (!workflowId) {
-      throw new Error('Workflow ID is required');
-    }
-
-    const workflow = await getWorkflow(workflowId, version);
-    return workflow || null;
-  } catch (error) {
-    console.error('[getWorkflow] Error:', error);
-    throw new Error('Failed to fetch workflow');
-  }
-}
-
-/**
- * List workflows with optional filters
- * @param entityType Optional entity type filter
- * @param onlyActive Only active workflows
- * @returns Array of workflows
- */
-export async function listWorkflowsAction(
-  entityType?: WorkflowEntityType,
-  onlyActive: boolean = true
-): Promise<CustomWorkflow[]> {
-  try {
-    const workflows = await listWorkflows({
-      entityType,
-      isActive: onlyActive,
+    const response = await authenticatedApiClient({
+      url,
+      method: "POST",
+      data: backendData,
     });
 
-    return workflows;
-  } catch (error) {
-    console.error('[listWorkflows] Error:', error);
-    throw new Error('Failed to list workflows');
+    const workflow = response.data.data || response.data;
+    return successResponse(workflow, "Workflow created successfully");
+  } catch (error: any) {
+    return handleError(error, "POST", url);
   }
 }
 
 /**
- * Update a workflow (creates new version)
- * @param request Update request
- * @returns New workflow version
+ * Update an existing workflow
  */
-export async function updateWorkflowAction(
-  request: UpdateWorkflowRequest
-): Promise<{ workflow: CustomWorkflow; success: boolean }> {
-  try {
-    if (!request.workflowId) {
-      throw new Error('Workflow ID is required');
-    }
-
-    const existing = await getWorkflow(request.workflowId);
-    if (!existing) {
-      throw new Error('Workflow not found');
-    }
-
-    // Create new version
-    const updated: CustomWorkflow = {
-      ...existing,
-      ...(request.name && { name: request.name }),
-      ...(request.description && { description: request.description }),
-      ...(request.applicableEntityTypes && { applicableEntityTypes: request.applicableEntityTypes }),
-      ...(request.stages && { stages: request.stages }),
-      version: existing.version + 1,
-      updatedAt: new Date(),
-      updatedBy: request.updatedBy,
-    };
-
-    // Validate
-    const errors = validateWorkflow(updated);
-    if (errors.length > 0) {
-      throw new Error(`Workflow validation failed: ${errors.map((e) => e.error).join(', ')}`);
-    }
-
-    // Save new version
-    await createWorkflowVersion(updated);
-
-    return {
-      workflow: updated,
-      success: true,
-    };
-  } catch (error) {
-    console.error('[updateWorkflow] Error:', error);
-    throw new Error('Failed to update workflow');
-  }
-}
-
-/**
- * Deprecate a workflow (mark as inactive)
- * @param workflowId Workflow ID
- * @returns Updated workflow
- */
-export async function deprecateWorkflowAction(
-  workflowId: string
-): Promise<{ workflow: CustomWorkflow; success: boolean }> {
-  try {
-    if (!workflowId) {
-      throw new Error('Workflow ID is required');
-    }
-
-    const workflow = await deprecateWorkflow(workflowId);
-    if (!workflow) {
-      throw new Error('Workflow not found');
-    }
-
-    return {
-      workflow,
-      success: true,
-    };
-  } catch (error) {
-    console.error('[deprecateWorkflow] Error:', error);
-    throw new Error('Failed to deprecate workflow');
-  }
-}
-
-/**
- * Assign a workflow to an entity
- * @param request Assignment request
- * @returns Created assignment
- */
-export async function assignWorkflowAction(
-  request: AssignWorkflowRequest
-): Promise<{ assignment: WorkflowAssignment; success: boolean }> {
-  try {
-    if (!request.entityId || !request.entityType || !request.workflowId) {
-      throw new Error('Entity ID, type, and workflow ID are required');
-    }
-
-    const workflow = await getWorkflow(request.workflowId);
-    if (!workflow) {
-      throw new Error('Workflow not found');
-    }
-
-    if (!workflow.isActive) {
-      throw new Error('Workflow is not active');
-    }
-
-    if (!workflow.applicableEntityTypes.includes(request.entityType)) {
-      throw new Error('Workflow is not applicable to this entity type');
-    }
-
-    const assignment: WorkflowAssignment = {
-      id: uuid(),
-      entityId: request.entityId,
-      entityType: request.entityType,
-      workflowId: workflow.id,
-      workflowVersion: workflow.version,
-      currentStageNumber: 0,
-      stageHistory: [],
-      assignedAt: new Date(),
-      assignedBy: request.assignedBy,
-    };
-
-    await saveAssignment(assignment);
-
-    return {
-      assignment,
-      success: true,
-    };
-  } catch (error) {
-    console.error('[assignWorkflow] Error:', error);
-    throw new Error('Failed to assign workflow');
-  }
-}
-
-/**
- * Get assignment for an entity
- * @param entityId Entity ID
- * @param entityType Entity type
- * @returns Assignment or null
- */
-export async function getAssignmentAction(entityId: string, entityType: WorkflowEntityType): Promise<WorkflowAssignment | null> {
-  try {
-    if (!entityId) {
-      throw new Error('Entity ID is required');
-    }
-
-    const assignment = await getAssignmentByEntityId(entityId, entityType);
-    return assignment || null;
-  } catch (error) {
-    console.error('[getAssignment] Error:', error);
-    throw new Error('Failed to fetch assignment');
-  }
-}
-
-/**
- * Progress workflow to next stage (approve)
- * @param request Approval request
- * @returns Updated assignment
- */
-export async function approveStageAction(
-  request: ApproveStageRequest
-): Promise<{ assignment: WorkflowAssignment; nextApprover?: { userId: string; userName: string; role?: UserRole } | null; isComplete: boolean }> {
-  try {
-    if (!request.assignmentId) {
-      throw new Error('Assignment ID is required');
-    }
-
-    // Get assignment and workflow
-    const assignment = await getAssignment(request.assignmentId);
-    if (!assignment) {
-      throw new Error('Assignment not found');
-    }
-
-    const workflow = await getWorkflow(assignment.workflowId, assignment.workflowVersion);
-    if (!workflow) {
-      throw new Error('Workflow not found');
-    }
-
-    // Progress to next stage
-    const result = await progressToNextStage(
-      assignment,
-      workflow,
-      request.approvingUserId,
-      '', // approverName not available in request
-      'USER' as any, // approverRole not available in request, using default
-      request.comments,
-      request.signature
-    );
-
-    // Notify next approver if not complete
-    if (!result.isComplete && result.nextApprover) {
-      const currentStage = workflow.stages.find((s) => s.stageNumber === assignment.currentStageNumber);
-      if (currentStage) {
-        await notifyTaskAssigned(
-          result.nextApprover.userId,
-          result.nextApprover.userName,
-          assignment.entityId,
-          assignment.entityType,
-          assignment.entityId,
-          currentStage.stageName
-        );
-      }
-    }
-
-    // Notify creator if complete
-    if (result.isComplete) {
-      await notifyWorkflowComplete(
-        assignment.assignedBy,
-        assignment.entityId,
-        assignment.entityType,
-        assignment.entityId,
-        request.approvingUserId,
-        ''
-      );
-    }
-
-    // Notify creator of approval (if not final stage)
-    if (!result.isComplete) {
-      await notifyTaskApproved(
-        assignment.assignedBy,
-        assignment.entityId,
-        assignment.entityType,
-        assignment.entityId,
-        request.approvingUserId,
-        ''
-      );
-    }
-
-    // Update assignment in storage
-    const updated = await updateAssignment(assignment.id, assignment);
-    if (!updated) {
-      throw new Error('Failed to update assignment');
-    }
-
-    return {
-      assignment: updated,
-      nextApprover: result.nextApprover,
-      isComplete: result.isComplete,
-    };
-  } catch (error) {
-    console.error('[approveStage] Error:', error);
-    throw new Error('Failed to approve stage');
-  }
-}
-
-/**
- * Reject at current stage
- * @param request Rejection request
- * @returns Updated assignment
- */
-export async function rejectStageAction(
-  request: RejectStageRequest
-): Promise<{ assignment: WorkflowAssignment; targetStage: string }> {
-  try {
-    if (!request.assignmentId) {
-      throw new Error('Assignment ID is required');
-    }
-
-    // Get assignment and workflow
-    const assignment = await getAssignment(request.assignmentId);
-    if (!assignment) {
-      throw new Error('Assignment not found');
-    }
-
-    const workflow = await getWorkflow(assignment.workflowId, assignment.workflowVersion);
-    if (!workflow) {
-      throw new Error('Workflow not found');
-    }
-
-    // Reject at stage
-    const result = await rejectAtStage(
-      assignment,
-      workflow,
-      request.rejectingUserId,
-      '', // rejectorUserName not available in request
-      'USER' as any, // rejectorUserRole not available in request, using default
-      request.remarks,
-      request.signature
-    );
-
-    // Notify creator of rejection
-    await notifyTaskRejected(
-      assignment.assignedBy,
-      assignment.entityId,
-      assignment.entityType,
-      assignment.entityId,
-      request.rejectingUserId,
-      '',
-      request.remarks
-    );
-
-    // Update assignment
-    const updated = await updateAssignment(assignment.id, assignment);
-    if (!updated) {
-      throw new Error('Failed to update assignment');
-    }
-
-    return {
-      assignment: updated,
-      targetStage: result.rejectedToStage.toString(),
-    };
-  } catch (error) {
-    console.error('[rejectStage] Error:', error);
-    throw new Error('Failed to reject stage');
-  }
-}
-
-/**
- * Reassign a stage to a different user
- * @param request Reassignment request
- * @returns Updated assignment
- */
-export async function reassignStageAction(
-  request: ReassignStageRequest
-): Promise<{
-  assignment: WorkflowAssignment;
-  oldApprover: { userId: string; name: string } | null;
-  newApprover: { userId: string; name: string };
-}> {
-  try {
-    if (!request.assignmentId) {
-      throw new Error('Assignment ID is required');
-    }
-
-    // Get assignment and workflow
-    const assignment = await getAssignment(request.assignmentId);
-    if (!assignment) {
-      throw new Error('Assignment not found');
-    }
-
-    const workflow = await getWorkflow(assignment.workflowId, assignment.workflowVersion);
-    if (!workflow) {
-      throw new Error('Workflow not found');
-    }
-
-    // Check permission
-    const permission = await canReassign(assignment, workflow, request.reassignedBy);
-    if (!permission.can) {
-      throw new Error(permission.reason || 'You do not have permission to reassign this task');
-    }
-
-    // Perform reassignment
-    const result = await reassignStage(
-      {
-        assignmentId: request.assignmentId,
-        stageNumber: request.stageNumber,
-        newApproverId: request.newApproverId,
-        reassignedBy: request.reassignedBy,
-        reassignmentReason: request.reassignmentReason,
-      },
-      assignment,
-      workflow
-    );
-
-    // Notify new approver
-    await notifyTaskReassigned(
-      request.newApproverId,
-      '', // newApprover name not available in result
-      assignment.entityId,
-      assignment.entityType,
-      assignment.entityId,
-      request.reassignedBy,
-      '',
-      request.reassignmentReason
-    );
-
-    // Update assignment
-    const updated = await updateAssignment(assignment.id, assignment);
-    if (!updated) {
-      throw new Error('Failed to update assignment');
-    }
-
-    return {
-      assignment: updated,
-      oldApprover: result.previousApprover ? { userId: result.previousApprover, name: result.previousApprover } : null,
-      newApprover: { userId: request.newApproverId, name: '' },
-    };
-  } catch (error) {
-    console.error('[reassignStage] Error:', error);
-    throw new Error('Failed to reassign stage');
-  }
-}
-
-/**
- * Get pending approvals for a user
- * @param userId User ID
- * @returns Array of pending assignments
- */
-export async function getPendingApprovalsAction(
-  userId: string
-): Promise<WorkflowAssignment[]> {
-  try {
-    if (!userId) {
-      throw new Error('User ID is required');
-    }
-
-    return await getPendingApprovalsForUserId(userId);
-  } catch (error) {
-    console.error('[getPendingApprovals] Error:', error);
-    throw new Error('Failed to fetch pending approvals');
-  }
-}
-
-/**
- * Set default workflow for entity type
- * @param entityType Entity type
- * @param workflowId Workflow ID
- * @param userId User ID setting the default
- * @returns Success status
- */
-export async function setDefaultWorkflowAction(
-  entityType: WorkflowEntityType,
+export async function updateWorkflow(
   workflowId: string,
-  userId: string
-): Promise<{ success: boolean }> {
+  formData: Partial<WorkflowFormData>
+): Promise<APIResponse<Workflow>> {
+  if (!workflowId) {
+    return badRequestResponse("Workflow ID is required");
+  }
+
+  const url = `/api/v1/workflows/${workflowId}`;
+
   try {
-    if (!entityType || !workflowId || !userId) {
-      throw new Error('Entity type, workflow ID, and user ID are required');
+    // Transform data to match backend expectations
+    const backendData: any = {};
+    
+    if (formData.name) backendData.name = formData.name;
+    if (formData.description) backendData.description = formData.description;
+    if (formData.stages) {
+      backendData.stages = formData.stages.map((stage, index) => ({
+        stageNumber: index + 1,
+        stageName: stage.stageName,
+        description: stage.description,
+        requiredRole: stage.requiredRole,
+        requiredApprovals: stage.requiredApprovals,
+        timeoutHours: stage.timeoutHours,
+        canReject: stage.canReject,
+        canReassign: stage.canReassign,
+      }));
     }
+    if (formData.conditions !== undefined) backendData.conditions = formData.conditions;
+    if (formData.isDefault !== undefined) backendData.isDefault = formData.isDefault;
 
-    const workflow = await getWorkflow(workflowId);
-    if (!workflow) {
-      throw new Error('Workflow not found');
-    }
+    const response = await authenticatedApiClient({
+      url,
+      method: "PUT",
+      data: backendData,
+    });
 
-    await setWorkflowDefault(entityType, workflowId, workflow.version, userId);
-
-    return { success: true };
-  } catch (error) {
-    console.error('[setDefaultWorkflow] Error:', error);
-    throw new Error('Failed to set default workflow');
+    const workflow = response.data.data || response.data;
+    return successResponse(workflow, "Workflow updated successfully");
+  } catch (error: any) {
+    return handleError(error, "PUT", url);
   }
 }
 
 /**
- * Get default workflow for entity type
- * @param entityType Entity type
- * @returns Default workflow or null
+ * Delete a workflow
  */
-export async function getDefaultWorkflowAction(
-  entityType: WorkflowEntityType
-): Promise<CustomWorkflow | null> {
+export async function deleteWorkflow(
+  workflowId: string
+): Promise<APIResponse<null>> {
+  if (!workflowId) {
+    return badRequestResponse("Workflow ID is required");
+  }
+
+  const url = `/api/v1/workflows/${workflowId}`;
+
   try {
-    if (!entityType) {
-      throw new Error('Entity type is required');
-    }
+    await authenticatedApiClient({
+      url,
+      method: "DELETE",
+    });
 
-    const workflowDefault = await getWorkflowDefault(entityType);
-    if (!workflowDefault) {
-      return null;
-    }
+    return successResponse(null, "Workflow deleted successfully");
+  } catch (error: any) {
+    return handleError(error, "DELETE", url);
+  }
+}
 
-    return await getWorkflow(workflowDefault.defaultWorkflowId);
-  } catch (error) {
-    console.error('[getDefaultWorkflow] Error:', error);
-    throw new Error('Failed to fetch default workflow');
+/**
+ * Duplicate a workflow
+ */
+export async function duplicateWorkflow(
+  workflowId: string,
+  newName?: string
+): Promise<APIResponse<Workflow>> {
+  if (!workflowId) {
+    return badRequestResponse("Workflow ID is required");
+  }
+
+  const url = `/api/v1/workflows/${workflowId}/duplicate`;
+
+  try {
+    const response = await authenticatedApiClient({
+      url,
+      method: "POST",
+      data: newName ? { name: newName } : {},
+    });
+
+    const workflow = response.data.data || response.data;
+    return successResponse(workflow, "Workflow duplicated successfully");
+  } catch (error: any) {
+    return handleError(error, "POST", url);
+  }
+}
+
+/**
+ * Activate a workflow
+ */
+export async function activateWorkflow(
+  workflowId: string
+): Promise<APIResponse<Workflow>> {
+  if (!workflowId) {
+    return badRequestResponse("Workflow ID is required");
+  }
+
+  const url = `/api/v1/workflows/${workflowId}/activate`;
+
+  try {
+    const response = await authenticatedApiClient({
+      url,
+      method: "POST",
+    });
+
+    const workflow = response.data.data || response.data;
+    return successResponse(workflow, "Workflow activated successfully");
+  } catch (error: any) {
+    return handleError(error, "POST", url);
+  }
+}
+
+/**
+ * Deactivate a workflow
+ */
+export async function deactivateWorkflow(
+  workflowId: string
+): Promise<APIResponse<Workflow>> {
+  if (!workflowId) {
+    return badRequestResponse("Workflow ID is required");
+  }
+
+  const url = `/api/v1/workflows/${workflowId}/deactivate`;
+
+  try {
+    const response = await authenticatedApiClient({
+      url,
+      method: "POST",
+    });
+
+    const workflow = response.data.data || response.data;
+    return successResponse(workflow, "Workflow deactivated successfully");
+  } catch (error: any) {
+    return handleError(error, "POST", url);
+  }
+}
+
+/**
+ * Set default workflow for an entity type
+ */
+export async function setDefaultWorkflow(
+  workflowId: string,
+  entityType: string
+): Promise<APIResponse<null>> {
+  if (!workflowId || !entityType) {
+    return badRequestResponse("Workflow ID and entity type are required");
+  }
+
+  const url = `/api/v1/workflows/${workflowId}/set-default`;
+
+  try {
+    await authenticatedApiClient({
+      url,
+      method: "POST",
+      data: { entityType },
+    });
+
+    return successResponse(null, "Default workflow set successfully");
+  } catch (error: any) {
+    return handleError(error, "POST", url);
+  }
+}
+
+/**
+ * Get default workflow for an entity type
+ */
+export async function getDefaultWorkflow(
+  entityType: string
+): Promise<APIResponse<Workflow>> {
+  if (!entityType) {
+    return badRequestResponse("Entity type is required");
+  }
+
+  const url = `/api/v1/workflows/default/${entityType}`;
+
+  try {
+    const response = await authenticatedApiClient({
+      url,
+      method: "GET",
+    });
+
+    const workflow = response.data.data || response.data;
+    return successResponse(workflow, "Default workflow retrieved successfully");
+  } catch (error: any) {
+    return handleError(error, "GET", url);
+  }
+}
+
+/**
+ * Resolve workflow for an entity
+ */
+export async function resolveWorkflowForEntity(
+  entityType: string,
+  document?: any
+): Promise<APIResponse<Workflow>> {
+  if (!entityType) {
+    return badRequestResponse("Entity type is required");
+  }
+
+  const url = `/api/v1/workflows/resolve`;
+
+  try {
+    const response = await authenticatedApiClient({
+      url,
+      method: "POST",
+      data: {
+        entityType,
+        document: document || {},
+      },
+    });
+
+    const workflow = response.data.data || response.data;
+    return successResponse(workflow, "Workflow resolved successfully");
+  } catch (error: any) {
+    return handleError(error, "POST", url);
+  }
+}
+
+/**
+ * Get workflow usage statistics
+ */
+export async function getWorkflowUsage(
+  workflowId: string
+): Promise<APIResponse<{ workflowId: string; usageCount: number; canDelete: boolean }>> {
+  if (!workflowId) {
+    return badRequestResponse("Workflow ID is required");
+  }
+
+  const url = `/api/v1/workflows/${workflowId}/usage`;
+
+  try {
+    const response = await authenticatedApiClient({
+      url,
+      method: "GET",
+    });
+
+    const usage = response.data.data || response.data;
+    return successResponse(usage, "Workflow usage retrieved successfully");
+  } catch (error: any) {
+    return handleError(error, "GET", url);
+  }
+}
+
+/**
+ * Validate workflow configuration
+ */
+export async function validateWorkflow(
+  workflowData: WorkflowFormData
+): Promise<APIResponse<{ valid: boolean; message: string }>> {
+  const url = `/api/v1/workflows/validate`;
+
+  try {
+    // Transform data to match backend expectations
+    const backendData = {
+      name: workflowData.name,
+      description: workflowData.description,
+      entityType: workflowData.entityType,
+      stages: workflowData.stages.map((stage, index) => ({
+        stageNumber: index + 1,
+        stageName: stage.stageName,
+        description: stage.description,
+        requiredRole: stage.requiredRole,
+        requiredApprovals: stage.requiredApprovals,
+        timeoutHours: stage.timeoutHours,
+        canReject: stage.canReject,
+        canReassign: stage.canReassign,
+      })),
+      conditions: workflowData.conditions,
+      isDefault: workflowData.isDefault,
+    };
+
+    const response = await authenticatedApiClient({
+      url,
+      method: "POST",
+      data: backendData,
+    });
+
+    const validation = response.data.data || response.data;
+    return successResponse(validation, "Workflow validation completed");
+  } catch (error: any) {
+    return handleError(error, "POST", url);
   }
 }

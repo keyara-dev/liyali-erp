@@ -110,11 +110,7 @@ Content-Type: application/json
 
 {
   "name": "New Tech Corp",
-  "description": "Technology solutions company",
-  "address": "123 Tech Street, Silicon Valley, CA 94000",
-  "phone": "+1-555-0199",
-  "email": "contact@newtech.com",
-  "website": "https://newtech.com"
+  "description": "Technology solutions company"
 }
 
 ### 3. Get Organization by ID

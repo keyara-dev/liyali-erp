@@ -77,8 +77,8 @@ func main() {
 		config.DB, // Add GORM database connection
 	)
 	
-	rbacService := services.NewRBACService(roleRepo, auditService)
-	workflowService := services.NewWorkflowService(workflowRepo, auditService)
+	rbacService := services.NewRBACService(roleRepo, auditService, config.DB)
+	workflowService := services.NewWorkflowService(workflowRepo, auditService, config.DB)
 	documentService := services.NewDocumentService(documentRepo, auditService)
 
 	// Initialize handler registry
@@ -86,7 +86,7 @@ func main() {
 
 	// Create Fiber app with global error handler
 	app := fiber.New(fiber.Config{
-		AppName:      "Liyali Gateway Backend - Enhanced",
+		AppName:      "Liyali Gateway Backend API",
 		ErrorHandler: customErrorHandler,
 	})
 

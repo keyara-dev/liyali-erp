@@ -13,10 +13,6 @@ export interface Organization {
   tier: 'free' | 'pro' | 'enterprise';
   active: boolean;
   description?: string;
-  address?: string;
-  phone?: string;
-  email?: string;
-  website?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -24,20 +20,12 @@ export interface Organization {
 export interface CreateOrganizationRequest {
   name: string;
   description?: string;
-  address?: string;
-  phone?: string;
-  email?: string;
-  website?: string;
 }
 
 export interface UpdateOrganizationRequest {
   id: string;
   name?: string;
   description?: string;
-  address?: string;
-  phone?: string;
-  email?: string;
-  website?: string;
 }
 
 export interface OrganizationMember {
@@ -103,10 +91,6 @@ export async function createOrganization(data: CreateOrganizationRequest): Promi
       data: {
         name: data.name,
         description: data.description,
-        address: data.address,
-        phone: data.phone,
-        email: data.email,
-        website: data.website,
       }
     });
 
@@ -149,10 +133,6 @@ export async function updateOrganization(data: UpdateOrganizationRequest): Promi
       data: {
         name: data.name,
         description: data.description,
-        address: data.address,
-        phone: data.phone,
-        email: data.email,
-        website: data.website,
       }
     });
 

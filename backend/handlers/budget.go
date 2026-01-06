@@ -83,7 +83,7 @@ func CreateBudget(c *fiber.Ctx) error {
 		return utils.SendBadRequestError(c, "Allocated amount cannot be negative")
 	}
 
-	userID := c.Locals("user_id").(string)
+	userID := c.Locals("userID").(string)
 	if userID == "" {
 		return utils.SendUnauthorizedError(c, "User ID not found in token")
 	}
@@ -227,7 +227,7 @@ func ApproveBudget(c *fiber.Ctx) error {
 		return utils.SendNotFoundError(c, "Budget")
 	}
 
-	approverID := c.Locals("user_id").(string)
+	approverID := c.Locals("userID").(string)
 	var approver models.User
 	if err := config.DB.Where("id = ?", approverID).First(&approver).Error; err != nil {
 		return utils.SendUnauthorizedError(c, "Approver not found")
@@ -284,7 +284,7 @@ func RejectBudget(c *fiber.Ctx) error {
 		return utils.SendNotFoundError(c, "Budget")
 	}
 
-	approverID := c.Locals("user_id").(string)
+	approverID := c.Locals("userID").(string)
 	var approver models.User
 	if err := config.DB.Where("id = ?", approverID).First(&approver).Error; err != nil {
 		return utils.SendUnauthorizedError(c, "Approver not found")

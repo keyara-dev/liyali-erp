@@ -13,8 +13,9 @@ import (
 // WorkflowRepositoryInterface defines the contract for workflow repository
 type WorkflowRepositoryInterface interface {
 	// Basic CRUD operations
-	Create(ctx context.Context, organizationID, name, description, documentType string, stages datatypes.JSON, isActive bool, createdBy string) (*models.Workflow, error)
+	Create(ctx context.Context, organizationID, name, description, entityType string, stages datatypes.JSON, isActive bool, createdBy string) (*models.Workflow, error)
 	GetByID(ctx context.Context, id uuid.UUID, organizationID string) (*models.Workflow, error)
+	GetByStringID(ctx context.Context, id string, organizationID string) (*models.Workflow, error)
 	Update(ctx context.Context, id uuid.UUID, organizationID, name, description string, stages datatypes.JSON) (*models.Workflow, error)
 	Delete(ctx context.Context, id uuid.UUID, organizationID string) error
 	
@@ -50,16 +51,18 @@ func NewWorkflowRepository(pgxDB *pgxpool.Pool, db *gorm.DB) WorkflowRepositoryI
 }
 
 // Create creates a new workflow
-func (r *WorkflowRepository) Create(ctx context.Context, organizationID, name, description, documentType string, stages datatypes.JSON, isActive bool, createdBy string) (*models.Workflow, error) {
+func (r *WorkflowRepository) Create(ctx context.Context, organizationID, name, description, entityType string, stages datatypes.JSON, isActive bool, createdBy string) (*models.Workflow, error) {
 	workflow := &models.Workflow{
 		ID:             uuid.New(),
 		OrganizationID: organizationID,
 		Name:           name,
 		Description:    description,
-		DocumentType:   documentType,
+		DocumentType:   entityType, // Set both for compatibility
+		EntityType:     entityType,
 		Stages:         stages,
 		IsActive:       isActive,
-		CreatedBy:      &createdBy,
+		CreatedBy:      createdBy,
+		Version:        1,
 	}
 
 	if err := r.db.WithContext(ctx).Create(workflow).Error; err != nil {
@@ -82,6 +85,17 @@ func (r *WorkflowRepository) GetByID(ctx context.Context, id uuid.UUID, organiza
 	}
 	
 	return &workflow, nil
+}
+
+// GetByStringID retrieves a workflow by string ID
+func (r *WorkflowRepository) GetByStringID(ctx context.Context, id string, organizationID string) (*models.Workflow, error) {
+	// Parse string ID as UUID
+	workflowID, err := uuid.Parse(id)
+	if err != nil {
+		return nil, err
+	}
+	
+	return r.GetByID(ctx, workflowID, organizationID)
 }
 
 // Update updates a workflow
@@ -145,7 +159,7 @@ func (r *WorkflowRepository) ListActive(ctx context.Context, organizationID stri
 func (r *WorkflowRepository) ListByDocumentType(ctx context.Context, organizationID, documentType string, limit, offset int) ([]*models.Workflow, error) {
 	var workflows []*models.Workflow
 	err := r.db.WithContext(ctx).
-		Where("organization_id = ? AND document_type = ?", organizationID, documentType).
+		Where("organization_id = ? AND (entity_type = ? OR document_type = ?)", organizationID, documentType, documentType).
 		Preload("Creator").
 		Order("created_at DESC").
 		Limit(limit).
@@ -159,7 +173,7 @@ func (r *WorkflowRepository) ListByDocumentType(ctx context.Context, organizatio
 func (r *WorkflowRepository) ListActiveByDocumentType(ctx context.Context, organizationID, documentType string, limit, offset int) ([]*models.Workflow, error) {
 	var workflows []*models.Workflow
 	err := r.db.WithContext(ctx).
-		Where("organization_id = ? AND document_type = ? AND is_active = ?", organizationID, documentType, true).
+		Where("organization_id = ? AND (entity_type = ? OR document_type = ?) AND is_active = ?", organizationID, documentType, documentType, true).
 		Preload("Creator").
 		Order("created_at DESC").
 		Limit(limit).
@@ -173,7 +187,7 @@ func (r *WorkflowRepository) ListActiveByDocumentType(ctx context.Context, organ
 func (r *WorkflowRepository) GetDefaultByDocumentType(ctx context.Context, organizationID, documentType string) (*models.Workflow, error) {
 	var workflow models.Workflow
 	err := r.db.WithContext(ctx).
-		Where("organization_id = ? AND document_type = ? AND is_active = ?", organizationID, documentType, true).
+		Where("organization_id = ? AND (entity_type = ? OR document_type = ?) AND is_active = ? AND is_default = ?", organizationID, documentType, documentType, true, true).
 		Preload("Creator").
 		Order("created_at DESC").
 		First(&workflow).Error
@@ -250,7 +264,7 @@ func (r *WorkflowRepository) CountByDocumentType(ctx context.Context, organizati
 	var count int64
 	err := r.db.WithContext(ctx).
 		Model(&models.Workflow{}).
-		Where("organization_id = ? AND document_type = ?", organizationID, documentType).
+		Where("organization_id = ? AND (entity_type = ? OR document_type = ?)", organizationID, documentType, documentType).
 		Count(&count).Error
 	
 	return count, err

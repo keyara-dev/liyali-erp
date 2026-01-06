@@ -111,7 +111,7 @@ func CreateRequisition(c *fiber.Ctx) error {
 	}
 
 	// Get authenticated user
-	userID := c.Locals("user_id").(string)
+	userID := c.Locals("userID").(string)
 	if userID == "" {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 			"success": false,
@@ -408,7 +408,7 @@ func ApproveRequisition(c *fiber.Ctx) error {
 	}
 
 	// Get approver info
-	approverID := c.Locals("user_id").(string)
+	approverID := c.Locals("userID").(string)
 	var approver models.User
 	if err := config.DB.Where("id = ?", approverID).First(&approver).Error; err != nil {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
@@ -552,7 +552,7 @@ func RejectRequisition(c *fiber.Ctx) error {
 	}
 
 	// Get approver info
-	approverID := c.Locals("user_id").(string)
+	approverID := c.Locals("userID").(string)
 	var approver models.User
 	if err := config.DB.Where("id = ?", approverID).First(&approver).Error; err != nil {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{

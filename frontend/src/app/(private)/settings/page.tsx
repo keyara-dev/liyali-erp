@@ -1,6 +1,7 @@
 import { verifySession } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import { SettingsClient } from './_components/settings-client'
+import DashboardLayoutProvider from '../(main)/layout'
 
 export const metadata = {
   title: 'Settings',
@@ -14,5 +15,7 @@ export default async function SettingsPage() {
     redirect('/login')
   }
 
-  return <SettingsClient user={session.user as any} />
+  return  <DashboardLayoutProvider>
+            <SettingsClient user={session?.user as any} />
+          </DashboardLayoutProvider>
 }

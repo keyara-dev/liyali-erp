@@ -21,13 +21,13 @@ import { TokenRefreshProvider } from "@/components/auth/token-refresh-provider";
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 5 * 60 * 1000,        // 5 minutes - data considered fresh
-      gcTime: 10 * 60 * 1000,          // 10 minutes - kept in memory
-      retry: 3,                         // Retry failed queries 3 times
+      staleTime: 5 * 60 * 1000, // 5 minutes - data considered fresh
+      gcTime: 10 * 60 * 1000, // 10 minutes - kept in memory
+      retry: 3, // Retry failed queries 3 times
       retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000), // Exponential backoff
-      refetchOnWindowFocus: false,      // Don't auto-refetch on window focus
-      refetchOnReconnect: true,         // Refetch when network reconnects
-      refetchOnMount: true,             // Refetch on component mount if stale
+      refetchOnWindowFocus: false, // Don't auto-refetch on window focus
+      refetchOnReconnect: true, // Refetch when network reconnects
+      refetchOnMount: true, // Refetch on component mount if stale
     },
     mutations: {
       retry: (failureCount, error: any) => {
@@ -38,7 +38,7 @@ const queryClient = new QueryClient({
         return failureCount < 1; // Retry once for other errors
       },
       onError: (error) => {
-        console.error('Mutation error:', error);
+        console.error("Mutation error:", error);
       },
     },
   },
@@ -60,9 +60,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
       >
         <QueryClientProvider client={queryClient}>
           <OrganizationProvider>
-            <StorageInitializer>  <TokenRefreshProvider>
-        {children}
-      </TokenRefreshProvider></StorageInitializer>
+            <StorageInitializer>
+              <TokenRefreshProvider>{children}</TokenRefreshProvider>
+            </StorageInitializer>
             <Toaster
               position="top-right"
               expand

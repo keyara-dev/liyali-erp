@@ -11,6 +11,7 @@ export interface OrganizationContextType {
   isLoading: boolean;
   error: string | null;
   refreshOrganizations: () => void;
+  retryFetch: () => void;
 }
 
 const OrganizationContext = createContext<OrganizationContextType | undefined>(undefined);
@@ -18,11 +19,22 @@ const OrganizationContext = createContext<OrganizationContextType | undefined>(u
 export function OrganizationProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
   const [currentOrgId, setCurrentOrgId] = useState<string | null>(null);
+  const [isClient, setIsClient] = useState(false);
+
+  // Ensure we're on the client side
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   // Fetch user's organizations
   const { data: organizations = [], isLoading, error, refetch } = useQuery({
     queryKey: ['organizations'],
     queryFn: () => fetchUserOrganizations(),
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 10 * 60 * 1000, // 10 minutes (formerly cacheTime)
+    retry: 3,
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+    enabled: isClient, // Only run query on client side
   });
 
   // Get current organization
@@ -31,17 +43,21 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
   // Set initial current org - prioritize localStorage, then first available
   // Organization from signup is available in the organizations list
   useEffect(() => {
-    if (organizations.length > 0 && !currentOrgId) {
+    if (isClient && organizations.length > 0 && !currentOrgId) {
       // Try these in order:
       // 1. Organization from localStorage (from previous session or signup)
       // 2. Default to first available organization (new user's personal org)
       const saved = localStorage.getItem('current-organization-id');
-      const orgId = saved || organizations[0].id;
+      
+      // Validate that the saved org ID exists in the current organizations list
+      const validOrgId = saved && organizations.some(org => org.id === saved) 
+        ? saved 
+        : organizations[0].id;
 
-      setCurrentOrgId(orgId);
-      localStorage.setItem('current-organization-id', orgId);
+      setCurrentOrgId(validOrgId);
+      localStorage.setItem('current-organization-id', validOrgId);
     }
-  }, [organizations, currentOrgId]);
+  }, [isClient, organizations, currentOrgId]);
 
   // Switch workspace mutation
   const switchMutation = useMutation({
@@ -65,9 +81,10 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
         currentOrganization,
         userOrganizations: organizations,
         switchWorkspace,
-        isLoading,
+        isLoading: isLoading || !isClient,
         error: error?.message || null,
         refreshOrganizations: () => refetch(),
+        retryFetch: () => refetch(),
       }}
     >
       {children}

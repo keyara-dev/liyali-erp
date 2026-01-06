@@ -46,18 +46,19 @@ export function WorkflowsClient({ userId, userRole }: WorkflowsClientProps) {
   const { data: workflows = [], isLoading } = useWorkflows()
 
   // Delete workflow mutation
-  const deleteMutation = useDeleteWorkflow(() => {
-    setDeleteId(null)
-  })
+  const deleteMutation = useDeleteWorkflow()
 
   // Duplicate workflow mutation
-  const duplicateMutation = useDuplicateWorkflow(() => {
-    setDuplicateId(null)
-  })
+  const duplicateMutation = useDuplicateWorkflow()
 
   const handleDelete = async () => {
     if (!deleteId) return
-    deleteMutation.mutate(deleteId)
+    try {
+      await deleteMutation.mutateAsync(deleteId)
+      setDeleteId(null)
+    } catch (error) {
+      // Error is already handled by the mutation
+    }
   }
 
   const handleDuplicateClick = (workflowId: string) => {
@@ -66,7 +67,12 @@ export function WorkflowsClient({ userId, userRole }: WorkflowsClientProps) {
 
   const handleDuplicate = async () => {
     if (!duplicateId) return
-    duplicateMutation.mutate(duplicateId)
+    try {
+      await duplicateMutation.mutateAsync({ workflowId: duplicateId })
+      setDuplicateId(null)
+    } catch (error) {
+      // Error is already handled by the mutation
+    }
   }
 
   const getDocumentTypeLabel = (type: string) => {

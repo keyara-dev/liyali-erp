@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 
 type InputProps = React.InputHTMLAttributes<HTMLInputElement> & {
   label?: string;
+  name?: string;
   onError?: boolean;
   error?: string;
   errorText?: string;

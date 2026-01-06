@@ -129,37 +129,41 @@ func (s *DatabaseSeeder) seedUsers(ctx context.Context, tx *gorm.DB) (*SeedResul
 
 	users := []models.User{
 		{
-			ID:           "user-admin-001",
-			Email:        "admin@liyali.com",
-			Name:         "System Administrator",
-			Password:     "$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi", // password
-			Role:         "admin",
-			Active:       true,
-			IsSuperAdmin: true,
+			ID:                    "user-admin-001",
+			Email:                 "admin@liyali.com",
+			Name:                  "System Administrator",
+			Password:              "$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi", // password
+			Role:                  "admin",
+			Active:                true,
+			IsSuperAdmin:          true,
+			CurrentOrganizationID: stringPtr("org-demo-001"),
 		},
 		{
-			ID:       "user-approver-001",
-			Email:    "approver@liyali.com",
-			Name:     "John Approver",
-			Password: "$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi",
-			Role:     "approver",
-			Active:   true,
+			ID:                    "user-approver-001",
+			Email:                 "approver@liyali.com",
+			Name:                  "John Approver",
+			Password:              "$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi",
+			Role:                  "approver",
+			Active:                true,
+			CurrentOrganizationID: stringPtr("org-demo-001"),
 		},
 		{
-			ID:       "user-requester-001",
-			Email:    "requester@liyali.com",
-			Name:     "Jane Requester",
-			Password: "$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi",
-			Role:     "requester",
-			Active:   true,
+			ID:                    "user-requester-001",
+			Email:                 "requester@liyali.com",
+			Name:                  "Jane Requester",
+			Password:              "$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi",
+			Role:                  "requester",
+			Active:                true,
+			CurrentOrganizationID: stringPtr("org-demo-001"),
 		},
 		{
-			ID:       "user-finance-001",
-			Email:    "finance@liyali.com",
-			Name:     "Finance Officer",
-			Password: "$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi",
-			Role:     "finance",
-			Active:   true,
+			ID:                    "user-finance-001",
+			Email:                 "finance@liyali.com",
+			Name:                  "Finance Officer",
+			Password:              "$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi",
+			Role:                  "finance",
+			Active:                true,
+			CurrentOrganizationID: stringPtr("org-demo-001"),
 		},
 	}
 
@@ -167,7 +171,7 @@ func (s *DatabaseSeeder) seedUsers(ctx context.Context, tx *gorm.DB) (*SeedResul
 		// Use UPSERT (ON CONFLICT DO UPDATE)
 		err := tx.WithContext(ctx).Clauses(clause.OnConflict{
 			Columns:   []clause.Column{{Name: "email"}},
-			DoUpdates: clause.AssignmentColumns([]string{"name", "role", "active", "updated_at"}),
+			DoUpdates: clause.AssignmentColumns([]string{"name", "role", "active", "current_organization_id", "updated_at"}),
 		}).Create(&user).Error
 
 		if err != nil {
@@ -495,4 +499,9 @@ func (s *DatabaseSeeder) GetSeedingStats(ctx context.Context) (map[string]int64,
 	}
 
 	return stats, nil
+}
+
+// stringPtr returns a pointer to a string
+func stringPtr(s string) *string {
+	return &s
 }

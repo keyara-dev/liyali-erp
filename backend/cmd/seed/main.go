@@ -1,10 +1,10 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"os"
 
+	"github.com/joho/godotenv"
 	"github.com/liyali/liyali-gateway/config"
 	"github.com/liyali/liyali-gateway/models"
 	"github.com/liyali/liyali-gateway/utils"
@@ -20,9 +20,14 @@ type SeedUser struct {
 }
 
 func main() {
+	// Load environment variables
+	err := godotenv.Load(".env")
+	if err != nil && os.Getenv("APP_ENV") == "" {
+		log.Println("Note: .env file not found, using environment variables")
+	}
+
 	// Initialize database connection
-	config.InitConfig()
-	config.ConnectDatabase()
+	config.InitDatabase()
 
 	db := config.DB
 

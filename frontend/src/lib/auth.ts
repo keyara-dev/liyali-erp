@@ -1,3 +1,4 @@
+'use server'
 import "server-only";
 
 import { SignJWT, jwtVerify } from "jose";
@@ -166,6 +167,7 @@ export async function createAuthSession({
   mfa_required,
   organization_id,
   expiresIn,
+  user, // Add user parameter
 }: {
   access_token: string;
   refresh_token?: string;
@@ -175,6 +177,7 @@ export async function createAuthSession({
   mfa_required?: boolean;
   organization_id?: string;
   expiresIn?: number; // Add expiresIn parameter (in seconds)
+  user?: AuthUser; // Add user parameter
 }): Promise<void> {
   // Use backend's expiresIn value if provided, otherwise fall back to session config
   const expirationMs = expiresIn ? expiresIn * 1000 : SESSION_CONFIG.SESSION_TTL;
@@ -189,6 +192,7 @@ export async function createAuthSession({
     mfa_required,
     organization_id,
     expiresAt,
+    user: user as any, // Add the user object to the session
   };
 
   // Use dynamic expiration time for JWT encryption

@@ -104,11 +104,12 @@ type UserOrganizationRole struct {
 
 // Workflow represents a workflow definition for document approvals
 type Workflow struct {
-	ID             string         `gorm:"primaryKey" json:"id"`
+	ID             uuid.UUID      `gorm:"type:uuid;primaryKey;default:gen_random_uuid()" json:"id"`
 	OrganizationID string         `gorm:"index;not null" json:"organizationId"`
 	Organization   *Organization  `gorm:"foreignKey:OrganizationID" json:"organization,omitempty"`
 	Name           string         `gorm:"not null" json:"name"`
 	Description    string         `json:"description"`
+	DocumentType   string         `gorm:"index;not null" json:"documentType"` // Keep original field name for compatibility
 	EntityType     string         `gorm:"index;not null" json:"entityType"` // "requisition", "purchase_order", "grn", "payment_voucher"
 	Version        int            `gorm:"default:1" json:"version"`
 	IsActive       bool           `gorm:"default:true" json:"isActive"`
@@ -160,7 +161,7 @@ type WorkflowAssignment struct {
 	Organization      *Organization  `gorm:"foreignKey:OrganizationID" json:"organization,omitempty"`
 	EntityID          string         `gorm:"not null;index" json:"entityId"`
 	EntityType        string         `gorm:"not null" json:"entityType"`
-	WorkflowID        string         `gorm:"not null;index" json:"workflowId"`
+	WorkflowID        uuid.UUID      `gorm:"type:uuid;not null;index" json:"workflowId"`
 	Workflow          *Workflow      `gorm:"foreignKey:WorkflowID" json:"workflow,omitempty"`
 	WorkflowVersion   int            `gorm:"not null" json:"workflowVersion"`
 	CurrentStage      int            `gorm:"default:0" json:"currentStage"`
@@ -222,7 +223,7 @@ type WorkflowDefault struct {
 	OrganizationID         string    `gorm:"index;not null" json:"organizationId"`
 	Organization           *Organization `gorm:"foreignKey:OrganizationID" json:"organization,omitempty"`
 	EntityType             string    `gorm:"uniqueIndex:idx_org_entity_default" json:"entityType"`
-	DefaultWorkflowID      string    `gorm:"not null" json:"defaultWorkflowId"`
+	DefaultWorkflowID      uuid.UUID `gorm:"type:uuid;not null" json:"defaultWorkflowId"`
 	DefaultWorkflow        *Workflow `gorm:"foreignKey:DefaultWorkflowID" json:"defaultWorkflow,omitempty"`
 	DefaultWorkflowVersion int       `gorm:"not null" json:"defaultWorkflowVersion"`
 	SetBy                  string    `gorm:"not null" json:"setBy"`

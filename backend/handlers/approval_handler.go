@@ -68,14 +68,15 @@ type BulkOperationResponse struct {
 // GetApprovalTasks retrieves approval tasks with pagination and filtering
 func (h *ApprovalHandler) GetApprovalTasks(c *fiber.Ctx) error {
 	db := config.DB
-	organizationID := c.Locals("organization_id").(string)
-	userID := c.Locals("user_id").(string)
+	organizationID := c.Locals("organizationID").(string) // Fixed: was "organization_id"
+	userID := c.Locals("userID").(string)                 // Fixed: was "user_id"
 
 	// Extract query parameters
 	page, _ := strconv.Atoi(c.Query("page", "1"))
 	limit, _ := strconv.Atoi(c.Query("limit", "20"))
 	status := c.Query("status", "")
 	documentType := c.Query("document_type", "")
+	assignedToMe := c.Query("assigned_to_me", "false") == "true"
 
 	if page < 1 {
 		page = 1
@@ -87,7 +88,12 @@ func (h *ApprovalHandler) GetApprovalTasks(c *fiber.Ctx) error {
 	offset := (page - 1) * limit
 
 	// Build query
-	query := db.Where("organization_id = ? AND assigned_to = ?", organizationID, userID)
+	query := db.Where("organization_id = ?", organizationID)
+	
+	// Filter by assigned user if requested
+	if assignedToMe {
+		query = query.Where("assigned_to = ?", userID)
+	}
 
 	if status != "" {
 		query = query.Where("status = ?", status)
@@ -118,8 +124,8 @@ func (h *ApprovalHandler) GetApprovalTask(c *fiber.Ctx) error {
 	}
 
 	db := config.DB
-	organizationID := c.Locals("organization_id").(string)
-	userID := c.Locals("user_id").(string)
+	organizationID := c.Locals("organizationId").(string)
+	userID := c.Locals("userID").(string)
 
 	var task models.ApprovalTask
 	if err := db.Where("id = ? AND organization_id = ? AND assigned_to = ?", taskID, organizationID, userID).First(&task).Error; err != nil {
@@ -133,8 +139,8 @@ func (h *ApprovalHandler) GetApprovalTask(c *fiber.Ctx) error {
 // ApproveTask marks a task as approved and moves to next stage
 func (h *ApprovalHandler) ApproveTask(c *fiber.Ctx) error {
 	taskID := c.Params("id")
-	userID := c.Locals("user_id").(string)
-	organizationID := c.Locals("organization_id").(string)
+	userID := c.Locals("userID").(string)
+	organizationID := c.Locals("organizationId").(string)
 
 	var req ApproveTaskRequest
 	if err := c.BodyParser(&req); err != nil {
@@ -244,8 +250,8 @@ func (h *ApprovalHandler) ApproveTask(c *fiber.Ctx) error {
 // RejectTask marks a task as rejected and returns document to draft
 func (h *ApprovalHandler) RejectTask(c *fiber.Ctx) error {
 	taskID := c.Params("id")
-	userID := c.Locals("user_id").(string)
-	organizationID := c.Locals("organization_id").(string)
+	userID := c.Locals("userID").(string)
+	organizationID := c.Locals("organizationId").(string)
 
 	var req RejectTaskRequest
 	if err := c.BodyParser(&req); err != nil {
@@ -353,7 +359,7 @@ func (h *ApprovalHandler) RejectTask(c *fiber.Ctx) error {
 // ReassignTask reassigns task to different approver
 func (h *ApprovalHandler) ReassignTask(c *fiber.Ctx) error {
 	taskID := c.Params("id")
-	organizationID := c.Locals("organization_id").(string)
+	organizationID := c.Locals("organizationId").(string)
 
 	var req ReassignTaskRequest
 	if err := c.BodyParser(&req); err != nil {
@@ -413,7 +419,7 @@ func (h *ApprovalHandler) ReassignTask(c *fiber.Ctx) error {
 // GetApprovalHistory retrieves approval history for a document
 func (h *ApprovalHandler) GetApprovalHistory(c *fiber.Ctx) error {
 	documentID := c.Params("documentId")
-	organizationID := c.Locals("organization_id").(string)
+	organizationID := c.Locals("organizationId").(string)
 
 	if documentID == "" {
 		return c.Status(fiber.StatusBadRequest).JSON(types.ErrorResponse{
@@ -440,8 +446,8 @@ func (h *ApprovalHandler) GetApprovalHistory(c *fiber.Ctx) error {
 // BulkApprove approves multiple tasks at once
 // POST /api/v1/approvals/bulk/approve
 func (h *ApprovalHandler) BulkApprove(c *fiber.Ctx) error {
-	userID := c.Locals("user_id").(string)
-	organizationID := c.Locals("organization_id").(string)
+	userID := c.Locals("userID").(string)
+	organizationID := c.Locals("organizationId").(string)
 
 	var req BulkApproveRequest
 	if err := c.BodyParser(&req); err != nil {
@@ -528,8 +534,8 @@ func (h *ApprovalHandler) BulkApprove(c *fiber.Ctx) error {
 // BulkReject rejects multiple tasks at once
 // POST /api/v1/approvals/bulk/reject
 func (h *ApprovalHandler) BulkReject(c *fiber.Ctx) error {
-	userID := c.Locals("user_id").(string)
-	organizationID := c.Locals("organization_id").(string)
+	userID := c.Locals("userID").(string)
+	organizationID := c.Locals("organizationId").(string)
 
 	var req BulkRejectRequest
 	if err := c.BodyParser(&req); err != nil {
@@ -614,7 +620,7 @@ func (h *ApprovalHandler) BulkReject(c *fiber.Ctx) error {
 // BulkReassign reassigns multiple tasks at once
 // POST /api/v1/approvals/bulk/reassign
 func (h *ApprovalHandler) BulkReassign(c *fiber.Ctx) error {
-	organizationID := c.Locals("organization_id").(string)
+	organizationID := c.Locals("organizationId").(string)
 
 	var req BulkReassignRequest
 	if err := c.BodyParser(&req); err != nil {
@@ -670,7 +676,7 @@ func (h *ApprovalHandler) BulkReassign(c *fiber.Ctx) error {
 // GetOverdueTasks retrieves tasks that are past their due date
 // GET /api/v1/approvals/tasks/overdue
 func (h *ApprovalHandler) GetOverdueTasks(c *fiber.Ctx) error {
-	organizationID := c.Locals("organization_id").(string)
+	organizationID := c.Locals("organizationId").(string)
 
 	// Get query parameters
 	page, _ := strconv.Atoi(c.Query("page", "1"))

@@ -57,6 +57,7 @@ export async function loginAction(
       user_id: response.data.user.id,
       organization_id: response.data.organization?.id,
       expiresIn: response.data.expiresIn, // Use backend's expiration time
+      user: response.data.user, // Add the full user object
     });
 
     return successResponse(response.data.user, response.message);
@@ -352,6 +353,7 @@ export async function createNewAccount(data: {
       user_id: responseData.data.user.id,
       organization_id: responseData.data.organization?.id,
       expiresIn: responseData.data.expiresIn, // Use backend's expiration time
+      user: responseData.data.user, // Add the full user object
     });
 
     return successResponse(

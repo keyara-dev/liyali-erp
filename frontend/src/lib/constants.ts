@@ -161,7 +161,12 @@ export const QUERY_KEYS = {
   },
 
   // Approvals & Workflows
-  WORKFLOWS: "workflows",
+  WORKFLOWS: {
+    ALL: "workflows-all",
+    DETAIL: "workflow-detail",
+    DEFAULT: "workflow-default",
+    USAGE: "workflow-usage",
+  },
   WORKFLOW_INSTANCES: "workflow-instances",
   WORKFLOW_APPROVALS: "workflow-approvals",
   WORKFLOW_HISTORY: "workflow-history",

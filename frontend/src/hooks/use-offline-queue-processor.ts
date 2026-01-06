@@ -346,9 +346,7 @@ async function executeBudgetOperation(operation: any) {
       case 'CREATE':
         return await actions.createBudget(operation.data);
       case 'UPDATE':
-        return await actions.updateBudget(operation.data);
-      case 'DELETE':
-        return await actions.deleteBudget(operation.entityId);
+        return await actions.updateBudget(operation.entityId, operation.data);
       case 'APPROVE':
         return await actions.approveBudget(operation.data);
       case 'REJECT':
@@ -366,22 +364,7 @@ async function executeBudgetOperation(operation: any) {
  * Execute vendor operations against the API
  */
 async function executeVendorOperation(operation: any) {
-  // Use existing vendor actions if available
-  try {
-    const actions = await import('@/app/_actions/vendors');
-    
-    switch (operation.type) {
-      case 'CREATE':
-        return await actions.createVendor(operation.data);
-      case 'UPDATE':
-        return await actions.updateVendor(operation.data);
-      case 'DELETE':
-        return await actions.deactivateVendor(operation.entityId);
-      default:
-        throw new Error(`Unsupported vendor operation: ${operation.type}`);
-    }
-  } catch (importError) {
-    console.warn('Vendor actions not available, skipping operation');
-    throw new Error('Vendor operations not implemented yet');
-  }
+  // Vendor actions are not implemented yet, skip for now
+  console.warn('Vendor actions not available, skipping operation');
+  throw new Error('Vendor operations not implemented yet');
 }

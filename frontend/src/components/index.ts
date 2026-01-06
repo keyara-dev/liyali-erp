@@ -35,6 +35,9 @@ export { ReassignmentModal } from "./workflows/reassignment-modal";
 // Approval Components
 export { ApprovalConfirmationModal } from "./approval-confirmation-modal";
 
+// Modal Components
+export { CreateOrganizationModal } from "./modals/create-organization-modal";
+
 // Notification Components
 export { NotificationPreferences } from "./notifications/notification-preferences";
 export { NotificationActionModal } from "./notifications/notification-action-modal";

@@ -9,13 +9,16 @@ import (
 
 	"github.com/google/uuid"
 	sqlc "github.com/liyali/liyali-gateway/database/sqlc"
+	"github.com/liyali/liyali-gateway/models"
 	"github.com/liyali/liyali-gateway/repository"
+	"gorm.io/gorm"
 )
 
 // RBAC service with custom organization roles
 type RBACService struct {
 	roleRepo     repository.OrganizationRoleRepositoryInterface
 	auditService *AuditService
+	db           *gorm.DB
 }
 
 // Permission structure
@@ -122,6 +125,14 @@ var SystemPermissions = map[string]Permission{
 	"workflow.create": {ID: "workflow.create", Name: "Create Workflows", Description: "Create new workflow definitions", Resource: "workflow", Action: "create", Category: "Workflow"},
 	"workflow.edit":   {ID: "workflow.edit", Name: "Edit Workflows", Description: "Edit workflow definitions", Resource: "workflow", Action: "edit", Category: "Workflow"},
 	"workflow.delete": {ID: "workflow.delete", Name: "Delete Workflows", Description: "Delete workflow definitions", Resource: "workflow", Action: "delete", Category: "Workflow"},
+	"workflow.manage": {ID: "workflow.manage", Name: "Manage Workflows", Description: "Full workflow management", Resource: "workflow", Action: "manage", Category: "Workflow"},
+	
+	// Document Management
+	"document.view":   {ID: "document.view", Name: "View Documents", Description: "View documents", Resource: "document", Action: "view", Category: "Document Management"},
+	"document.create": {ID: "document.create", Name: "Create Documents", Description: "Create new documents", Resource: "document", Action: "create", Category: "Document Management"},
+	"document.edit":   {ID: "document.edit", Name: "Edit Documents", Description: "Edit documents", Resource: "document", Action: "edit", Category: "Document Management"},
+	"document.delete": {ID: "document.delete", Name: "Delete Documents", Description: "Delete documents", Resource: "document", Action: "delete", Category: "Document Management"},
+	"document.submit": {ID: "document.submit", Name: "Submit Documents", Description: "Submit documents for approval", Resource: "document", Action: "submit", Category: "Document Management"},
 	
 	// Analytics & Reporting
 	"analytics.view":     {ID: "analytics.view", Name: "View Analytics", Description: "View analytics and reports", Resource: "analytics", Action: "view", Category: "Analytics"},
@@ -151,7 +162,8 @@ var SystemRoles = map[string][]string{
 		"vendor.view", "vendor.create", "vendor.edit", "vendor.delete",
 		"category.view", "category.create", "category.edit", "category.delete",
 		"approval.view", "approval.approve", "approval.reject", "approval.reassign", "approval.comment",
-		"workflow.view", "workflow.create", "workflow.edit", "workflow.delete",
+		"workflow.view", "workflow.create", "workflow.edit", "workflow.delete", "workflow.manage",
+		"document.view", "document.create", "document.edit", "document.delete", "document.submit",
 		"analytics.view", "analytics.export", "analytics.advanced",
 		"audit.view", "audit.export",
 		"organization.view", "organization.edit", "organization.manage",
@@ -167,6 +179,7 @@ var SystemRoles = map[string][]string{
 		"category.view",
 		"approval.view", "approval.approve", "approval.reject", "approval.reassign", "approval.comment",
 		"workflow.view",
+		"document.view", "document.create", "document.edit", "document.submit",
 		"analytics.view", "analytics.export",
 		"audit.view",
 		"organization.view",
@@ -195,6 +208,7 @@ var SystemRoles = map[string][]string{
 		"vendor.view",
 		"category.view",
 		"approval.view", "approval.comment",
+		"document.view", "document.create", "document.edit", "document.submit",
 	},
 	"viewer": {
 		"requisition.view",
@@ -205,6 +219,7 @@ var SystemRoles = map[string][]string{
 		"vendor.view",
 		"category.view",
 		"approval.view",
+		"document.view",
 		"analytics.view",
 	},
 }
@@ -221,10 +236,12 @@ var (
 func NewRBACService(
 	roleRepo repository.OrganizationRoleRepositoryInterface,
 	auditService *AuditService,
+	db *gorm.DB,
 ) *RBACService {
 	return &RBACService{
 		roleRepo:     roleRepo,
 		auditService: auditService,
+		db:           db,
 	}
 }
 
@@ -415,13 +432,40 @@ func (s *RBACService) GetUserRoles(ctx context.Context, userID, organizationID s
 
 // GetUserPermissions gets all permissions for a user in an organization
 func (s *RBACService) GetUserPermissions(ctx context.Context, userID, organizationID string) ([]string, error) {
+	// Get custom organization roles from database
 	roles, err := s.roleRepo.GetUserRoles(ctx, userID, organizationID)
 	if err != nil {
 		return nil, err
 	}
 
 	permissionSet := make(map[string]bool)
+	deniedPermissions := make(map[string]bool)
 	
+	// DEFAULT PERMISSIONS: Grant view permissions to all resources by default
+	// This follows the principle of "open by default, restrict as needed"
+	defaultViewPermissions := []string{
+		"user.view",
+		"requisition.view", 
+		"budget.view",
+		"purchase_order.view",
+		"payment_voucher.view", 
+		"grn.view",
+		"vendor.view",
+		"category.view",
+		"approval.view",
+		"workflow.view",
+		"document.view",
+		"analytics.view",
+		"audit.view",
+		"organization.view",
+	}
+	
+	// Grant default view permissions to all users
+	for _, permission := range defaultViewPermissions {
+		permissionSet[permission] = true
+	}
+	
+	// Add permissions from custom organization roles (can override defaults)
 	for _, role := range roles {
 		var permissions []string
 		if err := json.Unmarshal(role.Permissions, &permissions); err != nil {
@@ -430,8 +474,38 @@ func (s *RBACService) GetUserPermissions(ctx context.Context, userID, organizati
 		}
 		
 		for _, permission := range permissions {
-			permissionSet[permission] = true
+			// Support for denied permissions (prefixed with "!")
+			if len(permission) > 0 && permission[0] == '!' {
+				// This is a denied permission
+				deniedPermission := permission[1:] // Remove the "!" prefix
+				deniedPermissions[deniedPermission] = true
+				delete(permissionSet, deniedPermission) // Remove from granted permissions
+			} else {
+				// This is a granted permission
+				permissionSet[permission] = true
+			}
 		}
+	}
+
+	// IMPORTANT: Also check system roles based on user's organization membership role
+	// Get user's role in the organization from organization_members table
+	var member models.OrganizationMember
+	err = s.db.Where("user_id = ? AND organization_id = ? AND active = ?", userID, organizationID, true).First(&member).Error
+	if err == nil {
+		// Check if user has a system role (admin, manager, approver, etc.)
+		if systemPermissions, exists := SystemRoles[member.Role]; exists {
+			for _, permission := range systemPermissions {
+				// System role permissions override denials (admins can't be denied)
+				if member.Role == "admin" || !deniedPermissions[permission] {
+					permissionSet[permission] = true
+				}
+			}
+		}
+	}
+
+	// Remove any permissions that are explicitly denied
+	for deniedPermission := range deniedPermissions {
+		delete(permissionSet, deniedPermission)
 	}
 
 	// Convert set to slice
@@ -556,4 +630,145 @@ func (s *RBACService) getSystemRoleDescription(roleName string) string {
 		return desc
 	}
 	return fmt.Sprintf("System role: %s", roleName)
+}
+
+// RevokeUserPermission revokes a specific permission from a user by creating a denial role
+func (s *RBACService) RevokeUserPermission(ctx context.Context, userID, organizationID, resource, action, revokedBy string) error {
+	permissionID := fmt.Sprintf("!%s.%s", resource, action) // Prefix with "!" to indicate denial
+	
+	// Create or update a "denied permissions" role for this user
+	roleName := fmt.Sprintf("denied-permissions-%s", userID)
+	
+	// Check if the role already exists
+	existingRole, err := s.roleRepo.GetByName(ctx, organizationID, roleName)
+	if err != nil {
+		// Role doesn't exist, create it
+		permissions := []string{permissionID}
+		permissionsJSON, _ := json.Marshal(permissions)
+		
+		_, err = s.roleRepo.Create(ctx, organizationID, roleName, "Auto-generated role for denied permissions", false, permissionsJSON, revokedBy)
+		if err != nil {
+			return fmt.Errorf("failed to create denied permissions role: %w", err)
+		}
+		
+		// Assign the role to the user
+		roleID := uuid.New() // This would need to be the actual role ID from the create response
+		_, err = s.roleRepo.AssignUserRole(ctx, userID, organizationID, roleID, revokedBy)
+		if err != nil {
+			return fmt.Errorf("failed to assign denied permissions role: %w", err)
+		}
+	} else {
+		// Role exists, add the denied permission to it
+		var existingPermissions []string
+		if err := json.Unmarshal(existingRole.Permissions, &existingPermissions); err != nil {
+			return fmt.Errorf("failed to unmarshal existing permissions: %w", err)
+		}
+		
+		// Add the new denied permission if not already present
+		found := false
+		for _, perm := range existingPermissions {
+			if perm == permissionID {
+				found = true
+				break
+			}
+		}
+		
+		if !found {
+			existingPermissions = append(existingPermissions, permissionID)
+			permissionsJSON, _ := json.Marshal(existingPermissions)
+			
+			// Convert pgtype.UUID to uuid.UUID and handle nullable string
+			roleUUID := uuid.UUID(existingRole.ID.Bytes)
+			description := ""
+			if existingRole.Description != nil {
+				description = *existingRole.Description
+			}
+			
+			_, err = s.roleRepo.Update(ctx, roleUUID, existingRole.Name, description, permissionsJSON)
+			if err != nil {
+				return fmt.Errorf("failed to update denied permissions role: %w", err)
+			}
+		}
+	}
+	
+	// Log the permission revocation
+	if s.auditService != nil {
+		s.auditService.LogEvent(ctx, revokedBy, organizationID, "permission_revoked", "user", userID, 
+			fmt.Sprintf("Revoked permission %s.%s from user %s", resource, action, userID), "", "")
+	}
+	
+	return nil
+}
+
+// GrantUserPermission grants a specific permission to a user by removing it from denials and/or adding it explicitly
+func (s *RBACService) GrantUserPermission(ctx context.Context, userID, organizationID, resource, action, grantedBy string) error {
+	permissionID := fmt.Sprintf("%s.%s", resource, action)
+	deniedPermissionID := fmt.Sprintf("!%s", permissionID)
+	
+	// First, remove any denial of this permission
+	roleName := fmt.Sprintf("denied-permissions-%s", userID)
+	existingRole, err := s.roleRepo.GetByName(ctx, organizationID, roleName)
+	if err == nil {
+		// Role exists, remove the denied permission from it
+		var existingPermissions []string
+		if err := json.Unmarshal(existingRole.Permissions, &existingPermissions); err == nil {
+			// Remove the denied permission
+			updatedPermissions := make([]string, 0)
+			for _, perm := range existingPermissions {
+				if perm != deniedPermissionID {
+					updatedPermissions = append(updatedPermissions, perm)
+				}
+			}
+			
+			if len(updatedPermissions) != len(existingPermissions) {
+				// Permission was removed, update the role
+				permissionsJSON, _ := json.Marshal(updatedPermissions)
+				
+				// Convert pgtype.UUID to uuid.UUID and handle nullable string
+				roleUUID := uuid.UUID(existingRole.ID.Bytes)
+				description := ""
+				if existingRole.Description != nil {
+					description = *existingRole.Description
+				}
+				
+				_, err = s.roleRepo.Update(ctx, roleUUID, existingRole.Name, description, permissionsJSON)
+				if err != nil {
+					return fmt.Errorf("failed to update denied permissions role: %w", err)
+				}
+			}
+		}
+	}
+	
+	// Log the permission grant
+	if s.auditService != nil {
+		s.auditService.LogEvent(ctx, grantedBy, organizationID, "permission_granted", "user", userID, 
+			fmt.Sprintf("Granted permission %s.%s to user %s", resource, action, userID), "", "")
+	}
+	
+	return nil
+}
+
+// GetUserDeniedPermissions returns a list of permissions that have been explicitly denied for a user
+func (s *RBACService) GetUserDeniedPermissions(ctx context.Context, userID, organizationID string) ([]string, error) {
+	roleName := fmt.Sprintf("denied-permissions-%s", userID)
+	role, err := s.roleRepo.GetByName(ctx, organizationID, roleName)
+	if err != nil {
+		// No denied permissions role exists
+		return []string{}, nil
+	}
+	
+	var permissions []string
+	if err := json.Unmarshal(role.Permissions, &permissions); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal denied permissions: %w", err)
+	}
+	
+	// Remove the "!" prefix from denied permissions
+	deniedPermissions := make([]string, 0)
+	for _, perm := range permissions {
+		if len(perm) > 0 && perm[0] == '!' {
+			deniedPermissions = append(deniedPermissions, perm[1:])
+		}
+	}
+	
+	return deniedPermissions, nil
 }

@@ -1,13 +1,12 @@
 import { PropsWithChildren } from "react";
 import { IdleTimerContainer } from "@/components/base/screen-lock";
 import { SidebarProvider } from "@/components/ui/sidebar";
-import DashboardLayoutGrid from "@/components/layout/dashboard-layout";
 import { verifySession } from "@/lib/auth";
+import { DashboardLayout } from "@/components/layout/dashboard-layout";
 
-export default async function MainNavProvider({ children }: PropsWithChildren) {
+export default async function DashboardLayoutProvider({ children }: PropsWithChildren) {
   const { session, isAuthenticated } = await verifySession(); // Replace with actual session retrieval logic
-
-  console.log({ session });
+ 
 
   return (
     <>
@@ -21,7 +20,7 @@ export default async function MainNavProvider({ children }: PropsWithChildren) {
           } as React.CSSProperties
         }
       >
-        <DashboardLayoutGrid>{children}</DashboardLayoutGrid>
+        <DashboardLayout>{children}</DashboardLayout>
       </SidebarProvider>
     </>
   );

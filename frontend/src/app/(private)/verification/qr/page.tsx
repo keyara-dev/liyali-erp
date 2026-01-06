@@ -1,6 +1,7 @@
 import { getCurrentUser } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import { QRVerificationClient } from './_components/qr-verification-client'
+import DashboardLayoutProvider from '../../(main)/layout'
 
 export const metadata = {
   title: 'QR Code Verification',
@@ -15,6 +16,8 @@ export default async function QRVerificationPage() {
   }
 
   return (
-    <QRVerificationClient userId={user.id} userRole={user.role} />
+     <DashboardLayoutProvider>
+                <QRVerificationClient userId={user.id} userRole={user.role} />
+              </DashboardLayoutProvider>
   )
 }

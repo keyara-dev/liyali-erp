@@ -303,7 +303,7 @@ func ApproveGRN(c *fiber.Ctx) error {
 		})
 	}
 
-	approverID := c.Locals("user_id").(string)
+	approverID := c.Locals("userID").(string)
 	var approver models.User
 	if err := config.DB.Where("id = ?", approverID).First(&approver).Error; err != nil {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
@@ -440,7 +440,7 @@ func RejectGRN(c *fiber.Ctx) error {
 		})
 	}
 
-	approverID := c.Locals("user_id").(string)
+	approverID := c.Locals("userID").(string)
 	var approver models.User
 	if err := config.DB.Where("id = ?", approverID).First(&approver).Error; err != nil {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
