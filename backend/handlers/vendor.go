@@ -7,6 +7,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 	"github.com/liyali/liyali-gateway/config"
+	"github.com/liyali/liyali-gateway/logging"
 	"github.com/liyali/liyali-gateway/models"
 	"github.com/liyali/liyali-gateway/types"
 	"github.com/liyali/liyali-gateway/utils"
@@ -14,6 +15,9 @@ import (
 
 // GetVendors retrieves all vendors with pagination and filtering
 func GetVendors(c *fiber.Ctx) error {
+	logger := logging.FromContext(c)
+	logger.Info("get_vendors_request")
+
 	db := config.DB
 
 	page := c.QueryInt("page", 1)
@@ -27,6 +31,15 @@ func GetVendors(c *fiber.Ctx) error {
 
 	active := c.Query("active")
 	country := c.Query("country")
+
+	// Add query parameters to context
+	logging.AddFieldsToRequest(c, map[string]interface{}{
+		"operation": "get_vendors",
+		"page":      page,
+		"limit":     limit,
+		"active":    active,
+		"country":   country,
+	})
 
 	query := db
 	if active == "true" {

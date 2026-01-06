@@ -7,6 +7,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 	"github.com/liyali/liyali-gateway/config"
+	"github.com/liyali/liyali-gateway/logging"
 	"github.com/liyali/liyali-gateway/models"
 	"github.com/liyali/liyali-gateway/services"
 	"github.com/liyali/liyali-gateway/types"
@@ -16,6 +17,9 @@ import (
 
 // GetRequisitions retrieves all requisitions with pagination and filtering
 func GetRequisitions(c *fiber.Ctx) error {
+	logger := logging.FromContext(c)
+	logger.Info("get_requisitions_request")
+
 	db := config.DB
 
 	// Extract pagination parameters
@@ -26,6 +30,16 @@ func GetRequisitions(c *fiber.Ctx) error {
 	status := c.Query("status")
 	department := c.Query("department")
 	priority := c.Query("priority")
+
+	// Add query parameters to context
+	logging.AddFieldsToRequest(c, map[string]interface{}{
+		"operation":  "get_requisitions",
+		"page":       page,
+		"page_size":  pageSize,
+		"status":     status,
+		"department": department,
+		"priority":   priority,
+	})
 
 	// Build query
 	query := db

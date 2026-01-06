@@ -3,6 +3,7 @@ package handlers
 import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/liyali/liyali-gateway/config"
+	"github.com/liyali/liyali-gateway/logging"
 	"github.com/liyali/liyali-gateway/middleware"
 	"github.com/liyali/liyali-gateway/models"
 	"github.com/liyali/liyali-gateway/services"
@@ -12,21 +13,37 @@ import (
 // GetUserOrganizations returns all organizations a user belongs to
 // GET /api/v1/organizations
 func GetUserOrganizations(c *fiber.Ctx) error {
+	logger := logging.FromContext(c)
+	logger.Info("get_user_organizations_request")
+
 	userID, ok := c.Locals("userID").(string)
 	if !ok {
+		logging.LogWarn(c, "user_context_missing")
 		return utils.SendUnauthorizedError(c, "User context required")
 	}
+
+	logging.AddFieldsToRequest(c, map[string]interface{}{
+		"operation": "get_user_organizations",
+		"user_id":   userID,
+	})
 
 	orgService := services.NewOrganizationService(config.DB)
 	orgs, err := orgService.GetUserOrganizations(userID)
 
 	if err != nil {
+		logging.LogError(c, err, "failed_to_fetch_organizations", map[string]interface{}{
+			"error_type": "service_error",
+		})
 		return utils.SendInternalError(c, "Failed to fetch organizations", err)
 	}
 
 	if len(orgs) == 0 {
 		orgs = []models.Organization{}
 	}
+
+	logger.Info("user_organizations_retrieved_successfully", map[string]interface{}{
+		"organizations_count": len(orgs),
+	})
 
 	return utils.SendSimpleSuccess(c, orgs, "Organizations retrieved successfully")
 }

@@ -2,10 +2,10 @@ package services
 
 import (
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/liyali/liyali-gateway/logging"
 	"github.com/liyali/liyali-gateway/models"
 	"gorm.io/gorm"
 )
@@ -45,7 +45,10 @@ func (ns *NotificationService) HandleWorkflowEvent(event NotificationEvent) erro
 	case "status_change":
 		return ns.notifyStatusChange(event)
 	default:
-		log.Printf("Unknown notification event type: %s", event.Type)
+		logging.WithFields(map[string]interface{}{
+			"event_type": event.Type,
+			"operation":  "handle_notification_event",
+		}).Warn("unknown_notification_event_type")
 		return nil
 	}
 }
@@ -80,12 +83,22 @@ func (ns *NotificationService) notifyApprovalRequired(event NotificationEvent) e
 		}
 
 		if err := ns.db.Create(&notification).Error; err != nil {
-			log.Printf("Error creating approval notification: %v", err)
+			logging.WithFields(map[string]interface{}{
+				"operation":     "create_approval_notification",
+				"recipient_id":  task.AssignedTo,
+				"document_id":   event.DocumentID,
+				"document_type": event.DocumentType,
+			}).WithError(err).Error("failed_to_create_approval_notification")
 			return err
 		}
 	}
 
-	log.Printf("Created approval notifications for %d approvers", len(tasks))
+	logging.WithFields(map[string]interface{}{
+		"operation":        "create_approval_notifications",
+		"document_id":      event.DocumentID,
+		"document_type":    event.DocumentType,
+		"approvers_count":  len(tasks),
+	}).Info("created_approval_notifications_for_approvers")
 	return nil
 }
 
@@ -120,7 +133,10 @@ func (ns *NotificationService) notifyDocumentApproved(event NotificationEvent) e
 			}
 		}
 	default:
-		log.Printf("Notification for %s approval not configured", event.DocumentType)
+		logging.WithFields(map[string]interface{}{
+			"operation":     "notify_approval_required",
+			"document_type": event.DocumentType,
+		}).Warn("notification_for_approval_not_configured")
 		return nil
 	}
 
@@ -145,11 +161,21 @@ func (ns *NotificationService) notifyDocumentApproved(event NotificationEvent) e
 	}
 
 	if err := ns.db.Create(&notification).Error; err != nil {
-		log.Printf("Error creating approval notification: %v", err)
+		logging.WithFields(map[string]interface{}{
+			"operation":     "create_approval_notification",
+			"recipient_id":  recipientID,
+			"document_id":   event.DocumentID,
+			"document_type": event.DocumentType,
+		}).WithError(err).Error("failed_to_create_approval_notification")
 		return err
 	}
 
-	log.Printf("Created approval notification for recipient %s", recipientID)
+	logging.WithFields(map[string]interface{}{
+		"operation":     "create_approval_notification",
+		"recipient_id":  recipientID,
+		"document_id":   event.DocumentID,
+		"document_type": event.DocumentType,
+	}).Info("created_approval_notification_for_recipient")
 	return nil
 }
 
@@ -172,7 +198,10 @@ func (ns *NotificationService) notifyDocumentRejected(event NotificationEvent) e
 		}
 		recipientID = budget.OwnerID
 	default:
-		log.Printf("Notification for %s rejection not configured", event.DocumentType)
+		logging.WithFields(map[string]interface{}{
+			"operation":     "notify_document_rejected",
+			"document_type": event.DocumentType,
+		}).Warn("notification_for_rejection_not_configured")
 		return nil
 	}
 
@@ -197,11 +226,21 @@ func (ns *NotificationService) notifyDocumentRejected(event NotificationEvent) e
 	}
 
 	if err := ns.db.Create(&notification).Error; err != nil {
-		log.Printf("Error creating rejection notification: %v", err)
+		logging.WithFields(map[string]interface{}{
+			"operation":     "create_rejection_notification",
+			"recipient_id":  recipientID,
+			"document_id":   event.DocumentID,
+			"document_type": event.DocumentType,
+		}).WithError(err).Error("failed_to_create_rejection_notification")
 		return err
 	}
 
-	log.Printf("Created rejection notification for recipient %s", recipientID)
+	logging.WithFields(map[string]interface{}{
+		"operation":     "create_rejection_notification",
+		"recipient_id":  recipientID,
+		"document_id":   event.DocumentID,
+		"document_type": event.DocumentType,
+	}).Info("created_rejection_notification_for_recipient")
 	return nil
 }
 
@@ -225,11 +264,19 @@ func (ns *NotificationService) notifyDocumentAssignment(event NotificationEvent)
 	}
 
 	if err := ns.db.Create(&notification).Error; err != nil {
-		log.Printf("Error creating assignment notification: %v", err)
+		logging.WithFields(map[string]interface{}{
+			"operation":   "create_assignment_notification",
+			"actor_id":    event.ActorID,
+			"document_id": event.DocumentID,
+		}).WithError(err).Error("failed_to_create_assignment_notification")
 		return err
 	}
 
-	log.Printf("Created assignment notification for user %s", event.ActorID)
+	logging.WithFields(map[string]interface{}{
+		"operation":   "create_assignment_notification",
+		"actor_id":    event.ActorID,
+		"document_id": event.DocumentID,
+	}).Info("created_assignment_notification_for_user")
 	return nil
 }
 
@@ -239,7 +286,9 @@ func (ns *NotificationService) notifyStatusChange(event NotificationEvent) error
 	var admins []models.User
 	if err := ns.db.Where("role IN ? AND active = ?", []string{"finance", "admin"}, true).
 		Find(&admins).Error; err != nil {
-		log.Printf("Error fetching admin users: %v", err)
+		logging.WithFields(map[string]interface{}{
+			"operation": "fetch_admin_users",
+		}).WithError(err).Error("failed_to_fetch_admin_users")
 		return nil
 	}
 
@@ -262,11 +311,19 @@ func (ns *NotificationService) notifyStatusChange(event NotificationEvent) error
 		}
 
 		if err := ns.db.Create(&notification).Error; err != nil {
-			log.Printf("Error creating status change notification: %v", err)
+			logging.WithFields(map[string]interface{}{
+				"operation":   "create_status_change_notification",
+				"admin_id":    admin.ID,
+				"document_id": event.DocumentID,
+			}).WithError(err).Error("failed_to_create_status_change_notification")
 		}
 	}
 
-	log.Printf("Created status change notifications for %d admins", len(admins))
+	logging.WithFields(map[string]interface{}{
+		"operation":    "create_status_change_notifications",
+		"admins_count": len(admins),
+		"document_id":  event.DocumentID,
+	}).Info("created_status_change_notifications_for_admins")
 	return nil
 }
 
@@ -310,7 +367,10 @@ func (ns *NotificationService) MarkAsRead(notificationID string) error {
 		return fmt.Errorf("failed to mark notification as read: %v", err)
 	}
 
-	log.Printf("Marked notification %s as read", notificationID)
+	logging.WithFields(map[string]interface{}{
+		"operation":       "mark_notification_as_read",
+		"notification_id": notificationID,
+	}).Info("marked_notification_as_read")
 	return nil
 }
 
@@ -327,7 +387,10 @@ func (ns *NotificationService) MarkMultipleAsRead(notificationIDs []string) erro
 		return fmt.Errorf("failed to mark notifications as read: %v", err)
 	}
 
-	log.Printf("Marked %d notifications as read", len(notificationIDs))
+	logging.WithFields(map[string]interface{}{
+		"operation":          "mark_multiple_notifications_as_read",
+		"notifications_count": len(notificationIDs),
+	}).Info("marked_multiple_notifications_as_read")
 	return nil
 }
 
@@ -337,7 +400,10 @@ func (ns *NotificationService) DeleteNotification(notificationID string) error {
 		return fmt.Errorf("failed to delete notification: %v", err)
 	}
 
-	log.Printf("Deleted notification %s", notificationID)
+	logging.WithFields(map[string]interface{}{
+		"operation":       "delete_notification",
+		"notification_id": notificationID,
+	}).Info("deleted_notification")
 	return nil
 }
 
@@ -393,19 +459,26 @@ func (ns *NotificationService) ProcessPendingNotifications() error {
 	for _, notif := range notifications {
 		notifIDs = append(notifIDs, notif.ID)
 		// Here you would send the notification via email/SMS
-		log.Printf(
-			"[NOTIFICATION] To: %s | Subject: %s | Body: %s",
-			notif.RecipientID, notif.Subject, notif.Body,
-		)
+		logging.WithFields(map[string]interface{}{
+			"operation":    "send_notification",
+			"recipient_id": notif.RecipientID,
+			"subject":      notif.Subject,
+		}).Info("notification_sent")
 	}
 
 	// Mark all processed notifications as sent
 	if len(notifIDs) > 0 {
 		if err := ns.MarkMultipleAsRead(notifIDs); err != nil {
-			log.Printf("Error marking notifications as sent: %v", err)
+			logging.WithFields(map[string]interface{}{
+				"operation":          "mark_notifications_as_sent",
+				"notifications_count": len(notifIDs),
+			}).WithError(err).Error("failed_to_mark_notifications_as_sent")
 		}
 	}
 
-	log.Printf("Processed %d pending notifications", len(notifIDs))
+	logging.WithFields(map[string]interface{}{
+		"operation":          "process_pending_notifications",
+		"notifications_count": len(notifIDs),
+	}).Info("processed_pending_notifications")
 	return nil
 }

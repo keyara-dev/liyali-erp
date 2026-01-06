@@ -7,6 +7,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 	"github.com/liyali/liyali-gateway/config"
+	"github.com/liyali/liyali-gateway/logging"
 	"github.com/liyali/liyali-gateway/models"
 	"github.com/liyali/liyali-gateway/types"
 	"github.com/liyali/liyali-gateway/utils"
@@ -15,6 +16,9 @@ import (
 
 // GetPaymentVouchers retrieves all payment vouchers with pagination and filtering
 func GetPaymentVouchers(c *fiber.Ctx) error {
+	logger := logging.FromContext(c)
+	logger.Info("get_payment_vouchers_request")
+
 	db := config.DB
 
 	page := c.QueryInt("page", 1)
@@ -29,6 +33,15 @@ func GetPaymentVouchers(c *fiber.Ctx) error {
 	status := c.Query("status")
 	vendorID := c.Query("vendorId")
 
+	// Add query parameters to context
+	logging.AddFieldsToRequest(c, map[string]interface{}{
+		"operation":  "get_payment_vouchers",
+		"page":       page,
+		"limit":      limit,
+		"status":     status,
+		"vendor_id":  vendorID,
+	})
+
 	query := db
 	if status != "" {
 		query = query.Where("status = ?", status)
@@ -39,6 +52,9 @@ func GetPaymentVouchers(c *fiber.Ctx) error {
 
 	var total int64
 	if err := query.Model(&models.PaymentVoucher{}).Count(&total).Error; err != nil {
+		logging.LogError(c, err, "failed_to_count_payment_vouchers", map[string]interface{}{
+			"error_type": "database_error",
+		})
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"success": false,
 			"message": "Failed to count payment vouchers",
