@@ -5,10 +5,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Users, Building2, Shield } from 'lucide-react'
 import { SelectField } from '@/components/ui/select-field'
 import { Card } from '@/components/ui/card'
-import DepartmentsMockConfig from './departments-mock-config'
+import { useQuery } from '@tanstack/react-query'
+import DepartmentsConfig from './departments-config'
 import UserRolesConfig from './user-roles-config'
-import { getAllDepartments } from '@/lib/mock-departments'
-import { deleteUser } from '@/app/_actions/user-actions'
+import { getActiveDepartments } from '@/app/_actions/departments'
 
 interface UserManagementClientProps {
   userId: string
@@ -24,11 +24,18 @@ export function UserManagementClient({
   const [activeTab, setActiveTab] = useState<'users' | 'departments' | 'roles'>('users')
   const [selectedDepartmentId, setSelectedDepartmentId] = useState<string>('')
 
-  // Get all departments for the selector
+  // Fetch departments from backend
+  const { data: departmentsResponse, isLoading: departmentsLoading } = useQuery({
+    queryKey: ['active-departments'],
+    queryFn: () => getActiveDepartments(),
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  })
+
+  // Get departments from response
   const departments = useMemo(() => {
-    const allDepts = getAllDepartments()
-    return allDepts.filter(d => d.is_active) // Only show active departments
-  }, [])
+    if (!departmentsResponse?.success || !departmentsResponse?.data) return []
+    return departmentsResponse.data
+  }, [departmentsResponse])
 
   return (
     <div className="space-y-6">
@@ -70,7 +77,7 @@ export function UserManagementClient({
 
         {/* Departments Tab */}
         <TabsContent value="departments" className="space-y-4">
-          <DepartmentsMockConfig />
+          <DepartmentsConfig />
         </TabsContent>
 
         {/* Manage Roles Tab */}
@@ -98,7 +105,11 @@ export function UserManagementClient({
                   wrapper: "w-full",
                   input: "!h-10"
                 }}
+                disabled={departmentsLoading}
               />
+              {departmentsLoading && (
+                <p className="text-sm text-muted-foreground">Loading departments...</p>
+              )}
             </div>
           </Card>
           {selectedDepartmentId && (

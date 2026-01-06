@@ -37,8 +37,8 @@ export default async function UserManagementPage({ searchParams }: PageProps) {
   }
 
   // Verify admin role
-  if (session.user.role !== 'ADMIN' && session.user.role !== 'SUPERADMIN') {
-    redirect('/unauthorized')
+  if (session.user.role !== 'ADMIN' ) {
+    redirect('/access-denied')
   }
 
   const {

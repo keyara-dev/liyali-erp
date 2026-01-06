@@ -56,7 +56,7 @@ import {
   bulkUpdateRolePermissions,
   getRolePermissions,
 } from "@/app/_actions/roles-permissions";
-import { getDepartmentModules } from "@/app/_actions/config-actions";
+import { getDepartmentModules } from "@/app/_actions/departments";
 import { createRole, updateRole } from "@/app/_actions/roles-permissions";
 import { ConfirmationModal } from "@/components/confirmation-modal";
 

@@ -52,6 +52,51 @@ func SetupRoutes(app *fiber.App, handlerRegistry *handlers.HandlerRegistry, rbac
 	orgMgmt.Get("/settings", handlers.GetOrganizationSettings)
 	orgMgmt.Put("/settings", handlers.UpdateOrganizationSettings)
 
+	// Organization departments (Phase 3.5) - NEW
+	orgDepts := tenant.Group("/organization/departments")
+	orgDepts.Get("/",
+		middleware.RequirePermission(rbacService, "organization", "view"),
+		handlers.GetOrganizationDepartments)
+	orgDepts.Get("/:id",
+		middleware.RequirePermission(rbacService, "organization", "view"),
+		handlers.GetOrganizationDepartment)
+	orgDepts.Post("/",
+		middleware.RequirePermission(rbacService, "organization", "manage"),
+		handlers.CreateOrganizationDepartment)
+	orgDepts.Put("/:id",
+		middleware.RequirePermission(rbacService, "organization", "manage"),
+		handlers.UpdateOrganizationDepartment)
+	orgDepts.Delete("/:id",
+		middleware.RequirePermission(rbacService, "organization", "manage"),
+		handlers.DeleteOrganizationDepartment)
+	orgDepts.Post("/:id/restore",
+		middleware.RequirePermission(rbacService, "organization", "manage"),
+		handlers.RestoreOrganizationDepartment)
+	orgDepts.Get("/:id/modules",
+		middleware.RequirePermission(rbacService, "organization", "view"),
+		handlers.GetDepartmentModules)
+	orgDepts.Post("/:id/modules",
+		middleware.RequirePermission(rbacService, "organization", "manage"),
+		handlers.AssignModuleToDepartment)
+	orgDepts.Delete("/:departmentId/modules/:moduleId",
+		middleware.RequirePermission(rbacService, "organization", "manage"),
+		handlers.RemoveModuleFromDepartment)
+	orgDepts.Get("/:departmentId/users",
+		middleware.RequirePermission(rbacService, "organization", "view"),
+		handlers.GetDepartmentUsers)
+
+	// User-Department Management (Phase 3.5) - NEW
+	userDepts := tenant.Group("/users")
+	userDepts.Post("/:userId/department/:departmentId",
+		middleware.RequirePermission(rbacService, "organization", "manage"),
+		handlers.AssignUserToDepartment)
+	userDepts.Get("/:userId/department",
+		middleware.RequirePermission(rbacService, "organization", "view"),
+		handlers.GetUserDepartment)
+	userDepts.Delete("/:userId/department",
+		middleware.RequirePermission(rbacService, "organization", "manage"),
+		handlers.RemoveUserFromDepartment)
+
 	// Organization role management (Phase 3.5) - ENABLED
 	orgRoles := tenant.Group("/organization/roles")
 	orgRoles.Get("/",

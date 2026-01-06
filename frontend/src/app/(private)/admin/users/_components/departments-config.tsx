@@ -1,86 +1,112 @@
 "use client";
 
-import { useState, useEffect, useTransition } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { Card } from "@/components/ui/card";
+import { useState, useEffect, useCallback } from "react";
+import { Plus, Edit, Trash2, RotateCcw, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
   TableBody,
   TableCell,
   TableHead,
   TableHeader,
-  TableRow
+  TableRow,
 } from "@/components/ui/table";
-import { Plus, Trash2, Building, Pencil, View } from "lucide-react";
-import { toast } from "sonner";
-import { ConfirmationModal } from "@/components/confirmation-modal";
-import { Department } from "@/lib/mock-departments";
-import { deleteDepartment } from "@/app/_actions/config-actions";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { QUERY_KEYS } from "@/lib/constants";
 import {
-  Empty,
-  EmptyContent,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle
-} from "@/components/ui/empty";
-import { CustomPagination } from "@/components/ui/custom-pagination";
-import { CreateOrUpdateDepartment } from "./department-users";
-import Link from "next/link";
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import { ConfirmationModal } from "@/components/confirmation-modal";
+import { toast } from "sonner";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Department,
+  getAllDepartments,
+  createDepartment,
+  updateDepartment,
+  deleteDepartment,
+  restoreDepartment,
+  CreateDepartmentRequest,
+  UpdateDepartmentRequest,
+} from "@/app/_actions/departments";
 
-type Pagination = {
-  total: number;
-  page: number;
-  page_size: number;
-  total_pages: number;
-  has_next: boolean;
-  has_prev: boolean;
+const INITIAL_FORM_STATE: CreateDepartmentRequest = {
+  name: "",
+  code: "",
+  description: "",
+  manager_name: "",
 };
 
-type DepartmentsConfigProps = {
-  initialDepartments: Department[];
-  pagination: Pagination;
-};
-
-export default function DepartmentsConfig({
-  initialDepartments,
-  pagination
-}: DepartmentsConfigProps) {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const [isPending, startTransition] = useTransition();
+export default function DepartmentsConfig() {
   const queryClient = useQueryClient();
-
   const [openModal, setOpenModal] = useState(false);
-  const [editingDepartment, setEditingDepartment] = useState<Department | null>(null);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [departmentToDelete, setDepartmentToDelete] = useState<string | null>(null);
-  const [departments, setDepartments] = useState<Department[]>(initialDepartments);
+  const [editingDept, setEditingDept] = useState<Department | null>(null);
+  const [formData, setFormData] = useState<CreateDepartmentRequest>(INITIAL_FORM_STATE);
+  const [error, setError] = useState<string>("");
+  const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; deptId: string | null }>({
+    open: false,
+    deptId: null,
+  });
+  const [restoreConfirm, setRestoreConfirm] = useState<{ open: boolean; deptId: string | null }>({
+    open: false,
+    deptId: null,
+  });
 
-  useEffect(() => {
-    setDepartments(initialDepartments);
-  }, [initialDepartments]);
+  // Fetch departments
+  const { data: departmentsResponse, isLoading, error: fetchError } = useQuery({
+    queryKey: ['all-departments'],
+    queryFn: () => getAllDepartments(),
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
 
-  // Pagination handler
-  const updatePagination = ({ page, page_size }: { page?: number; page_size?: number }) => {
-    const params = new URLSearchParams(searchParams.toString());
+  const departments = departmentsResponse?.success ? departmentsResponse.data || [] : [];
 
-    if (page !== undefined) {
-      params.set("page", String(page));
-    }
+  // Create department mutation
+  const createMutation = useMutation({
+    mutationFn: (data: CreateDepartmentRequest) => createDepartment(data),
+    onSuccess: (response) => {
+      if (response.success) {
+        toast.success("Department created successfully");
+        queryClient.invalidateQueries({ queryKey: ['all-departments'] });
+        queryClient.invalidateQueries({ queryKey: ['active-departments'] });
+        handleCloseModal();
+      } else {
+        setError(response.message);
+        toast.error(response.message);
+      }
+    },
+    onError: (error: Error) => {
+      setError(error.message);
+      toast.error(error.message || "Failed to create department");
+    },
+  });
 
-    if (page_size !== undefined) {
-      params.set("page_size", String(page_size));
-      params.set("page", "1");
-    }
-
-    startTransition(() => {
-      router.push(`?${params.toString()}`);
-    });
-  };
+  // Update department mutation
+  const updateMutation = useMutation({
+    mutationFn: (data: UpdateDepartmentRequest) => updateDepartment(data),
+    onSuccess: (response) => {
+      if (response.success) {
+        toast.success("Department updated successfully");
+        queryClient.invalidateQueries({ queryKey: ['all-departments'] });
+        queryClient.invalidateQueries({ queryKey: ['active-departments'] });
+        handleCloseModal();
+      } else {
+        setError(response.message);
+        toast.error(response.message);
+      }
+    },
+    onError: (error: Error) => {
+      setError(error.message);
+      toast.error(error.message || "Failed to update department");
+    },
+  });
 
   // Delete department mutation
   const deleteMutation = useMutation({
@@ -88,193 +114,409 @@ export default function DepartmentsConfig({
     onSuccess: (response) => {
       if (response.success) {
         toast.success("Department deleted successfully");
-        queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.DEPARTMENTS] });
-        router.refresh();
+        queryClient.invalidateQueries({ queryKey: ['all-departments'] });
+        queryClient.invalidateQueries({ queryKey: ['active-departments'] });
       } else {
-        toast.error(response.message || "Failed to delete department");
+        toast.error(response.message);
       }
+      setDeleteConfirm({ open: false, deptId: null });
     },
-    onError: (error) => {
-      toast.error("Failed to delete department");
-      console.error("Error deleting department:", error);
+    onError: (error: Error) => {
+      toast.error(error.message || "Failed to delete department");
+      setDeleteConfirm({ open: false, deptId: null });
     },
-    onSettled: () => {
-      setDeleteDialogOpen(false);
-      setDepartmentToDelete(null);
-    }
   });
 
-  const handleDeleteClick = (id: string) => {
-    setDepartmentToDelete(id);
-    setDeleteDialogOpen(true);
+  // Restore department mutation
+  const restoreMutation = useMutation({
+    mutationFn: (id: string) => restoreDepartment(id),
+    onSuccess: (response) => {
+      if (response.success) {
+        toast.success("Department restored successfully");
+        queryClient.invalidateQueries({ queryKey: ['all-departments'] });
+        queryClient.invalidateQueries({ queryKey: ['active-departments'] });
+      } else {
+        toast.error(response.message);
+      }
+      setRestoreConfirm({ open: false, deptId: null });
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Failed to restore department");
+      setRestoreConfirm({ open: false, deptId: null });
+    },
+  });
+
+  const resetForm = useCallback(() => {
+    setFormData(INITIAL_FORM_STATE);
+    setError("");
+    setEditingDept(null);
+  }, []);
+
+  const handleOpenModal = (dept: Department | null = null) => {
+    if (dept) {
+      setEditingDept(dept);
+      setFormData({
+        name: dept.name,
+        code: dept.code,
+        description: dept.description || "",
+        manager_name: dept.manager_name || "",
+      });
+    } else {
+      resetForm();
+    }
+    setOpenModal(true);
   };
 
-  const handleDeleteConfirm = async () => {
-    if (!departmentToDelete) return;
-    deleteMutation.mutate(departmentToDelete);
+  const handleCloseModal = () => {
+    setOpenModal(false);
+    resetForm();
   };
 
-  // Transform pagination for CustomPagination
-  const customPaginationData = {
-    page: pagination.page,
-    page_size: pagination.page_size,
-    total_pages: pagination.total_pages,
-    totalCount: pagination.total,
-    has_prev: pagination.has_prev,
-    has_next: pagination.has_next
+  const validateForm = (): boolean => {
+    if (!formData.name.trim()) {
+      setError("Department name is required");
+      return false;
+    }
+    if (!formData.code.trim()) {
+      setError("Department code is required");
+      return false;
+    }
+
+    const isDuplicate = departments?.some(
+      (dept: Department) => dept.code.toUpperCase() === formData.code.toUpperCase() && dept.id !== editingDept?.id
+    );
+    if (isDuplicate) {
+      setError("A department with this code already exists");
+      return false;
+    }
+
+    return true;
   };
+
+  const handleSave = () => {
+    if (!validateForm()) {
+      return;
+    }
+
+    if (editingDept) {
+      updateMutation.mutate({
+        id: editingDept.id,
+        ...formData,
+      });
+    } else {
+      createMutation.mutate(formData);
+    }
+  };
+
+  const handleDeleteConfirm = () => {
+    if (!deleteConfirm.deptId) return;
+    deleteMutation.mutate(deleteConfirm.deptId);
+  };
+
+  const handleRestoreConfirm = () => {
+    if (!restoreConfirm.deptId) return;
+    restoreMutation.mutate(restoreConfirm.deptId);
+  };
+
+  const activeDepts = departments?.filter((d: Department) => d.is_active) || [];
+  const inactiveDepts = departments?.filter((d: Department) => !d.is_active) || [];
+
+  if (isLoading) {
+    return (
+      <Card className="p-4">
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div className="space-y-2">
+            <Skeleton className="h-6 w-48" />
+            <Skeleton className="h-4 w-64" />
+          </div>
+          <Skeleton className="h-9 w-32" />
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="space-y-4">
+            <Skeleton className="h-5 w-40" />
+            <div className="overflow-x-auto rounded-lg border">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/50">
+                    <TableHead><Skeleton className="h-4 w-16" /></TableHead>
+                    <TableHead><Skeleton className="h-4 w-12" /></TableHead>
+                    <TableHead><Skeleton className="h-4 w-20" /></TableHead>
+                    <TableHead><Skeleton className="h-4 w-24" /></TableHead>
+                    <TableHead className="text-right"><Skeleton className="h-4 w-16" /></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {[...Array(3)].map((_, i) => (
+                    <TableRow key={i}>
+                      <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+                      <TableCell><Skeleton className="h-6 w-16" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-40" /></TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-2">
+                          <Skeleton className="h-8 w-12" />
+                          <Skeleton className="h-8 w-16" />
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (fetchError) {
+    return (
+      <Card className="p-4">
+        <div className="flex items-center justify-center py-8">
+          <div className="text-center">
+            <AlertCircle className="mx-auto mb-4 h-12 w-12 text-destructive" />
+            <p className="text-sm text-destructive">Failed to load departments</p>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="mt-2"
+              onClick={() => queryClient.invalidateQueries({ queryKey: ['all-departments'] })}
+            >
+              Try Again
+            </Button>
+          </div>
+        </div>
+      </Card>
+    );
+  }
 
   return (
     <>
-      <Card className="p-4">
-        <div className="mb-4 flex items-center justify-between">
-          <h3 className="text-lg font-semibold">Departments</h3>
-          <Button
-            size="sm"
-            onClick={() => {
-              setEditingDepartment(null);
-              setOpenModal(true);
-            }}>
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle>Departments Management</CardTitle>
+            <CardDescription>Create and manage departments in your organization</CardDescription>
+          </div>
+          <Button onClick={() => handleOpenModal()} size="sm" className="gap-2">
             <Plus className="h-4 w-4" />
-            New Department
+            Add Department
           </Button>
-        </div>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="space-y-4">
+            <div>
+              <h3 className="text-sm font-semibold text-foreground">Active Departments ({activeDepts.length})</h3>
+              <p className="text-xs text-muted-foreground">Departments currently in use</p>
+            </div>
 
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Description</TableHead>
-              <TableHead>Code</TableHead>
-              <TableHead className="w-24" align="center">
-                Actions
-              </TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {departments.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={4} align="center">
-                  <Empty>
-                    <EmptyHeader>
-                      <EmptyMedia variant="icon">
-                        <Building />
-                      </EmptyMedia>
-                      <EmptyTitle>No Departments Yet</EmptyTitle>
-                      <EmptyDescription>
-                        You haven&apos;t created any departments yet. Get started by creating your
-                        first department.
-                      </EmptyDescription>
-                    </EmptyHeader>
-                    <EmptyContent>
-                      <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          onClick={() => {
-                            setEditingDepartment(null);
-                            setOpenModal(true);
-                          }}>
-                          <Plus className="h-4 w-4" /> Create New Department
-                        </Button>
-                      </div>
-                    </EmptyContent>
-                  </Empty>
-                </TableCell>
-              </TableRow>
+            {activeDepts.length === 0 ? (
+              <div className="rounded-lg border border-dashed border-border bg-muted/30 p-8 text-center">
+                <p className="text-sm text-muted-foreground">No active departments yet. Create one to get started.</p>
+              </div>
             ) : (
-              departments.map((department) => (
-                <TableRow
-                  key={department.id}
-                  className="cursor-pointer"
-                  onClick={() => {
-                    router.push(`/dashboard/system-configs/departments/${department.id}`);
-                  }}>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <Building className="text-muted-foreground h-4 w-4" />
-                      <span className="font-medium">{department.name}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <span className="font-mono text-sm">
-                      {department.description || "No description provided"}
-                    </span>
-                  </TableCell>
-                  <TableCell>
-                    <span className="font-mono text-sm">{department.code}</span>
-                  </TableCell>
-                  <TableCell align="center">
-                    <div className="flex justify-end gap-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={(e) => e.stopPropagation()}
-                        className="h-8 gap-1.5">
-                        <Link
-                          href={`/dashboard/system-configs/departments/${department.id}`}
-                          className="flex cursor-pointer items-center gap-2">
-                          <View className="h-3.5 w-3.5" />
-                          View
-                        </Link>
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={(e) => {
-                          setEditingDepartment(department);
-                          setOpenModal(true);
-                          e.stopPropagation();
-                        }}
-                        className="h-8 gap-1.5">
-                        <Pencil className="h-3.5 w-3.5" />
-                        Edit
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={(e) => {
-                          handleDeleteClick(String(department.id));
-                          e.stopPropagation();
-                        }}
-                        className="text-destructive hover:text-destructive hover:bg-destructive/10 h-8 gap-1.5">
-                        <Trash2 className="h-4 w-4" /> Delete
-                      </Button>
-                    </div>
-                    <div className="flex gap-4"></div>
-                  </TableCell>
-                </TableRow>
-              ))
+              <div className="overflow-x-auto rounded-lg border">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/50">
+                      <TableHead>Name</TableHead>
+                      <TableHead>Code</TableHead>
+                      <TableHead>Manager</TableHead>
+                      <TableHead>Description</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {activeDepts.map((dept: Department) => (
+                      <TableRow key={dept.id}>
+                        <TableCell className="font-medium">{dept.name}</TableCell>
+                        <TableCell>
+                          <Badge variant="outline">{dept.code}</Badge>
+                        </TableCell>
+                        <TableCell className="text-sm">{dept.manager_name || "—"}</TableCell>
+                        <TableCell className="max-w-xs truncate text-sm text-muted-foreground">
+                          {dept.description || "—"}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleOpenModal(dept)}
+                              className="gap-1 text-xs">
+                              <Edit className="h-3 w-3" />
+                              Edit
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setDeleteConfirm({ open: true, deptId: dept.id })}
+                              className="gap-1 text-xs text-destructive hover:text-destructive">
+                              <Trash2 className="h-3 w-3" />
+                              Delete
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             )}
-          </TableBody>
-        </Table>
+          </div>
 
-        {/* CustomPagination */}
-        {departments.length > 0 && (
-          <CustomPagination
-            pagination={customPaginationData}
-            updatePagination={updatePagination}
-            allowSetPageSize={true}
-            showDetails={true}
-            className="mt-4 border-t"
-          />
-        )}
+          {inactiveDepts.length > 0 && (
+            <div className="space-y-4 border-t pt-6">
+              <div>
+                <h3 className="text-sm font-semibold text-foreground">Inactive Departments ({inactiveDepts.length})</h3>
+                <p className="text-xs text-muted-foreground">Deleted departments can be restored</p>
+              </div>
+
+              <div className="overflow-x-auto rounded-lg border border-dashed">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/30">
+                      <TableHead>Name</TableHead>
+                      <TableHead>Code</TableHead>
+                      <TableHead>Manager</TableHead>
+                      <TableHead>Description</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {inactiveDepts.map((dept: Department) => (
+                      <TableRow key={dept.id} className="opacity-60">
+                        <TableCell className="font-medium line-through">{dept.name}</TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className="line-through">
+                            {dept.code}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-sm line-through">{dept.manager_name || "—"}</TableCell>
+                        <TableCell className="max-w-xs truncate text-sm text-muted-foreground line-through">
+                          {dept.description || "—"}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setRestoreConfirm({ open: true, deptId: dept.id })}
+                            className="gap-1 text-xs">
+                            <RotateCcw className="h-3 w-3" />
+                            Restore
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
+          )}
+        </CardContent>
       </Card>
 
-      <CreateOrUpdateDepartment
-        openModal={openModal}
-        setOpenModal={setOpenModal}
-        initialData={editingDepartment}
-        departmentId={editingDepartment?.id}
-        setInitialData={setEditingDepartment}
+      <Dialog open={openModal} onOpenChange={setOpenModal}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{editingDept ? "Edit Department" : "Create New Department"}</DialogTitle>
+          </DialogHeader>
+
+          <form onSubmit={(e) => { e.preventDefault(); handleSave(); }} className="space-y-4">
+            {error && (
+              <div className="flex items-center gap-2 rounded-md bg-destructive/10 p-3 text-sm text-destructive">
+                <AlertCircle className="h-4 w-4" />
+                {error}
+              </div>
+            )}
+
+            <Input
+              label="Department Name"
+              placeholder="e.g., Operations, HR, Finance"
+              value={formData.name}
+              onChange={(e) => {
+                setFormData((p) => ({ ...p, name: e.target.value }));
+                setError("");
+              }}
+              required
+            />
+
+            <Input
+              label="Department Code"
+              placeholder="e.g., OPS, HR, FIN"
+              value={formData.code}
+              onChange={(e) => {
+                setFormData((p) => ({ ...p, code: e.target.value.toUpperCase() }));
+                setError("");
+              }}
+              required
+            />
+
+            <Input
+              label="Manager Name (Optional)"
+              placeholder="Full name of department manager"
+              value={formData.manager_name}
+              onChange={(e) => {
+                setFormData((p) => ({ ...p, manager_name: e.target.value }));
+                setError("");
+              }}
+            />
+
+            <Textarea
+              label="Description (Optional)"
+              placeholder="Brief description of the department's role and responsibilities"
+              value={formData.description}
+              onChange={(e) => {
+                setFormData((p) => ({ ...p, description: e.target.value }));
+                setError("");
+              }}
+              rows={3}
+            />
+
+            <div className="flex justify-end gap-3 pt-2">
+              <DialogClose asChild>
+                <Button type="button" variant="outline">
+                  Cancel
+                </Button>
+              </DialogClose>
+              <Button 
+                type="submit" 
+                disabled={createMutation.isPending || updateMutation.isPending}
+              >
+                {createMutation.isPending || updateMutation.isPending 
+                  ? "Saving..." 
+                  : editingDept ? "Update Department" : "Create Department"
+                }
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <ConfirmationModal
+        open={deleteConfirm.open}
+        onOpenChange={(open) => setDeleteConfirm({ open, deptId: null })}
+        onConfirm={handleDeleteConfirm}
+        type="delete"
+        title="Delete Department"
+        description={`Are you sure you want to delete the "${
+          departments?.find((d: Department) => d.id === deleteConfirm.deptId)?.name || "Department"
+        }" department? This action can be undone later.`}
+        confirmText="Delete"
+        cancelText="Cancel"
       />
 
       <ConfirmationModal
-        open={deleteDialogOpen}
-        onOpenChange={setDeleteDialogOpen}
-        title="Delete Department"
-        description="Are you sure you want to delete this department? This action cannot be undone and may affect related data."
-        onConfirm={handleDeleteConfirm}
-        isLoading={deleteMutation.isPending}
+        open={restoreConfirm.open}
+        onOpenChange={(open) => setRestoreConfirm({ open, deptId: null })}
+        onConfirm={handleRestoreConfirm}
+        type="default"
+        title="Restore Department"
+        description={`Are you sure you want to restore the "${
+          departments?.find((d: Department) => d.id === restoreConfirm.deptId)?.name || "Department"
+        }" department?`}
+        confirmText="Restore"
+        cancelText="Cancel"
       />
     </>
   );
