@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"log"
 	"os"
 	"os/signal"
 	"syscall"
@@ -11,6 +10,7 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/liyali/liyali-gateway/config"
 	"github.com/liyali/liyali-gateway/handlers"
+	"github.com/liyali/liyali-gateway/logging"
 	"github.com/liyali/liyali-gateway/middleware"
 	"github.com/liyali/liyali-gateway/routes"
 	"github.com/liyali/liyali-gateway/services"
@@ -21,7 +21,8 @@ func init() {
 	// Load environment variables
 	err := godotenv.Load(".env")
 	if err != nil && os.Getenv("APP_ENV") == "" {
-		log.Println("Note: .env file not found, using environment variables")
+		// Use basic logging before structured logging is initialized
+		println("Note: .env file not found, using environment variables")
 	}
 
 	// Set default values if not provided
@@ -49,6 +50,9 @@ func init() {
 }
 
 func main() {
+	// Initialize structured logging system
+	loggingConfig := logging.SetupLogging()
+	
 	// Initialize database (both GORM and pgx)
 	config.InitDatabase()
 
@@ -90,9 +94,11 @@ func main() {
 		ErrorHandler: customErrorHandler,
 	})
 
-	// Middleware
+	// Setup structured logging middleware (replaces old LoggerMiddleware)
+	logging.SetupFiberMiddleware(app, loggingConfig)
+	
+	// Other middleware
 	app.Use(middleware.ErrorHandlingMiddleware())
-	app.Use(middleware.LoggerMiddleware())
 	app.Use(middleware.CORSMiddleware())
 
 	// Setup routes with handler registry
@@ -101,16 +107,12 @@ func main() {
 	// Start server with graceful shutdown
 	go func() {
 		port := os.Getenv("APP_PORT")
-		log.Printf("🚀 Starting Enhanced Liyali Gateway Backend on port %s", port)
-		log.Printf("📊 Features: Enhanced Auth, Session Management, Custom RBAC, Workflow Engine")
-		log.Printf("🔐 Security: Account Lockout, Password Reset, Audit Logging")
-		log.Printf("🏗️  Architecture: Clean Architecture (Repository → Service → Handler)")
-		log.Printf("💾 Database: GORM + pgx with sqlc for type-safe queries")
-		log.Printf("🔄 Workflows: Dynamic workflow management with bulk operations")
-		log.Printf("❤️  Health check: http://localhost:%s/health", port)
+		
+		// Log startup information using structured logging
+		logging.LogStartupInfo(port)
 
 		if err := app.Listen(":" + port); err != nil {
-			log.Fatalf("Error starting server: %v", err)
+			logging.WithError(err).Fatal("failed_to_start_server")
 		}
 	}()
 
@@ -119,15 +121,17 @@ func main() {
 	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
 	<-quit
 
-	log.Println("🛑 Shutting down server...")
+	// Log shutdown information
+	logging.LogShutdownInfo()
+	
 	if err := app.ShutdownWithContext(context.Background()); err != nil {
-		log.Fatalf("Server forced to shutdown: %v", err)
+		logging.WithError(err).Fatal("server_forced_shutdown")
 	}
 
-	log.Println("✅ Server stopped gracefully")
+	logging.Info("server_stopped_gracefully")
 }
 
-// customErrorHandler handles errors globally
+// customErrorHandler handles errors globally with structured logging
 func customErrorHandler(c *fiber.Ctx, err error) error {
 	code := fiber.StatusInternalServerError
 	message := "Internal Server Error"
@@ -137,7 +141,17 @@ func customErrorHandler(c *fiber.Ctx, err error) error {
 		message = e.Message
 	}
 
+	// Log error with structured logging
+	logger := logging.FromContext(c)
+	logger.WithError(err).WithFields(map[string]interface{}{
+		"status_code": code,
+		"error_message": message,
+		"method": c.Method(),
+		"path": c.Path(),
+	}).Error("global_error_handler")
+
 	return c.Status(code).JSON(fiber.Map{
 		"error": message,
+		"request_id": logger.GetRequestID(),
 	})
 }

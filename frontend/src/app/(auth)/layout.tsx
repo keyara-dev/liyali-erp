@@ -44,7 +44,7 @@ function AuthLayout({ children }: PropsWithChildren) {
             alt="liyali-pattern"
             width={800}
             height={800}
-            className="w-full aspect-square object-cover opacity-20! absolute inset-0 h-full"
+            className="w-full bg- aspect-square object-cover opacity-20! absolute inset-0 h-full"
           />
           <div className="h-full w-full flex items-center justify-center p-8 relative overflow-clip">
             <div className="w-96 h-96 relative z-10 aspect-square  rounded-3xl overflow-clip justify-center px-8 pl-12 grid place-items-center">
@@ -53,7 +53,7 @@ function AuthLayout({ children }: PropsWithChildren) {
                 alt="liyali-logo"
                 width={400}
                 height={400}
-                className="w-full aspect-square object-contain"
+                className="w-full bg-red-500 aspect-square object-contain"
               />
             </div>
 
