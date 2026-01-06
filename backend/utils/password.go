@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"crypto/sha256"
 	"fmt"
 	"log"
 
@@ -73,4 +74,15 @@ func ValidatePasswordStrength(password string) error {
 	}
 
 	return nil
+}
+
+// HashEmail creates a SHA256 hash of an email for secure logging
+// This allows logging email-related events without exposing actual email addresses
+func HashEmail(email string) string {
+	if email == "" {
+		return ""
+	}
+	
+	hash := sha256.Sum256([]byte(email))
+	return fmt.Sprintf("%x", hash)[:16] // Return first 16 characters for brevity
 }

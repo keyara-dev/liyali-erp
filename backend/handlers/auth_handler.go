@@ -1,8 +1,7 @@
 package handlers
 
 import (
-	"log"
-
+	"github.com/liyali/liyali-gateway/logging"
 	"github.com/liyali/liyali-gateway/services"
 	"github.com/liyali/liyali-gateway/types"
 	"github.com/liyali/liyali-gateway/utils"
@@ -31,16 +30,30 @@ func (h *AuthHandler) GetAuthService() *services.AuthService {
 
 // Login handles user authentication with enhanced security
 func (h *AuthHandler) Login(c *fiber.Ctx) error {
+	logger := logging.FromContext(c)
+	logger.Info("login_attempt_started")
+
 	var req types.LoginRequest
 
 	// Parse request body
 	if err := c.BodyParser(&req); err != nil {
-		log.Printf("Error parsing login request: %v", err)
+		logging.LogError(c, err, "failed_to_parse_login_request")
 		return utils.SendBadRequestError(c, "Failed to parse login request")
 	}
 
+	// Add user context for all subsequent logs
+	logging.AddFieldsToRequest(c, map[string]interface{}{
+		"email":      req.Email,
+		"operation":  "login",
+		"ip_address": c.IP(),
+		"user_agent": c.Get("User-Agent"),
+	})
+
 	// Validate request
 	if err := h.validate.Struct(req); err != nil {
+		logging.LogWarn(c, "login_validation_failed", map[string]interface{}{
+			"validation_error": err.Error(),
+		})
 		return utils.SendValidationError(c, err.Error())
 	}
 
@@ -48,97 +61,175 @@ func (h *AuthHandler) Login(c *fiber.Ctx) error {
 	ipAddress := c.IP()
 	userAgent := c.Get("User-Agent")
 
+	logger.Debug("attempting_authentication")
+
 	// Attempt login
 	result, err := h.authService.Login(c.Context(), req.Email, req.Password, ipAddress, userAgent)
 	if err != nil {
-		log.Printf("Login failed for email %s: %v", req.Email, err)
+		logging.LogError(c, err, "authentication_failed", map[string]interface{}{
+			"error_type": "authentication_failure",
+		})
 		
 		// Return generic error for security
 		return utils.SendUnauthorizedError(c, "Invalid email or password")
 	}
 
+	// Add successful login context
+	logging.AddFieldsToRequest(c, map[string]interface{}{
+		"user_id":         result.User.ID,
+		"organization_id": result.User.CurrentOrganizationID,
+		"login_success":   true,
+	})
+
+	logger.Info("authentication_successful")
 	return utils.SendSimpleSuccess(c, result, "Login successful")
 }
 
 // RefreshToken handles token refresh with enhanced security
 func (h *AuthHandler) RefreshToken(c *fiber.Ctx) error {
+	logger := logging.FromContext(c)
+	logger.Info("token_refresh_attempt")
+
 	var req types.RefreshTokenRequest
 
 	if err := c.BodyParser(&req); err != nil {
+		logging.LogError(c, err, "failed_to_parse_refresh_token_request")
 		return utils.SendBadRequestError(c, "Failed to parse refresh token request")
 	}
 
+	// Add operation context
+	logging.AddFieldToRequest(c, "operation", "refresh_token")
+
 	// Validate request
 	if err := h.validate.Struct(req); err != nil {
+		logging.LogWarn(c, "refresh_token_validation_failed", map[string]interface{}{
+			"validation_error": err.Error(),
+		})
 		return utils.SendValidationError(c, err.Error())
 	}
+
+	logger.Debug("attempting_token_refresh")
 
 	// Refresh token
 	result, err := h.authService.RefreshToken(c.Context(), req.RefreshToken)
 	if err != nil {
-		log.Printf("Token refresh failed: %v", err)
+		logging.LogError(c, err, "token_refresh_failed", map[string]interface{}{
+			"error_type": "token_refresh_failure",
+		})
 		return utils.SendUnauthorizedError(c, "Invalid or expired refresh token")
 	}
 
+	// Add success context - TokenResponse doesn't include user info
+	// We could get user info from the session if needed, but for now just log success
+	logger.Info("token_refresh_successful")
 	return utils.SendSimpleSuccess(c, result, "Token refreshed successfully")
 }
 
 // Logout handles user logout with session cleanup
 func (h *AuthHandler) Logout(c *fiber.Ctx) error {
+	logger := logging.FromContext(c)
+	logger.Info("logout_attempt")
+
 	var req types.RefreshTokenRequest
 
 	if err := c.BodyParser(&req); err != nil {
+		logging.LogError(c, err, "failed_to_parse_logout_request")
 		return utils.SendBadRequestError(c, "Failed to parse logout request")
 	}
 
+	// Add operation context
+	logging.AddFieldToRequest(c, "operation", "logout")
+
 	// Validate request
 	if err := h.validate.Struct(req); err != nil {
+		logging.LogWarn(c, "logout_validation_failed", map[string]interface{}{
+			"validation_error": err.Error(),
+		})
 		return utils.SendValidationError(c, err.Error())
 	}
 
+	logger.Debug("attempting_logout")
+
 	// Logout
 	if err := h.authService.Logout(c.Context(), req.RefreshToken); err != nil {
-		log.Printf("Logout failed: %v", err)
+		logging.LogError(c, err, "logout_failed", map[string]interface{}{
+			"error_type": "logout_failure",
+		})
 		return utils.SendInternalError(c, "Failed to invalidate session", err)
 	}
 
+	logger.Info("logout_successful")
 	return utils.SendSimpleSuccess(c, nil, "Logged out successfully")
 }
 
 // LogoutAll handles logout from all devices
 func (h *AuthHandler) LogoutAll(c *fiber.Ctx) error {
+	logger := logging.FromContext(c)
+	logger.Info("logout_all_attempt")
+
 	userID, ok := c.Locals("userID").(string)
 	if !ok {
+		logging.LogWarn(c, "logout_all_unauthorized", map[string]interface{}{
+			"error": "user_not_authenticated",
+		})
 		return utils.SendUnauthorizedError(c, "User not authenticated")
 	}
 
+	// Add user context
+	logging.AddFieldsToRequest(c, map[string]interface{}{
+		"user_id":   userID,
+		"operation": "logout_all",
+	})
+
+	logger.Debug("attempting_logout_all_devices")
+
 	// Logout from all devices
 	if err := h.authService.LogoutAll(c.Context(), userID); err != nil {
-		log.Printf("Logout all failed for user %s: %v", userID, err)
+		logging.LogError(c, err, "logout_all_failed", map[string]interface{}{
+			"error_type": "logout_all_failure",
+		})
 		return utils.SendInternalError(c, "Failed to invalidate all sessions", err)
 	}
 
+	logger.Info("logout_all_successful")
 	return utils.SendSimpleSuccess(c, nil, "Logged out from all devices successfully")
 }
 
 // RequestPasswordReset handles password reset requests
 func (h *AuthHandler) RequestPasswordReset(c *fiber.Ctx) error {
+	logger := logging.FromContext(c)
+	logger.Info("password_reset_request_started")
+
 	var req types.PasswordResetRequest
 
 	if err := c.BodyParser(&req); err != nil {
+		logging.LogError(c, err, "failed_to_parse_password_reset_request")
 		return utils.SendBadRequestError(c, "Failed to parse password reset request")
 	}
 
+	// Add operation context (don't log email for security)
+	logging.AddFieldToRequest(c, "operation", "password_reset_request")
+
 	// Validate request
 	if err := h.validate.Struct(req); err != nil {
+		logging.LogWarn(c, "password_reset_validation_failed", map[string]interface{}{
+			"validation_error": err.Error(),
+		})
 		return utils.SendValidationError(c, err.Error())
 	}
+
+	logger.Debug("attempting_password_reset_token_creation")
 
 	// Create password reset token
 	token, err := h.authService.CreatePasswordReset(c.Context(), req.Email)
 	if err != nil {
-		log.Printf("Password reset request failed for email %s: %v", req.Email, err)
-		// Don't reveal if user exists or not for security
+		// Log error but don't reveal if user exists for security
+		logging.LogError(c, err, "password_reset_request_failed", map[string]interface{}{
+			"error_type": "password_reset_failure",
+			"email_hash": utils.HashEmail(req.Email), // Hash email for security
+		})
+	} else {
+		logger.WithField("email_hash", utils.HashEmail(req.Email)).Info("password_reset_token_created")
 	}
 
 	// Always return success for security (don't reveal if email exists)
@@ -149,74 +240,126 @@ func (h *AuthHandler) RequestPasswordReset(c *fiber.Ctx) error {
 
 // ResetPassword handles password reset with token
 func (h *AuthHandler) ResetPassword(c *fiber.Ctx) error {
+	logger := logging.FromContext(c)
+	logger.Info("password_reset_attempt")
+
 	var req types.ResetPasswordRequest
 
 	if err := c.BodyParser(&req); err != nil {
+		logging.LogError(c, err, "failed_to_parse_reset_password_request")
 		return utils.SendBadRequestError(c, "Failed to parse reset password request")
 	}
 
+	// Add operation context
+	logging.AddFieldToRequest(c, "operation", "password_reset")
+
 	// Validate request
 	if err := h.validate.Struct(req); err != nil {
+		logging.LogWarn(c, "password_reset_validation_failed", map[string]interface{}{
+			"validation_error": err.Error(),
+		})
 		return utils.SendValidationError(c, err.Error())
 	}
 
+	logger.Debug("attempting_password_reset")
+
 	// Reset password
 	if err := h.authService.ResetPassword(c.Context(), req.Token, req.NewPassword); err != nil {
-		log.Printf("Password reset failed: %v", err)
+		logging.LogError(c, err, "password_reset_failed", map[string]interface{}{
+			"error_type": "password_reset_failure",
+		})
 		return utils.SendBadRequestError(c, "Invalid or expired reset token")
 	}
 
+	logger.Info("password_reset_successful")
 	return utils.SendSimpleSuccess(c, nil, "Password reset successfully")
 }
 
 // ChangePassword handles password change (requires current password)
 func (h *AuthHandler) ChangePassword(c *fiber.Ctx) error {
+	logger := logging.FromContext(c)
+	logger.Info("password_change_attempt")
+
 	userID, ok := c.Locals("userID").(string)
 	if !ok {
+		logging.LogWarn(c, "password_change_unauthorized", map[string]interface{}{
+			"error": "user_not_authenticated",
+		})
 		return utils.SendUnauthorizedError(c, "User not authenticated")
 	}
+
+	// Add user context
+	logging.AddFieldsToRequest(c, map[string]interface{}{
+		"user_id":   userID,
+		"operation": "password_change",
+	})
 
 	var req types.ChangePasswordRequest
 
 	if err := c.BodyParser(&req); err != nil {
+		logging.LogError(c, err, "failed_to_parse_change_password_request")
 		return utils.SendBadRequestError(c, "Failed to parse change password request")
 	}
 
 	// Validate request
 	if err := h.validate.Struct(req); err != nil {
+		logging.LogWarn(c, "password_change_validation_failed", map[string]interface{}{
+			"validation_error": err.Error(),
+		})
 		return utils.SendValidationError(c, err.Error())
 	}
 
+	logger.Debug("attempting_password_change")
+
 	// Change password
 	if err := h.authService.ChangePassword(c.Context(), userID, req.CurrentPassword, req.NewPassword); err != nil {
-		log.Printf("Password change failed for user %s: %v", userID, err)
+		logging.LogError(c, err, "password_change_failed", map[string]interface{}{
+			"error_type": "password_change_failure",
+		})
 		return utils.SendBadRequestError(c, "Current password is incorrect")
 	}
 
+	logger.Info("password_change_successful")
 	return utils.SendSimpleSuccess(c, nil, "Password changed successfully")
 }
 
 // Register handles user registration
 func (h *AuthHandler) Register(c *fiber.Ctx) error {
+	logger := logging.FromContext(c)
+	logger.Info("user_registration_attempt")
+
 	var req types.RegisterRequest
 
 	if err := c.BodyParser(&req); err != nil {
+		logging.LogError(c, err, "failed_to_parse_registration_request")
 		return utils.SendBadRequestError(c, "Failed to parse registration request")
 	}
 
+	// Add registration context (don't log sensitive data)
+	logging.AddFieldsToRequest(c, map[string]interface{}{
+		"operation":  "register",
+		"email":      req.Email,
+		"role":       req.Role,
+		"ip_address": c.IP(),
+		"user_agent": c.Get("User-Agent"),
+	})
+
 	// Validate request
 	if err := h.validate.Struct(req); err != nil {
+		logging.LogWarn(c, "registration_validation_failed", map[string]interface{}{
+			"validation_error": err.Error(),
+		})
 		return utils.SendValidationError(c, err.Error())
 	}
 
-	// Get client info
-	// ipAddress := c.IP()
-	// userAgent := c.Get("User-Agent")
+	logger.Debug("attempting_user_registration")
 
 	// Register user
 	response, err := h.authService.Register(c.Context(), req.Email, req.Password, req.Name, req.Role)
 	if err != nil {
-		log.Printf("Registration failed for email %s: %v", req.Email, err)
+		logging.LogError(c, err, "user_registration_failed", map[string]interface{}{
+			"error_type": "registration_failure",
+		})
 		
 		// Handle specific errors
 		switch err {
@@ -226,6 +369,15 @@ func (h *AuthHandler) Register(c *fiber.Ctx) error {
 			return utils.SendInternalError(c, "Registration failed", err)
 		}
 	}
+
+	// Add successful registration context
+	logging.AddFieldsToRequest(c, map[string]interface{}{
+		"user_id":         response.User.ID,
+		"organization_id": response.User.CurrentOrganizationID,
+		"registration_success": true,
+	})
+
+	logger.Info("user_registration_successful")
 
 	// Return success response in the format expected by frontend
 	return utils.SendCreatedSuccess(c, map[string]interface{}{
@@ -237,22 +389,46 @@ func (h *AuthHandler) Register(c *fiber.Ctx) error {
 
 // VerifyToken verifies a JWT token
 func (h *AuthHandler) VerifyToken(c *fiber.Ctx) error {
+	logger := logging.FromContext(c)
+	logger.Info("token_verification_attempt")
+
 	var req types.VerifyTokenRequest
 
 	if err := c.BodyParser(&req); err != nil {
+		logging.LogError(c, err, "failed_to_parse_token_verification_request")
 		return utils.SendBadRequestError(c, "Failed to parse token verification request")
 	}
 
+	// Add operation context
+	logging.AddFieldToRequest(c, "operation", "verify_token")
+
 	// Validate request
 	if err := h.validate.Struct(req); err != nil {
+		logging.LogWarn(c, "token_verification_validation_failed", map[string]interface{}{
+			"validation_error": err.Error(),
+		})
 		return utils.SendValidationError(c, err.Error())
 	}
+
+	logger.Debug("attempting_token_verification")
 
 	// Verify token using the auth service
 	claims, err := h.authService.ValidateAccessToken(req.Token)
 	if err != nil {
+		logging.LogError(c, err, "token_verification_failed", map[string]interface{}{
+			"error_type": "token_verification_failure",
+		})
 		return utils.SendUnauthorizedError(c, "Invalid or expired token")
 	}
+
+	// Add verified token context
+	logging.AddFieldsToRequest(c, map[string]interface{}{
+		"user_id":         claims.UserID,
+		"organization_id": claims.OrganizationID,
+		"role":            claims.Role,
+	})
+
+	logger.Info("token_verification_successful")
 
 	return utils.SendSimpleSuccess(c, map[string]interface{}{
 		"user_id":         claims.UserID,
@@ -265,13 +441,29 @@ func (h *AuthHandler) VerifyToken(c *fiber.Ctx) error {
 
 // GetProfile returns current user profile (requires auth)
 func (h *AuthHandler) GetProfile(c *fiber.Ctx) error {
+	logger := logging.FromContext(c)
+	logger.Info("get_profile_attempt")
+
 	userID, ok := c.Locals("userID").(string)
 	if !ok {
+		logging.LogWarn(c, "get_profile_unauthorized", map[string]interface{}{
+			"error": "user_not_authenticated",
+		})
 		return utils.SendUnauthorizedError(c, "User not authenticated")
 	}
 
+	// Add user context
+	logging.AddFieldsToRequest(c, map[string]interface{}{
+		"user_id":   userID,
+		"operation": "get_profile",
+	})
+
+	logger.Debug("retrieving_user_profile")
+
 	// For now, return a simple response with the user ID
 	// TODO: Implement GetUserProfile method in the auth service
+	logger.Info("profile_retrieved_successfully")
+	
 	return utils.SendSimpleSuccess(c, map[string]interface{}{
 		"id": userID,
 	}, "Profile retrieved successfully")

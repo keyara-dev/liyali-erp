@@ -6,11 +6,11 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
+	"github.com/liyali/liyali-gateway/logging"
 	"github.com/liyali/liyali-gateway/models"
 	"github.com/liyali/liyali-gateway/repository"
 	"github.com/liyali/liyali-gateway/types"
@@ -109,7 +109,10 @@ func (s *AuthService) Login(ctx context.Context, email, password, ipAddress, use
 	// Check for recent failed attempts
 	recentFailures, err := s.loginAttemptRepo.GetRecentFailedAttempts(ctx, email, time.Now().Add(-1*time.Hour))
 	if err != nil {
-		log.Printf("Error checking recent failed attempts: %v", err)
+		logging.WithFields(map[string]interface{}{
+			"email":     email,
+			"operation": "check_recent_failed_attempts",
+		}).WithError(err).Error("failed_to_check_recent_failed_attempts")
 	}
 
 	if recentFailures >= MaxFailedAttempts {
@@ -179,7 +182,10 @@ func (s *AuthService) Login(ctx context.Context, email, password, ipAddress, use
 
 	// Update last login
 	if err := s.userRepo.UpdateLastLogin(ctx, user.ID); err != nil {
-		log.Printf("Warning: Failed to update last login for user %s: %v", user.ID, err)
+		logging.WithFields(map[string]interface{}{
+			"user_id":   user.ID,
+			"operation": "update_last_login",
+		}).WithError(err).Warn("failed_to_update_last_login")
 	}
 
 	// Record successful login attempt
@@ -356,13 +362,19 @@ func (s *AuthService) ResetPassword(ctx context.Context, token, newPassword stri
 	if resetRecord.ID.Valid {
 		resetUUID := uuid.UUID(resetRecord.ID.Bytes)
 		if err := s.passwordResetRepo.MarkAsUsed(ctx, resetUUID); err != nil {
-			log.Printf("Warning: Failed to mark password reset as used: %v", err)
+			logging.WithFields(map[string]interface{}{
+				"reset_id":  resetUUID.String(),
+				"operation": "mark_password_reset_as_used",
+			}).WithError(err).Warn("failed_to_mark_password_reset_as_used")
 		}
 	}
 
 	// Invalidate all sessions for the user (force re-login)
 	if err := s.sessionRepo.DeleteByUserID(ctx, resetRecord.UserID); err != nil {
-		log.Printf("Warning: Failed to invalidate user sessions: %v", err)
+		logging.WithFields(map[string]interface{}{
+			"user_id":   resetRecord.UserID,
+			"operation": "invalidate_user_sessions_after_password_reset",
+		}).WithError(err).Warn("failed_to_invalidate_user_sessions")
 	}
 
 	// Log audit event
@@ -445,7 +457,10 @@ func (s *AuthService) Register(ctx context.Context, email, password, name, role 
 		createdUser.ID,
 	)
 	if err != nil {
-		log.Printf("Warning: Failed to create personal organization for user %s: %v", createdUser.ID, err)
+		logging.WithFields(map[string]interface{}{
+			"user_id":   createdUser.ID,
+			"operation": "create_personal_organization",
+		}).WithError(err).Warn("failed_to_create_personal_organization")
 		// Don't fail registration if org creation fails
 	}
 
@@ -453,7 +468,11 @@ func (s *AuthService) Register(ctx context.Context, email, password, name, role 
 	if personalOrg != nil {
 		createdUser.CurrentOrganizationID = &personalOrg.ID
 		if _, err := s.userRepo.Update(ctx, createdUser); err != nil {
-			log.Printf("Warning: Failed to update user with organization ID: %v", err)
+			logging.WithFields(map[string]interface{}{
+				"user_id":         createdUser.ID,
+				"organization_id": personalOrg.ID,
+				"operation":       "update_user_with_organization_id",
+			}).WithError(err).Warn("failed_to_update_user_with_organization_id")
 		}
 	}
 
@@ -556,7 +575,14 @@ func (s *AuthService) generateSecureToken() (string, error) {
 func (s *AuthService) recordLoginAttempt(ctx context.Context, userID, email, ipAddress, userAgent string, success bool, failureReason string) {
 	_, err := s.loginAttemptRepo.Create(ctx, userID, email, ipAddress, userAgent, success, failureReason)
 	if err != nil {
-		log.Printf("Warning: Failed to record login attempt: %v", err)
+		logging.WithFields(map[string]interface{}{
+			"user_id":        userID,
+			"email":          email,
+			"ip_address":     ipAddress,
+			"success":        success,
+			"failure_reason": failureReason,
+			"operation":      "record_login_attempt",
+		}).WithError(err).Warn("failed_to_record_login_attempt")
 	}
 }
 
@@ -564,7 +590,14 @@ func (s *AuthService) lockAccount(ctx context.Context, userID, email, ipAddress,
 	unlocksAt := time.Now().Add(AccountLockoutDuration)
 	_, err := s.lockoutRepo.Create(ctx, userID, email, ipAddress, reason, unlocksAt)
 	if err != nil {
-		log.Printf("Warning: Failed to lock account: %v", err)
+		logging.WithFields(map[string]interface{}{
+			"user_id":    userID,
+			"email":      email,
+			"ip_address": ipAddress,
+			"reason":     reason,
+			"unlocks_at": unlocksAt,
+			"operation":  "lock_account",
+		}).WithError(err).Warn("failed_to_lock_account")
 	}
 
 	// Log audit event
@@ -576,7 +609,10 @@ func (s *AuthService) lockAccount(ctx context.Context, userID, email, ipAddress,
 func (s *AuthService) cleanupOldSessions(ctx context.Context, userID string) {
 	sessions, err := s.sessionRepo.GetByUserID(ctx, userID)
 	if err != nil {
-		log.Printf("Warning: Failed to get user sessions for cleanup: %v", err)
+		logging.WithFields(map[string]interface{}{
+			"user_id":   userID,
+			"operation": "get_user_sessions_for_cleanup",
+		}).WithError(err).Warn("failed_to_get_user_sessions_for_cleanup")
 		return
 	}
 
