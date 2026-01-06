@@ -2,10 +2,10 @@ package services
 
 import (
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/liyali/liyali-gateway/logging"
 	"github.com/liyali/liyali-gateway/models"
 	"gorm.io/gorm"
 )
@@ -81,7 +81,12 @@ func (dls *DocumentLinkingService) LinkRequisitionToBudget(
 		return fmt.Errorf("failed to create budget-requisition link: %v", err)
 	}
 
-	log.Printf("Linked requisition %s to budget %s with amount %.2f", requisitionID, budgetID, amount)
+	logging.WithFields(map[string]interface{}{
+		"operation":      "link_requisition_to_budget",
+		"requisition_id": requisitionID,
+		"budget_id":      budgetID,
+		"amount":         amount,
+	}).Info("linked_requisition_to_budget")
 	return nil
 }
 
@@ -131,10 +136,18 @@ func (dls *DocumentLinkingService) LinkRequisitionToPurchaseOrder(
 
 	// Update PO with requisition link
 	if err := dls.db.Model(&po).Update("linked_requisition", requisitionID).Error; err != nil {
-		log.Printf("Warning: failed to update PO with requisition link: %v", err)
+		logging.WithFields(map[string]interface{}{
+			"operation":      "update_po_with_requisition_link",
+			"po_id":          poID,
+			"requisition_id": requisitionID,
+		}).WithError(err).Warn("failed_to_update_po_with_requisition_link")
 	}
 
-	log.Printf("Linked requisition %s to purchase order %s", requisitionID, poID)
+	logging.WithFields(map[string]interface{}{
+		"operation":      "link_requisition_to_purchase_order",
+		"requisition_id": requisitionID,
+		"po_id":          poID,
+	}).Info("linked_requisition_to_purchase_order")
 	return nil
 }
 
@@ -175,10 +188,19 @@ func (dls *DocumentLinkingService) LinkPurchaseOrderToPaymentVoucher(
 
 	// Update payment voucher with PO link
 	if err := dls.db.Model(&pv).Update("linked_po", poID).Error; err != nil {
-		log.Printf("Warning: failed to update PV with PO link: %v", err)
+		logging.WithFields(map[string]interface{}{
+			"operation": "update_pv_with_po_link",
+			"pv_id":     pvID,
+			"po_id":     poID,
+		}).WithError(err).Warn("failed_to_update_pv_with_po_link")
 	}
 
-	log.Printf("Linked purchase order %s to payment voucher %s with amount %.2f", poID, pvID, amount)
+	logging.WithFields(map[string]interface{}{
+		"operation": "link_purchase_order_to_payment_voucher",
+		"po_id":     poID,
+		"pv_id":     pvID,
+		"amount":    amount,
+	}).Info("linked_purchase_order_to_payment_voucher")
 	return nil
 }
 
@@ -218,10 +240,19 @@ func (dls *DocumentLinkingService) LinkPurchaseOrderToGRN(
 
 	// Update GRN with PO number
 	if err := dls.db.Model(&grn).Update("po_number", poNumber).Error; err != nil {
-		log.Printf("Warning: failed to update GRN with PO number: %v", err)
+		logging.WithFields(map[string]interface{}{
+			"operation":  "update_grn_with_po_number",
+			"grn_id":     grnID,
+			"po_number":  poNumber,
+		}).WithError(err).Warn("failed_to_update_grn_with_po_number")
 	}
 
-	log.Printf("Linked purchase order %s to GRN %s", po.ID, grnID)
+	logging.WithFields(map[string]interface{}{
+		"operation": "link_purchase_order_to_grn",
+		"po_id":     po.ID,
+		"grn_id":    grnID,
+		"po_number": poNumber,
+	}).Info("linked_purchase_order_to_grn")
 	return nil
 }
 
@@ -322,7 +353,11 @@ func (dls *DocumentLinkingService) UnlinkDocuments(
 		return fmt.Errorf("failed to unlink documents: %v", err)
 	}
 
-	log.Printf("Unlinked document %s from document %s", targetDocID, sourceDocID)
+	logging.WithFields(map[string]interface{}{
+		"operation":       "unlink_documents",
+		"source_doc_id":   sourceDocID,
+		"target_doc_id":   targetDocID,
+	}).Info("unlinked_document_from_document")
 	return nil
 }
 

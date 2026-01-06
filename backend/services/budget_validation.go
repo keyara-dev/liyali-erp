@@ -2,8 +2,8 @@ package services
 
 import (
 	"fmt"
-	"log"
 
+	"github.com/liyali/liyali-gateway/logging"
 	"github.com/liyali/liyali-gateway/models"
 	"gorm.io/gorm"
 )
@@ -60,7 +60,11 @@ func (bvs *BudgetValidationService) ValidateBudgetForRequisition(
 	// Get budget constraint
 	constraint, err := bvs.getBudgetConstraint(department, fiscalYear)
 	if err != nil {
-		log.Printf("Warning: Could not get budget constraint: %v", err)
+		logging.WithFields(map[string]interface{}{
+			"operation":   "get_budget_constraint",
+			"department":  department,
+			"fiscal_year": fiscalYear,
+		}).WithError(err).Warn("could_not_get_budget_constraint")
 		return true, "", nil // Proceed if no constraint found
 	}
 
@@ -95,7 +99,12 @@ func (bvs *BudgetValidationService) ValidateBudgetForPurchaseOrder(
 	// Check vendor-specific constraints (single vendor max per period)
 	vendorTotal, err := bvs.getVendorPOTotal(vendorID, department, fiscalYear)
 	if err != nil {
-		log.Printf("Warning: Could not get vendor PO total: %v", err)
+		logging.WithFields(map[string]interface{}{
+			"operation":   "get_vendor_po_total",
+			"vendor_id":   vendorID,
+			"department":  department,
+			"fiscal_year": fiscalYear,
+		}).WithError(err).Warn("could_not_get_vendor_po_total")
 		return true, "", nil
 	}
 
@@ -181,7 +190,12 @@ func (bvs *BudgetValidationService) AllocateBudget(
 	}
 
 	// Log the allocation
-	log.Printf("Allocated %.2f to budget %s for requisition %s", allocationAmount, budgetID, requisitionID)
+	logging.WithFields(map[string]interface{}{
+		"operation":         "allocate_budget",
+		"allocation_amount": allocationAmount,
+		"budget_id":         budgetID,
+		"requisition_id":    requisitionID,
+	}).Info("allocated_budget_for_requisition")
 
 	return nil
 }
@@ -213,7 +227,12 @@ func (bvs *BudgetValidationService) DeallocateBudget(
 		return err
 	}
 
-	log.Printf("Deallocated %.2f from budget %s for requisition %s", allocationAmount, budgetID, requisitionID)
+	logging.WithFields(map[string]interface{}{
+		"operation":         "deallocate_budget",
+		"allocation_amount": allocationAmount,
+		"budget_id":         budgetID,
+		"requisition_id":    requisitionID,
+	}).Info("deallocated_budget_for_requisition")
 
 	return nil
 }
@@ -335,7 +354,11 @@ func (bvs *BudgetValidationService) CreateDefaultBudgetConstraints() error {
 
 		if count == 0 {
 			if err := bvs.db.Create(&constraint).Error; err != nil {
-				log.Printf("Error creating budget constraint: %v", err)
+				logging.WithFields(map[string]interface{}{
+					"operation":   "create_budget_constraint",
+					"department":  constraint.Department,
+					"fiscal_year": constraint.FiscalYear,
+				}).WithError(err).Error("failed_to_create_budget_constraint")
 				return err
 			}
 		}

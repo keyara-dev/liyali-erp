@@ -3,10 +3,10 @@ package services
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"strings"
 
 	"github.com/google/uuid"
+	"github.com/liyali/liyali-gateway/logging"
 	"github.com/liyali/liyali-gateway/models"
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
@@ -43,7 +43,11 @@ func (rms *RoleManagementService) CreateOrganizationRole(
 	}
 
 	if err := rms.db.Create(&role).Error; err != nil {
-		log.Printf("Error creating organization role: %v", err)
+		logging.WithFields(map[string]interface{}{
+			"operation":       "create_organization_role",
+			"role_name":       name,
+			"organization_id": organizationID,
+		}).WithError(err).Error("failed_to_create_organization_role")
 		return nil, fmt.Errorf("failed to create role")
 	}
 
@@ -73,7 +77,10 @@ func (rms *RoleManagementService) UpdateOrganizationRole(
 	}
 
 	if err := rms.db.Save(&role).Error; err != nil {
-		log.Printf("Error updating organization role: %v", err)
+		logging.WithFields(map[string]interface{}{
+			"operation": "update_organization_role",
+			"role_id":   roleID,
+		}).WithError(err).Error("failed_to_update_organization_role")
 		return nil, fmt.Errorf("failed to update role")
 	}
 
@@ -102,7 +109,10 @@ func (rms *RoleManagementService) DeleteOrganizationRole(roleID string) error {
 
 	// Delete the role
 	if err := rms.db.Delete(&role).Error; err != nil {
-		log.Printf("Error deleting organization role: %v", err)
+		logging.WithFields(map[string]interface{}{
+			"operation": "delete_organization_role",
+			"role_id":   roleID,
+		}).WithError(err).Error("failed_to_delete_organization_role")
 		return fmt.Errorf("failed to delete role")
 	}
 
@@ -166,7 +176,11 @@ func (rms *RoleManagementService) AssignPermissionToRole(
 	role.Permissions = datatypes.JSON(permissionsJSON)
 
 	if err := rms.db.Save(&role).Error; err != nil {
-		log.Printf("Error assigning permission to role: %v", err)
+		logging.WithFields(map[string]interface{}{
+			"operation":       "assign_permission_to_role",
+			"role_id":         roleID,
+			"permission_name": permissionName,
+		}).WithError(err).Error("failed_to_assign_permission_to_role")
 		return fmt.Errorf("failed to assign permission")
 	}
 
@@ -207,7 +221,11 @@ func (rms *RoleManagementService) RemovePermissionFromRole(
 	role.Permissions = datatypes.JSON(permissionsJSON)
 
 	if err := rms.db.Save(&role).Error; err != nil {
-		log.Printf("Error removing permission from role: %v", err)
+		logging.WithFields(map[string]interface{}{
+			"operation":       "remove_permission_from_role",
+			"role_id":         roleID,
+			"permission_name": permissionName,
+		}).WithError(err).Error("failed_to_remove_permission_from_role")
 		return fmt.Errorf("failed to remove permission")
 	}
 
@@ -341,7 +359,11 @@ func (rms *RoleManagementService) InitializeDefaultRolesForOrganization(organiza
 		role.Permissions = datatypes.JSON(permissionsJSON)
 
 		if err := rms.db.Create(&role).Error; err != nil {
-			log.Printf("Warning creating default role %s - %v", roleData.name, err)
+			logging.WithFields(map[string]interface{}{
+				"operation":       "create_default_role",
+				"role_name":       roleData.name,
+				"organization_id": organizationID,
+			}).WithError(err).Warn("failed_to_create_default_role")
 		}
 	}
 

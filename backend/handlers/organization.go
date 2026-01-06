@@ -41,9 +41,7 @@ func GetUserOrganizations(c *fiber.Ctx) error {
 		orgs = []models.Organization{}
 	}
 
-	logger.Info("user_organizations_retrieved_successfully", map[string]interface{}{
-		"organizations_count": len(orgs),
-	})
+	logger.Info("user_organizations_retrieved_successfully")
 
 	return utils.SendSimpleSuccess(c, orgs, "Organizations retrieved successfully")
 }

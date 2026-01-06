@@ -88,10 +88,7 @@ func GetPurchaseOrders(c *fiber.Ctx) error {
 		responses = append(responses, modelToPurchaseOrderResponse(order))
 	}
 
-	logger.Info("purchase_orders_retrieved_successfully", map[string]interface{}{
-		"count": len(responses),
-		"total": total,
-	})
+	logger.Info("purchase_orders_retrieved_successfully")
 
 	return utils.SendPaginatedSuccess(c, responses, "Purchase orders retrieved successfully", page, limit, total)
 }
@@ -196,11 +193,7 @@ func CreatePurchaseOrder(c *fiber.Ctx) error {
 
 	config.DB.Preload("Vendor").First(&order)
 
-	logger.Info("purchase_order_created_successfully", map[string]interface{}{
-		"po_number":    poNumber,
-		"vendor_name":  vendor.Name,
-		"total_amount": req.TotalAmount,
-	})
+	logger.Info("purchase_order_created_successfully")
 
 	return c.Status(fiber.StatusCreated).JSON(types.DetailResponse{
 		Success: true,
@@ -242,10 +235,7 @@ func GetPurchaseOrder(c *fiber.Ctx) error {
 		})
 	}
 
-	logger.Info("purchase_order_retrieved_successfully", map[string]interface{}{
-		"po_number": order.PONumber,
-		"status":    order.Status,
-	})
+	logger.Info("purchase_order_retrieved_successfully")
 
 	return c.JSON(types.DetailResponse{
 		Success: true,
@@ -348,10 +338,7 @@ func UpdatePurchaseOrder(c *fiber.Ctx) error {
 
 	config.DB.Preload("Vendor").First(&order)
 
-	logger.Info("purchase_order_updated_successfully", map[string]interface{}{
-		"po_number": order.PONumber,
-		"changes":   changes,
-	})
+	logger.Info("purchase_order_updated_successfully")
 
 	return c.JSON(types.DetailResponse{
 		Success: true,
@@ -413,9 +400,7 @@ func DeletePurchaseOrder(c *fiber.Ctx) error {
 		})
 	}
 
-	logger.Info("purchase_order_deleted_successfully", map[string]interface{}{
-		"po_number": order.PONumber,
-	})
+	logger.Info("purchase_order_deleted_successfully")
 
 	return c.JSON(types.MessageResponse{
 		Success: true,
@@ -528,9 +513,7 @@ func ApprovePurchaseOrder(c *fiber.Ctx) error {
 	// Auto-create GRN if enabled and prerequisites are met
 	var autoCreatedGRN *models.GoodsReceivedNote
 	if order.Status == "approved" {
-		logger.Info("attempting_auto_grn_creation", map[string]interface{}{
-			"po_number": order.PONumber,
-		})
+		logger.Info("attempting_auto_grn_creation")
 
 		// Initialize automation service
 		auditService := &services.AuditService{}
@@ -550,26 +533,16 @@ func ApprovePurchaseOrder(c *fiber.Ctx) error {
 		if err == nil && result.Success {
 			if grn, ok := result.CreatedDocument.(models.GoodsReceivedNote); ok {
 				autoCreatedGRN = &grn
-				logger.Info("auto_grn_created_successfully", map[string]interface{}{
-					"po_number":  order.PONumber,
-					"grn_number": grn.GRNNumber,
-				})
+				logger.Info("auto_grn_created_successfully")
 			}
 		} else if err != nil {
-			logger.Warn("auto_grn_creation_failed", map[string]interface{}{
-				"po_number": order.PONumber,
-				"error":     err.Error(),
-			})
+			logger.Warn("auto_grn_creation_failed")
 		}
 		// Note: We don't fail the approval if GRN creation fails
 		// The PO is still approved, GRN can be created manually
 	}
 
-	logger.Info("purchase_order_approved_successfully", map[string]interface{}{
-		"po_number":        order.PONumber,
-		"approver_name":    approver.Name,
-		"auto_grn_created": autoCreatedGRN != nil,
-	})
+	logger.Info("purchase_order_approved_successfully")
 
 	// Prepare response
 	response := types.DetailResponse{
@@ -712,11 +685,7 @@ func RejectPurchaseOrder(c *fiber.Ctx) error {
 
 	config.DB.Preload("Vendor").First(&order)
 
-	logger.Info("purchase_order_rejected_successfully", map[string]interface{}{
-		"po_number":     order.PONumber,
-		"approver_name": approver.Name,
-		"remarks":       req.Remarks,
-	})
+	logger.Info("purchase_order_rejected_successfully")
 
 	return c.JSON(types.DetailResponse{
 		Success: true,

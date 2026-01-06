@@ -2,9 +2,9 @@ package services
 
 import (
 	"encoding/json"
-	"log"
 	"strings"
 
+	"github.com/liyali/liyali-gateway/logging"
 	"github.com/liyali/liyali-gateway/models"
 	"github.com/liyali/liyali-gateway/types"
 	"gorm.io/gorm"
@@ -37,35 +37,46 @@ func (s *AnalyticsService) GetRequisitionMetrics(params types.AnalyticsQueryPara
 	// Get status counts
 	statusCounts, err := s.getStatusCounts(query)
 	if err != nil {
-		log.Printf("Error getting status counts: %v", err)
+		logging.WithFields(map[string]interface{}{
+			"operation": "get_status_counts",
+		}).WithError(err).Error("failed_to_get_status_counts")
 		statusCounts = make(map[string]int64)
 	}
 
 	// Get rejection rate
 	rejectionRate, err := s.calculateRejectionRate(query)
 	if err != nil {
-		log.Printf("Error calculating rejection rate: %v", err)
+		logging.WithFields(map[string]interface{}{
+			"operation": "calculate_rejection_rate",
+		}).WithError(err).Error("failed_to_calculate_rejection_rate")
 		rejectionRate = 0
 	}
 
 	// Get rejections over time
 	rejectionsOverTime, err := s.getRejectionsOverTime(query, params.Period)
 	if err != nil {
-		log.Printf("Error getting rejections over time: %v", err)
+		logging.WithFields(map[string]interface{}{
+			"operation": "get_rejections_over_time",
+			"period":    params.Period,
+		}).WithError(err).Error("failed_to_get_rejections_over_time")
 		rejectionsOverTime = []types.RejectionTimeData{}
 	}
 
 	// Get rejection reasons
 	rejectionReasons, err := s.getRejectionReasons(query)
 	if err != nil {
-		log.Printf("Error getting rejection reasons: %v", err)
+		logging.WithFields(map[string]interface{}{
+			"operation": "get_rejection_reasons",
+		}).WithError(err).Error("failed_to_get_rejection_reasons")
 		rejectionReasons = []types.RejectionReason{}
 	}
 
 	// Get top rejecting approvers
 	topRejectingApprovers, err := s.getTopRejectingApprovers(query)
 	if err != nil {
-		log.Printf("Error getting top rejecting approvers: %v", err)
+		logging.WithFields(map[string]interface{}{
+			"operation": "get_top_rejecting_approvers",
+		}).WithError(err).Error("failed_to_get_top_rejecting_approvers")
 		topRejectingApprovers = []types.ApproverStats{}
 	}
 

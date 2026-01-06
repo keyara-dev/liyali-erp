@@ -5,9 +5,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 
 	"github.com/google/uuid"
+	"github.com/liyali/liyali-gateway/logging"
 	sqlc "github.com/liyali/liyali-gateway/database/sqlc"
 	"github.com/liyali/liyali-gateway/models"
 	"github.com/liyali/liyali-gateway/repository"
@@ -469,7 +469,11 @@ func (s *RBACService) GetUserPermissions(ctx context.Context, userID, organizati
 	for _, role := range roles {
 		var permissions []string
 		if err := json.Unmarshal(role.Permissions, &permissions); err != nil {
-			log.Printf("Warning: Failed to unmarshal permissions for role %s: %v", role.Name, err)
+			logging.WithFields(map[string]interface{}{
+				"operation": "unmarshal_role_permissions",
+				"role_name": role.Name,
+				"role_id":   role.ID,
+			}).WithError(err).Warn("failed_to_unmarshal_permissions_for_role")
 			continue
 		}
 		
@@ -568,18 +572,29 @@ func (s *RBACService) InitializeSystemRoles(ctx context.Context, organizationID,
 		// Create system role
 		permissionsJSON, err := json.Marshal(permissions)
 		if err != nil {
-			log.Printf("Warning: Failed to marshal permissions for system role %s: %v", roleName, err)
+			logging.WithFields(map[string]interface{}{
+				"operation":  "marshal_system_role_permissions",
+				"role_name":  roleName,
+			}).WithError(err).Warn("failed_to_marshal_permissions_for_system_role")
 			continue
 		}
 
 		description := s.getSystemRoleDescription(roleName)
 		_, err = s.roleRepo.Create(ctx, organizationID, roleName, description, true, permissionsJSON, createdBy)
 		if err != nil {
-			log.Printf("Warning: Failed to create system role %s: %v", roleName, err)
+			logging.WithFields(map[string]interface{}{
+				"operation":       "create_system_role",
+				"role_name":       roleName,
+				"organization_id": organizationID,
+			}).WithError(err).Warn("failed_to_create_system_role")
 			continue
 		}
 
-		log.Printf("Created system role '%s' for organization %s", roleName, organizationID)
+		logging.WithFields(map[string]interface{}{
+			"operation":       "create_system_role",
+			"role_name":       roleName,
+			"organization_id": organizationID,
+		}).Info("created_system_role_for_organization")
 	}
 
 	return nil

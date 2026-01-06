@@ -3,10 +3,10 @@ package services
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/liyali/liyali-gateway/logging"
 	"github.com/liyali/liyali-gateway/models"
 	"gorm.io/gorm"
 )
@@ -43,7 +43,13 @@ func (ars *ApprovalRoutingService) GetApproversForDocument(docType string, depar
 	// Find matching approval rule
 	rule, err := ars.findApprovalRule(docType, department, amountRange, priority)
 	if err != nil {
-		log.Printf("Error finding approval rule: %v", err)
+		logging.WithFields(map[string]interface{}{
+			"operation":    "find_approval_rule",
+			"doc_type":     docType,
+			"department":   department,
+			"amount_range": amountRange,
+			"priority":     priority,
+		}).WithError(err).Error("failed_to_find_approval_rule")
 		return nil, fmt.Errorf("no approval rule found for document type %s", docType)
 	}
 
@@ -51,14 +57,20 @@ func (ars *ApprovalRoutingService) GetApproversForDocument(docType string, depar
 	var approvalChain []string
 	err = json.Unmarshal([]byte(rule.ApprovalChain), &approvalChain)
 	if err != nil {
-		log.Printf("Error unmarshaling approval chain: %v", err)
+		logging.WithFields(map[string]interface{}{
+			"operation": "unmarshal_approval_chain",
+			"rule_id":   rule.ID,
+		}).WithError(err).Error("failed_to_unmarshal_approval_chain")
 		return nil, fmt.Errorf("invalid approval chain configuration")
 	}
 
 	// Get actual users matching the roles
 	approvers, err := ars.getUsersByRoles(approvalChain)
 	if err != nil {
-		log.Printf("Error getting users by roles: %v", err)
+		logging.WithFields(map[string]interface{}{
+			"operation":      "get_users_by_roles",
+			"approval_chain": approvalChain,
+		}).WithError(err).Error("failed_to_get_users_by_roles")
 		return nil, fmt.Errorf("could not find approvers for roles")
 	}
 
@@ -87,7 +99,11 @@ func (ars *ApprovalRoutingService) RouteDocumentToApprovers(documentID, docType,
 		}
 
 		if err := ars.db.Create(&task).Error; err != nil {
-			log.Printf("Error creating approval task: %v", err)
+			logging.WithFields(map[string]interface{}{
+				"operation":   "create_approval_task",
+				"document_id": documentID,
+				"approver_id": approverID,
+			}).WithError(err).Error("failed_to_create_approval_task")
 			return err
 		}
 
@@ -106,7 +122,11 @@ func (ars *ApprovalRoutingService) RouteDocumentToApprovers(documentID, docType,
 		}
 
 		if err := ars.db.Create(&notification).Error; err != nil {
-			log.Printf("Error creating notification: %v", err)
+			logging.WithFields(map[string]interface{}{
+				"operation":   "create_approval_notification",
+				"document_id": documentID,
+				"approver_id": approverID,
+			}).WithError(err).Error("failed_to_create_approval_notification")
 		}
 	}
 
@@ -155,7 +175,10 @@ func (ars *ApprovalRoutingService) getUsersByRoles(roles []string) ([]string, er
 
 	// Find all users with matching roles
 	if err := ars.db.Where("role IN ?", roles).Where("active = ?", true).Find(&users).Error; err != nil {
-		log.Printf("Error fetching users: %v", err)
+		logging.WithFields(map[string]interface{}{
+			"operation": "fetch_users_by_roles",
+			"roles":     roles,
+		}).WithError(err).Error("failed_to_fetch_users_by_roles")
 		return nil, err
 	}
 
@@ -257,7 +280,11 @@ func (ars *ApprovalRoutingService) CreateDefaultApprovalRules() error {
 
 		if count == 0 {
 			if err := ars.db.Create(&rule).Error; err != nil {
-				log.Printf("Error creating approval rule: %v", err)
+				logging.WithFields(map[string]interface{}{
+					"operation":    "create_approval_rule",
+					"doc_type":     rule.DocumentType,
+					"department":   rule.Department,
+				}).WithError(err).Error("failed_to_create_approval_rule")
 				return err
 			}
 		}
