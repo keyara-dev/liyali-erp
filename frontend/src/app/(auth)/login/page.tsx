@@ -21,13 +21,20 @@ export default async function LoginPage() {
       {/* Card */}
       <div className="bg-card rounded-lg p-8 space-y-6">
         {/* Logo/Title */}
-        <div className="text-center space-y-2">
-          <Logo isFull />
+        <div className="text-left space-y-2 mb-8">
+          <Logo isFull href="/" />
+           
         </div>
 
         {/* Login Form */}
         <LoginForm />
       </div>
+
+        {/* <div className="pt-4 border-t border-border">
+          <p className="text-xs text-muted-foreground text-center">
+            Need help? Contact support at support@liyali.com
+          </p>
+        </div> */}
     </div>
   );
 }

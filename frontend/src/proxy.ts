@@ -38,17 +38,20 @@ export default async function proxy(request: NextRequest) {
   // ✅ FAST: Check cookie existence only (no JWT decryption for most routes)
   const hasAuthCookie = request.cookies.has(AUTH_SESSION);
 
-  // Define authentication pages (login, register, OTP)
+  // Define authentication pages (login, register, OTP) and public pages
   const isAuthPage =
     pathname.startsWith("/login") ||
     pathname.startsWith("/register") ||
     pathname.startsWith("/otp");
+  
+  // Allow access to landing page for unauthenticated users
+  const isPublicPage = pathname === "/";
 
   // Check if accessing admin routes
   const isAdminRoute = pathname.startsWith("/admin");
 
-  // If no auth cookie and not on auth page, redirect to login
-  if (!hasAuthCookie && !isAuthPage) {
+  // If no auth cookie and not on auth page or public page, redirect to login
+  if (!hasAuthCookie && !isAuthPage && !isPublicPage) {
     url.pathname = "/login";
     return NextResponse.redirect(url);
   }
@@ -65,8 +68,8 @@ export default async function proxy(request: NextRequest) {
 
       console.log("[Proxy] Admin route check:", "session");
 
-      // If not authenticated or not an ADMIN, redirect to access denied page
-      if (!isAuthenticated || role !== "ADMIN") {
+      // If not authenticated or not an admin, redirect to access denied page
+      if (!isAuthenticated || role !== "admin") {
         console.log(
           "[Proxy] Non-admin user attempting to access admin route, redirecting to /access-denied"
         );

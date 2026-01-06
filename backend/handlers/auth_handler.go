@@ -381,7 +381,10 @@ func (h *AuthHandler) Register(c *fiber.Ctx) error {
 
 	// Return success response in the format expected by frontend
 	return utils.SendCreatedSuccess(c, map[string]interface{}{
-		"token":        response.AccessToken, // Frontend expects "token" field
+		"token":        response.AccessToken, // Legacy support
+		"accessToken":  response.AccessToken,
+		"refreshToken": response.RefreshToken,
+		"expiresIn":    response.ExpiresIn,
 		"user":         response.User,
 		"organization": response.Organization,
 	}, "User registered successfully")

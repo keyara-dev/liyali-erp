@@ -333,13 +333,13 @@ export async function createNewAccount(data: {
       email: data.email,
       name: data.name,
       password: data.password,
-      role: data.role || "requester",
+      role: data.role || "admin", // Default to admin since users get their own organization
     });
 
     const responseData = response?.data;
 
-    // Backend returns: { success, message, data: { token, user, organization } }
-    if (!responseData.success || !responseData.data?.token) {
+    // Backend returns: { success, message, data: { token, accessToken, refreshToken, expiresIn, user, organization } }
+    if (!responseData.success || !responseData.data?.accessToken) {
       return unauthorizedResponse(
         responseData.message || "Registration failed"
       );
@@ -352,8 +352,8 @@ export async function createNewAccount(data: {
       role: responseData.data.user.role,
       user_id: responseData.data.user.id,
       organization_id: responseData.data.organization?.id,
-      expiresIn: responseData.data.expiresIn, // Use backend's expiration time
-      user: responseData.data.user, // Add the full user object
+      expiresIn: responseData.data.expiresIn,
+      user: responseData.data.user,
     });
 
     return successResponse(

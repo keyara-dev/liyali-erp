@@ -27,13 +27,13 @@ export type ApprovalAction =
 
 // User & Role Types (from auth.ts)
 export type UserRole =
-  | "REQUESTER"
-  | "DEPARTMENT_MANAGER"
-  | "FINANCE_OFFICER"
-  | "DIRECTOR"
-  | "CFO"
-  | "COMPLIANCE_OFFICER"
-  | "ADMIN";
+  | "requester"
+  | "department_manager"
+  | "finance_officer"
+  | "director"
+  | "cfo"
+  | "compliance_officer"
+  | "admin";
 
 export type WorkflowPermission =
   | "view_draft"

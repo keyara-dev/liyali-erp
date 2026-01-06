@@ -385,8 +385,8 @@ export async function canReassign(
     return { can: true };
   }
 
-  // Rule 2: ADMIN can reassign
-  if (requestingUser.role === "ADMIN") {
+  // Rule 2: admin can reassign
+  if (requestingUser.role === "admin") {
     return { can: true };
   }
 

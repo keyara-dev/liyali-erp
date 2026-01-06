@@ -18,13 +18,13 @@ import { DEMO_USERS } from "@/lib/auth";
  * Valid user roles in the system
  */
 const VALID_ROLES = [
-  "REQUESTER",
-  "DEPARTMENT_MANAGER",
-  "FINANCE_OFFICER",
-  "DIRECTOR",
-  "CFO",
-  "COMPLIANCE_OFFICER",
-  "ADMIN",
+  "requester",
+  "department_manager",
+  "finance_officer",
+  "director",
+  "cfo",
+  "compliance_officer",
+  "admin",
 ];
 
 /**

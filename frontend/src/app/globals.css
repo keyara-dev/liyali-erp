@@ -714,3 +714,118 @@ img {
   opacity: 1;
   transition: opacity 300ms ease-in-out;
 }
+
+/* ========================================
+   LANDING PAGE SPECIFIC STYLES
+   ======================================== */
+
+/* Glass card effect for landing page */
+.glass-card {
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Fade in up animation for landing page elements */
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fade-in-up {
+  animation: fade-in-up 0.6s ease-out forwards;
+}
+
+/* Floating animation for landing page elements */
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-20px);
+  }
+}
+
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+/* Rotate Y animation for 3D effects */
+@keyframes rotate-y-12 {
+  0% {
+    transform: rotateY(0deg);
+  }
+  100% {
+    transform: rotateY(12deg);
+  }
+}
+
+.rotate-y-12 {
+  transform: rotateY(12deg);
+}
+
+/* Blob animation for background elements */
+.blob {
+  position: absolute;
+  animation: blob 7s infinite;
+}
+
+/* Primary color utilities for landing page */
+.text-primary-50 { color: var(--primary-50); }
+.text-primary-100 { color: var(--primary-100); }
+.text-primary-200 { color: var(--primary-200); }
+.text-primary-300 { color: var(--primary-300); }
+.text-primary-400 { color: var(--primary-400); }
+.text-primary-500 { color: var(--primary-500); }
+.text-primary-600 { color: var(--primary-600); }
+.text-primary-700 { color: var(--primary-700); }
+.text-primary-800 { color: var(--primary-800); }
+.text-primary-900 { color: var(--primary-900); }
+
+.bg-primary-50 { background-color: var(--primary-50); }
+.bg-primary-100 { background-color: var(--primary-100); }
+.bg-primary-200 { background-color: var(--primary-200); }
+.bg-primary-300 { background-color: var(--primary-300); }
+.bg-primary-400 { background-color: var(--primary-400); }
+.bg-primary-500 { background-color: var(--primary-500); }
+.bg-primary-600 { background-color: var(--primary-600); }
+.bg-primary-700 { background-color: var(--primary-700); }
+.bg-primary-800 { background-color: var(--primary-800); }
+.bg-primary-900 { background-color: var(--primary-900); }
+
+.border-primary-100 { border-color: var(--primary-100); }
+.border-primary-200 { border-color: var(--primary-200); }
+.border-primary-500 { border-color: var(--primary-500); }
+
+/* Shadow utilities for primary colors */
+.shadow-primary-500\/30 { box-shadow: 0 0 20px rgba(19, 108, 253, 0.3); }
+.shadow-primary-500\/40 { box-shadow: 0 0 20px rgba(19, 108, 253, 0.4); }
+.shadow-primary-500\/50 { box-shadow: 0 0 25px rgba(19, 108, 253, 0.5); }
+.shadow-blue-500\/20 { box-shadow: 0 0 20px rgba(59, 130, 246, 0.2); }
+.shadow-blue-500\/30 { box-shadow: 0 0 20px rgba(59, 130, 246, 0.3); }
+
+/* Landing page specific responsive utilities */
+@media (max-width: 768px) {
+  .landing-mobile-padding {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+}
+
+/* Smooth scroll behavior for anchor links */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Custom focus styles for landing page buttons */
+.landing-button-focus:focus {
+  outline: 2px solid var(--primary-500);
+  outline-offset: 2px;
+}
