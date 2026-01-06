@@ -55,9 +55,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   bulkUpdateRolePermissions,
   getRolePermissions,
-} from "@/app/_actions/permissions-actions";
+} from "@/app/_actions/roles-permissions";
 import { getDepartmentModules } from "@/app/_actions/config-actions";
-import { createRole, updateRole } from "@/app/_actions/rbac";
+import { createRole, updateRole } from "@/app/_actions/roles-permissions";
 import { ConfirmationModal } from "@/components/confirmation-modal";
 
 interface RolesPermissionsProps {

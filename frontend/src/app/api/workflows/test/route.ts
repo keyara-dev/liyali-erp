@@ -12,7 +12,7 @@ import {
   createRole,
   getAllRoles,
   addRolePermission,
-} from '@/app/_actions/rbac';
+} from '@/app/_actions/roles-permissions';
 import {
   assignCustomRoleToUser,
   getAllUsers,

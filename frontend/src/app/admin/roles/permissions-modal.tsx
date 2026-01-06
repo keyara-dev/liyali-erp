@@ -7,7 +7,7 @@ import {
   getAvailablePermissionsAction,
   assignPermissionAction,
   removePermissionAction,
-} from "@/app/_actions/roles";
+} from "@/app/_actions/roles-permissions";
 
 interface PermissionsModalProps {
   role?: any;

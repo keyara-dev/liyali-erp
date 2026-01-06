@@ -5,7 +5,7 @@ import { useState } from "react";
 import { AdminGuard } from "@/components/auth/permission-guard";
 import { RoleModal } from "./role-modal";
 import { PermissionsModal } from "./permissions-modal";
-import { getRolesAction, deleteRoleAction } from "@/app/_actions/roles";
+import { getRolesAction, deleteRoleAction } from "@/app/_actions/roles-permissions";
 
 export default function RolesPage() {
   const queryClient = useQueryClient();
