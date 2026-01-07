@@ -104,31 +104,31 @@ export function ApprovalHistoryPanel({
             <div className="space-y-3 max-h-96 overflow-y-auto">
               {approvalHistory.map((log, index) => (
                 <div
-                  key={log.id || index}
-                  className={`p-3 rounded-lg ${getActionColor(log.action || '')}`}
+                  key={log.approverId || index}
+                  className={`p-3 rounded-lg ${getActionColor(log.status || '')}`}
                 >
                   <div className="flex items-start gap-3">
-                    {getActionIcon(log.action || '')}
+                    {getActionIcon(log.status || '')}
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
                         <span className="font-semibold text-sm">
-                          {(log as any).approverName || (log as any).performedByName || 'Unknown'}
+                          {log.approverName || log.actionTakenBy || 'Unknown'}
                         </span>
                         <Badge variant="outline" className="text-xs">
-                          {log.action || 'PENDING'}
+                          {log.status || 'PENDING'}
                         </Badge>
                       </div>
                       <p className="text-xs text-gray-600 mt-1">
-                        {log.timestamp 
-                          ? new Date(log.timestamp).toLocaleString()
-                          : (log as any).performedAt 
-                            ? new Date((log as any).performedAt).toLocaleString()
+                        {log.approvedAt 
+                          ? new Date(log.approvedAt).toLocaleString()
+                          : log.actionTakenAt 
+                            ? new Date(log.actionTakenAt).toLocaleString()
                             : 'No date'
                         }
                       </p>
-                      {(log.comments || (log as any).remarks) && (
+                      {(log.comments || log.remarks) && (
                         <p className="text-sm mt-2 text-gray-700">
-                          "{log.comments || (log as any).remarks}"
+                          "{log.comments || log.remarks}"
                         </p>
                       )}
                     </div>

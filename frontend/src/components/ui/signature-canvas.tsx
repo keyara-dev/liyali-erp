@@ -1,160 +1,139 @@
-'use client'
+'use client';
 
-import { useRef, useEffect, useState, forwardRef, useImperativeHandle } from 'react'
-import { Button } from '@/components/ui/button'
-import { Label } from '@/components/ui/label'
-import { RotateCcw, Download } from 'lucide-react'
+import React, { useRef, useEffect, useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 
 interface SignatureCanvasProps {
-  onSignatureChange?: (signatureData: string) => void
-  disabled?: boolean
+  onSignatureChange?: (signature: string) => void;
+  width?: number;
+  height?: number;
+  className?: string;
+  disabled?: boolean;
 }
 
-export interface SignatureCanvasHandle {
-  clearSignature: () => void
-}
-
-export const SignatureCanvas = forwardRef<SignatureCanvasHandle, SignatureCanvasProps>(
-  function SignatureCanvasForwardRef({ onSignatureChange, disabled }, ref) {
-  const canvasRef = useRef<HTMLCanvasElement>(null)
-  const [isDrawing, setIsDrawing] = useState(false)
-  const [hasSignature, setHasSignature] = useState(false)
-
-  useImperativeHandle(ref, () => ({
-    clearSignature: () => {
-      const canvas = canvasRef.current
-      if (!canvas) return
-      const ctx = canvas.getContext('2d')
-      if (ctx) {
-        ctx.clearRect(0, 0, canvas.width, canvas.height)
-        setHasSignature(false)
-        onSignatureChange?.('')
-      }
-    },
-  }), [onSignatureChange])
+export function SignatureCanvas({
+  onSignatureChange,
+  width = 400,
+  height = 200,
+  className = '',
+  disabled = false,
+}: SignatureCanvasProps) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [isDrawing, setIsDrawing] = useState(false);
+  const [isEmpty, setIsEmpty] = useState(true);
 
   useEffect(() => {
-    const canvas = canvasRef.current
-    if (!canvas) return
+    const canvas = canvasRef.current;
+    if (!canvas) return;
 
-    // Set canvas size
-    const rect = canvas.parentElement?.getBoundingClientRect()
-    if (rect) {
-      canvas.width = rect.width
-      canvas.height = 200
-    }
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
 
-    // Set up canvas styling
-    const ctx = canvas.getContext('2d')
-    if (ctx) {
-      ctx.lineCap = 'round'
-      ctx.lineJoin = 'round'
-      ctx.lineWidth = 2
-      ctx.strokeStyle = '#000000'
-    }
-  }, [])
+    // Set up canvas
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = 2;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+  }, []);
 
   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (disabled) return
+    if (disabled) return;
+    
+    const canvas = canvasRef.current;
+    if (!canvas) return;
 
-    const canvas = canvasRef.current
-    if (!canvas) return
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
 
-    const rect = canvas.getBoundingClientRect()
-    const x = e.clientX - rect.left
-    const y = e.clientY - rect.top
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
 
-    const ctx = canvas.getContext('2d')
-    if (ctx) {
-      ctx.beginPath()
-      ctx.moveTo(x, y)
-      setIsDrawing(true)
-    }
-  }
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    setIsDrawing(true);
+    setIsEmpty(false);
+  };
 
   const draw = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!isDrawing || disabled) return
+    if (!isDrawing || disabled) return;
 
-    const canvas = canvasRef.current
-    if (!canvas) return
+    const canvas = canvasRef.current;
+    if (!canvas) return;
 
-    const rect = canvas.getBoundingClientRect()
-    const x = e.clientX - rect.left
-    const y = e.clientY - rect.top
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
 
-    const ctx = canvas.getContext('2d')
-    if (ctx) {
-      ctx.lineTo(x, y)
-      ctx.stroke()
-      setHasSignature(true)
-    }
-  }
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    ctx.lineTo(x, y);
+    ctx.stroke();
+  };
 
   const stopDrawing = () => {
-    setIsDrawing(false)
-  }
+    if (!isDrawing || disabled) return;
+    setIsDrawing(false);
+
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    // Convert to base64 and notify parent
+    const signature = canvas.toDataURL();
+    onSignatureChange?.(signature);
+  };
 
   const clearSignature = () => {
-    const canvas = canvasRef.current
-    if (!canvas) return
+    if (disabled) return;
+    
+    const canvas = canvasRef.current;
+    if (!canvas) return;
 
-    const ctx = canvas.getContext('2d')
-    if (ctx) {
-      ctx.clearRect(0, 0, canvas.width, canvas.height)
-      setHasSignature(false)
-      onSignatureChange?.('')
-    }
-  }
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
 
-  const saveSignature = () => {
-    const canvas = canvasRef.current
-    if (!canvas) return
-
-    const signatureData = canvas.toDataURL('image/png')
-    onSignatureChange?.(signatureData)
-  }
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    setIsEmpty(true);
+    onSignatureChange?.('');
+  };
 
   return (
-    <div className="space-y-3">
-      <Label>Digital Signature *</Label>
-      <div className="border-2 border-dashed rounded-lg bg-gray-50 overflow-hidden">
-        <canvas
-          ref={canvasRef}
-          onMouseDown={startDrawing}
-          onMouseMove={draw}
-          onMouseUp={stopDrawing}
-          onMouseLeave={stopDrawing}
-          className={`w-full cursor-${disabled ? 'not-allowed' : 'crosshair'} block`}
-          style={{ touchAction: 'none' }}
-        />
+    <Card className={`p-4 ${className}`}>
+      <div className="space-y-4">
+        <div className="text-sm font-medium text-gray-700">
+          Digital Signature
+        </div>
+        <div className={`border border-gray-300 rounded-md ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}>
+          <canvas
+            ref={canvasRef}
+            width={width}
+            height={height}
+            className={disabled ? 'cursor-not-allowed' : 'cursor-crosshair'}
+            onMouseDown={startDrawing}
+            onMouseMove={draw}
+            onMouseUp={stopDrawing}
+            onMouseLeave={stopDrawing}
+          />
+        </div>
+        <div className="flex justify-between">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={clearSignature}
+            disabled={isEmpty || disabled}
+          >
+            Clear
+          </Button>
+          <div className="text-xs text-gray-500">
+            Sign above to provide your digital signature
+          </div>
+        </div>
       </div>
-      <p className="text-xs text-muted-foreground">
-        Sign above using your mouse. A signature is required to approve.
-      </p>
-      <div className="flex gap-2">
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={clearSignature}
-          disabled={!hasSignature || disabled}
-          className="gap-2"
-        >
-          <RotateCcw className="h-4 w-4" />
-          Clear
-        </Button>
-        <Button
-          type="button"
-          size="sm"
-          onClick={saveSignature}
-          disabled={!hasSignature || disabled}
-          className="gap-2"
-        >
-          <Download className="h-4 w-4" />
-          Save Signature
-        </Button>
-      </div>
-    </div>
-  )
-  }
-)
+    </Card>
+  );
+}
+
+export default SignatureCanvas;

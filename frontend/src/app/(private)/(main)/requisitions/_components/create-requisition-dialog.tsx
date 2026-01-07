@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -16,9 +15,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Plus, Trash2 } from "lucide-react";
-import { createRequisition } from '@/app/_actions/requisitions';
-import { RequisitionItem } from "@/types/requisition";
-import { QUERY_KEYS } from "@/lib/constants";
+import { RequisitionItem, RequisitionPriority } from "@/types/requisition";
+import { useCreateRequisition } from "@/hooks/use-requisition-mutations";
 
 interface CreateRequisitionDialogProps {
   open: boolean;
@@ -33,19 +31,49 @@ export function CreateRequisitionDialog({
   onRequisitionCreated,
   userId,
 }: CreateRequisitionDialogProps) {
-  const queryClient = useQueryClient();
-  const [isLoading, setIsLoading] = useState(false);
+  const createMutation = useCreateRequisition(() => {
+    // Reset form on success
+    setFormData({
+      title: "",
+      department: "",
+      departmentId: "",
+      priority: "medium",
+      requestedFor: "",
+      justification: "",
+      budgetCode: "",
+      costCenter: "",
+      projectCode: "",
+      currency: "ZMW",
+      isEstimate: true,
+      requiredByDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      items: [],
+    });
+    onRequisitionCreated();
+  });
+
   const [formData, setFormData] = useState({
+    title: "",
     department: "",
+    departmentId: "",
+    priority: "medium" as RequisitionPriority,
     requestedFor: "",
     justification: "",
     budgetCode: "",
-    program: "",
+    costCenter: "",
+    projectCode: "",
+    currency: "ZMW",
+    isEstimate: true,
+    requiredByDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
     items: [] as RequisitionItem[],
   });
 
   const totalEstimatedCost = formData.items.reduce(
-    (sum, item) => sum + (item.estimatedCost || 0),
+    (sum, item) => sum + (item.estimatedCost || 0) * item.quantity,
+    0
+  );
+
+  const totalAmount = formData.items.reduce(
+    (sum, item) => sum + (item.amount || (item.estimatedCost || 0) * item.quantity),
     0
   );
 
@@ -87,6 +115,10 @@ export function CreateRequisitionDialog({
 
   const handleSubmit = async () => {
     // Validation
+    if (!formData.title.trim()) {
+      toast.error("Please enter a title for the requisition");
+      return;
+    }
     if (!formData.department.trim()) {
       toast.error("Please enter department");
       return;
@@ -117,59 +149,29 @@ export function CreateRequisitionDialog({
       return;
     }
 
-    setIsLoading(true);
-    try {
-      const totalAmount = formData.items.reduce((sum, item) => 
-        sum + (item.quantity * (item.estimatedCost || 0)), 0
-      );
-
-      const result = await createRequisition({
-        title: `Requisition for ${formData.department}`,
-        description: formData.justification,
-        department: formData.department,
-        departmentId: formData.department, // Using department as departmentId for now
-        priority: 'medium', // Default priority
-        items: formData.items,
-        totalAmount,
-        currency: 'ZMW', // Default currency
-        isEstimate: true, // Default to estimate
-        requiredByDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
-        budgetCode: formData.budgetCode,
-        costCenter: formData.budgetCode, // Using budgetCode as costCenter for now
-        projectCode: formData.budgetCode, // Using budgetCode as projectCode for now
-        createdBy: userId,
-        createdByName: 'User', // Default name
-        createdByRole: 'requester', // Default role
-        requestedFor: formData.requestedFor,
-        justification: formData.justification,
-      });
-
-      if (result.success && result.data) {
-        toast.success(
-          `Requisition ${result.data.documentNumber} created successfully`
-        );
-        // Invalidate requisitions query to force refetch
-        queryClient.invalidateQueries({
-          queryKey: [QUERY_KEYS.REQUISITIONS.ALL, "with-storage"],
-        });
-        // Reset form
-        setFormData({
-          department: "",
-          requestedFor: "",
-          justification: "",
-          budgetCode: "",
-          program: "",
-          items: [],
-        });
-        onRequisitionCreated();
-      } else {
-        toast.error(result.message);
-      }
-    } catch (error) {
-      toast.error("Failed to create requisition");
-    } finally {
-      setIsLoading(false);
-    }
+    // Use the mutation hook
+    createMutation.mutate({
+      title: formData.title,
+      description: formData.justification,
+      department: formData.department,
+      departmentId: formData.departmentId || formData.department, // Use department as fallback
+      priority: formData.priority,
+      items: formData.items,
+      totalAmount: totalAmount,
+      currency: formData.currency,
+      categoryId: undefined, // Optional field
+      preferredVendorId: undefined, // Optional field
+      isEstimate: formData.isEstimate,
+      requiredByDate: formData.requiredByDate,
+      budgetCode: formData.budgetCode,
+      costCenter: formData.costCenter || formData.budgetCode, // Use budgetCode as fallback
+      projectCode: formData.projectCode || formData.budgetCode, // Use budgetCode as fallback
+      createdBy: userId,
+      createdByName: 'User', // Default name - could be enhanced with actual user data
+      createdByRole: 'requester', // Default role
+      requestedFor: formData.requestedFor,
+      justification: formData.justification,
+    });
   };
 
   return (
@@ -188,64 +190,163 @@ export function CreateRequisitionDialog({
             <div className="space-y-4">
               <h3 className="font-semibold text-lg">Basic Information</h3>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="title">Title *</Label>
                 <Input
-                  id="department"
-                  label="Department"
-                  required
-                  placeholder="e.g., Operations"
-                  value={formData.department}
+                  id="title"
+                  placeholder="Enter requisition title"
+                  value={formData.title}
                   onChange={(e) =>
-                    setFormData({ ...formData, department: e.target.value })
-                  }
-                />
-
-                <Input
-                  id="requestedFor"
-                  label="Requested By"
-                  required
-                  placeholder="e.g., John Mwale"
-                  value={formData.requestedFor}
-                  onChange={(e) =>
-                    setFormData({ ...formData, requestedFor: e.target.value })
+                    setFormData({ ...formData, title: e.target.value })
                   }
                 />
               </div>
 
-              <Input
-                id="budgetCode"
-                label="Budget Code"
-                required
-                placeholder="e.g., CAP-2024-001"
-                value={formData.budgetCode}
-                onChange={(e) =>
-                  setFormData({ ...formData, budgetCode: e.target.value })
-                }
-              />
-              <Input
-                id="program"
-                label="Program"
-                required
-                placeholder="e.g., Training Workshop"
-                value={formData.program}
-                onChange={(e) =>
-                  setFormData({ ...formData, program: e.target.value })
-                }
-              />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="department">Department *</Label>
+                  <Input
+                    id="department"
+                    placeholder="e.g., Operations"
+                    value={formData.department}
+                    onChange={(e) =>
+                      setFormData({ ...formData, department: e.target.value })
+                    }
+                  />
+                </div>
 
-              <Textarea
-                id="justification"
-                label="Justification"
-                placeholder="Explain why these items are needed..."
-                rows={3}
-                value={formData.justification}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    justification: e.target.value,
-                  })
-                }
-              />
+                <div className="space-y-2">
+                  <Label htmlFor="priority">Priority</Label>
+                  <select
+                    id="priority"
+                    value={formData.priority}
+                    onChange={(e) =>
+                      setFormData({ ...formData, priority: e.target.value as RequisitionPriority })
+                    }
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <option value="low">Low</option>
+                    <option value="medium">Medium</option>
+                    <option value="high">High</option>
+                    <option value="urgent">Urgent</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="requestedFor">Requested For *</Label>
+                  <Input
+                    id="requestedFor"
+                    placeholder="e.g., John Mwale"
+                    value={formData.requestedFor}
+                    onChange={(e) =>
+                      setFormData({ ...formData, requestedFor: e.target.value })
+                    }
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="currency">Currency</Label>
+                  <select
+                    id="currency"
+                    value={formData.currency}
+                    onChange={(e) =>
+                      setFormData({ ...formData, currency: e.target.value })
+                    }
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <option value="ZMW">ZMW</option>
+                    <option value="USD">USD</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="budgetCode">Budget Code *</Label>
+                  <Input
+                    id="budgetCode"
+                    placeholder="e.g., CAP-2024-001"
+                    value={formData.budgetCode}
+                    onChange={(e) =>
+                      setFormData({ ...formData, budgetCode: e.target.value })
+                    }
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="costCenter">Cost Center</Label>
+                  <Input
+                    id="costCenter"
+                    placeholder="Cost center"
+                    value={formData.costCenter}
+                    onChange={(e) =>
+                      setFormData({ ...formData, costCenter: e.target.value })
+                    }
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="projectCode">Project Code</Label>
+                  <Input
+                    id="projectCode"
+                    placeholder="Project code"
+                    value={formData.projectCode}
+                    onChange={(e) =>
+                      setFormData({ ...formData, projectCode: e.target.value })
+                    }
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="requiredByDate">Required By Date</Label>
+                  <Input
+                    id="requiredByDate"
+                    type="date"
+                    value={formData.requiredByDate.toISOString().split('T')[0]}
+                    onChange={(e) =>
+                      setFormData({ ...formData, requiredByDate: new Date(e.target.value) })
+                    }
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="isEstimate">Is Estimate</Label>
+                  <div className="flex items-center space-x-2 h-10">
+                    <input
+                      id="isEstimate"
+                      type="checkbox"
+                      checked={formData.isEstimate}
+                      onChange={(e) =>
+                        setFormData({ ...formData, isEstimate: e.target.checked })
+                      }
+                      className="h-4 w-4 rounded border-gray-300"
+                    />
+                    <span className="text-sm text-gray-600">
+                      This is an estimated cost
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="justification">Justification *</Label>
+                <Textarea
+                  id="justification"
+                  placeholder="Explain why these items are needed..."
+                  rows={3}
+                  value={formData.justification}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      justification: e.target.value,
+                    })
+                  }
+                />
+              </div>
             </div>
 
             {/* Items Section */}
@@ -333,12 +434,12 @@ export function CreateRequisitionDialog({
                         />
 
                         <div className="space-y-2">
-                          <Label>Total (ZMW)</Label>
+                          <Label>Total ({formData.currency})</Label>
                           <div className="flex items-center justify-center h-9 bg-gray-50 rounded-lg border border-gray-200">
                             <span className="font-semibold">
                               {(
                                 item.quantity * (item.estimatedCost || 0)
-                              ).toLocaleString("en-ZM", {
+                              ).toLocaleString("en-US", {
                                 minimumFractionDigits: 2,
                                 maximumFractionDigits: 2,
                               })}
@@ -363,16 +464,21 @@ export function CreateRequisitionDialog({
               <div className="bg-blue-50 rounded-lg p-4">
                 <div className="flex items-center justify-between">
                   <span className="font-semibold text-gray-700">
-                    Total Estimated Cost:
+                    Total Amount:
                   </span>
                   <span className="text-xl font-bold text-blue-600">
-                    ZMW{" "}
-                    {totalEstimatedCost.toLocaleString("en-ZM", {
+                    {formData.currency}{" "}
+                    {totalAmount.toLocaleString("en-US", {
                       minimumFractionDigits: 2,
                       maximumFractionDigits: 2,
                     })}
                   </span>
                 </div>
+                {formData.isEstimate && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    * This is an estimated amount
+                  </p>
+                )}
               </div>
             )}
           </div>
@@ -383,16 +489,16 @@ export function CreateRequisitionDialog({
           <Button
             variant="outline"
             onClick={() => onOpenChange(false)}
-            disabled={isLoading}
+            disabled={createMutation.isPending}
           >
             Cancel
           </Button>
           <Button
             onClick={handleSubmit}
-            disabled={isLoading}
+            disabled={createMutation.isPending}
             className="min-w-32"
           >
-            {isLoading ? "Creating..." : "Create Requisition"}
+            {createMutation.isPending ? "Creating..." : "Create Requisition"}
           </Button>
         </div>
       </DialogContent>

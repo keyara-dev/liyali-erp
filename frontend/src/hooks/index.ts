@@ -16,6 +16,9 @@ export * from './use-workflows';
 export * from './use-approval-history';
 export * from './use-approval-tasks';
 
+// Requisition hooks
+export * from './use-requisition-mutations';
+
 // GRN hooks
 export * from './use-grn-queries';
 export * from './use-grn-mutations';
