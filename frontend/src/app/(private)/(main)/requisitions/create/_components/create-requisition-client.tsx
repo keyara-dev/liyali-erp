@@ -45,16 +45,6 @@ export function CreateRequisitionClient({
     setCurrentStep("form");
   };
 
-  const handleSubmit = async (data: RequisitionFormData) => {
-    // Submit to server action
-    try {
-      // TODO: Call createWorkflowDocument server action
-      router.push("/requisitions");
-    } catch (error) {
-      console.error("Failed to create requisition:", error);
-    }
-  };
-
   return (
     <div className="space-y-6">
       <PageHeader
@@ -102,7 +92,6 @@ export function CreateRequisitionClient({
         <FormPreview
           formData={formData}
           onBack={handleBack}
-          onSubmit={handleSubmit}
           userId={userId}
           userName={userName}
           userRole={userRole}

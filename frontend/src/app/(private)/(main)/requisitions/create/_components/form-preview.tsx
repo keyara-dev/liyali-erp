@@ -2,10 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import {
   Table,
   TableBody,
@@ -15,16 +13,13 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Loader2 } from "lucide-react";
-import { createRequisition } from "@/app/_actions/requisitions";
+import { useCreateRequisition } from "@/hooks/use-requisition-mutations";
 import { useRequisitionStorage } from "@/hooks/use-requisition-storage";
-import { QUERY_KEYS } from "@/lib/constants";
 import { RequisitionFormData } from "./create-requisition-client";
-import { toast } from "sonner";
 
 interface FormPreviewProps {
   formData: RequisitionFormData;
   onBack: () => void;
-  onSubmit: (data: RequisitionFormData) => void;
   userId: string;
   userName: string;
   userRole: string;
@@ -33,44 +28,53 @@ interface FormPreviewProps {
 export function FormPreview({
   formData,
   onBack,
-  onSubmit,
   userId,
   userName,
   userRole,
 }: FormPreviewProps) {
   const router = useRouter();
-  const queryClient = useQueryClient();
   const { saveToStorage } = useRequisitionStorage();
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Use the mutation hook for creating requisitions
+  const createRequisitionMutation = useCreateRequisition(() => {
+    // On success callback - redirect to the newly created requisition
+    if (createRequisitionMutation.data?.data?.id) {
+      // Save to localStorage for persistence
+      saveToStorage(createRequisitionMutation.data.data);
+      router.push(`/requisitions/${createRequisitionMutation.data.data.id}`);
+    }
+  });
+
   const totalAmount = formData.items.reduce(
-    (sum, item) => sum + (item.estimatedCost || 0) * item.quantity,
+    (sum, item) => sum + (item.estimatedCost || item.unitPrice || 0) * item.quantity,
     0
   );
 
   const handleSubmit = async () => {
-    setIsSubmitting(true);
     setError(null);
 
     try {
-      // Create requisition with proper structure
-      const result = await createRequisition({
+      // Create requisition with proper structure using the mutation
+      await createRequisitionMutation.mutateAsync({
         title: formData.requestedFor,
         description: formData.justification,
         department: formData.department,
         departmentId: formData.department.toLowerCase(),
         requiredByDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
         priority: 'MEDIUM',
+        totalAmount: totalAmount,
+        currency: 'ZMW',
+        isEstimate: true,
         items: formData.items.map((item, index) => ({
           itemNumber: index + 1,
-          description: item.itemDescription,
+          description: item.itemDescription || item.description || '',
           category: 'General',
           quantity: item.quantity,
-          unitPrice: item.estimatedCost,
-          amount: item.quantity * (item.estimatedCost || 0), // Add required amount field
+          unitPrice: item.estimatedCost || item.unitPrice || 0,
+          amount: item.quantity * (item.estimatedCost || item.unitPrice || 0),
           unit: 'unit',
-          totalPrice: item.quantity * (item.estimatedCost || 0),
+          totalPrice: item.quantity * (item.estimatedCost || item.unitPrice || 0),
           notes: '',
         })),
         budgetCode: formData.budgetCode,
@@ -80,39 +84,17 @@ export function FormPreview({
         createdByName: userName,
         createdByRole: userRole,
       });
-
-      if (result.success && result.data) {
-        // Save to localStorage for persistence
-        saveToStorage(result.data);
-
-        // Invalidate React Query cache
-        queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.REQUISITIONS.ALL] });
-        queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.REQUISITIONS.BY_USER] });
-
-        // Show success message
-        toast.success('Requisition created successfully!');
-
-        // Redirect to the newly created requisition details
-        router.push(`/requisitions/${result.data.id}`);
-      } else {
-        setError(result.message || 'Failed to create requisition');
-        toast.error(result.message || 'Failed to create requisition');
-      }
     } catch (err) {
       console.error('Submit error:', err);
-      const errorMessage = 'An error occurred while submitting the requisition';
-      setError(errorMessage);
-      toast.error(errorMessage);
-    } finally {
-      setIsSubmitting(false);
+      setError(err instanceof Error ? err.message : 'An error occurred while submitting the requisition');
     }
   };
 
   return (
     <div className="space-y-6">
-      {error && (
+      {(error || createRequisitionMutation.error) && (
         <div className="bg-destructive/10 border border-destructive/30 text-destructive p-4 rounded-lg">
-          {error}
+          {error || createRequisitionMutation.error?.message}
         </div>
       )}
 
@@ -171,18 +153,18 @@ export function FormPreview({
               </TableHeader>
               <TableBody>
                 {formData.items.map((item, index) => (
-                  <TableRow key={item.id}>
+                  <TableRow key={item.id || index}>
                     <TableCell className="font-medium">
-                      {item.itemDescription}
+                      {item.itemDescription || item.description}
                     </TableCell>
                     <TableCell className="text-right">
                       {item.quantity}
                     </TableCell>
                     <TableCell className="text-right">
-                      {(item.estimatedCost || 0).toFixed(2)}
+                      {(item.estimatedCost || item.unitPrice || 0).toFixed(2)}
                     </TableCell>
                     <TableCell className="text-right font-semibold">
-                      {(item.quantity * (item.estimatedCost || 0)).toFixed(2)}
+                      {(item.quantity * (item.estimatedCost || item.unitPrice || 0)).toFixed(2)}
                     </TableCell>
                   </TableRow>
                 ))}
@@ -210,18 +192,18 @@ export function FormPreview({
           type="button"
           variant="outline"
           onClick={onBack}
-          disabled={isSubmitting}
+          disabled={createRequisitionMutation.isPending}
         >
           Back to Edit
         </Button>
         <Button
           type="button"
           onClick={handleSubmit}
-          disabled={isSubmitting}
+          disabled={createRequisitionMutation.isPending}
           className="gap-2"
         >
-          {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
-          {isSubmitting ? "Submitting..." : "Submit Requisition"}
+          {createRequisitionMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+          {createRequisitionMutation.isPending ? "Submitting..." : "Submit Requisition"}
         </Button>
       </div>
 
