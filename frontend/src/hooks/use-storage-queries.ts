@@ -48,11 +48,12 @@
  */
 
 import { useQuery } from '@tanstack/react-query';
-import { WorkflowDocument } from '@/types/workflow';
+import { WorkflowDocument, WorkflowDocumentType } from '@/types/workflow';
+import { UserRole } from '@/types/core';
 import { PurchaseOrder } from '@/types/purchase-order';
 import { PaymentVoucher } from '@/types/payment-voucher';
 import { Requisition } from '@/types/requisition';
-import type { GoodsReceivedNote } from '@/app/_actions/grn-actions';
+import { GoodsReceivedNote } from '@/types/goods-received-note';
 import {
   getPurchaseOrders,
   getRequisitions,
@@ -231,7 +232,7 @@ export const useGrnsAsWorkflowDocumentsQuery = (userId?: string) => {
       if (userId) {
         grns = grns.filter((grn) => grn.createdBy === userId);
       }
-      return convertToWorkflowDocuments([...grns]);
+      return convertToWorkflowDocuments(grns as any[]);
     },
     staleTime: 0, // Always refetch from storage to ensure fresh data
     gcTime: 10 * 60 * 1000,
@@ -243,18 +244,50 @@ export const useGrnsAsWorkflowDocumentsQuery = (userId?: string) => {
 // ============================================================================
 
 function convertToWorkflowDocuments(
-  documents: (PurchaseOrder | Requisition | PaymentVoucher | GoodsReceivedNote)[]
+  documents: any[]
 ): WorkflowDocument[] {
-  return documents.map((doc) => ({
-    id: doc.id,
-    type: doc.type,
-    documentNumber: (doc as any).documentNumber || doc.id,
-    status: (doc as any).status || 'DRAFT',
-    currentStage: doc.currentStage || 0,
-    createdBy: doc.createdBy,
-    createdByUser: doc.createdByUser,
-    createdAt: doc.createdAt instanceof Date ? doc.createdAt : new Date(doc.createdAt),
-    updatedAt: doc.updatedAt instanceof Date ? doc.updatedAt : new Date(doc.updatedAt),
-    metadata: doc.metadata,
-  }));
+  return documents.map((doc) => {
+    // Determine document type based on the document structure
+    let docType: WorkflowDocumentType = 'requisition'; // Default fallback
+    
+    // Check for explicit type property first
+    if (doc.type) {
+      docType = doc.type as WorkflowDocumentType;
+    } else {
+      // Determine type based on unique properties
+      if (doc.grnNumber) {
+        docType = 'goods_received_note';
+      } else if (doc.voucherNumber) {
+        docType = 'payment_voucher';
+      } else if (doc.poNumber && doc.vendorId) {
+        docType = 'purchase_order';
+      } else if (doc.reqNumber || (doc.items && doc.expectedDeliveryDate)) {
+        docType = 'requisition';
+      }
+    }
+
+    return {
+      id: doc.id,
+      type: docType,
+      documentNumber: doc.documentNumber || 
+                     doc.grnNumber || 
+                     doc.voucherNumber || 
+                     doc.poNumber || 
+                     doc.reqNumber ||
+                     doc.requisitionNumber || 
+                     doc.id,
+      status: doc.status || 'draft',
+      currentStage: doc.currentStage || doc.approvalStage || 0,
+      createdBy: doc.createdBy,
+      createdByUser: doc.createdBy ? {
+        id: doc.createdBy,
+        email: '',
+        name: doc.createdByName || 'Unknown User',
+        role: 'requester' as UserRole,
+      } : undefined,
+      createdAt: doc.createdAt instanceof Date ? doc.createdAt : new Date(doc.createdAt),
+      updatedAt: doc.updatedAt instanceof Date ? doc.updatedAt : new Date(doc.updatedAt),
+      metadata: doc.metadata,
+    };
+  });
 }

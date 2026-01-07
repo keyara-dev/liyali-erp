@@ -6,8 +6,8 @@ import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { SignatureCanvas } from '@/components/ui/signature-canvas'
 import { Upload, Send, XCircle, Loader2 } from 'lucide-react'
-import { useApprovalTasks } from '@/hooks/use-approval-workflow'
-import { useApproveTask, useRejectTask } from '@/hooks/use-approval-workflow'
+import { useApprovalTasks } from '@/hooks/use-approval-tasks'
+import { useApproveTask, useRejectTask } from '@/hooks/use-approval-history'
 import {
   Dialog,
   DialogContent,
@@ -39,52 +39,63 @@ export function ApprovalActionPanel({
   )
 
   // Find the approval task for this requisition
-  const task = approvalTasks?.find((t) => t.documentId === requisitionId)
+  const task = approvalTasks?.find((t) => 
+    t.documentId === requisitionId || 
+    t.entityId === requisitionId ||
+    (t as any).requisitionId === requisitionId
+  )
   const taskId = task?.id || ''
 
-  const approveMutation = useApproveTask(taskId, () => {
-    setComments('')
-    setRemarks('')
-    setSignature('')
-    setAction(null)
-    onApprovalComplete()
-  })
-
-  const rejectMutation = useRejectTask(taskId, () => {
-    setComments('')
-    setRemarks('')
-    setSignature('')
-    setAction(null)
-    onApprovalComplete()
-  })
+  const approveMutation = useApproveTask()
+  const rejectMutation = useRejectTask()
 
   const handleApprove = async () => {
-    if (!signature) {
+    if (!signature || !taskId) {
       return
     }
 
     try {
       await approveMutation.mutateAsync({
-        comments,
-        signature,
-        stageNumber: task?.stage || 1,
+        taskId,
+        data: {
+          comments,
+          signature,
+          stageNumber: task?.stage || (task as any)?.stageIndex || 1,
+        }
       })
+      
+      // Reset form and call completion callback
+      setComments('')
+      setRemarks('')
+      setSignature('')
+      setAction(null)
+      onApprovalComplete()
     } catch (error) {
       // Error handled by hook's onError callback
     }
   }
 
   const handleReject = async () => {
-    if (!remarks.trim()) {
+    if (!remarks.trim() || !taskId) {
       return
     }
 
     try {
       await rejectMutation.mutateAsync({
-        remarks,
-        comments: remarks,
-        signature,
+        taskId,
+        data: {
+          remarks,
+          comments: remarks,
+          signature,
+        }
       })
+      
+      // Reset form and call completion callback
+      setComments('')
+      setRemarks('')
+      setSignature('')
+      setAction(null)
+      onApprovalComplete()
     } catch (error) {
       // Error handled by hook's onError callback
     }
@@ -115,6 +126,11 @@ export function ApprovalActionPanel({
             Reject
           </Button>
         </div>
+        {!task && (
+          <p className="text-xs text-gray-500 text-center">
+            No pending approval task found for this requisition
+          </p>
+        )}
       </div>
     )
   }

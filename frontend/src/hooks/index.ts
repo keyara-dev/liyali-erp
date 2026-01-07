@@ -12,6 +12,10 @@ export * from './use-budget-storage';
 export * from './use-workflows';
 // Note: use-workflow-queries removed to avoid duplicate exports
 
+// Approval hooks
+export * from './use-approval-history';
+export * from './use-approval-tasks';
+
 // GRN hooks
 export * from './use-grn-queries';
 export * from './use-grn-mutations';
