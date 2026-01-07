@@ -8,6 +8,7 @@ import { useEffect } from "react";
 import Logo from "@/components/base/logo";
 import { NavMain } from "@/components/layout/sidebar/nav-main";
 import { NavUser } from "@/components/layout/sidebar/nav-user";
+import { WorkspaceSwitcher } from "@/components/layout/sidebar/workspace-switcher";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Sidebar,
@@ -44,8 +45,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               isIcon={!open && !isMobile}
               isFull={open || isMobile}
               href="/"
-              className="my-4 mb-0"
+              className="my-4 mb-2"
             />
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <WorkspaceSwitcher />
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>
