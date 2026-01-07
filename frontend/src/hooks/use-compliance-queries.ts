@@ -37,7 +37,7 @@ export const useComplianceRequirements = (
     queryFn: async () => {
       const response = await fetch('/api/compliance/requirements');
       if (!response.ok) throw new Error('Failed to fetch compliance requirements');
-      const data = response.json();
+      const data = await response.json();
       if (onSuccess) onSuccess(data);
       return data;
     },

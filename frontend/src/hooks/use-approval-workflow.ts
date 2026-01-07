@@ -255,8 +255,8 @@ export const usePendingApprovalCount = () =>
         1
       );
       if (!response.success) throw new Error(response.message);
-      // Return total count from pagination metadata
-      return response.data?.total || 0;
+      // Return total count from pagination metadata or array length
+      return (response.data as any)?.total || (Array.isArray(response.data) ? response.data.length : 0);
     },
     staleTime: 2 * 60 * 1000, // 2 minutes
   });

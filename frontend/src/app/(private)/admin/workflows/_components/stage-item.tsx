@@ -5,7 +5,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Edit2, Trash2, GripVertical } from 'lucide-react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import type { WorkflowStage } from '@/app/_actions/workflows'
+import type { WorkflowStage } from '@/types/workflow-config'
 
 interface StageItemProps {
   stage: WorkflowStage
@@ -30,7 +30,7 @@ export function StageItem({ stage, onEdit, onDelete }: StageItemProps) {
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: stage.id })
+  } = useSortable({ id: stage.id || `stage-${stage.stageNumber || stage.order || 0}` })
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -38,7 +38,7 @@ export function StageItem({ stage, onEdit, onDelete }: StageItemProps) {
     opacity: isDragging ? 0.5 : 1,
   }
 
-  const approverRoleLabel = APPROVER_ROLE_LABELS[stage.approverRole] || stage.approverRole
+  const approverRoleLabel = APPROVER_ROLE_LABELS[stage.approverRole as keyof typeof APPROVER_ROLE_LABELS] || stage.approverRole || stage.requiredRole || 'Not Set'
   const requiredApprovalsLabel = stage.requiredApprovals === 5 ? 'All' : stage.requiredApprovals
   const hasPermissions = stage.canReject || stage.canReassign
 

@@ -11,7 +11,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Plus, Trash2, GripVertical, ArrowRight } from 'lucide-react'
-import type { WorkflowFormData, WorkflowStage } from '@/app/_actions/workflows'
+import type { WorkflowFormData, WorkflowStage } from '@/types/workflow-config'
 import { WorkflowDetailsForm } from './workflow-details-form'
 import { StageForm } from './stage-form'
 import {
@@ -49,9 +49,11 @@ export function WorkflowBuilder({
     initialData || {
       name: '',
       description: '',
+      entityType: 'REQUISITION',
       documentType: 'REQUISITION',
       stages: [],
       isDefault: false,
+      isActive: true,
     }
   )
   const [showStageDialog, setShowStageDialog] = useState(false)
@@ -142,13 +144,17 @@ export function WorkflowBuilder({
   const validateStage = (stage: WorkflowStage): Record<string, string> => {
     const errors: Record<string, string> = {}
 
-    if (!stage.name.trim()) {
+    const stageName = stage.name || stage.stageName || '';
+    const approverRole = stage.approverRole || stage.requiredRole || '';
+    const requiredApprovals = stage.requiredApprovals || 1;
+
+    if (!stageName.trim()) {
       errors.name = 'Stage name is required'
     }
-    if (!stage.approverRole.trim()) {
+    if (!approverRole.toString().trim()) {
       errors.approverRole = 'Approver role is required'
     }
-    if (stage.requiredApprovals < 1) {
+    if (requiredApprovals < 1) {
       errors.requiredApprovals = 'At least 1 approval is required'
     }
 
@@ -232,7 +238,7 @@ export function WorkflowBuilder({
               onDragEnd={handleDragEnd}
             >
               <SortableContext
-                items={formData.stages.map((s) => s.id)}
+                items={formData.stages.map((s) => s.id || `stage-${s.stageNumber || s.order || 0}`)}
                 strategy={verticalListSortingStrategy}
               >
                 <div className="space-y-3">
@@ -240,8 +246,8 @@ export function WorkflowBuilder({
                     <div key={stage.id} className="flex flex-col items-center w-full">
                       <StageItem
                         stage={stage}
-                        onEdit={() => handleEditStage(stage.id)}
-                        onDelete={() => handleDeleteStage(stage.id)}
+                        onEdit={() => handleEditStage(stage.id || `stage-${stage.stageNumber || stage.order || 0}`)}
+                        onDelete={() => handleDeleteStage(stage.id || `stage-${stage.stageNumber || stage.order || 0}`)}
                       />
                       {index < formData.stages.length - 1 && (
                         <ArrowRight className="h-4 w-4 text-muted-foreground rotate-90 mt-2" />

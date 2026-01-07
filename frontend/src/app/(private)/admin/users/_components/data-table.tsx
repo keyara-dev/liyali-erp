@@ -524,11 +524,16 @@ export default function UsersDataTable({
   // Transform pagination for CustomPagination
   const customPaginationData = {
     page: pagination.page,
+    limit: pagination.page_size,
+    total: pagination.total,
+    totalPages: pagination.total_pages,
+    hasNext: pagination.has_next,
+    hasPrev: pagination.has_prev,
     page_size: pagination.page_size,
-    total_pages: pagination.total_pages,
     totalCount: pagination.total,
-    has_prev: pagination.has_prev,
+    total_pages: pagination.total_pages,
     has_next: pagination.has_next,
+    has_prev: pagination.has_prev,
   };
 
   return (

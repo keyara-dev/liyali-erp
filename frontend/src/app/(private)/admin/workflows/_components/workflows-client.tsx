@@ -141,14 +141,14 @@ export function WorkflowsClient({ userId, userRole }: WorkflowsClientProps) {
                         </div>
                       </TableCell>
                       <TableCell>
-                        {getDocumentTypeLabel(workflow.documentType)}
+                        {getDocumentTypeLabel(workflow.documentType || workflow.entityType || 'Unknown')}
                       </TableCell>
                       <TableCell className="text-center">
-                        {workflow.stages}
+                        {workflow.stages?.length || 0}
                       </TableCell>
                       <TableCell>
                         <StatusBadge
-                          status={workflow.status}
+                          status={(workflow as any).status || (workflow.isActive ? 'active' : 'inactive')}
                           type="document"
                         />
                       </TableCell>

@@ -45,14 +45,20 @@ export function WorkflowSelector({
 
   const { data: workflows, isLoading } = useWorkflows();
 
-  // Filter workflows by entity type
+  // Filter workflows by entity type and transform to CustomWorkflow format
   const availableWorkflows = useMemo(() => {
     if (!workflows?.data) return [];
-    return workflows.data.filter(
-      (w: any) =>
-        w.applicableEntityTypes?.includes(entityType) ||
-        w.entityType === entityType
-    );
+    return workflows.data
+      .filter(
+        (w: any) =>
+          w.applicableEntityTypes?.includes(entityType) ||
+          w.entityType === entityType
+      )
+      .map((w: any): CustomWorkflow => ({
+        ...w,
+        applicableEntityTypes: w.applicableEntityTypes || [w.entityType],
+        isTemplate: w.isTemplate || false,
+      }));
   }, [workflows, entityType]);
 
   // Get recently used workflows from localStorage

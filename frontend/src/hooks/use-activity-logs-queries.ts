@@ -2,23 +2,9 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { QUERY_KEYS } from '@/lib/constants';
+import { ActivityLog, ActivityLogsData } from '@/types/activity';
 
-export interface ActivityLog {
-  id: string;
-  timestamp: string;
-  user: string;
-  action: string;
-  resource: string;
-  resourceId: string;
-  status: 'success' | 'failed' | 'pending';
-  details: string;
-  ipAddress: string;
-}
-
-export interface ActivityLogsData {
-  logs: ActivityLog[];
-  totalCount: number;
-}
+export type { ActivityLog, ActivityLogsData };
 
 export interface ActivityLogsFilters {
   searchTerm?: string;
@@ -54,7 +40,7 @@ export const useActivityLogs = (
     queryFn: async () => {
       const response = await fetch(url);
       if (!response.ok) throw new Error('Failed to fetch activity logs');
-      const data = response.json();
+      const data = await response.json();
       if (onSuccess) onSuccess(data);
       return data;
     },

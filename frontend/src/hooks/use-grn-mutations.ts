@@ -22,7 +22,7 @@ interface GoodsReceivedNote {
   id: string;
   grnNumber: string;
   poNumber: string;
-  status: 'DRAFT' | 'SUBMITTED' | 'CONFIRMED' | 'REJECTED';
+  status: 'DRAFT' | 'SUBMITTED' | 'CONFIRMED' | 'REJECTED' | 'APPROVED';
   warehouseLocation: string;
   receivedDate: string;
   receivedBy: string;
@@ -78,7 +78,7 @@ export function useAddQualityIssueMutation(
     },
     onSuccess: (updatedGRN) => {
       // Update the GRN query cache with the updated data
-      queryClient.setQueryData([QUERY_KEYS.GRN.BY_ID, grnId], updatedGRN);
+      queryClient.setQueryData([QUERY_KEYS.GRN.BY_ID, grnId], updatedGRN.data);
 
       // Invalidate related queries
       queryClient.invalidateQueries({
@@ -86,8 +86,8 @@ export function useAddQualityIssueMutation(
       });
 
       // Call optional success callback
-      if (onSuccess) {
-        onSuccess(updatedGRN);
+      if (onSuccess && updatedGRN.data) {
+        onSuccess(updatedGRN.data);
       }
     },
     onError: (error: Error) => {
@@ -128,13 +128,13 @@ export function useRemoveQualityIssueMutation(
       return result;
     },
     onSuccess: (updatedGRN) => {
-      queryClient.setQueryData([QUERY_KEYS.GRN.BY_ID, grnId], updatedGRN);
+      queryClient.setQueryData([QUERY_KEYS.GRN.BY_ID, grnId], updatedGRN.data);
       queryClient.invalidateQueries({
         queryKey: [QUERY_KEYS.GRN.ALL],
       });
 
-      if (onSuccess) {
-        onSuccess(updatedGRN);
+      if (onSuccess && updatedGRN.data) {
+        onSuccess(updatedGRN.data);
       }
     },
     onError: (error: Error) => {
@@ -184,13 +184,13 @@ export function useUpdateQualityIssueMutation(
       return result;
     },
     onSuccess: (updatedGRN) => {
-      queryClient.setQueryData([QUERY_KEYS.GRN.BY_ID, grnId], updatedGRN);
+      queryClient.setQueryData([QUERY_KEYS.GRN.BY_ID, grnId], updatedGRN.data);
       queryClient.invalidateQueries({
         queryKey: [QUERY_KEYS.GRN.ALL],
       });
 
-      if (onSuccess) {
-        onSuccess(updatedGRN);
+      if (onSuccess && updatedGRN.data) {
+        onSuccess(updatedGRN.data);
       }
     },
     onError: (error: Error) => {

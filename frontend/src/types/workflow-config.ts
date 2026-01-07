@@ -11,18 +11,18 @@ import { User } from './user';
 export interface WorkflowStage {
   stageNumber: number;
   stageName: string;
-  approverAssignmentType: 'USER' | 'ROLE' | 'ROLE_OR_USER';
-  requiredRole?: UserRole;
+  approverAssignmentType?: 'USER' | 'ROLE' | 'ROLE_OR_USER';
+  requiredRole?: UserRole | string;  // Allow string for compatibility
   specificUserId?: string;
   specificUserEmail?: string;
-  requiresSignature: boolean;
-  commentsType: 'REQUIRED' | 'OPTIONAL' | 'NONE';
-  canBeReassigned: boolean;
-  onApprove: {
+  requiresSignature?: boolean;
+  commentsType?: 'REQUIRED' | 'OPTIONAL' | 'NONE';
+  canBeReassigned?: boolean;
+  onApprove?: {
     nextStage?: number;
     action: 'NEXT_STAGE' | 'COMPLETE' | 'CUSTOM';
   };
-  onReject: {
+  onReject?: {
     nextStage?: number;
     action: 'RETURN_TO_REQUESTER' | 'RETURN_TO_STAGE' | 'TERMINATE';
   };
@@ -33,11 +33,12 @@ export interface WorkflowStage {
   canBeReversed?: boolean;     // Whether stage can be reversed
   id?: string;                 // Stage ID
   name?: string;               // Alias for stageName
-  approverRole?: UserRole;     // Alias for requiredRole
+  approverRole?: UserRole | string;     // Alias for requiredRole
   order?: number;              // Alias for stageNumber
   requiredApprovals?: number;  // Number of required approvals (default 1)
   canReject?: boolean;         // Alias for canBeRejected
   canReassign?: boolean;       // Alias for canBeReassigned
+  timeoutHours?: number;       // Timeout in hours
 }
 
 export interface WorkflowFormData {

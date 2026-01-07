@@ -118,7 +118,9 @@ export const useSubmitBudgetForApproval = (budgetId: string, onSuccess?: () => v
     mutationFn: async (data: { submittingUserId: string }) => {
       const response = await submitBudgetForApproval({
         budgetId,
-        ...data,
+        submittedBy: data.submittingUserId,
+        submittedByRole: 'requester',
+        submittingUserId: data.submittingUserId,
       });
 
       if (!response.success) {

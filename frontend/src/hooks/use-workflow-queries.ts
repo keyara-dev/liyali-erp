@@ -17,10 +17,12 @@ import {
   resolveWorkflowForEntity,
   getWorkflowUsage,
   validateWorkflow,
-  type Workflow,
-  type WorkflowFormData,
-  type WorkflowListFilter,
 } from '@/app/_actions/workflows';
+import type {
+  Workflow,
+  WorkflowFormData,
+  WorkflowListFilter,
+} from '@/types/workflow-config';
 
 // Re-export types for convenience
 export type { Workflow, WorkflowFormData, WorkflowListFilter };
@@ -123,7 +125,22 @@ export const useCreateWorkflow = () => {
 
   return useMutation({
     mutationFn: async (formData: WorkflowFormData) => {
-      const response = await createWorkflow(formData);
+      // Transform WorkflowFormData to match backend expectations
+      const backendFormData = {
+        ...formData,
+        stages: formData.stages.map(stage => ({
+          stageNumber: stage.stageNumber || stage.order || 0,
+          stageName: stage.stageName || stage.name || '',
+          requiredRole: stage.requiredRole || stage.approverRole || '',
+          requiredApprovals: stage.requiredApprovals || 1,
+          canReject: stage.canReject ?? stage.canBeRejected ?? true,
+          canReassign: stage.canReassign ?? stage.canBeReassigned ?? true,
+          description: stage.description,
+          timeoutHours: stage.timeoutHours,
+        })),
+      };
+      
+      const response = await createWorkflow(backendFormData as any);
       if (!response.success) {
         throw new Error(response.message);
       }
@@ -150,7 +167,22 @@ export const useUpdateWorkflow = (workflowId: string) => {
 
   return useMutation({
     mutationFn: async (formData: Partial<WorkflowFormData>) => {
-      const response = await updateWorkflow(workflowId, formData);
+      // Transform WorkflowFormData to match backend expectations
+      const backendFormData = {
+        ...formData,
+        stages: formData.stages?.map(stage => ({
+          stageNumber: stage.stageNumber || stage.order || 0,
+          stageName: stage.stageName || stage.name || '',
+          requiredRole: stage.requiredRole || stage.approverRole || '',
+          requiredApprovals: stage.requiredApprovals || 1,
+          canReject: stage.canReject ?? stage.canBeRejected ?? true,
+          canReassign: stage.canReassign ?? stage.canBeReassigned ?? true,
+          description: stage.description,
+          timeoutHours: stage.timeoutHours,
+        })),
+      };
+      
+      const response = await updateWorkflow(workflowId, backendFormData as any);
       if (!response.success) {
         throw new Error(response.message);
       }
@@ -326,7 +358,22 @@ export const useResolveWorkflow = () => {
 export const useValidateWorkflow = () => {
   return useMutation({
     mutationFn: async (workflowData: WorkflowFormData) => {
-      const response = await validateWorkflow(workflowData);
+      // Transform WorkflowFormData to match backend expectations
+      const backendFormData = {
+        ...workflowData,
+        stages: workflowData.stages.map(stage => ({
+          stageNumber: stage.stageNumber || stage.order || 0,
+          stageName: stage.stageName || stage.name || '',
+          requiredRole: stage.requiredRole || stage.approverRole || '',
+          requiredApprovals: stage.requiredApprovals || 1,
+          canReject: stage.canReject ?? stage.canBeRejected ?? true,
+          canReassign: stage.canReassign ?? stage.canBeReassigned ?? true,
+          description: stage.description,
+          timeoutHours: stage.timeoutHours,
+        })),
+      };
+      
+      const response = await validateWorkflow(backendFormData as any);
       if (!response.success) {
         throw new Error(response.message);
       }

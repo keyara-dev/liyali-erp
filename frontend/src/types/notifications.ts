@@ -124,6 +124,11 @@ export interface NotificationPreferences {
   };
   createdAt: Date;
   updatedAt: Date;
+  
+  // Backward compatibility with activity.ts
+  emailEnabled?: boolean;
+  pushEnabled?: boolean;
+  types?: NotificationType[];
 }
 
 // Alias for backward compatibility

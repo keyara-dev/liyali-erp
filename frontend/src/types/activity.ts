@@ -14,6 +14,7 @@ export interface ActivityLog {
   entity: string;
   entityId: string;
   details: string;
+  status: string;
   ipAddress?: string;
 }
 
@@ -99,9 +100,13 @@ export interface ActivityNotification {
   quickAction?: {           // Quick action configuration
     type: string;
     label: string;
-    params: Record<string, any>;
+    params?: Record<string, any>;
   };
   reassignmentReason?: string; // Reason for reassignment (if applicable)
+  
+  // Add missing properties for compatibility with notifications.ts
+  title?: string;            // Maps to subject
+  message?: string;          // Maps to body
 }
 
 // ================== NOTIFICATION REQUEST TYPES ==================

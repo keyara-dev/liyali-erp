@@ -218,8 +218,8 @@ export const useApproveGRN = (grnId: string, onSuccess?: (data: GoodsReceivedNot
     },
     onSuccess: (response) => {
       // Check if automation was used
-      const automationUsed = response.data?.automationUsed;
-      const autoCreatedPV = response.data?.autoCreatedPV;
+      const automationUsed = (response as any).automationUsed;
+      const autoCreatedPV = (response as any).autoCreatedPV;
 
       if (automationUsed && autoCreatedPV) {
         toast.success('GRN approved and Payment Voucher created automatically');

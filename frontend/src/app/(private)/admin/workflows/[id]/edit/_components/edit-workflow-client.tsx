@@ -26,9 +26,12 @@ export function EditWorkflowClient({
   const { data: workflow, isLoading } = useWorkflowById(workflowId)
 
   // Update workflow mutation
-  const updateMutation = useUpdateWorkflow(workflowId, () => {
+  const updateMutation = useUpdateWorkflow(workflowId)
+
+  // Handle successful update
+  const handleUpdateSuccess = () => {
     router.push('/admin/workflows')
-  })
+  }
 
   const handleBack = () => {
     router.back()

@@ -17,16 +17,19 @@ export function CreateWorkflowClient({
   const router = useRouter()
 
   // Create workflow mutation
-  const createMutation = useCreateWorkflow(() => {
-    router.push('/admin/workflows')
-  })
-
-  const handleBack = () => {
-    router.back()
-  }
+  const createMutation = useCreateWorkflow()
 
   const handleSubmit = async (formData: WorkflowFormData) => {
-    createMutation.mutate(formData)
+    try {
+      await createMutation.mutateAsync(formData)
+      router.push('/admin/workflows')
+    } catch (error) {
+      // Error is handled by the mutation hook
+    }
+  }
+
+  const handleBack = () => {
+    router.push('/admin/workflows')
   }
 
   return (

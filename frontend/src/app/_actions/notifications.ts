@@ -66,10 +66,18 @@ export async function getNotifications(
       throw new Error('User ID is required');
     }
 
-    const result = await getUserNotifications(userId, page, pageSize, filters);
+    const result = await getUserNotifications(userId, page, pageSize, filters as any);
+
+    // Transform ActivityNotification to Notification format
+    const transformedNotifications = result.notifications.map((notification: any) => ({
+      ...notification,
+      title: notification.title || notification.subject,
+      message: notification.message || notification.body,
+      quickAction: notification.quickAction || { type: 'VIEW_ONLY', label: 'View', params: {} },
+    }));
 
     return {
-      notifications: result.notifications,
+      notifications: transformedNotifications,
       total: result.total,
       page: result.page,
       pageSize: result.pageSize,
@@ -96,7 +104,15 @@ export async function getUnreadNotifications(
       throw new Error('User ID is required');
     }
 
-    return await persistGetUnreadNotifications(userId);
+    const notifications = await persistGetUnreadNotifications(userId);
+    
+    // Transform ActivityNotification to Notification format
+    return notifications.map((notification: any) => ({
+      ...notification,
+      title: notification.title || notification.subject,
+      message: notification.message || notification.body,
+      quickAction: notification.quickAction || { type: 'VIEW_ONLY', label: 'View', params: {} },
+    }));
   } catch (error) {
     console.error('[getUnreadNotifications] Error:', error);
     throw new Error('Failed to fetch unread notifications');
@@ -152,6 +168,8 @@ export async function createNotificationAction(
       type: request.type,
       title: request.title,
       message: request.message,
+      subject: request.title,  // Map title to subject for backend compatibility
+      body: request.message,   // Map message to body for backend compatibility
       entityId: request.entityId,
       entityType: request.entityType,
       entityNumber: request.entityNumber,
@@ -159,17 +177,35 @@ export async function createNotificationAction(
       relatedUserName: request.relatedUserName,
       isRead: false,
       actionTaken: false,
-      quickAction: request.quickAction,
-      quickActionData: request.quickActionData,
+      quickAction: {
+        ...request.quickAction,
+        params: request.quickAction.params || {},
+      },
       importance: request.importance || 'MEDIUM',
       rejectionReason: request.rejectionReason,
       reassignmentReason: request.reassignmentReason,
       createdAt: new Date(),
       expiresAt: request.expiresAt,
-    });
+      // Required ActivityNotification fields
+      organizationId: 'default-org',
+      recipientId: request.userId,
+      documentId: request.entityId || '',
+      documentType: request.entityType || '',
+      sent: false,
+      updatedAt: new Date(),
+    } as any);
+
+    // Transform to expected format
+    const transformedNotification = {
+      ...notification,
+      userId: notification.userId || notification.recipientId,
+      title: notification.title || notification.subject,
+      message: notification.message || notification.body,
+      quickAction: notification.quickAction || { type: 'VIEW_ONLY', label: 'View', params: {} },
+    };
 
     return {
-      notification,
+      notification: transformedNotification as any,
       success: true,
     };
   } catch (error) {
@@ -197,8 +233,17 @@ export async function markAsRead(
       throw new Error('Notification not found');
     }
 
+    // Transform to expected format
+    const transformedNotification = {
+      ...notification,
+      userId: notification.userId || notification.recipientId,
+      title: notification.title || notification.subject,
+      message: notification.message || notification.body,
+      quickAction: notification.quickAction || { type: 'VIEW_ONLY', label: 'View', params: {} },
+    };
+
     return {
-      notification,
+      notification: transformedNotification as any,
       success: true,
     };
   } catch (error) {
@@ -249,7 +294,14 @@ export async function markActionTaken(notificationId: string): Promise<Notificat
       throw new Error('Notification not found');
     }
 
-    return notification;
+    // Transform to expected format
+    return {
+      ...notification,
+      userId: notification.userId || notification.recipientId,
+      title: notification.title || notification.subject,
+      message: notification.message || notification.body,
+      quickAction: notification.quickAction || { type: 'VIEW_ONLY', label: 'View', params: {} },
+    } as any;
   } catch (error) {
     console.error('[markActionTaken] Error:', error);
     throw new Error('Failed to mark notification action as taken');
@@ -299,8 +351,28 @@ export async function getPreferences(
 
     const preferences = await getNotificationPreferences(request.userId);
 
+    // Transform to expected format with backward compatibility
+    const transformedPreferences = {
+      userId: request.userId,
+      emailNotifications: (preferences as any).emailNotifications ?? (preferences as any).emailEnabled ?? true,
+      pushNotifications: (preferences as any).pushNotifications ?? (preferences as any).pushEnabled ?? true,
+      inAppNotifications: (preferences as any).inAppNotifications ?? true,
+      notifyOn: (preferences as any).notifyOn || {
+        taskAssigned: true,
+        taskReassigned: true,
+        taskApproved: true,
+        taskRejected: true,
+        workflowComplete: true,
+        approvalOverdue: true,
+        commentsAdded: true,
+      },
+      groupNotifications: (preferences as any).groupNotifications ?? false,
+      createdAt: (preferences as any).createdAt || new Date(),
+      updatedAt: (preferences as any).updatedAt || new Date(),
+    };
+
     return {
-      preferences,
+      preferences: transformedPreferences,
     };
   } catch (error) {
     console.error('[getPreferences] Error:', error);
@@ -326,11 +398,31 @@ export async function updatePreferences(
 
     const preferences = await saveNotificationPreferences(
       request.userId,
-      request.preferences
+      request.preferences as any
     );
 
+    // Transform to expected format
+    const transformedPreferences = {
+      userId: request.userId,
+      emailNotifications: (preferences as any).emailNotifications ?? (preferences as any).emailEnabled ?? true,
+      pushNotifications: (preferences as any).pushNotifications ?? (preferences as any).pushEnabled ?? true,
+      inAppNotifications: (preferences as any).inAppNotifications ?? true,
+      notifyOn: (preferences as any).notifyOn || {
+        taskAssigned: true,
+        taskReassigned: true,
+        taskApproved: true,
+        taskRejected: true,
+        workflowComplete: true,
+        approvalOverdue: true,
+        commentsAdded: true,
+      },
+      groupNotifications: (preferences as any).groupNotifications ?? false,
+      createdAt: (preferences as any).createdAt || new Date(),
+      updatedAt: (preferences as any).updatedAt || new Date(),
+    };
+
     return {
-      preferences,
+      preferences: transformedPreferences,
       success: true,
     };
   } catch (error) {
@@ -350,12 +442,14 @@ export async function notifyTaskAssigned(
   entityType: string,
   entityNumber: string,
   currentStageName: string
-): Promise<Notification> {
+): Promise<any> {
   return await persistCreateNotification({
     userId: approverId,
     type: 'TASK_ASSIGNED',
     title: 'New approval task',
     message: `${entityType} #${entityNumber} needs your approval at ${currentStageName} stage`,
+    subject: 'New approval task',  // Backend compatibility
+    body: `${entityType} #${entityNumber} needs your approval at ${currentStageName} stage`,  // Backend compatibility
     entityId,
     entityType: entityType as any,
     entityNumber,
@@ -368,7 +462,14 @@ export async function notifyTaskAssigned(
     },
     importance: 'HIGH',
     createdAt: new Date(),
-  });
+    // Required ActivityNotification fields
+    organizationId: 'default-org',
+    recipientId: approverId,
+    documentId: entityId,
+    documentType: entityType,
+    sent: false,
+    updatedAt: new Date(),
+  } as any);
 }
 
 /**
@@ -384,12 +485,14 @@ export async function notifyTaskReassigned(
   reassignedBy: string,
   reassignedByName: string,
   reassignmentReason?: string
-): Promise<Notification> {
+): Promise<any> {
   return await persistCreateNotification({
     userId: newApproverId,
     type: 'TASK_REASSIGNED',
     title: 'Task reassigned to you',
     message: `${entityType} #${entityNumber} was reassigned to you by ${reassignedByName}`,
+    subject: 'Task reassigned to you',  // Backend compatibility
+    body: `${entityType} #${entityNumber} was reassigned to you by ${reassignedByName}`,  // Backend compatibility
     entityId,
     entityType: entityType as any,
     entityNumber,
@@ -405,7 +508,14 @@ export async function notifyTaskReassigned(
     },
     importance: 'HIGH',
     createdAt: new Date(),
-  });
+    // Required ActivityNotification fields
+    organizationId: 'default-org',
+    recipientId: newApproverId,
+    documentId: entityId,
+    documentType: entityType,
+    sent: false,
+    updatedAt: new Date(),
+  } as any);
 }
 
 /**
@@ -419,12 +529,14 @@ export async function notifyTaskApproved(
   entityNumber: string,
   approvedBy: string,
   approvedByName: string
-): Promise<Notification> {
+): Promise<any> {
   return await persistCreateNotification({
     userId: createdById,
     type: 'TASK_APPROVED',
     title: 'Task approved',
     message: `Your ${entityType} #${entityNumber} was approved by ${approvedByName}`,
+    subject: 'Task approved',  // Backend compatibility
+    body: `Your ${entityType} #${entityNumber} was approved by ${approvedByName}`,  // Backend compatibility
     entityId,
     entityType: entityType as any,
     entityNumber,
@@ -439,7 +551,14 @@ export async function notifyTaskApproved(
     },
     importance: 'MEDIUM',
     createdAt: new Date(),
-  });
+    // Required ActivityNotification fields
+    organizationId: 'default-org',
+    recipientId: createdById,
+    documentId: entityId,
+    documentType: entityType,
+    sent: false,
+    updatedAt: new Date(),
+  } as any);
 }
 
 /**
@@ -454,12 +573,14 @@ export async function notifyTaskRejected(
   rejectedBy: string,
   rejectedByName: string,
   rejectionReason: string
-): Promise<Notification> {
+): Promise<any> {
   return await persistCreateNotification({
     userId: createdById,
     type: 'TASK_REJECTED',
     title: 'Task rejected',
     message: `Your ${entityType} #${entityNumber} was rejected: ${rejectionReason}`,
+    subject: 'Task rejected',  // Backend compatibility
+    body: `Your ${entityType} #${entityNumber} was rejected: ${rejectionReason}`,  // Backend compatibility
     entityId,
     entityType: entityType as any,
     entityNumber,
@@ -475,7 +596,14 @@ export async function notifyTaskRejected(
     },
     importance: 'HIGH',
     createdAt: new Date(),
-  });
+    // Required ActivityNotification fields
+    organizationId: 'default-org',
+    recipientId: createdById,
+    documentId: entityId,
+    documentType: entityType,
+    sent: false,
+    updatedAt: new Date(),
+  } as any);
 }
 
 /**
@@ -489,12 +617,14 @@ export async function notifyWorkflowComplete(
   entityNumber: string,
   finalApprovedBy: string,
   finalApprovedByName: string
-): Promise<Notification> {
+): Promise<any> {
   return await persistCreateNotification({
     userId: createdById,
     type: 'WORKFLOW_COMPLETE',
     title: 'Approval complete',
     message: `Your ${entityType} #${entityNumber} was fully approved!`,
+    subject: 'Approval complete',  // Backend compatibility
+    body: `Your ${entityType} #${entityNumber} was fully approved!`,  // Backend compatibility
     entityId,
     entityType: entityType as any,
     entityNumber,
@@ -509,5 +639,12 @@ export async function notifyWorkflowComplete(
     },
     importance: 'MEDIUM',
     createdAt: new Date(),
-  });
+    // Required ActivityNotification fields
+    organizationId: 'default-org',
+    recipientId: createdById,
+    documentId: entityId,
+    documentType: entityType,
+    sent: false,
+    updatedAt: new Date(),
+  } as any);
 }

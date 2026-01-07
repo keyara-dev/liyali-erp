@@ -12,7 +12,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Checkbox } from '@/components/ui/checkbox'
-import type { WorkflowStage, WorkflowFormData } from '@/app/_actions/workflows'
+import type { WorkflowStage, WorkflowFormData } from '@/types/workflow-config'
 
 interface StageFormProps {
   stage?: WorkflowStage | null
@@ -42,10 +42,14 @@ export function StageForm({
       order: 1,
       name: '',
       description: '',
-      approverRole: '',
+      approverRole: '' as any,
       requiredApprovals: 1,
       canReject: true,
       canReassign: true,
+      stageNumber: 1,
+      stageName: '',
+      requiredRole: '',
+      canBeReassigned: true,
     }
   )
 

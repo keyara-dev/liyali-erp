@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { User } from "@/types";
 import {
   getUsers as fetchAdminUsers,
   getUserById as fetchAdminUserById,
@@ -82,7 +83,7 @@ export function useUpdateAdminUser() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: updateAdminUser,
+    mutationFn: ({ id, data }: { id: string; data: Partial<User> }) => updateAdminUser(id, data),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ADMIN_USERS_KEY });
       queryClient.invalidateQueries({ queryKey: [...ADMIN_USERS_KEY, variables.id] });
