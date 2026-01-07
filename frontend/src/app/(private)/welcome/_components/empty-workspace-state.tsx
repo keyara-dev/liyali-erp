@@ -7,12 +7,14 @@ interface EmptyWorkspaceStateProps {
   onCreateWorkspace?: () => void;
   onSignOut?: () => void;
   showSignOut?: boolean;
+  isNavigating?: boolean;
 }
 
 export function EmptyWorkspaceState({ 
   onCreateWorkspace, 
   onSignOut, 
-  showSignOut = true 
+  showSignOut = true,
+  isNavigating = false
 }: EmptyWorkspaceStateProps) {
   return (
     <div className="text-center py-12 border border-dashed border-border rounded-lg">
@@ -32,14 +34,22 @@ export function EmptyWorkspaceState({
 
         <div className="flex flex-col sm:flex-row gap-3 pt-2">
           {onCreateWorkspace && (
-            <Button onClick={onCreateWorkspace} className="flex items-center gap-2">
+            <Button 
+              onClick={onCreateWorkspace} 
+              className="flex items-center gap-2"
+              disabled={isNavigating}
+            >
               <Plus className="w-4 h-4" />
               Create workspace
             </Button>
           )}
           
           {showSignOut && onSignOut && (
-            <Button onClick={onSignOut} variant="outline">
+            <Button 
+              onClick={onSignOut} 
+              variant="outline"
+              disabled={isNavigating}
+            >
               Sign Out
             </Button>
           )}

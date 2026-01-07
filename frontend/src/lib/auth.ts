@@ -161,6 +161,15 @@ export async function createAuthSession({
   expiresIn?: number; // Add expiresIn parameter (in seconds)
   user?: AuthUser; // Add user parameter
 }): Promise<void> {
+  const isDev = process.env.NODE_ENV === 'development';
+  
+  if (isDev) console.log("[createAuthSession] Creating session", { 
+    hasToken: !!access_token, 
+    userId: user_id, 
+    orgId: organization_id,
+    expiresIn 
+  });
+
   // Use backend's expiresIn value if provided, otherwise fall back to session config
   const expirationMs = expiresIn ? expiresIn * 1000 : SESSION_CONFIG.SESSION_TTL;
   const expiresAt = new Date(Date.now() + expirationMs);
@@ -183,6 +192,7 @@ export async function createAuthSession({
 
   // Ensure `session` is successfully created before setting the cookie
   if (token) {
+    if (isDev) console.log("[createAuthSession] Setting session cookie", { expiresAt });
     (await cookies()).set(AUTH_SESSION, token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
@@ -190,7 +200,9 @@ export async function createAuthSession({
       sameSite: "strict",
       path: "/",
     });
+    if (isDev) console.log("[createAuthSession] Session cookie set successfully");
   } else {
+    console.error("[createAuthSession] Failed to create session token");
     throw new Error("Failed to create session token.");
   }
 }
@@ -275,17 +287,21 @@ export async function verifySession(): Promise<{
   permissions?: any[];
   [key: string]: any;
 }> {
+  const isDev = process.env.NODE_ENV === 'development';
+  
   try {
     const cookieStore = await cookies();
     const cookie = cookieStore.get(AUTH_SESSION)?.value;
 
     if (!cookie) {
+      if (isDev) console.log("[verifySession] No session cookie found");
       return { isAuthenticated: false, session: null };
     }
 
     const decrypted = await decrypt(cookie);
 
     if (!decrypted || decrypted.success === false) {
+      if (isDev) console.log("[verifySession] Failed to decrypt session cookie");
       await deleteSession();
       return { isAuthenticated: false, session: null };
     }
@@ -293,6 +309,7 @@ export async function verifySession(): Promise<{
     const session = decrypted as unknown as AuthSession;
 
     if (!session?.access_token) {
+      if (isDev) console.log("[verifySession] No access token in session");
       return { isAuthenticated: false, session: null };
     }
 
@@ -301,10 +318,17 @@ export async function verifySession(): Promise<{
       const now = new Date();
 
       if (expiresAt < now) {
+        if (isDev) console.log("[verifySession] Session expired", { expiresAt, now });
         await deleteSession();
         return { isAuthenticated: false, session: null };
       }
     }
+
+    if (isDev) console.log("[verifySession] Session valid", { 
+      hasToken: !!session.access_token, 
+      userId: session.user_id,
+      expiresAt: session.expiresAt 
+    });
 
     return {
       isAuthenticated: true,

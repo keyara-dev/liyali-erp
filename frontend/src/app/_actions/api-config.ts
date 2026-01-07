@@ -86,34 +86,60 @@ export type RequestType = AxiosRequestConfig & {
   contentType?: AxiosRequestHeaders["Content-Type"];
 };
 
-const authenticatedApiClient = async (request: RequestType) => {
-  const { session } = await verifySession();
+const authenticatedApiClient = async (request: RequestType, retryCount = 0): Promise<any> => {
+  const maxRetries = 3;
+  const retryDelay = 500; // 500ms delay between retries
+  const isDev = process.env.NODE_ENV === 'development';
 
-  if (!session?.access_token) {
-    throw new Error("No valid session found");
+  try {
+    if (isDev) console.log(`[authenticatedApiClient] Attempt ${retryCount + 1}/${maxRetries + 1} for ${request.url}`);
+    const { session } = await verifySession();
+
+    if (!session?.access_token) {
+      if (isDev) console.log(`[authenticatedApiClient] No session found on attempt ${retryCount + 1}`);
+      // If no session and we haven't retried yet, wait a bit and try again
+      // This handles the case where session cookie might not be immediately available after login
+      if (retryCount < maxRetries) {
+        if (isDev) console.log(`[authenticatedApiClient] Retrying in ${retryDelay * (retryCount + 1)}ms...`);
+        await new Promise(resolve => setTimeout(resolve, retryDelay * (retryCount + 1)));
+        return authenticatedApiClient(request, retryCount + 1);
+      }
+      throw new Error("No valid session found");
+    }
+
+    if (isDev) console.log(`[authenticatedApiClient] Session found, making request to ${request.url}`);
+
+    const headers: any = {
+      "Content-type": request.contentType
+        ? request.contentType
+        : "application/json",
+      Authorization: `Bearer ${session?.access_token}`,
+      Cookie: `${AUTH_SESSION}=${session.access_token}`, // Forward the session cookie to API
+    };
+
+    // Add organization context if available
+    if (session.organization_id) {
+      headers["X-Organization-ID"] = session.organization_id;
+    }
+
+    const config = {
+      method: "GET",
+      headers,
+      withCredentials: true,
+      ...request,
+    };
+
+    return await axios(config);
+  } catch (error: any) {
+    if (isDev) console.log(`[authenticatedApiClient] Error on attempt ${retryCount + 1}:`, error.message);
+    // If it's a session error and we haven't exhausted retries, try again
+    if (error.message === "No valid session found" && retryCount < maxRetries) {
+      if (isDev) console.log(`[authenticatedApiClient] Retrying due to session error in ${retryDelay * (retryCount + 1)}ms...`);
+      await new Promise(resolve => setTimeout(resolve, retryDelay * (retryCount + 1)));
+      return authenticatedApiClient(request, retryCount + 1);
+    }
+    throw error;
   }
-
-  const headers: any = {
-    "Content-type": request.contentType
-      ? request.contentType
-      : "application/json",
-    Authorization: `Bearer ${session?.access_token}`,
-    Cookie: `${AUTH_SESSION}=${session.access_token}`, // Forward the session cookie to API
-  };
-
-  // Add organization context if available
-  if (session.organization_id) {
-    headers["X-Organization-ID"] = session.organization_id;
-  }
-
-  const config = {
-    method: "GET",
-    headers,
-    withCredentials: true,
-    ...request,
-  };
-
-  return await axios(config);
 };
 
 export default authenticatedApiClient;

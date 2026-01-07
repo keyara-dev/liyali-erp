@@ -32,7 +32,13 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
     queryFn: () => fetchUserOrganizations(),
     staleTime: 5 * 60 * 1000, // 5 minutes
     gcTime: 10 * 60 * 1000, // 10 minutes (formerly cacheTime)
-    retry: 3,
+    retry: (failureCount, error: any) => {
+      // Don't retry if it's an authentication error
+      if (error?.message?.includes('No valid session found')) {
+        return failureCount < 2; // Only retry twice for session issues
+      }
+      return failureCount < 3; // Normal retry logic for other errors
+    },
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
     enabled: isClient, // Only run query on client side
   });

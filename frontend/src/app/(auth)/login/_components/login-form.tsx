@@ -70,7 +70,11 @@ export function LoginForm() {
         <div className="text-left">
           <Link 
             href="/forgot-password" 
-            className="text-sm text-primary hover:text-primary/80 transition-colors font-medium"
+            className={`text-sm font-medium transition-colors ${
+              isPending 
+                ? "text-muted-foreground cursor-not-allowed pointer-events-none" 
+                : "text-primary hover:text-primary/80"
+            }`}
           >
             Forgot password?
           </Link>
@@ -137,7 +141,11 @@ export function LoginForm() {
           Don't have an account?{" "}
           <Link
             href="/register"
-            className="text-primary hover:text-primary/80 font-medium transition-colors"
+            className={`font-medium transition-colors ${
+              isPending 
+                ? "text-muted-foreground cursor-not-allowed pointer-events-none" 
+                : "text-primary hover:text-primary/80"
+            }`}
           >
             Sign up
           </Link>

@@ -7,13 +7,14 @@ import {
   useSelectOrganization,
   useLogout,
 } from "@/hooks/use-organization-mutations";
-import { LogOut, Loader2, ArrowRight, Plus } from "lucide-react";
+import { LogOut, Loader2, ArrowRight, Plus, Bug } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Spinner } from "@/components";
 import Logo from "@/components/base/logo";
 import { WorkspaceSkeleton } from "./workspace-skeleton";
 import { EmptyWorkspaceState } from "./empty-workspace-state";
+import { debugSession } from "@/app/_actions/debug";
 
 interface WorkspaceSelectorProps {
   onCreateWorkspace?: () => void;
@@ -36,6 +37,15 @@ export function WorkspaceSelector({
     currentOrganization?.id ?? null
   );
   const [showSkeleton, setShowSkeleton] = useState(true);
+  const [debugInfo, setDebugInfo] = useState<any>(null);
+  const [showDebug, setShowDebug] = useState(false);
+
+  // Debug session when there's an error
+  useEffect(() => {
+    if (error && error.includes('No valid session found')) {
+      debugSession().then(setDebugInfo);
+    }
+  }, [error]);
 
   // Show skeleton for minimum time to avoid flashing
   useEffect(() => {
@@ -83,6 +93,7 @@ export function WorkspaceSelector({
                 variant="ghost"
                 size="sm"
                 onClick={handleLogout}
+                disabled={isNavigating}
                 className="text-muted-foreground hover:text-foreground"
               >
                 <LogOut className="h-4 w-4 mr-2" />
@@ -98,14 +109,46 @@ export function WorkspaceSelector({
             // Error state
             <div className="text-center py-8 border border-destructive/20 bg-destructive/5 rounded-lg">
               <p className="text-destructive mb-4">Failed to load workspaces</p>
-              <p className="text-sm text-muted-foreground mb-4">{error}</p>
-              <Button 
-                onClick={retryFetch} 
-                variant="outline"
-                size="sm"
-              >
-                Retry
-              </Button>
+              <p className="text-sm text-muted-foreground mb-4">
+                {error.includes('No valid session found') 
+                  ? 'Session expired. Please sign in again.' 
+                  : error}
+              </p>
+              <div className="flex gap-2 justify-center">
+                <Button 
+                  onClick={retryFetch} 
+                  variant="outline"
+                  size="sm"
+                  disabled={isNavigating}
+                >
+                  Retry
+                </Button>
+                {error.includes('No valid session found') && (
+                  <>
+                    <Button 
+                      onClick={handleLogout} 
+                      variant="default"
+                      size="sm"
+                      disabled={isNavigating}
+                    >
+                      Sign In Again
+                    </Button>
+                    <Button 
+                      onClick={() => setShowDebug(!showDebug)} 
+                      variant="ghost"
+                      size="sm"
+                      disabled={isNavigating}
+                    >
+                      <Bug className="h-4 w-4" />
+                    </Button>
+                  </>
+                )}
+              </div>
+              {showDebug && debugInfo && (
+                <div className="mt-4 p-3 bg-muted rounded text-xs text-left">
+                  <pre>{JSON.stringify(debugInfo, null, 2)}</pre>
+                </div>
+              )}
             </div>
           ) : showSkeleton ? (
             // Loading skeleton
@@ -116,6 +159,7 @@ export function WorkspaceSelector({
               onCreateWorkspace={onCreateWorkspace}
               onSignOut={showSignOut ? handleLogout : undefined}
               showSignOut={showSignOut}
+              isNavigating={isNavigating}
             />
           ) : (
             // Organizations List
@@ -213,8 +257,9 @@ export function WorkspaceSelector({
               {/* Create New Workspace Button */}
               {onCreateWorkspace && (
                 <button
-                  className="w-full flex items-center justify-center p-4 border border-dashed border-border rounded-lg text-muted-foreground hover:text-foreground hover:border-primary/50 hover:bg-muted/50 transition-all duration-200 group animate-in fade-in-0 slide-in-from-bottom-1"
+                  className="w-full flex items-center justify-center p-4 border border-dashed border-border rounded-lg text-muted-foreground hover:text-foreground hover:border-primary/50 hover:bg-muted/50 transition-all duration-200 group animate-in fade-in-0 slide-in-from-bottom-1 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:text-muted-foreground disabled:hover:border-border disabled:hover:bg-transparent"
                   onClick={onCreateWorkspace}
+                  disabled={isNavigating}
                   style={{
                     animationDelay: `${userOrganizations.length * 100 + 100}ms`,
                     animationDuration: '400ms'

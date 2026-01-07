@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
@@ -26,22 +27,25 @@ import { handleOfflineMutation, isOfflineResult } from '@/lib/offline-mutation-h
 export function useSelectOrganization() {
   const router = useRouter();
   const { switchWorkspace } = useOrganizationContext();
+  const [isRedirecting, setIsRedirecting] = useState(false);
 
   const mutation = useMutation({
     mutationFn: async (orgId: string) => {
       await switchWorkspace(orgId);
     },
     onSuccess: () => {
+      setIsRedirecting(true);
       router.push('/home');
     },
     onError: (error) => {
       console.error('Failed to switch organization:', error);
+      setIsRedirecting(false);
     },
   });
 
   return {
     selectOrganization: mutation.mutateAsync,
-    isPending: mutation.isPending,
+    isPending: mutation.isPending || isRedirecting,
     error: mutation.error,
   };
 }

@@ -232,7 +232,11 @@ export default function Signup() {
             Already have an account?{" "}
             <Link
               href="/login"
-              className="text-primary hover:text-primary/80 font-medium transition-colors"
+              className={`font-medium transition-colors ${
+                isPending 
+                  ? "text-muted-foreground cursor-not-allowed pointer-events-none" 
+                  : "text-primary hover:text-primary/80"
+              }`}
             >
               Log in
             </Link>

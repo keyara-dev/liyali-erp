@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { loginAction, createNewAccount, changePassword, sendResetEmail, resetPassword } from '@/app/_actions/auth';
@@ -25,24 +26,29 @@ import { loginAction, createNewAccount, changePassword, sendResetEmail, resetPas
  */
 export function useLoginMutation() {
   const router = useRouter();
+  const [isRedirecting, setIsRedirecting] = useState(false);
 
   const mutation = useMutation({
     mutationFn: async ({ email, password }: { email: string; password: string }) => {
       return await loginAction(email, password);
     },
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       if (data.success) {
+        setIsRedirecting(true);
+        // Add a small delay to ensure session cookie is set
+        await new Promise(resolve => setTimeout(resolve, 100));
         router.push('/welcome');
       }
     },
     onError: (error) => {
       console.error('Login failed:', error);
+      setIsRedirecting(false);
     },
   });
 
   return {
     login: mutation.mutateAsync,
-    isPending: mutation.isPending,
+    isPending: mutation.isPending || isRedirecting,
     error: mutation.error,
   };
 }
@@ -72,6 +78,7 @@ export function useLoginMutation() {
  */
 export function useSignupMutation() {
   const router = useRouter();
+  const [isRedirecting, setIsRedirecting] = useState(false);
 
   const mutation = useMutation({
     mutationFn: async (data: { email: string; name: string; password: string; role?: string }) => {
@@ -79,17 +86,19 @@ export function useSignupMutation() {
     },
     onSuccess: (data) => {
       if (data.success) {
+        setIsRedirecting(true);
         router.push('/welcome');
       }
     },
     onError: (error) => {
       console.error('Signup failed:', error);
+      setIsRedirecting(false);
     },
   });
 
   return {
     signup: mutation.mutateAsync,
-    isPending: mutation.isPending,
+    isPending: mutation.isPending || isRedirecting,
     error: mutation.error,
   };
 }
