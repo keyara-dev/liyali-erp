@@ -10,7 +10,7 @@ import {
 import { LogOut, Loader2, ArrowRight, Plus, Bug } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { Spinner } from "@/components";
+import { Badge } from "@/components";
 import Logo from "@/components/base/logo";
 import { WorkspaceSkeleton } from "./workspace-skeleton";
 import { EmptyWorkspaceState } from "./empty-workspace-state";
@@ -172,7 +172,15 @@ export function WorkspaceSelector({
                 return (
                   <button
                     key={org.id}
-                    onClick={() => handleSelectOrganization(org.id)}
+                    onClick={(e) => {
+                      // Check if the click originated from the upgrade button or its children
+                      const target = e.target as HTMLElement;
+                      const isUpgradeButton = target.closest('button[data-upgrade-button]');
+                      
+                      if (!isUpgradeButton) {
+                        handleSelectOrganization(org.id);
+                      }
+                    }}
                     disabled={isNavigating}
                     className={cn(
                       "group relative w-full bg-background rounded-lg p-4 cursor-pointer transition-all duration-200 border text-left",
@@ -203,7 +211,7 @@ export function WorkspaceSelector({
                           <div
                             className="w-10 h-10 rounded-lg flex items-center justify-center text-sm font-bold text-white"
                             style={{
-                              backgroundColor: org.primaryColor || "#0066CC",
+                              backgroundColor: org.primaryColor || "#0c54e7",
                             }}
                           >
                             {org.name[0].toUpperCase()}
@@ -223,21 +231,22 @@ export function WorkspaceSelector({
                         )}
 
                         {/* Organization Details */}
-                            <div className="flex items-center justify-between mt-2">
- 
+                            <div className="flex items-center gap-2 mt-2">
+                                {isDefault && (
+                                  <Badge variant={"default"} 
+                                  // className="inline-flex items-center px-2 py-0.5 border border-primary/30 text-xs font-medium bg-primary/10 text-primary"
+                                  >
+                                      Default
+                                    </Badge>
+                                )}
+                                
                               {/* Compact Tier Display with Upgrade */}
                               {org.tier?.toUpperCase() === "STARTER" && (
                                 <div className="flex-shrink-0">
                                   <TierDisplay compact showUpgradeButton />
                                 </div>
                               )}
-                              {isDefault && (
-                                  <div className="flex items-center">
-                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary">
-                                      Default
-                                    </span>
-                                  </div>
-                                )}
+                              
                             </div>
                       </div>
 

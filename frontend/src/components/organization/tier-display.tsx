@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Crown, Zap, Building2, ArrowRight } from "lucide-react";
+import { Crown, Zap, Building2, ArrowRight, GemIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -47,12 +47,16 @@ export function TierDisplay({ showUpgradeButton = true, compact = false }: TierD
 
   const tier = (currentOrganization.tier?.toUpperCase() || "STARTER") as keyof typeof TIER_CONFIG;
   const tierConfig = TIER_CONFIG[tier] || TIER_CONFIG.STARTER;
-  const IconComponent = tierConfig.icon;
+  const IconComponent = tierConfig.icon || GemIcon;
   const canUpgrade = tier === "STARTER" && showUpgradeButton;
 
   if (compact) {
     return (
-      <div className="flex items-center gap-2">
+      <div 
+        className="flex items-center gap-2"
+        onClick={(e) => e.stopPropagation()}
+        onMouseDown={(e) => e.stopPropagation()}
+      >
         <Badge variant="outline" className={tierConfig.color}>
           <IconComponent className="h-3 w-3 mr-1" />
           {tierConfig.label}
@@ -61,15 +65,32 @@ export function TierDisplay({ showUpgradeButton = true, compact = false }: TierD
           <Button
             size="sm"
             variant="outline"
-            onClick={() => setShowUpgradeModal(true)}
-            className="text-xs"
+            data-upgrade-button="true"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setShowUpgradeModal(true);     
+            }}
+            onMouseDown={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+            }}
+            className="text-xs h-6 p-2"
           >
             Upgrade
           </Button>
         )}
         <UpgradeModal 
           open={showUpgradeModal} 
-          onOpenChange={setShowUpgradeModal}
+          onOpenChange={(open) => {
+            setShowUpgradeModal(open);
+            // Prevent any potential event bubbling when modal closes
+            if (!open) {
+              setTimeout(() => {
+                // Small delay to ensure modal is fully closed before any other events
+              }, 10);
+            }
+          }}
           currentTier={tier}
           organizationName={currentOrganization.name}
         />
