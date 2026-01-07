@@ -1,6 +1,6 @@
 "use client";
 
-import { ApprovalHistory } from "@/types";
+import { ApprovalRecord } from "@/types";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 
 export interface ApprovalFlowDisplayProps {
-  approvalHistory: ApprovalHistory[];
+  approvalHistory: ApprovalRecord[];
   currentStage: number;
   totalStages?: number;
   isCompleted?: boolean;

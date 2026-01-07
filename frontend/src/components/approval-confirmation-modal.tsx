@@ -11,7 +11,8 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { SignatureCanvas, type SignatureCanvasHandle } from '@/components/ui/signature-canvas';
+import { SignatureCanvas } from '@/components/ui/signature-canvas';
+import type { SignatureCanvasHandle } from '@/components/ui/signature-canvas';
 import { AlertCircle, CheckCircle2 } from 'lucide-react';
 
 export type ApprovalAction = 'approve' | 'reject';

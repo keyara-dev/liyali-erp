@@ -465,10 +465,12 @@ export function EditRequisitionPanel({
           <Button
             onClick={handleSave}
             disabled={updateMutation.isPending}
+            isLoading={updateMutation.isPending}
+            loadingText='Saving...'
             className="flex-1 gap-2"
           >
             <Save className="h-4 w-4" />
-            {updateMutation.isPending ? 'Saving...' : 'Save Changes'}
+          Save Changes
           </Button>
         </div>
       </div>

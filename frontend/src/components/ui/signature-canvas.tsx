@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, forwardRef, useImperativeHandle } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 
@@ -12,16 +12,38 @@ interface SignatureCanvasProps {
   disabled?: boolean;
 }
 
-export function SignatureCanvas({
+export interface SignatureCanvasHandle {
+  clearSignature: () => void;
+}
+
+export const SignatureCanvas = forwardRef<SignatureCanvasHandle, SignatureCanvasProps>(({
   onSignatureChange,
   width = 400,
   height = 200,
   className = '',
   disabled = false,
-}: SignatureCanvasProps) {
+}, ref) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [isEmpty, setIsEmpty] = useState(true);
+
+  const clearSignature = () => {
+    if (disabled) return;
+    
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    setIsEmpty(true);
+    onSignatureChange?.('');
+  };
+
+  useImperativeHandle(ref, () => ({
+    clearSignature,
+  }));
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -85,20 +107,6 @@ export function SignatureCanvas({
     onSignatureChange?.(signature);
   };
 
-  const clearSignature = () => {
-    if (disabled) return;
-    
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    setIsEmpty(true);
-    onSignatureChange?.('');
-  };
-
   return (
     <Card className={`p-4 ${className}`}>
       <div className="space-y-4">
@@ -134,6 +142,8 @@ export function SignatureCanvas({
       </div>
     </Card>
   );
-}
+});
+
+SignatureCanvas.displayName = 'SignatureCanvas';
 
 export default SignatureCanvas;

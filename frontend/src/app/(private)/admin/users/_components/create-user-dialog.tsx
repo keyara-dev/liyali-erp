@@ -81,10 +81,9 @@ export default function CreateUserForm({
         last_name: user.last_name || "",
         email: user.email || "",
         phone: (user as any).phone || "",
-        role: user.role || "",
+        role: user.role || role,
         department_id: user.department_id || "",
         is_active: user.is_active ?? true,
-        role,
         password: "",
       };
     }
@@ -93,10 +92,9 @@ export default function CreateUserForm({
       last_name: "",
       email: "",
       phone: "",
-      role: "",
+      role: role,
       department_id: "",
       is_active: true,
-      role,
       password: generateRandomString(),
     };
   }, [isEditMode, user?.id, role]);
@@ -123,11 +121,10 @@ export default function CreateUserForm({
         last_name: user.last_name || "",
         email: user.email || "",
         phone: (user as any).phone || "",
-        role: user.role || "",
+        role: user.role || role,
         department: user.department || "",
         department_id: user.department_id || "",
         is_active: user.is_active ?? true,
-        role,
       });
     } else if (!isEditMode && dialogOpen) {
       setFormData({
@@ -135,11 +132,10 @@ export default function CreateUserForm({
         last_name: "",
         email: "",
         phone: "",
-        role: "",
+        role: role,
         department: "",
         department_id: "",
         is_active: true,
-        role,
       });
     }
   }, [user?.id, dialogOpen, isEditMode, role]);
@@ -426,7 +422,7 @@ export default function CreateUserForm({
                     onValueChange={(value) =>
                       setFormData((prev) => ({
                         ...prev,
-                        role: value,
+                        role: value as UserType,
                       }))
                     }
                     isDisabled={isSubmitting}

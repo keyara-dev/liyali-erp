@@ -69,7 +69,7 @@ export default function CreateUserWithDepartment({
         handleClose();
       } else {
         toast.error(response.message);
-        setErrors({ general: response.message });
+        setErrors({ general: response.message || 'An error occurred' });
       }
     },
     onError: (error: Error) => {

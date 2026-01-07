@@ -9,7 +9,7 @@
 import { WorkflowEntityType } from './custom-workflow';
 
 /**
- * Notification type categories
+ * Notification type categories - aligned with activity.ts
  */
 export type NotificationType =
   | 'TASK_ASSIGNED'
@@ -19,6 +19,9 @@ export type NotificationType =
   | 'WORKFLOW_COMPLETE'
   | 'APPROVAL_OVERDUE'
   | 'COMMENT_ADDED';
+
+// Alias for backward compatibility with activity.ts
+export type NotificationTypeEnum = NotificationType;
 
 /**
  * Quick action types for notifications
@@ -46,8 +49,7 @@ export interface QuickAction {
 }
 
 /**
- * Main Notification interface
- * Represents a single notification sent to a user
+ * Main Notification interface - aligned with activity.ts ActivityNotification
  */
 export interface Notification {
   // Identity
@@ -87,6 +89,9 @@ export interface Notification {
   reassignmentReason?: string;                // For TASK_REASSIGNED notifications
 }
 
+// Alias for backward compatibility with activity.ts
+export type NotificationInterface = Notification;
+
 /**
  * User notification preferences
  * Controls how and when user receives notifications
@@ -120,6 +125,9 @@ export interface NotificationPreferences {
   createdAt: Date;
   updatedAt: Date;
 }
+
+// Alias for backward compatibility
+export type NotificationPrefs = NotificationPreferences;
 
 /**
  * Request/Response DTOs for notification operations

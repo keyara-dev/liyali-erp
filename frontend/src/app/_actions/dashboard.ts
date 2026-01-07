@@ -82,6 +82,8 @@ export async function fetchSignupSettings(): Promise<
       requireEmailVerification: false,
       autoApproveUsers: false,
       defaultRole: "USER",
+      defaultAccountTier: "FREE",
+      defaultCurrency: "USD",
     };
     return {
       success: true,
@@ -126,6 +128,8 @@ export async function toggleSignupSettings(
       requireEmailVerification: false,
       autoApproveUsers: false,
       defaultRole: "USER",
+      defaultAccountTier: "FREE",
+      defaultCurrency: "USD",
     };
     return {
       success: true,

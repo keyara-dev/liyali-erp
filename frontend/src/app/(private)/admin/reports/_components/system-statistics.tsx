@@ -41,13 +41,13 @@ export function SystemStatistics() {
   }
 
   // Prepare chart data for document types
-  const chartData = Object.entries(metrics.documentTypeBreakdown).map(([type, count]) => ({
+  const chartData = Object.entries(metrics.documentTypeBreakdown || {}).map(([type, count]) => ({
     name: type === 'REQUISITION' ? 'Requisitions' : type === 'PURCHASE_ORDER' ? 'POs' : type === 'PAYMENT_VOUCHER' ? 'Vouchers' : 'GRNs',
     count,
   }))
 
   const successRate = metrics.totalDocuments > 0
-    ? Math.round((metrics.approvedDocuments / metrics.totalDocuments) * 100)
+    ? Math.round(((metrics.approvedDocuments || 0) / metrics.totalDocuments) * 100)
     : 0
 
   return (
@@ -105,7 +105,7 @@ export function SystemStatistics() {
           <CardContent>
             <div className="text-3xl font-bold">
               {metrics.totalDocuments > 0
-                ? Math.round((metrics.rejectedDocuments / metrics.totalDocuments) * 100)
+                ? Math.round(((metrics.rejectedDocuments || 0) / metrics.totalDocuments) * 100)
                 : 0}
               %
             </div>
@@ -146,7 +146,7 @@ export function SystemStatistics() {
             {[
               { label: 'Draft', value: metrics.draftDocuments, variant: 'outline' as const },
               { label: 'Submitted', value: metrics.submittedDocuments, variant: 'secondary' as const },
-              { label: 'In Approval', value: metrics.statusBreakdown.IN_REVIEW, variant: 'default' as const },
+              { label: 'In Approval', value: metrics.statusBreakdown?.IN_REVIEW || 0, variant: 'default' as const },
               { label: 'Approved', value: metrics.approvedDocuments, variant: 'default' as const },
               { label: 'Rejected', value: metrics.rejectedDocuments, variant: 'destructive' as const },
             ].map((item) => (

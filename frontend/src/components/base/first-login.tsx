@@ -27,6 +27,7 @@ export default function FirstLogin({ open }: { open?: boolean }) {
   });
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState<ChangePassword>({
+    currentPassword: "",
     oldPassword: "",
     newPassword: "",
     confirmPassword: "",
@@ -73,7 +74,7 @@ export default function FirstLogin({ open }: { open?: boolean }) {
 
     // Send New password details to the backend
     const res = await changePassword(
-      formData.oldPassword,
+      formData.oldPassword || formData.currentPassword,
       formData.newPassword
     );
 

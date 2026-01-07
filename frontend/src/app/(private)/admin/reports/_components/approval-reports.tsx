@@ -43,7 +43,7 @@ export function ApprovalReports() {
   }
 
   const filteredActivity = metrics.recentActivity.filter((item) =>
-    item.documentNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (item.documentNumber || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
     item.user.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
@@ -71,7 +71,7 @@ export function ApprovalReports() {
             </div>
             <p className="text-xs text-muted-foreground mt-1">
               {metrics.totalDocuments > 0
-                ? Math.round((metrics.approvedDocuments / metrics.totalDocuments) * 100)
+                ? Math.round(((metrics.approvedDocuments || 0) / metrics.totalDocuments) * 100)
                 : 0}
               % of total
             </p>
@@ -90,7 +90,7 @@ export function ApprovalReports() {
             </div>
             <p className="text-xs text-muted-foreground mt-1">
               {metrics.totalDocuments > 0
-                ? Math.round((metrics.rejectedDocuments / metrics.totalDocuments) * 100)
+                ? Math.round(((metrics.rejectedDocuments || 0) / metrics.totalDocuments) * 100)
                 : 0}
               % of total
             </p>
@@ -166,8 +166,8 @@ export function ApprovalReports() {
                               : 'GRN'}
                       </TableCell>
                       <TableCell>
-                        <Badge variant={statusColors[activity.action] as any}>
-                          {activity.action}
+                        <Badge variant={statusColors[activity.action || ''] as any}>
+                          {activity.action || 'Unknown'}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">

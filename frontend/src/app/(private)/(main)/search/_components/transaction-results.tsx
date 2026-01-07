@@ -139,9 +139,9 @@ export function TransactionResults({
       accessorKey: "type",
       header: "Type",
       cell: ({ row }) => {
-        const type = row.getValue("type") as string;
+        const type = row.getValue("type") as string | undefined;
         return (
-          <span className="text-sm">{DOCUMENT_TYPE_LABELS[type] || type}</span>
+          <span className="text-sm">{type ? (DOCUMENT_TYPE_LABELS[type] || type) : 'Unknown'}</span>
         );
       },
     },
@@ -149,10 +149,10 @@ export function TransactionResults({
       accessorKey: "status",
       header: "Status",
       cell: ({ row }) => {
-        const status = row.getValue("status") as string;
+        const status = row.getValue("status") as string | undefined;
         return (
-          <Badge variant={STATUS_COLORS[status] as any}>
-            {STATUS_LABELS[status] || status}
+          <Badge variant={status ? (STATUS_COLORS[status] as any) : 'outline'}>
+            {status ? (STATUS_LABELS[status] || status) : 'Unknown'}
           </Badge>
         );
       },
@@ -170,10 +170,10 @@ export function TransactionResults({
         </Button>
       ),
       cell: ({ row }) => {
-        const date = new Date(row.getValue("createdAt"));
+        const date = row.getValue("createdAt") as string | Date | undefined;
         return (
           <span className="text-sm text-muted-foreground">
-            {date.toLocaleDateString()}
+            {date ? new Date(date).toLocaleDateString() : 'Unknown'}
           </span>
         );
       },
@@ -245,25 +245,26 @@ export function TransactionResults({
             }}
             renderRowActions={(doc: WorkflowDocument) => {
               // Map document type to URL slug
-              const typeSlug =
-                {
-                  REQUISITION: 'requisitions',
-                  requisition: 'requisitions',
-                  PURCHASE_ORDER: 'purchase-orders',
-                  purchase_order: 'purchase-orders',
-                  PO: 'purchase-orders',
-                  po: 'purchase-orders',
-                  PAYMENT_VOUCHER: 'payment-vouchers',
-                  payment_voucher: 'payment-vouchers',
-                  PV: 'payment-vouchers',
-                  pv: 'payment-vouchers',
-                  GOODS_RECEIVED_NOTE: 'grn',
-                  goods_received_note: 'grn',
-                  GRN: 'grn',
-                  grn: 'grn',
-                  BUDGET: 'budgets',
-                  budget: 'budgets',
-                }[doc.type] || 'workflows'
+              const docType = doc.type || '';
+              const typeMapping: Record<string, string> = {
+                REQUISITION: 'requisitions',
+                requisition: 'requisitions',
+                PURCHASE_ORDER: 'purchase-orders',
+                purchase_order: 'purchase-orders',
+                PO: 'purchase-orders',
+                po: 'purchase-orders',
+                PAYMENT_VOUCHER: 'payment-vouchers',
+                payment_voucher: 'payment-vouchers',
+                PV: 'payment-vouchers',
+                pv: 'payment-vouchers',
+                GOODS_RECEIVED_NOTE: 'grn',
+                goods_received_note: 'grn',
+                GRN: 'grn',
+                grn: 'grn',
+                BUDGET: 'budgets',
+                budget: 'budgets',
+              };
+              const typeSlug = typeMapping[docType] || 'workflows'
 
               return (
                 <div className="flex gap-2">
@@ -278,7 +279,7 @@ export function TransactionResults({
                   </Button>
                   <DownloadButton
                     documentId={doc.id}
-                    documentNumber={doc.documentNumber}
+                    documentNumber={doc.documentNumber || 'Unknown'}
                   />
                 </div>
               )

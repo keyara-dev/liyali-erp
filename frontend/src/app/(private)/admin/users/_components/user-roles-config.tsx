@@ -844,7 +844,7 @@ function CreateOrUpdateRoleDialog({
         setOpenModal(false);
       } else {
         toast.error(response.message);
-        setError({ status: true, message: response.message });
+        setError({ status: true, message: response.message || 'An error occurred' });
       }
     },
     onError: (err: Error) => {

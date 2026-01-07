@@ -184,18 +184,18 @@ export function ActivityLogsClient({ userId, userRole }: ActivityLogsClientProps
                     </TableCell>
                   </TableRow>
                 ) : (
-                  logs.map((log) => (
+                  logs.map((log: ActivityLog) => (
                     <TableRow key={log.id}>
                       <TableCell className="text-sm whitespace-nowrap">
                         {log.timestamp}
                       </TableCell>
-                      <TableCell className="font-medium">{log.user}</TableCell>
+                      <TableCell className="font-medium">{log.userName}</TableCell>
                       <TableCell>
                         <Badge variant={ACTION_COLORS[log.action] as any}>
                           {log.action}
                         </Badge>
                       </TableCell>
-                      <TableCell className="font-mono text-sm">{log.resourceId}</TableCell>
+                      <TableCell className="font-mono text-sm">{log.entityId}</TableCell>
                       <TableCell className="text-sm text-muted-foreground max-w-xs">
                         {log.details}
                       </TableCell>

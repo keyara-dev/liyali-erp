@@ -78,8 +78,8 @@ export default function DepartmentsConfig() {
         queryClient.invalidateQueries({ queryKey: ['active-departments'] });
         handleCloseModal();
       } else {
-        setError(response.message);
-        toast.error(response.message);
+        setError(response.message || 'Failed to create department');
+        toast.error(response.message || 'Failed to create department');
       }
     },
     onError: (error: Error) => {
@@ -98,8 +98,8 @@ export default function DepartmentsConfig() {
         queryClient.invalidateQueries({ queryKey: ['active-departments'] });
         handleCloseModal();
       } else {
-        setError(response.message);
-        toast.error(response.message);
+        setError(response.message || 'Failed to update department');
+        toast.error(response.message || 'Failed to update department');
       }
     },
     onError: (error: Error) => {
