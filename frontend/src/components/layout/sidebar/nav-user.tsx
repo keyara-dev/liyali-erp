@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -19,19 +20,48 @@ import {
 } from "@/components/ui/sidebar";
 import { 
   ChevronRightIcon, 
-  DiamondIcon, 
+  Crown,
+  Zap,
+  Building2,
   FileTextIcon, 
   LogOutIcon, 
   PaletteIcon, 
   UserIcon,
   ExternalLinkIcon,
   CircleIcon,
-  MoreVertical
+  MoreVertical,
+  GemIcon
 } from "lucide-react";
 
 import Link from "next/link";
 import { useSession } from "@/hooks/use-session";
 import { useLogout } from "@/hooks/use-organization-mutations";
+import { useOrganizationContext } from "@/contexts/organization-context";
+import { UpgradeModal } from "@/components/organization/upgrade-modal";
+
+const TIER_CONFIG = {
+  STARTER: {
+    label: "Starter",
+    icon: Zap,
+    color: "bg-blue-100 text-blue-700",
+    description: "For growing teams",
+    canUpgrade: true,
+  },
+  PRO: {
+    label: "Pro",
+    icon: Crown,
+    color: "bg-purple-100 text-purple-700",
+    description: "For established departments",
+    canUpgrade: false,
+  },
+  ENTERPRISE: {
+    label: "Enterprise",
+    icon: Building2,
+    color: "bg-emerald-100 text-emerald-700",
+    description: "For large organizations",
+    canUpgrade: false,
+  },
+} as const;
 
 const getInitials = (name: string) => {
   return name
@@ -52,6 +82,8 @@ export function NavUser() {
   const { isMobile } = useSidebar();
   const { user } = useSession();
   const { logout, isPending } = useLogout();
+  const { currentOrganization } = useOrganizationContext();
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
   if (!user) {
     return (
@@ -71,6 +103,12 @@ export function NavUser() {
 
   const initials = getInitials(user.name);
   const formattedRole = formatRole(user.role);
+
+  // Get tier information
+  const tier = (currentOrganization?.tier?.toUpperCase() || "STARTER") as keyof typeof TIER_CONFIG;
+  const tierConfig = TIER_CONFIG[tier] || TIER_CONFIG.STARTER;
+  const TierIcon = tierConfig.icon;
+  const canUpgrade = tier === "STARTER";
 
   return (
     <div className="space-y-2 p-2">
@@ -137,26 +175,23 @@ export function NavUser() {
       </SidebarMenu>
 
       {/* Plan Section */}
-      <div className="flex items-center gap-3 rounded-lg border p-3 hover:bg-accent/50 transition-colors cursor-pointer">
-        <DiamondIcon className="h-5 w-5 text-muted-foreground" />
+      <div 
+        className="flex items-center gap-3 rounded-lg border p-3 hover:bg-accent/50 transition-colors cursor-pointer"
+        onClick={() => setShowUpgradeModal(true)}
+      >
+        <GemIcon className="h-5 w-5 text-muted-foreground" />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <span className="text-sm font-medium">Pro Plan</span>
-            <Badge variant="secondary" className="text-xs bg-green-100 text-green-700 hover:bg-green-100">
-              Trial
+            <span className="text-sm font-medium">{tierConfig.label} Plan</span>
+            <Badge variant="secondary" className={`text-xs ${tierConfig.color} hover:${tierConfig.color}`}>
+              Active
             </Badge>
           </div>
         </div>
         <ChevronRightIcon className="h-4 w-4 text-muted-foreground" />
       </div>
 
-      {/* Upgrade Button */}
-      <Button 
-        variant="outline" 
-        className="w-full border-green-200 text-green-700 hover:bg-green-50 hover:text-green-800"
-      >
-        Upgrade now
-      </Button>
+     
 
       {/* Docs and Resources */}
       <div className="flex items-center gap-3 rounded-lg border p-3 hover:bg-accent/50 transition-colors cursor-pointer">
@@ -175,6 +210,13 @@ export function NavUser() {
         </div>
         <ExternalLinkIcon className="h-4 w-4 text-muted-foreground" />
       </div>
+
+      <UpgradeModal 
+        open={showUpgradeModal} 
+        onOpenChange={setShowUpgradeModal}
+        currentTier={tier}
+        organizationName={currentOrganization?.name || "Organization"}
+      />
     </div>
   );
 }

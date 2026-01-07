@@ -34,7 +34,7 @@ func (s *OrganizationService) CreateOrganization(name, description, createdBy st
 		Slug:        slug.Make(name),
 		Description: description,
 		Active:      true,
-		Tier:        "free",
+		Tier:        "starter",
 		CreatedBy:   createdBy,
 	}
 

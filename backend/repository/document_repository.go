@@ -543,8 +543,8 @@ func (r *DocumentRepository) SyncFromRequisition(ctx context.Context, requisitio
 	if requisition.Department != "" {
 		doc.Department = &requisition.Department
 	}
-	if requisition.RequesterID != "" {
-		doc.CreatedBy = requisition.RequesterID
+	if requisition.RequesterId != "" {
+		doc.CreatedBy = requisition.RequesterId
 	}
 	
 	if err == gorm.ErrRecordNotFound {

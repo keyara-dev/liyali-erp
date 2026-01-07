@@ -15,14 +15,14 @@ import (
 func AssignUserToDepartment(c *fiber.Ctx) error {
 	tenant, err := middleware.GetTenantContext(*c)
 	if err != nil {
-		return utils.SendUnauthorized(c, "Invalid tenant context")
+		return utils.SendUnauthorizedError(c, "Invalid tenant context")
 	}
 
 	userID := c.Params("userId")
 	departmentID := c.Params("departmentId")
 
 	if userID == "" || departmentID == "" {
-		return utils.SendBadRequest(c, "User ID and Department ID are required")
+		return utils.SendBadRequestError(c, "User ID and Department ID are required")
 	}
 
 	userSvc := services.NewUserService(config.DB)
@@ -35,7 +35,7 @@ func AssignUserToDepartment(c *fiber.Ctx) error {
 		return utils.SendInternalError(c, "Failed to validate user", err)
 	}
 	if !userExists {
-		return utils.SendNotFound(c, "User not found in organization")
+		return utils.SendNotFoundError(c, "User not found in organization")
 	}
 
 	// Check if department exists and belongs to organization
@@ -45,7 +45,7 @@ func AssignUserToDepartment(c *fiber.Ctx) error {
 		return utils.SendInternalError(c, "Failed to validate department", err)
 	}
 	if !deptExists {
-		return utils.SendNotFound(c, "Department not found")
+		return utils.SendNotFoundError(c, "Department")
 	}
 
 	// Assign user to department
@@ -55,7 +55,7 @@ func AssignUserToDepartment(c *fiber.Ctx) error {
 		return utils.SendInternalError(c, "Failed to assign user to department", err)
 	}
 
-	return utils.SendSuccess(c, nil, "User assigned to department successfully")
+	return utils.SendSimpleSuccess(c, nil, "User assigned to department successfully")
 }
 
 // GetUserDepartment retrieves the department assigned to a user
@@ -63,12 +63,12 @@ func AssignUserToDepartment(c *fiber.Ctx) error {
 func GetUserDepartment(c *fiber.Ctx) error {
 	tenant, err := middleware.GetTenantContext(*c)
 	if err != nil {
-		return utils.SendUnauthorized(c, "Invalid tenant context")
+		return utils.SendUnauthorizedError(c, "Invalid tenant context")
 	}
 
 	userID := c.Params("userId")
 	if userID == "" {
-		return utils.SendBadRequest(c, "User ID is required")
+		return utils.SendBadRequestError(c, "User ID is required")
 	}
 
 	userSvc := services.NewUserService(config.DB)
@@ -80,7 +80,7 @@ func GetUserDepartment(c *fiber.Ctx) error {
 		return utils.SendInternalError(c, "Failed to validate user", err)
 	}
 	if !userExists {
-		return utils.SendNotFound(c, "User not found in organization")
+		return utils.SendNotFoundError(c, "User not found in organization")
 	}
 
 	// Get user's department
@@ -90,7 +90,7 @@ func GetUserDepartment(c *fiber.Ctx) error {
 		return utils.SendInternalError(c, "Failed to fetch user department", err)
 	}
 
-	return utils.SendSuccess(c, department, "User department retrieved successfully")
+	return utils.SendSimpleSuccess(c, department, "User department retrieved successfully")
 }
 
 // RemoveUserFromDepartment removes a user from their current department
@@ -98,12 +98,12 @@ func GetUserDepartment(c *fiber.Ctx) error {
 func RemoveUserFromDepartment(c *fiber.Ctx) error {
 	tenant, err := middleware.GetTenantContext(*c)
 	if err != nil {
-		return utils.SendUnauthorized(c, "Invalid tenant context")
+		return utils.SendUnauthorizedError(c, "Invalid tenant context")
 	}
 
 	userID := c.Params("userId")
 	if userID == "" {
-		return utils.SendBadRequest(c, "User ID is required")
+		return utils.SendBadRequestError(c, "User ID is required")
 	}
 
 	userSvc := services.NewUserService(config.DB)
@@ -115,7 +115,7 @@ func RemoveUserFromDepartment(c *fiber.Ctx) error {
 		return utils.SendInternalError(c, "Failed to validate user", err)
 	}
 	if !userExists {
-		return utils.SendNotFound(c, "User not found in organization")
+		return utils.SendNotFoundError(c, "User not found in organization")
 	}
 
 	// Remove user from department
@@ -125,7 +125,7 @@ func RemoveUserFromDepartment(c *fiber.Ctx) error {
 		return utils.SendInternalError(c, "Failed to remove user from department", err)
 	}
 
-	return utils.SendSuccess(c, nil, "User removed from department successfully")
+	return utils.SendSimpleSuccess(c, nil, "User removed from department successfully")
 }
 
 // GetDepartmentUsers retrieves all users in a specific department
@@ -133,12 +133,12 @@ func RemoveUserFromDepartment(c *fiber.Ctx) error {
 func GetDepartmentUsers(c *fiber.Ctx) error {
 	tenant, err := middleware.GetTenantContext(*c)
 	if err != nil {
-		return utils.SendUnauthorized(c, "Invalid tenant context")
+		return utils.SendUnauthorizedError(c, "Invalid tenant context")
 	}
 
 	departmentID := c.Params("departmentId")
 	if departmentID == "" {
-		return utils.SendBadRequest(c, "Department ID is required")
+		return utils.SendBadRequestError(c, "Department ID is required")
 	}
 
 	deptSvc := services.NewDepartmentService(config.DB)
@@ -151,7 +151,7 @@ func GetDepartmentUsers(c *fiber.Ctx) error {
 		return utils.SendInternalError(c, "Failed to validate department", err)
 	}
 	if !deptExists {
-		return utils.SendNotFound(c, "Department not found")
+		return utils.SendNotFoundError(c, "Department")
 	}
 
 	// Get users in department
@@ -161,5 +161,5 @@ func GetDepartmentUsers(c *fiber.Ctx) error {
 		return utils.SendInternalError(c, "Failed to fetch department users", err)
 	}
 
-	return utils.SendSuccess(c, users, "Department users retrieved successfully")
+	return utils.SendSimpleSuccess(c, users, "Department users retrieved successfully")
 }

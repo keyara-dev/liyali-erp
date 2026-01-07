@@ -113,7 +113,7 @@ func (ns *NotificationService) notifyDocumentApproved(event NotificationEvent) e
 		if err := ns.db.First(&req, "id = ?", event.DocumentID).Error; err != nil {
 			return fmt.Errorf("failed to fetch requisition: %v", err)
 		}
-		recipientID = req.RequesterID
+		recipientID = req.RequesterId
 	case "budget":
 		var budget models.Budget
 		if err := ns.db.First(&budget, "id = ?", event.DocumentID).Error; err != nil {
@@ -129,7 +129,7 @@ func (ns *NotificationService) notifyDocumentApproved(event NotificationEvent) e
 		if po.LinkedRequisition != "" {
 			var req models.Requisition
 			if err := ns.db.First(&req, "id = ?", po.LinkedRequisition).Error; err == nil {
-				recipientID = req.RequesterID
+				recipientID = req.RequesterId
 			}
 		}
 	default:
@@ -190,7 +190,7 @@ func (ns *NotificationService) notifyDocumentRejected(event NotificationEvent) e
 		if err := ns.db.First(&req, "id = ?", event.DocumentID).Error; err != nil {
 			return fmt.Errorf("failed to fetch requisition: %v", err)
 		}
-		recipientID = req.RequesterID
+		recipientID = req.RequesterId
 	case "budget":
 		var budget models.Budget
 		if err := ns.db.First(&budget, "id = ?", event.DocumentID).Error; err != nil {

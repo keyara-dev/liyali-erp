@@ -16,7 +16,7 @@ import (
 func GetOrganizationDepartments(c *fiber.Ctx) error {
 	tenant, err := middleware.GetTenantContext(*c)
 	if err != nil {
-		return utils.SendUnauthorized(c, "Invalid tenant context")
+		return utils.SendUnauthorizedError(c, "Invalid tenant context")
 	}
 
 	// Parse query parameters
@@ -49,7 +49,7 @@ func GetOrganizationDepartments(c *fiber.Ctx) error {
 		return utils.SendInternalError(c, "Failed to fetch departments", err)
 	}
 
-	return utils.SendPaginatedResponse(c, departments, total, page, pageSize, "Departments retrieved successfully")
+	return utils.SendPaginatedSuccess(c, departments, "Departments retrieved successfully", page, pageSize, total)
 }
 
 // GetOrganizationDepartment retrieves a specific department by ID
@@ -57,22 +57,22 @@ func GetOrganizationDepartments(c *fiber.Ctx) error {
 func GetOrganizationDepartment(c *fiber.Ctx) error {
 	tenant, err := middleware.GetTenantContext(*c)
 	if err != nil {
-		return utils.SendUnauthorized(c, "Invalid tenant context")
+		return utils.SendUnauthorizedError(c, "Invalid tenant context")
 	}
 
 	departmentID := c.Params("id")
 	if departmentID == "" {
-		return utils.SendBadRequest(c, "Department ID is required")
+		return utils.SendBadRequestError(c, "Department ID is required")
 	}
 
 	svc := services.NewDepartmentService(config.DB)
 	department, err := svc.GetDepartmentByID(tenant.OrganizationID, departmentID)
 	if err != nil {
 		log.Printf("Error getting department %s: %v", departmentID, err)
-		return utils.SendNotFound(c, "Department not found")
+		return utils.SendNotFoundError(c, "Department")
 	}
 
-	return utils.SendSuccess(c, department, "Department retrieved successfully")
+	return utils.SendSimpleSuccess(c, department, "Department retrieved successfully")
 }
 
 // CreateOrganizationDepartment creates a new department
@@ -80,7 +80,7 @@ func GetOrganizationDepartment(c *fiber.Ctx) error {
 func CreateOrganizationDepartment(c *fiber.Ctx) error {
 	tenant, err := middleware.GetTenantContext(*c)
 	if err != nil {
-		return utils.SendUnauthorized(c, "Invalid tenant context")
+		return utils.SendUnauthorizedError(c, "Invalid tenant context")
 	}
 
 	var req struct {
@@ -92,11 +92,15 @@ func CreateOrganizationDepartment(c *fiber.Ctx) error {
 	}
 
 	if err := c.BodyParser(&req); err != nil {
-		return utils.SendBadRequest(c, "Invalid request body")
+		return utils.SendBadRequestError(c, "Invalid request body")
 	}
 
-	if err := utils.ValidateStruct(req); err != nil {
-		return utils.SendValidationError(c, err)
+	// Basic validation - since ValidateStruct doesn't exist, do manual validation
+	if req.Name == "" || len(req.Name) < 2 {
+		return utils.SendValidationError(c, "Name is required and must be at least 2 characters")
+	}
+	if req.Code == "" || len(req.Code) < 2 {
+		return utils.SendValidationError(c, "Code is required and must be at least 2 characters")
 	}
 
 	svc := services.NewDepartmentService(config.DB)
@@ -108,7 +112,7 @@ func CreateOrganizationDepartment(c *fiber.Ctx) error {
 		return utils.SendInternalError(c, "Failed to validate department code", err)
 	}
 	if exists {
-		return utils.SendBadRequest(c, "Department code already exists")
+		return utils.SendBadRequestError(c, "Department code already exists")
 	}
 
 	department, err := svc.CreateDepartment(tenant.OrganizationID, req.Name, req.Code, req.Description, req.ManagerName, req.ParentID)
@@ -117,7 +121,7 @@ func CreateOrganizationDepartment(c *fiber.Ctx) error {
 		return utils.SendInternalError(c, "Failed to create department", err)
 	}
 
-	return utils.SendCreated(c, department, "Department created successfully")
+	return utils.SendCreatedSuccess(c, department, "Department created successfully")
 }
 
 // UpdateOrganizationDepartment updates an existing department
@@ -125,12 +129,12 @@ func CreateOrganizationDepartment(c *fiber.Ctx) error {
 func UpdateOrganizationDepartment(c *fiber.Ctx) error {
 	tenant, err := middleware.GetTenantContext(*c)
 	if err != nil {
-		return utils.SendUnauthorized(c, "Invalid tenant context")
+		return utils.SendUnauthorizedError(c, "Invalid tenant context")
 	}
 
 	departmentID := c.Params("id")
 	if departmentID == "" {
-		return utils.SendBadRequest(c, "Department ID is required")
+		return utils.SendBadRequestError(c, "Department ID is required")
 	}
 
 	var req struct {
@@ -143,7 +147,7 @@ func UpdateOrganizationDepartment(c *fiber.Ctx) error {
 	}
 
 	if err := c.BodyParser(&req); err != nil {
-		return utils.SendBadRequest(c, "Invalid request body")
+		return utils.SendBadRequestError(c, "Invalid request body")
 	}
 
 	svc := services.NewDepartmentService(config.DB)
@@ -155,7 +159,7 @@ func UpdateOrganizationDepartment(c *fiber.Ctx) error {
 		return utils.SendInternalError(c, "Failed to validate department", err)
 	}
 	if !exists {
-		return utils.SendNotFound(c, "Department not found")
+		return utils.SendNotFoundError(c, "Department")
 	}
 
 	// If updating code, check for duplicates
@@ -166,7 +170,7 @@ func UpdateOrganizationDepartment(c *fiber.Ctx) error {
 			return utils.SendInternalError(c, "Failed to validate department code", err)
 		}
 		if codeExists {
-			return utils.SendBadRequest(c, "Department code already exists")
+			return utils.SendBadRequestError(c, "Department code already exists")
 		}
 	}
 
@@ -176,7 +180,7 @@ func UpdateOrganizationDepartment(c *fiber.Ctx) error {
 		return utils.SendInternalError(c, "Failed to update department", err)
 	}
 
-	return utils.SendSuccess(c, department, "Department updated successfully")
+	return utils.SendSimpleSuccess(c, department, "Department updated successfully")
 }
 
 // DeleteOrganizationDepartment soft deletes a department
@@ -184,12 +188,12 @@ func UpdateOrganizationDepartment(c *fiber.Ctx) error {
 func DeleteOrganizationDepartment(c *fiber.Ctx) error {
 	tenant, err := middleware.GetTenantContext(*c)
 	if err != nil {
-		return utils.SendUnauthorized(c, "Invalid tenant context")
+		return utils.SendUnauthorizedError(c, "Invalid tenant context")
 	}
 
 	departmentID := c.Params("id")
 	if departmentID == "" {
-		return utils.SendBadRequest(c, "Department ID is required")
+		return utils.SendBadRequestError(c, "Department ID is required")
 	}
 
 	svc := services.NewDepartmentService(config.DB)
@@ -201,7 +205,7 @@ func DeleteOrganizationDepartment(c *fiber.Ctx) error {
 		return utils.SendInternalError(c, "Failed to validate department", err)
 	}
 	if !exists {
-		return utils.SendNotFound(c, "Department not found")
+		return utils.SendNotFoundError(c, "Department")
 	}
 
 	err = svc.DeleteDepartment(tenant.OrganizationID, departmentID)
@@ -210,7 +214,7 @@ func DeleteOrganizationDepartment(c *fiber.Ctx) error {
 		return utils.SendInternalError(c, "Failed to delete department", err)
 	}
 
-	return utils.SendSuccess(c, nil, "Department deleted successfully")
+	return utils.SendSimpleSuccess(c, nil, "Department deleted successfully")
 }
 
 // RestoreOrganizationDepartment restores a soft deleted department
@@ -218,12 +222,12 @@ func DeleteOrganizationDepartment(c *fiber.Ctx) error {
 func RestoreOrganizationDepartment(c *fiber.Ctx) error {
 	tenant, err := middleware.GetTenantContext(*c)
 	if err != nil {
-		return utils.SendUnauthorized(c, "Invalid tenant context")
+		return utils.SendUnauthorizedError(c, "Invalid tenant context")
 	}
 
 	departmentID := c.Params("id")
 	if departmentID == "" {
-		return utils.SendBadRequest(c, "Department ID is required")
+		return utils.SendBadRequestError(c, "Department ID is required")
 	}
 
 	svc := services.NewDepartmentService(config.DB)
@@ -234,7 +238,7 @@ func RestoreOrganizationDepartment(c *fiber.Ctx) error {
 		return utils.SendInternalError(c, "Failed to restore department", err)
 	}
 
-	return utils.SendSuccess(c, department, "Department restored successfully")
+	return utils.SendSimpleSuccess(c, department, "Department restored successfully")
 }
 
 // GetDepartmentModules retrieves modules assigned to a department
@@ -242,12 +246,12 @@ func RestoreOrganizationDepartment(c *fiber.Ctx) error {
 func GetDepartmentModules(c *fiber.Ctx) error {
 	tenant, err := middleware.GetTenantContext(*c)
 	if err != nil {
-		return utils.SendUnauthorized(c, "Invalid tenant context")
+		return utils.SendUnauthorizedError(c, "Invalid tenant context")
 	}
 
 	departmentID := c.Params("id")
 	if departmentID == "" {
-		return utils.SendBadRequest(c, "Department ID is required")
+		return utils.SendBadRequestError(c, "Department ID is required")
 	}
 
 	svc := services.NewDepartmentService(config.DB)
@@ -259,7 +263,7 @@ func GetDepartmentModules(c *fiber.Ctx) error {
 		return utils.SendInternalError(c, "Failed to validate department", err)
 	}
 	if !exists {
-		return utils.SendNotFound(c, "Department not found")
+		return utils.SendNotFoundError(c, "Department")
 	}
 
 	modules, err := svc.GetDepartmentModules(tenant.OrganizationID, departmentID)
@@ -268,7 +272,7 @@ func GetDepartmentModules(c *fiber.Ctx) error {
 		return utils.SendInternalError(c, "Failed to fetch department modules", err)
 	}
 
-	return utils.SendSuccess(c, modules, "Department modules retrieved successfully")
+	return utils.SendSimpleSuccess(c, modules, "Department modules retrieved successfully")
 }
 
 // AssignModuleToDepartment assigns a module to a department
@@ -276,12 +280,12 @@ func GetDepartmentModules(c *fiber.Ctx) error {
 func AssignModuleToDepartment(c *fiber.Ctx) error {
 	tenant, err := middleware.GetTenantContext(*c)
 	if err != nil {
-		return utils.SendUnauthorized(c, "Invalid tenant context")
+		return utils.SendUnauthorizedError(c, "Invalid tenant context")
 	}
 
 	departmentID := c.Params("id")
 	if departmentID == "" {
-		return utils.SendBadRequest(c, "Department ID is required")
+		return utils.SendBadRequestError(c, "Department ID is required")
 	}
 
 	var req struct {
@@ -289,11 +293,12 @@ func AssignModuleToDepartment(c *fiber.Ctx) error {
 	}
 
 	if err := c.BodyParser(&req); err != nil {
-		return utils.SendBadRequest(c, "Invalid request body")
+		return utils.SendBadRequestError(c, "Invalid request body")
 	}
 
-	if err := utils.ValidateStruct(req); err != nil {
-		return utils.SendValidationError(c, err)
+	// Basic validation
+	if req.ModuleID == "" {
+		return utils.SendValidationError(c, "Module ID is required")
 	}
 
 	svc := services.NewDepartmentService(config.DB)
@@ -305,7 +310,7 @@ func AssignModuleToDepartment(c *fiber.Ctx) error {
 		return utils.SendInternalError(c, "Failed to validate department", err)
 	}
 	if !exists {
-		return utils.SendNotFound(c, "Department not found")
+		return utils.SendNotFoundError(c, "Department")
 	}
 
 	err = svc.AssignModuleToDepartment(tenant.OrganizationID, departmentID, req.ModuleID)
@@ -314,7 +319,7 @@ func AssignModuleToDepartment(c *fiber.Ctx) error {
 		return utils.SendInternalError(c, "Failed to assign module to department", err)
 	}
 
-	return utils.SendSuccess(c, nil, "Module assigned to department successfully")
+	return utils.SendSimpleSuccess(c, nil, "Module assigned to department successfully")
 }
 
 // RemoveModuleFromDepartment removes a module from a department
@@ -322,14 +327,14 @@ func AssignModuleToDepartment(c *fiber.Ctx) error {
 func RemoveModuleFromDepartment(c *fiber.Ctx) error {
 	tenant, err := middleware.GetTenantContext(*c)
 	if err != nil {
-		return utils.SendUnauthorized(c, "Invalid tenant context")
+		return utils.SendUnauthorizedError(c, "Invalid tenant context")
 	}
 
 	departmentID := c.Params("departmentId")
 	moduleID := c.Params("moduleId")
 	
 	if departmentID == "" || moduleID == "" {
-		return utils.SendBadRequest(c, "Department ID and Module ID are required")
+		return utils.SendBadRequestError(c, "Department ID and Module ID are required")
 	}
 
 	svc := services.NewDepartmentService(config.DB)
@@ -341,7 +346,7 @@ func RemoveModuleFromDepartment(c *fiber.Ctx) error {
 		return utils.SendInternalError(c, "Failed to validate department", err)
 	}
 	if !exists {
-		return utils.SendNotFound(c, "Department not found")
+		return utils.SendNotFoundError(c, "Department")
 	}
 
 	err = svc.RemoveModuleFromDepartment(tenant.OrganizationID, departmentID, moduleID)
@@ -350,5 +355,5 @@ func RemoveModuleFromDepartment(c *fiber.Ctx) error {
 		return utils.SendInternalError(c, "Failed to remove module from department", err)
 	}
 
-	return utils.SendSuccess(c, nil, "Module removed from department successfully")
+	return utils.SendSimpleSuccess(c, nil, "Module removed from department successfully")
 }

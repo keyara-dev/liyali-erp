@@ -71,7 +71,7 @@ func (td *TestDatabase) CreateTestOrganization(t *testing.T, name, slug string) 
 		Slug:        slug,
 		Description: fmt.Sprintf("Test organization: %s", name),
 		Active:      true,
-		Tier:        "standard",
+		Tier:        "starter",
 	}
 
 	if err := td.DB.Create(org).Error; err != nil {

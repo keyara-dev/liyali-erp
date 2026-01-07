@@ -169,7 +169,7 @@ func CreateRequisition(c *fiber.Ctx) error {
 	requisition := models.Requisition{
 		ID:                uuid.New().String(),
 		REQNumber:         reqNumber,
-		RequesterID:       userID,
+		RequesterId:       userID,
 		Title:             req.Title,
 		Description:       req.Description,
 		Department:        req.Department,
@@ -699,7 +699,7 @@ func modelToRequisitionResponse(req models.Requisition) types.RequisitionRespons
 
 	return types.RequisitionResponse{
 		ID:                  req.ID,
-		RequesterID:         req.RequesterID,
+		RequesterID:         req.RequesterId,
 		RequesterName:       requesterName,
 		Title:               req.Title,
 		Description:         req.Description,

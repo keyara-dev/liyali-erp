@@ -15,6 +15,7 @@ import Logo from "@/components/base/logo";
 import { WorkspaceSkeleton } from "./workspace-skeleton";
 import { EmptyWorkspaceState } from "./empty-workspace-state";
 import { debugSession } from "@/app/_actions/debug";
+import { TierDisplay } from "@/components/organization/tier-display";
 
 interface WorkspaceSelectorProps {
   onCreateWorkspace?: () => void;
@@ -222,23 +223,41 @@ export function WorkspaceSelector({
                         )}
 
                         {/* Organization Details */}
-                        <div className="flex items-center gap-4 mt-2 text-xs font-medium uppercase tracking-wider">
-                          <div className="flex items-center">
-                            <span className="text-muted-foreground mr-1.5">TIER</span>
-                            <span className="text-foreground">{org.tier}</span>
-                          </div>
-                          <div className="flex items-center">
-                            <span className="text-muted-foreground mr-1.5">STATUS</span>
-                            <span className="text-green-600">Active</span>
-                          </div>
-                          {isDefault && (
-                            <div className="flex items-center">
-                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary">
-                                Default
-                              </span>
+                            <div className="flex items-center justify-between mt-2">
+                              <div className="flex items-center gap-4 text-xs font-medium uppercase tracking-wider">
+                                <div className="flex items-center">
+                                  <span className="text-muted-foreground mr-1.5">TIER</span>
+                                  <span className={cn(
+                                    "px-2 py-0.5 rounded-full text-xs font-medium",
+                                    org.tier?.toUpperCase() === "STARTER"
+                                      ? "bg-blue-100 text-blue-700"
+                                      : org.tier?.toUpperCase() === "PRO"
+                                      ? "bg-purple-100 text-purple-700"
+                                      : "bg-emerald-100 text-emerald-700"
+                                  )}>
+                                    {org.tier || "STARTER"}
+                                  </span>
+                                </div>
+                                <div className="flex items-center">
+                                  <span className="text-muted-foreground mr-1.5">STATUS</span>
+                                  <span className="text-green-600">Active</span>
+                                </div>
+                                {isDefault && (
+                                  <div className="flex items-center">
+                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary">
+                                      Default
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
+                              
+                              {/* Compact Tier Display with Upgrade */}
+                              {org.tier?.toUpperCase() === "STARTER" && (
+                                <div className="flex-shrink-0">
+                                  <TierDisplay compact showUpgradeButton />
+                                </div>
+                              )}
                             </div>
-                          )}
-                        </div>
                       </div>
 
                       {/* Arrow */}

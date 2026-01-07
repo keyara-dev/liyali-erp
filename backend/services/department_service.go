@@ -135,12 +135,15 @@ func (s *DepartmentService) CreateDepartment(organizationID, name, code string, 
 		OrganizationID: organizationID,
 		Name:           name,
 		Code:           code,
-		Description:    description,
-		ManagerName:    managerName,
 		ParentID:       parentID,
-		IsActive:       true,
+		Active:         true,
 		CreatedAt:      time.Now(),
 		UpdatedAt:      time.Now(),
+	}
+	
+	// Set description if provided
+	if description != nil {
+		department.Description = *description
 	}
 
 	if err := s.db.Create(&department).Error; err != nil {
