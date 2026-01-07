@@ -8,6 +8,7 @@ import { DataTable } from '@/components/ui/data-table';
 import { StatusBadge } from '@/components/status-badge';
 import { Download, Eye, Pencil, Trash2, MoreVertical } from 'lucide-react';
 import { WorkflowDocument } from '@/types/workflow';
+import { GoodsReceivedNote } from '@/types/goods-received-note';
 import type { ActionButton } from '@/components/ui/action-buttons';
 import {
   DropdownMenu,
@@ -15,13 +16,34 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { useGRNs } from '@/hooks/use-grns-queries';
+import { useGRNs } from '@/hooks/use-grn-queries';
 
 interface GrnTableProps {
   userId: string;
   userRole: string;
   refreshTrigger: number;
   onRefresh: () => void;
+}
+
+// Transform GRN to WorkflowDocument for table compatibility
+function transformGRNToWorkflowDocument(grn: any): WorkflowDocument {
+  return {
+    id: grn.id,
+    type: 'goods_received_note',
+    documentNumber: grn.grnNumber,
+    status: grn.status?.toLowerCase() as any, // Convert to lowercase for compatibility
+    currentStage: grn.currentStage || grn.approvalStage || 0,
+    createdAt: grn.createdAt ? new Date(grn.createdAt) : new Date(),
+    updatedAt: grn.updatedAt ? new Date(grn.updatedAt) : new Date(),
+    metadata: {
+      poNumber: grn.poNumber,
+      poId: grn.metadata?.poId,
+      vendorName: grn.metadata?.vendorName || 'Unknown Vendor',
+      amount: grn.metadata?.amount || 0,
+      receivedBy: grn.receivedBy,
+      receivedDate: grn.receivedDate,
+    },
+  };
 }
 
 // Options dropdown component
@@ -38,7 +60,7 @@ function GrnOptionsMenu({ grn, router }: { grn: WorkflowDocument; router: Return
           <Download className="mr-2 h-4 w-4" />
           Download
         </DropdownMenuItem>
-        {grn.status === 'IN_REVIEW' && (
+        {grn.status === 'pending' && (
           <>
             <DropdownMenuItem onClick={() => console.log('Approve GRN:', grn.id)}>
               <div className="mr-2 h-4 w-4 text-green-600">✓</div>
@@ -50,7 +72,7 @@ function GrnOptionsMenu({ grn, router }: { grn: WorkflowDocument; router: Return
             </DropdownMenuItem>
           </>
         )}
-        {grn.status !== 'APPROVED' && (
+        {grn.status !== 'approved' && (
           <DropdownMenuItem onClick={() => console.log('Delete GRN:', grn.id)} className="text-destructive">
             <Trash2 className="mr-2 h-4 w-4" />
             Delete
@@ -66,7 +88,7 @@ const columns: ColumnDef<WorkflowDocument>[] = [
     accessorKey: 'documentNumber',
     header: 'GRN Number',
     cell: ({ row }) => (
-      <div className="font-medium">{row.original.documentNumber}</div>
+      <div className="font-medium">{row.original.documentNumber || 'N/A'}</div>
     ),
   },
   {
@@ -75,10 +97,10 @@ const columns: ColumnDef<WorkflowDocument>[] = [
     cell: ({ row }) => (
       <div className="text-sm">
         <Link
-          href={`/purchase-orders/${row.original.metadata?.poId}`}
+          href={`/purchase-orders/${row.original.metadata?.poId || '#'}`}
           className="text-blue-600 hover:underline"
         >
-          {row.original.metadata?.poNumber}
+          {row.original.metadata?.poNumber || 'N/A'}
         </Link>
       </div>
     ),
@@ -87,7 +109,7 @@ const columns: ColumnDef<WorkflowDocument>[] = [
     accessorKey: 'metadata.vendorName',
     header: 'Vendor',
     cell: ({ row }) => (
-      <div className="text-sm">{row.original.metadata?.vendorName}</div>
+      <div className="text-sm">{row.original.metadata?.vendorName || 'Unknown'}</div>
     ),
   },
   {
@@ -103,7 +125,7 @@ const columns: ColumnDef<WorkflowDocument>[] = [
     accessorKey: 'status',
     header: 'Status',
     cell: ({ row }) => (
-      <StatusBadge status={row.original.status} type="document" />
+      <StatusBadge status={row.original.status || 'draft'} type="document" />
     ),
   },
   {
@@ -111,7 +133,7 @@ const columns: ColumnDef<WorkflowDocument>[] = [
     header: 'Received Date',
     cell: ({ row }) => (
       <div className="text-sm text-muted-foreground">
-        {new Date(row.original.createdAt).toLocaleDateString()}
+        {row.original.createdAt ? new Date(row.original.createdAt).toLocaleDateString() : 'N/A'}
       </div>
     ),
   },
@@ -131,12 +153,10 @@ export function GrnTable({
     refetch();
   }, [refreshTrigger, refetch]);
 
-  // Memoize the data to prevent unnecessary re-renders
-  // React Query returns a new array reference on each render,
-  // so we memoize based on the actual content changes
+  // Transform GRN data to WorkflowDocument format for table compatibility
   const data = useMemo(() => {
     if (grns && grns.length > 0) {
-      return grns;
+      return grns.map(transformGRNToWorkflowDocument);
     }
     return [];
   }, [grns]);
@@ -150,7 +170,7 @@ export function GrnTable({
           tooltip: 'View Details',
           onClick: () => router.push(`/grn/${grn.id}`),
         },
-        ...(grn.status !== 'APPROVED'
+        ...(grn.status !== 'approved'
           ? [
               {
                 icon: <Pencil className="h-3.5 w-3.5" />,

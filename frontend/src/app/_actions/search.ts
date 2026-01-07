@@ -91,6 +91,8 @@ export async function searchDocuments(
           limit: data.pageSize || limit,
           total: data.total || 0,
           totalPages: data.totalPages || Math.ceil((data.total || 0) / limit),
+          hasNext: (data.page || page) < (data.totalPages || Math.ceil((data.total || 0) / limit)),
+          hasPrev: (data.page || page) > 1,
         },
       },
       status: 200,

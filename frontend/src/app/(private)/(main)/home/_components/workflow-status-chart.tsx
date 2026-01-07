@@ -17,11 +17,11 @@ interface WorkflowStatusChartProps {
 
 export function WorkflowStatusChart({ metrics }: WorkflowStatusChartProps) {
   const data = [
-    { name: 'Draft', value: metrics.draftDocuments },
-    { name: 'Submitted', value: metrics.submittedDocuments },
-    { name: 'In Approval', value: metrics.pendingApproval },
-    { name: 'Approved', value: metrics.approvedDocuments },
-    { name: 'Rejected', value: metrics.rejectedDocuments },
+    { name: 'Draft', value: metrics.draftDocuments || 0 },
+    { name: 'Submitted', value: metrics.submittedDocuments || 0 },
+    { name: 'In Approval', value: metrics.pendingApproval || 0 },
+    { name: 'Approved', value: metrics.approvedDocuments || 0 },
+    { name: 'Rejected', value: metrics.rejectedDocuments || 0 },
   ].filter((item) => item.value > 0)
 
   const COLORS = [

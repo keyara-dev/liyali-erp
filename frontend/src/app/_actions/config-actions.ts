@@ -8,7 +8,7 @@ import authenticatedApiClient, {
 import { revalidatePath } from "next/cache";
 import { is } from "date-fns/locale";
 import { APIResponse, Pagination } from "@/types";
-import { Department } from "@/lib/mock-departments";
+import { Department } from "@/types/department";
 
 // ============================================================================
 // BRANCH MANAGEMENT

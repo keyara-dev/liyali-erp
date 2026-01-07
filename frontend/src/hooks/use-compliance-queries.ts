@@ -33,14 +33,15 @@ export const useComplianceRequirements = (
   onSuccess?: (data: ComplianceTrackingData) => void
 ) =>
   useQuery({
-    queryKey: [QUERY_KEYS.COMPLIANCE?.ALL || 'compliance-all'],
+    queryKey: [QUERY_KEYS.COMPLIANCE.ALL],
     queryFn: async () => {
       const response = await fetch('/api/compliance/requirements');
       if (!response.ok) throw new Error('Failed to fetch compliance requirements');
-      return response.json();
+      const data = response.json();
+      if (onSuccess) onSuccess(data);
+      return data;
     },
     staleTime: 10 * 60 * 1000, // 10 minutes
-    onSuccess,
   });
 
 /**

@@ -8,7 +8,7 @@
 'use client';
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Workflow, WorkflowFormData, WorkflowListFilter } from '@/types';
+import { Workflow, WorkflowFormData, WorkflowListFilter } from '@/app/_actions/workflows';
 
 import {
   createWorkflow,

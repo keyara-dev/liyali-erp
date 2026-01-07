@@ -25,12 +25,13 @@ import {
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CheckIcon, SearchIcon, MailIcon } from "lucide-react";
-import type { NotificationType } from "@/types";
+import type { NotificationTypeEnum as NotificationType } from "@/types";
 import { useSession } from "@/hooks";
 
 const notificationTypeLabels: Record<NotificationType, string> = {
+  // Uppercase types as defined in NotificationType
   TASK_ASSIGNED: "Task Assigned",
-  TASK_REASSIGNED: "Task Reassigned",
+  TASK_REASSIGNED: "Task Reassigned", 
   TASK_APPROVED: "Task Approved",
   TASK_REJECTED: "Task Rejected",
   WORKFLOW_COMPLETE: "Workflow Complete",
@@ -98,7 +99,7 @@ function NotificationsPageContent() {
   };
 
   const filteredNotifications =
-    result?.notifications.filter((n) => {
+    result?.notifications.filter((n: any) => {
       if (
         searchQuery &&
         !n.message.toLowerCase().includes(searchQuery.toLowerCase())
@@ -217,7 +218,7 @@ function NotificationsPageContent() {
             </CardContent>
           </Card>
         ) : (
-          filteredNotifications.map((notification) => (
+          filteredNotifications.map((notification: any) => (
             <NotificationItem
               key={notification.id}
               notification={notification}

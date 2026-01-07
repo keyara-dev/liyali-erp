@@ -24,14 +24,19 @@ import {
 } from "lucide-react";
 
 export interface ApprovalHistoryProps {
-  documentId: string;
+  documentId?: string;
+  entityId?: string;      // Legacy compatibility
+  entityType?: string;    // Legacy compatibility
 }
 
 export function ApprovalHistory({
   documentId,
+  entityId,
+  entityType,
 }: ApprovalHistoryProps) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const { data: historyData, isLoading } = useApprovalHistory(documentId);
+  const actualDocumentId = documentId || entityId || '';
+  const { data: historyData, isLoading } = useApprovalHistory(actualDocumentId);
 
   const sortedHistory = useMemo(() => {
     if (!historyData) return [];

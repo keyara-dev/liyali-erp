@@ -109,7 +109,7 @@ export function RequisitionDetailClient({
   const isCreator = requisition?.requestedBy === userId;
   const canEdit =
     isCreator &&
-    (requisition?.status === "DRAFT" || requisition?.status === "REJECTED");
+    (requisition?.status === "draft" || requisition?.status === "rejected");
   const canSubmit = canEdit;
 
   if (isLoading && !requisition) {
@@ -252,7 +252,7 @@ export function RequisitionDetailClient({
           </div>
 
           {/* Document Links */}
-          {requisition.status === "APPROVED" && (
+          {requisition.status === "approved" && (
             <DocumentLinks
               currentDocument={requisition as unknown as WorkflowDocument}
               linkedDocuments={{}}

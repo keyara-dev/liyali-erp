@@ -11,7 +11,7 @@ type CreateRequisitionRequest struct {
 	Title             string                 `json:"title" validate:"required,min=3"`
 	Description       string                 `json:"description" validate:"required,min=10"`
 	Department        string                 `json:"department" validate:"required"`
-	Priority          string                 `json:"priority" validate:"required,oneof=low medium high"`
+	Priority          string                 `json:"priority" validate:"required,oneof=low medium high urgent"`
 	Items             []RequisitionItem       `json:"items" validate:"required,min=1"`
 	TotalAmount       float64                `json:"totalAmount" validate:"required,gt=0"`
 	Currency          string                 `json:"currency" validate:"required"`
@@ -36,10 +36,16 @@ type UpdateRequisitionRequest struct {
 
 // RequisitionItem represents an item in a requisition
 type RequisitionItem struct {
-	Description string  `json:"description"`
-	Quantity    int     `json:"quantity"`
-	UnitPrice   float64 `json:"unitPrice"`
-	Amount      float64 `json:"amount"`
+	ID              *string `json:"id,omitempty"`
+	Description     string  `json:"description"`
+	ItemDescription *string `json:"itemDescription,omitempty"` // Alias for description
+	Quantity        int     `json:"quantity"`
+	UnitPrice       float64 `json:"unitPrice"`
+	Amount          float64 `json:"amount"`
+	EstimatedCost   *float64 `json:"estimatedCost,omitempty"` // Alias for amount
+	Unit            *string `json:"unit,omitempty"`
+	Category        *string `json:"category,omitempty"`
+	Notes           *string `json:"notes,omitempty"`
 }
 
 // RequisitionResponse represents a requisition in responses
@@ -70,11 +76,15 @@ type RequisitionResponse struct {
 
 // CreateBudgetRequest represents a budget creation request
 type CreateBudgetRequest struct {
-	BudgetCode      string  `json:"budgetCode" validate:"required"`
+	BudgetCode      string  `json:"budgetCode,omitempty"`                    // Optional - can be auto-generated
+	Name            string  `json:"name,omitempty"`                          // Budget name/title
+	Description     string  `json:"description,omitempty"`                   // Budget description
 	Department      string  `json:"department" validate:"required"`
+	DepartmentID    string  `json:"departmentId,omitempty"`                  // Department ID
 	FiscalYear      string  `json:"fiscalYear" validate:"required"`
 	TotalBudget     float64 `json:"totalBudget" validate:"required,gt=0"`
 	AllocatedAmount float64 `json:"allocatedAmount" validate:"required,gte=0"`
+	Currency        string  `json:"currency,omitempty"`                      // Currency
 }
 
 // UpdateBudgetRequest represents a budget update request
@@ -129,6 +139,15 @@ type POItem struct {
 	Quantity    int     `json:"quantity"`
 	UnitPrice   float64 `json:"unitPrice"`
 	Amount      float64 `json:"amount"`
+	
+	// Frontend compatibility fields - CRITICAL: These must match frontend exactly
+	ID          string  `json:"id,omitempty"`          // Item identifier - ADDED
+	ItemNumber  string  `json:"itemNumber,omitempty"`  // Item number/SKU - ADDED
+	ItemCode    string  `json:"itemCode,omitempty"`    // Item code - ADDED
+	Category    string  `json:"category,omitempty"`    // Item category - ADDED
+	Unit        string  `json:"unit,omitempty"`        // Unit of measurement - ADDED
+	TotalPrice  float64 `json:"totalPrice,omitempty"`  // Total price (alias for amount) - ADDED
+	Notes       string  `json:"notes,omitempty"`       // Item notes - ADDED
 }
 
 // PurchaseOrderResponse represents a PO in responses
@@ -157,7 +176,7 @@ type CreatePaymentVoucherRequest struct {
 	InvoiceNumber string `json:"invoiceNumber" validate:"required"`
 	Amount        float64 `json:"amount" validate:"required,gt=0"`
 	Currency      string `json:"currency" validate:"required"`
-	PaymentMethod string `json:"paymentMethod" validate:"required,oneof=bank_transfer check cash"`
+	PaymentMethod string `json:"paymentMethod" validate:"required,oneof=bank_transfer cash"`
 	GLCode        string `json:"glCode" validate:"required"`
 	Description   string `json:"description" validate:"required,min=10"`
 	LinkedPO      string `json:"linkedPO"`
@@ -217,6 +236,7 @@ type GRNItem struct {
 	QuantityReceived int    `json:"quantityReceived"`
 	Variance       int     `json:"variance"`
 	Condition      string  `json:"condition"` // good, damaged, defective
+	Notes          *string `json:"notes,omitempty"` // Optional notes for the item
 }
 
 // QualityIssue represents a quality issue in GRN
@@ -333,4 +353,34 @@ type DetailResponse struct {
 type MessageResponse struct {
 	Success bool   `json:"success"`
 	Message string `json:"message"`
+}
+
+// ================== ADDITIONAL TYPES FOR FRONTEND COMPATIBILITY ==================
+
+// ActionHistoryEntry represents an action history entry
+type ActionHistoryEntry struct {
+	ID               string                 `json:"id"`
+	Action           string                 `json:"action"`
+	PerformedBy      string                 `json:"performedBy"`
+	PerformedByName  string                 `json:"performedByName"`
+	PerformedByRole  string                 `json:"performedByRole,omitempty"`
+	Timestamp        time.Time              `json:"timestamp"`
+	PerformedAt      time.Time              `json:"performedAt,omitempty"` // Alias for timestamp
+	Changes          map[string]interface{} `json:"changes,omitempty"`
+	Comments         string                 `json:"comments,omitempty"`
+	ActionType       string                 `json:"actionType,omitempty"`
+	NewStatus        string                 `json:"newStatus,omitempty"`
+	PreviousStatus   string                 `json:"previousStatus,omitempty"`   // Previous status before action - ADDED
+	Remarks          string                 `json:"remarks,omitempty"`
+	StageNumber      int                    `json:"stageNumber,omitempty"`
+	StageName        string                 `json:"stageName,omitempty"`
+	ChangedFields    map[string]interface{} `json:"changedFields,omitempty"`
+}
+
+// PaymentItem represents an item in a payment voucher
+type PaymentItem struct {
+	Description string  `json:"description"`
+	Amount      float64 `json:"amount"`
+	GLCode      string  `json:"glCode,omitempty"`
+	TaxAmount   float64 `json:"taxAmount,omitempty"`
 }

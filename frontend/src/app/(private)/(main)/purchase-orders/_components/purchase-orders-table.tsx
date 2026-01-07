@@ -16,7 +16,8 @@ import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/ui/data-table";
 import { StatusBadge as CentralizedStatusBadge } from "@/components/status-badge";
 import { WorkflowDocument } from "@/types/workflow";
-import { usePurchaseOrders } from "@/hooks/use-purchase-orders-queries";
+import { PurchaseOrder } from "@/types/purchase-order";
+import { usePurchaseOrders } from "@/hooks/use-purchase-order-queries";
 import type { ActionButton } from "@/components/ui/action-buttons";
 import {
   DropdownMenu,
@@ -30,6 +31,27 @@ interface PurchaseOrdersTableProps {
   userRole: string;
   refreshTrigger: number;
   onRefresh: () => void;
+}
+
+// Transform PurchaseOrder to WorkflowDocument for table compatibility
+function transformPOToWorkflowDocument(po: PurchaseOrder): WorkflowDocument {
+  return {
+    id: po.id,
+    type: 'purchase_order',
+    documentNumber: po.poNumber,
+    status: po.status?.toLowerCase() as any, // Convert to lowercase for compatibility
+    currentStage: po.approvalStage,
+    createdAt: po.createdAt,
+    updatedAt: po.updatedAt,
+    metadata: {
+      vendorName: po.vendorName,
+      amount: po.totalAmount,
+      currency: po.currency,
+      deliveryDate: po.deliveryDate,
+      department: po.department,
+      linkedRequisition: po.linkedRequisition,
+    },
+  };
 }
 
 // Stage indicator
@@ -126,7 +148,7 @@ const columns: ColumnDef<WorkflowDocument>[] = [
     ),
     cell: ({ row }) => (
       <div className="text-sm">
-        {new Date(row.original.createdAt).toLocaleDateString()}
+        {row.original.createdAt ? new Date(row.original.createdAt).toLocaleDateString() : 'N/A'}
       </div>
     ),
   },
@@ -177,19 +199,17 @@ export function PurchaseOrdersTable({
 }: PurchaseOrdersTableProps) {
   const router = useRouter();
   const { data: purchaseOrders = [], refetch } =
-    usePurchaseOrders(1, 50); // Get first 50 purchase orders
+    usePurchaseOrders(); // Get all purchase orders
 
   // Refetch when refreshTrigger changes
   useEffect(() => {
     refetch();
   }, [_refreshTrigger, refetch]);
 
-  // Memoize the data to prevent unnecessary re-renders
-  // React Query returns a new array reference on each render,
-  // so we memoize based on the actual content changes
+  // Transform PurchaseOrder data to WorkflowDocument format for table compatibility
   const data = useMemo(() => {
     if (purchaseOrders && purchaseOrders.length > 0) {
-      return purchaseOrders;
+      return purchaseOrders.map(transformPOToWorkflowDocument);
     }
     return [];
   }, [purchaseOrders]);

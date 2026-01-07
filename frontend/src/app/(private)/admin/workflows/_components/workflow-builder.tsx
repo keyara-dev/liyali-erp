@@ -11,7 +11,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Plus, Trash2, GripVertical, ArrowRight } from 'lucide-react'
-import type { WorkflowFormData, WorkflowStage } from '../create/_components/create-workflow-client'
+import type { WorkflowFormData, WorkflowStage } from '@/app/_actions/workflows'
 import { WorkflowDetailsForm } from './workflow-details-form'
 import { StageForm } from './stage-form'
 import {

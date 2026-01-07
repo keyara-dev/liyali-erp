@@ -4,7 +4,7 @@ import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Clock, CheckCircle, XCircle, Edit, Plus, Send } from 'lucide-react'
-import { POActionHistoryEntry, POApprovalRecord } from '@/types/purchase-order'
+import { POActionHistoryEntry, POApprovalRecord } from '@/types'
 
 interface POActionHistoryPanelProps {
   actionHistory?: POActionHistoryEntry[]
@@ -86,7 +86,7 @@ export function POActionHistoryPanel({
   }
 
   const sortedHistory = [...(actionHistory || [])].sort(
-    (a, b) => new Date(b.performedAt).getTime() - new Date(a.performedAt).getTime()
+    (a, b) => new Date(b.performedAt || b.timestamp || 0).getTime() - new Date(a.performedAt || a.timestamp || 0).getTime()
   )
 
   return (
@@ -104,17 +104,17 @@ export function POActionHistoryPanel({
               {sortedHistory.map((action) => (
                 <div
                   key={action.id}
-                  className={`p-4 rounded-lg border ${getActionColor(action.actionType)}`}
+                  className={`p-4 rounded-lg border ${getActionColor(action.actionType || 'unknown')}`}
                 >
                   <div className="flex items-start gap-3">
-                    {getActionIcon(action.actionType)}
+                    {getActionIcon(action.actionType || 'unknown')}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-semibold text-sm">
-                          {action.performedByName}
+                          {action.performedByName || 'Unknown User'}
                         </span>
                         <Badge variant="outline" className="text-xs">
-                          {getActionLabel(action.actionType)}
+                          {getActionLabel(action.actionType || action.action)}
                         </Badge>
                         {action.performedByRole && (
                           <Badge variant="secondary" className="text-xs">
@@ -123,7 +123,7 @@ export function POActionHistoryPanel({
                         )}
                       </div>
                       <p className="text-xs text-gray-600 mt-1">
-                        {new Date(action.performedAt).toLocaleString()}
+                        {new Date(action.performedAt || action.timestamp || 0).toLocaleString()}
                       </p>
 
                       {/* Status transition */}
@@ -178,17 +178,11 @@ export function POActionHistoryPanel({
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex items-start gap-3 flex-1">
-                      {approval.status === 'APPROVED' && (
+                      {approval.status === 'approved' && (
                         <CheckCircle className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
                       )}
-                      {approval.status === 'REJECTED' && (
+                      {approval.status === 'rejected' && (
                         <XCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
-                      )}
-                      {approval.status === 'REVERSED' && (
-                        <Edit className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
-                      )}
-                      {approval.status === 'PENDING' && (
-                        <Clock className="h-5 w-5 text-gray-600 flex-shrink-0 mt-0.5" />
                       )}
 
                       <div className="flex-1 min-w-0">
@@ -198,9 +192,9 @@ export function POActionHistoryPanel({
                           </span>
                           <Badge
                             variant={
-                              approval.status === 'APPROVED'
+                              approval.status === 'approved'
                                 ? 'default'
-                                : approval.status === 'REJECTED'
+                                : approval.status === 'rejected'
                                   ? 'destructive'
                                   : 'secondary'
                             }

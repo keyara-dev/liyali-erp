@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import { useSession } from "./use-session";
-import type { User } from "@/types/auth";
+import type { User } from "@/types";
 
 /**
  * Represents a permission as a resource-action pair

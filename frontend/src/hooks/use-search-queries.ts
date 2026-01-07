@@ -73,8 +73,8 @@ export function useAllDocuments(
   return useSearchDocuments(
     {
       documentNumber: '',
-      documentType: 'ALL',
-      status: 'ALL',
+      documentType: 'all',
+      status: 'all',
       startDate: '',
       endDate: '',
     },

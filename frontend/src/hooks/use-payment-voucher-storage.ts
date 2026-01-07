@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { PaymentVoucher, PVActionHistoryEntry } from '@/types/payment-voucher';
+import { PaymentVoucher, ActionHistoryEntry } from '@/types';
 import { QUERY_KEYS } from '@/lib/constants';
 import { getPaymentVouchers, getPaymentVoucherById } from '@/app/_actions/payment-vouchers';
 
@@ -189,7 +189,7 @@ export const usePaymentVoucherActionHistory = (pvId: string) => {
   const { findById, updatePV } = usePaymentVoucherStorage();
 
   const addAction = useCallback(
-    (action: PVActionHistoryEntry) => {
+    (action: ActionHistoryEntry) => {
       const pv = findById(pvId);
       if (pv) {
         if (!pv.actionHistory) {

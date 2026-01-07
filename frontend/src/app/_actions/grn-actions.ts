@@ -50,6 +50,17 @@ export interface GoodsReceivedNote {
   stageName: string;
   createdAt: string;
   updatedAt: string;
+  
+  // Additional fields for compatibility
+  approvalStage: number;        // Maps to currentStage
+  approvalHistory: any[];       // Approval history array
+  createdBy?: string;           // Creator user ID
+  metadata?: {                  // Metadata for UI compatibility
+    poId?: string;
+    poNumber?: string;
+    vendorName?: string;
+    amount?: number;
+  };
 }
 
 /**

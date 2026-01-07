@@ -7,7 +7,7 @@ import {
   checkUserRoleAction,
   checkIsAdminAction,
 } from "@/app/_actions/session";
-import type { User } from "@/types/auth";
+import type { User } from "@/types";
 
 export interface SessionData {
   user: User | null;

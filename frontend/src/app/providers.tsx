@@ -13,7 +13,6 @@ import {
   SidebarProvider,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { useInitializeStorage } from "@/hooks/use-initialize-storage";
 import { useOfflineQueueProcessor } from "@/hooks/use-offline-queue-processor";
 import { OrganizationProvider } from "@/contexts/organization-context";
 import { TokenRefreshProvider } from "@/components/auth/token-refresh-provider";
@@ -45,7 +44,6 @@ const queryClient = new QueryClient({
 });
 
 function StorageInitializer({ children }: { children: React.ReactNode }) {
-  useInitializeStorage();
   useOfflineQueueProcessor(); // Add offline sync processor
   return <>{children}</>;
 }

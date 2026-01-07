@@ -1,6 +1,6 @@
 "use client";
 
-import { ApprovalHistory } from "@/types/workflow";
+import { ApprovalHistory } from "@/types";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";

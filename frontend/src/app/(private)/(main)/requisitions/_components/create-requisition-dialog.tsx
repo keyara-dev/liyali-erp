@@ -16,8 +16,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Plus, Trash2 } from "lucide-react";
-import { createWorkflowDocument } from "@/app/_actions/workflow";
-import { RequisitionItem } from "@/types/workflow";
+import { createRequisition } from '@/app/_actions/requisitions';
+import { RequisitionItem } from "@/types/requisition";
 import { QUERY_KEYS } from "@/lib/constants";
 
 interface CreateRequisitionDialogProps {
@@ -52,9 +52,12 @@ export function CreateRequisitionDialog({
   const handleAddItem = () => {
     const newItem: RequisitionItem = {
       id: Date.now().toString(),
-      itemDescription: "",
+      description: "",
+      itemDescription: "",  // Alias
       quantity: 1,
-      estimatedCost: 0,
+      unitPrice: 0,
+      amount: 0,
+      estimatedCost: 0,     // Alias
     };
     setFormData((prev) => ({
       ...prev,
@@ -107,7 +110,7 @@ export function CreateRequisitionDialog({
 
     // Validate all items have descriptions and quantities
     const allItemsValid = formData.items.every(
-      (item) => item.itemDescription.trim() && item.quantity > 0
+      (item) => item.itemDescription?.trim() && item.quantity > 0
     );
     if (!allItemsValid) {
       toast.error("Please fill in all item details");
@@ -116,7 +119,9 @@ export function CreateRequisitionDialog({
 
     setIsLoading(true);
     try {
-      const result = await createWorkflowDocument("REQUISITION", {
+      const result = await createRequisition({
+        title: `Requisition for ${formData.department}`,
+        description: formData.justification,
         department: formData.department,
         requestedFor: formData.requestedFor,
         items: formData.items,
@@ -259,7 +264,7 @@ export function CreateRequisitionDialog({
                           type="button"
                           variant="ghost"
                           size="sm"
-                          onClick={() => handleRemoveItem(item.id)}
+                          onClick={() => handleRemoveItem(item.id || '')}
                           className="text-red-500 hover:text-red-700 hover:bg-red-50"
                         >
                           <Trash2 className="h-4 w-4" />
@@ -273,7 +278,7 @@ export function CreateRequisitionDialog({
                           value={item.itemDescription}
                           onChange={(e) =>
                             handleUpdateItem(
-                              item.id,
+                              item.id || '',
                               "itemDescription",
                               e.target.value
                             )

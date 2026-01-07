@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { PageHeader } from "@/components/base/page-header";
 import { CreateRequisitionForm } from "./create-form";
 import { FormPreview } from "./form-preview";
-import { RequisitionItem } from "@/types/workflow";
+import { RequisitionItem } from "@/types/requisition";
 
 interface CreateRequisitionClientProps {
   userId: string;

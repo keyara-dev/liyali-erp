@@ -3,11 +3,12 @@
 import { useParams } from "next/navigation";
 import { useApprovalTaskDetail } from "@/hooks/use-approval-workflow";
 import { useRequisitionById } from "@/hooks/use-requisition-queries";
+import { useSession } from "@/hooks/use-session";
 import {
   ApprovalFlowDisplay,
   ApprovalActionPanel,
-  ApprovalHistory,
 } from "@/components/workflows";
+import { ApprovalHistoryPanel } from "../../_components/approval-history-panel";
 import {
   Card,
   CardContent,
@@ -30,12 +31,13 @@ import {
 export default function RequisitionApprovalPage() {
   const params = useParams();
   const taskId = params.id as string;
+  const session = useSession();
 
   const { data: task, isLoading } = useApprovalTaskDetail(taskId);
 
   // Fetch requisition data if we have a documentId from the task
   const requisitionId = task?.documentId;
-  const { data: requisition } = useRequisitionById(requisitionId || '', !!requisitionId);
+  const { data: requisition } = useRequisitionById(requisitionId || '');
 
   if (isLoading) {
     return (
@@ -68,7 +70,7 @@ export default function RequisitionApprovalPage() {
               Requisition Approval
             </h1>
             <p className="text-muted-foreground">
-              {requisition?.name || `Requisition #${task.entityNumber}`}
+              {requisition?.title || `Requisition #${task.documentNumber}`}
             </p>
           </div>
           <Badge
@@ -177,8 +179,8 @@ export default function RequisitionApprovalPage() {
                       Amount
                     </h4>
                     <p className="font-semibold">
-                      {requisition.amount
-                        ? `K${requisition.amount.toLocaleString()}`
+                      {requisition.totalAmount
+                        ? `${requisition.currency}${requisition.totalAmount.toLocaleString()}`
                         : "N/A"}
                     </p>
                   </div>
@@ -328,9 +330,10 @@ export default function RequisitionApprovalPage() {
       </div>
 
       {/* Approval History */}
-      <ApprovalHistory
-        entityId={task.entityId || taskId}
-        entityType={task.entityType || "Requisition"}
+      <ApprovalHistoryPanel
+        requisitionId={task.documentId || taskId}
+        requisition={requisition as any}
+        userRole={session?.user?.role || 'requester'}
       />
     </div>
   );

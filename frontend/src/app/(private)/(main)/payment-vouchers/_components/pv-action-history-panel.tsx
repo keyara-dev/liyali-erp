@@ -12,7 +12,7 @@ import {
   ArrowRight,
   Signature,
 } from 'lucide-react'
-import { PVApprovalRecord, PVActionHistoryEntry } from '@/types/payment-voucher'
+import { PVActionHistoryEntry, PVApprovalRecord } from '@/types'
 
 interface PVActionHistoryPanelProps {
   actionHistory?: PVActionHistoryEntry[]
@@ -87,8 +87,8 @@ export function PVActionHistoryPanel({
                 {[...actionHistory]
                   .sort(
                     (a, b) =>
-                      new Date(b.performedAt).getTime() -
-                      new Date(a.performedAt).getTime()
+                      new Date(b.performedAt || b.timestamp || 0).getTime() -
+                      new Date(a.performedAt || a.timestamp || 0).getTime()
                   )
                   .map((action, index) => (
                     <div
@@ -96,20 +96,20 @@ export function PVActionHistoryPanel({
                       className="flex gap-4 p-3 border rounded-lg hover:bg-gray-50"
                     >
                       <div className="flex-shrink-0 mt-1">
-                        {getActionIcon(action.actionType)}
+                        {getActionIcon(action.actionType || 'unknown')}
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
                           <span className="font-semibold text-sm">
-                            {action.actionType}
+                            {action.actionType || 'Unknown Action'}
                           </span>
                           <Badge className={getStatusColor(action.newStatus || '')}>
                             {action.newStatus || 'PENDING'}
                           </Badge>
                         </div>
                         <p className="text-sm text-gray-600 mb-2">
-                          <span className="font-medium">{action.performedByName}</span>
-                          {' '}({action.performedByRole})
+                          <span className="font-medium">{action.performedByName || 'Unknown User'}</span>
+                          {action.performedByRole && ` (${action.performedByRole})`}
                         </p>
                         {action.comments && (
                           <p className="text-sm text-gray-700 mb-2 p-2 bg-gray-50 rounded">
@@ -127,16 +127,19 @@ export function PVActionHistoryPanel({
                           </p>
                         )}
                         <p className="text-xs text-gray-500">
-                          {new Date(action.performedAt).toLocaleString()}
+                          {new Date(action.performedAt || action.timestamp || 0).toLocaleString()}
                         </p>
                         {action.changedFields && Object.keys(action.changedFields).length > 0 && (
                           <div className="mt-2 text-xs text-gray-600 space-y-1">
                             <p className="font-semibold">Changes:</p>
-                            {Object.entries(action.changedFields).map(([field, change]) => (
-                              <p key={field} className="ml-2">
-                                {field}: {JSON.stringify(change.oldValue)} → {JSON.stringify(change.newValue)}
-                              </p>
-                            ))}
+                            {Object.entries(action.changedFields).map(([field, change]) => {
+                              const changeObj = change as { oldValue?: any; newValue?: any } | any;
+                              return (
+                                <p key={field} className="ml-2">
+                                  {field}: {JSON.stringify(changeObj?.oldValue || change)} → {JSON.stringify(changeObj?.newValue || change)}
+                                </p>
+                              );
+                            })}
                           </div>
                         )}
                       </div>
@@ -173,7 +176,7 @@ export function PVActionHistoryPanel({
                       </div>
                     </div>
 
-                    {stage.status !== 'PENDING' && (
+                    {stage.status === 'approved' || stage.status === 'rejected' ? (
                       <div className="p-4 space-y-3">
                         <div>
                           <p className="text-sm font-semibold text-gray-700 mb-1">
@@ -227,7 +230,7 @@ export function PVActionHistoryPanel({
                           </div>
                         )}
                       </div>
-                    )}
+                    ) : null}
                   </div>
                 ))}
               </div>

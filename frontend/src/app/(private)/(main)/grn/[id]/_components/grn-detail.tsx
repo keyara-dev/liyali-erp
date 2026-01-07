@@ -140,7 +140,7 @@ export function GrnDetail({ grnId, userId, userRole }: GrnDetailProps) {
           <div>
             <h1 className="text-2xl font-bold">{grn.documentNumber}</h1>
             <p className="text-sm text-muted-foreground">
-              Received on {new Date(grn.createdAt).toLocaleDateString()}
+              Received on {grn.createdAt ? new Date(grn.createdAt).toLocaleDateString() : 'Unknown'}
             </p>
           </div>
         </div>
@@ -196,9 +196,11 @@ export function GrnDetail({ grnId, userId, userRole }: GrnDetailProps) {
               <div>
                 <p className="text-sm text-muted-foreground">Received Date</p>
                 <p className="font-medium">
-                  {new Date(
-                    grn.metadata?.receivedDate || grn.createdAt
-                  ).toLocaleDateString()}
+                  {grn.metadata?.receivedDate 
+                    ? new Date(grn.metadata.receivedDate).toLocaleDateString()
+                    : grn.createdAt 
+                      ? new Date(grn.createdAt).toLocaleDateString()
+                      : 'Unknown'}
                 </p>
               </div>
               <div>
@@ -380,7 +382,7 @@ export function GrnDetail({ grnId, userId, userRole }: GrnDetailProps) {
                   <div>
                     <p className="font-medium">Created</p>
                     <p className="text-xs text-muted-foreground">
-                      {new Date(grn.createdAt).toLocaleString()}
+                      {grn.createdAt ? new Date(grn.createdAt).toLocaleString() : 'Unknown'}
                     </p>
                   </div>
                 </div>
@@ -389,7 +391,7 @@ export function GrnDetail({ grnId, userId, userRole }: GrnDetailProps) {
                   <div>
                     <p className="font-medium">Last Updated</p>
                     <p className="text-xs text-muted-foreground">
-                      {new Date(grn.updatedAt).toLocaleString()}
+                      {grn.updatedAt ? new Date(grn.updatedAt).toLocaleString() : 'Unknown'}
                     </p>
                   </div>
                 </div>
@@ -404,10 +406,10 @@ export function GrnDetail({ grnId, userId, userRole }: GrnDetailProps) {
         open={showApprovalDialog}
         documentId={grn.id}
         documentType="GRN"
-        documentNumber={grn.documentNumber}
+        documentNumber={grn.documentNumber || ''}
         vendor={grn.metadata?.vendorName || ""}
         amount={`K ${(grn.metadata?.amount || 0).toLocaleString()}`}
-        stageNumber={grn.currentStage}
+        stageNumber={grn.currentStage || 1}
         totalStages={1 || 1}
         stageName="Warehouse Manager"
         onApprove={handleApproveSubmit}

@@ -1,16 +1,48 @@
 /**
  * Budget Types
- * Budget management, budget items, and budget workflow
+ * Aligned with backend models and database schema
  */
 
-export type BudgetStatus =
-  | "DRAFT"
-  | "SUBMITTED"
-  | "IN_REVIEW"
-  | "APPROVED"
-  | "REJECTED"
-  | "ACTIVE"
-  | "CLOSED";
+// ============================================================================
+// CORE BUDGET TYPES
+// ============================================================================
+
+export interface Budget {
+  // Core fields
+  id: string;
+  organizationId: string;
+  budgetCode: string;
+  ownerId: string;
+  owner?: any;
+  ownerName: string;
+  department: string;
+  departmentId: string;
+  status: BudgetStatus; // draft, pending, approved, rejected, completed, cancelled
+  fiscalYear: string;
+  totalBudget: number;
+  allocatedAmount: number;
+  remainingAmount: number;
+  approvalStage: number;
+  approvalHistory: any[];
+  createdAt: Date;
+  updatedAt: Date;
+  
+  // Business requirement fields
+  name: string;
+  description: string;
+  currency: string;
+  totalAmount: number;             // Same as totalBudget
+  createdBy: string;
+  items: any[];
+  
+  // UI compatibility fields
+  documentNumber?: string;
+  currentStage?: number;
+  actionHistory?: any[];
+  metadata?: Record<string, any>;
+  type?: string;
+  createdByUser?: any;
+}
 
 export interface BudgetItem {
   id: string;
@@ -19,97 +51,91 @@ export interface BudgetItem {
   allocatedAmount: number;
   spentAmount: number;
   remainingAmount: number;
-  notes?: string;
-  createdAt: Date;
-  updatedAt: Date;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
-export interface Budget {
-  id: string;
-  budgetNumber: string; // e.g., "BDG-2024-001"
-  name: string;
-  description?: string;
-  department: string;
-  departmentId: string;
-  fiscalYear: string; // e.g., "2024"
-  totalAmount: number;
-  currency: string; // e.g., "USD", "ZMW"
-  items: BudgetItem[];
-  status: BudgetStatus;
-  createdBy: string; // User ID
-  createdAt: Date;
-  updatedAt: Date;
-  submittedAt?: Date;
-  approvedAt?: Date;
-  rejectedAt?: Date;
-  approvalChain?: ApprovalRecord[]; // Approval audit trail
-  currentApprovalStage?: number;
-  totalApprovalStages?: number;
-  comments?: string;
-  rejectionReason?: string;
-}
-
-export interface ApprovalRecord {
-  stageNumber: number;
-  stageName: string;
-  assignedTo: string; // User ID
-  assignedRole: string;
-  status: "PENDING" | "APPROVED" | "REJECTED" | "REVERSED";
-  actionTakenAt?: Date;
-  actionTakenBy?: string;
-  comments?: string;
-  remarks?: string; // Required for rejections, optional for approvals
-  signature?: string; // Digital signature (base64 encoded)
-  reversedAt?: Date;
-  reversalReason?: string;
-}
-
-export interface BudgetFilters {
-  department?: string;
-  status?: BudgetStatus;
-  fiscalYear?: string;
-  createdBy?: string;
-  startDate?: string;
-  endDate?: string;
-}
-
-export interface BudgetFormData {
-  name: string;
-  description?: string;
-  department: string;
-  fiscalYear: string;
-  items: BudgetItem[];
-  comments?: string;
-}
+// ============================================================================
+// REQUEST TYPES
+// ============================================================================
 
 export interface CreateBudgetRequest {
+  budgetCode?: string;
   name: string;
-  description?: string;
+  description: string;
   department: string;
   departmentId: string;
   fiscalYear: string;
-  totalAmount: number;
+  totalBudget: number;
+  allocatedAmount: number;
   currency: string;
-  items: Omit<BudgetItem, "id" | "createdAt" | "updatedAt">[];
   createdBy: string;
+  items?: any[];
+}
+
+export interface UpdateBudgetRequest {
+  budgetId: string;
+  department?: string;
+  totalBudget?: number;
+  allocatedAmount?: number;
+  name?: string;
+  description?: string;
+  currency?: string;
 }
 
 export interface ApproveBudgetRequest {
   budgetId: string;
   approvingUserId: string;
   approvingUserRole: string;
+  signature: string;
   comments?: string;
-  stageNumber?: number;
+  stageNumber?: number;        // For multi-stage approvals
 }
 
 export interface RejectBudgetRequest {
   budgetId: string;
   rejectingUserId: string;
-  rejectionReason: string;
-  comments?: string;
+  rejectingUserRole: string;
+  remarks: string;
+  signature: string;
+  rejectionReason?: string;    // Alias for remarks
+  comments?: string;           // Additional comments
 }
 
 export interface SubmitBudgetRequest {
   budgetId: string;
-  submittingUserId: string;
+  submittedBy: string;
+  submittedByRole: string;
+  submittingUserId?: string;   // Alias for submittedBy
+  comments?: string;
 }
+
+export interface BudgetFilters {
+  status?: BudgetStatus;
+  department?: string;
+  departmentId?: string;       // Alias for department
+  fiscalYear?: string;
+  search?: string;
+  searchTerm?: string;         // Alias for search
+  page?: number;
+  limit?: number;
+  userId?: string;             // For user-specific filtering
+}
+
+// ============================================================================
+// STATISTICS TYPES
+// ============================================================================
+
+export interface BudgetStats {
+  total: number;
+  active: number;
+  allocated: number;
+  remaining: number;
+  utilizationRate: number;
+}
+
+// ============================================================================
+// TYPE ALIASES
+// ============================================================================
+
+export type BudgetStatus = "draft"| "pending" | "approved" | "rejected" | "completed" | "cancelled";

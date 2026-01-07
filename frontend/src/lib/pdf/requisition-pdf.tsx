@@ -33,10 +33,10 @@ const getStatusColor = (status: string) => {
 }
 
 const RequisitionPDF: React.FC<RequisitionPDFProps> = ({ requisition, qrCodeUrl }) => {
-  const trackingCode = generateTrackingCode('REQUISITION', requisition.requisitionNumber)
+  const trackingCode = generateTrackingCode('REQUISITION', requisition.requisitionNumber || requisition.reqNumber)
   const qrData = generateDocumentQRData(
     'REQUISITION',
-    requisition.requisitionNumber,
+    requisition.requisitionNumber || requisition.reqNumber,
     requisition.id,
     new Date(requisition.createdAt)
   )
@@ -108,15 +108,15 @@ const RequisitionPDF: React.FC<RequisitionPDFProps> = ({ requisition, qrCodeUrl 
                 pdfStyles.statusBadge,
                 {
                   backgroundColor:
-                    requisition.priority === 'URGENT'
+                    requisition.priority === 'urgent'
                       ? '#fee2e2'
-                      : requisition.priority === 'HIGH'
+                      : requisition.priority === 'high'
                       ? '#fed7aa'
                       : '#dbeafe',
                   color:
-                    requisition.priority === 'URGENT'
+                    requisition.priority === 'urgent'
                       ? '#991b1b'
-                      : requisition.priority === 'HIGH'
+                      : requisition.priority === 'high'
                       ? '#92400e'
                       : '#1e40af',
                 },

@@ -9,7 +9,7 @@
  * 3. Remove this entire folder
  */
 
-import { PurchaseOrder, PaymentVoucher, RequisitionForm } from '@/types/workflow';
+// Types are imported where needed in function signatures
 
 // Storage keys constants
 export const STORAGE_KEYS = {

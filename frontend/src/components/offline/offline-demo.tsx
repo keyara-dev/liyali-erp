@@ -82,8 +82,9 @@ export function OfflineDemo() {
             category: 'Office Supplies',
             quantity: 1,
             unitPrice: 100,
+            amount: 100,              // Required property
             unit: 'pcs',
-            totalPrice: 100,
+            totalPrice: 100,          // Alias for amount
             notes: 'Test item created during offline functionality demo'
           }
         ],

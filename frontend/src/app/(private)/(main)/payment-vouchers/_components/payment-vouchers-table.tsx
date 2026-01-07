@@ -15,8 +15,9 @@ import {
 import { Button } from '@/components/ui/button';
 import { DataTable } from '@/components/ui/data-table';
 import { StatusBadge as CentralizedStatusBadge } from '@/components/status-badge';
-import { usePaymentVouchers } from '@/hooks/use-payment-vouchers-queries';
+import { usePaymentVouchers } from '@/hooks/use-payment-voucher-queries';
 import { WorkflowDocument } from '@/types/workflow';
+import { PaymentVoucher } from '@/types/payment-voucher';
 import type { ActionButton } from '@/components/ui/action-buttons';
 import {
   DropdownMenu,
@@ -30,6 +31,27 @@ interface PaymentVouchersTableProps {
   userRole: string;
   refreshTrigger: number;
   onRefresh: () => void;
+}
+
+// Transform PaymentVoucher to WorkflowDocument for table compatibility
+function transformPVToWorkflowDocument(pv: PaymentVoucher): WorkflowDocument {
+  return {
+    id: pv.id,
+    type: 'payment_voucher',
+    documentNumber: pv.voucherNumber,
+    status: pv.status?.toLowerCase() as any, // Convert to lowercase for compatibility
+    currentStage: pv.approvalStage,
+    createdAt: pv.createdAt,
+    updatedAt: pv.updatedAt,
+    metadata: {
+      vendorName: pv.vendorName,
+      amount: pv.amount,
+      currency: pv.currency,
+      invoiceNumber: pv.invoiceNumber,
+      paymentMethod: pv.paymentMethod,
+      glCode: pv.glCode,
+    },
+  };
 }
 
 // Stage indicator
@@ -130,7 +152,7 @@ const columns: ColumnDef<WorkflowDocument>[] = [
     ),
     cell: ({ row }) => (
       <div className="text-sm">
-        {new Date(row.original.createdAt).toLocaleDateString()}
+        {row.original.createdAt ? new Date(row.original.createdAt).toLocaleDateString() : 'N/A'}
       </div>
     ),
   },
@@ -181,19 +203,17 @@ export function PaymentVouchersTable({
 }: PaymentVouchersTableProps) {
   const router = useRouter();
   const { data: paymentVouchers = [], refetch } =
-    usePaymentVouchers(1, 50); // Get first 50 payment vouchers
+    usePaymentVouchers(); // Get payment vouchers
 
   // Refetch when refreshTrigger changes
   useEffect(() => {
     refetch();
   }, [refreshTrigger, refetch]);
 
-  // Memoize the data to prevent unnecessary re-renders
-  // React Query returns a new array reference on each render,
-  // so we memoize based on the actual content changes
+  // Transform PaymentVoucher data to WorkflowDocument format for table compatibility
   const data = useMemo(() => {
     if (paymentVouchers && paymentVouchers.length > 0) {
-      return paymentVouchers;
+      return paymentVouchers.map(transformPVToWorkflowDocument);
     }
     return [];
   }, [paymentVouchers]);

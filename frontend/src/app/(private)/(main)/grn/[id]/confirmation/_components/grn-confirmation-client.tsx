@@ -94,10 +94,7 @@ export function GRNConfirmationClient({
       return;
     }
 
-    await confirmMutation.mutateAsync({
-      signature,
-      remarks: confirmationNotes || "GRN confirmed",
-    });
+    await confirmMutation.mutateAsync();
   };
 
   const handleReject = async () => {

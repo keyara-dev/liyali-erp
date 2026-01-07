@@ -1,7 +1,7 @@
 "use server";
 
 import { getCurrentUser, hasRole, isAdmin, verifySession } from "@/lib/auth";
-import type { User } from "@/types/auth";
+import type { User } from "@/types";
 
 /**
  * Get the current authenticated user session

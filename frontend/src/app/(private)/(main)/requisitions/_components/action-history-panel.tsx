@@ -4,7 +4,7 @@ import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Clock, CheckCircle, XCircle, Edit, Plus, Send } from 'lucide-react'
-import { ActionHistoryEntry, ApprovalRecord } from '@/types/requisition'
+import { ActionHistoryEntry, ApprovalRecord } from '@/types'
 
 interface ActionHistoryPanelProps {
   actionHistory?: ActionHistoryEntry[]
@@ -86,7 +86,7 @@ export function ActionHistoryPanel({
   }
 
   const sortedHistory = [...(actionHistory || [])].sort(
-    (a, b) => new Date(b.performedAt).getTime() - new Date(a.performedAt).getTime()
+    (a, b) => new Date(b.performedAt || b.timestamp || 0).getTime() - new Date(a.performedAt || a.timestamp || 0).getTime()
   )
 
   return (
@@ -104,17 +104,17 @@ export function ActionHistoryPanel({
               {sortedHistory.map((action) => (
                 <div
                   key={action.id}
-                  className={`p-4 rounded-lg border ${getActionColor(action.actionType)}`}
+                  className={`p-4 rounded-lg border ${getActionColor(action.actionType || 'unknown')}`}
                 >
                   <div className="flex items-start gap-3">
-                    {getActionIcon(action.actionType)}
+                    {getActionIcon(action.actionType || 'unknown')}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-semibold text-sm">
                           {action.performedByName}
                         </span>
                         <Badge variant="outline" className="text-xs">
-                          {getActionLabel(action.actionType)}
+                          {getActionLabel(action.actionType || 'unknown')}
                         </Badge>
                         {action.performedByRole && (
                           <Badge variant="secondary" className="text-xs">
@@ -123,7 +123,7 @@ export function ActionHistoryPanel({
                         )}
                       </div>
                       <p className="text-xs text-gray-600 mt-1">
-                        {new Date(action.performedAt).toLocaleString()}
+                        {new Date(action.performedAt || action.timestamp || 0).toLocaleString()}
                       </p>
 
                       {/* Status transition */}

@@ -46,9 +46,11 @@
  * (Similar endpoints for /api/requisitions and /api/payment-vouchers)
  */
 
-import { PurchaseOrder, PaymentVoucher, RequisitionForm } from '@/types/workflow';
+import { PurchaseOrder } from '@/types/purchase-order';
+import { PaymentVoucher } from '@/types/payment-voucher';
+import { Requisition } from '@/types/requisition';
+import { GoodsReceivedNote } from '@/types/goods-received-note';
 import { STORAGE_KEYS, getDocuments, getDocumentById, saveDocument, deleteDocument } from './storage';
-import type { GoodsReceivedNote } from './seed-data';
 
 // ============================================================================
 // Purchase Order Hooks
@@ -79,43 +81,52 @@ export function getPurchaseOrdersByStatus(status: string): PurchaseOrder[] {
 }
 
 export function getPurchaseOrdersByCreator(creatorId: string): PurchaseOrder[] {
-  return filterPurchaseOrders((po) => po.createdBy === creatorId);
+  return filterPurchaseOrders((po) => (po as any).createdBy === creatorId || (po as any).ownerId === creatorId);
 }
 
 // ============================================================================
 // Requisition Hooks
 // ============================================================================
 
-export function getRequisitions(): RequisitionForm[] {
-  return getDocuments<RequisitionForm>(STORAGE_KEYS.REQUISITIONS);
+export function getRequisitions(): Requisition[] {
+  return getDocuments<Requisition>(STORAGE_KEYS.REQUISITIONS);
 }
 
-export function getRequisitionById(id: string): RequisitionForm | null {
-  return getDocumentById<RequisitionForm>(STORAGE_KEYS.REQUISITIONS, id);
+export function getRequisitionById(id: string): Requisition | null {
+  const req = getDocumentById<Requisition>(STORAGE_KEYS.REQUISITIONS, id);
+  // Ensure id is set for compatibility
+  if (req && !req.id) {
+    req.id = id;
+  }
+  return req;
 }
 
-export function saveRequisition(req: RequisitionForm): RequisitionForm {
-  return saveDocument<RequisitionForm>(STORAGE_KEYS.REQUISITIONS, req);
+export function saveRequisition(req: Requisition): Requisition {
+  // Ensure id is set before saving
+  if (!req.id) {
+    req.id = `req-${Date.now()}`;
+  }
+  return saveDocument<Requisition>(STORAGE_KEYS.REQUISITIONS, req);
 }
 
 export function deleteRequisition(id: string): void {
   deleteDocument(STORAGE_KEYS.REQUISITIONS, id);
 }
 
-export function filterRequisitions(predicate: (req: RequisitionForm) => boolean): RequisitionForm[] {
+export function filterRequisitions(predicate: (req: Requisition) => boolean): Requisition[] {
   return getRequisitions().filter(predicate);
 }
 
-export function getRequisitionsByStatus(status: string): RequisitionForm[] {
+export function getRequisitionsByStatus(status: string): Requisition[] {
   return filterRequisitions((req) => (req as any).status === status);
 }
 
-export function getRequisitionsByCreator(creatorId: string): RequisitionForm[] {
-  return filterRequisitions((req) => req.createdBy === creatorId);
+export function getRequisitionsByCreator(creatorId: string): Requisition[] {
+  return filterRequisitions((req) => (req as any).createdBy === creatorId || (req as any).requesterId === creatorId);
 }
 
-export function getRequisitionsByDepartment(department: string): RequisitionForm[] {
-  return filterRequisitions((req) => req.metadata?.department === department);
+export function getRequisitionsByDepartment(department: string): Requisition[] {
+  return filterRequisitions((req) => req.department === department || (req as any).metadata?.department === department);
 }
 
 // ============================================================================
@@ -147,12 +158,12 @@ export function getPaymentVouchersByStatus(status: string): PaymentVoucher[] {
 }
 
 export function getPaymentVouchersByCreator(creatorId: string): PaymentVoucher[] {
-  return filterPaymentVouchers((pv) => pv.createdBy === creatorId);
+  return filterPaymentVouchers((pv) => (pv as any).createdBy === creatorId || (pv as any).ownerId === creatorId);
 }
 
 export function getPaymentVouchersByAmount(minAmount: number, maxAmount: number): PaymentVoucher[] {
   return filterPaymentVouchers((pv) => {
-    const amount = pv.metadata?.amount || 0;
+    const amount = pv.amount || (pv as any).metadata?.amount || 0;
     return amount >= minAmount && amount <= maxAmount;
   });
 }
@@ -244,9 +255,9 @@ export function getGoodsReceivedNotesByStatus(status: string): GoodsReceivedNote
 }
 
 export function getGoodsReceivedNotesByCreator(creatorId: string): GoodsReceivedNote[] {
-  return filterGoodsReceivedNotes((grn) => grn.createdBy === creatorId);
+  return filterGoodsReceivedNotes((grn) => (grn as any).createdBy === creatorId || (grn as any).receivedBy === creatorId);
 }
 
 export function getGoodsReceivedNotesByPurchaseOrder(poId: string): GoodsReceivedNote[] {
-  return filterGoodsReceivedNotes((grn) => grn.metadata?.poId === poId);
+  return filterGoodsReceivedNotes((grn) => grn.poNumber === poId || (grn as any).metadata?.poId === poId);
 }

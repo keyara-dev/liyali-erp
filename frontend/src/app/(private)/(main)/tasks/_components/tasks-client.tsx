@@ -20,7 +20,7 @@ export function TasksClient({
 }: TasksClientProps) {
   const searchParams = useSearchParams()
   const [refreshTrigger, setRefreshTrigger] = useState(0)
-  const [selectedStatus, setSelectedStatus] = useState<'all' | 'PENDING' | 'IN_PROGRESS'>('all')
+  const [selectedStatus, setSelectedStatus] = useState<'all' | 'pending' | 'in_progress'>('all')
   const [activeTab, setActiveTab] = useState<'tasks' | 'approvals'>('tasks')
 
   // Check for tab query parameter on mount
@@ -64,14 +64,14 @@ export function TasksClient({
               All Tasks
             </Button>
             <Button
-              variant={selectedStatus === 'PENDING' ? 'default' : 'outline'}
-              onClick={() => setSelectedStatus('PENDING')}
+              variant={selectedStatus === 'pending' ? 'default' : 'outline'}
+              onClick={() => setSelectedStatus('pending')}
             >
               Pending
             </Button>
             <Button
-              variant={selectedStatus === 'IN_PROGRESS' ? 'default' : 'outline'}
-              onClick={() => setSelectedStatus('IN_PROGRESS')}
+              variant={selectedStatus === 'in_progress' ? 'default' : 'outline'}
+              onClick={() => setSelectedStatus('in_progress')}
             >
               In Progress
             </Button>
@@ -82,7 +82,7 @@ export function TasksClient({
             userId={userId}
             userRole={userRole}
             refreshTrigger={refreshTrigger}
-            status={selectedStatus === 'all' ? undefined : (selectedStatus as 'PENDING' | 'IN_PROGRESS')}
+            status={selectedStatus === 'all' ? undefined : (selectedStatus as 'pending' | 'in_progress')}
             onTaskAction={handleTaskAction}
           />
         </TabsContent>

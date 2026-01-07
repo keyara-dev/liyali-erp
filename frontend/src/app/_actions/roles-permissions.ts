@@ -229,14 +229,14 @@ export const fetchOrganizationRoles = getRolesAction;
 /**
  * @deprecated Use createRoleAction instead
  */
-export const createOrganizationRole = (data: CreateRoleRequest) => 
-  createRoleAction(data.name, data.description);
+export const createOrganizationRole = async (data: CreateRoleRequest) => 
+  await createRoleAction(data.name, data.description);
 
 /**
  * @deprecated Use updateRoleAction instead
  */
-export const updateOrganizationRole = (data: UpdateRoleRequest) => 
-  updateRoleAction(data.id, data.name || "", data.description);
+export const updateOrganizationRole = async (data: UpdateRoleRequest) => 
+  await updateRoleAction(data.id, data.name || "", data.description);
 
 /**
  * @deprecated Use deleteRoleAction instead

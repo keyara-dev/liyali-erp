@@ -6,19 +6,10 @@ import authenticatedApiClient, {
   handleError,
   successResponse,
 } from "./api-config";
-import { User, UserType } from "@/types/auth";
+import { User, UserType } from "@/types";
 
-export async function createNewUser({
-  username,
-  email,
-  phone = "",
-  password,
-  first_name,
-  last_name,
-  branch_id,
-  department_id,
-  role_id,
-}: {
+// Types for user operations
+export interface CreateUserRequest {
   username: string;
   email: string;
   phone?: string;
@@ -29,21 +20,36 @@ export async function createNewUser({
   department_id: string;
   role_id: string;
   role?: UserType;
-}): Promise<APIResponse> {
+}
+
+export interface UpdateUserRequest {
+  id: string;
+  username?: string;
+  email?: string;
+  phone?: string;
+  first_name?: string;
+  last_name?: string;
+  branch_id?: string;
+  department_id?: string;
+  role_id?: string;
+  is_active?: boolean;
+}
+
+export async function createNewUser(data: CreateUserRequest): Promise<APIResponse> {
   const url = `/api/v1/users`;
 
   try {
     const response = await authenticatedApiClient({
       url: url,
       data: {
-        username,
-        email,
-        password,
-        first_name,
-        last_name,
-        branch_id,
-        department_id,
-        role_id,
+        username: data.username,
+        email: data.email,
+        password: data.password,
+        first_name: data.first_name,
+        last_name: data.last_name,
+        branch_id: data.branch_id,
+        department_id: data.department_id,
+        role_id: data.role_id,
       },
       method: "POST",
     });
@@ -86,7 +92,7 @@ export async function getUsers(params?: {
 
   try {
     const response = await authenticatedApiClient({ url: url, method: "GET" });
-    return successResponse(response.data.data, "Users fetched successfully");
+    return successResponse(response.data, "Users fetched successfully");
   } catch (error) {
     return handleError(error, "GET", url);
   }
@@ -315,4 +321,24 @@ export async function resetUserPassword(
   } catch (error) {
     return handleError(error, "POST", url);
   }
+}
+/**
+ * Convenience function to get all users (wrapper around getUsers)
+ */
+export async function getAllUsers(): Promise<APIResponse> {
+  return getUsers();
+}
+
+/**
+ * Convenience function to get users by role (wrapper around getUsers)
+ */
+export async function getUsersByRole(role: string): Promise<APIResponse> {
+  return getUsers({ role });
+}
+
+/**
+ * Convenience function to search users (wrapper around getUsers)
+ */
+export async function searchUsers(query: string): Promise<APIResponse> {
+  return getUsers({ search: query });
 }

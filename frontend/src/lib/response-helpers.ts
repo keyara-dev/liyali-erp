@@ -9,8 +9,6 @@ export function successResponse(
     success: true,
     message,
     data,
-    status: 200,
-    statusText: "OK",
   };
 }
 
@@ -21,8 +19,6 @@ export function unauthorizedResponse(
     success: false,
     message,
     data: null,
-    status: 401,
-    statusText: "UNAUTHORIZED",
   };
 }
 
@@ -31,8 +27,6 @@ export function notFoundResponse(message: string): APIResponse {
     success: false,
     message,
     data: null,
-    status: 404,
-    statusText: "NOT FOUND",
   };
 }
 
@@ -41,8 +35,6 @@ export function methodNotAllowedResponse(): APIResponse {
     success: false,
     message: "Method not allowed",
     data: null,
-    status: 405,
-    statusText: "METHOD NOT ALLOWED",
   };
 }
 
@@ -76,8 +68,6 @@ export function handleError(
         error?.response?.data?.message ||
         "You don't have permission to perform this action.",
       data: null,
-      status: 403,
-      statusText: "FORBIDDEN",
     };
   }
 
@@ -90,8 +80,6 @@ export function handleError(
       error?.message ||
       "Oops! Something went wrong. Please try again.",
     data: null,
-    status: status,
-    statusText: error?.response?.statusText || "INTERNAL SERVER ERROR",
   };
 }
 
@@ -100,7 +88,5 @@ export function badRequestResponse(message: string): APIResponse {
     success: false,
     message,
     data: null,
-    status: 400,
-    statusText: "BAD REQUEST",
   };
 }

@@ -31,7 +31,26 @@ export async function getDashboardMetrics(): Promise<
 
     // Map backend status counts to frontend format
     const metrics: DashboardMetrics = {
+      // Required properties
       totalDocuments: reqMetrics.totalRequisitions || 0,
+      pendingApprovals: statusCounts.in_review || statusCounts.IN_REVIEW || statusCounts.pending || statusCounts.PENDING || 0,
+      completedThisMonth: statusCounts.approved || statusCounts.APPROVED || 0,
+      averageProcessingTime: 0, // TODO: Add to backend analytics
+      budgetUtilization: 0, // TODO: Add to backend analytics
+      recentActivity: [], // TODO: Add to backend analytics
+      approvalsByStatus: {
+        pending: statusCounts.in_review || statusCounts.IN_REVIEW || statusCounts.pending || statusCounts.PENDING || 0,
+        approved: statusCounts.approved || statusCounts.APPROVED || 0,
+        rejected: statusCounts.rejected || statusCounts.REJECTED || 0,
+      },
+      documentsByType: {
+        requisitions: reqMetrics.totalRequisitions || 0,
+        purchaseOrders: 0, // TODO: Add to backend analytics
+        paymentVouchers: 0, // TODO: Add to backend analytics
+        budgets: 0, // TODO: Add to backend analytics
+      },
+      
+      // Extended fields for UI compatibility
       draftDocuments: statusCounts.draft || statusCounts.DRAFT || 0,
       submittedDocuments: statusCounts.submitted || statusCounts.SUBMITTED || 0,
       approvedDocuments: statusCounts.approved || statusCounts.APPROVED || 0,
@@ -46,7 +65,6 @@ export async function getDashboardMetrics(): Promise<
         PAYMENT_VOUCHER: 0, // TODO: Add to backend analytics
         GOODS_RECEIVED_NOTE: 0, // TODO: Add to backend analytics
       },
-      recentActivity: [], // TODO: Add to backend analytics
     };
 
     return successResponse(metrics, "Dashboard metrics retrieved successfully");

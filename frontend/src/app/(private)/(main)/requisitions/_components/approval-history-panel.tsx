@@ -6,7 +6,7 @@ import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { AlertCircle, Clock, CheckCircle, XCircle } from 'lucide-react'
-import { getApprovalLog, getDocumentApprovers } from '@/app/_actions/workflow'
+import { getApprovalHistory, getAvailableApprovers } from '@/app/_actions/workflow-approval-actions'
 import { ApprovalLogEntry, Approver, WorkflowDocument } from '@/types/workflow'
 import { ApprovalActionPanel } from './approval-action-panel'
 
@@ -33,15 +33,15 @@ export function ApprovalHistoryPanel({
     setIsLoading(true)
     try {
       const [logsResult, approversResult] = await Promise.all([
-        getApprovalLog(requisitionId),
-        getDocumentApprovers(requisitionId),
+        getApprovalHistory(requisitionId),
+        getAvailableApprovers('REQUISITION'),
       ])
 
       if (logsResult.success) {
         setApprovalLogs(logsResult.data || [])
       }
       if (approversResult.success) {
-        setApprovers(approversResult.data || [])
+        setApprovers((approversResult.data || []) as Approver[])
       }
     } catch (error) {
       console.error('Failed to fetch approval data:', error)

@@ -3,7 +3,7 @@
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card } from '@/components/ui/card'
-import { RequisitionItem } from '@/types/workflow'
+import { RequisitionItem } from '@/types/requisition';
 import { Trash2 } from 'lucide-react'
 
 interface ItemInputProps {

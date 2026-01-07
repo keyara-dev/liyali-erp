@@ -752,7 +752,7 @@ export default function UsersDataTable({
       />
       <CreateUserForm
         showTrigger={false}
-        role="ADMIN"
+        role="admin"
         isOpenModal={!!editingUser}
         user={editingUser}
         setIsOpenModal={(open) => {

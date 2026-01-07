@@ -12,6 +12,8 @@ export type SignupSettings = {
   requireEmailVerification: boolean;
   defaultAccountTier: AccountTier;
   defaultCurrency: Currency;
+  autoApproveUsers?: boolean;  // Auto-approve new user registrations
+  defaultRole?: string;        // Default role for new users
 };
 
 export type SettingsData = {

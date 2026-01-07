@@ -69,9 +69,21 @@ const STATUS_LABELS: Record<string, string> = {
 
 const DOCUMENT_TYPE_LABELS: Record<string, string> = {
   REQUISITION: 'Requisition',
+  requisition: 'Requisition',
   PURCHASE_ORDER: 'Purchase Order',
+  purchase_order: 'Purchase Order',
+  PO: 'Purchase Order',
+  po: 'Purchase Order',
   PAYMENT_VOUCHER: 'Payment Voucher',
+  payment_voucher: 'Payment Voucher',
+  PV: 'Payment Voucher',
+  pv: 'Payment Voucher',
   GOODS_RECEIVED_NOTE: 'GRN',
+  goods_received_note: 'GRN',
+  GRN: 'GRN',
+  grn: 'GRN',
+  BUDGET: 'Budget',
+  budget: 'Budget',
 }
 
 export function TransactionResults({
@@ -236,9 +248,21 @@ export function TransactionResults({
               const typeSlug =
                 {
                   REQUISITION: 'requisitions',
+                  requisition: 'requisitions',
                   PURCHASE_ORDER: 'purchase-orders',
+                  purchase_order: 'purchase-orders',
+                  PO: 'purchase-orders',
+                  po: 'purchase-orders',
                   PAYMENT_VOUCHER: 'payment-vouchers',
+                  payment_voucher: 'payment-vouchers',
+                  PV: 'payment-vouchers',
+                  pv: 'payment-vouchers',
                   GOODS_RECEIVED_NOTE: 'grn',
+                  goods_received_note: 'grn',
+                  GRN: 'grn',
+                  grn: 'grn',
+                  BUDGET: 'budgets',
+                  budget: 'budgets',
                 }[doc.type] || 'workflows'
 
               return (

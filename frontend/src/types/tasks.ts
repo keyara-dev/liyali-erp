@@ -12,7 +12,7 @@ export type TaskType =
 
 export type TaskPriority = "LOW" | "MEDIUM" | "HIGH" | "URGENT";
 
-export type TaskStatus = "PENDING" | "IN_PROGRESS" | "COMPLETED" | "OVERDUE";
+export type TaskStatus = "pending" | "in_progress" | "completed" | "overdue" | "PENDING" | "IN_PROGRESS" | "COMPLETED" | "OVERDUE";
 
 export interface Task {
   id: string;

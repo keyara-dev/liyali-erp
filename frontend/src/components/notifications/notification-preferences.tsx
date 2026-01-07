@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { NotificationType } from "@/types";
+import { NotificationTypeEnum as NotificationType } from "@/types";
 import {
   useGetNotificationPreferences,
   useUpdateNotificationPreferences,

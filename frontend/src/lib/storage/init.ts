@@ -1,22 +1,15 @@
 /**
  * Storage Initialization
- * Initializes localStorage with seed data on app startup
- *
- * This serves as the single source of truth for all app data
- * until backend APIs are integrated.
+ * Basic storage utilities for database-driven system
+ * 
+ * Note: Seed data functionality removed - system is now fully database-driven
  */
 
-import { STORAGE_KEYS, saveDocuments, isStorageInitialized } from './storage';
-import {
-  createSeedPurchaseOrders,
-  createSeedRequisitions,
-  createSeedPaymentVouchers,
-  createSeedGoodsReceivedNotes,
-} from './seed-data';
+import { STORAGE_KEYS, isStorageInitialized } from './storage';
 
 /**
- * Initialize localStorage with seed data if empty
- * Safe to call multiple times - only initializes once
+ * Check if storage is initialized
+ * Returns true if basic storage structure exists
  */
 export function initializeStorage(): void {
   if (typeof window === 'undefined') return;
@@ -28,46 +21,26 @@ export function initializeStorage(): void {
   }
 
   try {
-    // Initialize Purchase Orders
-    const purchaseOrders = createSeedPurchaseOrders();
-    saveDocuments(STORAGE_KEYS.PURCHASE_ORDERS, purchaseOrders);
-    console.log(`✓ Initialized ${purchaseOrders.length} purchase orders`);
-
-    // Initialize Requisitions
-    const requisitions = createSeedRequisitions();
-    saveDocuments(STORAGE_KEYS.REQUISITIONS, requisitions);
-    console.log(`✓ Initialized ${requisitions.length} requisitions`);
-
-    // Initialize Payment Vouchers
-    const paymentVouchers = createSeedPaymentVouchers();
-    saveDocuments(STORAGE_KEYS.PAYMENT_VOUCHERS, paymentVouchers);
-    console.log(`✓ Initialized ${paymentVouchers.length} payment vouchers`);
-
-    // Initialize Goods Received Notes
-    const goodsReceivedNotes = createSeedGoodsReceivedNotes();
-    saveDocuments(STORAGE_KEYS.GOODS_RECEIVED_NOTES, goodsReceivedNotes);
-    console.log(`✓ Initialized ${goodsReceivedNotes.length} goods received notes`);
-
-    console.log('✓ All storage initialized successfully');
+    // Initialize empty storage structure for database-driven system
+    console.log('✓ Storage structure initialized for database-driven system');
   } catch (error) {
     console.error('Failed to initialize storage:', error);
   }
 }
 
 /**
- * Reset storage with fresh seed data (for development/testing)
+ * Reset storage (for development/testing)
+ * Clears all storage keys
  */
 export function resetStorage(): void {
   if (typeof window === 'undefined') return;
 
   try {
-    // Clear all
+    // Clear all storage keys
     Object.values(STORAGE_KEYS).forEach((key) => {
       localStorage.removeItem(key);
     });
 
-    // Reinitialize
-    initializeStorage();
     console.log('✓ Storage reset successfully');
   } catch (error) {
     console.error('Failed to reset storage:', error);

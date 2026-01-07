@@ -45,6 +45,16 @@ type ApprovalRecord struct {
 	Comments     string    `json:"comments,omitempty"`
 	Signature    string    `json:"signature,omitempty"` // Base64 encoded
 	ApprovedAt   time.Time `json:"approvedAt"`
+	
+	// Extended fields for UI compatibility
+	StageNumber      *int       `json:"stageNumber,omitempty"`        // Stage number
+	StageName        *string    `json:"stageName,omitempty"`          // Stage name
+	AssignedTo       *string    `json:"assignedTo,omitempty"`         // Assigned to user
+	AssignedRole     *string    `json:"assignedRole,omitempty"`       // Assigned role
+	ActionTakenBy    *string    `json:"actionTakenBy,omitempty"`      // User who took action
+	ActionTakenByRole *string   `json:"actionTakenByRole,omitempty"`  // Role of user who took action
+	ActionTakenAt    *time.Time `json:"actionTakenAt,omitempty"`      // When action was taken
+	Remarks          *string    `json:"remarks,omitempty"`            // Action remarks
 }
 
 // ApprovalTaskDetailResponse includes task and document details

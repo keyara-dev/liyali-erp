@@ -30,7 +30,7 @@ export default function BudgetApprovalPage() {
 
   // Fetch budget data if we have a documentId from the task
   const budgetId = task?.documentId;
-  const { data: budget } = useBudgetById(budgetId || '', !!budgetId);
+  const { data: budget } = useBudgetById(budgetId || '');
 
   if (isLoading) {
     return (
@@ -63,7 +63,7 @@ export default function BudgetApprovalPage() {
               Budget Approval
             </h1>
             <p className="text-muted-foreground">
-              {budget?.name || `Budget #${task.entityNumber}`}
+              {budget?.budgetCode || `Budget #${task.documentId}`}
             </p>
           </div>
           <Badge
@@ -161,16 +161,16 @@ export default function BudgetApprovalPage() {
                 <div className="grid gap-4 md:grid-cols-2">
                   <div>
                     <h4 className="text-sm font-semibold text-muted-foreground mb-1">
-                      Budget ID
+                      Budget Code
                     </h4>
-                    <p className="font-mono">{budget.id}</p>
+                    <p className="font-mono">{budget.budgetCode}</p>
                   </div>
                   <div>
                     <h4 className="text-sm font-semibold text-muted-foreground mb-1">
-                      Total Amount
+                      Total Budget
                     </h4>
                     <p className="font-semibold text-lg">
-                      K{(budget.totalAmount || 0).toLocaleString()}
+                      K{(budget.totalBudget || 0).toLocaleString()}
                     </p>
                   </div>
                   <div>
@@ -185,63 +185,23 @@ export default function BudgetApprovalPage() {
                     </h4>
                     <p>{budget.fiscalYear || "N/A"}</p>
                   </div>
-                </div>
-
-                {budget.description && (
                   <div>
-                    <h4 className="text-sm font-semibold text-muted-foreground mb-2">
-                      Description
+                    <h4 className="text-sm font-semibold text-muted-foreground mb-1">
+                      Allocated Amount
                     </h4>
-                    <p className="text-sm bg-muted p-3 rounded">
-                      {budget.description}
+                    <p className="font-semibold">
+                      K{(budget.allocatedAmount || 0).toLocaleString()}
                     </p>
                   </div>
-                )}
-
-                {budget.allocations && budget.allocations.length > 0 && (
                   <div>
-                    <h4 className="text-sm font-semibold text-muted-foreground mb-2">
-                      Budget Allocations ({budget.allocations.length})
+                    <h4 className="text-sm font-semibold text-muted-foreground mb-1">
+                      Remaining Amount
                     </h4>
-                    <div className="space-y-2">
-                      {budget.allocations.map((alloc: any, index: number) => (
-                        <div
-                          key={index}
-                          className="flex justify-between items-center p-3 bg-muted rounded"
-                        >
-                          <div>
-                            <p className="font-medium text-sm">
-                              {alloc.category || alloc.name}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              {alloc.description}
-                            </p>
-                          </div>
-                          <div className="text-right">
-                            <p className="font-semibold">
-                              K{(alloc.amount || 0).toLocaleString()}
-                            </p>
-                            {alloc.percentage && (
-                              <p className="text-xs text-muted-foreground">
-                                {alloc.percentage}%
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-
-                    {/* Total Allocation */}
-                    <div className="mt-3 p-3 bg-primary/5 border border-primary/20 rounded flex justify-between items-center">
-                      <span className="font-semibold">Total Allocated</span>
-                      <span className="font-bold text-lg">
-                        K{budget.allocations
-                          .reduce((sum: number, alloc: any) => sum + (alloc.amount || 0), 0)
-                          .toLocaleString()}
-                      </span>
-                    </div>
+                    <p className="font-semibold">
+                      K{(budget.remainingAmount || 0).toLocaleString()}
+                    </p>
                   </div>
-                )}
+                </div>
               </CardContent>
             </Card>
           )}

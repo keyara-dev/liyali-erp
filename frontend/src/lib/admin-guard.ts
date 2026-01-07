@@ -18,7 +18,7 @@ export async function requireAdminRole() {
   }
 
   // Check for admin or superadmin role
-  const isAdmin = ['ADMIN', 'SUPERADMIN', 'COMPLIANCE_OFFICER'].includes(
+  const isAdmin = ['admin', 'compliance_officer'].includes(
     session.user.role || ''
   )
 
@@ -48,7 +48,7 @@ export async function requireAdminPermission(requiredPermission: string) {
   }
 
   // Only super admins bypass permission checks
-  if (session.user.role === 'SUPERADMIN') {
+  if (session.user.role === 'admin') {
     return
   }
 

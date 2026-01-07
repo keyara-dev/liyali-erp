@@ -74,12 +74,12 @@ export function ApprovalsList({ userId }: ApprovalsListProps) {
   // Filter tasks
   const filteredTasks = tasks
     .filter((task) => {
-      if (priorityFilter !== "all" && task.importance !== priorityFilter) {
+      if (priorityFilter !== "all" && task.priority !== priorityFilter) {
         return false;
       }
       if (
         searchQuery &&
-        !`${task.entityType} ${task.entityNumber}`
+        !`${task.documentType} ${task.documentNumber}`
           .toLowerCase()
           .includes(searchQuery.toLowerCase())
       ) {
@@ -93,12 +93,12 @@ export function ApprovalsList({ userId }: ApprovalsListProps) {
         case "priority":
           const priorityOrder = { HIGH: 0, MEDIUM: 1, LOW: 2 };
           return (
-            (priorityOrder[a.importance as keyof typeof priorityOrder] || 2) -
-            (priorityOrder[b.importance as keyof typeof priorityOrder] || 2)
+            (priorityOrder[a.priority as keyof typeof priorityOrder] || 2) -
+            (priorityOrder[b.priority as keyof typeof priorityOrder] || 2)
           );
         case "name":
-          return `${a.entityType}${a.entityNumber}`.localeCompare(
-            `${b.entityType}${b.entityNumber}`
+          return `${a.documentType}${a.documentNumber}`.localeCompare(
+            `${b.documentType}${b.documentNumber}`
           );
         case "date":
         default:
@@ -123,9 +123,9 @@ export function ApprovalsList({ userId }: ApprovalsListProps) {
   }
 
   // Calculate statistics from tasks
-  const totalPending = tasks.filter((t) => t.status === "PENDING").length;
+  const totalPending = tasks.filter((t) => t.status === "pending").length;
   const highPriority = tasks.filter(
-    (t) => t.status === "PENDING" && t.priority === "HIGH"
+    (t) => t.status === "pending" && t.priority === "HIGH"
   ).length;
   const now = new Date();
   const monthAgo = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -133,7 +133,7 @@ export function ApprovalsList({ userId }: ApprovalsListProps) {
     (t) => new Date(t.createdAt) >= monthAgo
   ).length;
   const overdue = tasks.filter(
-    (t) => t.status === "PENDING" && new Date(t.dueDate) < now
+    (t) => t.status === "pending" && new Date(t.dueAt || 0) < now
   ).length;
 
   return (
@@ -309,8 +309,8 @@ export function ApprovalsList({ userId }: ApprovalsListProps) {
             <div
               key={task.id}
               className={`border rounded-lg p-4 hover:shadow-sm transition-shadow cursor-pointer ${
-                task.importance
-                  ? PRIORITY_BG[task.importance as keyof typeof PRIORITY_BG]
+                task.priority
+                  ? PRIORITY_BG[task.priority as keyof typeof PRIORITY_BG]
                   : ""
               }`}
             >
@@ -319,17 +319,17 @@ export function ApprovalsList({ userId }: ApprovalsListProps) {
                   {/* Header */}
                   <div className="flex items-center gap-2 mb-2">
                     <h3 className="font-semibold">
-                      {task.entityType} #{task.entityNumber}
+                      {task.documentType} #{task.documentNumber}
                     </h3>
-                    {task.importance && (
+                    {task.priority && (
                       <Badge
                         variant="outline"
-                        className={`${PRIORITY_COLORS[task.importance as keyof typeof PRIORITY_COLORS]} border-current`}
+                        className={`${PRIORITY_COLORS[task.priority as keyof typeof PRIORITY_COLORS]} border-current`}
                       >
-                        {task.importance}
+                        {task.priority}
                       </Badge>
                     )}
-                    <Badge variant="secondary">{task.stageName}</Badge>
+                    <Badge variant="secondary">Stage {task.stage}</Badge>
                   </div>
 
                   {/* Details */}
@@ -348,20 +348,20 @@ export function ApprovalsList({ userId }: ApprovalsListProps) {
                         {task.approverName || "Unassigned"}
                       </p>
                     </div>
-                    {task.dueDate && (
+                    {task.dueAt && (
                       <div>
                         <span className="text-muted-foreground">Due Date</span>
                         <p className="font-medium">
-                          {new Date(task.dueDate).toLocaleDateString()}
+                          {new Date(task.dueAt).toLocaleDateString()}
                         </p>
                       </div>
                     )}
                     <div>
                       <span className="text-muted-foreground">Status</span>
                       <p className="font-medium">
-                        {task.status === "pending"
+                        {task.status === "PENDING"
                           ? "Pending"
-                          : task.status === "approved"
+                          : task.status === "APPROVED"
                             ? "Approved"
                             : "Rejected"}
                       </p>
@@ -370,13 +370,13 @@ export function ApprovalsList({ userId }: ApprovalsListProps) {
                 </div>
 
                 {/* Action Button */}
-                {task.status === "pending" && (
+                {task.status === "PENDING" && (
                   <Button
                     variant="default"
                     className="flex-shrink-0"
                     onClick={() => {
                       // Navigate to approval page
-                      window.location.href = `/${task.entityType.toLowerCase()}s/${task.entityId}/approval`;
+                      window.location.href = `/${task.documentType.toLowerCase()}s/${task.documentId}/approval`;
                     }}
                   >
                     Review

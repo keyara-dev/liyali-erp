@@ -12,7 +12,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Checkbox } from '@/components/ui/checkbox'
-import type { WorkflowStage } from '../create/_components/create-workflow-client'
+import type { WorkflowStage, WorkflowFormData } from '@/app/_actions/workflows'
 
 interface StageFormProps {
   stage?: WorkflowStage | null

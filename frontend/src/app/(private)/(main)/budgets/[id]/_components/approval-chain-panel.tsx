@@ -2,7 +2,7 @@
 
 import { Button } from "@/components";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ApprovalRecord } from "@/types/budget";
+import { ApprovalRecord } from "@/types";
 import {
   CheckCircle2,
   ClipboardListIcon,
@@ -19,11 +19,11 @@ interface ApprovalChainPanelProps {
 export function ApprovalChainPanel({ approvalChain }: ApprovalChainPanelProps) {
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case "APPROVED":
+      case "approved":
         return <CheckCircle2 className="h-5 w-5 text-green-600" />;
-      case "REJECTED":
+      case "rejected":
         return <XCircle className="h-5 w-5 text-red-600" />;
-      case "PENDING":
+      case "pending":
         return <Clock className="h-5 w-5 text-yellow-600" />;
       default:
         return <Clock className="h-5 w-5 text-gray-400" />;
@@ -32,11 +32,11 @@ export function ApprovalChainPanel({ approvalChain }: ApprovalChainPanelProps) {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "APPROVED":
+      case "approved":
         return "bg-green-50";
-      case "REJECTED":
+      case "rejected":
         return "bg-red-50";
-      case "PENDING":
+      case "pending":
         return "bg-yellow-50";
       default:
         return "bg-gray-50";
@@ -115,48 +115,40 @@ export function ApprovalChainPanel({ approvalChain }: ApprovalChainPanelProps) {
                 <div className="mt-1">{getStatusIcon(record.status)}</div>
                 <div className="flex-1">
                   <div className="flex items-center justify-between">
-                    <h4 className="font-semibold">{record.stageName}</h4>
+                    <h4 className="font-semibold">Stage {index + 1}</h4>
                     <span
                       className={`px-2 py-1 rounded text-xs font-medium ${
-                        record.status === "APPROVED"
+                        record.status === "approved"
                           ? "bg-green-200 text-green-800"
-                          : record.status === "REJECTED"
+                          : record.status === "rejected"
                             ? "bg-red-200 text-red-800"
                             : "bg-yellow-200 text-yellow-800"
                       }`}
                     >
-                      {record.status}
+                      {record.status.toUpperCase()}
                     </span>
                   </div>
                   <p className="text-sm text-muted-foreground mt-1">
-                    Assigned to:{" "}
-                    <span className="font-medium">{record.assignedTo}</span>
+                    Approved by:{" "}
+                    <span className="font-medium">{record.approverName}</span>
                   </p>
-                  {record.assignedRole && (
+                  {record.approverId && (
                     <p className="text-sm text-muted-foreground">
-                      Role:{" "}
-                      <span className="font-medium">{record.assignedRole}</span>
+                      Approver ID:{" "}
+                      <span className="font-medium">{record.approverId}</span>
                     </p>
                   )}
-                  {record.actionTakenAt && (
+                  {record.approvedAt && (
                     <p className="text-sm text-muted-foreground mt-1">
                       Action taken on:{" "}
                       <span className="font-medium">
                         {(() => {
                           const date =
-                            record.actionTakenAt instanceof Date
-                              ? record.actionTakenAt
-                              : new Date(record.actionTakenAt);
+                            record.approvedAt instanceof Date
+                              ? record.approvedAt
+                              : new Date(record.approvedAt);
                           return `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
                         })()}
-                      </span>
-                    </p>
-                  )}
-                  {record.actionTakenBy && (
-                    <p className="text-sm text-muted-foreground">
-                      By:{" "}
-                      <span className="font-medium">
-                        {record.actionTakenBy}
                       </span>
                     </p>
                   )}
@@ -166,14 +158,6 @@ export function ApprovalChainPanel({ approvalChain }: ApprovalChainPanelProps) {
                         Comments:
                       </p>
                       "{record.comments}"
-                    </div>
-                  )}
-                  {record.remarks && (
-                    <div className="mt-2 p-2 bg-white rounded text-sm italic border-l-2 border-red-400">
-                      <p className="font-medium text-xs text-gray-600 mb-1">
-                        Remarks:
-                      </p>
-                      "{record.remarks}"
                     </div>
                   )}
                   {record.signature && (

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Requisition, ActionHistoryEntry } from '@/types/requisition';
+import { Requisition, ActionHistoryEntry } from '@/types';
 import { WorkflowDocument } from '@/types/workflow';
 import { getRequisitions } from '@/app/_actions/requisitions';
 import { QUERY_KEYS } from '@/lib/constants';

@@ -12,8 +12,7 @@ export default async function AdminLayout({ children }: PropsWithChildren) {
 
   // Check if user is admin
   if (
-    session.role != "ADMIN" ||
-    session.user.role !== "ADMIN" ||
+    session.user.role !== "admin" ||
     !session.user
   ) {
     redirect("/access-denied");

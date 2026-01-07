@@ -7,7 +7,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { SearchSelectField } from '@/components/ui/search-select-field'
-import { RequisitionItem } from '@/types/workflow'
+import { RequisitionItem } from '@/types/requisition';
 import { Plus, Trash2 } from 'lucide-react'
 import { RequisitionFormData } from './create-requisition-client'
 import { ItemInput } from './item-input'
@@ -49,11 +49,14 @@ export function CreateRequisitionForm({
     if (items.length === 0) newErrors.items = 'At least one item is required'
 
     items.forEach((item, index) => {
-      if (!item.itemDescription.trim())
+      const description = item.itemDescription || item.description;
+      const cost = item.estimatedCost || item.amount;
+      
+      if (!description?.trim())
         newErrors[`item-${index}-description`] = 'Description is required'
       if (item.quantity <= 0)
         newErrors[`item-${index}-quantity`] = 'Quantity must be greater than 0'
-      if (item.estimatedCost <= 0)
+      if ((cost || 0) <= 0)
         newErrors[`item-${index}-cost`] = 'Cost must be greater than 0'
     })
 
@@ -66,9 +69,12 @@ export function CreateRequisitionForm({
       ...items,
       {
         id: uuidv4(),
-        itemDescription: '',
+        description: '',
+        itemDescription: '',  // Alias
         quantity: 1,
-        estimatedCost: 0,
+        unitPrice: 0,
+        amount: 0,
+        estimatedCost: 0,     // Alias
       },
     ])
   }

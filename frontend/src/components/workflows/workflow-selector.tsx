@@ -47,8 +47,8 @@ export function WorkflowSelector({
 
   // Filter workflows by entity type
   const availableWorkflows = useMemo(() => {
-    if (!workflows) return [];
-    return workflows.filter(
+    if (!workflows?.data) return [];
+    return workflows.data.filter(
       (w: any) =>
         w.applicableEntityTypes?.includes(entityType) ||
         w.entityType === entityType

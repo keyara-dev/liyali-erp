@@ -8,11 +8,11 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Plus, Trash2, Save } from 'lucide-react'
-import { updateDocumentDraft } from '@/app/_actions/workflow'
-import { RequisitionForm, RequisitionItem } from '@/types/workflow'
+import { updateRequisition } from '@/app/_actions/requisitions';
+import { Requisition, RequisitionItem } from '@/types/requisition';
 
 interface EditRequisitionPanelProps {
-  requisition: RequisitionForm
+  requisition: Requisition
   onRequisitionUpdated: () => void
 }
 
@@ -38,9 +38,12 @@ export function EditRequisitionPanel({
   const handleAddItem = () => {
     const newItem: RequisitionItem = {
       id: Date.now().toString(),
-      itemDescription: '',
+      description: '',
+      itemDescription: '',  // Alias
       quantity: 1,
-      estimatedCost: 0,
+      unitPrice: 0,
+      amount: 0,
+      estimatedCost: 0,     // Alias
     }
     setFormData((prev) => ({
       ...prev,
@@ -97,7 +100,8 @@ export function EditRequisitionPanel({
 
     setIsSaving(true)
     try {
-      const result = await updateDocumentDraft(requisition.id, {
+      const result = await updateRequisition({
+        id: requisition.id,
         department: formData.department,
         requestedFor: formData.requestedFor,
         items: formData.items,

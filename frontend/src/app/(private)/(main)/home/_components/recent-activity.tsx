@@ -101,8 +101,8 @@ export function RecentActivity({ metrics }: RecentActivityProps) {
                       {DOCUMENT_TYPE_LABELS[activity.type] || activity.type}
                     </TableCell>
                     <TableCell>
-                      <Badge variant={STATUS_COLORS[activity.action] as any}>
-                        {STATUS_LABELS[activity.action] || activity.action}
+                      <Badge variant={activity.action ? (STATUS_COLORS[activity.action] as any) : 'default'}>
+                        {activity.action ? (STATUS_LABELS[activity.action] || activity.action) : 'Unknown'}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">

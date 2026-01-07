@@ -122,17 +122,17 @@ func runMigration() {
 	migrations := []struct {
 		name   string
 		model  interface{}
-		count  *int64
+		count  int64
 	}{
-		{"requisitions", &models.Requisition{}, &int64(0)},
-		{"budgets", &models.Budget{}, &int64(0)},
-		{"purchase_orders", &models.PurchaseOrder{}, &int64(0)},
-		{"payment_vouchers", &models.PaymentVoucher{}, &int64(0)},
-		{"goods_received_notes", &models.GoodsReceivedNote{}, &int64(0)},
-		{"categories", &models.Category{}, &int64(0)},
-		{"vendors", &models.Vendor{}, &int64(0)},
-		{"approval_tasks", &models.ApprovalTask{}, &int64(0)},
-		{"notifications", &models.Notification{}, &int64(0)},
+		{"requisitions", &models.Requisition{}, 0},
+		{"budgets", &models.Budget{}, 0},
+		{"purchase_orders", &models.PurchaseOrder{}, 0},
+		{"payment_vouchers", &models.PaymentVoucher{}, 0},
+		{"goods_received_notes", &models.GoodsReceivedNote{}, 0},
+		{"categories", &models.Category{}, 0},
+		{"vendors", &models.Vendor{}, 0},
+		{"approval_tasks", &models.ApprovalTask{}, 0},
+		{"notifications", &models.Notification{}, 0},
 	}
 
 	for _, m := range migrations {

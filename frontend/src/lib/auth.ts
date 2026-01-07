@@ -4,7 +4,7 @@ import "server-only";
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
 
-import type { AuthSession, User, UserType } from "@/types";
+import type { AuthSession, User, UserType, AuthUser, UserRole } from "@/types";
 import { SESSION_CONFIG } from "@/lib/session-config";
 import {
   AUTH_SESSION,
@@ -13,32 +13,14 @@ import {
   SCREEN_LOCK_SESSION,
 } from "@/lib/constants";
 
-/**
- * Consolidated Authentication System
- * Combines simulated auth (demo users) with JWT-based session management
- */
+
 
 // ============================================================================
 // TYPES
 // ============================================================================
 
-export interface AuthUser {
-  id: string;
-  name: string;
-  email: string;
-  role: UserRole;
-  avatar?: string;
-  department?: string;
-}
-
-export type UserRole =
-  | "REQUESTER"
-  | "DEPARTMENT_MANAGER"
-  | "FINANCE_OFFICER"
-  | "DIRECTOR"
-  | "CFO"
-  | "COMPLIANCE_OFFICER"
-  | "ADMIN";
+// Re-export AuthUser from types for backward compatibility
+export type { AuthUser } from "@/types";
 
 // ============================================================================
 // JWT ENCRYPTION/DECRYPTION
@@ -231,7 +213,7 @@ export async function hasRole(
  */
 export async function isAdmin(): Promise<boolean> {
   const user = await getCurrentUser();
-  return user?.role === "ADMIN";
+  return user?.role === "admin";
 }
 
 // ============================================================================
@@ -429,3 +411,5 @@ export async function clearScreenLockCookie(): Promise<void> {
   const cookieStore = await cookies();
   cookieStore.delete(SCREEN_LOCK_SESSION);
 }
+
+

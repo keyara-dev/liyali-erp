@@ -724,7 +724,7 @@ export function UserDetailsClient({ user }: UserDetailsClientProps) {
         {/* Edit User Modal */}
         <CreateUserForm
           showTrigger={false}
-          role="REQUESTER"
+          role="requester"
           isOpenModal={isEditingUser}
           user={user}
           setIsOpenModal={(open) => {

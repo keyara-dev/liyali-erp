@@ -1,39 +1,58 @@
 /**
  * Workflow Types
  * Document types, statuses, and approval workflows
+ * Aligned with backend implementations
  */
 
-// Workflow Document Types
+import { 
+  DocumentStatus, 
+  ApprovalStatus, 
+  ApprovalRecord, 
+  ApprovalTask,
+  ApproveTaskRequest,
+  RejectTaskRequest,
+  ReassignTaskRequest,
+  UserRole,
+  User,
+  SearchFilters,
+  PaginatedResponse
+} from './core';
+import { StageExecution } from './workflow-config';
+import { Requisition, RequisitionItem } from './requisition';
+
+// ================== WORKFLOW DOCUMENT TYPES ==================
+
 export type WorkflowDocumentType =
-  | "PURCHASE_ORDER"
-  | "PAYMENT_VOUCHER"
-  | "REQUISITION"
-  | "GOODS_RECEIVED_NOTE";
+  | "requisition"
+  | "budget" 
+  | "purchase_order"
+  | "payment_voucher"
+  | "goods_received_note"
+  | "GOODS_RECEIVED_NOTE"  // Legacy compatibility
+  | "REQUISITION"          // Legacy compatibility
+  | "BUDGET"               // Legacy compatibility
+  | "PURCHASE_ORDER"       // Legacy compatibility
+  | "PAYMENT_VOUCHER"      // Legacy compatibility
+  | "grn"                  // Alias for goods_received_note
+  | "GRN"                  // Uppercase alias
+  | "po"                   // Alias for purchase_order
+  | "PO"                   // Uppercase alias
+  | "pv"                   // Alias for payment_voucher
+  | "PV";                  // Uppercase alias
 
-export type DocumentStatus =
-  | "DRAFT"
-  | "SUBMITTED"
-  | "IN_REVIEW"
-  | "APPROVED"
-  | "REJECTED"
-  | "REVERSED";
+// Re-export common types for backward compatibility
+export type { 
+  DocumentStatus,
+  ApprovalStatus,
+  ApprovalRecord,
+  ApprovalTask,
+  ApproveTaskRequest,
+  RejectTaskRequest,
+  ReassignTaskRequest,
+  UserRole
+} from './core';
 
-export type ApprovalAction =
-  | "APPROVED"
-  | "REJECTED"
-  | "COMMENTED"
-  | "REASSIGNED"
-  | "REVERSED";
-
-// User & Role Types (from auth.ts)
-export type UserRole =
-  | "requester"
-  | "department_manager"
-  | "finance_officer"
-  | "director"
-  | "cfo"
-  | "compliance_officer"
-  | "admin";
+// ================== WORKFLOW PERMISSIONS ==================
 
 export type WorkflowPermission =
   | "view_draft"
@@ -53,22 +72,72 @@ export type WorkflowPermission =
 // Alias for backward compatibility
 export type Permission = WorkflowPermission;
 
-// Base Workflow Document
-export type WorkflowDocument = {
-  id: string;
-  type: WorkflowDocumentType;
-  documentNumber: string;
-  status: DocumentStatus;
-  currentStage: number;
-  createdBy: string;
-  createdByUser?: User;
-  createdAt: Date;
-  updatedAt: Date;
-  metadata: Record<string, any>;
-};
+// ================== WORKFLOW DOCUMENT BASE ==================
 
-// Workflow Step Definition
-export type WorkflowStep = {
+export interface WorkflowDocument {
+  id: string;
+  type?: WorkflowDocumentType;
+  documentNumber?: string;
+  status?: DocumentStatus;
+  currentStage?: number;
+  createdBy?: string;
+  createdByUser?: User;
+  createdAt?: Date;
+  updatedAt?: Date;
+  metadata?: Record<string, any>;
+}
+
+// ================== WORKFLOW CONFIGURATION ==================
+
+// ================== WORKFLOW CONFIGURATION ==================
+
+export interface DocumentApprovalConfig {
+  documentType: WorkflowDocumentType;
+  approvalStages: ApprovalStageConfig[];
+  requiredValidations: string[];
+  allowParallelApproval: boolean;
+  autoAdvanceOnApproval: boolean;
+}
+
+export interface ApprovalStageConfig {
+  stageNumber: number;
+  stageName: string;
+  description: string;
+  requiredRole: UserRole;
+  alternativeRoles: UserRole[];
+  isRequired: boolean;
+  canBeSkipped: boolean;
+  canBeRejected: boolean;
+  canBeReversed: boolean;
+  requiredValidations: string[];
+  onApprove: {
+    nextStage: number | "FINAL";
+    actions: string[];
+  };
+  onReject: {
+    returnTo: number | "DRAFT" | "REJECTED";
+    actions: string[];
+  };
+  specificUserId?: string;
+  specificUserEmail?: string;
+  timeoutHours?: number;
+  escalationUserId?: string;
+}
+
+export interface ApprovalState {
+  documentId: string;
+  documentType: WorkflowDocumentType;
+  currentStageNumber: number;
+  status: ApprovalStatus;
+  stageHistory: StageExecution[];
+  canApprove: boolean;
+  canReject: boolean;
+  canReassign: boolean;
+  nextApprover?: User;
+  previousApprover?: User;
+}
+
+export interface WorkflowStep {
   id?: string;
   workflowType: WorkflowDocumentType;
   stepOrder: number;
@@ -76,23 +145,44 @@ export type WorkflowStep = {
   description: string;
   isRequired: boolean;
   permissions?: WorkflowPermission[];
-};
+  
+  // UI compatibility fields
+  name?: string;               // Stage name
+  stageName?: string;          // Alias for name
+  order?: number;              // Alias for stepOrder
+  approverRole?: string;       // Alias for roleName
+  requiredApprovals?: number;  // Number of required approvals
+  canReject?: boolean;         // Can this stage reject
+  canReassign?: boolean;       // Can this stage reassign
+}
 
-// Approver Assignment
-export type Approver = {
+export interface Approver {
   id: string;
-  documentId: string;
-  stepOrder: number;
-  userId: string;
+  documentId?: string;
+  stepOrder?: number;
+  userId?: string;
   user?: User;
   role: UserRole;
-  assignedAt: Date;
-  canReassign: boolean;
-  status: "PENDING" | "APPROVED" | "REJECTED" | "SKIPPED";
-};
+  assignedAt?: Date;
+  canReassign?: boolean;
+  status?: ApprovalStatus;
+  
+  // Extended fields for UI compatibility (should be added to backend)
+  name?: string;               // Approver name
+  email?: string;              // Approver email
+  department?: string;         // Approver department
+}
 
-// Approval Log Entry
-export type ApprovalLogEntry = {
+// ================== WORKFLOW HISTORY ==================
+
+export type ApprovalAction =
+  | "approved"
+  | "rejected"
+  | "commented"
+  | "reassigned"
+  | "reversed";
+
+export interface ApprovalLogEntry {
   id: string;
   documentId: string;
   approver: User;
@@ -100,13 +190,14 @@ export type ApprovalLogEntry = {
   action: ApprovalAction;
   timestamp: Date;
   comments?: string;
-  remarks?: string; // Required for rejections, optional for approvals
-  signature?: string; // Digital signature (base64 encoded)
+  remarks?: string;
+  signature?: string;
   ipAddress?: string;
-};
+}
 
-// Attachment
-export type Attachment = {
+// ================== ATTACHMENTS ==================
+
+export interface Attachment {
   id: string;
   documentId: string;
   fileName: string;
@@ -117,275 +208,20 @@ export type Attachment = {
   uploadedAt: Date;
   storagePath: string;
   visibleToRoles: UserRole[];
-};
-
-// Document-Specific Types
-export type PurchaseOrderItem = {
-  id: string;
-  description: string;
-  quantity: number;
-  unitCost: number;
-  totalCost: number;
-};
-
-export type PurchaseOrder = WorkflowDocument & {
-  metadata: {
-    vendorName: string;
-    vendorId: string;
-    items: PurchaseOrderItem[];
-    totalAmount: number;
-    currency: string;
-    deliveryDate: Date;
-    specialInstructions?: string;
-  };
-};
-
-export type PaymentVoucher = WorkflowDocument & {
-  metadata: {
-    payeeName: string;
-    payeeId: string;
-    amount: number;
-    currency: string;
-    reason: string;
-    accountCode: string;
-    department: string;
-  };
-};
-
-export type RequisitionItem = {
-  id: string;
-  itemDescription: string;
-  quantity: number;
-  estimatedCost: number;
-};
-
-export type RequisitionForm = WorkflowDocument & {
-  metadata: {
-    department: string;
-    requestedFor: string;
-    items: RequisitionItem[];
-    justification: string;
-    budgetCode: string;
-  };
-};
-
-// User Type (basic)
-export type User = {
-  id: string;
-  name: string;
-  email: string;
-  role: UserRole;
-  department?: string;
-  avatar?: string;
-};
-
-// Response wrapper
-export type PaginatedResponse<T> = {
-  data: T[];
-  pagination: {
-    page: number;
-    limit: number;
-    total: number;
-    totalPages: number;
-  };
-};
-
-// Dynamic Approval Configuration Types
-export type ReversalBehavior =
-  | "BACK_TO_CREATOR"
-  | "BACK_TO_HANDLER"
-  | "PREVIOUS_STAGE"
-  | "TO_SPECIFIC_USER";
-
-export type ApprovalStageConfig = {
-  stageNumber: number;
-  stageName: string;
-  description?: string;
-  requiredRole: string;
-  alternativeRoles?: string[];
-  canReverse: boolean;
-  reversalBehavior: ReversalBehavior;
-  reversalTargetRole?: string;
-  reversalResetsPreviousStages?: boolean;
-  requiresComments?: boolean;
-  requiredValidations?: string[];
-  onApprovalActions?: {
-    generateQRCode?: boolean;
-    generatePaymentReference?: boolean;
-    createAuditLog?: boolean;
-    notifyVendor?: boolean;
-    createPaymentVoucher?: boolean;
-  };
-  slaHours?: number;
-  escalationRoleAfterSLA?: string;
-};
-
-export type ApprovalRecord = {
-  stageNumber: number;
-  stageName: string;
-  assignedTo: string;
-  assignedRole: string;
-  status: "PENDING" | "APPROVED" | "REVERSED" | "REJECTED";
-  actionTakenAt?: Date;
-  actionTakenBy?: string;
-  comments?: string;
-  reversedAt?: Date;
-  reversalReason?: string;
-  validationsPassed?: string[];
-  validationsFailed?: string[];
-};
-
-export type ApprovalState = {
-  documentId: string;
-  documentType: string;
-  configVersion: string;
-  currentStageNumber: number;
-  totalStages: number;
-  stageHistory: ApprovalRecord[];
-  status: DocumentStatus;
-  submittedAt?: Date;
-  approvedAt?: Date;
-  rejectedAt?: Date;
-  lastModifiedAt: Date;
-  lastModifiedBy: string;
-};
-
-export type DocumentApprovalConfig = {
-  documentType: WorkflowDocumentType;
-  configVersion: string;
-  effectiveDate: Date;
-  description: string;
-  totalStages: number;
-  approvalStages: ApprovalStageConfig[];
-  fallbackStages?: ApprovalStageConfig[];
-  allowConcurrentApprovals?: boolean;
-  allowMultipleReversals?: boolean;
-  requireFinalSignoff?: boolean;
-  createdAt: Date;
-  createdBy: string;
-};
-
-export type ApproveDocumentRequest = {
-  documentId: string;
-  documentType: string;
-  approvingUserId: string;
-  comments?: string;
-  validations?: Record<string, boolean>;
-};
-
-export type ApproveDocumentResponse = {
-  success: boolean;
-  message: string;
-  newStageNumber?: number;
-  isFinalApproval?: boolean;
-  generatedQRCode?: string;
-  generatedPaymentReference?: string;
-  error?: string;
-};
-
-export type ReverseDocumentRequest = {
-  documentId: string;
-  documentType: string;
-  reversingUserId: string;
-  reversalReason: string;
-};
-
-export type ReverseDocumentResponse = {
-  success: boolean;
-  message: string;
-  reversedToStage?: number;
-  reversedToRole?: string;
-  error?: string;
-};
-
-export type SearchFilters = {
-  documentNumber: string;
-  documentType: "ALL" | WorkflowDocumentType;
-  status: "ALL" | DocumentStatus;
-  startDate: string;
-  endDate: string;
-};
-
-// ==========================================
-// NEW: Backend-Powered Approval Workflow Types
-// ==========================================
-
-/**
- * Approval Task - represents a pending approval action
- */
-export interface ApprovalTask {
-  id: string;
-  organizationId: string;
-  documentId: string;
-  documentType: string;
-  documentNumber: string;
-  approverId: string;
-  approverName?: string;
-  approverRole?: string;
-  status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
-  stage: number;
-  totalStages?: number;
-  priority?: string;
-  comments?: string;
-  createdAt: Date;
-  updatedAt: Date;
-  dueAt?: Date;
-  overdue?: boolean;
-  document?: {
-    id: string;
-    title: string;
-    amount?: number;
-    currency?: string;
-    requester?: string;
-    status?: string;
-  };
 }
 
-/**
- * Approval history record - single approval entry in document history
- */
-export interface ApprovalHistory {
-  id?: string;
-  stage: number;
-  stageName?: string;
-  approverId: string;
-  approverName: string;
-  approverRole?: string;
-  status: 'APPROVED' | 'REJECTED';
-  action?: string;
-  comments?: string;
-  remarks?: string;
-  signature?: string; // Base64 encoded signature image
-  approvedAt: Date;
-  duration?: number; // Seconds to approve
-}
+// ================== RESPONSE WRAPPERS ==================
 
-/**
- * Request to approve a task
- */
-export interface ApproveTaskRequest {
-  taskId: string;
-  comments: string;
-  signature: string; // Base64 encoded signature image
-  stageNumber: number;
-}
+// Re-export from core to avoid duplication
+export type { PaginatedResponse } from './core';
 
-/**
- * Request to reject a task
- */
-export interface RejectTaskRequest {
-  taskId: string;
-  remarks: string; // Required reason for rejection
-  comments: string;
-  signature: string; // Base64 encoded signature image
-  returnTo?: string;
-}
+// ================== SEARCH AND FILTERS ==================
 
-/**
- * Request to reassign a task
- */
-export interface ReassignTaskRequest {
-  taskId: string;
-  newApproverId: string;
-  reason: string;
-}
+// Re-export from core to avoid duplication  
+export type { SearchFilters } from './core';
+
+// ================== RE-EXPORTS FOR BACKWARD COMPATIBILITY ==================
+
+// Re-export Requisition types for backward compatibility
+export type { Requisition, RequisitionItem } from './requisition';
+export type RequisitionForm = Requisition; // Alias for backward compatibility

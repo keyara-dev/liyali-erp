@@ -122,7 +122,7 @@ const PurchaseOrderPDF: React.FC<PurchaseOrderPDFProps> = ({ purchaseOrder, qrCo
           </View>
           <View style={{ flex: 1, borderWidth: 1, borderColor: '#ddd', padding: 8 }}>
             <Text style={{ fontSize: 8, fontWeight: 'bold', marginBottom: 2, color: '#666' }}>REQUIRED BY DATE</Text>
-            <Text style={{ fontSize: 10 }}>{new Date(purchaseOrder.requiredByDate).toLocaleDateString()}</Text>
+            <Text style={{ fontSize: 10 }}>{purchaseOrder.requiredByDate ? new Date(purchaseOrder.requiredByDate).toLocaleDateString() : '—'}</Text>
           </View>
           <View style={{ flex: 1, borderWidth: 1, borderColor: '#ddd', padding: 8 }}>
             <Text style={{ fontSize: 8, fontWeight: 'bold', marginBottom: 2, color: '#666' }}>PRIORITY</Text>

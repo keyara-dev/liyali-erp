@@ -50,13 +50,14 @@ export const useActivityLogs = (
   const url = `/api/activity-logs${queryString ? '?' + queryString : ''}`;
 
   return useQuery({
-    queryKey: [QUERY_KEYS.LOGS?.ALL || 'activity-logs', filters],
+    queryKey: [QUERY_KEYS.LOGS.ALL, filters],
     queryFn: async () => {
       const response = await fetch(url);
       if (!response.ok) throw new Error('Failed to fetch activity logs');
-      return response.json();
+      const data = response.json();
+      if (onSuccess) onSuccess(data);
+      return data;
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
-    onSuccess,
   });
 };

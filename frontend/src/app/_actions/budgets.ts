@@ -17,7 +17,7 @@ import { handleError, successResponse, badRequestResponse } from './api-config'
  * Create a new budget draft
  */
 export async function createBudget(
-  request: CreateBudgetRequest
+  request: Omit<CreateBudgetRequest, 'createdBy'> & { status?: BudgetStatus }
 ): Promise<APIResponse<Budget | null>> {
   try {
     const response = await authenticatedApiClient({

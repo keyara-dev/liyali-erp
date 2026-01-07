@@ -35,10 +35,10 @@ const getStatusColor = (status: string) => {
 }
 
 const PaymentVoucherPDF: React.FC<PaymentVoucherPDFProps> = ({ paymentVoucher, qrCodeUrl }) => {
-  const trackingCode = generateTrackingCode('PAYMENT_VOUCHER', paymentVoucher.pvNumber)
+  const trackingCode = generateTrackingCode('PAYMENT_VOUCHER', paymentVoucher.pvNumber || paymentVoucher.voucherNumber)
   const qrData = generateDocumentQRData(
     'PAYMENT_VOUCHER',
-    paymentVoucher.pvNumber,
+    paymentVoucher.pvNumber || paymentVoucher.voucherNumber,
     paymentVoucher.id,
     new Date(paymentVoucher.createdAt)
   )
@@ -128,7 +128,7 @@ const PaymentVoucherPDF: React.FC<PaymentVoucherPDFProps> = ({ paymentVoucher, q
           </View>
 
           {/* Bank Details (if applicable) */}
-          {paymentVoucher.paymentMethod === 'BANK_TRANSFER' && paymentVoucher.bankDetails && (
+          {paymentVoucher.paymentMethod === 'bank_transfer' && paymentVoucher.bankDetails && (
             <View style={{ borderTopWidth: 1, borderTopColor: '#ddd', paddingTop: 10 }}>
               <Text style={{ fontSize: 8, fontWeight: 'bold', marginBottom: 4, color: '#1e40af' }}>BANK TRANSFER DETAILS:</Text>
               <View style={{ display: 'flex', flexDirection: 'row', gap: 20 }}>
@@ -164,7 +164,7 @@ const PaymentVoucherPDF: React.FC<PaymentVoucherPDFProps> = ({ paymentVoucher, q
           <View style={{ flex: 1, borderWidth: 1, borderColor: '#ddd', padding: 8 }}>
             <Text style={{ fontSize: 8, fontWeight: 'bold', marginBottom: 2, color: '#666' }}>REQUEST DATE</Text>
             <Text style={{ fontSize: 10 }}>
-              {new Date(paymentVoucher.requestedDate).toLocaleDateString()}
+              {paymentVoucher.requestedDate ? new Date(paymentVoucher.requestedDate).toLocaleDateString() : '—'}
             </Text>
           </View>
           <View style={{ flex: 1, borderWidth: 1, borderColor: '#ddd', padding: 8 }}>
@@ -271,7 +271,7 @@ const PaymentVoucherPDF: React.FC<PaymentVoucherPDFProps> = ({ paymentVoucher, q
         )}
 
         {/* Payment Confirmation (if PAID) */}
-        {paymentVoucher.status === 'PAID' && (
+        {paymentVoucher.status === 'paid' && (
           <View style={{
             marginBottom: 15,
             padding: 10,

@@ -19,6 +19,7 @@ interface TStatusBadge {
 interface PageHeaderProps {
   title: string;
   subtitle?: string;
+  description?: string;    // Add description field for compatibility
   badges?: TStatusBadge[];
   onBackClick?: () => void;
   showBackButton?: boolean;

@@ -1,4 +1,5 @@
-import { Budget, BudgetItem } from '@/types/budget'
+import { Budget ,BudgetItem} from '@/types/budget'
+
 
 /**
  * Calculate total allocated amount across all budget items
@@ -111,29 +112,20 @@ export function validateBudgetItem(
 }
 
 /**
- * Validate budget has items and is properly allocated before submission
+ * Validate budget has proper allocation before submission
  */
 export function validateBudgetForSubmission(budget: Budget): ValidationResult {
-  // Check has items
-  if (!budget.items || budget.items.length === 0) {
+  // Check total budget is greater than 0
+  if (budget.totalBudget <= 0) {
     return {
       valid: false,
-      error: 'Budget must have at least one item before submission',
+      error: 'Total budget must be greater than 0',
     }
   }
 
-  // Check total allocated is greater than 0
-  const totalAllocated = calculateTotalAllocated(budget.items)
-  if (totalAllocated <= 0) {
-    return {
-      valid: false,
-      error: 'Total allocated amount must be greater than 0',
-    }
-  }
-
-  // Check not over-allocated
-  if (totalAllocated > budget.totalAmount) {
-    const excess = totalAllocated - budget.totalAmount
+  // Check allocated amount is not greater than total budget
+  if (budget.allocatedAmount > budget.totalBudget) {
+    const excess = budget.allocatedAmount - budget.totalBudget
     return {
       valid: false,
       error: `Budget is over-allocated by ${excess.toLocaleString('en-US', {
@@ -150,24 +142,21 @@ export function validateBudgetForSubmission(budget: Budget): ValidationResult {
  * Check if budget is fully allocated
  */
 export function isBudgetFullyAllocated(budget: Budget): boolean {
-  const totalAllocated = calculateTotalAllocated(budget.items)
-  return Math.abs(totalAllocated - budget.totalAmount) < 0.01 // Allow for floating point errors
+  return Math.abs(budget.allocatedAmount - budget.totalBudget) < 0.01 // Allow for floating point errors
 }
 
 /**
  * Check if budget is over-allocated
  */
 export function isBudgetOverAllocated(budget: Budget): boolean {
-  const totalAllocated = calculateTotalAllocated(budget.items)
-  return totalAllocated > budget.totalAmount
+  return budget.allocatedAmount > budget.totalBudget
 }
 
 /**
  * Check if budget is under-allocated
  */
 export function isBudgetUnderAllocated(budget: Budget): boolean {
-  const totalAllocated = calculateTotalAllocated(budget.items)
-  return totalAllocated < budget.totalAmount
+  return budget.allocatedAmount < budget.totalBudget
 }
 
 /**
@@ -176,8 +165,6 @@ export function isBudgetUnderAllocated(budget: Budget): boolean {
 export type AllocationStatus = 'under' | 'full' | 'over'
 
 export function getAllocationStatus(budget: Budget): AllocationStatus {
-  const totalAllocated = calculateTotalAllocated(budget.items)
-
   if (isBudgetOverAllocated(budget)) return 'over'
   if (isBudgetFullyAllocated(budget)) return 'full'
   return 'under'

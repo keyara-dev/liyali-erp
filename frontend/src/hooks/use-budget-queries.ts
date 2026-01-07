@@ -30,7 +30,7 @@ export const useBudgets = (userId: string, initialBudgets?: Budget[]) =>
   useQuery({
     queryKey: [QUERY_KEYS.BUDGETS.BY_USER, userId],
     queryFn: async () => {
-      const response = await getBudgets(userId);
+      const response = await getBudgets({ userId });
       return response.success ? response.data : [];
     },
     initialData: initialBudgets,

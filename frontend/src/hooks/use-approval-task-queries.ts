@@ -8,7 +8,7 @@ import {
   getApprovalTaskDetail,
   getApprovalStats,
   getApprovalHistory,
-} from '@/app/_actions/approval-actions';
+} from '@/app/_actions/workflow-approval-actions';
 
 /**
  * Fetch all pending approval tasks for the current user
@@ -25,11 +25,13 @@ export const useGetApprovalTasks = (params?: { status?: string }) =>
     queryKey: [QUERY_KEYS.TASKS.BY_USER, 'approvals', params?.status],
     queryFn: async () => {
       // Call server action
-      const result = await getApprovalTasks(params?.status);
+      const result = await getApprovalTasks(
+        params?.status ? { status: params.status as any } : undefined
+      );
       if (!result.success) {
         throw new Error(result.message || 'Failed to fetch approval tasks');
       }
-      return result.tasks || [];
+      return result.data || [];
     },
     staleTime: 0, // Always stale, refetch frequently
     refetchInterval: 30 * 1000, // Auto-refresh every 30 seconds
@@ -77,10 +79,10 @@ export const useGetApprovalStats = () =>
     queryFn: async () => {
       // Call server action
       const result = await getApprovalStats();
-      if (!result.success || !result.stats) {
+      if (!result.success || !result.data) {
         throw new Error(result.message || 'Failed to fetch approval statistics');
       }
-      return result.stats;
+      return result.data;
     },
     staleTime: 1 * 60 * 1000, // 1 minute
     refetchInterval: 30 * 1000, // Auto-refresh every 30 seconds
@@ -103,11 +105,11 @@ export const useGetTaskHistory = (entityId: string, entityType: string) =>
     queryKey: [QUERY_KEYS.TASKS.BY_USER, 'history', entityId],
     queryFn: async () => {
       // Call server action
-      const result = await getApprovalHistory(entityId, entityType);
+      const result = await getApprovalHistory(entityId);
       if (!result.success) {
         throw new Error(result.message || 'Failed to fetch approval history');
       }
-      return result.history || [];
+      return result.data || [];
     },
     enabled: !!entityId,
     staleTime: 5 * 60 * 1000, // 5 minutes

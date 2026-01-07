@@ -99,10 +99,10 @@ export function CreateBudgetDialog({
         department: formData.department,
         departmentId: formData.departmentId,
         fiscalYear: formData.fiscalYear,
-        totalAmount: parseFloat(formData.totalAmount),
+        totalBudget: parseFloat(formData.totalAmount),
+        allocatedAmount: parseFloat(formData.totalAmount),
         currency: formData.currency,
-        items: [],
-        createdBy: userId,
+        
       })
 
       if (result.success && result.data) {

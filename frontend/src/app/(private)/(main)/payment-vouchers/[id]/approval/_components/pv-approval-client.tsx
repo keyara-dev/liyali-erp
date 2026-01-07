@@ -40,6 +40,8 @@ interface PaymentVoucher {
   requestDate: string;
   dueDate: string;
   currentStage: number;
+  approvalStage?: number;        // Add approvalStage field
+  paymentDueDate?: Date;         // Add paymentDueDate field
   stageName: string;
   expenses: Array<{
     id: string;
@@ -48,8 +50,8 @@ interface PaymentVoucher {
     category: string;
     glCode: string;
   }>;
-  createdAt: string;
-  updatedAt: string;
+  createdAt: string | Date;
+  updatedAt: string | Date;
 }
 
 const STAGE_NAMES: Record<number, string> = {
@@ -139,18 +141,26 @@ function convertPVToApprovalTask(
 ): ApprovalTask {
   return {
     id: pv.id,
+    organizationId: "default-org", // Should come from context
+    documentId: pv.id,
+    documentType: "payment_voucher",
+    approverId: userId,
+    status: "pending",
+    stage: pv.approvalStage || 1,
+    createdAt: typeof pv.createdAt === 'string' ? new Date(pv.createdAt) : pv.createdAt,
+    updatedAt: typeof pv.updatedAt === 'string' ? new Date(pv.updatedAt) : pv.updatedAt,
+    
+    // Legacy compatibility fields
     entityId: pv.id,
     entityType: "PAYMENT_VOUCHER",
     entityNumber: pv.voucherNumber,
-    status: "pending",
-    stageName: pv.stageName,
-    stageIndex: pv.currentStage,
-    importance: pv.amount > 10000 ? "HIGH" : "MEDIUM",
+    stageName: "Payment Approval",
+    stageIndex: pv.approvalStage || 1,
+    importance: pv.amount > 10000 ? "high" : "medium",
     approverName: "Current Approver",
     approverUserId: userId,
-    createdAt: new Date(pv.createdAt),
     actionDate: new Date(),
-    dueDate: new Date(pv.dueDate),
+    dueDate: pv.paymentDueDate || new Date(),
     workflowId: "pv-workflow-v1",
     workflowName: "3-Stage Payment Voucher Approval",
   };

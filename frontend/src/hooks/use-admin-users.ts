@@ -1,11 +1,11 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-  fetchAdminUsers,
-  fetchAdminUserById,
-  createAdminUser,
-  updateAdminUser,
-  deleteAdminUser,
-} from "@/app/_actions/admin-users";
+  getUsers as fetchAdminUsers,
+  getUserById as fetchAdminUserById,
+  createNewUser as createAdminUser,
+  updateUser as updateAdminUser,
+  deleteUser as deleteAdminUser,
+} from "@/app/_actions/user-actions";
 
 const ADMIN_USERS_KEY = ["admin-users"] as const;
 

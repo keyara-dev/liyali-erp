@@ -30,7 +30,7 @@ import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CustomPagination } from "@/components/ui/custom-pagination";
-import { useBudgets } from "@/hooks/use-budgets-queries";
+import { useBudgets } from "@/hooks/use-budget-queries";
 import { Budget } from "@/types/budget";
 import { Pagination } from "@/types";
 import { QUERY_KEYS } from "@/lib/constants";
@@ -51,23 +51,22 @@ export function BudgetsTable({
   const router = useRouter();
   const queryClient = useQueryClient();
   const { data: budgetsFromHook = [], isLoading: hookLoading, refetch } =
-    useBudgets(1, 50); // Get first 50 budgets
+    useBudgets(userId); // Get budgets for the current user
 
   // Refetch when refreshTrigger changes (after budget creation)
   useEffect(() => {
     if (refreshTrigger > 0) {
       refetch();
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.BUDGETS?.ALL || 'BUDGETS'] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.BUDGETS.ALL] });
     }
   }, [refreshTrigger, refetch, queryClient]);
 
   const budgets = useMemo(() => {
     if (budgetsFromHook && budgetsFromHook.length > 0) {
-      // Filter by current user's budgets
-      return budgetsFromHook.filter((budget) => budget.createdBy === userId);
+      return budgetsFromHook;
     }
     return [];
-  }, [budgetsFromHook, userId]);
+  }, [budgetsFromHook]);
   
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
@@ -77,6 +76,11 @@ export function BudgetsTable({
     React.useState<VisibilityState>({});
   const [pagination, setPagination] = React.useState<Pagination>({
     page: 1,
+    limit: 10,
+    total: 0,
+    totalPages: 1,
+    hasNext: false,
+    hasPrev: false,
     page_size: 10,
     total_pages: 1,
     totalCount: 0,
@@ -93,25 +97,20 @@ export function BudgetsTable({
 
   const columns: ColumnDef<Budget>[] = [
     {
-      accessorKey: "budgetNumber",
+      accessorKey: "budgetCode",
       header: ({ column }) => (
         <Button
           variant="ghost"
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
           className="-ml-3"
         >
-          Budget Number
+          Budget Code
           <ArrowUpDown className="ml-2 h-4 w-4" />
         </Button>
       ),
       cell: ({ row }) => (
-        <div className="font-semibold">{row.getValue("budgetNumber")}</div>
+        <div className="font-semibold">{row.getValue("budgetCode")}</div>
       ),
-    },
-    {
-      accessorKey: "name",
-      header: "Budget Name",
-      cell: ({ row }) => <div className="max-w-xs">{row.getValue("name")}</div>,
     },
     {
       accessorKey: "department",
@@ -119,11 +118,20 @@ export function BudgetsTable({
       cell: ({ row }) => <div>{row.getValue("department")}</div>,
     },
     {
-      accessorKey: "totalAmount",
-      header: "Total Amount",
+      accessorKey: "totalBudget",
+      header: "Total Budget",
       cell: ({ row }) => (
         <div className="font-medium">
-          {formatCurrency(row.original.totalAmount, row.original.currency)}
+          K{(row.original.totalBudget || 0).toLocaleString()}
+        </div>
+      ),
+    },
+    {
+      accessorKey: "allocatedAmount",
+      header: "Allocated Amount",
+      cell: ({ row }) => (
+        <div className="font-medium">
+          K{(row.original.allocatedAmount || 0).toLocaleString()}
         </div>
       ),
     },
@@ -140,12 +148,11 @@ export function BudgetsTable({
       ),
     },
     {
-      accessorKey: "currentApprovalStage",
+      accessorKey: "approvalStage",
       header: "Approval Stage",
       cell: ({ row }) => (
         <div className="text-sm">
-          {row.original.currentApprovalStage} /{" "}
-          {row.original.totalApprovalStages}
+          Stage {row.original.approvalStage}
         </div>
       ),
     },
@@ -254,10 +261,10 @@ export function BudgetsTable({
         pagination={useMemo(
           () => ({
             ...pagination,
-            total_pages: Math.ceil(budgets.length / pagination.page_size!),
+            total_pages: Math.ceil(budgets.length / (pagination.page_size || 10)),
             totalCount: budgets.length,
             has_next:
-              pagination.page < Math.ceil(budgets.length / pagination.page_size!),
+              pagination.page < Math.ceil(budgets.length / (pagination.page_size || 10)),
             has_prev: pagination.page > 1,
           }),
           [pagination, budgets.length]

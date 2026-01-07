@@ -1,205 +1,179 @@
 /**
  * Requisition Types
- * Handles purchase request documents with approval workflows
+ * Aligned with backend models and database schema
  */
 
-export type RequisitionStatus = 'DRAFT' | 'SUBMITTED' | 'IN_REVIEW' | 'APPROVED' | 'REJECTED';
-export type RequisitionPriority = 'URGENT' | 'HIGH' | 'MEDIUM' | 'LOW';
+// ============================================================================
+// CORE REQUISITION TYPES
+// ============================================================================
 
-/**
- * Requisition Item
- * Line item within a requisition for requested goods/services
- */
 export interface RequisitionItem {
-  id: string;
-  requisitionId: string;
-  itemNumber: number;
+  id?: string;
   description: string;
-  category: string; // e.g., "Office Supplies", "Equipment", "Services"
+  itemDescription?: string;    // Alias for description
   quantity: number;
   unitPrice: number;
-  unit: string; // e.g., "pcs", "kg", "hours"
-  totalPrice: number; // quantity * unitPrice
+  amount: number;
+  estimatedCost?: number;      // Alias for amount
+  unit?: string;
+  category?: string;
   notes?: string;
-  createdAt: Date;
-  updatedAt: Date;
+  itemNumber?: number;         // For UI compatibility
+  totalPrice?: number;         // Alias for amount
 }
 
-/**
- * Action History Entry
- * Track every action performed on a requisition for audit trail
- */
-export interface ActionHistoryEntry {
-  id: string; // UUID
-  actionType: 'CREATE' | 'UPDATE' | 'SUBMIT' | 'APPROVE' | 'REJECT' | 'REVERSE' | 'DELETE' | 'REVERT_TO_DRAFT';
-  performedBy: string; // User ID
-  performedByName: string;
-  performedByRole: string;
-  performedAt: Date;
-  stageNumber?: number; // For approval-related actions
-  stageName?: string;
-  comments?: string;
-  remarks?: string; // For rejections
-  signature?: string; // Digital signature (base64 encoded PNG)
-  previousStatus?: RequisitionStatus;
-  newStatus?: RequisitionStatus;
-  changedFields?: Record<string, { oldValue: any; newValue: any }>; // Track specific field changes
-  metadata?: Record<string, any>; // Any additional metadata
-}
-
-/**
- * Approval Record
- * Track each approval stage in the requisition workflow
- */
-export interface ApprovalRecord {
-  stageNumber: number;
-  stageName: string;
-  assignedTo: string; // User ID
-  assignedRole: string;
-  status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'REVERSED';
-  actionTakenAt?: Date;
-  actionTakenBy?: string; // User ID
-  actionTakenByRole?: string;
-  comments?: string;
-  remarks?: string; // Required for rejections, optional for approvals
-  signature?: string; // Digital signature (base64 encoded PNG)
-  reversedAt?: Date;
-  reversalReason?: string;
-}
-
-/**
- * Requisition
- * Main purchase request document
- */
 export interface Requisition {
+  // Core fields
   id: string;
-  requisitionNumber: string; // e.g., "REQ-2024-001"
+  organizationId: string;
+  reqNumber: string;
+  requesterId: string;
+  requester?: any;
+  requesterName: string;
   title: string;
-  description?: string;
-  vendorId?: string; // Optional vendor for PO creation
-  vendorName?: string; // Optional vendor name for PO creation
+  description: string;
   department: string;
   departmentId: string;
-  requestedBy: string; // User ID
-  requestedByName: string;
+  status: RequisitionStatus; // draft, pending, approved, rejected, completed, cancelled
+  priority: RequisitionPriority; // low, medium, high, urgent
+  items: RequisitionItem[];
+  totalAmount: number;
+  currency: string;
+  approvalStage: number;
+  approvalHistory: any[];
+  categoryId?: string;
+  category?: any;
+  categoryName: string;
+  preferredVendorId?: string;
+  preferredVendor?: any;
+  preferredVendorName: string;
+  isEstimate: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+  
+  // Business requirement fields
+  requisitionNumber: string;       // Same as reqNumber
+  budgetCode: string;
+  requestedByName: string;         // Same as requesterName
   requestedByRole: string;
+  requestedBy: string;             // Same as requesterId
+  totalApprovalStages: number;
   requestedDate: Date;
   requiredByDate: Date;
-  priority: RequisitionPriority;
-  status: RequisitionStatus;
-
-  // Line items
-  items: RequisitionItem[];
-  totalAmount: number; // Sum of all item totals
-  currency: string; // "ZMW" or "USD"
-
-  // Approval tracking
-  approvalChain?: ApprovalRecord[];
-  currentApprovalStage?: number;
-  totalApprovalStages?: number;
-
-  // Action history for audit trail
-  actionHistory?: ActionHistoryEntry[];
-
-  // Related Purchase Orders (created from this requisition when approved)
-  relatedPurchaseOrders?: string[]; // Array of PO IDs
-
-  // Metadata
-  budgetCode?: string;
-  costCenter?: string;
-  projectCode?: string;
-
-  // Timestamps
-  createdAt: Date;
-  updatedAt: Date;
-  submittedAt?: Date;
-  approvedAt?: Date;
-  rejectedAt?: Date;
-}
-
-/**
- * Create Requisition Request DTO
- */
-export interface CreateRequisitionRequest {
-  title: string;
-  description?: string;
-  department: string;
-  departmentId: string;
-  requiredByDate: string | Date;
-  priority: RequisitionPriority;
-  items: Omit<RequisitionItem, 'id' | 'requisitionId' | 'createdAt' | 'updatedAt'>[];
-  budgetCode?: string;
-  costCenter?: string;
-  projectCode?: string;
+  costCenter: string;
+  projectCode: string;
   createdBy: string;
   createdByName: string;
   createdByRole: string;
+  
+  // UI compatibility fields
+  documentNumber?: string;
+  currentStage?: number;
+  currentApprovalStage?: number;
+  actionHistory?: any[];
+  metadata?: Record<string, any>;
+  type?: string;
+  createdByUser?: any;
+  approvalChain?: any[];           // For PDF generation
+  vendorId?: string;               // For PO creation
+  vendorName?: string;             // For PO creation
 }
 
-/**
- * Update Requisition Request DTO
- */
+// ============================================================================
+// REQUEST TYPES
+// ============================================================================
+
+export interface CreateRequisitionRequest {
+  title: string;
+  description: string;
+  department: string;
+  departmentId: string;
+  priority: string;
+  items: RequisitionItem[];
+  totalAmount: number;
+  currency: string;
+  categoryId?: string;
+  preferredVendorId?: string;
+  isEstimate: boolean;
+  
+  // Business requirement fields
+  requiredByDate: Date;
+  budgetCode: string;
+  costCenter: string;
+  projectCode: string;
+  createdBy: string;
+  createdByName: string;
+  createdByRole: string;
+  requestedFor?: string;       // Who the requisition is for
+  justification?: string;      // Justification for the request
+}
+
 export interface UpdateRequisitionRequest {
   requisitionId: string;
+  id?: string;                 // Alias for requisitionId
   title?: string;
   description?: string;
-  requiredByDate?: string | Date;
-  priority?: RequisitionPriority;
-  items?: Omit<RequisitionItem, 'requisitionId' | 'createdAt' | 'updatedAt'>[];
+  department?: string;
+  departmentId?: string;
+  priority?: string;
+  items?: RequisitionItem[];
+  totalAmount?: number;
+  currency?: string;
+  categoryId?: string;
+  preferredVendorId?: string;
+  isEstimate?: boolean;
+  requiredByDate?: Date;
   budgetCode?: string;
   costCenter?: string;
   projectCode?: string;
-  updatedBy: string;
 }
 
-/**
- * Submit Requisition for Approval Request DTO
- */
 export interface SubmitRequisitionRequest {
   requisitionId: string;
-  submittedBy: string; // User ID
+  submittedBy: string;
   submittedByName: string;
   submittedByRole: string;
   comments?: string;
 }
 
-/**
- * Approve Requisition Request DTO
- */
 export interface ApproveRequisitionRequest {
   requisitionId: string;
   approvingUserId: string;
   approvingUserName: string;
   approvingUserRole: string;
+  signature: string;
   comments?: string;
-  signature: string; // Digital signature (required)
   stageNumber?: number;
 }
 
-/**
- * Reject Requisition Request DTO
- */
 export interface RejectRequisitionRequest {
   requisitionId: string;
   rejectingUserId: string;
   rejectingUserName: string;
   rejectingUserRole: string;
-  remarks: string; // Required rejection reason
+  remarks: string;
+  signature: string;
   comments?: string;
-  signature: string; // Digital signature (required)
+  returnTo?: 'original_submitter' | 'previous_stage';
 }
 
-/**
- * Requisition Stats
- * Analytics for requisitions
- */
+// ============================================================================
+// STATISTICS TYPES
+// ============================================================================
+
 export interface RequisitionStats {
   total: number;
   draft: number;
-  submitted: number;
-  inApproval: number;
+  pending: number;
   approved: number;
   rejected: number;
-  totalValue: number;
-  averageApprovalTime: number; // in days
+  thisMonth: number;
+  totalAmount: number;
 }
+
+// ============================================================================
+// TYPE ALIASES
+// ============================================================================
+
+export type RequisitionStatus = "draft"| "pending"| "submitted"| "approved"| "rejected"| "completed" | "cancelled";
+export type RequisitionPriority = "low" | "medium" | "high" | "urgent";

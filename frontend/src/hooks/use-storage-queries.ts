@@ -48,8 +48,11 @@
  */
 
 import { useQuery } from '@tanstack/react-query';
-import { PurchaseOrder, PaymentVoucher, RequisitionForm, WorkflowDocument } from '@/types/workflow';
-import type { GoodsReceivedNote } from '@/lib/storage/seed-data';
+import { WorkflowDocument } from '@/types/workflow';
+import { PurchaseOrder } from '@/types/purchase-order';
+import { PaymentVoucher } from '@/types/payment-voucher';
+import { Requisition } from '@/types/requisition';
+import type { GoodsReceivedNote } from '@/app/_actions/grn-actions';
 import {
   getPurchaseOrders,
   getRequisitions,
@@ -240,7 +243,7 @@ export const useGrnsAsWorkflowDocumentsQuery = (userId?: string) => {
 // ============================================================================
 
 function convertToWorkflowDocuments(
-  documents: (PurchaseOrder | RequisitionForm | PaymentVoucher | GoodsReceivedNote)[]
+  documents: (PurchaseOrder | Requisition | PaymentVoucher | GoodsReceivedNote)[]
 ): WorkflowDocument[] {
   return documents.map((doc) => ({
     id: doc.id,

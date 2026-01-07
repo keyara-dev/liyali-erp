@@ -23,7 +23,7 @@ import { DialogClose } from "@radix-ui/react-dialog";
 import { User, UserType } from "@/types";
 import { generateRandomString } from "@/lib/utils";
 import { useCreateUser, useUpdateUser } from "@/hooks/use-users-query";
-import { getAllDepartments } from "@/lib/mock-departments";
+import { Department } from "@/types/department";
 
 type FormData = {
   username?: string | number | readonly string[] | undefined;
@@ -31,11 +31,10 @@ type FormData = {
   last_name: string;
   email: string;
   phone?: string;
-  role: string;
+  role: UserType;
   department_id?: string;
   department?: string;
   is_active: boolean;
-  role: UserType;
   password?: string;
 };
 
@@ -108,7 +107,12 @@ export default function CreateUserForm({
 
   // Get departments from mock data
   const departments = useMemo(() => {
-    return getAllDepartments().filter((d) => d.is_active);
+    // Mock departments data - replace with actual API call
+    return [
+      { id: '1', name: 'Finance', code: 'FIN', description: 'Financial operations', manager_name: 'John Smith', is_active: true, created_at: '2024-01-01', updated_at: '2024-01-01' },
+      { id: '2', name: 'HR', code: 'HR', description: 'Human Resources', manager_name: 'Jane Doe', is_active: true, created_at: '2024-01-01', updated_at: '2024-01-01' },
+      { id: '3', name: 'IT', code: 'IT', description: 'Information Technology', manager_name: 'Bob Johnson', is_active: true, created_at: '2024-01-01', updated_at: '2024-01-01' },
+    ].filter((d) => d.is_active);
   }, []);
 
   // Reset form when user changes or dialog opens/closes

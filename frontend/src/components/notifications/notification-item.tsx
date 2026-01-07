@@ -1,6 +1,6 @@
 "use client";
 
-import { Notification, NotificationType } from "@/types";
+import { NotificationInterface as Notification, NotificationTypeEnum as NotificationType } from "@/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Trash2 } from "lucide-react";

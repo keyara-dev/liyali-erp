@@ -37,7 +37,7 @@ export default async function UserManagementPage({ searchParams }: PageProps) {
   }
 
   // Verify admin role
-  if (session.user.role !== 'ADMIN' ) {
+  if (session.user.role !== 'admin' ) {
     redirect('/access-denied')
   }
 
@@ -80,7 +80,7 @@ export default async function UserManagementPage({ searchParams }: PageProps) {
               subtitle="Manage your team members and their account roles"
             />
             <div>
-              <CreateUserForm user={null} showTrigger role="ADMIN" />
+              <CreateUserForm user={null} showTrigger role="admin" />
             </div>
           </div>
         </div>

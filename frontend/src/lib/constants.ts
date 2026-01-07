@@ -187,6 +187,21 @@ export const QUERY_KEYS = {
   // Reports & Analytics
   REPORTS: "reports",
   ANALYTICS: "analytics",
+  
+  // Compliance
+  COMPLIANCE: {
+    ALL: "compliance-all",
+    BY_ID: "compliance-by-id",
+    TRACKING: "compliance-tracking",
+    REPORTS: "compliance-reports",
+  },
+
+  // Activity Logs
+  LOGS: {
+    ALL: "activity-logs-all",
+    BY_USER: "activity-logs-by-user",
+    BY_ACTION: "activity-logs-by-action",
+  },
 };
 
 // ANIMATION_VARIANTS

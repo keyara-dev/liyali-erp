@@ -14,12 +14,12 @@ type BadgeVariant =
 
 // Document Workflow Status
 export type DocumentStatus =
-  | "DRAFT"
-  | "SUBMITTED"
-  | "IN_REVIEW"
-  | "APPROVED"
-  | "REJECTED"
-  | "REVERSED";
+  | "draft"
+  | "submitted"
+  | "in_review"
+  | "approved"
+  | "rejected"
+  | "reversed";
 
 // Activity/Action Status
 export type ActivityAction =
@@ -35,20 +35,20 @@ export type ActivityAction =
 export type ExecutionStatus = "success" | "failed" | "pending";
 
 // Approval Status
-export type ApprovalStatus = "APPROVED" | "REJECTED" | "PENDING";
+export type ApprovalStatus = "approved" | "rejected" | "pending";
 
 // Compliance Status
 export type ComplianceStatus = "compliant" | "non-compliant" | "pending";
 
 // User Role
 export type UserRole =
-  | "REQUESTER"
-  | "DEPARTMENT_MANAGER"
-  | "FINANCE_OFFICER"
-  | "DIRECTOR"
-  | "CFO"
-  | "COMPLIANCE_OFFICER"
-  | "ADMIN";
+  | "requester"
+  | "department_manager"
+  | "finance_officer"
+  | "director"
+  | "cfo"
+  | "compliance_officer"
+  | "admin";
 
 // Service/System Health Status
 export type HealthStatus = "healthy" | "issues" | "down";
@@ -65,32 +65,32 @@ export const DOCUMENT_STATUS_CONFIG: Record<
     description?: string;
   }
 > = {
-  DRAFT: {
+  draft: {
     variant: "outline",
     label: "Draft",
     description: "Document is in draft status and can be edited",
   },
-  SUBMITTED: {
+  submitted: {
     variant: "info",
     label: "Submitted",
     description: "Document has been submitted for review",
   },
-  IN_REVIEW: {
+  in_review: {
     variant: "warning",
     label: "In Review",
     description: "Document is pending approval",
   },
-  APPROVED: {
+  approved: {
     variant: "success",
     label: "Approved",
     description: "Document has been approved",
   },
-  REJECTED: {
+  rejected: {
     variant: "destructive",
     label: "Rejected",
     description: "Document has been rejected",
   },
-  REVERSED: {
+  reversed: {
     variant: "secondary",
     label: "Reversed",
     description: "Document has been reversed",
@@ -174,15 +174,15 @@ export const APPROVAL_STATUS_CONFIG: Record<
     label: string;
   }
 > = {
-  APPROVED: {
+  approved: {
     variant: "success",
     label: "Approved",
   },
-  REJECTED: {
+  rejected: {
     variant: "destructive",
     label: "Rejected",
   },
-  PENDING: {
+  pending: {
     variant: "warning",
     label: "Pending",
   },
@@ -224,31 +224,31 @@ export const USER_ROLE_CONFIG: Record<
     label: string;
   }
 > = {
-  REQUESTER: {
+  requester: {
     variant: "outline",
     label: "Requester",
   },
-  DEPARTMENT_MANAGER: {
+  department_manager: {
     variant: "secondary",
     label: "Department Manager",
   },
-  FINANCE_OFFICER: {
+  finance_officer: {
     variant: "default",
     label: "Finance Officer",
   },
-  DIRECTOR: {
+  director: {
     variant: "default",
     label: "Director",
   },
-  CFO: {
+  cfo: {
     variant: "default",
     label: "CFO",
   },
-  COMPLIANCE_OFFICER: {
+  compliance_officer: {
     variant: "secondary",
     label: "Compliance Officer",
   },
-  ADMIN: {
+  admin: {
     variant: "destructive",
     label: "Admin",
   },

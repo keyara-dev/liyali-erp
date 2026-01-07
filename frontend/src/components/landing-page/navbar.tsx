@@ -3,6 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
+import Logo from '../base/logo';
+import { cn } from '@/lib/utils';
 
 const LiyaliLogo = () => (
     <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" className="shadow-lg shadow-blue-500/30 rounded-lg">
@@ -50,9 +52,9 @@ export const Navbar = ({isAuthenticated}: {isAuthenticated: boolean}) => {
     const getLinkClass = (sectionId: string) => {
         const baseClass = "text-sm font-medium transition-all duration-300 relative px-1 py-1 cursor-pointer";
         // Active: White text, visible blue dot
-        const activeClass = "text-white after:content-[''] after:absolute after:-bottom-1 after:left-1/2 after:-translate-x-1/2 after:w-1.5 after:h-1.5 after:bg-blue-500 after:rounded-full after:opacity-100 after:transition-all after:duration-300";
-        // Inactive: Slate text, invisible dot (grows on hover if you want, or just fades in)
-        const inactiveClass = "text-slate-300 hover:text-white after:content-[''] after:absolute after:-bottom-1 after:left-1/2 after:-translate-x-1/2 after:w-0 after:h-0 after:bg-blue-500 after:rounded-full after:opacity-0 hover:after:opacity-50 hover:after:w-1 hover:after:h-1";
+        const activeClass = "text-primary hover:text-primary/80 font-bold after:content-[''] after:absolute after:-bottom-1 after:left-1/2 after:-translate-x-1/2 after:w-1.5 after:h-1.5 after:bg-blue-500 after:rounded-full after:opacity-100 after:transition-all after:duration-300";
+        // Inactive: Primary text, invisible dot (grows on hover if you want, or just fades in)
+        const inactiveClass = "text-foreground/80 hover:text-primary after:content-[''] after:absolute after:-bottom-1 after:left-1/2 after:-translate-x-1/2 after:w-0 after:h-0 after:bg-blue-500 after:rounded-full after:opacity-0 hover:after:opacity-50 hover:after:w-1 hover:after:h-1";
         
         return `${baseClass} ${activeSection === sectionId ? activeClass : inactiveClass}`;
     };
@@ -63,7 +65,9 @@ export const Navbar = ({isAuthenticated}: {isAuthenticated: boolean}) => {
                 initial={{ y: -100, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
                 transition={{ duration: 0.6, ease: "easeOut" }}
-                className={`fixed top-4 left-4 right-4 md:left-1/2 md:-translate-x-1/2 md:w-auto md:min-w-[600px] md:max-w-5xl z-50 transition-all duration-300 rounded-full border border-slate-700/50 shadow-2xl ${scrolled ? 'bg-slate-900/90 backdrop-blur-md py-3' : 'bg-slate-900/80 backdrop-blur-sm py-4'}`}
+                className={cn(`fixed top-4 left-4 right-4 md:left-1/2 md:-translate-x-1/2 w-full container max-w-7xl z-50 transition-all duration-300 py-4`, {
+                    "bg-card/60 rounded-full backdrop-blur-sm backdrop-blur-md py-3 border border-border/50 shadow-2xl md:w-auto md:min-w-[600px] md:max-w-5xl transition-all duration-400 ": scrolled
+                })}
             >
                 <div className="px-6 md:px-8">
                     <div className="flex justify-between items-center gap-8">
@@ -73,23 +77,24 @@ export const Navbar = ({isAuthenticated}: {isAuthenticated: boolean}) => {
                             whileHover={{ scale: 1.05 }}
                             transition={{ type: "spring", stiffness: 400, damping: 10 }}
                         >
-                            <LiyaliLogo />
-                            <span className="text-xl font-bold text-white tracking-tight">Liyali</span>
+                            <Logo isFull href="/" width={scrolled ? 60 : 100}  height={24} classNames={{
+                                image: "max-h-9 2xl:max-h-10"
+                            }}/> 
                         </motion.div>
 
                         {/* Desktop Links - Centered */}
                         <div className="hidden md:flex items-center justify-center space-x-8 flex-1">
-                            <a href="#features" className={getLinkClass('features')}>Product</a>
-                            <a href="#how-it-works" className={getLinkClass('how-it-works')}>How it Works</a>
-                            <a href="#pricing" className={getLinkClass('pricing')}>Pricing</a>
-                            <a href="#about" className={getLinkClass('about')}>About</a>
+                            <Link href="#features" className={getLinkClass('features')}>Product</Link>
+                            <Link href="#how-it-works" className={getLinkClass('how-it-works')}>How it Works</Link>
+                            <Link href="#pricing" className={getLinkClass('pricing')}>Pricing</Link>
+                            <Link href="#about" className={getLinkClass('about')}>About</Link>
                         </div>
 
                         {/* CTA - Right */}
                         <div className="hidden md:flex items-center flex-shrink-0">
                             {<Link href={isAuthenticated ? "/home" :"/login"}>
                                 <motion.button 
-                                    className="bg-primary-600 hover:bg-primary-500 text-white px-6 py-2 rounded-full text-sm font-bold transition-all shadow-[0_0_20px_rgba(37,99,235,0.3)] hover:shadow-[0_0_25px_rgba(37,99,235,0.5)] border border-primary-500/50"
+                                    className="bg-primary-600 cursor-pointer hover:bg-primary-500 text-white px-6 py-2 rounded-full text-sm font-bold transition-all shadow-[0_0_20px_rgba(37,99,235,0.3)] hover:shadow-[0_0_25px_rgba(37,99,235,0.5)] border border-primary-500/50"
                                     whileHover={{ y: -2 }}
                                     whileTap={{ scale: 0.95 }}
                                 >

@@ -7,7 +7,7 @@ import {
   useRejectTask,
   useReassignTask,
 } from "@/hooks/use-approval-workflow";
-import { NotificationActionModal } from "@/components/notifications/notification-action-modal-v2";
+import { NotificationActionModal } from "@/components";
 import { ReassignmentModal } from "@/components/workflows/reassignment-modal";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -97,7 +97,7 @@ export function ApprovalActionPanel({
   const notification = {
     id: task.id,
     title: `Approve Document`,
-    message: `Document ${task.documentType} is pending your approval`,
+    message: `Document ${task.documentId} is pending your approval`,
     type: "TASK_ASSIGNED",
   } as any;
 
@@ -110,7 +110,7 @@ export function ApprovalActionPanel({
             Action Required
           </CardTitle>
           <CardDescription>
-            {task.documentType} awaits your decision
+            {task.documentType || 'Document'} awaits your decision
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -129,7 +129,7 @@ export function ApprovalActionPanel({
               <div>
                 <h4 className="font-semibold text-muted-foreground">Document</h4>
                 <p className="font-mono">
-                  {task.documentType}
+                  {task.documentType || 'Document'}
                 </p>
               </div>
               <div>

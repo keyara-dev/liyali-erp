@@ -5,7 +5,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Edit2, Trash2, GripVertical } from 'lucide-react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import type { WorkflowStage } from '../create/_components/create-workflow-client'
+import type { WorkflowStage } from '@/app/_actions/workflows'
 
 interface StageItemProps {
   stage: WorkflowStage

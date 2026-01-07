@@ -1,12 +1,11 @@
 "use client";
 
-import { fetchUsers, getUserById } from "@/app/_actions/users";
 import {
   createNewUser,
   getUsers,
+  getUserById,
   updateUser,
 } from "@/app/_actions/user-actions";
-import { getUserById as getUserByIdOld } from "@/app/_actions/user-management";
 import { QUERY_KEYS } from "@/lib/constants";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
@@ -33,7 +32,12 @@ export function useUsersQuery(
   return useQuery({
     queryKey: ['users', page, limit, filters],
     queryFn: async () => {
-      const response = await fetchUsers(page, limit, filters);
+      const response = await getUsers({
+        page,
+        page_size: limit,
+        departmentId: filters?.department,
+        role: filters?.role,
+      });
       if (!response.success) {
         throw new Error(response.message);
       }
@@ -134,7 +138,7 @@ export const _useUsers = (userId: string, params: any) => {
   return useQuery({
     queryKey: [QUERY_KEYS.USERS, userId, params],
     queryFn: userId
-      ? async () => await getUserByIdOld(userId)
+      ? async () => await getUserById(userId)
       : async () => await getUsers(params),
     staleTime: 5 * 60 * 1000, // Cache for 5 minutes
   });

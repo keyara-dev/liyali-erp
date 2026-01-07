@@ -9,7 +9,7 @@ import {
   RejectRequisitionRequest,
   RequisitionStats,
 } from '@/types/requisition';
-import { APIResponse } from '@/types';
+import { APIResponse, PurchaseOrder } from '@/types';
 import {
   handleError,
   successResponse,

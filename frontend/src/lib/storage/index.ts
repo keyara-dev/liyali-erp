@@ -54,5 +54,4 @@ export {
   getDocumentsByCreator,
 } from './hooks';
 
-// Seed data (for testing/development)
-export { createSeedPurchaseOrders, createSeedRequisitions, createSeedPaymentVouchers, createSeedGoodsReceivedNotes } from './seed-data';
+// Note: Seed data removed - system is now fully database-driven

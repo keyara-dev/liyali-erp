@@ -194,13 +194,13 @@ export function useQueueStats() {
  * Execute user operations against the API
  */
 async function executeUserOperation(operation: any) {
-  const { createUser, updateUser, deactivateUser } = await import('@/app/_actions/users');
+  const { createNewUser, updateUser, deactivateUser } = await import('@/app/_actions/user-actions');
   
   switch (operation.type) {
     case 'CREATE':
-      return await createUser(operation.data);
+      return await createNewUser(operation.data);
     case 'UPDATE':
-      return await updateUser(operation.data);
+      return await updateUser(operation.data.id, operation.data);
     case 'DELETE':
       return await deactivateUser(operation.data.userId);
     default:

@@ -5,7 +5,16 @@
  * Uses in-memory Maps for MVP (ready for database migration to PostgreSQL/MongoDB).
  */
 
-import { Notification, NotificationPreferences, NotificationType } from '@/types';
+import { ActivityNotification as Notification } from '@/types/activity';
+
+// Define missing types for backward compatibility
+interface NotificationPreferences {
+  email: boolean;
+  push: boolean;
+  sms: boolean;
+}
+
+type NotificationType = 'approval_required' | 'approved' | 'rejected' | 'assigned';
 import { v4 as uuid } from 'uuid';
 
 /**
@@ -23,7 +32,7 @@ const preferencesStore = new Map<string, NotificationPreferences>();
 /**
  * Default notification preferences for new users
  */
-function getDefaultPreferences(userId: string): NotificationPreferences {
+function getDefaultPreferences(userId: string): any {
   return {
     userId,
     emailNotifications: false,
@@ -103,7 +112,7 @@ export async function getUserNotifications(
 }> {
   // Filter notifications for this user
   let userNotifications = Array.from(notificationStore.values()).filter(
-    (n) => n.userId === userId
+    (n) => n.recipientId === userId || (n as any).userId === userId
   );
 
   // Apply optional filters
@@ -112,7 +121,7 @@ export async function getUserNotifications(
       userNotifications = userNotifications.filter((n) => n.type === filters.type);
     }
     if (filters.isRead !== undefined) {
-      userNotifications = userNotifications.filter((n) => n.isRead === filters.isRead);
+      userNotifications = userNotifications.filter((n) => (n as any).isRead === filters.isRead);
     }
     if (filters.startDate) {
       userNotifications = userNotifications.filter((n) => n.createdAt >= filters.startDate!);
@@ -147,7 +156,7 @@ export async function getUserNotifications(
  */
 export async function getUserUnreadCount(userId: string): Promise<number> {
   return Array.from(notificationStore.values()).filter(
-    (n) => n.userId === userId && !n.isRead
+    (n) => (n.recipientId === userId || (n as any).userId === userId) && !(n as any).isRead
   ).length;
 }
 
@@ -164,9 +173,9 @@ export async function markNotificationAsRead(
 
   const updated: Notification = {
     ...notification,
-    isRead: true,
-    readAt: new Date(),
-  };
+    ...(notification as any).isRead !== undefined ? {} : { isRead: true },
+    ...(notification as any).readAt !== undefined ? {} : { readAt: new Date() },
+  } as Notification;
 
   notificationStore.set(notificationId, updated);
   return updated;
@@ -182,12 +191,16 @@ export async function markAllNotificationsAsRead(userId: string): Promise<number
   const now = new Date();
 
   for (const [id, notification] of notificationStore.entries()) {
-    if (notification.userId === userId && !notification.isRead) {
-      notificationStore.set(id, {
+    const isUserNotification = notification.recipientId === userId || (notification as any).userId === userId;
+    const isUnread = !(notification as any).isRead;
+    
+    if (isUserNotification && isUnread) {
+      const updated = {
         ...notification,
-        isRead: true,
-        readAt: now,
-      });
+        ...(notification as any).isRead !== undefined ? { isRead: true } : {},
+        ...(notification as any).readAt !== undefined ? { readAt: now } : {},
+      };
+      notificationStore.set(id, updated as Notification);
       count++;
     }
   }
@@ -280,22 +293,22 @@ export async function saveNotificationPreferences(
  */
 export async function getNotificationsByType(
   userId: string
-): Promise<Record<NotificationType, Notification[]>> {
+): Promise<Record<string, Notification[]>> {
   const userNotifications = Array.from(notificationStore.values()).filter(
-    (n) => n.userId === userId
+    (n) => n.recipientId === userId || (n as any).userId === userId
   );
 
-  const grouped: Record<NotificationType, Notification[]> = {
-    TASK_ASSIGNED: [],
-    TASK_REASSIGNED: [],
-    TASK_APPROVED: [],
-    TASK_REJECTED: [],
-    WORKFLOW_COMPLETE: [],
-    APPROVAL_OVERDUE: [],
-    COMMENT_ADDED: [],
+  const grouped: Record<string, Notification[]> = {
+    approval_required: [],
+    approved: [],
+    rejected: [],
+    assigned: [],
   };
 
   for (const notification of userNotifications) {
+    if (!grouped[notification.type]) {
+      grouped[notification.type] = [];
+    }
     grouped[notification.type].push(notification);
   }
 
@@ -313,7 +326,7 @@ export async function getRecentNotifications(
   limit: number = 10
 ): Promise<Notification[]> {
   const userNotifications = Array.from(notificationStore.values())
-    .filter((n) => n.userId === userId)
+    .filter((n) => n.recipientId === userId || (n as any).userId === userId)
     .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
     .slice(0, limit);
 
@@ -327,7 +340,7 @@ export async function getRecentNotifications(
  */
 export async function getUnreadNotifications(userId: string): Promise<Notification[]> {
   return Array.from(notificationStore.values())
-    .filter((n) => n.userId === userId && !n.isRead)
+    .filter((n) => (n.recipientId === userId || (n as any).userId === userId) && !(n as any).isRead)
     .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 }
 
@@ -344,9 +357,9 @@ export async function markNotificationActionTaken(
 
   const updated: Notification = {
     ...notification,
-    actionTaken: true,
-    actionTakenAt: new Date(),
-  };
+    ...((notification as any).actionTaken !== undefined ? {} : { actionTaken: true }),
+    ...((notification as any).actionTakenAt !== undefined ? {} : { actionTakenAt: new Date() }),
+  } as Notification;
 
   notificationStore.set(notificationId, updated);
   return updated;
@@ -359,10 +372,18 @@ export async function seedSampleNotifications(): Promise<void> {
   const now = new Date();
   const sampleNotifications: Omit<Notification, 'id'>[] = [
     {
+      organizationId: 'org-001',
+      recipientId: 'user-001',
+      type: 'approval_required',
+      documentId: 'req-001',
+      documentType: 'requisition',
+      subject: 'New approval task',
+      body: 'Requisition #REQ-2024-001 needs your approval',
+      sent: false,
+      createdAt: new Date(now.getTime() - 5 * 60000),
+      updatedAt: new Date(now.getTime() - 5 * 60000),
+      // Extended fields for UI compatibility
       userId: 'user-001',
-      type: 'TASK_ASSIGNED',
-      title: 'New approval task',
-      message: 'Requisition #REQ-2024-001 needs your approval',
       entityId: 'req-001',
       entityType: 'REQUISITION',
       entityNumber: 'REQ-2024-001',
@@ -370,19 +391,27 @@ export async function seedSampleNotifications(): Promise<void> {
       relatedUserName: 'John Manager',
       isRead: false,
       actionTaken: false,
+      importance: 'HIGH',
       quickAction: {
         type: 'REVIEW_AND_APPROVE',
         label: 'Review Now',
         params: { entityId: 'req-001' },
       },
-      createdAt: new Date(now.getTime() - 5 * 60000),
-      importance: 'HIGH',
     },
     {
+      organizationId: 'org-001',
+      recipientId: 'user-001',
+      type: 'approved',
+      documentId: 'req-001',
+      documentType: 'requisition',
+      subject: 'Task approved',
+      body: 'Your Requisition #REQ-2024-001 was approved by John Manager',
+      sent: true,
+      sentAt: new Date(now.getTime() - 4 * 60000),
+      createdAt: new Date(now.getTime() - 10 * 60000),
+      updatedAt: new Date(now.getTime() - 4 * 60000),
+      // Extended fields for UI compatibility
       userId: 'user-001',
-      type: 'TASK_APPROVED',
-      title: 'Task approved',
-      message: 'Your Requisition #REQ-2024-001 was approved by John Manager',
       entityId: 'req-001',
       entityType: 'REQUISITION',
       entityNumber: 'REQ-2024-001',
@@ -391,19 +420,26 @@ export async function seedSampleNotifications(): Promise<void> {
       isRead: true,
       readAt: new Date(now.getTime() - 4 * 60000),
       actionTaken: false,
+      importance: 'MEDIUM',
       quickAction: {
         type: 'VIEW_ONLY',
         label: 'View',
         params: { entityId: 'req-001' },
       },
-      createdAt: new Date(now.getTime() - 10 * 60000),
-      importance: 'MEDIUM',
     },
     {
+      organizationId: 'org-001',
+      recipientId: 'user-003',
+      type: 'assigned',
+      documentId: 'req-002',
+      documentType: 'requisition',
+      subject: 'Task reassigned to you',
+      body: 'You were assigned: Requisition #REQ-2024-002 (reassigned by Admin)',
+      sent: false,
+      createdAt: new Date(now.getTime() - 15 * 60000),
+      updatedAt: new Date(now.getTime() - 15 * 60000),
+      // Extended fields for UI compatibility
       userId: 'user-003',
-      type: 'TASK_REASSIGNED',
-      title: 'Task reassigned to you',
-      message: 'You were assigned: Requisition #REQ-2024-002 (reassigned by Admin)',
       entityId: 'req-002',
       entityType: 'REQUISITION',
       entityNumber: 'REQ-2024-002',
@@ -412,13 +448,12 @@ export async function seedSampleNotifications(): Promise<void> {
       isRead: false,
       actionTaken: false,
       reassignmentReason: 'Original approver out sick',
+      importance: 'HIGH',
       quickAction: {
         type: 'REVIEW_AND_APPROVE',
         label: 'Review Now',
         params: { entityId: 'req-002' },
       },
-      createdAt: new Date(now.getTime() - 15 * 60000),
-      importance: 'HIGH',
     },
   ];
 

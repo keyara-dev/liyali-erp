@@ -10,14 +10,14 @@ import {
   rejectApprovalTask,
   reassignApprovalTask,
   getApprovalHistory,
-} from '@/app/_actions/approval-workflow';
+  getPendingApprovalCount,
+} from '@/app/_actions/workflow-approval-actions';
 import {
   ApprovalTask,
-  ApprovalHistory,
   ApproveTaskRequest,
   RejectTaskRequest,
   ReassignTaskRequest,
-} from '@/types/workflow';
+} from '@/types';
 
 /**
  * Fetch approval tasks with pagination and filtering
@@ -90,11 +90,8 @@ export const useApproveTask = (taskId: string, onSuccess?: () => void) => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (data: Omit<ApproveTaskRequest, 'taskId'>) => {
-      const response = await approveApprovalTask({
-        taskId,
-        ...data,
-      });
+    mutationFn: async (data: ApproveTaskRequest) => {
+      const response = await approveApprovalTask(taskId, data);
       if (!response.success) throw new Error(response.message);
       return response;
     },
@@ -146,11 +143,8 @@ export const useRejectTask = (taskId: string, onSuccess?: () => void) => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (data: Omit<RejectTaskRequest, 'taskId'>) => {
-      const response = await rejectApprovalTask({
-        taskId,
-        ...data,
-      });
+    mutationFn: async (data: RejectTaskRequest) => {
+      const response = await rejectApprovalTask(taskId, data);
       if (!response.success) throw new Error(response.message);
       return response;
     },
@@ -199,11 +193,8 @@ export const useReassignTask = (taskId: string, onSuccess?: () => void) => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (data: Omit<ReassignTaskRequest, 'taskId'>) => {
-      const response = await reassignApprovalTask({
-        taskId,
-        ...data,
-      });
+    mutationFn: async (data: ReassignTaskRequest) => {
+      const response = await reassignApprovalTask(taskId, data);
       if (!response.success) throw new Error(response.message);
       return response;
     },
@@ -265,7 +256,7 @@ export const usePendingApprovalCount = () =>
       );
       if (!response.success) throw new Error(response.message);
       // Return total count from pagination metadata
-      return response.pagination?.total || 0;
+      return response.data?.total || 0;
     },
     staleTime: 2 * 60 * 1000, // 2 minutes
   });

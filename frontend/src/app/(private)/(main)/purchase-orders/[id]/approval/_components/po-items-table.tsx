@@ -10,15 +10,7 @@ import {
 } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
-
-export interface POItem {
-  id: string
-  itemCode: string
-  description: string
-  quantity: number
-  unitPrice: number
-  totalPrice: number
-}
+import type { POItem } from '@/types/purchase-order'
 
 interface POItemsTableProps {
   items: POItem[]
@@ -48,23 +40,23 @@ export function POItemsTable({
         </TableHeader>
         <TableBody>
           {items.map((item) => (
-            <TableRow key={item.id}>
+            <TableRow key={item.id || item.description}>
               <TableCell>
                 <Checkbox
-                  checked={selectedItems.includes(item.id)}
+                  checked={selectedItems?.includes(item.id || '') || false}
                   onCheckedChange={(checked) =>
-                    onSelectItem?.(item.id, checked as boolean)
+                    onSelectItem?.(item.id || '', checked as boolean)
                   }
                 />
               </TableCell>
-              <TableCell className="font-medium">{item.itemCode}</TableCell>
+              <TableCell className="font-medium">{item.itemCode || item.itemNumber || 'N/A'}</TableCell>
               <TableCell>{item.description}</TableCell>
               <TableCell className="text-right">{item.quantity}</TableCell>
               <TableCell className="text-right">
                 ${item.unitPrice.toFixed(2)}
               </TableCell>
               <TableCell className="text-right font-semibold">
-                ${item.totalPrice.toFixed(2)}
+                ${(item.totalPrice || item.amount || 0).toFixed(2)}
               </TableCell>
             </TableRow>
           ))}

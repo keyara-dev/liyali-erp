@@ -113,19 +113,19 @@ export function POApprovalClient({
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Subtotal:</span>
                   <span className="font-semibold">
-                    K{po.subtotal.toLocaleString("en-ZM")}
+                    K{(po.subtotal || po.totalAmount || 0).toLocaleString("en-ZM")}
                   </span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Tax (10%):</span>
                   <span className="font-semibold">
-                    K{po.tax.toLocaleString("en-ZM")}
+                    K{(po.tax || 0).toLocaleString("en-ZM")}
                   </span>
                 </div>
                 <div className="border-t pt-2 flex justify-between">
                   <span className="font-semibold">Total:</span>
                   <span className="text-lg font-bold text-green-600">
-                    K{po.total.toLocaleString("en-ZM")}
+                    K{(po.total || po.totalAmount || 0).toLocaleString("en-ZM")}
                   </span>
                 </div>
               </div>

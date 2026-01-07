@@ -8,7 +8,7 @@ import { ArrowUpDown, Eye, Pencil, CheckCircle2, XCircle, MoreVertical } from 'l
 import { StatusBadge } from '@/components/status-badge';
 import { Button } from '@/components/ui/button';
 import { DataTable } from '@/components/ui/data-table';
-import { WorkflowDocument } from '@/types/workflow';
+import { Requisition } from '@/types/requisition';
 import { useRequisitions } from '@/hooks/use-requisition-queries';
 import type { ActionButton } from '@/components/ui/action-buttons';
 import {
@@ -24,9 +24,9 @@ interface RequisitionsTableProps {
   refreshTrigger: number;
 }
 
-const columns: ColumnDef<WorkflowDocument>[] = [
+const columns: ColumnDef<Requisition>[] = [
   {
-    accessorKey: 'documentNumber',
+    accessorKey: 'id',
     header: ({ column }) => (
       <Button
         variant="ghost"
@@ -38,21 +38,21 @@ const columns: ColumnDef<WorkflowDocument>[] = [
       </Button>
     ),
     cell: ({ row }) => (
-      <div className="font-semibold">{row.getValue('documentNumber')}</div>
+      <div className="font-semibold">{row.original.id}</div>
     ),
   },
   {
-    accessorKey: 'metadata.requestedFor',
-    header: 'Requested For',
+    accessorKey: 'requesterName',
+    header: 'Requested By',
     cell: ({ row }) => (
-      <div>{(row.original.metadata as any)?.requestedFor || '-'}</div>
+      <div>{row.original.requesterName || '-'}</div>
     ),
   },
   {
-    accessorKey: 'metadata.department',
+    accessorKey: 'department',
     header: 'Department',
     cell: ({ row }) => (
-      <div>{(row.original.metadata as any)?.department || '-'}</div>
+      <div>{row.original.department || '-'}</div>
     ),
   },
   {
@@ -68,12 +68,11 @@ const columns: ColumnDef<WorkflowDocument>[] = [
       </Button>
     ),
     cell: ({ row }) => {
-      const amount =
-        row.original.metadata?.totalAmount || row.original.metadata?.amount;
+      const amount = row.original.totalAmount;
       return (
         <div className="font-medium">
           {amount
-            ? `ZMW ${amount.toLocaleString('en-ZM', {
+            ? `${row.original.currency} ${amount.toLocaleString('en-ZM', {
                 minimumFractionDigits: 2,
                 maximumFractionDigits: 2,
               })}`
@@ -117,7 +116,7 @@ function ReqOptionsMenu({
   req,
   router,
 }: {
-  req: WorkflowDocument;
+  req: Requisition;
   router: ReturnType<typeof useRouter>;
 }) {
   return (
@@ -128,7 +127,7 @@ function ReqOptionsMenu({
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        {req.status === 'SUBMITTED' && (
+        {req.status === 'submitted' && (
           <>
             <DropdownMenuItem onClick={() => console.log('Approve requisition:', req.id)}>
               <CheckCircle2 className="mr-2 h-4 w-4 text-green-600" />
@@ -170,7 +169,7 @@ export function RequisitionsTable({
   }, [requisitions]);
 
   const getActions = useCallback(
-    (req: WorkflowDocument): ActionButton[] => {
+    (req: Requisition): ActionButton[] => {
       return [
         {
           icon: <Eye className="h-3.5 w-3.5" />,
@@ -193,10 +192,10 @@ export function RequisitionsTable({
     <DataTable
       columns={columns}
       data={data}
-      searchKey="documentNumber"
+      searchKey="id"
       searchPlaceholder="Filter by document number..."
       actions={getActions}
-      renderRowActions={(req: WorkflowDocument) => (
+      renderRowActions={(req: Requisition) => (
         <ReqOptionsMenu req={req} router={router} />
       )}
     />

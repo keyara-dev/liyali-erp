@@ -19,7 +19,7 @@ export default async function MonitoringPage() {
   }
 
   // Verify admin role
-  if (session.user.role !== 'ADMIN' && session.user.role !== 'SUPERADMIN') {
+  if (session.user.role !== 'admin') {
     redirect('/unauthorized')
   }
 

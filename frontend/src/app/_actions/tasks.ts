@@ -150,7 +150,7 @@ export const getTasksForUser = cache(async (
     return {
       success: false,
       message: error.message || 'Failed to retrieve tasks',
-      data: null,
+      data: undefined,
       status: 500,
       statusText: 'ERROR'
     }
@@ -168,7 +168,7 @@ export async function getTaskStats(userId: string): Promise<APIResponse<TaskStat
       return {
         success: false,
         message: 'Failed to calculate task stats',
-        data: null,
+        data: undefined,
         status: 500,
         statusText: 'ERROR'
       }
@@ -215,7 +215,7 @@ export async function getTaskStats(userId: string): Promise<APIResponse<TaskStat
     return {
       success: false,
       message: error.message || 'Failed to calculate task stats',
-      data: null,
+      data: undefined,
       status: 500,
       statusText: 'ERROR'
     }
@@ -234,7 +234,7 @@ export async function getTaskById(taskId: string): Promise<APIResponse<Task>> {
       return {
         success: false,
         message: 'Task not found',
-        data: null,
+        data: undefined,
         status: 404,
         statusText: 'NOT_FOUND'
       }
@@ -251,7 +251,7 @@ export async function getTaskById(taskId: string): Promise<APIResponse<Task>> {
     return {
       success: false,
       message: error.message || 'Failed to retrieve task',
-      data: null,
+      data: undefined,
       status: 500,
       statusText: 'ERROR'
     }
@@ -272,7 +272,7 @@ export async function completeTask(
       return {
         success: false,
         message: 'Task not found',
-        data: null,
+        data: undefined,
         status: 404,
         statusText: 'NOT_FOUND'
       }
@@ -296,7 +296,7 @@ export async function completeTask(
     return {
       success: false,
       message: error.message || 'Failed to complete task',
-      data: null,
+      data: undefined,
       status: 500,
       statusText: 'ERROR'
     }
@@ -317,7 +317,7 @@ export async function startTask(
       return {
         success: false,
         message: 'Task not found',
-        data: null,
+        data: undefined,
         status: 404,
         statusText: 'NOT_FOUND'
       }
@@ -339,7 +339,7 @@ export async function startTask(
     return {
       success: false,
       message: error.message || 'Failed to start task',
-      data: null,
+      data: undefined,
       status: 500,
       statusText: 'ERROR'
     }

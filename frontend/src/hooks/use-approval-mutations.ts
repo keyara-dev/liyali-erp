@@ -8,12 +8,12 @@
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-  approveTask,
-  rejectTask,
-  reassignTask,
+  approveApprovalTask,
+  rejectApprovalTask,
+  reassignApprovalTask,
   validateSignature,
   getAvailableApprovers,
-} from '@/app/_actions/approval-actions';
+} from '@/app/_actions/workflow-approval-actions';
 import { QUERY_KEYS } from '@/lib/constants';
 
 // ============================================================================
@@ -49,17 +49,16 @@ export const useApproveTaskMutation = () => {
     mutationFn: async (input: ApproveTaskInput) => {
       // Validate signature first
       const sigValidation = await validateSignature(input.signature);
-      if (!sigValidation.valid) {
-        throw new Error(sigValidation.message);
+      if (!sigValidation.success || !sigValidation.data?.valid) {
+        throw new Error(sigValidation.data?.message || 'Invalid signature');
       }
 
       // Call server action
-      return await approveTask(
-        input.taskId,
-        input.approverId,
-        input.signature,
-        input.remarks
-      );
+      return await approveApprovalTask(input.taskId, {
+        comments: input.remarks,
+        signature: input.signature,
+        stageNumber: 0,
+      });
     },
 
     onSuccess: (data, variables) => {
@@ -88,7 +87,7 @@ export const useApproveTaskMutation = () => {
       }
     },
 
-    onError: (error) => {
+    onError: (error: any) => {
       console.error('❌ Approval failed:', error.message);
     },
   });
@@ -127,17 +126,17 @@ export const useRejectTaskMutation = () => {
     mutationFn: async (input: RejectTaskInput) => {
       // Validate signature first
       const sigValidation = await validateSignature(input.signature);
-      if (!sigValidation.valid) {
-        throw new Error(sigValidation.message);
+      if (!sigValidation.success || !sigValidation.data?.valid) {
+        throw new Error(sigValidation.data?.message || 'Invalid signature');
       }
 
       // Call server action
-      return await rejectTask(
-        input.taskId,
-        input.rejectorId,
-        input.signature,
-        input.remarks
-      );
+      return await rejectApprovalTask(input.taskId, {
+        remarks: input.remarks,
+        comments: input.remarks,
+        signature: input.signature,
+        returnTo: 'ORIGINAL_SUBMITTER',
+      });
     },
 
     onSuccess: (data, variables) => {
@@ -203,13 +202,10 @@ export const useReassignTaskMutation = () => {
   return useMutation({
     mutationFn: async (input: ReassignTaskInput) => {
       // Call server action
-      return await reassignTask(
-        input.taskId,
-        input.reassignedBy,
-        input.newApproverId,
-        input.newApproverName,
-        input.reason
-      );
+      return await reassignApprovalTask(input.taskId, {
+        newApproverId: input.newApproverId,
+        reason: input.reason,
+      });
     },
 
     onSuccess: (data, variables) => {
@@ -279,8 +275,8 @@ export const useValidateSignatureMutation = () => {
  */
 export const useGetAvailableApproversMutation = () => {
   return useMutation({
-    mutationFn: async (taskId: string) => {
-      return await getAvailableApprovers(taskId);
+    mutationFn: async ({ documentType, stage }: { documentType: string; stage?: number }) => {
+      return await getAvailableApprovers(documentType, stage);
     },
 
     onError: (error) => {

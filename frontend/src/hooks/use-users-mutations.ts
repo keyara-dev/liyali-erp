@@ -2,7 +2,7 @@
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { createUser, updateUser, deactivateUser, CreateUserRequest, UpdateUserRequest } from '@/app/_actions/users';
+import { createNewUser, updateUser, deactivateUser, CreateUserRequest, UpdateUserRequest } from '@/app/_actions/user-actions';
 import { handleOfflineMutation, isOfflineResult } from '@/lib/offline-mutation-helper';
 
 /**
@@ -15,7 +15,7 @@ export function useCreateUserMutation() {
     mutationFn: async (data: CreateUserRequest) => {
       return await handleOfflineMutation(
         async () => {
-          const response = await createUser(data);
+          const response = await createNewUser(data);
           if (!response.success) {
             throw new Error(response.message);
           }
@@ -62,7 +62,7 @@ export function useUpdateUserMutation() {
     mutationFn: async (data: UpdateUserRequest) => {
       return await handleOfflineMutation(
         async () => {
-          const response = await updateUser(data);
+          const response = await updateUser(data.id, data);
           if (!response.success) {
             throw new Error(response.message);
           }

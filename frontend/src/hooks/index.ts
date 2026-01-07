@@ -10,7 +10,7 @@ export * from './use-budget-storage';
 
 // Workflow hooks
 export * from './use-workflows';
-export * from './use-workflow-queries';
+// Note: use-workflow-queries removed to avoid duplicate exports
 
 // GRN hooks
 export * from './use-grn-queries';

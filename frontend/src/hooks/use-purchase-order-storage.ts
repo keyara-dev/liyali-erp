@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { PurchaseOrder } from '@/types/workflow';
+import { PurchaseOrder } from '@/types/purchase-order';
 import { WorkflowDocument } from '@/types/workflow';
 import { QUERY_KEYS } from '@/lib/constants';
 

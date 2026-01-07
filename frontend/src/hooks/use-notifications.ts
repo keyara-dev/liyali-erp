@@ -9,17 +9,17 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-  Notification,
-  NotificationPreferences,
-  NotificationType,
-  GetNotificationsResponse,
-  CreateNotificationRequest,
-  MarkNotificationReadRequest,
-  MarkAllNotificationsReadRequest,
-  DeleteNotificationRequest,
-  GetUnreadCountRequest,
-  GetNotificationPreferencesRequest,
-  UpdateNotificationPreferencesRequest,
+  NotificationInterface as Notification,
+  NotificationPrefs as NotificationPreferences,
+  NotificationTypeEnum as NotificationType,
+  GetNotificationsRes as GetNotificationsResponse,
+  CreateNotificationReq as CreateNotificationRequest,
+  MarkNotificationReadReq as MarkNotificationReadRequest,
+  MarkAllNotificationsReadReq as MarkAllNotificationsReadRequest,
+  DeleteNotificationReq as DeleteNotificationRequest,
+  GetUnreadCountReq as GetUnreadCountRequest,
+  GetNotificationPreferencesReq as GetNotificationPreferencesRequest,
+  UpdateNotificationPreferencesReq as UpdateNotificationPreferencesRequest,
 } from '@/types';
 import { QUERY_KEYS } from '@/lib/constants';
 

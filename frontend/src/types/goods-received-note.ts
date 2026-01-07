@@ -1,0 +1,104 @@
+/**
+ * Goods Received Note (GRN) Types
+ * Aligned with backend models and database schema
+ */
+
+// Import shared types from core
+import type { ItemCondition, QualityIssueType, QualityIssueSeverity } from './core';
+
+// ============================================================================
+// CORE GRN TYPES
+// ============================================================================
+
+export interface GRNItem {
+  description: string;
+  quantityOrdered: number;
+  quantityReceived: number;
+  variance: number;
+  condition: string; // good, damaged, missing
+  notes?: string;
+}
+
+export interface QualityIssue {
+  itemDescription: string;
+  issueType: string; // damaged, missing, wrong_item, quality_issue
+  description: string;
+  severity: string; // low, medium, high
+}
+
+export interface GoodsReceivedNote {
+  // Core fields
+  id: string;
+  organizationId: string;
+  grnNumber: string;
+  poNumber: string;
+  status: string; // draft, pending, approved, rejected, completed, cancelled
+  receivedDate: Date;
+  receivedBy: string;
+  items: GRNItem[];
+  qualityIssues: QualityIssue[];
+  approvalStage: number;
+  approvalHistory: any[];
+  createdAt: Date;
+  updatedAt: Date;
+  
+  // Business requirement fields
+  createdBy: string;
+  ownerId: string;                 // Same as createdBy
+  warehouseLocation: string;
+  notes: string;
+  currentStage: number;            // Same as approvalStage
+  stageName: string;
+  approvedBy: string;
+  automationUsed?: boolean;        // For automation tracking
+  autoCreatedPV?: any;             // Auto-created payment voucher
+  
+  // UI compatibility fields
+  documentNumber?: string;
+  actionHistory?: any[];
+  metadata?: Record<string, any>;
+  type?: string;
+  createdByUser?: any;
+}
+
+// ============================================================================
+// REQUEST TYPES
+// ============================================================================
+
+export interface CreateGRNRequest {
+  poNumber: string;
+  items: GRNItem[];
+  receivedBy: string;
+  warehouseLocation: string;
+  notes: string;
+  createdBy: string;
+}
+
+export interface UpdateGRNRequest {
+  grnId: string;
+  items?: GRNItem[];
+  receivedBy?: string;
+  qualityIssues?: QualityIssue[];
+  warehouseLocation?: string;
+  notes?: string;
+}
+
+// ============================================================================
+// STATISTICS TYPES
+// ============================================================================
+
+export interface GRNStats {
+  total: number;
+  draft: number;
+  pending: number;
+  approved: number;
+  thisMonth: number;
+}
+
+// ============================================================================
+// TYPE ALIASES
+// ============================================================================
+
+export type GRNStatus = "draft"| "pending" | "approved" | "rejected" | "paid" | "completed" | "cancelled";
+// Re-export shared types from core
+export type { ItemCondition, QualityIssueType, QualityIssueSeverity } from './core';

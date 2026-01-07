@@ -56,9 +56,14 @@ export function TasksTable({
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({})
   const [pagination, setPagination] = React.useState<Pagination>({
     page: 1,
+    limit: 10,
+    total: 0,
+    totalPages: 1,
+    hasNext: false,
+    hasPrev: false,
     page_size: 10,
-    total_pages: 1,
     totalCount: 0,
+    total_pages: 1,
     has_next: false,
     has_prev: false,
   })
@@ -198,7 +203,7 @@ export function TasksTable({
             <Eye className="h-4 w-4 mr-1" />
             View
           </Button>
-          {row.original.status === 'PENDING' && (
+          {row.original.status === 'pending' && (
             <Button
               size="sm"
               onClick={() => {

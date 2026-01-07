@@ -19,6 +19,11 @@ type LogoProps = {
   isWhite?: boolean;
   isDark?: boolean;
   isFull?: boolean;
+  classNames?: {
+    link?: string;
+    container?: string;
+    image?: string;
+  };
 };
 
 function Logo({
@@ -29,6 +34,7 @@ function Logo({
   isDark = false,
   isFull = true,
   className = "",
+  classNames,
   isIcon = false,
 }: LogoProps) {
   const { theme } = useTheme();
@@ -69,19 +75,19 @@ function Logo({
   // RENDERER
   if (isIcon) {
     return (
-      <Link href={href}>
+      <Link href={href} className={classNames?.link}>
         <div
           className={cn(
             `aspect-square flex justify-center w-full max-h-12 items-center min-w-fit`,
             className,
             {
               "max-w-12 mx-auto max-h-12 min-h-12 ": isIcon,
-            }
+            },classNames?.container
           )}
         >
           <Image
             alt={alt || "logo"}
-            className="object-contain"
+            className={cn("object-contain",classNames?.image )}
             height={50}
             src={logoUrl}
             width={50}
@@ -91,11 +97,11 @@ function Logo({
     );
   } else {
     return (
-      <Link href={href}>
-        <div className={cn(`w-full min-w-fit items-center`, className)}>
+      <Link href={href} className={classNames?.link}>
+        <div className={cn(`w-full min-w-fit items-center`, className, classNames?.container)}>
           <Image
             alt={alt || "logo"}
-            className="object-contain transition-all my-auto min-h-8 duration-300 ease-in-out"
+            className={cn("object-contain transition-all my-auto min-h-8 duration-300 ease-in-out", classNames?.image)}
             height={60}
             src={src || logoUrl}
             width={160}

@@ -30,7 +30,7 @@ import {
 import { AlertCircle, Check, Plus, ClipboardListIcon } from 'lucide-react'
 import Link from 'next/link'
 import { PageHeader } from '@/components/base/page-header'
-import { usePurchaseOrders } from '@/hooks/use-purchase-orders-queries'
+import { usePurchaseOrders } from '@/hooks/use-purchase-order-queries'
 import { useSavePaymentVoucher } from '@/hooks/use-payment-voucher-queries'
 import { CreatePaymentVoucherRequest } from '@/types/payment-voucher'
 import { PurchaseOrder } from '@/types/purchase-order'
@@ -44,7 +44,7 @@ interface PVCreateClientProps {
 
 export function PVCreateClient({ userId, userName, userRole }: PVCreateClientProps) {
   const router = useRouter()
-  const { data: purchaseOrders, isLoading: isLoadingPOs } = usePurchaseOrders(1, 100)
+  const { data: purchaseOrders, isLoading: isLoadingPOs } = usePurchaseOrders()
   const savePVMutation = useSavePaymentVoucher(() => {
     router.push('/payment-vouchers')
   })
@@ -53,7 +53,7 @@ export function PVCreateClient({ userId, userName, userRole }: PVCreateClientPro
   const [isCreating, setIsCreating] = useState(false)
 
   // Filter to show only APPROVED purchase orders
-  const approvedPOs = purchaseOrders?.filter((po) => po.status === 'APPROVED') || []
+  const approvedPOs = purchaseOrders?.filter((po) => po.status === 'approved') || []
 
   const handleSelectPO = (poId: string) => {
     const po = approvedPOs.find((p) => p.id === poId)
@@ -68,40 +68,18 @@ export function PVCreateClient({ userId, userName, userRole }: PVCreateClientPro
 
     setIsCreating(true)
     try {
-      const pvData: CreatePaymentVoucherRequest = {
-        title: `Payment for ${selectedPO.poNumber}`,
-        description: selectedPO.description,
+      const pvData = {
         vendorId: selectedPO.vendorId,
-        vendorName: selectedPO.vendorName,
-        department: selectedPO.department,
-        departmentId: selectedPO.departmentId,
-        paymentDueDate: new Date(new Date().getTime() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
-        priority: 'MEDIUM',
-        paymentMethod: 'BANK_TRANSFER',
-        items: selectedPO.items.map((item) => ({
-          poItemId: item.id,
-          itemNumber: item.itemNumber,
-          description: item.description,
-          category: item.category,
-          quantity: item.quantity,
-          unitPrice: item.unitPrice,
-          unit: item.unit,
-          totalPrice: item.totalPrice,
-          notes: item.notes,
-        })),
-        budgetCode: selectedPO.budgetCode,
-        costCenter: selectedPO.costCenter,
-        projectCode: selectedPO.projectCode,
-        createdBy: userId,
-        createdByName: userName,
-        createdByRole: userRole,
-        sourcePurchaseOrderId: selectedPO.id,
-        sourcePurchaseOrderNumber: selectedPO.poNumber,
-        sourceRequisitionId: selectedPO.sourceRequisitionId,
-        sourceRequisitionNumber: selectedPO.sourceRequisitionNumber,
-      }
+        invoiceNumber: selectedPO.poNumber || 'INV-' + Date.now(),
+        amount: selectedPO.totalAmount || 0,
+        currency: selectedPO.currency || 'USD',
+        paymentMethod: 'bank_transfer',
+        glCode: selectedPO.budgetCode || 'GL-001',
+        description: selectedPO.description || `Payment for ${selectedPO.poNumber}`,
+        linkedPO: selectedPO.id,
+      } as unknown as CreatePaymentVoucherRequest;
 
-      await savePVMutation.mutateAsync(pvData)
+      await savePVMutation.mutateAsync(pvData);
     } catch (error) {
       console.error('Error creating payment voucher:', error)
     } finally {
@@ -285,7 +263,7 @@ export function PVCreateClient({ userId, userName, userRole }: PVCreateClientPro
                             {selectedPO.currency} {item.unitPrice.toLocaleString()}
                           </TableCell>
                           <TableCell className="text-right text-sm font-mono font-semibold">
-                            {selectedPO.currency} {item.totalPrice.toLocaleString()}
+                            {selectedPO.currency} {(item.totalPrice || 0).toLocaleString()}
                           </TableCell>
                         </TableRow>
                       ))}

@@ -11,7 +11,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Checkbox } from '@/components/ui/checkbox'
-import type { WorkflowFormData } from '../create/_components/create-workflow-client'
+import type { WorkflowFormData } from '@/app/_actions/workflows'
 
 interface WorkflowDetailsFormProps {
   data: WorkflowFormData

@@ -198,11 +198,16 @@ export function DataTable<TData, TValue>({
         <CustomPagination
           pagination={{
             page: currentPage,
-            page_size: pageSize,
-            total_pages: totalPages ?? Math.ceil((totalCount ?? data.length) / pageSize),
-            totalCount: totalCount ?? data.length,
-            has_next: currentPage < (totalPages ?? Math.ceil((totalCount ?? data.length) / pageSize)),
-            has_prev: currentPage > 1,
+            limit: pageSize,
+            total: totalCount ?? data.length,
+            totalPages: totalPages ?? Math.ceil((totalCount ?? data.length) / pageSize),
+            hasNext: currentPage < (totalPages ?? Math.ceil((totalCount ?? data.length) / pageSize)),
+            hasPrev: currentPage > 1,
+            page_size: pageSize,           // Alias
+            totalCount: totalCount ?? data.length,  // Alias
+            total_pages: totalPages ?? Math.ceil((totalCount ?? data.length) / pageSize),  // Alias
+            has_next: currentPage < (totalPages ?? Math.ceil((totalCount ?? data.length) / pageSize)),  // Alias
+            has_prev: currentPage > 1,     // Alias
           }}
           updatePagination={({ page, page_size }) => {
             if (onPaginationChange) {
