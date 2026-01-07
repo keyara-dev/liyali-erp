@@ -101,9 +101,9 @@ export interface CreateRequisitionRequest {
   budgetCode: string;
   costCenter: string;
   projectCode: string;
-  createdBy: string;
-  createdByName: string;
-  createdByRole: string;
+  createdBy?: string;
+  createdByName?: string;
+  createdByRole?: string;
   requestedFor?: string;       // Who the requisition is for
   justification?: string;      // Justification for the request
 }

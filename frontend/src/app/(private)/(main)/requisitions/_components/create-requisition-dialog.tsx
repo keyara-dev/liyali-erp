@@ -119,14 +119,29 @@ export function CreateRequisitionDialog({
 
     setIsLoading(true);
     try {
+      const totalAmount = formData.items.reduce((sum, item) => 
+        sum + (item.quantity * (item.estimatedCost || 0)), 0
+      );
+
       const result = await createRequisition({
         title: `Requisition for ${formData.department}`,
         description: formData.justification,
         department: formData.department,
-        requestedFor: formData.requestedFor,
+        departmentId: formData.department, // Using department as departmentId for now
+        priority: 'medium', // Default priority
         items: formData.items,
-        justification: formData.justification,
+        totalAmount,
+        currency: 'ZMW', // Default currency
+        isEstimate: true, // Default to estimate
+        requiredByDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
         budgetCode: formData.budgetCode,
+        costCenter: formData.budgetCode, // Using budgetCode as costCenter for now
+        projectCode: formData.budgetCode, // Using budgetCode as projectCode for now
+        createdBy: userId,
+        createdByName: 'User', // Default name
+        createdByRole: 'requester', // Default role
+        requestedFor: formData.requestedFor,
+        justification: formData.justification,
       });
 
       if (result.success && result.data) {
@@ -295,7 +310,7 @@ export function CreateRequisitionDialog({
                           value={item.quantity}
                           onChange={(e) =>
                             handleUpdateItem(
-                              item.id,
+                              item.id || '',
                               "quantity",
                               parseInt(e.target.value) || 1
                             )
@@ -310,7 +325,7 @@ export function CreateRequisitionDialog({
                           value={item.estimatedCost}
                           onChange={(e) =>
                             handleUpdateItem(
-                              item.id,
+                              item.id || '',
                               "estimatedCost",
                               parseFloat(e.target.value) || 0
                             )
@@ -322,7 +337,7 @@ export function CreateRequisitionDialog({
                           <div className="flex items-center justify-center h-9 bg-gray-50 rounded-lg border border-gray-200">
                             <span className="font-semibold">
                               {(
-                                item.quantity * item.estimatedCost
+                                item.quantity * (item.estimatedCost || 0)
                               ).toLocaleString("en-ZM", {
                                 minimumFractionDigits: 2,
                                 maximumFractionDigits: 2,

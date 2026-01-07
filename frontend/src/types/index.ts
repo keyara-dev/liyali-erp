@@ -275,7 +275,7 @@ export type BudgetType = Budget;
 export type GRNType = GoodsReceivedNote;
 
 // Add missing type aliases
-export type ApprovalHistory = any[];  // Legacy type
+export type ApprovalHistory = ApprovalRecord[];  // Use proper ApprovalRecord type
 export type ChangePassword = ChangePasswordRequest;  // Legacy alias
 export type ErrorState = { message: string; field?: string; status?: boolean; onConfirmPassword?: boolean };  // Common error type
 export type WorkflowStage = WorkflowStep;  // Legacy alias

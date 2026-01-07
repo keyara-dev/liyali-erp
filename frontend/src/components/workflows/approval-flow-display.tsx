@@ -30,8 +30,8 @@ export function ApprovalFlowDisplay({
     approverName: entry.approverName,
     approverId: entry.approverId,
     status: entry.status?.toLowerCase(),
-    approvedAt: entry.approvedAt,
-    comments: entry.comments,
+    approvedAt: entry.approvedAt || entry.actionTakenAt,
+    comments: entry.comments || entry.remarks,
   })) || [];
 
   const getStageStatus = (stageIndex: number) => {

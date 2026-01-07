@@ -45,7 +45,7 @@ export function FormPreview({
   const [error, setError] = useState<string | null>(null);
 
   const totalAmount = formData.items.reduce(
-    (sum, item) => sum + item.estimatedCost * item.quantity,
+    (sum, item) => sum + (item.estimatedCost || 0) * item.quantity,
     0
   );
 
@@ -68,8 +68,9 @@ export function FormPreview({
           category: 'General',
           quantity: item.quantity,
           unitPrice: item.estimatedCost,
+          amount: item.quantity * (item.estimatedCost || 0), // Add required amount field
           unit: 'unit',
-          totalPrice: item.quantity * item.estimatedCost,
+          totalPrice: item.quantity * (item.estimatedCost || 0),
           notes: '',
         })),
         budgetCode: formData.budgetCode,
@@ -178,10 +179,10 @@ export function FormPreview({
                       {item.quantity}
                     </TableCell>
                     <TableCell className="text-right">
-                      {item.estimatedCost.toFixed(2)}
+                      {(item.estimatedCost || 0).toFixed(2)}
                     </TableCell>
                     <TableCell className="text-right font-semibold">
-                      {(item.quantity * item.estimatedCost).toFixed(2)}
+                      {(item.quantity * (item.estimatedCost || 0)).toFixed(2)}
                     </TableCell>
                   </TableRow>
                 ))}

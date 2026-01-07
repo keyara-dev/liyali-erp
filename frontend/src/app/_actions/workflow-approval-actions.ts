@@ -8,7 +8,7 @@
 
 import {
   ApprovalTask,
-  ApprovalHistory,
+  ApprovalRecord,
   ApproveTaskRequest,
   RejectTaskRequest,
   ReassignTaskRequest,
@@ -262,7 +262,7 @@ export async function reassignApprovalTask(
  */
 export async function getApprovalHistory(
   documentId: string
-): Promise<APIResponse<ApprovalHistory[]>> {
+): Promise<APIResponse<ApprovalRecord[]>> {
   if (!documentId) {
     return badRequestResponse('Document ID is required');
   }

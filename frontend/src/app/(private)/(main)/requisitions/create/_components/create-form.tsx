@@ -115,7 +115,7 @@ export function CreateRequisitionForm({
     })
   }
 
-  const totalAmount = items.reduce((sum, item) => sum + item.estimatedCost * item.quantity, 0)
+  const totalAmount = items.reduce((sum, item) => sum + (item.estimatedCost || 0) * item.quantity, 0)
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">

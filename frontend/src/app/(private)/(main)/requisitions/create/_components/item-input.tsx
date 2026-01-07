@@ -21,7 +21,7 @@ export function ItemInput({
   onChange,
   onRemove,
 }: ItemInputProps) {
-  const itemTotal = item.quantity * item.estimatedCost
+  const itemTotal = item.quantity * (item.estimatedCost || 0)
 
   return (
     <Card className="p-4">
