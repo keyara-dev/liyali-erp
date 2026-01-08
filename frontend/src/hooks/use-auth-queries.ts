@@ -38,8 +38,16 @@ export function useTokenRefresh(enabled: boolean = true) {
   });
 
   // Determine if token needs refreshing
+  // Add grace period for newly created sessions (don't refresh within first 2 minutes)
   const needsRefresh = sessionQuery.data?.expiresAt 
-    ? shouldRefreshToken(sessionQuery.data.expiresAt)
+    ? (() => {
+        const expiresAt = new Date(sessionQuery.data.expiresAt);
+        const now = new Date();
+        const sessionAge = now.getTime() - (expiresAt.getTime() - (sessionQuery.data.expiresIn || 3600) * 1000);
+        const isNewSession = sessionAge < 2 * 60 * 1000; // Less than 2 minutes old
+        
+        return !isNewSession && shouldRefreshToken(sessionQuery.data.expiresAt);
+      })()
     : false;
 
   // Token refresh query with intelligent refetch interval

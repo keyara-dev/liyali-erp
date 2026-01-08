@@ -20,6 +20,7 @@ export interface AuthSession {
   institution_id?: string;
   organization_id?: string;
   expiresAt?: Date | string;
+  expiresIn?: number; // Add expiresIn field for token refresh logic
   permissions?: Permission[];
 }
 

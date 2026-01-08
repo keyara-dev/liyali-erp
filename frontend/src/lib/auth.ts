@@ -183,6 +183,7 @@ export async function createAuthSession({
     mfa_required,
     organization_id,
     expiresAt,
+    expiresIn, // Add expiresIn to the session for token refresh logic
     user: user as any, // Add the user object to the session
   };
 

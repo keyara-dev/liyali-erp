@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useTokenRefresh } from "@/hooks/use-auth-queries";
 import { toast } from "sonner";
 
@@ -20,13 +20,24 @@ export function TokenRefreshProvider({
   children, 
   enabled = true 
 }: TokenRefreshProviderProps) {
+  // Disable token refresh for first 2 minutes after page load to avoid conflicts with fresh sessions
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
+  
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsInitialLoad(false);
+    }, 2 * 60 * 1000); // 2 minutes
+    
+    return () => clearTimeout(timer);
+  }, []);
+
   const {
     isRefreshing,
     refreshError,
     needsRefresh,
     isAuthenticated,
     session,
-  } = useTokenRefresh(enabled);
+  } = useTokenRefresh(enabled && !isInitialLoad);
 
   // Show toast notifications for refresh events (optional)
   useEffect(() => {
