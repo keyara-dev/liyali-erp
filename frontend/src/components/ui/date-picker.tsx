@@ -66,15 +66,31 @@ function DatePickerComponent({
   }, [minDate, maxDate]);
 
   return (
-    <div className={cn("flex w-full flex-col", classNames?.wrapper)}>
+    <div
+      className={cn(
+        "flex w-full flex-col",
+        classNames?.wrapper,
+        {
+          "cursor-not-allowed opacity-50": isDisabled || disabled,
+        }
+      )}
+    >
       {label && (
         <label
-          className={cn("mb-0.5 pl-1 text-sm font-medium", classNames?.label, {
-            "text-red-500": isInvalid,
-            "opacity-50": disabled || isDisabled
-          })}
-          htmlFor={name}>
-          {label} {required && <span className="font-bold text-red-500"> *</span>}
+          className={cn(
+            "mb-1 text-sm font-medium text-slate-700",
+            {
+              "text-red-500": onError || isInvalid,
+              "opacity-50": isDisabled || disabled,
+            },
+            classNames?.label
+          )}
+          htmlFor={name}
+        >
+          {label}{" "}
+          {required && (
+            <span className="font-bold text-red-500"> *</span>
+          )}
         </label>
       )}
       <Popover open={open} onOpenChange={setOpen}>
@@ -84,11 +100,27 @@ function DatePickerComponent({
             role="combobox"
             id={name || "date"}
             className={cn(
-              "w-full justify-between text-left font-normal",
-              !value && "text-muted-foreground",
+              // Base styles matching input.tsx
+              "w-full px-4 py-2 text-base bg-white border border-slate-200 rounded-lg transition-all duration-200 outline-none",
+              // Focus styles with primary color
+              "focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 focus:shadow-lg focus:shadow-primary-500/10",
+              // Hover styles
+              "hover:border-slate-300",
+              // Error styles
+              {
+                "border-red-500 focus:border-red-500 focus:ring-red-500/20 focus:shadow-red-500/10":
+                  onError || isInvalid,
+              },
+              // Disabled styles
+              "disabled:bg-slate-50 disabled:text-slate-500 disabled:cursor-not-allowed disabled:opacity-60",
+              // Text styles
+              "text-slate-900 selection:bg-primary-100 selection:text-primary-900",
+              "justify-between text-left font-normal",
+              !value && "text-slate-400",
               classNames?.input
             )}
-            disabled={isDisabled || disabled}>
+            disabled={isDisabled || disabled}
+          >
             {value && value instanceof Date && !isNaN(value.getTime()) ? (
               format(value, "PPP")
             ) : (
@@ -115,18 +147,17 @@ function DatePickerComponent({
       {((errorText && (isInvalid || onError)) || descriptionText) && (
         <motion.span
           className={cn(
-            "ml-1 text-xs text-gray-500",
+            "ml-1 text-xs text-slate-500",
             {
-              "text-red-600": onError || isInvalid
+              "text-red-600": onError || isInvalid,
             },
             classNames?.descriptionText,
             classNames?.errorText
           )}
-          whileInView={{
-            scale: [0, 1],
-            opacity: [0, 1],
-            transition: { duration: 0.3 }
-          }}>
+          initial={{ scale: 0, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ duration: 0.2 }}
+        >
           {errorText ? errorText : descriptionText}
         </motion.span>
       )}

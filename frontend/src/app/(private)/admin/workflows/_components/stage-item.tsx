@@ -61,11 +61,11 @@ export function StageItem({ stage, onEdit, onDelete }: StageItemProps) {
               {/* Stage Number & Title */}
               <div className="flex items-center gap-3 flex-1 min-w-0">
                 <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-500 text-white text-sm font-semibold shrink-0">
-                  {stage.order}
+                  {stage.order || stage.stageNumber}
                 </div>
                 <div className="flex-1 min-w-0">
                   <h3 className="font-semibold text-base leading-tight">
-                    {stage.name}
+                    {stage.name || stage.stageName}
                   </h3>
                   {stage.description && (
                     <p className="text-sm text-muted-foreground line-clamp-2 mt-0.5">

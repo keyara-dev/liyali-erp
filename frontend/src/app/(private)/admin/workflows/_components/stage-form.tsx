@@ -36,8 +36,8 @@ export function StageForm({
   onCancel,
   errors,
 }: StageFormProps) {
-  const [formData, setFormData] = useState<WorkflowStage>(
-    stage || {
+  const [formData, setFormData] = useState<WorkflowStage>(() => {
+    const initialData = stage || {
       id: '',
       order: 1,
       name: '',
@@ -50,15 +50,45 @@ export function StageForm({
       stageName: '',
       requiredRole: '',
       canBeReassigned: true,
+    };
+    
+    // Ensure consistency between alias fields
+    if (initialData.name && !initialData.stageName) {
+      initialData.stageName = initialData.name;
+    } else if (initialData.stageName && !initialData.name) {
+      initialData.name = initialData.stageName;
     }
-  )
+    
+    if (initialData.approverRole && !initialData.requiredRole) {
+      initialData.requiredRole = initialData.approverRole;
+    } else if (initialData.requiredRole && !initialData.approverRole) {
+      initialData.approverRole = initialData.requiredRole;
+    }
+    
+    return initialData;
+  });
 
   const handleChange = (key: keyof WorkflowStage, value: any) => {
-    setFormData((prev) => ({
-      ...prev,
-      [key]: value,
-    }))
-  }
+    setFormData((prev) => {
+      const updated = {
+        ...prev,
+        [key]: value,
+      };
+      
+      // Ensure consistency between name/stageName and approverRole/requiredRole
+      if (key === 'name') {
+        updated.stageName = value;
+      } else if (key === 'stageName') {
+        updated.name = value;
+      } else if (key === 'approverRole') {
+        updated.requiredRole = value;
+      } else if (key === 'requiredRole') {
+        updated.approverRole = value;
+      }
+      
+      return updated;
+    });
+  };
 
   const handleSubmit = () => {
     onSave(formData)

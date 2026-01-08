@@ -5,14 +5,15 @@ import { motion } from "framer-motion";
 
 type TextareaProps = TextareaHTMLAttributes<HTMLTextAreaElement> & {
   label?: string;
+  name?: string;
   onError?: boolean;
   error?: string;
   errorText?: string;
   descriptionText?: string;
+  isDisabled?: boolean;
   isInvalid?: boolean;
   showLimit?: boolean;
   classNames?: {
-    base?: string;
     wrapper?: string;
     input?: string;
     label?: string;
@@ -25,11 +26,13 @@ const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
   (
     {
       label,
+      name,
       className,
       onError,
       errorText,
       classNames,
       descriptionText,
+      isDisabled,
       isInvalid,
       showLimit = false,
       ...props
@@ -37,14 +40,26 @@ const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
     ref
   ) => {
     return (
-      <div className={cn("w-full", classNames?.wrapper)}>
+      <div
+        className={cn(
+          "flex w-full flex-col",
+          classNames?.wrapper,
+          {
+            "cursor-not-allowed opacity-50": isDisabled,
+          }
+        )}
+      >
         {label && (
           <label
-            className={cn("mb-0.5 pl-1 text-sm font-medium text-nowrap", {
-              "text-red-500": onError || isInvalid,
-              "opacity-50": props?.disabled,
-            })}
-            htmlFor={props?.name}
+            className={cn(
+              "mb-1 text-sm font-medium text-slate-700",
+              {
+                "text-red-500": onError || isInvalid,
+                "opacity-50": isDisabled || props?.disabled,
+              },
+              classNames?.label
+            )}
+            htmlFor={name}
           >
             {label}{" "}
             {props?.required && (
@@ -54,42 +69,53 @@ const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
         )}
         <textarea
           ref={ref}
-          name={props?.name}
-          data-slot="textarea"
-          disabled={props?.disabled}
           className={cn(
-            "dark:bg-input/20 border-input text-foreground ring-offset-foreground placeholder:text-foreground/50 flex min-h-[60px] w-full rounded-lg border px-3 py-2 text-sm focus-visible:ring-1 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50",
+            // Base styles matching input.tsx
+            "w-full px-4 py-2 text-base bg-white border border-slate-200 rounded-lg transition-all duration-200 outline-none",
+            // Placeholder styles
+            "placeholder:text-slate-400",
+            // Focus styles with primary color
+            "focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 focus:shadow-lg focus:shadow-primary-500/10",
+            // Hover styles
+            "hover:border-slate-300",
+            // Error styles
             {
-              "border-red-500 focus:border-red-500/70 focus-visible:ring-red-500/30":
+              "border-red-500 focus:border-red-500 focus:ring-red-500/20 focus:shadow-red-500/10":
                 onError || isInvalid,
-              "opacity-50": props?.disabled,
             },
+            // Disabled styles
+            "disabled:bg-slate-50 disabled:text-slate-500 disabled:cursor-not-allowed disabled:opacity-60",
+            // Text styles
+            "text-slate-900 selection:bg-primary-100 selection:text-primary-900",
+            // Textarea specific styles
+            "min-h-[80px] resize-vertical",
             className,
-            classNames?.base
+            classNames?.input
           )}
+          disabled={isDisabled || props?.disabled}
+          id={name}
+          name={name}
           {...props}
         />
 
-        {((errorText && isInvalid) || descriptionText) && (
+        {((errorText && (isInvalid || onError)) || descriptionText) && (
           <motion.span
             className={cn(
-              "text-muted-foreground ml-1 flex items-center justify-between gap-2 text-xs",
+              "ml-1 flex items-center justify-between gap-2 text-xs text-slate-500",
               {
                 "text-red-600": onError || isInvalid,
               },
               classNames?.descriptionText,
               classNames?.errorText
             )}
-            whileInView={{
-              scale: [0, 1],
-              opacity: [0, 1],
-              transition: { duration: 0.3 },
-            }}
+            initial={{ scale: 0, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ duration: 0.2 }}
           >
-            {errorText ? errorText : descriptionText}{" "}
+            <span>{errorText ? errorText : descriptionText}</span>
             {showLimit && (
-              <span>
-                {props?.value?.toString()?.length}/{props?.maxLength}
+              <span className="text-slate-400">
+                {props?.value?.toString()?.length || 0}/{props?.maxLength}
               </span>
             )}
           </motion.span>

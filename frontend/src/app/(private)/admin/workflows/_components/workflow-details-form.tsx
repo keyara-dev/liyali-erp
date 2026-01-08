@@ -3,13 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+import { SelectField } from '@/components/ui/select-field'
 import { Checkbox } from '@/components/ui/checkbox'
 import type { WorkflowFormData } from '@/types/workflow-config'
 
@@ -39,53 +33,42 @@ export function WorkflowDetailsForm({
       </CardHeader>
       <CardContent className="space-y-6">
         {/* Name */}
-        <div className="space-y-2">
-          <label className="text-sm font-medium">
-            Workflow Name <span className="text-destructive">*</span>
-          </label>
+        <div className="flex flex-col md:flex-row gap-4 items-center">
+        
           <Input
+          label='Workflow Name'
+          required
             placeholder="e.g., Standard Requisition Approval"
             value={data.name}
             onChange={(e) => onChange('name', e.target.value)}
             className={errors.name ? 'border-destructive' : ''}
+            isInvalid={!!errors.name}
+            errorText={errors.name}
           />
-          {errors.name && (
-            <p className="text-sm text-destructive">{errors.name}</p>
-          )}
+
+          {/* Document Type */}
+          <SelectField
+            label="Workflow Applies To"
+            required
+            placeholder="Select document type"
+            value={data.documentType}
+            onValueChange={(value) => onChange('documentType', value)}
+            options={DOCUMENT_TYPES}
+            isInvalid={!!errors.documentType}
+            errorText={errors.documentType}
+          />
         </div>
 
         {/* Description */}
-        <div className="space-y-2">
-          <label className="text-sm font-medium">Description</label>
           <Textarea
+          label='Description'
             placeholder="Describe the purpose and use case for this workflow..."
             value={data.description}
             onChange={(e) => onChange('description', e.target.value)}
             rows={3}
           />
-        </div>
 
-        {/* Document Type */}
-        <div className="space-y-2">
-          <label className="text-sm font-medium">
-            Applies To <span className="text-destructive">*</span>
-          </label>
-          <Select value={data.documentType} onValueChange={(value) => onChange('documentType', value)}>
-            <SelectTrigger className={errors.documentType ? 'border-destructive' : ''}>
-              <SelectValue placeholder="Select document type" />
-            </SelectTrigger>
-            <SelectContent>
-              {DOCUMENT_TYPES.map((type) => (
-                <SelectItem key={type.id} value={type.id}>
-                  {type.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {errors.documentType && (
-            <p className="text-sm text-destructive">{errors.documentType}</p>
-          )}
-        </div>
+        
 
         {/* Set as Default */}
         <div className="flex items-center gap-3 p-4 border rounded-lg bg-muted/30">

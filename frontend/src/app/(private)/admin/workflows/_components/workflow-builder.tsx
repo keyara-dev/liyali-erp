@@ -118,17 +118,29 @@ export function WorkflowBuilder({
       return
     }
 
+    // Ensure consistency between alias fields with proper defaults
+    const normalizedStage: WorkflowStage = {
+      ...stage,
+      name: stage.name || stage.stageName || '',
+      stageName: stage.stageName || stage.name || '',
+      approverRole: stage.approverRole || stage.requiredRole || '',
+      requiredRole: stage.requiredRole || stage.approverRole || '',
+      order: stage.order || stage.stageNumber || 1,
+      stageNumber: stage.stageNumber || stage.order || 1,
+    };
+
     if (editingStageId) {
       const updatedStages = formData.stages.map((s) =>
-        s.id === editingStageId ? stage : s
+        s.id === editingStageId ? normalizedStage : s
       )
       setFormData({ ...formData, stages: updatedStages })
       toast.success('Stage updated')
     } else {
-      const newStage = {
-        ...stage,
+      const newStage: WorkflowStage = {
+        ...normalizedStage,
         id: `stage-${Date.now()}`,
         order: formData.stages.length + 1,
+        stageNumber: formData.stages.length + 1,
       }
       setFormData({
         ...formData,

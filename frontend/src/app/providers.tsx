@@ -5,14 +5,6 @@ import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { ThemeProvider as NextThemesProvider } from "next-themes";
 import { Toaster } from "sonner";
 
-import { SiteHeader } from "@/components/layout/header";
-import { AppSidebar } from "@/components/layout/sidebar/app-sidebar";
-import { IdleTimerContainer } from "@/components/base/screen-lock";
-import {
-  SidebarInset,
-  SidebarProvider,
-  useSidebar,
-} from "@/components/ui/sidebar";
 import { useOfflineQueueProcessor } from "@/hooks/use-offline-queue-processor";
 import { OrganizationProvider } from "@/contexts/organization-context";
 import { TokenRefreshProvider } from "@/components/auth/token-refresh-provider";
