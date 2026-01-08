@@ -139,6 +139,15 @@ function ReqOptionsMenu({
             </DropdownMenuItem>
           </>
         )}
+        {req.status === 'draft' && (
+          <DropdownMenuItem 
+            onClick={() => console.log('Delete requisition:', req.id)}
+            className="text-red-600 focus:text-red-600"
+          >
+            <XCircle className="mr-2 h-4 w-4" />
+            Delete
+          </DropdownMenuItem>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );
@@ -170,20 +179,28 @@ export function RequisitionsTable({
 
   const getActions = useCallback(
     (req: Requisition): ActionButton[] => {
-      return [
+      const actions: ActionButton[] = [
         {
           icon: <Eye className="h-3.5 w-3.5" />,
           label: 'View',
           tooltip: 'View Details',
           onClick: () => router.push(`/requisitions/${req.id}`),
         },
-        {
-          icon: <Pencil className="h-3.5 w-3.5" />,
-          label: 'Edit',
-          tooltip: 'Edit Requisition',
-          onClick: () => router.push(`/requisitions/${req.id}/edit`),
-        },
       ];
+
+      // Only allow edit and delete for draft status
+      if (req.status === 'draft') {
+        actions.push(
+          {
+            icon: <Pencil className="h-3.5 w-3.5" />,
+            label: 'Edit',
+            tooltip: 'Edit Requisition',
+            onClick: () => router.push(`/requisitions/${req.id}/edit`),
+          }
+        );
+      }
+
+      return actions;
     },
     [router]
   );

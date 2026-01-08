@@ -135,6 +135,13 @@ export const QUERY_KEYS = {
     STATS: "purchase-orders-stats",
   },
 
+  // Categories
+  CATEGORIES: {
+    ALL: "categories-all",
+    BY_ID: "category-by-id",
+    ACTIVE: "categories-active",
+  },
+
   // Payment Vouchers
   PAYMENT_VOUCHERS: {
     ALL: "payment-vouchers-all",

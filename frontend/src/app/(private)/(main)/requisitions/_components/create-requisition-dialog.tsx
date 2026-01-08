@@ -13,10 +13,20 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { SelectField } from "@/components/ui/select-field";
 import { Plus, Trash2 } from "lucide-react";
 import { RequisitionItem, RequisitionPriority } from "@/types/requisition";
 import { useCreateRequisition } from "@/hooks/use-requisition-mutations";
+import { useCategories } from "@/hooks/use-category-queries";
 
 interface CreateRequisitionDialogProps {
   open: boolean;
@@ -47,9 +57,14 @@ export function CreateRequisitionDialog({
       isEstimate: true,
       requiredByDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
       items: [],
+      categoryId: "",
+      otherCategoryText: "",
     });
     onRequisitionCreated();
   });
+
+  // Fetch categories for the dropdown
+  const { data: categories = [] } = useCategories(1, 50, true);
 
   const [formData, setFormData] = useState({
     title: "",
@@ -65,6 +80,8 @@ export function CreateRequisitionDialog({
     isEstimate: true,
     requiredByDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
     items: [] as RequisitionItem[],
+    categoryId: "",
+    otherCategoryText: "",
   });
 
   const totalEstimatedCost = formData.items.reduce(
@@ -139,6 +156,10 @@ export function CreateRequisitionDialog({
       toast.error("Please enter budget code");
       return;
     }
+    if (formData.categoryId === "OTHER" && !formData.otherCategoryText.trim()) {
+      toast.error("Please specify the custom category name");
+      return;
+    }
 
     // Validate all items have descriptions and quantities
     const allItemsValid = formData.items.every(
@@ -159,7 +180,7 @@ export function CreateRequisitionDialog({
       items: formData.items,
       totalAmount: totalAmount,
       currency: formData.currency,
-      categoryId: undefined, // Optional field
+      categoryId: formData.categoryId === "OTHER" ? undefined : formData.categoryId || undefined,
       preferredVendorId: undefined, // Optional field
       isEstimate: formData.isEstimate,
       requiredByDate: formData.requiredByDate,
@@ -190,140 +211,149 @@ export function CreateRequisitionDialog({
             <div className="space-y-4">
               <h3 className="font-semibold text-lg">Basic Information</h3>
 
-              <div className="space-y-2">
-                <Label htmlFor="title">Title *</Label>
+              <Input
+                label="Title"
+                required
+                placeholder="Enter requisition title"
+                value={formData.title}
+                onChange={(e) =>
+                  setFormData({ ...formData, title: e.target.value })
+                }
+              />
+
+              <div className="grid grid-cols-2 gap-4">
                 <Input
-                  id="title"
-                  placeholder="Enter requisition title"
-                  value={formData.title}
+                  label="Department"
+                  required
+                  placeholder="e.g., Operations"
+                  value={formData.department}
                   onChange={(e) =>
-                    setFormData({ ...formData, title: e.target.value })
+                    setFormData({ ...formData, department: e.target.value })
+                  }
+                />
+
+                <SelectField
+                  label="Priority"
+                  required
+                  value={formData.priority}
+                  onValueChange={(value) =>
+                    setFormData({ ...formData, priority: value as RequisitionPriority })
+                  }
+                  options={[
+                    { id: "low", name: "Low" },
+                    { id: "medium", name: "Medium" },
+                    { id: "high", name: "High" },
+                    { id: "urgent", name: "Urgent" },
+                  ]}
+                  placeholder="Select priority"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <Input
+                  label="Requested For"
+                  required
+                  placeholder="e.g., John Mwale"
+                  value={formData.requestedFor}
+                  onChange={(e) =>
+                    setFormData({ ...formData, requestedFor: e.target.value })
+                  }
+                />
+
+                <SelectField
+                  label="Currency"
+                  value={formData.currency}
+                  onValueChange={(value) =>
+                    setFormData({ ...formData, currency: value })
+                  }
+                  options={[
+                    { id: "ZMW", name: "ZMW" },
+                    { id: "USD", name: "USD" },
+                  ]}
+                  placeholder="Select currency"
+                />
+              </div>
+
+              {/* Category Selection */}
+              <SelectField
+                label="Category"
+                className="w-full" 
+                value={formData.categoryId}
+                onValueChange={(value) =>
+                  setFormData({ ...formData, categoryId: value, otherCategoryText: "" })
+                }
+                options={[
+                  ...categories.map((category) => ({
+                    id: category.id,
+                    name: category.name,
+                  })),
+                  { id: "OTHER", name: "Other (specify below)" },
+                ]}
+                placeholder="Select a category"
+              />
+
+              {/* Other Category Text Input */}
+              {formData.categoryId === "OTHER" && (
+                <Input
+                  label="Specify Category"
+                  required
+                  placeholder="Enter custom category name"
+                  value={formData.otherCategoryText}
+                  onChange={(e) =>
+                    setFormData({ ...formData, otherCategoryText: e.target.value })
+                  }
+                />
+              )}
+
+              <div className="grid grid-cols-3 gap-4">
+                <Input
+                  label="Budget Code"
+                  required
+                  placeholder="e.g., CAP-2024-001"
+                  value={formData.budgetCode}
+                  onChange={(e) =>
+                    setFormData({ ...formData, budgetCode: e.target.value })
+                  }
+                />
+
+                <Input
+                  label="Cost Center"
+                  placeholder="Cost center"
+                  value={formData.costCenter}
+                  onChange={(e) =>
+                    setFormData({ ...formData, costCenter: e.target.value })
+                  }
+                />
+
+                <Input
+                  label="Project Code"
+                  placeholder="Project code"
+                  value={formData.projectCode}
+                  onChange={(e) =>
+                    setFormData({ ...formData, projectCode: e.target.value })
                   }
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="department">Department *</Label>
-                  <Input
-                    id="department"
-                    placeholder="e.g., Operations"
-                    value={formData.department}
-                    onChange={(e) =>
-                      setFormData({ ...formData, department: e.target.value })
-                    }
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="priority">Priority</Label>
-                  <select
-                    id="priority"
-                    value={formData.priority}
-                    onChange={(e) =>
-                      setFormData({ ...formData, priority: e.target.value as RequisitionPriority })
-                    }
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    <option value="low">Low</option>
-                    <option value="medium">Medium</option>
-                    <option value="high">High</option>
-                    <option value="urgent">Urgent</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="requestedFor">Requested For *</Label>
-                  <Input
-                    id="requestedFor"
-                    placeholder="e.g., John Mwale"
-                    value={formData.requestedFor}
-                    onChange={(e) =>
-                      setFormData({ ...formData, requestedFor: e.target.value })
-                    }
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="currency">Currency</Label>
-                  <select
-                    id="currency"
-                    value={formData.currency}
-                    onChange={(e) =>
-                      setFormData({ ...formData, currency: e.target.value })
-                    }
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    <option value="ZMW">ZMW</option>
-                    <option value="USD">USD</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="budgetCode">Budget Code *</Label>
-                  <Input
-                    id="budgetCode"
-                    placeholder="e.g., CAP-2024-001"
-                    value={formData.budgetCode}
-                    onChange={(e) =>
-                      setFormData({ ...formData, budgetCode: e.target.value })
-                    }
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="costCenter">Cost Center</Label>
-                  <Input
-                    id="costCenter"
-                    placeholder="Cost center"
-                    value={formData.costCenter}
-                    onChange={(e) =>
-                      setFormData({ ...formData, costCenter: e.target.value })
-                    }
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="projectCode">Project Code</Label>
-                  <Input
-                    id="projectCode"
-                    placeholder="Project code"
-                    value={formData.projectCode}
-                    onChange={(e) =>
-                      setFormData({ ...formData, projectCode: e.target.value })
-                    }
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="requiredByDate">Required By Date</Label>
-                  <Input
-                    id="requiredByDate"
-                    type="date"
-                    value={formData.requiredByDate.toISOString().split('T')[0]}
-                    onChange={(e) =>
-                      setFormData({ ...formData, requiredByDate: new Date(e.target.value) })
-                    }
-                  />
-                </div>
+                <Input
+                  label="Required By Date"
+                  type="date"
+                  value={formData.requiredByDate.toISOString().split('T')[0]}
+                  onChange={(e) =>
+                    setFormData({ ...formData, requiredByDate: new Date(e.target.value) })
+                  }
+                />
 
                 <div className="space-y-2">
                   <Label htmlFor="isEstimate">Is Estimate</Label>
                   <div className="flex items-center space-x-2 h-10">
-                    <input
+                    <Checkbox
                       id="isEstimate"
-                      type="checkbox"
                       checked={formData.isEstimate}
-                      onChange={(e) =>
-                        setFormData({ ...formData, isEstimate: e.target.checked })
+                      onCheckedChange={(checked) =>
+                        setFormData({ ...formData, isEstimate: checked === true })
                       }
-                      className="h-4 w-4 rounded border-gray-300"
                     />
                     <span className="text-sm text-gray-600">
                       This is an estimated cost
@@ -333,9 +363,10 @@ export function CreateRequisitionDialog({
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="justification">Justification *</Label>
                 <Textarea
                   id="justification"
+                  label="Justification"
+                  required
                   placeholder="Explain why these items are needed..."
                   rows={3}
                   value={formData.justification}
@@ -388,8 +419,9 @@ export function CreateRequisitionDialog({
                       </div>
 
                       <div className="space-y-2">
-                        <Label>Description</Label>
                         <Input
+                        label="Description"
+                        required
                           placeholder="e.g., Office Chair - Ergonomic"
                           value={item.itemDescription}
                           onChange={(e) =>
@@ -435,7 +467,7 @@ export function CreateRequisitionDialog({
 
                         <div className="space-y-2">
                           <Label>Total ({formData.currency})</Label>
-                          <div className="flex items-center justify-center h-9 bg-gray-50 rounded-lg border border-gray-200">
+                          <div className="flex items-center justify-center h-10 bg-gray-50 rounded-lg border border-gray-200">
                             <span className="font-semibold">
                               {(
                                 item.quantity * (item.estimatedCost || 0)
@@ -495,10 +527,11 @@ export function CreateRequisitionDialog({
           </Button>
           <Button
             onClick={handleSubmit}
-            disabled={createMutation.isPending}
+            isLoading={createMutation.isPending}
+            loadingText="Creating..."
             className="min-w-32"
           >
-            {createMutation.isPending ? "Creating..." : "Create Requisition"}
+            Create Requisition
           </Button>
         </div>
       </DialogContent>
