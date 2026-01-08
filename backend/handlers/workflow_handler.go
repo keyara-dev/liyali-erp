@@ -46,14 +46,8 @@ func (h *WorkflowHandler) GetWorkflows(c *fiber.Ctx) error {
 
 	logger.Debug("retrieving_workflows")
 
-	// Simple return to test if the issue is in the helper methods
-	logger.Info("workflows_retrieved_successfully")
-	return c.JSON(fiber.Map{
-		"success": true,
-		"message": "Workflows retrieved successfully",
-		"data": []interface{}{},
-		"organizationId": organizationID,
-	})
+	// Use the new API implementation
+	return h.getWorkflowsNew(c, organizationID)
 }
 
 // getWorkflowsNew handles the new frontend-compatible API

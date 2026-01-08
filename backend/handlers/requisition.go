@@ -165,7 +165,7 @@ func CreateRequisition(c *fiber.Ctx) error {
 	}
 
 	// Create requisition
-	reqNumber := fmt.Sprintf("REQ-%d-%s", time.Now().Unix(), uuid.New().String()[:8])
+	reqNumber := utils.GenerateRequisitionNumber()
 	requisition := models.Requisition{
 		ID:                uuid.New().String(),
 		REQNumber:         reqNumber,

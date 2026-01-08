@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { CustomWorkflow } from "@/types";
-import { useWorkflows } from "@/hooks/use-workflows";
+import { useWorkflows } from "@/hooks/use-workflow-queries";
 import {
   Select,
   SelectContent,
@@ -47,8 +47,8 @@ export function WorkflowSelector({
 
   // Filter workflows by entity type and transform to CustomWorkflow format
   const availableWorkflows = useMemo(() => {
-    if (!workflows?.data) return [];
-    return workflows.data
+    if (!workflows) return [];
+    return workflows
       .filter(
         (w: any) =>
           w.applicableEntityTypes?.includes(entityType) ||

@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -147,7 +146,7 @@ func CreateVendor(c *fiber.Ctx) error {
 	}
 
 	// Generate vendor code
-	vendorCode := fmt.Sprintf("VND-%d-%s", time.Now().Unix(), uuid.New().String()[:6])
+	vendorCode := utils.GenerateVendorCode()
 
 	vendor := models.Vendor{
 		ID:          uuid.New().String(),

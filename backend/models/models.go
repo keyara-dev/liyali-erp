@@ -23,9 +23,6 @@ type User struct {
 	IsSuperAdmin          bool           `gorm:"default:false" json:"isSuperAdmin"`
 	Preferences           datatypes.JSON `gorm:"type:jsonb" json:"preferences,omitempty"`
 
-	// Frontend compatibility fields
-	Permissions datatypes.JSON `gorm:"type:jsonb" json:"permissions,omitempty"` // User permissions array
-
 	CreatedAt time.Time  `json:"createdAt"`
 	UpdatedAt time.Time  `json:"updatedAt"`
 	DeletedAt *time.Time `gorm:"index" json:"deletedAt,omitempty"` // Soft delete

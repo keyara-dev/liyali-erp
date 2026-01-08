@@ -1,0 +1,8 @@
+### Test Workflow API Endpoint
+GET http://localhost:8080/api/v1/workflows
+Content-Type: application/json
+
+### Test with organization header (if needed)
+GET http://localhost:8080/api/v1/workflows
+Content-Type: application/json
+X-Organization-ID: org-demo-001

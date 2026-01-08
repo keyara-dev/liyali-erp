@@ -7,9 +7,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/liyali/liyali-gateway/models"
 	"gorm.io/gorm"
-	"gorm.io/gorm/clause"
 )
 
 // DatabaseSeeder handles idempotent database seeding
@@ -56,6 +56,7 @@ func (s *DatabaseSeeder) SeedAll(ctx context.Context) error {
 		{"organization_members", s.seedOrganizationMembers},
 		{"vendors", s.seedVendors},
 		{"categories", s.seedCategories},
+		{"workflows", s.seedWorkflows},
 		{"sample_data", s.seedSampleData},
 	}
 
@@ -99,7 +100,7 @@ func (s *DatabaseSeeder) executeSeeding(ctx context.Context, name string, fn fun
 
 // validateTablesExist ensures all required tables exist before seeding
 func (s *DatabaseSeeder) validateTablesExist(ctx context.Context) error {
-	requiredTables := []string{"users", "organizations", "vendors", "categories"}
+	requiredTables := []string{"users", "organizations", "vendors", "categories", "workflows"}
 	
 	for _, tableName := range requiredTables {
 		var count int64
@@ -168,29 +169,34 @@ func (s *DatabaseSeeder) seedUsers(ctx context.Context, tx *gorm.DB) (*SeedResul
 	}
 
 	for _, user := range users {
-		// Use UPSERT (ON CONFLICT DO UPDATE)
-		err := tx.WithContext(ctx).Clauses(clause.OnConflict{
-			Columns:   []clause.Column{{Name: "email"}},
-			DoUpdates: clause.AssignmentColumns([]string{"name", "role", "active", "current_organization_id", "updated_at"}),
-		}).Create(&user).Error
-
-		if err != nil {
-			result.Error = fmt.Errorf("failed to upsert user %s: %w", user.Email, err)
-			return result, result.Error
-		}
-
-		// Check if it was created or updated
-		if tx.RowsAffected > 0 {
-			var existingUser models.User
-			if err := tx.WithContext(ctx).Where("email = ?", user.Email).First(&existingUser).Error; err == nil {
-				if existingUser.CreatedAt.After(startTime.Add(-time.Second)) {
-					result.Created++
-				} else {
-					result.Updated++
-				}
+		// Check if user exists by ID or email
+		var existingUser models.User
+		err := tx.WithContext(ctx).Where("id = ? OR email = ?", user.ID, user.Email).First(&existingUser).Error
+		
+		if err == nil {
+			// User exists, update it
+			err = tx.WithContext(ctx).Model(&existingUser).Updates(map[string]interface{}{
+				"name":                      user.Name,
+				"role":                      user.Role,
+				"active":                    user.Active,
+				"current_organization_id":   user.CurrentOrganizationID,
+				"is_super_admin":           user.IsSuperAdmin,
+				"updated_at":               time.Now(),
+			}).Error
+			
+			if err != nil {
+				result.Error = fmt.Errorf("failed to update user %s: %w", user.Email, err)
+				return result, result.Error
 			}
+			result.Updated++
 		} else {
-			result.Skipped++
+			// User doesn't exist, create it
+			err = tx.WithContext(ctx).Create(&user).Error
+			if err != nil {
+				result.Error = fmt.Errorf("failed to create user %s: %w", user.Email, err)
+				return result, result.Error
+			}
+			result.Created++
 		}
 	}
 
@@ -225,20 +231,33 @@ func (s *DatabaseSeeder) seedOrganizations(ctx context.Context, tx *gorm.DB) (*S
 	}
 
 	for _, org := range organizations {
-		err := tx.WithContext(ctx).Clauses(clause.OnConflict{
-			Columns:   []clause.Column{{Name: "slug"}},
-			DoUpdates: clause.AssignmentColumns([]string{"name", "description", "active", "tier", "updated_at"}),
-		}).Create(&org).Error
-
-		if err != nil {
-			result.Error = fmt.Errorf("failed to upsert organization %s: %w", org.Slug, err)
-			return result, result.Error
-		}
-
-		if tx.RowsAffected > 0 {
-			result.Created++
+		// Check if organization exists by ID or slug
+		var existingOrg models.Organization
+		err := tx.WithContext(ctx).Where("id = ? OR slug = ?", org.ID, org.Slug).First(&existingOrg).Error
+		
+		if err == nil {
+			// Organization exists, update it
+			err = tx.WithContext(ctx).Model(&existingOrg).Updates(map[string]interface{}{
+				"name":        org.Name,
+				"description": org.Description,
+				"active":      org.Active,
+				"tier":        org.Tier,
+				"updated_at":  time.Now(),
+			}).Error
+			
+			if err != nil {
+				result.Error = fmt.Errorf("failed to update organization %s: %w", org.Slug, err)
+				return result, result.Error
+			}
+			result.Updated++
 		} else {
-			result.Skipped++
+			// Organization doesn't exist, create it
+			err = tx.WithContext(ctx).Create(&org).Error
+			if err != nil {
+				result.Error = fmt.Errorf("failed to create organization %s: %w", org.Slug, err)
+				return result, result.Error
+			}
+			result.Created++
 		}
 	}
 
@@ -279,20 +298,32 @@ func (s *DatabaseSeeder) seedOrganizationMembers(ctx context.Context, tx *gorm.D
 	}
 
 	for _, member := range members {
-		err := tx.WithContext(ctx).Clauses(clause.OnConflict{
-			Columns:   []clause.Column{{Name: "organization_id"}, {Name: "user_id"}},
-			DoUpdates: clause.AssignmentColumns([]string{"role", "active", "updated_at"}),
-		}).Create(&member).Error
-
-		if err != nil {
-			result.Error = fmt.Errorf("failed to upsert member %s-%s: %w", member.OrganizationID, member.UserID, err)
-			return result, result.Error
-		}
-
-		if tx.RowsAffected > 0 {
-			result.Created++
+		// Check if member exists by ID or org+user combination
+		var existingMember models.OrganizationMember
+		err := tx.WithContext(ctx).Where("id = ? OR (organization_id = ? AND user_id = ?)", 
+			member.ID, member.OrganizationID, member.UserID).First(&existingMember).Error
+		
+		if err == nil {
+			// Member exists, update it
+			err = tx.WithContext(ctx).Model(&existingMember).Updates(map[string]interface{}{
+				"role":       member.Role,
+				"active":     member.Active,
+				"updated_at": time.Now(),
+			}).Error
+			
+			if err != nil {
+				result.Error = fmt.Errorf("failed to update member %s-%s: %w", member.OrganizationID, member.UserID, err)
+				return result, result.Error
+			}
+			result.Updated++
 		} else {
-			result.Skipped++
+			// Member doesn't exist, create it
+			err = tx.WithContext(ctx).Create(&member).Error
+			if err != nil {
+				result.Error = fmt.Errorf("failed to create member %s-%s: %w", member.OrganizationID, member.UserID, err)
+				return result, result.Error
+			}
+			result.Created++
 		}
 	}
 
@@ -348,20 +379,35 @@ func (s *DatabaseSeeder) seedVendors(ctx context.Context, tx *gorm.DB) (*SeedRes
 	}
 
 	for _, vendor := range vendors {
-		err := tx.WithContext(ctx).Clauses(clause.OnConflict{
-			Columns:   []clause.Column{{Name: "vendor_code"}},
-			DoUpdates: clause.AssignmentColumns([]string{"name", "email", "phone", "country", "city", "active", "updated_at"}),
-		}).Create(&vendor).Error
-
-		if err != nil {
-			result.Error = fmt.Errorf("failed to upsert vendor %s: %w", vendor.VendorCode, err)
-			return result, result.Error
-		}
-
-		if tx.RowsAffected > 0 {
-			result.Created++
+		// Check if vendor exists by ID or vendor_code
+		var existingVendor models.Vendor
+		err := tx.WithContext(ctx).Where("id = ? OR vendor_code = ?", vendor.ID, vendor.VendorCode).First(&existingVendor).Error
+		
+		if err == nil {
+			// Vendor exists, update it
+			err = tx.WithContext(ctx).Model(&existingVendor).Updates(map[string]interface{}{
+				"name":        vendor.Name,
+				"email":       vendor.Email,
+				"phone":       vendor.Phone,
+				"country":     vendor.Country,
+				"city":        vendor.City,
+				"active":      vendor.Active,
+				"updated_at":  time.Now(),
+			}).Error
+			
+			if err != nil {
+				result.Error = fmt.Errorf("failed to update vendor %s: %w", vendor.VendorCode, err)
+				return result, result.Error
+			}
+			result.Updated++
 		} else {
-			result.Skipped++
+			// Vendor doesn't exist, create it
+			err = tx.WithContext(ctx).Create(&vendor).Error
+			if err != nil {
+				result.Error = fmt.Errorf("failed to create vendor %s: %w", vendor.VendorCode, err)
+				return result, result.Error
+			}
+			result.Created++
 		}
 	}
 
@@ -399,20 +445,228 @@ func (s *DatabaseSeeder) seedCategories(ctx context.Context, tx *gorm.DB) (*Seed
 	}
 
 	for _, category := range categories {
-		err := tx.WithContext(ctx).Clauses(clause.OnConflict{
-			Columns:   []clause.Column{{Name: "organization_id"}, {Name: "name"}},
-			DoUpdates: clause.AssignmentColumns([]string{"description", "active", "updated_at"}),
-		}).Create(&category).Error
+		// Check if category exists by ID or org+name combination
+		var existingCategory models.Category
+		err := tx.WithContext(ctx).Where("id = ? OR (organization_id = ? AND name = ?)", 
+			category.ID, category.OrganizationID, category.Name).First(&existingCategory).Error
+		
+		if err == nil {
+			// Category exists, update it
+			err = tx.WithContext(ctx).Model(&existingCategory).Updates(map[string]interface{}{
+				"description": category.Description,
+				"active":      category.Active,
+				"updated_at":  time.Now(),
+			}).Error
+			
+			if err != nil {
+				result.Error = fmt.Errorf("failed to update category %s: %w", category.Name, err)
+				return result, result.Error
+			}
+			result.Updated++
+		} else {
+			// Category doesn't exist, create it
+			err = tx.WithContext(ctx).Create(&category).Error
+			if err != nil {
+				result.Error = fmt.Errorf("failed to create category %s: %w", category.Name, err)
+				return result, result.Error
+			}
+			result.Created++
+		}
+	}
 
-		if err != nil {
-			result.Error = fmt.Errorf("failed to upsert category %s: %w", category.Name, err)
+	result.Duration = time.Since(startTime)
+	return result, nil
+}
+
+// seedWorkflows creates default workflows for each entity type
+func (s *DatabaseSeeder) seedWorkflows(ctx context.Context, tx *gorm.DB) (*SeedResult, error) {
+	startTime := time.Now()
+	result := &SeedResult{Entity: "workflows"}
+
+	// Define default workflow stages for different entity types
+	requisitionStages := []models.WorkflowStage{
+		{
+			StageNumber:       1,
+			StageName:         "Manager Approval",
+			Description:       "Department manager review and approval",
+			RequiredRole:      "manager",
+			RequiredApprovals: 1,
+			TimeoutHours:      intPtr(48),
+			CanReject:         true,
+			CanReassign:       true,
+		},
+		{
+			StageNumber:       2,
+			StageName:         "Finance Approval",
+			Description:       "Finance team review for budget compliance",
+			RequiredRole:      "finance",
+			RequiredApprovals: 1,
+			TimeoutHours:      intPtr(24),
+			CanReject:         true,
+			CanReassign:       false,
+		},
+	}
+
+	purchaseOrderStages := []models.WorkflowStage{
+		{
+			StageNumber:       1,
+			StageName:         "Procurement Review",
+			Description:       "Procurement team review and vendor selection",
+			RequiredRole:      "procurement",
+			RequiredApprovals: 1,
+			TimeoutHours:      intPtr(24),
+			CanReject:         true,
+			CanReassign:       true,
+		},
+		{
+			StageNumber:       2,
+			StageName:         "Finance Approval",
+			Description:       "Final finance approval before PO issuance",
+			RequiredRole:      "finance",
+			RequiredApprovals: 1,
+			TimeoutHours:      intPtr(12),
+			CanReject:         true,
+			CanReassign:       false,
+		},
+	}
+
+	grnStages := []models.WorkflowStage{
+		{
+			StageNumber:       1,
+			StageName:         "Warehouse Verification",
+			Description:       "Warehouse team verifies received goods",
+			RequiredRole:      "warehouse",
+			RequiredApprovals: 1,
+			TimeoutHours:      intPtr(8),
+			CanReject:         true,
+			CanReassign:       true,
+		},
+	}
+
+	paymentVoucherStages := []models.WorkflowStage{
+		{
+			StageNumber:       1,
+			StageName:         "Finance Review",
+			Description:       "Finance team reviews payment request",
+			RequiredRole:      "finance",
+			RequiredApprovals: 1,
+			TimeoutHours:      intPtr(24),
+			CanReject:         true,
+			CanReassign:       true,
+		},
+		{
+			StageNumber:       2,
+			StageName:         "Admin Approval",
+			Description:       "Final admin approval for payment processing",
+			RequiredRole:      "admin",
+			RequiredApprovals: 1,
+			TimeoutHours:      intPtr(12),
+			CanReject:         true,
+			CanReassign:       false,
+		},
+	}
+
+	workflows := []struct {
+		workflow models.Workflow
+		stages   []models.WorkflowStage
+	}{
+		{
+			workflow: models.Workflow{
+				ID:             uuid.New(), // Generate a new UUID
+				OrganizationID: "org-demo-001",
+				Name:           "Standard Requisition Workflow",
+				Description:    "Default workflow for requisition approvals",
+				DocumentType:   "requisition",
+				EntityType:     "requisition",
+				Version:        1,
+				IsActive:       true,
+				IsDefault:      true,
+				CreatedBy:      "user-admin-001",
+			},
+			stages: requisitionStages,
+		},
+		{
+			workflow: models.Workflow{
+				ID:             uuid.New(), // Generate a new UUID
+				OrganizationID: "org-demo-001",
+				Name:           "Standard Purchase Order Workflow",
+				Description:    "Default workflow for purchase order approvals",
+				DocumentType:   "purchase_order",
+				EntityType:     "purchase_order",
+				Version:        1,
+				IsActive:       true,
+				IsDefault:      true,
+				CreatedBy:      "user-admin-001",
+			},
+			stages: purchaseOrderStages,
+		},
+		{
+			workflow: models.Workflow{
+				ID:             uuid.New(), // Generate a new UUID
+				OrganizationID: "org-demo-001",
+				Name:           "Standard GRN Workflow",
+				Description:    "Default workflow for goods receipt note processing",
+				DocumentType:   "grn",
+				EntityType:     "grn",
+				Version:        1,
+				IsActive:       true,
+				IsDefault:      true,
+				CreatedBy:      "user-admin-001",
+			},
+			stages: grnStages,
+		},
+		{
+			workflow: models.Workflow{
+				ID:             uuid.New(), // Generate a new UUID
+				OrganizationID: "org-demo-001",
+				Name:           "Standard Payment Voucher Workflow",
+				Description:    "Default workflow for payment voucher approvals",
+				DocumentType:   "payment_voucher",
+				EntityType:     "payment_voucher",
+				Version:        1,
+				IsActive:       true,
+				IsDefault:      true,
+				CreatedBy:      "user-admin-001",
+			},
+			stages: paymentVoucherStages,
+		},
+	}
+
+	for _, wf := range workflows {
+		// Set stages using the model method
+		if err := wf.workflow.SetStages(wf.stages); err != nil {
+			result.Error = fmt.Errorf("failed to set stages for workflow %s: %w", wf.workflow.Name, err)
 			return result, result.Error
 		}
 
-		if tx.RowsAffected > 0 {
-			result.Created++
+		// Check if workflow exists by ID or org+entity_type+is_default combination
+		var existingWorkflow models.Workflow
+		err := tx.WithContext(ctx).Where("id = ? OR (organization_id = ? AND entity_type = ? AND is_default = ?)", 
+			wf.workflow.ID, wf.workflow.OrganizationID, wf.workflow.EntityType, wf.workflow.IsDefault).First(&existingWorkflow).Error
+		
+		if err == nil {
+			// Workflow exists, update it
+			err = tx.WithContext(ctx).Model(&existingWorkflow).Updates(map[string]interface{}{
+				"name":        wf.workflow.Name,
+				"description": wf.workflow.Description,
+				"stages":      wf.workflow.Stages,
+				"is_active":   wf.workflow.IsActive,
+				"updated_at":  time.Now(),
+			}).Error
+			
+			if err != nil {
+				result.Error = fmt.Errorf("failed to update workflow %s: %w", wf.workflow.Name, err)
+				return result, result.Error
+			}
+			result.Updated++
 		} else {
-			result.Skipped++
+			// Workflow doesn't exist, create it
+			err = tx.WithContext(ctx).Create(&wf.workflow).Error
+			if err != nil {
+				result.Error = fmt.Errorf("failed to create workflow %s: %w", wf.workflow.Name, err)
+				return result, result.Error
+			}
+			result.Created++
 		}
 	}
 
@@ -487,6 +741,7 @@ func (s *DatabaseSeeder) GetSeedingStats(ctx context.Context) (map[string]int64,
 		"organizations": &models.Organization{},
 		"vendors":       &models.Vendor{},
 		"categories":    &models.Category{},
+		"workflows":     &models.Workflow{},
 	}
 
 	for name, model := range entities {
@@ -504,4 +759,9 @@ func (s *DatabaseSeeder) GetSeedingStats(ctx context.Context) (map[string]int64,
 // stringPtr returns a pointer to a string
 func stringPtr(s string) *string {
 	return &s
+}
+
+// intPtr returns a pointer to an int
+func intPtr(i int) *int {
+	return &i
 }

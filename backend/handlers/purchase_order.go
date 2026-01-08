@@ -156,7 +156,7 @@ func CreatePurchaseOrder(c *fiber.Ctx) error {
 	}
 
 	// Generate PO number
-	poNumber := fmt.Sprintf("PO-%d-%s", time.Now().Unix(), uuid.New().String()[:8])
+	poNumber := utils.GeneratePurchaseOrderNumber()
 	orderID := uuid.New().String()
 
 	logging.AddFieldToRequest(c, "po_number", poNumber)

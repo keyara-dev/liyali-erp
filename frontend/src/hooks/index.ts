@@ -9,8 +9,7 @@ export * from './use-payment-voucher-storage';
 export * from './use-budget-storage';
 
 // Workflow hooks
-export * from './use-workflows';
-// Note: use-workflow-queries removed to avoid duplicate exports
+export * from './use-workflow-queries';
 
 // Approval hooks
 export * from './use-approval-history';

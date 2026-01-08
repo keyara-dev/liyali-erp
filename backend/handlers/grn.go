@@ -110,7 +110,7 @@ func CreateGRN(c *fiber.Ctx) error {
 	}
 
 	// Generate GRN number
-	grnNumber := fmt.Sprintf("GRN-%d-%s", time.Now().Unix(), uuid.New().String()[:8])
+	grnNumber := utils.GenerateGRNNumber()
 
 	grn := models.GoodsReceivedNote{
 		ID:          uuid.New().String(),

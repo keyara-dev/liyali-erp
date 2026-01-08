@@ -132,7 +132,7 @@ func CreatePaymentVoucher(c *fiber.Ctx) error {
 	}
 
 	// Generate voucher number
-	voucherNumber := fmt.Sprintf("PV-%d-%s", time.Now().Unix(), uuid.New().String()[:8])
+	voucherNumber := utils.GeneratePaymentVoucherNumber()
 
 	voucher := models.PaymentVoucher{
 		ID:            uuid.New().String(),
