@@ -4,14 +4,14 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Send, AlertCircle, Download, Eye } from "lucide-react";
+import { Send, AlertCircle, Download, Eye, Pencil, Calendar, User, Building, DollarSign, Clock, Tag, FileText } from "lucide-react";
 import { PageHeader } from "@/components/base/page-header";
 import { useRequisitionById, useSubmitRequisitionForApproval } from "@/hooks/use-requisition-queries";
 import { useRequisitionStorage } from "@/hooks/use-requisition-storage";
 import { Requisition } from "@/types/requisition";
 import { ApprovalHistoryPanel } from "./approval-history-panel";
 import { ActionHistoryPanel } from "./action-history-panel";
-import { EditRequisitionPanel } from "./edit-requisition-panel";
+import { CreateRequisitionDialog } from "./create-requisition-dialog";
 import { DocumentLinks } from "@/components/document-links";
 import { WorkflowDocument } from "@/types";
 import {
@@ -43,6 +43,7 @@ export function RequisitionDetailClient({
   const [isExporting, setIsExporting] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewBlob, setPreviewBlob] = useState<Blob | null>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
   // Use the new hook with initialData from server component
   const {
@@ -106,6 +107,15 @@ export function RequisitionDetailClient({
     }
   };
 
+  const handleEditRequisition = () => {
+    setIsEditDialogOpen(true);
+  };
+
+  const handleRequisitionUpdated = () => {
+    setIsEditDialogOpen(false);
+    refetch(); // Refresh the data
+  };
+
   const isCreator = requisition?.requestedBy === userId;
   const canEdit =
     isCreator &&
@@ -140,7 +150,6 @@ export function RequisitionDetailClient({
     );
   }
 
-  const totalItems = requisition?.items?.length || 0;
   const totalEstimatedCost = requisition?.totalAmount || 0;
 
   return (
@@ -149,7 +158,7 @@ export function RequisitionDetailClient({
       <div className="flex items-start justify-between gap-4">
         <PageHeader
           title={requisition.requisitionNumber}
-          subtitle={`Created ${new Date(requisition.createdAt).toLocaleDateString("en-ZM", { year: "numeric", month: "long", day: "numeric" })}`}
+          subtitle={`${requisition.title || 'Untitled Requisition'} • Created ${new Date(requisition.createdAt).toLocaleDateString("en-ZM", { year: "numeric", month: "long", day: "numeric" })}${requisition.updatedAt && new Date(requisition.updatedAt).getTime() !== new Date(requisition.createdAt).getTime() ? ` • Updated ${new Date(requisition.updatedAt).toLocaleDateString("en-ZM", { year: "numeric", month: "long", day: "numeric" })}` : ''}`}
           badges={[
             {
               status: requisition.status,
@@ -178,6 +187,16 @@ export function RequisitionDetailClient({
             <Download className="h-4 w-4" />
             {isExporting ? "Exporting..." : "Export PDF"}
           </Button>
+          {canEdit && (
+            <Button
+              onClick={handleEditRequisition}
+              variant="outline"
+              className="gap-2 h-11"
+            >
+              <Pencil className="h-4 w-4" />
+              Edit Requisition
+            </Button>
+          )}
           {canSubmit && (
             <Button
               onClick={handleSubmitForApproval}
@@ -200,9 +219,21 @@ export function RequisitionDetailClient({
               Requisition Details
             </h2>
 
-            <div className="grid grid-cols-2 gap-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {/* Basic Information */}
               <div className="space-y-1">
-                <label className="text-xs font-semibold text-primary-foreground/80 uppercase tracking-wider">
+                <label className="text-xs font-semibold text-primary-foreground/80 uppercase tracking-wider flex items-center gap-1">
+                  <FileText className="h-3 w-3" />
+                  Title
+                </label>
+                <p className="text-base font-medium text-primary-foreground">
+                  {requisition.title || "—"}
+                </p>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-primary-foreground/80 uppercase tracking-wider flex items-center gap-1">
+                  <Building className="h-3 w-3" />
                   Department
                 </label>
                 <p className="text-base font-medium text-primary-foreground">
@@ -211,25 +242,67 @@ export function RequisitionDetailClient({
               </div>
 
               <div className="space-y-1">
-                <label className="text-xs font-semibold text-primary-foreground/80 uppercase tracking-wider">
+                <label className="text-xs font-semibold text-primary-foreground/80 uppercase tracking-wider flex items-center gap-1">
+                  <AlertCircle className="h-3 w-3" />
                   Priority
                 </label>
-                <p className="text-base font-medium text-primary-foreground">
-                  {requisition.priority || "—"}
-                </p>
+                <div className="flex items-center">
+                  <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${
+                    requisition.priority?.toLowerCase() === 'urgent' ? 'bg-red-100 text-red-800 border-red-200' :
+                    requisition.priority?.toLowerCase() === 'high' ? 'bg-orange-100 text-orange-800 border-orange-200' :
+                    requisition.priority?.toLowerCase() === 'medium' ? 'bg-blue-100 text-blue-800 border-blue-200' :
+                    'bg-gray-100 text-gray-800 border-gray-200'
+                  }`}>
+                    {requisition.priority || 'Medium'}
+                  </span>
+                </div>
               </div>
 
-              <div className="col-span-2 space-y-1">
-                <label className="text-xs font-semibold text-primary-foreground/80 uppercase tracking-wider">
-                  Description
+              {/* Requester Information */}
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-primary-foreground/80 uppercase tracking-wider flex items-center gap-1">
+                  <User className="h-3 w-3" />
+                  Requested By
                 </label>
-                <p className="text-sm text-primary-foreground leading-relaxed">
-                  {requisition.description || "No description provided"}
+                <p className="text-base font-medium text-primary-foreground">
+                  {requisition.requesterName || requisition.requestedByName || "—"}
                 </p>
+                {requisition.requestedByRole && (
+                  <p className="text-xs text-primary-foreground/60">
+                    {requisition.requestedByRole}
+                  </p>
+                )}
               </div>
+
+              {requisition.requestedFor && (
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-primary-foreground/80 uppercase tracking-wider flex items-center gap-1">
+                    <User className="h-3 w-3" />
+                    Requested For
+                  </label>
+                  <p className="text-base font-medium text-primary-foreground">
+                    {requisition.requestedFor}
+                  </p>
+                </div>
+              )}
 
               <div className="space-y-1">
-                <label className="text-xs font-semibold text-primary-foreground/80 uppercase tracking-wider">
+                <label className="text-xs font-semibold text-primary-foreground/80 uppercase tracking-wider flex items-center gap-1">
+                  <DollarSign className="h-3 w-3" />
+                  Total Amount
+                </label>
+                <p className="text-base font-bold text-primary-foreground">
+                  {requisition.currency} {requisition.totalAmount?.toLocaleString('en-ZM', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  }) || "0.00"}
+                </p>
+              </div>
+
+              {/* Financial Information */}
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-primary-foreground/80 uppercase tracking-wider flex items-center gap-1">
+                  <Tag className="h-3 w-3" />
                   Budget Code
                 </label>
                 <p className="text-sm font-medium font-mono bg-white/10 px-2 py-1 rounded text-primary-foreground">
@@ -237,18 +310,189 @@ export function RequisitionDetailClient({
                 </p>
               </div>
 
+              {requisition.costCenter && (
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-primary-foreground/80 uppercase tracking-wider flex items-center gap-1">
+                    <Building className="h-3 w-3" />
+                    Cost Center
+                  </label>
+                  <p className="text-sm font-medium font-mono bg-white/10 px-2 py-1 rounded text-primary-foreground">
+                    {requisition.costCenter}
+                  </p>
+                </div>
+              )}
+
+              {requisition.projectCode && (
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-primary-foreground/80 uppercase tracking-wider flex items-center gap-1">
+                    <FileText className="h-3 w-3" />
+                    Project Code
+                  </label>
+                  <p className="text-sm font-medium font-mono bg-white/10 px-2 py-1 rounded text-primary-foreground">
+                    {requisition.projectCode}
+                  </p>
+                </div>
+              )}
+
+              {/* Dates */}
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-primary-foreground/80 uppercase tracking-wider flex items-center gap-1">
+                  <Calendar className="h-3 w-3" />
+                  Created Date
+                </label>
+                <p className="text-sm font-medium text-primary-foreground">
+                  {new Date(requisition.createdAt).toLocaleDateString('en-ZM', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                  })}
+                </p>
+              </div>
+
+              {requisition.updatedAt && new Date(requisition.updatedAt).getTime() !== new Date(requisition.createdAt).getTime() && (
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-primary-foreground/80 uppercase tracking-wider flex items-center gap-1">
+                    <Clock className="h-3 w-3" />
+                    Last Updated
+                  </label>
+                  <p className="text-sm font-medium text-primary-foreground">
+                    {new Date(requisition.updatedAt).toLocaleDateString('en-ZM', {
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric'
+                    })}
+                  </p>
+                </div>
+              )}
+
+              {requisition.requiredByDate && (
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-primary-foreground/80 uppercase tracking-wider flex items-center gap-1">
+                    <Calendar className="h-3 w-3" />
+                    Required By
+                  </label>
+                  <p className={`text-sm font-medium ${
+                    new Date(requisition.requiredByDate) < new Date() && requisition.status !== 'completed'
+                      ? 'text-red-200 font-bold' 
+                      : 'text-primary-foreground'
+                  }`}>
+                    {new Date(requisition.requiredByDate).toLocaleDateString('en-ZM', {
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric'
+                    })}
+                    {new Date(requisition.requiredByDate) < new Date() && requisition.status !== 'completed' && (
+                      <span className="ml-2 text-xs">(Overdue)</span>
+                    )}
+                  </p>
+                </div>
+              )}
+
+              {/* Category Information */}
+              {(requisition.categoryName || requisition.otherCategoryText) && (
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-primary-foreground/80 uppercase tracking-wider">
+                    Category
+                  </label>
+                  <p className="text-sm font-medium text-primary-foreground">
+                    {requisition.categoryName || requisition.otherCategoryText || "—"}
+                    {requisition.otherCategoryText && (
+                      <span className="text-xs text-primary-foreground/60 ml-1">(Custom)</span>
+                    )}
+                  </p>
+                </div>
+              )}
+
+              {/* Approval Information */}
               <div className="space-y-1">
                 <label className="text-xs font-semibold text-primary-foreground/80 uppercase tracking-wider">
                   Approval Stage
                 </label>
                 <p className="text-sm font-medium font-mono bg-white/10 px-2 py-1 rounded text-primary-foreground">
-                  {requisition.currentApprovalStage &&
-                  requisition.totalApprovalStages
+                  {requisition.currentApprovalStage && requisition.totalApprovalStages
                     ? `${requisition.currentApprovalStage}/${requisition.totalApprovalStages}`
-                    : "—"}
+                    : `${requisition.approvalStage || 0}/1`}
                 </p>
               </div>
+
+              {requisition.isEstimate && (
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-primary-foreground/80 uppercase tracking-wider">
+                    Estimate
+                  </label>
+                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 border border-yellow-200">
+                    Estimated Costs
+                  </span>
+                </div>
+              )}
+
+              {/* Additional Information */}
+              {requisition.organizationId && (
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-primary-foreground/80 uppercase tracking-wider">
+                    Organization ID
+                  </label>
+                  <p className="text-xs font-medium font-mono bg-white/10 px-2 py-1 rounded text-primary-foreground">
+                    {requisition.organizationId}
+                  </p>
+                </div>
+              )}
+
+              {requisition.departmentId && (
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-primary-foreground/80 uppercase tracking-wider">
+                    Department ID
+                  </label>
+                  <p className="text-xs font-medium font-mono bg-white/10 px-2 py-1 rounded text-primary-foreground">
+                    {requisition.departmentId}
+                  </p>
+                </div>
+              )}
+
+              {requisition.preferredVendorName && (
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-primary-foreground/80 uppercase tracking-wider">
+                    Preferred Vendor
+                  </label>
+                  <p className="text-sm font-medium text-primary-foreground">
+                    {requisition.preferredVendorName}
+                  </p>
+                </div>
+              )}
             </div>
+
+            {/* Description - Full Width */}
+            {requisition.description && (
+              <div className="mt-6 pt-6 border-t border-white/20">
+                <label className="text-xs font-semibold text-primary-foreground/80 uppercase tracking-wider block mb-2">
+                  Description / Justification
+                </label>
+                <p className="text-sm text-primary-foreground leading-relaxed">
+                  {requisition.description}
+                </p>
+              </div>
+            )}
+
+            {/* Additional Metadata - Full Width */}
+            {requisition.metadata && Object.keys(requisition.metadata).length > 0 && (
+              <div className="mt-6 pt-6 border-t border-white/20">
+                <label className="text-xs font-semibold text-primary-foreground/80 uppercase tracking-wider block mb-3">
+                  Additional Information
+                </label>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {Object.entries(requisition.metadata).map(([key, value]) => (
+                    <div key={key} className="space-y-1">
+                      <label className="text-xs font-medium text-primary-foreground/70 capitalize">
+                        {key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}
+                      </label>
+                      <p className="text-sm text-primary-foreground">
+                        {typeof value === 'object' ? JSON.stringify(value, null, 2) : String(value)}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Document Links */}
@@ -265,6 +509,11 @@ export function RequisitionDetailClient({
               <h2 className="text-lg font-semibold">
                 Items ({requisition.items?.length || 0})
               </h2>
+              {requisition.isEstimate && (
+                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 border border-yellow-200">
+                  Estimated Costs
+                </span>
+              )}
             </div>
 
             {requisition.items && requisition.items.length > 0 ? (
@@ -272,51 +521,89 @@ export function RequisitionDetailClient({
                 <div className="space-y-3">
                   {requisition.items.map((item: any, index: number) => (
                     <div
-                      key={item.id}
+                      key={item.id || index}
                       className="flex items-start justify-between p-4 rounded-lg border border-slate-200/10 hover:border-slate-300/20 hover:bg-slate-50/20 transition"
                     >
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
+                        <div className="flex items-center gap-2 mb-2">
                           <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-slate-100 dark:bg-slate-600/10 text-xs font-semibold">
                             {index + 1}
                           </span>
-                          <p className="font-medium text-foreground truncate">
-                            {item.description}
+                          <p className="font-medium text-foreground">
+                            {item.description || item.itemDescription || "No description"}
                           </p>
                         </div>
-                        <p className="text-xs text-muted-foreground">
-                          {item.quantity} × ZMW{" "}
-                          {item.unitPrice.toLocaleString("en-ZM", {
+                        
+                        <div className="ml-8 space-y-1">
+                          <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                            <span>
+                              <strong>Quantity:</strong> {item.quantity || 0}
+                              {item.unit && <span className="ml-1">({item.unit})</span>}
+                            </span>
+                            <span>
+                              <strong>Unit Price:</strong> {requisition.currency} {(item.unitPrice || item.estimatedCost || 0).toLocaleString("en-ZM", {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2,
+                              })}
+                            </span>
+                          </div>
+                          
+                          {item.category && (
+                            <div className="text-xs text-muted-foreground">
+                              <strong>Category:</strong> {item.category}
+                            </div>
+                          )}
+                          
+                          {item.notes && (
+                            <div className="text-xs text-muted-foreground">
+                              <strong>Notes:</strong> {item.notes}
+                            </div>
+                          )}
+
+                          {item.id && (
+                            <div className="text-xs text-muted-foreground">
+                              <strong>Item ID:</strong> {item.id}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      
+                      <div className="text-right ml-4">
+                        <p className="font-semibold text-lg">
+                          {requisition.currency} {(item.amount || item.totalPrice || (item.quantity * (item.unitPrice || item.estimatedCost || 0))).toLocaleString("en-ZM", {
                             minimumFractionDigits: 2,
                             maximumFractionDigits: 2,
                           })}
                         </p>
-                      </div>
-                      <div className="text-right ml-4">
-                        <p className="font-semibold text-sm">
-                          ZMW{" "}
-                          {item.totalPrice.toLocaleString("en-ZM", {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2,
-                          })}
+                        <p className="text-xs text-muted-foreground">
+                          Total
                         </p>
                       </div>
                     </div>
                   ))}
                 </div>
 
-                {/* Total */}
-                <div className="mt-6 pt-6 border-t flex items-center justify-between bg-slate-50 dark:bg-slate-950  -mx-6 -mb-6 px-6 py-4 rounded-b-lg">
-                  <span className="font-semibold text-foreground">
-                    Total Estimated Cost
-                  </span>
-                  <span className="text-2xl font-bold text-emerald-700 dark:text-emerald-400">
-                    ZMW{" "}
-                    {totalEstimatedCost.toLocaleString("en-ZM", {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    })}
-                  </span>
+                {/* Summary */}
+                <div className="mt-6 pt-6 border-t bg-slate-50 dark:bg-slate-950 -mx-6 -mb-6 px-6 py-4 rounded-b-lg">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm text-muted-foreground">
+                      Total Items: {requisition.items.length}
+                    </span>
+                    <span className="text-sm text-muted-foreground">
+                      Currency: {requisition.currency}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold text-foreground">
+                      {requisition.isEstimate ? "Total Estimated Cost" : "Total Amount"}
+                    </span>
+                    <span className="text-2xl font-bold text-emerald-700 dark:text-emerald-400">
+                      {requisition.currency} {totalEstimatedCost.toLocaleString("en-ZM", {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })}
+                    </span>
+                  </div>
                 </div>
               </>
             ) : (
@@ -330,14 +617,6 @@ export function RequisitionDetailClient({
               </Empty>
             )}
           </Card>
-
-          {/* Edit Panel - Only for Creator in DRAFT/REJECTED status */}
-          {canEdit && (
-            <EditRequisitionPanel
-              requisition={requisition as any}
-              onRequisitionUpdated={refetch}
-            />
-          )}
 
           {/* Action History Panel */}
           <ActionHistoryPanel
@@ -366,6 +645,16 @@ export function RequisitionDetailClient({
           onDownload={handleExportPDF}
         />
       )}
+
+      {/* Edit Requisition Dialog */}
+      <CreateRequisitionDialog
+        open={isEditDialogOpen}
+        onOpenChange={setIsEditDialogOpen}
+        onRequisitionCreated={handleRequisitionUpdated}
+        userId={userId}
+        editingRequisition={requisition}
+        isEditing={true}
+      />
     </div>
   );
 }

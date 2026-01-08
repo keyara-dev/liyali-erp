@@ -65,6 +65,8 @@ export interface Requisition {
   createdBy: string;
   createdByName: string;
   createdByRole: string;
+  requestedFor?: string;           // Who the requisition is for
+  otherCategoryText?: string;      // Custom category name when "OTHER" is selected
   
   // UI compatibility fields
   documentNumber?: string;
@@ -101,11 +103,8 @@ export interface CreateRequisitionRequest {
   budgetCode: string;
   costCenter: string;
   projectCode: string;
-  createdBy?: string;
-  createdByName?: string;
-  createdByRole?: string;
   requestedFor?: string;       // Who the requisition is for
-  justification?: string;      // Justification for the request
+  otherCategoryText?: string;  // Custom category name when "OTHER" is selected
 }
 
 export interface UpdateRequisitionRequest {
@@ -126,6 +125,8 @@ export interface UpdateRequisitionRequest {
   budgetCode?: string;
   costCenter?: string;
   projectCode?: string;
+  requestedFor?: string;       // Who the requisition is for
+  otherCategoryText?: string;  // Custom category name when "OTHER" is selected
 }
 
 export interface SubmitRequisitionRequest {

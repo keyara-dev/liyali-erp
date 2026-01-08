@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -24,8 +24,8 @@ import {
 } from "@/components/ui/select";
 import { SelectField } from "@/components/ui/select-field";
 import { Plus, Trash2 } from "lucide-react";
-import { RequisitionItem, RequisitionPriority } from "@/types/requisition";
-import { useCreateRequisition } from "@/hooks/use-requisition-mutations";
+import { RequisitionItem, RequisitionPriority, Requisition } from "@/types/requisition";
+import { useCreateRequisition, useUpdateRequisition } from "@/hooks/use-requisition-mutations";
 import { useCategories } from "@/hooks/use-category-queries";
 
 interface CreateRequisitionDialogProps {
@@ -33,6 +33,8 @@ interface CreateRequisitionDialogProps {
   onOpenChange: (open: boolean) => void;
   onRequisitionCreated: () => void;
   userId: string;
+  editingRequisition?: Requisition | null; // Add editing support
+  isEditing?: boolean; // Add editing mode flag
 }
 
 export function CreateRequisitionDialog({
@@ -40,26 +42,18 @@ export function CreateRequisitionDialog({
   onOpenChange,
   onRequisitionCreated,
   userId,
+  editingRequisition = null,
+  isEditing = false,
 }: CreateRequisitionDialogProps) {
   const createMutation = useCreateRequisition(() => {
     // Reset form on success
-    setFormData({
-      title: "",
-      department: "",
-      departmentId: "",
-      priority: "medium",
-      requestedFor: "",
-      justification: "",
-      budgetCode: "",
-      costCenter: "",
-      projectCode: "",
-      currency: "ZMW",
-      isEstimate: true,
-      requiredByDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-      items: [],
-      categoryId: "",
-      otherCategoryText: "",
-    });
+    resetForm();
+    onRequisitionCreated();
+  });
+
+  const updateMutation = useUpdateRequisition(() => {
+    // Reset form on success
+    resetForm();
     onRequisitionCreated();
   });
 
@@ -83,6 +77,51 @@ export function CreateRequisitionDialog({
     categoryId: "",
     otherCategoryText: "",
   });
+
+  const resetForm = () => {
+    setFormData({
+      title: "",
+      department: "",
+      departmentId: "",
+      priority: "medium",
+      requestedFor: "",
+      justification: "",
+      budgetCode: "",
+      costCenter: "",
+      projectCode: "",
+      currency: "ZMW",
+      isEstimate: true,
+      requiredByDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      items: [],
+      categoryId: "",
+      otherCategoryText: "",
+    });
+  };
+
+  // Populate form when editing
+  useEffect(() => {
+    if (isEditing && editingRequisition && open) {
+      setFormData({
+        title: editingRequisition.title || "",
+        department: editingRequisition.department || "",
+        departmentId: editingRequisition.departmentId || "",
+        priority: editingRequisition.priority || "medium",
+        requestedFor: editingRequisition.requestedFor || "",
+        justification: editingRequisition.description || "",
+        budgetCode: editingRequisition.budgetCode || "",
+        costCenter: editingRequisition.costCenter || "",
+        projectCode: editingRequisition.projectCode || "",
+        currency: editingRequisition.currency || "ZMW",
+        isEstimate: editingRequisition.isEstimate || false,
+        requiredByDate: editingRequisition.requiredByDate ? new Date(editingRequisition.requiredByDate) : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        items: editingRequisition.items || [],
+        categoryId: editingRequisition.categoryId || "",
+        otherCategoryText: editingRequisition.otherCategoryText || "",
+      });
+    } else if (!isEditing && open) {
+      resetForm();
+    }
+  }, [isEditing, editingRequisition, open]);
 
   const totalEstimatedCost = formData.items.reduce(
     (sum, item) => sum + (item.estimatedCost || 0) * item.quantity,
@@ -124,9 +163,25 @@ export function CreateRequisitionDialog({
   ) => {
     setFormData((prev) => ({
       ...prev,
-      items: prev.items.map((item) =>
-        item.id === itemId ? { ...item, [field]: value } : item
-      ),
+      items: prev.items.map((item) => {
+        if (item.id === itemId) {
+          const updatedItem = { ...item, [field]: value };
+          
+          // Calculate amount when quantity or estimatedCost changes
+          if (field === 'quantity' || field === 'estimatedCost') {
+            updatedItem.amount = updatedItem.quantity * (updatedItem.estimatedCost || 0);
+            updatedItem.unitPrice = updatedItem.estimatedCost || 0;
+          }
+          
+          // Ensure description is set from itemDescription
+          if (field === 'itemDescription') {
+            updatedItem.description = value;
+          }
+          
+          return updatedItem;
+        }
+        return item;
+      }),
     }));
   };
 
@@ -163,50 +218,74 @@ export function CreateRequisitionDialog({
 
     // Validate all items have descriptions and quantities
     const allItemsValid = formData.items.every(
-      (item) => item.itemDescription?.trim() && item.quantity > 0
+      (item) => (item.itemDescription?.trim() || item.description?.trim()) && item.quantity > 0
     );
     if (!allItemsValid) {
       toast.error("Please fill in all item details");
       return;
     }
 
-    // Use the mutation hook
-    createMutation.mutate({
-      title: formData.title,
-      description: formData.justification,
-      department: formData.department,
-      departmentId: formData.departmentId || formData.department, // Use department as fallback
-      priority: formData.priority,
-      items: formData.items,
-      totalAmount: totalAmount,
-      currency: formData.currency,
-      categoryId: formData.categoryId === "OTHER" ? undefined : formData.categoryId || undefined,
-      preferredVendorId: undefined, // Optional field
-      isEstimate: formData.isEstimate,
-      requiredByDate: formData.requiredByDate,
-      budgetCode: formData.budgetCode,
-      costCenter: formData.costCenter || formData.budgetCode, // Use budgetCode as fallback
-      projectCode: formData.projectCode || formData.budgetCode, // Use budgetCode as fallback
-      createdBy: userId,
-      createdByName: 'User', // Default name - could be enhanced with actual user data
-      createdByRole: 'requester', // Default role
-      requestedFor: formData.requestedFor,
-      justification: formData.justification,
-    });
+    // Use the appropriate mutation hook based on mode
+    if (isEditing && editingRequisition) {
+      updateMutation.mutate({
+        requisitionId: editingRequisition.id,
+        title: formData.title,
+        description: formData.justification,
+        department: formData.department,
+        departmentId: formData.departmentId || formData.department,
+        priority: formData.priority,
+        items: formData.items,
+        totalAmount: totalAmount,
+        currency: formData.currency,
+        categoryId: formData.categoryId === "OTHER" ? undefined : formData.categoryId || undefined,
+        preferredVendorId: undefined,
+        isEstimate: formData.isEstimate,
+        requiredByDate: formData.requiredByDate,
+        budgetCode: formData.budgetCode,
+        costCenter: formData.costCenter || formData.budgetCode,
+        projectCode: formData.projectCode || formData.budgetCode,
+        requestedFor: formData.requestedFor,
+        otherCategoryText: formData.categoryId === "OTHER" ? formData.otherCategoryText : undefined,
+      });
+    } else {
+      createMutation.mutate({
+        title: formData.title,
+        description: formData.justification,
+        department: formData.department,
+        departmentId: formData.departmentId || formData.department,
+        priority: formData.priority,
+        items: formData.items,
+        totalAmount: totalAmount,
+        currency: formData.currency,
+        categoryId: formData.categoryId === "OTHER" ? undefined : formData.categoryId || undefined,
+        preferredVendorId: undefined,
+        isEstimate: formData.isEstimate,
+        requiredByDate: formData.requiredByDate,
+        budgetCode: formData.budgetCode,
+        costCenter: formData.costCenter || formData.budgetCode,
+        projectCode: formData.projectCode || formData.budgetCode,
+        requestedFor: formData.requestedFor,
+        otherCategoryText: formData.categoryId === "OTHER" ? formData.otherCategoryText : undefined,
+      });
+    }
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl! max-h-[90vh]">
-        <DialogHeader>
-          <DialogTitle>Create New Requisition</DialogTitle>
+      <DialogContent className="max-w-3xl! p-0 overflow-y-auto max-h-[90vh]">
+        <DialogHeader className="p-4 pb-0">
+          <DialogTitle className="font-bold">
+            {isEditing ? "Edit Requisition" : "Create New Requisition"}
+          </DialogTitle>
           <DialogDescription>
-            Fill in the requisition details and add items you need
+            {isEditing 
+              ? "Update the requisition details and items" 
+              : "Fill in the requisition details and add items you need"
+            }
           </DialogDescription>
         </DialogHeader>
 
-        <ScrollArea className="h-[calc(90vh-200px)]">
-          <div className="space-y-6 pr-4">
+          <div className="space-y-6 p-4  ">
             {/* Basic Information */}
             <div className="space-y-4">
               <h3 className="font-semibold text-lg">Basic Information</h3>
@@ -383,7 +462,7 @@ export function CreateRequisitionDialog({
             {/* Items Section */}
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <h3 className="font-semibold text-lg">Items *</h3>
+                <h3 className="font-semibold text-base">Items *</h3>
                 <Button
                   type="button"
                   variant="outline"
@@ -514,24 +593,29 @@ export function CreateRequisitionDialog({
               </div>
             )}
           </div>
-        </ScrollArea>
+  
 
         {/* Dialog Footer */}
-        <div className="flex items-center justify-end gap-3 pt-6 border-t">
+        <div 
+        
+        className="bg-card/5 backdrop-blur-xs sticky bottom-0 flex flex-col-reverse justify-end gap-3 p-4 rounded-b-lg border-t py-6 sm:flex-row sm:py-6"
+        // className="flex items-center justify-end gap-3 pt-6 border-t"
+        
+        >
           <Button
             variant="outline"
             onClick={() => onOpenChange(false)}
-            disabled={createMutation.isPending}
+            disabled={createMutation.isPending || updateMutation.isPending}
           >
             Cancel
           </Button>
           <Button
             onClick={handleSubmit}
-            isLoading={createMutation.isPending}
-            loadingText="Creating..."
+            isLoading={createMutation.isPending || updateMutation.isPending}
+            loadingText={isEditing ? "Updating..." : "Creating..."}
             className="min-w-32"
           >
-            Create Requisition
+            {isEditing ? "Update Requisition" : "Create Requisition"}
           </Button>
         </div>
       </DialogContent>

@@ -11,6 +11,7 @@ type CreateRequisitionRequest struct {
 	Title             string                 `json:"title" validate:"required,min=3"`
 	Description       string                 `json:"description" validate:"required,min=10"`
 	Department        string                 `json:"department" validate:"required"`
+	DepartmentId      string                 `json:"departmentId"`
 	Priority          string                 `json:"priority" validate:"required,oneof=low medium high urgent"`
 	Items             []RequisitionItem       `json:"items" validate:"required,min=1"`
 	TotalAmount       float64                `json:"totalAmount" validate:"required,gt=0"`
@@ -18,6 +19,14 @@ type CreateRequisitionRequest struct {
 	CategoryID        *string                `json:"categoryId" validate:"omitempty,uuid"`
 	PreferredVendorID *string                `json:"preferredVendorId" validate:"omitempty,uuid"`
 	IsEstimate        bool                   `json:"isEstimate"`
+	
+	// Business requirement fields
+	BudgetCode        string                 `json:"budgetCode"`
+	CostCenter        string                 `json:"costCenter"`
+	ProjectCode       string                 `json:"projectCode"`
+	RequiredByDate    time.Time              `json:"requiredByDate"`
+	RequestedFor      string                 `json:"requestedFor"`      // Who the requisition is for
+	OtherCategoryText string                 `json:"otherCategoryText"` // Custom category name when "OTHER" is selected
 }
 
 // UpdateRequisitionRequest represents a requisition update request
@@ -68,6 +77,15 @@ type RequisitionResponse struct {
 	IsEstimate          bool              `json:"isEstimate"`
 	ApprovalStage       int               `json:"approvalStage"`
 	ApprovalHistory     []ApprovalRecord  `json:"approvalHistory"`
+	
+	// Business requirement fields
+	BudgetCode          string            `json:"budgetCode,omitempty"`
+	CostCenter          string            `json:"costCenter,omitempty"`
+	ProjectCode         string            `json:"projectCode,omitempty"`
+	RequiredByDate      time.Time         `json:"requiredByDate,omitempty"`
+	RequestedFor        string            `json:"requestedFor,omitempty"`        // From metadata
+	OtherCategoryText   string            `json:"otherCategoryText,omitempty"`   // From metadata
+	
 	CreatedAt           time.Time         `json:"createdAt"`
 	UpdatedAt           time.Time         `json:"updatedAt"`
 }

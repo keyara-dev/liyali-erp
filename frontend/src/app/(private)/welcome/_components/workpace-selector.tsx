@@ -170,27 +170,26 @@ export function WorkspaceSelector({
                 const isSelected = selectedOrgId === org.id;
 
                 return (
-                  <button
+                  <div
                     key={org.id}
                     onClick={(e) => {
                       // Check if the click originated from the upgrade button or its children
                       const target = e.target as HTMLElement;
                       const isUpgradeButton = target.closest('button[data-upgrade-button]');
                       
-                      if (!isUpgradeButton) {
+                      if (!isUpgradeButton && !isNavigating) {
                         handleSelectOrganization(org.id);
                       }
                     }}
-                    disabled={isNavigating}
                     className={cn(
                       "group relative w-full bg-background rounded-lg p-4 cursor-pointer transition-all duration-200 border text-left",
                       "hover:shadow-md hover:border-primary/50",
-                      "disabled:opacity-50 disabled:cursor-not-allowed",
                       "animate-in fade-in-0 slide-in-from-bottom-1",
                       isDefault &&
                         "border-primary shadow-sm ring-1 ring-primary/20",
                       !isDefault && "border-border",
-                      isNavigating && isSelected && "ring-2 ring-primary/40"
+                      isNavigating && isSelected && "ring-2 ring-primary/40",
+                      isNavigating && "opacity-50 cursor-not-allowed"
                     )}
                     style={{
                       animationDelay: `${index * 100}ms`,
@@ -259,16 +258,20 @@ export function WorkspaceSelector({
                         )}
                       </div>
                     </div>
-                  </button>
+                  </div>
                 );
               })}
 
               {/* Create New Workspace Button */}
               {onCreateWorkspace && (
-                <button
-                  className="w-full flex items-center justify-center p-4 border border-dashed border-border rounded-lg text-muted-foreground hover:text-foreground hover:border-primary/50 hover:bg-muted/50 transition-all duration-200 group animate-in fade-in-0 slide-in-from-bottom-1 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:text-muted-foreground disabled:hover:border-border disabled:hover:bg-transparent"
-                  onClick={onCreateWorkspace}
-                  disabled={isNavigating}
+                <div
+                  className={cn(
+                    "w-full flex items-center justify-center p-4 border border-dashed border-border rounded-lg text-muted-foreground hover:text-foreground hover:border-primary/50 hover:bg-muted/50 transition-all duration-200 group animate-in fade-in-0 slide-in-from-bottom-1",
+                    isNavigating 
+                      ? "opacity-50 cursor-not-allowed hover:text-muted-foreground hover:border-border hover:bg-transparent" 
+                      : "cursor-pointer"
+                  )}
+                  onClick={() => !isNavigating && onCreateWorkspace()}
                   style={{
                     animationDelay: `${userOrganizations.length * 100 + 100}ms`,
                     animationDuration: '400ms'
@@ -276,7 +279,7 @@ export function WorkspaceSelector({
                 >
                   <Plus className="h-4 w-4 mr-2" />
                   <span className="font-medium">Create new workspace</span>
-                </button>
+                </div>
               )}
             </div>
           )}

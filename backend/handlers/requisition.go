@@ -166,6 +166,16 @@ func CreateRequisition(c *fiber.Ctx) error {
 
 	// Create requisition
 	reqNumber := utils.GenerateRequisitionNumber()
+	
+	// Prepare metadata for additional fields
+	metadata := map[string]interface{}{}
+	if req.RequestedFor != "" {
+		metadata["requestedFor"] = req.RequestedFor
+	}
+	if req.OtherCategoryText != "" {
+		metadata["otherCategoryText"] = req.OtherCategoryText
+	}
+	
 	requisition := models.Requisition{
 		ID:                uuid.New().String(),
 		REQNumber:         reqNumber,
@@ -173,6 +183,7 @@ func CreateRequisition(c *fiber.Ctx) error {
 		Title:             req.Title,
 		Description:       req.Description,
 		Department:        req.Department,
+		DepartmentId:      req.DepartmentId,
 		Status:            "draft",
 		Priority:          req.Priority,
 		TotalAmount:       req.TotalAmount,
@@ -181,6 +192,22 @@ func CreateRequisition(c *fiber.Ctx) error {
 		PreferredVendorID: req.PreferredVendorID,
 		IsEstimate:        req.IsEstimate,
 		ApprovalStage:     0,
+		
+		// Business requirement fields
+		BudgetCode:        req.BudgetCode,
+		CostCenter:        req.CostCenter,
+		ProjectCode:       req.ProjectCode,
+		RequiredByDate:    req.RequiredByDate,
+		CreatedBy:         userID,           // From token
+		CreatedByName:     user.Name,        // From authenticated user
+		CreatedByRole:     user.Role,        // From authenticated user
+		RequestedBy:       userID,
+		RequestedByName:   user.Name,
+		RequestedByRole:   user.Role,
+		RequisitionNumber: reqNumber,
+		RequestedDate:     time.Now(),
+		Metadata:          datatypes.NewJSON(metadata),
+		
 		CreatedAt:         time.Now(),
 		UpdatedAt:         time.Now(),
 	}
@@ -697,6 +724,20 @@ func modelToRequisitionResponse(req models.Requisition) types.RequisitionRespons
 		preferredVendorName = req.PreferredVendor.Name
 	}
 
+	// Extract metadata fields
+	var requestedFor, otherCategoryText string
+	if req.Metadata != nil {
+		metadata := req.Metadata.Data()
+		if metadata != nil {
+			if val, ok := metadata["requestedFor"].(string); ok {
+				requestedFor = val
+			}
+			if val, ok := metadata["otherCategoryText"].(string); ok {
+				otherCategoryText = val
+			}
+		}
+	}
+
 	return types.RequisitionResponse{
 		ID:                  req.ID,
 		RequesterID:         req.RequesterId,
@@ -716,6 +757,15 @@ func modelToRequisitionResponse(req models.Requisition) types.RequisitionRespons
 		IsEstimate:          req.IsEstimate,
 		ApprovalStage:       req.ApprovalStage,
 		ApprovalHistory:     approvalHistory,
+		
+		// Business requirement fields
+		BudgetCode:          req.BudgetCode,
+		CostCenter:          req.CostCenter,
+		ProjectCode:         req.ProjectCode,
+		RequiredByDate:      req.RequiredByDate,
+		RequestedFor:        requestedFor,
+		OtherCategoryText:   otherCategoryText,
+		
 		CreatedAt:           req.CreatedAt,
 		UpdatedAt:           req.UpdatedAt,
 	}
