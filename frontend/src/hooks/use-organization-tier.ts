@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useOrganizationContext } from "@/contexts/organization-context";
+import { useOrganizationContext } from "@/hooks/use-organization";
 import { toast } from "sonner";
 
 /**
@@ -12,7 +12,8 @@ export function useOrganizationTier() {
   const { currentOrganization } = useOrganizationContext();
   const queryClient = useQueryClient();
 
-  const currentTier = (currentOrganization?.tier?.toUpperCase() || "STARTER") as "STARTER" | "PRO" | "ENTERPRISE";
+  const currentTier = (currentOrganization?.tier?.toUpperCase() ||
+    "STARTER") as "STARTER" | "PRO" | "ENTERPRISE";
 
   // Tier checking utilities
   const isStarter = currentTier === "STARTER";
@@ -24,16 +25,19 @@ export function useOrganizationTier() {
   const upgradeToPro = useMutation({
     mutationFn: async () => {
       // TODO: Implement actual API call to upgrade organization
-      const response = await fetch(`/api/v1/organizations/${currentOrganization?.id}/upgrade`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          targetTier: "PRO",
-          paymentMethod: "stripe", // or other payment provider
-        }),
-      });
+      const response = await fetch(
+        `/api/v1/organizations/${currentOrganization?.id}/upgrade`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            targetTier: "PRO",
+            paymentMethod: "stripe", // or other payment provider
+          }),
+        }
+      );
 
       if (!response.ok) {
         throw new Error("Failed to upgrade organization");
@@ -44,7 +48,7 @@ export function useOrganizationTier() {
     onSuccess: () => {
       // Invalidate and refetch organization data
       queryClient.invalidateQueries({ queryKey: ["organizations"] });
-      
+
       toast.success("Successfully upgraded to Pro plan!", {
         description: "Your organization now has access to all Pro features.",
       });
@@ -59,11 +63,7 @@ export function useOrganizationTier() {
   // Feature access checks based on tier
   const hasFeature = (feature: string): boolean => {
     const TIER_FEATURES = {
-      STARTER: [
-        "basic_workflows",
-        "standard_reporting",
-        "email_support",
-      ],
+      STARTER: ["basic_workflows", "standard_reporting", "email_support"],
       PRO: [
         "basic_workflows",
         "standard_reporting",
@@ -130,17 +130,17 @@ export function useOrganizationTier() {
     // Current tier info
     currentTier,
     currentOrganization,
-    
+
     // Tier checks
     isStarter,
     isPro,
     isEnterprise,
     canUpgrade,
-    
+
     // Feature access
     hasFeature,
     getTierLimits,
-    
+
     // Actions
     upgradeToPro: upgradeToPro.mutateAsync,
     isUpgrading: upgradeToPro.isPending,

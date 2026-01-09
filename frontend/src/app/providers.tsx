@@ -6,7 +6,6 @@ import { ThemeProvider as NextThemesProvider } from "next-themes";
 import { Toaster } from "sonner";
 
 import { useOfflineQueueProcessor } from "@/hooks/use-offline-queue-processor";
-import { OrganizationProvider } from "@/contexts/organization-context";
 import { TokenRefreshProvider } from "@/components/auth/token-refresh-provider";
 
 const queryClient = new QueryClient({
@@ -35,6 +34,11 @@ const queryClient = new QueryClient({
   },
 });
 
+// Make queryClient available globally for Zustand store
+if (typeof window !== "undefined") {
+  (window as any).queryClient = queryClient;
+}
+
 function StorageInitializer({ children }: { children: React.ReactNode }) {
   useOfflineQueueProcessor(); // Add offline sync processor
   return <>{children}</>;
@@ -49,19 +53,17 @@ export function Providers({ children }: { children: React.ReactNode }) {
         disableTransitionOnChange
       >
         <QueryClientProvider client={queryClient}>
-          <OrganizationProvider>
-            <StorageInitializer>
-              <TokenRefreshProvider>{children}</TokenRefreshProvider>
-            </StorageInitializer>
-            <Toaster
-              position="top-right"
-              expand
-              richColors
-              theme="system"
-              closeButton
-            />
-            <ReactQueryDevtools initialIsOpen={false} />
-          </OrganizationProvider>
+          <StorageInitializer>
+            <TokenRefreshProvider>{children}</TokenRefreshProvider>
+          </StorageInitializer>
+          <Toaster
+            position="top-right"
+            expand
+            richColors
+            theme="system"
+            closeButton
+          />
+          <ReactQueryDevtools initialIsOpen={false} />
         </QueryClientProvider>
       </NextThemesProvider>
     </>

@@ -5,7 +5,7 @@ import { Crown, Zap, Building2, ArrowRight, GemIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { useOrganizationContext } from "@/contexts/organization-context";
+import { useOrganizationContext } from "@/hooks/use-organization";
 import { UpgradeModal } from "@/components/organization/upgrade-modal";
 
 const TIER_CONFIG = {
@@ -37,7 +37,10 @@ interface TierDisplayProps {
   compact?: boolean;
 }
 
-export function TierDisplay({ showUpgradeButton = true, compact = false }: TierDisplayProps) {
+export function TierDisplay({
+  showUpgradeButton = true,
+  compact = false,
+}: TierDisplayProps) {
   const { currentOrganization } = useOrganizationContext();
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
@@ -45,14 +48,15 @@ export function TierDisplay({ showUpgradeButton = true, compact = false }: TierD
     return null;
   }
 
-  const tier = (currentOrganization.tier?.toUpperCase() || "STARTER") as keyof typeof TIER_CONFIG;
+  const tier = (currentOrganization.tier?.toUpperCase() ||
+    "STARTER") as keyof typeof TIER_CONFIG;
   const tierConfig = TIER_CONFIG[tier] || TIER_CONFIG.STARTER;
   const IconComponent = tierConfig.icon || GemIcon;
   const canUpgrade = tier === "STARTER" && showUpgradeButton;
 
   if (compact) {
     return (
-      <div 
+      <div
         className="flex items-center gap-2"
         onClick={(e) => e.stopPropagation()}
         onMouseDown={(e) => e.stopPropagation()}
@@ -69,7 +73,7 @@ export function TierDisplay({ showUpgradeButton = true, compact = false }: TierD
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
-              setShowUpgradeModal(true);     
+              setShowUpgradeModal(true);
             }}
             onMouseDown={(e) => {
               e.preventDefault();
@@ -80,8 +84,8 @@ export function TierDisplay({ showUpgradeButton = true, compact = false }: TierD
             Upgrade
           </Button>
         )}
-        <UpgradeModal 
-          open={showUpgradeModal} 
+        <UpgradeModal
+          open={showUpgradeModal}
           onOpenChange={(open) => {
             setShowUpgradeModal(open);
             // Prevent any potential event bubbling when modal closes
@@ -119,7 +123,7 @@ export function TierDisplay({ showUpgradeButton = true, compact = false }: TierD
                 </div>
               </div>
             </div>
-            
+
             {canUpgrade && (
               <Button
                 onClick={() => setShowUpgradeModal(true)}
@@ -133,8 +137,8 @@ export function TierDisplay({ showUpgradeButton = true, compact = false }: TierD
         </CardContent>
       </Card>
 
-      <UpgradeModal 
-        open={showUpgradeModal} 
+      <UpgradeModal
+        open={showUpgradeModal}
         onOpenChange={setShowUpgradeModal}
         currentTier={tier}
         organizationName={currentOrganization.name}

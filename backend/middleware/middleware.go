@@ -8,6 +8,8 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/liyali/liyali-gateway/config"
+	"github.com/liyali/liyali-gateway/models"
 	"github.com/liyali/liyali-gateway/services"
 )
 
@@ -68,6 +70,21 @@ func EnhancedAuthMiddleware(authService *services.AuthService) fiber.Handler {
 				"message": "Invalid or expired token",
 				"error":   err.Error(),
 			})
+		}
+
+		// Enhanced: Validate organization membership if org context exists
+		if claims.OrganizationID != nil {
+			// Import the config package to access DB
+			var membership models.OrganizationMember
+			if err := config.DB.Where(
+				"organization_id = ? AND user_id = ? AND active = ?",
+				*claims.OrganizationID, claims.UserID, true,
+			).First(&membership).Error; err != nil {
+				return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
+					"success": false,
+					"message": "User is no longer a member of this organization",
+				})
+			}
 		}
 
 		// Store user information in context

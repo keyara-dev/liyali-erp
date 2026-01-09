@@ -1,24 +1,27 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useRouter } from 'next/navigation';
-import { toast } from 'sonner';
-import { useOrganizationContext } from '@/contexts/organization-context';
-import { logoutAction } from '@/app/_actions/auth';
-import { 
-  switchOrganization, 
-  createOrganization, 
-  updateOrganization, 
-  addOrganizationMember, 
+import { useState } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import { useOrganizationContext } from "@/hooks/use-organization";
+import { logoutAction } from "@/app/_actions/auth";
+import {
+  switchOrganization,
+  createOrganization,
+  updateOrganization,
+  addOrganizationMember,
   removeOrganizationMember,
   updateOrganizationSettings,
   CreateOrganizationRequest,
   UpdateOrganizationRequest,
   AddMemberRequest,
-  OrganizationSettings
-} from '@/app/_actions/organizations';
-import { handleOfflineMutation, isOfflineResult } from '@/lib/offline-mutation-helper';
+  OrganizationSettings,
+} from "@/app/_actions/organizations";
+import {
+  handleOfflineMutation,
+  isOfflineResult,
+} from "@/lib/offline-mutation-helper";
 
 /**
  * Hook for handling organization selection/switching
@@ -35,10 +38,10 @@ export function useSelectOrganization() {
     },
     onSuccess: () => {
       setIsRedirecting(true);
-      router.push('/home');
+      router.push("/home");
     },
     onError: (error) => {
-      console.error('Failed to switch organization:', error);
+      console.error("Failed to switch organization:", error);
       setIsRedirecting(false);
     },
   });
@@ -65,7 +68,7 @@ export function useSwitchOrganizationMutation() {
       queryClient.invalidateQueries();
     },
     onError: (error) => {
-      console.error('Failed to switch organization:', error);
+      console.error("Failed to switch organization:", error);
     },
   });
 
@@ -93,11 +96,12 @@ export function useCreateOrganizationMutation() {
           return response.data;
         },
         {
-          operation: 'CREATE',
-          entity: 'organization',
+          operation: "CREATE",
+          entity: "organization",
           data,
-          successMessage: 'Organization created successfully',
-          offlineMessage: 'Organization saved offline. Will sync when connected.',
+          successMessage: "Organization created successfully",
+          offlineMessage:
+            "Organization saved offline. Will sync when connected.",
         }
       );
     },
@@ -105,13 +109,13 @@ export function useCreateOrganizationMutation() {
       if (isOfflineResult(result)) {
         // Already handled by offline helper
       } else {
-        toast.success('Organization created successfully');
+        toast.success("Organization created successfully");
       }
-      queryClient.invalidateQueries({ queryKey: ['organizations'] });
+      queryClient.invalidateQueries({ queryKey: ["organizations"] });
     },
     onError: (error) => {
-      console.error('Failed to create organization:', error);
-      toast.error(error?.message || 'Failed to create organization');
+      console.error("Failed to create organization:", error);
+      toast.error(error?.message || "Failed to create organization");
     },
   });
 
@@ -139,12 +143,13 @@ export function useUpdateOrganizationMutation() {
           return response.data;
         },
         {
-          operation: 'UPDATE',
-          entity: 'organization',
+          operation: "UPDATE",
+          entity: "organization",
           data,
           entityId: data.id,
-          successMessage: 'Organization updated successfully',
-          offlineMessage: 'Organization changes saved offline. Will sync when connected.',
+          successMessage: "Organization updated successfully",
+          offlineMessage:
+            "Organization changes saved offline. Will sync when connected.",
         }
       );
     },
@@ -152,13 +157,15 @@ export function useUpdateOrganizationMutation() {
       if (isOfflineResult(result)) {
         // Already handled by offline helper
       } else {
-        toast.success('Organization updated successfully');
+        toast.success("Organization updated successfully");
       }
-      queryClient.invalidateQueries({ queryKey: ['organizations'] });
-      queryClient.invalidateQueries({ queryKey: ['organization', variables.id] });
+      queryClient.invalidateQueries({ queryKey: ["organizations"] });
+      queryClient.invalidateQueries({
+        queryKey: ["organization", variables.id],
+      });
     },
     onError: (error) => {
-      console.error('Failed to update organization:', error);
+      console.error("Failed to update organization:", error);
     },
   });
 
@@ -184,10 +191,10 @@ export function useAddMemberMutation() {
       return response.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['organization-members'] });
+      queryClient.invalidateQueries({ queryKey: ["organization-members"] });
     },
     onError: (error) => {
-      console.error('Failed to add member:', error);
+      console.error("Failed to add member:", error);
     },
   });
 
@@ -213,10 +220,10 @@ export function useRemoveMemberMutation() {
       return response.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['organization-members'] });
+      queryClient.invalidateQueries({ queryKey: ["organization-members"] });
     },
     onError: (error) => {
-      console.error('Failed to remove member:', error);
+      console.error("Failed to remove member:", error);
     },
   });
 
@@ -242,10 +249,10 @@ export function useUpdateSettingsMutation() {
       return response.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['organization-settings'] });
+      queryClient.invalidateQueries({ queryKey: ["organization-settings"] });
     },
     onError: (error) => {
-      console.error('Failed to update settings:', error);
+      console.error("Failed to update settings:", error);
     },
   });
 
@@ -267,10 +274,10 @@ export function useLogout() {
       await logoutAction();
     },
     onSuccess: () => {
-      router.push('/login');
+      router.push("/login");
     },
     onError: (error) => {
-      console.error('Logout failed:', error);
+      console.error("Logout failed:", error);
     },
   });
 

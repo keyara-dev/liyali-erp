@@ -10,33 +10,33 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
-  DropdownMenuTrigger
+  DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  useSidebar
+  useSidebar,
 } from "@/components/ui/sidebar";
-import { 
-  ChevronRightIcon, 
+import {
+  ChevronRightIcon,
   Crown,
   Zap,
   Building2,
-  FileTextIcon, 
-  LogOutIcon, 
-  PaletteIcon, 
+  FileTextIcon,
+  LogOutIcon,
+  PaletteIcon,
   UserIcon,
   ExternalLinkIcon,
   CircleIcon,
   MoreVertical,
-  GemIcon
+  GemIcon,
 } from "lucide-react";
 
 import Link from "next/link";
 import { useSession } from "@/hooks/use-session";
 import { useLogout } from "@/hooks/use-organization-mutations";
-import { useOrganizationContext } from "@/contexts/organization-context";
+import { useOrganizationContext } from "@/hooks/use-organization";
 import { UpgradeModal } from "@/components/organization/upgrade-modal";
 
 const TIER_CONFIG = {
@@ -74,7 +74,7 @@ const getInitials = (name: string) => {
 const formatRole = (role: string) => {
   return role
     .split("_")
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
     .join(" ");
 };
 
@@ -105,7 +105,8 @@ export function NavUser() {
   const formattedRole = formatRole(user.role);
 
   // Get tier information
-  const tier = (currentOrganization?.tier?.toUpperCase() || "STARTER") as keyof typeof TIER_CONFIG;
+  const tier = (currentOrganization?.tier?.toUpperCase() ||
+    "STARTER") as keyof typeof TIER_CONFIG;
   const tierConfig = TIER_CONFIG[tier] || TIER_CONFIG.STARTER;
   const TierIcon = tierConfig.icon;
   const canUpgrade = tier === "STARTER";
@@ -122,12 +123,20 @@ export function NavUser() {
                 className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground h-auto p-3"
               >
                 <Avatar className="h-8 w-8 rounded-full">
-                  <AvatarImage src={user.avatar || `https://bundui-images.netlify.app/avatars/01.png`} alt={user.name} />
+                  <AvatarImage
+                    src={
+                      user.avatar ||
+                      `https://bundui-images.netlify.app/avatars/01.png`
+                    }
+                    alt={user.name}
+                  />
                   <AvatarFallback>{initials}</AvatarFallback>
                 </Avatar>
                 <div className="grid flex-1 text-left text-sm leading-tight">
                   <span className="truncate font-medium">{user.name}</span>
-                  <span className="text-muted-foreground truncate text-xs">{formattedRole}</span>
+                  <span className="text-muted-foreground truncate text-xs">
+                    {formattedRole}
+                  </span>
                 </div>
                 <MoreVertical className="ml-auto h-4 w-4" />
               </SidebarMenuButton>
@@ -141,12 +150,20 @@ export function NavUser() {
               <DropdownMenuLabel className="p-0 font-normal">
                 <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
                   <Avatar className="h-8 w-8 rounded-full">
-                    <AvatarImage src={user.avatar || `https://bundui-images.netlify.app/avatars/01.png`} alt={user.name} />
+                    <AvatarImage
+                      src={
+                        user.avatar ||
+                        `https://bundui-images.netlify.app/avatars/01.png`
+                      }
+                      alt={user.name}
+                    />
                     <AvatarFallback>{initials}</AvatarFallback>
                   </Avatar>
                   <div className="grid flex-1 text-left text-sm leading-tight">
                     <span className="truncate font-medium">{user.name}</span>
-                    <span className="text-muted-foreground truncate text-xs">{user.email}</span>
+                    <span className="text-muted-foreground truncate text-xs">
+                      {user.email}
+                    </span>
                   </div>
                 </div>
               </DropdownMenuLabel>
@@ -175,7 +192,7 @@ export function NavUser() {
       </SidebarMenu>
 
       {/* Plan Section */}
-      <div 
+      <div
         className="flex items-center gap-3 rounded-lg border p-3 hover:bg-accent/50 transition-colors cursor-pointer"
         onClick={() => setShowUpgradeModal(true)}
       >
@@ -183,7 +200,10 @@ export function NavUser() {
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
             <span className="text-sm font-medium">{tierConfig.label} Plan</span>
-            <Badge variant="secondary" className={`text-xs ${tierConfig.color} hover:${tierConfig.color}`}>
+            <Badge
+              variant="secondary"
+              className={`text-xs ${tierConfig.color} hover:${tierConfig.color}`}
+            >
               Active
             </Badge>
           </div>
@@ -191,13 +211,13 @@ export function NavUser() {
         <ChevronRightIcon className="h-4 w-4 text-muted-foreground" />
       </div>
 
-     
-
       {/* Docs and Resources */}
       <div className="flex items-center gap-3 rounded-lg border p-3 hover:bg-accent/50 transition-colors cursor-pointer">
         <FileTextIcon className="h-5 w-5 text-muted-foreground" />
         <div className="flex-1">
-          <span className="text-sm text-muted-foreground">Docs and resources</span>
+          <span className="text-sm text-muted-foreground">
+            Docs and resources
+          </span>
         </div>
         <ChevronRightIcon className="h-4 w-4 text-muted-foreground" />
       </div>
@@ -206,13 +226,15 @@ export function NavUser() {
       <div className="flex items-center gap-3 rounded-lg border p-3 hover:bg-accent/50 transition-colors cursor-pointer">
         <CircleIcon className="h-3 w-3 fill-green-500 text-green-500" />
         <div className="flex-1">
-          <span className="text-sm text-muted-foreground">All systems operational</span>
+          <span className="text-sm text-muted-foreground">
+            All systems operational
+          </span>
         </div>
         <ExternalLinkIcon className="h-4 w-4 text-muted-foreground" />
       </div>
 
-      <UpgradeModal 
-        open={showUpgradeModal} 
+      <UpgradeModal
+        open={showUpgradeModal}
         onOpenChange={setShowUpgradeModal}
         currentTier={tier}
         organizationName={currentOrganization?.name || "Organization"}

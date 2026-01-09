@@ -1,7 +1,10 @@
 "use server";
 
 import type { APIResponse } from "@/types";
-import authenticatedApiClient, { handleError, successResponse } from "./api-config";
+import authenticatedApiClient, {
+  handleError,
+  successResponse,
+} from "./api-config";
 import { updateAuthSession } from "@/lib/auth";
 
 export interface Organization {
@@ -10,7 +13,7 @@ export interface Organization {
   slug: string;
   logoUrl?: string;
   primaryColor?: string;
-  tier: 'free' | 'pro' | 'enterprise';
+  tier: "free" | "pro" | "enterprise";
   active: boolean;
   description?: string;
   createdAt: string;
@@ -67,7 +70,7 @@ export async function fetchUserOrganizations(): Promise<Organization[]> {
   try {
     const response = await authenticatedApiClient({
       url: url,
-      method: "GET"
+      method: "GET",
     });
 
     return response.data.data || [];
@@ -81,7 +84,9 @@ export async function fetchUserOrganizations(): Promise<Organization[]> {
  * Create a new organization
  * Calls: POST /api/v1/organizations
  */
-export async function createOrganization(data: CreateOrganizationRequest): Promise<APIResponse<Organization>> {
+export async function createOrganization(
+  data: CreateOrganizationRequest
+): Promise<APIResponse<Organization>> {
   const url = `/api/v1/organizations`;
 
   try {
@@ -91,10 +96,13 @@ export async function createOrganization(data: CreateOrganizationRequest): Promi
       data: {
         name: data.name,
         description: data.description,
-      }
+      },
     });
 
-    return successResponse(response.data.data, "Organization created successfully");
+    return successResponse(
+      response.data.data,
+      "Organization created successfully"
+    );
   } catch (error: any) {
     return handleError(error, "POST", url);
   }
@@ -104,16 +112,21 @@ export async function createOrganization(data: CreateOrganizationRequest): Promi
  * Get organization by ID
  * Calls: GET /api/v1/organizations/{id}
  */
-export async function getOrganizationById(orgId: string): Promise<APIResponse<Organization>> {
+export async function getOrganizationById(
+  orgId: string
+): Promise<APIResponse<Organization>> {
   const url = `/api/v1/organizations/${orgId}`;
 
   try {
     const response = await authenticatedApiClient({
       url: url,
-      method: "GET"
+      method: "GET",
     });
 
-    return successResponse(response.data.data, "Organization retrieved successfully");
+    return successResponse(
+      response.data.data,
+      "Organization retrieved successfully"
+    );
   } catch (error: any) {
     return handleError(error, "GET", url);
   }
@@ -123,7 +136,9 @@ export async function getOrganizationById(orgId: string): Promise<APIResponse<Or
  * Update organization
  * Calls: PUT /api/v1/organizations/{id}
  */
-export async function updateOrganization(data: UpdateOrganizationRequest): Promise<APIResponse<Organization>> {
+export async function updateOrganization(
+  data: UpdateOrganizationRequest
+): Promise<APIResponse<Organization>> {
   const url = `/api/v1/organizations/${data.id}`;
 
   try {
@@ -133,10 +148,13 @@ export async function updateOrganization(data: UpdateOrganizationRequest): Promi
       data: {
         name: data.name,
         description: data.description,
-      }
+      },
     });
 
-    return successResponse(response.data.data, "Organization updated successfully");
+    return successResponse(
+      response.data.data,
+      "Organization updated successfully"
+    );
   } catch (error: any) {
     return handleError(error, "PUT", url);
   }
@@ -150,15 +168,32 @@ export async function switchOrganization(orgId: string): Promise<string> {
   const url = `/api/v1/organizations/${orgId}/switch`;
 
   try {
+    // 1. Verify current session before attempting switch
+    const { verifySession } = await import("@/lib/auth");
+    const { isAuthenticated, session } = await verifySession();
+    if (!isAuthenticated) {
+      throw new Error("No valid session found");
+    }
+
+    // 2. Backend switch (this updates user's current_organization_id)
     await authenticatedApiClient({
       url: url,
-      method: "POST"
+      method: "POST",
     });
 
-    // Update frontend session with new organization ID
+    // 3. Update frontend session atomically
     await updateAuthSession({
       organization_id: orgId,
     });
+
+    // 4. Verify the update was successful
+    const { session: updatedSession } = await verifySession();
+    if (updatedSession?.organization_id !== orgId) {
+      console.warn(
+        "Organization switch verification failed, but backend succeeded"
+      );
+      // Don't throw error as backend succeeded - frontend will sync on next request
+    }
 
     return orgId;
   } catch (error: any) {
@@ -177,10 +212,10 @@ export async function fetchOrganizationMembers(
   role?: string
 ): Promise<APIResponse<OrganizationMember[]>> {
   const params = new URLSearchParams();
-  params.set('page', page.toString());
-  params.set('limit', limit.toString());
+  params.set("page", page.toString());
+  params.set("limit", limit.toString());
   if (role) {
-    params.set('role', role);
+    params.set("role", role);
   }
 
   const url = `/api/v1/organization/members?${params.toString()}`;
@@ -188,10 +223,13 @@ export async function fetchOrganizationMembers(
   try {
     const response = await authenticatedApiClient({
       url: url,
-      method: "GET"
+      method: "GET",
     });
 
-    return successResponse(response.data.data || [], "Members retrieved successfully");
+    return successResponse(
+      response.data.data || [],
+      "Members retrieved successfully"
+    );
   } catch (error: any) {
     return handleError(error, "GET", url);
   }
@@ -201,7 +239,9 @@ export async function fetchOrganizationMembers(
  * Add organization member
  * Calls: POST /api/v1/organization/members
  */
-export async function addOrganizationMember(data: AddMemberRequest): Promise<APIResponse<OrganizationMember>> {
+export async function addOrganizationMember(
+  data: AddMemberRequest
+): Promise<APIResponse<OrganizationMember>> {
   const url = `/api/v1/organization/members`;
 
   try {
@@ -213,7 +253,7 @@ export async function addOrganizationMember(data: AddMemberRequest): Promise<API
         role: data.role,
         department: data.department,
         title: data.title,
-      }
+      },
     });
 
     return successResponse(response.data.data, "Member added successfully");
@@ -226,13 +266,15 @@ export async function addOrganizationMember(data: AddMemberRequest): Promise<API
  * Remove organization member
  * Calls: DELETE /api/v1/organization/members/{userId}
  */
-export async function removeOrganizationMember(userId: string): Promise<APIResponse> {
+export async function removeOrganizationMember(
+  userId: string
+): Promise<APIResponse> {
   const url = `/api/v1/organization/members/${userId}`;
 
   try {
     await authenticatedApiClient({
       url: url,
-      method: "DELETE"
+      method: "DELETE",
     });
 
     return successResponse(null, "Member removed successfully");
@@ -245,16 +287,21 @@ export async function removeOrganizationMember(userId: string): Promise<APIRespo
  * Get organization settings
  * Calls: GET /api/v1/organization/settings
  */
-export async function getOrganizationSettings(): Promise<APIResponse<OrganizationSettings>> {
+export async function getOrganizationSettings(): Promise<
+  APIResponse<OrganizationSettings>
+> {
   const url = `/api/v1/organization/settings`;
 
   try {
     const response = await authenticatedApiClient({
       url: url,
-      method: "GET"
+      method: "GET",
     });
 
-    return successResponse(response.data.data, "Settings retrieved successfully");
+    return successResponse(
+      response.data.data,
+      "Settings retrieved successfully"
+    );
   } catch (error: any) {
     return handleError(error, "GET", url);
   }
@@ -264,7 +311,9 @@ export async function getOrganizationSettings(): Promise<APIResponse<Organizatio
  * Update organization settings
  * Calls: PUT /api/v1/organization/settings
  */
-export async function updateOrganizationSettings(data: OrganizationSettings): Promise<APIResponse<OrganizationSettings>> {
+export async function updateOrganizationSettings(
+  data: OrganizationSettings
+): Promise<APIResponse<OrganizationSettings>> {
   const url = `/api/v1/organization/settings`;
 
   try {
@@ -277,7 +326,7 @@ export async function updateOrganizationSettings(data: OrganizationSettings): Pr
         fiscalYearStart: data.fiscalYearStart,
         workflowEnabled: data.workflowEnabled,
         notifications: data.notifications,
-      }
+      },
     });
 
     return successResponse(response.data.data, "Settings updated successfully");

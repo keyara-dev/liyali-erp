@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { AnimatePresence } from "framer-motion";
-import { useOrganizationContext } from "@/contexts/organization-context";
+import { useOrganizationContext } from "@/hooks/use-organization";
 import { CreateWorkspace } from "./_components/create-workspace";
 import { WorkspaceSelector } from "./_components/workpace-selector";
 

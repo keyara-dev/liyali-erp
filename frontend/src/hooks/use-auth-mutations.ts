@@ -1,9 +1,20 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { useMutation } from '@tanstack/react-query';
-import { useRouter } from 'next/navigation';
-import { loginAction, createNewAccount, changePassword, sendResetEmail, resetPassword } from '@/app/_actions/auth';
+import { useState } from "react";
+import { useMutation } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
+import {
+  loginAction,
+  createNewAccount,
+  changePassword,
+  sendResetEmail,
+  resetPassword,
+} from "@/app/_actions/auth";
+import {
+  startLoginTimer,
+  endLoginTimer,
+  trackSessionError,
+} from "@/lib/auth-monitoring";
 
 /**
  * Hook for handling user login
@@ -29,19 +40,56 @@ export function useLoginMutation() {
   const [isRedirecting, setIsRedirecting] = useState(false);
 
   const mutation = useMutation({
-    mutationFn: async ({ email, password }: { email: string; password: string }) => {
+    mutationFn: async ({
+      email,
+      password,
+    }: {
+      email: string;
+      password: string;
+    }) => {
+      // Start timing the login process
+      startLoginTimer();
       return await loginAction(email, password);
     },
     onSuccess: async (data) => {
       if (data.success) {
         setIsRedirecting(true);
-        // Add a small delay to ensure session cookie is set
-        await new Promise(resolve => setTimeout(resolve, 100));
-        router.push('/welcome');
+
+        // Wait for session to be properly set and verify it's readable
+        let sessionReady = false;
+        let attempts = 0;
+        const maxAttempts = 10;
+
+        while (!sessionReady && attempts < maxAttempts) {
+          await new Promise((resolve) => setTimeout(resolve, 200));
+
+          try {
+            const { verifySession } = await import("@/lib/auth");
+            const { isAuthenticated } = await verifySession();
+            if (isAuthenticated) {
+              sessionReady = true;
+            }
+          } catch (error) {
+            console.log(
+              `Session verification attempt ${attempts + 1} failed:`,
+              error
+            );
+          }
+
+          attempts++;
+        }
+
+        if (sessionReady) {
+          router.push("/welcome");
+        } else {
+          console.error("Session not ready after login, max attempts reached");
+          setIsRedirecting(false);
+          throw new Error("Session initialization failed");
+        }
       }
     },
     onError: (error) => {
-      console.error('Login failed:', error);
+      console.error("Login failed:", error);
       setIsRedirecting(false);
     },
   });
@@ -81,17 +129,53 @@ export function useSignupMutation() {
   const [isRedirecting, setIsRedirecting] = useState(false);
 
   const mutation = useMutation({
-    mutationFn: async (data: { email: string; name: string; password: string; role?: string }) => {
+    mutationFn: async (data: {
+      email: string;
+      name: string;
+      password: string;
+      role?: string;
+    }) => {
       return await createNewAccount(data);
     },
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       if (data.success) {
         setIsRedirecting(true);
-        router.push('/welcome');
+
+        // Add session verification for signup as well
+        let sessionReady = false;
+        let attempts = 0;
+        const maxAttempts = 10;
+
+        while (!sessionReady && attempts < maxAttempts) {
+          await new Promise((resolve) => setTimeout(resolve, 200));
+
+          try {
+            const { verifySession } = await import("@/lib/auth");
+            const { isAuthenticated } = await verifySession();
+            if (isAuthenticated) {
+              sessionReady = true;
+            }
+          } catch (error) {
+            console.log(
+              `Signup session verification attempt ${attempts + 1} failed:`,
+              error
+            );
+          }
+
+          attempts++;
+        }
+
+        if (sessionReady) {
+          router.push("/welcome");
+        } else {
+          console.error("Session not ready after signup, max attempts reached");
+          setIsRedirecting(false);
+          throw new Error("Session initialization failed after signup");
+        }
       }
     },
     onError: (error) => {
-      console.error('Signup failed:', error);
+      console.error("Signup failed:", error);
       setIsRedirecting(false);
     },
   });
@@ -128,7 +212,7 @@ export function useSendResetEmailMutation() {
       return await sendResetEmail(email);
     },
     onError: (error) => {
-      console.error('Failed to send reset email:', error);
+      console.error("Failed to send reset email:", error);
     },
   });
 
@@ -165,16 +249,22 @@ export function useResetPasswordMutation() {
   const router = useRouter();
 
   const mutation = useMutation({
-    mutationFn: async ({ token, newPassword }: { token: string; newPassword: string }) => {
+    mutationFn: async ({
+      token,
+      newPassword,
+    }: {
+      token: string;
+      newPassword: string;
+    }) => {
       return await resetPassword(token, newPassword);
     },
     onSuccess: (data) => {
       if (data.success) {
-        router.push('/login?password_reset=true');
+        router.push("/login?password_reset=true");
       }
     },
     onError: (error) => {
-      console.error('Password reset failed:', error);
+      console.error("Password reset failed:", error);
     },
   });
 
@@ -219,7 +309,7 @@ export function useChangePasswordMutation() {
       return await changePassword(oldPassword, newPassword);
     },
     onError: (error) => {
-      console.error('Failed to change password:', error);
+      console.error("Failed to change password:", error);
     },
   });
 

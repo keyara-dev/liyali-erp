@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useOrganizationContext } from "@/contexts/organization-context";
+import { useOrganizationContext } from "@/hooks/use-organization";
 import { useSession } from "@/hooks/use-session";
 import {
   useSelectOrganization,
@@ -16,6 +16,7 @@ import { WorkspaceSkeleton } from "./workspace-skeleton";
 import { EmptyWorkspaceState } from "./empty-workspace-state";
 import { debugSession } from "@/app/_actions/debug";
 import { TierDisplay } from "@/components/organization/tier-display";
+import { trackPageRedirect, trackOrgSwitchError } from "@/lib/auth-monitoring";
 
 interface WorkspaceSelectorProps {
   onCreateWorkspace?: () => void;
@@ -23,30 +24,62 @@ interface WorkspaceSelectorProps {
   showSignOut?: boolean;
 }
 
-export function WorkspaceSelector({ 
-  onCreateWorkspace, 
-  showLogo = true, 
-  showSignOut = true 
+export function WorkspaceSelector({
+  onCreateWorkspace,
+  showLogo = true,
+  showSignOut = true,
 }: WorkspaceSelectorProps) {
   const { user } = useSession();
-  const { userOrganizations, currentOrganization, isLoading, error, retryFetch } =
-    useOrganizationContext();
+  const {
+    userOrganizations,
+    currentOrganization,
+    isLoading,
+    error,
+    retryFetch,
+  } = useOrganizationContext();
   const { selectOrganization, isPending: isNavigating } =
     useSelectOrganization();
   const { logout } = useLogout();
   const [selectedOrgId, setSelectedOrgId] = useState<string | null>(
     currentOrganization?.id ?? null
   );
+  const [retryCount, setRetryCount] = useState(0);
   const [showSkeleton, setShowSkeleton] = useState(true);
   const [debugInfo, setDebugInfo] = useState<any>(null);
   const [showDebug, setShowDebug] = useState(false);
 
-  // Debug session when there's an error
+  // Enhanced error recovery for session issues
   useEffect(() => {
-    if (error && error.includes('No valid session found')) {
+    if (error && error.includes("No valid session found")) {
+      if (retryCount < 3) {
+        const delay = Math.min(1000 * Math.pow(2, retryCount), 5000);
+        console.log(
+          `Session error detected, retrying in ${delay}ms (attempt ${retryCount + 1}/3)`
+        );
+
+        setTimeout(() => {
+          setRetryCount((prev) => prev + 1);
+          retryFetch();
+        }, delay);
+      } else {
+        // After 3 retries, force logout to clear invalid session
+        console.error(
+          "Persistent session error after 3 retries, forcing logout"
+        );
+        logout();
+      }
+
+      // Debug session for troubleshooting
       debugSession().then(setDebugInfo);
     }
-  }, [error]);
+  }, [error, retryCount, retryFetch, logout]);
+
+  // Reset retry count on successful load
+  useEffect(() => {
+    if (!error && userOrganizations.length > 0) {
+      setRetryCount(0);
+    }
+  }, [error, userOrganizations.length]);
 
   // Show skeleton for minimum time to avoid flashing
   useEffect(() => {
@@ -60,11 +93,33 @@ export function WorkspaceSelector({
     }
   }, [isLoading, userOrganizations.length]);
 
+  // Enhanced organization selection with validation
   const handleSelectOrganization = async (orgId: string) => {
     if (isNavigating) return;
+
+    // Validate organization exists in current list
+    const orgExists = userOrganizations.some((org) => org.id === orgId);
+    if (!orgExists) {
+      console.error("Selected organization not found in user organizations");
+      return;
+    }
+
     setSelectedOrgId(orgId);
-    await selectOrganization(orgId);
+
+    try {
+      await selectOrganization(orgId);
+    } catch (error) {
+      console.error("Organization selection failed:", error);
+      trackOrgSwitchError(error, orgId, user?.id);
+      // Reset to current organization on failure
+      setSelectedOrgId(currentOrganization?.id ?? null);
+    }
   };
+
+  // Track page visits for redirect loop detection
+  useEffect(() => {
+    trackPageRedirect("/welcome");
+  }, []);
 
   const handleLogout = async () => {
     await logout();
@@ -111,31 +166,31 @@ export function WorkspaceSelector({
             <div className="text-center py-8 border border-destructive/20 bg-destructive/5 rounded-lg">
               <p className="text-destructive mb-4">Failed to load workspaces</p>
               <p className="text-sm text-muted-foreground mb-4">
-                {error.includes('No valid session found') 
-                  ? 'Session expired. Please sign in again.' 
+                {error.includes("No valid session found")
+                  ? "Session expired. Please sign in again."
                   : error}
               </p>
               <div className="flex gap-2 justify-center">
-                <Button 
-                  onClick={retryFetch} 
+                <Button
+                  onClick={retryFetch}
                   variant="outline"
                   size="sm"
                   disabled={isNavigating}
                 >
                   Retry
                 </Button>
-                {error.includes('No valid session found') && (
+                {error.includes("No valid session found") && (
                   <>
-                    <Button 
-                      onClick={handleLogout} 
+                    <Button
+                      onClick={handleLogout}
                       variant="default"
                       size="sm"
                       disabled={isNavigating}
                     >
                       Sign In Again
                     </Button>
-                    <Button 
-                      onClick={() => setShowDebug(!showDebug)} 
+                    <Button
+                      onClick={() => setShowDebug(!showDebug)}
                       variant="ghost"
                       size="sm"
                       disabled={isNavigating}
@@ -156,7 +211,7 @@ export function WorkspaceSelector({
             <WorkspaceSkeleton />
           ) : userOrganizations.length === 0 ? (
             // No organizations state
-            <EmptyWorkspaceState 
+            <EmptyWorkspaceState
               onCreateWorkspace={onCreateWorkspace}
               onSignOut={showSignOut ? handleLogout : undefined}
               showSignOut={showSignOut}
@@ -175,8 +230,10 @@ export function WorkspaceSelector({
                     onClick={(e) => {
                       // Check if the click originated from the upgrade button or its children
                       const target = e.target as HTMLElement;
-                      const isUpgradeButton = target.closest('button[data-upgrade-button]');
-                      
+                      const isUpgradeButton = target.closest(
+                        "button[data-upgrade-button]"
+                      );
+
                       if (!isUpgradeButton && !isNavigating) {
                         handleSelectOrganization(org.id);
                       }
@@ -193,7 +250,7 @@ export function WorkspaceSelector({
                     )}
                     style={{
                       animationDelay: `${index * 100}ms`,
-                      animationDuration: '400ms'
+                      animationDuration: "400ms",
                     }}
                   >
                     {/* Organization Content */}
@@ -230,23 +287,23 @@ export function WorkspaceSelector({
                         )}
 
                         {/* Organization Details */}
-                            <div className="flex items-center gap-2 mt-2">
-                                {isDefault && (
-                                  <Badge variant={"default"} 
-                                  // className="inline-flex items-center px-2 py-0.5 border border-primary/30 text-xs font-medium bg-primary/10 text-primary"
-                                  >
-                                      Default
-                                    </Badge>
-                                )}
-                                
-                              {/* Compact Tier Display with Upgrade */}
-                              {org.tier?.toUpperCase() === "STARTER" && (
-                                <div className="flex-shrink-0">
-                                  <TierDisplay compact showUpgradeButton />
-                                </div>
-                              )}
-                              
+                        <div className="flex items-center gap-2 mt-2">
+                          {isDefault && (
+                            <Badge
+                              variant={"default"}
+                              // className="inline-flex items-center px-2 py-0.5 border border-primary/30 text-xs font-medium bg-primary/10 text-primary"
+                            >
+                              Default
+                            </Badge>
+                          )}
+
+                          {/* Compact Tier Display with Upgrade */}
+                          {org.tier?.toUpperCase() === "STARTER" && (
+                            <div className="flex-shrink-0">
+                              <TierDisplay compact showUpgradeButton />
                             </div>
+                          )}
+                        </div>
                       </div>
 
                       {/* Arrow */}
@@ -267,14 +324,14 @@ export function WorkspaceSelector({
                 <div
                   className={cn(
                     "w-full flex items-center justify-center p-4 border border-dashed border-border rounded-lg text-muted-foreground hover:text-foreground hover:border-primary/50 hover:bg-muted/50 transition-all duration-200 group animate-in fade-in-0 slide-in-from-bottom-1",
-                    isNavigating 
-                      ? "opacity-50 cursor-not-allowed hover:text-muted-foreground hover:border-border hover:bg-transparent" 
+                    isNavigating
+                      ? "opacity-50 cursor-not-allowed hover:text-muted-foreground hover:border-border hover:bg-transparent"
                       : "cursor-pointer"
                   )}
                   onClick={() => !isNavigating && onCreateWorkspace()}
                   style={{
                     animationDelay: `${userOrganizations.length * 100 + 100}ms`,
-                    animationDuration: '400ms'
+                    animationDuration: "400ms",
                   }}
                 >
                   <Plus className="h-4 w-4 mr-2" />

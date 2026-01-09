@@ -20,19 +20,19 @@ import {
 } from "@/components/ui/popover";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { useOrganizationContext } from "@/contexts/organization-context";
+import { useOrganizationContext } from "@/hooks/use-organization";
 import { CreateOrganizationModal } from "@/components/modals/create-organization-modal";
 import { useSidebar } from "@/components/ui/sidebar";
 
 export function WorkspaceSwitcher() {
   const [open, setOpen] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const { 
-    currentOrganization, 
-    userOrganizations, 
-    switchWorkspace, 
+  const {
+    currentOrganization,
+    userOrganizations,
+    switchWorkspace,
     isLoading,
-    refreshOrganizations 
+    refreshOrganizations,
   } = useOrganizationContext();
   const { open: sidebarOpen } = useSidebar();
 
@@ -41,7 +41,7 @@ export function WorkspaceSwitcher() {
       setOpen(false);
       return;
     }
-    
+
     try {
       await switchWorkspace(orgId);
       setOpen(false);
@@ -105,12 +105,14 @@ export function WorkspaceSwitcher() {
           >
             <div className="flex items-center gap-2 min-w-0">
               <Avatar className="h-7 w-7 rounded-lg">
-                <AvatarImage 
-                  src={currentOrganization.logoUrl} 
-                  alt={currentOrganization.name} 
+                <AvatarImage
+                  src={currentOrganization.logoUrl}
+                  alt={currentOrganization.name}
                 />
                 <AvatarFallback className="rounded-lg  bg-primary text-primary-foreground">
-                  <span className="text-base">{getInitials(currentOrganization.name)}</span>
+                  <span className="text-base">
+                    {getInitials(currentOrganization.name)}
+                  </span>
                 </AvatarFallback>
               </Avatar>
               {sidebarOpen && (
@@ -158,7 +160,6 @@ export function WorkspaceSwitcher() {
                         {org.name}
                       </div>
                       <div className="flex items-center gap-2">
-                       
                         {org.description && (
                           <span className="text-xs text-muted-foreground truncate">
                             {org.description}
