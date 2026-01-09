@@ -8,10 +8,8 @@ import {
   createBudget,
   updateBudget,
   submitBudgetForApproval,
-  approveBudget,
-  rejectBudget,
 } from '@/app/_actions/budgets';
-import { Budget, CreateBudgetRequest, ApproveBudgetRequest, RejectBudgetRequest } from '@/types/budget';
+import { Budget, CreateBudgetRequest } from '@/types/budget';
 import { useBudgetStorage } from '@/hooks/use-budget-storage';
 import { toast } from 'sonner';
 
@@ -142,97 +140,7 @@ export const useSubmitBudgetForApproval = (budgetId: string, onSuccess?: () => v
   });
 };
 
-/**
- * Approve budget mutation
- *
- * @param budgetId - Budget ID to approve
- * @param onSuccess - Callback after successful approval
- * @returns Mutation object
- *
- * @example
- * const approveMutation = useApproveBudget(budgetId)
- * await approveMutation.mutateAsync({
- *   approvingUserId: userId,
- *   approvingUserRole: 'FINANCE_OFFICER',
- *   signature: signatureDataUrl,
- *   comments: 'Approved'
- * })
- */
-export const useApproveBudget = (budgetId: string, onSuccess?: () => void) => {
-  const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: async (data: Omit<ApproveBudgetRequest, 'budgetId'>) => {
-      const response = await approveBudget({
-        budgetId,
-        ...data,
-      });
-
-      if (!response.success) {
-        throw new Error(response.message);
-      }
-      return response;
-    },
-    onSuccess: () => {
-      toast.success('Budget approved successfully');
-
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.BUDGETS.BY_ID, budgetId] });
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.BUDGETS.BY_USER] });
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.APPROVALS_PENDING] });
-
-      onSuccess?.();
-    },
-    onError: (error: Error) => {
-      toast.error(error.message || 'Failed to approve budget');
-    },
-  });
-};
-
-/**
- * Reject budget mutation
- *
- * @param budgetId - Budget ID to reject
- * @param onSuccess - Callback after successful rejection
- * @returns Mutation object
- *
- * @example
- * const rejectMutation = useRejectBudget(budgetId)
- * await rejectMutation.mutateAsync({
- *   rejectingUserId: userId,
- *   rejectingUserRole: 'FINANCE_OFFICER',
- *   remarks: 'Insufficient details',
- *   signature: signatureDataUrl
- * })
- */
-export const useRejectBudget = (budgetId: string, onSuccess?: () => void) => {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (data: Omit<RejectBudgetRequest, 'budgetId'>) => {
-      const response = await rejectBudget({
-        budgetId,
-        ...data,
-      });
-
-      if (!response.success) {
-        throw new Error(response.message);
-      }
-      return response;
-    },
-    onSuccess: () => {
-      toast.success('Budget rejected and returned to draft');
-
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.BUDGETS.BY_ID, budgetId] });
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.BUDGETS.BY_USER] });
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.APPROVALS_PENDING] });
-
-      onSuccess?.();
-    },
-    onError: (error: Error) => {
-      toast.error(error.message || 'Failed to reject budget');
-    },
-  });
-};
 
 /**
  * Update budget mutation (for items, metadata, etc.)

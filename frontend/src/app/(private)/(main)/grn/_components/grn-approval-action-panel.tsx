@@ -15,88 +15,77 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 
-interface ApprovalActionPanelProps {
-  requisitionId: string
+interface GRNApprovalActionPanelProps {
+  grnId: string
   onApprovalComplete: () => void
 }
 
-export function ApprovalActionPanel({
-  requisitionId,
+export function GRNApprovalActionPanel({
+  grnId,
   onApprovalComplete,
-}: ApprovalActionPanelProps) {
+}: GRNApprovalActionPanelProps) {
   const [action, setAction] = useState<'approve' | 'reject' | null>(null)
   const [comments, setComments] = useState('')
   const [remarks, setRemarks] = useState('')
   const [signature, setSignature] = useState('')
   const [showAttachmentDialog, setShowAttachmentDialog] = useState(false)
 
-  // Fetch approval tasks for this requisition
+  // Fetch approval tasks for GRNs
   const { data: approvalTasks } = useApprovalTasks(
-    { documentType: 'REQUISITION', assignedToMe: true },
+    { documentType: 'GRN', assignedToMe: true },
     1,
     100
   )
 
-  // Find the approval task for this requisition
-  const task = approvalTasks?.find((t) => 
-    t.documentId === requisitionId || 
-    t.entityId === requisitionId ||
-    (t as any).requisitionId === requisitionId
-  )
+  // Find the approval task for this GRN
+  const task = approvalTasks?.find((t) => t.documentId === grnId)
   const taskId = task?.id || ''
 
-  const approveMutation = useApproveTask()
-  const rejectMutation = useRejectTask()
+  const approveMutation = useApproveTask(taskId, () => {
+    setComments('')
+    setRemarks('')
+    setSignature('')
+    setAction(null)
+    onApprovalComplete()
+  })
+
+  const rejectMutation = useRejectTask(taskId, () => {
+    setComments('')
+    setRemarks('')
+    setSignature('')
+    setAction(null)
+    onApprovalComplete()
+  })
 
   const handleApprove = async () => {
-    if (!signature || !taskId) {
+    if (!signature) {
       return
     }
 
     try {
       await approveMutation.mutateAsync({
-        taskId,
-        data: {
-          comments,
-          signature,
-          stageNumber: task?.stage || (task as any)?.stageIndex || 1,
-        }
+        comments,
+        signature,
+        stageNumber: task?.stage || 1,
       })
-      
-      // Reset form and call completion callback
-      setComments('')
-      setRemarks('')
-      setSignature('')
-      setAction(null)
-      onApprovalComplete()
     } catch (error) {
-      // Error handled by hook's onError callback
+      console.error('Approval error:', error)
     }
   }
 
   const handleReject = async () => {
-    if (!remarks.trim() || !taskId) {
+    if (!remarks.trim()) {
       return
     }
 
     try {
       await rejectMutation.mutateAsync({
-        taskId,
-        data: {
-          remarks,
-          comments: remarks,
-          signature,
-        }
+        remarks,
+        comments: remarks,
+        signature,
       })
-      
-      // Reset form and call completion callback
-      setComments('')
-      setRemarks('')
-      setSignature('')
-      setAction(null)
-      onApprovalComplete()
     } catch (error) {
-      // Error handled by hook's onError callback
+      console.error('Rejection error:', error)
     }
   }
 
@@ -109,17 +98,17 @@ export function ApprovalActionPanel({
         <div className="grid grid-cols-2 gap-2">
           <Button
             onClick={() => setAction('approve')}
-            disabled={isLoading || !task}
             className="bg-green-600 hover:bg-green-700 gap-2"
+            disabled={isLoading || !task}
           >
             <Send className="h-4 w-4" />
             Approve
           </Button>
           <Button
             onClick={() => setAction('reject')}
-            disabled={isLoading || !task}
             variant="destructive"
             className="gap-2"
+            disabled={isLoading || !task}
           >
             <XCircle className="h-4 w-4" />
             Reject
@@ -127,7 +116,7 @@ export function ApprovalActionPanel({
         </div>
         {!task && (
           <p className="text-xs text-gray-500 text-center">
-            No pending approval task found for this requisition
+            No pending approval task found for this GRN
           </p>
         )}
       </div>
@@ -139,13 +128,13 @@ export function ApprovalActionPanel({
       <div>
         <h3 className="font-semibold mb-2">
           {action === 'approve'
-            ? 'Approve Requisition'
-            : 'Reject Requisition'}
+            ? 'Approve Goods Received Note'
+            : 'Reject Goods Received Note'}
         </h3>
         <p className="text-sm text-gray-600 mb-4">
           {action === 'approve'
-            ? 'Add a signature and optional comments to approve'
-            : 'Provide remarks explaining the rejection reason'}
+            ? 'Add a signature and optional comments to approve this GRN'
+            : 'Provide remarks explaining the rejection reason for this GRN'}
         </p>
       </div>
 
@@ -176,7 +165,7 @@ export function ApprovalActionPanel({
           </Label>
           <Textarea
             id="remarks"
-            placeholder="Required: Please explain why this requisition is being rejected..."
+            placeholder="Required: Please explain why this GRN is being rejected..."
             value={remarks}
             onChange={(e) => setRemarks(e.target.value)}
             rows={4}
@@ -184,7 +173,7 @@ export function ApprovalActionPanel({
             disabled={isLoading}
           />
           <p className="text-xs text-muted-foreground">
-            Detailed remarks are required for rejection to help the requester understand the issues
+            Detailed remarks are required for rejection to help understand the issues
           </p>
         </div>
       )}
@@ -203,23 +192,23 @@ export function ApprovalActionPanel({
       <div className="flex gap-2">
         <Button
           onClick={action === 'approve' ? handleApprove : handleReject}
-          disabled={isLoading || (action === 'reject' && !remarks.trim()) || (action === 'approve' && !signature)}
+          disabled={
+            isLoading ||
+            (action === 'reject' && !remarks.trim()) ||
+            (action === 'approve' && !signature)
+          }
           className={
             action === 'approve'
               ? 'bg-green-600 hover:bg-green-700 flex-1'
               : 'bg-red-600 hover:bg-red-700 flex-1'
           }
         >
-          {isLoading ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Processing...
-            </>
-          ) : action === 'approve' ? (
-            'Confirm Approval'
-          ) : (
-            'Confirm Rejection'
-          )}
+          {isLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+          {isLoading
+            ? 'Processing...'
+            : action === 'approve'
+            ? 'Confirm Approval'
+            : 'Confirm Rejection'}
         </Button>
         <Button
           variant="outline"

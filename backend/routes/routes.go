@@ -146,55 +146,50 @@ func SetupRoutes(app *fiber.App, handlerRegistry *handlers.HandlerRegistry, rbac
 		handlers.ListAllPermissions)
 
 	// Requisition routes (tenant-scoped)
-	requisitions := tenant.Group("/requisitions")
+	requisitions := tenant.Group("/requisitions", middleware.InjectWorkflowExecutionService(handlerRegistry.WorkflowExecutionService))
 	requisitions.Get("/", middleware.RequirePermission(rbacService, "requisition", "view"), handlers.GetRequisitions)
 	requisitions.Post("/", middleware.RequirePermission(rbacService, "requisition", "create"), handlers.CreateRequisition)
 	requisitions.Get("/:id", middleware.RequirePermission(rbacService, "requisition", "view"), handlers.GetRequisition)
 	requisitions.Put("/:id", middleware.RequirePermission(rbacService, "requisition", "edit"), handlers.UpdateRequisition)
 	requisitions.Delete("/:id", middleware.RequirePermission(rbacService, "requisition", "delete"), handlers.DeleteRequisition)
-	requisitions.Post("/:id/approve", middleware.RequirePermission(rbacService, "requisition", "approve"), handlers.ApproveRequisition)
-	requisitions.Post("/:id/reject", middleware.RequirePermission(rbacService, "requisition", "reject"), handlers.RejectRequisition)
+	requisitions.Post("/:id/submit", middleware.RequirePermission(rbacService, "requisition", "edit"), handlers.SubmitRequisition)
 	requisitions.Post("/:id/reassign", middleware.RequirePermission(rbacService, "requisition", "approve"), handlers.ReassignRequisition)
 
 	// Budget routes (tenant-scoped)
-	budgets := tenant.Group("/budgets")
+	budgets := tenant.Group("/budgets", middleware.InjectWorkflowExecutionService(handlerRegistry.WorkflowExecutionService))
 	budgets.Get("/", middleware.RequirePermission(rbacService, "budget", "view"), handlers.GetBudgets)
 	budgets.Post("/", middleware.RequirePermission(rbacService, "budget", "create"), handlers.CreateBudget)
 	budgets.Get("/:id", middleware.RequirePermission(rbacService, "budget", "view"), handlers.GetBudget)
 	budgets.Put("/:id", middleware.RequirePermission(rbacService, "budget", "edit"), handlers.UpdateBudget)
 	budgets.Delete("/:id", middleware.RequirePermission(rbacService, "budget", "delete"), handlers.DeleteBudget)
-	budgets.Post("/:id/approve", middleware.RequirePermission(rbacService, "budget", "approve"), handlers.ApproveBudget)
-	budgets.Post("/:id/reject", middleware.RequirePermission(rbacService, "budget", "reject"), handlers.RejectBudget)
+	budgets.Post("/:id/submit", middleware.RequirePermission(rbacService, "budget", "edit"), handlers.SubmitBudget)
 
 	// Purchase Order routes (tenant-scoped)
-	pos := tenant.Group("/purchase-orders")
+	pos := tenant.Group("/purchase-orders", middleware.InjectWorkflowExecutionService(handlerRegistry.WorkflowExecutionService))
 	pos.Get("/", middleware.RequirePermission(rbacService, "purchase_order", "view"), handlers.GetPurchaseOrders)
 	pos.Post("/", middleware.RequirePermission(rbacService, "purchase_order", "create"), handlers.CreatePurchaseOrder)
 	pos.Get("/:id", middleware.RequirePermission(rbacService, "purchase_order", "view"), handlers.GetPurchaseOrder)
 	pos.Put("/:id", middleware.RequirePermission(rbacService, "purchase_order", "edit"), handlers.UpdatePurchaseOrder)
 	pos.Delete("/:id", middleware.RequirePermission(rbacService, "purchase_order", "delete"), handlers.DeletePurchaseOrder)
-	pos.Post("/:id/approve", middleware.RequirePermission(rbacService, "purchase_order", "approve"), handlers.ApprovePurchaseOrder)
-	pos.Post("/:id/reject", middleware.RequirePermission(rbacService, "purchase_order", "reject"), handlers.RejectPurchaseOrder)
+	pos.Post("/:id/submit", middleware.RequirePermission(rbacService, "purchase_order", "edit"), handlers.SubmitPurchaseOrder)
 
 	// Payment Voucher routes (tenant-scoped)
-	pvs := tenant.Group("/payment-vouchers")
+	pvs := tenant.Group("/payment-vouchers", middleware.InjectWorkflowExecutionService(handlerRegistry.WorkflowExecutionService))
 	pvs.Get("/", middleware.RequirePermission(rbacService, "payment_voucher", "view"), handlers.GetPaymentVouchers)
 	pvs.Post("/", middleware.RequirePermission(rbacService, "payment_voucher", "create"), handlers.CreatePaymentVoucher)
 	pvs.Get("/:id", middleware.RequirePermission(rbacService, "payment_voucher", "view"), handlers.GetPaymentVoucher)
 	pvs.Put("/:id", middleware.RequirePermission(rbacService, "payment_voucher", "edit"), handlers.UpdatePaymentVoucher)
 	pvs.Delete("/:id", middleware.RequirePermission(rbacService, "payment_voucher", "delete"), handlers.DeletePaymentVoucher)
-	pvs.Post("/:id/approve", middleware.RequirePermission(rbacService, "payment_voucher", "approve"), handlers.ApprovePaymentVoucher)
-	pvs.Post("/:id/reject", middleware.RequirePermission(rbacService, "payment_voucher", "reject"), handlers.RejectPaymentVoucher)
+	pvs.Post("/:id/submit", middleware.RequirePermission(rbacService, "payment_voucher", "edit"), handlers.SubmitPaymentVoucher)
 
 	// GRN routes (tenant-scoped)
-	grns := tenant.Group("/grns")
+	grns := tenant.Group("/grns", middleware.InjectWorkflowExecutionService(handlerRegistry.WorkflowExecutionService))
 	grns.Get("/", middleware.RequirePermission(rbacService, "grn", "view"), handlers.GetGRNs)
 	grns.Post("/", middleware.RequirePermission(rbacService, "grn", "create"), handlers.CreateGRN)
 	grns.Get("/:id", middleware.RequirePermission(rbacService, "grn", "view"), handlers.GetGRN)
 	grns.Put("/:id", middleware.RequirePermission(rbacService, "grn", "edit"), handlers.UpdateGRN)
 	grns.Delete("/:id", middleware.RequirePermission(rbacService, "grn", "delete"), handlers.DeleteGRN)
-	grns.Post("/:id/approve", middleware.RequirePermission(rbacService, "grn", "approve"), handlers.ApproveGRN)
-	grns.Post("/:id/reject", middleware.RequirePermission(rbacService, "grn", "reject"), handlers.RejectGRN)
+	grns.Post("/:id/submit", middleware.RequirePermission(rbacService, "grn", "edit"), handlers.SubmitGRN)
 
 	// Category routes (tenant-scoped)
 	categories := tenant.Group("/categories")
@@ -215,13 +210,18 @@ func SetupRoutes(app *fiber.App, handlerRegistry *handlers.HandlerRegistry, rbac
 	vendors.Put("/:id", middleware.RequirePermission(rbacService, "vendor", "edit"), handlers.UpdateVendor)
 
 	// Approval Tasks routes (tenant-scoped) - Updated to use new handler
-	approvals := tenant.Group("/approvals")
+	approvals := tenant.Group("/approvals", middleware.InjectWorkflowExecutionService(handlerRegistry.WorkflowExecutionService))
 	approvals.Get("/", handlerRegistry.Approval.GetApprovalTasks)
+	
+	// Specific routes must come before parameterized routes
+	approvals.Get("/available-approvers", handlerRegistry.Approval.GetAvailableApprovers)
+	approvals.Get("/tasks/overdue", middleware.RequirePermission(rbacService, "approval", "view"), handlerRegistry.Approval.GetOverdueTasks)
+	
+	// Parameterized routes come after specific routes
 	approvals.Get("/:id", handlerRegistry.Approval.GetApprovalTask)
 	approvals.Post("/:id/approve", middleware.RequirePermission(rbacService, "approval", "approve"), handlerRegistry.Approval.ApproveTask)
 	approvals.Post("/:id/reject", middleware.RequirePermission(rbacService, "approval", "reject"), handlerRegistry.Approval.RejectTask)
 	approvals.Post("/:id/reassign", middleware.RequirePermission(rbacService, "approval", "reassign"), handlerRegistry.Approval.ReassignTask)
-	approvals.Get("/tasks/overdue", middleware.RequirePermission(rbacService, "approval", "view"), handlerRegistry.Approval.GetOverdueTasks)
 
 	// Bulk approval operations (tenant-scoped) - ENABLED
 	bulk := approvals.Group("/bulk")
@@ -230,12 +230,9 @@ func SetupRoutes(app *fiber.App, handlerRegistry *handlers.HandlerRegistry, rbac
 	bulk.Post("/reassign", middleware.RequirePermission(rbacService, "approval", "reassign"), handlerRegistry.Approval.BulkReassign)
 
 	// Approval history routes (tenant-scoped) - Updated to use new handler
-	documents := tenant.Group("/documents")
+	documents := tenant.Group("/documents", middleware.InjectWorkflowExecutionService(handlerRegistry.WorkflowExecutionService))
 	documents.Get("/:documentId/approval-history", handlerRegistry.Approval.GetApprovalHistory)
 	documents.Get("/:documentId/approval-status", handlerRegistry.Approval.GetApprovalWorkflowStatus)
-
-	// Available approvers endpoint
-	approvals.Get("/available-approvers", handlerRegistry.Approval.GetAvailableApprovers)
 
 	// Generic Document System routes (tenant-scoped) - NEW
 	genericDocs := tenant.Group("/documents")

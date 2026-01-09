@@ -404,17 +404,34 @@ func (s *WorkflowService) DeleteWorkflow(ctx context.Context, id uuid.UUID, orga
 
 // GetDefaultWorkflow retrieves the default workflow for an entity type
 func (s *WorkflowService) GetDefaultWorkflow(ctx context.Context, organizationID, entityType string) (*models.Workflow, error) {
+	// First, try to find in workflow_defaults table
 	var defaultRecord models.WorkflowDefault
-
-	if err := s.db.Where("organization_id = ? AND entity_type = ?", organizationID, entityType).
-		First(&defaultRecord).Error; err != nil {
+	err := s.db.Where("organization_id = ? AND entity_type = ?", organizationID, entityType).
+		First(&defaultRecord).Error
+	
+	if err == nil {
+		// Found in workflow_defaults table, use that
+		return s.GetWorkflow(ctx, defaultRecord.DefaultWorkflowID, organizationID)
+	}
+	
+	if err != gorm.ErrRecordNotFound {
+		return nil, fmt.Errorf("failed to retrieve default workflow: %w", err)
+	}
+	
+	// If not found in workflow_defaults, look for workflows with isDefault=true
+	var workflow models.Workflow
+	err = s.db.Where("organization_id = ? AND entity_type = ? AND is_default = ? AND is_active = ?", 
+		organizationID, entityType, true, true).
+		First(&workflow).Error
+	
+	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return nil, fmt.Errorf("no default workflow found for entity type: %s", entityType)
 		}
 		return nil, fmt.Errorf("failed to retrieve default workflow: %w", err)
 	}
-
-	return s.GetWorkflow(ctx, defaultRecord.DefaultWorkflowID, organizationID)
+	
+	return &workflow, nil
 }
 
 // ActivateWorkflow activates a workflow

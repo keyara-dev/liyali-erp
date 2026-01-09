@@ -5,8 +5,6 @@ import {
   CreatePaymentVoucherRequest,
   UpdatePaymentVoucherRequest,
   SubmitPaymentVoucherRequest,
-  ApprovePaymentVoucherRequest,
-  RejectPaymentVoucherRequest,
   MarkPaymentVoucherPaidRequest,
   PaymentVoucherStats,
 } from '@/types/payment-voucher';
@@ -225,64 +223,7 @@ export async function submitPaymentVoucherForApproval(
   }
 }
 
-/**
- * Approve Payment Voucher
- * Calls: POST /api/v1/payment-vouchers/{id}/approve
- */
-export async function approvePaymentVoucher(
-  data: ApprovePaymentVoucherRequest
-): Promise<APIResponse<PaymentVoucher>> {
-  const url = `/api/v1/payment-vouchers/${data.pvId}/approve`;
 
-  try {
-    const response = await authenticatedApiClient({
-      method: 'POST',
-      url,
-      data: {
-        pvId: data.pvId,
-        approvingUserId: data.approvingUserId,
-        approvingUserName: data.approvingUserName,
-        approvingUserRole: data.approvingUserRole,
-        comments: data.comments,
-        signature: data.signature,
-      },
-    });
-
-    return successResponse(response.data?.data, 'Payment voucher approved successfully');
-  } catch (error: any) {
-    return handleError(error, 'POST', url);
-  }
-}
-
-/**
- * Reject Payment Voucher
- * Calls: POST /api/v1/payment-vouchers/{id}/reject
- */
-export async function rejectPaymentVoucher(
-  data: RejectPaymentVoucherRequest
-): Promise<APIResponse<PaymentVoucher>> {
-  const url = `/api/v1/payment-vouchers/${data.pvId}/reject`;
-
-  try {
-    const response = await authenticatedApiClient({
-      method: 'POST',
-      url,
-      data: {
-        pvId: data.pvId,
-        rejectingUserId: data.rejectingUserId,
-        rejectingUserName: data.rejectingUserName,
-        rejectingUserRole: data.rejectingUserRole,
-        remarks: data.remarks,
-        comments: data.comments,
-        signature: data.signature,
-      },
-    });
-
-    return successResponse(response.data?.data, 'Payment voucher rejected successfully');
-  } catch (error: any) {
-    return handleError(error, 'POST', url);
-  }
-}
 
 /**
  * Mark Payment Voucher as Paid

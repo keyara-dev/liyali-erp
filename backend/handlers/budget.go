@@ -9,6 +9,7 @@ import (
 	"github.com/liyali/liyali-gateway/config"
 	"github.com/liyali/liyali-gateway/logging"
 	"github.com/liyali/liyali-gateway/models"
+	"github.com/liyali/liyali-gateway/services"
 	"github.com/liyali/liyali-gateway/types"
 	"github.com/liyali/liyali-gateway/utils"
 	"gorm.io/datatypes"
@@ -339,186 +340,94 @@ func DeleteBudget(c *fiber.Ctx) error {
 	return utils.SendSimpleSuccess(c, nil, "Budget deleted successfully")
 }
 
-// ApproveBudget approves a budget
-func ApproveBudget(c *fiber.Ctx) error {
+// SubmitBudget submits a budget for approval workflow
+func SubmitBudget(c *fiber.Ctx) error {
 	logger := logging.FromContext(c)
-	logger.Info("approve_budget_request")
+	logger.Info("submit_budget_request")
 
 	id := c.Params("id")
 	if id == "" {
-		logging.LogWarn(c, "budget_id_missing_for_approval")
+		logging.LogWarn(c, "budget_id_missing_for_submission")
 		return utils.SendBadRequestError(c, "Budget ID is required")
-	}
-
-	var req types.ApproveDocumentRequest
-	if err := c.BodyParser(&req); err != nil {
-		logging.LogError(c, err, "failed_to_parse_approve_budget_request")
-		return utils.SendBadRequestError(c, "Invalid request body")
 	}
 
 	// Add context
 	logging.AddFieldsToRequest(c, map[string]interface{}{
 		"budget_id": id,
-		"operation": "approve_budget",
-		"comments":  req.Comments,
+		"operation": "submit_budget",
 	})
 
-	if req.Signature == "" {
-		logging.LogWarn(c, "signature_missing_for_approval")
-		return utils.SendBadRequestError(c, "Signature is required")
-	}
-
-	logger.Debug("fetching_budget_for_approval")
+	logger.Debug("fetching_budget_for_submission")
 
 	var budget models.Budget
 	if err := config.DB.Where("id = ?", id).First(&budget).Error; err != nil {
-		logging.LogError(c, err, "budget_not_found_for_approval")
+		logging.LogError(c, err, "budget_not_found_for_submission")
 		return utils.SendNotFoundError(c, "Budget")
 	}
 
-	approverID := c.Locals("userID").(string)
-	
-	// Add approver context
-	logging.AddFieldToRequest(c, "approver_id", approverID)
+	// Add budget status to context
+	logging.AddFieldToRequest(c, "current_status", budget.Status)
 
-	logger.Debug("fetching_approver_details")
-
-	var approver models.User
-	if err := config.DB.Where("id = ?", approverID).First(&approver).Error; err != nil {
-		logging.LogError(c, err, "approver_not_found")
-		return utils.SendUnauthorizedError(c, "Approver not found")
-	}
-
-	// Add approver name to context
-	logging.AddFieldToRequest(c, "approver_name", approver.Name)
-
-	var approvalHistory []types.ApprovalRecord
-	approvalHistory = budget.ApprovalHistory.Data()
-
-	approvalRecord := types.ApprovalRecord{
-		ApproverID:   approverID,
-		ApproverName: approver.Name,
-		Status:       "approved",
-		Comments:     req.Comments,
-		Signature:    req.Signature,
-		ApprovedAt:   time.Now(),
-	}
-	approvalHistory = append(approvalHistory, approvalRecord)
-
-	budget.Status = "approved"
-	budget.ApprovalStage++
-	budget.ApprovalHistory = datatypes.NewJSONType(approvalHistory)
-	budget.UpdatedAt = time.Now()
-
-	// Add approval details to context
-	logging.AddFieldsToRequest(c, map[string]interface{}{
-		"new_approval_stage": budget.ApprovalStage,
-		"new_status":         budget.Status,
-	})
-
-	logger.Debug("saving_budget_approval")
-
-	if err := config.DB.Save(&budget).Error; err != nil {
-		logging.LogError(c, err, "failed_to_save_budget_approval")
-		return utils.SendInternalError(c, "Failed to approve budget", err)
-	}
-
-	config.DB.Preload("Owner").First(&budget)
-
-	logger.Info("budget_approved_successfully")
-	return utils.SendSimpleSuccess(c, modelToBudgetResponse(budget), "Budget approved successfully")
-}
-
-// RejectBudget rejects a budget
-func RejectBudget(c *fiber.Ctx) error {
-	logger := logging.FromContext(c)
-	logger.Info("reject_budget_request")
-
-	id := c.Params("id")
-	if id == "" {
-		logging.LogWarn(c, "budget_id_missing_for_rejection")
-		return utils.SendBadRequestError(c, "Budget ID is required")
-	}
-
-	var req types.RejectDocumentRequest
-	if err := c.BodyParser(&req); err != nil {
-		logging.LogError(c, err, "failed_to_parse_reject_budget_request")
-		return utils.SendBadRequestError(c, "Invalid request body")
-	}
-
-	// Add context
-	logging.AddFieldsToRequest(c, map[string]interface{}{
-		"budget_id": id,
-		"operation": "reject_budget",
-		"remarks":   req.Remarks,
-	})
-
-	if req.Remarks == "" || len(req.Remarks) < 10 {
-		logging.LogWarn(c, "insufficient_rejection_remarks", map[string]interface{}{
-			"remarks_length": len(req.Remarks),
+	if budget.Status != "draft" {
+		logging.LogWarn(c, "budget_submission_not_allowed", map[string]interface{}{
+			"current_status": budget.Status,
 		})
-		return utils.SendBadRequestError(c, "Remarks must be at least 10 characters")
-	}
-	if req.Signature == "" {
-		logging.LogWarn(c, "signature_missing_for_rejection")
-		return utils.SendBadRequestError(c, "Signature is required")
+		return utils.SendBadRequestError(c, fmt.Sprintf("Cannot submit budget in %s status", budget.Status))
 	}
 
-	logger.Debug("fetching_budget_for_rejection")
+	userID := c.Locals("userID").(string)
+	organizationID := c.Locals("organizationID").(string)
 
-	var budget models.Budget
-	if err := config.DB.Where("id = ?", id).First(&budget).Error; err != nil {
-		logging.LogError(c, err, "budget_not_found_for_rejection")
-		return utils.SendNotFoundError(c, "Budget")
+	// Add user context
+	logging.AddFieldsToRequest(c, map[string]interface{}{
+		"user_id":         userID,
+		"organization_id": organizationID,
+	})
+
+	// Get workflow execution service
+	workflowExecutionService := c.Locals("workflowExecutionService").(*services.WorkflowExecutionService)
+
+	logger.Debug("assigning_workflow_to_budget")
+
+	// Assign workflow to the budget
+	_, err := workflowExecutionService.AssignWorkflowToDocument(c.Context(), organizationID, budget.ID, "BUDGET", userID)
+	if err != nil {
+		logging.LogError(c, err, "failed_to_assign_workflow_to_budget")
+		return utils.SendInternalError(c, "Failed to assign workflow to budget", err)
 	}
 
-	approverID := c.Locals("userID").(string)
-	
-	// Add approver context
-	logging.AddFieldToRequest(c, "approver_id", approverID)
-
-	logger.Debug("fetching_approver_details_for_rejection")
-
-	var approver models.User
-	if err := config.DB.Where("id = ?", approverID).First(&approver).Error; err != nil {
-		logging.LogError(c, err, "approver_not_found_for_rejection")
-		return utils.SendUnauthorizedError(c, "Approver not found")
-	}
-
-	// Add approver name to context
-	logging.AddFieldToRequest(c, "approver_name", approver.Name)
-
-	var approvalHistory []types.ApprovalRecord
-	approvalHistory = budget.ApprovalHistory.Data()
-
-	rejectionRecord := types.ApprovalRecord{
-		ApproverID:   approverID,
-		ApproverName: approver.Name,
-		Status:       "rejected",
-		Comments:     req.Remarks,
-		Signature:    req.Signature,
-		ApprovedAt:   time.Now(),
-	}
-	approvalHistory = append(approvalHistory, rejectionRecord)
-
-	budget.Status = "rejected"
-	budget.ApprovalHistory = datatypes.NewJSONType(approvalHistory)
+	// Update budget status to pending
+	budget.Status = "pending"
 	budget.UpdatedAt = time.Now()
 
-	// Add rejection details to context
+	// Add action to history
+	var actionHistory []types.ActionHistoryEntry
+	actionHistory = budget.ActionHistory.Data()
+
+	actionRecord := types.ActionHistoryEntry{
+		Action:          "SUBMIT",
+		PerformedBy:     userID,
+		PerformedByName: "", // Will be populated by the database trigger or service
+		Timestamp:       time.Now(),
+		Comments:        "Budget submitted for approval",
+	}
+	actionHistory = append(actionHistory, actionRecord)
+	budget.ActionHistory = datatypes.NewJSONType(actionHistory)
+
+	// Add updated status to context
 	logging.AddFieldToRequest(c, "new_status", budget.Status)
 
-	logger.Debug("saving_budget_rejection")
+	logger.Debug("saving_submitted_budget")
 
 	if err := config.DB.Save(&budget).Error; err != nil {
-		logging.LogError(c, err, "failed_to_save_budget_rejection")
-		return utils.SendInternalError(c, "Failed to reject budget", err)
+		logging.LogError(c, err, "failed_to_save_submitted_budget")
+		return utils.SendInternalError(c, "Failed to submit budget", err)
 	}
 
 	config.DB.Preload("Owner").First(&budget)
 
-	logger.Info("budget_rejected_successfully")
-	return utils.SendSimpleSuccess(c, modelToBudgetResponse(budget), "Budget rejected successfully")
+	logger.Info("budget_submitted_successfully")
+	return utils.SendSimpleSuccess(c, modelToBudgetResponse(budget), "Budget submitted for approval successfully")
 }
 
 // Helper function to convert model to response

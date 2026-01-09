@@ -6,8 +6,6 @@ import {
   CreatePurchaseOrderRequest,
   UpdatePurchaseOrderRequest,
   SubmitPurchaseOrderRequest,
-  ApprovePurchaseOrderRequest,
-  RejectPurchaseOrderRequest,
   PurchaseOrderStats,
 } from '@/types/purchase-order';
 import { Requisition } from '@/types/requisition';
@@ -217,86 +215,7 @@ export async function submitPurchaseOrderForApproval(
   }
 }
 
-/**
- * Approve purchase order
- * Calls: POST /api/v1/purchase-orders/{id}/approve
- * May return auto-created GRN if automation is enabled
- */
-export async function approvePurchaseOrder(
-  data: ApprovePurchaseOrderRequest
-): Promise<APIResponse<PurchaseOrder & { autoCreatedGRN?: any; automationUsed?: boolean }>> {
-  const url = `/api/v1/purchase-orders/${data.poId}/approve`;
 
-  try {
-    const response = await authenticatedApiClient({
-      method: 'POST',
-      url,
-      data: {
-        signature: data.signature,
-        comments: data.comments,
-        stageNumber: data.stageNumber,
-        approvingUserId: data.approvingUserId,
-        approvingUserName: data.approvingUserName,
-        approvingUserRole: data.approvingUserRole,
-      },
-    });
-
-    // Handle both single PO response and automation response
-    let responseData = response.data?.data;
-    
-    // Check if automation was used (response contains multiple documents)
-    if (responseData && typeof responseData === 'object' && 'automationUsed' in responseData) {
-      // Automation response format: { purchaseOrder, autoCreatedGRN, automationUsed }
-      return successResponse(
-        {
-          ...responseData.purchaseOrder,
-          autoCreatedGRN: responseData.autoCreatedGRN,
-          automationUsed: responseData.automationUsed,
-        },
-        'Purchase order approved and GRN created automatically'
-      );
-    } else {
-      // Standard response format: just the purchase order
-      return successResponse(
-        responseData,
-        response.data?.data?.status === 'APPROVED'
-          ? 'Purchase order fully approved'
-          : 'Approval recorded, moving to next stage'
-      );
-    }
-  } catch (error: any) {
-    return handleError(error, 'POST', url);
-  }
-}
-
-/**
- * Reject purchase order
- * Calls: POST /api/v1/purchase-orders/{id}/reject
- */
-export async function rejectPurchaseOrder(
-  data: RejectPurchaseOrderRequest
-): Promise<APIResponse<PurchaseOrder>> {
-  const url = `/api/v1/purchase-orders/${data.poId}/reject`;
-
-  try {
-    const response = await authenticatedApiClient({
-      method: 'POST',
-      url,
-      data: {
-        signature: data.signature,
-        remarks: data.remarks,
-        comments: data.comments,
-        rejectingUserId: data.rejectingUserId,
-        rejectingUserName: data.rejectingUserName,
-        rejectingUserRole: data.rejectingUserRole,
-      },
-    });
-
-    return successResponse(response.data?.data, 'Purchase order rejected and returned to draft');
-  } catch (error: any) {
-    return handleError(error, 'POST', url);
-  }
-}
 
 /**
  * Get purchase order statistics

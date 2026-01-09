@@ -408,291 +408,6 @@ func DeletePurchaseOrder(c *fiber.Ctx) error {
 	})
 }
 
-// ApprovePurchaseOrder approves a purchase order and optionally auto-creates GRN
-func ApprovePurchaseOrder(c *fiber.Ctx) error {
-	logger := logging.FromContext(c)
-	logger.Info("approve_purchase_order_request")
-
-	id := c.Params("id")
-	if id == "" {
-		logging.LogWarn(c, "purchase_order_id_missing")
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"success": false,
-			"message": "Purchase Order ID is required",
-		})
-	}
-
-	var req types.ApproveDocumentRequest
-	if err := c.BodyParser(&req); err != nil {
-		logging.LogError(c, err, "invalid_request_body", map[string]interface{}{
-			"error_type": "parsing_error",
-		})
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"success": false,
-			"message": "Invalid request body",
-			"error":   err.Error(),
-		})
-	}
-
-	if req.Signature == "" {
-		logging.LogWarn(c, "signature_missing")
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"success": false,
-			"message": "Signature is required",
-		})
-	}
-
-	logging.AddFieldsToRequest(c, map[string]interface{}{
-		"operation": "approve_purchase_order",
-		"order_id":  id,
-	})
-
-	var order models.PurchaseOrder
-	if err := config.DB.Where("id = ?", id).First(&order).Error; err != nil {
-		logging.LogError(c, err, "purchase_order_not_found", map[string]interface{}{
-			"order_id":   id,
-			"error_type": "not_found",
-		})
-		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
-			"success": false,
-			"message": "Purchase order not found",
-		})
-	}
-
-	approverID := c.Locals("userID").(string)
-	var approver models.User
-	if err := config.DB.Where("id = ?", approverID).First(&approver).Error; err != nil {
-		logging.LogError(c, err, "approver_not_found", map[string]interface{}{
-			"approver_id": approverID,
-			"error_type":  "authorization_error",
-		})
-		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-			"success": false,
-			"message": "Approver not found",
-		})
-	}
-
-	logging.AddFieldsToRequest(c, map[string]interface{}{
-		"approver_id":   approverID,
-		"approver_name": approver.Name,
-		"po_number":     order.PONumber,
-	})
-
-	var approvalHistory []types.ApprovalRecord
-	approvalHistory = order.ApprovalHistory.Data()
-
-	approvalRecord := types.ApprovalRecord{
-		ApproverID:   approverID,
-		ApproverName: approver.Name,
-		Status:       "approved",
-		Comments:     req.Comments,
-		Signature:    req.Signature,
-		ApprovedAt:   time.Now(),
-	}
-	approvalHistory = append(approvalHistory, approvalRecord)
-
-	order.Status = "approved"
-	order.ApprovalStage++
-	order.ApprovalHistory = datatypes.NewJSONType([]types.ApprovalRecord{})
-	order.UpdatedAt = time.Now()
-
-	if err := config.DB.Save(&order).Error; err != nil {
-		logging.LogError(c, err, "failed_to_approve_purchase_order", map[string]interface{}{
-			"error_type": "database_error",
-			"po_number":  order.PONumber,
-		})
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"success": false,
-			"message": "Failed to approve purchase order",
-			"error":   err.Error(),
-		})
-	}
-
-	config.DB.Preload("Vendor").First(&order)
-
-	// Auto-create GRN if enabled and prerequisites are met
-	var autoCreatedGRN *models.GoodsReceivedNote
-	if order.Status == "approved" {
-		logger.Info("attempting_auto_grn_creation")
-
-		// Initialize automation service
-		auditService := &services.AuditService{}
-		notificationService := &services.NotificationService{}
-		automationService := services.NewDocumentAutomationService(
-			config.DB, auditService, notificationService,
-		)
-
-		// Get automation config
-		automationConfig := automationService.GetDefaultAutomationConfig()
-
-		// Attempt to auto-create GRN
-		result, err := automationService.CreateGRNFromPurchaseOrder(
-			c.Context(), &order, automationConfig,
-		)
-
-		if err == nil && result.Success {
-			if grn, ok := result.CreatedDocument.(models.GoodsReceivedNote); ok {
-				autoCreatedGRN = &grn
-				logger.Info("auto_grn_created_successfully")
-			}
-		} else if err != nil {
-			logger.Warn("auto_grn_creation_failed")
-		}
-		// Note: We don't fail the approval if GRN creation fails
-		// The PO is still approved, GRN can be created manually
-	}
-
-	logger.Info("purchase_order_approved_successfully")
-
-	// Prepare response
-	response := types.DetailResponse{
-		Success: true,
-		Data:    modelToPurchaseOrderResponse(order),
-	}
-
-	// Add auto-created GRN to response if available
-	if autoCreatedGRN != nil {
-		// Convert GRN to response format
-		grnResponse := types.GRNResponse{
-			ID:           autoCreatedGRN.ID,
-			GRNNumber:    autoCreatedGRN.GRNNumber,
-			PONumber:     autoCreatedGRN.PONumber,
-			Status:       autoCreatedGRN.Status,
-			ReceivedDate: autoCreatedGRN.ReceivedDate,
-			ReceivedBy:   autoCreatedGRN.ReceivedBy,
-			CreatedAt:    autoCreatedGRN.CreatedAt,
-			UpdatedAt:    autoCreatedGRN.UpdatedAt,
-		}
-
-		// Add GRN to response
-		response.Data = fiber.Map{
-			"purchaseOrder":   modelToPurchaseOrderResponse(order),
-			"autoCreatedGRN":  grnResponse,
-			"automationUsed":  true,
-		}
-	}
-
-	return c.JSON(response)
-}
-
-// RejectPurchaseOrder rejects a purchase order
-func RejectPurchaseOrder(c *fiber.Ctx) error {
-	logger := logging.FromContext(c)
-	logger.Info("reject_purchase_order_request")
-
-	id := c.Params("id")
-	if id == "" {
-		logging.LogWarn(c, "purchase_order_id_missing")
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"success": false,
-			"message": "Purchase Order ID is required",
-		})
-	}
-
-	var req types.RejectDocumentRequest
-	if err := c.BodyParser(&req); err != nil {
-		logging.LogError(c, err, "invalid_request_body", map[string]interface{}{
-			"error_type": "parsing_error",
-		})
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"success": false,
-			"message": "Invalid request body",
-			"error":   err.Error(),
-		})
-	}
-
-	if req.Remarks == "" || len(req.Remarks) < 10 {
-		logging.LogWarn(c, "invalid_remarks", map[string]interface{}{
-			"remarks_length": len(req.Remarks),
-		})
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"success": false,
-			"message": "Remarks must be at least 10 characters",
-		})
-	}
-	if req.Signature == "" {
-		logging.LogWarn(c, "signature_missing")
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"success": false,
-			"message": "Signature is required",
-		})
-	}
-
-	logging.AddFieldsToRequest(c, map[string]interface{}{
-		"operation": "reject_purchase_order",
-		"order_id":  id,
-	})
-
-	var order models.PurchaseOrder
-	if err := config.DB.Where("id = ?", id).First(&order).Error; err != nil {
-		logging.LogError(c, err, "purchase_order_not_found", map[string]interface{}{
-			"order_id":   id,
-			"error_type": "not_found",
-		})
-		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
-			"success": false,
-			"message": "Purchase order not found",
-		})
-	}
-
-	approverID := c.Locals("userID").(string)
-	var approver models.User
-	if err := config.DB.Where("id = ?", approverID).First(&approver).Error; err != nil {
-		logging.LogError(c, err, "approver_not_found", map[string]interface{}{
-			"approver_id": approverID,
-			"error_type":  "authorization_error",
-		})
-		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-			"success": false,
-			"message": "Approver not found",
-		})
-	}
-
-	logging.AddFieldsToRequest(c, map[string]interface{}{
-		"approver_id":   approverID,
-		"approver_name": approver.Name,
-		"po_number":     order.PONumber,
-	})
-
-	var approvalHistory []types.ApprovalRecord
-	approvalHistory = order.ApprovalHistory.Data()
-
-	rejectionRecord := types.ApprovalRecord{
-		ApproverID:   approverID,
-		ApproverName: approver.Name,
-		Status:       "rejected",
-		Comments:     req.Remarks,
-		Signature:    req.Signature,
-		ApprovedAt:   time.Now(),
-	}
-	approvalHistory = append(approvalHistory, rejectionRecord)
-
-	order.Status = "rejected"
-	order.ApprovalHistory = datatypes.NewJSONType([]types.ApprovalRecord{})
-	order.UpdatedAt = time.Now()
-
-	if err := config.DB.Save(&order).Error; err != nil {
-		logging.LogError(c, err, "failed_to_reject_purchase_order", map[string]interface{}{
-			"error_type": "database_error",
-			"po_number":  order.PONumber,
-		})
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"success": false,
-			"message": "Failed to reject purchase order",
-			"error":   err.Error(),
-		})
-	}
-
-	config.DB.Preload("Vendor").First(&order)
-
-	logger.Info("purchase_order_rejected_successfully")
-
-	return c.JSON(types.DetailResponse{
-		Success: true,
-		Data:    modelToPurchaseOrderResponse(order),
-	})
-}
-
 // Helper function to convert model to response
 func modelToPurchaseOrderResponse(order models.PurchaseOrder) types.PurchaseOrderResponse {
 	var items []types.POItem
@@ -723,4 +438,129 @@ func modelToPurchaseOrderResponse(order models.PurchaseOrder) types.PurchaseOrde
 		CreatedAt:         order.CreatedAt,
 		UpdatedAt:         order.UpdatedAt,
 	}
+}
+// SubmitPurchaseOrder submits a purchase order for approval using the workflow system
+func SubmitPurchaseOrder(c *fiber.Ctx) error {
+	logger := logging.FromContext(c)
+	logger.Info("submit_purchase_order_request")
+
+	id := c.Params("id")
+	if id == "" {
+		logging.LogWarn(c, "purchase_order_id_missing")
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"success": false,
+			"message": "Purchase Order ID is required",
+		})
+	}
+
+	// Get organization ID and user ID from context
+	organizationID := c.Locals("organizationID").(string)
+	userID := c.Locals("userID").(string)
+
+	logging.AddFieldsToRequest(c, map[string]interface{}{
+		"operation": "submit_purchase_order",
+		"order_id":  id,
+	})
+
+	// Get existing purchase order
+	var order models.PurchaseOrder
+	if err := config.DB.Where("id = ? AND organization_id = ?", id, organizationID).First(&order).Error; err != nil {
+		logging.LogError(c, err, "purchase_order_not_found", map[string]interface{}{
+			"order_id": id,
+		})
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
+			"success": false,
+			"message": "Purchase Order not found",
+		})
+	}
+
+	// Check if purchase order is in draft status
+	if order.Status != "draft" {
+		logging.LogWarn(c, "invalid_purchase_order_status_for_submission", map[string]interface{}{
+			"current_status": order.Status,
+		})
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"success": false,
+			"message": fmt.Sprintf("Cannot submit purchase order in %s status", order.Status),
+		})
+	}
+
+	// Get workflow execution service from context
+	workflowExecutionService := c.Locals("workflowExecutionService").(*services.WorkflowExecutionService)
+
+	// Assign workflow to the purchase order
+	assignment, err := workflowExecutionService.AssignWorkflowToDocument(
+		c.Context(), organizationID, order.ID, "purchase_order", userID,
+	)
+	if err != nil {
+		logging.LogError(c, err, "workflow_assignment_failed", map[string]interface{}{
+			"order_id": id,
+		})
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"success": false,
+			"message": "Failed to assign workflow to purchase order",
+			"error":   err.Error(),
+		})
+	}
+
+	// Update purchase order status to pending
+	order.Status = "pending"
+	order.UpdatedAt = time.Now()
+
+	// Add action history entry for submission
+	var actionHistory []types.ActionHistoryEntry
+	actionHistory = order.ActionHistory.Data()
+	
+	// Get user info for action history
+	var user models.User
+	if err := config.DB.Where("id = ?", userID).First(&user).Error; err == nil {
+		actionHistory = append(actionHistory, types.ActionHistoryEntry{
+			ID:               uuid.New().String(),
+			Action:           "SUBMIT",
+			PerformedBy:      userID,
+			PerformedByName:  user.Name,
+			PerformedByRole:  user.Role,
+			Timestamp:        time.Now(),
+			Comments:         "Purchase order submitted for approval",
+			ActionType:       "SUBMIT",
+			PreviousStatus:   "draft",
+			NewStatus:        "pending",
+		})
+		order.ActionHistory = datatypes.NewJSONType(actionHistory)
+	}
+
+	// Save purchase order
+	if err := config.DB.Save(&order).Error; err != nil {
+		logging.LogError(c, err, "purchase_order_update_failed", map[string]interface{}{
+			"order_id": id,
+		})
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"success": false,
+			"message": "Failed to update purchase order status",
+			"error":   err.Error(),
+		})
+	}
+
+	// Preload vendor
+	config.DB.Preload("Vendor").First(&order)
+
+	logging.AddFieldsToRequest(c, map[string]interface{}{
+		"order_id":      order.ID,
+		"workflow_id":   assignment.WorkflowID,
+		"assignment_id": assignment.ID,
+	})
+	logger.Info("purchase_order_submitted_successfully")
+
+	return c.JSON(types.DetailResponse{
+		Success: true,
+		Data: fiber.Map{
+			"purchaseOrder": modelToPurchaseOrderResponse(order),
+			"workflow": fiber.Map{
+				"assignmentId": assignment.ID,
+				"workflowId":   assignment.WorkflowID,
+				"currentStage": assignment.CurrentStage,
+				"status":       assignment.Status,
+			},
+		},
+	})
 }

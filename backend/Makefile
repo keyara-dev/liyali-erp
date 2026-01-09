@@ -101,6 +101,14 @@ db-seed:
 	@echo "Seeding database..."
 	go run main.go -seed
 
+seed-approvals:
+	@echo "Seeding approval test data..."
+	go run cmd/seed_approvals.go
+
+seed-approvals-cleanup:
+	@echo "Cleaning up approval test data..."
+	go run cmd/seed_approvals.go cleanup
+
 # Development targets
 watch:
 	@echo "Watching for changes..."

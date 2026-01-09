@@ -60,6 +60,7 @@ type RequisitionItem struct {
 // RequisitionResponse represents a requisition in responses
 type RequisitionResponse struct {
 	ID                  string            `json:"id"`
+	REQNumber           string            `json:"reqNumber"`
 	RequesterID         string            `json:"requesterId"`
 	RequesterName       string            `json:"requesterName"`
 	Title               string            `json:"title"`

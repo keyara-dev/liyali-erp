@@ -1,0 +1,69 @@
+### Test PO Creation Without Vendor
+### This tests the enhanced automation service that creates POs even without vendors
+
+### 1. Login to get JWT token
+POST http://localhost:8080/api/v1/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@demo.com",
+  "password": "password123"
+}
+
+### 2. Create a requisition without preferred vendor
+POST http://localhost:8080/api/v1/requisitions
+Content-Type: application/json
+Authorization: Bearer {{jwt_token}}
+
+{
+  "title": "Test Requisition Without Vendor",
+  "description": "Testing PO creation without vendor requirement",
+  "department": "IT",
+  "priority": "medium",
+  "totalAmount": 1500.00,
+  "currency": "USD",
+  "budgetCode": "IT-2024-001",
+  "costCenter": "CC-IT-001",
+  "requiredByDate": "2024-02-15T00:00:00Z",
+  "items": [
+    {
+      "description": "Laptop Computer",
+      "quantity": 1,
+      "unitPrice": 1200.00,
+      "amount": 1200.00
+    },
+    {
+      "description": "Mouse and Keyboard Set",
+      "quantity": 1,
+      "unitPrice": 300.00,
+      "amount": 300.00
+    }
+  ]
+}
+
+### 3. Submit the requisition for approval
+POST http://localhost:8080/api/v1/requisitions/{{requisition_id}}/submit
+Content-Type: application/json
+Authorization: Bearer {{jwt_token}}
+
+### 4. Get workflow status to see current stage
+GET http://localhost:8080/api/v1/documents/{{requisition_id}}/approval-status
+Authorization: Bearer {{jwt_token}}
+
+### 5. Approve the requisition through workflow (replace task_id with actual task ID)
+POST http://localhost:8080/api/v1/approvals/{{task_id}}/approve
+Content-Type: application/json
+Authorization: Bearer {{jwt_token}}
+
+{
+  "signature": "admin_signature",
+  "comment": "Approved for testing PO creation without vendor"
+}
+
+### 6. Check if PO was auto-created
+GET http://localhost:8080/api/v1/purchase-orders
+Authorization: Bearer {{jwt_token}}
+
+### 7. Get the specific requisition to see auto-created PO metadata
+GET http://localhost:8080/api/v1/requisitions/{{requisition_id}}
+Authorization: Bearer {{jwt_token}}

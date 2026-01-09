@@ -1,0 +1,154 @@
+### Test Approval Endpoints
+### Make sure the backend server is running on localhost:8080
+
+### 1. Health Check
+GET http://localhost:8080/health
+
+### 2. Login as Requester (Get JWT Token)
+POST http://localhost:8080/api/v1/auth/login
+Content-Type: application/json
+
+{
+  "email": "requester@demo.com",
+  "password": "password"
+}
+
+### 3. Get Requisitions (should show our test data)
+GET http://localhost:8080/api/v1/requisitions
+Authorization: Bearer YOUR_JWT_TOKEN_HERE
+Content-Type: application/json
+
+### 4. Get Specific Requisition by Number (REQ-001) - WORKING ✅
+GET http://localhost:8080/api/v1/requisitions/REQ-001
+Authorization: Bearer YOUR_JWT_TOKEN_HERE
+Content-Type: application/json
+
+### 5. Get Specific Requisition by Number (REQ-002) - WORKING ✅
+GET http://localhost:8080/api/v1/requisitions/REQ-002
+Authorization: Bearer YOUR_JWT_TOKEN_HERE
+Content-Type: application/json
+
+### 6. Get Specific Requisition by UUID - WORKING ✅
+GET http://localhost:8080/api/v1/requisitions/b4a042e8-0b62-488e-995a-7233c46b4c5f
+Authorization: Bearer YOUR_JWT_TOKEN_HERE
+Content-Type: application/json
+
+### 7. Get Approval History for REQ-001
+GET http://localhost:8080/api/v1/documents/REQ-001/approval-history
+Authorization: Bearer YOUR_JWT_TOKEN_HERE
+Content-Type: application/json
+
+### 8. Get Approval Status for REQ-001 - WORKING ✅
+GET http://localhost:8080/api/v1/documents/REQ-001/approval-status
+Authorization: Bearer YOUR_JWT_TOKEN_HERE
+Content-Type: application/json
+
+### 9. Get Approval Status for REQ-002 (should show pending finance approval) - WORKING ✅
+GET http://localhost:8080/api/v1/documents/REQ-002/approval-status
+Authorization: Bearer YOUR_JWT_TOKEN_HERE
+Content-Type: application/json
+
+### 10. Get Available Approvers for Requisitions - WORKING ✅
+GET http://localhost:8080/api/v1/approvals/available-approvers?documentType=REQUISITION
+Authorization: Bearer YOUR_JWT_TOKEN_HERE
+Content-Type: application/json
+
+### 11. Get Available Approvers for Stage 1 - WORKING ✅
+GET http://localhost:8080/api/v1/approvals/available-approvers?documentType=REQUISITION&stage=1
+Authorization: Bearer YOUR_JWT_TOKEN_HERE
+Content-Type: application/json
+
+### 12. Get Approval Tasks (should show pending tasks)
+GET http://localhost:8080/api/v1/approvals
+Authorization: Bearer YOUR_JWT_TOKEN_HERE
+Content-Type: application/json
+
+### 13. Get Approval Tasks assigned to me
+GET http://localhost:8080/api/v1/approvals?assigned_to_me=true
+Authorization: Bearer YOUR_JWT_TOKEN_HERE
+Content-Type: application/json
+
+### 14. Get Pending Approval Tasks
+GET http://localhost:8080/api/v1/approvals?status=pending
+Authorization: Bearer YOUR_JWT_TOKEN_HERE
+Content-Type: application/json
+
+### 15. Get Specific Approval Task (replace TASK_ID with actual task ID from step 12)
+GET http://localhost:8080/api/v1/approvals/TASK_ID
+Authorization: Bearer YOUR_JWT_TOKEN_HERE
+Content-Type: application/json
+
+### 16. Approve Task via Workflow System (replace TASK_ID with actual task ID)
+POST http://localhost:8080/api/v1/approvals/TASK_ID/approve
+Authorization: Bearer YOUR_JWT_TOKEN_HERE
+Content-Type: application/json
+
+{
+  "signature": "test_digital_signature",
+  "comment": "Approved via workflow system"
+}
+
+### 17. Reject Task via Workflow System (replace TASK_ID with actual task ID)
+POST http://localhost:8080/api/v1/approvals/TASK_ID/reject
+Authorization: Bearer YOUR_JWT_TOKEN_HERE
+Content-Type: application/json
+
+{
+  "signature": "test_digital_signature",
+  "reason": "Rejected via workflow system - insufficient justification"
+}
+
+### 18. Submit Requisition for Approval (creates workflow assignment and tasks)
+POST http://localhost:8080/api/v1/requisitions/REQUISITION_ID/submit
+Authorization: Bearer YOUR_JWT_TOKEN_HERE
+Content-Type: application/json
+
+{
+  "comments": "Submitting for approval via workflow system"
+}
+
+### 19. Bulk Approve Multiple Tasks
+POST http://localhost:8080/api/v1/approvals/bulk/approve
+Authorization: Bearer YOUR_JWT_TOKEN_HERE
+Content-Type: application/json
+
+{
+  "taskIds": ["TASK_ID_1", "TASK_ID_2"],
+  "signature": "test_digital_signature",
+  "comment": "Bulk approval via workflow system"
+}
+
+### 20. Bulk Reject Multiple Tasks
+POST http://localhost:8080/api/v1/approvals/bulk/reject
+Authorization: Bearer YOUR_JWT_TOKEN_HERE
+Content-Type: application/json
+
+{
+  "taskIds": ["TASK_ID_1", "TASK_ID_2"],
+  "signature": "test_digital_signature",
+  "reason": "Bulk rejection via workflow system"
+}
+
+### DEPRECATED ENDPOINTS (REMOVED):
+### ❌ POST /api/v1/requisitions/{id}/approve - Use workflow system instead
+### ❌ POST /api/v1/requisitions/{id}/reject - Use workflow system instead
+### ❌ POST /api/v1/budgets/{id}/approve - Use workflow system instead
+### ❌ POST /api/v1/budgets/{id}/reject - Use workflow system instead
+### ❌ POST /api/v1/purchase-orders/{id}/approve - Use workflow system instead
+### ❌ POST /api/v1/purchase-orders/{id}/reject - Use workflow system instead
+### ❌ POST /api/v1/payment-vouchers/{id}/approve - Use workflow system instead
+### ❌ POST /api/v1/payment-vouchers/{id}/reject - Use workflow system instead
+### ❌ POST /api/v1/grns/{id}/approve - Use workflow system instead
+### ❌ POST /api/v1/grns/{id}/reject - Use workflow system instead
+
+### WORKING ENDPOINTS SUMMARY:
+### ✅ GET /api/v1/requisitions - List all requisitions
+### ✅ GET /api/v1/requisitions/{id} - Get requisition by ID or REQ number
+### ✅ GET /api/v1/documents/{id}/approval-status - Get approval status
+### ✅ GET /api/v1/approvals/available-approvers - Get available approvers
+### ✅ GET /api/v1/approvals - Get approval tasks
+### ✅ POST /api/v1/approvals/{id}/approve - Approve via workflow system
+### ✅ POST /api/v1/approvals/{id}/reject - Reject via workflow system
+### ✅ POST /api/v1/requisitions/{id}/submit - Submit for approval (creates workflow)
+### ✅ POST /api/v1/approvals/bulk/approve - Bulk approve tasks
+### ✅ POST /api/v1/approvals/bulk/reject - Bulk reject tasks

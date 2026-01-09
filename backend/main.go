@@ -83,10 +83,19 @@ func main() {
 	
 	rbacService := services.NewRBACService(roleRepo, auditService, config.DB)
 	workflowService := services.NewWorkflowService(workflowRepo, auditService, config.DB)
+	
+	// Initialize notification service (placeholder for now)
+	notificationService := &services.NotificationService{}
+	
+	// Initialize automation service
+	automationService := services.NewDocumentAutomationService(config.DB, auditService, notificationService)
+	
+	// Initialize workflow execution service with automation
+	workflowExecutionService := services.NewWorkflowExecutionService(config.DB, workflowService, auditService, automationService)
 	documentService := services.NewDocumentService(documentRepo, auditService)
 
 	// Initialize handler registry
-	handlerRegistry := handlers.NewHandlerRegistry(authService, rbacService, workflowService, documentService)
+	handlerRegistry := handlers.NewHandlerRegistry(authService, rbacService, workflowService, workflowExecutionService, documentService, automationService)
 
 	// Create Fiber app with global error handler
 	app := fiber.New(fiber.Config{

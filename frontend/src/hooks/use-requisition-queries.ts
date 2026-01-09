@@ -9,8 +9,6 @@ import {
   createRequisition,
   updateRequisition,
   submitRequisitionForApproval,
-  approveRequisition,
-  rejectRequisition,
   deleteRequisition,
   getRequisitionStats,
 } from "@/app/_actions/requisitions";
@@ -20,8 +18,6 @@ import {
   CreateRequisitionRequest,
   UpdateRequisitionRequest,
   SubmitRequisitionRequest,
-  ApproveRequisitionRequest,
-  RejectRequisitionRequest,
 } from "@/types/requisition";
 import { toast } from "sonner";
 import { handleOfflineMutation, isOfflineResult } from "@/lib/offline-mutation-helper";
@@ -278,168 +274,6 @@ export const useSubmitRequisitionForApproval = (
     },
     onError: (error: Error) => {
       toast.error(error.message || "Failed to submit requisition");
-    },
-  });
-};
-
-/**
- * Approve requisition mutation
- *
- * @param requisitionId - Requisition ID to approve
- * @param onSuccess - Callback after successful approval
- * @returns Mutation object
- *
- * @example
- * const approveMutation = useApproveRequisition(requisitionId)
- * await approveMutation.mutateAsync({
- *   approvingUserId: userId,
- *   approvingUserName: 'John Doe',
- *   approvingUserRole: 'DEPARTMENT_MANAGER',
- *   signature: signatureDataUrl,
- *   comments: 'Approved'
- * })
- */
-export const useApproveRequisition = (
-  requisitionId: string,
-  onSuccess?: (data: any) => void
-) => {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (
-      data: Omit<ApproveRequisitionRequest, "requisitionId">
-    ) => {
-      const response = await approveRequisition({
-        requisitionId,
-        ...data,
-      });
-
-      if (!response.success) {
-        throw new Error(response.message);
-      }
-      return response;
-    },
-    onSuccess: (response) => {
-      const data = response.data;
-      
-      // Check if automation was used
-      if (data?.automationUsed && data?.autoCreatedPO) {
-        toast.success("Requisition approved and Purchase Order created automatically");
-        
-        // Invalidate PO queries since a new PO was created
-        queryClient.invalidateQueries({
-          queryKey: [QUERY_KEYS.PURCHASE_ORDERS.ALL],
-        });
-        queryClient.invalidateQueries({
-          queryKey: [QUERY_KEYS.PURCHASE_ORDERS.STATS],
-        });
-        
-        // Optionally set the new PO in cache
-        if (data.autoCreatedPO.id) {
-          queryClient.setQueryData(
-            [QUERY_KEYS.PURCHASE_ORDERS.BY_ID, data.autoCreatedPO.id],
-            data.autoCreatedPO
-          );
-        }
-      } else {
-        toast.success("Requisition approved successfully");
-      }
-
-      // Standard requisition cache invalidation
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.REQUISITIONS.BY_ID, requisitionId],
-      });
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.REQUISITIONS.ALL],
-      });
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.REQUISITIONS.STATS],
-      });
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.APPROVALS_PENDING],
-      });
-
-      // Invalidate dashboard metrics
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.DASHBOARD.METRICS],
-      });
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.DASHBOARD.ACTIVITIES],
-      });
-
-      onSuccess?.(response.data);
-    },
-    onError: (error: Error) => {
-      toast.error(error.message || "Failed to approve requisition");
-    },
-  });
-};
-
-/**
- * Reject requisition mutation
- *
- * @param requisitionId - Requisition ID to reject
- * @param onSuccess - Callback after successful rejection
- * @returns Mutation object
- *
- * @example
- * const rejectMutation = useRejectRequisition(requisitionId)
- * await rejectMutation.mutateAsync({
- *   rejectingUserId: userId,
- *   rejectingUserName: 'John Doe',
- *   rejectingUserRole: 'DEPARTMENT_MANAGER',
- *   remarks: 'Missing required information',
- *   signature: signatureDataUrl
- * })
- */
-export const useRejectRequisition = (
-  requisitionId: string,
-  onSuccess?: () => void
-) => {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (
-      data: Omit<RejectRequisitionRequest, "requisitionId">
-    ) => {
-      const response = await rejectRequisition({
-        requisitionId,
-        ...data,
-      });
-
-      if (!response.success) {
-        throw new Error(response.message);
-      }
-      return response;
-    },
-    onSuccess: () => {
-      toast.success("Requisition rejected and returned to draft");
-
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.REQUISITIONS.BY_ID, requisitionId],
-      });
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.REQUISITIONS.ALL],
-      });
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.REQUISITIONS.STATS],
-      });
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.APPROVALS_PENDING],
-      });
-
-      // Invalidate dashboard metrics
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.DASHBOARD.METRICS],
-      });
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.DASHBOARD.ACTIVITIES],
-      });
-
-      onSuccess?.();
-    },
-    onError: (error: Error) => {
-      toast.error(error.message || "Failed to reject requisition");
     },
   });
 };

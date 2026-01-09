@@ -69,21 +69,25 @@ func (s *DocumentAutomationService) CreatePurchaseOrderFromRequisition(
 		}, nil
 	}
 
-	// Validate requisition has required data
-	if requisition.PreferredVendorID == nil || *requisition.PreferredVendorID == "" {
-		return &AutomationResult{
-			Success: false,
-			Error:   fmt.Errorf("requisition must have a preferred vendor to auto-create PO"),
-		}, nil
-	}
-
-	// Verify vendor exists
-	var vendor models.Vendor
-	if err := s.db.Where("id = ?", *requisition.PreferredVendorID).First(&vendor).Error; err != nil {
-		return &AutomationResult{
-			Success: false,
-			Error:   fmt.Errorf("preferred vendor not found: %w", err),
-		}, nil
+	// Handle vendor - create PO with or without vendor
+	var vendorID string
+	var vendorName string = "TBD - To Be Determined"
+	
+	if requisition.PreferredVendorID != nil && *requisition.PreferredVendorID != "" {
+		// Verify vendor exists if provided
+		var vendor models.Vendor
+		if err := s.db.Where("id = ?", *requisition.PreferredVendorID).First(&vendor).Error; err != nil {
+			// If vendor not found, create PO without vendor but log the issue
+			vendorID = ""
+			vendorName = fmt.Sprintf("Invalid Vendor (ID: %s)", *requisition.PreferredVendorID)
+		} else {
+			vendorID = vendor.ID
+			vendorName = vendor.Name
+		}
+	} else {
+		// No vendor specified - create PO with placeholder
+		vendorID = ""
+		vendorName = "TBD - To Be Determined"
 	}
 
 	// Generate PO number
@@ -109,7 +113,8 @@ func (s *DocumentAutomationService) CreatePurchaseOrderFromRequisition(
 	purchaseOrder := models.PurchaseOrder{
 		ID:                uuid.New().String(),
 		PONumber:          poNumber,
-		VendorID:          *requisition.PreferredVendorID,
+		VendorID:          vendorID, // Can be empty if no vendor
+		VendorName:        vendorName, // Display name for UI
 		Status:            "draft", // Start as draft for review
 		TotalAmount:       requisition.TotalAmount,
 		Currency:          requisition.Currency,
@@ -119,6 +124,9 @@ func (s *DocumentAutomationService) CreatePurchaseOrderFromRequisition(
 		CreatedAt:         time.Now(),
 		UpdatedAt:         time.Now(),
 		OrganizationID:    requisition.OrganizationID,
+		
+		// Add description to track auto-creation details
+		Description:       fmt.Sprintf("Auto-created from requisition %s. Vendor: %s", requisition.REQNumber, vendorName),
 	}
 
 	// Set items
@@ -133,9 +141,9 @@ func (s *DocumentAutomationService) CreatePurchaseOrderFromRequisition(
 		}, nil
 	}
 
-	// Log audit event
+	// Log audit event with vendor info
 	if s.auditService != nil {
-		details := fmt.Sprintf("Auto-created PO %s from approved requisition %s", poNumber, requisition.REQNumber)
+		details := fmt.Sprintf("Auto-created PO %s from approved requisition %s (Vendor: %s)", poNumber, requisition.REQNumber, vendorName)
 		s.auditService.LogEvent(ctx, "system", "", "po_auto_created", "purchase_order", purchaseOrder.ID, details, "", "")
 	}
 
@@ -147,7 +155,7 @@ func (s *DocumentAutomationService) CreatePurchaseOrderFromRequisition(
 			DocumentType: "purchase_order",
 			Action:       "auto_created",
 			ActorID:      "system",
-			Details:      fmt.Sprintf("Purchase Order %s was automatically created from your requisition", poNumber),
+			Details:      fmt.Sprintf("Purchase Order %s was automatically created from your requisition (Vendor: %s)", poNumber, vendorName),
 			Timestamp:    time.Now(),
 		}
 		s.notificationSvc.HandleWorkflowEvent(event)
@@ -367,9 +375,7 @@ func (s *DocumentAutomationService) ValidateAutomationPrerequisites(
 		if req.Status != "approved" {
 			return fmt.Errorf("requisition must be approved")
 		}
-		if req.PreferredVendorID == nil || *req.PreferredVendorID == "" {
-			return fmt.Errorf("requisition must have a preferred vendor")
-		}
+		// Removed vendor requirement - PO can be created without vendor
 	case "purchase_order":
 		po, ok := document.(*models.PurchaseOrder)
 		if !ok {

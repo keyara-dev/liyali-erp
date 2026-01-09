@@ -5,8 +5,6 @@ import {
   CreateRequisitionRequest,
   UpdateRequisitionRequest,
   SubmitRequisitionRequest,
-  ApproveRequisitionRequest,
-  RejectRequisitionRequest,
   RequisitionStats,
 } from '@/types/requisition';
 import { APIResponse, PurchaseOrder } from '@/types';
@@ -171,84 +169,7 @@ export async function submitRequisitionForApproval(
   }
 }
 
-/**
- * Approve requisition
- * Calls: POST /api/v1/requisitions/{id}/approve
- * May return auto-created Purchase Order if automation is enabled
- */
-export async function approveRequisition(
-  data: ApproveRequisitionRequest
-): Promise<APIResponse<Requisition & { autoCreatedPO?: PurchaseOrder; automationUsed?: boolean }>> {
-  const url = `/api/v1/requisitions/${data.requisitionId}/approve`;
 
-  try {
-    const response = await authenticatedApiClient({
-      method: 'POST',
-      url,
-      data: {
-        signature: data.signature,
-        comments: data.comments,
-        stageNumber: data.stageNumber,
-        approvingUserId: data.approvingUserId,
-        approvingUserName: data.approvingUserName,
-        approvingUserRole: data.approvingUserRole,
-      },
-    });
-
-    // Handle both single requisition response and automation response
-    let responseData = response.data?.data;
-    
-    // Check if automation was used (response contains multiple documents)
-    if (responseData && typeof responseData === 'object' && 'automationUsed' in responseData) {
-      // Automation response format: { requisition, autoCreatedPO, automationUsed }
-      return successResponse(
-        {
-          ...responseData.requisition,
-          autoCreatedPO: responseData.autoCreatedPO,
-          automationUsed: responseData.automationUsed,
-        },
-        'Requisition approved and Purchase Order created automatically'
-      );
-    } else {
-      // Standard response format: just the requisition
-      return successResponse(
-        responseData,
-        'Requisition approved successfully'
-      );
-    }
-  } catch (error: any) {
-    return handleError(error, 'POST', url);
-  }
-}
-
-/**
- * Reject requisition
- * Calls: POST /api/v1/requisitions/{id}/reject
- */
-export async function rejectRequisition(
-  data: RejectRequisitionRequest
-): Promise<APIResponse<Requisition>> {
-  const url = `/api/v1/requisitions/${data.requisitionId}/reject`;
-
-  try {
-    const response = await authenticatedApiClient({
-      method: 'POST',
-      url,
-      data: {
-        signature: data.signature,
-        remarks: data.remarks,
-        comments: data.comments,
-        rejectingUserId: data.rejectingUserId,
-        rejectingUserName: data.rejectingUserName,
-        rejectingUserRole: data.rejectingUserRole,
-      },
-    });
-
-    return successResponse(response.data?.data, 'Requisition rejected and returned to draft');
-  } catch (error: any) {
-    return handleError(error, 'POST', url);
-  }
-}
 
 /**
  * Get requisition statistics

@@ -32,18 +32,22 @@ func GetRequisitions(c *fiber.Ctx) error {
 	department := c.Query("department")
 	priority := c.Query("priority")
 
+	// Get organization ID from context (set by auth middleware)
+	organizationID := c.Locals("organizationID").(string)
+
 	// Add query parameters to context
 	logging.AddFieldsToRequest(c, map[string]interface{}{
-		"operation":  "get_requisitions",
-		"page":       page,
-		"page_size":  pageSize,
-		"status":     status,
-		"department": department,
-		"priority":   priority,
+		"operation":      "get_requisitions",
+		"page":           page,
+		"page_size":      pageSize,
+		"status":         status,
+		"department":     department,
+		"priority":       priority,
+		"organizationID": organizationID,
 	})
 
-	// Build query
-	query := db
+	// Build query with organization filter
+	query := db.Where("organization_id = ?", organizationID)
 	if status != "" {
 		query = query.Where("status = ?", status)
 	}
@@ -265,14 +269,17 @@ func GetRequisition(c *fiber.Ctx) error {
 		})
 	}
 
+	// Get organization ID from context (set by auth middleware)
+	organizationID := c.Locals("organizationID").(string)
+
 	var requisition models.Requisition
 	
-	// Try to find by ID first (UUID), then by requisition number
+	// Try to find by ID first (UUID), then by requisition number, filtered by organization
 	err := config.DB.
 		Preload("Requester").
 		Preload("Category").
 		Preload("PreferredVendor").
-		Where("id = ? OR req_number = ? OR requisition_number = ?", id, id, id).
+		Where("organization_id = ? AND (id = ? OR req_number = ?)", organizationID, id, id).
 		First(&requisition).Error
 		
 	if err != nil {
@@ -460,267 +467,6 @@ func DeleteRequisition(c *fiber.Ctx) error {
 	})
 }
 
-// ApproveRequisition approves a requisition and optionally auto-creates PO
-func ApproveRequisition(c *fiber.Ctx) error {
-	id := c.Params("id")
-	if id == "" {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"success": false,
-			"message": "Requisition ID is required",
-		})
-	}
-
-	var req types.ApproveDocumentRequest
-	if err := c.BodyParser(&req); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"success": false,
-			"message": "Invalid request body",
-			"error":   err.Error(),
-		})
-	}
-
-	if req.Signature == "" {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"success": false,
-			"message": "Signature is required",
-		})
-	}
-
-	// Get existing requisition
-	var requisition models.Requisition
-	if err := config.DB.Where("id = ?", id).First(&requisition).Error; err != nil {
-		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
-			"success": false,
-			"message": "Requisition not found",
-		})
-	}
-
-	// Get approver info
-	approverID := c.Locals("userID").(string)
-	var approver models.User
-	if err := config.DB.Where("id = ?", approverID).First(&approver).Error; err != nil {
-		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-			"success": false,
-			"message": "Approver not found",
-		})
-	}
-
-	// Unmarshal existing approval history
-	var approvalHistory []types.ApprovalRecord
-	approvalHistory = requisition.ApprovalHistory.Data()
-
-	// Add new approval record
-	approvalRecord := types.ApprovalRecord{
-		ApproverID:   approverID,
-		ApproverName: approver.Name,
-		Status:       "approved",
-		Comments:     req.Comments,
-		Signature:    req.Signature,
-		ApprovedAt:   time.Now(),
-	}
-	approvalHistory = append(approvalHistory, approvalRecord)
-
-	// Add action history entry
-	var actionHistory []types.ActionHistoryEntry
-	actionHistory = requisition.ActionHistory.Data()
-	actionHistory = append(actionHistory, types.ActionHistoryEntry{
-		ID:               uuid.New().String(),
-		Action:           "APPROVE",
-		PerformedBy:      approverID,
-		PerformedByName:  approver.Name,
-		PerformedByRole:  approver.Role,
-		Timestamp:        time.Now(),
-		Comments:         req.Comments,
-		ActionType:       "APPROVE",
-		PreviousStatus:   requisition.Status,
-		NewStatus:        "approved",
-	})
-
-	// Update requisition
-	requisition.Status = "approved"
-	requisition.ApprovalStage++
-	requisition.ApprovalHistory = datatypes.NewJSONType(approvalHistory)
-	requisition.ActionHistory = datatypes.NewJSONType(actionHistory)
-	requisition.UpdatedAt = time.Now()
-
-	if err := config.DB.Save(&requisition).Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"success": false,
-			"message": "Failed to approve requisition",
-			"error":   err.Error(),
-		})
-	}
-
-	// Preload requester
-	config.DB.Preload("Requester").First(&requisition)
-
-	// Auto-create Purchase Order if enabled and prerequisites are met
-	var autoCreatedPO *models.PurchaseOrder
-	if requisition.Status == "approved" {
-		// Initialize automation service
-		auditService := &services.AuditService{}
-		notificationService := &services.NotificationService{}
-		automationService := services.NewDocumentAutomationService(
-			config.DB, auditService, notificationService,
-		)
-
-		// Get automation config (could be from organization settings in the future)
-		automationConfig := automationService.GetDefaultAutomationConfig()
-
-		// Attempt to auto-create PO
-		result, err := automationService.CreatePurchaseOrderFromRequisition(
-			c.Context(), &requisition, automationConfig,
-		)
-
-		if err == nil && result.Success {
-			if po, ok := result.CreatedDocument.(models.PurchaseOrder); ok {
-				autoCreatedPO = &po
-			}
-		}
-		// Note: We don't fail the approval if PO creation fails
-		// The requisition is still approved, PO can be created manually
-	}
-
-	// Prepare response
-	response := types.DetailResponse{
-		Success: true,
-		Data:    modelToRequisitionResponse(requisition),
-	}
-
-	// Add auto-created PO to response if available
-	if autoCreatedPO != nil {
-		// Convert PO to response format
-		poResponse := types.PurchaseOrderResponse{
-			ID:                autoCreatedPO.ID,
-			PONumber:          autoCreatedPO.PONumber,
-			VendorID:          autoCreatedPO.VendorID,
-			Status:            autoCreatedPO.Status,
-			TotalAmount:       autoCreatedPO.TotalAmount,
-			Currency:          autoCreatedPO.Currency,
-			DeliveryDate:      autoCreatedPO.DeliveryDate,
-			ApprovalStage:     autoCreatedPO.ApprovalStage,
-			LinkedRequisition: autoCreatedPO.LinkedRequisition,
-			CreatedAt:         autoCreatedPO.CreatedAt,
-			UpdatedAt:         autoCreatedPO.UpdatedAt,
-		}
-
-		// Add PO to response
-		response.Data = fiber.Map{
-			"requisition":      modelToRequisitionResponse(requisition),
-			"autoCreatedPO":    poResponse,
-			"automationUsed":   true,
-		}
-	}
-
-	return c.JSON(response)
-}
-
-// RejectRequisition rejects a requisition
-func RejectRequisition(c *fiber.Ctx) error {
-	id := c.Params("id")
-	if id == "" {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"success": false,
-			"message": "Requisition ID is required",
-		})
-	}
-
-	var req types.RejectDocumentRequest
-	if err := c.BodyParser(&req); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"success": false,
-			"message": "Invalid request body",
-			"error":   err.Error(),
-		})
-	}
-
-	if req.Remarks == "" || len(req.Remarks) < 10 {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"success": false,
-			"message": "Remarks must be at least 10 characters",
-		})
-	}
-	if req.Signature == "" {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"success": false,
-			"message": "Signature is required",
-		})
-	}
-
-	// Get existing requisition
-	var requisition models.Requisition
-	if err := config.DB.Where("id = ?", id).First(&requisition).Error; err != nil {
-		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
-			"success": false,
-			"message": "Requisition not found",
-		})
-	}
-
-	// Get approver info
-	approverID := c.Locals("userID").(string)
-	var approver models.User
-	if err := config.DB.Where("id = ?", approverID).First(&approver).Error; err != nil {
-		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-			"success": false,
-			"message": "Approver not found",
-		})
-	}
-
-	// Unmarshal existing approval history
-	var approvalHistory []types.ApprovalRecord
-	approvalHistory = requisition.ApprovalHistory.Data()
-
-	// Add new rejection record
-	rejectionRecord := types.ApprovalRecord{
-		ApproverID:   approverID,
-		ApproverName: approver.Name,
-		Status:       "rejected",
-		Comments:     req.Remarks,
-		Signature:    req.Signature,
-		ApprovedAt:   time.Now(),
-	}
-	approvalHistory = append(approvalHistory, rejectionRecord)
-
-	// Add action history entry
-	var actionHistory []types.ActionHistoryEntry
-	actionHistory = requisition.ActionHistory.Data()
-	actionHistory = append(actionHistory, types.ActionHistoryEntry{
-		ID:               uuid.New().String(),
-		Action:           "REJECT",
-		PerformedBy:      approverID,
-		PerformedByName:  approver.Name,
-		PerformedByRole:  approver.Role,
-		Timestamp:        time.Now(),
-		Comments:         req.Remarks,
-		Remarks:          req.Remarks,
-		ActionType:       "REJECT",
-		PreviousStatus:   requisition.Status,
-		NewStatus:        "rejected",
-	})
-
-	// Update requisition
-	requisition.Status = "rejected"
-	requisition.ApprovalHistory = datatypes.NewJSONType(approvalHistory)
-	requisition.ActionHistory = datatypes.NewJSONType(actionHistory)
-	requisition.UpdatedAt = time.Now()
-
-	if err := config.DB.Save(&requisition).Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"success": false,
-			"message": "Failed to reject requisition",
-			"error":   err.Error(),
-		})
-	}
-
-	// Preload requester
-	config.DB.Preload("Requester").First(&requisition)
-
-	return c.JSON(types.DetailResponse{
-		Success: true,
-		Data:    modelToRequisitionResponse(requisition),
-	})
-}
-
 // ReassignRequisition reassigns a requisition to a different approver
 func ReassignRequisition(c *fiber.Ctx) error {
 	id := c.Params("id")
@@ -827,6 +573,7 @@ func modelToRequisitionResponse(req models.Requisition) types.RequisitionRespons
 
 	return types.RequisitionResponse{
 		ID:                  req.ID,
+		REQNumber:           req.REQNumber,
 		RequesterID:         req.RequesterId,
 		RequesterName:       requesterName,
 		Title:               req.Title,
@@ -859,4 +606,103 @@ func modelToRequisitionResponse(req models.Requisition) types.RequisitionRespons
 		CreatedAt:           req.CreatedAt,
 		UpdatedAt:           req.UpdatedAt,
 	}
+}
+
+// SubmitRequisition submits a requisition for approval using the workflow system
+func SubmitRequisition(c *fiber.Ctx) error {
+	id := c.Params("id")
+	if id == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"success": false,
+			"message": "Requisition ID is required",
+		})
+	}
+
+	// Get organization ID and user ID from context
+	organizationID := c.Locals("organizationID").(string)
+	userID := c.Locals("userID").(string)
+
+	// Get existing requisition
+	var requisition models.Requisition
+	if err := config.DB.Where("id = ? AND organization_id = ?", id, organizationID).First(&requisition).Error; err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
+			"success": false,
+			"message": "Requisition not found",
+		})
+	}
+
+	// Check if requisition is in draft status
+	if requisition.Status != "draft" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"success": false,
+			"message": fmt.Sprintf("Cannot submit requisition in %s status", requisition.Status),
+		})
+	}
+
+	// Get workflow execution service from handler registry
+	// This will be passed from the route handler
+	workflowExecutionService := c.Locals("workflowExecutionService").(*services.WorkflowExecutionService)
+
+	// Assign workflow to the requisition
+	assignment, err := workflowExecutionService.AssignWorkflowToDocument(
+		c.Context(), organizationID, requisition.ID, "requisition", userID,
+	)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"success": false,
+			"message": "Failed to assign workflow to requisition",
+			"error":   err.Error(),
+		})
+	}
+
+	// Update requisition status to pending
+	requisition.Status = "pending"
+	requisition.UpdatedAt = time.Now()
+
+	// Add action history entry for submission
+	var actionHistory []types.ActionHistoryEntry
+	actionHistory = requisition.ActionHistory.Data()
+	
+	// Get user info for action history
+	var user models.User
+	if err := config.DB.Where("id = ?", userID).First(&user).Error; err == nil {
+		actionHistory = append(actionHistory, types.ActionHistoryEntry{
+			ID:               uuid.New().String(),
+			Action:           "SUBMIT",
+			PerformedBy:      userID,
+			PerformedByName:  user.Name,
+			PerformedByRole:  user.Role,
+			Timestamp:        time.Now(),
+			Comments:         "Requisition submitted for approval",
+			ActionType:       "SUBMIT",
+			PreviousStatus:   "draft",
+			NewStatus:        "pending",
+		})
+		requisition.ActionHistory = datatypes.NewJSONType(actionHistory)
+	}
+
+	// Save requisition
+	if err := config.DB.Save(&requisition).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"success": false,
+			"message": "Failed to update requisition status",
+			"error":   err.Error(),
+		})
+	}
+
+	// Preload requester, category, and vendor
+	config.DB.Preload("Requester").Preload("Category").Preload("PreferredVendor").First(&requisition)
+
+	return c.JSON(types.DetailResponse{
+		Success: true,
+		Data: fiber.Map{
+			"requisition": modelToRequisitionResponse(requisition),
+			"workflow": fiber.Map{
+				"assignmentId": assignment.ID,
+				"workflowId":   assignment.WorkflowID,
+				"currentStage": assignment.CurrentStage,
+				"status":       assignment.Status,
+			},
+		},
+	})
 }

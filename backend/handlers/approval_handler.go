@@ -1,18 +1,27 @@
 package handlers
 
 import (
+	"fmt"
 	"log"
 	"strconv"
 	"time"
 
 	"github.com/liyali/liyali-gateway/config"
 	"github.com/liyali/liyali-gateway/models"
+	"github.com/liyali/liyali-gateway/services"
 	"github.com/liyali/liyali-gateway/types"
 	"github.com/liyali/liyali-gateway/utils"
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
-	"gorm.io/gorm"
 )
+
+// ApproverInfo represents an approver
+type ApproverInfo struct {
+	ID    string `json:"id"`
+	Name  string `json:"name"`
+	Email string `json:"email"`
+	Role  string `json:"role"`
+}
 
 type ApprovalHandler struct {
 	validate *validator.Validate
@@ -124,7 +133,7 @@ func (h *ApprovalHandler) GetApprovalTask(c *fiber.Ctx) error {
 	}
 
 	db := config.DB
-	organizationID := c.Locals("organizationId").(string)
+	organizationID := c.Locals("organizationID").(string) // Fixed: was "organizationId"
 	userID := c.Locals("userID").(string)
 
 	var task models.ApprovalTask
@@ -140,7 +149,6 @@ func (h *ApprovalHandler) GetApprovalTask(c *fiber.Ctx) error {
 func (h *ApprovalHandler) ApproveTask(c *fiber.Ctx) error {
 	taskID := c.Params("id")
 	userID := c.Locals("userID").(string)
-	organizationID := c.Locals("organizationId").(string)
 
 	var req ApproveTaskRequest
 	if err := c.BodyParser(&req); err != nil {
@@ -158,92 +166,22 @@ func (h *ApprovalHandler) ApproveTask(c *fiber.Ctx) error {
 		})
 	}
 
-	db := config.DB
+	// Get workflow execution service
+	workflowExecutionService := c.Locals("workflowExecutionService").(*services.WorkflowExecutionService)
 
-	// Get the task
-	var task models.ApprovalTask
-	if err := db.Where("id = ? AND organization_id = ? AND assigned_to = ?", taskID, organizationID, userID).First(&task).Error; err != nil {
-		return c.Status(fiber.StatusNotFound).JSON(types.ErrorResponse{
-			Error:   "Task not found",
-			Message: "Approval task not found or access denied",
-		})
-	}
-
-	// Check if task is in pending status
-	if task.Status != "pending" {
-		return c.Status(fiber.StatusBadRequest).JSON(types.ErrorResponse{
-			Error:   "Invalid task status",
-			Message: "Task is not in pending status",
-		})
-	}
-
-	// Start transaction
-	tx := db.Begin()
-	defer func() {
-		if r := recover(); r != nil {
-			tx.Rollback()
-		}
-	}()
-
-	// Update task status
-	now := time.Now()
-	task.Status = "approved"
-	task.ApprovedBy = &userID
-	task.ApprovedAt = &now
-	task.Signature = &req.Signature
-	if req.Comment != "" {
-		task.Comments = &req.Comment
-	}
-
-	if err := tx.Save(&task).Error; err != nil {
-		tx.Rollback()
-		log.Printf("Error updating approval task: %v", err)
+	// Use workflow system to approve the task
+	err := workflowExecutionService.ApproveWorkflowTask(c.Context(), taskID, userID, req.Signature, req.Comment)
+	if err != nil {
+		log.Printf("Error approving workflow task: %v", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(types.ErrorResponse{
-			Error:   "Database error",
-			Message: "Failed to approve task",
-		})
-	}
-
-	// Update the document status based on document type
-	switch task.DocumentType {
-	case "requisition":
-		if err := h.updateRequisitionStatus(tx, task.DocumentID, "approved"); err != nil {
-			tx.Rollback()
-			return c.Status(fiber.StatusInternalServerError).JSON(types.ErrorResponse{
-				Error:   "Update failed",
-				Message: "Failed to update requisition status",
-			})
-		}
-	case "purchase_order":
-		if err := h.updatePurchaseOrderStatus(tx, task.DocumentID, "approved"); err != nil {
-			tx.Rollback()
-			return c.Status(fiber.StatusInternalServerError).JSON(types.ErrorResponse{
-				Error:   "Update failed",
-				Message: "Failed to update purchase order status",
-			})
-		}
-	case "payment_voucher":
-		if err := h.updatePaymentVoucherStatus(tx, task.DocumentID, "approved"); err != nil {
-			tx.Rollback()
-			return c.Status(fiber.StatusInternalServerError).JSON(types.ErrorResponse{
-				Error:   "Update failed",
-				Message: "Failed to update payment voucher status",
-			})
-		}
-	}
-
-	// Commit transaction
-	if err := tx.Commit().Error; err != nil {
-		log.Printf("Error committing approval transaction: %v", err)
-		return c.Status(fiber.StatusInternalServerError).JSON(types.ErrorResponse{
-			Error:   "Transaction failed",
-			Message: "Failed to complete approval",
+			Error:   "Approval failed",
+			Message: "Failed to approve task through workflow system",
 		})
 	}
 
 	return c.Status(fiber.StatusOK).JSON(types.SuccessResponse{
 		Message: "Task approved successfully",
-		Data:    task,
+		Data:    map[string]interface{}{"taskId": taskID},
 	})
 }
 
@@ -251,7 +189,6 @@ func (h *ApprovalHandler) ApproveTask(c *fiber.Ctx) error {
 func (h *ApprovalHandler) RejectTask(c *fiber.Ctx) error {
 	taskID := c.Params("id")
 	userID := c.Locals("userID").(string)
-	organizationID := c.Locals("organizationId").(string)
 
 	var req RejectTaskRequest
 	if err := c.BodyParser(&req); err != nil {
@@ -269,97 +206,29 @@ func (h *ApprovalHandler) RejectTask(c *fiber.Ctx) error {
 		})
 	}
 
-	db := config.DB
+	// Get workflow execution service
+	workflowExecutionService := c.Locals("workflowExecutionService").(*services.WorkflowExecutionService)
 
-	// Get the task
-	var task models.ApprovalTask
-	if err := db.Where("id = ? AND organization_id = ? AND assigned_to = ?", taskID, organizationID, userID).First(&task).Error; err != nil {
-		return c.Status(fiber.StatusNotFound).JSON(types.ErrorResponse{
-			Error:   "Task not found",
-			Message: "Approval task not found or access denied",
-		})
-	}
-
-	// Check if task is in pending status
-	if task.Status != "pending" {
-		return c.Status(fiber.StatusBadRequest).JSON(types.ErrorResponse{
-			Error:   "Invalid task status",
-			Message: "Task is not in pending status",
-		})
-	}
-
-	// Start transaction
-	tx := db.Begin()
-	defer func() {
-		if r := recover(); r != nil {
-			tx.Rollback()
-		}
-	}()
-
-	// Update task status
-	now := time.Now()
-	task.Status = "rejected"
-	task.RejectedBy = &userID
-	task.RejectedAt = &now
-	task.Signature = &req.Signature
-	task.RejectionReason = &req.Reason
-
-	if err := tx.Save(&task).Error; err != nil {
-		tx.Rollback()
-		log.Printf("Error updating approval task: %v", err)
+	// Use workflow system to reject the task
+	err := workflowExecutionService.RejectWorkflowTask(c.Context(), taskID, userID, req.Signature, req.Reason)
+	if err != nil {
+		log.Printf("Error rejecting workflow task: %v", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(types.ErrorResponse{
-			Error:   "Database error",
-			Message: "Failed to reject task",
-		})
-	}
-
-	// Update the document status to rejected
-	switch task.DocumentType {
-	case "requisition":
-		if err := h.updateRequisitionStatus(tx, task.DocumentID, "rejected"); err != nil {
-			tx.Rollback()
-			return c.Status(fiber.StatusInternalServerError).JSON(types.ErrorResponse{
-				Error:   "Update failed",
-				Message: "Failed to update requisition status",
-			})
-		}
-	case "purchase_order":
-		if err := h.updatePurchaseOrderStatus(tx, task.DocumentID, "rejected"); err != nil {
-			tx.Rollback()
-			return c.Status(fiber.StatusInternalServerError).JSON(types.ErrorResponse{
-				Error:   "Update failed",
-				Message: "Failed to update purchase order status",
-			})
-		}
-	case "payment_voucher":
-		if err := h.updatePaymentVoucherStatus(tx, task.DocumentID, "rejected"); err != nil {
-			tx.Rollback()
-			return c.Status(fiber.StatusInternalServerError).JSON(types.ErrorResponse{
-				Error:   "Update failed",
-				Message: "Failed to update payment voucher status",
-			})
-		}
-	}
-
-	// Commit transaction
-	if err := tx.Commit().Error; err != nil {
-		log.Printf("Error committing rejection transaction: %v", err)
-		return c.Status(fiber.StatusInternalServerError).JSON(types.ErrorResponse{
-			Error:   "Transaction failed",
-			Message: "Failed to complete rejection",
+			Error:   "Rejection failed",
+			Message: "Failed to reject task through workflow system",
 		})
 	}
 
 	return c.Status(fiber.StatusOK).JSON(types.SuccessResponse{
 		Message: "Task rejected successfully",
-		Data:    task,
+		Data:    map[string]interface{}{"taskId": taskID},
 	})
 }
 
 // ReassignTask reassigns task to different approver
 func (h *ApprovalHandler) ReassignTask(c *fiber.Ctx) error {
 	taskID := c.Params("id")
-	organizationID := c.Locals("organizationId").(string)
+	organizationID := c.Locals("organizationID").(string) // Fixed: was "organizationId"
 
 	var req ReassignTaskRequest
 	if err := c.BodyParser(&req); err != nil {
@@ -419,7 +288,7 @@ func (h *ApprovalHandler) ReassignTask(c *fiber.Ctx) error {
 // GetApprovalHistory retrieves approval history for a document
 func (h *ApprovalHandler) GetApprovalHistory(c *fiber.Ctx) error {
 	documentID := c.Params("documentId")
-	organizationID := c.Locals("organizationId").(string)
+	organizationID := c.Locals("organizationID").(string) // Fixed: was "organizationId"
 
 	if documentID == "" {
 		return c.Status(fiber.StatusBadRequest).JSON(types.ErrorResponse{
@@ -434,8 +303,8 @@ func (h *ApprovalHandler) GetApprovalHistory(c *fiber.Ctx) error {
 	var actualDocumentID string
 	var requisition models.Requisition
 	
-	// Try to find requisition by ID, req_number, or requisition_number
-	err := db.Where("id = ? OR req_number = ? OR requisition_number = ?", documentID, documentID, documentID).
+	// Try to find requisition by ID or req_number
+	err := db.Where("id = ? OR req_number = ?", documentID, documentID).
 		First(&requisition).Error
 	
 	if err == nil {
@@ -463,7 +332,6 @@ func (h *ApprovalHandler) GetApprovalHistory(c *fiber.Ctx) error {
 // POST /api/v1/approvals/bulk/approve
 func (h *ApprovalHandler) BulkApprove(c *fiber.Ctx) error {
 	userID := c.Locals("userID").(string)
-	organizationID := c.Locals("organizationId").(string)
 
 	var req BulkApproveRequest
 	if err := c.BodyParser(&req); err != nil {
@@ -475,67 +343,19 @@ func (h *ApprovalHandler) BulkApprove(c *fiber.Ctx) error {
 		return utils.SendBadRequestError(c, "Validation failed: "+err.Error())
 	}
 
-	db := config.DB
+	// Get workflow execution service
+	workflowExecutionService := c.Locals("workflowExecutionService").(*services.WorkflowExecutionService)
+
 	var successIDs []string
 	var errors []string
 
-	// Process each task
+	// Process each task through workflow system
 	for _, taskID := range req.TaskIDs {
-		// Get the task
-		var task models.ApprovalTask
-		if err := db.Where("id = ? AND organization_id = ? AND assigned_to = ?", taskID, organizationID, userID).First(&task).Error; err != nil {
-			errors = append(errors, "Task "+taskID+": not found or access denied")
+		err := workflowExecutionService.ApproveWorkflowTask(c.Context(), taskID, userID, req.Signature, req.Comment)
+		if err != nil {
+			errors = append(errors, "Task "+taskID+": "+err.Error())
 			continue
 		}
-
-		// Check if task is in pending status
-		if task.Status != "pending" {
-			errors = append(errors, "Task "+taskID+": not in pending status")
-			continue
-		}
-
-		// Start transaction for this task
-		tx := db.Begin()
-
-		// Update task status
-		now := time.Now()
-		task.Status = "approved"
-		task.ApprovedBy = &userID
-		task.ApprovedAt = &now
-		task.Signature = &req.Signature
-		if req.Comment != "" {
-			task.Comments = &req.Comment
-		}
-
-		if err := tx.Save(&task).Error; err != nil {
-			tx.Rollback()
-			errors = append(errors, "Task "+taskID+": failed to update task")
-			continue
-		}
-
-		// Update the document status based on document type
-		var updateErr error
-		switch task.DocumentType {
-		case "requisition":
-			updateErr = h.updateRequisitionStatus(tx, task.DocumentID, "approved")
-		case "purchase_order":
-			updateErr = h.updatePurchaseOrderStatus(tx, task.DocumentID, "approved")
-		case "payment_voucher":
-			updateErr = h.updatePaymentVoucherStatus(tx, task.DocumentID, "approved")
-		}
-
-		if updateErr != nil {
-			tx.Rollback()
-			errors = append(errors, "Task "+taskID+": failed to update document status")
-			continue
-		}
-
-		// Commit transaction
-		if err := tx.Commit().Error; err != nil {
-			errors = append(errors, "Task "+taskID+": failed to commit transaction")
-			continue
-		}
-
 		successIDs = append(successIDs, taskID)
 	}
 
@@ -551,7 +371,6 @@ func (h *ApprovalHandler) BulkApprove(c *fiber.Ctx) error {
 // POST /api/v1/approvals/bulk/reject
 func (h *ApprovalHandler) BulkReject(c *fiber.Ctx) error {
 	userID := c.Locals("userID").(string)
-	organizationID := c.Locals("organizationId").(string)
 
 	var req BulkRejectRequest
 	if err := c.BodyParser(&req); err != nil {
@@ -563,65 +382,19 @@ func (h *ApprovalHandler) BulkReject(c *fiber.Ctx) error {
 		return utils.SendBadRequestError(c, "Validation failed: "+err.Error())
 	}
 
-	db := config.DB
+	// Get workflow execution service
+	workflowExecutionService := c.Locals("workflowExecutionService").(*services.WorkflowExecutionService)
+
 	var successIDs []string
 	var errors []string
 
-	// Process each task
+	// Process each task through workflow system
 	for _, taskID := range req.TaskIDs {
-		// Get the task
-		var task models.ApprovalTask
-		if err := db.Where("id = ? AND organization_id = ? AND assigned_to = ?", taskID, organizationID, userID).First(&task).Error; err != nil {
-			errors = append(errors, "Task "+taskID+": not found or access denied")
+		err := workflowExecutionService.RejectWorkflowTask(c.Context(), taskID, userID, req.Signature, req.Reason)
+		if err != nil {
+			errors = append(errors, "Task "+taskID+": "+err.Error())
 			continue
 		}
-
-		// Check if task is in pending status
-		if task.Status != "pending" {
-			errors = append(errors, "Task "+taskID+": not in pending status")
-			continue
-		}
-
-		// Start transaction for this task
-		tx := db.Begin()
-
-		// Update task status
-		now := time.Now()
-		task.Status = "rejected"
-		task.RejectedBy = &userID
-		task.RejectedAt = &now
-		task.Signature = &req.Signature
-		task.RejectionReason = &req.Reason
-
-		if err := tx.Save(&task).Error; err != nil {
-			tx.Rollback()
-			errors = append(errors, "Task "+taskID+": failed to update task")
-			continue
-		}
-
-		// Update the document status to rejected
-		var updateErr error
-		switch task.DocumentType {
-		case "requisition":
-			updateErr = h.updateRequisitionStatus(tx, task.DocumentID, "rejected")
-		case "purchase_order":
-			updateErr = h.updatePurchaseOrderStatus(tx, task.DocumentID, "rejected")
-		case "payment_voucher":
-			updateErr = h.updatePaymentVoucherStatus(tx, task.DocumentID, "rejected")
-		}
-
-		if updateErr != nil {
-			tx.Rollback()
-			errors = append(errors, "Task "+taskID+": failed to update document status")
-			continue
-		}
-
-		// Commit transaction
-		if err := tx.Commit().Error; err != nil {
-			errors = append(errors, "Task "+taskID+": failed to commit transaction")
-			continue
-		}
-
 		successIDs = append(successIDs, taskID)
 	}
 
@@ -636,7 +409,7 @@ func (h *ApprovalHandler) BulkReject(c *fiber.Ctx) error {
 // BulkReassign reassigns multiple tasks at once
 // POST /api/v1/approvals/bulk/reassign
 func (h *ApprovalHandler) BulkReassign(c *fiber.Ctx) error {
-	organizationID := c.Locals("organizationId").(string)
+	organizationID := c.Locals("organizationID").(string) // Fixed: was "organizationId"
 
 	var req BulkReassignRequest
 	if err := c.BodyParser(&req); err != nil {
@@ -692,7 +465,7 @@ func (h *ApprovalHandler) BulkReassign(c *fiber.Ctx) error {
 // GetOverdueTasks retrieves tasks that are past their due date
 // GET /api/v1/approvals/tasks/overdue
 func (h *ApprovalHandler) GetOverdueTasks(c *fiber.Ctx) error {
-	organizationID := c.Locals("organizationId").(string)
+	organizationID := c.Locals("organizationID").(string) // Fixed: was "organizationId"
 
 	// Get query parameters
 	page, _ := strconv.Atoi(c.Query("page", "1"))
@@ -726,19 +499,6 @@ func (h *ApprovalHandler) GetOverdueTasks(c *fiber.Ctx) error {
 	return utils.SendPaginatedSuccess(c, tasks, "Overdue tasks retrieved successfully", page, limit, total)
 }
 
-// Helper methods for updating document statuses
-func (h *ApprovalHandler) updateRequisitionStatus(tx *gorm.DB, documentID, status string) error {
-	return tx.Model(&models.Requisition{}).Where("id = ?", documentID).Update("status", status).Error
-}
-
-func (h *ApprovalHandler) updatePurchaseOrderStatus(tx *gorm.DB, documentID, status string) error {
-	return tx.Model(&models.PurchaseOrder{}).Where("id = ?", documentID).Update("status", status).Error
-}
-
-func (h *ApprovalHandler) updatePaymentVoucherStatus(tx *gorm.DB, documentID, status string) error {
-	return tx.Model(&models.PaymentVoucher{}).Where("id = ?", documentID).Update("status", status).Error
-}
-
 // GetApprovalWorkflowStatus retrieves the current approval workflow status for a document
 // GET /api/v1/documents/{documentId}/approval-status
 func (h *ApprovalHandler) GetApprovalWorkflowStatus(c *fiber.Ctx) error {
@@ -756,8 +516,8 @@ func (h *ApprovalHandler) GetApprovalWorkflowStatus(c *fiber.Ctx) error {
 	var actualDocumentID string
 	var requisition models.Requisition
 	
-	// Try to find requisition by ID, req_number, or requisition_number
-	err := db.Where("id = ? OR req_number = ? OR requisition_number = ?", documentID, documentID, documentID).
+	// Try to find requisition by ID or req_number
+	err := db.Where("id = ? OR req_number = ?", documentID, documentID).
 		First(&requisition).Error
 	
 	if err == nil {
@@ -768,88 +528,96 @@ func (h *ApprovalHandler) GetApprovalWorkflowStatus(c *fiber.Ctx) error {
 		actualDocumentID = documentID
 	}
 
-	// Get all approval tasks for this document
-	var tasks []models.ApprovalTask
-	if err := db.Where("document_id = ? AND organization_id = ?", actualDocumentID, organizationID).
-		Order("stage_number ASC").Find(&tasks).Error; err != nil {
-		log.Printf("Error fetching approval tasks: %v", err)
-		return utils.SendInternalError(c, "Failed to fetch approval workflow status", err)
+	// Get workflow execution service from handler registry
+	workflowExecutionService := c.Locals("workflowExecutionService").(*services.WorkflowExecutionService)
+
+	// Get workflow status with detailed stage progress
+	workflowStatus, err := workflowExecutionService.GetWorkflowStatus(c.Context(), organizationID, actualDocumentID)
+	if err != nil {
+		log.Printf("Error fetching workflow status: %v", err)
+		return utils.SendInternalError(c, "Failed to fetch workflow status", err)
 	}
 
-	if len(tasks) == 0 {
-		// No approval workflow configured
+	// If no workflow is assigned, return basic status
+	if workflowStatus.Status == "no_workflow" {
 		return c.JSON(types.DetailResponse{
 			Success: true,
 			Data: map[string]interface{}{
-				"currentStage": 0,
-				"totalStages":  0,
-				"status":       "no_workflow",
-				"canApprove":   false,
-				"canReject":    false,
+				"currentStage":  0,
+				"totalStages":   0,
+				"status":        "no_workflow",
+				"canApprove":    false,
+				"canReject":     false,
+				"stageProgress": []interface{}{},
 			},
 		})
 	}
 
-	// Calculate workflow status
-	currentStage := 0
-	totalStages := len(tasks)
-	status := "pending"
-	var nextApprover string
+	// Get pending workflow tasks to determine if user can approve
+	pendingTasks, err := workflowExecutionService.GetPendingWorkflowTasks(c.Context(), organizationID, actualDocumentID)
+	if err != nil {
+		log.Printf("Error fetching pending tasks: %v", err)
+		// Continue without failing, just set canApprove to false
+		pendingTasks = []models.WorkflowTask{}
+	}
+
 	canApprove := false
 	canReject := false
+	nextApprover := ""
 
-	// Find current stage and determine permissions
-	for i, task := range tasks {
-		if task.Status == "approved" {
-			currentStage = i + 1
-		} else if task.Status == "pending" {
-			// This is the current pending stage
-			if currentStage == i {
-				currentStage = i + 1
-			}
-			if nextApprover == "" {
-				// Get approver name
-				var approver models.User
-				if err := db.Where("id = ?", task.AssignedTo).First(&approver).Error; err == nil {
-					nextApprover = approver.Name
-				}
-			}
-			// Check if current user can approve this stage
-			if task.AssignedTo == userID {
+	if len(pendingTasks) > 0 {
+		currentTask := pendingTasks[0]
+		
+		// Get user role to check if they can approve
+		var user models.User
+		if err := db.Where("id = ?", userID).First(&user).Error; err == nil {
+			// Check if user's role matches the required role for current task
+			if currentTask.AssignedRole != nil && user.Role == *currentTask.AssignedRole {
 				canApprove = true
 				canReject = true
 			}
-			break
-		} else if task.Status == "rejected" {
-			status = "rejected"
-			break
+		}
+
+		// Get next approver name
+		if currentTask.AssignedRole != nil {
+			var approver models.User
+			if err := db.Where("current_organization_id = ? AND role = ? AND active = ?", 
+				organizationID, *currentTask.AssignedRole, true).First(&approver).Error; err == nil {
+				nextApprover = approver.Name
+			} else {
+				nextApprover = fmt.Sprintf("Any %s", *currentTask.AssignedRole)
+			}
 		}
 	}
 
-	// If all stages are approved
-	if currentStage == totalStages {
-		status = "approved"
+	// Update the workflow status response with user permissions
+	workflowStatus.CanApprove = canApprove
+	workflowStatus.CanReject = canReject
+	if nextApprover != "" {
+		workflowStatus.NextApprover = nextApprover
 	}
 
 	return c.JSON(types.DetailResponse{
 		Success: true,
-		Data: map[string]interface{}{
-			"currentStage": currentStage,
-			"totalStages":  totalStages,
-			"status":       status,
-			"nextApprover": nextApprover,
-			"canApprove":   canApprove,
-			"canReject":    canReject,
-		},
+		Data:    workflowStatus,
 	})
 }
 
 // GetAvailableApprovers retrieves available approvers for a document type and stage
 // GET /api/v1/approvals/available-approvers?documentType=...&stage=...
 func (h *ApprovalHandler) GetAvailableApprovers(c *fiber.Ctx) error {
-	organizationID := c.Locals("organizationID").(string)
+	organizationIDInterface := c.Locals("organizationID")
+	if organizationIDInterface == nil {
+		return utils.SendUnauthorizedError(c, "Organization ID not found in context")
+	}
+	
+	organizationID, ok := organizationIDInterface.(string)
+	if !ok {
+		return utils.SendUnauthorizedError(c, "Invalid organization ID in context")
+	}
+	
 	documentType := c.Query("documentType")
-	stageStr := c.Query("stage")
+	entityID := c.Query("entityId") // Optional: specific entity ID to get workflow-specific approvers
 
 	if documentType == "" {
 		return utils.SendBadRequestError(c, "Document type is required")
@@ -857,52 +625,45 @@ func (h *ApprovalHandler) GetAvailableApprovers(c *fiber.Ctx) error {
 
 	db := config.DB
 
-	// Build query to find users who can approve this document type
-	query := db.Table("users").
-		Select("users.id, users.name, users.email, users.role, departments.name as department").
-		Joins("LEFT JOIN user_departments ON users.id = user_departments.user_id").
-		Joins("LEFT JOIN departments ON user_departments.department_id = departments.id").
-		Where("users.organization_id = ? AND users.active = ?", organizationID, true)
+	// If entityId is provided, try to get workflow-specific approvers
+	if entityID != "" {
+		workflowExecutionService := c.Locals("workflowExecutionService").(*services.WorkflowExecutionService)
+		
+		workflowApprovers, err := workflowExecutionService.GetAvailableApproversForWorkflow(c.Context(), organizationID, entityID)
+		if err == nil && len(workflowApprovers) > 0 {
+			return utils.SendSuccess(c, fiber.StatusOK, workflowApprovers, "Available approvers retrieved successfully", nil)
+		}
+		// If workflow approvers not found, fall back to role-based approach
+	}
 
-	// Filter by role based on document type and stage
+	// Fallback to role-based approach for document type
 	var roleFilters []string
 	switch documentType {
-	case "REQUISITION":
-		if stageStr == "1" {
-			roleFilters = []string{"manager", "supervisor", "department_head"}
-		} else {
-			roleFilters = []string{"finance_manager", "admin", "executive"}
-		}
-	case "PURCHASE_ORDER":
-		roleFilters = []string{"procurement_manager", "finance_manager", "admin"}
-	case "PAYMENT_VOUCHER":
-		roleFilters = []string{"finance_manager", "accountant", "admin"}
-	case "BUDGET":
-		roleFilters = []string{"finance_manager", "admin", "executive"}
+	case "REQUISITION", "requisition":
+		roleFilters = []string{"manager", "supervisor", "department_head", "finance"}
+	case "PURCHASE_ORDER", "purchase_order":
+		roleFilters = []string{"procurement", "finance", "admin"}
+	case "PAYMENT_VOUCHER", "payment_voucher":
+		roleFilters = []string{"finance", "accountant", "admin"}
+	case "BUDGET", "budget":
+		roleFilters = []string{"finance", "admin", "executive"}
 	default:
 		roleFilters = []string{"manager", "admin"}
 	}
 
-	if len(roleFilters) > 0 {
-		query = query.Where("users.role IN ?", roleFilters)
-	}
-
 	// Execute query
-	var approvers []struct {
-		ID         string `json:"id"`
-		Name       string `json:"name"`
-		Email      string `json:"email"`
-		Role       string `json:"role"`
-		Department string `json:"department"`
+	var approvers []ApproverInfo
+
+	queryErr := db.Table("users").
+		Select("users.id, users.name, users.email, users.role").
+		Where("users.current_organization_id = ? AND users.active = ?", organizationID, true).
+		Where("users.role IN ?", roleFilters).
+		Find(&approvers).Error
+		
+	if queryErr != nil {
+		log.Printf("Error fetching available approvers: %v", queryErr)
+		return utils.SendInternalError(c, "Failed to fetch available approvers", queryErr)
 	}
 
-	if err := query.Find(&approvers).Error; err != nil {
-		log.Printf("Error fetching available approvers: %v", err)
-		return utils.SendInternalError(c, "Failed to fetch available approvers", err)
-	}
-
-	return c.JSON(types.DetailResponse{
-		Success: true,
-		Data:    approvers,
-	})
+	return utils.SendSuccess(c, fiber.StatusOK, approvers, "Available approvers retrieved successfully", nil)
 }

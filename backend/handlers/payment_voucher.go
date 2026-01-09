@@ -9,6 +9,7 @@ import (
 	"github.com/liyali/liyali-gateway/config"
 	"github.com/liyali/liyali-gateway/logging"
 	"github.com/liyali/liyali-gateway/models"
+	"github.com/liyali/liyali-gateway/services"
 	"github.com/liyali/liyali-gateway/types"
 	"github.com/liyali/liyali-gateway/utils"
 	"gorm.io/datatypes"
@@ -309,165 +310,6 @@ func DeletePaymentVoucher(c *fiber.Ctx) error {
 	})
 }
 
-// ApprovePaymentVoucher approves a payment voucher
-func ApprovePaymentVoucher(c *fiber.Ctx) error {
-	id := c.Params("id")
-	if id == "" {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"success": false,
-			"message": "Payment Voucher ID is required",
-		})
-	}
-
-	var req types.ApproveDocumentRequest
-	if err := c.BodyParser(&req); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"success": false,
-			"message": "Invalid request body",
-			"error":   err.Error(),
-		})
-	}
-
-	if req.Signature == "" {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"success": false,
-			"message": "Signature is required",
-		})
-	}
-
-	var voucher models.PaymentVoucher
-	if err := config.DB.Where("id = ?", id).First(&voucher).Error; err != nil {
-		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
-			"success": false,
-			"message": "Payment voucher not found",
-		})
-	}
-
-	approverID := c.Locals("userID").(string)
-	var approver models.User
-	if err := config.DB.Where("id = ?", approverID).First(&approver).Error; err != nil {
-		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-			"success": false,
-			"message": "Approver not found",
-		})
-	}
-
-	var approvalHistory []types.ApprovalRecord
-	approvalHistory = voucher.ApprovalHistory.Data()
-
-	approvalRecord := types.ApprovalRecord{
-		ApproverID:   approverID,
-		ApproverName: approver.Name,
-		Status:       "approved",
-		Comments:     req.Comments,
-		Signature:    req.Signature,
-		ApprovedAt:   time.Now(),
-	}
-	approvalHistory = append(approvalHistory, approvalRecord)
-
-	voucher.Status = "approved"
-	voucher.ApprovalStage++
-	voucher.ApprovalHistory = datatypes.NewJSONType([]types.ApprovalRecord{})
-	voucher.UpdatedAt = time.Now()
-
-	if err := config.DB.Save(&voucher).Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"success": false,
-			"message": "Failed to approve payment voucher",
-			"error":   err.Error(),
-		})
-	}
-
-	config.DB.Preload("Vendor").First(&voucher)
-
-	return c.JSON(types.DetailResponse{
-		Success: true,
-		Data:    modelToPaymentVoucherResponse(voucher),
-	})
-}
-
-// RejectPaymentVoucher rejects a payment voucher
-func RejectPaymentVoucher(c *fiber.Ctx) error {
-	id := c.Params("id")
-	if id == "" {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"success": false,
-			"message": "Payment Voucher ID is required",
-		})
-	}
-
-	var req types.RejectDocumentRequest
-	if err := c.BodyParser(&req); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"success": false,
-			"message": "Invalid request body",
-			"error":   err.Error(),
-		})
-	}
-
-	if req.Remarks == "" || len(req.Remarks) < 10 {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"success": false,
-			"message": "Remarks must be at least 10 characters",
-		})
-	}
-	if req.Signature == "" {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"success": false,
-			"message": "Signature is required",
-		})
-	}
-
-	var voucher models.PaymentVoucher
-	if err := config.DB.Where("id = ?", id).First(&voucher).Error; err != nil {
-		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
-			"success": false,
-			"message": "Payment voucher not found",
-		})
-	}
-
-	approverID := c.Locals("userID").(string)
-	var approver models.User
-	if err := config.DB.Where("id = ?", approverID).First(&approver).Error; err != nil {
-		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-			"success": false,
-			"message": "Approver not found",
-		})
-	}
-
-	var approvalHistory []types.ApprovalRecord
-	approvalHistory = voucher.ApprovalHistory.Data()
-
-	rejectionRecord := types.ApprovalRecord{
-		ApproverID:   approverID,
-		ApproverName: approver.Name,
-		Status:       "rejected",
-		Comments:     req.Remarks,
-		Signature:    req.Signature,
-		ApprovedAt:   time.Now(),
-	}
-	approvalHistory = append(approvalHistory, rejectionRecord)
-
-	voucher.Status = "rejected"
-	voucher.ApprovalHistory = datatypes.NewJSONType([]types.ApprovalRecord{})
-	voucher.UpdatedAt = time.Now()
-
-	if err := config.DB.Save(&voucher).Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"success": false,
-			"message": "Failed to reject payment voucher",
-			"error":   err.Error(),
-		})
-	}
-
-	config.DB.Preload("Vendor").First(&voucher)
-
-	return c.JSON(types.DetailResponse{
-		Success: true,
-		Data:    modelToPaymentVoucherResponse(voucher),
-	})
-}
-
 // Helper function to convert model to response
 func modelToPaymentVoucherResponse(voucher models.PaymentVoucher) types.PaymentVoucherResponse {
 	var approvalHistory []types.ApprovalRecord
@@ -498,4 +340,98 @@ func modelToPaymentVoucherResponse(voucher models.PaymentVoucher) types.PaymentV
 		CreatedAt:       voucher.CreatedAt,
 		UpdatedAt:       voucher.UpdatedAt,
 	}
+}
+// SubmitPaymentVoucher submits a payment voucher for approval using the workflow system
+func SubmitPaymentVoucher(c *fiber.Ctx) error {
+	id := c.Params("id")
+	if id == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"success": false,
+			"message": "Payment Voucher ID is required",
+		})
+	}
+
+	// Get organization ID and user ID from context
+	organizationID := c.Locals("organizationID").(string)
+	userID := c.Locals("userID").(string)
+
+	// Get existing payment voucher
+	var voucher models.PaymentVoucher
+	if err := config.DB.Where("id = ? AND organization_id = ?", id, organizationID).First(&voucher).Error; err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
+			"success": false,
+			"message": "Payment Voucher not found",
+		})
+	}
+
+	// Check if payment voucher is in draft status
+	if voucher.Status != "draft" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"success": false,
+			"message": fmt.Sprintf("Cannot submit payment voucher in %s status", voucher.Status),
+		})
+	}
+
+	// Get workflow execution service from context
+	workflowExecutionService := c.Locals("workflowExecutionService").(*services.WorkflowExecutionService)
+
+	// Assign workflow to the payment voucher
+	assignment, err := workflowExecutionService.AssignWorkflowToDocument(
+		c.Context(), organizationID, voucher.ID, "payment_voucher", userID,
+	)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"success": false,
+			"message": "Failed to assign workflow to payment voucher",
+			"error":   err.Error(),
+		})
+	}
+
+	// Update payment voucher status to pending
+	voucher.Status = "pending"
+	voucher.UpdatedAt = time.Now()
+
+	// Add action history entry for submission
+	var actionHistory []types.ActionHistoryEntry
+	actionHistory = voucher.ActionHistory.Data()
+	
+	// Get user info for action history
+	var user models.User
+	if err := config.DB.Where("id = ?", userID).First(&user).Error; err == nil {
+		actionHistory = append(actionHistory, types.ActionHistoryEntry{
+			ID:               uuid.New().String(),
+			Action:           "SUBMIT",
+			PerformedBy:      userID,
+			PerformedByName:  user.Name,
+			PerformedByRole:  user.Role,
+			Timestamp:        time.Now(),
+			Comments:         "Payment voucher submitted for approval",
+			ActionType:       "SUBMIT",
+			PreviousStatus:   "draft",
+			NewStatus:        "pending",
+		})
+		voucher.ActionHistory = datatypes.NewJSONType(actionHistory)
+	}
+
+	// Save payment voucher
+	if err := config.DB.Save(&voucher).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"success": false,
+			"message": "Failed to update payment voucher status",
+			"error":   err.Error(),
+		})
+	}
+
+	return c.JSON(types.DetailResponse{
+		Success: true,
+		Data: fiber.Map{
+			"paymentVoucher": modelToPaymentVoucherResponse(voucher),
+			"workflow": fiber.Map{
+				"assignmentId": assignment.ID,
+				"workflowId":   assignment.WorkflowID,
+				"currentStage": assignment.CurrentStage,
+				"status":       assignment.Status,
+			},
+		},
+	})
 }

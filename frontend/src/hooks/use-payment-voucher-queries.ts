@@ -8,8 +8,6 @@ import {
   createPaymentVoucher,
   updatePaymentVoucher,
   submitPaymentVoucherForApproval,
-  approvePaymentVoucher,
-  rejectPaymentVoucher,
   markPaymentVoucherAsPaid,
   deletePaymentVoucher,
   getPaymentVoucherStats,
@@ -20,8 +18,6 @@ import {
   CreatePaymentVoucherRequest,
   UpdatePaymentVoucherRequest,
   SubmitPaymentVoucherRequest,
-  ApprovePaymentVoucherRequest,
-  RejectPaymentVoucherRequest,
   MarkPaymentVoucherPaidRequest,
 } from "@/types/payment-voucher";
 import { toast } from "sonner";
@@ -233,139 +229,6 @@ export const useSubmitPaymentVoucherForApproval = (
     },
     onError: (error: Error) => {
       toast.error(error.message || "Failed to submit payment voucher");
-    },
-  });
-};
-
-/**
- * Approve payment voucher mutation
- *
- * @param pvId - Payment Voucher ID to approve
- * @param onSuccess - Callback after successful approval
- * @returns Mutation object
- *
- * @example
- * const approveMutation = useApprovePaymentVoucher(pvId)
- * await approveMutation.mutateAsync({
- *   approvingUserId: userId,
- *   approvingUserName: 'John Doe',
- *   approvingUserRole: 'FINANCE_MANAGER',
- *   signature: signatureDataUrl,
- *   comments: 'Approved'
- * })
- */
-export const useApprovePaymentVoucher = (
-  pvId: string,
-  onSuccess?: () => void
-) => {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (
-      data: Omit<ApprovePaymentVoucherRequest, "pvId">
-    ) => {
-      const response = await approvePaymentVoucher({
-        pvId,
-        ...data,
-      });
-
-      if (!response.success) {
-        throw new Error(response.message);
-      }
-      return response;
-    },
-    onSuccess: () => {
-      toast.success("Payment voucher approved");
-
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.PAYMENT_VOUCHERS.BY_ID, pvId],
-      });
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.PAYMENT_VOUCHERS.ALL],
-      });
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.PAYMENT_VOUCHERS.STATS],
-      });
-
-      // Invalidate dashboard metrics
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.DASHBOARD.METRICS],
-      });
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.DASHBOARD.ACTIVITIES],
-      });
-
-      onSuccess?.();
-    },
-    onError: (error: Error) => {
-      toast.error(error.message || "Failed to approve payment voucher");
-    },
-  });
-};
-
-/**
- * Reject payment voucher mutation
- *
- * @param pvId - Payment Voucher ID to reject
- * @param onSuccess - Callback after successful rejection
- * @returns Mutation object
- *
- * @example
- * const rejectMutation = useRejectPaymentVoucher(pvId)
- * await rejectMutation.mutateAsync({
- *   rejectingUserId: userId,
- *   rejectingUserName: 'John Doe',
- *   rejectingUserRole: 'FINANCE_MANAGER',
- *   remarks: 'Budget exceeded',
- *   signature: signatureDataUrl,
- *   comments: 'Requires adjustment'
- * })
- */
-export const useRejectPaymentVoucher = (
-  pvId: string,
-  onSuccess?: () => void
-) => {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (
-      data: Omit<RejectPaymentVoucherRequest, "pvId">
-    ) => {
-      const response = await rejectPaymentVoucher({
-        pvId,
-        ...data,
-      });
-
-      if (!response.success) {
-        throw new Error(response.message);
-      }
-      return response;
-    },
-    onSuccess: () => {
-      toast.success("Payment voucher rejected and returned to draft");
-
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.PAYMENT_VOUCHERS.BY_ID, pvId],
-      });
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.PAYMENT_VOUCHERS.ALL],
-      });
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.PAYMENT_VOUCHERS.STATS],
-      });
-
-      // Invalidate dashboard metrics
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.DASHBOARD.METRICS],
-      });
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.DASHBOARD.ACTIVITIES],
-      });
-
-      onSuccess?.();
-    },
-    onError: (error: Error) => {
-      toast.error(error.message || "Failed to reject payment voucher");
     },
   });
 };

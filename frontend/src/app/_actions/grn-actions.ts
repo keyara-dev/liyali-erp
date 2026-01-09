@@ -291,67 +291,7 @@ export async function updateQualityIssueInGRN(
   }
 }
 
-/**
- * Approve a GRN
- * Calls: POST /api/v1/grns/{id}/approve
- */
-export async function approveGRNAction(
-  grnId: string,
-  signature: string,
-  comments?: string
-): Promise<APIResponse<GoodsReceivedNote>> {
-  const url = `/api/v1/grns/${grnId}/approve`;
 
-  try {
-    const payload = {
-      signature,
-      comments: comments || '',
-    };
-
-    const response = await authenticatedApiClient({
-      method: 'POST',
-      url,
-      data: payload,
-    });
-
-    return successResponse(response.data?.data, 'GRN approved successfully');
-  } catch (error: any) {
-    return handleError(error, 'POST', url);
-  }
-}
-
-/**
- * Reject a GRN
- * Calls: POST /api/v1/grns/{id}/reject
- */
-export async function rejectGRNAction(
-  grnId: string,
-  signature: string,
-  remarks: string
-): Promise<APIResponse<GoodsReceivedNote>> {
-  const url = `/api/v1/grns/${grnId}/reject`;
-
-  try {
-    if (remarks.length < 10) {
-      return badRequestResponse('Remarks must be at least 10 characters');
-    }
-
-    const payload = {
-      signature,
-      remarks,
-    };
-
-    const response = await authenticatedApiClient({
-      method: 'POST',
-      url,
-      data: payload,
-    });
-
-    return successResponse(response.data?.data, 'GRN rejected successfully');
-  } catch (error: any) {
-    return handleError(error, 'POST', url);
-  }
-}
 
 /**
  * Delete a GRN (only DRAFT GRNs can be deleted)

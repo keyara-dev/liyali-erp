@@ -36,7 +36,7 @@ type Requisition struct {
 	REQNumber         string          `gorm:"uniqueIndex" json:"reqNumber"`
 	RequesterId       string          `json:"requesterId"`
 	Requester         *User           `gorm:"foreignKey:RequesterId" json:"requester,omitempty"`
-	RequesterName     string          `json:"requesterName"`
+	RequesterName     string          `gorm:"column:created_by_name" json:"requesterName"`
 	Title             string          `json:"title"`
 	Description       string          `json:"description"`
 	Department        string          `json:"department"`
@@ -50,27 +50,32 @@ type Requisition struct {
 	ApprovalHistory   datatypes.JSONType[[]types.ApprovalRecord] `gorm:"type:jsonb" json:"approvalHistory"`
 	CategoryID        *string         `json:"categoryId,omitempty"`
 	Category          *Category       `gorm:"foreignKey:CategoryID" json:"category,omitempty"`
-	CategoryName      string          `json:"categoryName"`
+	CategoryName      string          `gorm:"-" json:"categoryName"`
 	PreferredVendorID *string         `json:"preferredVendorId,omitempty"`
 	PreferredVendor   *Vendor         `gorm:"foreignKey:PreferredVendorID" json:"preferredVendor,omitempty"`
-	PreferredVendorName string        `json:"preferredVendorName"`
+	PreferredVendorName string        `gorm:"-" json:"preferredVendorName"`
 	IsEstimate        bool            `json:"isEstimate"`
 
 	// Business requirement fields
-	RequisitionNumber   string                                    `json:"requisitionNumber"`   // Same as REQNumber
-	BudgetCode          string                                    `json:"budgetCode"`
-	RequestedByName     string                                    `json:"requestedByName"`     // Same as RequesterName
-	RequestedByRole     string                                    `json:"requestedByRole"`
-	RequestedBy         string                                    `json:"requestedBy"`         // Same as RequesterId
-	TotalApprovalStages int                                       `json:"totalApprovalStages"`
-	RequestedDate       time.Time                                 `json:"requestedDate"`
+	RequisitionNumber   string                                    `gorm:"-" json:"requisitionNumber"`   // Computed from REQNumber
+	BudgetCode          string                                    `gorm:"-" json:"budgetCode"`          // Stored in metadata
+	RequestedByName     string                                    `gorm:"-" json:"requestedByName"`     // Computed from RequesterName
+	RequestedByRole     string                                    `gorm:"-" json:"requestedByRole"`     // Computed from Requester.Role
+	RequestedBy         string                                    `gorm:"-" json:"requestedBy"`         // Computed from RequesterId
+	TotalApprovalStages int                                       `gorm:"-" json:"totalApprovalStages"` // Computed
+	RequestedDate       time.Time                                 `gorm:"-" json:"requestedDate"`       // Computed from CreatedAt
 	RequiredByDate      time.Time                                 `json:"requiredByDate"`
-	CostCenter          string                                    `json:"costCenter"`
-	ProjectCode         string                                    `json:"projectCode"`
-	CreatedBy           string                                    `json:"createdBy"`
-	CreatedByName       string                                    `json:"createdByName"`
-	CreatedByRole       string                                    `json:"createdByRole"`
-	ActionHistory       datatypes.JSONType[[]types.ActionHistoryEntry] `gorm:"type:jsonb" json:"actionHistory"`
+	CostCenter          string                                    `gorm:"-" json:"costCenter"`          // Stored in metadata
+	ProjectCode         string                                    `gorm:"-" json:"projectCode"`         // Stored in metadata
+	CreatedBy           string                                    `gorm:"-" json:"createdBy"`           // Computed from RequesterId
+	CreatedByName       string                                    `gorm:"-" json:"createdByName"`       // Computed from RequesterName
+	CreatedByRole       string                                    `gorm:"-" json:"createdByRole"`       // Computed from Requester.Role
+	
+	// Automation fields
+	AutomationUsed      bool                                      `json:"automationUsed,omitempty"`     // Whether automation was used
+	AutoCreatedPO       datatypes.JSON                           `gorm:"type:jsonb" json:"autoCreatedPO,omitempty"` // Auto-created Purchase Order
+	
+	ActionHistory       datatypes.JSONType[[]types.ActionHistoryEntry] `gorm:"-" json:"actionHistory"`
 	Metadata            datatypes.JSON                           `gorm:"type:jsonb" json:"metadata"`
 
 	CreatedAt         time.Time       `json:"createdAt"`
@@ -140,6 +145,11 @@ type PurchaseOrder struct {
 	BudgetCode    string     `json:"budgetCode,omitempty"`    // Budget code - ADDED
 	CostCenter    string     `json:"costCenter,omitempty"`    // Cost center - ADDED
 	ProjectCode   string     `json:"projectCode,omitempty"`   // Project code - ADDED
+	
+	// Automation fields
+	AutomationUsed    bool           `json:"automationUsed,omitempty"`    // Whether automation was used
+	AutoCreatedGRN    datatypes.JSON `gorm:"type:jsonb" json:"autoCreatedGRN,omitempty"` // Auto-created GRN
+	
 	ActionHistory datatypes.JSONType[[]types.ActionHistoryEntry] `gorm:"type:jsonb" json:"actionHistory,omitempty"` // Action history for UI
 	
 	// Legacy aliases for backward compatibility
@@ -297,16 +307,16 @@ type ApprovalTask struct {
 	RejectionReason  *string       `json:"rejectionReason"`
 
 	// Frontend compatibility fields
-	DocumentNumber   string     `json:"documentNumber,omitempty"`   // Document reference number (REQ-001, PO-001, etc.)
-	ApproverName     string     `json:"approverName,omitempty"`     // Name of the assigned approver
-	Priority         string     `json:"priority,omitempty"`         // Task priority (high, medium, low)
+	DocumentNumber   string     `gorm:"-" json:"documentNumber,omitempty"`   // Computed from document reference
+	ApproverName     string     `gorm:"-" json:"approverName,omitempty"`     // Computed from Approver.Name
+	Priority         string     `gorm:"-" json:"priority,omitempty"`         // Computed from document priority
 	DueAt            *time.Time `json:"dueAt,omitempty"`            // Due date for the approval
-	TaskType         string     `json:"taskType,omitempty"`         // Type of task for UI display
-	Title            string     `json:"title,omitempty"`            // Human-readable task title
-	WorkflowID       string     `json:"workflowId,omitempty"`       // Workflow ID for the task
-	WorkflowName     string     `json:"workflowName,omitempty"`     // Workflow name for the task
-	StageName        string     `json:"stageName,omitempty"`        // Human-readable stage name
-	Importance       string     `json:"importance,omitempty"`       // Maps to priority
+	TaskType         string     `gorm:"-" json:"taskType,omitempty"`         // Computed task type for UI display
+	Title            string     `gorm:"-" json:"title,omitempty"`            // Computed human-readable task title
+	WorkflowID       string     `gorm:"-" json:"workflowId,omitempty"`       // Computed workflow ID for the task
+	WorkflowName     string     `gorm:"-" json:"workflowName,omitempty"`     // Computed workflow name for the task
+	StageName        string     `gorm:"-" json:"stageName,omitempty"`        // Computed human-readable stage name
+	Importance       string     `gorm:"-" json:"importance,omitempty"`       // Computed from priority
 
 	CreatedAt        time.Time     `json:"createdAt"`
 	UpdatedAt        time.Time     `json:"updatedAt"`

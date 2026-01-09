@@ -8,8 +8,6 @@ import {
   createPurchaseOrder,
   updatePurchaseOrder,
   submitPurchaseOrderForApproval,
-  approvePurchaseOrder,
-  rejectPurchaseOrder,
   deletePurchaseOrder,
   getPurchaseOrderStats,
 } from "@/app/_actions/purchase-orders";
@@ -19,8 +17,6 @@ import {
   CreatePurchaseOrderRequest,
   UpdatePurchaseOrderRequest,
   SubmitPurchaseOrderRequest,
-  ApprovePurchaseOrderRequest,
-  RejectPurchaseOrderRequest,
 } from "@/types/purchase-order";
 import { toast } from "sonner";
 
@@ -231,158 +227,6 @@ export const useSubmitPurchaseOrderForApproval = (
     },
     onError: (error: Error) => {
       toast.error(error.message || "Failed to submit purchase order");
-    },
-  });
-};
-
-/**
- * Approve purchase order mutation
- * Handles automatic GRN creation when PO is fully approved
- *
- * @param poId - Purchase Order ID to approve
- * @param onSuccess - Callback after successful approval
- * @returns Mutation object
- *
- * @example
- * const approveMutation = useApprovePurchaseOrder(poId)
- * await approveMutation.mutateAsync({
- *   approvingUserId: userId,
- *   approvingUserName: 'John Doe',
- *   approvingUserRole: 'PROCUREMENT_MANAGER',
- *   signature: signatureDataUrl,
- *   comments: 'Approved'
- * })
- */
-export const useApprovePurchaseOrder = (
-  poId: string,
-  onSuccess?: () => void
-) => {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (
-      data: Omit<ApprovePurchaseOrderRequest, "poId">
-    ) => {
-      const response = await approvePurchaseOrder({
-        poId,
-        ...data,
-      });
-
-      if (!response.success) {
-        throw new Error(response.message);
-      }
-      return response;
-    },
-    onSuccess: (response) => {
-      // Check if automation was used
-      const automationUsed = response.data?.automationUsed;
-      const autoCreatedGRN = response.data?.autoCreatedGRN;
-
-      if (automationUsed && autoCreatedGRN) {
-        toast.success("Purchase order approved and GRN created automatically");
-      } else {
-        toast.success("Purchase order approved");
-      }
-
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.PURCHASE_ORDERS.BY_ID, poId],
-      });
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.PURCHASE_ORDERS.ALL],
-      });
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.PURCHASE_ORDERS.STATS],
-      });
-
-      // If GRN was auto-created, invalidate GRN cache
-      if (automationUsed && autoCreatedGRN) {
-        queryClient.invalidateQueries({
-          queryKey: [QUERY_KEYS.GRN.ALL],
-        });
-        queryClient.invalidateQueries({
-          queryKey: [QUERY_KEYS.GRN.STATS],
-        });
-      }
-
-      // Invalidate dashboard metrics
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.DASHBOARD.METRICS],
-      });
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.DASHBOARD.ACTIVITIES],
-      });
-
-      onSuccess?.();
-    },
-    onError: (error: Error) => {
-      toast.error(error.message || "Failed to approve purchase order");
-    },
-  });
-};
-
-/**
- * Reject purchase order mutation
- *
- * @param poId - Purchase Order ID to reject
- * @param onSuccess - Callback after successful rejection
- * @returns Mutation object
- *
- * @example
- * const rejectMutation = useRejectPurchaseOrder(poId)
- * await rejectMutation.mutateAsync({
- *   rejectingUserId: userId,
- *   rejectingUserName: 'John Doe',
- *   rejectingUserRole: 'FINANCE_MANAGER',
- *   remarks: 'Budget exceeded',
- *   signature: signatureDataUrl,
- *   comments: 'Requires adjustment'
- * })
- */
-export const useRejectPurchaseOrder = (
-  poId: string,
-  onSuccess?: () => void
-) => {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (
-      data: Omit<RejectPurchaseOrderRequest, "poId">
-    ) => {
-      const response = await rejectPurchaseOrder({
-        poId,
-        ...data,
-      });
-
-      if (!response.success) {
-        throw new Error(response.message);
-      }
-      return response;
-    },
-    onSuccess: () => {
-      toast.success("Purchase order rejected and returned to draft");
-
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.PURCHASE_ORDERS.BY_ID, poId],
-      });
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.PURCHASE_ORDERS.ALL],
-      });
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.PURCHASE_ORDERS.STATS],
-      });
-
-      // Invalidate dashboard metrics
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.DASHBOARD.METRICS],
-      });
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.DASHBOARD.ACTIVITIES],
-      });
-
-      onSuccess?.();
-    },
-    onError: (error: Error) => {
-      toast.error(error.message || "Failed to reject purchase order");
     },
   });
 };

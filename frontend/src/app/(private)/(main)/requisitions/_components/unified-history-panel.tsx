@@ -243,7 +243,7 @@ export function UnifiedHistoryPanel({
           )}
         </TabsContent>
 
-        {/* Approval Chain Tab - Required Signatories, Their Status, and Available Approvers */}
+        {/* Approval Chain Tab - Enhanced Workflow Stage Tracker */}
         <TabsContent value="chain" className="space-y-4 mt-4">
           {isLoading ? (
             <div className="text-center py-8">
@@ -252,109 +252,268 @@ export function UnifiedHistoryPanel({
             </div>
           ) : (
             <>
-              {/* Approval Chain Header */}
+              {/* Workflow Progress Header */}
               <div className="text-xs text-gray-600 mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
-                <p className="font-semibold text-blue-900">Approval Chain</p>
-                <p className="text-blue-700">Required signatories for this requisition in order of approval</p>
+                <p className="font-semibold text-blue-900">Workflow Progress Tracker</p>
+                <p className="text-blue-700">Track each approval stage and see who has approved or is required to approve</p>
+                {workflowStatus && (
+                  <div className="mt-2 flex items-center gap-4">
+                    <span className="text-blue-800 font-medium">
+                      Stage {workflowStatus.currentStage} of {workflowStatus.totalStages}
+                    </span>
+                    <Badge 
+                      variant={workflowStatus.status === 'completed' ? 'default' : 'secondary'}
+                      className="text-xs"
+                    >
+                      {workflowStatus.status?.toUpperCase()}
+                    </Badge>
+                  </div>
+                )}
               </div>
 
-              {/* Approval Chain Steps */}
-              {combinedApprovalHistory.length > 0 ? (
+              {/* Enhanced Workflow Stage Progress */}
+              {workflowStatus?.stageProgress && workflowStatus.stageProgress.length > 0 ? (
                 <div className="space-y-3 mb-6">
-                  {combinedApprovalHistory.map((approval, index) => (
+                  {workflowStatus.stageProgress.map((stage, index) => (
                     <div
-                      key={approval.approverId || index}
-                      className={`p-4 rounded-lg border-2 ${
-                        approval.status === 'APPROVED' 
-                          ? 'border-green-200 bg-green-50' 
-                          : approval.status === 'REJECTED'
-                            ? 'border-red-200 bg-red-50'
-                            : approval.status === 'PENDING'
-                              ? 'border-yellow-200 bg-yellow-50'
-                              : 'border-gray-200 bg-gray-50'
+                      key={stage.stageNumber || index}
+                      className={`p-4 rounded-lg border-2 transition-all ${
+                        stage.status === 'approved' 
+                          ? 'border-green-200 bg-green-50 shadow-sm' 
+                          : stage.status === 'rejected'
+                            ? 'border-red-200 bg-red-50 shadow-sm'
+                            : stage.isCurrentStage
+                              ? 'border-blue-300 bg-blue-50 shadow-md ring-2 ring-blue-100'
+                              : stage.status === 'completed'
+                                ? 'border-gray-300 bg-gray-50'
+                                : 'border-gray-200 bg-gray-50'
                       }`}
                     >
                       <div className="flex items-start gap-3">
+                        {/* Stage Number Circle */}
                         <div className="flex-shrink-0">
-                          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${
-                            approval.status === 'APPROVED' 
+                          <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold ${
+                            stage.status === 'approved' 
                               ? 'bg-green-600 text-white' 
-                              : approval.status === 'REJECTED'
+                              : stage.status === 'rejected'
                                 ? 'bg-red-600 text-white'
-                                : approval.status === 'PENDING'
-                                  ? 'bg-yellow-600 text-white'
-                                  : 'bg-gray-400 text-white'
+                                : stage.isCurrentStage
+                                  ? 'bg-blue-600 text-white ring-2 ring-blue-300'
+                                  : stage.status === 'completed'
+                                    ? 'bg-gray-500 text-white'
+                                    : 'bg-gray-300 text-gray-600'
                           }`}>
-                            {approval.stageNumber || index + 1}
+                            {stage.stageNumber || index + 1}
                           </div>
                         </div>
                         
                         <div className="flex-1 min-w-0">
+                          {/* Stage Header */}
                           <div className="flex items-center gap-2 flex-wrap mb-2">
-                            <span className="font-semibold text-sm">
-                              {approval.stageName || `Stage ${approval.stageNumber || index + 1}`}
+                            <span className="font-semibold text-base">
+                              {stage.stageName || `Stage ${stage.stageNumber || index + 1}`}
                             </span>
                             <Badge
                               variant={
-                                approval.status === 'APPROVED'
+                                stage.status === 'approved'
                                   ? 'default'
-                                  : approval.status === 'REJECTED'
+                                  : stage.status === 'rejected'
                                     ? 'destructive'
-                                    : approval.status === 'PENDING'
+                                    : stage.isCurrentStage
                                       ? 'secondary'
                                       : 'outline'
                               }
                               className="text-xs"
                             >
-                              {approval.status || 'PENDING'}
+                              {stage.status === 'approved' ? 'APPROVED' : 
+                               stage.status === 'rejected' ? 'REJECTED' :
+                               stage.isCurrentStage ? 'CURRENT STAGE' :
+                               stage.status === 'completed' ? 'COMPLETED' : 'PENDING'}
                             </Badge>
+                            {stage.isCurrentStage && (
+                              <Badge variant="outline" className="text-xs bg-blue-100 text-blue-800">
+                                ⏳ Awaiting Action
+                              </Badge>
+                            )}
                           </div>
 
-                          {approval.assignedRole && (
-                            <p className="text-sm text-gray-700 mb-1">
-                              <span className="font-medium">Required Role:</span> {approval.assignedRole}
-                            </p>
-                          )}
+                          {/* Required Role */}
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+                            <div>
+                              <p className="text-sm text-gray-700 mb-1">
+                                <span className="font-medium">Required Role:</span> 
+                                <span className="ml-1 px-2 py-1 bg-gray-100 rounded text-xs font-mono">
+                                  {stage.requiredRole}
+                                </span>
+                              </p>
+                            </div>
 
-                          {(approval.approverName || approval.actionTakenBy) && (
-                            <p className="text-sm text-gray-700 mb-1">
-                              <span className="font-medium">Signatory:</span> {approval.approverName || approval.actionTakenBy}
-                              {approval.actionTakenByRole && (
-                                <span className="text-gray-500 ml-1">({approval.actionTakenByRole})</span>
-                              )}
-                            </p>
-                          )}
+                            {/* Approver Info */}
+                            {(stage.approverName || stage.approverId) && (
+                              <div>
+                                <p className="text-sm text-gray-700 mb-1">
+                                  <span className="font-medium">Approved By:</span> 
+                                  <span className="ml-1 text-green-700 font-semibold">
+                                    {stage.approverName || 'Unknown User'}
+                                  </span>
+                                  {stage.approverRole && (
+                                    <span className="text-gray-500 ml-1">({stage.approverRole})</span>
+                                  )}
+                                </p>
+                              </div>
+                            )}
+                          </div>
 
-                          {(approval.actionTakenAt || approval.approvedAt) && (
+                          {/* Completion Date */}
+                          {stage.completedAt && (
                             <p className="text-xs text-gray-600 mb-2">
-                              <span className="font-medium">Date:</span> {new Date(approval.actionTakenAt || approval.approvedAt || '').toLocaleString()}
+                              <span className="font-medium">Completed:</span> 
+                              <span className="ml-1">
+                                {new Date(stage.completedAt).toLocaleString()}
+                              </span>
                             </p>
                           )}
 
-                          {(approval.comments || approval.remarks) && (
-                            <div className="mt-2 p-2 bg-white/50 rounded border">
+                          {/* Comments */}
+                          {stage.comments && (
+                            <div className="mt-2 p-3 bg-white/70 rounded border border-gray-200">
                               <p className="text-sm text-gray-700">
-                                <span className="font-medium">Comments:</span> "{approval.comments || approval.remarks}"
+                                <span className="font-medium">Comments:</span> 
+                                <span className="ml-1 italic">"{stage.comments}"</span>
+                              </p>
+                            </div>
+                          )}
+
+                          {/* Current Stage Instructions */}
+                          {stage.isCurrentStage && stage.status === 'pending' && (
+                            <div className="mt-3 p-3 bg-blue-100 rounded border border-blue-200">
+                              <p className="text-sm text-blue-800">
+                                <span className="font-medium">⚡ Next Action Required:</span> 
+                                <span className="ml-1">
+                                  This stage requires approval from a user with the <strong>{stage.requiredRole}</strong> role.
+                                </span>
                               </p>
                             </div>
                           )}
                         </div>
 
+                        {/* Status Icon */}
                         <div className="flex-shrink-0">
-                          {getActionIcon(approval.status || 'PENDING')}
+                          {stage.status === 'approved' ? (
+                            <CheckCircle className="h-6 w-6 text-green-600" />
+                          ) : stage.status === 'rejected' ? (
+                            <XCircle className="h-6 w-6 text-red-600" />
+                          ) : stage.isCurrentStage ? (
+                            <Clock className="h-6 w-6 text-blue-600 animate-pulse" />
+                          ) : (
+                            <Clock className="h-6 w-6 text-gray-400" />
+                          )}
                         </div>
                       </div>
                     </div>
                   ))}
                 </div>
               ) : (
-                <div className="text-center py-6 text-gray-500 mb-6">
-                  <AlertCircle className="h-6 w-6 mx-auto mb-2 text-gray-400" />
-                  <p className="text-sm">No approval chain configured</p>
-                  <p className="text-xs text-gray-400 mt-1">
-                    The approval workflow will appear here once configured
-                  </p>
-                </div>
+                // Fallback to legacy approval history if no workflow stages
+                <>
+                  {combinedApprovalHistory.length > 0 ? (
+                    <div className="space-y-3 mb-6">
+                      {combinedApprovalHistory.map((approval, index) => (
+                        <div
+                          key={approval.approverId || index}
+                          className={`p-4 rounded-lg border-2 ${
+                            approval.status === 'APPROVED' 
+                              ? 'border-green-200 bg-green-50' 
+                              : approval.status === 'REJECTED'
+                                ? 'border-red-200 bg-red-50'
+                                : approval.status === 'PENDING'
+                                  ? 'border-yellow-200 bg-yellow-50'
+                                  : 'border-gray-200 bg-gray-50'
+                          }`}
+                        >
+                          <div className="flex items-start gap-3">
+                            <div className="flex-shrink-0">
+                              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${
+                                approval.status === 'APPROVED' 
+                                  ? 'bg-green-600 text-white' 
+                                  : approval.status === 'REJECTED'
+                                    ? 'bg-red-600 text-white'
+                                    : approval.status === 'PENDING'
+                                      ? 'bg-yellow-600 text-white'
+                                      : 'bg-gray-400 text-white'
+                              }`}>
+                                {approval.stageNumber || index + 1}
+                              </div>
+                            </div>
+                            
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap mb-2">
+                                <span className="font-semibold text-sm">
+                                  {approval.stageName || `Stage ${approval.stageNumber || index + 1}`}
+                                </span>
+                                <Badge
+                                  variant={
+                                    approval.status === 'APPROVED'
+                                      ? 'default'
+                                      : approval.status === 'REJECTED'
+                                        ? 'destructive'
+                                        : approval.status === 'PENDING'
+                                          ? 'secondary'
+                                          : 'outline'
+                                  }
+                                  className="text-xs"
+                                >
+                                  {approval.status || 'PENDING'}
+                                </Badge>
+                              </div>
+
+                              {approval.assignedRole && (
+                                <p className="text-sm text-gray-700 mb-1">
+                                  <span className="font-medium">Required Role:</span> {approval.assignedRole}
+                                </p>
+                              )}
+
+                              {(approval.approverName || approval.actionTakenBy) && (
+                                <p className="text-sm text-gray-700 mb-1">
+                                  <span className="font-medium">Signatory:</span> {approval.approverName || approval.actionTakenBy}
+                                  {approval.actionTakenByRole && (
+                                    <span className="text-gray-500 ml-1">({approval.actionTakenByRole})</span>
+                                  )}
+                                </p>
+                              )}
+
+                              {(approval.actionTakenAt || approval.approvedAt) && (
+                                <p className="text-xs text-gray-600 mb-2">
+                                  <span className="font-medium">Date:</span> {new Date(approval.actionTakenAt || approval.approvedAt || '').toLocaleString()}
+                                </p>
+                              )}
+
+                              {(approval.comments || approval.remarks) && (
+                                <div className="mt-2 p-2 bg-white/50 rounded border">
+                                  <p className="text-sm text-gray-700">
+                                    <span className="font-medium">Comments:</span> "{approval.comments || approval.remarks}"
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+
+                            <div className="flex-shrink-0">
+                              {getActionIcon(approval.status || 'PENDING')}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-6 text-gray-500 mb-6">
+                      <AlertCircle className="h-6 w-6 mx-auto mb-2 text-gray-400" />
+                      <p className="text-sm">No approval chain configured</p>
+                      <p className="text-xs text-gray-400 mt-1">
+                        The approval workflow will appear here once configured
+                      </p>
+                    </div>
+                  )}
+                </>
               )}
 
               {/* Available Approvers Section */}
@@ -445,25 +604,66 @@ export function UnifiedHistoryPanel({
         </TabsContent>
       </Tabs>
 
-      {/* Workflow Status Summary */}
+      {/* Enhanced Workflow Status Summary */}
       {workflowStatus && (
         <div className="mt-6 pt-6 border-t">
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-gray-600">
-              Stage {workflowStatus.currentStage} of {workflowStatus.totalStages}
-            </span>
-            <Badge 
-              variant={workflowStatus.status === 'APPROVED' ? 'default' : 'secondary'}
-              className="text-xs"
-            >
-              {workflowStatus.status}
-            </Badge>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+            {/* Progress Indicator */}
+            <div className="flex items-center gap-2">
+              <span className="text-gray-600">Progress:</span>
+              <div className="flex-1 bg-gray-200 rounded-full h-2">
+                <div 
+                  className={`h-2 rounded-full transition-all duration-300 ${
+                    workflowStatus.status === 'completed' ? 'bg-green-500' :
+                    workflowStatus.status === 'rejected' ? 'bg-red-500' : 'bg-blue-500'
+                  }`}
+                  style={{ 
+                    width: `${Math.max(10, (workflowStatus.currentStage / Math.max(1, workflowStatus.totalStages)) * 100)}%` 
+                  }}
+                />
+              </div>
+              <span className="text-xs text-gray-500">
+                {workflowStatus.currentStage}/{workflowStatus.totalStages}
+              </span>
+            </div>
+
+            {/* Status Badge */}
+            <div className="flex items-center justify-center">
+              <Badge 
+                variant={
+                  workflowStatus.status === 'completed' ? 'default' : 
+                  workflowStatus.status === 'rejected' ? 'destructive' : 'secondary'
+                }
+                className="text-xs px-3 py-1"
+              >
+                {workflowStatus.status?.toUpperCase() || 'UNKNOWN'}
+              </Badge>
+            </div>
+
+            {/* Next Action */}
+            <div className="flex items-center justify-end">
+              {workflowStatus.nextApprover && workflowStatus.status !== 'completed' && workflowStatus.status !== 'rejected' && (
+                <div className="text-right">
+                  <p className="text-xs text-gray-500">Next approver:</p>
+                  <p className="font-medium text-gray-700 truncate">
+                    {workflowStatus.nextApprover}
+                  </p>
+                </div>
+              )}
+              {workflowStatus.status === 'completed' && (
+                <div className="text-right text-green-600">
+                  <CheckCircle className="h-4 w-4 inline mr-1" />
+                  <span className="text-xs font-medium">Fully Approved</span>
+                </div>
+              )}
+              {workflowStatus.status === 'rejected' && (
+                <div className="text-right text-red-600">
+                  <XCircle className="h-4 w-4 inline mr-1" />
+                  <span className="text-xs font-medium">Rejected</span>
+                </div>
+              )}
+            </div>
           </div>
-          {workflowStatus.nextApprover && (
-            <p className="text-xs text-gray-500 mt-1">
-              Next approver: {workflowStatus.nextApprover}
-            </p>
-          )}
         </div>
       )}
     </Card>

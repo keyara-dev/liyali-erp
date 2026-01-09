@@ -269,217 +269,6 @@ func DeleteGRN(c *fiber.Ctx) error {
 	})
 }
 
-// ApproveGRN approves a GRN and optionally auto-creates Payment Voucher
-func ApproveGRN(c *fiber.Ctx) error {
-	id := c.Params("id")
-	if id == "" {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"success": false,
-			"message": "GRN ID is required",
-		})
-	}
-
-	var req types.ApproveDocumentRequest
-	if err := c.BodyParser(&req); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"success": false,
-			"message": "Invalid request body",
-			"error":   err.Error(),
-		})
-	}
-
-	if req.Signature == "" {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"success": false,
-			"message": "Signature is required",
-		})
-	}
-
-	var grn models.GoodsReceivedNote
-	if err := config.DB.Where("id = ?", id).First(&grn).Error; err != nil {
-		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
-			"success": false,
-			"message": "GRN not found",
-		})
-	}
-
-	approverID := c.Locals("userID").(string)
-	var approver models.User
-	if err := config.DB.Where("id = ?", approverID).First(&approver).Error; err != nil {
-		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-			"success": false,
-			"message": "Approver not found",
-		})
-	}
-
-	var approvalHistory []types.ApprovalRecord
-	approvalHistory = grn.ApprovalHistory.Data()
-
-	approvalRecord := types.ApprovalRecord{
-		ApproverID:   approverID,
-		ApproverName: approver.Name,
-		Status:       "approved",
-		Comments:     req.Comments,
-		Signature:    req.Signature,
-		ApprovedAt:   time.Now(),
-	}
-	approvalHistory = append(approvalHistory, approvalRecord)
-
-	grn.Status = "approved"
-	grn.ApprovalStage++
-	grn.ApprovalHistory = datatypes.NewJSONType(approvalHistory)
-	grn.UpdatedAt = time.Now()
-
-	if err := config.DB.Save(&grn).Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"success": false,
-			"message": "Failed to approve GRN",
-			"error":   err.Error(),
-		})
-	}
-
-	// Auto-create Payment Voucher if enabled and prerequisites are met
-	var autoCreatedPV *models.PaymentVoucher
-	if grn.Status == "approved" {
-		// Initialize automation service
-		auditService := &services.AuditService{}
-		notificationService := &services.NotificationService{}
-		automationService := services.NewDocumentAutomationService(
-			config.DB, auditService, notificationService,
-		)
-
-		// Get automation config
-		automationConfig := automationService.GetDefaultAutomationConfig()
-
-		// Attempt to auto-create Payment Voucher
-		result, err := automationService.CreatePaymentVoucherFromGRN(
-			c.Context(), &grn, automationConfig,
-		)
-
-		if err == nil && result.Success {
-			if pv, ok := result.CreatedDocument.(models.PaymentVoucher); ok {
-				autoCreatedPV = &pv
-			}
-		}
-		// Note: We don't fail the approval if PV creation fails
-		// The GRN is still approved, PV can be created manually
-	}
-
-	// Prepare response
-	response := types.DetailResponse{
-		Success: true,
-		Data:    modelToGRNResponse(grn),
-	}
-
-	// Add auto-created PV to response if available
-	if autoCreatedPV != nil {
-		// Convert PV to response format
-		pvResponse := types.PaymentVoucherResponse{
-			ID:            autoCreatedPV.ID,
-			VoucherNumber: autoCreatedPV.VoucherNumber,
-			VendorID:      autoCreatedPV.VendorID,
-			InvoiceNumber: autoCreatedPV.InvoiceNumber,
-			Status:        autoCreatedPV.Status,
-			Amount:        autoCreatedPV.Amount,
-			Currency:      autoCreatedPV.Currency,
-			PaymentMethod: autoCreatedPV.PaymentMethod,
-			LinkedPO:      autoCreatedPV.LinkedPO,
-			ApprovalStage: autoCreatedPV.ApprovalStage,
-			CreatedAt:     autoCreatedPV.CreatedAt,
-			UpdatedAt:     autoCreatedPV.UpdatedAt,
-		}
-
-		// Add PV to response
-		response.Data = fiber.Map{
-			"grn":             modelToGRNResponse(grn),
-			"autoCreatedPV":   pvResponse,
-			"automationUsed":  true,
-		}
-	}
-
-	return c.JSON(response)
-}
-
-// RejectGRN rejects a GRN
-func RejectGRN(c *fiber.Ctx) error {
-	id := c.Params("id")
-	if id == "" {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"success": false,
-			"message": "GRN ID is required",
-		})
-	}
-
-	var req types.RejectDocumentRequest
-	if err := c.BodyParser(&req); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"success": false,
-			"message": "Invalid request body",
-			"error":   err.Error(),
-		})
-	}
-
-	if req.Remarks == "" || len(req.Remarks) < 10 {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"success": false,
-			"message": "Remarks must be at least 10 characters",
-		})
-	}
-	if req.Signature == "" {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"success": false,
-			"message": "Signature is required",
-		})
-	}
-
-	var grn models.GoodsReceivedNote
-	if err := config.DB.Where("id = ?", id).First(&grn).Error; err != nil {
-		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
-			"success": false,
-			"message": "GRN not found",
-		})
-	}
-
-	approverID := c.Locals("userID").(string)
-	var approver models.User
-	if err := config.DB.Where("id = ?", approverID).First(&approver).Error; err != nil {
-		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-			"success": false,
-			"message": "Approver not found",
-		})
-	}
-
-	var approvalHistory []types.ApprovalRecord
-	approvalHistory = grn.ApprovalHistory.Data()
-
-	rejectionRecord := types.ApprovalRecord{
-		ApproverID:   approverID,
-		ApproverName: approver.Name,
-		Status:       "rejected",
-		Comments:     req.Remarks,
-		Signature:    req.Signature,
-		ApprovedAt:   time.Now(),
-	}
-	approvalHistory = append(approvalHistory, rejectionRecord)
-
-	grn.Status = "rejected"
-	grn.ApprovalHistory = datatypes.NewJSONType(approvalHistory)
-	grn.UpdatedAt = time.Now()
-
-	if err := config.DB.Save(&grn).Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"success": false,
-			"message": "Failed to reject GRN",
-			"error":   err.Error(),
-		})
-	}
-
-	return c.JSON(types.DetailResponse{
-		Success: true,
-		Data:    modelToGRNResponse(grn),
-	})
-}
-
 // Helper function to convert model to response
 func modelToGRNResponse(grn models.GoodsReceivedNote) types.GRNResponse {
 	var items []types.GRNItem
@@ -505,4 +294,101 @@ func modelToGRNResponse(grn models.GoodsReceivedNote) types.GRNResponse {
 		CreatedAt:       grn.CreatedAt,
 		UpdatedAt:       grn.UpdatedAt,
 	}
+}
+// SubmitGRN submits a GRN for approval using the workflow system
+func SubmitGRN(c *fiber.Ctx) error {
+	id := c.Params("id")
+	if id == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"success": false,
+			"message": "GRN ID is required",
+		})
+	}
+
+	// Get organization ID and user ID from context
+	organizationID := c.Locals("organizationID").(string)
+	userID := c.Locals("userID").(string)
+
+	// Get existing GRN
+	var grn models.GoodsReceivedNote
+	if err := config.DB.Where("id = ? AND organization_id = ?", id, organizationID).First(&grn).Error; err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
+			"success": false,
+			"message": "GRN not found",
+		})
+	}
+
+	// Check if GRN is in draft status
+	if grn.Status != "draft" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"success": false,
+			"message": fmt.Sprintf("Cannot submit GRN in %s status", grn.Status),
+		})
+	}
+
+	// Get workflow execution service from context
+	workflowExecutionService := c.Locals("workflowExecutionService").(*services.WorkflowExecutionService)
+
+	// Assign workflow to the GRN
+	assignment, err := workflowExecutionService.AssignWorkflowToDocument(
+		c.Context(), organizationID, grn.ID, "grn", userID,
+	)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"success": false,
+			"message": "Failed to assign workflow to GRN",
+			"error":   err.Error(),
+		})
+	}
+
+	// Update GRN status to pending
+	grn.Status = "pending"
+	grn.UpdatedAt = time.Now()
+
+	// Add action history entry for submission
+	var actionHistory []types.ActionHistoryEntry
+	actionHistory = grn.ActionHistory.Data()
+	
+	// Get user info for action history
+	var user models.User
+	if err := config.DB.Where("id = ?", userID).First(&user).Error; err == nil {
+		actionHistory = append(actionHistory, types.ActionHistoryEntry{
+			ID:               uuid.New().String(),
+			Action:           "SUBMIT",
+			PerformedBy:      userID,
+			PerformedByName:  user.Name,
+			PerformedByRole:  user.Role,
+			Timestamp:        time.Now(),
+			Comments:         "GRN submitted for approval",
+			ActionType:       "SUBMIT",
+			PreviousStatus:   "draft",
+			NewStatus:        "pending",
+		})
+		grn.ActionHistory = datatypes.NewJSONType(actionHistory)
+	}
+
+	// Save GRN
+	if err := config.DB.Save(&grn).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"success": false,
+			"message": "Failed to update GRN status",
+			"error":   err.Error(),
+		})
+	}
+
+	// Preload purchase order and vendor
+	config.DB.Preload("PurchaseOrder").Preload("Vendor").First(&grn)
+
+	return c.JSON(types.DetailResponse{
+		Success: true,
+		Data: fiber.Map{
+			"grn": modelToGRNResponse(grn),
+			"workflow": fiber.Map{
+				"assignmentId": assignment.ID,
+				"workflowId":   assignment.WorkflowID,
+				"currentStage": assignment.CurrentStage,
+				"status":       assignment.Status,
+			},
+		},
+	})
 }

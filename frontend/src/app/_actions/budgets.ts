@@ -5,8 +5,6 @@ import {
   Budget,
   BudgetStatus,
   CreateBudgetRequest,
-  ApproveBudgetRequest,
-  RejectBudgetRequest,
   SubmitBudgetRequest,
   BudgetFilters
 } from '@/types/budget'
@@ -138,57 +136,4 @@ export async function submitBudgetForApproval(
   }
 }
 
-/**
- * Approve budget
- */
-export async function approveBudget(
-  request: ApproveBudgetRequest
-): Promise<APIResponse<Budget | null>> {
-  try {
-    const response = await authenticatedApiClient({
-      method: 'POST',
-      url: `/api/v1/budgets/${request.budgetId}/approve`,
-      data: {
-        approvingUserId: request.approvingUserId,
-        approvingUserRole: request.approvingUserRole,
-        stageNumber: request.stageNumber,
-        comments: request.comments,
-        signature: request.signature
-      }
-    })
 
-    return successResponse(
-      response.data,
-      'Budget approved'
-    )
-  } catch (error: any) {
-    return handleError(error, 'POST', `/api/v1/budgets/${request.budgetId}/approve`)
-  }
-}
-
-/**
- * Reject budget
- */
-export async function rejectBudget(
-  request: RejectBudgetRequest
-): Promise<APIResponse<Budget | null>> {
-  try {
-    const response = await authenticatedApiClient({
-      method: 'POST',
-      url: `/api/v1/budgets/${request.budgetId}/reject`,
-      data: {
-        rejectingUserId: request.rejectingUserId,
-        rejectingUserRole: request.rejectingUserRole,
-        rejectionReason: request.rejectionReason,
-        comments: request.comments
-      }
-    })
-
-    return successResponse(
-      response.data,
-      'Budget rejected'
-    )
-  } catch (error: any) {
-    return handleError(error, 'POST', `/api/v1/budgets/${request.budgetId}/reject`)
-  }
-}

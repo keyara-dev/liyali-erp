@@ -2,6 +2,7 @@ package bootstrap_test
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"os"
 	"testing"
