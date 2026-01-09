@@ -50,8 +50,9 @@ export function NotificationPreferences({
   userId,
   onSaved,
 }: NotificationPreferencesProps) {
-  const { data: preferences, isLoading } =
-    useGetNotificationPreferences({ userId });
+  const { data: preferences, isLoading } = useGetNotificationPreferences({
+    userId,
+  });
   const updateMutation = useUpdateNotificationPreferences();
 
   const [savedMessage, setSavedMessage] = useState(false);
@@ -68,8 +69,8 @@ export function NotificationPreferences({
   });
 
   useEffect(() => {
-    if (preferences?.preferences) {
-      const prefs = preferences.preferences;
+    if (preferences?.data?.preferences) {
+      const prefs = preferences.data.preferences;
       setLocalPreferences({
         TASK_ASSIGNED: prefs.notifyOn?.taskAssigned ?? true,
         TASK_REASSIGNED: prefs.notifyOn?.taskReassigned ?? true,
@@ -114,7 +115,9 @@ export function NotificationPreferences({
     }
   };
 
-  const hasChanges = JSON.stringify(preferences?.preferences) !== JSON.stringify(localPreferences);
+  const hasChanges =
+    JSON.stringify(preferences?.data?.preferences) !==
+    JSON.stringify(localPreferences);
 
   if (isLoading) {
     return (
@@ -141,19 +144,13 @@ export function NotificationPreferences({
               <div className="space-y-1 flex-1">
                 <Label className="text-base font-medium">{label}</Label>
                 <p className="text-sm text-muted-foreground">
-                  {
-                    notificationTypeDescriptions[
-                      type as NotificationType
-                    ]
-                  }
+                  {notificationTypeDescriptions[type as NotificationType]}
                 </p>
               </div>
               <div className="flex items-center gap-3">
                 <Switch
                   checked={localPreferences[type as NotificationType] ?? true}
-                  onCheckedChange={() =>
-                    handleToggle(type as NotificationType)
-                  }
+                  onCheckedChange={() => handleToggle(type as NotificationType)}
                   disabled={updateMutation.isPending}
                 />
               </div>

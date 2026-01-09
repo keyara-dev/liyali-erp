@@ -273,12 +273,12 @@ func SetupRoutes(app *fiber.App, handlerRegistry *handlers.HandlerRegistry, rbac
 
 	// Notifications (tenant-scoped) - ENABLED
 	notifications := tenant.Group("/notifications")
-	notifications.Get("/", handlers.GetNotifications)
-	notifications.Get("/:id", handlers.GetNotification)
-	notifications.Put("/:id/read", handlers.MarkNotificationAsRead)
-	notifications.Put("/read-all", handlers.MarkAllNotificationsAsRead)
-	notifications.Get("/stats", handlers.GetNotificationStats)
-	notifications.Delete("/:id", handlers.DeleteNotification)
+	notifications.Get("/", handlerRegistry.Notification.GetNotifications)
+	notifications.Get("/recent", handlerRegistry.Notification.GetRecentNotifications)
+	notifications.Get("/stats", handlerRegistry.Notification.GetNotificationStats)
+	notifications.Post("/mark-as-read", handlerRegistry.Notification.MarkAsRead)
+	notifications.Post("/mark-all-as-read", handlerRegistry.Notification.MarkAllAsRead)
+	notifications.Delete("/:id", handlerRegistry.Notification.DeleteNotification)
 
 	// Audit Logs (tenant-scoped) - ENABLED
 	audit := tenant.Group("/audit-logs")

@@ -36,6 +36,7 @@ type SessionRepositoryInterface interface {
 	Create(ctx context.Context, userID, refreshToken, ipAddress, userAgent string, expiresAt time.Time) (*sqlc.Session, error)
 	GetByRefreshToken(ctx context.Context, refreshToken string) (*sqlc.Session, error)
 	GetByUserID(ctx context.Context, userID string) ([]*sqlc.Session, error)
+	UpdateRefreshToken(ctx context.Context, id uuid.UUID, newRefreshToken string, expiresAt time.Time) error
 	Delete(ctx context.Context, id uuid.UUID) error
 	DeleteByRefreshToken(ctx context.Context, refreshToken string) error
 	DeleteByUserID(ctx context.Context, userID string) error

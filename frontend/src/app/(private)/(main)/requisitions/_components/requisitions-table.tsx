@@ -280,12 +280,8 @@ function ReqOptionsMenu({
 
   const canSubmit = req.status === "draft" && req.requesterId === userId;
   const canEdit = req.status === "draft" && req.requesterId === userId;
-  const canApprove =
-    workflowStatus?.canApprove &&
-    (req.status === "pending" || req.status === "IN_REVIEW");
-  const canReject =
-    workflowStatus?.canReject &&
-    (req.status === "pending" || req.status === "IN_REVIEW");
+  const canApprove = workflowStatus?.canApprove && req.status === "pending";
+  const canReject = workflowStatus?.canReject && req.status === "pending";
 
   return (
     <DropdownMenu>

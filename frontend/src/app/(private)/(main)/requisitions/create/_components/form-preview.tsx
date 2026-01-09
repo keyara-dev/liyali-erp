@@ -47,7 +47,8 @@ export function FormPreview({
   });
 
   const totalAmount = formData.items.reduce(
-    (sum, item) => sum + (item.estimatedCost || item.unitPrice || 0) * item.quantity,
+    (sum, item) =>
+      sum + (item.estimatedCost || item.unitPrice || 0) * item.quantity,
     0
   );
 
@@ -62,31 +63,33 @@ export function FormPreview({
         department: formData.department,
         departmentId: formData.department.toLowerCase(),
         requiredByDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
-        priority: 'MEDIUM',
+        priority: "MEDIUM",
         totalAmount: totalAmount,
-        currency: 'ZMW',
+        currency: "ZMW",
         isEstimate: true,
         items: formData.items.map((item, index) => ({
           itemNumber: index + 1,
-          description: item.itemDescription || item.description || '',
-          category: 'General',
+          description: item.itemDescription || item.description || "",
+          category: "General",
           quantity: item.quantity,
           unitPrice: item.estimatedCost || item.unitPrice || 0,
           amount: item.quantity * (item.estimatedCost || item.unitPrice || 0),
-          unit: 'unit',
-          totalPrice: item.quantity * (item.estimatedCost || item.unitPrice || 0),
-          notes: '',
+          unit: "unit",
+          totalPrice:
+            item.quantity * (item.estimatedCost || item.unitPrice || 0),
+          notes: "",
         })),
         budgetCode: formData.budgetCode,
-        costCenter: '',
-        projectCode: '',
-        createdBy: userId,
-        createdByName: userName,
-        createdByRole: userRole,
+        costCenter: "",
+        projectCode: "",
       });
     } catch (err) {
-      console.error('Submit error:', err);
-      setError(err instanceof Error ? err.message : 'An error occurred while submitting the requisition');
+      console.error("Submit error:", err);
+      setError(
+        err instanceof Error
+          ? err.message
+          : "An error occurred while submitting the requisition"
+      );
     }
   };
 
@@ -164,7 +167,10 @@ export function FormPreview({
                       {(item.estimatedCost || item.unitPrice || 0).toFixed(2)}
                     </TableCell>
                     <TableCell className="text-right font-semibold">
-                      {(item.quantity * (item.estimatedCost || item.unitPrice || 0)).toFixed(2)}
+                      {(
+                        item.quantity *
+                        (item.estimatedCost || item.unitPrice || 0)
+                      ).toFixed(2)}
                     </TableCell>
                   </TableRow>
                 ))}
@@ -202,8 +208,12 @@ export function FormPreview({
           disabled={createRequisitionMutation.isPending}
           className="gap-2"
         >
-          {createRequisitionMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
-          {createRequisitionMutation.isPending ? "Submitting..." : "Submit Requisition"}
+          {createRequisitionMutation.isPending && (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          )}
+          {createRequisitionMutation.isPending
+            ? "Submitting..."
+            : "Submit Requisition"}
         </Button>
       </div>
 

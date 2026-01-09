@@ -10,7 +10,6 @@
  *
  * This solves the issue where having an unused tab open would lock your active work
  */
-import { usePathname } from "next/navigation";
 import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { useIdleTimer } from "react-idle-timer";
 
@@ -20,7 +19,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogDescription
+  DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 
@@ -28,10 +27,15 @@ import { toast } from "sonner";
 import {
   SESSION_CONFIG,
   SCREEN_LOCK_COUNTDOWN_SECONDS,
-  PROGRESS_CIRCLE_TOTAL
+  PROGRESS_CIRCLE_TOTAL,
 } from "@/lib/session-config";
 import { logger } from "@/lib/logger";
-import { checkScreenLockState, getRefreshToken, lockScreenOnUserIdle, logUserOut } from "@/app/_actions/auth";
+import {
+  checkScreenLockState,
+  getRefreshToken,
+  lockScreenOnUserIdle,
+  logUserOut,
+} from "@/app/_actions/auth";
 import { AuthSession } from "@/types";
 import { useTokenRefresh } from "@/hooks/use-auth-queries";
 
@@ -111,7 +115,12 @@ const useCountdownTimer = (
   // ✅ IMPROVED: Separate effect to handle timeout when seconds reach 0
   // This ensures we check the current 'open' state before executing logout
   useEffect(() => {
-    if (seconds <= 0 && open && hasLoggedOutRef.current !== undefined && !hasLoggedOutRef.current) {
+    if (
+      seconds <= 0 &&
+      open &&
+      hasLoggedOutRef.current !== undefined &&
+      !hasLoggedOutRef.current
+    ) {
       onTimeout();
     }
   }, [seconds, open, onTimeout, hasLoggedOutRef]);
@@ -124,7 +133,7 @@ function ScreenLock({
   onStillHere,
   isLoading,
   handleUserLogOut,
-  hasLoggedOutRef
+  hasLoggedOutRef,
 }: ScreenLockProps) {
   const seconds = useCountdownTimer(open, handleUserLogOut, hasLoggedOutRef);
 
@@ -139,7 +148,7 @@ function ScreenLock({
       }
     } catch (error) {
       logger.error("Error in handleRefreshAuthToken", error, {
-        component: "ScreenLock"
+        component: "ScreenLock",
       });
       // Error is handled by parent's handleStillHere callback
       // This just ensures we don't throw unhandled errors
@@ -158,12 +167,18 @@ function ScreenLock({
         <DialogHeader>
           <DialogTitle>Are you still there?</DialogTitle>
           <DialogDescription>
-            You have been idle for some time now, you will be logged out automatically in
+            You have been idle for some time now, you will be logged out
+            automatically in
           </DialogDescription>
         </DialogHeader>
         <div className="flex flex-col items-center justify-center gap-4 py-4">
           <div className="relative h-36 w-36">
-            <svg className="h-full w-full" width="32" height="32" viewBox="0 0 36 36">
+            <svg
+              className="h-full w-full"
+              width="32"
+              height="32"
+              viewBox="0 0 36 36"
+            >
               <circle
                 className="stroke-slate-200 dark:stroke-slate-700"
                 strokeWidth="4"
@@ -181,7 +196,10 @@ function ScreenLock({
                 r="16"
                 cx="18"
                 cy="18"
-                style={{ transform: "rotate(-90deg)", transformOrigin: "50% 50%" }}
+                style={{
+                  transform: "rotate(-90deg)",
+                  transformOrigin: "50% 50%",
+                }}
               />
             </svg>
             <div className="absolute inset-0 flex flex-col items-center justify-center">
@@ -193,10 +211,18 @@ function ScreenLock({
           </div>
         </div>
         <DialogFooter className="sm:justify-end">
-          <Button variant="destructive" disabled={isLoading} onClick={handleUserLogOut}>
+          <Button
+            variant="destructive"
+            disabled={isLoading}
+            onClick={handleUserLogOut}
+          >
             Log Out
           </Button>
-          <Button disabled={isLoading} isLoading={isLoading} onClick={handleRefreshAuthToken}>
+          <Button
+            disabled={isLoading}
+            isLoading={isLoading}
+            onClick={handleRefreshAuthToken}
+          >
             I'm still here
           </Button>
         </DialogFooter>
@@ -238,7 +264,7 @@ const useScreenLockSync = (loggedIn: boolean) => {
         currentTabId: tabIdRef.current,
         isFromOtherTab,
         willApplyDialogLock: isFromOtherTab || !sourceTabId,
-        thisTabInitiatedLock: thisTabInitiatedLock.current
+        thisTabInitiatedLock: thisTabInitiatedLock.current,
       });
 
       // ✅ CRITICAL: Only show dialog if lock came from ANOTHER tab AND this tab didn't initiate it
@@ -256,7 +282,7 @@ const useScreenLockSync = (loggedIn: boolean) => {
         logger.debug("⏭️ Ignoring lock event (same tab or already locked)", {
           component: "useScreenLockSync",
           isFromOtherTab,
-          thisTabInitiatedLock: thisTabInitiatedLock.current
+          thisTabInitiatedLock: thisTabInitiatedLock.current,
         });
       }
     };
@@ -276,7 +302,7 @@ const useScreenLockSync = (loggedIn: boolean) => {
           }
         } catch (error) {
           logger.debug("Failed to parse storage event data", {
-            component: "useScreenLockSync"
+            component: "useScreenLockSync",
           });
         }
       }
@@ -285,16 +311,19 @@ const useScreenLockSync = (loggedIn: boolean) => {
     try {
       // Try BroadcastChannel first
       broadcastChannelRef.current = new BroadcastChannel(SCREEN_LOCK_CHANNEL);
-      broadcastChannelRef.current.addEventListener("message", handleBroadcastMessage);
+      broadcastChannelRef.current.addEventListener(
+        "message",
+        handleBroadcastMessage
+      );
       logger.debug("✅ BroadcastChannel initialized for multi-tab sync", {
-        component: "useScreenLockSync"
+        component: "useScreenLockSync",
       });
     } catch (error) {
       logger.warn(
         "⚠️ BroadcastChannel not supported, using localStorage fallback for multi-tab sync",
         {
           component: "useScreenLockSync",
-          error: (error as Error)?.message
+          error: (error as Error)?.message,
         }
       );
     }
@@ -305,7 +334,10 @@ const useScreenLockSync = (loggedIn: boolean) => {
 
     return () => {
       if (broadcastChannelRef.current) {
-        broadcastChannelRef.current.removeEventListener("message", handleBroadcastMessage);
+        broadcastChannelRef.current.removeEventListener(
+          "message",
+          handleBroadcastMessage
+        );
         broadcastChannelRef.current.close();
         broadcastChannelRef.current = null;
       }
@@ -328,27 +360,33 @@ const useScreenLockSync = (loggedIn: boolean) => {
     const message = {
       type: "SCREEN_LOCK_CHANGED",
       isLocked,
-      sourceTabId: tabIdRef.current,  // ✅ IMPROVED: Include source tab ID
-      timestamp: Date.now()
+      sourceTabId: tabIdRef.current, // ✅ IMPROVED: Include source tab ID
+      timestamp: Date.now(),
     };
 
     // Try BroadcastChannel first
     if (broadcastChannelRef.current) {
       try {
         broadcastChannelRef.current.postMessage(message);
-        logger.debug("📢 Broadcasted screen lock state change via BroadcastChannel", {
-          component: "useScreenLockSync",
-          isLocked,
-          sourceTabId: tabIdRef.current,
-          thisTabInitiatedLock: thisTabInitiatedLock.current,
-          method: "BroadcastChannel"
-        });
+        logger.debug(
+          "📢 Broadcasted screen lock state change via BroadcastChannel",
+          {
+            component: "useScreenLockSync",
+            isLocked,
+            sourceTabId: tabIdRef.current,
+            thisTabInitiatedLock: thisTabInitiatedLock.current,
+            method: "BroadcastChannel",
+          }
+        );
         return;
       } catch (error) {
-        logger.debug("Failed to broadcast via BroadcastChannel, falling back to localStorage", {
-          component: "useScreenLockSync",
-          error: (error as Error)?.message
-        });
+        logger.debug(
+          "Failed to broadcast via BroadcastChannel, falling back to localStorage",
+          {
+            component: "useScreenLockSync",
+            error: (error as Error)?.message,
+          }
+        );
       }
     }
 
@@ -360,12 +398,12 @@ const useScreenLockSync = (loggedIn: boolean) => {
         isLocked,
         sourceTabId: tabIdRef.current,
         thisTabInitiatedLock: thisTabInitiatedLock.current,
-        method: "localStorage"
+        method: "localStorage",
       });
     } catch (error) {
       logger.debug("Failed to broadcast via localStorage", {
         component: "useScreenLockSync",
-        error: (error as Error)?.message
+        error: (error as Error)?.message,
       });
     }
   }, []);
@@ -373,7 +411,11 @@ const useScreenLockSync = (loggedIn: boolean) => {
   return { isIdle, isDialogOpen, setIsIdle, setIsDialogOpen, broadcastState };
 };
 
-export function IdleTimerContainer({ session }: { session: AuthSession | null }) {
+export function IdleTimerContainer({
+  session,
+}: {
+  session: AuthSession | null;
+}) {
   const [isLoading, setIsLoading] = useState(false);
   const hasLoggedOutRef = useRef(false);
 
@@ -400,8 +442,11 @@ export function IdleTimerContainer({ session }: { session: AuthSession | null })
       loggedIn,
       hasAccessToken: !!session?.access_token,
       session: session
-        ? { user_id: (session as any)?.user_id, user_type: (session as any)?.user_type }
-        : null
+        ? {
+            user_id: (session as any)?.user_id,
+            user_type: (session as any)?.user_type,
+          }
+        : null,
     });
   }, [loggedIn, session]);
 
@@ -413,25 +458,28 @@ export function IdleTimerContainer({ session }: { session: AuthSession | null })
         logger.debug("🔍 Checking persisted lock state on mount", {
           component: "IdleTimerContainer",
           isLocked,
-          loggedIn
+          loggedIn,
         });
 
         if (isLocked && loggedIn) {
-          logger.info("🔒 Screen lock state detected from cookie, restoring lock", {
-            component: "IdleTimerContainer",
-            isLocked
-          });
+          logger.info(
+            "🔒 Screen lock state detected from cookie, restoring lock",
+            {
+              component: "IdleTimerContainer",
+              isLocked,
+            }
+          );
           setIsIdle(true);
           setIsDialogOpen(true);
           broadcastState(true);
         } else if (!isLocked) {
           logger.debug("✅ No persisted lock state, starting fresh", {
-            component: "IdleTimerContainer"
+            component: "IdleTimerContainer",
           });
         }
       } catch (error) {
         logger.error("❌ Error checking persisted lock state", error, {
-          component: "IdleTimerContainer"
+          component: "IdleTimerContainer",
         });
       }
     };
@@ -446,9 +494,13 @@ export function IdleTimerContainer({ session }: { session: AuthSession | null })
 
   useEffect(() => {
     if (refreshError) {
-      logger.error("🔄 Background token refresh failed - session may be expiring", refreshError, {
-        component: "IdleTimerContainer"
-      });
+      logger.error(
+        "🔄 Background token refresh failed - session may be expiring",
+        refreshError,
+        {
+          component: "IdleTimerContainer",
+        }
+      );
       toast.warning(
         "⚠️ Your session may be expiring. Please save your work and log back in if needed.",
         { duration: 10000 }
@@ -459,7 +511,7 @@ export function IdleTimerContainer({ session }: { session: AuthSession | null })
   // ✅ Idle timeout callback - show modal regardless of cookie success
   const onIdle = useCallback(async () => {
     logger.debug("🔒 Idle timeout detected, attempting to lock screen", {
-      component: "IdleTimerContainer.onIdle"
+      component: "IdleTimerContainer.onIdle",
     });
 
     // ✅ CRITICAL: Update local state immediately to prevent multiple triggers
@@ -470,12 +522,15 @@ export function IdleTimerContainer({ session }: { session: AuthSession | null })
     try {
       const lockSuccess = await lockScreenOnUserIdle(true);
       if (!lockSuccess) {
-        logger.warn("Screen lock cookie not set, but showing modal anyway (user requirement)", {
-          component: "IdleTimerContainer.onIdle"
-        });
+        logger.warn(
+          "Screen lock cookie not set, but showing modal anyway (user requirement)",
+          {
+            component: "IdleTimerContainer.onIdle",
+          }
+        );
       } else {
         logger.info("✅ Screen lock activated successfully", {
-          component: "IdleTimerContainer.onIdle"
+          component: "IdleTimerContainer.onIdle",
         });
       }
     } catch (lockError) {
@@ -483,7 +538,7 @@ export function IdleTimerContainer({ session }: { session: AuthSession | null })
         "Exception while setting screen lock cookie - will show modal anyway",
         lockError,
         {
-          component: "IdleTimerContainer.onIdle"
+          component: "IdleTimerContainer.onIdle",
         }
       );
     }
@@ -500,7 +555,7 @@ export function IdleTimerContainer({ session }: { session: AuthSession | null })
     onActive,
     timeout: SESSION_CONFIG.IDLE_TIMEOUT,
     throttle: 500,
-    disabled: !loggedIn || isIdle
+    disabled: !loggedIn || isIdle,
   });
 
   const handleUserLogOut = useCallback(async () => {
@@ -515,25 +570,28 @@ export function IdleTimerContainer({ session }: { session: AuthSession | null })
 
     try {
       logger.info("🚪 Logging user out - session timed out", {
-        component: "IdleTimerContainer.handleUserLogOut"
+        component: "IdleTimerContainer.handleUserLogOut",
       });
 
       const response = await logUserOut();
 
       if (response.success) {
         logger.info("✅ Logout successful", {
-          component: "IdleTimerContainer.handleUserLogOut"
+          component: "IdleTimerContainer.handleUserLogOut",
         });
       } else {
-        logger.warn("⚠️ Logout response indicated failure, but proceeding with redirect", {
-          component: "IdleTimerContainer.handleUserLogOut"
-        });
+        logger.warn(
+          "⚠️ Logout response indicated failure, but proceeding with redirect",
+          {
+            component: "IdleTimerContainer.handleUserLogOut",
+          }
+        );
       }
 
       window.location.replace("/login");
     } catch (error) {
       logger.error("❌ Logout error", error, {
-        component: "IdleTimerContainer.handleUserLogOut"
+        component: "IdleTimerContainer.handleUserLogOut",
       });
       window.location.replace("/login");
     } finally {
@@ -544,15 +602,18 @@ export function IdleTimerContainer({ session }: { session: AuthSession | null })
   const handleStillHere = useCallback(async () => {
     setIsLoading(true);
     try {
-      logger.debug("🔓 User clicked 'I'm still here' - attempting to unlock screen", {
-        component: "IdleTimerContainer.handleStillHere"
-      });
+      logger.debug(
+        "🔓 User clicked 'I'm still here' - attempting to unlock screen",
+        {
+          component: "IdleTimerContainer.handleStillHere",
+        }
+      );
 
       const success = await lockScreenOnUserIdle(false);
 
       if (success) {
         logger.info("✅ Screen unlocked and session refreshed", {
-          component: "IdleTimerContainer.handleStillHere"
+          component: "IdleTimerContainer.handleStillHere",
         });
         // ✅ CRITICAL: Reset all idle state when unlocking
         setIsIdle(false);
@@ -563,15 +624,18 @@ export function IdleTimerContainer({ session }: { session: AuthSession | null })
         return;
       }
 
-      logger.warn("Screen unlock returned false, attempting fallback token refresh", {
-        component: "IdleTimerContainer.handleStillHere"
-      });
+      logger.warn(
+        "Screen unlock returned false, attempting fallback token refresh",
+        {
+          component: "IdleTimerContainer.handleStillHere",
+        }
+      );
 
       const refreshResponse = await getRefreshToken();
 
       if (refreshResponse.success) {
         logger.info("✅ Fallback: Token refreshed successfully", {
-          component: "IdleTimerContainer.handleStillHere"
+          component: "IdleTimerContainer.handleStillHere",
         });
         // ✅ CRITICAL: Reset all idle state when unlocking
         setIsIdle(false);
@@ -583,14 +647,14 @@ export function IdleTimerContainer({ session }: { session: AuthSession | null })
       }
 
       logger.error("Both unlock and refresh failed", {
-        component: "IdleTimerContainer.handleStillHere"
+        component: "IdleTimerContainer.handleStillHere",
       });
 
       toast.error("Session expired. Please log in again.");
       await handleUserLogOut();
     } catch (error) {
       logger.error("❌ Critical error in handleStillHere", error, {
-        component: "IdleTimerContainer.handleStillHere"
+        component: "IdleTimerContainer.handleStillHere",
       });
       toast.error("An unexpected error occurred. Logging out...");
       await handleUserLogOut();
@@ -605,7 +669,7 @@ export function IdleTimerContainer({ session }: { session: AuthSession | null })
       component: "IdleTimerContainer.render",
       isIdle,
       isDialogOpen,
-      loggedIn
+      loggedIn,
     });
   }, [isIdle, isDialogOpen, loggedIn]);
 

@@ -10,6 +10,7 @@ type HandlerRegistry struct {
 	Approval                *ApprovalHandler
 	Workflow                *WorkflowHandler
 	Document                *DocumentHandler
+	Notification            *NotificationHandler
 	WorkflowExecutionService *services.WorkflowExecutionService
 	// Add other handlers here as we migrate them
 }
@@ -28,6 +29,7 @@ func NewHandlerRegistry(
 		Approval:                 NewApprovalHandler(),
 		Workflow:                 NewWorkflowHandler(workflowService),
 		Document:                 NewDocumentHandler(documentService),
+		Notification:             NewNotificationHandler(),
 		WorkflowExecutionService: workflowExecutionService,
 	}
 }

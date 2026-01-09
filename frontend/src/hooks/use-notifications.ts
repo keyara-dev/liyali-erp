@@ -1,398 +1,247 @@
-/**
- * Notification React Query Hooks
- *
- * Custom React hooks for managing notification data fetching, caching, and mutations.
- * Uses React Query (TanStack Query) for efficient state management and real-time updates.
- */
+"use client";
 
-'use client';
+import React from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import {
-  NotificationInterface as Notification,
-  NotificationPrefs as NotificationPreferences,
-  NotificationTypeEnum as NotificationType,
-  GetNotificationsRes as GetNotificationsResponse,
-  CreateNotificationReq as CreateNotificationRequest,
-  MarkNotificationReadReq as MarkNotificationReadRequest,
-  MarkAllNotificationsReadReq as MarkAllNotificationsReadRequest,
-  DeleteNotificationReq as DeleteNotificationRequest,
-  GetUnreadCountReq as GetUnreadCountRequest,
-  GetNotificationPreferencesReq as GetNotificationPreferencesRequest,
-  UpdateNotificationPreferencesReq as UpdateNotificationPreferencesRequest,
-} from '@/types';
-import { QUERY_KEYS } from '@/lib/constants';
-
+// Import server actions
 import {
   getNotifications,
-  getUnreadNotifications,
-  getUnreadCount,
-  createNotificationAction,
-  markAsRead,
-  markAllAsRead,
-  deleteNotificationAction,
-  getPreferences,
-  updatePreferences,
-  markActionTaken,
-} from '@/app/_actions/notifications';
+  getRecentNotifications,
+  getNotificationStats,
+  markNotificationsAsRead,
+  markAllNotificationsAsRead,
+  deleteNotification,
+  getNotificationPreferences,
+  updateNotificationPreferences,
+  type Notification,
+  type NotificationStats,
+  type NotificationPreferences,
+} from "@/app/_actions/notifications";
 
-const NOTIFICATIONS_QUERY_KEY = QUERY_KEYS.NOTIFICATIONS.ALL;
-const UNREAD_COUNT_QUERY_KEY = QUERY_KEYS.NOTIFICATIONS.UNREAD_COUNT;
-const PREFERENCES_QUERY_KEY = QUERY_KEYS.NOTIFICATIONS.PREFERENCES;
+// Re-export types for convenience
+export type { Notification, NotificationStats, NotificationPreferences };
 
-/**
- * Hook: Get paginated notifications for a user
- * @param userId User ID
- * @param page Page number
- * @param pageSize Items per page
- * @param filters Optional filters
- * @returns Query result with notifications
- */
-export function useUserNotifications(
-  userId: string,
-  page: number = 1,
-  pageSize: number = 20,
-  filters?: {
-    type?: NotificationType;
-    isRead?: boolean;
-    startDate?: Date;
-    endDate?: Date;
-  }
+// ============================================================================
+// HOOKS
+// ============================================================================
+
+export function useNotifications(
+  params: {
+    page?: number;
+    limit?: number;
+    type?: string;
+    unreadOnly?: boolean;
+  } = {}
 ) {
   return useQuery({
-    queryKey: [NOTIFICATIONS_QUERY_KEY, userId, page, pageSize, filters],
-    queryFn: async () => getNotifications(userId, page, pageSize, filters),
-    enabled: !!userId,
-    staleTime: 30 * 1000, // 30 seconds
-    refetchInterval: 60 * 1000, // Refetch every 60 seconds
+    queryKey: ["notifications", params],
+    queryFn: () => getNotifications(params),
+    staleTime: 30000, // 30 seconds
+    refetchInterval: 60000, // Refetch every minute
   });
 }
 
-/**
- * Hook: Get unread notifications for a user
- * @param userId User ID
- * @returns Query result with unread notifications
- */
-export function useUnreadNotifications(userId: string) {
+export function useRecentNotifications() {
   return useQuery({
-    queryKey: [NOTIFICATIONS_QUERY_KEY, userId, 'unread'],
-    queryFn: async () => getUnreadNotifications(userId),
-    enabled: !!userId,
-    staleTime: 10 * 1000, // 10 seconds
-    refetchInterval: 30 * 1000, // Refetch every 30 seconds
+    queryKey: ["notifications", "recent"],
+    queryFn: getRecentNotifications,
+    staleTime: 15000, // 15 seconds
+    refetchInterval: 30000, // Refetch every 30 seconds
   });
 }
 
-/**
- * Hook: Get unread notification count for a user
- * @param userId User ID
- * @returns Query result with count
- */
-export function useUnreadNotificationCount(userId: string) {
+export function useNotificationStats() {
   return useQuery({
-    queryKey: [UNREAD_COUNT_QUERY_KEY, userId],
-    queryFn: async () => getUnreadCount({ userId }),
-    enabled: !!userId,
-    staleTime: 10 * 1000, // 10 seconds
-    refetchInterval: 30 * 1000, // Refetch every 30 seconds
+    queryKey: ["notifications", "stats"],
+    queryFn: getNotificationStats,
+    staleTime: 15000, // 15 seconds
+    refetchInterval: 30000, // Refetch every 30 seconds
   });
 }
 
-/**
- * Hook: Create a notification
- * @returns Mutation for creating notification
- */
-export function useCreateNotification() {
+export function useMarkAsRead() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (request: CreateNotificationRequest) =>
-      createNotificationAction(request),
-    onSuccess: (data) => {
-      // Invalidate relevant queries
-      queryClient.invalidateQueries({
-        queryKey: [NOTIFICATIONS_QUERY_KEY, data.notification.userId],
-      });
-      queryClient.invalidateQueries({
-        queryKey: [UNREAD_COUNT_QUERY_KEY, data.notification.userId],
-      });
+    mutationFn: markNotificationsAsRead,
+    onSuccess: () => {
+      // Invalidate and refetch notification queries
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
+      toast.success("Notifications marked as read");
     },
     onError: (error) => {
-      console.error('Failed to create notification:', error);
+      console.error("Failed to mark notifications as read:", error);
+      toast.error("Failed to mark notifications as read");
     },
   });
 }
 
-/**
- * Hook: Mark a notification as read
- * @returns Mutation for marking notification as read
- */
-export function useMarkNotificationAsRead() {
+export function useMarkAllAsRead() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (request: MarkNotificationReadRequest) =>
-      markAsRead(request),
-    onSuccess: (data) => {
-      // Update query cache immediately
-      queryClient.setQueryData(
-        [NOTIFICATIONS_QUERY_KEY, data.notification.userId],
-        (oldData: GetNotificationsResponse | undefined) => {
-          if (!oldData) return oldData;
-          return {
-            ...oldData,
-            notifications: oldData.notifications.map((n) =>
-              n.id === data.notification.id ? data.notification : n
-            ),
-          };
-        }
-      );
-
-      // Invalidate unread count
-      queryClient.invalidateQueries({
-        queryKey: [UNREAD_COUNT_QUERY_KEY, data.notification.userId],
-      });
+    mutationFn: markAllNotificationsAsRead,
+    onSuccess: () => {
+      // Invalidate and refetch notification queries
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
+      toast.success("All notifications marked as read");
     },
     onError: (error) => {
-      console.error('Failed to mark notification as read:', error);
+      console.error("Failed to mark all notifications as read:", error);
+      toast.error("Failed to mark all notifications as read");
     },
   });
 }
 
-/**
- * Hook: Mark all notifications as read
- * @returns Mutation for marking all as read
- */
-export function useMarkAllNotificationsAsRead() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (request: MarkAllNotificationsReadRequest) =>
-      markAllAsRead(request),
-    onSuccess: (data, variables) => {
-      // Invalidate all notification queries for this user
-      queryClient.invalidateQueries({
-        queryKey: [NOTIFICATIONS_QUERY_KEY, variables.userId],
-      });
-
-      // Invalidate unread count
-      queryClient.invalidateQueries({
-        queryKey: [UNREAD_COUNT_QUERY_KEY, variables.userId],
-      });
-    },
-    onError: (error) => {
-      console.error('Failed to mark all notifications as read:', error);
-    },
-  });
-}
-
-/**
- * Hook: Delete a notification
- * @returns Mutation for deleting notification
- */
 export function useDeleteNotification() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (request: DeleteNotificationRequest) =>
-      deleteNotificationAction(request),
-    onSuccess: (data, variables) => {
-      // We don't know the userId here, so invalidate broadly
-      queryClient.invalidateQueries({
-        queryKey: [NOTIFICATIONS_QUERY_KEY],
-      });
-      queryClient.invalidateQueries({
-        queryKey: [UNREAD_COUNT_QUERY_KEY],
-      });
+    mutationFn: deleteNotification,
+    onSuccess: () => {
+      // Invalidate and refetch notification queries
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
+      toast.success("Notification deleted");
     },
     onError: (error) => {
-      console.error('Failed to delete notification:', error);
+      console.error("Failed to delete notification:", error);
+      toast.error("Failed to delete notification");
     },
   });
 }
 
-/**
- * Hook: Mark notification action as taken
- * @returns Mutation for marking action taken
- */
-export function useMarkNotificationActionTaken() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (notificationId: string) =>
-      markActionTaken(notificationId),
-    onSuccess: (notification) => {
-      // Update notification queries
-      if (notification) {
-        queryClient.invalidateQueries({
-          queryKey: [NOTIFICATIONS_QUERY_KEY, notification.userId],
-        });
-      }
-    },
-    onError: (error) => {
-      console.error('Failed to mark action taken:', error);
-    },
-  });
-}
-
-/**
- * Hook: Get notification preferences
- * @param userId User ID
- * @returns Query result with preferences
- */
-export function useNotificationPreferences(userId: string) {
+export function useGetNotificationPreferences(params: { userId: string }) {
   return useQuery({
-    queryKey: [PREFERENCES_QUERY_KEY, userId],
-    queryFn: async () => getPreferences({ userId }),
-    enabled: !!userId,
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    queryKey: ["notification-preferences", params.userId],
+    queryFn: () => getNotificationPreferences(params.userId),
+    staleTime: 300000, // 5 minutes
   });
 }
 
-/**
- * Hook: Update notification preferences
- * @returns Mutation for updating preferences
- */
 export function useUpdateNotificationPreferences() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (request: UpdateNotificationPreferencesRequest) =>
-      updatePreferences(request),
-    onSuccess: (data) => {
-      // Update preferences cache
-      queryClient.setQueryData(
-        [PREFERENCES_QUERY_KEY, data.preferences.userId],
-        data
-      );
+    mutationFn: updateNotificationPreferences,
+    onSuccess: (_, variables) => {
+      // Invalidate and refetch notification preferences
+      queryClient.invalidateQueries({
+        queryKey: ["notification-preferences", variables.userId],
+      });
+      toast.success("Notification preferences updated");
     },
     onError: (error) => {
-      console.error('Failed to update notification preferences:', error);
+      console.error("Failed to update notification preferences:", error);
+      toast.error("Failed to update notification preferences");
     },
   });
 }
 
-/**
- * Hook: Polling effect for real-time notifications
- * Automatically refetches notifications at intervals
- * @param userId User ID
- * @param pollingInterval Interval in ms (0 to disable)
- */
-export function useNotificationPolling(
-  userId: string,
-  pollingInterval: number = 30 * 1000 // 30 seconds default
-) {
-  const queryClient = useQueryClient();
+// ============================================================================
+// UTILITY FUNCTIONS
+// ============================================================================
 
-  // Set up polling
-  useQuery({
-    queryKey: [NOTIFICATIONS_QUERY_KEY, userId, 'polling'],
-    queryFn: async () => {
-      if (!userId) return null;
-      const result = await getNotifications(userId, 1, 5);
-      return result;
-    },
-    enabled: !!userId && pollingInterval > 0,
-    refetchInterval: pollingInterval,
-    staleTime: Infinity, // Don't mark as stale, let interval control refetch
-  });
-
-  // Also poll unread count
-  useQuery({
-    queryKey: [UNREAD_COUNT_QUERY_KEY, userId, 'polling'],
-    queryFn: async () => {
-      if (!userId) return null;
-      return getUnreadCount({ userId });
-    },
-    enabled: !!userId && pollingInterval > 0,
-    refetchInterval: pollingInterval,
-    staleTime: Infinity,
-  });
+export function getNotificationIcon(type: string): string {
+  switch (type) {
+    case "approval_required":
+      return "⏳";
+    case "document_approved":
+      return "✅";
+    case "document_rejected":
+      return "❌";
+    case "assignment":
+      return "📋";
+    case "status_change":
+      return "🔄";
+    default:
+      return "📢";
+  }
 }
 
-/**
- * Hook: Combined hook for notification bell (unread count + recent notifications)
- * @param userId User ID
- * @returns Object with unread count and recent notifications
- */
+export function getNotificationColor(importance: string): string {
+  switch (importance) {
+    case "HIGH":
+      return "text-red-600 bg-red-50 border-red-200";
+    case "MEDIUM":
+      return "text-blue-600 bg-blue-50 border-blue-200";
+    case "LOW":
+      return "text-gray-600 bg-gray-50 border-gray-200";
+    default:
+      return "text-gray-600 bg-gray-50 border-gray-200";
+  }
+}
+
+export function formatNotificationTime(createdAt: string): string {
+  const now = new Date();
+  const notificationTime = new Date(createdAt);
+  const diffInMinutes = Math.floor(
+    (now.getTime() - notificationTime.getTime()) / (1000 * 60)
+  );
+
+  if (diffInMinutes < 1) {
+    return "Just now";
+  } else if (diffInMinutes < 60) {
+    return `${diffInMinutes}m ago`;
+  } else if (diffInMinutes < 1440) {
+    const hours = Math.floor(diffInMinutes / 60);
+    return `${hours}h ago`;
+  } else {
+    const days = Math.floor(diffInMinutes / 1440);
+    return `${days}d ago`;
+  }
+}
+
+export function getDocumentUrl(
+  documentType: string,
+  documentId: string
+): string {
+  switch (documentType.toLowerCase()) {
+    case "requisition":
+      return `/requisitions/${documentId}`;
+    case "purchase_order":
+      return `/purchase-orders/${documentId}`;
+    case "payment_voucher":
+      return `/payment-vouchers/${documentId}`;
+    case "grn":
+      return `/grns/${documentId}`;
+    case "budget":
+      return `/budgets/${documentId}`;
+    default:
+      return `/documents/${documentId}`;
+  }
+}
+
+// ============================================================================
+// SPECIALIZED HOOKS
+// ============================================================================
+
 export function useNotificationBell(userId: string) {
-  const unreadCountQuery = useUnreadNotificationCount(userId);
-  const recentNotificationsQuery = useUserNotifications(userId, 1, 5);
+  const recentQuery = useRecentNotifications();
+  const statsQuery = useNotificationStats();
 
   return {
-    unreadCount: unreadCountQuery.data?.count || 0,
-    recentNotifications: recentNotificationsQuery.data?.notifications || [],
-    isLoading: unreadCountQuery.isLoading || recentNotificationsQuery.isLoading,
-    isError: unreadCountQuery.isError || recentNotificationsQuery.isError,
-    error: unreadCountQuery.error || recentNotificationsQuery.error,
+    unreadCount: statsQuery.data?.data?.pending || 0,
+    recentNotifications: recentQuery.data?.data || [],
+    isLoading: recentQuery.isLoading || statsQuery.isLoading,
+    error: recentQuery.error || statsQuery.error,
   };
 }
 
-/**
- * Hook: Quick action handler
- * Combines mark as read and mark action taken
- * @returns Function to execute quick action
- */
-export function useQuickActionHandler() {
-  const markAsReadMutation = useMarkNotificationAsRead();
-  const markActionTakenMutation = useMarkNotificationActionTaken();
-
-  return async (notificationId: string) => {
-    try {
-      // Mark as read
-      await markAsReadMutation.mutateAsync({
-        notificationId,
-      });
-
-      // Mark action taken
-      await markActionTakenMutation.mutateAsync(notificationId);
-
-      return true;
-    } catch (error) {
-      console.error('Quick action failed:', error);
-      return false;
-    }
-  };
+export function useMarkNotificationAsRead() {
+  return useMarkAsRead();
 }
 
-/**
- * Hook: Invalidate notification queries (useful after approval/rejection)
- * @returns Function to invalidate queries
- */
-export function useInvalidateNotifications() {
+export function useNotificationPolling(userId: string, intervalMs: number) {
   const queryClient = useQueryClient();
 
-  return (userId?: string) => {
-    if (userId) {
-      queryClient.invalidateQueries({
-        queryKey: [NOTIFICATIONS_QUERY_KEY, userId],
-      });
-      queryClient.invalidateQueries({
-        queryKey: [UNREAD_COUNT_QUERY_KEY, userId],
-      });
-    } else {
-      queryClient.invalidateQueries({
-        queryKey: [NOTIFICATIONS_QUERY_KEY],
-      });
-      queryClient.invalidateQueries({
-        queryKey: [UNREAD_COUNT_QUERY_KEY],
-      });
-    }
-  };
-}
+  React.useEffect(() => {
+    const interval = setInterval(() => {
+      // Refetch recent notifications and stats
+      queryClient.invalidateQueries({ queryKey: ["notifications", "recent"] });
+      queryClient.invalidateQueries({ queryKey: ["notifications", "stats"] });
+    }, intervalMs);
 
-/**
- * Hook: Get notification preferences for a user
- * @param request Request with user ID
- * @returns Query result with preferences
- */
-export function useGetNotificationPreferences(
-  request: GetNotificationPreferencesRequest
-) {
-  return useQuery({
-    queryKey: [PREFERENCES_QUERY_KEY, request.userId],
-    queryFn: async () => getPreferences(request),
-    enabled: !!request.userId,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-  });
+    return () => clearInterval(interval);
+  }, [queryClient, intervalMs]);
 }

@@ -1,0 +1,42 @@
+# Session Management Testing Script
+# Use this file with REST Client extension or similar HTTP client
+
+### 1. Login to get initial tokens
+POST http://localhost:8080/api/v1/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@example.com",
+  "password": "password123"
+}
+
+### 2. Test token refresh with rotation
+# Replace {{refreshToken}} with the refresh token from login response
+POST http://localhost:8080/api/v1/auth/refresh
+Content-Type: application/json
+
+{
+  "refreshToken": "{{refreshToken}}"
+}
+
+### 3. Test authenticated endpoint with new access token
+# Replace {{accessToken}} with the new access token from refresh response
+GET http://localhost:8080/api/v1/users/me
+Authorization: Bearer {{accessToken}}
+
+### 4. Test refresh with old refresh token (should fail)
+# Use the original refresh token - this should fail due to rotation
+POST http://localhost:8080/api/v1/auth/refresh
+Content-Type: application/json
+
+{
+  "refreshToken": "{{oldRefreshToken}}"
+}
+
+### 5. Logout with current refresh token
+POST http://localhost:8080/api/v1/auth/logout
+Content-Type: application/json
+
+{
+  "refreshToken": "{{currentRefreshToken}}"
+}

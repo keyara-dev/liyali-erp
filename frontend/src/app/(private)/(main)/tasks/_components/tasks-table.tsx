@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import * as React from "react";
 import {
   ColumnDef,
@@ -15,7 +15,7 @@ import {
   useReactTable,
 } from "@tanstack/react-table";
 import { useRouter } from "next/navigation";
-import { ArrowUpDown, Eye, CheckCircle2, Clock, XCircle } from "lucide-react";
+import { ArrowUpDown, Eye, CheckCircle2 } from "lucide-react";
 
 import {
   Table,
@@ -27,27 +27,16 @@ import {
 } from "@/components/ui/table";
 import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { CustomPagination } from "@/components/ui/custom-pagination";
 import { useApprovalTasks } from "@/hooks/use-approval-workflow";
 import { ApprovalTask } from "@/types";
-import { Pagination } from "@/types";
 
 interface TasksTableProps {
-  userId: string;
-  userRole: string;
   refreshTrigger: number;
-  status?: 'pending' | 'in_progress';
-  onTaskAction: () => void;
+  status?: "pending" | "in_progress";
 }
 
-export function TasksTable({
-  userId,
-  userRole,
-  refreshTrigger,
-  status,
-  onTaskAction,
-}: TasksTableProps) {
+export function TasksTable({ refreshTrigger, status }: TasksTableProps) {
   const router = useRouter();
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
@@ -55,33 +44,29 @@ export function TasksTable({
   );
   const [columnVisibility, setColumnVisibility] =
     React.useState<VisibilityState>({});
-  const [currentPage, setCurrentPage] = React.useState(1);
-  const [pageSize, setPageSize] = React.useState(10);
+  const [pagination, setPagination] = React.useState({
+    page: 1,
+    page_size: 10,
+  });
 
   // Use approval tasks hook with role-based filtering
-  const { data: tasks = [], isLoading, refetch } = useApprovalTasks(
+  const {
+    data: tasks = [],
+    isLoading,
+    refetch,
+  } = useApprovalTasks(
     {
-      status: status === 'pending' ? 'PENDING' : undefined,
+      status: status === "pending" ? "PENDING" : undefined,
       assignedToMe: true, // Only show tasks assigned to current user
     },
-    currentPage,
-    pageSize
+    pagination.page,
+    pagination.page_size
   );
 
   // Refetch when refreshTrigger changes
   useEffect(() => {
     refetch();
   }, [refreshTrigger, refetch]);
-        }
-      } catch (error) {
-        console.error("Failed to fetch tasks:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    }
-
-    fetchTasks();
-  }, [userId, refreshTrigger, status]);
 
   const getTaskTypeLabel = (type: string) => {
     const labels: Record<string, string> = {
@@ -104,7 +89,7 @@ export function TasksTable({
     return colors[priority] || "bg-gray-100 text-gray-800";
   };
 
-  const columns: ColumnDef<Task>[] = [
+  const columns: ColumnDef<ApprovalTask>[] = [
     {
       accessorKey: "title",
       header: ({ column }) => (
@@ -132,7 +117,9 @@ export function TasksTable({
       accessorKey: "taskType",
       header: "Type",
       cell: ({ row }) => (
-        <div className="text-sm">{getTaskTypeLabel(row.original.taskType)}</div>
+        <div className="text-sm">
+          {getTaskTypeLabel(row.original.taskType || "")}
+        </div>
       ),
     },
     {
@@ -140,9 +127,9 @@ export function TasksTable({
       header: "Priority",
       cell: ({ row }) => (
         <span
-          className={`px-2 py-1 rounded text-xs font-medium ${getPriorityColor(row.original.priority)}`}
+          className={`px-2 py-1 rounded text-xs font-medium ${getPriorityColor(row.original.priority || "MEDIUM")}`}
         >
-          {row.original.priority}
+          {row.original.priority || "MEDIUM"}
         </span>
       ),
     },
@@ -166,12 +153,16 @@ export function TasksTable({
         </Button>
       ),
       cell: ({ row }) => {
-        const dueDate = row.original.dueDate as Date;
+        const dueDate = row.original.dueDate;
+        if (!dueDate) return <div>-</div>;
+
+        const dueDateObj = new Date(dueDate);
         const now = new Date();
-        const isOverdue = dueDate < now && row.original.status !== "COMPLETED";
+        const isOverdue =
+          dueDateObj < now && row.original.status !== "approved";
         return (
           <div className={isOverdue ? "text-red-600 font-semibold" : ""}>
-            {dueDate.toLocaleDateString()}
+            {dueDateObj.toLocaleDateString()}
             {isOverdue && <span className="ml-2 text-xs">Overdue</span>}
           </div>
         );
@@ -303,15 +294,25 @@ export function TasksTable({
       {/* Pagination */}
       <CustomPagination
         pagination={{
-          ...pagination,
-          total_pages: Math.ceil(tasks.length / pagination.page_size!),
+          page: pagination.page,
+          limit: pagination.page_size,
+          total: tasks.length,
+          totalPages: Math.ceil(tasks.length / pagination.page_size),
+          hasNext:
+            pagination.page < Math.ceil(tasks.length / pagination.page_size),
+          hasPrev: pagination.page > 1,
+          page_size: pagination.page_size,
           totalCount: tasks.length,
+          total_pages: Math.ceil(tasks.length / pagination.page_size),
           has_next:
-            pagination.page < Math.ceil(tasks.length / pagination.page_size!),
+            pagination.page < Math.ceil(tasks.length / pagination.page_size),
           has_prev: pagination.page > 1,
         }}
-        updatePagination={(newPagination) => {
-          setPagination((prev) => ({
+        updatePagination={(newPagination: {
+          page: number;
+          page_size?: number;
+        }) => {
+          setPagination((prev: { page: number; page_size: number }) => ({
             ...prev,
             page: newPagination.page,
             page_size: newPagination.page_size || prev.page_size,

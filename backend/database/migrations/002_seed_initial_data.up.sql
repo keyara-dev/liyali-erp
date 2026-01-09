@@ -83,14 +83,14 @@ ON CONFLICT (id) DO NOTHING;
 -- MASTER DATA - VENDORS
 -- ============================================================================
 
--- Create sample vendors (global vendors accessible to all organizations)
-INSERT INTO vendors (id, vendor_code, name, email, phone, country, city, bank_account, tax_id, active, created_by, created_at, updated_at)
+-- Create sample vendors (organization-scoped for multi-tenant security)
+INSERT INTO vendors (id, organization_id, vendor_code, name, email, phone, country, city, bank_account, tax_id, active, created_by, created_at, updated_at)
 VALUES 
-    ('vendor-001', 'VEND-001', 'Office Supplies Inc.', 'contact@officesupplies.com', '+1-555-0101', 'United States', 'New York', 'ACC-001-123456', 'TAX-001', true, 'user-admin-001', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-    ('vendor-002', 'VEND-002', 'Tech Solutions Ltd.', 'sales@techsolutions.com', '+1-555-0102', 'United States', 'San Francisco', 'ACC-002-789012', 'TAX-002', true, 'user-admin-001', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-    ('vendor-003', 'VEND-003', 'Facility Services Corp.', 'info@facilityservices.com', '+1-555-0103', 'United States', 'Chicago', 'ACC-003-345678', 'TAX-003', true, 'user-admin-001', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-    ('vendor-004', 'VEND-004', 'Catering Solutions', 'orders@catering.com', '+1-555-0104', 'United States', 'Los Angeles', 'ACC-004-901234', 'TAX-004', true, 'user-admin-001', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-    ('vendor-005', 'VEND-005', 'Equipment Rental Co.', 'rentals@equipment.com', '+1-555-0105', 'United States', 'Dallas', 'ACC-005-567890', 'TAX-005', true, 'user-admin-001', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+    ('vendor-001', 'org-demo-001', 'VEND-001', 'Office Supplies Inc.', 'contact@officesupplies.com', '+1-555-0101', 'United States', 'New York', 'ACC-001-123456', 'TAX-001', true, 'user-admin-001', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+    ('vendor-002', 'org-demo-001', 'VEND-002', 'Tech Solutions Ltd.', 'sales@techsolutions.com', '+1-555-0102', 'United States', 'San Francisco', 'ACC-002-789012', 'TAX-002', true, 'user-admin-001', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+    ('vendor-003', 'org-demo-001', 'VEND-003', 'Facility Services Corp.', 'info@facilityservices.com', '+1-555-0103', 'United States', 'Chicago', 'ACC-003-345678', 'TAX-003', true, 'user-admin-001', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+    ('vendor-004', 'org-demo-001', 'VEND-004', 'Catering Solutions', 'orders@catering.com', '+1-555-0104', 'United States', 'Los Angeles', 'ACC-004-901234', 'TAX-004', true, 'user-admin-001', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+    ('vendor-005', 'org-demo-001', 'VEND-005', 'Equipment Rental Co.', 'rentals@equipment.com', '+1-555-0105', 'United States', 'Dallas', 'ACC-005-567890', 'TAX-005', true, 'user-admin-001', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
 ON CONFLICT (id) DO NOTHING;
 
 -- ============================================================================

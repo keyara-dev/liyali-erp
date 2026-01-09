@@ -547,9 +547,9 @@ export function RequisitionDetailClient({
               )}
 
             {/* Auto-Created Purchase Order - Full Width */}
-            {requisition.automationUsed && requisition.autoCreatedPO && (
+            {requisition?.automationUsed && requisition?.autoCreatedPO && (
               <div className="mt-6 pt-6 border-t border-white/20">
-                <label className="text-xs font-semibold text-primary-foreground/80 uppercase tracking-wider block mb-3 flex items-center gap-2">
+                <label className="text-xs font-semibold text-primary-foreground/80 uppercase tracking-wider  mb-3 flex items-center gap-2">
                   <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-200">
                     ✓ Automated
                   </span>

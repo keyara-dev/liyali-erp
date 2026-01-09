@@ -156,13 +156,13 @@ export async function verifySession(): Promise<{
 
 ```typescript
 export type UserRole =
-  | "REQUESTER"           // Can create and submit requisitions
-  | "DEPARTMENT_MANAGER"  // Can approve department requisitions
-  | "FINANCE_OFFICER"     // Can handle financial approvals
-  | "DIRECTOR"            // Can approve high-value items
-  | "CFO"                 // Final approval authority
-  | "COMPLIANCE_OFFICER"  // Can review compliance aspects
-  | "ADMIN";              // System administration
+  | "REQUESTER" // Can create and submit requisitions
+  | "DEPARTMENT_MANAGER" // Can approve department requisitions
+  | "FINANCE_OFFICER" // Can handle financial approvals
+  | "DIRECTOR" // Can approve high-value items
+  | "CFO" // Final approval authority
+  | "COMPLIANCE_OFFICER" // Can review compliance aspects
+  | "ADMIN"; // System administration
 
 // Role-based access control
 export async function hasRole(
@@ -189,21 +189,18 @@ Permissions are derived from roles and organizational context:
 // Permission checking patterns
 const canApproveRequisition = await hasRole([
   "DEPARTMENT_MANAGER",
-  "FINANCE_OFFICER", 
+  "FINANCE_OFFICER",
   "DIRECTOR",
-  "CFO"
+  "CFO",
 ]);
 
-const canCreatePurchaseOrder = await hasRole([
-  "FINANCE_OFFICER",
-  "ADMIN"
-]);
+const canCreatePurchaseOrder = await hasRole(["FINANCE_OFFICER", "ADMIN"]);
 
 const canViewAllDocuments = await hasRole([
   "FINANCE_OFFICER",
   "DIRECTOR",
   "CFO",
-  "ADMIN"
+  "ADMIN",
 ]);
 ```
 
@@ -338,16 +335,16 @@ export function IdleTimerContainer({ children }: { children: ReactNode }) {
 
 ```typescript
 // middleware.ts
-import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
-import { verifySession } from '@/lib/auth';
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+import { verifySession } from "@/lib/auth";
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Public routes that don't require authentication
-  const publicRoutes = ['/login', '/signup', '/forgot-password'];
-  
+  const publicRoutes = ["/login", "/signup", "/forgot-password"];
+
   if (publicRoutes.includes(pathname)) {
     return NextResponse.next();
   }
@@ -356,21 +353,19 @@ export async function middleware(request: NextRequest) {
   const { isAuthenticated, session } = await verifySession();
 
   if (!isAuthenticated) {
-    return NextResponse.redirect(new URL('/login', request.url));
+    return NextResponse.redirect(new URL("/login", request.url));
   }
 
   // Role-based route protection
-  if (pathname.startsWith('/admin') && session?.role !== 'ADMIN') {
-    return NextResponse.redirect(new URL('/unauthorized', request.url));
+  if (pathname.startsWith("/admin") && session?.role !== "ADMIN") {
+    return NextResponse.redirect(new URL("/unauthorized", request.url));
   }
 
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: [
-    '/((?!api|_next/static|_next/image|favicon.ico).*)',
-  ],
+  matcher: ["/((?!api|_next/static|_next/image|favicon.ico).*)"],
 };
 ```
 
@@ -444,7 +439,7 @@ export function useAuth() {
   const logout = async () => {
     await deleteSession();
     setUser(null);
-    window.location.href = '/login';
+    window.location.href = "/login";
   };
 
   return {
@@ -463,26 +458,32 @@ export function useAuth() {
 export function usePermissions() {
   const { user } = useAuth();
 
-  const can = useCallback((permission: string) => {
-    if (!user) return false;
-    
-    // Check role-based permissions
-    const rolePermissions = getRolePermissions(user.role);
-    return rolePermissions.includes(permission);
-  }, [user]);
+  const can = useCallback(
+    (permission: string) => {
+      if (!user) return false;
 
-  const canApprove = useCallback((documentType: string, amount?: number) => {
-    if (!user) return false;
-    
-    // Complex approval logic based on role and amount
-    return checkApprovalPermission(user.role, documentType, amount);
-  }, [user]);
+      // Check role-based permissions
+      const rolePermissions = getRolePermissions(user.role);
+      return rolePermissions.includes(permission);
+    },
+    [user]
+  );
+
+  const canApprove = useCallback(
+    (documentType: string, amount?: number) => {
+      if (!user) return false;
+
+      // Complex approval logic based on role and amount
+      return checkApprovalPermission(user.role, documentType, amount);
+    },
+    [user]
+  );
 
   return {
     can,
     canApprove,
     role: user?.role,
-    isAdmin: user?.role === 'ADMIN',
+    isAdmin: user?.role === "ADMIN",
   };
 }
 ```
@@ -497,7 +498,10 @@ export function generateCSRFToken(): string {
   return crypto.randomUUID();
 }
 
-export function validateCSRFToken(token: string, sessionToken: string): boolean {
+export function validateCSRFToken(
+  token: string,
+  sessionToken: string
+): boolean {
   // Validate CSRF token against session
   return token === sessionToken;
 }
@@ -546,23 +550,23 @@ export function validatePassword(password: string): {
   const errors: string[] = [];
 
   if (password.length < 8) {
-    errors.push('Password must be at least 8 characters long');
+    errors.push("Password must be at least 8 characters long");
   }
 
   if (!/[A-Z]/.test(password)) {
-    errors.push('Password must contain at least one uppercase letter');
+    errors.push("Password must contain at least one uppercase letter");
   }
 
   if (!/[a-z]/.test(password)) {
-    errors.push('Password must contain at least one lowercase letter');
+    errors.push("Password must contain at least one lowercase letter");
   }
 
   if (!/\d/.test(password)) {
-    errors.push('Password must contain at least one number');
+    errors.push("Password must contain at least one number");
   }
 
   if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
-    errors.push('Password must contain at least one special character');
+    errors.push("Password must contain at least one special character");
   }
 
   return {
@@ -579,10 +583,10 @@ export function validatePassword(password: string): {
 ```typescript
 // src/lib/session-config.ts
 export const SESSION_CONFIG = {
-  SESSION_TTL: 30 * 60 * 1000,        // 30 minutes
-  SCREEN_LOCK_COUNTDOWN: 90 * 1000,   // 90 seconds
-  IDLE_TIMEOUT: 25 * 60 * 1000,       // 25 minutes
-  REFRESH_THRESHOLD: 5 * 60 * 1000,   // 5 minutes before expiry
+  SESSION_TTL: 30 * 60 * 1000, // 30 minutes
+  SCREEN_LOCK_COUNTDOWN: 90 * 1000, // 90 seconds
+  IDLE_TIMEOUT: 25 * 60 * 1000, // 25 minutes
+  REFRESH_THRESHOLD: 5 * 60 * 1000, // 5 minutes before expiry
 } as const;
 ```
 
@@ -604,29 +608,45 @@ const COOKIE_OPTIONS = {
 
 ```typescript
 export enum AuthError {
-  INVALID_CREDENTIALS = 'INVALID_CREDENTIALS',
-  SESSION_EXPIRED = 'SESSION_EXPIRED',
-  INSUFFICIENT_PERMISSIONS = 'INSUFFICIENT_PERMISSIONS',
-  ACCOUNT_LOCKED = 'ACCOUNT_LOCKED',
-  MFA_REQUIRED = 'MFA_REQUIRED',
+  INVALID_CREDENTIALS = "INVALID_CREDENTIALS",
+  SESSION_EXPIRED = "SESSION_EXPIRED",
+  INSUFFICIENT_PERMISSIONS = "INSUFFICIENT_PERMISSIONS",
+  ACCOUNT_LOCKED = "ACCOUNT_LOCKED",
+  MFA_REQUIRED = "MFA_REQUIRED",
 }
 
 export function handleAuthError(error: AuthError): string {
   switch (error) {
     case AuthError.INVALID_CREDENTIALS:
-      return 'Invalid email or password';
+      return "Invalid email or password";
     case AuthError.SESSION_EXPIRED:
-      return 'Your session has expired. Please log in again.';
+      return "Your session has expired. Please log in again.";
     case AuthError.INSUFFICIENT_PERMISSIONS:
-      return 'You do not have permission to access this resource';
+      return "You do not have permission to access this resource";
     case AuthError.ACCOUNT_LOCKED:
-      return 'Your account has been locked due to too many failed attempts';
+      return "Your account has been locked due to too many failed attempts";
     case AuthError.MFA_REQUIRED:
-      return 'Multi-factor authentication is required';
+      return "Multi-factor authentication is required";
     default:
-      return 'An authentication error occurred';
+      return "An authentication error occurred";
   }
 }
+```
+
+## Session Management
+
+- **Access Tokens**: Short-lived JWT tokens
+- **Refresh Tokens**: Long-lived tokens for renewal
+- **Auto-Refresh**: Background token renewal
+- **Race Condition Prevention**: Handles concurrent requests
+
+## Organization Context
+
+Users can switch between organizations with complete data isolation:
+
+```typescript
+const { currentOrganization, switchOrganization } = useOrganization();
+await switchOrganization("org-acme-001");
 ```
 
 ## Best Practices

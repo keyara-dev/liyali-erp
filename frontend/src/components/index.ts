@@ -41,6 +41,7 @@ export { CreateOrganizationModal } from "./modals/create-organization-modal";
 // Notification Components
 export { NotificationPreferences } from "./notifications/notification-preferences";
 export { NotificationActionModal } from "./notifications/notification-action-modal";
+export { NotificationHeader } from "./notifications/notification-header";
 
 // Charts
 // export * from "./charts";

@@ -63,7 +63,7 @@ export function NotificationBell({ userId }: NotificationBellProps) {
 
   const handleMarkAsRead = async (notificationId: string) => {
     try {
-      await markAsReadMutation.mutateAsync({ notificationId });
+      await markAsReadMutation.mutateAsync([notificationId]);
     } catch (error) {
       console.error("Failed to mark as read:", error);
     }
@@ -130,7 +130,7 @@ export function NotificationBell({ userId }: NotificationBellProps) {
                     <div className="flex flex-1 flex-col gap-1 min-w-0">
                       <div className="flex items-start justify-between gap-2">
                         <div className="truncate text-sm font-semibold dark:group-hover:text-default-800">
-                          {notification.title}
+                          {notification.subject}
                         </div>
                         {!notification.isRead && (
                           <span className="mt-1 flex-none block size-2 rounded-full bg-destructive/80" />

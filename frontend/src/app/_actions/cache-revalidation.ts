@@ -98,9 +98,10 @@ export async function revalidateOrganizationCache(organizationId?: string) {
     // Revalidate all organization-scoped cache tags
     for (const tag of ORGANIZATION_SCOPED_TAGS) {
       try {
-        revalidateTag(tag);
+        // Note: revalidateTag in Next.js 16+ might have different signature
+        (revalidateTag as any)(tag);
         if (organizationId) {
-          revalidateTag(`${tag}-${organizationId}`); // Organization-specific tags
+          (revalidateTag as any)(`${tag}-${organizationId}`); // Organization-specific tags
         }
         console.log(`[Server Cache] Revalidated tag: ${tag}`);
       } catch (error) {
@@ -170,7 +171,7 @@ export async function revalidateSpecificTags(tags: string[]) {
 
     for (const tag of tags) {
       try {
-        revalidateTag(tag);
+        (revalidateTag as any)(tag);
         console.log(`[Server Cache] Revalidated tag: ${tag}`);
       } catch (error) {
         console.warn(`[Server Cache] Failed to revalidate tag ${tag}:`, error);

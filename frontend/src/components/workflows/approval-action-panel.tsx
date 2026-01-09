@@ -9,7 +9,13 @@ import {
 } from "@/hooks/use-approval-workflow";
 import { NotificationActionModal } from "@/components";
 import { ReassignmentModal } from "@/components/workflows/reassignment-modal";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -33,14 +39,18 @@ export function ApprovalActionPanel({
 }: ApprovalActionPanelProps) {
   const [approveModalOpen, setApproveModalOpen] = useState(false);
   const [reassignModalOpen, setReassignModalOpen] = useState(false);
-  const [selectedAction, setSelectedAction] = useState<"approve" | "reject" | null>(null);
+  const [selectedAction, setSelectedAction] = useState<
+    "approve" | "reject" | null
+  >(null);
 
   const approveMutation = useApproveTask(task.id, onApprovalComplete);
   const rejectMutation = useRejectTask(task.id, onApprovalComplete);
   const reassignMutation = useReassignTask(task.id, onApprovalComplete);
 
   const isLoading =
-    approveMutation.isPending || rejectMutation.isPending || reassignMutation.isPending;
+    approveMutation.isPending ||
+    rejectMutation.isPending ||
+    reassignMutation.isPending;
 
   const handleApproveClick = () => {
     setSelectedAction("approve");
@@ -78,10 +88,7 @@ export function ApprovalActionPanel({
     }
   };
 
-  const handleReassignSubmit = async (
-    userId: string,
-    reason: string
-  ) => {
+  const handleReassignSubmit = async (userId: string, reason: string) => {
     try {
       await reassignMutation.mutateAsync({
         newApproverId: userId,
@@ -110,7 +117,7 @@ export function ApprovalActionPanel({
             Action Required
           </CardTitle>
           <CardDescription>
-            {task.documentType || 'Document'} awaits your decision
+            {task.documentType || "Document"} awaits your decision
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -118,8 +125,8 @@ export function ApprovalActionPanel({
           <Alert className="bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800">
             <Info className="h-4 w-4 text-blue-600" />
             <AlertDescription className="text-blue-700 dark:text-blue-200">
-              Review the document details above, then approve, reject,
-              or reassign this task.
+              Review the document details above, then approve, reject, or
+              reassign this task.
             </AlertDescription>
           </Alert>
 
@@ -127,13 +134,15 @@ export function ApprovalActionPanel({
           <div className="space-y-2 p-3 bg-muted rounded-lg">
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
-                <h4 className="font-semibold text-muted-foreground">Document</h4>
-                <p className="font-mono">
-                  {task.documentType || 'Document'}
-                </p>
+                <h4 className="font-semibold text-muted-foreground">
+                  Document
+                </h4>
+                <p className="font-mono">{task.documentType || "Document"}</p>
               </div>
               <div>
-                <h4 className="font-semibold text-muted-foreground">Approver</h4>
+                <h4 className="font-semibold text-muted-foreground">
+                  Approver
+                </h4>
                 <p>{task.approverName || "Unknown"}</p>
               </div>
               <div>
@@ -152,14 +161,16 @@ export function ApprovalActionPanel({
           {/* Priority Badge */}
           {task.priority && (
             <div className="flex items-center gap-2">
-              <span className="text-sm font-medium text-muted-foreground">Priority:</span>
+              <span className="text-sm font-medium text-muted-foreground">
+                Priority:
+              </span>
               <Badge
                 variant={
                   task.priority === "HIGH"
                     ? "destructive"
                     : task.priority === "MEDIUM"
-                    ? "default"
-                    : "secondary"
+                      ? "default"
+                      : "secondary"
                 }
               >
                 {task.priority}
@@ -239,12 +250,26 @@ export function ApprovalActionPanel({
 
       {/* Notification Action Modal */}
       <NotificationActionModal
-        notification={notification}
-        isOpen={approveModalOpen}
+        open={approveModalOpen}
         onOpenChange={setApproveModalOpen}
-        actionType={selectedAction === "reject" ? "reject" : "approve"}
-        onApprove={handleApproveSubmit}
-        onReject={handleRejectSubmit}
+        title={
+          selectedAction === "reject" ? "Reject Request" : "Approve Request"
+        }
+        description={
+          selectedAction === "reject"
+            ? "Please provide a reason for rejection"
+            : "Please provide your digital signature"
+        }
+        actionLabel={selectedAction === "reject" ? "Reject" : "Approve"}
+        onAction={(comment) => {
+          if (selectedAction === "reject") {
+            handleRejectSubmit("", comment || "");
+          } else {
+            handleApproveSubmit("", comment);
+          }
+        }}
+        requiresComment={selectedAction === "reject"}
+        isLoading={isLoading}
       />
 
       {/* Reassignment Modal */}

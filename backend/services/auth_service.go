@@ -77,8 +77,9 @@ type LoginResponse struct {
 
 // Token refresh response
 type TokenResponse struct {
-	AccessToken string `json:"accessToken"`
-	ExpiresIn   int64  `json:"expiresIn"`
+	AccessToken  string `json:"accessToken"`
+	RefreshToken string `json:"refreshToken,omitempty"` // Include new refresh token for rotation
+	ExpiresIn    int64  `json:"expiresIn"`
 }
 
 // NewAuthService creates a new authentication service
@@ -264,6 +265,22 @@ func (s *AuthService) RefreshToken(ctx context.Context, refreshToken string) (*T
 		return nil, ErrAccountInactive
 	}
 
+	// Generate new refresh token for rotation (security best practice)
+	newRefreshToken, err := s.generateRefreshToken()
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate new refresh token: %w", err)
+	}
+
+	// Update session with new refresh token and extended expiration
+	newExpiresAt := time.Now().Add(RefreshTokenDuration)
+	if session.ID.Valid {
+		sessionUUID := uuid.UUID(session.ID.Bytes)
+		err = s.sessionRepo.UpdateRefreshToken(ctx, sessionUUID, newRefreshToken, newExpiresAt)
+		if err != nil {
+			return nil, fmt.Errorf("failed to update session: %w", err)
+		}
+	}
+
 	// Generate new access token
 	var sessionIDStr string
 	if session.ID.Valid {
@@ -274,10 +291,17 @@ func (s *AuthService) RefreshToken(ctx context.Context, refreshToken string) (*T
 		return nil, fmt.Errorf("failed to generate access token: %w", err)
 	}
 
+	// Log audit event for token refresh
+	if s.auditService != nil {
+		s.auditService.LogAuthEvent(ctx, user.ID, user.Email, user.CurrentOrganizationID, "token_refresh", true, "access token refreshed", "", "")
+	}
+
 	return &TokenResponse{
-		AccessToken: accessToken,
-		ExpiresIn:   int64(AccessTokenDuration.Seconds()),
+		AccessToken:  accessToken,
+		RefreshToken: newRefreshToken, // Return new refresh token
+		ExpiresIn:    int64(AccessTokenDuration.Seconds()),
 	}, nil
+}
 }
 
 // Logout invalidates a refresh token and deletes the session

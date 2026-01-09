@@ -195,12 +195,65 @@ export function useCacheRevalidation() {
     }
   }, [queryClient]);
 
+  /**
+   * Revalidate notification-related cache
+   */
+  const revalidateNotifications = useCallback(async () => {
+    try {
+      console.log("[useCacheRevalidation] Revalidating notifications...");
+
+      // Invalidate notification queries
+      await queryClient.invalidateQueries({ queryKey: ["notifications"] });
+
+      console.log(
+        "[useCacheRevalidation] Notifications revalidated successfully"
+      );
+      return { success: true };
+    } catch (error) {
+      console.error(
+        "[useCacheRevalidation] Failed to revalidate notifications:",
+        error
+      );
+      return { success: false, error };
+    }
+  }, [queryClient]);
+
+  /**
+   * Revalidate workflow-related cache (includes notifications)
+   */
+  const revalidateWorkflowData = useCallback(async () => {
+    try {
+      console.log("[useCacheRevalidation] Revalidating workflow data...");
+
+      // Invalidate workflow and notification queries
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["approvals"] }),
+        queryClient.invalidateQueries({ queryKey: ["workflow"] }),
+        queryClient.invalidateQueries({ queryKey: ["notifications"] }),
+        queryClient.invalidateQueries({ queryKey: ["tasks"] }),
+      ]);
+
+      console.log(
+        "[useCacheRevalidation] Workflow data revalidated successfully"
+      );
+      return { success: true };
+    } catch (error) {
+      console.error(
+        "[useCacheRevalidation] Failed to revalidate workflow data:",
+        error
+      );
+      return { success: false, error };
+    }
+  }, [queryClient]);
+
   return {
     revalidateOrganizationData,
     revalidateQueries,
     revalidatePaths,
     revalidateTags,
     revalidateCurrentPage,
+    revalidateNotifications,
+    revalidateWorkflowData,
     forceHardRefresh,
   };
 }

@@ -10,16 +10,16 @@
 export interface RequisitionItem {
   id?: string;
   description: string;
-  itemDescription?: string;    // Alias for description
+  itemDescription?: string; // Alias for description
   quantity: number;
   unitPrice: number;
   amount: number;
-  estimatedCost?: number;      // Alias for amount
+  estimatedCost?: number; // Alias for amount
   unit?: string;
   category?: string;
   notes?: string;
-  itemNumber?: number;         // For UI compatibility
-  totalPrice?: number;         // Alias for amount
+  itemNumber?: number; // For UI compatibility
+  totalPrice?: number; // Alias for amount
 }
 
 export interface Requisition {
@@ -47,16 +47,19 @@ export interface Requisition {
   preferredVendorId?: string;
   preferredVendor?: any;
   preferredVendorName: string;
+
+  automationUsed?: boolean;
+  autoCreatedPO?: boolean;
   isEstimate: boolean;
   createdAt: Date;
   updatedAt: Date;
-  
+
   // Business requirement fields
-  requisitionNumber: string;       // Same as reqNumber
+  requisitionNumber: string; // Same as reqNumber
   budgetCode: string;
-  requestedByName: string;         // Same as requesterName
+  requestedByName: string; // Same as requesterName
   requestedByRole: string;
-  requestedBy: string;             // Same as requesterId
+  requestedBy: string; // Same as requesterId
   totalApprovalStages: number;
   requestedDate: Date;
   requiredByDate: Date;
@@ -65,9 +68,9 @@ export interface Requisition {
   createdBy: string;
   createdByName: string;
   createdByRole: string;
-  requestedFor?: string;           // Who the requisition is for
-  otherCategoryText?: string;      // Custom category name when "OTHER" is selected
-  
+  requestedFor?: string; // Who the requisition is for
+  otherCategoryText?: string; // Custom category name when "OTHER" is selected
+
   // UI compatibility fields
   documentNumber?: string;
   currentStage?: number;
@@ -76,9 +79,9 @@ export interface Requisition {
   metadata?: Record<string, any>;
   type?: string;
   createdByUser?: any;
-  approvalChain?: any[];           // For PDF generation
-  vendorId?: string;               // For PO creation
-  vendorName?: string;             // For PO creation
+  approvalChain?: any[]; // For PDF generation
+  vendorId?: string; // For PO creation
+  vendorName?: string; // For PO creation
 }
 
 // ============================================================================
@@ -97,19 +100,19 @@ export interface CreateRequisitionRequest {
   categoryId?: string;
   preferredVendorId?: string;
   isEstimate: boolean;
-  
+
   // Business requirement fields
   requiredByDate: Date;
   budgetCode: string;
   costCenter: string;
   projectCode: string;
-  requestedFor?: string;       // Who the requisition is for
-  otherCategoryText?: string;  // Custom category name when "OTHER" is selected
+  requestedFor?: string; // Who the requisition is for
+  otherCategoryText?: string; // Custom category name when "OTHER" is selected
 }
 
 export interface UpdateRequisitionRequest {
   requisitionId: string;
-  id?: string;                 // Alias for requisitionId
+  id?: string; // Alias for requisitionId
   title?: string;
   description?: string;
   department?: string;
@@ -125,8 +128,8 @@ export interface UpdateRequisitionRequest {
   budgetCode?: string;
   costCenter?: string;
   projectCode?: string;
-  requestedFor?: string;       // Who the requisition is for
-  otherCategoryText?: string;  // Custom category name when "OTHER" is selected
+  requestedFor?: string; // Who the requisition is for
+  otherCategoryText?: string; // Custom category name when "OTHER" is selected
 }
 
 export interface SubmitRequisitionRequest {
@@ -155,7 +158,7 @@ export interface RejectRequisitionRequest {
   remarks: string;
   signature: string;
   comments?: string;
-  returnTo?: 'original_submitter' | 'previous_stage';
+  returnTo?: "original_submitter" | "previous_stage";
 }
 
 // ============================================================================
@@ -176,5 +179,12 @@ export interface RequisitionStats {
 // TYPE ALIASES
 // ============================================================================
 
-export type RequisitionStatus = "draft"| "pending"| "submitted"| "approved"| "rejected"| "completed" | "cancelled";
+export type RequisitionStatus =
+  | "draft"
+  | "pending"
+  | "submitted"
+  | "approved"
+  | "rejected"
+  | "completed"
+  | "cancelled";
 export type RequisitionPriority = "low" | "medium" | "high" | "urgent";

@@ -127,3 +127,26 @@ func (r *SessionRepository) CountUserActive(ctx context.Context, userID string) 
 
 	return count, nil
 }
+
+func (r *SessionRepository) UpdateRefreshToken(ctx context.Context, id uuid.UUID, newRefreshToken string, expiresAt time.Time) error {
+	pgUUID := pgtype.UUID{
+		Bytes: id,
+		Valid: true,
+	}
+
+	expiresAtPgType := pgtype.Timestamp{
+		Time:  expiresAt,
+		Valid: true,
+	}
+
+	err := r.queries.UpdateSessionRefreshToken(ctx, sqlc.UpdateSessionRefreshTokenParams{
+		ID:           pgUUID,
+		RefreshToken: newRefreshToken,
+		ExpiresAt:    expiresAtPgType,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to update session refresh token: %w", err)
+	}
+
+	return nil
+}

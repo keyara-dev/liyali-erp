@@ -18,6 +18,7 @@ type WorkflowExecutionService struct {
 	workflowService   *WorkflowService
 	auditService      *AuditService
 	automationService *DocumentAutomationService
+	notificationService *NotificationService
 }
 
 // NewWorkflowExecutionService creates a new workflow execution service
@@ -27,6 +28,7 @@ func NewWorkflowExecutionService(db *gorm.DB, workflowService *WorkflowService, 
 		workflowService:   workflowService,
 		auditService:      auditService,
 		automationService: automationService,
+		notificationService: NewNotificationService(db),
 	}
 }
 
@@ -109,6 +111,26 @@ func (s *WorkflowExecutionService) AssignWorkflowToDocument(ctx context.Context,
 	// Commit transaction
 	if err := tx.Commit().Error; err != nil {
 		return nil, fmt.Errorf("failed to commit workflow assignment: %w", err)
+	}
+
+	// Send notification for approval required
+	if s.notificationService != nil {
+		notificationEvent := NotificationEvent{
+			Type:         "approval_required",
+			DocumentID:   entityID,
+			DocumentType: entityType,
+			Action:       "workflow_assigned",
+			ActorID:      userID,
+			Details:      fmt.Sprintf("Workflow assigned for %s approval", entityType),
+			Timestamp:    time.Now(),
+		}
+		
+		// Send notification asynchronously to avoid blocking
+		go func() {
+			if err := s.notificationService.HandleWorkflowEvent(notificationEvent); err != nil {
+				fmt.Printf("Failed to send approval required notification: %v\n", err)
+			}
+		}()
 	}
 
 	return assignment, nil
@@ -302,9 +324,49 @@ func (s *WorkflowExecutionService) ApproveWorkflowTask(ctx context.Context, task
 
 	// Trigger post-approval automation if workflow completed
 	if workflowCompleted {
+		// Send approval notification
+		if s.notificationService != nil {
+			notificationEvent := NotificationEvent{
+				Type:         "document_approved",
+				DocumentID:   assignment.EntityID,
+				DocumentType: assignment.EntityType,
+				Action:       "workflow_completed",
+				ActorID:      userID,
+				Details:      "Document has been fully approved through workflow",
+				Timestamp:    time.Now(),
+			}
+			
+			// Send notification asynchronously
+			go func() {
+				if err := s.notificationService.HandleWorkflowEvent(notificationEvent); err != nil {
+					fmt.Printf("Failed to send approval notification: %v\n", err)
+				}
+			}()
+		}
+
 		if err := s.triggerPostApprovalAutomation(ctx, assignment.EntityType, assignment.EntityID); err != nil {
 			// Log error but don't fail the approval since the workflow is already completed
 			fmt.Printf("Post-approval automation failed for %s %s: %v\n", assignment.EntityType, assignment.EntityID, err)
+		}
+	} else {
+		// Send notification for next stage approval required
+		if s.notificationService != nil {
+			notificationEvent := NotificationEvent{
+				Type:         "approval_required",
+				DocumentID:   assignment.EntityID,
+				DocumentType: assignment.EntityType,
+				Action:       "next_stage_approval",
+				ActorID:      userID,
+				Details:      fmt.Sprintf("Document moved to next approval stage (%d)", assignment.CurrentStage),
+				Timestamp:    time.Now(),
+			}
+			
+			// Send notification asynchronously
+			go func() {
+				if err := s.notificationService.HandleWorkflowEvent(notificationEvent); err != nil {
+					fmt.Printf("Failed to send next stage approval notification: %v\n", err)
+				}
+			}()
 		}
 	}
 
@@ -410,6 +472,26 @@ func (s *WorkflowExecutionService) RejectWorkflowTask(ctx context.Context, taskI
 	// Commit transaction
 	if err := tx.Commit().Error; err != nil {
 		return fmt.Errorf("failed to commit workflow rejection: %w", err)
+	}
+
+	// Send rejection notification
+	if s.notificationService != nil {
+		notificationEvent := NotificationEvent{
+			Type:         "document_rejected",
+			DocumentID:   assignment.EntityID,
+			DocumentType: assignment.EntityType,
+			Action:       "workflow_rejected",
+			ActorID:      userID,
+			Details:      reason,
+			Timestamp:    time.Now(),
+		}
+		
+		// Send notification asynchronously
+		go func() {
+			if err := s.notificationService.HandleWorkflowEvent(notificationEvent); err != nil {
+				fmt.Printf("Failed to send rejection notification: %v\n", err)
+			}
+		}()
 	}
 
 	return nil

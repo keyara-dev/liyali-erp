@@ -32,3 +32,8 @@ SELECT COUNT(*) FROM sessions WHERE expires_at > NOW();
 -- name: CountUserActiveSessions :one
 SELECT COUNT(*) FROM sessions 
 WHERE user_id = $1 AND expires_at > NOW();
+
+-- name: UpdateSessionRefreshToken :exec
+UPDATE sessions 
+SET refresh_token = $2, expires_at = $3, updated_at = NOW()
+WHERE id = $1;

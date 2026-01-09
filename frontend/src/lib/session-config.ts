@@ -13,8 +13,8 @@ export const SESSION_CONFIG = {
   // Maximum session duration: 1 hour from login (fallback if backend doesn't provide expiresIn)
   SESSION_EXPIRY_TIME: 1 * 60 * 60 * 1000,
 
-  // Idle timeout: After 30 minutes of inactivity, show screen lock
-  IDLE_TIMEOUT: 30 * 60 * 1000,
+  // Idle timeout: After 5 minutes of inactivity, show screen lock
+  IDLE_TIMEOUT: 5 * 60 * 1000, // Changed from 30 minutes to 5 minutes
 
   // Screen lock countdown: User has 90 seconds to click "I'm still here"
   SCREEN_LOCK_COUNTDOWN: 90 * 1000,
@@ -33,7 +33,10 @@ export const SESSION_CONFIG = {
  */
 export function calculateRefreshInterval(expiresInSeconds: number): number {
   const expirationMs = expiresInSeconds * 1000;
-  return Math.max(expirationMs - SESSION_CONFIG.TOKEN_REFRESH_BUFFER, 60 * 1000); // At least 1 minute
+  return Math.max(
+    expirationMs - SESSION_CONFIG.TOKEN_REFRESH_BUFFER,
+    60 * 1000
+  ); // At least 1 minute
 }
 
 /**
@@ -42,8 +45,12 @@ export function calculateRefreshInterval(expiresInSeconds: number): number {
  * @param bufferMs - Buffer time in milliseconds (default: 5 minutes)
  * @returns true if token should be refreshed
  */
-export function shouldRefreshToken(expiresAt: Date | string, bufferMs: number = SESSION_CONFIG.TOKEN_REFRESH_BUFFER): boolean {
-  const expiration = typeof expiresAt === 'string' ? new Date(expiresAt) : expiresAt;
+export function shouldRefreshToken(
+  expiresAt: Date | string,
+  bufferMs: number = SESSION_CONFIG.TOKEN_REFRESH_BUFFER
+): boolean {
+  const expiration =
+    typeof expiresAt === "string" ? new Date(expiresAt) : expiresAt;
   const now = new Date();
   const timeUntilExpiry = expiration.getTime() - now.getTime();
   return timeUntilExpiry <= bufferMs;
@@ -55,7 +62,8 @@ export function shouldRefreshToken(expiresAt: Date | string, bufferMs: number = 
  */
 
 // ✅ Screen lock countdown in seconds (for progress circle calculation)
-export const SCREEN_LOCK_COUNTDOWN_SECONDS = SESSION_CONFIG.SCREEN_LOCK_COUNTDOWN / 1000;
+export const SCREEN_LOCK_COUNTDOWN_SECONDS =
+  SESSION_CONFIG.SCREEN_LOCK_COUNTDOWN / 1000;
 
 // ✅ SVG circular progress total (stroke dash array total)
 export const PROGRESS_CIRCLE_TOTAL = 100.5;

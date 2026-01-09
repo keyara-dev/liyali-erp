@@ -25,8 +25,6 @@ import authenticatedApiClient, {
   badRequestResponse,
 } from "./api-config";
 
-
-
 /**
  * Login with email and password using backend API
  */
@@ -35,7 +33,7 @@ export async function loginAction(
   password: string
 ): Promise<APIResponse<any>> {
   const url = `/api/v1/auth/login`;
-  const isDev = process.env.NODE_ENV === 'development';
+  const isDev = process.env.NODE_ENV === "development";
 
   try {
     if (isDev) console.log("[loginAction] Starting login for", email);
@@ -45,11 +43,12 @@ export async function loginAction(
     });
 
     const response = query?.data;
-    if (isDev) console.log("[loginAction] Backend response", { 
-      success: response.success, 
-      hasToken: !!response.data?.accessToken,
-      hasUser: !!response.data?.user 
-    });
+    if (isDev)
+      console.log("[loginAction] Backend response", {
+        success: response.success,
+        hasToken: !!response.data?.accessToken,
+        hasUser: !!response.data?.user,
+      });
 
     // Backend returns: { success, message, data: { accessToken, refreshToken, expiresIn, user, organization } }
     if (!response.success || !response.data?.accessToken) {
@@ -211,13 +210,16 @@ export async function getRefreshToken(): Promise<APIResponse<any>> {
     }
 
     // Call backend refresh endpoint with the stored refresh token
-    const response = await authenticatedApiClient( {url, method: "POST",
-      data: {refreshToken: session.refresh_token}, // Use stored refresh token
+    const response = await authenticatedApiClient({
+      url,
+      method: "POST",
+      data: { refreshToken: session.refresh_token }, // Use stored refresh token
     });
 
-    // Backend returns: { success, message, data: { accessToken, expiresIn } }
+    // Backend returns: { success, message, data: { accessToken, expiresIn, refreshToken? } }
     const newToken = response.data.data?.accessToken;
     const expiresIn = response.data.data?.expiresIn;
+    const newRefreshToken = response.data.data?.refreshToken; // New refresh token from rotation
 
     if (!newToken) {
       return unauthorizedResponse("Failed to refresh token");
@@ -225,14 +227,28 @@ export async function getRefreshToken(): Promise<APIResponse<any>> {
 
     // Calculate expiration time using backend's expiresIn value
     const expirationMs = expiresIn ? expiresIn * 1000 : 30 * 60 * 1000; // fallback to 30 minutes
-    
-    // Update session with new access token (keep existing refresh token)
-    await updateAuthSession({
+
+    // Update session with new tokens (both access and refresh if rotated)
+    const sessionUpdate: any = {
       access_token: newToken,
       expiresAt: new Date(Date.now() + expirationMs), // Use backend's expiration time
-    });
+    };
 
-    return successResponse({ token: newToken }, "Token refreshed successfully");
+    // Update refresh token if backend provided a new one (token rotation)
+    if (newRefreshToken) {
+      sessionUpdate.refresh_token = newRefreshToken;
+    }
+
+    await updateAuthSession(sessionUpdate);
+
+    return successResponse(
+      {
+        token: newToken,
+        refreshToken: newRefreshToken,
+        expiresIn,
+      },
+      "Token refreshed successfully"
+    );
   } catch (error: any) {
     console.error("Error refreshing token:", error);
     return handleError(error, "POST", url);
@@ -252,10 +268,14 @@ export async function changePassword(
   const url = `/api/v1/auth/change-password`;
 
   try {
-    await authenticatedApiClient({url, method: "POST", data:{
-      currentPassword: oldPassword, // Match backend parameter name
-      newPassword: newPassword,
-    }});
+    await authenticatedApiClient({
+      url,
+      method: "POST",
+      data: {
+        currentPassword: oldPassword, // Match backend parameter name
+        newPassword: newPassword,
+      },
+    });
 
     return successResponse(null, "Password changed successfully");
   } catch (error: any) {
@@ -382,7 +402,9 @@ export async function createNewAccount(data: {
  * Check if user signup is available/enabled
  * This can be used to control registration availability
  */
-export async function checkSignupAvailability(): Promise<APIResponse<{ enabled: boolean }>> {
+export async function checkSignupAvailability(): Promise<
+  APIResponse<{ enabled: boolean }>
+> {
   try {
     // For now, always allow signups
     // In the future, this could check backend settings or environment variables

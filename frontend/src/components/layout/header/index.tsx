@@ -7,7 +7,7 @@ import ThemeSwitch from "./theme-switch";
 import UserMenu from "./user-menu";
 import { useSidebar } from "@/components/ui/sidebar";
 
-import { NotificationBell } from "@/components/notifications/notification-bell";
+import { NotificationHeader } from "@/components/notifications/notification-header";
 import { OfflineIndicator } from "@/components/offline/offline-indicator";
 
 import { useSession } from "@/hooks";
@@ -60,5 +60,5 @@ function Notifications() {
   if (!user) {
     return <NotificationFallback />;
   }
-  return <NotificationBell userId={user.id} />;
+  return <NotificationHeader />;
 }

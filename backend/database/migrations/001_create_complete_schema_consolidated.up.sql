@@ -373,10 +373,11 @@ CREATE TABLE IF NOT EXISTS notifications_enhanced (
 -- MASTER DATA TABLES
 -- ============================================================================
 
--- Global Vendors (accessible to all organizations)
+-- Organization-Scoped Vendors (multi-tenant security)
 CREATE TABLE IF NOT EXISTS vendors (
     id VARCHAR(255) PRIMARY KEY,
-    vendor_code VARCHAR(100) UNIQUE NOT NULL,
+    organization_id VARCHAR(255) NOT NULL,
+    vendor_code VARCHAR(100) NOT NULL,
     name VARCHAR(255) NOT NULL,
     email VARCHAR(255),
     phone VARCHAR(50),
@@ -389,7 +390,9 @@ CREATE TABLE IF NOT EXISTS vendors (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     
-    CONSTRAINT fk_vendors_created_by FOREIGN KEY (created_by) REFERENCES users(id)
+    CONSTRAINT fk_vendors_organization FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE,
+    CONSTRAINT fk_vendors_created_by FOREIGN KEY (created_by) REFERENCES users(id),
+    CONSTRAINT uk_org_vendor_code UNIQUE (organization_id, vendor_code)
 );
 
 -- Categories for requisition categorization (organization-specific)
@@ -450,6 +453,9 @@ CREATE TABLE IF NOT EXISTS requisitions (
     created_by_name VARCHAR(255), -- Added from 002
     created_by_role VARCHAR(255), -- Added from 002
     metadata JSONB, -- Added from 002
+    -- Automation fields
+    automation_used BOOLEAN DEFAULT FALSE, -- Whether automation was used in processing
+    auto_created_po JSONB, -- Auto-created purchase order details
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     
@@ -525,6 +531,9 @@ CREATE TABLE IF NOT EXISTS purchase_orders (
     owner_id VARCHAR(255), -- Added from 002
     action_history JSONB, -- Added from 002
     metadata JSONB, -- Added from 002
+    -- Automation fields
+    automation_used BOOLEAN DEFAULT FALSE, -- Whether automation was used in processing
+    auto_created_grn JSONB, -- Auto-created GRN details
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     
@@ -843,8 +852,10 @@ CREATE INDEX IF NOT EXISTS idx_grn_warehouse_location ON goods_received_notes(wa
 CREATE INDEX IF NOT EXISTS idx_categories_organization_id ON categories(organization_id);
 CREATE INDEX IF NOT EXISTS idx_categories_active ON categories(active);
 
+CREATE INDEX IF NOT EXISTS idx_vendors_organization_id ON vendors(organization_id);
 CREATE INDEX IF NOT EXISTS idx_vendors_active ON vendors(active);
 CREATE INDEX IF NOT EXISTS idx_vendors_created_by ON vendors(created_by);
+CREATE INDEX IF NOT EXISTS idx_vendors_active_org ON vendors(active, organization_id);
 
 CREATE INDEX IF NOT EXISTS idx_approval_tasks_organization_id ON approval_tasks(organization_id);
 CREATE INDEX IF NOT EXISTS idx_approval_tasks_assigned_to ON approval_tasks(assigned_to);
@@ -954,6 +965,8 @@ COMMENT ON COLUMN requisitions.department_id IS 'Department ID reference';
 COMMENT ON COLUMN requisitions.cost_center IS 'Cost center for accounting';
 COMMENT ON COLUMN requisitions.project_code IS 'Project code for tracking';
 COMMENT ON COLUMN requisitions.metadata IS 'Generic metadata for extensibility';
+COMMENT ON COLUMN requisitions.automation_used IS 'Whether automation was used in processing';
+COMMENT ON COLUMN requisitions.auto_created_po IS 'Auto-created purchase order details';
 
 COMMENT ON COLUMN budgets.name IS 'Budget display name';
 COMMENT ON COLUMN budgets.items IS 'Budget line items breakdown';
@@ -964,6 +977,8 @@ COMMENT ON COLUMN purchase_orders.subtotal IS 'Subtotal before tax';
 COMMENT ON COLUMN purchase_orders.tax IS 'Tax amount';
 COMMENT ON COLUMN purchase_orders.total IS 'Total amount including tax';
 COMMENT ON COLUMN purchase_orders.metadata IS 'Generic metadata for extensibility';
+COMMENT ON COLUMN purchase_orders.automation_used IS 'Whether automation was used in processing';
+COMMENT ON COLUMN purchase_orders.auto_created_grn IS 'Auto-created GRN details';
 
 COMMENT ON COLUMN payment_vouchers.tax_amount IS 'Tax amount for payment';
 COMMENT ON COLUMN payment_vouchers.withholding_tax_amount IS 'Withholding tax amount';

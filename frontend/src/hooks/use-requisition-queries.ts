@@ -20,7 +20,10 @@ import {
   SubmitRequisitionRequest,
 } from "@/types/requisition";
 import { toast } from "sonner";
-import { handleOfflineMutation, isOfflineResult } from "@/lib/offline-mutation-helper";
+import {
+  handleOfflineMutation,
+  isOfflineResult,
+} from "@/lib/offline-mutation-helper";
 
 /**
  * Fetch all requisitions with pagination
@@ -135,7 +138,7 @@ export const useSaveRequisition = (onSuccess?: () => void) => {
         | (UpdateRequisitionRequest & { requisitionId?: string })
     ) => {
       const isUpdate = "requisitionId" in data && data.requisitionId;
-      
+
       return await handleOfflineMutation(
         async () => {
           const response = isUpdate
@@ -148,14 +151,18 @@ export const useSaveRequisition = (onSuccess?: () => void) => {
           return response;
         },
         {
-          operation: isUpdate ? 'UPDATE' : 'CREATE',
-          entity: 'requisition',
+          operation: isUpdate ? "UPDATE" : "CREATE",
+          entity: "requisition",
           data,
-          entityId: isUpdate ? (data as UpdateRequisitionRequest).requisitionId : undefined,
-          successMessage: isUpdate ? 'Requisition updated successfully' : 'Requisition created successfully',
-          offlineMessage: isUpdate 
-            ? 'Requisition changes saved offline. Will sync when connected.'
-            : 'Requisition saved offline. Will sync when connected.',
+          entityId: isUpdate
+            ? (data as UpdateRequisitionRequest).requisitionId
+            : undefined,
+          successMessage: isUpdate
+            ? "Requisition updated successfully"
+            : "Requisition created successfully",
+          offlineMessage: isUpdate
+            ? "Requisition changes saved offline. Will sync when connected."
+            : "Requisition saved offline. Will sync when connected.",
         }
       );
     },
@@ -236,12 +243,13 @@ export const useSubmitRequisitionForApproval = (
           return response;
         },
         {
-          operation: 'SUBMIT',
-          entity: 'requisition',
+          operation: "SUBMIT",
+          entity: "requisition",
           data: { requisitionId, ...data },
           entityId: requisitionId,
-          successMessage: 'Requisition submitted for approval',
-          offlineMessage: 'Requisition submission saved offline. Will sync when connected.',
+          successMessage: "Requisition submitted for approval",
+          offlineMessage:
+            "Requisition submission saved offline. Will sync when connected.",
         }
       );
     },
@@ -268,6 +276,17 @@ export const useSubmitRequisitionForApproval = (
       });
       queryClient.invalidateQueries({
         queryKey: [QUERY_KEYS.DASHBOARD.ACTIVITIES],
+      });
+
+      // Invalidate notifications and workflow-related queries
+      queryClient.invalidateQueries({
+        queryKey: ["notifications"],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["approvals"],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["tasks"],
       });
 
       onSuccess?.();
