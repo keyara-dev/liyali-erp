@@ -232,6 +232,10 @@ func SetupRoutes(app *fiber.App, handlerRegistry *handlers.HandlerRegistry, rbac
 	// Approval history routes (tenant-scoped) - Updated to use new handler
 	documents := tenant.Group("/documents")
 	documents.Get("/:documentId/approval-history", handlerRegistry.Approval.GetApprovalHistory)
+	documents.Get("/:documentId/approval-status", handlerRegistry.Approval.GetApprovalWorkflowStatus)
+
+	// Available approvers endpoint
+	approvals.Get("/available-approvers", handlerRegistry.Approval.GetAvailableApprovers)
 
 	// Generic Document System routes (tenant-scoped) - NEW
 	genericDocs := tenant.Group("/documents")

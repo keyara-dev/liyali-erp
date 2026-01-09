@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -168,13 +169,16 @@ func CreateRequisition(c *fiber.Ctx) error {
 	reqNumber := utils.GenerateRequisitionNumber()
 	
 	// Prepare metadata for additional fields
-	metadata := map[string]interface{}{}
+	metadataMap := map[string]interface{}{}
 	if req.RequestedFor != "" {
-		metadata["requestedFor"] = req.RequestedFor
+		metadataMap["requestedFor"] = req.RequestedFor
 	}
 	if req.OtherCategoryText != "" {
-		metadata["otherCategoryText"] = req.OtherCategoryText
+		metadataMap["otherCategoryText"] = req.OtherCategoryText
 	}
+	
+	metadataBytes, _ := json.Marshal(metadataMap)
+	metadata := datatypes.JSON(metadataBytes)
 	
 	requisition := models.Requisition{
 		ID:                uuid.New().String(),
@@ -206,7 +210,7 @@ func CreateRequisition(c *fiber.Ctx) error {
 		RequestedByRole:   user.Role,
 		RequisitionNumber: reqNumber,
 		RequestedDate:     time.Now(),
-		Metadata:          datatypes.NewJSON(metadata),
+		Metadata:          metadata,
 		
 		CreatedAt:         time.Now(),
 		UpdatedAt:         time.Now(),
@@ -216,6 +220,22 @@ func CreateRequisition(c *fiber.Ctx) error {
 
 	// Initialize empty approval history
 	requisition.ApprovalHistory = datatypes.NewJSONType([]types.ApprovalRecord{})
+
+	// Initialize action history with creation entry
+	actionHistory := []types.ActionHistoryEntry{
+		{
+			ID:               uuid.New().String(),
+			Action:           "CREATE",
+			PerformedBy:      userID,
+			PerformedByName:  user.Name,
+			PerformedByRole:  user.Role,
+			Timestamp:        time.Now(),
+			Comments:         "Requisition created",
+			ActionType:       "CREATE",
+			NewStatus:        "draft",
+		},
+	}
+	requisition.ActionHistory = datatypes.NewJSONType(actionHistory)
 
 	// Save to database
 	if err := config.DB.Create(&requisition).Error; err != nil {
@@ -246,12 +266,16 @@ func GetRequisition(c *fiber.Ctx) error {
 	}
 
 	var requisition models.Requisition
-	if err := config.DB.
+	
+	// Try to find by ID first (UUID), then by requisition number
+	err := config.DB.
 		Preload("Requester").
 		Preload("Category").
 		Preload("PreferredVendor").
-		Where("id = ?", id).
-		First(&requisition).Error; err != nil {
+		Where("id = ? OR req_number = ? OR requisition_number = ?", id, id, id).
+		First(&requisition).Error
+		
+	if err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
 			"success": false,
 			"message": "Requisition not found",
@@ -350,6 +374,29 @@ func UpdateRequisition(c *fiber.Ctx) error {
 	}
 	if req.IsEstimate != nil {
 		requisition.IsEstimate = *req.IsEstimate
+	}
+
+	// Add action history entry for update
+	var actionHistory []types.ActionHistoryEntry
+	actionHistory = requisition.ActionHistory.Data()
+	
+	// Get user info for action history
+	userID := c.Locals("userID").(string)
+	var user models.User
+	if err := config.DB.Where("id = ?", userID).First(&user).Error; err == nil {
+		actionHistory = append(actionHistory, types.ActionHistoryEntry{
+			ID:               uuid.New().String(),
+			Action:           "UPDATE",
+			PerformedBy:      userID,
+			PerformedByName:  user.Name,
+			PerformedByRole:  user.Role,
+			Timestamp:        time.Now(),
+			Comments:         "Requisition updated",
+			ActionType:       "UPDATE",
+			PreviousStatus:   requisition.Status,
+			NewStatus:        requisition.Status,
+		})
+		requisition.ActionHistory = datatypes.NewJSONType(actionHistory)
 	}
 
 	requisition.UpdatedAt = time.Now()
@@ -473,10 +520,27 @@ func ApproveRequisition(c *fiber.Ctx) error {
 	}
 	approvalHistory = append(approvalHistory, approvalRecord)
 
+	// Add action history entry
+	var actionHistory []types.ActionHistoryEntry
+	actionHistory = requisition.ActionHistory.Data()
+	actionHistory = append(actionHistory, types.ActionHistoryEntry{
+		ID:               uuid.New().String(),
+		Action:           "APPROVE",
+		PerformedBy:      approverID,
+		PerformedByName:  approver.Name,
+		PerformedByRole:  approver.Role,
+		Timestamp:        time.Now(),
+		Comments:         req.Comments,
+		ActionType:       "APPROVE",
+		PreviousStatus:   requisition.Status,
+		NewStatus:        "approved",
+	})
+
 	// Update requisition
 	requisition.Status = "approved"
 	requisition.ApprovalStage++
-	requisition.ApprovalHistory = datatypes.NewJSONType([]types.ApprovalRecord{})
+	requisition.ApprovalHistory = datatypes.NewJSONType(approvalHistory)
+	requisition.ActionHistory = datatypes.NewJSONType(actionHistory)
 	requisition.UpdatedAt = time.Now()
 
 	if err := config.DB.Save(&requisition).Error; err != nil {
@@ -617,9 +681,27 @@ func RejectRequisition(c *fiber.Ctx) error {
 	}
 	approvalHistory = append(approvalHistory, rejectionRecord)
 
+	// Add action history entry
+	var actionHistory []types.ActionHistoryEntry
+	actionHistory = requisition.ActionHistory.Data()
+	actionHistory = append(actionHistory, types.ActionHistoryEntry{
+		ID:               uuid.New().String(),
+		Action:           "REJECT",
+		PerformedBy:      approverID,
+		PerformedByName:  approver.Name,
+		PerformedByRole:  approver.Role,
+		Timestamp:        time.Now(),
+		Comments:         req.Remarks,
+		Remarks:          req.Remarks,
+		ActionType:       "REJECT",
+		PreviousStatus:   requisition.Status,
+		NewStatus:        "rejected",
+	})
+
 	// Update requisition
 	requisition.Status = "rejected"
-	requisition.ApprovalHistory = datatypes.NewJSONType([]types.ApprovalRecord{})
+	requisition.ApprovalHistory = datatypes.NewJSONType(approvalHistory)
+	requisition.ActionHistory = datatypes.NewJSONType(actionHistory)
 	requisition.UpdatedAt = time.Now()
 
 	if err := config.DB.Save(&requisition).Error; err != nil {
@@ -708,6 +790,7 @@ func modelToRequisitionResponse(req models.Requisition) types.RequisitionRespons
 	items = req.Items.Data()
 
 	var approvalHistory []types.ApprovalRecord
+	approvalHistory = req.ApprovalHistory.Data()
 
 	requesterName := ""
 	if req.Requester != nil {
@@ -726,9 +809,9 @@ func modelToRequisitionResponse(req models.Requisition) types.RequisitionRespons
 
 	// Extract metadata fields
 	var requestedFor, otherCategoryText string
-	if req.Metadata != nil {
-		metadata := req.Metadata.Data()
-		if metadata != nil {
+	if len(req.Metadata) > 0 {
+		var metadata map[string]interface{}
+		if err := json.Unmarshal(req.Metadata, &metadata); err == nil {
 			if val, ok := metadata["requestedFor"].(string); ok {
 				requestedFor = val
 			}
@@ -737,6 +820,10 @@ func modelToRequisitionResponse(req models.Requisition) types.RequisitionRespons
 			}
 		}
 	}
+
+	// Get action history
+	var actionHistory []types.ActionHistoryEntry
+	actionHistory = req.ActionHistory.Data()
 
 	return types.RequisitionResponse{
 		ID:                  req.ID,
@@ -765,6 +852,9 @@ func modelToRequisitionResponse(req models.Requisition) types.RequisitionRespons
 		RequiredByDate:      req.RequiredByDate,
 		RequestedFor:        requestedFor,
 		OtherCategoryText:   otherCategoryText,
+		
+		// Action history for frontend
+		ActionHistory:       actionHistory,
 		
 		CreatedAt:           req.CreatedAt,
 		UpdatedAt:           req.UpdatedAt,

@@ -8,7 +8,7 @@ import {
   ApprovalFlowDisplay,
   ApprovalActionPanel,
 } from "@/components/workflows";
-import { ApprovalHistoryPanel } from "../../_components/approval-history-panel";
+import { UnifiedHistoryPanel } from "../../_components/unified-history-panel";
 import {
   Card,
   CardContent,
@@ -330,10 +330,12 @@ export default function RequisitionApprovalPage() {
       </div>
 
       {/* Approval History */}
-      <ApprovalHistoryPanel
+      <UnifiedHistoryPanel
         requisitionId={task.documentId || taskId}
         requisition={requisition as any}
         userRole={session?.user?.role || 'requester'}
+        actionHistory={requisition?.actionHistory}
+        approvalChain={requisition?.approvalChain}
       />
     </div>
   );

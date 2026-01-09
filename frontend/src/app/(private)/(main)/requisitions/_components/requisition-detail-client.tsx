@@ -9,8 +9,7 @@ import { PageHeader } from "@/components/base/page-header";
 import { useRequisitionById, useSubmitRequisitionForApproval } from "@/hooks/use-requisition-queries";
 import { useRequisitionStorage } from "@/hooks/use-requisition-storage";
 import { Requisition } from "@/types/requisition";
-import { ApprovalHistoryPanel } from "./approval-history-panel";
-import { ActionHistoryPanel } from "./action-history-panel";
+import { UnifiedHistoryPanel } from "./unified-history-panel";
 import { CreateRequisitionDialog } from "./create-requisition-dialog";
 import { DocumentLinks } from "@/components/document-links";
 import { WorkflowDocument } from "@/types";
@@ -619,19 +618,18 @@ export function RequisitionDetailClient({
           </Card>
 
           {/* Action History Panel */}
-          <ActionHistoryPanel
-            actionHistory={requisition.actionHistory}
-            approvalChain={requisition.approvalChain}
+          <UnifiedHistoryPanel
+            requisitionId={requisition?.id || requisitionId}
+            requisition={requisition as any}
+            userRole={userRole}
+            actionHistory={requisition?.actionHistory}
+            approvalChain={requisition?.approvalChain}
           />
         </div>
 
-        {/* Sidebar - Approval History */}
+        {/* Sidebar - Empty for now, could be used for other widgets */}
         <div className="lg:col-span-1">
-          <ApprovalHistoryPanel
-            requisitionId={requisitionId}
-            requisition={requisition as any}
-            userRole={userRole}
-          />
+          {/* Future: Quick actions, related documents, etc. */}
         </div>
       </div>
 

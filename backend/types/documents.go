@@ -86,6 +86,9 @@ type RequisitionResponse struct {
 	RequestedFor        string            `json:"requestedFor,omitempty"`        // From metadata
 	OtherCategoryText   string            `json:"otherCategoryText,omitempty"`   // From metadata
 	
+	// Action history for frontend
+	ActionHistory       []ActionHistoryEntry `json:"actionHistory,omitempty"`
+	
 	CreatedAt           time.Time         `json:"createdAt"`
 	UpdatedAt           time.Time         `json:"updatedAt"`
 }

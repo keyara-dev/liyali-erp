@@ -430,8 +430,24 @@ func (h *ApprovalHandler) GetApprovalHistory(c *fiber.Ctx) error {
 
 	db := config.DB
 
+	// First, try to find the actual document ID if a requisition number was provided
+	var actualDocumentID string
+	var requisition models.Requisition
+	
+	// Try to find requisition by ID, req_number, or requisition_number
+	err := db.Where("id = ? OR req_number = ? OR requisition_number = ?", documentID, documentID, documentID).
+		First(&requisition).Error
+	
+	if err == nil {
+		// Found requisition, use its actual ID
+		actualDocumentID = requisition.ID
+	} else {
+		// Assume it's already a valid document ID
+		actualDocumentID = documentID
+	}
+
 	var history []models.ApprovalTask
-	if err := db.Where("document_id = ? AND organization_id = ?", documentID, organizationID).
+	if err := db.Where("document_id = ? AND organization_id = ?", actualDocumentID, organizationID).
 		Order("created_at ASC").Find(&history).Error; err != nil {
 		log.Printf("Error fetching approval history: %v", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(types.ErrorResponse{
@@ -721,4 +737,172 @@ func (h *ApprovalHandler) updatePurchaseOrderStatus(tx *gorm.DB, documentID, sta
 
 func (h *ApprovalHandler) updatePaymentVoucherStatus(tx *gorm.DB, documentID, status string) error {
 	return tx.Model(&models.PaymentVoucher{}).Where("id = ?", documentID).Update("status", status).Error
+}
+
+// GetApprovalWorkflowStatus retrieves the current approval workflow status for a document
+// GET /api/v1/documents/{documentId}/approval-status
+func (h *ApprovalHandler) GetApprovalWorkflowStatus(c *fiber.Ctx) error {
+	documentID := c.Params("documentId")
+	organizationID := c.Locals("organizationID").(string)
+	userID := c.Locals("userID").(string)
+
+	if documentID == "" {
+		return utils.SendBadRequestError(c, "Document ID is required")
+	}
+
+	db := config.DB
+
+	// First, try to find the actual document ID if a requisition number was provided
+	var actualDocumentID string
+	var requisition models.Requisition
+	
+	// Try to find requisition by ID, req_number, or requisition_number
+	err := db.Where("id = ? OR req_number = ? OR requisition_number = ?", documentID, documentID, documentID).
+		First(&requisition).Error
+	
+	if err == nil {
+		// Found requisition, use its actual ID
+		actualDocumentID = requisition.ID
+	} else {
+		// Assume it's already a valid document ID
+		actualDocumentID = documentID
+	}
+
+	// Get all approval tasks for this document
+	var tasks []models.ApprovalTask
+	if err := db.Where("document_id = ? AND organization_id = ?", actualDocumentID, organizationID).
+		Order("stage_number ASC").Find(&tasks).Error; err != nil {
+		log.Printf("Error fetching approval tasks: %v", err)
+		return utils.SendInternalError(c, "Failed to fetch approval workflow status", err)
+	}
+
+	if len(tasks) == 0 {
+		// No approval workflow configured
+		return c.JSON(types.DetailResponse{
+			Success: true,
+			Data: map[string]interface{}{
+				"currentStage": 0,
+				"totalStages":  0,
+				"status":       "no_workflow",
+				"canApprove":   false,
+				"canReject":    false,
+			},
+		})
+	}
+
+	// Calculate workflow status
+	currentStage := 0
+	totalStages := len(tasks)
+	status := "pending"
+	var nextApprover string
+	canApprove := false
+	canReject := false
+
+	// Find current stage and determine permissions
+	for i, task := range tasks {
+		if task.Status == "approved" {
+			currentStage = i + 1
+		} else if task.Status == "pending" {
+			// This is the current pending stage
+			if currentStage == i {
+				currentStage = i + 1
+			}
+			if nextApprover == "" {
+				// Get approver name
+				var approver models.User
+				if err := db.Where("id = ?", task.AssignedTo).First(&approver).Error; err == nil {
+					nextApprover = approver.Name
+				}
+			}
+			// Check if current user can approve this stage
+			if task.AssignedTo == userID {
+				canApprove = true
+				canReject = true
+			}
+			break
+		} else if task.Status == "rejected" {
+			status = "rejected"
+			break
+		}
+	}
+
+	// If all stages are approved
+	if currentStage == totalStages {
+		status = "approved"
+	}
+
+	return c.JSON(types.DetailResponse{
+		Success: true,
+		Data: map[string]interface{}{
+			"currentStage": currentStage,
+			"totalStages":  totalStages,
+			"status":       status,
+			"nextApprover": nextApprover,
+			"canApprove":   canApprove,
+			"canReject":    canReject,
+		},
+	})
+}
+
+// GetAvailableApprovers retrieves available approvers for a document type and stage
+// GET /api/v1/approvals/available-approvers?documentType=...&stage=...
+func (h *ApprovalHandler) GetAvailableApprovers(c *fiber.Ctx) error {
+	organizationID := c.Locals("organizationID").(string)
+	documentType := c.Query("documentType")
+	stageStr := c.Query("stage")
+
+	if documentType == "" {
+		return utils.SendBadRequestError(c, "Document type is required")
+	}
+
+	db := config.DB
+
+	// Build query to find users who can approve this document type
+	query := db.Table("users").
+		Select("users.id, users.name, users.email, users.role, departments.name as department").
+		Joins("LEFT JOIN user_departments ON users.id = user_departments.user_id").
+		Joins("LEFT JOIN departments ON user_departments.department_id = departments.id").
+		Where("users.organization_id = ? AND users.active = ?", organizationID, true)
+
+	// Filter by role based on document type and stage
+	var roleFilters []string
+	switch documentType {
+	case "REQUISITION":
+		if stageStr == "1" {
+			roleFilters = []string{"manager", "supervisor", "department_head"}
+		} else {
+			roleFilters = []string{"finance_manager", "admin", "executive"}
+		}
+	case "PURCHASE_ORDER":
+		roleFilters = []string{"procurement_manager", "finance_manager", "admin"}
+	case "PAYMENT_VOUCHER":
+		roleFilters = []string{"finance_manager", "accountant", "admin"}
+	case "BUDGET":
+		roleFilters = []string{"finance_manager", "admin", "executive"}
+	default:
+		roleFilters = []string{"manager", "admin"}
+	}
+
+	if len(roleFilters) > 0 {
+		query = query.Where("users.role IN ?", roleFilters)
+	}
+
+	// Execute query
+	var approvers []struct {
+		ID         string `json:"id"`
+		Name       string `json:"name"`
+		Email      string `json:"email"`
+		Role       string `json:"role"`
+		Department string `json:"department"`
+	}
+
+	if err := query.Find(&approvers).Error; err != nil {
+		log.Printf("Error fetching available approvers: %v", err)
+		return utils.SendInternalError(c, "Failed to fetch available approvers", err)
+	}
+
+	return c.JSON(types.DetailResponse{
+		Success: true,
+		Data:    approvers,
+	})
 }
