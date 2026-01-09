@@ -7,6 +7,10 @@ import {
   switchOrganization,
   type Organization,
 } from "@/app/_actions/organizations";
+import {
+  clearOrganizationCache,
+  prefetchOrganizationData,
+} from "@/lib/cache-manager";
 
 interface OrganizationState {
   // State
@@ -72,13 +76,25 @@ export const useOrganizationStore = create<OrganizationState>()(
         setLoading(true);
         setError(null);
 
+        // Switch organization on backend
         await switchOrganization(orgId);
+
+        // Update local state
         setCurrentOrganization(orgId);
 
-        // Invalidate React Query cache if available
-        if (typeof window !== "undefined" && (window as any).queryClient) {
-          (window as any).queryClient.invalidateQueries();
-        }
+        // Clear all organization-scoped cache data (client + server)
+        await clearOrganizationCache({
+          clearLocalStorage: true,
+          preserveKeys: [], // Add any additional keys to preserve
+          revalidateServerCache: true, // Enable server-side cache revalidation
+        });
+
+        // Optionally prefetch critical data for the new organization
+        await prefetchOrganizationData(orgId);
+
+        console.log(
+          `[OrganizationStore] Successfully switched to organization: ${orgId}`
+        );
       } catch (error: any) {
         console.error("Failed to switch workspace:", error);
         setError(error.message || "Failed to switch workspace");

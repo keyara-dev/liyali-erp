@@ -20,6 +20,10 @@ help:
 	@echo "  lint               - Run linter"
 	@echo "  fmt                - Format code"
 	@echo "  clean              - Clean build artifacts"
+	@echo "  seed-multi-tenant  - Seed multi-tenant data with workspace separation"
+	@echo "  seed-cleanup       - Clean up multi-tenant test data"
+	@echo "  seed-help          - Show seeding help"
+	@echo "  verify-separation  - Verify multi-tenant data separation"
 	@echo ""
 	@echo "Examples:"
 	@echo "  make build"
@@ -108,6 +112,23 @@ seed-approvals:
 seed-approvals-cleanup:
 	@echo "Cleaning up approval test data..."
 	go run cmd/seed_approvals.go cleanup
+
+# Multi-tenant seeding targets
+seed-multi-tenant:
+	@echo "Seeding multi-tenant data with proper workspace separation..."
+	go run cmd/seed/main.go --multi-tenant
+
+seed-cleanup:
+	@echo "Cleaning up multi-tenant test data..."
+	go run cmd/seed/main.go --cleanup
+
+seed-help:
+	@echo "Showing seeding help..."
+	go run cmd/seed/main.go --help
+
+verify-separation:
+	@echo "Verifying multi-tenant data separation..."
+	go run cmd/verify-separation/main.go
 
 # Development targets
 watch:

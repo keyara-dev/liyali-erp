@@ -1,106 +1,105 @@
-'use client'
+"use client";
 
-import { useState } from 'react'
-import { Button } from '@/components/ui/button'
-import { Textarea } from '@/components/ui/textarea'
-import { Label } from '@/components/ui/label'
-import { SignatureCanvas } from '@/components/ui/signature-canvas'
-import { Upload, Send, XCircle, Loader2 } from 'lucide-react'
-import { useApprovalTasks, useApproveTask, useRejectTask } from '@/hooks/use-approval-workflow'
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { SignatureCanvas } from "@/components/ui/signature-canvas";
+import { Upload, Send, XCircle, Loader2 } from "lucide-react";
+import {
+  useApprovalTasks,
+  useApproveTask,
+  useRejectTask,
+} from "@/hooks/use-approval-workflow";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog'
+} from "@/components/ui/dialog";
 
 interface ApprovalActionPanelProps {
-  requisitionId: string
-  onApprovalComplete: () => void
+  requisitionId: string;
+  onApprovalComplete: () => void;
 }
 
 export function ApprovalActionPanel({
   requisitionId,
   onApprovalComplete,
 }: ApprovalActionPanelProps) {
-  const [action, setAction] = useState<'approve' | 'reject' | null>(null)
-  const [comments, setComments] = useState('')
-  const [remarks, setRemarks] = useState('')
-  const [signature, setSignature] = useState('')
-  const [showAttachmentDialog, setShowAttachmentDialog] = useState(false)
+  const [action, setAction] = useState<"approve" | "reject" | null>(null);
+  const [comments, setComments] = useState("");
+  const [remarks, setRemarks] = useState("");
+  const [signature, setSignature] = useState("");
+  const [showAttachmentDialog, setShowAttachmentDialog] = useState(false);
 
   // Fetch approval tasks for this requisition
   const { data: approvalTasks } = useApprovalTasks(
-    { documentType: 'REQUISITION', assignedToMe: true },
+    { documentType: "REQUISITION", assignedToMe: true },
     1,
     100
-  )
+  );
 
   // Find the approval task for this requisition
-  const task = approvalTasks?.find((t) => 
-    t.documentId === requisitionId || 
-    t.entityId === requisitionId ||
-    (t as any).requisitionId === requisitionId
-  )
-  const taskId = task?.id || ''
+  const task = approvalTasks?.find(
+    (t) =>
+      t.documentId === requisitionId ||
+      t.entityId === requisitionId ||
+      (t as any).requisitionId === requisitionId
+  );
+  const taskId = task?.id || "";
 
-  const approveMutation = useApproveTask()
-  const rejectMutation = useRejectTask()
+  const approveMutation = useApproveTask(taskId);
+  const rejectMutation = useRejectTask(taskId);
 
   const handleApprove = async () => {
     if (!signature || !taskId) {
-      return
+      return;
     }
 
     try {
       await approveMutation.mutateAsync({
-        taskId,
-        data: {
-          comments,
-          signature,
-          stageNumber: task?.stage || (task as any)?.stageIndex || 1,
-        }
-      })
-      
+        comments,
+        signature,
+        stageNumber: task?.stage || (task as any)?.stageIndex || 1,
+      });
+
       // Reset form and call completion callback
-      setComments('')
-      setRemarks('')
-      setSignature('')
-      setAction(null)
-      onApprovalComplete()
+      setComments("");
+      setRemarks("");
+      setSignature("");
+      setAction(null);
+      onApprovalComplete();
     } catch (error) {
       // Error handled by hook's onError callback
     }
-  }
+  };
 
   const handleReject = async () => {
     if (!remarks.trim() || !taskId) {
-      return
+      return;
     }
 
     try {
       await rejectMutation.mutateAsync({
-        taskId,
-        data: {
-          remarks,
-          comments: remarks,
-          signature,
-        }
-      })
-      
+        remarks,
+        comments: remarks,
+        signature,
+      });
+
       // Reset form and call completion callback
-      setComments('')
-      setRemarks('')
-      setSignature('')
-      setAction(null)
-      onApprovalComplete()
+      setComments("");
+      setRemarks("");
+      setSignature("");
+      setAction(null);
+      onApprovalComplete();
     } catch (error) {
       // Error handled by hook's onError callback
     }
-  }
+  };
 
-  const isLoading = approveMutation.isPending || rejectMutation.isPending
+  const isLoading = approveMutation.isPending || rejectMutation.isPending;
 
   if (action === null) {
     return (
@@ -108,7 +107,7 @@ export function ApprovalActionPanel({
         <h3 className="font-semibold text-sm">Action Required</h3>
         <div className="grid grid-cols-2 gap-2">
           <Button
-            onClick={() => setAction('approve')}
+            onClick={() => setAction("approve")}
             disabled={isLoading || !task}
             className="bg-green-600 hover:bg-green-700 gap-2"
           >
@@ -116,7 +115,7 @@ export function ApprovalActionPanel({
             Approve
           </Button>
           <Button
-            onClick={() => setAction('reject')}
+            onClick={() => setAction("reject")}
             disabled={isLoading || !task}
             variant="destructive"
             className="gap-2"
@@ -131,25 +130,23 @@ export function ApprovalActionPanel({
           </p>
         )}
       </div>
-    )
+    );
   }
 
   return (
     <div className="space-y-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
       <div>
         <h3 className="font-semibold mb-2">
-          {action === 'approve'
-            ? 'Approve Requisition'
-            : 'Reject Requisition'}
+          {action === "approve" ? "Approve Requisition" : "Reject Requisition"}
         </h3>
         <p className="text-sm text-gray-600 mb-4">
-          {action === 'approve'
-            ? 'Add a signature and optional comments to approve'
-            : 'Provide remarks explaining the rejection reason'}
+          {action === "approve"
+            ? "Add a signature and optional comments to approve"
+            : "Provide remarks explaining the rejection reason"}
         </p>
       </div>
 
-      {action === 'approve' ? (
+      {action === "approve" ? (
         <>
           <div className="space-y-2">
             <Label htmlFor="comments">Comments (Optional)</Label>
@@ -171,9 +168,7 @@ export function ApprovalActionPanel({
         </>
       ) : (
         <div className="space-y-2">
-          <Label htmlFor="remarks">
-            Remarks *
-          </Label>
+          <Label htmlFor="remarks">Remarks *</Label>
           <Textarea
             id="remarks"
             placeholder="Required: Please explain why this requisition is being rejected..."
@@ -184,7 +179,8 @@ export function ApprovalActionPanel({
             disabled={isLoading}
           />
           <p className="text-xs text-muted-foreground">
-            Detailed remarks are required for rejection to help the requester understand the issues
+            Detailed remarks are required for rejection to help the requester
+            understand the issues
           </p>
         </div>
       )}
@@ -202,12 +198,16 @@ export function ApprovalActionPanel({
 
       <div className="flex gap-2">
         <Button
-          onClick={action === 'approve' ? handleApprove : handleReject}
-          disabled={isLoading || (action === 'reject' && !remarks.trim()) || (action === 'approve' && !signature)}
+          onClick={action === "approve" ? handleApprove : handleReject}
+          disabled={
+            isLoading ||
+            (action === "reject" && !remarks.trim()) ||
+            (action === "approve" && !signature)
+          }
           className={
-            action === 'approve'
-              ? 'bg-green-600 hover:bg-green-700 flex-1'
-              : 'bg-red-600 hover:bg-red-700 flex-1'
+            action === "approve"
+              ? "bg-green-600 hover:bg-green-700 flex-1"
+              : "bg-red-600 hover:bg-red-700 flex-1"
           }
         >
           {isLoading ? (
@@ -215,19 +215,19 @@ export function ApprovalActionPanel({
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               Processing...
             </>
-          ) : action === 'approve' ? (
-            'Confirm Approval'
+          ) : action === "approve" ? (
+            "Confirm Approval"
           ) : (
-            'Confirm Rejection'
+            "Confirm Rejection"
           )}
         </Button>
         <Button
           variant="outline"
           onClick={() => {
-            setAction(null)
-            setComments('')
-            setRemarks('')
-            setSignature('')
+            setAction(null);
+            setComments("");
+            setRemarks("");
+            setSignature("");
           }}
           disabled={isLoading}
         >
@@ -236,7 +236,10 @@ export function ApprovalActionPanel({
       </div>
 
       {/* Attachment Dialog */}
-      <Dialog open={showAttachmentDialog} onOpenChange={setShowAttachmentDialog}>
+      <Dialog
+        open={showAttachmentDialog}
+        onOpenChange={setShowAttachmentDialog}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Add Supporting Documents</DialogTitle>
@@ -254,12 +257,15 @@ export function ApprovalActionPanel({
                 PDF, DOC, XLS up to 10MB
               </p>
             </div>
-            <Button onClick={() => setShowAttachmentDialog(false)} className="w-full">
+            <Button
+              onClick={() => setShowAttachmentDialog(false)}
+              className="w-full"
+            >
               Continue
             </Button>
           </div>
         </DialogContent>
       </Dialog>
     </div>
-  )
+  );
 }

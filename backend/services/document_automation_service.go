@@ -71,23 +71,23 @@ func (s *DocumentAutomationService) CreatePurchaseOrderFromRequisition(
 
 	// Handle vendor - create PO with or without vendor
 	var vendorID string
-	var vendorName string = "TBD - To Be Determined"
+	var vendorName string = "To Be Determined"
 	
 	if requisition.PreferredVendorID != nil && *requisition.PreferredVendorID != "" {
 		// Verify vendor exists if provided
 		var vendor models.Vendor
 		if err := s.db.Where("id = ?", *requisition.PreferredVendorID).First(&vendor).Error; err != nil {
-			// If vendor not found, create PO without vendor but log the issue
-			vendorID = ""
-			vendorName = fmt.Sprintf("Invalid Vendor (ID: %s)", *requisition.PreferredVendorID)
+			// If vendor not found, use placeholder vendor
+			vendorID = "vendor-placeholder-001"
+			vendorName = "To Be Determined (Invalid Vendor)"
 		} else {
 			vendorID = vendor.ID
 			vendorName = vendor.Name
 		}
 	} else {
-		// No vendor specified - create PO with placeholder
-		vendorID = ""
-		vendorName = "TBD - To Be Determined"
+		// No vendor specified - use placeholder vendor
+		vendorID = "vendor-placeholder-001"
+		vendorName = "To Be Determined"
 	}
 
 	// Generate PO number
@@ -113,8 +113,7 @@ func (s *DocumentAutomationService) CreatePurchaseOrderFromRequisition(
 	purchaseOrder := models.PurchaseOrder{
 		ID:                uuid.New().String(),
 		PONumber:          poNumber,
-		VendorID:          vendorID, // Can be empty if no vendor
-		VendorName:        vendorName, // Display name for UI
+		VendorID:          vendorID, // Now can be the placeholder vendor ID
 		Status:            "draft", // Start as draft for review
 		TotalAmount:       requisition.TotalAmount,
 		Currency:          requisition.Currency,
@@ -127,6 +126,21 @@ func (s *DocumentAutomationService) CreatePurchaseOrderFromRequisition(
 		
 		// Add description to track auto-creation details
 		Description:       fmt.Sprintf("Auto-created from requisition %s. Vendor: %s", requisition.REQNumber, vendorName),
+		
+		// Copy additional fields from requisition
+		Department:        requisition.Department,
+		DepartmentID:      requisition.DepartmentId,
+		Title:             fmt.Sprintf("PO for %s", requisition.Title),
+		BudgetCode:        requisition.BudgetCode,
+		CostCenter:        requisition.CostCenter,
+		ProjectCode:       requisition.ProjectCode,
+		
+		// Link to source requisition
+		SourceRequisitionId:     requisition.ID,
+		SourceRequisitionNumber: requisition.REQNumber,
+		
+		// Mark as auto-created
+		AutomationUsed:    true,
 	}
 
 	// Set items

@@ -12,13 +12,13 @@
 -- Create default organization
 INSERT INTO organizations (id, name, slug, description, logo_url, primary_color, active, tier, created_by, created_at, updated_at)
 VALUES 
-    ('org-default-001', 'Default Organization', 'default-org', 'Default organization for initial setup', NULL, '#0066CC', true, 'free', NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+    ('org-default-001', 'Default Organization', 'default-org', 'Default organization for initial setup', NULL, '#0066CC', true, 'starter', NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
 ON CONFLICT (id) DO NOTHING;
 
 -- Create demo organization for testing
 INSERT INTO organizations (id, name, slug, description, logo_url, primary_color, active, tier, created_by, created_at, updated_at)
 VALUES 
-    ('org-demo-001', 'Demo Corporation', 'demo-corp', 'Demo organization for testing and development', NULL, '#FF6B35', true, 'premium', NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+    ('org-demo-001', 'Demo Corporation', 'demo-corp', 'Demo organization for testing and development', NULL, '#FF6B35', true, 'enterprise', NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
 ON CONFLICT (id) DO NOTHING;
 
 -- ============================================================================

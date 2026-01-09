@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/liyali/liyali-gateway/config"
 	"github.com/liyali/liyali-gateway/logging"
+	"github.com/liyali/liyali-gateway/middleware"
 	"github.com/liyali/liyali-gateway/models"
 	"github.com/liyali/liyali-gateway/services"
 	"github.com/liyali/liyali-gateway/types"
@@ -19,6 +20,16 @@ import (
 func GetBudgets(c *fiber.Ctx) error {
 	logger := logging.FromContext(c)
 	logger.Info("get_budgets_request")
+
+	// Get organization context from tenant middleware
+	tenant, err := middleware.GetTenantContext(*c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"success": false,
+			"message": "Organization context required",
+			"error":   err.Error(),
+		})
+	}
 
 	db := config.DB
 
@@ -37,15 +48,17 @@ func GetBudgets(c *fiber.Ctx) error {
 
 	// Add query parameters to context
 	logging.AddFieldsToRequest(c, map[string]interface{}{
-		"page":        page,
-		"limit":       limit,
-		"status":      status,
-		"department":  department,
-		"fiscal_year": fiscalYear,
-		"operation":   "get_budgets",
+		"page":            page,
+		"limit":           limit,
+		"status":          status,
+		"department":      department,
+		"fiscal_year":     fiscalYear,
+		"operation":       "get_budgets",
+		"organization_id": tenant.OrganizationID,
 	})
 
-	query := db
+	// Start with organization filter - CRITICAL SECURITY FIX
+	query := db.Where("organization_id = ?", tenant.OrganizationID)
 	if status != "" {
 		query = query.Where("status = ?", status)
 	}
@@ -96,6 +109,16 @@ func CreateBudget(c *fiber.Ctx) error {
 	logger := logging.FromContext(c)
 	logger.Info("create_budget_request")
 
+	// Get organization context from tenant middleware
+	tenant, err := middleware.GetTenantContext(*c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"success": false,
+			"message": "Organization context required",
+			"error":   err.Error(),
+		})
+	}
+
 	var req types.CreateBudgetRequest
 
 	if err := c.BodyParser(&req); err != nil {
@@ -111,6 +134,7 @@ func CreateBudget(c *fiber.Ctx) error {
 		"total_budget":     req.TotalBudget,
 		"allocated_amount": req.AllocatedAmount,
 		"operation":        "create_budget",
+		"organization_id":  tenant.OrganizationID,
 	})
 
 	if req.BudgetCode == "" {
@@ -158,6 +182,7 @@ func CreateBudget(c *fiber.Ctx) error {
 
 	budget := models.Budget{
 		ID:              budgetID,
+		OrganizationID:  tenant.OrganizationID, // SECURITY FIX: Set organization ID
 		OwnerID:         userID,
 		BudgetCode:      req.BudgetCode,
 		Department:      req.Department,
@@ -192,6 +217,16 @@ func GetBudget(c *fiber.Ctx) error {
 	logger := logging.FromContext(c)
 	logger.Info("get_budget_request")
 
+	// Get organization context from tenant middleware
+	tenant, err := middleware.GetTenantContext(*c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"success": false,
+			"message": "Organization context required",
+			"error":   err.Error(),
+		})
+	}
+
 	id := c.Params("id")
 	if id == "" {
 		logging.LogWarn(c, "budget_id_missing")
@@ -200,16 +235,18 @@ func GetBudget(c *fiber.Ctx) error {
 
 	// Add budget ID to context
 	logging.AddFieldsToRequest(c, map[string]interface{}{
-		"budget_id": id,
-		"operation": "get_budget",
+		"budget_id":       id,
+		"operation":       "get_budget",
+		"organization_id": tenant.OrganizationID,
 	})
 
 	logger.Debug("fetching_budget_by_id")
 
 	var budget models.Budget
+	// SECURITY FIX: Filter by organization ID
 	if err := config.DB.
 		Preload("Owner").
-		Where("id = ?", id).
+		Where("id = ? AND organization_id = ?", id, tenant.OrganizationID).
 		First(&budget).Error; err != nil {
 		logging.LogError(c, err, "budget_not_found")
 		return utils.SendNotFoundError(c, "Budget")
@@ -223,6 +260,16 @@ func GetBudget(c *fiber.Ctx) error {
 func UpdateBudget(c *fiber.Ctx) error {
 	logger := logging.FromContext(c)
 	logger.Info("update_budget_request")
+
+	// Get organization context from tenant middleware
+	tenant, err := middleware.GetTenantContext(*c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"success": false,
+			"message": "Organization context required",
+			"error":   err.Error(),
+		})
+	}
 
 	id := c.Params("id")
 	if id == "" {
@@ -243,12 +290,14 @@ func UpdateBudget(c *fiber.Ctx) error {
 		"new_department":   req.Department,
 		"new_total_budget": req.TotalBudget,
 		"new_allocated":    req.AllocatedAmount,
+		"organization_id":  tenant.OrganizationID,
 	})
 
 	logger.Debug("fetching_budget_for_update")
 
 	var budget models.Budget
-	if err := config.DB.Where("id = ?", id).First(&budget).Error; err != nil {
+	// SECURITY FIX: Filter by organization ID
+	if err := config.DB.Where("id = ? AND organization_id = ?", id, tenant.OrganizationID).First(&budget).Error; err != nil {
 		logging.LogError(c, err, "budget_not_found_for_update")
 		return utils.SendNotFoundError(c, "Budget")
 	}
@@ -299,6 +348,16 @@ func DeleteBudget(c *fiber.Ctx) error {
 	logger := logging.FromContext(c)
 	logger.Info("delete_budget_request")
 
+	// Get organization context from tenant middleware
+	tenant, err := middleware.GetTenantContext(*c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"success": false,
+			"message": "Organization context required",
+			"error":   err.Error(),
+		})
+	}
+
 	id := c.Params("id")
 	if id == "" {
 		logging.LogWarn(c, "budget_id_missing_for_deletion")
@@ -307,14 +366,16 @@ func DeleteBudget(c *fiber.Ctx) error {
 
 	// Add context
 	logging.AddFieldsToRequest(c, map[string]interface{}{
-		"budget_id": id,
-		"operation": "delete_budget",
+		"budget_id":       id,
+		"operation":       "delete_budget",
+		"organization_id": tenant.OrganizationID,
 	})
 
 	logger.Debug("fetching_budget_for_deletion")
 
 	var budget models.Budget
-	if err := config.DB.Where("id = ?", id).First(&budget).Error; err != nil {
+	// SECURITY FIX: Filter by organization ID
+	if err := config.DB.Where("id = ? AND organization_id = ?", id, tenant.OrganizationID).First(&budget).Error; err != nil {
 		logging.LogError(c, err, "budget_not_found_for_deletion")
 		return utils.SendNotFoundError(c, "Budget")
 	}
@@ -345,6 +406,16 @@ func SubmitBudget(c *fiber.Ctx) error {
 	logger := logging.FromContext(c)
 	logger.Info("submit_budget_request")
 
+	// Get organization context from tenant middleware
+	tenant, err := middleware.GetTenantContext(*c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"success": false,
+			"message": "Organization context required",
+			"error":   err.Error(),
+		})
+	}
+
 	id := c.Params("id")
 	if id == "" {
 		logging.LogWarn(c, "budget_id_missing_for_submission")
@@ -353,14 +424,16 @@ func SubmitBudget(c *fiber.Ctx) error {
 
 	// Add context
 	logging.AddFieldsToRequest(c, map[string]interface{}{
-		"budget_id": id,
-		"operation": "submit_budget",
+		"budget_id":       id,
+		"operation":       "submit_budget",
+		"organization_id": tenant.OrganizationID,
 	})
 
 	logger.Debug("fetching_budget_for_submission")
 
 	var budget models.Budget
-	if err := config.DB.Where("id = ?", id).First(&budget).Error; err != nil {
+	// SECURITY FIX: Filter by organization ID
+	if err := config.DB.Where("id = ? AND organization_id = ?", id, tenant.OrganizationID).First(&budget).Error; err != nil {
 		logging.LogError(c, err, "budget_not_found_for_submission")
 		return utils.SendNotFoundError(c, "Budget")
 	}
@@ -390,7 +463,7 @@ func SubmitBudget(c *fiber.Ctx) error {
 	logger.Debug("assigning_workflow_to_budget")
 
 	// Assign workflow to the budget
-	_, err := workflowExecutionService.AssignWorkflowToDocument(c.Context(), organizationID, budget.ID, "BUDGET", userID)
+	_, err = workflowExecutionService.AssignWorkflowToDocument(c.Context(), organizationID, budget.ID, "BUDGET", userID)
 	if err != nil {
 		logging.LogError(c, err, "failed_to_assign_workflow_to_budget")
 		return utils.SendInternalError(c, "Failed to assign workflow to budget", err)

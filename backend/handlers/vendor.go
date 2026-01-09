@@ -7,6 +7,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/liyali/liyali-gateway/config"
 	"github.com/liyali/liyali-gateway/logging"
+	"github.com/liyali/liyali-gateway/middleware"
 	"github.com/liyali/liyali-gateway/models"
 	"github.com/liyali/liyali-gateway/types"
 	"github.com/liyali/liyali-gateway/utils"
@@ -16,6 +17,14 @@ import (
 func GetVendors(c *fiber.Ctx) error {
 	logger := logging.FromContext(c)
 	logger.Info("get_vendors_request")
+
+	// Get organization context from tenant middleware
+	tenant, err := middleware.GetTenantContext(*c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "Organization context required",
+		})
+	}
 
 	db := config.DB
 
@@ -33,14 +42,17 @@ func GetVendors(c *fiber.Ctx) error {
 
 	// Add query parameters to context
 	logging.AddFieldsToRequest(c, map[string]interface{}{
-		"operation": "get_vendors",
-		"page":      page,
-		"limit":     limit,
-		"active":    active,
-		"country":   country,
+		"operation":      "get_vendors",
+		"page":           page,
+		"limit":          limit,
+		"active":         active,
+		"country":        country,
+		"organizationID": tenant.OrganizationID,
 	})
 
-	query := db
+	// SECURITY: Always filter by organization ID first
+	query := db.Where("organization_id = ?", tenant.OrganizationID)
+	
 	if active == "true" {
 		query = query.Where("active = ?", true)
 	} else if active == "false" {
@@ -83,6 +95,14 @@ func GetVendors(c *fiber.Ctx) error {
 
 // CreateVendor creates a new vendor
 func CreateVendor(c *fiber.Ctx) error {
+	// Get organization context from tenant middleware
+	tenant, err := middleware.GetTenantContext(*c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "Organization context required",
+		})
+	}
+
 	var req types.CreateVendorRequest
 
 	if err := c.BodyParser(&req); err != nil {
@@ -136,12 +156,12 @@ func CreateVendor(c *fiber.Ctx) error {
 		})
 	}
 
-	// Check if vendor with same email already exists
+	// SECURITY: Check if vendor with same email already exists in THIS organization
 	var existingVendor models.Vendor
-	if err := config.DB.Where("email = ?", req.Email).First(&existingVendor).Error; err == nil {
+	if err := config.DB.Where("email = ? AND organization_id = ?", req.Email, tenant.OrganizationID).First(&existingVendor).Error; err == nil {
 		return c.Status(fiber.StatusConflict).JSON(fiber.Map{
 			"success": false,
-			"message": "Vendor with this email already exists",
+			"message": "Vendor with this email already exists in your organization",
 		})
 	}
 
@@ -149,18 +169,20 @@ func CreateVendor(c *fiber.Ctx) error {
 	vendorCode := utils.GenerateVendorCode()
 
 	vendor := models.Vendor{
-		ID:          uuid.New().String(),
-		VendorCode:  vendorCode,
-		Name:        req.Name,
-		Email:       req.Email,
-		Phone:       req.Phone,
-		Country:     req.Country,
-		City:        req.City,
-		BankAccount: req.BankAccount,
-		TaxID:       req.TaxID,
-		Active:      true,
-		CreatedAt:   time.Now(),
-		UpdatedAt:   time.Now(),
+		ID:             uuid.New().String(),
+		OrganizationID: tenant.OrganizationID, // SECURITY: Set organization ID
+		VendorCode:     vendorCode,
+		Name:           req.Name,
+		Email:          req.Email,
+		Phone:          req.Phone,
+		Country:        req.Country,
+		City:           req.City,
+		BankAccount:    req.BankAccount,
+		TaxID:          req.TaxID,
+		Active:         true,
+		CreatedBy:      tenant.UserID,
+		CreatedAt:      time.Now(),
+		UpdatedAt:      time.Now(),
 	}
 
 	if err := config.DB.Create(&vendor).Error; err != nil {
@@ -179,6 +201,14 @@ func CreateVendor(c *fiber.Ctx) error {
 
 // GetVendor retrieves a single vendor by ID
 func GetVendor(c *fiber.Ctx) error {
+	// Get organization context from tenant middleware
+	tenant, err := middleware.GetTenantContext(*c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "Organization context required",
+		})
+	}
+
 	id := c.Params("id")
 	if id == "" {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
@@ -188,7 +218,8 @@ func GetVendor(c *fiber.Ctx) error {
 	}
 
 	var vendor models.Vendor
-	if err := config.DB.Where("id = ?", id).First(&vendor).Error; err != nil {
+	// SECURITY: Filter by organization ID to prevent cross-organization access
+	if err := config.DB.Where("id = ? AND organization_id = ?", id, tenant.OrganizationID).First(&vendor).Error; err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
 			"success": false,
 			"message": "Vendor not found",
@@ -203,6 +234,14 @@ func GetVendor(c *fiber.Ctx) error {
 
 // UpdateVendor updates an existing vendor
 func UpdateVendor(c *fiber.Ctx) error {
+	// Get organization context from tenant middleware
+	tenant, err := middleware.GetTenantContext(*c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "Organization context required",
+		})
+	}
+
 	id := c.Params("id")
 	if id == "" {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
@@ -221,7 +260,8 @@ func UpdateVendor(c *fiber.Ctx) error {
 	}
 
 	var vendor models.Vendor
-	if err := config.DB.Where("id = ?", id).First(&vendor).Error; err != nil {
+	// SECURITY: Filter by organization ID to prevent cross-organization access
+	if err := config.DB.Where("id = ? AND organization_id = ?", id, tenant.OrganizationID).First(&vendor).Error; err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
 			"success": false,
 			"message": "Vendor not found",
@@ -238,12 +278,12 @@ func UpdateVendor(c *fiber.Ctx) error {
 		vendor.Name = req.Name
 	}
 	if req.Email != "" {
-		// Check if email is already used by another vendor
+		// SECURITY: Check if email is already used by another vendor in THIS organization
 		var existingVendor models.Vendor
-		if err := config.DB.Where("email = ? AND id != ?", req.Email, id).First(&existingVendor).Error; err == nil {
+		if err := config.DB.Where("email = ? AND id != ? AND organization_id = ?", req.Email, id, tenant.OrganizationID).First(&existingVendor).Error; err == nil {
 			return c.Status(fiber.StatusConflict).JSON(fiber.Map{
 				"success": false,
-				"message": "Vendor with this email already exists",
+				"message": "Vendor with this email already exists in your organization",
 			})
 		}
 		vendor.Email = req.Email
@@ -287,6 +327,14 @@ func UpdateVendor(c *fiber.Ctx) error {
 
 // DeleteVendor deactivates a vendor (soft delete via active flag)
 func DeleteVendor(c *fiber.Ctx) error {
+	// Get organization context from tenant middleware
+	tenant, err := middleware.GetTenantContext(*c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "Organization context required",
+		})
+	}
+
 	id := c.Params("id")
 	if id == "" {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
@@ -296,7 +344,8 @@ func DeleteVendor(c *fiber.Ctx) error {
 	}
 
 	var vendor models.Vendor
-	if err := config.DB.Where("id = ?", id).First(&vendor).Error; err != nil {
+	// SECURITY: Filter by organization ID to prevent cross-organization access
+	if err := config.DB.Where("id = ? AND organization_id = ?", id, tenant.OrganizationID).First(&vendor).Error; err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
 			"success": false,
 			"message": "Vendor not found",

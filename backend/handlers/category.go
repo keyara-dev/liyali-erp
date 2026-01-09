@@ -6,6 +6,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 	"github.com/liyali/liyali-gateway/config"
+	"github.com/liyali/liyali-gateway/middleware"
 	"github.com/liyali/liyali-gateway/models"
 	"github.com/liyali/liyali-gateway/types"
 	"github.com/liyali/liyali-gateway/utils"
@@ -13,6 +14,14 @@ import (
 
 // GetCategories retrieves all categories with pagination and filtering
 func GetCategories(c *fiber.Ctx) error {
+	// Get organization context from tenant middleware
+	tenant, err := middleware.GetTenantContext(*c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "Organization context required",
+		})
+	}
+
 	db := config.DB
 
 	page := c.QueryInt("page", 1)
@@ -26,7 +35,9 @@ func GetCategories(c *fiber.Ctx) error {
 
 	active := c.Query("active")
 
-	query := db
+	// SECURITY: Always filter by organization ID first
+	query := db.Where("organization_id = ?", tenant.OrganizationID)
+	
 	if active == "true" {
 		query = query.Where("active = ?", true)
 	} else if active == "false" {
@@ -59,6 +70,14 @@ func GetCategories(c *fiber.Ctx) error {
 
 // CreateCategory creates a new category with budget code mappings
 func CreateCategory(c *fiber.Ctx) error {
+	// Get organization context from tenant middleware
+	tenant, err := middleware.GetTenantContext(*c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "Organization context required",
+		})
+	}
+
 	var req types.CreateCategoryRequest
 
 	if err := c.BodyParser(&req); err != nil {
@@ -76,17 +95,18 @@ func CreateCategory(c *fiber.Ctx) error {
 		})
 	}
 
-	// Check if category with same name already exists
+	// SECURITY: Check if category with same name already exists in THIS organization
 	var existingCategory models.Category
-	if err := config.DB.Where("name = ?", req.Name).First(&existingCategory).Error; err == nil {
+	if err := config.DB.Where("name = ? AND organization_id = ?", req.Name, tenant.OrganizationID).First(&existingCategory).Error; err == nil {
 		return c.Status(fiber.StatusConflict).JSON(fiber.Map{
 			"success": false,
-			"message": "Category with this name already exists",
+			"message": "Category with this name already exists in your organization",
 		})
 	}
 
 	category := models.Category{
-		ID:          uuid.New().String(),
+		ID:             uuid.New().String(),
+		OrganizationID: tenant.OrganizationID, // SECURITY: Set organization ID
 		Name:        req.Name,
 		Description: req.Description,
 		Active:      true,
@@ -128,6 +148,14 @@ func CreateCategory(c *fiber.Ctx) error {
 
 // GetCategory retrieves a single category by ID with its budget codes
 func GetCategory(c *fiber.Ctx) error {
+	// Get organization context from tenant middleware
+	tenant, err := middleware.GetTenantContext(*c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "Organization context required",
+		})
+	}
+
 	id := c.Params("id")
 	if id == "" {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
@@ -137,7 +165,8 @@ func GetCategory(c *fiber.Ctx) error {
 	}
 
 	var category models.Category
-	if err := config.DB.Where("id = ?", id).First(&category).Error; err != nil {
+	// SECURITY: Filter by organization ID to prevent cross-organization access
+	if err := config.DB.Where("id = ? AND organization_id = ?", id, tenant.OrganizationID).First(&category).Error; err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
 			"success": false,
 			"message": "Category not found",

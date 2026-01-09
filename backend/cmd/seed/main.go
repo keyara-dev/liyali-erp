@@ -1,119 +1,108 @@
 package main
 
 import (
+	"flag"
 	"log"
 	"os"
 
 	"github.com/joho/godotenv"
 	"github.com/liyali/liyali-gateway/config"
-	"github.com/liyali/liyali-gateway/models"
-	"github.com/liyali/liyali-gateway/utils"
-	"gorm.io/gorm"
+	"github.com/liyali/liyali-gateway/database/seeders"
 )
-
-// User structure for seeding
-type SeedUser struct {
-	Email    string
-	Password string
-	Name     string
-	Role     string
-}
 
 func main() {
 	// Load environment variables
 	err := godotenv.Load(".env")
-	if err != nil && os.Getenv("APP_ENV") == "" {
+	if err != nil {
 		log.Println("Note: .env file not found, using environment variables")
+	}
+
+	// Set default values if not provided
+	if os.Getenv("DB_PORT") == "" {
+		os.Setenv("DB_PORT", "5432")
+	}
+	if os.Getenv("DB_HOST") == "" {
+		os.Setenv("DB_HOST", "localhost")
+	}
+	if os.Getenv("DB_USER") == "" {
+		os.Setenv("DB_USER", "postgres")
+	}
+	if os.Getenv("DB_SSL_MODE") == "" {
+		os.Setenv("DB_SSL_MODE", "disable")
+	}
+
+	// Parse command line flags
+	var (
+		multiTenant = flag.Bool("multi-tenant", false, "Seed multi-tenant data with proper workspace separation")
+		cleanup     = flag.Bool("cleanup", false, "Clean up existing multi-tenant test data")
+		help        = flag.Bool("help", false, "Show help message")
+	)
+	flag.Parse()
+
+	if *help {
+		showHelp()
+		return
 	}
 
 	// Initialize database connection
 	config.InitDatabase()
 
 	db := config.DB
-
-	// List of test users to seed (matching DEMO_USERS structure)
-	users := []SeedUser{
-		{
-			Email:    "requester@liyali.com",
-			Password: "password123",
-			Name:     "John Requester",
-			Role:     "requester",
-		},
-		{
-			Email:    "manager@liyali.com",
-			Password: "password123",
-			Name:     "Sarah Manager",
-			Role:     "approver",
-		},
-		{
-			Email:    "finance@liyali.com",
-			Password: "password123",
-			Name:     "James Finance",
-			Role:     "finance",
-		},
-		{
-			Email:    "director@liyali.com",
-			Password: "password123",
-			Name:     "Paul Director",
-			Role:     "approver",
-		},
-		{
-			Email:    "cfo@liyali.com",
-			Password: "password123",
-			Name:     "Michelle CFO",
-			Role:     "finance",
-		},
-		{
-			Email:    "compliance@liyali.com",
-			Password: "password123",
-			Name:     "David Compliance",
-			Role:     "viewer",
-		},
-		{
-			Email:    "admin@liyali.com",
-			Password: "password123",
-			Name:     "Admin User",
-			Role:     "admin",
-		},
+	if db == nil {
+		log.Fatal("Database connection is nil")
 	}
 
-	log.Println("Starting database seeding...")
+	log.Println("🚀 Starting database seeding operations...")
 
-	for _, seedUser := range users {
-		// Check if user already exists
-		var existingUser models.User
-		if err := db.Where("email = ?", seedUser.Email).First(&existingUser).Error; err != nil {
-			if err == gorm.ErrRecordNotFound {
-				// User doesn't exist, create it
-				hashedPassword, err := utils.HashPassword(seedUser.Password)
-				if err != nil {
-					log.Printf("Error hashing password for %s: %v", seedUser.Email, err)
-					continue
-				}
-
-				user := models.User{
-					Email:    seedUser.Email,
-					Name:     seedUser.Name,
-					Password: hashedPassword,
-					Role:     seedUser.Role,
-					Active:   true,
-				}
-
-				if err := db.Create(&user).Error; err != nil {
-					log.Printf("Error creating user %s: %v", seedUser.Email, err)
-					continue
-				}
-
-				log.Printf("✓ Created user: %s (%s) with role: %s", seedUser.Email, seedUser.Name, seedUser.Role)
-			} else {
-				log.Printf("Error checking user %s: %v", seedUser.Email, err)
-				continue
-			}
-		} else {
-			log.Printf("✓ User already exists: %s", seedUser.Email)
+	// Handle cleanup operation
+	if *cleanup {
+		log.Println("🧹 Cleaning up multi-tenant test data...")
+		if err := seeders.CleanupMultiTenantData(db); err != nil {
+			log.Fatalf("Failed to cleanup multi-tenant data: %v", err)
 		}
+		log.Println("✅ Cleanup completed successfully!")
+		return
 	}
 
-	log.Println("Database seeding completed successfully!")
-	os.Exit(0)
+	// Handle multi-tenant seeding
+	if *multiTenant {
+		log.Println("🌱 Seeding multi-tenant data with proper workspace separation...")
+		if err := seeders.SeedMultiTenantData(db); err != nil {
+			log.Fatalf("Failed to seed multi-tenant data: %v", err)
+		}
+		log.Println("✅ Multi-tenant seeding completed successfully!")
+		return
+	}
+
+	// Default behavior - show help
+	showHelp()
+}
+
+func showHelp() {
+	log.Println("Database Seeding Tool")
+	log.Println("====================")
+	log.Println("")
+	log.Println("Usage:")
+	log.Println("  go run cmd/seed/main.go [options]")
+	log.Println("")
+	log.Println("Options:")
+	log.Println("  --multi-tenant    Seed multi-tenant data with proper workspace separation")
+	log.Println("  --cleanup         Clean up existing multi-tenant test data")
+	log.Println("  --help            Show this help message")
+	log.Println("")
+	log.Println("Examples:")
+	log.Println("  go run cmd/seed/main.go --multi-tenant")
+	log.Println("  go run cmd/seed/main.go --cleanup")
+	log.Println("")
+	log.Println("Description:")
+	log.Println("  This tool creates properly separated test data for multiple organizations")
+	log.Println("  to ensure that each workspace has its own isolated dataset for testing")
+	log.Println("  the multi-tenant functionality of the application.")
+	log.Println("")
+	log.Println("  The multi-tenant seeder creates:")
+	log.Println("  - Separate users for each organization")
+	log.Println("  - Organization-specific categories")
+	log.Println("  - Isolated requisitions and budgets")
+	log.Println("  - Proper organization memberships")
+	log.Println("")
 }

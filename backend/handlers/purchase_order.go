@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/liyali/liyali-gateway/config"
 	"github.com/liyali/liyali-gateway/logging"
+	"github.com/liyali/liyali-gateway/middleware"
 	"github.com/liyali/liyali-gateway/models"
 	"github.com/liyali/liyali-gateway/services"
 	"github.com/liyali/liyali-gateway/types"
@@ -19,6 +20,14 @@ import (
 func GetPurchaseOrders(c *fiber.Ctx) error {
 	logger := logging.FromContext(c)
 	logger.Info("get_purchase_orders_request")
+
+	// Get organization context from tenant middleware
+	tenant, err := middleware.GetTenantContext(*c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "Organization context required",
+		})
+	}
 
 	db := config.DB
 
@@ -36,14 +45,17 @@ func GetPurchaseOrders(c *fiber.Ctx) error {
 
 	// Add query parameters to context
 	logging.AddFieldsToRequest(c, map[string]interface{}{
-		"operation":  "get_purchase_orders",
-		"page":       page,
-		"limit":      limit,
-		"status":     status,
-		"vendor_id":  vendorID,
+		"operation":      "get_purchase_orders",
+		"page":           page,
+		"limit":          limit,
+		"status":         status,
+		"vendor_id":      vendorID,
+		"organizationID": tenant.OrganizationID,
 	})
 
-	query := db
+	// SECURITY: Always filter by organization ID first
+	query := db.Where("organization_id = ?", tenant.OrganizationID)
+	
 	if status != "" {
 		query = query.Where("status = ?", status)
 	}

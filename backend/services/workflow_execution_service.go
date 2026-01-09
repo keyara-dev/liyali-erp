@@ -167,6 +167,21 @@ func (s *WorkflowExecutionService) ApproveWorkflowTask(ctx context.Context, task
 		return fmt.Errorf("task is not in pending status")
 	}
 
+	// Validate user has the required role for this task
+	if task.AssignedRole != nil {
+		var user models.User
+		if err := tx.Where("id = ?", userID).First(&user).Error; err != nil {
+			tx.Rollback()
+			return fmt.Errorf("user not found: %w", err)
+		}
+
+		// Check if user's role matches the required role for this task
+		if user.Role != *task.AssignedRole {
+			tx.Rollback()
+			return fmt.Errorf("insufficient permissions: user role '%s' does not match required role '%s'", user.Role, *task.AssignedRole)
+		}
+	}
+
 	// Get the workflow assignment
 	var assignment models.WorkflowAssignment
 	if err := tx.Where("id = ?", task.WorkflowAssignmentID).Preload("Workflow").First(&assignment).Error; err != nil {
@@ -316,6 +331,21 @@ func (s *WorkflowExecutionService) RejectWorkflowTask(ctx context.Context, taskI
 	if task.Status != "pending" {
 		tx.Rollback()
 		return fmt.Errorf("task is not in pending status")
+	}
+
+	// Validate user has the required role for this task
+	if task.AssignedRole != nil {
+		var user models.User
+		if err := tx.Where("id = ?", userID).First(&user).Error; err != nil {
+			tx.Rollback()
+			return fmt.Errorf("user not found: %w", err)
+		}
+
+		// Check if user's role matches the required role for this task
+		if user.Role != *task.AssignedRole {
+			tx.Rollback()
+			return fmt.Errorf("insufficient permissions: user role '%s' does not match required role '%s'", user.Role, *task.AssignedRole)
+		}
 	}
 
 	// Get the workflow assignment

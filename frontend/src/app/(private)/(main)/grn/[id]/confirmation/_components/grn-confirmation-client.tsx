@@ -12,7 +12,11 @@ import { AlertTriangle, CheckCircle2, Package, Signature } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PageHeader } from "@/components/base/page-header";
 import { GRNItemsMatchingTable } from "./grn-items-matching-table";
-import { useGRNById, useConfirmGRN, useRejectGRN } from "@/hooks/use-grn-queries";
+import {
+  useGRNById,
+  useConfirmGRN,
+  useDeleteGRN,
+} from "@/hooks/use-grn-queries";
 
 interface GRNConfirmationClientProps {
   grnId: string;
@@ -79,7 +83,7 @@ export function GRNConfirmationClient({
     router.push("/grn");
   });
 
-  const rejectMutation = useRejectGRN(grnId, () => {
+  const rejectMutation = useDeleteGRN(grnId, () => {
     router.push("/grn");
   });
 
@@ -108,10 +112,7 @@ export function GRNConfirmationClient({
       return;
     }
 
-    await rejectMutation.mutateAsync({
-      signature,
-      remarks: confirmationNotes,
-    });
+    await rejectMutation.mutateAsync();
   };
 
   const isSubmitting = confirmMutation.isPending || rejectMutation.isPending;

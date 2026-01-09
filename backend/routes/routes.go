@@ -219,14 +219,14 @@ func SetupRoutes(app *fiber.App, handlerRegistry *handlers.HandlerRegistry, rbac
 	
 	// Parameterized routes come after specific routes
 	approvals.Get("/:id", handlerRegistry.Approval.GetApprovalTask)
-	approvals.Post("/:id/approve", middleware.RequirePermission(rbacService, "approval", "approve"), handlerRegistry.Approval.ApproveTask)
-	approvals.Post("/:id/reject", middleware.RequirePermission(rbacService, "approval", "reject"), handlerRegistry.Approval.RejectTask)
+	approvals.Post("/:id/approve", middleware.RequireWorkflowPermission("approve"), handlerRegistry.Approval.ApproveTask)
+	approvals.Post("/:id/reject", middleware.RequireWorkflowPermission("reject"), handlerRegistry.Approval.RejectTask)
 	approvals.Post("/:id/reassign", middleware.RequirePermission(rbacService, "approval", "reassign"), handlerRegistry.Approval.ReassignTask)
 
 	// Bulk approval operations (tenant-scoped) - ENABLED
 	bulk := approvals.Group("/bulk")
-	bulk.Post("/approve", middleware.RequirePermission(rbacService, "approval", "approve"), handlerRegistry.Approval.BulkApprove)
-	bulk.Post("/reject", middleware.RequirePermission(rbacService, "approval", "reject"), handlerRegistry.Approval.BulkReject)
+	bulk.Post("/approve", middleware.RequireWorkflowPermission("approve"), handlerRegistry.Approval.BulkApprove)
+	bulk.Post("/reject", middleware.RequireWorkflowPermission("reject"), handlerRegistry.Approval.BulkReject)
 	bulk.Post("/reassign", middleware.RequirePermission(rbacService, "approval", "reassign"), handlerRegistry.Approval.BulkReassign)
 
 	// Approval history routes (tenant-scoped) - Updated to use new handler

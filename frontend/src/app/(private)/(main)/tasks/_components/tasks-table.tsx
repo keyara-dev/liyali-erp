@@ -1,7 +1,7 @@
-'use client'
+"use client";
 
-import { useEffect, useState } from 'react'
-import * as React from 'react'
+import { useEffect, useState } from "react";
+import * as React from "react";
 import {
   ColumnDef,
   ColumnFiltersState,
@@ -13,9 +13,9 @@ import {
   getPaginationRowModel,
   getSortedRowModel,
   useReactTable,
-} from '@tanstack/react-table'
-import { useRouter } from 'next/navigation'
-import { ArrowUpDown, Eye, CheckCircle2, Clock } from 'lucide-react'
+} from "@tanstack/react-table";
+import { useRouter } from "next/navigation";
+import { ArrowUpDown, Eye, CheckCircle2, Clock, XCircle } from "lucide-react";
 
 import {
   Table,
@@ -24,21 +24,21 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table'
-import { StatusBadge } from '@/components/status-badge'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { CustomPagination } from '@/components/ui/custom-pagination'
-import { getTasksForUser } from '@/app/_actions/tasks'
-import { Task, TaskStatus } from '@/types/tasks'
-import { Pagination } from '@/types'
+} from "@/components/ui/table";
+import { StatusBadge } from "@/components/status-badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { CustomPagination } from "@/components/ui/custom-pagination";
+import { useApprovalTasks } from "@/hooks/use-approval-workflow";
+import { ApprovalTask } from "@/types";
+import { Pagination } from "@/types";
 
 interface TasksTableProps {
-  userId: string
-  userRole: string
-  refreshTrigger: number
-  status?: TaskStatus
-  onTaskAction: () => void
+  userId: string;
+  userRole: string;
+  refreshTrigger: number;
+  status?: 'pending' | 'in_progress';
+  onTaskAction: () => void;
 }
 
 export function TasksTable({
@@ -48,72 +48,69 @@ export function TasksTable({
   status,
   onTaskAction,
 }: TasksTableProps) {
-  const router = useRouter()
-  const [tasks, setTasks] = useState<Task[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [sorting, setSorting] = React.useState<SortingState>([])
-  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
-  const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({})
-  const [pagination, setPagination] = React.useState<Pagination>({
-    page: 1,
-    limit: 10,
-    total: 0,
-    totalPages: 1,
-    hasNext: false,
-    hasPrev: false,
-    page_size: 10,
-    totalCount: 0,
-    total_pages: 1,
-    has_next: false,
-    has_prev: false,
-  })
+  const router = useRouter();
+  const [sorting, setSorting] = React.useState<SortingState>([]);
+  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
+    []
+  );
+  const [columnVisibility, setColumnVisibility] =
+    React.useState<VisibilityState>({});
+  const [currentPage, setCurrentPage] = React.useState(1);
+  const [pageSize, setPageSize] = React.useState(10);
 
+  // Use approval tasks hook with role-based filtering
+  const { data: tasks = [], isLoading, refetch } = useApprovalTasks(
+    {
+      status: status === 'pending' ? 'PENDING' : undefined,
+      assignedToMe: true, // Only show tasks assigned to current user
+    },
+    currentPage,
+    pageSize
+  );
+
+  // Refetch when refreshTrigger changes
   useEffect(() => {
-    async function fetchTasks() {
-      setIsLoading(true)
-      try {
-        const result = await getTasksForUser(userId, status)
-        if (result.success && result.data) {
-          setTasks(result.data)
+    refetch();
+  }, [refreshTrigger, refetch]);
         }
       } catch (error) {
-        console.error('Failed to fetch tasks:', error)
+        console.error("Failed to fetch tasks:", error);
       } finally {
-        setIsLoading(false)
+        setIsLoading(false);
       }
     }
 
-    fetchTasks()
-  }, [userId, refreshTrigger, status])
+    fetchTasks();
+  }, [userId, refreshTrigger, status]);
 
   const getTaskTypeLabel = (type: string) => {
     const labels: Record<string, string> = {
-      'BUDGET_APPROVAL': 'Budget Approval',
-      'REQUISITION_APPROVAL': 'Requisition Approval',
-      'PURCHASE_ORDER_APPROVAL': 'PO Approval',
-      'PAYMENT_VOUCHER_APPROVAL': 'Payment Approval',
-      'GOODS_RECEIVED_NOTE_CONFIRMATION': 'GRN Confirmation',
-    }
-    return labels[type] || type
-  }
+      BUDGET_APPROVAL: "Budget Approval",
+      REQUISITION_APPROVAL: "Requisition Approval",
+      PURCHASE_ORDER_APPROVAL: "PO Approval",
+      PAYMENT_VOUCHER_APPROVAL: "Payment Approval",
+      GOODS_RECEIVED_NOTE_CONFIRMATION: "GRN Confirmation",
+    };
+    return labels[type] || type;
+  };
 
   const getPriorityColor = (priority: string) => {
     const colors: Record<string, string> = {
-      'URGENT': 'bg-red-100 text-red-800',
-      'HIGH': 'bg-orange-100 text-orange-800',
-      'MEDIUM': 'bg-yellow-100 text-yellow-800',
-      'LOW': 'bg-blue-100 text-blue-800',
-    }
-    return colors[priority] || 'bg-gray-100 text-gray-800'
-  }
+      URGENT: "bg-red-100 text-red-800",
+      HIGH: "bg-orange-100 text-orange-800",
+      MEDIUM: "bg-yellow-100 text-yellow-800",
+      LOW: "bg-blue-100 text-blue-800",
+    };
+    return colors[priority] || "bg-gray-100 text-gray-800";
+  };
 
   const columns: ColumnDef<Task>[] = [
     {
-      accessorKey: 'title',
+      accessorKey: "title",
       header: ({ column }) => (
         <Button
           variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
           className="-ml-3"
         >
           Task Title
@@ -121,45 +118,47 @@ export function TasksTable({
         </Button>
       ),
       cell: ({ row }) => (
-        <div className="font-semibold max-w-xs">{row.getValue('title')}</div>
+        <div className="font-semibold max-w-xs">{row.getValue("title")}</div>
       ),
     },
     {
-      accessorKey: 'documentNumber',
-      header: 'Document',
+      accessorKey: "documentNumber",
+      header: "Document",
       cell: ({ row }) => (
         <div className="text-sm font-medium">{row.original.documentNumber}</div>
       ),
     },
     {
-      accessorKey: 'taskType',
-      header: 'Type',
+      accessorKey: "taskType",
+      header: "Type",
       cell: ({ row }) => (
         <div className="text-sm">{getTaskTypeLabel(row.original.taskType)}</div>
       ),
     },
     {
-      accessorKey: 'priority',
-      header: 'Priority',
+      accessorKey: "priority",
+      header: "Priority",
       cell: ({ row }) => (
-        <span className={`px-2 py-1 rounded text-xs font-medium ${getPriorityColor(row.original.priority)}`}>
+        <span
+          className={`px-2 py-1 rounded text-xs font-medium ${getPriorityColor(row.original.priority)}`}
+        >
           {row.original.priority}
         </span>
       ),
     },
     {
-      accessorKey: 'status',
-      header: 'Status',
+      accessorKey: "status",
+      header: "Status",
       cell: ({ row }) => (
-        <StatusBadge status={row.getValue('status')} type="execution" />
+        <StatusBadge status={row.getValue("status")} type="execution" />
       ),
     },
     {
-      accessorKey: 'dueAt',
+      accessorKey: "dueAt",
       header: ({ column }) => (
         <Button
           variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
           className="-ml-3"
         >
           Due Date
@@ -167,19 +166,19 @@ export function TasksTable({
         </Button>
       ),
       cell: ({ row }) => {
-        const dueDate = row.original.dueDate as Date
-        const now = new Date()
-        const isOverdue = dueDate < now && row.original.status !== 'COMPLETED'
+        const dueDate = row.original.dueDate as Date;
+        const now = new Date();
+        const isOverdue = dueDate < now && row.original.status !== "COMPLETED";
         return (
-          <div className={isOverdue ? 'text-red-600 font-semibold' : ''}>
+          <div className={isOverdue ? "text-red-600 font-semibold" : ""}>
             {dueDate.toLocaleDateString()}
             {isOverdue && <span className="ml-2 text-xs">Overdue</span>}
           </div>
-        )
+        );
       },
     },
     {
-      id: 'actions',
+      id: "actions",
       cell: ({ row }) => (
         <div className="flex gap-2">
           <Button
@@ -187,38 +186,39 @@ export function TasksTable({
             variant="outline"
             onClick={() => {
               // Navigate based on document type
-              const docType = row.original.documentType?.toLowerCase()
-              const docId = row.original.documentId
+              const docType = row.original.documentType?.toLowerCase();
+              const docId = row.original.documentId;
               const routes: Record<string, string> = {
-                'requisition': `/requisitions/${docId}`,
-                'purchase_order': `/purchase-orders/${docId}`,
-                'payment_voucher': `/payment-vouchers/${docId}`,
-                'goods_received_note': `/grn/${docId}`,
-                'budget': `/budgets/${docId}`,
-              }
-              const url = routes[docType || ''] || `/tasks/${row.original.id}`
-              router.push(url)
+                requisition: `/requisitions/${docId}`,
+                purchase_order: `/purchase-orders/${docId}`,
+                payment_voucher: `/payment-vouchers/${docId}`,
+                goods_received_note: `/grn/${docId}`,
+                budget: `/budgets/${docId}`,
+              };
+              const url = routes[docType || ""] || `/tasks/${row.original.id}`;
+              router.push(url);
             }}
           >
             <Eye className="h-4 w-4 mr-1" />
             View
           </Button>
-          {row.original.status === 'pending' && (
+          {row.original.status === "pending" && (
             <Button
               size="sm"
               onClick={() => {
                 // Navigate based on task type
-                const taskType = row.original.taskType?.toLowerCase()
-                const docId = row.original.documentId
+                const taskType = row.original.taskType?.toLowerCase();
+                const docId = row.original.documentId;
                 const actionRoutes: Record<string, string> = {
-                  'requisition_approval': `/requisitions/${docId}/approval`,
-                  'purchase_order_approval': `/purchase-orders/${docId}/approval`,
-                  'payment_voucher_approval': `/payment-vouchers/${docId}/approval`,
-                  'goods_received_note_confirmation': `/grn/${docId}/confirmation`,
-                  'budget_approval': `/budgets/${docId}/approval`,
-                }
-                const url = actionRoutes[taskType || ''] || `/tasks/${row.original.id}`
-                router.push(url)
+                  requisition_approval: `/requisitions/${docId}/approval`,
+                  purchase_order_approval: `/purchase-orders/${docId}/approval`,
+                  payment_voucher_approval: `/payment-vouchers/${docId}/approval`,
+                  goods_received_note_confirmation: `/grn/${docId}/confirmation`,
+                  budget_approval: `/budgets/${docId}/approval`,
+                };
+                const url =
+                  actionRoutes[taskType || ""] || `/tasks/${row.original.id}`;
+                router.push(url);
               }}
             >
               <CheckCircle2 className="h-4 w-4 mr-1" />
@@ -228,7 +228,7 @@ export function TasksTable({
         </div>
       ),
     },
-  ]
+  ];
 
   const table = useReactTable({
     data: tasks,
@@ -245,7 +245,7 @@ export function TasksTable({
       columnFilters,
       columnVisibility,
     },
-  })
+  });
 
   return (
     <div className="space-y-4">
@@ -264,7 +264,7 @@ export function TasksTable({
                             header.getContext()
                           )}
                     </TableHead>
-                  )
+                  );
                 })}
               </TableRow>
             ))}
@@ -274,7 +274,7 @@ export function TasksTable({
               table.getRowModel().rows.map((row) => (
                 <TableRow
                   key={row.id}
-                  data-state={row.getIsSelected() && 'selected'}
+                  data-state={row.getIsSelected() && "selected"}
                 >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id}>
@@ -292,7 +292,7 @@ export function TasksTable({
                   colSpan={columns.length}
                   className="h-24 text-center"
                 >
-                  {isLoading ? 'Loading tasks...' : 'No tasks found.'}
+                  {isLoading ? "Loading tasks..." : "No tasks found."}
                 </TableCell>
               </TableRow>
             )}
@@ -306,7 +306,8 @@ export function TasksTable({
           ...pagination,
           total_pages: Math.ceil(tasks.length / pagination.page_size!),
           totalCount: tasks.length,
-          has_next: pagination.page < Math.ceil(tasks.length / pagination.page_size!),
+          has_next:
+            pagination.page < Math.ceil(tasks.length / pagination.page_size!),
           has_prev: pagination.page > 1,
         }}
         updatePagination={(newPagination) => {
@@ -314,15 +315,15 @@ export function TasksTable({
             ...prev,
             page: newPagination.page,
             page_size: newPagination.page_size || prev.page_size,
-          }))
-          table.setPageIndex(newPagination.page - 1)
+          }));
+          table.setPageIndex(newPagination.page - 1);
           if (newPagination.page_size) {
-            table.setPageSize(newPagination.page_size)
+            table.setPageSize(newPagination.page_size);
           }
         }}
         allowSetPageSize
         showDetails
       />
     </div>
-  )
+  );
 }

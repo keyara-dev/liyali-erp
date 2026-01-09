@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/liyali/liyali-gateway/config"
 	"github.com/liyali/liyali-gateway/logging"
+	"github.com/liyali/liyali-gateway/middleware"
 	"github.com/liyali/liyali-gateway/models"
 	"github.com/liyali/liyali-gateway/services"
 	"github.com/liyali/liyali-gateway/types"
@@ -19,6 +20,16 @@ import (
 func GetPaymentVouchers(c *fiber.Ctx) error {
 	logger := logging.FromContext(c)
 	logger.Info("get_payment_vouchers_request")
+
+	// Get organization context from tenant middleware
+	tenant, err := middleware.GetTenantContext(*c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"success": false,
+			"message": "Organization context required",
+			"error":   err.Error(),
+		})
+	}
 
 	db := config.DB
 
@@ -36,14 +47,16 @@ func GetPaymentVouchers(c *fiber.Ctx) error {
 
 	// Add query parameters to context
 	logging.AddFieldsToRequest(c, map[string]interface{}{
-		"operation":  "get_payment_vouchers",
-		"page":       page,
-		"limit":      limit,
-		"status":     status,
-		"vendor_id":  vendorID,
+		"operation":       "get_payment_vouchers",
+		"page":            page,
+		"limit":           limit,
+		"status":          status,
+		"vendor_id":       vendorID,
+		"organization_id": tenant.OrganizationID,
 	})
 
-	query := db
+	// Start with organization filter - CRITICAL SECURITY FIX
+	query := db.Where("organization_id = ?", tenant.OrganizationID)
 	if status != "" {
 		query = query.Where("status = ?", status)
 	}
@@ -88,6 +101,16 @@ func GetPaymentVouchers(c *fiber.Ctx) error {
 
 // CreatePaymentVoucher creates a new payment voucher
 func CreatePaymentVoucher(c *fiber.Ctx) error {
+	// Get organization context from tenant middleware
+	tenant, err := middleware.GetTenantContext(*c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"success": false,
+			"message": "Organization context required",
+			"error":   err.Error(),
+		})
+	}
+
 	var req types.CreatePaymentVoucherRequest
 
 	if err := c.BodyParser(&req); err != nil {
@@ -123,9 +146,9 @@ func CreatePaymentVoucher(c *fiber.Ctx) error {
 		})
 	}
 
-	// Verify vendor exists
+	// Verify vendor exists and belongs to organization - SECURITY FIX
 	var vendor models.Vendor
-	if err := config.DB.Where("id = ?", req.VendorID).First(&vendor).Error; err != nil {
+	if err := config.DB.Where("id = ? AND organization_id = ?", req.VendorID, tenant.OrganizationID).First(&vendor).Error; err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"success": false,
 			"message": "Vendor not found",
@@ -136,20 +159,21 @@ func CreatePaymentVoucher(c *fiber.Ctx) error {
 	voucherNumber := utils.GeneratePaymentVoucherNumber()
 
 	voucher := models.PaymentVoucher{
-		ID:            uuid.New().String(),
-		VoucherNumber: voucherNumber,
-		VendorID:      req.VendorID,
-		InvoiceNumber: req.InvoiceNumber,
-		Status:        "draft",
-		Amount:        req.Amount,
-		Currency:      req.Currency,
-		PaymentMethod: req.PaymentMethod,
-		GLCode:        req.GLCode,
-		Description:   req.Description,
-		ApprovalStage: 0,
-		LinkedPO:      req.LinkedPO,
-		CreatedAt:     time.Now(),
-		UpdatedAt:     time.Now(),
+		ID:             uuid.New().String(),
+		OrganizationID: tenant.OrganizationID, // SECURITY FIX: Set organization ID
+		VoucherNumber:  voucherNumber,
+		VendorID:       req.VendorID,
+		InvoiceNumber:  req.InvoiceNumber,
+		Status:         "draft",
+		Amount:         req.Amount,
+		Currency:       req.Currency,
+		PaymentMethod:  req.PaymentMethod,
+		GLCode:         req.GLCode,
+		Description:    req.Description,
+		ApprovalStage:  0,
+		LinkedPO:       req.LinkedPO,
+		CreatedAt:      time.Now(),
+		UpdatedAt:      time.Now(),
 	}
 
 	voucher.ApprovalHistory = datatypes.NewJSONType([]types.ApprovalRecord{})
@@ -172,6 +196,16 @@ func CreatePaymentVoucher(c *fiber.Ctx) error {
 
 // GetPaymentVoucher retrieves a single payment voucher by ID
 func GetPaymentVoucher(c *fiber.Ctx) error {
+	// Get organization context from tenant middleware
+	tenant, err := middleware.GetTenantContext(*c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"success": false,
+			"message": "Organization context required",
+			"error":   err.Error(),
+		})
+	}
+
 	id := c.Params("id")
 	if id == "" {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
@@ -181,9 +215,10 @@ func GetPaymentVoucher(c *fiber.Ctx) error {
 	}
 
 	var voucher models.PaymentVoucher
+	// SECURITY FIX: Filter by organization ID
 	if err := config.DB.
 		Preload("Vendor").
-		Where("id = ?", id).
+		Where("id = ? AND organization_id = ?", id, tenant.OrganizationID).
 		First(&voucher).Error; err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
 			"success": false,
@@ -199,6 +234,16 @@ func GetPaymentVoucher(c *fiber.Ctx) error {
 
 // UpdatePaymentVoucher updates an existing payment voucher
 func UpdatePaymentVoucher(c *fiber.Ctx) error {
+	// Get organization context from tenant middleware
+	tenant, err := middleware.GetTenantContext(*c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"success": false,
+			"message": "Organization context required",
+			"error":   err.Error(),
+		})
+	}
+
 	id := c.Params("id")
 	if id == "" {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
@@ -217,7 +262,8 @@ func UpdatePaymentVoucher(c *fiber.Ctx) error {
 	}
 
 	var voucher models.PaymentVoucher
-	if err := config.DB.Where("id = ?", id).First(&voucher).Error; err != nil {
+	// SECURITY FIX: Filter by organization ID
+	if err := config.DB.Where("id = ? AND organization_id = ?", id, tenant.OrganizationID).First(&voucher).Error; err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
 			"success": false,
 			"message": "Payment voucher not found",
@@ -273,6 +319,16 @@ func UpdatePaymentVoucher(c *fiber.Ctx) error {
 
 // DeletePaymentVoucher deletes a payment voucher
 func DeletePaymentVoucher(c *fiber.Ctx) error {
+	// Get organization context from tenant middleware
+	tenant, err := middleware.GetTenantContext(*c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"success": false,
+			"message": "Organization context required",
+			"error":   err.Error(),
+		})
+	}
+
 	id := c.Params("id")
 	if id == "" {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
@@ -282,7 +338,8 @@ func DeletePaymentVoucher(c *fiber.Ctx) error {
 	}
 
 	var voucher models.PaymentVoucher
-	if err := config.DB.Where("id = ?", id).First(&voucher).Error; err != nil {
+	// SECURITY FIX: Filter by organization ID
+	if err := config.DB.Where("id = ? AND organization_id = ?", id, tenant.OrganizationID).First(&voucher).Error; err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
 			"success": false,
 			"message": "Payment voucher not found",

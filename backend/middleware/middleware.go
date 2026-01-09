@@ -319,6 +319,55 @@ func RequirePermission(rbacService *services.RBACService, requiredPermissions ..
 	}
 }
 
+// RequireWorkflowPermission checks if user can perform workflow actions based on their role
+// This is more flexible than RequirePermission as it allows custom roles to approve workflows
+func RequireWorkflowPermission(action string) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		// Get user info from context (set by AuthMiddleware)
+		userID := c.Locals("userID")
+		organizationID := c.Locals("organizationID")
+		
+		if userID == nil || organizationID == nil {
+			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+				"error": "Authentication required",
+			})
+		}
+
+		userIDStr, ok := userID.(string)
+		if !ok {
+			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+				"error": "Invalid user ID",
+			})
+		}
+
+		organizationIDStr, ok := organizationID.(string)
+		if !ok {
+			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+				"error": "Invalid organization ID",
+			})
+		}
+
+		// For workflow actions, we allow any authenticated user to attempt the action
+		// The actual permission check will be done in the workflow execution service
+		// based on the specific workflow task's required role
+		
+		// However, we still want to ensure the user has basic access to the organization
+		db := config.DB
+		var member models.OrganizationMember
+		err := db.Where("user_id = ? AND organization_id = ? AND active = ?", 
+			userIDStr, organizationIDStr, true).First(&member).Error
+		
+		if err != nil {
+			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
+				"error": "Access denied - not a member of this organization",
+			})
+		}
+
+		// Allow the request to proceed - specific role validation will happen in the service layer
+		return c.Next()
+	}
+}
+
 // RequirePermissionOr checks if user has ANY of the required permissions using RBAC service
 // Pass permissions as (resource, action) pairs
 // Example: RequirePermissionOr(rbacService, "requisition", "approve", "budget", "approve")

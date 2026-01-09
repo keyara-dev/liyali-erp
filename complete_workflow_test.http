@@ -1,0 +1,74 @@
+### Complete Workflow Test for PO Automation
+### Requisition: REQ-260109-BC10 (ID: 55b65d43-25a3-435a-83b0-5eab5f5d7cee)
+
+### Step 1: Login as Department Manager
+POST http://localhost:8080/api/v1/auth/login
+Content-Type: application/json
+
+{
+  "email": "manager@demo.com",
+  "password": "password"
+}
+
+### Step 2: Check workflow status as manager
+GET http://localhost:8080/api/v1/documents/REQ-260109-BC10/approval-status
+Authorization: Bearer MANAGER_TOKEN
+Content-Type: application/json
+
+### Step 3: Get pending workflow tasks (to find task ID)
+# We need to find the task ID from the database or logs
+
+### Step 4: Approve Stage 1 (Department Manager)
+# POST http://localhost:8080/api/v1/approvals/TASK_ID/approve
+# Authorization: Bearer MANAGER_TOKEN
+# Content-Type: application/json
+# {
+#   "signature": "manager_approval",
+#   "comment": "Approved by department manager for PO automation test"
+# }
+
+### Step 5: Login as Finance
+POST http://localhost:8080/api/v1/auth/login
+Content-Type: application/json
+
+{
+  "email": "finance@demo.com",
+  "password": "password"
+}
+
+### Step 6: Approve Stage 2 (Finance)
+# POST http://localhost:8080/api/v1/approvals/TASK_ID/approve
+# Authorization: Bearer FINANCE_TOKEN
+# Content-Type: application/json
+# {
+#   "signature": "finance_approval",
+#   "comment": "Approved by finance for PO automation test"
+# }
+
+### Step 7: Login as Final Approver
+POST http://localhost:8080/api/v1/auth/login
+Content-Type: application/json
+
+{
+  "email": "approver@demo.com",
+  "password": "password"
+}
+
+### Step 8: Approve Stage 3 (Final Approver)
+# POST http://localhost:8080/api/v1/approvals/TASK_ID/approve
+# Authorization: Bearer APPROVER_TOKEN
+# Content-Type: application/json
+# {
+#   "signature": "final_approval",
+#   "comment": "Final approval for PO automation test"
+# }
+
+### Step 9: Check if PO was auto-created
+GET http://localhost:8080/api/v1/purchase-orders
+Authorization: Bearer ADMIN_TOKEN
+Content-Type: application/json
+
+### Step 10: Check requisition automation status
+GET http://localhost:8080/api/v1/requisitions/REQ-260109-BC10
+Authorization: Bearer ADMIN_TOKEN
+Content-Type: application/json

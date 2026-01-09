@@ -138,6 +138,15 @@ func CreateRequisition(c *fiber.Ctx) error {
 		})
 	}
 
+	// Get organization ID from context (set by auth middleware)
+	organizationID := c.Locals("organizationID").(string)
+	if organizationID == "" {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"success": false,
+			"message": "Organization ID not found in token",
+		})
+	}
+
 	// Get user details
 	var user models.User
 	if err := config.DB.Where("id = ?", userID).First(&user).Error; err != nil {
@@ -186,6 +195,7 @@ func CreateRequisition(c *fiber.Ctx) error {
 	
 	requisition := models.Requisition{
 		ID:                uuid.New().String(),
+		OrganizationID:    organizationID,    // Add organization ID
 		REQNumber:         reqNumber,
 		RequesterId:       userID,
 		Title:             req.Title,

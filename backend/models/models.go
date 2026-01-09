@@ -132,7 +132,7 @@ type PurchaseOrder struct {
 	LinkedRequisition string          `json:"linkedRequisition"`
 
 	// Frontend compatibility fields - CRITICAL: These must match frontend exactly
-	VendorName    string     `json:"vendorName,omitempty"`    // Computed from Vendor.Name
+	VendorName    string     `gorm:"-" json:"vendorName,omitempty"`    // Computed from Vendor.Name
 	Department    string     `json:"department,omitempty"`    // Department
 	DepartmentID  string     `json:"departmentId,omitempty"`  // Department ID
 	GLCode        string     `json:"glCode,omitempty"`        // GL Code - ADDED
@@ -269,21 +269,23 @@ type CategoryBudgetCode struct {
 	UpdatedAt  time.Time `json:"updatedAt"`
 }
 
-// Vendor master data - Global vendors accessible to all organizations
+// Vendor master data - Organization-scoped vendors
 type Vendor struct {
-	ID          string    `gorm:"primaryKey" json:"id"`
-	VendorCode  string    `gorm:"uniqueIndex" json:"vendorCode"`
-	Name        string    `json:"name"`
-	Email       string    `json:"email"`
-	Phone       string    `json:"phone"`
-	Country     string    `json:"country"`
-	City        string    `json:"city"`
-	BankAccount string    `json:"bankAccount"`
-	TaxID       string    `json:"taxId"`
-	Active      bool      `json:"active"`
-	CreatedBy   string    `json:"createdBy"` // User who created the vendor
-	CreatedAt   time.Time `json:"createdAt"`
-	UpdatedAt   time.Time `json:"updatedAt"`
+	ID             string        `gorm:"primaryKey" json:"id"`
+	OrganizationID string        `gorm:"index;not null" json:"organizationId"`
+	Organization   *Organization `gorm:"foreignKey:OrganizationID" json:"organization,omitempty"`
+	VendorCode     string        `gorm:"uniqueIndex:idx_org_vendor_code" json:"vendorCode"`
+	Name           string        `json:"name"`
+	Email          string        `gorm:"index" json:"email"`
+	Phone          string        `json:"phone"`
+	Country        string        `json:"country"`
+	City           string        `json:"city"`
+	BankAccount    string        `json:"bankAccount"`
+	TaxID          string        `json:"taxId"`
+	Active         bool          `json:"active"`
+	CreatedBy      string        `json:"createdBy"` // User who created the vendor
+	CreatedAt      time.Time     `json:"createdAt"`
+	UpdatedAt      time.Time     `json:"updatedAt"`
 }
 
 // ApprovalTask represents a pending approval action

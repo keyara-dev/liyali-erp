@@ -7,6 +7,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 	"github.com/liyali/liyali-gateway/config"
+	"github.com/liyali/liyali-gateway/middleware"
 	"github.com/liyali/liyali-gateway/models"
 	"github.com/liyali/liyali-gateway/services"
 	"github.com/liyali/liyali-gateway/types"
@@ -16,6 +17,16 @@ import (
 
 // GetGRNs retrieves all goods received notes with pagination and filtering
 func GetGRNs(c *fiber.Ctx) error {
+	// Get organization context from tenant middleware
+	tenant, err := middleware.GetTenantContext(*c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"success": false,
+			"message": "Organization context required",
+			"error":   err.Error(),
+		})
+	}
+
 	db := config.DB
 
 	page := c.QueryInt("page", 1)
@@ -30,7 +41,8 @@ func GetGRNs(c *fiber.Ctx) error {
 	status := c.Query("status")
 	poNumber := c.Query("poNumber")
 
-	query := db
+	// Start with organization filter - CRITICAL SECURITY FIX
+	query := db.Where("organization_id = ?", tenant.OrganizationID)
 	if status != "" {
 		query = query.Where("status = ?", status)
 	}
@@ -71,6 +83,16 @@ func GetGRNs(c *fiber.Ctx) error {
 
 // CreateGRN creates a new goods received note
 func CreateGRN(c *fiber.Ctx) error {
+	// Get organization context from tenant middleware
+	tenant, err := middleware.GetTenantContext(*c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"success": false,
+			"message": "Organization context required",
+			"error":   err.Error(),
+		})
+	}
+
 	var req types.CreateGRNRequest
 
 	if err := c.BodyParser(&req); err != nil {
@@ -100,9 +122,9 @@ func CreateGRN(c *fiber.Ctx) error {
 		})
 	}
 
-	// Verify PO exists
+	// Verify PO exists and belongs to organization - SECURITY FIX
 	var po models.PurchaseOrder
-	if err := config.DB.Where("po_number = ?", req.PONumber).First(&po).Error; err != nil {
+	if err := config.DB.Where("po_number = ? AND organization_id = ?", req.PONumber, tenant.OrganizationID).First(&po).Error; err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"success": false,
 			"message": "Purchase order not found",
@@ -113,15 +135,16 @@ func CreateGRN(c *fiber.Ctx) error {
 	grnNumber := utils.GenerateGRNNumber()
 
 	grn := models.GoodsReceivedNote{
-		ID:          uuid.New().String(),
-		GRNNumber:   grnNumber,
-		PONumber:    req.PONumber,
-		Status:      "draft",
-		ReceivedDate: time.Now(),
-		ReceivedBy:  req.ReceivedBy,
-		ApprovalStage: 0,
-		CreatedAt:   time.Now(),
-		UpdatedAt:   time.Now(),
+		ID:             uuid.New().String(),
+		OrganizationID: tenant.OrganizationID, // SECURITY FIX: Set organization ID
+		GRNNumber:      grnNumber,
+		PONumber:       req.PONumber,
+		Status:         "draft",
+		ReceivedDate:   time.Now(),
+		ReceivedBy:     req.ReceivedBy,
+		ApprovalStage:  0,
+		CreatedAt:      time.Now(),
+		UpdatedAt:      time.Now(),
 	}
 
 	grn.Items = datatypes.NewJSONType(req.Items)
@@ -148,6 +171,16 @@ func CreateGRN(c *fiber.Ctx) error {
 
 // GetGRN retrieves a single GRN by ID
 func GetGRN(c *fiber.Ctx) error {
+	// Get organization context from tenant middleware
+	tenant, err := middleware.GetTenantContext(*c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"success": false,
+			"message": "Organization context required",
+			"error":   err.Error(),
+		})
+	}
+
 	id := c.Params("id")
 	if id == "" {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
@@ -157,7 +190,8 @@ func GetGRN(c *fiber.Ctx) error {
 	}
 
 	var grn models.GoodsReceivedNote
-	if err := config.DB.Where("id = ?", id).First(&grn).Error; err != nil {
+	// SECURITY FIX: Filter by organization ID
+	if err := config.DB.Where("id = ? AND organization_id = ?", id, tenant.OrganizationID).First(&grn).Error; err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
 			"success": false,
 			"message": "GRN not found",
@@ -172,6 +206,16 @@ func GetGRN(c *fiber.Ctx) error {
 
 // UpdateGRN updates an existing GRN
 func UpdateGRN(c *fiber.Ctx) error {
+	// Get organization context from tenant middleware
+	tenant, err := middleware.GetTenantContext(*c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"success": false,
+			"message": "Organization context required",
+			"error":   err.Error(),
+		})
+	}
+
 	id := c.Params("id")
 	if id == "" {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
@@ -190,7 +234,8 @@ func UpdateGRN(c *fiber.Ctx) error {
 	}
 
 	var grn models.GoodsReceivedNote
-	if err := config.DB.Where("id = ?", id).First(&grn).Error; err != nil {
+	// SECURITY FIX: Filter by organization ID
+	if err := config.DB.Where("id = ? AND organization_id = ?", id, tenant.OrganizationID).First(&grn).Error; err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
 			"success": false,
 			"message": "GRN not found",
@@ -232,6 +277,16 @@ func UpdateGRN(c *fiber.Ctx) error {
 
 // DeleteGRN deletes a GRN
 func DeleteGRN(c *fiber.Ctx) error {
+	// Get organization context from tenant middleware
+	tenant, err := middleware.GetTenantContext(*c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"success": false,
+			"message": "Organization context required",
+			"error":   err.Error(),
+		})
+	}
+
 	id := c.Params("id")
 	if id == "" {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
@@ -241,7 +296,8 @@ func DeleteGRN(c *fiber.Ctx) error {
 	}
 
 	var grn models.GoodsReceivedNote
-	if err := config.DB.Where("id = ?", id).First(&grn).Error; err != nil {
+	// SECURITY FIX: Filter by organization ID
+	if err := config.DB.Where("id = ? AND organization_id = ?", id, tenant.OrganizationID).First(&grn).Error; err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
 			"success": false,
 			"message": "GRN not found",
