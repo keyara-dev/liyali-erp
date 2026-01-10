@@ -64,9 +64,11 @@ export async function getWorkflows(
   try {
     // Build query parameters
     const params = new URLSearchParams();
-    if (filter?.entityType) params.append('entityType', filter.entityType);
-    if (filter?.isActive !== undefined) params.append('isActive', filter.isActive.toString());
-    if (filter?.isDefault !== undefined) params.append('isDefault', filter.isDefault.toString());
+    if (filter?.entityType) params.append("entityType", filter.entityType);
+    if (filter?.isActive !== undefined)
+      params.append("isActive", filter.isActive.toString());
+    if (filter?.isDefault !== undefined)
+      params.append("isDefault", filter.isDefault.toString());
 
     const queryString = params.toString();
     const fullUrl = queryString ? `${url}?${queryString}` : url;
@@ -117,8 +119,11 @@ export async function createWorkflow(
   const url = `/api/v1/workflows`;
 
   try {
+    // Handle entityType/documentType mapping
+    const entityType = formData.entityType || formData.documentType;
+
     // Validate required fields
-    if (!formData.name || !formData.entityType || !formData.stages?.length) {
+    if (!formData.name || !entityType || !formData.stages?.length) {
       return badRequestResponse("Name, entity type, and stages are required");
     }
 
@@ -126,16 +131,16 @@ export async function createWorkflow(
     const backendData = {
       name: formData.name,
       description: formData.description,
-      entityType: formData.entityType,
+      entityType: entityType,
       stages: formData.stages.map((stage, index) => ({
         stageNumber: index + 1,
-        stageName: stage.stageName,
+        stageName: stage.stageName || stage.name,
         description: stage.description,
-        requiredRole: stage.requiredRole,
-        requiredApprovals: stage.requiredApprovals,
+        requiredRole: stage.requiredRole || stage.approverRole,
+        requiredApprovals: stage.requiredApprovals || 1,
         timeoutHours: stage.timeoutHours,
-        canReject: stage.canReject,
-        canReassign: stage.canReassign,
+        canReject: stage.canReject || stage.canBeRejected || true,
+        canReassign: stage.canReassign || stage.canBeReassigned || true,
       })),
       conditions: formData.conditions,
       isDefault: formData.isDefault,
@@ -170,23 +175,28 @@ export async function updateWorkflow(
   try {
     // Transform data to match backend expectations
     const backendData: any = {};
-    
+
     if (formData.name) backendData.name = formData.name;
     if (formData.description) backendData.description = formData.description;
+    // Handle entityType/documentType mapping
+    if (formData.entityType) backendData.entityType = formData.entityType;
+    if (formData.documentType) backendData.entityType = formData.documentType;
     if (formData.stages) {
       backendData.stages = formData.stages.map((stage, index) => ({
         stageNumber: index + 1,
-        stageName: stage.stageName,
+        stageName: stage.stageName || stage.name,
         description: stage.description,
-        requiredRole: stage.requiredRole,
-        requiredApprovals: stage.requiredApprovals,
+        requiredRole: stage.requiredRole || stage.approverRole,
+        requiredApprovals: stage.requiredApprovals || 1,
         timeoutHours: stage.timeoutHours,
-        canReject: stage.canReject,
-        canReassign: stage.canReassign,
+        canReject: stage.canReject || stage.canBeRejected || true,
+        canReassign: stage.canReassign || stage.canBeReassigned || true,
       }));
     }
-    if (formData.conditions !== undefined) backendData.conditions = formData.conditions;
-    if (formData.isDefault !== undefined) backendData.isDefault = formData.isDefault;
+    if (formData.conditions !== undefined)
+      backendData.conditions = formData.conditions;
+    if (formData.isDefault !== undefined)
+      backendData.isDefault = formData.isDefault;
 
     const response = await authenticatedApiClient({
       url,
@@ -388,7 +398,9 @@ export async function resolveWorkflowForEntity(
  */
 export async function getWorkflowUsage(
   workflowId: string
-): Promise<APIResponse<{ workflowId: string; usageCount: number; canDelete: boolean }>> {
+): Promise<
+  APIResponse<{ workflowId: string; usageCount: number; canDelete: boolean }>
+> {
   if (!workflowId) {
     return badRequestResponse("Workflow ID is required");
   }

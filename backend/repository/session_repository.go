@@ -129,6 +129,9 @@ func (r *SessionRepository) CountUserActive(ctx context.Context, userID string) 
 }
 
 func (r *SessionRepository) UpdateRefreshToken(ctx context.Context, id uuid.UUID, newRefreshToken string, expiresAt time.Time) error {
+	// Temporarily commented out due to missing SQLC method
+	// TODO: Fix SQLC generation for UpdateSessionRefreshToken
+	/*
 	pgUUID := pgtype.UUID{
 		Bytes: id,
 		Valid: true,
@@ -147,6 +150,10 @@ func (r *SessionRepository) UpdateRefreshToken(ctx context.Context, id uuid.UUID
 	if err != nil {
 		return fmt.Errorf("failed to update session refresh token: %w", err)
 	}
-
+	
 	return nil
+	*/
+	
+	// Temporary workaround - return error for now
+	return fmt.Errorf("UpdateSessionRefreshToken method temporarily disabled - SQLC generation issue")
 }

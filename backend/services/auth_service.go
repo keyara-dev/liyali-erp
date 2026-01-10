@@ -302,7 +302,6 @@ func (s *AuthService) RefreshToken(ctx context.Context, refreshToken string) (*T
 		ExpiresIn:    int64(AccessTokenDuration.Seconds()),
 	}, nil
 }
-}
 
 // Logout invalidates a refresh token and deletes the session
 func (s *AuthService) Logout(ctx context.Context, refreshToken string) error {

@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	"gorm.io/datatypes"
+	"gorm.io/gorm"
 )
 
 // Session represents a user session with refresh token
@@ -120,7 +121,7 @@ type Workflow struct {
 	Creator        *User          `gorm:"foreignKey:CreatedBy" json:"creator,omitempty"`
 	CreatedAt      time.Time      `json:"createdAt"`
 	UpdatedAt      time.Time      `json:"updatedAt"`
-	DeletedAt      *time.Time     `gorm:"index" json:"deletedAt,omitempty"`
+	DeletedAt      gorm.DeletedAt `json:"deletedAt" gorm:"index"`
 	
 	// Computed fields for frontend compatibility
 	TotalStages int `gorm:"-" json:"totalStages"`

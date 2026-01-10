@@ -5,6 +5,7 @@ import (
 
 	"github.com/liyali/liyali-gateway/types"
 	"gorm.io/datatypes"
+	"gorm.io/gorm"
 )
 
 // User represents a system user
@@ -23,9 +24,9 @@ type User struct {
 	IsSuperAdmin          bool           `gorm:"default:false" json:"isSuperAdmin"`
 	Preferences           datatypes.JSON `gorm:"type:jsonb" json:"preferences,omitempty"`
 
-	CreatedAt time.Time  `json:"createdAt"`
-	UpdatedAt time.Time  `json:"updatedAt"`
-	DeletedAt *time.Time `gorm:"index" json:"deletedAt,omitempty"` // Soft delete
+	CreatedAt time.Time      `json:"createdAt"`
+	UpdatedAt time.Time      `json:"updatedAt"`
+	DeletedAt gorm.DeletedAt `json:"deletedAt" gorm:"index"` // Soft delete
 }
 
 // Requisition workflow document

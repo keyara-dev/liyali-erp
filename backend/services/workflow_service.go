@@ -149,7 +149,7 @@ func (s *WorkflowService) CreateWorkflow(ctx context.Context, organizationID, us
 func (s *WorkflowService) GetWorkflow(ctx context.Context, id uuid.UUID, organizationID string) (*models.Workflow, error) {
 	var workflow models.Workflow
 	
-	if err := s.db.Where("id = ? AND organization_id = ?", id.String(), organizationID).First(&workflow).Error; err != nil {
+	if err := s.db.Model(&models.Workflow{}).Where("id = ? AND organization_id = ?", id.String(), organizationID).First(&workflow).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return nil, fmt.Errorf("workflow not found")
 		}
@@ -173,7 +173,7 @@ func (s *WorkflowService) GetWorkflowByStringID(ctx context.Context, id string, 
 	return s.GetWorkflow(ctx, workflowID, organizationID)
 }
 
-// UpdateWorkflow updates an existing workflow (creates new version)
+// UpdateWorkflow updates an existing workflow in place
 func (s *WorkflowService) UpdateWorkflow(ctx context.Context, id uuid.UUID, organizationID, userID string, req UpdateWorkflowRequest) (*models.Workflow, error) {
 	// Get existing workflow
 	existing, err := s.GetWorkflow(ctx, id, organizationID)
@@ -189,76 +189,65 @@ func (s *WorkflowService) UpdateWorkflow(ctx context.Context, id uuid.UUID, orga
 		}
 	}()
 
-	// Create new version
-	newVersion := &models.Workflow{
-		ID:             uuid.New(),
-		OrganizationID: organizationID,
-		Name:           existing.Name,
-		Description:    existing.Description,
-		DocumentType:   existing.EntityType, // Set both for compatibility
-		EntityType:     existing.EntityType,
-		Version:        existing.Version + 1,
-		IsActive:       true,
-		IsDefault:      existing.IsDefault,
-		Conditions:     existing.Conditions,
-		Stages:         existing.Stages,
-		CreatedBy:      existing.CreatedBy,
-		CreatedAt:      time.Now(),
-		UpdatedAt:      time.Now(),
-	}
-
-	// Apply updates
+	// Apply updates to existing workflow
+	updates := make(map[string]interface{})
+	
 	if req.Name != nil {
-		newVersion.Name = *req.Name
+		updates["name"] = *req.Name
 	}
 	if req.Description != nil {
-		newVersion.Description = *req.Description
+		updates["description"] = *req.Description
 	}
 	if req.Stages != nil {
-		if err := newVersion.SetStages(req.Stages); err != nil {
+		if err := existing.SetStages(req.Stages); err != nil {
 			tx.Rollback()
 			return nil, fmt.Errorf("failed to set stages: %w", err)
 		}
+		updates["stages"] = existing.Stages
 	}
 	if req.Conditions != nil {
-		if err := newVersion.SetConditions(req.Conditions); err != nil {
+		if err := existing.SetConditions(req.Conditions); err != nil {
 			tx.Rollback()
 			return nil, fmt.Errorf("failed to set conditions: %w", err)
 		}
+		updates["conditions"] = existing.Conditions
 	}
 	if req.IsDefault != nil {
-		newVersion.IsDefault = *req.IsDefault
-
-		// If setting as default, unset other defaults
-		if *req.IsDefault {
-			if err := s.unsetDefaultWorkflows(tx, organizationID, newVersion.EntityType); err != nil {
+		// If setting as default, unset other defaults first
+		if *req.IsDefault && !existing.IsDefault {
+			if err := s.unsetDefaultWorkflows(tx, organizationID, existing.EntityType); err != nil {
 				tx.Rollback()
 				return nil, fmt.Errorf("failed to unset existing defaults: %w", err)
 			}
 		}
+		updates["is_default"] = *req.IsDefault
 	}
 
-	// Validate new version
-	if err := newVersion.Validate(); err != nil {
+	// Add updated timestamp
+	updates["updated_at"] = time.Now()
+
+	// Update the workflow
+	if err := tx.Model(existing).Updates(updates).Error; err != nil {
+		tx.Rollback()
+		return nil, fmt.Errorf("failed to update workflow: %w", err)
+	}
+
+	// Reload the updated workflow
+	var updatedWorkflow models.Workflow
+	if err := tx.Where("id = ? AND organization_id = ?", id, organizationID).First(&updatedWorkflow).Error; err != nil {
+		tx.Rollback()
+		return nil, fmt.Errorf("failed to reload updated workflow: %w", err)
+	}
+
+	// Validate updated workflow
+	if err := updatedWorkflow.Validate(); err != nil {
 		tx.Rollback()
 		return nil, fmt.Errorf("validation failed: %w", err)
 	}
 
-	// Deactivate old version
-	if err := tx.Model(existing).Update("is_active", false).Error; err != nil {
-		tx.Rollback()
-		return nil, fmt.Errorf("failed to deactivate old version: %w", err)
-	}
-
-	// Save new version
-	if err := tx.Create(newVersion).Error; err != nil {
-		tx.Rollback()
-		return nil, fmt.Errorf("failed to create new version: %w", err)
-	}
-
 	// Update default workflow record if needed
-	if newVersion.IsDefault {
-		if err := s.updateDefaultWorkflow(tx, organizationID, newVersion); err != nil {
+	if req.IsDefault != nil && *req.IsDefault {
+		if err := s.updateDefaultWorkflow(tx, organizationID, &updatedWorkflow); err != nil {
 			tx.Rollback()
 			return nil, fmt.Errorf("failed to update default workflow: %w", err)
 		}
@@ -270,15 +259,15 @@ func (s *WorkflowService) UpdateWorkflow(ctx context.Context, id uuid.UUID, orga
 	}
 
 	// Load computed fields
-	s.loadComputedFields(newVersion)
+	s.loadComputedFields(&updatedWorkflow)
 
 	// Log audit event
 	if s.auditService != nil {
-		details := fmt.Sprintf("Updated workflow '%s'", newVersion.Name)
-		s.auditService.LogEvent(ctx, userID, organizationID, "workflow_updated", "workflow", newVersion.ID.String(), details, "", "")
+		details := fmt.Sprintf("Updated workflow '%s'", updatedWorkflow.Name)
+		s.auditService.LogEvent(ctx, userID, organizationID, "workflow_updated", "workflow", updatedWorkflow.ID.String(), details, "", "")
 	}
 
-	return newVersion, nil
+	return &updatedWorkflow, nil
 }
 
 // ListWorkflows retrieves workflows with filtering and pagination
@@ -354,6 +343,11 @@ func (s *WorkflowService) DeleteWorkflow(ctx context.Context, id uuid.UUID, orga
 		return fmt.Errorf("workflow not found: %w", err)
 	}
 
+	// Prevent deletion of default workflows
+	if existing.IsDefault {
+		return fmt.Errorf("cannot delete default workflow: '%s' is set as the default workflow for %s", existing.Name, existing.EntityType)
+	}
+
 	// Check if workflow is in use
 	var assignmentCount int64
 	if err := s.db.Model(&models.WorkflowAssignment{}).
@@ -374,14 +368,13 @@ func (s *WorkflowService) DeleteWorkflow(ctx context.Context, id uuid.UUID, orga
 		}
 	}()
 
-	// Soft delete workflow
-	now := time.Now()
-	if err := tx.Model(existing).Update("deleted_at", &now).Error; err != nil {
+	// Use GORM's soft delete functionality
+	if err := tx.Delete(existing).Error; err != nil {
 		tx.Rollback()
 		return fmt.Errorf("failed to delete workflow: %w", err)
 	}
 
-	// Delete default workflow record if it exists
+	// Delete default workflow record if it exists (this should not happen due to the check above, but for safety)
 	if err := tx.Where("default_workflow_id = ? AND organization_id = ?", existing.ID, organizationID).
 		Delete(&models.WorkflowDefault{}).Error; err != nil {
 		tx.Rollback()
@@ -420,7 +413,7 @@ func (s *WorkflowService) GetDefaultWorkflow(ctx context.Context, organizationID
 	
 	// If not found in workflow_defaults, look for workflows with isDefault=true
 	var workflow models.Workflow
-	err = s.db.Where("organization_id = ? AND entity_type = ? AND is_default = ? AND is_active = ?", 
+	err = s.db.Model(&models.Workflow{}).Where("organization_id = ? AND entity_type = ? AND is_default = ? AND is_active = ?", 
 		organizationID, entityType, true, true).
 		First(&workflow).Error
 	

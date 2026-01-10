@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { QUERY_KEYS } from '@/lib/constants';
-import { toast } from 'sonner';
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { QUERY_KEYS } from "@/lib/constants";
+import { toast } from "sonner";
 import {
   getWorkflows,
   getWorkflowById,
@@ -17,12 +17,12 @@ import {
   resolveWorkflowForEntity,
   getWorkflowUsage,
   validateWorkflow,
-} from '@/app/_actions/workflows';
+} from "@/app/_actions/workflows";
 import type {
   Workflow,
   WorkflowFormData,
   WorkflowListFilter,
-} from '@/types/workflow-config';
+} from "@/types/workflow-config";
 
 // Re-export types for convenience
 export type { Workflow, WorkflowFormData, WorkflowListFilter };
@@ -44,9 +44,7 @@ export interface WorkflowStage {
  * @param filter - Optional filter parameters
  * @returns Query result with workflows array
  */
-export const useWorkflows = (
-  filter?: WorkflowListFilter
-) =>
+export const useWorkflows = (filter?: WorkflowListFilter) =>
   useQuery({
     queryKey: [QUERY_KEYS.WORKFLOWS.ALL, filter],
     queryFn: async () => {
@@ -128,10 +126,10 @@ export const useCreateWorkflow = () => {
       // Transform WorkflowFormData to match backend expectations
       const backendFormData = {
         ...formData,
-        stages: formData.stages.map(stage => ({
+        stages: formData.stages.map((stage) => ({
           stageNumber: stage.stageNumber || stage.order || 0,
-          stageName: stage.stageName || stage.name || '',
-          requiredRole: stage.requiredRole || stage.approverRole || '',
+          stageName: stage.stageName || stage.name || "",
+          requiredRole: stage.requiredRole || stage.approverRole || "",
           requiredApprovals: stage.requiredApprovals || 1,
           canReject: stage.canReject ?? stage.canBeRejected ?? true,
           canReassign: stage.canReassign ?? stage.canBeReassigned ?? true,
@@ -139,7 +137,7 @@ export const useCreateWorkflow = () => {
           timeoutHours: stage.timeoutHours,
         })),
       };
-      
+
       const response = await createWorkflow(backendFormData as any);
       if (!response.success) {
         throw new Error(response.message);
@@ -148,11 +146,13 @@ export const useCreateWorkflow = () => {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.WORKFLOWS.ALL] });
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.WORKFLOWS.DEFAULT] });
-      toast.success('Workflow created successfully');
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.WORKFLOWS.DEFAULT],
+      });
+      toast.success("Workflow created successfully");
     },
     onError: (error: any) => {
-      toast.error(error.message || 'Failed to create workflow');
+      toast.error(error.message || "Failed to create workflow");
     },
   });
 };
@@ -170,10 +170,10 @@ export const useUpdateWorkflow = (workflowId: string) => {
       // Transform WorkflowFormData to match backend expectations
       const backendFormData = {
         ...formData,
-        stages: formData.stages?.map(stage => ({
+        stages: formData.stages?.map((stage) => ({
           stageNumber: stage.stageNumber || stage.order || 0,
-          stageName: stage.stageName || stage.name || '',
-          requiredRole: stage.requiredRole || stage.approverRole || '',
+          stageName: stage.stageName || stage.name || "",
+          requiredRole: stage.requiredRole || stage.approverRole || "",
           requiredApprovals: stage.requiredApprovals || 1,
           canReject: stage.canReject ?? stage.canBeRejected ?? true,
           canReassign: stage.canReassign ?? stage.canBeReassigned ?? true,
@@ -181,7 +181,7 @@ export const useUpdateWorkflow = (workflowId: string) => {
           timeoutHours: stage.timeoutHours,
         })),
       };
-      
+
       const response = await updateWorkflow(workflowId, backendFormData as any);
       if (!response.success) {
         throw new Error(response.message);
@@ -189,16 +189,15 @@ export const useUpdateWorkflow = (workflowId: string) => {
       return response.data;
     },
     onSuccess: (data) => {
-      queryClient.setQueryData(
-        [QUERY_KEYS.WORKFLOWS.DETAIL, workflowId],
-        data
-      );
+      queryClient.setQueryData([QUERY_KEYS.WORKFLOWS.DETAIL, workflowId], data);
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.WORKFLOWS.ALL] });
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.WORKFLOWS.DEFAULT] });
-      toast.success('Workflow updated successfully');
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.WORKFLOWS.DEFAULT],
+      });
+      toast.success("Workflow updated successfully");
     },
     onError: (error: any) => {
-      toast.error(error.message || 'Failed to update workflow');
+      toast.error(error.message || "Failed to update workflow");
     },
   });
 };
@@ -218,13 +217,23 @@ export const useDeleteWorkflow = () => {
       }
       return response.data;
     },
-    onSuccess: () => {
+    onSuccess: (_, workflowId) => {
+      // Invalidate all workflow-related queries
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.WORKFLOWS.ALL] });
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.WORKFLOWS.DEFAULT] });
-      toast.success('Workflow deleted successfully');
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.WORKFLOWS.DEFAULT],
+      });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.WORKFLOWS.USAGE] });
+
+      // Remove the specific workflow from cache
+      queryClient.removeQueries({
+        queryKey: [QUERY_KEYS.WORKFLOWS.DETAIL, workflowId],
+      });
+
+      toast.success("Workflow deleted successfully");
     },
     onError: (error: any) => {
-      toast.error(error.message || 'Failed to delete workflow');
+      toast.error(error.message || "Failed to delete workflow");
     },
   });
 };
@@ -237,7 +246,13 @@ export const useDuplicateWorkflow = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ workflowId, newName }: { workflowId: string; newName?: string }) => {
+    mutationFn: async ({
+      workflowId,
+      newName,
+    }: {
+      workflowId: string;
+      newName?: string;
+    }) => {
       const response = await duplicateWorkflow(workflowId, newName);
       if (!response.success) {
         throw new Error(response.message);
@@ -246,10 +261,10 @@ export const useDuplicateWorkflow = () => {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.WORKFLOWS.ALL] });
-      toast.success('Workflow duplicated successfully');
+      toast.success("Workflow duplicated successfully");
     },
     onError: (error: any) => {
-      toast.error(error.message || 'Failed to duplicate workflow');
+      toast.error(error.message || "Failed to duplicate workflow");
     },
   });
 };
@@ -272,10 +287,10 @@ export const useActivateWorkflow = () => {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.WORKFLOWS.ALL] });
       queryClient.setQueryData([QUERY_KEYS.WORKFLOWS.DETAIL, data?.id], data);
-      toast.success('Workflow activated successfully');
+      toast.success("Workflow activated successfully");
     },
     onError: (error: any) => {
-      toast.error(error.message || 'Failed to activate workflow');
+      toast.error(error.message || "Failed to activate workflow");
     },
   });
 };
@@ -298,10 +313,10 @@ export const useDeactivateWorkflow = () => {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.WORKFLOWS.ALL] });
       queryClient.setQueryData([QUERY_KEYS.WORKFLOWS.DETAIL, data?.id], data);
-      toast.success('Workflow deactivated successfully');
+      toast.success("Workflow deactivated successfully");
     },
     onError: (error: any) => {
-      toast.error(error.message || 'Failed to deactivate workflow');
+      toast.error(error.message || "Failed to deactivate workflow");
     },
   });
 };
@@ -314,7 +329,13 @@ export const useSetDefaultWorkflow = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ workflowId, entityType }: { workflowId: string; entityType: string }) => {
+    mutationFn: async ({
+      workflowId,
+      entityType,
+    }: {
+      workflowId: string;
+      entityType: string;
+    }) => {
       const response = await setDefaultWorkflow(workflowId, entityType);
       if (!response.success) {
         throw new Error(response.message);
@@ -322,12 +343,14 @@ export const useSetDefaultWorkflow = () => {
       return response.data;
     },
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.WORKFLOWS.DEFAULT, variables.entityType] });
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.WORKFLOWS.DEFAULT, variables.entityType],
+      });
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.WORKFLOWS.ALL] });
-      toast.success('Default workflow set successfully');
+      toast.success("Default workflow set successfully");
     },
     onError: (error: any) => {
-      toast.error(error.message || 'Failed to set default workflow');
+      toast.error(error.message || "Failed to set default workflow");
     },
   });
 };
@@ -338,7 +361,13 @@ export const useSetDefaultWorkflow = () => {
  */
 export const useResolveWorkflow = () => {
   return useMutation({
-    mutationFn: async ({ entityType, document }: { entityType: string; document?: any }) => {
+    mutationFn: async ({
+      entityType,
+      document,
+    }: {
+      entityType: string;
+      document?: any;
+    }) => {
       const response = await resolveWorkflowForEntity(entityType, document);
       if (!response.success) {
         throw new Error(response.message);
@@ -346,7 +375,7 @@ export const useResolveWorkflow = () => {
       return response.data;
     },
     onError: (error: any) => {
-      toast.error(error.message || 'Failed to resolve workflow');
+      toast.error(error.message || "Failed to resolve workflow");
     },
   });
 };
@@ -361,10 +390,10 @@ export const useValidateWorkflow = () => {
       // Transform WorkflowFormData to match backend expectations
       const backendFormData = {
         ...workflowData,
-        stages: workflowData.stages.map(stage => ({
+        stages: workflowData.stages.map((stage) => ({
           stageNumber: stage.stageNumber || stage.order || 0,
-          stageName: stage.stageName || stage.name || '',
-          requiredRole: stage.requiredRole || stage.approverRole || '',
+          stageName: stage.stageName || stage.name || "",
+          requiredRole: stage.requiredRole || stage.approverRole || "",
           requiredApprovals: stage.requiredApprovals || 1,
           canReject: stage.canReject ?? stage.canBeRejected ?? true,
           canReassign: stage.canReassign ?? stage.canBeReassigned ?? true,
@@ -372,7 +401,7 @@ export const useValidateWorkflow = () => {
           timeoutHours: stage.timeoutHours,
         })),
       };
-      
+
       const response = await validateWorkflow(backendFormData as any);
       if (!response.success) {
         throw new Error(response.message);
@@ -387,7 +416,7 @@ export const useValidateWorkflow = () => {
       }
     },
     onError: (error: any) => {
-      toast.error(error.message || 'Failed to validate workflow');
+      toast.error(error.message || "Failed to validate workflow");
     },
   });
 };

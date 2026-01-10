@@ -1,12 +1,12 @@
-'use client'
+"use client";
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { PageHeader } from '@/components/base/page-header'
-import { Plus, Edit2, Trash2, Copy } from 'lucide-react'
-import Link from 'next/link'
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { PageHeader } from "@/components/base/page-header";
+import { Plus, Edit2, Trash2, Copy } from "lucide-react";
+import Link from "next/link";
 import {
   Table,
   TableBody,
@@ -14,7 +14,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table'
+} from "@/components/ui/table";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,68 +23,70 @@ import {
   AlertDialogDescription,
   AlertDialogHeader,
   AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
-import { StatusBadge } from '@/components/status-badge'
+} from "@/components/ui/alert-dialog";
+import { StatusBadge } from "@/components/status-badge";
 import {
   useWorkflows,
   useDeleteWorkflow,
   useDuplicateWorkflow,
   type Workflow,
-} from '@/hooks/use-workflow-queries'
+} from "@/hooks/use-workflow-queries";
 
 interface WorkflowsClientProps {
-  userId: string
-  userRole: string
+  userId: string;
+  userRole: string;
 }
 
 export function WorkflowsClient({ userId, userRole }: WorkflowsClientProps) {
-  const router = useRouter()
-  const [deleteId, setDeleteId] = useState<string | null>(null)
-  const [duplicateId, setDuplicateId] = useState<string | null>(null)
+  const router = useRouter();
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [duplicateId, setDuplicateId] = useState<string | null>(null);
 
   // Fetch workflows
-  const { data: workflows = [], isLoading } = useWorkflows()
+  const { data: workflows = [], isLoading, refetch } = useWorkflows();
 
   // Delete workflow mutation
-  const deleteMutation = useDeleteWorkflow()
+  const deleteMutation = useDeleteWorkflow();
 
   // Duplicate workflow mutation
-  const duplicateMutation = useDuplicateWorkflow()
+  const duplicateMutation = useDuplicateWorkflow();
 
   const handleDelete = async () => {
-    if (!deleteId) return
+    if (!deleteId) return;
     try {
-      await deleteMutation.mutateAsync(deleteId)
-      setDeleteId(null)
+      await deleteMutation.mutateAsync(deleteId);
+      setDeleteId(null);
+      // Force refetch to ensure UI updates immediately
+      await refetch();
     } catch (error) {
       // Error is already handled by the mutation
     }
-  }
+  };
 
   const handleDuplicateClick = (workflowId: string) => {
-    setDuplicateId(workflowId)
-  }
+    setDuplicateId(workflowId);
+  };
 
   const handleDuplicate = async () => {
-    if (!duplicateId) return
+    if (!duplicateId) return;
     try {
-      await duplicateMutation.mutateAsync({ workflowId: duplicateId })
-      setDuplicateId(null)
+      await duplicateMutation.mutateAsync({ workflowId: duplicateId });
+      setDuplicateId(null);
     } catch (error) {
       // Error is already handled by the mutation
     }
-  }
+  };
 
   const getDocumentTypeLabel = (type: string) => {
     const labels: Record<string, string> = {
-      'REQUISITION': 'Requisition',
-      'PURCHASE_ORDER': 'Purchase Order',
-      'PAYMENT_VOUCHER': 'Payment Voucher',
-      'GOODS_RECEIVED_NOTE': 'GRN',
-      'BUDGET': 'Budget',
-    }
-    return labels[type] || type
-  }
+      REQUISITION: "Requisition",
+      PURCHASE_ORDER: "Purchase Order",
+      PAYMENT_VOUCHER: "Payment Voucher",
+      GOODS_RECEIVED_NOTE: "GRN",
+      BUDGET: "Budget",
+    };
+    return labels[type] || type;
+  };
 
   return (
     <div className="space-y-6">
@@ -141,14 +143,21 @@ export function WorkflowsClient({ userId, userRole }: WorkflowsClientProps) {
                         </div>
                       </TableCell>
                       <TableCell>
-                        {getDocumentTypeLabel(workflow.documentType || workflow.entityType || 'Unknown')}
+                        {getDocumentTypeLabel(
+                          workflow.documentType ||
+                            workflow.entityType ||
+                            "Unknown"
+                        )}
                       </TableCell>
                       <TableCell className="text-center">
                         {workflow.stages?.length || 0}
                       </TableCell>
                       <TableCell>
                         <StatusBadge
-                          status={(workflow as any).status || (workflow.isActive ? 'active' : 'inactive')}
+                          status={
+                            (workflow as any).status ||
+                            (workflow.isActive ? "active" : "inactive")
+                          }
                           type="document"
                         />
                       </TableCell>
@@ -158,11 +167,7 @@ export function WorkflowsClient({ userId, userRole }: WorkflowsClientProps) {
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
                           <Link href={`/admin/workflows/${workflow.id}/edit`}>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="gap-2"
-                            >
+                            <Button variant="ghost" size="sm" className="gap-2">
                               <Edit2 className="h-4 w-4" />
                             </Button>
                           </Link>
@@ -198,8 +203,8 @@ export function WorkflowsClient({ userId, userRole }: WorkflowsClientProps) {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Workflow?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. The workflow will be permanently deleted
-              and any active assignments will be affected.
+              This action cannot be undone. The workflow will be permanently
+              deleted and any active assignments will be affected.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="flex gap-2 justify-end">
@@ -209,19 +214,22 @@ export function WorkflowsClient({ userId, userRole }: WorkflowsClientProps) {
               disabled={deleteMutation.isPending}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
+              {deleteMutation.isPending ? "Deleting..." : "Delete"}
             </AlertDialogAction>
           </div>
         </AlertDialogContent>
       </AlertDialog>
 
-      <AlertDialog open={!!duplicateId} onOpenChange={() => setDuplicateId(null)}>
+      <AlertDialog
+        open={!!duplicateId}
+        onOpenChange={() => setDuplicateId(null)}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Duplicate Workflow?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will create a copy of the workflow with &quot;(Copy)&quot; appended to the name.
-              You can edit the duplicate independently.
+              This will create a copy of the workflow with &quot;(Copy)&quot;
+              appended to the name. You can edit the duplicate independently.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="flex gap-2 justify-end">
@@ -230,11 +238,11 @@ export function WorkflowsClient({ userId, userRole }: WorkflowsClientProps) {
               onClick={handleDuplicate}
               disabled={duplicateMutation.isPending}
             >
-              {duplicateMutation.isPending ? 'Duplicating...' : 'Duplicate'}
+              {duplicateMutation.isPending ? "Duplicating..." : "Duplicate"}
             </AlertDialogAction>
           </div>
         </AlertDialogContent>
       </AlertDialog>
     </div>
-  )
+  );
 }

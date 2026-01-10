@@ -1,28 +1,30 @@
-'use client'
+"use client";
 
-import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
-import { Edit2, Trash2, GripVertical } from 'lucide-react'
-import { useSortable } from '@dnd-kit/sortable'
-import { CSS } from '@dnd-kit/utilities'
-import type { WorkflowStage } from '@/types/workflow-config'
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Edit2, Trash2, GripVertical } from "lucide-react";
+import { useSortable } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import type { WorkflowStage } from "@/types/workflow-config";
 
 interface StageItemProps {
-  stage: WorkflowStage
-  onEdit: () => void
-  onDelete: () => void
+  stage: WorkflowStage;
+  onEdit: () => void;
+  onDelete: () => void;
 }
 
 const APPROVER_ROLE_LABELS: Record<string, string> = {
-  DEPARTMENT_MANAGER: 'Department Manager',
-  FINANCE_OFFICER: 'Finance Officer',
-  CFO: 'CFO',
-  WAREHOUSE_MANAGER: 'Warehouse Manager',
-  PROCUREMENT_OFFICER: 'Procurement Officer',
-  ADMIN: 'Admin',
-}
+  DEPARTMENT_MANAGER: "Department Manager",
+  FINANCE_OFFICER: "Finance Officer",
+  CFO: "CFO",
+  WAREHOUSE_MANAGER: "Warehouse Manager",
+  PROCUREMENT_OFFICER: "Procurement Officer",
+  ADMIN: "Admin",
+};
 
 export function StageItem({ stage, onEdit, onDelete }: StageItemProps) {
+  console.log("StageItem rendered with stage:", stage);
+
   const {
     attributes,
     listeners,
@@ -30,17 +32,36 @@ export function StageItem({ stage, onEdit, onDelete }: StageItemProps) {
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: stage.id || `stage-${stage.stageNumber || stage.order || 0}` })
+  } = useSortable({
+    id: stage.id || `stage-${stage.stageNumber || stage.order || 0}`,
+  });
 
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.5 : 1,
-  }
+  };
 
-  const approverRoleLabel = APPROVER_ROLE_LABELS[stage.approverRole as keyof typeof APPROVER_ROLE_LABELS] || stage.approverRole || stage.requiredRole || 'Not Set'
-  const requiredApprovalsLabel = stage.requiredApprovals === 5 ? 'All' : stage.requiredApprovals
-  const hasPermissions = stage.canReject || stage.canReassign
+  const approverRoleLabel =
+    APPROVER_ROLE_LABELS[
+      stage.approverRole as keyof typeof APPROVER_ROLE_LABELS
+    ] ||
+    stage.approverRole ||
+    stage.requiredRole ||
+    "Not Set";
+  const requiredApprovalsLabel =
+    stage.requiredApprovals === 5 ? "All" : stage.requiredApprovals;
+  const hasPermissions = stage.canReject || stage.canReassign;
+
+  const handleEdit = () => {
+    console.log("Edit button clicked for stage:", stage);
+    onEdit();
+  };
+
+  const handleDelete = () => {
+    console.log("Delete button clicked for stage:", stage);
+    onDelete();
+  };
 
   return (
     <div ref={setNodeRef} style={style} className="w-full">
@@ -125,7 +146,7 @@ export function StageItem({ stage, onEdit, onDelete }: StageItemProps) {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={onEdit}
+                onClick={handleEdit}
                 className="h-8 w-8 p-0"
                 title="Edit stage"
               >
@@ -134,7 +155,7 @@ export function StageItem({ stage, onEdit, onDelete }: StageItemProps) {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={onDelete}
+                onClick={handleDelete}
                 className="h-8 w-8 p-0 text-destructive hover:text-destructive"
                 title="Delete stage"
               >
@@ -145,5 +166,5 @@ export function StageItem({ stage, onEdit, onDelete }: StageItemProps) {
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }
