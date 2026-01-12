@@ -15,7 +15,7 @@ import Logo from "@/components/base/logo";
 import { WorkspaceSkeleton } from "./workspace-skeleton";
 import { EmptyWorkspaceState } from "./empty-workspace-state";
 import { debugSession } from "@/app/_actions/debug";
-import { TierDisplay } from "@/components/organization/tier-display";
+import { TierDisplay } from "@/components/modals/tier-display";
 import { trackPageRedirect, trackOrgSwitchError } from "@/lib/auth-monitoring";
 
 interface WorkspaceSelectorProps {

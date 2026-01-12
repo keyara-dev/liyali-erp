@@ -9,7 +9,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/liyali/liyali-gateway/models"
 	"github.com/liyali/liyali-gateway/services"
-	"github.com/liyali/liyali-gateway/tests/integration/helpers"
+	"github.com/liyali/liyali-gateway/tests/helpers"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -17,8 +17,8 @@ import (
 // when multiple users with the same role attempt to approve/reject the same task
 func TestConcurrentApprovalIssues(t *testing.T) {
 	// Setup test database
-	testDB := helpers.SetupTestDatabase(t)
-	defer testDB.Cleanup(t)
+	testDB := helpers.SetupTestDB(t)
+	defer testDB.Cleanup()
 	db := testDB.DB
 
 	// Setup test data

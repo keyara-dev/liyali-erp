@@ -12,7 +12,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { WorkflowDocument } from "@/types/workflow";
-import { ApprovalConfirmationDialog } from "@/components/approval-confirmation-dialog";
+import { ApprovalConfirmationDialog } from "@/components/modals/approval-confirmation-dialog";
 import { ApprovalHistory } from "@/components/approval-history";
 import { DocumentLinks } from "@/components/document-links";
 import { generateGrnPDF } from "@/lib/pdf-generators/grn-pdf";

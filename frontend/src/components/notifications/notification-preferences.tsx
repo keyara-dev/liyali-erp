@@ -69,8 +69,8 @@ export function NotificationPreferences({
   });
 
   useEffect(() => {
-    if (preferences?.data?.preferences) {
-      const prefs = preferences.data.preferences;
+    if (preferences?.data) {
+      const prefs = preferences.data;
       setLocalPreferences({
         TASK_ASSIGNED: prefs.notifyOn?.taskAssigned ?? true,
         TASK_REASSIGNED: prefs.notifyOn?.taskReassigned ?? true,
@@ -116,7 +116,7 @@ export function NotificationPreferences({
   };
 
   const hasChanges =
-    JSON.stringify(preferences?.data?.preferences) !==
+    JSON.stringify(preferences?.data?.notifyOn) !==
     JSON.stringify(localPreferences);
 
   if (isLoading) {

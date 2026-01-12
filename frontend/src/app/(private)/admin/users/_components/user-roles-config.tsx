@@ -58,7 +58,7 @@ import {
 } from "@/app/_actions/roles-permissions";
 import { getDepartmentModules } from "@/app/_actions/departments";
 import { createRole, updateRole } from "@/app/_actions/roles-permissions";
-import { ConfirmationModal } from "@/components/confirmation-modal";
+import { ConfirmationModal } from "@/components/modals/confirmation-modal";
 
 interface RolesPermissionsProps {
   departmentId: string;
@@ -138,7 +138,7 @@ export default function UserRolesConfig({
     queryFn: async () => {
       // Fetch roles from backend via action
       const response = await fetch(`/api/roles?departmentId=${departmentId}`);
-      if (!response.ok) throw new Error('Failed to fetch roles');
+      if (!response.ok) throw new Error("Failed to fetch roles");
       return response.json();
     },
     enabled: !!departmentId,
@@ -844,7 +844,10 @@ function CreateOrUpdateRoleDialog({
         setOpenModal(false);
       } else {
         toast.error(response.message);
-        setError({ status: true, message: response.message || 'An error occurred' });
+        setError({
+          status: true,
+          message: response.message || "An error occurred",
+        });
       }
     },
     onError: (err: Error) => {

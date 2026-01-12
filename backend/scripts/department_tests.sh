@@ -4,7 +4,7 @@
 # Tests for department operations and user-department relationships
 
 # Source common utilities
-source "$(dirname "$0")/test_common.sh"
+source "$(dirname "$0")/common_tests.sh"
 
 # Test department management operations
 test_department_management() {

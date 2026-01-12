@@ -1,10 +1,10 @@
 #!/bin/bash
 
-# LIYALI GATEWAY UNIT TEST RUNNER
-# Runs Go unit tests including custom role tests
+# LIYALI GATEWAY WORKFLOW UNIT TEST RUNNER
+# Runs Go unit tests specifically for workflow functionality including custom role tests
 
 # Source common utilities
-source "$(dirname "$0")/test_common.sh"
+source "$(dirname "$0")/common_tests.sh"
 
 # Function to run Go unit tests
 run_go_unit_tests() {
@@ -146,9 +146,12 @@ run_test_coverage() {
 
 # Main function to run all unit tests
 run_unit_tests() {
-    reset_test_counters
+    # Only reset counters if we're running as the main script
+    if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+        reset_test_counters
+    fi
     
-    print_status "INFO" "Starting Go unit test suite..."
+    print_status "INFO" "Starting workflow-specific Go unit test suite..."
     print_status "INFO" "Working directory: $(pwd)"
     
     # Check if Go is available
@@ -167,7 +170,11 @@ run_unit_tests() {
     run_go_integration_tests
     run_test_coverage
     
-    print_module_summary "GO UNIT & INTEGRATION TESTS"
+    # Only print summary if we're running as the main script
+    if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+        print_module_summary "WORKFLOW UNIT & INTEGRATION TESTS"
+    fi
+    
     return 0
 }
 

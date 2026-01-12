@@ -167,9 +167,13 @@ func (s *WorkflowExecutionService) GetPendingWorkflowTasks(ctx context.Context, 
 	return tasks, nil
 }
 
-// ApproveWorkflowTask approves a workflow task and progresses the workflow
+// ApproveWorkflowTask approves a workflow task and progresses the workflow with optimistic locking
 func (s *WorkflowExecutionService) ApproveWorkflowTask(ctx context.Context, taskID, userID, signature, comments string) error {
-	// Start transaction
+	return s.ApproveWorkflowTaskWithVersion(ctx, taskID, userID, signature, comments, 0)
+}
+
+// ApproveWorkflowTaskWithVersion approves a workflow task with version control for optimistic locking
+func (s *WorkflowExecutionService) ApproveWorkflowTaskWithVersion(ctx context.Context, taskID, userID, signature, comments string, expectedVersion int) error {
 	tx := s.db.Begin()
 	defer func() {
 		if r := recover(); r != nil {
@@ -184,24 +188,40 @@ func (s *WorkflowExecutionService) ApproveWorkflowTask(ctx context.Context, task
 		return fmt.Errorf("task not found: %w", err)
 	}
 
-	if task.Status != "pending" {
+	// Check optimistic locking if version is provided
+	if expectedVersion > 0 && task.Version != expectedVersion {
 		tx.Rollback()
-		return fmt.Errorf("task is not in pending status")
+		return fmt.Errorf("task was modified by another user (expected version %d, current version %d). Please refresh and try again", expectedVersion, task.Version)
+	}
+
+	// Check task status
+	if task.Status != "pending" && task.Status != "claimed" {
+		tx.Rollback()
+		return fmt.Errorf("task is not in pending or claimed status (current: %s)", task.Status)
+	}
+
+	// Check task is claimed by this user (if claiming is enabled)
+	if task.ClaimedBy != nil && *task.ClaimedBy != userID {
+		tx.Rollback()
+		return fmt.Errorf("task is claimed by another user, please wait for them to complete or unclaim it")
+	}
+
+	// Check claim hasn't expired
+	if task.ClaimExpiry != nil && time.Now().After(*task.ClaimExpiry) {
+		tx.Rollback()
+		return fmt.Errorf("task claim has expired, please reclaim the task")
 	}
 
 	// Validate user has the required role for this task
-	if task.AssignedRole != nil {
-		var user models.User
-		if err := tx.Where("id = ?", userID).First(&user).Error; err != nil {
-			tx.Rollback()
-			return fmt.Errorf("user not found: %w", err)
-		}
+	var user models.User
+	if err := tx.Where("id = ?", userID).First(&user).Error; err != nil {
+		tx.Rollback()
+		return fmt.Errorf("user not found: %w", err)
+	}
 
-		// Check if user's role matches the required role for this task
-		if user.Role != *task.AssignedRole {
-			tx.Rollback()
-			return fmt.Errorf("insufficient permissions: user role '%s' does not match required role '%s'", user.Role, *task.AssignedRole)
-		}
+	if task.AssignedRole != nil && user.Role != *task.AssignedRole {
+		tx.Rollback()
+		return fmt.Errorf("insufficient permissions: user role '%s' does not match required role '%s'", user.Role, *task.AssignedRole)
 	}
 
 	// Get the workflow assignment
@@ -218,164 +238,256 @@ func (s *WorkflowExecutionService) ApproveWorkflowTask(ctx context.Context, task
 		return fmt.Errorf("failed to get workflow stages: %w", err)
 	}
 
-	// Update task status
+	currentStage := stages[task.StageNumber-1]
+
+	// Record this approval in stage approval records
 	now := time.Now()
-	task.Status = "completed"
-	task.CompletedAt = &now
-	task.ClaimedBy = &userID
-	task.ClaimedAt = &now
+	approvalRecord := &models.StageApprovalRecord{
+		ID:               uuid.New().String(),
+		OrganizationID:   assignment.OrganizationID,
+		WorkflowTaskID:   taskID,
+		StageNumber:      task.StageNumber,
+		ApproverID:       userID,
+		ApproverName:     user.Name,
+		ApproverRole:     user.Role,
+		Action:           "approved",
+		Comments:         comments,
+		Signature:        signature,
+		ApprovedAt:       now,
+		CreatedAt:        now,
+	}
 
-	if err := tx.Save(&task).Error; err != nil {
+	if err := tx.Create(approvalRecord).Error; err != nil {
 		tx.Rollback()
-		return fmt.Errorf("failed to update task: %w", err)
+		return fmt.Errorf("failed to record approval: %w", err)
 	}
 
-	// Add stage execution to history
-	stageExecution := models.StageExecution{
-		StageNumber:  task.StageNumber,
-		StageName:    task.StageName,
-		ApproverID:   userID,
-		ApproverName: "", // Will be filled by caller
-		ApproverRole: "", // Will be filled by caller
-		Action:       "approved",
-		Comments:     comments,
-		Signature:    signature,
-		ExecutedAt:   now,
-	}
-
-	// Update assignment stage history
-	history, err := assignment.GetStageHistory()
+	// Check if stage completion criteria are met
+	stageComplete, err := s.checkStageCompletionCriteria(tx, taskID, currentStage, assignment.OrganizationID)
 	if err != nil {
-		history = []models.StageExecution{}
-	}
-	history = append(history, stageExecution)
-
-	if err := assignment.AddStageExecution(stageExecution); err != nil {
 		tx.Rollback()
-		return fmt.Errorf("failed to update stage history: %w", err)
+		return fmt.Errorf("failed to check stage completion: %w", err)
 	}
 
-	// Check if this is the last stage
-	workflowCompleted := task.StageNumber >= len(stages)
-	
-	if workflowCompleted {
-		// Workflow completed
-		assignment.Status = "completed"
-		assignment.CompletedAt = &now
-		assignment.CurrentStage = len(stages)
-		
-		// Update the actual document status to "approved"
-		if err := s.updateDocumentStatus(tx, assignment.EntityType, assignment.EntityID, "approved"); err != nil {
+	if stageComplete {
+		// Update task with version increment
+		result := tx.Model(&task).
+			Where("id = ? AND version = ?", taskID, task.Version).
+			Updates(map[string]interface{}{
+				"status":       "completed",
+				"completed_at": now,
+				"updated_by":   userID,
+				"version":      task.Version + 1,
+			})
+
+		if result.Error != nil {
 			tx.Rollback()
-			return fmt.Errorf("failed to update document status: %w", err)
-		}
-		
-		// Add action history entry to the document
-		if err := s.addActionHistoryEntry(tx, assignment.EntityType, assignment.EntityID, userID, "WORKFLOW_COMPLETED", "Document approved through workflow system"); err != nil {
-			// Log error but don't fail the approval
-			fmt.Printf("Warning: failed to add action history entry: %v\n", err)
-		}
-	} else {
-		// Move to next stage
-		nextStageNumber := task.StageNumber + 1
-		nextStage := stages[nextStageNumber-1] // stages are 1-indexed
-
-		assignment.CurrentStage = nextStageNumber
-
-		// Create next workflow task
-		nextTask := &models.WorkflowTask{
-			ID:                   uuid.New().String(),
-			OrganizationID:       assignment.OrganizationID,
-			WorkflowAssignmentID: assignment.ID,
-			EntityID:             assignment.EntityID,
-			EntityType:           assignment.EntityType,
-			StageNumber:          nextStage.StageNumber,
-			StageName:            nextStage.StageName,
-			AssignmentType:       "role",
-			AssignedRole:         &nextStage.RequiredRole,
-			Status:               "pending",
-			Priority:             "medium",
-			CreatedAt:            time.Now(),
+			return fmt.Errorf("failed to update task: %w", result.Error)
 		}
 
-		// Set due date if timeout is specified
-		if nextStage.TimeoutHours != nil && *nextStage.TimeoutHours > 0 {
-			dueDate := time.Now().Add(time.Duration(*nextStage.TimeoutHours) * time.Hour)
-			nextTask.DueDate = &dueDate
-		}
-
-		if err := tx.Create(nextTask).Error; err != nil {
+		if result.RowsAffected == 0 {
 			tx.Rollback()
-			return fmt.Errorf("failed to create next workflow task: %w", err)
+			return fmt.Errorf("task was modified by another user, please refresh and try again")
 		}
-	}
 
-	// Update assignment
-	assignment.UpdatedAt = time.Now()
-	if err := tx.Save(&assignment).Error; err != nil {
-		tx.Rollback()
-		return fmt.Errorf("failed to update workflow assignment: %w", err)
-	}
+		// Add stage execution to history
+		stageExecution := models.StageExecution{
+			StageNumber:  task.StageNumber,
+			StageName:    task.StageName,
+			ApproverID:   userID,
+			ApproverName: user.Name,
+			ApproverRole: user.Role,
+			Action:       "approved",
+			Comments:     comments,
+			Signature:    signature,
+			ExecutedAt:   now,
+		}
 
-	// Commit transaction
-	if err := tx.Commit().Error; err != nil {
-		return fmt.Errorf("failed to commit workflow approval: %w", err)
-	}
+		if err := assignment.AddStageExecution(stageExecution); err != nil {
+			tx.Rollback()
+			return fmt.Errorf("failed to update stage history: %w", err)
+		}
 
-	// Trigger post-approval automation if workflow completed
-	if workflowCompleted {
-		// Send approval notification
-		if s.notificationService != nil {
-			notificationEvent := NotificationEvent{
-				Type:         "document_approved",
-				DocumentID:   assignment.EntityID,
-				DocumentType: assignment.EntityType,
-				Action:       "workflow_completed",
-				ActorID:      userID,
-				Details:      "Document has been fully approved through workflow",
-				Timestamp:    time.Now(),
+		// Check if this is the last stage
+		workflowCompleted := task.StageNumber >= len(stages)
+		
+		if workflowCompleted {
+			// Workflow completed
+			assignment.Status = "completed"
+			assignment.CompletedAt = &now
+			assignment.CurrentStage = len(stages)
+			
+			// Update the actual document status to "approved"
+			if err := s.updateDocumentStatus(tx, assignment.EntityType, assignment.EntityID, "approved"); err != nil {
+				tx.Rollback()
+				return fmt.Errorf("failed to update document status: %w", err)
 			}
 			
-			// Send notification asynchronously
-			go func() {
-				if err := s.notificationService.HandleWorkflowEvent(notificationEvent); err != nil {
-					fmt.Printf("Failed to send approval notification: %v\n", err)
-				}
-			}()
+			// Add action history entry to the document
+			if err := s.addActionHistoryEntry(tx, assignment.EntityType, assignment.EntityID, userID, "WORKFLOW_COMPLETED", "Document approved through workflow system"); err != nil {
+				// Log error but don't fail the approval
+				fmt.Printf("Warning: failed to add action history entry: %v\n", err)
+			}
+		} else {
+			// Move to next stage
+			nextStageNumber := task.StageNumber + 1
+			nextStage := stages[nextStageNumber-1]
+
+			assignment.CurrentStage = nextStageNumber
+
+			// Create next workflow task
+			nextTask := &models.WorkflowTask{
+				ID:                   uuid.New().String(),
+				OrganizationID:       assignment.OrganizationID,
+				WorkflowAssignmentID: assignment.ID,
+				EntityID:             assignment.EntityID,
+				EntityType:           assignment.EntityType,
+				StageNumber:          nextStage.StageNumber,
+				StageName:            nextStage.StageName,
+				AssignmentType:       "role",
+				AssignedRole:         &nextStage.RequiredRole,
+				Status:               "pending",
+				Priority:             "medium",
+				Version:              1,
+				CreatedAt:            time.Now(),
+			}
+
+			// Set due date if timeout is specified
+			if nextStage.TimeoutHours != nil && *nextStage.TimeoutHours > 0 {
+				dueDate := time.Now().Add(time.Duration(*nextStage.TimeoutHours) * time.Hour)
+				nextTask.DueDate = &dueDate
+			}
+
+			if err := tx.Create(nextTask).Error; err != nil {
+				tx.Rollback()
+				return fmt.Errorf("failed to create next workflow task: %w", err)
+			}
 		}
 
-		if err := s.triggerPostApprovalAutomation(ctx, assignment.EntityType, assignment.EntityID); err != nil {
-			// Log error but don't fail the approval since the workflow is already completed
-			fmt.Printf("Post-approval automation failed for %s %s: %v\n", assignment.EntityType, assignment.EntityID, err)
+		// Update assignment
+		assignment.UpdatedAt = time.Now()
+		if err := tx.Save(&assignment).Error; err != nil {
+			tx.Rollback()
+			return fmt.Errorf("failed to update workflow assignment: %w", err)
+		}
+
+		// Commit transaction
+		if err := tx.Commit().Error; err != nil {
+			return fmt.Errorf("failed to commit workflow approval: %w", err)
+		}
+
+		// Trigger post-approval automation if workflow completed
+		if workflowCompleted {
+			s.handleWorkflowCompletion(ctx, assignment, userID)
+		} else {
+			s.handleStageProgression(ctx, assignment, userID)
 		}
 	} else {
-		// Send notification for next stage approval required
-		if s.notificationService != nil {
-			notificationEvent := NotificationEvent{
-				Type:         "approval_required",
-				DocumentID:   assignment.EntityID,
-				DocumentType: assignment.EntityType,
-				Action:       "next_stage_approval",
-				ActorID:      userID,
-				Details:      fmt.Sprintf("Document moved to next approval stage (%d)", assignment.CurrentStage),
-				Timestamp:    time.Now(),
-			}
-			
-			// Send notification asynchronously
-			go func() {
-				if err := s.notificationService.HandleWorkflowEvent(notificationEvent); err != nil {
-					fmt.Printf("Failed to send next stage approval notification: %v\n", err)
-				}
-			}()
+		// Stage not complete yet, update task status to partially approved
+		result := tx.Model(&task).
+			Where("id = ? AND version = ?", taskID, task.Version).
+			Updates(map[string]interface{}{
+				"status":     "partially_approved",
+				"updated_by": userID,
+				"version":    task.Version + 1,
+			})
+
+		if result.Error != nil {
+			tx.Rollback()
+			return fmt.Errorf("failed to update task status: %w", result.Error)
 		}
+
+		if result.RowsAffected == 0 {
+			tx.Rollback()
+			return fmt.Errorf("task was modified by another user, please refresh and try again")
+		}
+
+		// Commit transaction
+		if err := tx.Commit().Error; err != nil {
+			return fmt.Errorf("failed to commit partial approval: %w", err)
+		}
+
+		// Send notification for partial approval
+		s.handlePartialApproval(ctx, assignment, userID, currentStage)
 	}
 
 	return nil
 }
 
+// Helper methods for handling workflow events
+func (s *WorkflowExecutionService) handleWorkflowCompletion(ctx context.Context, assignment models.WorkflowAssignment, userID string) {
+	// Send approval notification
+	if s.notificationService != nil {
+		notificationEvent := NotificationEvent{
+			Type:         "document_approved",
+			DocumentID:   assignment.EntityID,
+			DocumentType: assignment.EntityType,
+			Action:       "workflow_completed",
+			ActorID:      userID,
+			Details:      "Document has been fully approved through workflow",
+			Timestamp:    time.Now(),
+		}
+		
+		go func() {
+			if err := s.notificationService.HandleWorkflowEvent(notificationEvent); err != nil {
+				fmt.Printf("Failed to send approval notification: %v\n", err)
+			}
+		}()
+	}
+
+	// Trigger automation
+	if err := s.triggerPostApprovalAutomation(ctx, assignment.EntityType, assignment.EntityID); err != nil {
+		fmt.Printf("Post-approval automation failed for %s %s: %v\n", assignment.EntityType, assignment.EntityID, err)
+	}
+}
+
+func (s *WorkflowExecutionService) handleStageProgression(ctx context.Context, assignment models.WorkflowAssignment, userID string) {
+	if s.notificationService != nil {
+		notificationEvent := NotificationEvent{
+			Type:         "approval_required",
+			DocumentID:   assignment.EntityID,
+			DocumentType: assignment.EntityType,
+			Action:       "next_stage_approval",
+			ActorID:      userID,
+			Details:      fmt.Sprintf("Document moved to next approval stage (%d)", assignment.CurrentStage),
+			Timestamp:    time.Now(),
+		}
+		
+		go func() {
+			if err := s.notificationService.HandleWorkflowEvent(notificationEvent); err != nil {
+				fmt.Printf("Failed to send next stage approval notification: %v\n", err)
+			}
+		}()
+	}
+}
+
+func (s *WorkflowExecutionService) handlePartialApproval(ctx context.Context, assignment models.WorkflowAssignment, userID string, stage models.WorkflowStage) {
+	if s.notificationService != nil {
+		notificationEvent := NotificationEvent{
+			Type:         "partial_approval",
+			DocumentID:   assignment.EntityID,
+			DocumentType: assignment.EntityType,
+			Action:       "partial_stage_approval",
+			ActorID:      userID,
+			Details:      fmt.Sprintf("Partial approval received for stage %d (%s)", stage.StageNumber, stage.StageName),
+			Timestamp:    time.Now(),
+		}
+		
+		go func() {
+			if err := s.notificationService.HandleWorkflowEvent(notificationEvent); err != nil {
+				fmt.Printf("Failed to send partial approval notification: %v\n", err)
+			}
+		}()
+	}
+}
+
 // RejectWorkflowTask rejects a workflow task and marks the workflow as rejected
 func (s *WorkflowExecutionService) RejectWorkflowTask(ctx context.Context, taskID, userID, signature, reason string) error {
-	// Start transaction
+	return s.RejectWorkflowTaskWithVersion(ctx, taskID, userID, signature, reason, 0)
+}
+
+// RejectWorkflowTaskWithVersion rejects a workflow task with version control for optimistic locking
+func (s *WorkflowExecutionService) RejectWorkflowTaskWithVersion(ctx context.Context, taskID, userID, signature, reason string, expectedVersion int) error {
 	tx := s.db.Begin()
 	defer func() {
 		if r := recover(); r != nil {
@@ -390,24 +502,40 @@ func (s *WorkflowExecutionService) RejectWorkflowTask(ctx context.Context, taskI
 		return fmt.Errorf("task not found: %w", err)
 	}
 
-	if task.Status != "pending" {
+	// Check optimistic locking if version is provided
+	if expectedVersion > 0 && task.Version != expectedVersion {
 		tx.Rollback()
-		return fmt.Errorf("task is not in pending status")
+		return fmt.Errorf("task was modified by another user (expected version %d, current version %d). Please refresh and try again", expectedVersion, task.Version)
+	}
+
+	// Check task status
+	if task.Status != "pending" && task.Status != "claimed" {
+		tx.Rollback()
+		return fmt.Errorf("task is not in pending or claimed status (current: %s)", task.Status)
+	}
+
+	// Check task is claimed by this user (if claiming is enabled)
+	if task.ClaimedBy != nil && *task.ClaimedBy != userID {
+		tx.Rollback()
+		return fmt.Errorf("task is claimed by another user, please wait for them to complete or unclaim it")
+	}
+
+	// Check claim hasn't expired
+	if task.ClaimExpiry != nil && time.Now().After(*task.ClaimExpiry) {
+		tx.Rollback()
+		return fmt.Errorf("task claim has expired, please reclaim the task")
 	}
 
 	// Validate user has the required role for this task
-	if task.AssignedRole != nil {
-		var user models.User
-		if err := tx.Where("id = ?", userID).First(&user).Error; err != nil {
-			tx.Rollback()
-			return fmt.Errorf("user not found: %w", err)
-		}
+	var user models.User
+	if err := tx.Where("id = ?", userID).First(&user).Error; err != nil {
+		tx.Rollback()
+		return fmt.Errorf("user not found: %w", err)
+	}
 
-		// Check if user's role matches the required role for this task
-		if user.Role != *task.AssignedRole {
-			tx.Rollback()
-			return fmt.Errorf("insufficient permissions: user role '%s' does not match required role '%s'", user.Role, *task.AssignedRole)
-		}
+	if task.AssignedRole != nil && user.Role != *task.AssignedRole {
+		tx.Rollback()
+		return fmt.Errorf("insufficient permissions: user role '%s' does not match required role '%s'", user.Role, *task.AssignedRole)
 	}
 
 	// Get the workflow assignment
@@ -417,16 +545,46 @@ func (s *WorkflowExecutionService) RejectWorkflowTask(ctx context.Context, taskI
 		return fmt.Errorf("workflow assignment not found: %w", err)
 	}
 
-	// Update task status
+	// Update task with version increment
 	now := time.Now()
-	task.Status = "completed"
-	task.CompletedAt = &now
-	task.ClaimedBy = &userID
-	task.ClaimedAt = &now
+	result := tx.Model(&task).
+		Where("id = ? AND version = ?", taskID, task.Version).
+		Updates(map[string]interface{}{
+			"status":       "completed",
+			"completed_at": now,
+			"updated_by":   userID,
+			"version":      task.Version + 1,
+		})
 
-	if err := tx.Save(&task).Error; err != nil {
+	if result.Error != nil {
 		tx.Rollback()
-		return fmt.Errorf("failed to update task: %w", err)
+		return fmt.Errorf("failed to update task: %w", result.Error)
+	}
+
+	if result.RowsAffected == 0 {
+		tx.Rollback()
+		return fmt.Errorf("task was modified by another user, please refresh and try again")
+	}
+
+	// Record this rejection in stage approval records
+	approvalRecord := &models.StageApprovalRecord{
+		ID:               uuid.New().String(),
+		OrganizationID:   assignment.OrganizationID,
+		WorkflowTaskID:   taskID,
+		StageNumber:      task.StageNumber,
+		ApproverID:       userID,
+		ApproverName:     user.Name,
+		ApproverRole:     user.Role,
+		Action:           "rejected",
+		Comments:         reason,
+		Signature:        signature,
+		ApprovedAt:       now,
+		CreatedAt:        now,
+	}
+
+	if err := tx.Create(approvalRecord).Error; err != nil {
+		tx.Rollback()
+		return fmt.Errorf("failed to record rejection: %w", err)
 	}
 
 	// Add stage execution to history
@@ -434,8 +592,8 @@ func (s *WorkflowExecutionService) RejectWorkflowTask(ctx context.Context, taskI
 		StageNumber:  task.StageNumber,
 		StageName:    task.StageName,
 		ApproverID:   userID,
-		ApproverName: "", // Will be filled by caller
-		ApproverRole: "", // Will be filled by caller
+		ApproverName: user.Name,
+		ApproverRole: user.Role,
 		Action:       "rejected",
 		Comments:     reason,
 		Signature:    signature,
@@ -640,6 +798,140 @@ func (s *WorkflowExecutionService) GetAvailableApproversForWorkflow(ctx context.
 	}
 
 	return approvers, nil
+}
+
+// ClaimWorkflowTask claims a workflow task for exclusive access
+func (s *WorkflowExecutionService) ClaimWorkflowTask(ctx context.Context, taskID, userID string) error {
+	tx := s.db.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	var task models.WorkflowTask
+
+	// Atomic claim operation with optimistic locking
+	result := tx.Model(&task).
+		Where("id = ? AND status = ? AND (claimed_by IS NULL OR claim_expiry < ?)",
+			taskID, "pending", time.Now()).
+		Updates(map[string]interface{}{
+			"claimed_by":    userID,
+			"claimed_at":    time.Now(),
+			"claim_expiry":  time.Now().Add(30 * time.Minute), // 30-minute claim
+			"status":        "claimed",
+			"version":       gorm.Expr("version + 1"),
+		})
+
+	if result.Error != nil {
+		tx.Rollback()
+		return fmt.Errorf("failed to claim task: %w", result.Error)
+	}
+
+	if result.RowsAffected == 0 {
+		tx.Rollback()
+		return fmt.Errorf("task is not available for claiming (already claimed or completed)")
+	}
+
+	return tx.Commit().Error
+}
+
+// UnclaimWorkflowTask releases a claimed task
+func (s *WorkflowExecutionService) UnclaimWorkflowTask(ctx context.Context, taskID, userID string) error {
+	tx := s.db.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	var task models.WorkflowTask
+	if err := tx.Where("id = ?", taskID).First(&task).Error; err != nil {
+		tx.Rollback()
+		return fmt.Errorf("task not found: %w", err)
+	}
+
+	// Check if task is claimed by this user
+	if task.ClaimedBy == nil || *task.ClaimedBy != userID {
+		tx.Rollback()
+		return fmt.Errorf("task is not claimed by you or is not claimed at all")
+	}
+
+	// Release the claim
+	result := tx.Model(&task).
+		Where("id = ? AND claimed_by = ?", taskID, userID).
+		Updates(map[string]interface{}{
+			"claimed_by":    nil,
+			"claimed_at":    nil,
+			"claim_expiry":  nil,
+			"status":        "pending",
+			"version":       gorm.Expr("version + 1"),
+		})
+
+	if result.Error != nil {
+		tx.Rollback()
+		return fmt.Errorf("failed to unclaim task: %w", result.Error)
+	}
+
+	if result.RowsAffected == 0 {
+		tx.Rollback()
+		return fmt.Errorf("task was not found or not claimed by you")
+	}
+
+	return tx.Commit().Error
+}
+
+// checkStageCompletionCriteria checks if a workflow stage has met its completion criteria
+func (s *WorkflowExecutionService) checkStageCompletionCriteria(tx *gorm.DB, taskID string, stage models.WorkflowStage, organizationID string) (bool, error) {
+	// Get all approvals for this stage
+	var approvals []models.StageApprovalRecord
+	if err := tx.Where("workflow_task_id = ? AND stage_number = ? AND action = ?",
+		taskID, stage.StageNumber, "approved").Find(&approvals).Error; err != nil {
+		return false, err
+	}
+
+	approvalCount := len(approvals)
+
+	// If no approval type specified, default to single approval
+	if stage.ApprovalType == "" {
+		return approvalCount >= 1, nil
+	}
+
+	switch stage.ApprovalType {
+	case "any":
+		return approvalCount >= 1, nil
+	case "all":
+		// Get total number of qualified users for this role in the organization
+		var totalQualified int64
+		if err := tx.Model(&models.User{}).
+			Where("current_organization_id = ? AND role = ? AND active = ?", organizationID, stage.RequiredRole, true).
+			Count(&totalQualified).Error; err != nil {
+			return false, err
+		}
+		return approvalCount >= int(totalQualified), nil
+	case "majority":
+		// Get total number of qualified users for this role in the organization
+		var totalQualified int64
+		if err := tx.Model(&models.User{}).
+			Where("current_organization_id = ? AND role = ? AND active = ?", organizationID, stage.RequiredRole, true).
+			Count(&totalQualified).Error; err != nil {
+			return false, err
+		}
+		required := int(totalQualified)/2 + 1
+		return approvalCount >= required, nil
+	case "quorum":
+		if stage.QuorumCount == nil {
+			return false, fmt.Errorf("quorum count not specified for quorum-based approval")
+		}
+		return approvalCount >= *stage.QuorumCount, nil
+	default:
+		// Default: require specified count (RequiredApprovalCount)
+		requiredCount := stage.RequiredApprovalCount
+		if requiredCount <= 0 {
+			requiredCount = 1 // Default to 1 if not specified
+		}
+		return approvalCount >= requiredCount, nil
+	}
 }
 
 // ApproverInfo represents an approver

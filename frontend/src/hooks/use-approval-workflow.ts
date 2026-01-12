@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { QUERY_KEYS } from '@/lib/constants';
-import { toast } from 'sonner';
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { QUERY_KEYS } from "@/lib/constants";
+import { toast } from "sonner";
 import {
   getApprovalTasks,
   getApprovalTaskDetail,
@@ -11,13 +11,13 @@ import {
   reassignApprovalTask,
   getApprovalHistory,
   getPendingApprovalCount,
-} from '@/app/_actions/workflow-approval-actions';
+} from "@/app/_actions/workflow-approval-actions";
 import {
   ApprovalTask,
   ApproveTaskRequest,
   RejectTaskRequest,
   ReassignTaskRequest,
-} from '@/types';
+} from "@/types";
 
 /**
  * Fetch approval tasks with pagination and filtering
@@ -33,7 +33,7 @@ import {
  */
 export const useApprovalTasks = (
   filters?: {
-    status?: 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
+    status?: "PENDING" | "APPROVED" | "REJECTED" | "CANCELLED";
     documentType?: string;
     assignedToMe?: boolean;
   },
@@ -72,7 +72,90 @@ export const useApprovalTaskDetail = (taskId: string) =>
   });
 
 /**
- * Approve approval task mutation
+ * Claim workflow task mutation
+ *
+ * @param taskId - Task ID to claim
+ * @param onSuccess - Callback after successful claim
+ * @returns Mutation object
+ *
+ * @example
+ * const claimMutation = useClaimTask(taskId)
+ * await claimMutation.mutateAsync()
+ */
+export const useClaimTask = (taskId: string, onSuccess?: () => void) => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async () => {
+      const response = await fetch(`/api/v1/approvals/tasks/${taskId}/claim`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(errorText || "Failed to claim task");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      toast.success("Task claimed successfully");
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.APPROVALS.ALL] });
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.APPROVALS.BY_ID, taskId],
+      });
+      onSuccess?.();
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Failed to claim task");
+    },
+  });
+};
+
+/**
+ * Unclaim workflow task mutation
+ *
+ * @param taskId - Task ID to unclaim
+ * @param onSuccess - Callback after successful unclaim
+ * @returns Mutation object
+ *
+ * @example
+ * const unclaimMutation = useUnclaimTask(taskId)
+ * await unclaimMutation.mutateAsync()
+ */
+export const useUnclaimTask = (taskId: string, onSuccess?: () => void) => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async () => {
+      const response = await fetch(
+        `/api/v1/approvals/tasks/${taskId}/unclaim`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(errorText || "Failed to unclaim task");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      toast.success("Task unclaimed successfully");
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.APPROVALS.ALL] });
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.APPROVALS.BY_ID, taskId],
+      });
+      onSuccess?.();
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Failed to unclaim task");
+    },
+  });
+};
+
+/**
+ * Approve approval task mutation (enhanced with version control)
  *
  * @param taskId - Task ID to approve
  * @param onSuccess - Callback after successful approval
@@ -83,20 +166,23 @@ export const useApprovalTaskDetail = (taskId: string) =>
  * await approveMutation.mutateAsync({
  *   comments: 'Approved',
  *   signature: 'data:image/png;base64,...',
- *   stageNumber: 1
+ *   stageNumber: 1,
+ *   expectedVersion: 1
  * })
  */
 export const useApproveTask = (taskId: string, onSuccess?: () => void) => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (data: ApproveTaskRequest) => {
+    mutationFn: async (
+      data: ApproveTaskRequest & { expectedVersion?: number }
+    ) => {
       const response = await approveApprovalTask(taskId, data);
       if (!response.success) throw new Error(response.message);
       return response;
     },
     onSuccess: (response) => {
-      toast.success('Task approved successfully');
+      toast.success("Task approved successfully");
 
       // Invalidate relevant queries
       queryClient.invalidateQueries({
@@ -119,7 +205,21 @@ export const useApproveTask = (taskId: string, onSuccess?: () => void) => {
       onSuccess?.();
     },
     onError: (error: Error) => {
-      toast.error(error.message || 'Failed to approve task');
+      if (
+        error.message.includes("version") ||
+        error.message.includes("modified by another user")
+      ) {
+        toast.error(
+          "Task was modified by another user. Please refresh and try again."
+        );
+      } else if (
+        error.message.includes("claimed by another user") ||
+        error.message.includes("claim has expired")
+      ) {
+        toast.error("Task claim issue: " + error.message);
+      } else {
+        toast.error(error.message || "Failed to approve task");
+      }
     },
   });
 };
@@ -149,7 +249,7 @@ export const useRejectTask = (taskId: string, onSuccess?: () => void) => {
       return response;
     },
     onSuccess: (response) => {
-      toast.success('Task rejected successfully');
+      toast.success("Task rejected successfully");
 
       queryClient.invalidateQueries({
         queryKey: [QUERY_KEYS.APPROVALS.ALL],
@@ -170,7 +270,7 @@ export const useRejectTask = (taskId: string, onSuccess?: () => void) => {
       onSuccess?.();
     },
     onError: (error: Error) => {
-      toast.error(error.message || 'Failed to reject task');
+      toast.error(error.message || "Failed to reject task");
     },
   });
 };
@@ -199,7 +299,7 @@ export const useReassignTask = (taskId: string, onSuccess?: () => void) => {
       return response;
     },
     onSuccess: () => {
-      toast.success('Task reassigned successfully');
+      toast.success("Task reassigned successfully");
 
       queryClient.invalidateQueries({
         queryKey: [QUERY_KEYS.APPROVALS.ALL],
@@ -211,7 +311,7 @@ export const useReassignTask = (taskId: string, onSuccess?: () => void) => {
       onSuccess?.();
     },
     onError: (error: Error) => {
-      toast.error(error.message || 'Failed to reassign task');
+      toast.error(error.message || "Failed to reassign task");
     },
   });
 };
@@ -250,13 +350,16 @@ export const usePendingApprovalCount = () =>
     queryKey: [QUERY_KEYS.APPROVALS.PENDING_COUNT],
     queryFn: async () => {
       const response = await getApprovalTasks(
-        { status: 'PENDING', assignedToMe: true },
+        { status: "PENDING", assignedToMe: true },
         1,
         1
       );
       if (!response.success) throw new Error(response.message);
       // Return total count from pagination metadata or array length
-      return (response.data as any)?.total || (Array.isArray(response.data) ? response.data.length : 0);
+      return (
+        (response.data as any)?.total ||
+        (Array.isArray(response.data) ? response.data.length : 0)
+      );
     },
     staleTime: 2 * 60 * 1000, // 2 minutes
   });
@@ -276,7 +379,7 @@ export const usePendingApprovals = (page: number = 1, limit: number = 10) =>
     queryKey: [QUERY_KEYS.APPROVALS.PENDING, page, limit],
     queryFn: async () => {
       const response = await getApprovalTasks(
-        { status: 'PENDING', assignedToMe: true },
+        { status: "PENDING", assignedToMe: true },
         page,
         limit
       );
@@ -288,7 +391,7 @@ export const usePendingApprovals = (page: number = 1, limit: number = 10) =>
 
 /**
  * Combined hook for approval flow component
- * Handles getting task details, approving, rejecting, and reassigning
+ * Handles getting task details, claiming, unclaiming, approving, rejecting, and reassigning
  *
  * @param taskId - Task ID to manage
  * @param onSuccess - Callback after any successful action
@@ -300,10 +403,12 @@ export const usePendingApprovals = (page: number = 1, limit: number = 10) =>
  * })
  *
  * // Use in component:
- * const { task, approve, reject, reassign } = workflow
+ * const { task, claim, unclaim, approve, reject, reassign } = workflow
  */
 export const useApprovalWorkflow = (taskId: string, onSuccess?: () => void) => {
   const { data: task, isLoading, error } = useApprovalTaskDetail(taskId);
+  const claimMutation = useClaimTask(taskId, onSuccess);
+  const unclaimMutation = useUnclaimTask(taskId, onSuccess);
   const approveMutation = useApproveTask(taskId, onSuccess);
   const rejectMutation = useRejectTask(taskId, onSuccess);
   const reassignMutation = useReassignTask(taskId, onSuccess);
@@ -315,23 +420,33 @@ export const useApprovalWorkflow = (taskId: string, onSuccess?: () => void) => {
     error,
 
     // Actions
-    approve: (data: Omit<ApproveTaskRequest, 'taskId'>) =>
-      approveMutation.mutateAsync(data),
-    reject: (data: Omit<RejectTaskRequest, 'taskId'>) =>
-      rejectMutation.mutateAsync(data),
-    reassign: (data: Omit<ReassignTaskRequest, 'taskId'>) =>
+    claim: () => claimMutation.mutateAsync(),
+    unclaim: () => unclaimMutation.mutateAsync(),
+    approve: (
+      data: Omit<ApproveTaskRequest, "taskId"> & { expectedVersion?: number }
+    ) => approveMutation.mutateAsync(data),
+    reject: (
+      data: Omit<RejectTaskRequest, "taskId"> & { expectedVersion?: number }
+    ) => rejectMutation.mutateAsync(data),
+    reassign: (data: Omit<ReassignTaskRequest, "taskId">) =>
       reassignMutation.mutateAsync(data),
 
     // Mutation states
+    isClaiming: claimMutation.isPending,
+    isUnclaiming: unclaimMutation.isPending,
     isApproving: approveMutation.isPending,
     isRejecting: rejectMutation.isPending,
     isReassigning: reassignMutation.isPending,
     isProcessing:
+      claimMutation.isPending ||
+      unclaimMutation.isPending ||
       approveMutation.isPending ||
       rejectMutation.isPending ||
       reassignMutation.isPending,
 
     // Mutation errors
+    claimError: claimMutation.error,
+    unclaimError: unclaimMutation.error,
     approveError: approveMutation.error,
     rejectError: rejectMutation.error,
     reassignError: reassignMutation.error,

@@ -4,7 +4,7 @@
 # Tests for authentication, authorization, and session management
 
 # Source common utilities
-source "$(dirname "$0")/test_common.sh"
+source "$(dirname "$0")/common_tests.sh"
 
 # Test health check endpoint
 test_health_check() {

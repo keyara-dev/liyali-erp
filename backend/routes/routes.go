@@ -227,6 +227,10 @@ func SetupRoutes(app *fiber.App, handlerRegistry *handlers.HandlerRegistry, rbac
 	approvals.Get("/available-approvers", handlerRegistry.Approval.GetAvailableApprovers)
 	approvals.Get("/tasks/overdue", middleware.RequirePermission(rbacService, "approval", "view"), handlerRegistry.Approval.GetOverdueTasks)
 
+	// Task claiming routes (NEW)
+	approvals.Post("/tasks/:id/claim", middleware.RequireWorkflowPermission("approve"), handlerRegistry.Approval.ClaimTask)
+	approvals.Post("/tasks/:id/unclaim", middleware.RequireWorkflowPermission("approve"), handlerRegistry.Approval.UnclaimTask)
+
 	// Parameterized routes come after specific routes
 	approvals.Get("/:id", handlerRegistry.Approval.GetApprovalTask)
 	approvals.Post("/:id/approve", middleware.RequireWorkflowPermission("approve"), handlerRegistry.Approval.ApproveTask)

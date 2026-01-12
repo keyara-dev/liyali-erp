@@ -6,12 +6,12 @@ The comprehensive test suite has been refactored into smaller, focused modules f
 
 ```
 backend/scripts/
-├── test_common.sh              # Shared utilities and configurations
+├── common_tests.sh              # Shared utilities and configurations
 ├── run_tests.sh               # Main orchestrator script
 ├── auth_tests.sh              # Authentication & session management
 ├── rbac_tests.sh              # Role-based access control & multi-tenant
 ├── document_tests.sh          # Document management (CRUD operations)
-├── workflow_tests.sh          # Workflow & approval system
+├── workflow_test.sh            # Consolidated workflow & approval system tests
 ├── department_tests.sh        # Department management
 ├── analytics_tests.sh         # Analytics, notifications & system ops
 ├── error_tests.sh             # Error handling & security validation
@@ -49,7 +49,7 @@ cd backend/scripts
 # Individual modules (require auth context)
 ./rbac_tests.sh
 ./document_tests.sh
-./workflow_tests.sh
+./workflow_test.sh
 ./department_tests.sh
 ./analytics_tests.sh
 ./error_tests.sh
@@ -86,7 +86,7 @@ cd backend/scripts
 - Document search & statistics
 - Critical fixes verification
 
-### 🔄 Workflow Tests (`workflow_tests.sh`)
+### 🔄 Workflow Tests (`workflow_test.sh`)
 
 - Workflow creation & management
 - Legacy documentType support
@@ -126,7 +126,7 @@ cd backend/scripts
 
 ### Environment Variables
 
-All test modules use shared configuration from `test_common.sh`:
+All test modules use shared configuration from `common_tests.sh`:
 
 ```bash
 BASE_URL="http://localhost:8080"
@@ -141,7 +141,7 @@ The test suite uses a file-based persistent context mechanism:
 
 1. **Storage**: Variables are saved to `$HOME/.liyali_test_context` (chmod 600).
 2. **Setup**: `run_tests.sh` attempts to load existing context. If invalid/missing, it runs `auth_tests.sh`.
-3. **Sharing**: Every modular script automatically sources `test_common.sh`, which loads the latest context.
+3. **Sharing**: Every modular script automatically sources `common_tests.sh`, which loads the latest context.
 4. **Persistence**: New IDs (Workflow ID, Category ID, etc.) are saved to the context file after each module execution.
 5. **Cleanup**: Call `clear_context` (standard in `test_logout`) to wipe the persistence file.
 

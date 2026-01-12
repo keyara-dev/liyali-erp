@@ -4,7 +4,7 @@
 # Main script to run individual test modules with authentication context
 
 # Source common utilities
-source "$(dirname "$0")/test_common.sh"
+source "$(dirname "$0")/common_tests.sh"
 
 # Global test counters for overall summary
 GLOBAL_TESTS_PASSED=0
@@ -126,7 +126,20 @@ run_test_module() {
     
     # Source the test module
     source "$(dirname "$0")/$script_name"
-    local module_function="run_${script_name%_tests.sh}_tests"
+    
+    # Generate function name based on script name
+    local module_function
+    if [[ "$script_name" == "workflow_test.sh" ]]; then
+        module_function="run_workflow_tests"
+    else
+        module_function="run_${script_name%_tests.sh}_tests"
+    fi
+    
+    # Check if function exists
+    if ! declare -f "$module_function" > /dev/null; then
+        print_status "ERROR" "Function $module_function not found in $script_name"
+        return 1
+    fi
     
     # Call the module's main function
     $module_function
@@ -159,9 +172,9 @@ run_all_tests() {
     # Run all test modules
     run_test_module "RBAC & Multi-Tenant" "rbac_tests.sh"
     run_test_module "Document Management" "document_tests.sh"
-    run_test_module "Workflow & Approval" "workflow_tests.sh"
+    run_test_module "Workflow & Approval" "workflow_test.sh"
     run_test_module "Custom Role Workflows" "custom_role_tests.sh"
-    run_test_module "Go Unit Tests" "run_unit_tests.sh"
+    run_test_module "Workflow Unit Tests" "workflow_unit_tests.sh"
     run_test_module "Department Management" "department_tests.sh"
     run_test_module "Analytics & System" "analytics_tests.sh"
     run_test_module "Error Handling & Security" "error_tests.sh"
@@ -208,13 +221,13 @@ run_specific_tests() {
                 run_test_module "Document Management" "document_tests.sh"
                 ;;
             "workflows"|"workflow"|"approvals")
-                run_test_module "Workflow & Approval" "workflow_tests.sh"
+                run_test_module "Workflow & Approval" "workflow_test.sh"
                 ;;
             "custom-roles"|"custom_roles"|"roles")
                 run_test_module "Custom Role Workflows" "custom_role_tests.sh"
                 ;;
             "unit"|"unit-tests"|"go-tests")
-                run_test_module "Go Unit Tests" "run_unit_tests.sh"
+                run_test_module "Workflow Unit Tests" "workflow_unit_tests.sh"
                 ;;
             "departments"|"department")
                 run_test_module "Department Management" "department_tests.sh"
@@ -273,9 +286,9 @@ show_help() {
     echo "  ./auth_tests.sh              # Authentication tests only"
     echo "  ./rbac_tests.sh              # RBAC tests only (requires auth context)"
     echo "  ./document_tests.sh          # Document tests only (requires auth context)"
-    echo "  ./workflow_tests.sh          # Workflow tests only (requires auth context)"
+    echo "  ./workflow_test.sh           # Workflow tests only (requires auth context)"
     echo "  ./custom_role_tests.sh       # Custom role tests only (requires auth context)"
-    echo "  ./run_unit_tests.sh          # Go unit tests only"
+    echo "  ./workflow_unit_tests.sh     # Workflow unit tests only"
     echo "  ./department_tests.sh        # Department tests only (requires auth context)"
     echo "  ./analytics_tests.sh         # Analytics tests only (requires auth context)"
     echo "  ./error_tests.sh             # Error handling tests only (requires auth context)"

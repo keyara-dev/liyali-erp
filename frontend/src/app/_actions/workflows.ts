@@ -119,8 +119,8 @@ export async function createWorkflow(
   const url = `/api/v1/workflows`;
 
   try {
-    // Handle entityType/documentType mapping
-    const entityType = formData.entityType || formData.documentType;
+    // Use entityType (documentType is deprecated)
+    const entityType = formData.entityType;
 
     // Validate required fields
     if (!formData.name || !entityType || !formData.stages?.length) {
@@ -134,13 +134,13 @@ export async function createWorkflow(
       entityType: entityType,
       stages: formData.stages.map((stage, index) => ({
         stageNumber: index + 1,
-        stageName: stage.stageName || stage.name,
+        stageName: stage.stageName,
         description: stage.description,
-        requiredRole: stage.requiredRole || stage.approverRole,
+        requiredRole: stage.requiredRole,
         requiredApprovals: stage.requiredApprovals || 1,
         timeoutHours: stage.timeoutHours,
-        canReject: stage.canReject || stage.canBeRejected || true,
-        canReassign: stage.canReassign || stage.canBeReassigned || true,
+        canReject: stage.canReject,
+        canReassign: stage.canReassign,
       })),
       conditions: formData.conditions,
       isDefault: formData.isDefault,
@@ -178,19 +178,18 @@ export async function updateWorkflow(
 
     if (formData.name) backendData.name = formData.name;
     if (formData.description) backendData.description = formData.description;
-    // Handle entityType/documentType mapping
+    // Set entityType if provided
     if (formData.entityType) backendData.entityType = formData.entityType;
-    if (formData.documentType) backendData.entityType = formData.documentType;
     if (formData.stages) {
       backendData.stages = formData.stages.map((stage, index) => ({
         stageNumber: index + 1,
-        stageName: stage.stageName || stage.name,
+        stageName: stage.stageName,
         description: stage.description,
-        requiredRole: stage.requiredRole || stage.approverRole,
+        requiredRole: stage.requiredRole,
         requiredApprovals: stage.requiredApprovals || 1,
         timeoutHours: stage.timeoutHours,
-        canReject: stage.canReject || stage.canBeRejected || true,
-        canReassign: stage.canReassign || stage.canBeReassigned || true,
+        canReject: stage.canReject,
+        canReassign: stage.canReassign,
       }));
     }
     if (formData.conditions !== undefined)

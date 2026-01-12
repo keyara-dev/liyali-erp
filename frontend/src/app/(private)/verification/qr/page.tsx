@@ -3,6 +3,9 @@ import { redirect } from 'next/navigation'
 import { QRVerificationClient } from './_components/qr-verification-client'
 import DashboardLayoutProvider from '../../(main)/layout'
 
+
+export const dynamic = "force-dynamic";
+
 export const metadata = {
   title: 'QR Code Verification',
   description: 'Verify and scan QR codes for document authentication',

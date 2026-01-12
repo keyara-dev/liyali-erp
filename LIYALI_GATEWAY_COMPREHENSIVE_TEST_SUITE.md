@@ -45,15 +45,15 @@ curl http://localhost:8080/health
 
 ```bash
 # Make the script executable
-chmod +x run_comprehensive_tests.sh
+chmod +x run_tests.sh
 
 # Run all tests
-./run_comprehensive_tests.sh
+./run_tests.sh
 
 # Run specific test categories
-./run_comprehensive_tests.sh --auth-only
-./run_comprehensive_tests.sh --crud-only
-./run_comprehensive_tests.sh --fixes-only
+./run_tests.sh auth
+./run_tests.sh documents
+./run_tests.sh workflows
 ```
 
 ---

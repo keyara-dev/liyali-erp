@@ -4,7 +4,7 @@
 # Tests for analytics, notifications, and system operations
 
 # Source common utilities
-source "$(dirname "$0")/test_common.sh"
+source "$(dirname "$0")/common_tests.sh"
 
 # Test analytics and reporting
 test_analytics_and_reporting() {

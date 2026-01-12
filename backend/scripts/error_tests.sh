@@ -4,7 +4,7 @@
 # Tests for error handling, validation, and edge cases
 
 # Source common utilities
-source "$(dirname "$0")/test_common.sh"
+source "$(dirname "$0")/common_tests.sh"
 
 # Test error handling and edge cases
 test_error_handling_edge_cases() {

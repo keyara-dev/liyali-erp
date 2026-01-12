@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PageHeader } from "@/components/base/page-header";
-import { PDFPreviewDialog } from "@/components/pdf-preview-dialog";
+import { PDFPreviewDialog } from "@/components/modals/pdf-preview-dialog";
 import {
   exportPaymentVoucherPDF,
   getPaymentVoucherPDFBlob,

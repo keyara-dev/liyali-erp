@@ -138,6 +138,45 @@ type WorkflowStage struct {
 	TimeoutHours      *int   `json:"timeoutHours,omitempty"`
 	CanReject         bool   `json:"canReject"`
 	CanReassign       bool   `json:"canReassign"`
+	
+	// NEW: Enhanced approval support
+	RequiredApprovalCount int    `json:"requiredApprovalCount"` // Default: 1, for multiple approvals
+	ApprovalType          string `json:"approvalType"`          // "any", "all", "majority", "quorum"
+	QuorumCount           *int   `json:"quorumCount,omitempty"` // For quorum-based approval
+	AllowSelfApproval     bool   `json:"allowSelfApproval"`     // Can creator approve their own document
+	RequireUnanimous      bool   `json:"requireUnanimous"`      // All qualified users must approve
+	EscalationUserID      *string `json:"escalationUserId,omitempty"`
+	
+	// NEW: Assignment strategy support
+	AssignmentStrategy    string   `json:"assignmentStrategy"`    // "role", "round_robin", "specific_user", "user_group"
+	AssignedUserIDs       []string `json:"assignedUserIds,omitempty"`
+	AssignedGroupID       *string  `json:"assignedGroupId,omitempty"`
+}
+
+// Validate validates the workflow stage configuration
+func (ws *WorkflowStage) Validate() error {
+	if ws.StageNumber <= 0 {
+		return fmt.Errorf("stage number must be positive")
+	}
+	if ws.StageName == "" {
+		return fmt.Errorf("stage name is required")
+	}
+	if ws.RequiredRole == "" && ws.AssignmentStrategy != "specific_user" {
+		return fmt.Errorf("required role is required unless using specific user assignment")
+	}
+	if ws.RequiredApprovalCount <= 0 {
+		ws.RequiredApprovalCount = 1 // Default to 1
+	}
+	if ws.ApprovalType == "" {
+		ws.ApprovalType = "any" // Default to any
+	}
+	if ws.ApprovalType == "quorum" && ws.QuorumCount == nil {
+		return fmt.Errorf("quorum count is required for quorum-based approval")
+	}
+	if ws.AssignmentStrategy == "" {
+		ws.AssignmentStrategy = "role" // Default to role-based
+	}
+	return nil
 }
 
 // WorkflowConditions defines when a workflow should be applied
@@ -216,6 +255,43 @@ type WorkflowTask struct {
 	Claimer     *User      `gorm:"foreignKey:ClaimedBy" json:"claimer,omitempty"`
 	CompletedAt *time.Time `json:"completedAt,omitempty"`
 	DueDate     *time.Time `json:"dueDate,omitempty"`
+	
+	// NEW: Optimistic locking and enhanced claiming
+	Version      int        `gorm:"default:1;not null" json:"version"`
+	UpdatedBy    *string    `json:"updatedBy,omitempty"`
+	ClaimExpiry  *time.Time `json:"claimExpiry,omitempty"`
+}
+
+// StageApprovalRecord tracks individual approvals per stage for multiple approval support
+type StageApprovalRecord struct {
+	ID               string    `gorm:"primaryKey" json:"id"`
+	OrganizationID   string    `gorm:"index;not null" json:"organizationId"`
+	Organization     *Organization `gorm:"foreignKey:OrganizationID" json:"organization,omitempty"`
+	WorkflowTaskID   string    `gorm:"index;not null" json:"workflowTaskId"`
+	WorkflowTask     *WorkflowTask `gorm:"foreignKey:WorkflowTaskID" json:"workflowTask,omitempty"`
+	StageNumber      int       `gorm:"not null" json:"stageNumber"`
+	ApproverID       string    `gorm:"not null" json:"approverId"`
+	Approver         *User     `gorm:"foreignKey:ApproverID" json:"approver,omitempty"`
+	ApproverName     string    `json:"approverName"`
+	ApproverRole     string    `json:"approverRole"`
+	Action           string    `json:"action"` // "approved", "rejected"
+	Comments         string    `json:"comments"`
+	Signature        string    `json:"signature"`
+	ApprovedAt       time.Time `json:"approvedAt"`
+	IPAddress        string    `json:"ipAddress"`
+	UserAgent        string    `json:"userAgent"`
+	CreatedAt        time.Time `json:"createdAt"`
+}
+
+// TaskAssignmentHistory tracks round-robin assignment history
+type TaskAssignmentHistory struct {
+	ID             string    `gorm:"primaryKey" json:"id"`
+	OrganizationID string    `gorm:"index;not null" json:"organizationId"`
+	Organization   *Organization `gorm:"foreignKey:OrganizationID" json:"organization,omitempty"`
+	Role           string    `gorm:"index;not null" json:"role"`
+	AssignedUserID string    `gorm:"not null" json:"assignedUserId"`
+	AssignedUser   *User     `gorm:"foreignKey:AssignedUserID" json:"assignedUser,omitempty"`
+	AssignedAt     time.Time `json:"assignedAt"`
 }
 
 // WorkflowDefault tracks default workflows for entity types
@@ -326,6 +402,8 @@ func (Workflow) TableName() string                  { return "workflows" }
 func (WorkflowAssignment) TableName() string        { return "workflow_assignments" }
 func (WorkflowTask) TableName() string              { return "workflow_tasks" }
 func (WorkflowDefault) TableName() string           { return "workflow_defaults" }
+func (StageApprovalRecord) TableName() string       { return "stage_approval_records" }
+func (TaskAssignmentHistory) TableName() string     { return "task_assignment_history" }
 func (ApprovalTaskEnhanced) TableName() string      { return "approval_tasks_enhanced" }
 func (ApprovalHistory) TableName() string           { return "approval_history" }
 func (NotificationEnhanced) TableName() string      { return "notifications_enhanced" }
@@ -495,20 +573,6 @@ func (wt *WorkflowTask) IsCompleted() bool {
 
 func (wt *WorkflowTask) IsOverdue() bool {
 	return wt.DueDate != nil && time.Now().After(*wt.DueDate) && !wt.IsCompleted()
-}
-
-// Helper methods for WorkflowStage
-func (ws *WorkflowStage) Validate() error {
-	if ws.StageName == "" {
-		return fmt.Errorf("stage name is required")
-	}
-	if ws.RequiredRole == "" {
-		return fmt.Errorf("required role is required")
-	}
-	if ws.RequiredApprovals < 1 {
-		return fmt.Errorf("required approvals must be at least 1")
-	}
-	return nil
 }
 
 // Helper methods for WorkflowConditions

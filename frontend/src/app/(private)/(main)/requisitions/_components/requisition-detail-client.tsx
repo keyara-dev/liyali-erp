@@ -41,7 +41,7 @@ import {
   getRequisitionPDFBlob,
 } from "@/lib/pdf/pdf-export";
 import { toast } from "sonner";
-import { PDFPreviewDialog } from "@/components/pdf-preview-dialog";
+import { PDFPreviewDialog } from "@/components/modals/pdf-preview-dialog";
 
 interface RequisitionDetailClientProps {
   requisitionId: string;

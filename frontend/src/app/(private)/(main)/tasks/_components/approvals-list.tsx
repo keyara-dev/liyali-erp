@@ -5,13 +5,7 @@ import {
   useApprovalTasks,
   usePendingApprovalCount,
 } from "@/hooks/use-approval-workflow";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Select,
   SelectContent,
@@ -22,56 +16,56 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   CheckCircle2,
   AlertCircle,
   Clock,
   Filter,
   Search,
-  ArrowRight,
+  RefreshCw,
+  Users,
+  AlertTriangle,
 } from "lucide-react";
-
-const PRIORITY_COLORS = {
-  HIGH: "text-red-600 dark:text-red-400",
-  MEDIUM: "text-yellow-600 dark:text-yellow-400",
-  LOW: "text-green-600 dark:text-green-400",
-};
-
-const PRIORITY_BG = {
-  HIGH: "bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800",
-  MEDIUM:
-    "bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800",
-  LOW: "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800",
-};
+import { ApprovalTaskCard } from "@/components/workflows/approval-task-card";
 
 interface ApprovalsListProps {
-  userId?: string;
+  userId: string;
 }
 
 export function ApprovalsList({ userId }: ApprovalsListProps) {
   const [statusFilter, setStatusFilter] = useState<
-    "all" | "pending" | "approved" | "rejected"
+    "all" | "pending" | "claimed" | "completed"
   >("pending");
   const [priorityFilter, setPriorityFilter] = useState<
     "all" | "HIGH" | "MEDIUM" | "LOW"
   >("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState<"date" | "priority" | "name">("date");
+  const [page, setPage] = useState(1);
+  const limit = 10;
+
+  // Mock current user data - replace with actual auth context
+  const currentUser = {
+    id: userId,
+    role: "manager", // This should come from actual user context
+    name: "Current User",
+  };
 
   // Fetch approval tasks with filter
-  const filters = statusFilter === "all" ? {} : { status: statusFilter as any };
-  const { data: tasks = [], isLoading: isTasksLoading } = useApprovalTasks(
-    filters,
-    1,
-    100
-  );
+  const filters =
+    statusFilter === "all" ? {} : { status: statusFilter.toUpperCase() as any };
+  const {
+    data: tasks = [],
+    isLoading: isTasksLoading,
+    error,
+    refetch,
+  } = useApprovalTasks(filters, page, limit);
 
-  // Get pending approval count for statistics
-  const { data: pendingCount = 0 } = usePendingApprovalCount();
+  const handleRefresh = () => {
+    refetch();
+  };
 
-  // Filter tasks
+  // Filter tasks based on search and priority
   const filteredTasks = tasks
     .filter((task) => {
       if (priorityFilter !== "all" && task.priority !== priorityFilter) {
@@ -79,7 +73,7 @@ export function ApprovalsList({ userId }: ApprovalsListProps) {
       }
       if (
         searchQuery &&
-        !`${task.documentType} ${task.documentNumber}`
+        !`${task.entityType} ${task.entityId} ${task.stageName}`
           .toLowerCase()
           .includes(searchQuery.toLowerCase())
       ) {
@@ -97,8 +91,8 @@ export function ApprovalsList({ userId }: ApprovalsListProps) {
             (priorityOrder[b.priority as keyof typeof priorityOrder] || 2)
           );
         case "name":
-          return `${a.documentType}${a.documentNumber}`.localeCompare(
-            `${b.documentType}${b.documentNumber}`
+          return `${a.entityType}${a.entityId}`.localeCompare(
+            `${b.entityType}${b.entityId}`
           );
         case "date":
         default:
@@ -109,99 +103,161 @@ export function ApprovalsList({ userId }: ApprovalsListProps) {
       }
     });
 
-  if (isTasksLoading) {
+  // Group tasks by status for better organization
+  const groupedTasks = {
+    claimedByMe: filteredTasks.filter((task) => {
+      const status = task.status?.toLowerCase();
+      return status === "claimed" && (task as any).claimedBy === currentUser.id;
+    }),
+    available: filteredTasks.filter((task) => {
+      const status = task.status?.toLowerCase();
+      return (
+        status === "pending" &&
+        ((task as any).assignedRole === currentUser.role ||
+          (task as any).assignedUserId === currentUser.id)
+      );
+    }),
+    claimedByOthers: filteredTasks.filter((task) => {
+      const status = task.status?.toLowerCase();
+      return status === "claimed" && (task as any).claimedBy !== currentUser.id;
+    }),
+    completed: filteredTasks.filter((task) => {
+      const status = task.status?.toLowerCase();
+      return status === "approved" || status === "rejected";
+    }),
+  };
+
+  const getStatusStats = () => {
+    return {
+      total: filteredTasks.length,
+      claimedByMe: groupedTasks.claimedByMe.length,
+      available: groupedTasks.available.length,
+      claimedByOthers: groupedTasks.claimedByOthers.length,
+      completed: groupedTasks.completed.length,
+    };
+  };
+
+  const stats = getStatusStats();
+
+  if (error) {
     return (
-      <div className="space-y-6">
-        <Skeleton className="h-12 w-48" />
-        <div className="grid gap-4 md:grid-cols-4">
-          {[1, 2, 3, 4].map((i) => (
-            <Skeleton key={i} className="h-24 w-full" />
-          ))}
+      <div className="container mx-auto p-6">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center space-y-4">
+            <AlertTriangle className="h-12 w-12 text-red-500 mx-auto" />
+            <h2 className="text-xl font-semibold text-gray-900">
+              Failed to load approval tasks
+            </h2>
+            <p className="text-gray-600">
+              Please try refreshing the page or contact support if the issue
+              persists.
+            </p>
+            <Button onClick={handleRefresh} variant="outline">
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Try Again
+            </Button>
+          </div>
         </div>
       </div>
     );
   }
 
-  // Calculate statistics from tasks
-  const totalPending = tasks.filter((t) => t.status === "pending").length;
-  const highPriority = tasks.filter(
-    (t) => t.status === "pending" && t.priority === "HIGH"
-  ).length;
-  const now = new Date();
-  const monthAgo = new Date(now.getFullYear(), now.getMonth(), 1);
-  const thisMonth = tasks.filter(
-    (t) => new Date(t.createdAt) >= monthAgo
-  ).length;
-  const overdue = tasks.filter(
-    (t) => t.status === "pending" && new Date(t.dueAt || 0) < now
-  ).length;
-
   return (
     <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900">Approval Tasks</h2>
+          <p className="text-gray-600 mt-1">
+            Review and approve pending workflow tasks assigned to your role
+          </p>
+        </div>
+        <Button
+          onClick={handleRefresh}
+          variant="outline"
+          disabled={isTasksLoading}
+        >
+          <RefreshCw
+            className={`h-4 w-4 mr-2 ${isTasksLoading ? "animate-spin" : ""}`}
+          />
+          Refresh
+        </Button>
+      </div>
+
       {/* Statistics Cards */}
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
         <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Total Pending
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{totalPending}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Awaiting your action
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              High Priority
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className={`text-2xl font-bold ${PRIORITY_COLORS.HIGH}`}>
-              {highPriority}
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2">
+              <Users className="h-5 w-5 text-blue-600" />
+              <div>
+                <p className="text-sm text-gray-600">Claimed by Me</p>
+                <p className="text-2xl font-bold text-blue-600">
+                  {stats.claimedByMe}
+                </p>
+              </div>
             </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Require immediate attention
-            </p>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              This Month
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{thisMonth}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Processed this month
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Overdue
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-600 dark:text-red-400">
-              {overdue}
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2">
+              <Clock className="h-5 w-5 text-green-600" />
+              <div>
+                <p className="text-sm text-gray-600">Available</p>
+                <p className="text-2xl font-bold text-green-600">
+                  {stats.available}
+                </p>
+              </div>
             </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Past due date
-            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2">
+              <Users className="h-5 w-5 text-amber-600" />
+              <div>
+                <p className="text-sm text-gray-600">Claimed by Others</p>
+                <p className="text-2xl font-bold text-amber-600">
+                  {stats.claimedByOthers}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="h-5 w-5 text-gray-600" />
+              <div>
+                <p className="text-sm text-gray-600">Completed</p>
+                <p className="text-2xl font-bold text-gray-600">
+                  {stats.completed}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2">
+              <Filter className="h-5 w-5 text-purple-600" />
+              <div>
+                <p className="text-sm text-gray-600">Total</p>
+                <p className="text-2xl font-bold text-purple-600">
+                  {stats.total}
+                </p>
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Filters */}
+      {/* Filters and Search */}
       <Card>
         <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2">
@@ -223,9 +279,9 @@ export function ApprovalsList({ userId }: ApprovalsListProps) {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Statuses</SelectItem>
-                  <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="approved">Approved</SelectItem>
-                  <SelectItem value="rejected">Rejected</SelectItem>
+                  <SelectItem value="pending">Available</SelectItem>
+                  <SelectItem value="claimed">Claimed</SelectItem>
+                  <SelectItem value="completed">Completed</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -284,108 +340,123 @@ export function ApprovalsList({ userId }: ApprovalsListProps) {
         </CardContent>
       </Card>
 
-      {/* Approvals List */}
-      <div className="space-y-3">
-        {isTasksLoading ? (
-          <>
-            {[1, 2, 3].map((i) => (
-              <Skeleton key={i} className="h-24 w-full" />
-            ))}
-          </>
-        ) : filteredTasks.length === 0 ? (
-          <Card>
-            <CardContent className="flex flex-col items-center justify-center py-12">
-              <CheckCircle2 className="h-12 w-12 text-green-600 mb-4 opacity-50" />
-              <h3 className="font-semibold mb-1">All Caught Up!</h3>
-              <p className="text-sm text-muted-foreground text-center">
-                {statusFilter === "pending"
-                  ? "You have no pending approvals."
-                  : "No approvals match your filters."}
-              </p>
-            </CardContent>
-          </Card>
-        ) : (
-          filteredTasks.map((task) => (
-            <div
-              key={task.id}
-              className={`border rounded-lg p-4 hover:shadow-sm transition-shadow cursor-pointer ${
-                task.priority
-                  ? PRIORITY_BG[task.priority as keyof typeof PRIORITY_BG]
-                  : ""
-              }`}
-            >
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex-1 min-w-0">
-                  {/* Header */}
-                  <div className="flex items-center gap-2 mb-2">
-                    <h3 className="font-semibold">
-                      {task.documentType} #{task.documentNumber}
-                    </h3>
-                    {task.priority && (
-                      <Badge
-                        variant="outline"
-                        className={`${PRIORITY_COLORS[task.priority as keyof typeof PRIORITY_COLORS]} border-current`}
-                      >
-                        {task.priority}
-                      </Badge>
-                    )}
-                    <Badge variant="secondary">Stage {task.stage}</Badge>
-                  </div>
-
-                  {/* Details */}
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                    <div>
-                      <span className="text-muted-foreground">Created</span>
-                      <p className="font-medium">
-                        {new Date(
-                          task.createdAt || new Date()
-                        ).toLocaleDateString()}
-                      </p>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground">Assigned</span>
-                      <p className="font-medium">
-                        {task.approverName || "Unassigned"}
-                      </p>
-                    </div>
-                    {task.dueAt && (
-                      <div>
-                        <span className="text-muted-foreground">Due Date</span>
-                        <p className="font-medium">
-                          {new Date(task.dueAt).toLocaleDateString()}
-                        </p>
-                      </div>
-                    )}
-                    <div>
-                      <span className="text-muted-foreground">Status</span>
-                      <p className="font-medium">
-                        {task.status === "PENDING"
-                          ? "Pending"
-                          : task.status === "APPROVED"
-                            ? "Approved"
-                            : "Rejected"}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Action Button */}
-                {task.status === "PENDING" && (
-                  <Button
-                    variant="default"
-                    className="flex-shrink-0"
-                    onClick={() => {
-                      // Navigate to approval page
-                      window.location.href = `/${task.documentType.toLowerCase()}s/${task.documentId}/approval`;
-                    }}
-                  >
-                    Review
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </Button>
-                )}
-              </div>
+      {/* Task Groups */}
+      <div className="space-y-8">
+        {/* Tasks Claimed by Me */}
+        {groupedTasks.claimedByMe.length > 0 && (
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <h3 className="text-xl font-semibold text-gray-900">
+                Tasks Claimed by You
+              </h3>
+              <Badge variant="default" className="bg-blue-600">
+                {groupedTasks.claimedByMe.length}
+              </Badge>
             </div>
-          ))
+            <div className="grid gap-4">
+              {groupedTasks.claimedByMe.map((task) => (
+                <ApprovalTaskCard
+                  key={task.id}
+                  taskId={task.id}
+                  currentUserId={currentUser.id}
+                  currentUserRole={currentUser.role}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Available Tasks */}
+        {groupedTasks.available.length > 0 && (
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <h3 className="text-xl font-semibold text-gray-900">
+                Available Tasks
+              </h3>
+              <Badge variant="secondary">{groupedTasks.available.length}</Badge>
+            </div>
+            <div className="grid gap-4">
+              {groupedTasks.available.map((task) => (
+                <ApprovalTaskCard
+                  key={task.id}
+                  taskId={task.id}
+                  currentUserId={currentUser.id}
+                  currentUserRole={currentUser.role}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Tasks Claimed by Others */}
+        {groupedTasks.claimedByOthers.length > 0 && (
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <h3 className="text-xl font-semibold text-gray-900">
+                Tasks Claimed by Others
+              </h3>
+              <Badge variant="destructive">
+                {groupedTasks.claimedByOthers.length}
+              </Badge>
+            </div>
+            <div className="grid gap-4">
+              {groupedTasks.claimedByOthers.map((task) => (
+                <ApprovalTaskCard
+                  key={task.id}
+                  taskId={task.id}
+                  currentUserId={currentUser.id}
+                  currentUserRole={currentUser.role}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Empty State */}
+        {filteredTasks.length === 0 && !isTasksLoading && (
+          <div className="text-center py-12">
+            <Clock className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">
+              No approval tasks found
+            </h3>
+            <p className="text-gray-600 mb-4">
+              {searchQuery || statusFilter !== "all" || priorityFilter !== "all"
+                ? "Try adjusting your search or filters to find more tasks."
+                : "There are no pending approval tasks assigned to your role at the moment."}
+            </p>
+            {(searchQuery ||
+              statusFilter !== "all" ||
+              priorityFilter !== "all") && (
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setSearchQuery("");
+                  setStatusFilter("all");
+                  setPriorityFilter("all");
+                }}
+              >
+                Clear Filters
+              </Button>
+            )}
+          </div>
+        )}
+
+        {/* Loading State */}
+        {isTasksLoading && (
+          <div className="grid gap-4">
+            {[1, 2, 3].map((i) => (
+              <div
+                key={i}
+                className="bg-white p-6 rounded-lg border shadow-sm animate-pulse"
+              >
+                <div className="space-y-4">
+                  <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                  <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+                  <div className="h-10 bg-gray-200 rounded w-1/4"></div>
+                </div>
+              </div>
+            ))}
+          </div>
         )}
       </div>
     </div>

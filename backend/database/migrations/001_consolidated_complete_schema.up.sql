@@ -261,7 +261,7 @@ CREATE TABLE IF NOT EXISTS workflow_assignments (
     CONSTRAINT fk_workflow_assignments_assigned_by FOREIGN KEY (assigned_by) REFERENCES users(id) ON DELETE CASCADE
 );
 
--- Workflow tasks
+-- Workflow tasks (enhanced with concurrency control)
 CREATE TABLE IF NOT EXISTS workflow_tasks (
     id VARCHAR(255) PRIMARY KEY,
     organization_id VARCHAR(255) NOT NULL,
@@ -281,10 +281,16 @@ CREATE TABLE IF NOT EXISTS workflow_tasks (
     completed_at TIMESTAMP,
     due_date TIMESTAMP,
     
+    -- NEW: Concurrency control fields
+    version INTEGER DEFAULT 1 NOT NULL,
+    updated_by VARCHAR(255),
+    claim_expiry TIMESTAMP,
+    
     CONSTRAINT fk_workflow_tasks_organization_id FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE,
     CONSTRAINT fk_workflow_tasks_assignment_id FOREIGN KEY (workflow_assignment_id) REFERENCES workflow_assignments(id) ON DELETE CASCADE,
     CONSTRAINT fk_workflow_tasks_assigned_user_id FOREIGN KEY (assigned_user_id) REFERENCES users(id) ON DELETE SET NULL,
-    CONSTRAINT fk_workflow_tasks_claimed_by FOREIGN KEY (claimed_by) REFERENCES users(id) ON DELETE SET NULL
+    CONSTRAINT fk_workflow_tasks_claimed_by FOREIGN KEY (claimed_by) REFERENCES users(id) ON DELETE SET NULL,
+    CONSTRAINT fk_workflow_tasks_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL
 );
 
 -- Workflow defaults
@@ -301,6 +307,47 @@ CREATE TABLE IF NOT EXISTS workflow_defaults (
     CONSTRAINT fk_workflow_defaults_workflow_id FOREIGN KEY (default_workflow_id) REFERENCES workflows(id) ON DELETE CASCADE,
     CONSTRAINT fk_workflow_defaults_set_by FOREIGN KEY (set_by) REFERENCES users(id) ON DELETE CASCADE,
     CONSTRAINT uk_workflow_defaults_unique_org_entity UNIQUE (organization_id, entity_type)
+);
+
+-- Stage approval records (for multiple approval support)
+CREATE TABLE IF NOT EXISTS stage_approval_records (
+    id VARCHAR(255) PRIMARY KEY,
+    organization_id VARCHAR(255) NOT NULL,
+    workflow_task_id VARCHAR(255) NOT NULL,
+    stage_number INTEGER NOT NULL,
+    approver_id VARCHAR(255) NOT NULL,
+    approver_name VARCHAR(255) NOT NULL,
+    approver_role VARCHAR(255) NOT NULL,
+    action VARCHAR(50) NOT NULL CHECK (action IN ('approved', 'rejected')),
+    comments TEXT,
+    signature TEXT,
+    approved_at TIMESTAMP NOT NULL,
+    ip_address VARCHAR(45),
+    user_agent TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    
+    -- Foreign key constraints
+    CONSTRAINT fk_stage_approval_organization 
+        FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE,
+    CONSTRAINT fk_stage_approval_workflow_task 
+        FOREIGN KEY (workflow_task_id) REFERENCES workflow_tasks(id) ON DELETE CASCADE,
+    CONSTRAINT fk_stage_approval_approver 
+        FOREIGN KEY (approver_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- Task assignment history (for round-robin tracking)
+CREATE TABLE IF NOT EXISTS task_assignment_history (
+    id VARCHAR(255) PRIMARY KEY,
+    organization_id VARCHAR(255) NOT NULL,
+    role VARCHAR(100) NOT NULL,
+    assigned_user_id VARCHAR(255) NOT NULL,
+    assigned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    
+    -- Foreign key constraints
+    CONSTRAINT fk_task_assignment_organization 
+        FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE,
+    CONSTRAINT fk_task_assignment_user 
+        FOREIGN KEY (assigned_user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
 -- Enhanced approval tasks with workflow support
@@ -810,6 +857,20 @@ CREATE INDEX IF NOT EXISTS idx_workflow_tasks_assigned_role ON workflow_tasks(as
 CREATE INDEX IF NOT EXISTS idx_workflow_tasks_assigned_user_id ON workflow_tasks(assigned_user_id);
 CREATE INDEX IF NOT EXISTS idx_workflow_tasks_claimed_by ON workflow_tasks(claimed_by);
 
+-- NEW: Concurrency control indexes
+CREATE INDEX IF NOT EXISTS idx_workflow_tasks_version ON workflow_tasks(id, version);
+CREATE INDEX IF NOT EXISTS idx_workflow_tasks_claim_expiry ON workflow_tasks(claim_expiry) WHERE claim_expiry IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_workflow_tasks_org_status ON workflow_tasks(organization_id, status);
+
+-- Stage approval records indexes
+CREATE INDEX IF NOT EXISTS idx_stage_approval_records_task_stage ON stage_approval_records(workflow_task_id, stage_number);
+CREATE INDEX IF NOT EXISTS idx_stage_approval_records_approver ON stage_approval_records(approver_id);
+CREATE INDEX IF NOT EXISTS idx_stage_approval_records_organization ON stage_approval_records(organization_id);
+
+-- Task assignment history indexes
+CREATE INDEX IF NOT EXISTS idx_task_assignment_history_org_role ON task_assignment_history(organization_id, role);
+CREATE INDEX IF NOT EXISTS idx_task_assignment_history_user ON task_assignment_history(assigned_user_id);
+
 -- Workflow defaults indexes
 CREATE INDEX IF NOT EXISTS idx_workflow_defaults_organization_id ON workflow_defaults(organization_id);
 CREATE INDEX IF NOT EXISTS idx_workflow_defaults_entity_type ON workflow_defaults(entity_type);
@@ -1016,7 +1077,9 @@ CREATE TRIGGER trigger_documents_updated_at
 -- Table comments
 COMMENT ON TABLE workflows IS 'Enhanced workflow definitions with frontend compatibility';
 COMMENT ON TABLE workflow_assignments IS 'Tracks workflow execution for specific entities';
-COMMENT ON TABLE workflow_tasks IS 'Individual approval tasks within workflow assignments';
+COMMENT ON TABLE workflow_tasks IS 'Individual approval tasks within workflow assignments with concurrency control';
+COMMENT ON TABLE stage_approval_records IS 'Tracks individual approvals per workflow stage for multiple approval support';
+COMMENT ON TABLE task_assignment_history IS 'Tracks round-robin task assignment history for fair distribution';
 COMMENT ON TABLE workflow_defaults IS 'Default workflow mappings for entity types per organization';
 COMMENT ON TABLE documents IS 'Unified document table for all business document types';
 COMMENT ON TABLE vendors IS 'Organization-scoped vendors for multi-tenant security';
@@ -1027,6 +1090,9 @@ COMMENT ON COLUMN workflows.conditions IS 'JSON conditions for when this workflo
 COMMENT ON COLUMN workflows.stages IS 'JSON array of workflow stages with approval requirements';
 COMMENT ON COLUMN workflow_assignments.stage_history IS 'JSON array of completed stage executions';
 COMMENT ON COLUMN workflow_tasks.assignment_type IS 'How the task is assigned: role or specific_user';
+COMMENT ON COLUMN workflow_tasks.version IS 'Version number for optimistic locking';
+COMMENT ON COLUMN workflow_tasks.updated_by IS 'User ID who last updated the task';
+COMMENT ON COLUMN workflow_tasks.claim_expiry IS 'When the current claim expires (30 minutes from claim time)';
 
 -- Documents table comments
 COMMENT ON COLUMN documents.document_type IS 'Type of document: requisition, purchase_order, budget, payment_voucher, grn';

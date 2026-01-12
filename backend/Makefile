@@ -71,9 +71,9 @@ test-verbose:
 	go test -v -race -count=1 ./tests/...
 
 test-comprehensive:
-	@echo "Running comprehensive API test suite (47 endpoints)..."
-	@chmod +x scripts/run_comprehensive_tests.sh
-	@./scripts/run_comprehensive_tests.sh
+	@echo "Running comprehensive API test suite..."
+	@chmod +x scripts/run_tests.sh
+	@./scripts/run_tests.sh
 
 test-coverage:
 	@echo "Running tests with coverage..."

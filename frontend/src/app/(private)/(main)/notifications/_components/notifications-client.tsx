@@ -72,7 +72,15 @@ export function NotificationsClient() {
 
   const stats = statsResponse?.data;
   const notifications = notificationsResponse?.data || [];
-  const pagination = notificationsResponse?.pagination;
+  // TODO: Backend should return PaginatedResponse<Notification[]> with pagination info
+  const pagination = {
+    page: 1,
+    limit: 20,
+    total: notifications.length,
+    totalPages: 1,
+    hasNext: false,
+    hasPrev: false,
+  };
 
   // Filter notifications by search query and importance
   const filteredNotifications = notifications.filter((notification) => {

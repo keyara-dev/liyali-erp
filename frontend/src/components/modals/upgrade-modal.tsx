@@ -14,7 +14,7 @@ import {
 const PLAN_FEATURES = {
   STARTER: [
     "Up to 50 users",
-    "Core procurement workflows", 
+    "Core procurement workflows",
     "Basic approval chains",
     "Standard analytics",
     "Email support",
@@ -23,7 +23,7 @@ const PLAN_FEATURES = {
     "Everything in Starter",
     "Up to 200 users",
     "Custom workflow builder",
-    "Advanced automation", 
+    "Advanced automation",
     "Offline capabilities",
     "Priority support",
     "API access",
@@ -33,7 +33,7 @@ const PLAN_FEATURES = {
     "Unlimited users",
     "Dedicated instance",
     "Custom integrations",
-    "SLA guarantees", 
+    "SLA guarantees",
     "Dedicated success manager",
     "On-premise option",
   ],
@@ -59,35 +59,37 @@ interface PricingCardProps {
   isProcessing: boolean;
 }
 
-const PricingCard = ({ 
-  tier, 
-  price, 
-  sub, 
-  features, 
-  recommended, 
-  delay, 
-  buttonText, 
+const PricingCard = ({
+  tier,
+  price,
+  sub,
+  features,
+  recommended,
+  delay,
+  buttonText,
   currentTier,
   onUpgrade,
   onContact,
-  isProcessing
+  isProcessing,
 }: PricingCardProps) => {
   const IconComponent = TIER_ICONS[tier];
   const isCurrent = currentTier === tier;
-  
+
   return (
-    <motion.div 
+    <motion.div
       className={`relative p-8 rounded-3xl transition-all duration-300 flex flex-col h-full group
-        ${recommended 
-        ? 'bg-slate-800/60 border border-slate-600 shadow-2xl scale-105 z-10 backdrop-blur-md' 
-        : 'bg-slate-900/40 border border-slate-800 hover:bg-slate-800/60 hover:border-slate-600'}`}
+        ${
+          recommended
+            ? "bg-slate-800/60 border border-slate-600 shadow-2xl scale-105 z-10 backdrop-blur-md"
+            : "bg-slate-900/40 border border-slate-800 hover:bg-slate-800/60 hover:border-slate-600"
+        }`}
       initial={{ opacity: 0, y: 50 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.6, delay }}
       whileHover={{ y: -5, scale: recommended ? 1.05 : 1.02 }}
     >
       {recommended && (
-        <motion.div 
+        <motion.div
           className="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-blue-500 text-white px-4 py-1 rounded-full text-xs font-bold shadow-lg shadow-blue-500/30"
           initial={{ scale: 0 }}
           animate={{ scale: 1 }}
@@ -96,9 +98,9 @@ const PricingCard = ({
           Most Popular
         </motion.div>
       )}
-      
+
       {isCurrent && (
-        <motion.div 
+        <motion.div
           className="absolute -top-3 right-4 bg-green-500 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg shadow-green-500/30"
           initial={{ scale: 0 }}
           animate={{ scale: 1 }}
@@ -110,15 +112,29 @@ const PricingCard = ({
 
       <div className="mb-8">
         <div className="flex items-center gap-2 mb-2">
-          <IconComponent className={`h-5 w-5 ${recommended ? 'text-blue-400' : 'text-slate-400'}`} />
-          <h3 className={`text-lg font-bold ${recommended ? 'text-white' : 'text-slate-200'}`}>{tier}</h3>
+          <IconComponent
+            className={`h-5 w-5 ${recommended ? "text-blue-400" : "text-slate-400"}`}
+          />
+          <h3
+            className={`text-lg font-bold ${recommended ? "text-white" : "text-slate-200"}`}
+          >
+            {tier}
+          </h3>
         </div>
         <div className="flex items-baseline gap-1">
           {price === "Custom" ? (
-            <span className={`text-3xl font-extrabold ${recommended ? 'text-white' : 'text-white'}`}>Custom Pricing</span>
+            <span
+              className={`text-3xl font-extrabold ${recommended ? "text-white" : "text-white"}`}
+            >
+              Custom Pricing
+            </span>
           ) : (
             <>
-              <span className={`text-4xl font-extrabold ${recommended ? 'text-white' : 'text-white'}`}>${price}</span>
+              <span
+                className={`text-4xl font-extrabold ${recommended ? "text-white" : "text-white"}`}
+              >
+                ${price}
+              </span>
               <span className="text-slate-400 font-medium">/mo</span>
             </>
           )}
@@ -130,14 +146,16 @@ const PricingCard = ({
         <p className="text-sm font-semibold text-slate-300 mb-4">Includes:</p>
         <ul className="space-y-4 mb-8">
           {features.map((feature, idx) => (
-            <motion.li 
+            <motion.li
               key={idx}
               className="flex items-start gap-3 text-slate-400 group-hover:text-slate-300 transition-colors"
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: delay + (idx * 0.1) }}
+              transition={{ delay: delay + idx * 0.1 }}
             >
-              <div className={`mt-0.5 w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 border ${recommended ? 'border-blue-500 bg-blue-500/20 text-blue-400' : 'border-slate-700 bg-slate-800 text-slate-400'}`}>
+              <div
+                className={`mt-0.5 w-5 h-5 rounded-full flex items-center justify-center shrink-0 border ${recommended ? "border-blue-500 bg-blue-500/20 text-blue-400" : "border-slate-700 bg-slate-800 text-slate-400"}`}
+              >
                 <Check className="h-3 w-3" />
               </div>
               <span className="text-sm leading-tight">{feature}</span>
@@ -147,10 +165,12 @@ const PricingCard = ({
       </div>
 
       {!isCurrent && (
-        <motion.button 
-          className={`w-full py-3.5 rounded-full font-bold text-sm transition-all ${recommended 
-            ? 'bg-blue-600 hover:bg-blue-500 text-white shadow-[0_0_20px_rgba(37,99,235,0.3)]' 
-            : 'bg-transparent border border-slate-600 text-white hover:bg-slate-800 hover:border-slate-500'}`}
+        <motion.button
+          className={`w-full py-3.5 rounded-full font-bold text-sm transition-all ${
+            recommended
+              ? "bg-blue-600 hover:bg-blue-500 text-white shadow-[0_0_20px_rgba(37,99,235,0.3)]"
+              : "bg-transparent border border-slate-600 text-white hover:bg-slate-800 hover:border-slate-500"
+          }`}
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
           onClick={tier === "ENTERPRISE" ? onContact : onUpgrade}
@@ -182,11 +202,11 @@ interface UpgradeModalProps {
   organizationName: string;
 }
 
-export function UpgradeModal({ 
-  open, 
-  onOpenChange, 
-  currentTier, 
-  organizationName 
+export function UpgradeModal({
+  open,
+  onOpenChange,
+  currentTier,
+  organizationName,
 }: UpgradeModalProps) {
   const [isProcessing, setIsProcessing] = useState(false);
 
@@ -195,16 +215,15 @@ export function UpgradeModal({
     try {
       // TODO: Implement Stripe/payment integration
       console.log(`Upgrading to ${targetTier} plan...`);
-      
+
       // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+
       // Show success and close modal
       onOpenChange(false);
-      
+
       // TODO: Refresh organization data to show new tier
       // TODO: Show success toast
-      
     } catch (error) {
       console.error("Upgrade failed:", error);
       // TODO: Show error toast
@@ -215,7 +234,10 @@ export function UpgradeModal({
 
   const handleContactForEnterprise = () => {
     // TODO: Open contact form or redirect to sales page
-    window.open("mailto:sales@liyali.com?subject=Enterprise Plan Inquiry", "_blank");
+    window.open(
+      "mailto:sales@liyali.com?subject=Enterprise Plan Inquiry",
+      "_blank"
+    );
   };
 
   const plans = [
@@ -225,24 +247,24 @@ export function UpgradeModal({
       sub: "For growing teams",
       features: PLAN_FEATURES.STARTER,
       recommended: false,
-      buttonText: "Choose Starter"
+      buttonText: "Choose Starter",
     },
     {
       tier: "PRO" as const,
-      price: "1,999", 
+      price: "1,999",
       sub: "For established departments",
       features: PLAN_FEATURES.PRO,
       recommended: true,
-      buttonText: "Upgrade to Pro"
+      buttonText: "Upgrade to Pro",
     },
     {
       tier: "ENTERPRISE" as const,
       price: "Custom",
-      sub: "For large organizations", 
+      sub: "For large organizations",
       features: PLAN_FEATURES.ENTERPRISE,
       recommended: false,
-      buttonText: "Contact Sales"
-    }
+      buttonText: "Contact Sales",
+    },
   ];
 
   return (
@@ -253,36 +275,46 @@ export function UpgradeModal({
         {/* Dark Blue Theme Blobs & Floating Math Operators */}
         <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none select-none">
           {/* Decorative Gradient Blobs */}
-          <motion.div 
+          <motion.div
             className="absolute top-[20%] left-[20%] w-[300px] h-[300px] bg-blue-600/10 rounded-full blur-[80px]"
             animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.6, 0.3] }}
             transition={{ duration: 8, repeat: Infinity }}
           />
-          <motion.div 
+          <motion.div
             className="absolute bottom-[10%] right-[10%] w-[250px] h-[250px] bg-indigo-900/20 rounded-full blur-[60px]"
             animate={{ scale: [1.2, 1, 1.2], opacity: [0.2, 0.5, 0.2] }}
             transition={{ duration: 10, repeat: Infinity, delay: 2 }}
           />
 
           {/* Floating Math Operators */}
-          <motion.div 
+          <motion.div
             className="absolute top-[15%] left-[8%] text-6xl font-black text-blue-500/10 blur-[1px]"
             animate={{ y: [0, -20, 0], rotate: [0, 10, 0] }}
             transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
           >
             +
           </motion.div>
-          <motion.div 
+          <motion.div
             className="absolute bottom-[20%] right-[8%] text-7xl font-black text-indigo-400/10 blur-[2px]"
             animate={{ y: [0, 20, 0], rotate: [0, -15, 0] }}
-            transition={{ duration: 10, repeat: Infinity, ease: "easeInOut", delay: 1 }}
+            transition={{
+              duration: 10,
+              repeat: Infinity,
+              ease: "easeInOut",
+              delay: 1,
+            }}
           >
             ×
           </motion.div>
-          <motion.div 
+          <motion.div
             className="absolute top-[40%] right-[20%] text-5xl font-black text-sky-500/5 blur-[1px]"
             animate={{ y: [0, -15, 0], x: [0, 10, 0] }}
-            transition={{ duration: 12, repeat: Infinity, ease: "easeInOut", delay: 2 }}
+            transition={{
+              duration: 12,
+              repeat: Infinity,
+              ease: "easeInOut",
+              delay: 2,
+            }}
           >
             %
           </motion.div>
@@ -304,14 +336,15 @@ export function UpgradeModal({
                 Choose the Perfect Plan
               </DialogTitle>
               <DialogDescription className="text-sm text-slate-400 max-w-2xl mx-auto">
-                Upgrade {organizationName} to unlock advanced features and capabilities
+                Upgrade {organizationName} to unlock advanced features and
+                capabilities
               </DialogDescription>
             </motion.div>
           </DialogHeader>
 
           <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto items-stretch">
             {plans.map((plan, index) => (
-              <PricingCard 
+              <PricingCard
                 key={plan.tier}
                 tier={plan.tier}
                 price={plan.price}

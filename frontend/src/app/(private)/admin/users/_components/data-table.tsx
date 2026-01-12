@@ -61,7 +61,7 @@ import {
   deleteUser,
 } from "@/app/_actions/user-actions";
 import { CustomPagination } from "@/components/ui/custom-pagination";
-import { ConfirmationModal } from "@/components/confirmation-modal";
+import { ConfirmationModal } from "@/components/modals/confirmation-modal";
 import CreateUserForm from "./create-user-dialog";
 
 type Pagination = {

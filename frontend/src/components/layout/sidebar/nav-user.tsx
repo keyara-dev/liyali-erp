@@ -37,7 +37,7 @@ import Link from "next/link";
 import { useSession } from "@/hooks/use-session";
 import { useLogout } from "@/hooks/use-organization-mutations";
 import { useOrganizationContext } from "@/hooks/use-organization";
-import { UpgradeModal } from "@/components/organization/upgrade-modal";
+import { UpgradeModal } from "@/components/modals/upgrade-modal";
 
 const TIER_CONFIG = {
   STARTER: {

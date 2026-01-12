@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { useOrganizationContext } from "@/hooks/use-organization";
-import { UpgradeModal } from "@/components/organization/upgrade-modal";
+import { UpgradeModal } from "@/components/modals/upgrade-modal";
 
 const TIER_CONFIG = {
   STARTER: {
@@ -127,7 +127,7 @@ export function TierDisplay({
             {canUpgrade && (
               <Button
                 onClick={() => setShowUpgradeModal(true)}
-                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                className="bg-linear-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
               >
                 Upgrade now
                 <ArrowRight className="h-4 w-4 ml-2" />

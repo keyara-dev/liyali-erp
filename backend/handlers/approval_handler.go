@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/liyali/liyali-gateway/config"
@@ -35,18 +36,28 @@ func NewApprovalHandler() *ApprovalHandler {
 
 // Request/Response Types
 type ApproveTaskRequest struct {
-	Signature string `json:"signature" validate:"required"`
-	Comment   string `json:"comment"`
+	Signature       string `json:"signature" validate:"required"`
+	Comment         string `json:"comment"`
+	ExpectedVersion int    `json:"expectedVersion"`
 }
 
 type RejectTaskRequest struct {
-	Signature string `json:"signature" validate:"required"`
-	Reason    string `json:"reason" validate:"required"`
+	Signature       string `json:"signature" validate:"required"`
+	Reason          string `json:"reason" validate:"required"`
+	ExpectedVersion int    `json:"expectedVersion"`
 }
 
 type ReassignTaskRequest struct {
 	NewUserID string `json:"newUserId" validate:"required"`
 	Reason    string `json:"reason"`
+}
+
+type ClaimTaskRequest struct {
+	// No additional fields needed for claiming
+}
+
+type UnclaimTaskRequest struct {
+	// No additional fields needed for unclaiming
 }
 
 type BulkApproveRequest struct {
@@ -145,6 +156,60 @@ func (h *ApprovalHandler) GetApprovalTask(c *fiber.Ctx) error {
 	return utils.SendSimpleSuccess(c, task, "Approval task retrieved successfully")
 }
 
+// ClaimTask claims a workflow task for exclusive access
+// POST /api/v1/approvals/tasks/:id/claim
+func (h *ApprovalHandler) ClaimTask(c *fiber.Ctx) error {
+	taskID := c.Params("id")
+	if taskID == "" {
+		return utils.SendBadRequestError(c, "Task ID is required")
+	}
+
+	userID := c.Locals("userID").(string)
+
+	workflowExecutionService := c.Locals("workflowExecutionService").(*services.WorkflowExecutionService)
+
+	err := workflowExecutionService.ClaimWorkflowTask(c.Context(), taskID, userID)
+	if err != nil {
+		log.Printf("Error claiming workflow task %s: %v", taskID, err)
+		return c.Status(fiber.StatusConflict).JSON(types.ErrorResponse{
+			Error:   "Claim failed",
+			Message: err.Error(),
+		})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(types.SuccessResponse{
+		Message: "Task claimed successfully",
+		Data:    map[string]interface{}{"taskId": taskID, "claimedBy": userID},
+	})
+}
+
+// UnclaimTask releases a claimed task
+// POST /api/v1/approvals/tasks/:id/unclaim
+func (h *ApprovalHandler) UnclaimTask(c *fiber.Ctx) error {
+	taskID := c.Params("id")
+	if taskID == "" {
+		return utils.SendBadRequestError(c, "Task ID is required")
+	}
+
+	userID := c.Locals("userID").(string)
+
+	workflowExecutionService := c.Locals("workflowExecutionService").(*services.WorkflowExecutionService)
+
+	err := workflowExecutionService.UnclaimWorkflowTask(c.Context(), taskID, userID)
+	if err != nil {
+		log.Printf("Error unclaiming workflow task %s: %v", taskID, err)
+		return c.Status(fiber.StatusBadRequest).JSON(types.ErrorResponse{
+			Error:   "Unclaim failed",
+			Message: err.Error(),
+		})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(types.SuccessResponse{
+		Message: "Task unclaimed successfully",
+		Data:    map[string]interface{}{"taskId": taskID},
+	})
+}
+
 // ApproveTask marks a task as approved and moves to next stage
 func (h *ApprovalHandler) ApproveTask(c *fiber.Ctx) error {
 	taskID := c.Params("id")
@@ -169,13 +234,35 @@ func (h *ApprovalHandler) ApproveTask(c *fiber.Ctx) error {
 	// Get workflow execution service
 	workflowExecutionService := c.Locals("workflowExecutionService").(*services.WorkflowExecutionService)
 
-	// Use workflow system to approve the task
-	err := workflowExecutionService.ApproveWorkflowTask(c.Context(), taskID, userID, req.Signature, req.Comment)
+	// Use workflow system to approve the task with version control
+	var err error
+	if req.ExpectedVersion > 0 {
+		err = workflowExecutionService.ApproveWorkflowTaskWithVersion(c.Context(), taskID, userID, req.Signature, req.Comment, req.ExpectedVersion)
+	} else {
+		err = workflowExecutionService.ApproveWorkflowTask(c.Context(), taskID, userID, req.Signature, req.Comment)
+	}
+	
 	if err != nil {
 		log.Printf("Error approving workflow task: %v", err)
+		
+		// Handle specific error types
+		if contains(err.Error(), "version") || contains(err.Error(), "modified by another user") {
+			return c.Status(fiber.StatusConflict).JSON(types.ErrorResponse{
+				Error:   "Concurrent modification",
+				Message: err.Error(),
+			})
+		}
+		
+		if contains(err.Error(), "claimed by another user") || contains(err.Error(), "claim has expired") {
+			return c.Status(fiber.StatusConflict).JSON(types.ErrorResponse{
+				Error:   "Task claim issue",
+				Message: err.Error(),
+			})
+		}
+		
 		return c.Status(fiber.StatusInternalServerError).JSON(types.ErrorResponse{
 			Error:   "Approval failed",
-			Message: "Failed to approve task through workflow system",
+			Message: err.Error(),
 		})
 	}
 
@@ -209,13 +296,35 @@ func (h *ApprovalHandler) RejectTask(c *fiber.Ctx) error {
 	// Get workflow execution service
 	workflowExecutionService := c.Locals("workflowExecutionService").(*services.WorkflowExecutionService)
 
-	// Use workflow system to reject the task
-	err := workflowExecutionService.RejectWorkflowTask(c.Context(), taskID, userID, req.Signature, req.Reason)
+	// Use workflow system to reject the task with version control
+	var err error
+	if req.ExpectedVersion > 0 {
+		err = workflowExecutionService.RejectWorkflowTaskWithVersion(c.Context(), taskID, userID, req.Signature, req.Reason, req.ExpectedVersion)
+	} else {
+		err = workflowExecutionService.RejectWorkflowTask(c.Context(), taskID, userID, req.Signature, req.Reason)
+	}
+	
 	if err != nil {
 		log.Printf("Error rejecting workflow task: %v", err)
+		
+		// Handle specific error types
+		if strings.Contains(err.Error(), "version") || strings.Contains(err.Error(), "modified by another user") {
+			return c.Status(fiber.StatusConflict).JSON(types.ErrorResponse{
+				Error:   "Concurrent modification",
+				Message: err.Error(),
+			})
+		}
+		
+		if strings.Contains(err.Error(), "claimed by another user") || strings.Contains(err.Error(), "claim has expired") {
+			return c.Status(fiber.StatusConflict).JSON(types.ErrorResponse{
+				Error:   "Task claim issue",
+				Message: err.Error(),
+			})
+		}
+		
 		return c.Status(fiber.StatusInternalServerError).JSON(types.ErrorResponse{
 			Error:   "Rejection failed",
-			Message: "Failed to reject task through workflow system",
+			Message: err.Error(),
 		})
 	}
 
@@ -666,4 +775,9 @@ func (h *ApprovalHandler) GetAvailableApprovers(c *fiber.Ctx) error {
 	}
 
 	return utils.SendSuccess(c, fiber.StatusOK, approvers, "Available approvers retrieved successfully", nil)
+}
+
+// Helper function for string contains check
+func contains(s, substr string) bool {
+	return strings.Contains(s, substr)
 }

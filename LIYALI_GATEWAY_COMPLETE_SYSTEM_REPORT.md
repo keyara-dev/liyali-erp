@@ -372,7 +372,7 @@ Completed comprehensive cleanup and reorganization of the backend tests director
 
 - **Created** `backend/scripts/` directory for testing tools and scripts
 - **Moved** `test_requests.http` → `backend/scripts/test_requests.http`
-- **Moved** `run_comprehensive_tests.sh` → `backend/scripts/run_comprehensive_tests.sh`
+- **Moved** `run_comprehensive_tests.sh` → `backend/scripts/run_tests.sh` (refactored to modular)
 
 #### 4. Updated Documentation
 
@@ -395,7 +395,7 @@ backend/
 │   └── README.md               # ✅ Updated documentation
 └── scripts/                    # ✅ New directory
     ├── test_requests.http      # ✅ Moved here
-    └── run_comprehensive_tests.sh  # ✅ Moved here
+    └── run_tests.sh            # ✅ Modular test suite
 ```
 
 ### Benefits Achieved
@@ -433,8 +433,8 @@ go test ./tests/unit/...
 # Run integration tests only
 go test ./tests/integration/...
 
-# Run comprehensive test suite (47 API endpoints)
-./scripts/run_comprehensive_tests.sh
+# Run comprehensive test suite
+./scripts/run_tests.sh
 ```
 
 ### Impact Summary

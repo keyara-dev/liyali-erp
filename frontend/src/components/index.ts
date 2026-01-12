@@ -33,7 +33,7 @@ export { WorkflowStageForm } from "./workflows/workflow-stage-form";
 export { ReassignmentModal } from "./workflows/reassignment-modal";
 
 // Approval Components
-export { ApprovalConfirmationModal } from "./approval-confirmation-modal";
+export { ApprovalConfirmationDialog } from "./modals/approval-confirmation-dialog";
 
 // Modal Components
 export { CreateOrganizationModal } from "./modals/create-organization-modal";

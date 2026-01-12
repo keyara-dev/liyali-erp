@@ -17,9 +17,9 @@ tests/
 
 ../scripts/                  # Testing scripts and tools
 ├── test_requests.http      # HTTP requests for manual API testing
-├── run_comprehensive_tests.sh # Comprehensive test suite runner
+├── run_tests.sh            # ✅ Modular test suite runner
 ├── custom_role_tests.sh    # Custom role workflow API tests
-└── run_unit_tests.sh       # Go unit test runner
+└── workflow_unit_tests.sh    # Workflow-specific unit test runner
 ```
 
 ## Test Categories
@@ -61,7 +61,7 @@ For complete system testing, use the comprehensive test suite:
 
 ```bash
 # From backend directory
-./scripts/run_comprehensive_tests.sh
+./scripts/run_tests.sh
 ```
 
 This runs all 47 API endpoints with automated reporting and covers:
@@ -83,8 +83,8 @@ For testing custom organization roles in workflows:
 # Run only custom role API tests
 ./scripts/custom_role_tests.sh
 
-# Run only custom role unit tests
-./scripts/run_unit_tests.sh
+# Run only workflow unit tests
+./scripts/workflow_unit_tests.sh
 
 # Run specific custom role tests
 go test -v ./tests/unit/custom_role_validation_test.go
@@ -209,7 +209,7 @@ Comprehensive test suite for custom organization roles in workflow approval/reje
 ./scripts/run_tests.sh custom-roles
 
 # Run unit tests only
-./scripts/run_unit_tests.sh
+./scripts/workflow_unit_tests.sh
 
 # Run API tests only
 ./scripts/custom_role_tests.sh

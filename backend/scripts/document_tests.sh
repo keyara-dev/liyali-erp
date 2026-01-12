@@ -4,7 +4,7 @@
 # Tests for categories, vendors, requisitions, budgets, purchase orders, etc.
 
 # Source common utilities
-source "$(dirname "$0")/test_common.sh"
+source "$(dirname "$0")/common_tests.sh"
 
 # Test basic document management
 test_document_management() {
@@ -297,7 +297,11 @@ test_generic_document_system() {
         "documentNumber": "DOC-TEST-001",
         "title": "Test Generic Document",
         "description": "Test document for automated testing",
-        "documentType": "general"
+        "documentType": "general",
+        "data": {
+            "content": "Test document content",
+            "category": "testing"
+        }
     }'
     local doc_response=$(make_request "POST" "$API_URL/documents" "$doc_data" "$auth_header" 201)
     if [ $? -eq 0 ]; then

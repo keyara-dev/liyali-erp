@@ -4,13 +4,15 @@ import { SidebarProvider } from "@/components/ui/sidebar";
 import { verifySession } from "@/lib/auth";
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
 
-export default async function DashboardLayoutProvider({ children }: PropsWithChildren) {
+export const dynamic = "force-dynamic";
+
+export default async function DashboardLayoutProvider({
+  children,
+}: PropsWithChildren) {
   const { session, isAuthenticated } = await verifySession(); // Replace with actual session retrieval logic
- 
 
   return (
     <>
-      {" "}
       <IdleTimerContainer session={session} />
       <SidebarProvider
         style={

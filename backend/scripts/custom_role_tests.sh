@@ -4,7 +4,7 @@
 # Tests for custom organization roles in workflow approval/rejection processes
 
 # Source common utilities
-source "$(dirname "$0")/test_common.sh"
+source "$(dirname "$0")/common_tests.sh"
 
 # Test custom role workflow creation and validation
 test_custom_role_workflow_creation() {

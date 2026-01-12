@@ -3,6 +3,8 @@ import { redirect } from "next/navigation";
 import { PropsWithChildren } from "react";
 import DashboardLayoutProvider from "../(main)/layout";
 
+export const dynamic = "force-dynamic";
+
 export default async function AdminLayout({ children }: PropsWithChildren) {
   const { session, isAuthenticated } = await verifySession();
 
@@ -11,10 +13,7 @@ export default async function AdminLayout({ children }: PropsWithChildren) {
   }
 
   // Check if user is admin
-  if (
-    session.user.role !== "admin" ||
-    !session.user
-  ) {
+  if (session.user.role !== "admin" || !session.user) {
     redirect("/access-denied");
   }
 
