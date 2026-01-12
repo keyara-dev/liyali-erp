@@ -154,7 +154,7 @@ func (h *DocumentHandler) GetDocumentByID(c *fiber.Ctx) error {
 // GetDocumentByNumber retrieves a single document by document number
 // GET /api/v1/documents/number/:number
 func (h *DocumentHandler) GetDocumentByNumber(c *fiber.Ctx) error {
-	organizationID := c.Locals("organizationId").(string)
+	organizationID := c.Locals("organizationID").(string)
 
 	// Get document number from params
 	documentNumber := c.Params("number")
@@ -175,7 +175,7 @@ func (h *DocumentHandler) GetDocumentByNumber(c *fiber.Ctx) error {
 // CreateDocument creates a new document
 // POST /api/v1/documents
 func (h *DocumentHandler) CreateDocument(c *fiber.Ctx) error {
-	organizationID := c.Locals("organizationId").(string)
+	organizationID := c.Locals("organizationID").(string)
 	userID := c.Locals("userID").(string)
 
 	// Parse request body
@@ -202,7 +202,7 @@ func (h *DocumentHandler) CreateDocument(c *fiber.Ctx) error {
 // UpdateDocument updates an existing document
 // PUT /api/v1/documents/:id
 func (h *DocumentHandler) UpdateDocument(c *fiber.Ctx) error {
-	organizationID := c.Locals("organizationId").(string)
+	organizationID := c.Locals("organizationID").(string)
 	userID := c.Locals("userID").(string)
 
 	// Get document ID from params
@@ -231,7 +231,7 @@ func (h *DocumentHandler) UpdateDocument(c *fiber.Ctx) error {
 // SubmitDocument submits a document for approval
 // POST /api/v1/documents/:id/submit
 func (h *DocumentHandler) SubmitDocument(c *fiber.Ctx) error {
-	organizationID := c.Locals("organizationId").(string)
+	organizationID := c.Locals("organizationID").(string)
 	userID := c.Locals("userID").(string)
 
 	// Get document ID from params
@@ -254,7 +254,7 @@ func (h *DocumentHandler) SubmitDocument(c *fiber.Ctx) error {
 // DeleteDocument deletes a document
 // DELETE /api/v1/documents/:id
 func (h *DocumentHandler) DeleteDocument(c *fiber.Ctx) error {
-	organizationID := c.Locals("organizationId").(string)
+	organizationID := c.Locals("organizationID").(string)
 	userID := c.Locals("userID").(string)
 
 	// Get document ID from params
@@ -276,7 +276,7 @@ func (h *DocumentHandler) DeleteDocument(c *fiber.Ctx) error {
 // SearchDocuments performs full-text search on documents
 // GET /api/v1/documents/search
 func (h *DocumentHandler) SearchDocuments(c *fiber.Ctx) error {
-	organizationID := c.Locals("organizationId").(string)
+	organizationID := c.Locals("organizationID").(string)
 
 	// Get query parameters
 	query := c.Query("q", "")
@@ -327,7 +327,7 @@ func (h *DocumentHandler) SearchDocuments(c *fiber.Ctx) error {
 // GetDocumentStats retrieves document statistics
 // GET /api/v1/documents/stats
 func (h *DocumentHandler) GetDocumentStats(c *fiber.Ctx) error {
-	organizationID := c.Locals("organizationId").(string)
+	organizationID := c.Locals("organizationID").(string)
 
 	// Get document statistics
 	stats, err := h.documentService.GetDocumentStats(c.Context(), organizationID)

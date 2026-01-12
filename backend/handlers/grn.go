@@ -18,7 +18,7 @@ import (
 // GetGRNs retrieves all goods received notes with pagination and filtering
 func GetGRNs(c *fiber.Ctx) error {
 	// Get organization context from tenant middleware
-	tenant, err := middleware.GetTenantContext(*c)
+	tenant, err := middleware.GetTenantContext(c)
 	if err != nil {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 			"success": false,
@@ -84,7 +84,7 @@ func GetGRNs(c *fiber.Ctx) error {
 // CreateGRN creates a new goods received note
 func CreateGRN(c *fiber.Ctx) error {
 	// Get organization context from tenant middleware
-	tenant, err := middleware.GetTenantContext(*c)
+	tenant, err := middleware.GetTenantContext(c)
 	if err != nil {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 			"success": false,
@@ -172,7 +172,7 @@ func CreateGRN(c *fiber.Ctx) error {
 // GetGRN retrieves a single GRN by ID
 func GetGRN(c *fiber.Ctx) error {
 	// Get organization context from tenant middleware
-	tenant, err := middleware.GetTenantContext(*c)
+	tenant, err := middleware.GetTenantContext(c)
 	if err != nil {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 			"success": false,
@@ -207,7 +207,7 @@ func GetGRN(c *fiber.Ctx) error {
 // UpdateGRN updates an existing GRN
 func UpdateGRN(c *fiber.Ctx) error {
 	// Get organization context from tenant middleware
-	tenant, err := middleware.GetTenantContext(*c)
+	tenant, err := middleware.GetTenantContext(c)
 	if err != nil {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 			"success": false,
@@ -278,7 +278,7 @@ func UpdateGRN(c *fiber.Ctx) error {
 // DeleteGRN deletes a GRN
 func DeleteGRN(c *fiber.Ctx) error {
 	// Get organization context from tenant middleware
-	tenant, err := middleware.GetTenantContext(*c)
+	tenant, err := middleware.GetTenantContext(c)
 	if err != nil {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 			"success": false,
@@ -351,6 +351,7 @@ func modelToGRNResponse(grn models.GoodsReceivedNote) types.GRNResponse {
 		UpdatedAt:       grn.UpdatedAt,
 	}
 }
+
 // SubmitGRN submits a GRN for approval using the workflow system
 func SubmitGRN(c *fiber.Ctx) error {
 	id := c.Params("id")
@@ -404,21 +405,21 @@ func SubmitGRN(c *fiber.Ctx) error {
 	// Add action history entry for submission
 	var actionHistory []types.ActionHistoryEntry
 	actionHistory = grn.ActionHistory.Data()
-	
+
 	// Get user info for action history
 	var user models.User
 	if err := config.DB.Where("id = ?", userID).First(&user).Error; err == nil {
 		actionHistory = append(actionHistory, types.ActionHistoryEntry{
-			ID:               uuid.New().String(),
-			Action:           "SUBMIT",
-			PerformedBy:      userID,
-			PerformedByName:  user.Name,
-			PerformedByRole:  user.Role,
-			Timestamp:        time.Now(),
-			Comments:         "GRN submitted for approval",
-			ActionType:       "SUBMIT",
-			PreviousStatus:   "draft",
-			NewStatus:        "pending",
+			ID:              uuid.New().String(),
+			Action:          "SUBMIT",
+			PerformedBy:     userID,
+			PerformedByName: user.Name,
+			PerformedByRole: user.Role,
+			Timestamp:       time.Now(),
+			Comments:        "GRN submitted for approval",
+			ActionType:      "SUBMIT",
+			PreviousStatus:  "draft",
+			NewStatus:       "pending",
 		})
 		grn.ActionHistory = datatypes.NewJSONType(actionHistory)
 	}

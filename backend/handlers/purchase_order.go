@@ -22,7 +22,7 @@ func GetPurchaseOrders(c *fiber.Ctx) error {
 	logger.Info("get_purchase_orders_request")
 
 	// Get organization context from tenant middleware
-	tenant, err := middleware.GetTenantContext(*c)
+	tenant, err := middleware.GetTenantContext(c)
 	if err != nil {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 			"error": "Organization context required",
@@ -55,7 +55,7 @@ func GetPurchaseOrders(c *fiber.Ctx) error {
 
 	// SECURITY: Always filter by organization ID first
 	query := db.Where("organization_id = ?", tenant.OrganizationID)
-	
+
 	if status != "" {
 		query = query.Where("status = ?", status)
 	}
@@ -110,6 +110,16 @@ func CreatePurchaseOrder(c *fiber.Ctx) error {
 	logger := logging.FromContext(c)
 	logger.Info("create_purchase_order_request")
 
+	// Get organization context from tenant middleware
+	tenant, err := middleware.GetTenantContext(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"success": false,
+			"message": "Organization context required",
+			"error":   err.Error(),
+		})
+	}
+
 	var req types.CreatePurchaseOrderRequest
 
 	if err := c.BodyParser(&req); err != nil {
@@ -125,11 +135,12 @@ func CreatePurchaseOrder(c *fiber.Ctx) error {
 
 	// Add operation context
 	logging.AddFieldsToRequest(c, map[string]interface{}{
-		"operation":      "create_purchase_order",
-		"vendor_id":      req.VendorID,
-		"total_amount":   req.TotalAmount,
-		"currency":       req.Currency,
-		"items_count":    len(req.Items),
+		"operation":       "create_purchase_order",
+		"vendor_id":       req.VendorID,
+		"total_amount":    req.TotalAmount,
+		"currency":        req.Currency,
+		"items_count":     len(req.Items),
+		"organization_id": tenant.OrganizationID,
 	})
 
 	if req.VendorID == "" {
@@ -154,12 +165,13 @@ func CreatePurchaseOrder(c *fiber.Ctx) error {
 		})
 	}
 
-	// Verify vendor exists
+	// Verify vendor exists and belongs to the same organization
 	var vendor models.Vendor
-	if err := config.DB.Where("id = ?", req.VendorID).First(&vendor).Error; err != nil {
+	if err := config.DB.Where("id = ? AND organization_id = ?", req.VendorID, tenant.OrganizationID).First(&vendor).Error; err != nil {
 		logging.LogError(c, err, "vendor_not_found", map[string]interface{}{
-			"vendor_id":  req.VendorID,
-			"error_type": "validation_error",
+			"vendor_id":       req.VendorID,
+			"organization_id": tenant.OrganizationID,
+			"error_type":      "validation_error",
 		})
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"success": false,
@@ -175,17 +187,18 @@ func CreatePurchaseOrder(c *fiber.Ctx) error {
 	logging.AddFieldToRequest(c, "order_id", orderID)
 
 	order := models.PurchaseOrder{
-		ID:              orderID,
-		PONumber:        poNumber,
-		VendorID:        req.VendorID,
-		Status:          "draft",
-		TotalAmount:     req.TotalAmount,
-		Currency:        req.Currency,
-		DeliveryDate:    req.DeliveryDate,
-		ApprovalStage:   0,
+		ID:                orderID,
+		OrganizationID:    tenant.OrganizationID, // SECURITY FIX: Set organization ID
+		PONumber:          poNumber,
+		VendorID:          req.VendorID,
+		Status:            "draft",
+		TotalAmount:       req.TotalAmount,
+		Currency:          req.Currency,
+		DeliveryDate:      req.DeliveryDate.Time,
+		ApprovalStage:     0,
 		LinkedRequisition: req.LinkedRequisition,
-		CreatedAt:       time.Now(),
-		UpdatedAt:       time.Now(),
+		CreatedAt:         time.Now(),
+		UpdatedAt:         time.Now(),
 	}
 
 	order.Items = datatypes.NewJSONType(req.Items)
@@ -311,7 +324,7 @@ func UpdatePurchaseOrder(c *fiber.Ctx) error {
 
 	// Track changes for logging
 	changes := make(map[string]interface{})
-	
+
 	if req.VendorID != "" {
 		changes["vendor_id"] = map[string]string{"from": order.VendorID, "to": req.VendorID}
 		order.VendorID = req.VendorID
@@ -328,9 +341,9 @@ func UpdatePurchaseOrder(c *fiber.Ctx) error {
 		changes["currency"] = map[string]string{"from": order.Currency, "to": req.Currency}
 		order.Currency = req.Currency
 	}
-	if !req.DeliveryDate.IsZero() {
-		changes["delivery_date"] = req.DeliveryDate
-		order.DeliveryDate = req.DeliveryDate
+	if !req.DeliveryDate.Time.IsZero() {
+		changes["delivery_date"] = req.DeliveryDate.Time
+		order.DeliveryDate = req.DeliveryDate.Time
 	}
 
 	order.UpdatedAt = time.Now()
@@ -451,6 +464,7 @@ func modelToPurchaseOrderResponse(order models.PurchaseOrder) types.PurchaseOrde
 		UpdatedAt:         order.UpdatedAt,
 	}
 }
+
 // SubmitPurchaseOrder submits a purchase order for approval using the workflow system
 func SubmitPurchaseOrder(c *fiber.Ctx) error {
 	logger := logging.FromContext(c)
@@ -522,21 +536,21 @@ func SubmitPurchaseOrder(c *fiber.Ctx) error {
 	// Add action history entry for submission
 	var actionHistory []types.ActionHistoryEntry
 	actionHistory = order.ActionHistory.Data()
-	
+
 	// Get user info for action history
 	var user models.User
 	if err := config.DB.Where("id = ?", userID).First(&user).Error; err == nil {
 		actionHistory = append(actionHistory, types.ActionHistoryEntry{
-			ID:               uuid.New().String(),
-			Action:           "SUBMIT",
-			PerformedBy:      userID,
-			PerformedByName:  user.Name,
-			PerformedByRole:  user.Role,
-			Timestamp:        time.Now(),
-			Comments:         "Purchase order submitted for approval",
-			ActionType:       "SUBMIT",
-			PreviousStatus:   "draft",
-			NewStatus:        "pending",
+			ID:              uuid.New().String(),
+			Action:          "SUBMIT",
+			PerformedBy:     userID,
+			PerformedByName: user.Name,
+			PerformedByRole: user.Role,
+			Timestamp:       time.Now(),
+			Comments:        "Purchase order submitted for approval",
+			ActionType:      "SUBMIT",
+			PreviousStatus:  "draft",
+			NewStatus:       "pending",
 		})
 		order.ActionHistory = datatypes.NewJSONType(actionHistory)
 	}

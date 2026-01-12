@@ -5,14 +5,13 @@ Complete organization isolation with proper data separation and super admin acce
 ## Architecture
 
 - **Middleware**: `middleware/tenant.go` - Organization context validation
-- **Seeder**: `database/seeders/multi_tenant_seeder.go` - Test data generation
+- **Seed Data**: `database/migrations/002_consolidated_seed_data.up.sql` - Test data generation
 - **Verification**: `cmd/verify-separation/main.go` - Data separation testing
 
 ## Organizations
 
 - **Demo Corporation** (`org-demo-001`) - Enterprise tier
-- **ACME Corporation** (`org-acme-001`) - Enterprise tier
-- **Default Organization** (`org-default-001`) - Starter tier
+- **Default Organization** (`e67fe5b7-dd91-47cb-938b-2b2cd52e10b2`) - Starter tier
 
 ## Super Admin Access
 
@@ -21,14 +20,11 @@ The super admin (`admin@liyali.com`) has memberships in all organizations and ca
 ## Commands
 
 ```bash
-# Seed multi-tenant data
-go run cmd/seed/main.go --multi-tenant
-
 # Verify data separation
 go run cmd/verify-separation/main.go
 
-# Cleanup test data
-go run cmd/seed/main.go --cleanup
+# Run migrations (includes seed data)
+go run main.go -migrate
 ```
 
 ## Data Isolation
@@ -38,4 +34,4 @@ Each organization has completely separate:
 - Users and memberships
 - Requisitions and workflows
 - Categories and budgets
-- Document numbering (DEMO-REQ-xxx vs ACME-REQ-xxx)
+- Document numbering and data

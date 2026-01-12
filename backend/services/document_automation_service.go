@@ -136,7 +136,7 @@ func (s *DocumentAutomationService) CreatePurchaseOrderFromRequisition(
 		ProjectCode:       requisition.ProjectCode,
 		
 		// Link to source requisition
-		SourceRequisitionId:     requisition.ID,
+		SourceRequisitionId:     &requisition.ID,
 		SourceRequisitionNumber: requisition.REQNumber,
 		
 		// Mark as auto-created

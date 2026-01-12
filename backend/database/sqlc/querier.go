@@ -80,6 +80,7 @@ type Querier interface {
 	UnlockAccount(ctx context.Context, userID string) error
 	UnlockAccountByEmail(ctx context.Context, email string) error
 	UpdateOrganizationRole(ctx context.Context, iD pgtype.UUID, name string, description *string, permissions []byte) (OrganizationRole, error)
+	UpdateSessionRefreshToken(ctx context.Context, iD pgtype.UUID, refreshToken string, expiresAt pgtype.Timestamp, refreshToken_2 string) (int64, error)
 	UpdateUser(ctx context.Context, arg UpdateUserParams) (User, error)
 	UpdateUserLastLogin(ctx context.Context, id string) error
 	UpdateUserPassword(ctx context.Context, iD string, password string) error

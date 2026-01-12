@@ -1,6 +1,9 @@
 package types
 
 import (
+	"encoding/json"
+	"fmt"
+	"strings"
 	"time"
 )
 
@@ -136,23 +139,58 @@ type BudgetResponse struct {
 
 // ================== PURCHASE ORDER TYPES ==================
 
+// FlexibleDate handles both RFC3339 and date-only formats
+type FlexibleDate struct {
+	time.Time
+}
+
+// UnmarshalJSON implements custom JSON unmarshaling for flexible date formats
+func (fd *FlexibleDate) UnmarshalJSON(data []byte) error {
+	str := strings.Trim(string(data), "\"")
+	
+	// Try RFC3339 format first (2006-01-02T15:04:05Z07:00)
+	if t, err := time.Parse(time.RFC3339, str); err == nil {
+		fd.Time = t
+		return nil
+	}
+	
+	// Try date-only format (2006-01-02)
+	if t, err := time.Parse("2006-01-02", str); err == nil {
+		fd.Time = t
+		return nil
+	}
+	
+	// Try datetime format without timezone (2006-01-02T15:04:05)
+	if t, err := time.Parse("2006-01-02T15:04:05", str); err == nil {
+		fd.Time = t
+		return nil
+	}
+	
+	return fmt.Errorf("invalid date format: %s (expected RFC3339, date-only, or datetime)", str)
+}
+
+// MarshalJSON implements custom JSON marshaling
+func (fd FlexibleDate) MarshalJSON() ([]byte, error) {
+	return json.Marshal(fd.Time.Format(time.RFC3339))
+}
+
 // CreatePurchaseOrderRequest represents a PO creation request
 type CreatePurchaseOrderRequest struct {
-	VendorID          string        `json:"vendorId" validate:"required"`
-	Items             []POItem      `json:"items" validate:"required,min=1"`
-	TotalAmount       float64       `json:"totalAmount" validate:"required,gt=0"`
-	Currency          string        `json:"currency" validate:"required"`
-	DeliveryDate      time.Time     `json:"deliveryDate" validate:"required"`
-	LinkedRequisition string        `json:"linkedRequisition"`
+	VendorID          string       `json:"vendorId" validate:"required"`
+	Items             []POItem     `json:"items" validate:"required,min=1"`
+	TotalAmount       float64      `json:"totalAmount" validate:"required,gt=0"`
+	Currency          string       `json:"currency" validate:"required"`
+	DeliveryDate      FlexibleDate `json:"deliveryDate" validate:"required"`
+	LinkedRequisition string       `json:"linkedRequisition"`
 }
 
 // UpdatePurchaseOrderRequest represents a PO update request
 type UpdatePurchaseOrderRequest struct {
-	VendorID     string    `json:"vendorId"`
-	Items        []POItem  `json:"items"`
-	TotalAmount  float64   `json:"totalAmount"`
-	Currency     string    `json:"currency"`
-	DeliveryDate time.Time `json:"deliveryDate"`
+	VendorID     string       `json:"vendorId"`
+	Items        []POItem     `json:"items"`
+	TotalAmount  float64      `json:"totalAmount"`
+	Currency     string       `json:"currency"`
+	DeliveryDate FlexibleDate `json:"deliveryDate"`
 }
 
 // POItem represents an item in a purchase order

@@ -19,7 +19,7 @@ func GetVendors(c *fiber.Ctx) error {
 	logger.Info("get_vendors_request")
 
 	// Get organization context from tenant middleware
-	tenant, err := middleware.GetTenantContext(*c)
+	tenant, err := middleware.GetTenantContext(c)
 	if err != nil {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 			"error": "Organization context required",
@@ -52,7 +52,7 @@ func GetVendors(c *fiber.Ctx) error {
 
 	// SECURITY: Always filter by organization ID first
 	query := db.Where("organization_id = ?", tenant.OrganizationID)
-	
+
 	if active == "true" {
 		query = query.Where("active = ?", true)
 	} else if active == "false" {
@@ -96,7 +96,7 @@ func GetVendors(c *fiber.Ctx) error {
 // CreateVendor creates a new vendor
 func CreateVendor(c *fiber.Ctx) error {
 	// Get organization context from tenant middleware
-	tenant, err := middleware.GetTenantContext(*c)
+	tenant, err := middleware.GetTenantContext(c)
 	if err != nil {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 			"error": "Organization context required",
@@ -202,7 +202,7 @@ func CreateVendor(c *fiber.Ctx) error {
 // GetVendor retrieves a single vendor by ID
 func GetVendor(c *fiber.Ctx) error {
 	// Get organization context from tenant middleware
-	tenant, err := middleware.GetTenantContext(*c)
+	tenant, err := middleware.GetTenantContext(c)
 	if err != nil {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 			"error": "Organization context required",
@@ -235,7 +235,7 @@ func GetVendor(c *fiber.Ctx) error {
 // UpdateVendor updates an existing vendor
 func UpdateVendor(c *fiber.Ctx) error {
 	// Get organization context from tenant middleware
-	tenant, err := middleware.GetTenantContext(*c)
+	tenant, err := middleware.GetTenantContext(c)
 	if err != nil {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 			"error": "Organization context required",
@@ -328,7 +328,7 @@ func UpdateVendor(c *fiber.Ctx) error {
 // DeleteVendor deactivates a vendor (soft delete via active flag)
 func DeleteVendor(c *fiber.Ctx) error {
 	// Get organization context from tenant middleware
-	tenant, err := middleware.GetTenantContext(*c)
+	tenant, err := middleware.GetTenantContext(c)
 	if err != nil {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 			"error": "Organization context required",

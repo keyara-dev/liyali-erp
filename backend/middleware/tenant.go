@@ -16,20 +16,20 @@ func TenantMiddleware() fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		// 1. Get user ID from auth middleware (must come after AuthMiddleware)
 		userIDRaw := c.Locals("userID")
-		
+
 		if userIDRaw == nil {
 			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 				"error": "User context required - userID is nil",
 			})
 		}
-		
+
 		userID, ok := userIDRaw.(string)
 		if !ok {
 			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 				"error": fmt.Sprintf("User context required - userID is not a string, got %T", userIDRaw),
 			})
 		}
-		
+
 		if userID == "" {
 			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 				"error": "User context required - userID is empty string",
@@ -85,7 +85,7 @@ func TenantMiddleware() fiber.Handler {
 }
 
 // GetTenantContext retrieves tenant context from Fiber context
-func GetTenantContext(c fiber.Ctx) (*utils.TenantContext, error) {
+func GetTenantContext(c *fiber.Ctx) (*utils.TenantContext, error) {
 	tenant, ok := c.Locals("tenant").(*utils.TenantContext)
 	if !ok {
 		return nil, errors.New("tenant context not found")

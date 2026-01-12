@@ -20,12 +20,13 @@ type WorkflowService struct {
 
 // CreateWorkflowRequest represents a workflow creation request
 type CreateWorkflowRequest struct {
-	Name        string                     `json:"name" validate:"required"`
-	Description string                     `json:"description"`
-	EntityType  string                     `json:"entityType" validate:"required"` // Changed from DocumentType
-	Stages      []models.WorkflowStage     `json:"stages" validate:"required"`
-	Conditions  *models.WorkflowConditions `json:"conditions"`
-	IsDefault   bool                       `json:"isDefault"`
+	Name         string                     `json:"name" validate:"required"`
+	Description  string                     `json:"description"`
+	EntityType   string                     `json:"entityType"`   // Primary field (no longer required in validation)
+	DocumentType string                     `json:"documentType"` // Legacy support
+	Stages       []models.WorkflowStage     `json:"stages" validate:"required"`
+	Conditions   *models.WorkflowConditions `json:"conditions"`
+	IsDefault    bool                       `json:"isDefault"`
 }
 
 // UpdateWorkflowRequest represents a workflow update request
@@ -67,6 +68,21 @@ func (s *WorkflowService) CreateWorkflow(ctx context.Context, organizationID, us
 			tx.Rollback()
 		}
 	}()
+
+	// Check if this is the first workflow for this entity type
+	var existingCount int64
+	if err := tx.Model(&models.Workflow{}).
+		Where("organization_id = ? AND entity_type = ?", organizationID, req.EntityType).
+		Count(&existingCount).Error; err != nil {
+		tx.Rollback()
+		return nil, fmt.Errorf("failed to check existing workflows: %w", err)
+	}
+
+	// If this is the first workflow for this entity type, make it default
+	isFirstWorkflow := existingCount == 0
+	if isFirstWorkflow {
+		req.IsDefault = true
+	}
 
 	// If this is set as default, unset other defaults for the same entity type
 	if req.IsDefault {
@@ -139,6 +155,11 @@ func (s *WorkflowService) CreateWorkflow(ctx context.Context, organizationID, us
 	// Log audit event
 	if s.auditService != nil {
 		details := fmt.Sprintf("Created workflow '%s' for entity type '%s' with %d stages", req.Name, req.EntityType, len(req.Stages))
+		if isFirstWorkflow {
+			details += " (automatically set as default - first workflow for this entity type)"
+		} else if req.IsDefault {
+			details += " (set as default workflow)"
+		}
 		s.auditService.LogEvent(ctx, userID, organizationID, "workflow_created", "workflow", workflow.ID.String(), details, "", "")
 	}
 

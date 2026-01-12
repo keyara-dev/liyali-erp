@@ -19,13 +19,13 @@ type UserRepositoryInterface interface {
 	UpdatePassword(ctx context.Context, id string, hashedPassword string) error
 	UpdateLastLogin(ctx context.Context, id string) error
 	Delete(ctx context.Context, id string) error
-	
+
 	// List operations
 	List(ctx context.Context, limit, offset int) ([]*models.User, error)
 	ListByOrganization(ctx context.Context, organizationID string, limit, offset int) ([]*models.User, error)
 	Count(ctx context.Context) (int64, error)
 	CountActive(ctx context.Context) (int64, error)
-	
+
 	// Status operations
 	Activate(ctx context.Context, id string) error
 	Deactivate(ctx context.Context, id string) error
@@ -36,7 +36,7 @@ type SessionRepositoryInterface interface {
 	Create(ctx context.Context, userID, refreshToken, ipAddress, userAgent string, expiresAt time.Time) (*sqlc.Session, error)
 	GetByRefreshToken(ctx context.Context, refreshToken string) (*sqlc.Session, error)
 	GetByUserID(ctx context.Context, userID string) ([]*sqlc.Session, error)
-	UpdateRefreshToken(ctx context.Context, id uuid.UUID, newRefreshToken string, expiresAt time.Time) error
+	UpdateRefreshToken(ctx context.Context, id uuid.UUID, oldRefreshToken, newRefreshToken string, expiresAt time.Time) (int64, error)
 	Delete(ctx context.Context, id uuid.UUID) error
 	DeleteByRefreshToken(ctx context.Context, refreshToken string) error
 	DeleteByUserID(ctx context.Context, userID string) error
@@ -84,14 +84,14 @@ type OrganizationRoleRepositoryInterface interface {
 	GetByName(ctx context.Context, organizationID, name string) (*sqlc.OrganizationRole, error)
 	Update(ctx context.Context, id uuid.UUID, name, description string, permissions []byte) (*sqlc.OrganizationRole, error)
 	Delete(ctx context.Context, id uuid.UUID) error
-	
+
 	// List operations
 	List(ctx context.Context, organizationID string, limit, offset int) ([]*sqlc.OrganizationRole, error)
 	ListSystem(ctx context.Context, organizationID string) ([]*sqlc.OrganizationRole, error)
 	ListCustom(ctx context.Context, organizationID string, limit, offset int) ([]*sqlc.OrganizationRole, error)
 	Count(ctx context.Context, organizationID string) (int64, error)
 	CountCustom(ctx context.Context, organizationID string) (int64, error)
-	
+
 	// User role assignments
 	AssignUserRole(ctx context.Context, userID, organizationID string, roleID uuid.UUID, assignedBy string) (*sqlc.UserOrganizationRole, error)
 	GetUserRoles(ctx context.Context, userID, organizationID string) ([]*sqlc.OrganizationRole, error)

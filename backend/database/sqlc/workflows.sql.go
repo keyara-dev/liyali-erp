@@ -16,7 +16,7 @@ UPDATE workflows
 SET is_active = true,
     updated_at = NOW()
 WHERE id = $1 AND organization_id = $2
-RETURNING id, organization_id, name, description, document_type, stages, is_active, is_default, created_by, created_at, updated_at
+RETURNING id, organization_id, name, description, document_type, entity_type, version, stages, conditions, is_active, is_default, created_by, created_at, updated_at, deleted_at
 `
 
 func (q *Queries) ActivateWorkflow(ctx context.Context, iD pgtype.UUID, organizationID string) (Workflow, error) {
@@ -28,12 +28,16 @@ func (q *Queries) ActivateWorkflow(ctx context.Context, iD pgtype.UUID, organiza
 		&i.Name,
 		&i.Description,
 		&i.DocumentType,
+		&i.EntityType,
+		&i.Version,
 		&i.Stages,
+		&i.Conditions,
 		&i.IsActive,
 		&i.IsDefault,
 		&i.CreatedBy,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.DeletedAt,
 	)
 	return i, err
 }
@@ -89,7 +93,7 @@ INSERT INTO workflows (
 ) VALUES (
     gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, NOW(), NOW()
 )
-RETURNING id, organization_id, name, description, document_type, stages, is_active, is_default, created_by, created_at, updated_at
+RETURNING id, organization_id, name, description, document_type, entity_type, version, stages, conditions, is_active, is_default, created_by, created_at, updated_at, deleted_at
 `
 
 type CreateWorkflowParams struct {
@@ -119,12 +123,16 @@ func (q *Queries) CreateWorkflow(ctx context.Context, arg CreateWorkflowParams) 
 		&i.Name,
 		&i.Description,
 		&i.DocumentType,
+		&i.EntityType,
+		&i.Version,
 		&i.Stages,
+		&i.Conditions,
 		&i.IsActive,
 		&i.IsDefault,
 		&i.CreatedBy,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.DeletedAt,
 	)
 	return i, err
 }
@@ -134,7 +142,7 @@ UPDATE workflows
 SET is_active = false,
     updated_at = NOW()
 WHERE id = $1 AND organization_id = $2
-RETURNING id, organization_id, name, description, document_type, stages, is_active, is_default, created_by, created_at, updated_at
+RETURNING id, organization_id, name, description, document_type, entity_type, version, stages, conditions, is_active, is_default, created_by, created_at, updated_at, deleted_at
 `
 
 func (q *Queries) DeactivateWorkflow(ctx context.Context, iD pgtype.UUID, organizationID string) (Workflow, error) {
@@ -146,12 +154,16 @@ func (q *Queries) DeactivateWorkflow(ctx context.Context, iD pgtype.UUID, organi
 		&i.Name,
 		&i.Description,
 		&i.DocumentType,
+		&i.EntityType,
+		&i.Version,
 		&i.Stages,
+		&i.Conditions,
 		&i.IsActive,
 		&i.IsDefault,
 		&i.CreatedBy,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.DeletedAt,
 	)
 	return i, err
 }
@@ -167,7 +179,7 @@ func (q *Queries) DeleteWorkflow(ctx context.Context, iD pgtype.UUID, organizati
 }
 
 const getDefaultWorkflowByDocumentType = `-- name: GetDefaultWorkflowByDocumentType :one
-SELECT id, organization_id, name, description, document_type, stages, is_active, is_default, created_by, created_at, updated_at FROM workflows
+SELECT id, organization_id, name, description, document_type, entity_type, version, stages, conditions, is_active, is_default, created_by, created_at, updated_at, deleted_at FROM workflows
 WHERE organization_id = $1 AND document_type = $2 AND is_active = true
 ORDER BY created_at DESC
 LIMIT 1
@@ -182,18 +194,22 @@ func (q *Queries) GetDefaultWorkflowByDocumentType(ctx context.Context, organiza
 		&i.Name,
 		&i.Description,
 		&i.DocumentType,
+		&i.EntityType,
+		&i.Version,
 		&i.Stages,
+		&i.Conditions,
 		&i.IsActive,
 		&i.IsDefault,
 		&i.CreatedBy,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.DeletedAt,
 	)
 	return i, err
 }
 
 const getWorkflowByID = `-- name: GetWorkflowByID :one
-SELECT id, organization_id, name, description, document_type, stages, is_active, is_default, created_by, created_at, updated_at FROM workflows
+SELECT id, organization_id, name, description, document_type, entity_type, version, stages, conditions, is_active, is_default, created_by, created_at, updated_at, deleted_at FROM workflows
 WHERE id = $1 AND organization_id = $2
 `
 
@@ -206,18 +222,22 @@ func (q *Queries) GetWorkflowByID(ctx context.Context, iD pgtype.UUID, organizat
 		&i.Name,
 		&i.Description,
 		&i.DocumentType,
+		&i.EntityType,
+		&i.Version,
 		&i.Stages,
+		&i.Conditions,
 		&i.IsActive,
 		&i.IsDefault,
 		&i.CreatedBy,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.DeletedAt,
 	)
 	return i, err
 }
 
 const listActiveWorkflows = `-- name: ListActiveWorkflows :many
-SELECT id, organization_id, name, description, document_type, stages, is_active, is_default, created_by, created_at, updated_at FROM workflows
+SELECT id, organization_id, name, description, document_type, entity_type, version, stages, conditions, is_active, is_default, created_by, created_at, updated_at, deleted_at FROM workflows
 WHERE organization_id = $1 AND is_active = true
 ORDER BY created_at DESC
 LIMIT $2 OFFSET $3
@@ -238,12 +258,16 @@ func (q *Queries) ListActiveWorkflows(ctx context.Context, organizationID string
 			&i.Name,
 			&i.Description,
 			&i.DocumentType,
+			&i.EntityType,
+			&i.Version,
 			&i.Stages,
+			&i.Conditions,
 			&i.IsActive,
 			&i.IsDefault,
 			&i.CreatedBy,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.DeletedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -256,7 +280,7 @@ func (q *Queries) ListActiveWorkflows(ctx context.Context, organizationID string
 }
 
 const listActiveWorkflowsByDocumentType = `-- name: ListActiveWorkflowsByDocumentType :many
-SELECT id, organization_id, name, description, document_type, stages, is_active, is_default, created_by, created_at, updated_at FROM workflows
+SELECT id, organization_id, name, description, document_type, entity_type, version, stages, conditions, is_active, is_default, created_by, created_at, updated_at, deleted_at FROM workflows
 WHERE organization_id = $1 AND document_type = $2 AND is_active = true
 ORDER BY created_at DESC
 LIMIT $3 OFFSET $4
@@ -282,12 +306,16 @@ func (q *Queries) ListActiveWorkflowsByDocumentType(ctx context.Context, organiz
 			&i.Name,
 			&i.Description,
 			&i.DocumentType,
+			&i.EntityType,
+			&i.Version,
 			&i.Stages,
+			&i.Conditions,
 			&i.IsActive,
 			&i.IsDefault,
 			&i.CreatedBy,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.DeletedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -300,7 +328,7 @@ func (q *Queries) ListActiveWorkflowsByDocumentType(ctx context.Context, organiz
 }
 
 const listWorkflows = `-- name: ListWorkflows :many
-SELECT id, organization_id, name, description, document_type, stages, is_active, is_default, created_by, created_at, updated_at FROM workflows
+SELECT id, organization_id, name, description, document_type, entity_type, version, stages, conditions, is_active, is_default, created_by, created_at, updated_at, deleted_at FROM workflows
 WHERE organization_id = $1
 ORDER BY created_at DESC
 LIMIT $2 OFFSET $3
@@ -321,12 +349,16 @@ func (q *Queries) ListWorkflows(ctx context.Context, organizationID string, limi
 			&i.Name,
 			&i.Description,
 			&i.DocumentType,
+			&i.EntityType,
+			&i.Version,
 			&i.Stages,
+			&i.Conditions,
 			&i.IsActive,
 			&i.IsDefault,
 			&i.CreatedBy,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.DeletedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -339,7 +371,7 @@ func (q *Queries) ListWorkflows(ctx context.Context, organizationID string, limi
 }
 
 const listWorkflowsByDocumentType = `-- name: ListWorkflowsByDocumentType :many
-SELECT id, organization_id, name, description, document_type, stages, is_active, is_default, created_by, created_at, updated_at FROM workflows
+SELECT id, organization_id, name, description, document_type, entity_type, version, stages, conditions, is_active, is_default, created_by, created_at, updated_at, deleted_at FROM workflows
 WHERE organization_id = $1 AND document_type = $2
 ORDER BY created_at DESC
 LIMIT $3 OFFSET $4
@@ -365,12 +397,16 @@ func (q *Queries) ListWorkflowsByDocumentType(ctx context.Context, organizationI
 			&i.Name,
 			&i.Description,
 			&i.DocumentType,
+			&i.EntityType,
+			&i.Version,
 			&i.Stages,
+			&i.Conditions,
 			&i.IsActive,
 			&i.IsDefault,
 			&i.CreatedBy,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.DeletedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -389,7 +425,7 @@ SET name = $3,
     stages = $5,
     updated_at = NOW()
 WHERE id = $1 AND organization_id = $2
-RETURNING id, organization_id, name, description, document_type, stages, is_active, is_default, created_by, created_at, updated_at
+RETURNING id, organization_id, name, description, document_type, entity_type, version, stages, conditions, is_active, is_default, created_by, created_at, updated_at, deleted_at
 `
 
 func (q *Queries) UpdateWorkflow(ctx context.Context, iD pgtype.UUID, organizationID string, name string, description *string, stages []byte) (Workflow, error) {
@@ -407,12 +443,16 @@ func (q *Queries) UpdateWorkflow(ctx context.Context, iD pgtype.UUID, organizati
 		&i.Name,
 		&i.Description,
 		&i.DocumentType,
+		&i.EntityType,
+		&i.Version,
 		&i.Stages,
+		&i.Conditions,
 		&i.IsActive,
 		&i.IsDefault,
 		&i.CreatedBy,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.DeletedAt,
 	)
 	return i, err
 }

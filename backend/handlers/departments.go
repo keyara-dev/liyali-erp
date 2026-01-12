@@ -14,7 +14,7 @@ import (
 // GetOrganizationDepartments retrieves all departments for the organization
 // GET /api/v1/organization/departments
 func GetOrganizationDepartments(c *fiber.Ctx) error {
-	tenant, err := middleware.GetTenantContext(*c)
+	tenant, err := middleware.GetTenantContext(c)
 	if err != nil {
 		return utils.SendUnauthorizedError(c, "Invalid tenant context")
 	}
@@ -32,10 +32,10 @@ func GetOrganizationDepartments(c *fiber.Ctx) error {
 	}
 
 	svc := services.NewDepartmentService(config.DB)
-	
+
 	var departments []interface{}
 	var total int64
-	
+
 	if active == "true" {
 		departments, total, err = svc.GetActiveDepartments(tenant.OrganizationID, page, pageSize)
 	} else if active == "false" {
@@ -55,7 +55,7 @@ func GetOrganizationDepartments(c *fiber.Ctx) error {
 // GetOrganizationDepartment retrieves a specific department by ID
 // GET /api/v1/organization/departments/:id
 func GetOrganizationDepartment(c *fiber.Ctx) error {
-	tenant, err := middleware.GetTenantContext(*c)
+	tenant, err := middleware.GetTenantContext(c)
 	if err != nil {
 		return utils.SendUnauthorizedError(c, "Invalid tenant context")
 	}
@@ -78,7 +78,7 @@ func GetOrganizationDepartment(c *fiber.Ctx) error {
 // CreateOrganizationDepartment creates a new department
 // POST /api/v1/organization/departments
 func CreateOrganizationDepartment(c *fiber.Ctx) error {
-	tenant, err := middleware.GetTenantContext(*c)
+	tenant, err := middleware.GetTenantContext(c)
 	if err != nil {
 		return utils.SendUnauthorizedError(c, "Invalid tenant context")
 	}
@@ -104,7 +104,7 @@ func CreateOrganizationDepartment(c *fiber.Ctx) error {
 	}
 
 	svc := services.NewDepartmentService(config.DB)
-	
+
 	// Check if department code already exists
 	exists, err := svc.DepartmentCodeExists(tenant.OrganizationID, req.Code)
 	if err != nil {
@@ -127,7 +127,7 @@ func CreateOrganizationDepartment(c *fiber.Ctx) error {
 // UpdateOrganizationDepartment updates an existing department
 // PUT /api/v1/organization/departments/:id
 func UpdateOrganizationDepartment(c *fiber.Ctx) error {
-	tenant, err := middleware.GetTenantContext(*c)
+	tenant, err := middleware.GetTenantContext(c)
 	if err != nil {
 		return utils.SendUnauthorizedError(c, "Invalid tenant context")
 	}
@@ -151,7 +151,7 @@ func UpdateOrganizationDepartment(c *fiber.Ctx) error {
 	}
 
 	svc := services.NewDepartmentService(config.DB)
-	
+
 	// Check if department exists and belongs to organization
 	exists, err := svc.DepartmentExists(tenant.OrganizationID, departmentID)
 	if err != nil {
@@ -186,7 +186,7 @@ func UpdateOrganizationDepartment(c *fiber.Ctx) error {
 // DeleteOrganizationDepartment soft deletes a department
 // DELETE /api/v1/organization/departments/:id
 func DeleteOrganizationDepartment(c *fiber.Ctx) error {
-	tenant, err := middleware.GetTenantContext(*c)
+	tenant, err := middleware.GetTenantContext(c)
 	if err != nil {
 		return utils.SendUnauthorizedError(c, "Invalid tenant context")
 	}
@@ -197,7 +197,7 @@ func DeleteOrganizationDepartment(c *fiber.Ctx) error {
 	}
 
 	svc := services.NewDepartmentService(config.DB)
-	
+
 	// Check if department exists and belongs to organization
 	exists, err := svc.DepartmentExists(tenant.OrganizationID, departmentID)
 	if err != nil {
@@ -220,7 +220,7 @@ func DeleteOrganizationDepartment(c *fiber.Ctx) error {
 // RestoreOrganizationDepartment restores a soft deleted department
 // POST /api/v1/organization/departments/:id/restore
 func RestoreOrganizationDepartment(c *fiber.Ctx) error {
-	tenant, err := middleware.GetTenantContext(*c)
+	tenant, err := middleware.GetTenantContext(c)
 	if err != nil {
 		return utils.SendUnauthorizedError(c, "Invalid tenant context")
 	}
@@ -231,7 +231,7 @@ func RestoreOrganizationDepartment(c *fiber.Ctx) error {
 	}
 
 	svc := services.NewDepartmentService(config.DB)
-	
+
 	department, err := svc.RestoreDepartment(tenant.OrganizationID, departmentID)
 	if err != nil {
 		log.Printf("Error restoring department %s: %v", departmentID, err)
@@ -244,7 +244,7 @@ func RestoreOrganizationDepartment(c *fiber.Ctx) error {
 // GetDepartmentModules retrieves modules assigned to a department
 // GET /api/v1/organization/departments/:id/modules
 func GetDepartmentModules(c *fiber.Ctx) error {
-	tenant, err := middleware.GetTenantContext(*c)
+	tenant, err := middleware.GetTenantContext(c)
 	if err != nil {
 		return utils.SendUnauthorizedError(c, "Invalid tenant context")
 	}
@@ -255,7 +255,7 @@ func GetDepartmentModules(c *fiber.Ctx) error {
 	}
 
 	svc := services.NewDepartmentService(config.DB)
-	
+
 	// Check if department exists and belongs to organization
 	exists, err := svc.DepartmentExists(tenant.OrganizationID, departmentID)
 	if err != nil {
@@ -278,7 +278,7 @@ func GetDepartmentModules(c *fiber.Ctx) error {
 // AssignModuleToDepartment assigns a module to a department
 // POST /api/v1/organization/departments/:id/modules
 func AssignModuleToDepartment(c *fiber.Ctx) error {
-	tenant, err := middleware.GetTenantContext(*c)
+	tenant, err := middleware.GetTenantContext(c)
 	if err != nil {
 		return utils.SendUnauthorizedError(c, "Invalid tenant context")
 	}
@@ -302,7 +302,7 @@ func AssignModuleToDepartment(c *fiber.Ctx) error {
 	}
 
 	svc := services.NewDepartmentService(config.DB)
-	
+
 	// Check if department exists and belongs to organization
 	exists, err := svc.DepartmentExists(tenant.OrganizationID, departmentID)
 	if err != nil {
@@ -325,20 +325,20 @@ func AssignModuleToDepartment(c *fiber.Ctx) error {
 // RemoveModuleFromDepartment removes a module from a department
 // DELETE /api/v1/organization/departments/:departmentId/modules/:moduleId
 func RemoveModuleFromDepartment(c *fiber.Ctx) error {
-	tenant, err := middleware.GetTenantContext(*c)
+	tenant, err := middleware.GetTenantContext(c)
 	if err != nil {
 		return utils.SendUnauthorizedError(c, "Invalid tenant context")
 	}
 
 	departmentID := c.Params("departmentId")
 	moduleID := c.Params("moduleId")
-	
+
 	if departmentID == "" || moduleID == "" {
 		return utils.SendBadRequestError(c, "Department ID and Module ID are required")
 	}
 
 	svc := services.NewDepartmentService(config.DB)
-	
+
 	// Check if department exists and belongs to organization
 	exists, err := svc.DepartmentExists(tenant.OrganizationID, departmentID)
 	if err != nil {

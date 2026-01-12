@@ -106,7 +106,7 @@ func SwitchOrganization(c *fiber.Ctx) error {
 // GetOrganizationMembers returns all members of an organization
 // GET /api/v1/organization/members
 func GetOrganizationMembers(c *fiber.Ctx) error {
-	tenant, err := middleware.GetTenantContext(*c)
+	tenant, err := middleware.GetTenantContext(c)
 	if err != nil {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 			"error": "Organization context required",
@@ -135,17 +135,10 @@ func GetOrganizationMembers(c *fiber.Ctx) error {
 // AddOrganizationMember adds a user to an organization
 // POST /api/v1/organization/members
 func AddOrganizationMember(c *fiber.Ctx) error {
-	tenant, err := middleware.GetTenantContext(*c)
+	tenant, err := middleware.GetTenantContext(c)
 	if err != nil {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 			"error": "Organization context required",
-		})
-	}
-
-	// Verify admin role
-	if tenant.UserRole != "admin" {
-		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
-			"error": "Only administrators can add members",
 		})
 	}
 
@@ -180,17 +173,10 @@ func AddOrganizationMember(c *fiber.Ctx) error {
 // RemoveOrganizationMember removes a user from an organization
 // DELETE /api/v1/organization/members/:userId
 func RemoveOrganizationMember(c *fiber.Ctx) error {
-	tenant, err := middleware.GetTenantContext(*c)
+	tenant, err := middleware.GetTenantContext(c)
 	if err != nil {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 			"error": "Organization context required",
-		})
-	}
-
-	// Verify admin role
-	if tenant.UserRole != "admin" {
-		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
-			"error": "Only administrators can remove members",
 		})
 	}
 
@@ -217,7 +203,7 @@ func RemoveOrganizationMember(c *fiber.Ctx) error {
 // GetOrganizationSettings retrieves organization settings
 // GET /api/v1/organization/settings
 func GetOrganizationSettings(c *fiber.Ctx) error {
-	tenant, err := middleware.GetTenantContext(*c)
+	tenant, err := middleware.GetTenantContext(c)
 	if err != nil {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 			"error": "Organization context required",
@@ -242,17 +228,10 @@ func GetOrganizationSettings(c *fiber.Ctx) error {
 // UpdateOrganizationSettings updates organization settings
 // PUT /api/v1/organization/settings
 func UpdateOrganizationSettings(c *fiber.Ctx) error {
-	tenant, err := middleware.GetTenantContext(*c)
+	tenant, err := middleware.GetTenantContext(c)
 	if err != nil {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 			"error": "Organization context required",
-		})
-	}
-
-	// Verify admin role
-	if tenant.UserRole != "admin" {
-		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
-			"error": "Only administrators can update settings",
 		})
 	}
 
@@ -297,17 +276,10 @@ func UpdateOrganizationSettings(c *fiber.Ctx) error {
 // UpdateOrganization updates organization details
 // PUT /api/v1/organizations/:id
 func UpdateOrganization(c *fiber.Ctx) error {
-	tenant, err := middleware.GetTenantContext(*c)
+	tenant, err := middleware.GetTenantContext(c)
 	if err != nil {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 			"error": "Organization context required",
-		})
-	}
-
-	// Verify admin role
-	if tenant.UserRole != "admin" {
-		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
-			"error": "Only administrators can update organization",
 		})
 	}
 

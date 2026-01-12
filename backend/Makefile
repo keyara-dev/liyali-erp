@@ -1,4 +1,4 @@
-.PHONY: help build run test test-unit test-verbose bench clean deps lint fmt
+.PHONY: help build run test test-unit test-integration test-verbose bench clean deps lint fmt
 
 # Variables
 APP_NAME=liyali-gateway
@@ -13,22 +13,30 @@ help:
 	@echo "  run                - Run the application"
 	@echo "  test               - Run all tests"
 	@echo "  test-unit          - Run unit tests only"
+	@echo "  test-integration   - Run integration tests only"
 	@echo "  test-verbose       - Run tests with verbose output"
+	@echo "  test-comprehensive - Run comprehensive API test suite (47 endpoints)"
 	@echo "  bench              - Run benchmarks"
 	@echo "  coverage           - Generate coverage report"
 	@echo "  deps               - Download dependencies"
 	@echo "  lint               - Run linter"
 	@echo "  fmt                - Format code"
 	@echo "  clean              - Clean build artifacts"
-	@echo "  seed-multi-tenant  - Seed multi-tenant data with workspace separation"
-	@echo "  seed-cleanup       - Clean up multi-tenant test data"
-	@echo "  seed-help          - Show seeding help"
+	@echo "  clean-all          - Deep clean (including caches)"
+	@echo "  db-migrate         - Run database migrations"
+	@echo "  db-reset           - Reset database with fresh migrations"
+	@echo "  dev                - Start development environment"
+	@echo "  dev-fresh          - Start fresh development environment"
 	@echo "  verify-separation  - Verify multi-tenant data separation"
+	@echo "  ci                 - Run full CI checks"
+	@echo "  ci-quick           - Run quick CI checks"
 	@echo ""
 	@echo "Examples:"
 	@echo "  make build"
 	@echo "  make run"
 	@echo "  make test"
+	@echo "  make test-comprehensive"
+	@echo "  make dev-fresh"
 	@echo "  PORT=9000 make run"
 
 deps:
@@ -48,37 +56,46 @@ run:
 
 test:
 	@echo "Running all tests..."
-	go test -v ./...
+	go test -v ./tests/...
 
 test-unit:
 	@echo "Running unit tests..."
-	go test -v -short ./...
+	go test -v ./tests/unit/...
+
+test-integration:
+	@echo "Running integration tests..."
+	go test -v ./tests/integration/...
 
 test-verbose:
 	@echo "Running tests with verbose output..."
-	go test -v -race -count=1 ./...
+	go test -v -race -count=1 ./tests/...
+
+test-comprehensive:
+	@echo "Running comprehensive API test suite (47 endpoints)..."
+	@chmod +x scripts/run_comprehensive_tests.sh
+	@./scripts/run_comprehensive_tests.sh
 
 test-coverage:
 	@echo "Running tests with coverage..."
-	go test -v -coverprofile=coverage.out ./...
+	go test -v -coverprofile=coverage.out ./tests/...
 	go tool cover -html=coverage.out -o coverage.html
 	@echo "Coverage report: coverage.html"
 
 test-services:
 	@echo "Running service tests..."
-	go test -v ./services/...
+	go test -v ./tests/unit/*service*
 
 test-handlers:
 	@echo "Running handler tests..."
-	go test -v ./handlers/...
+	go test -v ./tests/unit/*handler*
 
 bench:
 	@echo "Running benchmarks..."
-	go test -bench=. -benchmem -run=^$ ./...
+	go test -bench=. -benchmem -run=^$ ./tests/...
 
 bench-services:
 	@echo "Running service benchmarks..."
-	go test -bench=. -benchmem -run=^$ ./services/...
+	go test -bench=. -benchmem -run=^$ ./tests/unit/*service*
 
 lint:
 	@echo "Running linter..."
@@ -93,38 +110,27 @@ clean:
 	@echo "Cleaning up..."
 	rm -f bin/$(APP_NAME)
 	rm -f coverage.out coverage.html
+	rm -f *.test
 	go clean
 	@echo "Clean complete"
+
+clean-all:
+	@echo "Deep cleaning..."
+	make clean
+	go clean -cache
+	go clean -modcache
+	@echo "Deep clean complete"
 
 # Database targets
 db-migrate:
 	@echo "Running database migrations..."
-	go run main.go -migrate
+	go run database/simple_migration.go
 
-db-seed:
-	@echo "Seeding database..."
-	go run main.go -seed
-
-seed-approvals:
-	@echo "Seeding approval test data..."
-	go run cmd/seed_approvals.go
-
-seed-approvals-cleanup:
-	@echo "Cleaning up approval test data..."
-	go run cmd/seed_approvals.go cleanup
-
-# Multi-tenant seeding targets
-seed-multi-tenant:
-	@echo "Seeding multi-tenant data with proper workspace separation..."
-	go run cmd/seed/main.go --multi-tenant
-
-seed-cleanup:
-	@echo "Cleaning up multi-tenant test data..."
-	go run cmd/seed/main.go --cleanup
-
-seed-help:
-	@echo "Showing seeding help..."
-	go run cmd/seed/main.go --help
+db-reset:
+	@echo "Resetting database with fresh migrations..."
+	go run database/simple_migration.go database/migrations/000_drop_all_tables.up.sql
+	go run database/simple_migration.go database/migrations/001_consolidated_complete_schema.up.sql
+	go run database/simple_migration.go database/migrations/002_consolidated_seed_data.up.sql
 
 verify-separation:
 	@echo "Verifying multi-tenant data separation..."
@@ -138,6 +144,15 @@ watch:
 dev:
 	@echo "Starting development environment..."
 	make deps
+	make db-migrate
+	make build
+	make run
+
+dev-fresh:
+	@echo "Starting fresh development environment..."
+	make clean
+	make deps
+	make db-reset
 	make build
 	make run
 
@@ -161,6 +176,15 @@ ci:
 	make fmt
 	make lint
 	make test
+	make test-comprehensive
+	make build
+
+ci-quick:
+	@echo "Running quick CI checks..."
+	make deps
+	make fmt
+	make lint
+	make test-unit
 	make build
 
 # Code generation
@@ -174,6 +198,6 @@ version:
 	@echo "App: $(APP_NAME)"
 	@echo "Port: $(PORT)"
 
-.PHONY: help build run test test-unit test-verbose test-coverage test-services test-handlers \
-        bench bench-services lint fmt clean deps db-migrate db-seed watch dev version \
-        docker-build docker-run docker-clean ci generate
+.PHONY: help build run test test-unit test-integration test-verbose test-comprehensive test-coverage test-services test-handlers \
+        bench bench-services lint fmt clean clean-all deps db-migrate db-reset watch dev dev-fresh version \
+        docker-build docker-run docker-clean ci ci-quick generate verify-separation

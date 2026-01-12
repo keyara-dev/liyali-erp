@@ -159,10 +159,10 @@ func CreateRequisition(c *fiber.Ctx) error {
 	// Validate CategoryID if provided
 	if req.CategoryID != nil && *req.CategoryID != "" {
 		var category models.Category
-		if err := config.DB.Where("id = ?", *req.CategoryID).First(&category).Error; err != nil {
+		if err := config.DB.Where("id = ? AND organization_id = ?", *req.CategoryID, organizationID).First(&category).Error; err != nil {
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 				"success": false,
-				"message": "Category not found",
+				"message": "Category not found in your organization",
 			})
 		}
 	}
@@ -170,17 +170,17 @@ func CreateRequisition(c *fiber.Ctx) error {
 	// Validate PreferredVendorID if provided
 	if req.PreferredVendorID != nil && *req.PreferredVendorID != "" {
 		var vendor models.Vendor
-		if err := config.DB.Where("id = ?", *req.PreferredVendorID).First(&vendor).Error; err != nil {
+		if err := config.DB.Where("id = ? AND organization_id = ?", *req.PreferredVendorID, organizationID).First(&vendor).Error; err != nil {
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 				"success": false,
-				"message": "Preferred vendor not found",
+				"message": "Preferred vendor not found in your organization",
 			})
 		}
 	}
 
 	// Create requisition
 	reqNumber := utils.GenerateRequisitionNumber()
-	
+
 	// Prepare metadata for additional fields
 	metadataMap := map[string]interface{}{}
 	if req.RequestedFor != "" {
@@ -189,13 +189,13 @@ func CreateRequisition(c *fiber.Ctx) error {
 	if req.OtherCategoryText != "" {
 		metadataMap["otherCategoryText"] = req.OtherCategoryText
 	}
-	
+
 	metadataBytes, _ := json.Marshal(metadataMap)
 	metadata := datatypes.JSON(metadataBytes)
-	
+
 	requisition := models.Requisition{
 		ID:                uuid.New().String(),
-		OrganizationID:    organizationID,    // Add organization ID
+		OrganizationID:    organizationID, // Add organization ID
 		REQNumber:         reqNumber,
 		RequesterId:       userID,
 		Title:             req.Title,
@@ -210,24 +210,24 @@ func CreateRequisition(c *fiber.Ctx) error {
 		PreferredVendorID: req.PreferredVendorID,
 		IsEstimate:        req.IsEstimate,
 		ApprovalStage:     0,
-		
+
 		// Business requirement fields
 		BudgetCode:        req.BudgetCode,
 		CostCenter:        req.CostCenter,
 		ProjectCode:       req.ProjectCode,
 		RequiredByDate:    req.RequiredByDate,
-		CreatedBy:         userID,           // From token
-		CreatedByName:     user.Name,        // From authenticated user
-		CreatedByRole:     user.Role,        // From authenticated user
+		CreatedBy:         userID,    // From token
+		CreatedByName:     user.Name, // From authenticated user
+		CreatedByRole:     user.Role, // From authenticated user
 		RequestedBy:       userID,
 		RequestedByName:   user.Name,
 		RequestedByRole:   user.Role,
 		RequisitionNumber: reqNumber,
 		RequestedDate:     time.Now(),
 		Metadata:          metadata,
-		
-		CreatedAt:         time.Now(),
-		UpdatedAt:         time.Now(),
+
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
 	}
 
 	requisition.Items = datatypes.NewJSONType(req.Items)
@@ -238,15 +238,15 @@ func CreateRequisition(c *fiber.Ctx) error {
 	// Initialize action history with creation entry
 	actionHistory := []types.ActionHistoryEntry{
 		{
-			ID:               uuid.New().String(),
-			Action:           "CREATE",
-			PerformedBy:      userID,
-			PerformedByName:  user.Name,
-			PerformedByRole:  user.Role,
-			Timestamp:        time.Now(),
-			Comments:         "Requisition created",
-			ActionType:       "CREATE",
-			NewStatus:        "draft",
+			ID:              uuid.New().String(),
+			Action:          "CREATE",
+			PerformedBy:     userID,
+			PerformedByName: user.Name,
+			PerformedByRole: user.Role,
+			Timestamp:       time.Now(),
+			Comments:        "Requisition created",
+			ActionType:      "CREATE",
+			NewStatus:       "draft",
 		},
 	}
 	requisition.ActionHistory = datatypes.NewJSONType(actionHistory)
@@ -283,7 +283,7 @@ func GetRequisition(c *fiber.Ctx) error {
 	organizationID := c.Locals("organizationID").(string)
 
 	var requisition models.Requisition
-	
+
 	// Try to find by ID first (UUID), then by requisition number, filtered by organization
 	err := config.DB.
 		Preload("Requester").
@@ -291,7 +291,7 @@ func GetRequisition(c *fiber.Ctx) error {
 		Preload("PreferredVendor").
 		Where("organization_id = ? AND (id = ? OR req_number = ?)", organizationID, id, id).
 		First(&requisition).Error
-		
+
 	if err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
 			"success": false,
@@ -324,9 +324,12 @@ func UpdateRequisition(c *fiber.Ctx) error {
 		})
 	}
 
-	// Get existing requisition
+	// Get organization ID from context
+	organizationID := c.Locals("organizationID").(string)
+
+	// Get existing requisition - SECURITY FIX: filter by organization_id
 	var requisition models.Requisition
-	if err := config.DB.Where("id = ?", id).First(&requisition).Error; err != nil {
+	if err := config.DB.Where("id = ? AND organization_id = ?", id, organizationID).First(&requisition).Error; err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
 			"success": false,
 			"message": "Requisition not found",
@@ -367,7 +370,7 @@ func UpdateRequisition(c *fiber.Ctx) error {
 		// Validate category if provided
 		if *req.CategoryID != "" {
 			var category models.Category
-			if err := config.DB.Where("id = ?", *req.CategoryID).First(&category).Error; err != nil {
+			if err := config.DB.Where("id = ? AND organization_id = ?", *req.CategoryID, organizationID).First(&category).Error; err != nil {
 				return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 					"success": false,
 					"message": "Category not found",
@@ -380,7 +383,7 @@ func UpdateRequisition(c *fiber.Ctx) error {
 		// Validate vendor if provided
 		if *req.PreferredVendorID != "" {
 			var vendor models.Vendor
-			if err := config.DB.Where("id = ?", *req.PreferredVendorID).First(&vendor).Error; err != nil {
+			if err := config.DB.Where("id = ? AND organization_id = ?", *req.PreferredVendorID, organizationID).First(&vendor).Error; err != nil {
 				return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 					"success": false,
 					"message": "Preferred vendor not found",
@@ -396,22 +399,22 @@ func UpdateRequisition(c *fiber.Ctx) error {
 	// Add action history entry for update
 	var actionHistory []types.ActionHistoryEntry
 	actionHistory = requisition.ActionHistory.Data()
-	
+
 	// Get user info for action history
 	userID := c.Locals("userID").(string)
 	var user models.User
 	if err := config.DB.Where("id = ?", userID).First(&user).Error; err == nil {
 		actionHistory = append(actionHistory, types.ActionHistoryEntry{
-			ID:               uuid.New().String(),
-			Action:           "UPDATE",
-			PerformedBy:      userID,
-			PerformedByName:  user.Name,
-			PerformedByRole:  user.Role,
-			Timestamp:        time.Now(),
-			Comments:         "Requisition updated",
-			ActionType:       "UPDATE",
-			PreviousStatus:   requisition.Status,
-			NewStatus:        requisition.Status,
+			ID:              uuid.New().String(),
+			Action:          "UPDATE",
+			PerformedBy:     userID,
+			PerformedByName: user.Name,
+			PerformedByRole: user.Role,
+			Timestamp:       time.Now(),
+			Comments:        "Requisition updated",
+			ActionType:      "UPDATE",
+			PreviousStatus:  requisition.Status,
+			NewStatus:       requisition.Status,
 		})
 		requisition.ActionHistory = datatypes.NewJSONType(actionHistory)
 	}
@@ -446,8 +449,11 @@ func DeleteRequisition(c *fiber.Ctx) error {
 		})
 	}
 
+	// Get organization ID from context
+	organizationID := c.Locals("organizationID").(string)
+
 	var requisition models.Requisition
-	if err := config.DB.Where("id = ?", id).First(&requisition).Error; err != nil {
+	if err := config.DB.Where("id = ? AND organization_id = ?", id, organizationID).First(&requisition).Error; err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
 			"success": false,
 			"message": "Requisition not found",
@@ -512,9 +518,12 @@ func ReassignRequisition(c *fiber.Ctx) error {
 		})
 	}
 
-	// Get existing requisition
+	// Get organization ID from context
+	organizationID := c.Locals("organizationID").(string)
+
+	// Get existing requisition - SECURITY FIX: filter by organization_id
 	var requisition models.Requisition
-	if err := config.DB.Where("id = ?", id).First(&requisition).Error; err != nil {
+	if err := config.DB.Where("id = ? AND organization_id = ?", id, organizationID).First(&requisition).Error; err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
 			"success": false,
 			"message": "Requisition not found",
@@ -601,20 +610,20 @@ func modelToRequisitionResponse(req models.Requisition) types.RequisitionRespons
 		IsEstimate:          req.IsEstimate,
 		ApprovalStage:       req.ApprovalStage,
 		ApprovalHistory:     approvalHistory,
-		
+
 		// Business requirement fields
-		BudgetCode:          req.BudgetCode,
-		CostCenter:          req.CostCenter,
-		ProjectCode:         req.ProjectCode,
-		RequiredByDate:      req.RequiredByDate,
-		RequestedFor:        requestedFor,
-		OtherCategoryText:   otherCategoryText,
-		
+		BudgetCode:        req.BudgetCode,
+		CostCenter:        req.CostCenter,
+		ProjectCode:       req.ProjectCode,
+		RequiredByDate:    req.RequiredByDate,
+		RequestedFor:      requestedFor,
+		OtherCategoryText: otherCategoryText,
+
 		// Action history for frontend
-		ActionHistory:       actionHistory,
-		
-		CreatedAt:           req.CreatedAt,
-		UpdatedAt:           req.UpdatedAt,
+		ActionHistory: actionHistory,
+
+		CreatedAt: req.CreatedAt,
+		UpdatedAt: req.UpdatedAt,
 	}
 }
 
@@ -672,21 +681,21 @@ func SubmitRequisition(c *fiber.Ctx) error {
 	// Add action history entry for submission
 	var actionHistory []types.ActionHistoryEntry
 	actionHistory = requisition.ActionHistory.Data()
-	
+
 	// Get user info for action history
 	var user models.User
 	if err := config.DB.Where("id = ?", userID).First(&user).Error; err == nil {
 		actionHistory = append(actionHistory, types.ActionHistoryEntry{
-			ID:               uuid.New().String(),
-			Action:           "SUBMIT",
-			PerformedBy:      userID,
-			PerformedByName:  user.Name,
-			PerformedByRole:  user.Role,
-			Timestamp:        time.Now(),
-			Comments:         "Requisition submitted for approval",
-			ActionType:       "SUBMIT",
-			PreviousStatus:   "draft",
-			NewStatus:        "pending",
+			ID:              uuid.New().String(),
+			Action:          "SUBMIT",
+			PerformedBy:     userID,
+			PerformedByName: user.Name,
+			PerformedByRole: user.Role,
+			Timestamp:       time.Now(),
+			Comments:        "Requisition submitted for approval",
+			ActionType:      "SUBMIT",
+			PreviousStatus:  "draft",
+			NewStatus:       "pending",
 		})
 		requisition.ActionHistory = datatypes.NewJSONType(actionHistory)
 	}

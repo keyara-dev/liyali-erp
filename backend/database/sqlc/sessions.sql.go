@@ -155,3 +155,22 @@ func (q *Queries) GetSessionsByUserID(ctx context.Context, userID string) ([]Ses
 	}
 	return items, nil
 }
+
+const updateSessionRefreshToken = `-- name: UpdateSessionRefreshToken :execrows
+UPDATE sessions 
+SET refresh_token = $2, expires_at = $3, updated_at = NOW()
+WHERE id = $1 AND refresh_token = $4
+`
+
+func (q *Queries) UpdateSessionRefreshToken(ctx context.Context, iD pgtype.UUID, refreshToken string, expiresAt pgtype.Timestamp, refreshToken_2 string) (int64, error) {
+	result, err := q.db.Exec(ctx, updateSessionRefreshToken,
+		iD,
+		refreshToken,
+		expiresAt,
+		refreshToken_2,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}

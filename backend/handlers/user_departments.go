@@ -13,7 +13,7 @@ import (
 // AssignUserToDepartment assigns a user to a department
 // POST /api/v1/users/:userId/department/:departmentId
 func AssignUserToDepartment(c *fiber.Ctx) error {
-	tenant, err := middleware.GetTenantContext(*c)
+	tenant, err := middleware.GetTenantContext(c)
 	if err != nil {
 		return utils.SendUnauthorizedError(c, "Invalid tenant context")
 	}
@@ -61,7 +61,7 @@ func AssignUserToDepartment(c *fiber.Ctx) error {
 // GetUserDepartment retrieves the department assigned to a user
 // GET /api/v1/users/:userId/department
 func GetUserDepartment(c *fiber.Ctx) error {
-	tenant, err := middleware.GetTenantContext(*c)
+	tenant, err := middleware.GetTenantContext(c)
 	if err != nil {
 		return utils.SendUnauthorizedError(c, "Invalid tenant context")
 	}
@@ -96,7 +96,7 @@ func GetUserDepartment(c *fiber.Ctx) error {
 // RemoveUserFromDepartment removes a user from their current department
 // DELETE /api/v1/users/:userId/department
 func RemoveUserFromDepartment(c *fiber.Ctx) error {
-	tenant, err := middleware.GetTenantContext(*c)
+	tenant, err := middleware.GetTenantContext(c)
 	if err != nil {
 		return utils.SendUnauthorizedError(c, "Invalid tenant context")
 	}
@@ -131,7 +131,7 @@ func RemoveUserFromDepartment(c *fiber.Ctx) error {
 // GetDepartmentUsers retrieves all users in a specific department
 // GET /api/v1/organization/departments/:departmentId/users
 func GetDepartmentUsers(c *fiber.Ctx) error {
-	tenant, err := middleware.GetTenantContext(*c)
+	tenant, err := middleware.GetTenantContext(c)
 	if err != nil {
 		return utils.SendUnauthorizedError(c, "Invalid tenant context")
 	}

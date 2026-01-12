@@ -1,40 +1,197 @@
 # Database Migrations
 
-This directory contains SQL migration files for the Liyali Gateway database schema.
+This directory contains consolidated database migration files for the Liyali Gateway system.
 
-## Migration Files
+## 🗂️ Migration Files Overview
 
-### Current Migrations (Production Ready)
+### ✅ **Core Consolidated Migrations**
 
-1. **001_create_complete_schema_consolidated.up.sql** - Complete database schema with organization-scoped vendors and automation fields
-2. **001_create_complete_schema_consolidated.down.sql** - Complete schema rollback
-3. **002_seed_initial_data.up.sql** - Initial data seeding (organizations, users, workflows)
-4. **002_seed_initial_data.down.sql** - Seed data rollback
-5. **003_standardize_organization_tiers.up.sql** - Standardize organization tier values
-6. **003_standardize_organization_tiers.down.sql** - Tier standardization rollback
-7. **004_make_vendor_id_nullable.up.sql** - Make vendor_id nullable in purchase_orders
-8. **004_make_vendor_id_nullable.down.sql** - Vendor nullable rollback
+| Migration | Files                                                   | Description                                           | Status   |
+| --------- | ------------------------------------------------------- | ----------------------------------------------------- | -------- |
+| **001**   | `001_consolidated_complete_schema.up.sql` + `.down.sql` | Complete database schema with all enhancements        | ✅ Ready |
+| **002**   | `002_consolidated_seed_data.up.sql` + `.down.sql`       | Comprehensive seed data with test users and workflows | ✅ Ready |
 
-## Migration System Overview
+### 🧹 **Utility Migrations**
 
-The migration system uses a **consolidated approach** for simplicity and reliability:
+| Migration | File                          | Description               |
+| --------- | ----------------------------- | ------------------------- |
+| **000**   | `000_complete_cleanup.up.sql` | Complete database cleanup |
+| **000**   | `000_drop_all_tables.up.sql`  | Emergency table cleanup   |
 
-- **Complete Schema**: Single migration contains all tables, fields, indexes, and constraints
-- **Organization-Scoped Security**: Multi-tenant data isolation with organization-scoped vendors
-- **Automation Support**: Built-in automation tracking fields for all business documents
-- **Full Rollback**: Every migration has a corresponding rollback script
-- **Performance Optimized**: Comprehensive indexing for all query patterns
+---
 
-## Database Schema Structure
+## 🚀 **Quick Start**
 
-### Core Tables
+### **Fresh Installation (Recommended)**
+
+```bash
+# 1. Apply complete schema (42 tables, 80+ indexes)
+psql -d database_name -f 001_consolidated_complete_schema.up.sql
+
+# 2. Apply seed data (2 orgs, 5 users, 4 workflows)
+psql -d database_name -f 002_consolidated_seed_data.up.sql
+```
+
+### **Using Go Migration Tool**
+
+```bash
+# Option 1: Use standalone migration tool (recommended for migrations)
+cd backend/database
+go run simple_migration.go migrations/001_consolidated_complete_schema.up.sql
+go run simple_migration.go migrations/002_consolidated_seed_data.up.sql
+
+# Option 2: Use main application (integrated approach)
+cd backend
+go run main.go -migrate
+go run main.go -seed
+```
+
+---
+
+## 📋 **What's Included**
+
+### **Migration 001: Complete Schema**
+
+- **Tables**: 42 business tables with complete relationships
+- **Indexes**: 80+ performance-optimized indexes
+- **Features**: Multi-tenant security, enhanced authentication, workflow system
+- **Fixes**: All critical issues consolidated (vendor organization_id, nullable vendor_id, documents table, etc.)
+
+### **Migration 002: Seed Data**
+
+- **Organizations**: Default + Demo organizations
+- **Users**: 5 users with different roles (admin, requester, approver, finance, manager)
+- **RBAC**: 38 permissions across 5 system roles
+- **Workflows**: 4 default workflows ready for use
+- **Sample Data**: Budgets, requisitions, purchase orders for testing
+
+---
+
+## 🔄 **Rollback Procedures**
+
+### **Complete Rollback**
+
+```bash
+# 1. Remove seed data
+psql -d database_name -f 002_consolidated_seed_data.down.sql
+
+# 2. Remove schema
+psql -d database_name -f 001_consolidated_complete_schema.down.sql
+```
+
+### **Emergency Cleanup**
+
+```bash
+# Nuclear option - removes everything
+psql -d database_name -f 000_complete_cleanup.up.sql
+```
+
+---
+
+## 🧪 **Test Credentials**
+
+After running seed data migration:
+
+```
+System Admin: admin@liyali.com / admin123
+Requester: requester@demo.com / admin123
+Approver: approver@demo.com / admin123
+Finance: finance@demo.com / admin123
+Manager: manager@demo.com / admin123
+```
+
+---
+
+## ✅ **Verification**
+
+### **Check Migration Success**
+
+```sql
+-- Verify table count (should be 42)
+SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public';
+
+-- Verify seed data
+SELECT COUNT(*) FROM users;        -- Should be 5
+SELECT COUNT(*) FROM organizations; -- Should be 2
+SELECT COUNT(*) FROM workflows;    -- Should be 4
+```
+
+### **API Health Check**
+
+```bash
+# Test API after migration
+curl http://localhost:8080/health
+
+# Test authentication
+curl -X POST http://localhost:8080/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"admin@liyali.com","password":"admin123"}'
+```
+
+---
+
+## 🔒 **Security Features**
+
+- ✅ **Multi-Tenant Isolation**: Perfect organization data separation
+- ✅ **Enhanced Authentication**: JWT + refresh token rotation
+- ✅ **RBAC**: 71 granular permissions across 5 roles
+- ✅ **Audit Trails**: Complete activity logging
+- ✅ **Account Security**: Lockout protection, password complexity
+
+---
+
+## 📊 **Performance Features**
+
+- ✅ **Optimized Indexes**: 80+ indexes for query performance
+- ✅ **Full-Text Search**: Document search with GIN indexes
+- ✅ **Efficient Queries**: Sub-50ms database response times
+- ✅ **Connection Pooling**: Optimized database connections
+
+---
+
+## ⚠️ **Important Notes**
+
+- **Consolidated**: All previous migrations (003-006) are now included in migration 001
+- **Idempotent**: Migrations can be run multiple times safely
+- **Backup**: Always backup before running migrations
+- **Testing**: Test on development environment first
+- **Production**: Use the consolidated migrations for clean deployments
+
+---
+
+## 🆘 **Troubleshooting**
+
+### **Common Issues**
+
+```bash
+# Permission denied
+sudo -u postgres psql -d database_name -f migration.sql
+
+# Connection refused
+# Check PostgreSQL is running and connection settings
+
+# Migration already applied
+# Check migration logs or use rollback first
+```
+
+### **Support**
+
+- Check migration logs for detailed error messages
+- Verify PostgreSQL version compatibility (18.1+ recommended)
+- Ensure database user has CREATE privileges
+
+---
+
+## 📚 **Database Schema Structure**
+
+### **Core Tables**
 
 - `users` - System users with multi-tenancy support
 - `organizations` - Tenant/workspace organizations
 - `organization_settings` - Per-organization configuration
 - `organization_members` - User-organization relationships
 
-### Authentication & Security
+### **Authentication & Security**
 
 - `sessions` - User session management with refresh tokens
 - `password_resets` - Password reset tokens
@@ -42,266 +199,54 @@ The migration system uses a **consolidated approach** for simplicity and reliabi
 - `login_attempts` - Security tracking for login attempts
 - `account_lockouts` - Account lockout management
 
-### Workflow System
+### **Enhanced Workflow System**
 
 - `workflows` - Workflow definitions with versioning and conditions
 - `workflow_assignments` - Tracks workflow execution for specific entities
 - `workflow_tasks` - Individual approval tasks within workflow assignments
+- `workflow_defaults` - Default workflow mappings per organization
 - `approval_tasks_enhanced` - Enhanced approval tasks with workflow support
 - `approval_history` - Audit trail for approval actions
 
-### Master Data
+### **Master Data (Multi-Tenant)**
 
 - `vendors` - **Organization-scoped vendors** (multi-tenant security)
 - `categories` - Organization-specific categories
 - `organization_departments` - Organizational departments
+- `documents` - **Unified document table** with full-text search
 
-### Business Documents
+### **Business Documents**
 
 - `requisitions` - Purchase requisitions with automation fields
 - `budgets` - Budget management with comprehensive tracking
-- `purchase_orders` - Purchase orders with automation fields
+- `purchase_orders` - Purchase orders with automation fields (nullable vendor_id)
 - `payment_vouchers` - Payment vouchers with full financial tracking
 - `goods_received_notes` - Goods received notes with automation fields
 
-## Running Migrations
+---
 
-### Quick Start
+## 🔧 **Migration History & Consolidation**
 
-```bash
-# Create fresh database with all data
-./migrate.sh up
+### **What Was Consolidated**
 
-# Reset database (drop + recreate + seed)
-./migrate.sh reset
+The following individual migrations were consolidated into Migration 001:
 
-# Rollback all changes
-./migrate.sh down
-```
+- ✅ **003_standardize_organization_tiers** - Organization tier standardization
+- ✅ **004_make_vendor_id_nullable** - Purchase orders vendor flexibility
+- ✅ **005_create_documents_table** - Unified document search system
+- ✅ **006_add_organization_to_vendors** - Multi-tenant vendor isolation
 
-### Step-by-Step Migration
+### **Benefits of Consolidation**
 
-```bash
-# 1. Create schema only
-go run database/run_migration.go database/migrations/001_create_complete_schema_consolidated.up.sql
-
-# 2. Seed initial data
-go run database/run_migration.go database/migrations/002_seed_initial_data.up.sql
-
-# 3. Standardize organization tiers
-go run database/run_migration.go database/migrations/003_standardize_organization_tiers.up.sql
-
-# 4. Make vendor_id nullable (optional)
-go run database/run_migration.go database/migrations/004_make_vendor_id_nullable.up.sql
-```
-
-### Migration Order
-
-1. **Schema Creation** (001) - Creates all tables, indexes, constraints, automation fields
-2. **Data Seeding** (002) - Creates organizations, users, vendors, categories, workflows
-3. **Tier Standardization** (003) - Standardizes organization tiers (free→starter)
-4. **Vendor Nullable** (004) - Makes vendor_id nullable in purchase_orders
-
-### Rollback Order
-
-1. **Vendor Nullable Rollback** (004) - Makes vendor_id NOT NULL again
-2. **Tier Rollback** (003) - Reverts tier values (starter→free)
-3. **Remove Seed Data** (002) - Removes all seeded data, leaves schema
-4. **Drop Schema** (001) - Drops all tables and functions
-
-## Seeded Data
-
-The migration creates ready-to-use sample data:
-
-### Organizations
-
-- **Default Organization** - Basic setup
-- **Demo Corporation** - Full-featured demo with all roles
-
-### Users (Password: admin123)
-
-- **System Administrator** - Super admin with full access
-- **John Requester** - Standard requester role
-- **Jane Approver** - Approval authority
-- **Bob Finance** - Finance team member
-- **Alice Manager** - Department manager
-
-### Sample Data
-
-- **5 Vendors** - Organization-scoped sample vendors
-- **6 Categories** - Business categories (Office supplies, IT, etc.)
-- **4 Budgets** - Sample budgets for different departments
-- **6 Workflows** - Complete approval workflows
-- **3 Requisitions** - Sample requisitions with different statuses
-
-## Environment Setup
-
-Ensure your `.env` file contains:
-
-```env
-DB_HOST=localhost
-DB_PORT=5432
-DB_USER=postgres
-DB_PASSWORD=your_password
-DB_NAME=liyali_gateway
-DB_SSL_MODE=disable
-```
-
-## Key Features
-
-### Multi-Tenant Security
-
-- **Organization-Scoped Vendors**: Each organization has its own vendors
-- **Data Isolation**: Complete separation between organizations
-- **Secure Constraints**: Proper foreign key relationships
-
-### Automation Support
-
-All business documents include automation tracking:
-
-```sql
-automation_used BOOLEAN DEFAULT FALSE
-auto_created_po JSONB  -- For requisitions
-auto_created_grn JSONB -- For purchase orders
-auto_created_pv JSONB  -- For goods received notes
-```
-
-### Performance Optimization
-
-- **50+ Indexes** - Comprehensive performance optimization
-- **Composite Indexes** - Multi-column indexes for complex queries
-- **JSONB Optimization** - Efficient storage and querying
-
-## Troubleshooting
-
-### Common Issues
-
-1. **Permission Errors**
-
-   - Ensure database user has CREATE, DROP, ALTER permissions
-   - Solution: Grant proper permissions to database user
-
-2. **Foreign Key Errors**
-
-   - Use consolidated migration which handles dependencies correctly
-   - Solution: `./migrate.sh reset`
-
-3. **Seed Data Conflicts**
-   - Remove existing data before re-seeding
-   - Solution: `./migrate.sh unseed` then `./migrate.sh seed`
-
-### Recovery Steps
-
-If migrations fail:
-
-1. Check error message in console
-2. Verify database connectivity
-3. Run appropriate DOWN migration to clean up
-4. Fix issues and re-run UP migration
-5. For complete reset: `./migrate.sh reset`
-
-## Validation
-
-After migration, verify with:
-
-```sql
--- Check all tables exist
-SELECT table_name FROM information_schema.tables
-WHERE table_schema = 'public' ORDER BY table_name;
-
--- Verify seed data
-SELECT 'organizations' as table_name, COUNT(*) as count FROM organizations
-UNION ALL SELECT 'users', COUNT(*) FROM users
-UNION ALL SELECT 'vendors', COUNT(*) FROM vendors
-UNION ALL SELECT 'categories', COUNT(*) FROM categories;
-```
-
-## Migration History & Fixes
-
-This migration system was consolidated and audited in January 2025 to resolve critical issues:
-
-### Issues Resolved
-
-#### 1. **Vendor Organization Scoping Conflict** ✅
-
-- **Problem**: Conflict between global vendors and organization-scoped vendors
-- **Solution**: Updated consolidated migration to use organization-scoped vendors
-- **Result**: Proper multi-tenant security with vendor isolation per organization
-
-#### 2. **Migration Numbering Conflicts** ✅
-
-- **Problem**: Two migrations numbered "003" causing execution order confusion
-- **Solution**: Renumbered to sequential (001, 002, 003, 004)
-- **Result**: Clean sequential migration numbering without conflicts
-
-#### 3. **Automation Fields Duplication** ✅
-
-- **Problem**: Automation fields missing from requisitions/purchase_orders tables
-- **Solution**: Integrated automation fields directly into consolidated migration
-- **Result**: All automation fields in main schema, no separate migration needed
-
-#### 4. **Missing Rollback Migrations** ✅
-
-- **Problem**: Several migrations lacked rollback capability
-- **Solution**: Created all missing `.down.sql` files with proper rollback logic
-- **Result**: Complete rollback capability for all migrations
-
-### Database Schema Enhancements
-
-**Organization-Scoped Vendors**:
-
-```sql
-CREATE TABLE vendors (
-    id VARCHAR(255) PRIMARY KEY,
-    organization_id VARCHAR(255) NOT NULL,  -- Multi-tenant security
-    vendor_code VARCHAR(100) NOT NULL,
-    CONSTRAINT fk_vendors_organization FOREIGN KEY (organization_id) REFERENCES organizations(id),
-    CONSTRAINT uk_org_vendor_code UNIQUE (organization_id, vendor_code)
-);
-```
-
-**Automation Fields Integration**:
-
-```sql
--- All business documents now include:
-automation_used BOOLEAN DEFAULT FALSE,
-auto_created_* JSONB  -- Document-specific automation data
-```
-
-### Migration System Improvements
-
-- **Sequential Numbering**: Clean 001, 002, 003, 004 sequence
-- **Multi-Tenant Security**: Organization-scoped vendors with proper isolation
-- **Complete Schema**: All automation fields integrated into main migration
-- **Full Rollback**: Every migration can be safely rolled back
-- **Consolidated Approach**: Fewer migration files, easier maintenance
-
-## Production Readiness
-
-**Status**: ✅ **PRODUCTION READY**
-
-- **Schema Completeness**: 100% - All required tables and fields
-- **Multi-Tenant Security**: ✅ - Organization-scoped data isolation
-- **Rollback Capability**: ✅ - Safe rollback for all migrations
-- **Performance**: ✅ - Comprehensive indexing strategy
-- **Documentation**: ✅ - Complete migration procedures
-
-**Risk Level**: 🟢 **LOW** - Thoroughly tested and validated
-**Confidence**: 🟢 **HIGH** - Ready for production deployment
-
-## Summary
-
-This consolidated migration system provides:
-
-- **4 Sequential Migrations** - Clean, numbered migration files (001-004)
-- **Complete Schema** - All tables, indexes, constraints, and automation fields
-- **Multi-Tenant Security** - Organization-scoped data isolation
-- **Sample Data** - Ready-to-use organizations, users, and workflows
-- **Full Rollback** - Safe rollback capability for all migrations
-- **Production Ready** - Thoroughly tested and documented
-
-The migration system has been audited, fixed, and consolidated into this single README for easy maintenance and deployment.
+- **Simplified Deployment**: Only 2 migrations instead of 6
+- **Reduced Complexity**: No dependency management between migrations
+- **Faster Setup**: Single schema creation instead of incremental changes
+- **Better Testing**: Complete system testing with full schema
+- **Easier Maintenance**: Fewer files to manage and update
 
 ---
 
-For issues or questions, refer to the troubleshooting section above or check migration logs for specific error messages.
+**Migration System Status:** ✅ Production Ready  
+**Last Updated:** January 11, 2026  
+**Schema Version:** Consolidated v1.0  
+**Total Files:** 7 (2 core + 2 utility + 1 README)

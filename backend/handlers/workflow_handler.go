@@ -261,6 +261,18 @@ func (h *WorkflowHandler) CreateWorkflow(c *fiber.Ctx) error {
 		return utils.SendBadRequestError(c, "Validation failed: "+err.Error())
 	}
 
+	// Handle legacy documentType field
+	if req.EntityType == "" && req.DocumentType != "" {
+		req.EntityType = req.DocumentType
+		logging.AddFieldToRequest(c, "legacy_document_type_used", true)
+	}
+
+	// Validate that we have an entity type
+	if req.EntityType == "" {
+		logging.LogWarn(c, "missing_entity_type_and_document_type")
+		return utils.SendBadRequestError(c, "Either entityType or documentType is required")
+	}
+
 	logger.Debug("validating_workflow_stages")
 
 	// Validate workflow stages

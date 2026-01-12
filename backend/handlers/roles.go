@@ -5,8 +5,10 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/liyali/liyali-gateway/config"
+	"github.com/liyali/liyali-gateway/models"
 	"github.com/liyali/liyali-gateway/services"
 	"github.com/liyali/liyali-gateway/utils"
+	"gorm.io/gorm"
 )
 
 // CreateRoleRequest is the request body for creating a role
@@ -104,6 +106,11 @@ func CreateOrganizationRole(c *fiber.Ctx) error {
 
 // UpdateOrganizationRole updates an existing role
 func UpdateOrganizationRole(c *fiber.Ctx) error {
+	organizationID, ok := c.Locals("organizationID").(string)
+	if !ok {
+		return utils.SendBadRequestError(c, "Organization ID not found")
+	}
+
 	roleID := c.Params("roleId")
 	if roleID == "" {
 		return utils.SendBadRequestError(c, "Role ID is required")
@@ -122,24 +129,37 @@ func UpdateOrganizationRole(c *fiber.Ctx) error {
 		return utils.SendBadRequestError(c, "Description must be at least 10 characters")
 	}
 
-	svc := services.NewRoleManagementService(config.DB)
-	role, err := svc.UpdateOrganizationRole(roleID, req.Name, req.Description)
-	if err != nil {
-		log.Printf("Error updating role: %v", err)
-		if err.Error() == "role not found" {
+	// Check if role exists and belongs to organization
+	var existingRole models.OrganizationRole
+	if err := config.DB.Where("id = ? AND organization_id = ?", roleID, organizationID).First(&existingRole).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
 			return utils.SendNotFoundError(c, "Role")
 		}
+		return utils.SendInternalError(c, "Failed to find role", err)
+	}
+
+	// Update role fields
+	if req.Name != "" {
+		existingRole.Name = req.Name
+	}
+	if req.Description != "" {
+		existingRole.Description = req.Description
+	}
+
+	// Save updated role
+	if err := config.DB.Save(&existingRole).Error; err != nil {
+		log.Printf("Error updating role: %v", err)
 		return utils.SendInternalError(c, "Failed to update role", err)
 	}
 
 	response := RoleResponse{
-		ID:          role.ID.String(),
-		Name:        role.Name,
-		Description: role.Description,
-		IsDefault:   role.IsSystemRole,
-		IsActive:    role.Active,
-		CreatedAt:   role.CreatedAt.String(),
-		UpdatedAt:   role.UpdatedAt.String(),
+		ID:          existingRole.ID.String(),
+		Name:        existingRole.Name,
+		Description: existingRole.Description,
+		IsDefault:   existingRole.IsSystemRole,
+		IsActive:    existingRole.Active,
+		CreatedAt:   existingRole.CreatedAt.String(),
+		UpdatedAt:   existingRole.UpdatedAt.String(),
 	}
 
 	return utils.SendSimpleSuccess(c, response, "Role updated successfully")

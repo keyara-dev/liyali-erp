@@ -10,6 +10,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 	"github.com/liyali/liyali-gateway/config"
+	"github.com/liyali/liyali-gateway/handlers"
 	"github.com/liyali/liyali-gateway/models"
 	"github.com/liyali/liyali-gateway/types"
 	"gorm.io/gorm"
@@ -22,7 +23,7 @@ func TestCreateCategory(t *testing.T) {
 	}
 
 	app := fiber.New()
-	app.Post("/categories", CreateCategory)
+	app.Post("/categories", handlers.CreateCategory)
 
 	tests := []struct {
 		name           string
@@ -93,7 +94,7 @@ func TestGetCategories(t *testing.T) {
 	config.DB.Create(&category)
 
 	app := fiber.New()
-	app.Get("/categories", GetCategories)
+	app.Get("/categories", handlers.GetCategories)
 
 	req := httptest.NewRequest("GET", "/categories?page=1&limit=10", nil)
 	resp, _ := app.Test(req)
@@ -131,7 +132,7 @@ func TestUpdateCategory(t *testing.T) {
 
 	body, _ := json.Marshal(updateReq)
 	app := fiber.New()
-	app.Put("/categories/:id", UpdateCategory)
+	app.Put("/categories/:id", handlers.UpdateCategory)
 
 	req := httptest.NewRequest("PUT", "/categories/"+category.ID, bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
@@ -165,7 +166,7 @@ func TestDeleteCategory(t *testing.T) {
 	config.DB.Create(&category)
 
 	app := fiber.New()
-	app.Delete("/categories/:id", DeleteCategory)
+	app.Delete("/categories/:id", handlers.DeleteCategory)
 
 	req := httptest.NewRequest("DELETE", "/categories/"+category.ID, nil)
 	resp, _ := app.Test(req)
@@ -205,7 +206,7 @@ func TestAddBudgetCodeToCategory(t *testing.T) {
 
 	body, _ := json.Marshal(addReq)
 	app := fiber.New()
-	app.Post("/categories/:id/budget-codes", AddBudgetCodeToCategory)
+	app.Post("/categories/:id/budget-codes", handlers.AddBudgetCodeToCategory)
 
 	req := httptest.NewRequest("POST", "/categories/"+category.ID+"/budget-codes", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
@@ -250,7 +251,7 @@ func TestGetCategoryBudgetCodes(t *testing.T) {
 	}
 
 	app := fiber.New()
-	app.Get("/categories/:id/budget-codes", GetCategoryBudgetCodes)
+	app.Get("/categories/:id/budget-codes", handlers.GetCategoryBudgetCodes)
 
 	req := httptest.NewRequest("GET", "/categories/"+category.ID+"/budget-codes", nil)
 	resp, _ := app.Test(req)
@@ -284,7 +285,7 @@ func TestRemoveBudgetCodeFromCategory(t *testing.T) {
 	config.DB.Create(&mapping)
 
 	app := fiber.New()
-	app.Delete("/categories/:id/budget-codes/:budgetCode", RemoveBudgetCodeFromCategory)
+	app.Delete("/categories/:id/budget-codes/:budgetCode", handlers.RemoveBudgetCodeFromCategory)
 
 	req := httptest.NewRequest("DELETE", "/categories/"+category.ID+"/budget-codes/BDG-001", nil)
 	resp, _ := app.Test(req)

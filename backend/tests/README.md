@@ -1,6 +1,6 @@
 # Test Organization
 
-This directory contains all test files for the Liyali Gateway Backend, organized into unit and integration tests.
+This directory contains all test files for the Liyali Gateway Backend, organized into unit and integration tests with a clean architecture.
 
 ## Directory Structure
 
@@ -14,57 +14,93 @@ tests/
 │   ├── *_integration_test.go # End-to-end workflow tests
 │   └── helpers.go          # Test helper functions
 └── README.md               # This file
+
+../scripts/                  # Testing scripts and tools
+├── test_requests.http      # HTTP requests for manual API testing
+└── run_comprehensive_tests.sh # Comprehensive test suite runner
 ```
 
 ## Test Categories
 
 ### Unit Tests (`tests/unit/`)
+
 - **Service Tests**: Test business logic in isolation
+
   - `analytics_service_test.go` - Analytics calculations and data processing
   - `approval_rules_test.go` - Approval workflow rules and validation
-  - `auth_service_test.go` - Authentication and authorization logic
   - `budget_validation_test.go` - Budget constraint validation
+  - `document_automation_service_test.go` - Document automation workflows
   - `document_linking_test.go` - Document relationship management
   - `notification_service_test.go` - Notification delivery and formatting
+  - `workflow_execution_service_test.go` - Workflow execution logic
   - `workflow_state_machine_test.go` - State transition logic
 
 - **Handler Tests**: Test HTTP request/response handling
   - `*_handler_test.go` - API endpoint behavior and validation
 
 ### Integration Tests (`tests/integration/`)
+
 - **Workflow Tests**: Test complete business processes
   - `approval_flow_integration_test.go` - Complete approval workflows
   - `budget_constraint_integration_test.go` - Budget validation across services
+  - `document_automation_integration_test.go` - Document automation integration
+  - `multi_tenant_analytics_test.go` - Multi-tenant analytics testing
+  - `workflow_integration_complete_test.go` - Complete workflow integration
   - `workflows_integration_test.go` - End-to-end workflow execution
 
 ## Running Tests
 
+### Comprehensive Test Suite
+
+For complete system testing, use the comprehensive test suite:
+
+```bash
+# From backend directory
+./scripts/run_comprehensive_tests.sh
+```
+
+This runs all 47 API endpoints with automated reporting and covers:
+
+- Authentication and authorization
+- CRUD operations for all entities
+- Workflow execution and approvals
+- Multi-tenant isolation
+- Error handling and validation
+
+### Individual Test Commands
+
 ### Run All Tests
+
 ```bash
 go test ./tests/...
 ```
 
 ### Run Unit Tests Only
+
 ```bash
 go test ./tests/unit/...
 ```
 
 ### Run Integration Tests Only
+
 ```bash
 go test ./tests/integration/...
 ```
 
 ### Run Specific Test File
+
 ```bash
 go test ./tests/unit/analytics_service_test.go
 ```
 
 ### Run with Verbose Output
+
 ```bash
 go test -v ./tests/...
 ```
 
 ### Run with Coverage
+
 ```bash
 go test -cover ./tests/...
 ```
@@ -81,12 +117,14 @@ go test -cover ./tests/...
 ## Test Helpers
 
 Common test utilities and helpers are located in:
+
 - `tests/integration/helpers.go` - Integration test helpers
 - Individual test files may include their own helper functions
 
 ## Database Testing
 
 For tests requiring database access:
+
 1. Use test database configuration
 2. Run migrations before tests
 3. Clean up test data after tests
@@ -95,6 +133,7 @@ For tests requiring database access:
 ## Mocking
 
 Use mocks for external dependencies:
+
 - Database connections
 - External API calls
 - File system operations

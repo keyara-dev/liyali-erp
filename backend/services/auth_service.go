@@ -53,6 +53,7 @@ var (
 	ErrTooManyFailedAttempts = errors.New("too many failed login attempts")
 	ErrSessionExpired        = errors.New("session expired")
 	ErrInvalidRefreshToken   = errors.New("invalid refresh token")
+	ErrTokenReuseDetected    = errors.New("token reuse detected")
 )
 
 // JWT Claims structure
@@ -68,10 +69,10 @@ type JWTClaims struct {
 
 // Login response structure
 type LoginResponse struct {
-	AccessToken  string                `json:"accessToken"`
-	RefreshToken string                `json:"refreshToken"`
-	ExpiresIn    int64                 `json:"expiresIn"`
-	User         *types.UserResponse   `json:"user"`
+	AccessToken  string                      `json:"accessToken"`
+	RefreshToken string                      `json:"refreshToken"`
+	ExpiresIn    int64                       `json:"expiresIn"`
+	User         *types.UserResponse         `json:"user"`
 	Organization *types.OrganizationResponse `json:"organization,omitempty"`
 }
 
@@ -149,13 +150,13 @@ func (s *AuthService) Login(ctx context.Context, email, password, ipAddress, use
 	if !utils.VerifyPassword(user.Password, password) {
 		// Record failed attempt
 		s.recordLoginAttempt(ctx, user.ID, email, ipAddress, userAgent, false, "invalid password")
-		
+
 		// Check if we should lock the account
 		recentUserFailures, _ := s.loginAttemptRepo.GetRecentFailedAttempts(ctx, email, time.Now().Add(-1*time.Hour))
 		if recentUserFailures >= MaxFailedAttempts-1 { // -1 because we just recorded one
 			s.lockAccount(ctx, user.ID, email, ipAddress, "too many failed login attempts")
 		}
-		
+
 		return nil, ErrInvalidCredentials
 	}
 
@@ -272,12 +273,23 @@ func (s *AuthService) RefreshToken(ctx context.Context, refreshToken string) (*T
 	}
 
 	// Update session with new refresh token and extended expiration
+	// We use the old refresh token in the WHERE clause to ensure atomicity
 	newExpiresAt := time.Now().Add(RefreshTokenDuration)
 	if session.ID.Valid {
 		sessionUUID := uuid.UUID(session.ID.Bytes)
-		err = s.sessionRepo.UpdateRefreshToken(ctx, sessionUUID, newRefreshToken, newExpiresAt)
+		rowsAffected, err := s.sessionRepo.UpdateRefreshToken(ctx, sessionUUID, refreshToken, newRefreshToken, newExpiresAt)
 		if err != nil {
 			return nil, fmt.Errorf("failed to update session: %w", err)
+		}
+
+		if rowsAffected == 0 {
+			// This happens if the session was deleted or the refresh token was already rotated
+			// This is a sign of either a race condition or token theft (reuse)
+			logging.WithFields(map[string]interface{}{
+				"user_id":    user.ID,
+				"session_id": sessionUUID.String(),
+			}).Warn("refresh_token_reuse_detected")
+			return nil, ErrTokenReuseDetected
 		}
 	}
 
@@ -472,31 +484,37 @@ func (s *AuthService) Register(ctx context.Context, email, password, name, role 
 		return nil, fmt.Errorf("failed to create user: %w", err)
 	}
 
-	// Create personal organization for the user
-	orgService := NewOrganizationService(s.db)
-	personalOrg, err := orgService.CreateOrganization(
-		fmt.Sprintf("%s's Organization", name),
-		fmt.Sprintf("Personal organization for %s", name),
-		createdUser.ID,
-	)
+	// Create personal organization for the user with proper transaction handling
+	var personalOrg *models.Organization
+	err = s.db.Transaction(func(tx *gorm.DB) error {
+		// Create organization
+		orgService := NewOrganizationService(tx)
+		org, err := orgService.CreateOrganization(
+			fmt.Sprintf("%s's Organization", name),
+			fmt.Sprintf("Personal organization for %s", name),
+			createdUser.ID,
+		)
+		if err != nil {
+			return fmt.Errorf("failed to create organization: %w", err)
+		}
+		personalOrg = org
+
+		// Update user with organization ID
+		createdUser.CurrentOrganizationID = &personalOrg.ID
+		if err := tx.Model(createdUser).Update("current_organization_id", personalOrg.ID).Error; err != nil {
+			return fmt.Errorf("failed to update user organization: %w", err)
+		}
+
+		return nil
+	})
+
 	if err != nil {
 		logging.WithFields(map[string]interface{}{
 			"user_id":   createdUser.ID,
-			"operation": "create_personal_organization",
-		}).WithError(err).Warn("failed_to_create_personal_organization")
-		// Don't fail registration if org creation fails
-	}
-
-	// Update user with organization ID if created successfully
-	if personalOrg != nil {
-		createdUser.CurrentOrganizationID = &personalOrg.ID
-		if _, err := s.userRepo.Update(ctx, createdUser); err != nil {
-			logging.WithFields(map[string]interface{}{
-				"user_id":         createdUser.ID,
-				"organization_id": personalOrg.ID,
-				"operation":       "update_user_with_organization_id",
-			}).WithError(err).Warn("failed_to_update_user_with_organization_id")
-		}
+			"operation": "create_personal_organization_transaction",
+		}).WithError(err).Error("failed_to_create_personal_organization_with_membership")
+		// Don't fail registration, but log the error
+		personalOrg = nil
 	}
 
 	// Generate refresh token

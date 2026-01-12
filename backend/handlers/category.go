@@ -15,7 +15,7 @@ import (
 // GetCategories retrieves all categories with pagination and filtering
 func GetCategories(c *fiber.Ctx) error {
 	// Get organization context from tenant middleware
-	tenant, err := middleware.GetTenantContext(*c)
+	tenant, err := middleware.GetTenantContext(c)
 	if err != nil {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 			"error": "Organization context required",
@@ -37,7 +37,7 @@ func GetCategories(c *fiber.Ctx) error {
 
 	// SECURITY: Always filter by organization ID first
 	query := db.Where("organization_id = ?", tenant.OrganizationID)
-	
+
 	if active == "true" {
 		query = query.Where("active = ?", true)
 	} else if active == "false" {
@@ -71,7 +71,7 @@ func GetCategories(c *fiber.Ctx) error {
 // CreateCategory creates a new category with budget code mappings
 func CreateCategory(c *fiber.Ctx) error {
 	// Get organization context from tenant middleware
-	tenant, err := middleware.GetTenantContext(*c)
+	tenant, err := middleware.GetTenantContext(c)
 	if err != nil {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 			"error": "Organization context required",
@@ -107,11 +107,11 @@ func CreateCategory(c *fiber.Ctx) error {
 	category := models.Category{
 		ID:             uuid.New().String(),
 		OrganizationID: tenant.OrganizationID, // SECURITY: Set organization ID
-		Name:        req.Name,
-		Description: req.Description,
-		Active:      true,
-		CreatedAt:   time.Now(),
-		UpdatedAt:   time.Now(),
+		Name:           req.Name,
+		Description:    req.Description,
+		Active:         true,
+		CreatedAt:      time.Now(),
+		UpdatedAt:      time.Now(),
 	}
 
 	if err := config.DB.Create(&category).Error; err != nil {
@@ -149,7 +149,7 @@ func CreateCategory(c *fiber.Ctx) error {
 // GetCategory retrieves a single category by ID with its budget codes
 func GetCategory(c *fiber.Ctx) error {
 	// Get organization context from tenant middleware
-	tenant, err := middleware.GetTenantContext(*c)
+	tenant, err := middleware.GetTenantContext(c)
 	if err != nil {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 			"error": "Organization context required",
@@ -183,6 +183,14 @@ func GetCategory(c *fiber.Ctx) error {
 
 // UpdateCategory updates an existing category and its budget code mappings
 func UpdateCategory(c *fiber.Ctx) error {
+	// Get organization context from tenant middleware
+	tenant, err := middleware.GetTenantContext(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "Organization context required",
+		})
+	}
+
 	id := c.Params("id")
 	if id == "" {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
@@ -201,7 +209,8 @@ func UpdateCategory(c *fiber.Ctx) error {
 	}
 
 	var category models.Category
-	if err := config.DB.Where("id = ?", id).First(&category).Error; err != nil {
+	// SECURITY FIX: Filter by organization ID
+	if err := config.DB.Where("id = ? AND organization_id = ?", id, tenant.OrganizationID).First(&category).Error; err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
 			"success": false,
 			"message": "Category not found",
@@ -215,12 +224,12 @@ func UpdateCategory(c *fiber.Ctx) error {
 				"message": "Category name must be at least 3 characters",
 			})
 		}
-		// Check if name is already used by another category
+		// SECURITY FIX: Check if name is already used by another category in THIS organization
 		var existingCategory models.Category
-		if err := config.DB.Where("name = ? AND id != ?", req.Name, id).First(&existingCategory).Error; err == nil {
+		if err := config.DB.Where("name = ? AND id != ? AND organization_id = ?", req.Name, id, tenant.OrganizationID).First(&existingCategory).Error; err == nil {
 			return c.Status(fiber.StatusConflict).JSON(fiber.Map{
 				"success": false,
-				"message": "Category with this name already exists",
+				"message": "Category with this name already exists in your organization",
 			})
 		}
 		category.Name = req.Name
@@ -274,6 +283,14 @@ func UpdateCategory(c *fiber.Ctx) error {
 
 // DeleteCategory soft deletes a category by setting Active to false
 func DeleteCategory(c *fiber.Ctx) error {
+	// Get organization context from tenant middleware
+	tenant, err := middleware.GetTenantContext(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "Organization context required",
+		})
+	}
+
 	id := c.Params("id")
 	if id == "" {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
@@ -283,7 +300,8 @@ func DeleteCategory(c *fiber.Ctx) error {
 	}
 
 	var category models.Category
-	if err := config.DB.Where("id = ?", id).First(&category).Error; err != nil {
+	// SECURITY FIX: Filter by organization ID
+	if err := config.DB.Where("id = ? AND organization_id = ?", id, tenant.OrganizationID).First(&category).Error; err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
 			"success": false,
 			"message": "Category not found",
@@ -307,11 +325,28 @@ func DeleteCategory(c *fiber.Ctx) error {
 
 // GetCategoryBudgetCodes retrieves all budget codes for a category
 func GetCategoryBudgetCodes(c *fiber.Ctx) error {
+	// Get organization context from tenant middleware
+	tenant, err := middleware.GetTenantContext(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "Organization context required",
+		})
+	}
+
 	id := c.Params("id")
 	if id == "" {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"success": false,
 			"message": "Category ID is required",
+		})
+	}
+
+	// SECURITY FIX: Verify category belongs to organization
+	var category models.Category
+	if err := config.DB.Where("id = ? AND organization_id = ?", id, tenant.OrganizationID).First(&category).Error; err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
+			"success": false,
+			"message": "Category not found",
 		})
 	}
 
@@ -340,9 +375,17 @@ func AddBudgetCodeToCategory(c *fiber.Ctx) error {
 		})
 	}
 
-	// Verify category exists
+	// Get organization context from tenant middleware
+	tenant, err := middleware.GetTenantContext(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "Organization context required",
+		})
+	}
+
+	// Verify category exists in THIS organization
 	var category models.Category
-	if err := config.DB.Where("id = ?", id).First(&category).Error; err != nil {
+	if err := config.DB.Where("id = ? AND organization_id = ?", id, tenant.OrganizationID).First(&category).Error; err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
 			"success": false,
 			"message": "Category not found",
@@ -416,6 +459,23 @@ func RemoveBudgetCodeFromCategory(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"success": false,
 			"message": "Budget code is required",
+		})
+	}
+
+	// Get organization context from tenant middleware
+	tenant, err := middleware.GetTenantContext(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "Organization context required",
+		})
+	}
+
+	// Verify category exists in THIS organization
+	var category models.Category
+	if err := config.DB.Where("id = ? AND organization_id = ?", id, tenant.OrganizationID).First(&category).Error; err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
+			"success": false,
+			"message": "Category not found",
 		})
 	}
 

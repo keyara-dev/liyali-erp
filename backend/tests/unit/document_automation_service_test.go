@@ -82,7 +82,7 @@ func TestCreatePurchaseOrderFromRequisition(t *testing.T) {
 		requisition := models.Requisition{
 			ID:                uuid.New().String(),
 			REQNumber:         "REQ-TEST-001",
-			RequesterID:       userID,
+			RequesterId:       userID,
 			Title:             "Test Requisition",
 			Description:       "Test Description",
 			Status:            "approved",
@@ -712,7 +712,7 @@ func BenchmarkPOCreationFromRequisition(b *testing.B) {
 	// Create test requisition
 	requisition := models.Requisition{
 		ID:                uuid.New().String(),
-		RequesterID:       userID,
+		RequesterId:       userID,
 		Status:            "approved",
 		TotalAmount:       50000,
 		PreferredVendorID: &vendorID,

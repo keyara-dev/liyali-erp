@@ -1,14 +1,11 @@
 package unit
 
 import (
-	"bytes"
 	"encoding/json"
 	"net/http"
-	"net/http/httptest"
 	"testing"
 	"time"
 
-	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 	"github.com/liyali/liyali-gateway/models"
 	"github.com/liyali/liyali-gateway/types"
@@ -129,13 +126,17 @@ func TestCreateRequisitionValidation(t *testing.T) {
 			// Validate request structure
 			var req types.CreateRequisitionRequest
 			err := json.Unmarshal(body, &req)
+			if err != nil {
+				t.Errorf("Failed to unmarshal request: %v", err)
+				return
+			}
 
 			// Check if validation should pass
 			hasTitle := req.Title != ""
 			hasDepartment := req.Department != ""
 			validPriority := req.Priority == "low" || req.Priority == "medium" || req.Priority == "high"
 			validAmount := req.TotalAmount > 0
-			hasItems := len(req.Items.Data()) > 0
+			hasItems := len(req.Items) > 0
 
 			isValid := hasTitle && hasDepartment && validPriority && validAmount && hasItems
 
@@ -332,8 +333,8 @@ func TestRequisitionResponseFormat(t *testing.T) {
 			TotalAmount:    50000,
 			Currency:       "USD",
 			ApprovalStage:  0,
-			CreatedAt:      time.Now().Format(time.RFC3339),
-			UpdatedAt:      time.Now().Format(time.RFC3339),
+			CreatedAt:      time.Now(),
+			UpdatedAt:      time.Now(),
 		}
 
 		// Verify required fields
@@ -550,8 +551,8 @@ func BenchmarkRequisitionSerialization(b *testing.B) {
 		TotalAmount:    50000,
 		Currency:       "USD",
 		ApprovalStage:  0,
-		CreatedAt:      time.Now().Format(time.RFC3339),
-		UpdatedAt:      time.Now().Format(time.RFC3339),
+		CreatedAt:      time.Now(),
+		UpdatedAt:      time.Now(),
 	}
 
 	b.ResetTimer()

@@ -7,8 +7,8 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
-	"github.com/liyali/liyali-gateway/logging"
 	sqlc "github.com/liyali/liyali-gateway/database/sqlc"
+	"github.com/liyali/liyali-gateway/logging"
 	"github.com/liyali/liyali-gateway/models"
 	"github.com/liyali/liyali-gateway/repository"
 	"gorm.io/gorm"
@@ -33,34 +33,34 @@ type Permission struct {
 
 // Role creation request
 type CreateRoleRequest struct {
-	Name         string   `json:"name"`
-	Description  string   `json:"description"`
+	Name          string   `json:"name"`
+	Description   string   `json:"description"`
 	PermissionIDs []string `json:"permissionIds"`
 }
 
 // Role update request
 type UpdateRoleRequest struct {
-	Name         *string  `json:"name,omitempty"`
-	Description  *string  `json:"description,omitempty"`
+	Name          *string  `json:"name,omitempty"`
+	Description   *string  `json:"description,omitempty"`
 	PermissionIDs []string `json:"permissionIds,omitempty"`
 }
 
 // System permissions definition
 var SystemPermissions = map[string]Permission{
 	// User Management
-	"user.view":       {ID: "user.view", Name: "View Users", Description: "View user profiles and information", Resource: "user", Action: "view", Category: "User Management"},
-	"user.create":     {ID: "user.create", Name: "Create Users", Description: "Create new user accounts", Resource: "user", Action: "create", Category: "User Management"},
-	"user.edit":       {ID: "user.edit", Name: "Edit Users", Description: "Edit user profiles and information", Resource: "user", Action: "edit", Category: "User Management"},
-	"user.delete":     {ID: "user.delete", Name: "Delete Users", Description: "Delete user accounts", Resource: "user", Action: "delete", Category: "User Management"},
-	"user.activate":   {ID: "user.activate", Name: "Activate Users", Description: "Activate/deactivate user accounts", Resource: "user", Action: "activate", Category: "User Management"},
-	
+	"user.view":     {ID: "user.view", Name: "View Users", Description: "View user profiles and information", Resource: "user", Action: "view", Category: "User Management"},
+	"user.create":   {ID: "user.create", Name: "Create Users", Description: "Create new user accounts", Resource: "user", Action: "create", Category: "User Management"},
+	"user.edit":     {ID: "user.edit", Name: "Edit Users", Description: "Edit user profiles and information", Resource: "user", Action: "edit", Category: "User Management"},
+	"user.delete":   {ID: "user.delete", Name: "Delete Users", Description: "Delete user accounts", Resource: "user", Action: "delete", Category: "User Management"},
+	"user.activate": {ID: "user.activate", Name: "Activate Users", Description: "Activate/deactivate user accounts", Resource: "user", Action: "activate", Category: "User Management"},
+
 	// Role Management
-	"role.view":       {ID: "role.view", Name: "View Roles", Description: "View organization roles", Resource: "role", Action: "view", Category: "Role Management"},
-	"role.create":     {ID: "role.create", Name: "Create Roles", Description: "Create custom organization roles", Resource: "role", Action: "create", Category: "Role Management"},
-	"role.edit":       {ID: "role.edit", Name: "Edit Roles", Description: "Edit custom organization roles", Resource: "role", Action: "edit", Category: "Role Management"},
-	"role.delete":     {ID: "role.delete", Name: "Delete Roles", Description: "Delete custom organization roles", Resource: "role", Action: "delete", Category: "Role Management"},
-	"role.assign":     {ID: "role.assign", Name: "Assign Roles", Description: "Assign roles to users", Resource: "role", Action: "assign", Category: "Role Management"},
-	
+	"role.view":   {ID: "role.view", Name: "View Roles", Description: "View organization roles", Resource: "role", Action: "view", Category: "Role Management"},
+	"role.create": {ID: "role.create", Name: "Create Roles", Description: "Create custom organization roles", Resource: "role", Action: "create", Category: "Role Management"},
+	"role.edit":   {ID: "role.edit", Name: "Edit Roles", Description: "Edit custom organization roles", Resource: "role", Action: "edit", Category: "Role Management"},
+	"role.delete": {ID: "role.delete", Name: "Delete Roles", Description: "Delete custom organization roles", Resource: "role", Action: "delete", Category: "Role Management"},
+	"role.assign": {ID: "role.assign", Name: "Assign Roles", Description: "Assign roles to users", Resource: "role", Action: "assign", Category: "Role Management"},
+
 	// Requisition Management
 	"requisition.view":    {ID: "requisition.view", Name: "View Requisitions", Description: "View requisitions", Resource: "requisition", Action: "view", Category: "Procurement"},
 	"requisition.create":  {ID: "requisition.create", Name: "Create Requisitions", Description: "Create new requisitions", Resource: "requisition", Action: "create", Category: "Procurement"},
@@ -68,7 +68,7 @@ var SystemPermissions = map[string]Permission{
 	"requisition.delete":  {ID: "requisition.delete", Name: "Delete Requisitions", Description: "Delete requisitions", Resource: "requisition", Action: "delete", Category: "Procurement"},
 	"requisition.approve": {ID: "requisition.approve", Name: "Approve Requisitions", Description: "Approve requisitions", Resource: "requisition", Action: "approve", Category: "Procurement"},
 	"requisition.reject":  {ID: "requisition.reject", Name: "Reject Requisitions", Description: "Reject requisitions", Resource: "requisition", Action: "reject", Category: "Procurement"},
-	
+
 	// Budget Management
 	"budget.view":    {ID: "budget.view", Name: "View Budgets", Description: "View budget information", Resource: "budget", Action: "view", Category: "Financial"},
 	"budget.create":  {ID: "budget.create", Name: "Create Budgets", Description: "Create new budgets", Resource: "budget", Action: "create", Category: "Financial"},
@@ -76,7 +76,7 @@ var SystemPermissions = map[string]Permission{
 	"budget.delete":  {ID: "budget.delete", Name: "Delete Budgets", Description: "Delete budgets", Resource: "budget", Action: "delete", Category: "Financial"},
 	"budget.approve": {ID: "budget.approve", Name: "Approve Budgets", Description: "Approve budget allocations", Resource: "budget", Action: "approve", Category: "Financial"},
 	"budget.reject":  {ID: "budget.reject", Name: "Reject Budgets", Description: "Reject budget allocations", Resource: "budget", Action: "reject", Category: "Financial"},
-	
+
 	// Purchase Order Management
 	"purchase_order.view":    {ID: "purchase_order.view", Name: "View Purchase Orders", Description: "View purchase orders", Resource: "purchase_order", Action: "view", Category: "Procurement"},
 	"purchase_order.create":  {ID: "purchase_order.create", Name: "Create Purchase Orders", Description: "Create new purchase orders", Resource: "purchase_order", Action: "create", Category: "Procurement"},
@@ -84,7 +84,7 @@ var SystemPermissions = map[string]Permission{
 	"purchase_order.delete":  {ID: "purchase_order.delete", Name: "Delete Purchase Orders", Description: "Delete purchase orders", Resource: "purchase_order", Action: "delete", Category: "Procurement"},
 	"purchase_order.approve": {ID: "purchase_order.approve", Name: "Approve Purchase Orders", Description: "Approve purchase orders", Resource: "purchase_order", Action: "approve", Category: "Procurement"},
 	"purchase_order.reject":  {ID: "purchase_order.reject", Name: "Reject Purchase Orders", Description: "Reject purchase orders", Resource: "purchase_order", Action: "reject", Category: "Procurement"},
-	
+
 	// Payment Voucher Management
 	"payment_voucher.view":    {ID: "payment_voucher.view", Name: "View Payment Vouchers", Description: "View payment vouchers", Resource: "payment_voucher", Action: "view", Category: "Financial"},
 	"payment_voucher.create":  {ID: "payment_voucher.create", Name: "Create Payment Vouchers", Description: "Create new payment vouchers", Resource: "payment_voucher", Action: "create", Category: "Financial"},
@@ -92,7 +92,7 @@ var SystemPermissions = map[string]Permission{
 	"payment_voucher.delete":  {ID: "payment_voucher.delete", Name: "Delete Payment Vouchers", Description: "Delete payment vouchers", Resource: "payment_voucher", Action: "delete", Category: "Financial"},
 	"payment_voucher.approve": {ID: "payment_voucher.approve", Name: "Approve Payment Vouchers", Description: "Approve payment vouchers", Resource: "payment_voucher", Action: "approve", Category: "Financial"},
 	"payment_voucher.reject":  {ID: "payment_voucher.reject", Name: "Reject Payment Vouchers", Description: "Reject payment vouchers", Resource: "payment_voucher", Action: "reject", Category: "Financial"},
-	
+
 	// GRN Management
 	"grn.view":    {ID: "grn.view", Name: "View GRNs", Description: "View goods received notes", Resource: "grn", Action: "view", Category: "Procurement"},
 	"grn.create":  {ID: "grn.create", Name: "Create GRNs", Description: "Create new goods received notes", Resource: "grn", Action: "create", Category: "Procurement"},
@@ -100,49 +100,49 @@ var SystemPermissions = map[string]Permission{
 	"grn.delete":  {ID: "grn.delete", Name: "Delete GRNs", Description: "Delete goods received notes", Resource: "grn", Action: "delete", Category: "Procurement"},
 	"grn.approve": {ID: "grn.approve", Name: "Approve GRNs", Description: "Approve goods received notes", Resource: "grn", Action: "approve", Category: "Procurement"},
 	"grn.reject":  {ID: "grn.reject", Name: "Reject GRNs", Description: "Reject goods received notes", Resource: "grn", Action: "reject", Category: "Procurement"},
-	
+
 	// Vendor Management
 	"vendor.view":   {ID: "vendor.view", Name: "View Vendors", Description: "View vendor information", Resource: "vendor", Action: "view", Category: "Master Data"},
 	"vendor.create": {ID: "vendor.create", Name: "Create Vendors", Description: "Create new vendors", Resource: "vendor", Action: "create", Category: "Master Data"},
 	"vendor.edit":   {ID: "vendor.edit", Name: "Edit Vendors", Description: "Edit vendor information", Resource: "vendor", Action: "edit", Category: "Master Data"},
 	"vendor.delete": {ID: "vendor.delete", Name: "Delete Vendors", Description: "Delete vendors", Resource: "vendor", Action: "delete", Category: "Master Data"},
-	
+
 	// Category Management
 	"category.view":   {ID: "category.view", Name: "View Categories", Description: "View categories", Resource: "category", Action: "view", Category: "Master Data"},
 	"category.create": {ID: "category.create", Name: "Create Categories", Description: "Create new categories", Resource: "category", Action: "create", Category: "Master Data"},
 	"category.edit":   {ID: "category.edit", Name: "Edit Categories", Description: "Edit categories", Resource: "category", Action: "edit", Category: "Master Data"},
 	"category.delete": {ID: "category.delete", Name: "Delete Categories", Description: "Delete categories", Resource: "category", Action: "delete", Category: "Master Data"},
-	
+
 	// Approval Management
 	"approval.view":     {ID: "approval.view", Name: "View Approvals", Description: "View approval tasks", Resource: "approval", Action: "view", Category: "Workflow"},
 	"approval.approve":  {ID: "approval.approve", Name: "Approve Tasks", Description: "Approve workflow tasks", Resource: "approval", Action: "approve", Category: "Workflow"},
 	"approval.reject":   {ID: "approval.reject", Name: "Reject Tasks", Description: "Reject workflow tasks", Resource: "approval", Action: "reject", Category: "Workflow"},
 	"approval.reassign": {ID: "approval.reassign", Name: "Reassign Tasks", Description: "Reassign approval tasks", Resource: "approval", Action: "reassign", Category: "Workflow"},
 	"approval.comment":  {ID: "approval.comment", Name: "Comment on Tasks", Description: "Add comments to approval tasks", Resource: "approval", Action: "comment", Category: "Workflow"},
-	
+
 	// Workflow Management
 	"workflow.view":   {ID: "workflow.view", Name: "View Workflows", Description: "View workflow definitions", Resource: "workflow", Action: "view", Category: "Workflow"},
 	"workflow.create": {ID: "workflow.create", Name: "Create Workflows", Description: "Create new workflow definitions", Resource: "workflow", Action: "create", Category: "Workflow"},
 	"workflow.edit":   {ID: "workflow.edit", Name: "Edit Workflows", Description: "Edit workflow definitions", Resource: "workflow", Action: "edit", Category: "Workflow"},
 	"workflow.delete": {ID: "workflow.delete", Name: "Delete Workflows", Description: "Delete workflow definitions", Resource: "workflow", Action: "delete", Category: "Workflow"},
 	"workflow.manage": {ID: "workflow.manage", Name: "Manage Workflows", Description: "Full workflow management", Resource: "workflow", Action: "manage", Category: "Workflow"},
-	
+
 	// Document Management
 	"document.view":   {ID: "document.view", Name: "View Documents", Description: "View documents", Resource: "document", Action: "view", Category: "Document Management"},
 	"document.create": {ID: "document.create", Name: "Create Documents", Description: "Create new documents", Resource: "document", Action: "create", Category: "Document Management"},
 	"document.edit":   {ID: "document.edit", Name: "Edit Documents", Description: "Edit documents", Resource: "document", Action: "edit", Category: "Document Management"},
 	"document.delete": {ID: "document.delete", Name: "Delete Documents", Description: "Delete documents", Resource: "document", Action: "delete", Category: "Document Management"},
 	"document.submit": {ID: "document.submit", Name: "Submit Documents", Description: "Submit documents for approval", Resource: "document", Action: "submit", Category: "Document Management"},
-	
+
 	// Analytics & Reporting
 	"analytics.view":     {ID: "analytics.view", Name: "View Analytics", Description: "View analytics and reports", Resource: "analytics", Action: "view", Category: "Analytics"},
 	"analytics.export":   {ID: "analytics.export", Name: "Export Reports", Description: "Export analytics and reports", Resource: "analytics", Action: "export", Category: "Analytics"},
 	"analytics.advanced": {ID: "analytics.advanced", Name: "Advanced Analytics", Description: "Access advanced analytics features", Resource: "analytics", Action: "advanced", Category: "Analytics"},
-	
+
 	// Audit & Compliance
 	"audit.view":   {ID: "audit.view", Name: "View Audit Logs", Description: "View audit logs and compliance reports", Resource: "audit", Action: "view", Category: "Compliance"},
 	"audit.export": {ID: "audit.export", Name: "Export Audit Logs", Description: "Export audit logs", Resource: "audit", Action: "export", Category: "Compliance"},
-	
+
 	// Organization Management
 	"organization.view":   {ID: "organization.view", Name: "View Organization", Description: "View organization settings", Resource: "organization", Action: "view", Category: "Organization"},
 	"organization.edit":   {ID: "organization.edit", Name: "Edit Organization", Description: "Edit organization settings", Resource: "organization", Action: "edit", Category: "Organization"},
@@ -242,10 +242,10 @@ var SystemRoles = map[string][]string{
 
 // Custom errors
 var (
-	ErrRoleNotFound      = errors.New("role not found")
-	ErrRoleAlreadyExists = errors.New("role already exists")
+	ErrRoleNotFound         = errors.New("role not found")
+	ErrRoleAlreadyExists    = errors.New("role already exists")
 	ErrCannotEditSystemRole = errors.New("cannot edit system role")
-	ErrInvalidPermission = errors.New("invalid permission")
+	ErrInvalidPermission    = errors.New("invalid permission")
 )
 
 // NewRBACService creates a new RBAC service
@@ -456,31 +456,19 @@ func (s *RBACService) GetUserPermissions(ctx context.Context, userID, organizati
 
 	permissionSet := make(map[string]bool)
 	deniedPermissions := make(map[string]bool)
-	
-	// DEFAULT PERMISSIONS: Grant view permissions to all resources by default
-	// This follows the principle of "open by default, restrict as needed"
+
+	// DEFAULT PERMISSIONS: Grant minimal view permissions to all users
+	// This follows the principle of least privilege
 	defaultViewPermissions := []string{
-		"user.view",
-		"requisition.view", 
-		"budget.view",
-		"purchase_order.view",
-		"payment_voucher.view", 
-		"grn.view",
-		"vendor.view",
-		"category.view",
-		"approval.view",
-		"workflow.view",
-		"document.view",
-		"analytics.view",
-		"audit.view",
-		"organization.view",
+		"user.view",         // Needed for profile
+		"notification.view", // Needed for basic UI interaction
 	}
-	
+
 	// Grant default view permissions to all users
 	for _, permission := range defaultViewPermissions {
 		permissionSet[permission] = true
 	}
-	
+
 	// Add permissions from custom organization roles (can override defaults)
 	for _, role := range roles {
 		var permissions []string
@@ -492,7 +480,7 @@ func (s *RBACService) GetUserPermissions(ctx context.Context, userID, organizati
 			}).WithError(err).Warn("failed_to_unmarshal_permissions_for_role")
 			continue
 		}
-		
+
 		for _, permission := range permissions {
 			// Support for denied permissions (prefixed with "!")
 			if len(permission) > 0 && permission[0] == '!' {
@@ -560,10 +548,10 @@ func (s *RBACService) HasAnyPermission(ctx context.Context, userID, organization
 		if i+1 >= len(requiredPermissions) {
 			break // Skip if we don't have a complete pair
 		}
-		
+
 		resource := requiredPermissions[i]
 		action := requiredPermissions[i+1]
-		
+
 		hasPermission, err := s.HasPermission(ctx, userID, organizationID, resource, action)
 		if err != nil {
 			return false, err
@@ -572,7 +560,7 @@ func (s *RBACService) HasAnyPermission(ctx context.Context, userID, organization
 			return true, nil
 		}
 	}
-	
+
 	return false, nil
 }
 
@@ -589,8 +577,8 @@ func (s *RBACService) InitializeSystemRoles(ctx context.Context, organizationID,
 		permissionsJSON, err := json.Marshal(permissions)
 		if err != nil {
 			logging.WithFields(map[string]interface{}{
-				"operation":  "marshal_system_role_permissions",
-				"role_name":  roleName,
+				"operation": "marshal_system_role_permissions",
+				"role_name": roleName,
 			}).WithError(err).Warn("failed_to_marshal_permissions_for_system_role")
 			continue
 		}
@@ -628,11 +616,11 @@ func (s *RBACService) GetAllPermissions() []Permission {
 // GetPermissionsByCategory returns permissions grouped by category
 func (s *RBACService) GetPermissionsByCategory() map[string][]Permission {
 	categories := make(map[string][]Permission)
-	
+
 	for _, permission := range SystemPermissions {
 		categories[permission.Category] = append(categories[permission.Category], permission)
 	}
-	
+
 	return categories
 }
 
@@ -656,7 +644,7 @@ func (s *RBACService) getSystemRoleDescription(roleName string) string {
 		"requester": "Can create and manage own requisitions",
 		"viewer":    "Read-only access to system information",
 	}
-	
+
 	if desc, exists := descriptions[roleName]; exists {
 		return desc
 	}
@@ -666,22 +654,22 @@ func (s *RBACService) getSystemRoleDescription(roleName string) string {
 // RevokeUserPermission revokes a specific permission from a user by creating a denial role
 func (s *RBACService) RevokeUserPermission(ctx context.Context, userID, organizationID, resource, action, revokedBy string) error {
 	permissionID := fmt.Sprintf("!%s.%s", resource, action) // Prefix with "!" to indicate denial
-	
+
 	// Create or update a "denied permissions" role for this user
 	roleName := fmt.Sprintf("denied-permissions-%s", userID)
-	
+
 	// Check if the role already exists
 	existingRole, err := s.roleRepo.GetByName(ctx, organizationID, roleName)
 	if err != nil {
 		// Role doesn't exist, create it
 		permissions := []string{permissionID}
 		permissionsJSON, _ := json.Marshal(permissions)
-		
+
 		_, err = s.roleRepo.Create(ctx, organizationID, roleName, "Auto-generated role for denied permissions", false, permissionsJSON, revokedBy)
 		if err != nil {
 			return fmt.Errorf("failed to create denied permissions role: %w", err)
 		}
-		
+
 		// Assign the role to the user
 		roleID := uuid.New() // This would need to be the actual role ID from the create response
 		_, err = s.roleRepo.AssignUserRole(ctx, userID, organizationID, roleID, revokedBy)
@@ -694,7 +682,7 @@ func (s *RBACService) RevokeUserPermission(ctx context.Context, userID, organiza
 		if err := json.Unmarshal(existingRole.Permissions, &existingPermissions); err != nil {
 			return fmt.Errorf("failed to unmarshal existing permissions: %w", err)
 		}
-		
+
 		// Add the new denied permission if not already present
 		found := false
 		for _, perm := range existingPermissions {
@@ -703,31 +691,31 @@ func (s *RBACService) RevokeUserPermission(ctx context.Context, userID, organiza
 				break
 			}
 		}
-		
+
 		if !found {
 			existingPermissions = append(existingPermissions, permissionID)
 			permissionsJSON, _ := json.Marshal(existingPermissions)
-			
+
 			// Convert pgtype.UUID to uuid.UUID and handle nullable string
 			roleUUID := uuid.UUID(existingRole.ID.Bytes)
 			description := ""
 			if existingRole.Description != nil {
 				description = *existingRole.Description
 			}
-			
+
 			_, err = s.roleRepo.Update(ctx, roleUUID, existingRole.Name, description, permissionsJSON)
 			if err != nil {
 				return fmt.Errorf("failed to update denied permissions role: %w", err)
 			}
 		}
 	}
-	
+
 	// Log the permission revocation
 	if s.auditService != nil {
-		s.auditService.LogEvent(ctx, revokedBy, organizationID, "permission_revoked", "user", userID, 
+		s.auditService.LogEvent(ctx, revokedBy, organizationID, "permission_revoked", "user", userID,
 			fmt.Sprintf("Revoked permission %s.%s from user %s", resource, action, userID), "", "")
 	}
-	
+
 	return nil
 }
 
@@ -735,7 +723,7 @@ func (s *RBACService) RevokeUserPermission(ctx context.Context, userID, organiza
 func (s *RBACService) GrantUserPermission(ctx context.Context, userID, organizationID, resource, action, grantedBy string) error {
 	permissionID := fmt.Sprintf("%s.%s", resource, action)
 	deniedPermissionID := fmt.Sprintf("!%s", permissionID)
-	
+
 	// First, remove any denial of this permission
 	roleName := fmt.Sprintf("denied-permissions-%s", userID)
 	existingRole, err := s.roleRepo.GetByName(ctx, organizationID, roleName)
@@ -750,18 +738,18 @@ func (s *RBACService) GrantUserPermission(ctx context.Context, userID, organizat
 					updatedPermissions = append(updatedPermissions, perm)
 				}
 			}
-			
+
 			if len(updatedPermissions) != len(existingPermissions) {
 				// Permission was removed, update the role
 				permissionsJSON, _ := json.Marshal(updatedPermissions)
-				
+
 				// Convert pgtype.UUID to uuid.UUID and handle nullable string
 				roleUUID := uuid.UUID(existingRole.ID.Bytes)
 				description := ""
 				if existingRole.Description != nil {
 					description = *existingRole.Description
 				}
-				
+
 				_, err = s.roleRepo.Update(ctx, roleUUID, existingRole.Name, description, permissionsJSON)
 				if err != nil {
 					return fmt.Errorf("failed to update denied permissions role: %w", err)
@@ -769,13 +757,13 @@ func (s *RBACService) GrantUserPermission(ctx context.Context, userID, organizat
 			}
 		}
 	}
-	
+
 	// Log the permission grant
 	if s.auditService != nil {
-		s.auditService.LogEvent(ctx, grantedBy, organizationID, "permission_granted", "user", userID, 
+		s.auditService.LogEvent(ctx, grantedBy, organizationID, "permission_granted", "user", userID,
 			fmt.Sprintf("Granted permission %s.%s to user %s", resource, action, userID), "", "")
 	}
-	
+
 	return nil
 }
 
@@ -787,12 +775,12 @@ func (s *RBACService) GetUserDeniedPermissions(ctx context.Context, userID, orga
 		// No denied permissions role exists
 		return []string{}, nil
 	}
-	
+
 	var permissions []string
 	if err := json.Unmarshal(role.Permissions, &permissions); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal denied permissions: %w", err)
 	}
-	
+
 	// Remove the "!" prefix from denied permissions
 	deniedPermissions := make([]string, 0)
 	for _, perm := range permissions {
@@ -800,6 +788,6 @@ func (s *RBACService) GetUserDeniedPermissions(ctx context.Context, userID, orga
 			deniedPermissions = append(deniedPermissions, perm[1:])
 		}
 	}
-	
+
 	return deniedPermissions, nil
 }

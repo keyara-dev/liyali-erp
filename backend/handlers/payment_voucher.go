@@ -22,7 +22,7 @@ func GetPaymentVouchers(c *fiber.Ctx) error {
 	logger.Info("get_payment_vouchers_request")
 
 	// Get organization context from tenant middleware
-	tenant, err := middleware.GetTenantContext(*c)
+	tenant, err := middleware.GetTenantContext(c)
 	if err != nil {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 			"success": false,
@@ -102,7 +102,7 @@ func GetPaymentVouchers(c *fiber.Ctx) error {
 // CreatePaymentVoucher creates a new payment voucher
 func CreatePaymentVoucher(c *fiber.Ctx) error {
 	// Get organization context from tenant middleware
-	tenant, err := middleware.GetTenantContext(*c)
+	tenant, err := middleware.GetTenantContext(c)
 	if err != nil {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 			"success": false,
@@ -197,7 +197,7 @@ func CreatePaymentVoucher(c *fiber.Ctx) error {
 // GetPaymentVoucher retrieves a single payment voucher by ID
 func GetPaymentVoucher(c *fiber.Ctx) error {
 	// Get organization context from tenant middleware
-	tenant, err := middleware.GetTenantContext(*c)
+	tenant, err := middleware.GetTenantContext(c)
 	if err != nil {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 			"success": false,
@@ -235,7 +235,7 @@ func GetPaymentVoucher(c *fiber.Ctx) error {
 // UpdatePaymentVoucher updates an existing payment voucher
 func UpdatePaymentVoucher(c *fiber.Ctx) error {
 	// Get organization context from tenant middleware
-	tenant, err := middleware.GetTenantContext(*c)
+	tenant, err := middleware.GetTenantContext(c)
 	if err != nil {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 			"success": false,
@@ -320,7 +320,7 @@ func UpdatePaymentVoucher(c *fiber.Ctx) error {
 // DeletePaymentVoucher deletes a payment voucher
 func DeletePaymentVoucher(c *fiber.Ctx) error {
 	// Get organization context from tenant middleware
-	tenant, err := middleware.GetTenantContext(*c)
+	tenant, err := middleware.GetTenantContext(c)
 	if err != nil {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 			"success": false,
@@ -398,6 +398,7 @@ func modelToPaymentVoucherResponse(voucher models.PaymentVoucher) types.PaymentV
 		UpdatedAt:       voucher.UpdatedAt,
 	}
 }
+
 // SubmitPaymentVoucher submits a payment voucher for approval using the workflow system
 func SubmitPaymentVoucher(c *fiber.Ctx) error {
 	id := c.Params("id")
@@ -451,21 +452,21 @@ func SubmitPaymentVoucher(c *fiber.Ctx) error {
 	// Add action history entry for submission
 	var actionHistory []types.ActionHistoryEntry
 	actionHistory = voucher.ActionHistory.Data()
-	
+
 	// Get user info for action history
 	var user models.User
 	if err := config.DB.Where("id = ?", userID).First(&user).Error; err == nil {
 		actionHistory = append(actionHistory, types.ActionHistoryEntry{
-			ID:               uuid.New().String(),
-			Action:           "SUBMIT",
-			PerformedBy:      userID,
-			PerformedByName:  user.Name,
-			PerformedByRole:  user.Role,
-			Timestamp:        time.Now(),
-			Comments:         "Payment voucher submitted for approval",
-			ActionType:       "SUBMIT",
-			PreviousStatus:   "draft",
-			NewStatus:        "pending",
+			ID:              uuid.New().String(),
+			Action:          "SUBMIT",
+			PerformedBy:     userID,
+			PerformedByName: user.Name,
+			PerformedByRole: user.Role,
+			Timestamp:       time.Now(),
+			Comments:        "Payment voucher submitted for approval",
+			ActionType:      "SUBMIT",
+			PreviousStatus:  "draft",
+			NewStatus:       "pending",
 		})
 		voucher.ActionHistory = datatypes.NewJSONType(actionHistory)
 	}

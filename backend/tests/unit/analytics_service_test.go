@@ -27,7 +27,7 @@ func TestGetStatusCounts(t *testing.T) {
 		for i := 0; i < 2; i++ {
 			req := models.Requisition{
 				ID:          uuid.New().String(),
-				RequesterID: uuid.New().String(),
+				RequesterId: uuid.New().String(),
 				Title:       "Test Req",
 				Description: "Test Description",
 				Department:  "Finance",
@@ -76,7 +76,7 @@ func TestCalculateRejectionRate(t *testing.T) {
 	for i := 0; i < 8; i++ {
 		req := models.Requisition{
 			ID:          uuid.New().String(),
-			RequesterID: uuid.New().String(),
+			RequesterId: uuid.New().String(),
 			Title:       "Test Req",
 			Description: "Test Description",
 			Department:  "Finance",
@@ -93,7 +93,7 @@ func TestCalculateRejectionRate(t *testing.T) {
 	for i := 0; i < 2; i++ {
 		req := models.Requisition{
 			ID:          uuid.New().String(),
-			RequesterID: uuid.New().String(),
+			RequesterId: uuid.New().String(),
 			Title:       "Test Req",
 			Description: "Test Description",
 			Department:  "Finance",
@@ -142,7 +142,7 @@ func TestGetRejectionsOverTime(t *testing.T) {
 			}
 			req := models.Requisition{
 				ID:          uuid.New().String(),
-				RequesterID: uuid.New().String(),
+				RequesterId: uuid.New().String(),
 				Title:       "Test Req",
 				Description: "Test Description",
 				Department:  "Finance",
@@ -209,7 +209,7 @@ func TestGetRejectionReasons(t *testing.T) {
 
 	req := models.Requisition{
 		ID:              uuid.New().String(),
-		RequesterID:     uuid.New().String(),
+		RequesterId:     uuid.New().String(),
 		Title:           "Test Req",
 		Description:     "Test Description",
 		Department:      "Finance",
@@ -276,7 +276,7 @@ func TestGetTopRejectingApprovers(t *testing.T) {
 
 		req := models.Requisition{
 			ID:              uuid.New().String(),
-			RequesterID:     uuid.New().String(),
+			RequesterId:     uuid.New().String(),
 			Title:           "Test Req",
 			Description:     "Test Description",
 			Department:      "Finance",
@@ -339,7 +339,7 @@ func TestAnalyticsWithDateRange(t *testing.T) {
 	// Old requisition
 	oldReq := models.Requisition{
 		ID:          uuid.New().String(),
-		RequesterID: uuid.New().String(),
+		RequesterId: uuid.New().String(),
 		Title:       "Old Req",
 		Description: "Old",
 		Department:  "Finance",
@@ -355,7 +355,7 @@ func TestAnalyticsWithDateRange(t *testing.T) {
 	// Recent requisition
 	recentReq := models.Requisition{
 		ID:          uuid.New().String(),
-		RequesterID: uuid.New().String(),
+		RequesterId: uuid.New().String(),
 		Title:       "Recent Req",
 		Description: "Recent",
 		Department:  "Finance",

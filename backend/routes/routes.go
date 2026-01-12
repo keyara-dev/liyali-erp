@@ -2,10 +2,10 @@ package routes
 
 import (
 	"github.com/gofiber/fiber/v2"
-	"gorm.io/gorm"
 	"github.com/liyali/liyali-gateway/handlers"
 	"github.com/liyali/liyali-gateway/middleware"
 	"github.com/liyali/liyali-gateway/services"
+	"gorm.io/gorm"
 )
 
 // SetupRoutes configures all API routes
@@ -46,11 +46,21 @@ func SetupRoutes(app *fiber.App, handlerRegistry *handlers.HandlerRegistry, rbac
 
 	// Organization management (within tenant context)
 	orgMgmt := tenant.Group("/organization")
-	orgMgmt.Get("/members", handlers.GetOrganizationMembers)
-	orgMgmt.Post("/members", handlers.AddOrganizationMember)
-	orgMgmt.Delete("/members/:userId", handlers.RemoveOrganizationMember)
-	orgMgmt.Get("/settings", handlers.GetOrganizationSettings)
-	orgMgmt.Put("/settings", handlers.UpdateOrganizationSettings)
+	orgMgmt.Get("/members",
+		middleware.RequirePermission(rbacService, "organization", "view"),
+		handlers.GetOrganizationMembers)
+	orgMgmt.Post("/members",
+		middleware.RequirePermission(rbacService, "organization", "manage"),
+		handlers.AddOrganizationMember)
+	orgMgmt.Delete("/members/:userId",
+		middleware.RequirePermission(rbacService, "organization", "manage"),
+		handlers.RemoveOrganizationMember)
+	orgMgmt.Get("/settings",
+		middleware.RequirePermission(rbacService, "organization", "view"),
+		handlers.GetOrganizationSettings)
+	orgMgmt.Put("/settings",
+		middleware.RequirePermission(rbacService, "organization", "manage"),
+		handlers.UpdateOrganizationSettings)
 
 	// Organization departments (Phase 3.5) - NEW
 	orgDepts := tenant.Group("/organization/departments")
@@ -129,20 +139,20 @@ func SetupRoutes(app *fiber.App, handlerRegistry *handlers.HandlerRegistry, rbac
 
 	// User permission management (admin only) - ENABLED
 	userPerms := tenant.Group("/users")
-	userPerms.Get("/:userId/permissions", 
-		middleware.RequirePermission(rbacService, "user", "view"), 
+	userPerms.Get("/:userId/permissions",
+		middleware.RequirePermission(rbacService, "user", "view"),
 		handlers.GetUserPermissions)
-	userPerms.Post("/:userId/permissions/:resource/:action", 
-		middleware.RequirePermission(rbacService, "organization", "manage"), 
+	userPerms.Post("/:userId/permissions/:resource/:action",
+		middleware.RequirePermission(rbacService, "organization", "manage"),
 		handlers.GrantUserPermission)
-	userPerms.Delete("/:userId/permissions/:resource/:action", 
-		middleware.RequirePermission(rbacService, "organization", "manage"), 
+	userPerms.Delete("/:userId/permissions/:resource/:action",
+		middleware.RequirePermission(rbacService, "organization", "manage"),
 		handlers.RevokeUserPermission)
-	
+
 	// System permissions list (admin only) - ENABLED
 	systemPerms := tenant.Group("/permissions")
-	systemPerms.Get("/", 
-		middleware.RequirePermission(rbacService, "organization", "view"), 
+	systemPerms.Get("/",
+		middleware.RequirePermission(rbacService, "organization", "view"),
 		handlers.ListAllPermissions)
 
 	// Requisition routes (tenant-scoped)
@@ -212,11 +222,11 @@ func SetupRoutes(app *fiber.App, handlerRegistry *handlers.HandlerRegistry, rbac
 	// Approval Tasks routes (tenant-scoped) - Updated to use new handler
 	approvals := tenant.Group("/approvals", middleware.InjectWorkflowExecutionService(handlerRegistry.WorkflowExecutionService))
 	approvals.Get("/", handlerRegistry.Approval.GetApprovalTasks)
-	
+
 	// Specific routes must come before parameterized routes
 	approvals.Get("/available-approvers", handlerRegistry.Approval.GetAvailableApprovers)
 	approvals.Get("/tasks/overdue", middleware.RequirePermission(rbacService, "approval", "view"), handlerRegistry.Approval.GetOverdueTasks)
-	
+
 	// Parameterized routes come after specific routes
 	approvals.Get("/:id", handlerRegistry.Approval.GetApprovalTask)
 	approvals.Post("/:id/approve", middleware.RequireWorkflowPermission("approve"), handlerRegistry.Approval.ApproveTask)
@@ -257,7 +267,7 @@ func SetupRoutes(app *fiber.App, handlerRegistry *handlers.HandlerRegistry, rbac
 	workflows.Post("/:id/activate", middleware.RequirePermission(rbacService, "workflow", "manage"), handlerRegistry.Workflow.ActivateWorkflow)
 	workflows.Post("/:id/deactivate", middleware.RequirePermission(rbacService, "workflow", "manage"), handlerRegistry.Workflow.DeactivateWorkflow)
 	workflows.Delete("/:id", middleware.RequirePermission(rbacService, "workflow", "delete"), handlerRegistry.Workflow.DeleteWorkflow)
-	
+
 	// New frontend-compatible workflow endpoints
 	workflows.Post("/:id/duplicate", middleware.RequirePermission(rbacService, "workflow", "create"), handlerRegistry.Workflow.DuplicateWorkflow)
 	workflows.Post("/:id/set-default", middleware.RequirePermission(rbacService, "workflow", "manage"), handlerRegistry.Workflow.SetDefaultWorkflow)

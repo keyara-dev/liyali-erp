@@ -1,0 +1,394 @@
+# LIYALI GATEWAY COMPREHENSIVE HTTP TEST REQUESTS
+# Use with REST Client extension in VS Code or similar HTTP client
+
+@baseUrl = http://localhost:8080
+@apiUrl = {{baseUrl}}/api/v1
+
+### Variables (update these with actual values from responses)
+@accessToken = 
+@refreshToken = 
+@organizationId = 
+@userId = 
+@vendorId = 
+
+###############################################################################
+# 1. HEALTH CHECK & SYSTEM STATUS
+###############################################################################
+
+### Health Check
+GET {{baseUrl}}/health
+
+###############################################################################
+# 2. AUTHENTICATION & AUTHORIZATION
+###############################################################################
+
+### Register New User
+POST {{apiUrl}}/auth/register
+Content-Type: application/json
+
+{
+  "email": "test@example.com",
+  "password": "TestPassword123!",
+  "name": "Test User",
+  "role": "admin"
+}
+
+### Login User
+POST {{apiUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "test@example.com",
+  "password": "TestPassword123!"
+}
+
+### Verify Token
+POST {{apiUrl}}/auth/verify
+Content-Type: application/json
+
+{
+  "token": "{{accessToken}}"
+}
+
+### Refresh Token (with Rotation)
+POST {{apiUrl}}/auth/refresh
+Content-Type: application/json
+
+{
+  "refreshToken": "{{refreshToken}}"
+}
+
+### Get User Profile
+GET {{apiUrl}}/auth/profile
+Authorization: Bearer {{accessToken}}
+
+### Change Password
+POST {{apiUrl}}/auth/change-password
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "currentPassword": "TestPassword123!",
+  "newPassword": "NewTestPassword123!"
+}
+
+###############################################################################
+# 3. MULTI-TENANT OPERATIONS
+###############################################################################
+
+### Get User Organizations
+GET {{apiUrl}}/organizations
+Authorization: Bearer {{accessToken}}
+
+### Get Organization Members
+GET {{apiUrl}}/organization/members
+Authorization: Bearer {{accessToken}}
+X-Organization-ID: {{organizationId}}
+
+### Get Organization Settings
+GET {{apiUrl}}/organization/settings
+Authorization: Bearer {{accessToken}}
+X-Organization-ID: {{organizationId}}
+
+### List All System Permissions
+GET {{apiUrl}}/permissions
+Authorization: Bearer {{accessToken}}
+X-Organization-ID: {{organizationId}}
+
+### Create Custom Organization Role
+POST {{apiUrl}}/organization/roles
+Authorization: Bearer {{accessToken}}
+X-Organization-ID: {{organizationId}}
+Content-Type: application/json
+
+{
+  "name": "IT Manager",
+  "description": "IT Department Manager with procurement permissions",
+  "permissions": ["requisition:view", "requisition:create", "requisition:approve"]
+}
+
+###############################################################################
+# 4. DOCUMENT MANAGEMENT
+###############################################################################
+
+### Get Categories
+GET {{apiUrl}}/categories
+Authorization: Bearer {{accessToken}}
+X-Organization-ID: {{organizationId}}
+
+### Create Category
+POST {{apiUrl}}/categories
+Authorization: Bearer {{accessToken}}
+X-Organization-ID: {{organizationId}}
+Content-Type: application/json
+
+{
+  "name": "IT Equipment",
+  "description": "Information Technology Equipment and Software",
+  "code": "IT-EQ"
+}
+
+### Get Vendors
+GET {{apiUrl}}/vendors
+Authorization: Bearer {{accessToken}}
+X-Organization-ID: {{organizationId}}
+
+### Create Vendor
+POST {{apiUrl}}/vendors
+Authorization: Bearer {{accessToken}}
+X-Organization-ID: {{organizationId}}
+Content-Type: application/json
+
+{
+  "name": "Tech Solutions Inc",
+  "email": "contact@techsolutions.com",
+  "phone": "+1-555-0123",
+  "address": "123 Tech Street, Silicon Valley, CA 94000"
+}
+
+### Get Requisitions
+GET {{apiUrl}}/requisitions
+Authorization: Bearer {{accessToken}}
+X-Organization-ID: {{organizationId}}
+
+### Create Requisition
+POST {{apiUrl}}/requisitions
+Authorization: Bearer {{accessToken}}
+X-Organization-ID: {{organizationId}}
+Content-Type: application/json
+
+{
+  "title": "Laptop Purchase Request",
+  "description": "Request for new development laptops",
+  "items": [
+    {
+      "description": "MacBook Pro 16-inch",
+      "quantity": 2,
+      "unitPrice": 2500.00,
+      "totalPrice": 5000.00
+    }
+  ],
+  "totalAmount": 5000.00,
+  "priority": "high"
+}
+
+### Get Purchase Orders
+GET {{apiUrl}}/purchase-orders
+Authorization: Bearer {{accessToken}}
+X-Organization-ID: {{organizationId}}
+
+### Create Purchase Order (Simple Date Format)
+POST {{apiUrl}}/purchase-orders
+Authorization: Bearer {{accessToken}}
+X-Organization-ID: {{organizationId}}
+Content-Type: application/json
+
+{
+  "vendorId": "{{vendorId}}",
+  "items": [
+    {
+      "description": "Test Item",
+      "quantity": 1,
+      "unitPrice": 100.00,
+      "totalPrice": 100.00
+    }
+  ],
+  "totalAmount": 100.00,
+  "currency": "USD",
+  "deliveryDate": "2026-02-15"
+}
+
+### Create Purchase Order (RFC3339 Date Format)
+POST {{apiUrl}}/purchase-orders
+Authorization: Bearer {{accessToken}}
+X-Organization-ID: {{organizationId}}
+Content-Type: application/json
+
+{
+  "vendorId": "{{vendorId}}",
+  "items": [
+    {
+      "description": "Test Item 2",
+      "quantity": 1,
+      "unitPrice": 200.00,
+      "totalPrice": 200.00
+    }
+  ],
+  "totalAmount": 200.00,
+  "currency": "USD",
+  "deliveryDate": "2026-02-15T10:00:00Z"
+}
+
+### Get Budgets
+GET {{apiUrl}}/budgets
+Authorization: Bearer {{accessToken}}
+X-Organization-ID: {{organizationId}}
+
+### Get Payment Vouchers
+GET {{apiUrl}}/payment-vouchers
+Authorization: Bearer {{accessToken}}
+X-Organization-ID: {{organizationId}}
+
+### Get GRNs
+GET {{apiUrl}}/grns
+Authorization: Bearer {{accessToken}}
+X-Organization-ID: {{organizationId}}
+
+###############################################################################
+# 5. WORKFLOW SYSTEM
+###############################################################################
+
+### Get Workflows
+GET {{apiUrl}}/workflows
+Authorization: Bearer {{accessToken}}
+X-Organization-ID: {{organizationId}}
+
+### Create Workflow (Legacy documentType Support)
+POST {{apiUrl}}/workflows
+Authorization: Bearer {{accessToken}}
+X-Organization-ID: {{organizationId}}
+Content-Type: application/json
+
+{
+  "name": "IT Procurement Workflow",
+  "documentType": "requisition",
+  "description": "Approval workflow for IT equipment purchases",
+  "stages": [
+    {
+      "name": "Manager Review",
+      "stageNumber": 1,
+      "approverRole": "manager",
+      "required": true
+    }
+  ]
+}
+
+### Create Workflow (Primary entityType Field)
+POST {{apiUrl}}/workflows
+Authorization: Bearer {{accessToken}}
+X-Organization-ID: {{organizationId}}
+Content-Type: application/json
+
+{
+  "name": "Purchase Order Workflow",
+  "entityType": "purchase_order",
+  "description": "Approval workflow for purchase orders",
+  "stages": [
+    {
+      "name": "Finance Review",
+      "stageNumber": 1,
+      "approverRole": "finance",
+      "required": true
+    }
+  ]
+}
+
+### Get Default Workflow for Requisitions
+GET {{apiUrl}}/workflows/default/requisition
+Authorization: Bearer {{accessToken}}
+X-Organization-ID: {{organizationId}}
+
+### Get Default Workflow for Purchase Orders
+GET {{apiUrl}}/workflows/default/purchase_order
+Authorization: Bearer {{accessToken}}
+X-Organization-ID: {{organizationId}}
+
+###############################################################################
+# 6. APPROVAL SYSTEM
+###############################################################################
+
+### Get Approval Tasks
+GET {{apiUrl}}/approvals
+Authorization: Bearer {{accessToken}}
+X-Organization-ID: {{organizationId}}
+
+### Get Available Approvers
+GET {{apiUrl}}/approvals/available-approvers
+Authorization: Bearer {{accessToken}}
+X-Organization-ID: {{organizationId}}
+
+### Get Overdue Tasks
+GET {{apiUrl}}/approvals/tasks/overdue
+Authorization: Bearer {{accessToken}}
+X-Organization-ID: {{organizationId}}
+
+###############################################################################
+# 7. CRITICAL FIXES VERIFICATION
+###############################################################################
+
+### Document Search (Fixed organizationID)
+GET {{apiUrl}}/documents/search?q=laptop
+Authorization: Bearer {{accessToken}}
+X-Organization-ID: {{organizationId}}
+
+### Document Stats (Fixed organizationID)
+GET {{apiUrl}}/documents/stats
+Authorization: Bearer {{accessToken}}
+X-Organization-ID: {{organizationId}}
+
+###############################################################################
+# 8. ANALYTICS & REPORTING
+###############################################################################
+
+### Get Dashboard Analytics
+GET {{apiUrl}}/analytics/dashboard
+Authorization: Bearer {{accessToken}}
+X-Organization-ID: {{organizationId}}
+
+### Get Requisition Metrics
+GET {{apiUrl}}/analytics/requisitions/metrics
+Authorization: Bearer {{accessToken}}
+X-Organization-ID: {{organizationId}}
+
+### Get Approval Metrics
+GET {{apiUrl}}/analytics/approvals/metrics
+Authorization: Bearer {{accessToken}}
+X-Organization-ID: {{organizationId}}
+
+###############################################################################
+# 9. NOTIFICATION SYSTEM
+###############################################################################
+
+### Get Notifications
+GET {{apiUrl}}/notifications
+Authorization: Bearer {{accessToken}}
+X-Organization-ID: {{organizationId}}
+
+### Get Recent Notifications
+GET {{apiUrl}}/notifications/recent
+Authorization: Bearer {{accessToken}}
+X-Organization-ID: {{organizationId}}
+
+### Get Notification Stats
+GET {{apiUrl}}/notifications/stats
+Authorization: Bearer {{accessToken}}
+X-Organization-ID: {{organizationId}}
+
+###############################################################################
+# 10. SESSION MANAGEMENT
+###############################################################################
+
+### Test Old Refresh Token (Should Fail - Token Rotation)
+POST {{apiUrl}}/auth/refresh
+Content-Type: application/json
+
+{
+  "refreshToken": "old_refresh_token_should_fail"
+}
+
+###############################################################################
+# 11. LOGOUT & CLEANUP
+###############################################################################
+
+### Logout Current Session
+POST {{apiUrl}}/auth/logout
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "refreshToken": "{{refreshToken}}"
+}
+
+### Logout All Sessions
+POST {{apiUrl}}/auth/logout-all
+Authorization: Bearer {{accessToken}}

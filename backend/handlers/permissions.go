@@ -16,7 +16,7 @@ func GetUserPermissions(c *fiber.Ctx) error {
 		return utils.SendBadRequestError(c, "User ID is required")
 	}
 
-	tenant, err := middleware.GetTenantContext(*c)
+	tenant, err := middleware.GetTenantContext(c)
 	if err != nil {
 		return utils.SendBadRequestError(c, "Organization context required")
 	}
@@ -57,7 +57,7 @@ func RevokeUserPermission(c *fiber.Ctx) error {
 		return utils.SendBadRequestError(c, "User ID, resource, and action are required")
 	}
 
-	tenant, err := middleware.GetTenantContext(*c)
+	tenant, err := middleware.GetTenantContext(c)
 	if err != nil {
 		return utils.SendBadRequestError(c, "Organization context required")
 	}
@@ -101,7 +101,7 @@ func GrantUserPermission(c *fiber.Ctx) error {
 		return utils.SendBadRequestError(c, "User ID, resource, and action are required")
 	}
 
-	tenant, err := middleware.GetTenantContext(*c)
+	tenant, err := middleware.GetTenantContext(c)
 	if err != nil {
 		return utils.SendBadRequestError(c, "Organization context required")
 	}

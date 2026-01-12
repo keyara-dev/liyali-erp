@@ -25,11 +25,11 @@ func TestCreateGRNValidation(t *testing.T) {
 				"receivedBy": "John Doe",
 				"items": []map[string]interface{}{
 					{
-						"itemNo":     1,
 						"description": "Item 1",
-						"quantity":   10,
-						"unitPrice":  5000,
-						"receivedQty": 10,
+						"quantityOrdered": 10,
+						"quantityReceived": 10,
+						"variance": 0,
+						"condition": "good",
 					},
 				},
 			},
@@ -94,7 +94,7 @@ func TestCreateGRNValidation(t *testing.T) {
 			// Validate request
 			isValid := req.PONumber != "" &&
 				req.ReceivedBy != "" &&
-				len(req.Items.Data()) > 0
+				len(req.Items) > 0
 
 			if isValid != tt.shouldPass {
 				t.Errorf("Expected %v, got %v", tt.shouldPass, isValid)
@@ -235,11 +235,10 @@ func TestGRNQualityIssueTracking(t *testing.T) {
 	t.Run("Track quality issues", func(t *testing.T) {
 		qualityIssues := []types.QualityIssue{
 			{
-				ItemNo:      1,
-				Description: "Damaged packaging",
-				Severity:    "low",
-				ReportedBy:  "John Doe",
-				ReportedAt:  time.Now(),
+				ItemDescription: "Item 1",
+				IssueType:       "damage",
+				Description:     "Damaged packaging",
+				Severity:        "low",
 			},
 		}
 
@@ -330,10 +329,11 @@ func TestGRNResponseFormat(t *testing.T) {
 			ReceivedBy: "John Doe",
 			Items: []types.GRNItem{
 				{
-					ItemNo:       1,
-					Description:  "Item 1",
-					Quantity:     10,
-					ReceivedQty:  10,
+					Description:      "Item 1",
+					QuantityOrdered:  10,
+					QuantityReceived: 10,
+					Variance:         0,
+					Condition:        "good",
 				},
 			},
 			ApprovalStage: 0,
@@ -367,10 +367,11 @@ func TestGRNItemValidation(t *testing.T) {
 			name: "Valid GRN items",
 			items: []types.GRNItem{
 				{
-					ItemNo:      1,
-					Description: "Item 1",
-					Quantity:    10,
-					ReceivedQty: 10,
+					Description:      "Item 1",
+					QuantityOrdered:  10,
+					QuantityReceived: 10,
+					Variance:         0,
+					Condition:        "good",
 				},
 			},
 			shouldPass: true,
@@ -379,16 +380,18 @@ func TestGRNItemValidation(t *testing.T) {
 			name: "Multiple items",
 			items: []types.GRNItem{
 				{
-					ItemNo:      1,
-					Description: "Item 1",
-					Quantity:    10,
-					ReceivedQty: 10,
+					Description:      "Item 1",
+					QuantityOrdered:  10,
+					QuantityReceived: 10,
+					Variance:         0,
+					Condition:        "good",
 				},
 				{
-					ItemNo:      2,
-					Description: "Item 2",
-					Quantity:    5,
-					ReceivedQty: 5,
+					Description:      "Item 2",
+					QuantityOrdered:  5,
+					QuantityReceived: 5,
+					Variance:         0,
+					Condition:        "good",
 				},
 			},
 			shouldPass: true,
@@ -542,17 +545,18 @@ func BenchmarkGRNValidation(b *testing.B) {
 		ReceivedBy: "John Doe",
 		Items: []types.GRNItem{
 			{
-				ItemNo:      1,
-				Description: "Item 1",
-				Quantity:    10,
-				ReceivedQty: 10,
+				Description:      "Item 1",
+				QuantityOrdered:  10,
+				QuantityReceived: 10,
+				Variance:         0,
+				Condition:        "good",
 			},
 		},
 	}
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_ = req.PONumber != "" && req.ReceivedBy != "" && len(req.Items.Data()) > 0
+		_ = req.PONumber != "" && req.ReceivedBy != "" && len(req.Items) > 0
 	}
 }
 

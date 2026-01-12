@@ -13,6 +13,8 @@ DROP TABLE IF EXISTS email_verifications CASCADE;
 DROP TABLE IF EXISTS password_resets CASCADE;
 DROP TABLE IF EXISTS sessions CASCADE;
 DROP TABLE IF EXISTS workflows CASCADE;
+DROP TABLE IF EXISTS workflow_assignments CASCADE;
+DROP TABLE IF EXISTS workflow_stages CASCADE;
 DROP TABLE IF EXISTS notifications CASCADE;
 DROP TABLE IF EXISTS audit_logs CASCADE;
 DROP TABLE IF EXISTS approval_tasks CASCADE;
@@ -37,3 +39,7 @@ DROP SEQUENCE IF EXISTS organizations_id_seq CASCADE;
 -- Drop any custom types if they exist
 DROP TYPE IF EXISTS approval_status CASCADE;
 DROP TYPE IF EXISTS document_status CASCADE;
+
+-- Drop all functions and triggers
+DROP FUNCTION IF EXISTS update_updated_at_column() CASCADE;
+DROP FUNCTION IF EXISTS update_documents_updated_at() CASCADE;

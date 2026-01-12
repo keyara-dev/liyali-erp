@@ -175,7 +175,7 @@ func LoggerMiddleware() fiber.Handler {
 		status := c.Response().StatusCode()
 		userID := c.Locals("userID")
 
-		log.Printf("[%s] %s %s - %d (%v) - User: %v", 
+		log.Printf("[%s] %s %d - %v - User: %v",
 			method, path, status, duration, userID)
 
 		return err
@@ -326,7 +326,7 @@ func RequireWorkflowPermission(action string) fiber.Handler {
 		// Get user info from context (set by AuthMiddleware)
 		userID := c.Locals("userID")
 		organizationID := c.Locals("organizationID")
-		
+
 		if userID == nil || organizationID == nil {
 			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 				"error": "Authentication required",
@@ -350,13 +350,13 @@ func RequireWorkflowPermission(action string) fiber.Handler {
 		// For workflow actions, we allow any authenticated user to attempt the action
 		// The actual permission check will be done in the workflow execution service
 		// based on the specific workflow task's required role
-		
+
 		// However, we still want to ensure the user has basic access to the organization
 		db := config.DB
 		var member models.OrganizationMember
-		err := db.Where("user_id = ? AND organization_id = ? AND active = ?", 
+		err := db.Where("user_id = ? AND organization_id = ? AND active = ?",
 			userIDStr, organizationIDStr, true).First(&member).Error
-		
+
 		if err != nil {
 			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
 				"error": "Access denied - not a member of this organization",

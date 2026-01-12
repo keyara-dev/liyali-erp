@@ -105,7 +105,7 @@ type Budget struct {
 	Description     string                                    `json:"description,omitempty"` // Budget description
 	DepartmentID    string                                    `json:"departmentId,omitempty"` // Department ID
 	Currency        string                                    `json:"currency,omitempty"`    // Currency
-	OwnerName       string                                    `json:"ownerName,omitempty"`   // Computed from Owner.Name
+	OwnerName       string                                    `gorm:"-" json:"ownerName,omitempty"`   // Computed from Owner.Name
 	CreatedBy       string                                    `json:"createdBy,omitempty"`   // Creator user ID
 	Items           datatypes.JSON                           `gorm:"type:jsonb" json:"items,omitempty"` // Budget items breakdown
 	ActionHistory   datatypes.JSONType[[]types.ActionHistoryEntry] `gorm:"type:jsonb" json:"actionHistory,omitempty"` // Action history for UI
@@ -156,7 +156,7 @@ type PurchaseOrder struct {
 	// Legacy aliases for backward compatibility
 	RequiredByDate          *time.Time `json:"requiredByDate,omitempty"`          // Required delivery date
 	SourceRequisitionNumber string     `json:"sourceRequisitionNumber,omitempty"` // Source requisition number
-	SourceRequisitionId     string     `json:"sourceRequisitionId,omitempty"`     // Source requisition ID
+	SourceRequisitionId     *string    `gorm:"column:source_requisition_id" json:"sourceRequisitionId,omitempty"`     // Source requisition ID
 
 	CreatedAt         time.Time       `json:"createdAt"`
 	UpdatedAt         time.Time       `json:"updatedAt"`

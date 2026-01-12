@@ -8,7 +8,6 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/liyali/liyali-gateway/config"
-	"github.com/liyali/liyali-gateway/database/seeders"
 	"github.com/liyali/liyali-gateway/handlers"
 	"github.com/liyali/liyali-gateway/middleware"
 	"github.com/liyali/liyali-gateway/models"
@@ -26,10 +25,8 @@ func TestMultiTenantAnalyticsSeparation(t *testing.T) {
 
 	db := config.DB
 
-	// Seed multi-tenant test data
-	if err := seeders.SeedMultiTenantData(db); err != nil {
-		t.Fatalf("Failed to seed multi-tenant data: %v", err)
-	}
+	// Note: Test data is now provided by the consolidated SQL seed migration
+	// The migration 002_consolidated_seed_data.up.sql contains all necessary test data
 
 	// Setup Fiber app with routes
 	app := fiber.New()
@@ -258,9 +255,9 @@ func TestMultiTenantAnalyticsSeparation(t *testing.T) {
 		}
 	})
 
-	// Cleanup
+	// Cleanup is handled by config.CleanupTestDB()
 	t.Cleanup(func() {
-		seeders.CleanupMultiTenantData(db)
+		// No additional cleanup needed - handled by config.CleanupTestDB()
 	})
 }
 
@@ -304,10 +301,8 @@ func TestCrossOrganizationDataLeakage(t *testing.T) {
 
 	db := config.DB
 
-	// Seed multi-tenant test data
-	if err := seeders.SeedMultiTenantData(db); err != nil {
-		t.Fatalf("Failed to seed multi-tenant data: %v", err)
-	}
+	// Note: Test data is now provided by the consolidated SQL seed migration
+	// The migration 002_consolidated_seed_data.up.sql contains all necessary test data
 
 	t.Run("Super Admin Cross-Organization Access", func(t *testing.T) {
 		// Test that super admin can access both organizations
@@ -362,8 +357,8 @@ func TestCrossOrganizationDataLeakage(t *testing.T) {
 		assert.Equal(t, http.StatusForbidden, resp.StatusCode)
 	})
 
-	// Cleanup
+	// Cleanup is handled by config.CleanupTestDB()
 	t.Cleanup(func() {
-		seeders.CleanupMultiTenantData(db)
+		// No additional cleanup needed - handled by config.CleanupTestDB()
 	})
 }

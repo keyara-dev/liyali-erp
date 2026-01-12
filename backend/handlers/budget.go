@@ -22,7 +22,7 @@ func GetBudgets(c *fiber.Ctx) error {
 	logger.Info("get_budgets_request")
 
 	// Get organization context from tenant middleware
-	tenant, err := middleware.GetTenantContext(*c)
+	tenant, err := middleware.GetTenantContext(c)
 	if err != nil {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 			"success": false,
@@ -110,7 +110,7 @@ func CreateBudget(c *fiber.Ctx) error {
 	logger.Info("create_budget_request")
 
 	// Get organization context from tenant middleware
-	tenant, err := middleware.GetTenantContext(*c)
+	tenant, err := middleware.GetTenantContext(c)
 	if err != nil {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 			"success": false,
@@ -185,13 +185,18 @@ func CreateBudget(c *fiber.Ctx) error {
 		OrganizationID:  tenant.OrganizationID, // SECURITY FIX: Set organization ID
 		OwnerID:         userID,
 		BudgetCode:      req.BudgetCode,
+		Name:            req.Name,        // Add name field
+		Description:     req.Description, // Add description field
 		Department:      req.Department,
+		DepartmentID:    req.DepartmentID, // Add department ID field
 		Status:          "draft",
 		FiscalYear:      req.FiscalYear,
 		TotalBudget:     req.TotalBudget,
 		AllocatedAmount: req.AllocatedAmount,
 		RemainingAmount: remainingAmount,
+		Currency:        req.Currency, // Add currency field
 		ApprovalStage:   0,
+		CreatedBy:       userID, // Add created by field
 		CreatedAt:       time.Now(),
 		UpdatedAt:       time.Now(),
 	}
@@ -218,7 +223,7 @@ func GetBudget(c *fiber.Ctx) error {
 	logger.Info("get_budget_request")
 
 	// Get organization context from tenant middleware
-	tenant, err := middleware.GetTenantContext(*c)
+	tenant, err := middleware.GetTenantContext(c)
 	if err != nil {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 			"success": false,
@@ -262,7 +267,7 @@ func UpdateBudget(c *fiber.Ctx) error {
 	logger.Info("update_budget_request")
 
 	// Get organization context from tenant middleware
-	tenant, err := middleware.GetTenantContext(*c)
+	tenant, err := middleware.GetTenantContext(c)
 	if err != nil {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 			"success": false,
@@ -349,7 +354,7 @@ func DeleteBudget(c *fiber.Ctx) error {
 	logger.Info("delete_budget_request")
 
 	// Get organization context from tenant middleware
-	tenant, err := middleware.GetTenantContext(*c)
+	tenant, err := middleware.GetTenantContext(c)
 	if err != nil {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 			"success": false,
@@ -407,7 +412,7 @@ func SubmitBudget(c *fiber.Ctx) error {
 	logger.Info("submit_budget_request")
 
 	// Get organization context from tenant middleware
-	tenant, err := middleware.GetTenantContext(*c)
+	tenant, err := middleware.GetTenantContext(c)
 	if err != nil {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 			"success": false,
@@ -463,7 +468,7 @@ func SubmitBudget(c *fiber.Ctx) error {
 	logger.Debug("assigning_workflow_to_budget")
 
 	// Assign workflow to the budget
-	_, err = workflowExecutionService.AssignWorkflowToDocument(c.Context(), organizationID, budget.ID, "BUDGET", userID)
+	_, err = workflowExecutionService.AssignWorkflowToDocument(c.Context(), organizationID, budget.ID, "budget", userID)
 	if err != nil {
 		logging.LogError(c, err, "failed_to_assign_workflow_to_budget")
 		return utils.SendInternalError(c, "Failed to assign workflow to budget", err)

@@ -128,32 +128,19 @@ func (r *SessionRepository) CountUserActive(ctx context.Context, userID string) 
 	return count, nil
 }
 
-func (r *SessionRepository) UpdateRefreshToken(ctx context.Context, id uuid.UUID, newRefreshToken string, expiresAt time.Time) error {
-	// Temporarily commented out due to missing SQLC method
-	// TODO: Fix SQLC generation for UpdateSessionRefreshToken
-	/*
-	pgUUID := pgtype.UUID{
+// UpdateRefreshToken updates the refresh token for a session with old token verification
+func (r *SessionRepository) UpdateRefreshToken(ctx context.Context, id uuid.UUID, oldRefreshToken, newRefreshToken string, expiresAt time.Time) (int64, error) {
+	rowsAffected, err := r.queries.UpdateSessionRefreshToken(ctx, pgtype.UUID{
 		Bytes: id,
 		Valid: true,
-	}
-
-	expiresAtPgType := pgtype.Timestamp{
+	}, newRefreshToken, pgtype.Timestamp{
 		Time:  expiresAt,
 		Valid: true,
+	}, oldRefreshToken)
+
+	if err != nil {
+		return 0, err
 	}
 
-	err := r.queries.UpdateSessionRefreshToken(ctx, sqlc.UpdateSessionRefreshTokenParams{
-		ID:           pgUUID,
-		RefreshToken: newRefreshToken,
-		ExpiresAt:    expiresAtPgType,
-	})
-	if err != nil {
-		return fmt.Errorf("failed to update session refresh token: %w", err)
-	}
-	
-	return nil
-	*/
-	
-	// Temporary workaround - return error for now
-	return fmt.Errorf("UpdateSessionRefreshToken method temporarily disabled - SQLC generation issue")
+	return rowsAffected, nil
 }

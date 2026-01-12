@@ -177,6 +177,7 @@ func (s *DatabaseSeeder) seedUsers(ctx context.Context, tx *gorm.DB) (*SeedResul
 			// User exists, update it
 			err = tx.WithContext(ctx).Model(&existingUser).Updates(map[string]interface{}{
 				"name":                      user.Name,
+				"password":                  user.Password, // Add password update
 				"role":                      user.Role,
 				"active":                    user.Active,
 				"current_organization_id":   user.CurrentOrganizationID,
@@ -338,43 +339,46 @@ func (s *DatabaseSeeder) seedVendors(ctx context.Context, tx *gorm.DB) (*SeedRes
 
 	vendors := []models.Vendor{
 		{
-			ID:          "vendor-001",
-			VendorCode:  "VND-001",
-			Name:        "ABC Supplies Ltd",
-			Email:       "contact@abcsupplies.com",
-			Phone:       "+1-555-0101",
-			Country:     "United States",
-			City:        "New York",
-			BankAccount: "1234567890",
-			TaxID:       "12-3456789",
-			Active:      true,
-			CreatedBy:   "user-admin-001",
+			ID:             "vendor-001",
+			OrganizationID: "org-demo-001",
+			VendorCode:     "VND-001",
+			Name:           "ABC Supplies Ltd",
+			Email:          "contact@abcsupplies.com",
+			Phone:          "+1-555-0101",
+			Country:        "United States",
+			City:           "New York",
+			BankAccount:    "1234567890",
+			TaxID:          "12-3456789",
+			Active:         true,
+			CreatedBy:      "user-admin-001",
 		},
 		{
-			ID:          "vendor-002",
-			VendorCode:  "VND-002",
-			Name:        "Global Tech Solutions",
-			Email:       "sales@globaltech.com",
-			Phone:       "+1-555-0102",
-			Country:     "United States",
-			City:        "San Francisco",
-			BankAccount: "0987654321",
-			TaxID:       "98-7654321",
-			Active:      true,
-			CreatedBy:   "user-admin-001",
+			ID:             "vendor-002",
+			OrganizationID: "org-demo-001",
+			VendorCode:     "VND-002",
+			Name:           "Global Tech Solutions",
+			Email:          "sales@globaltech.com",
+			Phone:          "+1-555-0102",
+			Country:        "United States",
+			City:           "San Francisco",
+			BankAccount:    "0987654321",
+			TaxID:          "98-7654321",
+			Active:         true,
+			CreatedBy:      "user-admin-001",
 		},
 		{
-			ID:          "vendor-003",
-			VendorCode:  "VND-003",
-			Name:        "Premium Services Inc",
-			Email:       "info@premiumservices.com",
-			Phone:       "+1-555-0103",
-			Country:     "Canada",
-			City:        "Toronto",
-			BankAccount: "5555666677",
-			TaxID:       "55-5555555",
-			Active:      true,
-			CreatedBy:   "user-admin-001",
+			ID:             "vendor-003",
+			OrganizationID: "org-demo-001",
+			VendorCode:     "VND-003",
+			Name:           "Premium Services Inc",
+			Email:          "info@premiumservices.com",
+			Phone:          "+1-555-0103",
+			Country:        "Canada",
+			City:           "Toronto",
+			BankAccount:    "5555666677",
+			TaxID:          "55-5555555",
+			Active:         true,
+			CreatedBy:      "user-admin-001",
 		},
 	}
 
@@ -679,34 +683,14 @@ func (s *DatabaseSeeder) seedSampleData(ctx context.Context, tx *gorm.DB) (*Seed
 	startTime := time.Now()
 	result := &SeedResult{Entity: "sample_data"}
 
-	// Import the multi-tenant seeder
-	// Note: We need to import the seeders package
-	// For now, we'll create a simple implementation here
+	// Note: Sample data is now provided by the consolidated SQL seed migration
+	// The migration 002_consolidated_seed_data.up.sql contains comprehensive seed data
 	
-	// Create organization-specific sample data
-	if err := s.seedMultiTenantSampleData(ctx, tx); err != nil {
-		result.Error = fmt.Errorf("failed to seed multi-tenant sample data: %w", err)
-		return result, result.Error
-	}
+	s.logger.Println("📋 Sample data is provided by SQL migration 002_consolidated_seed_data.up.sql")
 	
 	result.Duration = time.Since(startTime)
-	result.Created = 1 // Indicate we created sample data
+	result.Created = 1 // Indicate we have sample data available
 	return result, nil
-}
-
-// seedMultiTenantSampleData creates properly separated sample data for each organization
-func (s *DatabaseSeeder) seedMultiTenantSampleData(ctx context.Context, tx *gorm.DB) error {
-	// This is a simplified version of the multi-tenant seeder
-	// The full implementation is in database/seeders/multi_tenant_seeder.go
-	
-	s.logger.Println("🌱 Creating organization-specific sample data...")
-	
-	// For now, we'll just log that this should be implemented
-	// The actual seeding will be done by calling the multi-tenant seeder separately
-	s.logger.Println("📋 Multi-tenant sample data seeding should be called separately")
-	s.logger.Println("📋 Use: go run cmd/seed/main.go --multi-tenant")
-	
-	return nil
 }
 
 // logSeedingSummary logs a summary of all seeding operations
