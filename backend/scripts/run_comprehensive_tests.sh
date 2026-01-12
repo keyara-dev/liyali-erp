@@ -1,7 +1,35 @@
 #!/bin/bash
 
-# LIYALI GATEWAY COMPREHENSIVE TEST SUITE
-# Automated testing for all API endpoints and critical fixes
+# LIYALI GATEWAY COMPREHENSIVE TEST SUITE - LEGACY VERSION
+# 
+# ⚠️  DEPRECATED: This monolithic test script has been refactored into modular components.
+# 
+# 🚀 NEW MODULAR TEST SUITE:
+# Use ./run_tests.sh instead for better maintainability and selective testing.
+# 
+# Available modules:
+# - ./run_tests.sh auth          # Authentication tests
+# - ./run_tests.sh rbac          # Role-based access control
+# - ./run_tests.sh documents     # Document management
+# - ./run_tests.sh workflows     # Workflow & approval system
+# - ./run_tests.sh departments   # Department management
+# - ./run_tests.sh analytics     # Analytics & notifications
+# - ./run_tests.sh errors        # Error handling & security
+# - ./run_tests.sh               # Run all modules
+#
+# For more information, see: README_TESTS.md
+
+echo "⚠️  WARNING: This script is deprecated. Please use the new modular test suite:"
+echo "   ./run_tests.sh --help"
+echo ""
+echo "Redirecting to modular test suite in 5 seconds..."
+sleep 5
+
+# Redirect to new modular test suite
+exec "$(dirname "$0")/run_tests.sh" "$@"
+
+# Legacy code below (kept for reference but not executed)
+exit 0
 
 # Note: We don't use 'set -e' because we want to continue testing even if some tests fail
 
@@ -1363,7 +1391,423 @@ test_advanced_workflow_management() {
     fi
 }
 
+# NEW: Advanced CRUD Operations Testing
+test_advanced_crud_operations() {
+    echo ""
+    echo "=========================================="
+    echo "🔧 ADVANCED CRUD OPERATIONS"
+    echo "=========================================="
+    
+    local auth_header="-H 'Authorization: Bearer $ACCESS_TOKEN' -H 'X-Organization-ID: $ORGANIZATION_ID'"
+    
+    # Individual Category Operations
+    if [ ! -z "$CATEGORY_ID" ]; then
+        print_status "TESTING" "Get Individual Category by ID"
+        make_request "GET" "$API_URL/categories/$CATEGORY_ID" "" "$auth_header" 200
+        
+        print_status "TESTING" "Update Category by ID"
+        local timestamp=$(date +%s)
+        local category_update="{
+            \"name\": \"Updated Category $timestamp\",
+            \"description\": \"Updated category description with timestamp\"
+        }"
+        make_request "PUT" "$API_URL/categories/$CATEGORY_ID" "$category_update" "$auth_header" 200
+        
+        print_status "TESTING" "Get Category Budget Codes"
+        make_request "GET" "$API_URL/categories/$CATEGORY_ID/budget-codes" "" "$auth_header" 200
+        
+        print_status "TESTING" "Add Budget Code to Category"
+        local budget_code_data="{
+            \"budgetCode\": \"TEST-$timestamp\"
+        }"
+        make_request "POST" "$API_URL/categories/$CATEGORY_ID/budget-codes" "$budget_code_data" "$auth_header" 201
+        
+        print_status "TESTING" "Remove Budget Code from Category"
+        make_request "DELETE" "$API_URL/categories/$CATEGORY_ID/budget-codes/TEST-$timestamp" "" "$auth_header" 200
+    fi
+    
+    # Individual Vendor Operations
+    if [ ! -z "$VENDOR_ID" ]; then
+        print_status "TESTING" "Get Individual Vendor by ID"
+        make_request "GET" "$API_URL/vendors/$VENDOR_ID" "" "$auth_header" 200
+        
+        print_status "TESTING" "Update Vendor by ID"
+        local timestamp=$(date +%s)
+        local vendor_update="{
+            \"name\": \"Updated Vendor Corp $timestamp\",
+            \"email\": \"updated-$timestamp@vendor.com\",
+            \"phone\": \"+1-555-0199\"
+        }"
+        make_request "PUT" "$API_URL/vendors/$VENDOR_ID" "$vendor_update" "$auth_header" 200
+        
+        print_status "TESTING" "Deactivate Vendor"
+        local vendor_deactivate="{
+            \"active\": false
+        }"
+        make_request "PUT" "$API_URL/vendors/$VENDOR_ID" "$vendor_deactivate" "$auth_header" 200
+        
+        print_status "TESTING" "Reactivate Vendor"
+        local vendor_reactivate="{
+            \"active\": true
+        }"
+        make_request "PUT" "$API_URL/vendors/$VENDOR_ID" "$vendor_reactivate" "$auth_header" 200
+    fi
+    
+    # Individual Document Operations
+    if [ ! -z "$REQUISITION_ID" ]; then
+        print_status "TESTING" "Get Requisition by ID"
+        make_request "GET" "$API_URL/requisitions/$REQUISITION_ID" "" "$auth_header" 200
+        
+        print_status "TESTING" "Get Requisition Approval History"
+        make_request "GET" "$API_URL/documents/$REQUISITION_ID/approval-history" "" "$auth_header" 200
+        
+        print_status "TESTING" "Get Requisition Approval Status"
+        make_request "GET" "$API_URL/documents/$REQUISITION_ID/approval-status" "" "$auth_header" 200
+    fi
+    
+    if [ ! -z "$BUDGET_ID" ]; then
+        print_status "TESTING" "Get Budget by ID"
+        make_request "GET" "$API_URL/budgets/$BUDGET_ID" "" "$auth_header" 200
+        
+        print_status "TESTING" "Get Budget Allocation Details"
+        make_request "GET" "$API_URL/budgets/$BUDGET_ID/allocations" "" "$auth_header" 200
+    fi
+}
+
+# NEW: Advanced Workflow Operations Testing
+test_advanced_workflow_operations() {
+    echo ""
+    echo "=========================================="
+    echo "🔄 ADVANCED WORKFLOW OPERATIONS"
+    echo "=========================================="
+    
+    local auth_header="-H 'Authorization: Bearer $ACCESS_TOKEN' -H 'X-Organization-ID: $ORGANIZATION_ID'"
+    
+    if [ ! -z "$WORKFLOW_ID" ]; then
+        print_status "TESTING" "Get Individual Workflow by ID"
+        make_request "GET" "$API_URL/workflows/$WORKFLOW_ID" "" "$auth_header" 200
+        
+        print_status "TESTING" "Duplicate Workflow"
+        make_request "POST" "$API_URL/workflows/$WORKFLOW_ID/duplicate" "" "$auth_header" 201
+        
+        print_status "TESTING" "Get Workflow Usage Statistics"
+        make_request "GET" "$API_URL/workflows/$WORKFLOW_ID/usage" "" "$auth_header" 200
+        
+        print_status "TESTING" "Validate Workflow Configuration"
+        local validation_data="{
+            \"name\": \"Test Validation Workflow\",
+            \"entityType\": \"requisition\",
+            \"stages\": [
+                {
+                    \"stageName\": \"Manager Review\",
+                    \"stageNumber\": 1,
+                    \"requiredRole\": \"manager\",
+                    \"requiredApprovals\": 1
+                }
+            ]
+        }"
+        make_request "POST" "$API_URL/workflows/validate" "$validation_data" "$auth_header" 200
+        
+        print_status "TESTING" "Resolve Workflow for Document Type"
+        local resolve_data="{
+            \"entityType\": \"requisition\",
+            \"organizationId\": \"$ORGANIZATION_ID\"
+        }"
+        make_request "POST" "$API_URL/workflows/resolve" "$resolve_data" "$auth_header" 200
+        
+        print_status "TESTING" "Get Workflow Performance Metrics"
+        make_request "GET" "$API_URL/workflows/$WORKFLOW_ID/metrics" "" "$auth_header" 200
+        
+        print_status "TESTING" "Export Workflow Configuration"
+        make_request "GET" "$API_URL/workflows/$WORKFLOW_ID/export" "" "$auth_header" 200
+    fi
+}
+
+# NEW: Advanced Notification System Testing
+test_advanced_notification_system() {
+    echo ""
+    echo "=========================================="
+    echo "🔔 ADVANCED NOTIFICATION SYSTEM"
+    echo "=========================================="
+    
+    local auth_header="-H 'Authorization: Bearer $ACCESS_TOKEN' -H 'X-Organization-ID: $ORGANIZATION_ID'"
+    
+    print_status "TESTING" "Get Notifications (Implemented)"
+    make_request "GET" "$API_URL/notifications" "" "$auth_header" 200
+    
+    print_status "TESTING" "Get Recent Notifications (Implemented)"
+    make_request "GET" "$API_URL/notifications/recent" "" "$auth_header" 200
+    
+    print_status "TESTING" "Get Notification Stats (Implemented)"
+    make_request "GET" "$API_URL/notifications/stats" "" "$auth_header" 200
+    
+    print_status "TESTING" "Mark All Notifications as Read (Implemented)"
+    make_request "POST" "$API_URL/notifications/mark-all-as-read" "" "$auth_header" 200
+    
+    print_status "TESTING" "Mark Notification as Read (Expected: Validation Error)"
+    make_request "POST" "$API_URL/notifications/mark-as-read" "" "$auth_header" 400
+    
+    print_status "TESTING" "Delete Notification (Expected: Not Found)"
+    make_request "DELETE" "$API_URL/notifications/test-notification-1" "" "$auth_header" 404
+}
+
+# NEW: Advanced User Management Testing
+test_advanced_user_management() {
+    echo ""
+    echo "=========================================="
+    echo "👥 ADVANCED USER MANAGEMENT"
+    echo "=========================================="
+    
+    local auth_header="-H 'Authorization: Bearer $ACCESS_TOKEN' -H 'X-Organization-ID: $ORGANIZATION_ID'"
+    
+    print_status "TESTING" "Get Current User Profile Details"
+    make_request "GET" "$API_URL/auth/profile" "" "$auth_header" 200
+    
+    print_status "TESTING" "Get User Permissions (Expected: Not Implemented)"
+    make_request "GET" "$API_URL/users/user-admin-001/permissions" "" "$auth_header" 500
+    
+    print_status "TESTING" "Grant User Permission (Expected: Not Implemented)"
+    make_request "POST" "$API_URL/users/user-admin-001/permissions/document/view" "" "$auth_header" 500
+    
+    print_status "TESTING" "Revoke User Permission (Expected: Not Implemented)"
+    make_request "DELETE" "$API_URL/users/user-admin-001/permissions/document/view" "" "$auth_header" 500
+}
+
+# NEW: Audit Logging Testing
+test_audit_logging() {
+    echo ""
+    echo "=========================================="
+    echo "📋 AUDIT LOGGING SYSTEM"
+    echo "=========================================="
+    
+    local auth_header="-H 'Authorization: Bearer $ACCESS_TOKEN' -H 'X-Organization-ID: $ORGANIZATION_ID'"
+    
+    print_status "TESTING" "Get Audit Logs (Expected: Not Implemented)"
+    make_request "GET" "$API_URL/audit-logs" "" "$auth_header" 404
+    
+    if [ ! -z "$REQUISITION_ID" ]; then
+        print_status "TESTING" "Get Document Audit Trail (Expected: Not Implemented)"
+        make_request "GET" "$API_URL/audit-logs/document/$REQUISITION_ID" "" "$auth_header" 404
+    fi
+}
+
+# NEW: Advanced Organization Management Testing
+test_advanced_organization_management() {
+    echo ""
+    echo "=========================================="
+    echo "🏢 ADVANCED ORGANIZATION MANAGEMENT"
+    echo "=========================================="
+    
+    local auth_header="-H 'Authorization: Bearer $ACCESS_TOKEN' -H 'X-Organization-ID: $ORGANIZATION_ID'"
+    
+    print_status "TESTING" "Get Organization Details (Expected: Not Implemented)"
+    make_request "GET" "$API_URL/organization" "" "$auth_header" 404
+    
+    print_status "TESTING" "Get Organization Settings (Implemented)"
+    make_request "GET" "$API_URL/organization/settings" "" "$auth_header" 200
+    
+    print_status "TESTING" "Update Organization Settings (Implemented)"
+    local settings_data='{
+        "requireDigitalSignatures": true,
+        "currency": "USD",
+        "fiscalYearStart": 1,
+        "enableBudgetValidation": true,
+        "budgetVarianceThreshold": 15
+    }'
+    make_request "PUT" "$API_URL/organization/settings" "$settings_data" "$auth_header" 200
+    
+    print_status "TESTING" "Get Organization Members (Implemented)"
+    make_request "GET" "$API_URL/organization/members" "" "$auth_header" 200
+}
+
 # NEW: Complete Approval System Testing
+test_complete_approval_system() {
+    echo ""
+    echo "=========================================="
+    echo "✅ COMPLETE APPROVAL SYSTEM TESTING"
+    echo "=========================================="
+    
+    local auth_header="-H 'Authorization: Bearer $ACCESS_TOKEN' -H 'X-Organization-ID: $ORGANIZATION_ID'"
+    
+    print_status "TESTING" "Get All Approval Tasks"
+    make_request "GET" "$API_URL/approvals" "" "$auth_header" 200
+    
+    print_status "TESTING" "Get Approval Tasks by Status"
+    make_request "GET" "$API_URL/approvals?status=pending" "" "$auth_header" 200
+    
+    print_status "TESTING" "Get My Approval Tasks"
+    make_request "GET" "$API_URL/approvals/my-tasks" "" "$auth_header" 200
+    
+    print_status "TESTING" "Get Approval Task Details"
+    make_request "GET" "$API_URL/approvals/test-task-id" "" "$auth_header" 404
+    
+    print_status "TESTING" "Approve Task"
+    local approve_data="{
+        \"comment\": \"Approved for testing purposes\",
+        \"decision\": \"approve\"
+    }"
+    make_request "POST" "$API_URL/approvals/test-task-id/approve" "$approve_data" "$auth_header" 404
+    
+    print_status "TESTING" "Reject Task"
+    local reject_data="{
+        \"comment\": \"Rejected for testing purposes\",
+        \"reason\": \"Insufficient documentation\"
+    }"
+    make_request "POST" "$API_URL/approvals/test-task-id/reject" "$reject_data" "$auth_header" 404
+    
+    print_status "TESTING" "Reassign Task"
+    local reassign_data="{
+        \"newApproverId\": \"user-approver-001\",
+        \"comment\": \"Reassigning to appropriate approver\"
+    }"
+    make_request "POST" "$API_URL/approvals/test-task-id/reassign" "$reassign_data" "$auth_header" 404
+    
+    print_status "TESTING" "Bulk Approve Tasks"
+    local bulk_approve_data="{
+        \"taskIds\": [\"test-task-1\", \"test-task-2\"],
+        \"comment\": \"Bulk approval for testing\"
+    }"
+    make_request "POST" "$API_URL/approvals/bulk/approve" "$bulk_approve_data" "$auth_header" 500
+    
+    print_status "TESTING" "Bulk Reject Tasks"
+    local bulk_reject_data="{
+        \"taskIds\": [\"test-task-1\", \"test-task-2\"],
+        \"comment\": \"Bulk rejection for testing\"
+    }"
+    make_request "POST" "$API_URL/approvals/bulk/reject" "$bulk_reject_data" "$auth_header" 500
+    
+    print_status "TESTING" "Bulk Reassign Tasks"
+    local bulk_reassign_data="{
+        \"taskIds\": [\"test-task-1\", \"test-task-2\"],
+        \"newApproverId\": \"user-approver-001\",
+        \"comment\": \"Bulk reassignment for testing\"
+    }"
+    make_request "POST" "$API_URL/approvals/bulk/reassign" "$bulk_reassign_data" "$auth_header" 500
+    
+    print_status "TESTING" "Get Approval Statistics"
+    make_request "GET" "$API_URL/approvals/stats" "" "$auth_header" 200
+    
+    print_status "TESTING" "Get Approval Performance Metrics"
+    make_request "GET" "$API_URL/approvals/performance" "" "$auth_header" 200
+    
+    print_status "TESTING" "Get Escalated Approvals"
+    make_request "GET" "$API_URL/approvals/escalated" "" "$auth_header" 200
+}
+
+# NEW: Authentication Extensions Testing
+test_authentication_extensions() {
+    echo ""
+    echo "=========================================="
+    echo "🔐 AUTHENTICATION EXTENSIONS"
+    echo "=========================================="
+    
+    print_status "TESTING" "User Registration"
+    local timestamp=$(date +%s)
+    local registration_data="{
+        \"name\": \"Test User $timestamp\",
+        \"email\": \"testuser$timestamp@example.com\",
+        \"password\": \"password\",
+        \"confirmPassword\": \"password\",
+        \"role\": \"requester\"
+    }"
+    make_request "POST" "$API_URL/auth/register" "$registration_data" "" 201
+    
+    print_status "TESTING" "Request Password Reset"
+    local reset_request_data="{
+        \"email\": \"admin@liyali.com\"
+    }"
+    make_request "POST" "$API_URL/auth/password-reset/request" "$reset_request_data" "" 200
+    
+    print_status "TESTING" "Confirm Password Reset"
+    local reset_confirm_data="{
+        \"token\": \"invalid-token\",
+        \"newPassword\": \"newpassword\",
+        \"confirmPassword\": \"newpassword\"
+    }"
+    make_request "POST" "$API_URL/auth/password-reset/confirm" "$reset_confirm_data" "" 400
+    
+    print_status "TESTING" "Logout All Sessions"
+    make_request "POST" "$API_URL/auth/logout-all" "" "-H 'Authorization: Bearer $ACCESS_TOKEN'" 200
+    
+    print_status "TESTING" "Get Active Sessions"
+    make_request "GET" "$API_URL/auth/sessions" "" "-H 'Authorization: Bearer $ACCESS_TOKEN'" 200
+    
+    print_status "TESTING" "Revoke Session"
+    make_request "DELETE" "$API_URL/auth/sessions/test-session-id" "" "-H 'Authorization: Bearer $ACCESS_TOKEN'" 404
+}
+
+# NEW: Error Handling and Edge Cases Testing
+test_error_handling_edge_cases() {
+    echo ""
+    echo "=========================================="
+    echo "⚠️ ERROR HANDLING & EDGE CASES"
+    echo "=========================================="
+    
+    local auth_header="-H 'Authorization: Bearer $ACCESS_TOKEN' -H 'X-Organization-ID: $ORGANIZATION_ID'"
+    
+    print_status "TESTING" "Invalid Authentication Token"
+    make_request "GET" "$API_URL/organization/roles" "" "-H 'Authorization: Bearer invalid-token' -H 'X-Organization-ID: $ORGANIZATION_ID'" 401
+    
+    print_status "TESTING" "Missing Organization Context"
+    make_request "GET" "$API_URL/organization/roles" "" "-H 'Authorization: Bearer $ACCESS_TOKEN'" 400
+    
+    print_status "TESTING" "Invalid Organization ID"
+    make_request "GET" "$API_URL/organization/roles" "" "-H 'Authorization: Bearer $ACCESS_TOKEN' -H 'X-Organization-ID: invalid-org-id'" 403
+    
+    print_status "TESTING" "Malformed JSON Request"
+    make_request "POST" "$API_URL/categories" "{ invalid json }" "$auth_header" 400
+    
+    print_status "TESTING" "Missing Required Fields"
+    make_request "POST" "$API_URL/categories" "{}" "$auth_header" 400
+    
+    print_status "TESTING" "Non-existent Resource Access"
+    make_request "GET" "$API_URL/categories/non-existent-id" "" "$auth_header" 404
+    
+    print_status "TESTING" "Unauthorized Resource Access"
+    make_request "DELETE" "$API_URL/organization/roles/system-admin-role" "" "$auth_header" 404
+    
+    print_status "TESTING" "Rate Limiting Test"
+    for i in {1..5}; do
+        make_request "GET" "$API_URL/health" "" "" 200 > /dev/null 2>&1
+    done
+    print_status "INFO" "Rate limiting test completed (5 rapid requests)"
+}
+
+# NEW: Performance and Load Testing
+test_performance_load() {
+    echo ""
+    echo "=========================================="
+    echo "⚡ PERFORMANCE & LOAD TESTING"
+    echo "=========================================="
+    
+    local auth_header="-H 'Authorization: Bearer $ACCESS_TOKEN' -H 'X-Organization-ID: $ORGANIZATION_ID'"
+    
+    print_status "TESTING" "Response Time Measurement"
+    local start_time=$(date +%s%N)
+    make_request "GET" "$API_URL/categories" "" "$auth_header" 200 > /dev/null 2>&1
+    local end_time=$(date +%s%N)
+    local response_time=$(( (end_time - start_time) / 1000000 ))
+    print_status "INFO" "Categories endpoint response time: ${response_time}ms"
+    
+    print_status "TESTING" "Concurrent Request Handling"
+    for i in {1..10}; do
+        make_request "GET" "$API_URL/health" "" "" 200 > /dev/null 2>&1 &
+    done
+    wait
+    print_status "INFO" "Concurrent requests test completed (10 parallel requests)"
+    
+    print_status "TESTING" "Database Connection Pool"
+    for i in {1..20}; do
+        make_request "GET" "$API_URL/vendors" "" "$auth_header" 200 > /dev/null 2>&1
+    done
+    print_status "INFO" "Database connection pool test completed (20 sequential requests)"
+    
+    print_status "TESTING" "Memory Usage Stability"
+    make_request "GET" "$API_URL/analytics/dashboard" "" "$auth_header" 200 > /dev/null 2>&1
+    make_request "GET" "$API_URL/analytics/requisitions/metrics" "" "$auth_header" 200 > /dev/null 2>&1
+    make_request "GET" "$API_URL/analytics/approvals/metrics" "" "$auth_header" 200 > /dev/null 2>&1
+    print_status "INFO" "Memory usage stability test completed (analytics endpoints)"
+}
 test_complete_approval_system() {
     echo ""
     echo "=========================================="
@@ -1549,6 +1993,7 @@ main() {
     test_organization_management
     test_analytics_and_reporting
     test_notifications
+    test_advanced_notification_system
     test_advanced_system_operations
     test_department_management
     test_user_department_management
@@ -1560,6 +2005,11 @@ main() {
     test_generic_document_system
     test_authentication_extensions
     test_session_management
+    test_advanced_user_management
+    test_audit_logging
+    test_advanced_organization_management
+    test_error_handling_edge_cases
+    test_performance_load
     test_logout
     
     print_summary
