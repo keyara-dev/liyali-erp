@@ -420,14 +420,14 @@ export function RequisitionsTable({
   // );
 
   return (
-    <TooltipProvider>
-      <DataTable
-        columns={columns}
-        data={data}
-        searchKey="title"
-        searchPlaceholder="Search by title, document number, or requester..."
-        // actions={getActions}
-        renderRowActions={(req: Requisition) => (
+    <DataTable
+      columns={columns}
+      data={data}
+      searchKey="title"
+      searchPlaceholder="Search by title, document number, or requester..."
+      // actions={getActions}
+      renderRowActions={(req: Requisition) => (
+        <TooltipProvider>
           <ReqOptionsMenu
             req={req}
             router={router}
@@ -436,8 +436,8 @@ export function RequisitionsTable({
             userRole={userRole}
             onRefresh={refetch}
           />
-        )}
-      />
-    </TooltipProvider>
+        </TooltipProvider>
+      )}
+    />
   );
 }

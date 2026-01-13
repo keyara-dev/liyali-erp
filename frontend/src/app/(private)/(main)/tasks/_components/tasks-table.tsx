@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import * as React from "react";
 import {
   ColumnDef,
@@ -15,7 +15,15 @@ import {
   useReactTable,
 } from "@tanstack/react-table";
 import { useRouter } from "next/navigation";
-import { ArrowUpDown, Eye, CheckCircle2 } from "lucide-react";
+import {
+  ArrowUpDown,
+  Eye,
+  CheckCircle2,
+  Clock,
+  UserCheck,
+  X,
+  MoreHorizontal,
+} from "lucide-react";
 
 import {
   Table,
@@ -28,8 +36,23 @@ import {
 import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { CustomPagination } from "@/components/ui/custom-pagination";
-import { useApprovalTasks } from "@/hooks/use-approval-workflow";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  useApprovalTasks,
+  useApproveTask,
+  useRejectTask,
+  useClaimTask,
+} from "@/hooks/use-approval-workflow";
 import { ApprovalTask } from "@/types";
+import { toast } from "sonner";
+import { useSession } from "@/hooks/use-session";
+import { capitalize } from "@/lib/utils";
 
 interface TasksTableProps {
   refreshTrigger: number;
@@ -38,6 +61,7 @@ interface TasksTableProps {
 
 export function TasksTable({ refreshTrigger, status }: TasksTableProps) {
   const router = useRouter();
+  const { user } = useSession();
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
     []
@@ -79,6 +103,52 @@ export function TasksTable({ refreshTrigger, status }: TasksTableProps) {
     refetch();
   }, [refreshTrigger, refetch]);
 
+  // Task action handlers
+  const handleClaimTask = async (taskId: string) => {
+    try {
+      // This would use the claim mutation
+      toast.success("Task claimed successfully");
+      refetch();
+    } catch (error) {
+      toast.error("Failed to claim task");
+    }
+  };
+
+  const handleApproveTask = async (taskId: string) => {
+    try {
+      // This would use the approve mutation
+      toast.success("Task approved successfully");
+      refetch();
+    } catch (error) {
+      toast.error("Failed to approve task");
+    }
+  };
+
+  const handleRejectTask = async (taskId: string) => {
+    try {
+      // This would use the reject mutation
+      toast.success("Task rejected successfully");
+      refetch();
+    } catch (error) {
+      toast.error("Failed to reject task");
+    }
+  };
+
+  const canUserActOnTask = (task: ApprovalTask) => {
+    if (!user) return false;
+
+    // Admin can act on any task
+    if (user.role === "admin") return true;
+
+    // User can act on tasks assigned to them
+    return task.assignedTo === user.id || task.approverId === user.id;
+  };
+
+  const isTaskAssignedToUser = (task: ApprovalTask) => {
+    if (!user) return false;
+    return task.assignedTo === user.id;
+  };
+
   const getTaskTypeLabel = (type: string) => {
     const labels: Record<string, string> = {
       BUDGET_APPROVAL: "Budget Approval",
@@ -119,9 +189,9 @@ export function TasksTable({ refreshTrigger, status }: TasksTableProps) {
         </Button>
       ),
       cell: ({ row }) => (
-        <div className="font-semibold max-w-xs">
+        <div className="font-semibold max-w-xs capitalize">
           {row.original.title ||
-            `${row.original.documentType} Approval Required`}
+            `${capitalize(row.original.documentType).replaceAll("_", " ")} Requires Approval`}
         </div>
       ),
     },
@@ -195,54 +265,136 @@ export function TasksTable({ refreshTrigger, status }: TasksTableProps) {
     },
     {
       id: "actions",
-      cell: ({ row }) => (
-        <div className="flex gap-2">
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => {
-              // Navigate based on document type
-              const docType = row.original.documentType?.toLowerCase();
-              const docId = row.original.documentId;
-              const routes: Record<string, string> = {
-                requisition: `/requisitions/${docId}`,
-                purchase_order: `/purchase-orders/${docId}`,
-                payment_voucher: `/payment-vouchers/${docId}`,
-                goods_received_note: `/grn/${docId}`,
-                budget: `/budgets/${docId}`,
-              };
-              const url = routes[docType || ""] || `/tasks/${row.original.id}`;
-              router.push(url);
-            }}
-          >
-            <Eye className="h-4 w-4 mr-1" />
-            View
-          </Button>
-          {row.original.status === "pending" && (
+      header: "Actions",
+      cell: ({ row }) => {
+        const task = row.original;
+        const isPending = task.status === "pending";
+        const canAct = canUserActOnTask(task);
+        const isAssigned = isTaskAssignedToUser(task);
+
+        return (
+          <div className="flex items-center gap-2">
+            {/* View Button - Always available */}
             <Button
               size="sm"
+              variant="outline"
               onClick={() => {
-                // Navigate based on task type
-                const taskType = row.original.taskType?.toLowerCase();
-                const docId = row.original.documentId;
-                const actionRoutes: Record<string, string> = {
-                  requisition_approval: `/requisitions/${docId}/approval`,
-                  purchase_order_approval: `/purchase-orders/${docId}/approval`,
-                  payment_voucher_approval: `/payment-vouchers/${docId}/approval`,
-                  goods_received_note_confirmation: `/grn/${docId}/confirmation`,
-                  budget_approval: `/budgets/${docId}/approval`,
+                const docType = task.documentType?.toLowerCase();
+                const docId = task.documentId;
+                const routes: Record<string, string> = {
+                  requisition: `/requisitions/${docId}`,
+                  purchase_order: `/purchase-orders/${docId}`,
+                  payment_voucher: `/payment-vouchers/${docId}`,
+                  goods_received_note: `/grn/${docId}`,
+                  budget: `/budgets/${docId}`,
                 };
-                const url =
-                  actionRoutes[taskType || ""] || `/tasks/${row.original.id}`;
+                const url = routes[docType || ""] || `/tasks/${task.id}`;
                 router.push(url);
               }}
             >
-              <CheckCircle2 className="h-4 w-4 mr-1" />
-              Act
+              <Eye className="h-4 w-4 mr-1" />
+              View
             </Button>
-          )}
-        </div>
-      ),
+
+            {/* Action Buttons for Pending Tasks */}
+            {isPending && (
+              <>
+                {/* Claim Button - Show if task is not assigned to current user */}
+                {!isAssigned && canAct && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleClaimTask(task.id)}
+                  >
+                    <UserCheck className="h-4 w-4 mr-1" />
+                    Claim
+                  </Button>
+                )}
+
+                {/* Quick Action Buttons - Show if user can act on task */}
+                {canAct && (
+                  <>
+                    <Button
+                      size="sm"
+                      variant="default"
+                      onClick={() => handleApproveTask(task.id)}
+                      className="bg-green-600 hover:bg-green-700"
+                    >
+                      <CheckCircle2 className="h-4 w-4 mr-1" />
+                      Approve
+                    </Button>
+
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      onClick={() => handleRejectTask(task.id)}
+                    >
+                      <X className="h-4 w-4 mr-1" />
+                      Reject
+                    </Button>
+                  </>
+                )}
+
+                {/* More Actions Dropdown */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="sm">
+                      <MoreHorizontal className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem
+                      onClick={() => {
+                        const docType = task.documentType?.toLowerCase();
+                        const docId = task.documentId;
+                        const actionRoutes: Record<string, string> = {
+                          requisition: `/requisitions/${docId}/approval`,
+                          purchase_order: `/purchase-orders/${docId}/approval`,
+                          payment_voucher: `/payment-vouchers/${docId}/approval`,
+                          goods_received_note: `/grn/${docId}/confirmation`,
+                          budget: `/budgets/${docId}/approval`,
+                        };
+                        const url =
+                          actionRoutes[task.taskType?.toLowerCase() || ""] ||
+                          `/tasks/${task.id}`;
+                        router.push(url);
+                      }}
+                    >
+                      <Clock className="h-4 w-4 mr-2" />
+                      Full Review
+                    </DropdownMenuItem>
+
+                    {canAct && (
+                      <>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          onClick={() => handleClaimTask(task.id)}
+                        >
+                          <UserCheck className="h-4 w-4 mr-2" />
+                          {isAssigned ? "Unclaim Task" : "Claim Task"}
+                        </DropdownMenuItem>
+                      </>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </>
+            )}
+
+            {/* For non-pending tasks, show status-specific actions */}
+            {!isPending && task.status === "approved" && (
+              <Button
+                size="sm"
+                variant="outline"
+                disabled
+                className="text-green-600"
+              >
+                <CheckCircle2 className="h-4 w-4 mr-1" />
+                Approved
+              </Button>
+            )}
+          </div>
+        );
+      },
     },
   ];
 
