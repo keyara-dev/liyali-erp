@@ -16,6 +16,8 @@ help:
 	@echo "  test-integration   - Run integration tests only"
 	@echo "  test-verbose       - Run tests with verbose output"
 	@echo "  test-comprehensive - Run comprehensive API test suite (47 endpoints)"
+	@echo "  test-api           - Run API test suite (alias for test-comprehensive)"
+	@echo "  test-api-help      - Show help for running API tests"
 	@echo "  bench              - Run benchmarks"
 	@echo "  coverage           - Generate coverage report"
 	@echo "  deps               - Download dependencies"
@@ -23,8 +25,9 @@ help:
 	@echo "  fmt                - Format code"
 	@echo "  clean              - Clean build artifacts"
 	@echo "  clean-all          - Deep clean (including caches)"
-	@echo "  db-migrate         - Run database migrations"
-	@echo "  db-reset           - Reset database with fresh migrations"
+	@echo "  db-migrate         - Run database migrations (excludes cleanup migrations)"
+	@echo "  db-migrate-single  - Run a single migration file (FILE=filename)"
+	@echo "  db-reset           - Reset database (runs cleanup + all migrations)"
 	@echo "  dev                - Start development environment"
 	@echo "  dev-fresh          - Start fresh development environment"
 	@echo "  verify-separation  - Verify multi-tenant data separation"
@@ -35,6 +38,7 @@ help:
 	@echo "  make build"
 	@echo "  make run"
 	@echo "  make test"
+	@echo "  make test-api"
 	@echo "  make test-comprehensive"
 	@echo "  make dev-fresh"
 	@echo "  PORT=9000 make run"
@@ -74,6 +78,40 @@ test-comprehensive:
 	@echo "Running comprehensive API test suite..."
 	@chmod +x scripts/run_tests.sh
 	@./scripts/run_tests.sh
+
+test-api:
+	@echo "Running API test suite..."
+	@chmod +x scripts/run_tests.sh
+	@./scripts/run_tests.sh
+
+test-api-help:
+	@echo "API Test Suite Help"
+	@echo "==================="
+	@echo ""
+	@echo "The API test suite requires the backend server to be running."
+	@echo ""
+	@echo "To run API tests:"
+	@echo "1. Start the server in one terminal:"
+	@echo "   make run"
+	@echo ""
+	@echo "2. Run API tests in another terminal:"
+	@echo "   make test-api"
+	@echo ""
+	@echo "Or run specific test modules:"
+	@echo "   ./scripts/run_tests.sh auth rbac"
+	@echo "   ./scripts/run_tests.sh workflows documents"
+	@echo ""
+	@echo "Available test modules:"
+	@echo "- auth: Authentication and session management"
+	@echo "- rbac: Role-based access control"
+	@echo "- documents: Document management (requisitions, budgets, etc.)"
+	@echo "- workflows: Workflow and approval system"
+	@echo "- custom-roles: Custom organization roles"
+	@echo "- departments: Department management"
+	@echo "- analytics: Analytics and notifications"
+	@echo "- errors: Error handling and security"
+	@echo ""
+	@echo "For more details: ./scripts/run_tests.sh --help"
 
 test-coverage:
 	@echo "Running tests with coverage..."
@@ -124,13 +162,16 @@ clean-all:
 # Database targets
 db-migrate:
 	@echo "Running database migrations..."
-	go run database/simple_migration.go
+	go run database/migrate_all.go
+
+db-migrate-single:
+	@echo "Running single migration: $(FILE)"
+	@if [ -z "$(FILE)" ]; then echo "Usage: make db-migrate-single FILE=migration_file.sql"; exit 1; fi
+	go run database/run_sql.go $(FILE)
 
 db-reset:
 	@echo "Resetting database with fresh migrations..."
-	go run database/simple_migration.go database/migrations/000_drop_all_tables.up.sql
-	go run database/simple_migration.go database/migrations/001_consolidated_complete_schema.up.sql
-	go run database/simple_migration.go database/migrations/002_consolidated_seed_data.up.sql
+	go run database/migrate_all.go --reset
 
 verify-separation:
 	@echo "Verifying multi-tenant data separation..."
@@ -176,7 +217,7 @@ ci:
 	make fmt
 	make lint
 	make test
-	make test-comprehensive
+	make test-api
 	make build
 
 ci-quick:
@@ -198,6 +239,6 @@ version:
 	@echo "App: $(APP_NAME)"
 	@echo "Port: $(PORT)"
 
-.PHONY: help build run test test-unit test-integration test-verbose test-comprehensive test-coverage test-services test-handlers \
+.PHONY: help build run test test-unit test-integration test-verbose test-comprehensive test-api test-api-help test-coverage test-services test-handlers \
         bench bench-services lint fmt clean clean-all deps db-migrate db-reset watch dev dev-fresh version \
         docker-build docker-run docker-clean ci ci-quick generate verify-separation

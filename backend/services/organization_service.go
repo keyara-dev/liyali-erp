@@ -286,10 +286,92 @@ func (s *OrganizationService) UpdateOrganization(orgID string, name, description
 	}
 
 	return s.db.Model(&models.Organization{}).
-		Where("id = ?", orgID).
+		Where("id = ? AND active = ?", orgID, true).
 		Updates(map[string]interface{}{
 			"name":        name,
 			"slug":        slug.Make(name),
 			"description": description,
+			"updated_at":  time.Now(),
 		}).Error
+}
+
+// DeleteOrganization soft deletes an organization and all related data
+func (s *OrganizationService) DeleteOrganization(orgID, userID string) error {
+	if orgID == "" {
+		return errors.New("organization ID is required")
+	}
+
+	if userID == "" {
+		return errors.New("user ID is required")
+	}
+
+	// Verify user is admin of this organization
+	var member models.OrganizationMember
+	if err := s.db.Where(
+		"user_id = ? AND organization_id = ? AND role = ? AND active = ?",
+		userID, orgID, "admin", true,
+	).First(&member).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return errors.New("user is not an admin of this organization")
+		}
+		return err
+	}
+
+	// Verify organization exists and is active
+	var org models.Organization
+	if err := s.db.Where("id = ? AND active = ?", orgID, true).
+		First(&org).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return errors.New("organization not found or already deleted")
+		}
+		return err
+	}
+
+	now := time.Now()
+
+	// Start transaction for atomic deletion
+	return s.db.Transaction(func(tx *gorm.DB) error {
+		// Soft delete organization
+		if err := tx.Model(&models.Organization{}).
+			Where("id = ?", orgID).
+			Updates(map[string]interface{}{
+				"active":     false,
+				"updated_at": now,
+			}).Error; err != nil {
+			return err
+		}
+
+		// Deactivate all organization members
+		if err := tx.Model(&models.OrganizationMember{}).
+			Where("organization_id = ?", orgID).
+			Update("active", false).Error; err != nil {
+			return err
+		}
+
+		// Clear current organization for all users who had this as current
+		if err := tx.Model(&models.User{}).
+			Where("current_organization_id = ?", orgID).
+			Update("current_organization_id", nil).Error; err != nil {
+			return err
+		}
+
+		return nil
+	})
+}
+
+// CanUserManageOrganization checks if user has admin rights for organization
+func (s *OrganizationService) CanUserManageOrganization(userID, orgID string) (bool, error) {
+	if userID == "" || orgID == "" {
+		return false, errors.New("user ID and organization ID are required")
+	}
+
+	var count int64
+	if err := s.db.Model(&models.OrganizationMember{}).
+		Where("user_id = ? AND organization_id = ? AND role = ? AND active = ?",
+			userID, orgID, "admin", true).
+		Count(&count).Error; err != nil {
+		return false, err
+	}
+
+	return count > 0, nil
 }

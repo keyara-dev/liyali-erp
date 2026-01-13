@@ -39,6 +39,7 @@ func SetupRoutes(app *fiber.App, handlerRegistry *handlers.HandlerRegistry, rbac
 	orgs.Get("/", handlers.GetUserOrganizations)
 	orgs.Post("/", handlers.CreateOrganization)
 	orgs.Put("/:id", handlers.UpdateOrganization)
+	orgs.Delete("/:id", handlers.DeleteOrganization)
 	orgs.Post("/:id/switch", handlers.SwitchOrganization)
 
 	// Tenant-scoped routes (authentication + tenant context required)
@@ -298,4 +299,6 @@ func SetupRoutes(app *fiber.App, handlerRegistry *handlers.HandlerRegistry, rbac
 	audit := tenant.Group("/audit-logs")
 	audit.Get("/", middleware.RequirePermission(rbacService, "audit_log", "view"), handlers.GetAuditLogs)
 	audit.Get("/document/:documentId", middleware.RequirePermission(rbacService, "audit_log", "view"), handlers.GetDocumentAuditLogs)
+
+	// Note: Development tools and test workflow tasks are now created via seed data migrations
 }

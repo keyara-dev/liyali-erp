@@ -334,3 +334,24 @@ export async function updateOrganizationSettings(
     return handleError(error, "PUT", url);
   }
 }
+
+/**
+ * Delete organization (soft delete)
+ * Calls: DELETE /api/v1/organizations/{id}
+ */
+export async function deleteOrganization(
+  orgId: string
+): Promise<APIResponse<null>> {
+  const url = `/api/v1/organizations/${orgId}`;
+
+  try {
+    const response = await authenticatedApiClient({
+      url: url,
+      method: "DELETE",
+    });
+
+    return successResponse(null, "Organization deleted successfully");
+  } catch (error: any) {
+    return handleError(error, "DELETE", url);
+  }
+}

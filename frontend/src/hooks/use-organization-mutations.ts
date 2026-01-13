@@ -10,6 +10,7 @@ import {
   switchOrganization,
   createOrganization,
   updateOrganization,
+  deleteOrganization,
   addOrganizationMember,
   removeOrganizationMember,
   updateOrganizationSettings,
@@ -258,6 +259,58 @@ export function useUpdateSettingsMutation() {
 
   return {
     updateSettings: mutation.mutateAsync,
+    isPending: mutation.isPending,
+    error: mutation.error,
+  };
+}
+
+/**
+ * Hook for deleting an organization
+ */
+export function useDeleteOrganizationMutation() {
+  const queryClient = useQueryClient();
+  const router = useRouter();
+
+  const mutation = useMutation({
+    mutationFn: async (orgId: string) => {
+      return await handleOfflineMutation(
+        async () => {
+          const response = await deleteOrganization(orgId);
+          if (!response.success) {
+            throw new Error(response.message);
+          }
+          return response.data;
+        },
+        {
+          operation: "DELETE",
+          entity: "organization",
+          data: { orgId },
+          entityId: orgId,
+          successMessage: "Organization deleted successfully",
+          offlineMessage:
+            "Organization deletion saved offline. Will sync when connected.",
+        }
+      );
+    },
+    onSuccess: (result) => {
+      if (isOfflineResult(result)) {
+        // Already handled by offline helper
+      } else {
+        toast.success("Organization deleted successfully");
+      }
+      queryClient.invalidateQueries({ queryKey: ["organizations"] });
+
+      // Navigate back to welcome screen
+      router.push("/welcome");
+    },
+    onError: (error) => {
+      console.error("Failed to delete organization:", error);
+      toast.error(error?.message || "Failed to delete organization");
+    },
+  });
+
+  return {
+    deleteOrganization: mutation.mutateAsync,
     isPending: mutation.isPending,
     error: mutation.error,
   };

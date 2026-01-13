@@ -1,20 +1,27 @@
-'use client'
+"use client";
 
-import { useState } from 'react'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { User } from '@/types/auth'
-import { AccountSettings } from './account-settings'
-import { ChangePassword } from './change-password'
-import { GeneralSettings } from './general-settings'
-import { SessionsManagement } from './sessions-management'
-import { Users, Lock, Settings as SettingsIcon, Globe } from 'lucide-react'
+import { useState } from "react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { User } from "@/types/auth";
+import { AccountSettings } from "./account-settings";
+import { ChangePassword } from "./change-password";
+import { GeneralSettings } from "./general-settings";
+import { SessionsManagement } from "./sessions-management";
+import { WorkspaceSettings } from "./workspace-settings";
+import {
+  Users,
+  Lock,
+  Settings as SettingsIcon,
+  Globe,
+  Building2,
+} from "lucide-react";
 
 interface SettingsClientProps {
-  user: User | null
+  user: User | null;
 }
 
 export function SettingsClient({ user }: SettingsClientProps) {
-  const [profileUser, setProfileUser] = useState<User | null>(user)
+  const [profileUser, setProfileUser] = useState<User | null>(user);
 
   return (
     <div className="space-y-6">
@@ -28,7 +35,7 @@ export function SettingsClient({ user }: SettingsClientProps) {
 
       {/* Tabs */}
       <Tabs defaultValue="account" className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="account" className="flex items-center gap-2">
             <Users className="h-4 w-4" />
             <span className="hidden sm:inline">Account</span>
@@ -36,6 +43,10 @@ export function SettingsClient({ user }: SettingsClientProps) {
           <TabsTrigger value="password" className="flex items-center gap-2">
             <Lock className="h-4 w-4" />
             <span className="hidden sm:inline">Password</span>
+          </TabsTrigger>
+          <TabsTrigger value="workspace" className="flex items-center gap-2">
+            <Building2 className="h-4 w-4" />
+            <span className="hidden sm:inline">Workspace</span>
           </TabsTrigger>
           <TabsTrigger value="general" className="flex items-center gap-2">
             <SettingsIcon className="h-4 w-4" />
@@ -60,6 +71,11 @@ export function SettingsClient({ user }: SettingsClientProps) {
           <ChangePassword />
         </TabsContent>
 
+        {/* Workspace Tab */}
+        <TabsContent value="workspace" className="space-y-4">
+          <WorkspaceSettings />
+        </TabsContent>
+
         {/* General Tab */}
         <TabsContent value="general" className="space-y-4">
           <GeneralSettings />
@@ -71,5 +87,5 @@ export function SettingsClient({ user }: SettingsClientProps) {
         </TabsContent>
       </Tabs>
     </div>
-  )
+  );
 }

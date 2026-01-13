@@ -276,42 +276,72 @@ func UpdateOrganizationSettings(c *fiber.Ctx) error {
 // UpdateOrganization updates organization details
 // PUT /api/v1/organizations/:id
 func UpdateOrganization(c *fiber.Ctx) error {
-	tenant, err := middleware.GetTenantContext(c)
-	if err != nil {
-		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-			"error": "Organization context required",
-		})
+	userID, ok := c.Locals("userID").(string)
+	if !ok {
+		return utils.SendUnauthorizedError(c, "User context required")
 	}
 
 	orgID := c.Params("id")
-	if orgID != tenant.OrganizationID {
-		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
-			"error": "You can only update your own organization",
-		})
+	if orgID == "" {
+		return utils.SendBadRequestError(c, "Organization ID is required")
 	}
 
 	var req struct {
-		Name        string `json:"name"`
+		Name        string `json:"name" validate:"required"`
 		Description string `json:"description"`
 	}
 
 	if err := c.BodyParser(&req); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": "Invalid request body",
-		})
+		return utils.SendBadRequestError(c, "Invalid request body")
 	}
 
 	orgService := services.NewOrganizationService(config.DB)
+
+	// Check if user can manage this organization
+	canManage, err := orgService.CanUserManageOrganization(userID, orgID)
+	if err != nil {
+		return utils.SendInternalError(c, "Failed to verify permissions", err)
+	}
+	if !canManage {
+		return utils.SendForbiddenError(c, "You don't have permission to update this organization")
+	}
+
 	if err := orgService.UpdateOrganization(orgID, req.Name, req.Description); err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": err.Error(),
-		})
+		return utils.SendInternalError(c, err.Error(), err)
 	}
 
 	org, _ := orgService.GetOrganization(orgID)
 
-	return c.JSON(fiber.Map{
-		"success": true,
-		"data":    org,
-	})
+	return utils.SendSimpleSuccess(c, org, "Organization updated successfully")
+}
+
+// DeleteOrganization soft deletes an organization
+// DELETE /api/v1/organizations/:id
+func DeleteOrganization(c *fiber.Ctx) error {
+	userID, ok := c.Locals("userID").(string)
+	if !ok {
+		return utils.SendUnauthorizedError(c, "User context required")
+	}
+
+	orgID := c.Params("id")
+	if orgID == "" {
+		return utils.SendBadRequestError(c, "Organization ID is required")
+	}
+
+	orgService := services.NewOrganizationService(config.DB)
+
+	// Check if user can manage this organization
+	canManage, err := orgService.CanUserManageOrganization(userID, orgID)
+	if err != nil {
+		return utils.SendInternalError(c, "Failed to verify permissions", err)
+	}
+	if !canManage {
+		return utils.SendForbiddenError(c, "You don't have permission to delete this organization")
+	}
+
+	if err := orgService.DeleteOrganization(orgID, userID); err != nil {
+		return utils.SendInternalError(c, err.Error(), err)
+	}
+
+	return utils.SendSimpleSuccess(c, nil, "Organization deleted successfully")
 }

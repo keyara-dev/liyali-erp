@@ -248,6 +248,108 @@ func SeedDatabase(db *gorm.DB) error {
 		return err
 	}
 
+	if err := SeedTestWorkflowTasks(db); err != nil {
+		log.Printf("Error seeding workflow tasks: %v", err)
+		return err
+	}
+
 	log.Println("✓ Database seeding completed")
 	return nil
+}
+
+// SeedTestWorkflowTasks creates test workflow tasks for development
+func SeedTestWorkflowTasks(db *gorm.DB) error {
+	// Check if there's a submitted requisition that needs a workflow task
+	var submittedReq models.Requisition
+	if err := db.Where("status = ? AND document_number = ?", "submitted", "REQ-260111-003").First(&submittedReq).Error; err != nil {
+		log.Printf("No submitted requisition found for workflow task creation")
+		return nil // Not an error, just no data to work with
+	}
+
+	log.Printf("Found submitted requisition: %s - %s", submittedReq.DocumentNumber, submittedReq.Title)
+
+	// Create workflow assignment
+	workflowAssignment := models.WorkflowAssignment{
+		ID:              "wa-req-260111-003",
+		OrganizationID:  "org-demo-001",
+		EntityID:        submittedReq.ID,
+		EntityType:      "requisition",
+		WorkflowVersion: 1,
+		CurrentStage:    1,
+		Status:          "in_progress",
+		AssignedBy:      "user-admin-001",
+	}
+
+	// Check if workflow assignment already exists
+	var existingWA models.WorkflowAssignment
+	if err := db.Where("id = ?", workflowAssignment.ID).First(&existingWA).Error; err != nil {
+		if err := db.Create(&workflowAssignment).Error; err != nil {
+			log.Printf("Error creating workflow assignment: %v", err)
+			return err
+		}
+		log.Printf("Created workflow assignment for %s", submittedReq.DocumentNumber)
+	}
+
+	// Create workflow task
+	workflowTask := models.WorkflowTask{
+		ID:                   "wt-req-260111-003-stage1",
+		OrganizationID:       "org-demo-001",
+		WorkflowAssignmentID: "wa-req-260111-003",
+		EntityID:             submittedReq.ID,
+		EntityType:           "requisition",
+		StageNumber:          1,
+		StageName:            "Manager Approval",
+		AssignmentType:       "role",
+		AssignedRole:         stringPtr("approver"),
+		Status:               "pending",
+		Priority:             "medium",
+		Version:              1,
+	}
+
+	// Check if workflow task already exists
+	var existingWT models.WorkflowTask
+	if err := db.Where("id = ?", workflowTask.ID).First(&existingWT).Error; err != nil {
+		if err := db.Create(&workflowTask).Error; err != nil {
+			log.Printf("Error creating workflow task: %v", err)
+			return err
+		}
+		log.Printf("Created workflow task for %s", submittedReq.DocumentNumber)
+	}
+
+	// Create legacy approval task for backward compatibility
+	approvalTask := models.ApprovalTask{
+		ID:             "at-req-260111-003-stage1",
+		OrganizationID: "org-demo-001",
+		DocumentID:     submittedReq.ID,
+		DocumentType:   "requisition",
+		ApproverID:     "user-approver-001",
+		AssignedTo:     "user-approver-001",
+		Status:         "pending",
+		Stage:          1,
+		DocumentNumber: submittedReq.DocumentNumber,
+		ApproverName:   "John Approver",
+		Priority:       "medium",
+		TaskType:       "approval",
+		Title:          submittedReq.Title + " - Approval Required",
+		WorkflowName:   "Default Requisition Workflow",
+		StageName:      "Manager Approval",
+		Importance:     "medium",
+	}
+
+	// Check if approval task already exists
+	var existingAT models.ApprovalTask
+	if err := db.Where("id = ?", approvalTask.ID).First(&existingAT).Error; err != nil {
+		if err := db.Create(&approvalTask).Error; err != nil {
+			log.Printf("Error creating approval task: %v", err)
+			return err
+		}
+		log.Printf("Created approval task for %s", submittedReq.DocumentNumber)
+	}
+
+	return nil
+}
+
+// Helper function to create string pointer
+func stringPtr(s string) *string {
+	return &s
 }

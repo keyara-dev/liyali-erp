@@ -88,7 +88,7 @@ export function WorkspaceSelector({
         setShowSkeleton(false);
       }, 300); // Minimum 300ms skeleton display
       return () => clearTimeout(timer);
-    } else if (isLoading) {
+    } else if (isLoading && !userOrganizations.length) {
       setShowSkeleton(true);
     }
   }, [isLoading, userOrganizations.length]);
