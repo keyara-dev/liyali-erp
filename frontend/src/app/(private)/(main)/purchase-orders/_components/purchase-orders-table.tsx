@@ -37,8 +37,8 @@ interface PurchaseOrdersTableProps {
 function transformPOToWorkflowDocument(po: PurchaseOrder): WorkflowDocument {
   return {
     id: po.id,
-    type: 'purchase_order',
-    documentNumber: po.poNumber,
+    type: "purchase_order",
+    documentNumber: po.documentNumber,
     status: po.status?.toLowerCase() as any, // Convert to lowercase for compatibility
     currentStage: po.approvalStage,
     createdAt: po.createdAt,
@@ -148,7 +148,9 @@ const columns: ColumnDef<WorkflowDocument>[] = [
     ),
     cell: ({ row }) => (
       <div className="text-sm">
-        {row.original.createdAt ? new Date(row.original.createdAt).toLocaleDateString() : 'N/A'}
+        {row.original.createdAt
+          ? new Date(row.original.createdAt).toLocaleDateString()
+          : "N/A"}
       </div>
     ),
   },
@@ -170,7 +172,9 @@ function PoOptionsMenu({
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem onClick={() => console.log("Download PDF for PO:", po.id)}>
+        <DropdownMenuItem
+          onClick={() => console.log("Download PDF for PO:", po.id)}
+        >
           <Download className="mr-2 h-4 w-4" />
           Download
         </DropdownMenuItem>
@@ -198,8 +202,7 @@ export function PurchaseOrdersTable({
   onRefresh: _onRefresh,
 }: PurchaseOrdersTableProps) {
   const router = useRouter();
-  const { data: purchaseOrders = [], refetch } =
-    usePurchaseOrders(); // Get all purchase orders
+  const { data: purchaseOrders = [], refetch } = usePurchaseOrders(); // Get all purchase orders
 
   // Refetch when refreshTrigger changes
   useEffect(() => {

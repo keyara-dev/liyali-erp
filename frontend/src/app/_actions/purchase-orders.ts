@@ -1,21 +1,17 @@
-'use server';
+"use server";
 
-import { cache } from 'react';
+import { cache } from "react";
 import {
   PurchaseOrder,
   CreatePurchaseOrderRequest,
   UpdatePurchaseOrderRequest,
   SubmitPurchaseOrderRequest,
   PurchaseOrderStats,
-} from '@/types/purchase-order';
-import { Requisition } from '@/types/requisition';
-import { APIResponse } from '@/types';
-import {
-  handleError,
-  successResponse,
-  badRequestResponse,
-} from './api-config';
-import authenticatedApiClient from './api-config';
+} from "@/types/purchase-order";
+import { Requisition } from "@/types/requisition";
+import { APIResponse } from "@/types";
+import { handleError, successResponse, badRequestResponse } from "./api-config";
+import authenticatedApiClient from "./api-config";
 
 /**
  * Create a Purchase Order from an approved Requisition
@@ -28,11 +24,11 @@ export async function createPurchaseOrderFromRequisition(
 
   try {
     const response = await authenticatedApiClient({
-      method: 'POST',
+      method: "POST",
       url,
       data: {
         requisitionId: requisition.id,
-        requisitionNumber: requisition.requisitionNumber,
+        requisitionDocumentNumber: requisition.documentNumber,
         title: requisition.title,
         description: requisition.description,
         vendorId: requisition.vendorId,
@@ -53,9 +49,12 @@ export async function createPurchaseOrderFromRequisition(
       },
     });
 
-    return successResponse(response.data?.data, 'Purchase Order created from requisition successfully');
+    return successResponse(
+      response.data?.data,
+      "Purchase Order created from requisition successfully"
+    );
   } catch (error: any) {
-    return handleError(error, 'POST', url);
+    return handleError(error, "POST", url);
   }
 }
 
@@ -70,7 +69,7 @@ export async function createPurchaseOrder(
 
   try {
     const response = await authenticatedApiClient({
-      method: 'POST',
+      method: "POST",
       url,
       data: {
         title: data.title,
@@ -86,16 +85,18 @@ export async function createPurchaseOrder(
         costCenter: data.costCenter,
         projectCode: data.projectCode,
         sourceRequisitionId: data.sourceRequisitionId,
-        sourceRequisitionNumber: data.sourceRequisitionNumber,
         createdBy: data.createdBy,
         createdByName: data.createdByName,
         createdByRole: data.createdByRole,
       },
     });
 
-    return successResponse(response.data?.data, 'Purchase Order created successfully');
+    return successResponse(
+      response.data?.data,
+      "Purchase Order created successfully"
+    );
   } catch (error: any) {
-    return handleError(error, 'POST', url);
+    return handleError(error, "POST", url);
   }
 }
 
@@ -112,27 +113,30 @@ export async function getPurchaseOrders(
   }
 ): Promise<APIResponse<PurchaseOrder[]>> {
   const params = new URLSearchParams();
-  params.set('page', page.toString());
-  params.set('limit', limit.toString());
+  params.set("page", page.toString());
+  params.set("limit", limit.toString());
 
   if (filters?.status) {
-    params.set('status', filters.status);
+    params.set("status", filters.status);
   }
   if (filters?.department) {
-    params.set('department', filters.department);
+    params.set("department", filters.department);
   }
 
   const url = `/api/v1/purchase-orders?${params.toString()}`;
 
   try {
     const response = await authenticatedApiClient({
-      method: 'GET',
+      method: "GET",
       url,
     });
 
-    return successResponse(response.data?.data || [], 'Purchase orders retrieved successfully');
+    return successResponse(
+      response.data?.data || [],
+      "Purchase orders retrieved successfully"
+    );
   } catch (error: any) {
-    return handleError(error, 'GET', url);
+    return handleError(error, "GET", url);
   }
 }
 
@@ -140,18 +144,23 @@ export async function getPurchaseOrders(
  * Get purchase order by ID
  * Calls: GET /api/v1/purchase-orders/{id}
  */
-export async function getPurchaseOrderById(poId: string): Promise<APIResponse<PurchaseOrder>> {
+export async function getPurchaseOrderById(
+  poId: string
+): Promise<APIResponse<PurchaseOrder>> {
   const url = `/api/v1/purchase-orders/${poId}`;
 
   try {
     const response = await authenticatedApiClient({
-      method: 'GET',
+      method: "GET",
       url,
     });
 
-    return successResponse(response.data?.data, 'Purchase order retrieved successfully');
+    return successResponse(
+      response.data?.data,
+      "Purchase order retrieved successfully"
+    );
   } catch (error: any) {
-    return handleError(error, 'GET', url);
+    return handleError(error, "GET", url);
   }
 }
 
@@ -166,7 +175,7 @@ export async function updatePurchaseOrder(
 
   try {
     const response = await authenticatedApiClient({
-      method: 'PUT',
+      method: "PUT",
       url,
       data: {
         title: data.title,
@@ -182,9 +191,12 @@ export async function updatePurchaseOrder(
       },
     });
 
-    return successResponse(response.data?.data, 'Purchase order updated successfully');
+    return successResponse(
+      response.data?.data,
+      "Purchase order updated successfully"
+    );
   } catch (error: any) {
-    return handleError(error, 'PUT', url);
+    return handleError(error, "PUT", url);
   }
 }
 
@@ -199,7 +211,7 @@ export async function submitPurchaseOrderForApproval(
 
   try {
     const response = await authenticatedApiClient({
-      method: 'POST',
+      method: "POST",
       url,
       data: {
         comments: data.comments,
@@ -209,30 +221,36 @@ export async function submitPurchaseOrderForApproval(
       },
     });
 
-    return successResponse(response.data?.data, 'Purchase order submitted for approval');
+    return successResponse(
+      response.data?.data,
+      "Purchase order submitted for approval"
+    );
   } catch (error: any) {
-    return handleError(error, 'POST', url);
+    return handleError(error, "POST", url);
   }
 }
-
-
 
 /**
  * Get purchase order statistics
  * Calls: GET /api/v1/purchase-orders/stats
  */
-export async function getPurchaseOrderStats(): Promise<APIResponse<PurchaseOrderStats>> {
+export async function getPurchaseOrderStats(): Promise<
+  APIResponse<PurchaseOrderStats>
+> {
   const url = `/api/v1/purchase-orders/stats`;
 
   try {
     const response = await authenticatedApiClient({
-      method: 'GET',
+      method: "GET",
       url,
     });
 
-    return successResponse(response.data?.data, 'Statistics retrieved successfully');
+    return successResponse(
+      response.data?.data,
+      "Statistics retrieved successfully"
+    );
   } catch (error: any) {
-    return handleError(error, 'GET', url);
+    return handleError(error, "GET", url);
   }
 }
 
@@ -245,12 +263,12 @@ export async function deletePurchaseOrder(poId: string): Promise<APIResponse> {
 
   try {
     await authenticatedApiClient({
-      method: 'DELETE',
+      method: "DELETE",
       url,
     });
 
-    return successResponse(null, 'Purchase order deleted successfully');
+    return successResponse(null, "Purchase order deleted successfully");
   } catch (error: any) {
-    return handleError(error, 'DELETE', url);
+    return handleError(error, "DELETE", url);
   }
 }

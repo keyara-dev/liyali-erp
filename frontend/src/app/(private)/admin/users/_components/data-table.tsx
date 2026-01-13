@@ -390,7 +390,7 @@ export default function UsersDataTable({
   };
 
   const handleViewProfile = (id: string) => {
-    router.push(`/dashboard/system-configs/users/${id}`);
+    router.push(`/admin/users/${id}`);
   };
 
   const columns = getColumns(

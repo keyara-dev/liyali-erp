@@ -332,7 +332,7 @@ async function executeGRNOperation(operation: any) {
   switch (operation.type) {
     case "CREATE":
       return await createGRNAction(
-        operation.data.poNumber,
+        operation.data.poDocumentNumber,
         operation.data.items,
         operation.data.receivedBy,
         operation.data.warehouseLocation,

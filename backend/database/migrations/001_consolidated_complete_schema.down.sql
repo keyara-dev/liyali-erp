@@ -48,7 +48,15 @@ BEGIN
     END LOOP;
 END $;
 
+-- Drop document number unique indexes first
+DROP INDEX IF EXISTS idx_requisitions_document_number_org CASCADE;
+DROP INDEX IF EXISTS idx_purchase_orders_document_number_org CASCADE;
+DROP INDEX IF EXISTS idx_payment_vouchers_document_number_org CASCADE;
+DROP INDEX IF EXISTS idx_goods_received_notes_document_number_org CASCADE;
+
 -- Drop tables in reverse dependency order
+DROP TABLE IF EXISTS stage_approval_records CASCADE;
+DROP TABLE IF EXISTS task_assignment_history CASCADE;
 DROP TABLE IF EXISTS audit_logs CASCADE;
 DROP TABLE IF EXISTS notifications CASCADE;
 DROP TABLE IF EXISTS approval_tasks CASCADE;
@@ -115,4 +123,5 @@ BEGIN
     RAISE NOTICE 'Migration 001_consolidated_complete_schema rollback completed successfully';
     RAISE NOTICE 'All tables, indexes, triggers, and functions have been dropped';
     RAISE NOTICE 'Database has been completely cleaned';
+    RAISE NOTICE 'Document number consolidation changes have been rolled back';
 END $;

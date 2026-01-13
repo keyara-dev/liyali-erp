@@ -1,14 +1,14 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { Requisition, ActionHistoryEntry } from '@/types';
-import { WorkflowDocument } from '@/types/workflow';
-import { getRequisitions } from '@/app/_actions/requisitions';
-import { QUERY_KEYS } from '@/lib/constants';
+import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { Requisition, ActionHistoryEntry } from "@/types";
+import { WorkflowDocument } from "@/types/workflow";
+import { getRequisitions } from "@/app/_actions/requisitions";
+import { QUERY_KEYS } from "@/lib/constants";
 
-const REQUISITIONS_STORAGE_KEY = 'liyali_requisitions';
-const ACTION_HISTORY_STORAGE_KEY = 'liyali_action_history';
+const REQUISITIONS_STORAGE_KEY = "liyali_requisitions";
+const ACTION_HISTORY_STORAGE_KEY = "liyali_action_history";
 
 // ============================================================================
 // STORAGE UTILITIES - BASIC OPERATIONS
@@ -19,13 +19,13 @@ const ACTION_HISTORY_STORAGE_KEY = 'liyali_action_history';
  */
 function loadRequisitionsFromStorage(): Requisition[] {
   try {
-    if (typeof window === 'undefined') return [];
+    if (typeof window === "undefined") return [];
     const stored = localStorage.getItem(REQUISITIONS_STORAGE_KEY);
     if (!stored) return [];
     const parsed = JSON.parse(stored);
     return Array.isArray(parsed) ? parsed : [];
   } catch (error) {
-    console.error('Failed to load requisitions from storage:', error);
+    console.error("Failed to load requisitions from storage:", error);
     return [];
   }
 }
@@ -35,22 +35,26 @@ function loadRequisitionsFromStorage(): Requisition[] {
  */
 function saveRequisitionToStorage(requisition: Requisition): void {
   try {
-    if (typeof window === 'undefined') return;
+    if (typeof window === "undefined") return;
     const requisitions = loadRequisitionsFromStorage();
-    const index = requisitions.findIndex(r => r.id === requisition.id);
+    const index = requisitions.findIndex((r) => r.id === requisition.id);
     if (index >= 0) {
       // Deep merge: preserve actionHistory if not provided
       requisitions[index] = {
         ...requisitions[index],
         ...requisition,
-        actionHistory: requisition.actionHistory || requisitions[index].actionHistory,
+        actionHistory:
+          requisition.actionHistory || requisitions[index].actionHistory,
       };
     } else {
       requisitions.push(requisition);
     }
-    localStorage.setItem(REQUISITIONS_STORAGE_KEY, JSON.stringify(requisitions));
+    localStorage.setItem(
+      REQUISITIONS_STORAGE_KEY,
+      JSON.stringify(requisitions)
+    );
   } catch (error) {
-    console.error('Failed to save requisition to storage:', error);
+    console.error("Failed to save requisition to storage:", error);
   }
 }
 
@@ -59,10 +63,13 @@ function saveRequisitionToStorage(requisition: Requisition): void {
  */
 function saveRequisitionsToStorage(requisitions: Requisition[]): void {
   try {
-    if (typeof window === 'undefined') return;
-    localStorage.setItem(REQUISITIONS_STORAGE_KEY, JSON.stringify(requisitions));
+    if (typeof window === "undefined") return;
+    localStorage.setItem(
+      REQUISITIONS_STORAGE_KEY,
+      JSON.stringify(requisitions)
+    );
   } catch (error) {
-    console.error('Failed to save requisitions to storage:', error);
+    console.error("Failed to save requisitions to storage:", error);
   }
 }
 
@@ -71,11 +78,11 @@ function saveRequisitionsToStorage(requisitions: Requisition[]): void {
  */
 function getRequisitionFromStorage(requisitionId: string): Requisition | null {
   try {
-    if (typeof window === 'undefined') return null;
+    if (typeof window === "undefined") return null;
     const requisitions = loadRequisitionsFromStorage();
-    return requisitions.find(r => r.id === requisitionId) || null;
+    return requisitions.find((r) => r.id === requisitionId) || null;
   } catch (error) {
-    console.error('Failed to get requisition from storage:', error);
+    console.error("Failed to get requisition from storage:", error);
     return null;
   }
 }
@@ -85,12 +92,12 @@ function getRequisitionFromStorage(requisitionId: string): Requisition | null {
  */
 function deleteRequisitionFromStorage(requisitionId: string): void {
   try {
-    if (typeof window === 'undefined') return;
+    if (typeof window === "undefined") return;
     const requisitions = loadRequisitionsFromStorage();
-    const filtered = requisitions.filter(r => r.id !== requisitionId);
+    const filtered = requisitions.filter((r) => r.id !== requisitionId);
     localStorage.setItem(REQUISITIONS_STORAGE_KEY, JSON.stringify(filtered));
   } catch (error) {
-    console.error('Failed to delete requisition from storage:', error);
+    console.error("Failed to delete requisition from storage:", error);
   }
 }
 
@@ -99,10 +106,10 @@ function deleteRequisitionFromStorage(requisitionId: string): void {
  */
 function clearRequisitionsStorage(): void {
   try {
-    if (typeof window === 'undefined') return;
+    if (typeof window === "undefined") return;
     localStorage.removeItem(REQUISITIONS_STORAGE_KEY);
   } catch (error) {
-    console.error('Failed to clear requisitions storage:', error);
+    console.error("Failed to clear requisitions storage:", error);
   }
 }
 
@@ -122,13 +129,13 @@ function generateActionId(): string {
  */
 function loadActionHistoryFromStorage(): ActionHistoryEntry[] {
   try {
-    if (typeof window === 'undefined') return [];
+    if (typeof window === "undefined") return [];
     const stored = localStorage.getItem(ACTION_HISTORY_STORAGE_KEY);
     if (!stored) return [];
     const parsed = JSON.parse(stored);
     return Array.isArray(parsed) ? parsed : [];
   } catch (error) {
-    console.error('Failed to load action history from storage:', error);
+    console.error("Failed to load action history from storage:", error);
     return [];
   }
 }
@@ -136,13 +143,15 @@ function loadActionHistoryFromStorage(): ActionHistoryEntry[] {
 /**
  * Get action history for a specific requisition
  */
-function getActionHistoryForRequisition(requisitionId: string): ActionHistoryEntry[] {
+function getActionHistoryForRequisition(
+  requisitionId: string
+): ActionHistoryEntry[] {
   try {
-    if (typeof window === 'undefined') return [];
+    if (typeof window === "undefined") return [];
     const requisition = getRequisitionFromStorage(requisitionId);
     return requisition?.actionHistory || [];
   } catch (error) {
-    console.error('Failed to get action history for requisition:', error);
+    console.error("Failed to get action history for requisition:", error);
     return [];
   }
 }
@@ -150,13 +159,16 @@ function getActionHistoryForRequisition(requisitionId: string): ActionHistoryEnt
 /**
  * Add action to requisition's action history
  */
-function addActionToRequisition(requisitionId: string, action: Omit<ActionHistoryEntry, 'id' | 'performedAt'>): ActionHistoryEntry | null {
+function addActionToRequisition(
+  requisitionId: string,
+  action: Omit<ActionHistoryEntry, "id" | "performedAt">
+): ActionHistoryEntry | null {
   try {
-    if (typeof window === 'undefined') return null;
+    if (typeof window === "undefined") return null;
 
     const requisition = getRequisitionFromStorage(requisitionId);
     if (!requisition) {
-      console.error('Requisition not found:', requisitionId);
+      console.error("Requisition not found:", requisitionId);
       return null;
     }
 
@@ -175,7 +187,7 @@ function addActionToRequisition(requisitionId: string, action: Omit<ActionHistor
 
     return actionEntry;
   } catch (error) {
-    console.error('Failed to add action to requisition:', error);
+    console.error("Failed to add action to requisition:", error);
     return null;
   }
 }
@@ -185,14 +197,14 @@ function addActionToRequisition(requisitionId: string, action: Omit<ActionHistor
  */
 function clearActionHistoryForRequisition(requisitionId: string): void {
   try {
-    if (typeof window === 'undefined') return;
+    if (typeof window === "undefined") return;
     const requisition = getRequisitionFromStorage(requisitionId);
     if (requisition) {
       requisition.actionHistory = [];
       saveRequisitionToStorage(requisition);
     }
   } catch (error) {
-    console.error('Failed to clear action history:', error);
+    console.error("Failed to clear action history:", error);
   }
 }
 
@@ -203,17 +215,20 @@ function clearActionHistoryForRequisition(requisitionId: string): void {
 /**
  * Convert a Requisition to a WorkflowDocument for display in tables
  */
-function requisitionToWorkflowDocument(requisition: Requisition): WorkflowDocument {
+function requisitionToWorkflowDocument(
+  requisition: Requisition
+): WorkflowDocument {
   return {
     id: requisition.id,
-    type: 'REQUISITION',
-    documentNumber: requisition.requisitionNumber,
+    type: "REQUISITION",
+    documentNumber: requisition.documentNumber,
     status: requisition.status as any,
     currentStage: requisition.currentApprovalStage || 1,
     createdBy: requisition.requestedBy,
-    createdAt: requisition.requestedDate instanceof Date
-      ? requisition.requestedDate
-      : new Date(requisition.requestedDate),
+    createdAt:
+      requisition.requestedDate instanceof Date
+        ? requisition.requestedDate
+        : new Date(requisition.requestedDate),
     updatedAt: new Date(),
     metadata: {
       title: requisition.title,
@@ -231,7 +246,9 @@ function requisitionToWorkflowDocument(requisition: Requisition): WorkflowDocume
 /**
  * Public export of conversion function for use in components
  */
-export function convertRequisitionToWorkflowDocument(requisition: Requisition): WorkflowDocument {
+export function convertRequisitionToWorkflowDocument(
+  requisition: Requisition
+): WorkflowDocument {
   return requisitionToWorkflowDocument(requisition);
 }
 
@@ -332,10 +349,12 @@ export function useRequisitionActionHistory(requisitionId: string) {
     setIsHydrated(true);
   }, [requisitionId]);
 
-  const addAction = (action: Omit<ActionHistoryEntry, 'id' | 'performedAt'>): ActionHistoryEntry | null => {
+  const addAction = (
+    action: Omit<ActionHistoryEntry, "id" | "performedAt">
+  ): ActionHistoryEntry | null => {
     const newAction = addActionToRequisition(requisitionId, action);
     if (newAction) {
-      setActions(prev => [...prev, newAction]);
+      setActions((prev) => [...prev, newAction]);
     }
     return newAction;
   };
@@ -370,7 +389,7 @@ export function useRequisitionActionHistory(requisitionId: string) {
  */
 export const useRequisitionsWithStorage = (includeStorageData = true) =>
   useQuery({
-    queryKey: [QUERY_KEYS.REQUISITIONS.ALL, 'with-storage'],
+    queryKey: [QUERY_KEYS.REQUISITIONS.ALL, "with-storage"],
     queryFn: async () => {
       let allRequisitions: Requisition[] = [];
 
@@ -381,24 +400,27 @@ export const useRequisitionsWithStorage = (includeStorageData = true) =>
           allRequisitions = response.data;
         }
       } catch (error) {
-        console.error('Failed to fetch requisitions from API:', error);
+        console.error("Failed to fetch requisitions from API:", error);
       }
 
       // Also load from localStorage
-      if (includeStorageData && typeof window !== 'undefined') {
+      if (includeStorageData && typeof window !== "undefined") {
         try {
           const storedRequisitions = loadRequisitionsFromStorage();
           if (storedRequisitions && storedRequisitions.length > 0) {
             // Merge: prioritize API data, add missing from localStorage
-            const apiIds = new Set(allRequisitions.map(r => r.id));
+            const apiIds = new Set(allRequisitions.map((r) => r.id));
             const localOnlyRequisitions = storedRequisitions.filter(
-              r => !apiIds.has(r.id)
+              (r) => !apiIds.has(r.id)
             );
 
             allRequisitions = [...allRequisitions, ...localOnlyRequisitions];
           }
         } catch (storageError) {
-          console.error('Failed to load requisitions from storage:', storageError);
+          console.error(
+            "Failed to load requisitions from storage:",
+            storageError
+          );
         }
       }
 
@@ -423,10 +445,10 @@ export const useRequisitionWithStorage = (
   initialData?: Requisition
 ) =>
   useQuery({
-    queryKey: [QUERY_KEYS.REQUISITIONS.BY_ID, requisitionId, 'with-storage'],
+    queryKey: [QUERY_KEYS.REQUISITIONS.BY_ID, requisitionId, "with-storage"],
     queryFn: async () => {
       // First try localStorage
-      if (typeof window !== 'undefined') {
+      if (typeof window !== "undefined") {
         const stored = getRequisitionFromStorage(requisitionId);
         if (stored) {
           return stored;
@@ -454,7 +476,7 @@ export const useRequisitionWithStorage = (
  */
 export const useRequisitionsAsWorkflowDocuments = (includeStorageData = true) =>
   useQuery({
-    queryKey: [QUERY_KEYS.REQUISITIONS.ALL, 'as-documents'],
+    queryKey: [QUERY_KEYS.REQUISITIONS.ALL, "as-documents"],
     queryFn: async () => {
       let allRequisitions: Requisition[] = [];
 
@@ -465,24 +487,27 @@ export const useRequisitionsAsWorkflowDocuments = (includeStorageData = true) =>
           allRequisitions = response.data;
         }
       } catch (error) {
-        console.error('Failed to fetch requisitions from API:', error);
+        console.error("Failed to fetch requisitions from API:", error);
       }
 
       // Also load from localStorage
-      if (includeStorageData && typeof window !== 'undefined') {
+      if (includeStorageData && typeof window !== "undefined") {
         try {
           const storedRequisitions = loadRequisitionsFromStorage();
           if (storedRequisitions && storedRequisitions.length > 0) {
             // Merge: prioritize API data, add missing from localStorage
-            const apiIds = new Set(allRequisitions.map(r => r.id));
+            const apiIds = new Set(allRequisitions.map((r) => r.id));
             const localOnlyRequisitions = storedRequisitions.filter(
-              r => !apiIds.has(r.id)
+              (r) => !apiIds.has(r.id)
             );
 
             allRequisitions = [...allRequisitions, ...localOnlyRequisitions];
           }
         } catch (storageError) {
-          console.error('Failed to load requisitions from storage:', storageError);
+          console.error(
+            "Failed to load requisitions from storage:",
+            storageError
+          );
         }
       }
 

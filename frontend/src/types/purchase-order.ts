@@ -15,7 +15,7 @@ export interface POItem {
   amount: number;
   itemNumber?: string;
   itemCode?: string;
-  totalPrice?: number;         // Alias for amount
+  totalPrice?: number; // Alias for amount
   unit?: string;
   category?: string;
   notes?: string;
@@ -25,7 +25,7 @@ export interface PurchaseOrder {
   // Core fields
   id: string;
   organizationId: string;
-  poNumber: string;
+  documentNumber: string;
   vendorId: string;
   vendor?: any;
   vendorName: string;
@@ -39,37 +39,35 @@ export interface PurchaseOrder {
   linkedRequisition: string;
   createdAt: Date;
   updatedAt: Date;
-  
+
   // Business requirement fields
   description: string;
   department: string;
   departmentId: string;
-  requiredByDate: Date;            // Same as deliveryDate
+  requiredByDate: Date; // Same as deliveryDate
   priority: string;
   budgetCode: string;
   costCenter: string;
   projectCode: string;
-  sourceRequisitionNumber: string;
-  sourceRequisitionId: string;     // Same as linkedRequisition
+  sourceRequisitionId: string; // Same as linkedRequisition
   subtotal: number;
   tax: number;
-  total: number;                   // Same as totalAmount
+  total: number; // Same as totalAmount
   createdBy: string;
-  ownerId: string;                 // Same as createdBy
+  ownerId: string; // Same as createdBy
   glCode: string;
   title: string;
-  
+
   // UI compatibility fields
-  documentNumber?: string;
   currentStage?: number;
   actionHistory?: any[];
   metadata?: Record<string, any>;
   type?: string;
   createdByUser?: any;
-  approvalChain?: any[];           // For PDF generation
-  requestedBy?: string;            // For PV creation
-  requestedByName?: string;        // For PV creation
-  requestedByRole?: string;        // For PV creation
+  approvalChain?: any[]; // For PDF generation
+  requestedBy?: string; // For PV creation
+  requestedByName?: string; // For PV creation
+  requestedByRole?: string; // For PV creation
 }
 
 // ============================================================================
@@ -83,9 +81,9 @@ export interface CreatePurchaseOrderRequest {
   totalAmount: number;
   currency: string;
   deliveryDate: Date;
-  requiredByDate?: Date;           // Alias for deliveryDate
+  requiredByDate?: Date; // Alias for deliveryDate
   linkedRequisition: string;
-  
+
   // Business requirement fields
   description: string;
   department: string;
@@ -102,19 +100,18 @@ export interface CreatePurchaseOrderRequest {
   createdByName?: string;
   createdByRole?: string;
   sourceRequisitionId?: string;
-  sourceRequisitionNumber?: string;
 }
 
 export interface UpdatePurchaseOrderRequest {
   purchaseOrderId: string;
-  poId?: string;                   // Alias for purchaseOrderId
+  poId?: string; // Alias for purchaseOrderId
   vendorId?: string;
   vendorName?: string;
   items?: POItem[];
   totalAmount?: number;
   currency?: string;
   deliveryDate?: Date;
-  requiredByDate?: Date;           // Alias for deliveryDate
+  requiredByDate?: Date; // Alias for deliveryDate
   description?: string;
   title?: string;
   priority?: string;
@@ -125,9 +122,9 @@ export interface UpdatePurchaseOrderRequest {
 
 export interface SubmitPurchaseOrderRequest {
   purchaseOrderId: string;
-  poId?: string;                   // Alias for purchaseOrderId
+  poId?: string; // Alias for purchaseOrderId
   submittingUserId: string;
-  submittedBy?: string;            // Alias for submittingUserId
+  submittedBy?: string; // Alias for submittingUserId
   submittedByName: string;
   submittedByRole: string;
   comments?: string;
@@ -135,7 +132,7 @@ export interface SubmitPurchaseOrderRequest {
 
 export interface ApprovePurchaseOrderRequest {
   purchaseOrderId: string;
-  poId?: string;                   // Alias for purchaseOrderId
+  poId?: string; // Alias for purchaseOrderId
   approvingUserId: string;
   approvingUserName: string;
   approvingUserRole: string;
@@ -146,7 +143,7 @@ export interface ApprovePurchaseOrderRequest {
 
 export interface RejectPurchaseOrderRequest {
   purchaseOrderId: string;
-  poId?: string;                   // Alias for purchaseOrderId
+  poId?: string; // Alias for purchaseOrderId
   rejectingUserId: string;
   rejectingUserName: string;
   rejectingUserRole: string;
@@ -173,4 +170,11 @@ export interface PurchaseOrderStats {
 // TYPE ALIASES
 // ============================================================================
 
-export type PurchaseOrderStatus = "draft"| "pending" | "approved" | "rejected" | "fulfilled" | "completed" | "cancelled" 
+export type PurchaseOrderStatus =
+  | "draft"
+  | "pending"
+  | "approved"
+  | "rejected"
+  | "fulfilled"
+  | "completed"
+  | "cancelled";

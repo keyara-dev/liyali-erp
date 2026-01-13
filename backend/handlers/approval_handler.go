@@ -412,8 +412,8 @@ func (h *ApprovalHandler) GetApprovalHistory(c *fiber.Ctx) error {
 	var actualDocumentID string
 	var requisition models.Requisition
 	
-	// Try to find requisition by ID or req_number
-	err := db.Where("id = ? OR req_number = ?", documentID, documentID).
+	// Try to find requisition by ID or document_number
+	err := db.Where("id = ? OR document_number = ?", documentID, documentID).
 		First(&requisition).Error
 	
 	if err == nil {
@@ -625,8 +625,8 @@ func (h *ApprovalHandler) GetApprovalWorkflowStatus(c *fiber.Ctx) error {
 	var actualDocumentID string
 	var requisition models.Requisition
 	
-	// Try to find requisition by ID or req_number
-	err := db.Where("id = ? OR req_number = ?", documentID, documentID).
+	// Try to find requisition by ID or document_number
+	err := db.Where("id = ? OR document_number = ?", documentID, documentID).
 		First(&requisition).Error
 	
 	if err == nil {

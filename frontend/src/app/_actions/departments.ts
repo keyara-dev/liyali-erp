@@ -1,7 +1,11 @@
 "use server";
 
 import type { APIResponse } from "@/types";
-import authenticatedApiClient, { handleError, successResponse, badRequestResponse } from "./api-config";
+import authenticatedApiClient, {
+  handleError,
+  successResponse,
+  badRequestResponse,
+} from "./api-config";
 
 // ============================================================================
 // TYPES AND INTERFACES
@@ -46,10 +50,12 @@ export interface UpdateDepartmentRequest {
  * Get all departments for the current organization
  * Calls: GET /api/v1/organization/departments
  */
-export async function getDepartments(active?: boolean): Promise<APIResponse<Department[]>> {
+export async function getDepartments(
+  active?: boolean
+): Promise<APIResponse<Department[]>> {
   const params = new URLSearchParams();
   if (active !== undefined) {
-    params.set('active', active.toString());
+    params.set("active", active.toString());
   }
 
   const url = `/api/v1/organization/departments?${params.toString()}`;
@@ -57,10 +63,16 @@ export async function getDepartments(active?: boolean): Promise<APIResponse<Depa
   try {
     const response = await authenticatedApiClient({
       url: url,
-      method: "GET"
+      method: "GET",
     });
 
-    return successResponse(response.data.data || [], "Departments retrieved successfully");
+    // Transform departments data to match expected format
+    const departments = (response.data.data || []).map((dept: any) => ({
+      ...dept,
+      is_active: dept.active !== undefined ? dept.active : dept.is_active,
+    }));
+
+    return successResponse(departments, "Departments retrieved successfully");
   } catch (error: any) {
     return handleError(error, "GET", url);
   }
@@ -70,7 +82,9 @@ export async function getDepartments(active?: boolean): Promise<APIResponse<Depa
  * Get department by ID
  * Calls: GET /api/v1/organization/departments/{id}
  */
-export async function getDepartmentById(id: string): Promise<APIResponse<Department>> {
+export async function getDepartmentById(
+  id: string
+): Promise<APIResponse<Department>> {
   if (!id) {
     return badRequestResponse("Department ID is required");
   }
@@ -80,10 +94,21 @@ export async function getDepartmentById(id: string): Promise<APIResponse<Departm
   try {
     const response = await authenticatedApiClient({
       url: url,
-      method: "GET"
+      method: "GET",
     });
 
-    return successResponse(response.data.data, "Department retrieved successfully");
+    // Transform department data to match expected format
+    const department = response.data.data
+      ? {
+          ...response.data.data,
+          is_active:
+            response.data.data.active !== undefined
+              ? response.data.data.active
+              : response.data.data.is_active,
+        }
+      : null;
+
+    return successResponse(department, "Department retrieved successfully");
   } catch (error: any) {
     return handleError(error, "GET", url);
   }
@@ -93,7 +118,9 @@ export async function getDepartmentById(id: string): Promise<APIResponse<Departm
  * Create a new department
  * Calls: POST /api/v1/organization/departments
  */
-export async function createDepartment(data: CreateDepartmentRequest): Promise<APIResponse<Department>> {
+export async function createDepartment(
+  data: CreateDepartmentRequest
+): Promise<APIResponse<Department>> {
   if (!data.name || !data.code) {
     return badRequestResponse("Department name and code are required");
   }
@@ -110,10 +137,21 @@ export async function createDepartment(data: CreateDepartmentRequest): Promise<A
         description: data.description || "",
         manager_name: data.manager_name || "",
         parent_id: data.parent_id || null,
-      }
+      },
     });
 
-    return successResponse(response.data.data, "Department created successfully");
+    // Transform department data to match expected format
+    const department = response.data.data
+      ? {
+          ...response.data.data,
+          is_active:
+            response.data.data.active !== undefined
+              ? response.data.data.active
+              : response.data.data.is_active,
+        }
+      : null;
+
+    return successResponse(department, "Department created successfully");
   } catch (error: any) {
     return handleError(error, "POST", url);
   }
@@ -123,7 +161,9 @@ export async function createDepartment(data: CreateDepartmentRequest): Promise<A
  * Update an existing department
  * Calls: PUT /api/v1/organization/departments/{id}
  */
-export async function updateDepartment(data: UpdateDepartmentRequest): Promise<APIResponse<Department>> {
+export async function updateDepartment(
+  data: UpdateDepartmentRequest
+): Promise<APIResponse<Department>> {
   if (!data.id) {
     return badRequestResponse("Department ID is required");
   }
@@ -141,10 +181,21 @@ export async function updateDepartment(data: UpdateDepartmentRequest): Promise<A
         manager_name: data.manager_name,
         parent_id: data.parent_id,
         is_active: data.is_active,
-      }
+      },
     });
 
-    return successResponse(response.data.data, "Department updated successfully");
+    // Transform department data to match expected format
+    const department = response.data.data
+      ? {
+          ...response.data.data,
+          is_active:
+            response.data.data.active !== undefined
+              ? response.data.data.active
+              : response.data.data.is_active,
+        }
+      : null;
+
+    return successResponse(department, "Department updated successfully");
   } catch (error: any) {
     return handleError(error, "PUT", url);
   }
@@ -164,7 +215,7 @@ export async function deleteDepartment(id: string): Promise<APIResponse> {
   try {
     await authenticatedApiClient({
       url: url,
-      method: "DELETE"
+      method: "DELETE",
     });
 
     return successResponse(null, "Department deleted successfully");
@@ -177,7 +228,9 @@ export async function deleteDepartment(id: string): Promise<APIResponse> {
  * Restore a deleted department
  * Calls: POST /api/v1/organization/departments/{id}/restore
  */
-export async function restoreDepartment(id: string): Promise<APIResponse<Department>> {
+export async function restoreDepartment(
+  id: string
+): Promise<APIResponse<Department>> {
   if (!id) {
     return badRequestResponse("Department ID is required");
   }
@@ -187,10 +240,21 @@ export async function restoreDepartment(id: string): Promise<APIResponse<Departm
   try {
     const response = await authenticatedApiClient({
       url: url,
-      method: "POST"
+      method: "POST",
     });
 
-    return successResponse(response.data.data, "Department restored successfully");
+    // Transform department data to match expected format
+    const department = response.data.data
+      ? {
+          ...response.data.data,
+          is_active:
+            response.data.data.active !== undefined
+              ? response.data.data.active
+              : response.data.data.is_active,
+        }
+      : null;
+
+    return successResponse(department, "Department restored successfully");
   } catch (error: any) {
     return handleError(error, "POST", url);
   }
@@ -199,7 +263,9 @@ export async function restoreDepartment(id: string): Promise<APIResponse<Departm
 /**
  * Get active departments only
  */
-export async function getActiveDepartments(): Promise<APIResponse<Department[]>> {
+export async function getActiveDepartments(): Promise<
+  APIResponse<Department[]>
+> {
   return getDepartments(true);
 }
 
@@ -218,7 +284,9 @@ export async function getAllDepartments(): Promise<APIResponse<Department[]>> {
  * Get modules assigned to a department
  * Calls: GET /api/v1/organization/departments/{id}/modules
  */
-export async function getDepartmentModules(departmentId: string): Promise<APIResponse> {
+export async function getDepartmentModules(
+  departmentId: string
+): Promise<APIResponse> {
   if (!departmentId) {
     return badRequestResponse("Department ID is required");
   }
@@ -228,10 +296,13 @@ export async function getDepartmentModules(departmentId: string): Promise<APIRes
   try {
     const response = await authenticatedApiClient({
       url: url,
-      method: "GET"
+      method: "GET",
     });
 
-    return successResponse(response.data.data || [], "Department modules retrieved successfully");
+    return successResponse(
+      response.data.data || [],
+      "Department modules retrieved successfully"
+    );
   } catch (error: any) {
     return handleError(error, "GET", url);
   }
@@ -256,11 +327,14 @@ export async function assignModuleToDepartment(
       url: url,
       method: "POST",
       data: {
-        module_id: moduleId
-      }
+        module_id: moduleId,
+      },
     });
 
-    return successResponse(response.data, "Module assigned to department successfully");
+    return successResponse(
+      response.data,
+      "Module assigned to department successfully"
+    );
   } catch (error: any) {
     return handleError(error, "POST", url);
   }
@@ -283,7 +357,7 @@ export async function removeModuleFromDepartment(
   try {
     await authenticatedApiClient({
       url: url,
-      method: "DELETE"
+      method: "DELETE",
     });
 
     return successResponse(null, "Module removed from department successfully");

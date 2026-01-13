@@ -46,20 +46,20 @@ interface RequisitionsTableProps {
 
 const columns: ColumnDef<Requisition>[] = [
   {
-    accessorKey: "reqNumber",
+    accessorKey: "documentNumber",
     header: ({ column }) => (
       <Button
         variant="ghost"
         onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         className="-ml-3"
       >
-        REQ Number
+        Document Number
         <ArrowUpDown className="ml-2 h-4 w-4" />
       </Button>
     ),
     cell: ({ row }) => (
       <div className="font-semibold">
-        {row.original.reqNumber || row.original.id}
+        {row.original.documentNumber || row.original.id}
       </div>
     ),
   },
@@ -425,7 +425,7 @@ export function RequisitionsTable({
         columns={columns}
         data={data}
         searchKey="title"
-        searchPlaceholder="Search by title, REQ number, or requester..."
+        searchPlaceholder="Search by title, document number, or requester..."
         // actions={getActions}
         renderRowActions={(req: Requisition) => (
           <ReqOptionsMenu

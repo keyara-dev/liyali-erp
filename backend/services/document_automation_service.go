@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/liyali/liyali-gateway/models"
 	"github.com/liyali/liyali-gateway/types"
+	"github.com/liyali/liyali-gateway/utils"
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
 )
@@ -91,7 +92,7 @@ func (s *DocumentAutomationService) CreatePurchaseOrderFromRequisition(
 	}
 
 	// Generate PO number
-	poNumber := fmt.Sprintf("PO-%d-%s", time.Now().Unix(), uuid.New().String()[:8])
+	documentNumber := utils.GeneratePurchaseOrderNumber()
 
 	// Convert requisition items to PO items
 	var requisitionItems []types.RequisitionItem
@@ -112,7 +113,7 @@ func (s *DocumentAutomationService) CreatePurchaseOrderFromRequisition(
 	// Create Purchase Order
 	purchaseOrder := models.PurchaseOrder{
 		ID:                uuid.New().String(),
-		PONumber:          poNumber,
+		DocumentNumber:    documentNumber,
 		VendorID:          vendorID, // Now can be the placeholder vendor ID
 		Status:            "draft", // Start as draft for review
 		TotalAmount:       requisition.TotalAmount,
@@ -125,7 +126,7 @@ func (s *DocumentAutomationService) CreatePurchaseOrderFromRequisition(
 		OrganizationID:    requisition.OrganizationID,
 		
 		// Add description to track auto-creation details
-		Description:       fmt.Sprintf("Auto-created from requisition %s. Vendor: %s", requisition.REQNumber, vendorName),
+		Description:       fmt.Sprintf("Auto-created from requisition %s. Vendor: %s", requisition.DocumentNumber, vendorName),
 		
 		// Copy additional fields from requisition
 		Department:        requisition.Department,
@@ -137,7 +138,6 @@ func (s *DocumentAutomationService) CreatePurchaseOrderFromRequisition(
 		
 		// Link to source requisition
 		SourceRequisitionId:     &requisition.ID,
-		SourceRequisitionNumber: requisition.REQNumber,
 		
 		// Mark as auto-created
 		AutomationUsed:    true,
@@ -157,7 +157,7 @@ func (s *DocumentAutomationService) CreatePurchaseOrderFromRequisition(
 
 	// Log audit event with vendor info
 	if s.auditService != nil {
-		details := fmt.Sprintf("Auto-created PO %s from approved requisition %s (Vendor: %s)", poNumber, requisition.REQNumber, vendorName)
+		details := fmt.Sprintf("Auto-created PO %s from approved requisition %s (Vendor: %s)", documentNumber, requisition.DocumentNumber, vendorName)
 		s.auditService.LogEvent(ctx, "system", "", "po_auto_created", "purchase_order", purchaseOrder.ID, details, "", "")
 	}
 
@@ -169,7 +169,7 @@ func (s *DocumentAutomationService) CreatePurchaseOrderFromRequisition(
 			DocumentType: "purchase_order",
 			Action:       "auto_created",
 			ActorID:      "system",
-			Details:      fmt.Sprintf("Purchase Order %s was automatically created from your requisition (Vendor: %s)", poNumber, vendorName),
+			Details:      fmt.Sprintf("Purchase Order %s was automatically created from your requisition (Vendor: %s)", documentNumber, vendorName),
 			Timestamp:    time.Now(),
 		}
 		s.notificationSvc.HandleWorkflowEvent(event)
@@ -203,8 +203,8 @@ func (s *DocumentAutomationService) CreateGRNFromPurchaseOrder(
 		}, nil
 	}
 
-	// Generate GRN number
-	grnNumber := fmt.Sprintf("GRN-%d-%s", time.Now().Unix(), uuid.New().String()[:8])
+	// Generate GRN document number
+	documentNumber := utils.GenerateDocumentNumber("GRN")
 
 	// Convert PO items to GRN items
 	var poItems []types.POItem
@@ -226,8 +226,8 @@ func (s *DocumentAutomationService) CreateGRNFromPurchaseOrder(
 	// Create GRN
 	grn := models.GoodsReceivedNote{
 		ID:               uuid.New().String(),
-		GRNNumber:        grnNumber,
-		PONumber:         purchaseOrder.PONumber,
+		DocumentNumber:   documentNumber,
+		PODocumentNumber: purchaseOrder.DocumentNumber,
 		Status:           "draft", // Start as draft for warehouse team
 		ReceivedDate:     time.Now(),
 		ReceivedBy:       "", // To be filled by warehouse team
@@ -251,7 +251,7 @@ func (s *DocumentAutomationService) CreateGRNFromPurchaseOrder(
 
 	// Log audit event
 	if s.auditService != nil {
-		details := fmt.Sprintf("Auto-created GRN %s from approved PO %s", grnNumber, purchaseOrder.PONumber)
+		details := fmt.Sprintf("Auto-created GRN %s from approved PO %s", documentNumber, purchaseOrder.DocumentNumber)
 		s.auditService.LogEvent(ctx, "system", "", "grn_auto_created", "grn", grn.ID, details, "", "")
 	}
 
@@ -263,7 +263,7 @@ func (s *DocumentAutomationService) CreateGRNFromPurchaseOrder(
 			DocumentType: "grn",
 			Action:       "auto_created",
 			ActorID:      "system",
-			Details:      fmt.Sprintf("GRN %s was automatically created from PO %s and is ready for goods receipt", grnNumber, purchaseOrder.PONumber),
+			Details:      fmt.Sprintf("GRN %s was automatically created from PO %s and is ready for goods receipt", documentNumber, purchaseOrder.DocumentNumber),
 			Timestamp:    time.Now(),
 		}
 		s.notificationSvc.HandleWorkflowEvent(event)
@@ -299,30 +299,30 @@ func (s *DocumentAutomationService) CreatePaymentVoucherFromGRN(
 
 	// Get the linked PO to extract vendor and amount information
 	var purchaseOrder models.PurchaseOrder
-	if err := s.db.Where("po_number = ?", grn.PONumber).First(&purchaseOrder).Error; err != nil {
+	if err := s.db.Where("document_number = ?", grn.PODocumentNumber).First(&purchaseOrder).Error; err != nil {
 		return &AutomationResult{
 			Success: false,
 			Error:   fmt.Errorf("linked purchase order not found: %w", err),
 		}, nil
 	}
 
-	// Generate PV number
-	pvNumber := fmt.Sprintf("PV-%d-%s", time.Now().Unix(), uuid.New().String()[:8])
+	// Generate PV document number
+	documentNumber := utils.GenerateDocumentNumber("PV")
 
 	// Create Payment Voucher
 	paymentVoucher := models.PaymentVoucher{
-		ID:            uuid.New().String(),
-		VoucherNumber: pvNumber,
-		VendorID:      purchaseOrder.VendorID,
-		InvoiceNumber: "", // To be filled when invoice is received
-		Status:        "draft", // Start as draft for finance team
-		Amount:        purchaseOrder.TotalAmount,
-		Currency:      purchaseOrder.Currency,
-		PaymentMethod: "bank_transfer", // Default payment method
-		LinkedPO:      purchaseOrder.PONumber,
-		ApprovalStage: 0,
-		CreatedAt:     time.Now(),
-		UpdatedAt:     time.Now(),
+		ID:             uuid.New().String(),
+		DocumentNumber: documentNumber,
+		VendorID:       purchaseOrder.VendorID,
+		InvoiceNumber:  "", // To be filled when invoice is received
+		Status:         "draft", // Start as draft for finance team
+		Amount:         purchaseOrder.TotalAmount,
+		Currency:       purchaseOrder.Currency,
+		PaymentMethod:  "bank_transfer", // Default payment method
+		LinkedPO:       purchaseOrder.DocumentNumber,
+		ApprovalStage:  0,
+		CreatedAt:      time.Now(),
+		UpdatedAt:      time.Now(),
 		OrganizationID: grn.OrganizationID,
 	}
 
@@ -339,7 +339,7 @@ func (s *DocumentAutomationService) CreatePaymentVoucherFromGRN(
 
 	// Log audit event
 	if s.auditService != nil {
-		details := fmt.Sprintf("Auto-created PV %s from approved GRN %s", pvNumber, grn.GRNNumber)
+		details := fmt.Sprintf("Auto-created PV %s from approved GRN %s", documentNumber, grn.DocumentNumber)
 		s.auditService.LogEvent(ctx, "system", "", "pv_auto_created", "payment_voucher", paymentVoucher.ID, details, "", "")
 	}
 
@@ -351,7 +351,7 @@ func (s *DocumentAutomationService) CreatePaymentVoucherFromGRN(
 			DocumentType: "payment_voucher",
 			Action:       "auto_created",
 			ActorID:      "system",
-			Details:      fmt.Sprintf("Payment Voucher %s was automatically created from GRN %s and is ready for processing", pvNumber, grn.GRNNumber),
+			Details:      fmt.Sprintf("Payment Voucher %s was automatically created from GRN %s and is ready for processing", documentNumber, grn.DocumentNumber),
 			Timestamp:    time.Now(),
 		}
 		s.notificationSvc.HandleWorkflowEvent(event)

@@ -4,7 +4,7 @@
  */
 
 // Import shared types from core
-import type { PaymentMethod } from './core';
+import type { PaymentMethod } from "./core";
 
 // ============================================================================
 // CORE PAYMENT VOUCHER TYPES
@@ -21,7 +21,7 @@ export interface PaymentVoucher {
   // Core fields
   id: string;
   organizationId: string;
-  voucherNumber: string;
+  documentNumber: string;
   vendorId: string;
   vendor?: any;
   vendorName: string;
@@ -37,13 +37,11 @@ export interface PaymentVoucher {
   linkedPO: string;
   createdAt: Date;
   updatedAt: Date;
-  
+
   // Business requirement fields
-  pvNumber: string;                // Same as voucherNumber
   bankDetails: any;
   requestedDate: Date;
-  sourcePurchaseOrderNumber: string;
-  totalAmount: number;             // Same as amount
+  totalAmount: number; // Same as amount
   items: PaymentItem[];
   budgetCode: string;
   costCenter: string;
@@ -52,7 +50,6 @@ export interface PaymentVoucher {
   withholdingTaxAmount: number;
   paidAmount: number;
   paidDate: Date;
-  sourceRequisitionNumber: string;
   paymentDueDate: Date;
   requestedByName: string;
   title: string;
@@ -62,17 +59,16 @@ export interface PaymentVoucher {
   submittedAt: Date;
   approvedAt: Date;
   createdBy: string;
-  ownerId: string;                 // Same as createdBy
-  
+  ownerId: string; // Same as createdBy
+
   // UI compatibility fields
-  documentNumber?: string;
   currentStage?: number;
   currentApprovalStage?: number;
   actionHistory?: any[];
   metadata?: Record<string, any>;
   type?: string;
   createdByUser?: any;
-  approvalChain?: any[];           // For PDF generation
+  approvalChain?: any[]; // For PDF generation
 }
 
 // ============================================================================
@@ -89,7 +85,7 @@ export interface CreatePaymentVoucherRequest {
   glCode: string;
   description: string;
   linkedPO: string;
-  
+
   // Business requirement fields
   title: string;
   department: string;
@@ -107,14 +103,12 @@ export interface CreatePaymentVoucherRequest {
   createdByName?: string;
   createdByRole?: string;
   sourcePurchaseOrderId?: string;
-  sourcePurchaseOrderNumber?: string;
   sourceRequisitionId?: string;
-  sourceRequisitionNumber?: string;
 }
 
 export interface UpdatePaymentVoucherRequest {
   paymentVoucherId: string;
-  pvId?: string;                   // Alias for paymentVoucherId
+  pvId?: string; // Alias for paymentVoucherId
   vendorId?: string;
   vendorName?: string;
   invoiceNumber?: string;
@@ -138,9 +132,9 @@ export interface UpdatePaymentVoucherRequest {
 
 export interface SubmitPaymentVoucherRequest {
   paymentVoucherId: string;
-  pvId?: string;                   // Alias for paymentVoucherId
+  pvId?: string; // Alias for paymentVoucherId
   submittingUserId: string;
-  submittedBy?: string;            // Alias for submittingUserId
+  submittedBy?: string; // Alias for submittingUserId
   submittedByName: string;
   submittedByRole: string;
   comments?: string;
@@ -148,7 +142,7 @@ export interface SubmitPaymentVoucherRequest {
 
 export interface ApprovePaymentVoucherRequest {
   paymentVoucherId: string;
-  pvId?: string;                   // Alias for paymentVoucherId
+  pvId?: string; // Alias for paymentVoucherId
   approvingUserId: string;
   approvingUserName: string;
   approvingUserRole: string;
@@ -158,7 +152,7 @@ export interface ApprovePaymentVoucherRequest {
 
 export interface RejectPaymentVoucherRequest {
   paymentVoucherId: string;
-  pvId?: string;                   // Alias for paymentVoucherId
+  pvId?: string; // Alias for paymentVoucherId
   rejectingUserId: string;
   rejectingUserName: string;
   rejectingUserRole: string;
@@ -169,16 +163,16 @@ export interface RejectPaymentVoucherRequest {
 
 export interface MarkPaymentVoucherPaidRequest {
   paymentVoucherId: string;
-  pvId?: string;                   // Alias for paymentVoucherId
+  pvId?: string; // Alias for paymentVoucherId
   paidBy: string;
-  markedBy?: string;               // Alias for paidBy
+  markedBy?: string; // Alias for paidBy
   markedByName?: string;
   markedByRole?: string;
   paidAt: Date;
-  paidDate?: Date;                 // Alias for paidAt
+  paidDate?: Date; // Alias for paidAt
   paidAmount: number;
   paymentReference?: string;
-  referenceNumber?: string;        // Alias for paymentReference
+  referenceNumber?: string; // Alias for paymentReference
   comments?: string;
 }
 
@@ -200,6 +194,13 @@ export interface PaymentVoucherStats {
 // TYPE ALIASES
 // ============================================================================
 
-export type PaymentVoucherStatus = "draft"| "pending" | "approved" | "rejected" | "paid" | "completed" | "cancelled";
+export type PaymentVoucherStatus =
+  | "draft"
+  | "pending"
+  | "approved"
+  | "rejected"
+  | "paid"
+  | "completed"
+  | "cancelled";
 // Re-export PaymentMethod from core
-export type { PaymentMethod } from './core';
+export type { PaymentMethod } from "./core";

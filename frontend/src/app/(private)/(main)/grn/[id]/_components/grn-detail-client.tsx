@@ -42,8 +42,8 @@ interface ReceivedItem {
 
 interface GoodsReceivedNote {
   id: string;
-  grnNumber: string;
-  poNumber: string;
+  documentNumber: string;
+  poDocumentNumber: string;
   status: "DRAFT" | "SUBMITTED" | "CONFIRMED" | "REJECTED";
   warehouseLocation: string;
   receivedDate: string;
@@ -91,12 +91,17 @@ export function GRNDetailClient({
     router.back();
   };
 
-  const handleAddQualityIssue = async (issue: Omit<{
-    id: string;
-    itemId: string;
-    description: string;
-    severity: "LOW" | "MEDIUM" | "HIGH";
-  }, 'id'>) => {
+  const handleAddQualityIssue = async (
+    issue: Omit<
+      {
+        id: string;
+        itemId: string;
+        description: string;
+        severity: "LOW" | "MEDIUM" | "HIGH";
+      },
+      "id"
+    >
+  ) => {
     try {
       // Call mutation to save quality issue via backend
       await addQualityIssueMutation.mutateAsync(issue);
@@ -131,7 +136,7 @@ export function GRNDetailClient({
     <div className="space-y-6">
       {/* Header */}
       <PageHeader
-        title={grn.grnNumber}
+        title={grn.documentNumber}
         subtitle="Goods Received Note"
         badges={[
           {
@@ -229,7 +234,7 @@ export function GRNDetailClient({
         <CardContent className="grid gap-4 md:grid-cols-3">
           <div>
             <p className="text-sm text-muted-foreground">PO Number</p>
-            <p className="font-semibold">{grn.poNumber}</p>
+            <p className="font-semibold">{grn.documentNumber}</p>
           </div>
           <div>
             <p className="text-sm text-muted-foreground">Warehouse Location</p>

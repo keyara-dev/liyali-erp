@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { QUERY_KEYS } from '@/lib/constants';
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { QUERY_KEYS } from "@/lib/constants";
 import {
   getGRNAction,
   getGRNsAction,
@@ -10,9 +10,9 @@ import {
   deleteGRNAction,
   confirmGRNAction,
   GoodsReceivedNote,
-} from '@/app/_actions/grn-actions';
-import { toast } from 'sonner';
-import { APIResponse } from '@/types';
+} from "@/app/_actions/grn-actions";
+import { toast } from "sonner";
+import { APIResponse } from "@/types";
 
 export type { GoodsReceivedNote };
 
@@ -22,7 +22,7 @@ export type { GoodsReceivedNote };
  *
  * @param page - Page number (default: 1)
  * @param limit - Items per page (default: 10)
- * @param filters - Optional filters (status, poNumber)
+ * @param filters - Optional filters (status, poDocumentNumber)
  * @returns Query result with GRNs array
  *
  * @example
@@ -33,7 +33,7 @@ export const useGRNs = (
   limit: number = 10,
   filters?: {
     status?: string;
-    poNumber?: string;
+    poDocumentNumber?: string;
   }
 ) =>
   useQuery({
@@ -78,7 +78,7 @@ export const useGRNById = (grnId: string, initialData?: GoodsReceivedNote) =>
  * @example
  * const { mutateAsync: createGRN, isPending } = useCreateGRN();
  * await createGRN({
- *   poNumber: 'PO-123',
+ *   poDocumentNumber: 'PO-123',
  *   items: [...],
  *   receivedBy: 'user-id'
  * });
@@ -88,20 +88,20 @@ export const useCreateGRN = (onSuccess?: (data: GoodsReceivedNote) => void) => {
 
   return useMutation({
     mutationFn: async ({
-      poNumber,
+      poDocumentNumber,
       items,
       receivedBy,
       warehouseLocation,
       notes,
     }: {
-      poNumber: string;
+      poDocumentNumber: string;
       items: any[];
       receivedBy: string;
       warehouseLocation?: string;
       notes?: string;
     }) => {
       const response = await createGRNAction(
-        poNumber,
+        poDocumentNumber,
         items,
         receivedBy,
         warehouseLocation,
@@ -113,7 +113,7 @@ export const useCreateGRN = (onSuccess?: (data: GoodsReceivedNote) => void) => {
       return response;
     },
     onSuccess: (response) => {
-      toast.success('GRN created successfully');
+      toast.success("GRN created successfully");
       queryClient.invalidateQueries({
         queryKey: [QUERY_KEYS.GRN.ALL],
       });
@@ -123,7 +123,7 @@ export const useCreateGRN = (onSuccess?: (data: GoodsReceivedNote) => void) => {
       }
     },
     onError: (error: any) => {
-      toast.error(error.message || 'Failed to create GRN');
+      toast.error(error.message || "Failed to create GRN");
     },
   });
 };
@@ -143,7 +143,10 @@ export const useCreateGRN = (onSuccess?: (data: GoodsReceivedNote) => void) => {
  *   qualityIssues: [...]
  * });
  */
-export const useUpdateGRN = (grnId: string, onSuccess?: (data: GoodsReceivedNote) => void) => {
+export const useUpdateGRN = (
+  grnId: string,
+  onSuccess?: (data: GoodsReceivedNote) => void
+) => {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -161,7 +164,7 @@ export const useUpdateGRN = (grnId: string, onSuccess?: (data: GoodsReceivedNote
       return response;
     },
     onSuccess: (response) => {
-      toast.success('GRN updated successfully');
+      toast.success("GRN updated successfully");
 
       // Update the specific GRN in cache
       queryClient.setQueryData([QUERY_KEYS.GRN.BY_ID, grnId], response.data);
@@ -176,7 +179,7 @@ export const useUpdateGRN = (grnId: string, onSuccess?: (data: GoodsReceivedNote
       }
     },
     onError: (error: any) => {
-      toast.error(error.message || 'Failed to update GRN');
+      toast.error(error.message || "Failed to update GRN");
     },
   });
 };
@@ -193,7 +196,10 @@ export const useUpdateGRN = (grnId: string, onSuccess?: (data: GoodsReceivedNote
  * const { mutateAsync: confirmGRN } = useConfirmGRN(grnId);
  * await confirmGRN();
  */
-export const useConfirmGRN = (grnId: string, onSuccess?: (data: GoodsReceivedNote) => void) => {
+export const useConfirmGRN = (
+  grnId: string,
+  onSuccess?: (data: GoodsReceivedNote) => void
+) => {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -205,7 +211,7 @@ export const useConfirmGRN = (grnId: string, onSuccess?: (data: GoodsReceivedNot
       return response;
     },
     onSuccess: (response) => {
-      toast.success('GRN confirmed successfully');
+      toast.success("GRN confirmed successfully");
 
       queryClient.setQueryData([QUERY_KEYS.GRN.BY_ID, grnId], response.data);
       queryClient.invalidateQueries({
@@ -217,7 +223,7 @@ export const useConfirmGRN = (grnId: string, onSuccess?: (data: GoodsReceivedNot
       }
     },
     onError: (error: any) => {
-      toast.error(error.message || 'Failed to confirm GRN');
+      toast.error(error.message || "Failed to confirm GRN");
     },
   });
 };
@@ -246,7 +252,7 @@ export const useDeleteGRN = (grnId: string, onSuccess?: () => void) => {
       return response;
     },
     onSuccess: () => {
-      toast.success('GRN deleted successfully');
+      toast.success("GRN deleted successfully");
 
       queryClient.removeQueries({
         queryKey: [QUERY_KEYS.GRN.BY_ID, grnId],
@@ -261,7 +267,7 @@ export const useDeleteGRN = (grnId: string, onSuccess?: () => void) => {
       }
     },
     onError: (error: any) => {
-      toast.error(error.message || 'Failed to delete GRN');
+      toast.error(error.message || "Failed to delete GRN");
     },
   });
 };

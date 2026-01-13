@@ -63,7 +63,7 @@ type RequisitionItem struct {
 // RequisitionResponse represents a requisition in responses
 type RequisitionResponse struct {
 	ID                  string            `json:"id"`
-	REQNumber           string            `json:"reqNumber"`
+	DocumentNumber      string            `json:"documentNumber"`
 	RequesterID         string            `json:"requesterId"`
 	RequesterName       string            `json:"requesterName"`
 	Title               string            `json:"title"`
@@ -213,7 +213,7 @@ type POItem struct {
 // PurchaseOrderResponse represents a PO in responses
 type PurchaseOrderResponse struct {
 	ID              string           `json:"id"`
-	PONumber        string           `json:"poNumber"`
+	DocumentNumber  string           `json:"documentNumber"`
 	VendorID        string           `json:"vendorId"`
 	VendorName      string           `json:"vendorName"`
 	Status          string           `json:"status"`
@@ -256,7 +256,7 @@ type UpdatePaymentVoucherRequest struct {
 // PaymentVoucherResponse represents a payment voucher in responses
 type PaymentVoucherResponse struct {
 	ID              string           `json:"id"`
-	VoucherNumber   string           `json:"voucherNumber"`
+	DocumentNumber  string           `json:"documentNumber"`
 	VendorID        string           `json:"vendorId"`
 	VendorName      string           `json:"vendorName"`
 	InvoiceNumber   string           `json:"invoiceNumber"`
@@ -277,7 +277,7 @@ type PaymentVoucherResponse struct {
 
 // CreateGRNRequest represents a GRN creation request
 type CreateGRNRequest struct {
-	PONumber  string         `json:"poNumber" validate:"required"`
+	PODocumentNumber string         `json:"poDocumentNumber" validate:"required"`
 	Items     []GRNItem      `json:"items" validate:"required,min=1"`
 	ReceivedBy string        `json:"receivedBy" validate:"required"`
 }
@@ -310,8 +310,8 @@ type QualityIssue struct {
 // GRNResponse represents a GRN in responses
 type GRNResponse struct {
 	ID              string           `json:"id"`
-	GRNNumber       string           `json:"grnNumber"`
-	PONumber        string           `json:"poNumber"`
+	DocumentNumber  string           `json:"documentNumber"`
+	PODocumentNumber string          `json:"poDocumentNumber"`
 	Status          string           `json:"status"`
 	ReceivedDate    time.Time        `json:"receivedDate"`
 	ReceivedBy      string           `json:"receivedBy"`

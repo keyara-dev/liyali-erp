@@ -437,23 +437,23 @@ func (h *NotificationHandler) getDocumentNumber(db *gorm.DB, documentType, docum
 	switch documentType {
 	case "requisition", "REQUISITION":
 		var req models.Requisition
-		if err := db.Select("req_number").Where("id = ?", documentID).First(&req).Error; err == nil {
-			return req.REQNumber
+		if err := db.Select("document_number").Where("id = ?", documentID).First(&req).Error; err == nil {
+			return req.DocumentNumber
 		}
 	case "purchase_order", "PURCHASE_ORDER":
 		var po models.PurchaseOrder
-		if err := db.Select("po_number").Where("id = ?", documentID).First(&po).Error; err == nil {
-			return po.PONumber
+		if err := db.Select("document_number").Where("id = ?", documentID).First(&po).Error; err == nil {
+			return po.DocumentNumber
 		}
 	case "payment_voucher", "PAYMENT_VOUCHER":
 		var pv models.PaymentVoucher
-		if err := db.Select("voucher_number").Where("id = ?", documentID).First(&pv).Error; err == nil {
-			return pv.VoucherNumber
+		if err := db.Select("document_number").Where("id = ?", documentID).First(&pv).Error; err == nil {
+			return pv.DocumentNumber
 		}
 	case "grn", "GRN":
 		var grn models.GoodsReceivedNote
-		if err := db.Select("grn_number").Where("id = ?", documentID).First(&grn).Error; err == nil {
-			return grn.GRNNumber
+		if err := db.Select("document_number").Where("id = ?", documentID).First(&grn).Error; err == nil {
+			return grn.DocumentNumber
 		}
 	}
 	return ""

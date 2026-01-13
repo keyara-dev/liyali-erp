@@ -138,7 +138,7 @@ export function GRNConfirmationClient({
   return (
     <div className="space-y-6">
       <PageHeader
-        title={grn.grnNumber}
+        title={grn.documentNumber}
         subtitle="Goods Received Confirmation"
         onBackClick={handleBack}
         showBackButton={true}
@@ -176,7 +176,7 @@ export function GRNConfirmationClient({
             <CardContent className="grid gap-4 md:grid-cols-3">
               <div>
                 <p className="text-sm text-muted-foreground">PO Number</p>
-                <p className="font-semibold">{grn.poNumber}</p>
+                <p className="font-semibold">{grn.poDocumentNumber}</p>
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">

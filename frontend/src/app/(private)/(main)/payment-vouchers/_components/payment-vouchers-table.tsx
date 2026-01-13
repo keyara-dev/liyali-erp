@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { useCallback, useMemo, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { ColumnDef } from '@tanstack/react-table';
+import { useCallback, useMemo, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { ColumnDef } from "@tanstack/react-table";
 import {
   ArrowUpDown,
   Download,
@@ -11,20 +11,20 @@ import {
   CheckCircle2,
   XCircle,
   MoreVertical,
-} from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { DataTable } from '@/components/ui/data-table';
-import { StatusBadge as CentralizedStatusBadge } from '@/components/status-badge';
-import { usePaymentVouchers } from '@/hooks/use-payment-voucher-queries';
-import { WorkflowDocument } from '@/types/workflow';
-import { PaymentVoucher } from '@/types/payment-voucher';
-import type { ActionButton } from '@/components/ui/action-buttons';
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { DataTable } from "@/components/ui/data-table";
+import { StatusBadge as CentralizedStatusBadge } from "@/components/status-badge";
+import { usePaymentVouchers } from "@/hooks/use-payment-voucher-queries";
+import { WorkflowDocument } from "@/types/workflow";
+import { PaymentVoucher } from "@/types/payment-voucher";
+import type { ActionButton } from "@/components/ui/action-buttons";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+} from "@/components/ui/dropdown-menu";
 
 interface PaymentVouchersTableProps {
   userId: string;
@@ -37,8 +37,8 @@ interface PaymentVouchersTableProps {
 function transformPVToWorkflowDocument(pv: PaymentVoucher): WorkflowDocument {
   return {
     id: pv.id,
-    type: 'payment_voucher',
-    documentNumber: pv.voucherNumber,
+    type: "payment_voucher",
+    documentNumber: pv.documentNumber,
     status: pv.status?.toLowerCase() as any, // Convert to lowercase for compatibility
     currentStage: pv.approvalStage,
     createdAt: pv.createdAt,
@@ -73,12 +73,12 @@ function StageIndicator({
 // Columns definition
 const columns: ColumnDef<WorkflowDocument>[] = [
   {
-    id: 'voucherNumber',
-    accessorKey: 'documentNumber',
+    id: "documentNumber",
+    accessorKey: "documentNumber",
     header: ({ column }) => (
       <Button
         variant="ghost"
-        onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         className="h-8 p-0"
       >
         Voucher No.
@@ -86,22 +86,22 @@ const columns: ColumnDef<WorkflowDocument>[] = [
       </Button>
     ),
     cell: ({ row }) => (
-      <div className="font-medium">{row.getValue('voucherNumber')}</div>
+      <div className="font-medium">{row.getValue("documentNumber")}</div>
     ),
   },
   {
-    id: 'vendor',
-    accessorKey: 'metadata.payeeName',
-    header: 'Payee',
-    cell: ({ row }) => <div>{row.original.metadata?.payeeName || '-'}</div>,
+    id: "vendor",
+    accessorKey: "metadata.payeeName",
+    header: "Payee",
+    cell: ({ row }) => <div>{row.original.metadata?.payeeName || "-"}</div>,
   },
   {
-    id: 'amount',
-    accessorKey: 'metadata.amount',
+    id: "amount",
+    accessorKey: "metadata.amount",
     header: ({ column }) => (
       <Button
         variant="ghost"
-        onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         className="h-8 p-0"
       >
         Amount
@@ -110,26 +110,23 @@ const columns: ColumnDef<WorkflowDocument>[] = [
     ),
     cell: ({ row }) => (
       <div className="font-medium">
-        {row.original.metadata?.currency || 'ZMW'}{' '}
+        {row.original.metadata?.currency || "ZMW"}{" "}
         {(row.original.metadata?.amount || 0).toLocaleString()}
       </div>
     ),
   },
   {
-    id: 'status',
-    accessorKey: 'status',
-    header: 'Status',
+    id: "status",
+    accessorKey: "status",
+    header: "Status",
     cell: ({ row }) => (
-      <CentralizedStatusBadge
-        status={row.getValue('status')}
-        type="document"
-      />
+      <CentralizedStatusBadge status={row.getValue("status")} type="document" />
     ),
   },
   {
-    id: 'stage',
-    accessorKey: 'currentStage',
-    header: 'Stage',
+    id: "stage",
+    accessorKey: "currentStage",
+    header: "Stage",
     cell: ({ row }) => (
       <StageIndicator
         currentStage={row.original.currentStage || 1}
@@ -138,12 +135,12 @@ const columns: ColumnDef<WorkflowDocument>[] = [
     ),
   },
   {
-    id: 'createdDate',
-    accessorKey: 'createdAt',
+    id: "createdDate",
+    accessorKey: "createdAt",
     header: ({ column }) => (
       <Button
         variant="ghost"
-        onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         className="h-8 p-0"
       >
         Created
@@ -152,7 +149,9 @@ const columns: ColumnDef<WorkflowDocument>[] = [
     ),
     cell: ({ row }) => (
       <div className="text-sm">
-        {row.original.createdAt ? new Date(row.original.createdAt).toLocaleDateString() : 'N/A'}
+        {row.original.createdAt
+          ? new Date(row.original.createdAt).toLocaleDateString()
+          : "N/A"}
       </div>
     ),
   },
@@ -174,17 +173,23 @@ function PvOptionsMenu({
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem onClick={() => console.log('Download PDF for PV:', pv.id)}>
+        <DropdownMenuItem
+          onClick={() => console.log("Download PDF for PV:", pv.id)}
+        >
           <Download className="mr-2 h-4 w-4" />
           Download
         </DropdownMenuItem>
-        {pv.status === 'IN_REVIEW' && (
+        {pv.status === "IN_REVIEW" && (
           <>
-            <DropdownMenuItem onClick={() => console.log('Approve voucher:', pv.id)}>
+            <DropdownMenuItem
+              onClick={() => console.log("Approve voucher:", pv.id)}
+            >
               <CheckCircle2 className="mr-2 h-4 w-4 text-green-600" />
               Approve
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => console.log('Reject voucher:', pv.id)}>
+            <DropdownMenuItem
+              onClick={() => console.log("Reject voucher:", pv.id)}
+            >
               <XCircle className="mr-2 h-4 w-4 text-red-600" />
               Reject
             </DropdownMenuItem>
@@ -202,8 +207,7 @@ export function PaymentVouchersTable({
   onRefresh: _onRefresh,
 }: PaymentVouchersTableProps) {
   const router = useRouter();
-  const { data: paymentVouchers = [], refetch } =
-    usePaymentVouchers(); // Get payment vouchers
+  const { data: paymentVouchers = [], refetch } = usePaymentVouchers(); // Get payment vouchers
 
   // Refetch when refreshTrigger changes
   useEffect(() => {
@@ -223,14 +227,14 @@ export function PaymentVouchersTable({
       return [
         {
           icon: <Eye className="h-3.5 w-3.5" />,
-          label: 'View',
-          tooltip: 'View Details',
+          label: "View",
+          tooltip: "View Details",
           onClick: () => router.push(`/payment-vouchers/${pv.id}`),
         },
         {
           icon: <Pencil className="h-3.5 w-3.5" />,
-          label: 'Edit',
-          tooltip: 'Edit Voucher',
+          label: "Edit",
+          tooltip: "Edit Voucher",
           onClick: () => router.push(`/payment-vouchers/${pv.id}/edit`),
         },
       ];

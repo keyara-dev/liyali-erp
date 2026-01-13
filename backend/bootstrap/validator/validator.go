@@ -169,7 +169,7 @@ func (v *DatabaseValidator) verifyTableStructures(ctx context.Context) error {
 		"users": {"id", "email", "name", "password", "role", "active"},
 		"organizations": {"id", "name", "slug", "active"},
 		"vendors": {"id", "vendor_code", "name", "active"},
-		"requisitions": {"id", "organization_id", "req_number", "requester_id", "status"},
+		"requisitions": {"id", "organization_id", "document_number", "requester_id", "status"},
 	}
 
 	for tableName, columns := range criticalColumns {

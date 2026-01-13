@@ -1,17 +1,17 @@
-'use client'
+"use client";
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { Button } from '@/components/ui/button'
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { Alert, AlertDescription } from '@/components/ui/alert'
+} from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Table,
   TableBody,
@@ -19,73 +19,79 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table'
+} from "@/components/ui/table";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select'
-import { AlertCircle, Check, Plus, ClipboardListIcon } from 'lucide-react'
-import Link from 'next/link'
-import { PageHeader } from '@/components/base/page-header'
-import { usePurchaseOrders } from '@/hooks/use-purchase-order-queries'
-import { useSavePaymentVoucher } from '@/hooks/use-payment-voucher-queries'
-import { CreatePaymentVoucherRequest } from '@/types/payment-voucher'
-import { PurchaseOrder } from '@/types/purchase-order'
-import { toast } from 'sonner'
+} from "@/components/ui/select";
+import { AlertCircle, Check, Plus, ClipboardListIcon } from "lucide-react";
+import Link from "next/link";
+import { PageHeader } from "@/components/base/page-header";
+import { usePurchaseOrders } from "@/hooks/use-purchase-order-queries";
+import { useSavePaymentVoucher } from "@/hooks/use-payment-voucher-queries";
+import { CreatePaymentVoucherRequest } from "@/types/payment-voucher";
+import { PurchaseOrder } from "@/types/purchase-order";
+import { toast } from "sonner";
 
 interface PVCreateClientProps {
-  userId: string
-  userName: string
-  userRole: string
+  userId: string;
+  userName: string;
+  userRole: string;
 }
 
-export function PVCreateClient({ userId, userName, userRole }: PVCreateClientProps) {
-  const router = useRouter()
-  const { data: purchaseOrders, isLoading: isLoadingPOs } = usePurchaseOrders()
+export function PVCreateClient({
+  userId,
+  userName,
+  userRole,
+}: PVCreateClientProps) {
+  const router = useRouter();
+  const { data: purchaseOrders, isLoading: isLoadingPOs } = usePurchaseOrders();
   const savePVMutation = useSavePaymentVoucher(() => {
-    router.push('/payment-vouchers')
-  })
+    router.push("/payment-vouchers");
+  });
 
-  const [selectedPO, setSelectedPO] = useState<PurchaseOrder | null>(null)
-  const [isCreating, setIsCreating] = useState(false)
+  const [selectedPO, setSelectedPO] = useState<PurchaseOrder | null>(null);
+  const [isCreating, setIsCreating] = useState(false);
 
   // Filter to show only APPROVED purchase orders
-  const approvedPOs = purchaseOrders?.filter((po) => po.status === 'approved') || []
+  const approvedPOs =
+    purchaseOrders?.filter((po) => po.status === "approved") || [];
 
   const handleSelectPO = (poId: string) => {
-    const po = approvedPOs.find((p) => p.id === poId)
-    setSelectedPO(po || null)
-  }
+    const po = approvedPOs.find((p) => p.id === poId);
+    setSelectedPO(po || null);
+  };
 
   const handleCreatePV = async () => {
     if (!selectedPO) {
-      toast.error('Please select a purchase order')
-      return
+      toast.error("Please select a purchase order");
+      return;
     }
 
-    setIsCreating(true)
+    setIsCreating(true);
     try {
       const pvData = {
         vendorId: selectedPO.vendorId,
-        invoiceNumber: selectedPO.poNumber || 'INV-' + Date.now(),
+        invoiceNumber: selectedPO.documentNumber || "INV-" + Date.now(),
         amount: selectedPO.totalAmount || 0,
-        currency: selectedPO.currency || 'USD',
-        paymentMethod: 'bank_transfer',
-        glCode: selectedPO.budgetCode || 'GL-001',
-        description: selectedPO.description || `Payment for ${selectedPO.poNumber}`,
+        currency: selectedPO.currency || "USD",
+        paymentMethod: "bank_transfer",
+        glCode: selectedPO.budgetCode || "GL-001",
+        description:
+          selectedPO.description || `Payment for ${selectedPO.documentNumber}`,
         linkedPO: selectedPO.id,
       } as unknown as CreatePaymentVoucherRequest;
 
       await savePVMutation.mutateAsync(pvData);
     } catch (error) {
-      console.error('Error creating payment voucher:', error)
+      console.error("Error creating payment voucher:", error);
     } finally {
-      setIsCreating(false)
+      setIsCreating(false);
     }
-  }
+  };
 
   return (
     <div className="space-y-6">
@@ -102,26 +108,39 @@ export function PVCreateClient({ userId, userName, userRole }: PVCreateClientPro
             <div className="relative mb-4">
               <div className="bg-primary/10 absolute inset-0 rounded-full blur-2xl" />
               <div className="bg-canvas border-primary/20 relative rounded-2xl border-2 p-6">
-                <ClipboardListIcon className="text-primary h-16 w-16" strokeWidth={1.5} />
+                <ClipboardListIcon
+                  className="text-primary h-16 w-16"
+                  strokeWidth={1.5}
+                />
               </div>
             </div>
 
-            <h3 className="text-foreground mb-2 text-2xl font-semibold">No Approved Purchase Orders</h3>
+            <h3 className="text-foreground mb-2 text-2xl font-semibold">
+              No Approved Purchase Orders
+            </h3>
             <p className="text-muted-foreground mb-8 max-w-md text-center">
-              Payment vouchers are created from approved purchase orders. To create a payment voucher, you first need to create and approve a purchase order.
+              Payment vouchers are created from approved purchase orders. To
+              create a payment voucher, you first need to create and approve a
+              purchase order.
             </p>
 
             <div className="mb-8 grid w-full max-w-2xl grid-cols-3 gap-4 text-xs">
               <div className="bg-canvas border-border rounded-lg border p-4 text-center">
-                <div className="text-primary mb-1 font-mono font-semibold">CREATE</div>
+                <div className="text-primary mb-1 font-mono font-semibold">
+                  CREATE
+                </div>
                 <div className="text-muted-foreground">Requisition Request</div>
               </div>
               <div className="bg-canvas border-border rounded-lg border p-4 text-center">
-                <div className="text-primary mb-1 font-mono font-semibold">APPROVE</div>
+                <div className="text-primary mb-1 font-mono font-semibold">
+                  APPROVE
+                </div>
                 <div className="text-muted-foreground">Purchase Order</div>
               </div>
               <div className="bg-canvas border-border rounded-lg border p-4 text-center">
-                <div className="text-primary mb-1 font-mono font-semibold">CREATE</div>
+                <div className="text-primary mb-1 font-mono font-semibold">
+                  CREATE
+                </div>
                 <div className="text-muted-foreground">Payment Voucher</div>
               </div>
             </div>
@@ -148,7 +167,7 @@ export function PVCreateClient({ userId, userName, userRole }: PVCreateClientPro
               <div className="space-y-2">
                 <label className="text-sm font-medium">Purchase Order *</label>
                 <Select
-                  value={selectedPO?.id || ''}
+                  value={selectedPO?.id || ""}
                   onValueChange={handleSelectPO}
                   disabled={isLoadingPOs}
                 >
@@ -158,7 +177,7 @@ export function PVCreateClient({ userId, userName, userRole }: PVCreateClientPro
                   <SelectContent>
                     {approvedPOs.map((po) => (
                       <SelectItem key={po.id} value={po.id}>
-                        {po.poNumber} - {po.vendorName} ({po.currency}{' '}
+                        {po.documentNumber} - {po.vendorName} ({po.currency}{" "}
                         {po.totalAmount.toLocaleString()})
                       </SelectItem>
                     ))}
@@ -174,9 +193,7 @@ export function PVCreateClient({ userId, userName, userRole }: PVCreateClientPro
               <Card>
                 <CardHeader>
                   <CardTitle>Purchase Order Details</CardTitle>
-                  <CardDescription>
-                    {selectedPO.poNumber}
-                  </CardDescription>
+                  <CardDescription>{selectedPO.documentNumber}</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="grid gap-4 md:grid-cols-2">
@@ -197,14 +214,17 @@ export function PVCreateClient({ userId, userName, userRole }: PVCreateClientPro
                         Total Amount
                       </h4>
                       <p className="text-sm font-semibold">
-                        {selectedPO.currency} {selectedPO.totalAmount.toLocaleString()}
+                        {selectedPO.currency}{" "}
+                        {selectedPO.totalAmount.toLocaleString()}
                       </p>
                     </div>
                     <div>
                       <h4 className="text-sm font-semibold text-muted-foreground mb-1">
                         Status
                       </h4>
-                      <Badge className="bg-green-100 text-green-800">{selectedPO.status}</Badge>
+                      <Badge className="bg-green-100 text-green-800">
+                        {selectedPO.status}
+                      </Badge>
                     </div>
                   </div>
 
@@ -226,7 +246,8 @@ export function PVCreateClient({ userId, userName, userRole }: PVCreateClientPro
                 <CardHeader>
                   <CardTitle>Line Items</CardTitle>
                   <CardDescription>
-                    {selectedPO.items?.length || 0} items to be included in the payment voucher
+                    {selectedPO.items?.length || 0} items to be included in the
+                    payment voucher
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -249,21 +270,29 @@ export function PVCreateClient({ userId, userName, userRole }: PVCreateClientPro
                           </TableCell>
                           <TableCell>
                             <div>
-                              <p className="font-medium text-sm">{item.description}</p>
+                              <p className="font-medium text-sm">
+                                {item.description}
+                              </p>
                               {item.notes && (
-                                <p className="text-xs text-muted-foreground">{item.notes}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  {item.notes}
+                                </p>
                               )}
                             </div>
                           </TableCell>
-                          <TableCell className="text-sm">{item.category}</TableCell>
+                          <TableCell className="text-sm">
+                            {item.category}
+                          </TableCell>
                           <TableCell className="text-right text-sm">
                             {item.quantity} {item.unit}
                           </TableCell>
                           <TableCell className="text-right text-sm font-mono">
-                            {selectedPO.currency} {item.unitPrice.toLocaleString()}
+                            {selectedPO.currency}{" "}
+                            {item.unitPrice.toLocaleString()}
                           </TableCell>
                           <TableCell className="text-right text-sm font-mono font-semibold">
-                            {selectedPO.currency} {(item.totalPrice || 0).toLocaleString()}
+                            {selectedPO.currency}{" "}
+                            {(item.totalPrice || 0).toLocaleString()}
                           </TableCell>
                         </TableRow>
                       ))}
@@ -271,9 +300,12 @@ export function PVCreateClient({ userId, userName, userRole }: PVCreateClientPro
                   </Table>
                   <div className="flex justify-end mt-4 pt-4 border-t">
                     <div className="text-right">
-                      <p className="text-sm text-muted-foreground mb-1">Total Amount</p>
+                      <p className="text-sm text-muted-foreground mb-1">
+                        Total Amount
+                      </p>
                       <p className="text-xl font-bold font-mono">
-                        {selectedPO.currency} {selectedPO.totalAmount.toLocaleString()}
+                        {selectedPO.currency}{" "}
+                        {selectedPO.totalAmount.toLocaleString()}
                       </p>
                     </div>
                   </div>
@@ -284,11 +316,15 @@ export function PVCreateClient({ userId, userName, userRole }: PVCreateClientPro
               <div className="flex gap-2">
                 <Button
                   onClick={handleCreatePV}
-                  disabled={!selectedPO || isCreating || savePVMutation.isPending}
+                  disabled={
+                    !selectedPO || isCreating || savePVMutation.isPending
+                  }
                   className="bg-green-600 hover:bg-green-700 flex-1 gap-2"
                 >
                   <Check className="h-4 w-4" />
-                  {isCreating || savePVMutation.isPending ? 'Creating...' : 'Create Payment Voucher'}
+                  {isCreating || savePVMutation.isPending
+                    ? "Creating..."
+                    : "Create Payment Voucher"}
                 </Button>
                 <Button
                   variant="outline"
@@ -303,5 +339,5 @@ export function PVCreateClient({ userId, userName, userRole }: PVCreateClientPro
         </div>
       )}
     </div>
-  )
+  );
 }

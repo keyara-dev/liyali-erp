@@ -29,7 +29,7 @@ interface PVDetailClientProps {
 
 interface PaymentVoucher {
   id: string;
-  voucherNumber: string;
+  documentNumber: string;
   status: "DRAFT" | "SUBMITTED" | "IN_REVIEW" | "APPROVED" | "REJECTED";
   invoiceNumber: string;
   invoiceDate: string;
@@ -82,7 +82,7 @@ function generateMockPV(pvId: string): PaymentVoucher {
 
   return {
     id: pvId,
-    voucherNumber: `PV-2024-${String(Math.floor(Math.random() * 9000) + 1000).padStart(4, "0")}`,
+    documentNumber: `PV-2024-${String(Math.floor(Math.random() * 9000) + 1000).padStart(4, "0")}`,
     status: "IN_REVIEW",
     invoiceNumber: `INV-${Math.random().toString(36).substring(7).toUpperCase()}`,
     invoiceDate: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(),
@@ -223,7 +223,7 @@ export function PVDetailClient({
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <PageHeader
-          title={pv.voucherNumber}
+          title={pv.documentNumber}
           subtitle="Payment Voucher Details"
           badges={[
             {
@@ -466,7 +466,7 @@ export function PVDetailClient({
           open={previewOpen}
           onOpenChange={setPreviewOpen}
           pdfBlob={previewBlob}
-          fileName={`PV-${pv.voucherNumber}.pdf`}
+          fileName={`PV-${pv.documentNumber}.pdf`}
           onDownload={handleExportPDF}
         />
       )}

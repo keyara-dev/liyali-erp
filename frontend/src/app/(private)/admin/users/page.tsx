@@ -30,15 +30,15 @@ type PageProps = {
 
 export default async function UserManagementPage({ searchParams }: PageProps) {
   // Get authenticated user context
-  const { session, isAuthenticated } = await verifySession()
+  const { session, isAuthenticated } = await verifySession();
 
   if (!isAuthenticated || !session?.user) {
-    redirect('/login')
+    redirect("/login");
   }
 
   // Verify admin role
-  if (session.user.role !== 'admin' ) {
-    redirect('/access-denied')
+  if (session.user.role !== "admin") {
+    redirect("/access-denied");
   }
 
   const {
@@ -58,7 +58,7 @@ export default async function UserManagementPage({ searchParams }: PageProps) {
     page_size: Number(page_size),
   });
 
-  const users = (response?.data?.data || []) as User[];
+  const users = (response?.data || []) as User[];
 
   const pagination = response?.data?.pagination ?? {
     total: 0,

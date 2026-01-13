@@ -46,11 +46,17 @@
  * (Similar endpoints for /api/requisitions and /api/payment-vouchers)
  */
 
-import { PurchaseOrder } from '@/types/purchase-order';
-import { PaymentVoucher } from '@/types/payment-voucher';
-import { Requisition } from '@/types/requisition';
-import { GoodsReceivedNote } from '@/types/goods-received-note';
-import { STORAGE_KEYS, getDocuments, getDocumentById, saveDocument, deleteDocument } from './storage';
+import { PurchaseOrder } from "@/types/purchase-order";
+import { PaymentVoucher } from "@/types/payment-voucher";
+import { Requisition } from "@/types/requisition";
+import { GoodsReceivedNote } from "@/types/goods-received-note";
+import {
+  STORAGE_KEYS,
+  getDocuments,
+  getDocumentById,
+  saveDocument,
+  deleteDocument,
+} from "./storage";
 
 // ============================================================================
 // Purchase Order Hooks
@@ -72,7 +78,9 @@ export function deletePurchaseOrder(id: string): void {
   deleteDocument(STORAGE_KEYS.PURCHASE_ORDERS, id);
 }
 
-export function filterPurchaseOrders(predicate: (po: PurchaseOrder) => boolean): PurchaseOrder[] {
+export function filterPurchaseOrders(
+  predicate: (po: PurchaseOrder) => boolean
+): PurchaseOrder[] {
   return getPurchaseOrders().filter(predicate);
 }
 
@@ -81,7 +89,10 @@ export function getPurchaseOrdersByStatus(status: string): PurchaseOrder[] {
 }
 
 export function getPurchaseOrdersByCreator(creatorId: string): PurchaseOrder[] {
-  return filterPurchaseOrders((po) => (po as any).createdBy === creatorId || (po as any).ownerId === creatorId);
+  return filterPurchaseOrders(
+    (po) =>
+      (po as any).createdBy === creatorId || (po as any).ownerId === creatorId
+  );
 }
 
 // ============================================================================
@@ -113,7 +124,9 @@ export function deleteRequisition(id: string): void {
   deleteDocument(STORAGE_KEYS.REQUISITIONS, id);
 }
 
-export function filterRequisitions(predicate: (req: Requisition) => boolean): Requisition[] {
+export function filterRequisitions(
+  predicate: (req: Requisition) => boolean
+): Requisition[] {
   return getRequisitions().filter(predicate);
 }
 
@@ -122,11 +135,19 @@ export function getRequisitionsByStatus(status: string): Requisition[] {
 }
 
 export function getRequisitionsByCreator(creatorId: string): Requisition[] {
-  return filterRequisitions((req) => (req as any).createdBy === creatorId || (req as any).requesterId === creatorId);
+  return filterRequisitions(
+    (req) =>
+      (req as any).createdBy === creatorId ||
+      (req as any).requesterId === creatorId
+  );
 }
 
 export function getRequisitionsByDepartment(department: string): Requisition[] {
-  return filterRequisitions((req) => req.department === department || (req as any).metadata?.department === department);
+  return filterRequisitions(
+    (req) =>
+      req.department === department ||
+      (req as any).metadata?.department === department
+  );
 }
 
 // ============================================================================
@@ -149,7 +170,9 @@ export function deletePaymentVoucher(id: string): void {
   deleteDocument(STORAGE_KEYS.PAYMENT_VOUCHERS, id);
 }
 
-export function filterPaymentVouchers(predicate: (pv: PaymentVoucher) => boolean): PaymentVoucher[] {
+export function filterPaymentVouchers(
+  predicate: (pv: PaymentVoucher) => boolean
+): PaymentVoucher[] {
   return getPaymentVouchers().filter(predicate);
 }
 
@@ -157,11 +180,19 @@ export function getPaymentVouchersByStatus(status: string): PaymentVoucher[] {
   return filterPaymentVouchers((pv) => (pv as any).status === status);
 }
 
-export function getPaymentVouchersByCreator(creatorId: string): PaymentVoucher[] {
-  return filterPaymentVouchers((pv) => (pv as any).createdBy === creatorId || (pv as any).ownerId === creatorId);
+export function getPaymentVouchersByCreator(
+  creatorId: string
+): PaymentVoucher[] {
+  return filterPaymentVouchers(
+    (pv) =>
+      (pv as any).createdBy === creatorId || (pv as any).ownerId === creatorId
+  );
 }
 
-export function getPaymentVouchersByAmount(minAmount: number, maxAmount: number): PaymentVoucher[] {
+export function getPaymentVouchersByAmount(
+  minAmount: number,
+  maxAmount: number
+): PaymentVoucher[] {
   return filterPaymentVouchers((pv) => {
     const amount = pv.amount || (pv as any).metadata?.amount || 0;
     return amount >= minAmount && amount <= maxAmount;
@@ -233,11 +264,19 @@ export function getGoodsReceivedNotes(): GoodsReceivedNote[] {
 }
 
 export function getGoodsReceivedNoteById(id: string): GoodsReceivedNote | null {
-  return getDocumentById<GoodsReceivedNote>(STORAGE_KEYS.GOODS_RECEIVED_NOTES, id);
+  return getDocumentById<GoodsReceivedNote>(
+    STORAGE_KEYS.GOODS_RECEIVED_NOTES,
+    id
+  );
 }
 
-export function saveGoodsReceivedNote(grn: GoodsReceivedNote): GoodsReceivedNote {
-  return saveDocument<GoodsReceivedNote>(STORAGE_KEYS.GOODS_RECEIVED_NOTES, grn);
+export function saveGoodsReceivedNote(
+  grn: GoodsReceivedNote
+): GoodsReceivedNote {
+  return saveDocument<GoodsReceivedNote>(
+    STORAGE_KEYS.GOODS_RECEIVED_NOTES,
+    grn
+  );
 }
 
 export function deleteGoodsReceivedNote(id: string): void {
@@ -250,14 +289,27 @@ export function filterGoodsReceivedNotes(
   return getGoodsReceivedNotes().filter(predicate);
 }
 
-export function getGoodsReceivedNotesByStatus(status: string): GoodsReceivedNote[] {
+export function getGoodsReceivedNotesByStatus(
+  status: string
+): GoodsReceivedNote[] {
   return filterGoodsReceivedNotes((grn) => grn.status === status);
 }
 
-export function getGoodsReceivedNotesByCreator(creatorId: string): GoodsReceivedNote[] {
-  return filterGoodsReceivedNotes((grn) => (grn as any).createdBy === creatorId || (grn as any).receivedBy === creatorId);
+export function getGoodsReceivedNotesByCreator(
+  creatorId: string
+): GoodsReceivedNote[] {
+  return filterGoodsReceivedNotes(
+    (grn) =>
+      (grn as any).createdBy === creatorId ||
+      (grn as any).receivedBy === creatorId
+  );
 }
 
-export function getGoodsReceivedNotesByPurchaseOrder(poId: string): GoodsReceivedNote[] {
-  return filterGoodsReceivedNotes((grn) => grn.poNumber === poId || (grn as any).metadata?.poId === poId);
+export function getGoodsReceivedNotesByPurchaseOrder(
+  poId: string
+): GoodsReceivedNote[] {
+  return filterGoodsReceivedNotes(
+    (grn) =>
+      grn.poDocumentNumber === poId || (grn as any).metadata?.poId === poId
+  );
 }

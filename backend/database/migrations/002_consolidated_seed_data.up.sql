@@ -163,7 +163,7 @@ ON CONFLICT (id) DO NOTHING;
 -- ============================================================================
 
 -- Create sample requisitions for testing
-INSERT INTO requisitions (id, organization_id, req_number, requester_id, title, description, department, total_amount, currency, status, priority, category_id, created_at, updated_at)
+INSERT INTO requisitions (id, organization_id, document_number, requester_id, title, description, department, total_amount, currency, status, priority, category_id, created_at, updated_at)
 VALUES 
     ('req-001', 'org-demo-001', 'REQ-260111-001', 'user-requester-001', 'New Laptop for Development Team', 'Request for high-performance laptop for software development', 'IT', 2500.00, 'USD', 'draft', 'medium', 'cat-001', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
     ('req-002', 'org-demo-001', 'REQ-260111-002', 'user-requester-001', 'Office Supplies Replenishment', 'Monthly office supplies replenishment', 'Operations', 500.00, 'USD', 'draft', 'low', 'cat-003', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
@@ -175,7 +175,7 @@ ON CONFLICT (id) DO NOTHING;
 -- ============================================================================
 
 -- Create sample purchase orders
-INSERT INTO purchase_orders (id, organization_id, po_number, created_by, vendor_id, title, description, total_amount, currency, status, priority, created_at, updated_at)
+INSERT INTO purchase_orders (id, organization_id, document_number, created_by, vendor_id, title, description, total_amount, currency, status, priority, created_at, updated_at)
 VALUES 
     ('po-001', 'org-demo-001', 'PO-260111-001', 'user-requester-001', 'vendor-002', 'Laptop Purchase Order', 'Purchase order for development laptops', 2500.00, 'USD', 'draft', 'medium', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
 ON CONFLICT (id) DO NOTHING;

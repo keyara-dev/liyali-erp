@@ -1,12 +1,15 @@
-'use client';
+"use client";
 
-import { useEffect, useState, useCallback } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { PaymentVoucher, ActionHistoryEntry } from '@/types';
-import { QUERY_KEYS } from '@/lib/constants';
-import { getPaymentVouchers, getPaymentVoucherById } from '@/app/_actions/payment-vouchers';
+import { useEffect, useState, useCallback } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { PaymentVoucher, ActionHistoryEntry } from "@/types";
+import { QUERY_KEYS } from "@/lib/constants";
+import {
+  getPaymentVouchers,
+  getPaymentVoucherById,
+} from "@/app/_actions/payment-vouchers";
 
-const PV_STORAGE_KEY = 'liyali_payment_vouchers';
+const PV_STORAGE_KEY = "liyali_payment_vouchers";
 
 // ============================================================================
 // STORAGE UTILITIES
@@ -17,13 +20,13 @@ const PV_STORAGE_KEY = 'liyali_payment_vouchers';
  */
 function loadPaymentVouchersFromStorage(): PaymentVoucher[] {
   try {
-    if (typeof window === 'undefined') return [];
+    if (typeof window === "undefined") return [];
     const stored = localStorage.getItem(PV_STORAGE_KEY);
     if (!stored) return [];
     const parsed = JSON.parse(stored);
     return Array.isArray(parsed) ? parsed : [];
   } catch (error) {
-    console.error('Failed to load payment vouchers from storage:', error);
+    console.error("Failed to load payment vouchers from storage:", error);
     return [];
   }
 }
@@ -33,9 +36,9 @@ function loadPaymentVouchersFromStorage(): PaymentVoucher[] {
  */
 function savePaymentVoucherToStorage(pv: PaymentVoucher): void {
   try {
-    if (typeof window === 'undefined') return;
+    if (typeof window === "undefined") return;
     const vouchers = loadPaymentVouchersFromStorage();
-    const index = vouchers.findIndex(r => r.id === pv.id);
+    const index = vouchers.findIndex((r) => r.id === pv.id);
     if (index >= 0) {
       vouchers[index] = pv;
     } else {
@@ -43,7 +46,7 @@ function savePaymentVoucherToStorage(pv: PaymentVoucher): void {
     }
     localStorage.setItem(PV_STORAGE_KEY, JSON.stringify(vouchers));
   } catch (error) {
-    console.error('Failed to save payment voucher to storage:', error);
+    console.error("Failed to save payment voucher to storage:", error);
   }
 }
 
@@ -52,11 +55,11 @@ function savePaymentVoucherToStorage(pv: PaymentVoucher): void {
  */
 function getPaymentVoucherFromStorage(pvId: string): PaymentVoucher | null {
   try {
-    if (typeof window === 'undefined') return null;
+    if (typeof window === "undefined") return null;
     const vouchers = loadPaymentVouchersFromStorage();
-    return vouchers.find(r => r.id === pvId) || null;
+    return vouchers.find((r) => r.id === pvId) || null;
   } catch (error) {
-    console.error('Failed to get payment voucher from storage:', error);
+    console.error("Failed to get payment voucher from storage:", error);
     return null;
   }
 }
@@ -66,12 +69,12 @@ function getPaymentVoucherFromStorage(pvId: string): PaymentVoucher | null {
  */
 function deletePaymentVoucherFromStorage(pvId: string): void {
   try {
-    if (typeof window === 'undefined') return;
+    if (typeof window === "undefined") return;
     const vouchers = loadPaymentVouchersFromStorage();
-    const filtered = vouchers.filter(r => r.id !== pvId);
+    const filtered = vouchers.filter((r) => r.id !== pvId);
     localStorage.setItem(PV_STORAGE_KEY, JSON.stringify(filtered));
   } catch (error) {
-    console.error('Failed to delete payment voucher from storage:', error);
+    console.error("Failed to delete payment voucher from storage:", error);
   }
 }
 
@@ -80,10 +83,10 @@ function deletePaymentVoucherFromStorage(pvId: string): void {
  */
 function clearPaymentVouchersStorage(): void {
   try {
-    if (typeof window === 'undefined') return;
+    if (typeof window === "undefined") return;
     localStorage.removeItem(PV_STORAGE_KEY);
   } catch (error) {
-    console.error('Failed to clear payment vouchers storage:', error);
+    console.error("Failed to clear payment vouchers storage:", error);
   }
 }
 
@@ -97,12 +100,13 @@ function clearPaymentVouchersStorage(): void {
 function paymentVoucherToWorkflowDocument(pv: PaymentVoucher) {
   return {
     id: pv.id,
-    type: 'PAYMENT_VOUCHER' as const,
-    documentNumber: pv.pvNumber,
+    type: "PAYMENT_VOUCHER" as const,
+    documentNumber: pv.documentNumber,
     status: pv.status as any,
     currentStage: pv.currentApprovalStage || 1,
     createdBy: pv.requestedByName,
-    createdAt: pv.createdAt instanceof Date ? pv.createdAt : new Date(pv.createdAt),
+    createdAt:
+      pv.createdAt instanceof Date ? pv.createdAt : new Date(pv.createdAt),
     updatedAt: new Date(),
     metadata: {
       title: pv.title,
@@ -143,7 +147,9 @@ export function usePaymentVoucherStorage() {
   // Update single PV in storage
   const updatePV = useCallback(
     (updatedPV: PaymentVoucher) => {
-      const updated = pvs.map((pv) => (pv.id === updatedPV.id ? updatedPV : pv));
+      const updated = pvs.map((pv) =>
+        pv.id === updatedPV.id ? updatedPV : pv
+      );
       setPVs(updated);
       localStorage.setItem(PV_STORAGE_KEY, JSON.stringify(updated));
     },
@@ -209,12 +215,14 @@ export const usePaymentVoucherActionHistory = (pvId: string) => {
   }, [pvId, findById]);
 
   return { addAction, getHistory };
-}
+};
 
 /**
  * React Query hook for fetching all payment vouchers with localStorage fallback
  */
-export const usePaymentVouchersWithStorage = (initialData?: PaymentVoucher[]) => {
+export const usePaymentVouchersWithStorage = (
+  initialData?: PaymentVoucher[]
+) => {
   const { pvs } = usePaymentVoucherStorage();
 
   return useQuery({
@@ -236,7 +244,10 @@ export const usePaymentVouchersWithStorage = (initialData?: PaymentVoucher[]) =>
 /**
  * React Query hook for fetching single PV with localStorage fallback
  */
-export const usePaymentVoucherWithStorage = (pvId: string, initialData?: PaymentVoucher) => {
+export const usePaymentVoucherWithStorage = (
+  pvId: string,
+  initialData?: PaymentVoucher
+) => {
   const { findById, updatePV } = usePaymentVoucherStorage();
   const storagePV = findById(pvId);
 
@@ -258,9 +269,11 @@ export const usePaymentVoucherWithStorage = (pvId: string, initialData?: Payment
 /**
  * React Query hook for fetching payment vouchers as workflow documents
  */
-export const usePaymentVouchersAsWorkflowDocuments = (includeStorageData = true) =>
+export const usePaymentVouchersAsWorkflowDocuments = (
+  includeStorageData = true
+) =>
   useQuery({
-    queryKey: [QUERY_KEYS.PAYMENT_VOUCHERS.ALL, 'as-documents'],
+    queryKey: [QUERY_KEYS.PAYMENT_VOUCHERS.ALL, "as-documents"],
     queryFn: async () => {
       const vouchers = loadPaymentVouchersFromStorage();
       return vouchers.map(paymentVoucherToWorkflowDocument);

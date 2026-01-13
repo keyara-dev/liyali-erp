@@ -34,7 +34,7 @@ type Requisition struct {
 	ID                string          `gorm:"primaryKey" json:"id"`
 	OrganizationID    string          `gorm:"index;not null" json:"organizationId"`
 	Organization      *Organization   `gorm:"foreignKey:OrganizationID" json:"organization,omitempty"`
-	REQNumber         string          `gorm:"uniqueIndex" json:"reqNumber"`
+	DocumentNumber    string          `gorm:"uniqueIndex" json:"documentNumber"`
 	RequesterId       string          `json:"requesterId"`
 	Requester         *User           `gorm:"foreignKey:RequesterId" json:"requester,omitempty"`
 	RequesterName     string          `gorm:"column:created_by_name" json:"requesterName"`
@@ -58,7 +58,6 @@ type Requisition struct {
 	IsEstimate        bool            `json:"isEstimate"`
 
 	// Business requirement fields
-	RequisitionNumber   string                                    `gorm:"-" json:"requisitionNumber"`   // Computed from REQNumber
 	BudgetCode          string                                    `gorm:"-" json:"budgetCode"`          // Stored in metadata
 	RequestedByName     string                                    `gorm:"-" json:"requestedByName"`     // Computed from RequesterName
 	RequestedByRole     string                                    `gorm:"-" json:"requestedByRole"`     // Computed from Requester.Role
@@ -120,7 +119,7 @@ type PurchaseOrder struct {
 	ID                string          `gorm:"primaryKey" json:"id"`
 	OrganizationID    string          `gorm:"index;not null" json:"organizationId"`
 	Organization      *Organization   `gorm:"foreignKey:OrganizationID" json:"organization,omitempty"`
-	PONumber          string          `gorm:"uniqueIndex" json:"poNumber"`
+	DocumentNumber    string          `gorm:"uniqueIndex" json:"documentNumber"`
 	VendorID          string          `json:"vendorId"`
 	Vendor            *Vendor         `json:"vendor,omitempty"`
 	Status            string          `json:"status"` // draft, pending, approved, rejected, fulfilled, completed, cancelled
@@ -155,7 +154,6 @@ type PurchaseOrder struct {
 	
 	// Legacy aliases for backward compatibility
 	RequiredByDate          *time.Time `json:"requiredByDate,omitempty"`          // Required delivery date
-	SourceRequisitionNumber string     `json:"sourceRequisitionNumber,omitempty"` // Source requisition number
 	SourceRequisitionId     *string    `gorm:"column:source_requisition_id" json:"sourceRequisitionId,omitempty"`     // Source requisition ID
 
 	CreatedAt         time.Time       `json:"createdAt"`
@@ -167,7 +165,7 @@ type PaymentVoucher struct {
 	ID              string          `gorm:"primaryKey" json:"id"`
 	OrganizationID  string          `gorm:"index;not null" json:"organizationId"`
 	Organization    *Organization   `gorm:"foreignKey:OrganizationID" json:"organization,omitempty"`
-	VoucherNumber   string          `gorm:"uniqueIndex" json:"voucherNumber"`
+	DocumentNumber  string          `gorm:"uniqueIndex" json:"documentNumber"`
 	VendorID        string          `json:"vendorId"`
 	Vendor          *Vendor         `json:"vendor,omitempty"`
 	InvoiceNumber   string          `json:"invoiceNumber"`
@@ -199,16 +197,9 @@ type PaymentVoucher struct {
 	TaxAmount               *float64                                  `json:"taxAmount,omitempty"`               // Tax amount
 	WithholdingTaxAmount    *float64                                  `json:"withholdingTaxAmount,omitempty"`    // Withholding tax
 	PaidAmount              *float64                                  `json:"paidAmount,omitempty"`              // Amount actually paid
-	SourcePurchaseOrderNumber string                                  `json:"sourcePurchaseOrderNumber,omitempty"` // Source PO number
-	SourceRequisitionNumber string                                    `json:"sourceRequisitionNumber,omitempty"` // Source requisition number
 	BankDetails             datatypes.JSON                           `gorm:"type:jsonb" json:"bankDetails,omitempty"` // Bank details for payment
 	Items                   datatypes.JSONType[[]types.PaymentItem]  `gorm:"type:jsonb" json:"items,omitempty"`       // Payment items breakdown
 	ActionHistory           datatypes.JSONType[[]types.ActionHistoryEntry] `gorm:"type:jsonb" json:"actionHistory,omitempty"` // Action history for UI
-	
-	// Legacy aliases for backward compatibility
-	PVNumber                string                                    `json:"pvNumber,omitempty"`                // Alias for VoucherNumber
-	TotalAmount             float64                                   `json:"totalAmount,omitempty"`             // Alias for Amount
-	CurrentApprovalStage    int                                       `json:"currentApprovalStage,omitempty"`    // Alias for ApprovalStage
 
 	CreatedAt       time.Time       `json:"createdAt"`
 	UpdatedAt       time.Time       `json:"updatedAt"`
@@ -219,9 +210,9 @@ type GoodsReceivedNote struct {
 	ID                string          `gorm:"primaryKey" json:"id"`
 	OrganizationID    string          `gorm:"index;not null" json:"organizationId"`
 	Organization      *Organization   `gorm:"foreignKey:OrganizationID" json:"organization,omitempty"`
-	GRNNumber         string          `gorm:"uniqueIndex" json:"grnNumber"`
-	PONumber          string          `json:"poNumber"`
-	PurchaseOrder     *PurchaseOrder  `gorm:"foreignKey:PONumber;references:PONumber" json:"purchaseOrder,omitempty"`
+	DocumentNumber    string          `gorm:"uniqueIndex" json:"documentNumber"`
+	PODocumentNumber  string          `json:"poDocumentNumber"`
+	PurchaseOrder     *PurchaseOrder  `gorm:"foreignKey:PODocumentNumber;references:DocumentNumber" json:"purchaseOrder,omitempty"`
 	Status            string          `json:"status"` // draft, pending, approved, rejected, paid, completed, cancelled
 	ReceivedDate      time.Time       `json:"receivedDate"`
 	ReceivedBy        string          `json:"receivedBy"`

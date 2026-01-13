@@ -9,41 +9,49 @@ import (
 
 // SeedTestUsers creates test users for development
 func SeedTestUsers(db *gorm.DB) error {
+	// Default password hash for "password" - bcrypt with cost 10
+	defaultPasswordHash := "$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi"
+	
 	testUsers := []models.User{
 		{
-			ID:     "user-admin-001",
-			Email:  "admin@liyali.com",
-			Name:   "Admin User",
-			Role:   "admin",
-			Active: true,
+			ID:       "user-admin-001",
+			Email:    "admin@liyali.com",
+			Name:     "Admin User",
+			Password: defaultPasswordHash,
+			Role:     "admin",
+			Active:   true,
 		},
 		{
-			ID:     "user-approver-001",
-			Email:  "approver@liyali.com",
-			Name:   "John Approver",
-			Role:   "approver",
-			Active: true,
+			ID:       "user-approver-001",
+			Email:    "approver@liyali.com",
+			Name:     "John Approver",
+			Password: defaultPasswordHash,
+			Role:     "approver",
+			Active:   true,
 		},
 		{
-			ID:     "user-requester-001",
-			Email:  "requester@liyali.com",
-			Name:   "Jane Requester",
-			Role:   "requester",
-			Active: true,
+			ID:       "user-requester-001",
+			Email:    "requester@liyali.com",
+			Name:     "Jane Requester",
+			Password: defaultPasswordHash,
+			Role:     "requester",
+			Active:   true,
 		},
 		{
-			ID:     "user-finance-001",
-			Email:  "finance@liyali.com",
-			Name:   "Finance Officer",
-			Role:   "finance",
-			Active: true,
+			ID:       "user-finance-001",
+			Email:    "finance@liyali.com",
+			Name:     "Finance Officer",
+			Password: defaultPasswordHash,
+			Role:     "finance",
+			Active:   true,
 		},
 		{
-			ID:     "user-viewer-001",
-			Email:  "viewer@liyali.com",
-			Name:   "Viewer User",
-			Role:   "viewer",
-			Active: true,
+			ID:       "user-viewer-001",
+			Email:    "viewer@liyali.com",
+			Name:     "Viewer User",
+			Password: defaultPasswordHash,
+			Role:     "viewer",
+			Active:   true,
 		},
 	}
 

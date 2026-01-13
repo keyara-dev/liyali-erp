@@ -4,7 +4,11 @@
  */
 
 // Import shared types from core
-import type { ItemCondition, QualityIssueType, QualityIssueSeverity } from './core';
+import type {
+  ItemCondition,
+  QualityIssueType,
+  QualityIssueSeverity,
+} from "./core";
 
 // ============================================================================
 // CORE GRN TYPES
@@ -30,8 +34,8 @@ export interface GoodsReceivedNote {
   // Core fields
   id: string;
   organizationId: string;
-  grnNumber: string;
-  poNumber: string;
+  documentNumber: string;
+  poDocumentNumber: string;
   status: string; // draft, pending, approved, rejected, completed, cancelled
   receivedDate: Date;
   receivedBy: string;
@@ -41,20 +45,19 @@ export interface GoodsReceivedNote {
   approvalHistory: any[];
   createdAt: Date;
   updatedAt: Date;
-  
+
   // Business requirement fields
   createdBy: string;
-  ownerId: string;                 // Same as createdBy
+  ownerId: string; // Same as createdBy
   warehouseLocation: string;
   notes: string;
-  currentStage: number;            // Same as approvalStage
+  currentStage: number; // Same as approvalStage
   stageName: string;
   approvedBy: string;
-  automationUsed?: boolean;        // For automation tracking
-  autoCreatedPV?: any;             // Auto-created payment voucher
-  
+  automationUsed?: boolean; // For automation tracking
+  autoCreatedPV?: any; // Auto-created payment voucher
+
   // UI compatibility fields
-  documentNumber?: string;
   actionHistory?: any[];
   metadata?: Record<string, any>;
   type?: string;
@@ -66,7 +69,7 @@ export interface GoodsReceivedNote {
 // ============================================================================
 
 export interface CreateGRNRequest {
-  poNumber: string;
+  poDocumentNumber: string;
   items: GRNItem[];
   receivedBy: string;
   warehouseLocation: string;
@@ -99,6 +102,17 @@ export interface GRNStats {
 // TYPE ALIASES
 // ============================================================================
 
-export type GRNStatus = "draft"| "pending" | "approved" | "rejected" | "paid" | "completed" | "cancelled";
+export type GRNStatus =
+  | "draft"
+  | "pending"
+  | "approved"
+  | "rejected"
+  | "paid"
+  | "completed"
+  | "cancelled";
 // Re-export shared types from core
-export type { ItemCondition, QualityIssueType, QualityIssueSeverity } from './core';
+export type {
+  ItemCondition,
+  QualityIssueType,
+  QualityIssueSeverity,
+} from "./core";

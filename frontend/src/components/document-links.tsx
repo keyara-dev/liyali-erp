@@ -15,10 +15,10 @@ import Link from "next/link";
 interface DocumentLinksProps {
   currentDocument: WorkflowDocument;
   linkedDocuments?: {
-    requisition?: { id: string; number: string };
-    purchaseOrder?: { id: string; number: string };
-    grn?: { id: string; number: string };
-    paymentVoucher?: { id: string; number: string };
+    requisition?: { id: string; documentNumber: string };
+    purchaseOrder?: { id: string; documentNumber: string };
+    grn?: { id: string; documentNumber: string };
+    paymentVoucher?: { id: string; documentNumber: string };
   };
 }
 
@@ -59,7 +59,7 @@ export function DocumentLinks({
             <div className="flex items-center justify-between bg-white dark:bg-slate-900 p-3 rounded border">
               <div>
                 <p className="text-sm text-muted-foreground">Requisition</p>
-                <p className="font-medium">{requisition.number}</p>
+                <p className="font-medium">{requisition.documentNumber}</p>
               </div>
               <Link href={`//requisitions/${requisition.id}`}>
                 <Button variant="outline" size="sm">
@@ -74,7 +74,7 @@ export function DocumentLinks({
             <div className="flex items-center justify-between bg-white dark:bg-slate-900 p-3 rounded border">
               <div>
                 <p className="text-sm text-muted-foreground">Purchase Order</p>
-                <p className="font-medium">{purchaseOrder.number}</p>
+                <p className="font-medium">{purchaseOrder.documentNumber}</p>
               </div>
               <Link href={`//purchase-orders/${purchaseOrder.id}`}>
                 <Button variant="outline" size="sm">
@@ -91,7 +91,7 @@ export function DocumentLinks({
                 <p className="text-sm text-muted-foreground">
                   Goods Received Note
                 </p>
-                <p className="font-medium">{grn.number}</p>
+                <p className="font-medium">{grn.documentNumber}</p>
               </div>
               <Link href={`//grn/${grn.id}`}>
                 <Button variant="outline" size="sm">
@@ -106,7 +106,7 @@ export function DocumentLinks({
             <div className="flex items-center justify-between bg-white dark:bg-slate-900 p-3 rounded border">
               <div>
                 <p className="text-sm text-muted-foreground">Payment Voucher</p>
-                <p className="font-medium">{paymentVoucher.number}</p>
+                <p className="font-medium">{paymentVoucher.documentNumber}</p>
               </div>
               <Link href={`//payment-vouchers/${paymentVoucher.id}`}>
                 <Button variant="outline" size="sm">

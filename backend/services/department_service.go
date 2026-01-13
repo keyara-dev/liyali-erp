@@ -146,6 +146,11 @@ func (s *DepartmentService) CreateDepartment(organizationID, name, code string, 
 		department.Description = *description
 	}
 
+	// Set manager name if provided
+	if managerName != nil {
+		department.ManagerName = *managerName
+	}
+
 	if err := s.db.Create(&department).Error; err != nil {
 		return nil, fmt.Errorf("failed to create department: %w", err)
 	}

@@ -206,11 +206,11 @@ func (dls *DocumentLinkingService) LinkPurchaseOrderToPaymentVoucher(
 
 // LinkPurchaseOrderToGRN links a PO to a GRN
 func (dls *DocumentLinkingService) LinkPurchaseOrderToGRN(
-	poNumber, grnID string,
+	poDocumentNumber, grnID string,
 ) error {
-	// Get PO by number
+	// Get PO by document number
 	var po models.PurchaseOrder
-	if err := dls.db.Where("po_number = ?", poNumber).First(&po).Error; err != nil {
+	if err := dls.db.Where("document_number = ?", poDocumentNumber).First(&po).Error; err != nil {
 		return fmt.Errorf("purchase order not found: %v", err)
 	}
 
@@ -238,20 +238,20 @@ func (dls *DocumentLinkingService) LinkPurchaseOrderToGRN(
 		return fmt.Errorf("failed to link PO to GRN: %v", err)
 	}
 
-	// Update GRN with PO number
-	if err := dls.db.Model(&grn).Update("po_number", poNumber).Error; err != nil {
+	// Update GRN with PO document number
+	if err := dls.db.Model(&grn).Update("po_number", po.DocumentNumber).Error; err != nil {
 		logging.WithFields(map[string]interface{}{
-			"operation":  "update_grn_with_po_number",
-			"grn_id":     grnID,
-			"po_number":  poNumber,
+			"operation":       "update_grn_with_po_number",
+			"grn_id":          grnID,
+			"po_document_number": po.DocumentNumber,
 		}).WithError(err).Warn("failed_to_update_grn_with_po_number")
 	}
 
 	logging.WithFields(map[string]interface{}{
-		"operation": "link_purchase_order_to_grn",
-		"po_id":     po.ID,
-		"grn_id":    grnID,
-		"po_number": poNumber,
+		"operation":          "link_purchase_order_to_grn",
+		"po_id":              po.ID,
+		"grn_id":             grnID,
+		"po_document_number": po.DocumentNumber,
 	}).Info("linked_purchase_order_to_grn")
 	return nil
 }
@@ -320,7 +320,7 @@ func (dls *DocumentLinkingService) GetDocumentRelationshipChain(
 		var po models.PurchaseOrder
 		if err := dls.db.First(&po, "id = ?", poLink.TargetDocID).Error; err == nil {
 			chain["poId"] = po.ID
-			chain["poNumber"] = po.PONumber
+			chain["poDocumentNumber"] = po.DocumentNumber
 		}
 	}
 
@@ -334,7 +334,7 @@ func (dls *DocumentLinkingService) GetDocumentRelationshipChain(
 			var grn models.GoodsReceivedNote
 			if err := dls.db.First(&grn, "id = ?", grnLink.TargetDocID).Error; err == nil {
 				chain["grnId"] = grn.ID
-				chain["grnNumber"] = grn.GRNNumber
+				chain["grnDocumentNumber"] = grn.DocumentNumber
 			}
 		}
 	}

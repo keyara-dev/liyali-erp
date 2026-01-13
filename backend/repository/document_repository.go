@@ -512,7 +512,7 @@ func (r *DocumentRepository) SyncFromRequisition(ctx context.Context, requisitio
 	// Prepare document data
 	dataMap := map[string]interface{}{
 		"id":          requisition.ID,
-		"reqNumber":   requisition.REQNumber,
+		"documentNumber": requisition.DocumentNumber,
 		"items":       requisition.Items,
 		"priority":    requisition.Priority,
 		"categoryId":  requisition.CategoryID,
@@ -618,7 +618,7 @@ func (r *DocumentRepository) SyncFromPurchaseOrder(ctx context.Context, po *mode
 	
 	dataMap := map[string]interface{}{
 		"id":           po.ID,
-		"poNumber":     po.PONumber,
+		"documentNumber": po.DocumentNumber,
 		"vendorId":     po.VendorID,
 		"items":        po.Items,
 		"deliveryDate": po.DeliveryDate,
@@ -632,7 +632,7 @@ func (r *DocumentRepository) SyncFromPurchaseOrder(ctx context.Context, po *mode
 	doc := &models.Document{
 		OrganizationID: po.OrganizationID,
 		DocumentType:   "PURCHASE_ORDER",
-		Title:          "PO: " + po.PONumber,
+		Title:          "PO: " + po.DocumentNumber,
 		Status:         po.Status,
 		Amount:         &po.TotalAmount,
 		Currency:       &po.Currency,
@@ -664,7 +664,7 @@ func (r *DocumentRepository) SyncFromPaymentVoucher(ctx context.Context, pv *mod
 	
 	dataMap := map[string]interface{}{
 		"id":             pv.ID,
-		"voucherNumber":  pv.VoucherNumber,
+		"documentNumber": pv.DocumentNumber,
 		"vendorId":       pv.VendorID,
 		"invoiceNumber":  pv.InvoiceNumber,
 		"paymentMethod":  pv.PaymentMethod,
@@ -679,7 +679,7 @@ func (r *DocumentRepository) SyncFromPaymentVoucher(ctx context.Context, pv *mod
 	doc := &models.Document{
 		OrganizationID: pv.OrganizationID,
 		DocumentType:   "PAYMENT_VOUCHER",
-		Title:          "Payment Voucher: " + pv.VoucherNumber,
+		Title:          "Payment Voucher: " + pv.DocumentNumber,
 		Status:         pv.Status,
 		Amount:         &pv.Amount,
 		Currency:       &pv.Currency,
@@ -715,8 +715,8 @@ func (r *DocumentRepository) SyncFromGRN(ctx context.Context, grn *models.GoodsR
 	
 	dataMap := map[string]interface{}{
 		"id":             grn.ID,
-		"grnNumber":      grn.GRNNumber,
-		"poNumber":       grn.PONumber,
+		"documentNumber": grn.DocumentNumber,
+		"poDocumentNumber": grn.PODocumentNumber,
 		"items":          grn.Items,
 		"receivedDate":   grn.ReceivedDate,
 		"receivedBy":     grn.ReceivedBy,
@@ -734,7 +734,7 @@ func (r *DocumentRepository) SyncFromGRN(ctx context.Context, grn *models.GoodsR
 	doc := &models.Document{
 		OrganizationID: grn.OrganizationID,
 		DocumentType:   "GRN",
-		Title:          "GRN: " + grn.GRNNumber,
+		Title:          "GRN: " + grn.DocumentNumber,
 		Status:         grn.Status,
 		Amount:         &totalAmount,
 		Currency:       func() *string { s := "USD"; return &s }(), // Default currency

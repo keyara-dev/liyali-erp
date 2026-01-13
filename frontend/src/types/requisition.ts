@@ -26,7 +26,7 @@ export interface Requisition {
   // Core fields
   id: string;
   organizationId: string;
-  reqNumber: string;
+  documentNumber: string;
   requesterId: string;
   requester?: any;
   requesterName: string;
@@ -55,7 +55,6 @@ export interface Requisition {
   updatedAt: Date;
 
   // Business requirement fields
-  requisitionNumber: string; // Same as reqNumber
   budgetCode: string;
   requestedByName: string; // Same as requesterName
   requestedByRole: string;
@@ -72,7 +71,6 @@ export interface Requisition {
   otherCategoryText?: string; // Custom category name when "OTHER" is selected
 
   // UI compatibility fields
-  documentNumber?: string;
   currentStage?: number;
   currentApprovalStage?: number;
   actionHistory?: any[];

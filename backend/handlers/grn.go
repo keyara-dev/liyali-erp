@@ -39,15 +39,15 @@ func GetGRNs(c *fiber.Ctx) error {
 	}
 
 	status := c.Query("status")
-	poNumber := c.Query("poNumber")
+	poDocumentNumber := c.Query("poDocumentNumber")
 
 	// Start with organization filter - CRITICAL SECURITY FIX
 	query := db.Where("organization_id = ?", tenant.OrganizationID)
 	if status != "" {
 		query = query.Where("status = ?", status)
 	}
-	if poNumber != "" {
-		query = query.Where("po_number = ?", poNumber)
+	if poDocumentNumber != "" {
+		query = query.Where("po_document_number = ?", poDocumentNumber)
 	}
 
 	var total int64
@@ -103,7 +103,7 @@ func CreateGRN(c *fiber.Ctx) error {
 		})
 	}
 
-	if req.PONumber == "" {
+	if req.PODocumentNumber == "" {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"success": false,
 			"message": "PO number is required",
@@ -124,7 +124,7 @@ func CreateGRN(c *fiber.Ctx) error {
 
 	// Verify PO exists and belongs to organization - SECURITY FIX
 	var po models.PurchaseOrder
-	if err := config.DB.Where("po_number = ? AND organization_id = ?", req.PONumber, tenant.OrganizationID).First(&po).Error; err != nil {
+	if err := config.DB.Where("document_number = ? AND organization_id = ?", req.PODocumentNumber, tenant.OrganizationID).First(&po).Error; err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"success": false,
 			"message": "Purchase order not found",
@@ -132,13 +132,13 @@ func CreateGRN(c *fiber.Ctx) error {
 	}
 
 	// Generate GRN number
-	grnNumber := utils.GenerateGRNNumber()
+	documentNumber := utils.GenerateDocumentNumber("GRN")
 
 	grn := models.GoodsReceivedNote{
 		ID:             uuid.New().String(),
 		OrganizationID: tenant.OrganizationID, // SECURITY FIX: Set organization ID
-		GRNNumber:      grnNumber,
-		PONumber:       req.PONumber,
+		DocumentNumber: documentNumber,
+		PODocumentNumber: req.PODocumentNumber,
 		Status:         "draft",
 		ReceivedDate:   time.Now(),
 		ReceivedBy:     req.ReceivedBy,
@@ -338,8 +338,8 @@ func modelToGRNResponse(grn models.GoodsReceivedNote) types.GRNResponse {
 
 	return types.GRNResponse{
 		ID:              grn.ID,
-		GRNNumber:       grn.GRNNumber,
-		PONumber:        grn.PONumber,
+		DocumentNumber:  grn.DocumentNumber,
+		PODocumentNumber: grn.PODocumentNumber,
 		Status:          grn.Status,
 		ReceivedDate:    grn.ReceivedDate,
 		ReceivedBy:      grn.ReceivedBy,

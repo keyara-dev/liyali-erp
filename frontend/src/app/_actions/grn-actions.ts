@@ -1,4 +1,4 @@
-'use server';
+"use server";
 
 /**
  * GRN Server Actions
@@ -6,19 +6,15 @@
  * Follows the established pattern from auth.ts and other server actions
  */
 
-import { APIResponse } from '@/types';
-import {
-  handleError,
-  successResponse,
-  badRequestResponse,
-} from './api-config';
-import authenticatedApiClient from './api-config';
+import { APIResponse } from "@/types";
+import { handleError, successResponse, badRequestResponse } from "./api-config";
+import authenticatedApiClient from "./api-config";
 
 interface QualityIssue {
   id: string;
   itemId: string;
   description: string;
-  severity: 'LOW' | 'MEDIUM' | 'HIGH';
+  severity: "LOW" | "MEDIUM" | "HIGH";
 }
 
 interface GRNItem {
@@ -31,14 +27,14 @@ interface GRNItem {
   variance: number;
   damage: number;
   damageNotes?: string;
-  condition: 'GOOD' | 'DAMAGED' | 'PARTIAL';
+  condition: "GOOD" | "DAMAGED" | "PARTIAL";
 }
 
 export interface GoodsReceivedNote {
   id: string;
-  grnNumber: string;
-  poNumber: string;
-  status: 'DRAFT' | 'SUBMITTED' | 'CONFIRMED' | 'REJECTED' | 'APPROVED';
+  documentNumber: string;
+  poDocumentNumber: string;
+  status: "DRAFT" | "SUBMITTED" | "CONFIRMED" | "REJECTED" | "APPROVED";
   warehouseLocation: string;
   receivedDate: string;
   receivedBy: string;
@@ -50,14 +46,15 @@ export interface GoodsReceivedNote {
   stageName: string;
   createdAt: string;
   updatedAt: string;
-  
+
   // Additional fields for compatibility
-  approvalStage: number;        // Maps to currentStage
-  approvalHistory: any[];       // Approval history array
-  createdBy?: string;           // Creator user ID
-  metadata?: {                  // Metadata for UI compatibility
+  approvalStage: number; // Maps to currentStage
+  approvalHistory: any[]; // Approval history array
+  createdBy?: string; // Creator user ID
+  metadata?: {
+    // Metadata for UI compatibility
     poId?: string;
-    poNumber?: string;
+    poDocumentNumber?: string;
     vendorName?: string;
     amount?: number;
   };
@@ -67,56 +64,61 @@ export interface GoodsReceivedNote {
  * Get a single GRN by ID
  * Calls: GET /api/v1/grns/{id}
  */
-export async function getGRNAction(grnId: string): Promise<APIResponse<GoodsReceivedNote>> {
+export async function getGRNAction(
+  grnId: string
+): Promise<APIResponse<GoodsReceivedNote>> {
   const url = `/api/v1/grns/${grnId}`;
 
   try {
     const response = await authenticatedApiClient({
-      method: 'GET',
+      method: "GET",
       url,
     });
 
-    return successResponse(response.data?.data, 'GRN retrieved successfully');
+    return successResponse(response.data?.data, "GRN retrieved successfully");
   } catch (error: any) {
-    console.error('Error fetching GRN:', error);
-    return handleError(error, 'GET', url);
+    console.error("Error fetching GRN:", error);
+    return handleError(error, "GET", url);
   }
 }
 
 /**
  * Get all GRNs with pagination
- * Calls: GET /api/v1/grns?page=1&limit=10&status=DRAFT&poNumber=PO-123
+ * Calls: GET /api/v1/grns?page=1&limit=10&status=DRAFT&poDocumentNumber=PO-123
  */
 export async function getGRNsAction(
   page: number = 1,
   limit: number = 10,
   filters?: {
     status?: string;
-    poNumber?: string;
+    poDocumentNumber?: string;
   }
 ): Promise<APIResponse<GoodsReceivedNote[]>> {
   const params = new URLSearchParams();
-  params.set('page', page.toString());
-  params.set('limit', limit.toString());
+  params.set("page", page.toString());
+  params.set("limit", limit.toString());
 
   if (filters?.status) {
-    params.set('status', filters.status);
+    params.set("status", filters.status);
   }
-  if (filters?.poNumber) {
-    params.set('poNumber', filters.poNumber);
+  if (filters?.poDocumentNumber) {
+    params.set("poDocumentNumber", filters.poDocumentNumber);
   }
 
   const url = `/api/v1/grns?${params.toString()}`;
 
   try {
     const response = await authenticatedApiClient({
-      method: 'GET',
+      method: "GET",
       url,
     });
 
-    return successResponse(response.data?.data || [], 'GRNs fetched successfully');
+    return successResponse(
+      response.data?.data || [],
+      "GRNs fetched successfully"
+    );
   } catch (error: any) {
-    return handleError(error, 'GET', url);
+    return handleError(error, "GET", url);
   }
 }
 
@@ -125,7 +127,7 @@ export async function getGRNsAction(
  * Calls: POST /api/v1/grns
  */
 export async function createGRNAction(
-  poNumber: string,
+  poDocumentNumber: string,
   items: GRNItem[],
   receivedBy: string,
   warehouseLocation?: string,
@@ -135,22 +137,22 @@ export async function createGRNAction(
 
   try {
     const payload = {
-      poNumber,
+      poDocumentNumber,
       items,
       receivedBy,
-      warehouseLocation: warehouseLocation || '',
-      notes: notes || '',
+      warehouseLocation: warehouseLocation || "",
+      notes: notes || "",
     };
 
     const response = await authenticatedApiClient({
-      method: 'POST',
+      method: "POST",
       url,
       data: payload,
     });
 
-    return successResponse(response.data?.data, 'GRN created successfully');
+    return successResponse(response.data?.data, "GRN created successfully");
   } catch (error: any) {
-    return handleError(error, 'POST', url);
+    return handleError(error, "POST", url);
   }
 }
 
@@ -173,14 +175,14 @@ export async function updateGRNAction(
 
   try {
     const response = await authenticatedApiClient({
-      method: 'PUT',
+      method: "PUT",
       url,
       data: updates,
     });
 
-    return successResponse(response.data?.data, 'GRN updated successfully');
+    return successResponse(response.data?.data, "GRN updated successfully");
   } catch (error: any) {
-    return handleError(error, 'PUT', url);
+    return handleError(error, "PUT", url);
   }
 }
 
@@ -191,7 +193,7 @@ export async function updateGRNAction(
  */
 export async function addQualityIssueToGRN(
   grnId: string,
-  issue: Omit<QualityIssue, 'id'>
+  issue: Omit<QualityIssue, "id">
 ): Promise<APIResponse<GoodsReceivedNote>> {
   try {
     // First fetch the current GRN to get existing quality issues
@@ -217,7 +219,7 @@ export async function addQualityIssueToGRN(
       qualityIssues: updatedQualityIssues,
     });
   } catch (error: any) {
-    return handleError(error, 'PUT', `/api/v1/grns/${grnId}`);
+    return handleError(error, "PUT", `/api/v1/grns/${grnId}`);
   }
 }
 
@@ -249,7 +251,7 @@ export async function removeQualityIssueFromGRN(
       qualityIssues: updatedQualityIssues,
     });
   } catch (error: any) {
-    return handleError(error, 'PUT', `/api/v1/grns/${grnId}`);
+    return handleError(error, "PUT", `/api/v1/grns/${grnId}`);
   }
 }
 
@@ -260,7 +262,7 @@ export async function removeQualityIssueFromGRN(
 export async function updateQualityIssueInGRN(
   grnId: string,
   issueId: string,
-  updates: Partial<Omit<QualityIssue, 'id'>>
+  updates: Partial<Omit<QualityIssue, "id">>
 ): Promise<APIResponse<GoodsReceivedNote>> {
   try {
     // First fetch the current GRN
@@ -287,28 +289,28 @@ export async function updateQualityIssueInGRN(
       qualityIssues: updatedQualityIssues,
     });
   } catch (error: any) {
-    return handleError(error, 'PUT', `/api/v1/grns/${grnId}`);
+    return handleError(error, "PUT", `/api/v1/grns/${grnId}`);
   }
 }
-
-
 
 /**
  * Delete a GRN (only DRAFT GRNs can be deleted)
  * Calls: DELETE /api/v1/grns/{id}
  */
-export async function deleteGRNAction(grnId: string): Promise<APIResponse<null>> {
+export async function deleteGRNAction(
+  grnId: string
+): Promise<APIResponse<null>> {
   const url = `/api/v1/grns/${grnId}`;
 
   try {
     await authenticatedApiClient({
-      method: 'DELETE',
+      method: "DELETE",
       url,
     });
 
-    return successResponse(null, 'GRN deleted successfully');
+    return successResponse(null, "GRN deleted successfully");
   } catch (error: any) {
-    return handleError(error, 'DELETE', url);
+    return handleError(error, "DELETE", url);
   }
 }
 
@@ -317,18 +319,20 @@ export async function deleteGRNAction(grnId: string): Promise<APIResponse<null>>
  * This would be called after all quality checks are done
  * Backend needs to implement: POST /api/v1/grns/{id}/confirm
  */
-export async function confirmGRNAction(grnId: string): Promise<APIResponse<GoodsReceivedNote>> {
+export async function confirmGRNAction(
+  grnId: string
+): Promise<APIResponse<GoodsReceivedNote>> {
   const url = `/api/v1/grns/${grnId}/confirm`;
 
   try {
     const response = await authenticatedApiClient({
-      method: 'POST',
+      method: "POST",
       url,
       data: {},
     });
 
-    return successResponse(response.data?.data, 'GRN confirmed successfully');
+    return successResponse(response.data?.data, "GRN confirmed successfully");
   } catch (error: any) {
-    return handleError(error, 'POST', url);
+    return handleError(error, "POST", url);
   }
 }

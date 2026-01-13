@@ -511,7 +511,7 @@ CREATE TABLE IF NOT EXISTS documents (
 CREATE TABLE IF NOT EXISTS requisitions (
     id VARCHAR(255) PRIMARY KEY,
     organization_id VARCHAR(255) NOT NULL,
-    req_number VARCHAR(100) UNIQUE NOT NULL,
+    document_number VARCHAR(100) NOT NULL,
     requester_id VARCHAR(255) NOT NULL,
     title VARCHAR(255) NOT NULL,
     description TEXT,
@@ -580,7 +580,7 @@ CREATE TABLE IF NOT EXISTS budgets (
 CREATE TABLE IF NOT EXISTS purchase_orders (
     id VARCHAR(255) PRIMARY KEY,
     organization_id VARCHAR(255) NOT NULL,
-    po_number VARCHAR(100) UNIQUE NOT NULL,
+    document_number VARCHAR(100) NOT NULL,
     vendor_id VARCHAR(255), -- NULLABLE (from migration 004)
     status VARCHAR(50) DEFAULT 'draft',
     items JSONB,
@@ -624,7 +624,7 @@ CREATE TABLE IF NOT EXISTS purchase_orders (
 CREATE TABLE IF NOT EXISTS payment_vouchers (
     id VARCHAR(255) PRIMARY KEY,
     organization_id VARCHAR(255) NOT NULL,
-    voucher_number VARCHAR(100) UNIQUE NOT NULL,
+    document_number VARCHAR(100) NOT NULL,
     vendor_id VARCHAR(255) NOT NULL,
     invoice_number VARCHAR(100),
     status VARCHAR(50) DEFAULT 'draft',
@@ -672,8 +672,8 @@ CREATE TABLE IF NOT EXISTS payment_vouchers (
 CREATE TABLE IF NOT EXISTS goods_received_notes (
     id VARCHAR(255) PRIMARY KEY,
     organization_id VARCHAR(255) NOT NULL,
-    grn_number VARCHAR(100) UNIQUE NOT NULL,
-    po_number VARCHAR(255),
+    document_number VARCHAR(100) NOT NULL,
+    po_document_number VARCHAR(255),
     status VARCHAR(50) DEFAULT 'draft',
     received_date TIMESTAMP,
     received_by VARCHAR(255),
@@ -696,7 +696,6 @@ CREATE TABLE IF NOT EXISTS goods_received_notes (
     
     CONSTRAINT fk_grns_organization FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE,
     CONSTRAINT fk_grns_received_by FOREIGN KEY (received_by) REFERENCES users(id),
-    CONSTRAINT fk_grns_po_number FOREIGN KEY (po_number) REFERENCES purchase_orders(po_number),
     CONSTRAINT fk_grn_created_by FOREIGN KEY (created_by) REFERENCES users(id)
 );
 
@@ -774,6 +773,12 @@ CREATE TABLE IF NOT EXISTS notifications (
 -- ============================================================================
 -- COMPREHENSIVE INDEXES FOR PERFORMANCE
 -- ============================================================================
+
+-- Document number unique constraints per organization
+CREATE UNIQUE INDEX IF NOT EXISTS idx_requisitions_document_number_org ON requisitions(document_number, organization_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_purchase_orders_document_number_org ON purchase_orders(document_number, organization_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_payment_vouchers_document_number_org ON payment_vouchers(document_number, organization_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_goods_received_notes_document_number_org ON goods_received_notes(document_number, organization_id);
 
 -- Users indexes
 CREATE INDEX IF NOT EXISTS idx_users_deleted_at ON users(deleted_at);

@@ -35,27 +35,31 @@ export interface UpdateUserRequest {
   is_active?: boolean;
 }
 
-export async function createNewUser(data: CreateUserRequest): Promise<APIResponse> {
-  const url = `/api/v1/users`;
+export async function createNewUser(
+  data: CreateUserRequest
+): Promise<APIResponse> {
+  const url = `/api/v1/organization/members`;
 
   try {
     const response = await authenticatedApiClient({
       url: url,
       data: {
-        username: data.username,
+        user_id: data.username, // This might need to be adjusted based on backend expectations
         email: data.email,
-        password: data.password,
-        first_name: data.first_name,
-        last_name: data.last_name,
-        branch_id: data.branch_id,
+        role: data.role || "requester",
+        department: data.department_id,
         department_id: data.department_id,
-        role_id: data.role_id,
+        title: `${data.first_name} ${data.last_name}`,
+        active: true,
       },
       method: "POST",
     });
-    revalidatePath("/dashboard/system-configs/users");
+    revalidatePath("/admin/users");
 
-    return successResponse(response?.data, "User registered successfully");
+    return successResponse(
+      response?.data,
+      "Organization member added successfully"
+    );
   } catch (error: Error | any) {
     return handleError(error, "POST", url);
   }
@@ -74,25 +78,61 @@ export async function getUsers(params?: {
 }): Promise<APIResponse> {
   const queryParams = new URLSearchParams();
 
-  if (params?.branchId) queryParams.append("branch_id", params.branchId);
   if (params?.departmentId)
     queryParams.append("department_id", params.departmentId);
-  if (params?.roleId) queryParams.append("role_id", params.roleId);
   if (params?.isActive !== undefined)
-    queryParams.append("is_active", String(params.isActive));
-  if (params?.isLdapUser !== undefined)
-    queryParams.append("is_ldap_user", String(params.isLdapUser));
+    queryParams.append("active", String(params.isActive));
   if (params?.search) queryParams.append("search", params.search);
   if (params?.role) queryParams.append("role", params.role);
   if (params?.page) queryParams.append("page", String(params.page));
   if (params?.page_size)
     queryParams.append("page_size", String(params.page_size));
 
-  const url = `/api/v1/users${queryParams.toString() ? `?${queryParams.toString()}` : ""}`;
+  const url = `/api/v1/organization/members${queryParams.toString() ? `?${queryParams.toString()}` : ""}`;
 
   try {
     const response = await authenticatedApiClient({ url: url, method: "GET" });
-    return successResponse(response.data, "Users fetched successfully");
+
+    // Transform organization members data to match expected user format
+    const members = response.data?.data || response.data || [];
+    const transformedUsers = members.map((member: any) => {
+      // Handle both JSON field names (userId) and database field names (user_id)
+      const userId = member.userId || member.user_id || member.id;
+
+      // Get user data from nested User object or member object itself
+      const userData = member.user || member.User || member;
+      const userName =
+        userData?.name ||
+        `${userData?.first_name || ""} ${userData?.last_name || ""}`.trim() ||
+        "Unknown User";
+      const nameParts = userName.split(" ");
+      const firstName = nameParts[0] || "";
+      const lastName = nameParts.slice(1).join(" ") || "";
+
+      return {
+        id: userId,
+        name: userName,
+        first_name: firstName,
+        last_name: lastName,
+        email: userData?.email || "",
+        role: member.role || "requester",
+        department: member.department || "",
+        department_id: member.department_id || "",
+        active: member.active !== undefined ? member.active : true,
+        is_active: member.active !== undefined ? member.active : true,
+        // Include original member data for reference
+        member_id: member.id,
+        title: member.title || "",
+        joined_at: member.joinedAt || member.joined_at,
+        created_at: member.createdAt || member.created_at,
+        updated_at: member.updatedAt || member.updated_at,
+      };
+    });
+
+    return successResponse(
+      transformedUsers,
+      "Organization members fetched successfully"
+    );
   } catch (error) {
     return handleError(error, "GET", url);
   }
@@ -141,16 +181,36 @@ export async function getDepartmentHeads(params?: {
 }
 
 export async function getUserById(id: string): Promise<APIResponse> {
-  const url = `/api/v1/users/${id}`;
-
+  // For organization members, we'll get all members and filter by user ID
+  // This is because the backend doesn't have a specific endpoint for single member by user ID
   try {
-    const response = await authenticatedApiClient({ url: url, method: "GET" });
-    return successResponse(
-      response.data.data?.data || response.data,
-      "User fetched successfully"
-    );
+    const response = await getUsers();
+    if (!response.success || !response.data) {
+      return {
+        success: false,
+        message: "Failed to fetch organization members",
+        data: null,
+        status: 400,
+      };
+    }
+
+    const members = Array.isArray(response.data)
+      ? response.data
+      : response.data.data || [];
+    const member = members.find((m: any) => m.user_id === id || m.id === id);
+
+    if (!member) {
+      return {
+        success: false,
+        message: "User not found in organization",
+        data: null,
+        status: 404,
+      };
+    }
+
+    return successResponse(member, "User fetched successfully");
   } catch (error) {
-    return handleError(error, "GET", url);
+    return handleError(error, "GET", `/api/v1/organization/members`);
   }
 }
 
@@ -158,22 +218,15 @@ export async function updateUser(
   id: string,
   data: Partial<User>
 ): Promise<APIResponse> {
-  const url = `/api/v1/users/${id}`;
-
-  try {
-    const response = await authenticatedApiClient({
-      url: url,
-      data: data,
-      method: "PUT",
-    });
-    revalidatePath("/dashboard/system-configs/users");
-    return successResponse(
-      response.data.data || response.data,
-      "User updated successfully"
-    );
-  } catch (error) {
-    return handleError(error, "PUT", url);
-  }
+  // TODO: Backend needs to implement PUT /api/v1/organization/members/:id endpoint
+  // For now, this will return an error indicating the feature is not implemented
+  return {
+    success: false,
+    message:
+      "User update functionality requires backend implementation of organization member update endpoint",
+    data: null,
+    status: 501,
+  };
 }
 
 export async function deleteUser(id: string): Promise<APIResponse> {

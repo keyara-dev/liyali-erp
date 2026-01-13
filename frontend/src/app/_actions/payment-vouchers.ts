@@ -1,4 +1,4 @@
-'use server';
+"use server";
 
 import {
   PaymentVoucher,
@@ -7,15 +7,11 @@ import {
   SubmitPaymentVoucherRequest,
   MarkPaymentVoucherPaidRequest,
   PaymentVoucherStats,
-} from '@/types/payment-voucher';
-import { PurchaseOrder } from '@/types/purchase-order';
-import { APIResponse } from '@/types';
-import {
-  handleError,
-  successResponse,
-  badRequestResponse,
-} from './api-config';
-import authenticatedApiClient from './api-config';
+} from "@/types/payment-voucher";
+import { PurchaseOrder } from "@/types/purchase-order";
+import { APIResponse } from "@/types";
+import { handleError, successResponse, badRequestResponse } from "./api-config";
+import authenticatedApiClient from "./api-config";
 
 /**
  * Create Payment Voucher from approved Purchase Order
@@ -29,12 +25,12 @@ export async function createPaymentVoucherFromPurchaseOrder(
 
   try {
     const response = await authenticatedApiClient({
-      method: 'POST',
+      method: "POST",
       url,
       data: {
         purchaseOrderId: po.id,
-        purchaseOrderNumber: po.poNumber,
-        title: `Payment for ${po.poNumber}`,
+        purchaseOrderDocumentNumber: po.documentNumber,
+        title: `Payment for ${po.documentNumber}`,
         description: po.description,
         vendorId: po.vendorId,
         vendorName: po.vendorName,
@@ -50,13 +46,15 @@ export async function createPaymentVoucherFromPurchaseOrder(
         costCenter: po.costCenter,
         projectCode: po.projectCode,
         sourceRequisitionId: po.sourceRequisitionId,
-        sourceRequisitionNumber: po.sourceRequisitionNumber,
       },
     });
 
-    return successResponse(response.data?.data, 'Payment voucher created from purchase order successfully');
+    return successResponse(
+      response.data?.data,
+      "Payment voucher created from purchase order successfully"
+    );
   } catch (error: any) {
-    return handleError(error, 'POST', url);
+    return handleError(error, "POST", url);
   }
 }
 
@@ -71,7 +69,7 @@ export async function createPaymentVoucher(
 
   try {
     const response = await authenticatedApiClient({
-      method: 'POST',
+      method: "POST",
       url,
       data: {
         title: data.title,
@@ -91,18 +89,19 @@ export async function createPaymentVoucher(
         taxAmount: data.taxAmount,
         withholdingTaxAmount: data.withholdingTaxAmount,
         sourcePurchaseOrderId: data.sourcePurchaseOrderId,
-        sourcePurchaseOrderNumber: data.sourcePurchaseOrderNumber,
         sourceRequisitionId: data.sourceRequisitionId,
-        sourceRequisitionNumber: data.sourceRequisitionNumber,
         createdBy: data.createdBy,
         createdByName: data.createdByName,
         createdByRole: data.createdByRole,
       },
     });
 
-    return successResponse(response.data?.data, 'Payment voucher created successfully');
+    return successResponse(
+      response.data?.data,
+      "Payment voucher created successfully"
+    );
   } catch (error: any) {
-    return handleError(error, 'POST', url);
+    return handleError(error, "POST", url);
   }
 }
 
@@ -119,27 +118,30 @@ export async function getPaymentVouchers(
   }
 ): Promise<APIResponse<PaymentVoucher[]>> {
   const params = new URLSearchParams();
-  params.set('page', page.toString());
-  params.set('limit', limit.toString());
+  params.set("page", page.toString());
+  params.set("limit", limit.toString());
 
   if (filters?.status) {
-    params.set('status', filters.status);
+    params.set("status", filters.status);
   }
   if (filters?.department) {
-    params.set('department', filters.department);
+    params.set("department", filters.department);
   }
 
   const url = `/api/v1/payment-vouchers?${params.toString()}`;
 
   try {
     const response = await authenticatedApiClient({
-      method: 'GET',
+      method: "GET",
       url,
     });
 
-    return successResponse(response.data?.data || [], 'Payment vouchers retrieved successfully');
+    return successResponse(
+      response.data?.data || [],
+      "Payment vouchers retrieved successfully"
+    );
   } catch (error: any) {
-    return handleError(error, 'GET', url);
+    return handleError(error, "GET", url);
   }
 }
 
@@ -147,18 +149,23 @@ export async function getPaymentVouchers(
  * Get payment voucher by ID
  * Calls: GET /api/v1/payment-vouchers/{id}
  */
-export async function getPaymentVoucherById(pvId: string): Promise<APIResponse<PaymentVoucher>> {
+export async function getPaymentVoucherById(
+  pvId: string
+): Promise<APIResponse<PaymentVoucher>> {
   const url = `/api/v1/payment-vouchers/${pvId}`;
 
   try {
     const response = await authenticatedApiClient({
-      method: 'GET',
+      method: "GET",
       url,
     });
 
-    return successResponse(response.data?.data, 'Payment voucher retrieved successfully');
+    return successResponse(
+      response.data?.data,
+      "Payment voucher retrieved successfully"
+    );
   } catch (error: any) {
-    return handleError(error, 'GET', url);
+    return handleError(error, "GET", url);
   }
 }
 
@@ -173,7 +180,7 @@ export async function updatePaymentVoucher(
 
   try {
     const response = await authenticatedApiClient({
-      method: 'PUT',
+      method: "PUT",
       url,
       data: {
         pvId: data.pvId,
@@ -189,9 +196,12 @@ export async function updatePaymentVoucher(
       },
     });
 
-    return successResponse(response.data?.data, 'Payment voucher updated successfully');
+    return successResponse(
+      response.data?.data,
+      "Payment voucher updated successfully"
+    );
   } catch (error: any) {
-    return handleError(error, 'PUT', url);
+    return handleError(error, "PUT", url);
   }
 }
 
@@ -206,7 +216,7 @@ export async function submitPaymentVoucherForApproval(
 
   try {
     const response = await authenticatedApiClient({
-      method: 'POST',
+      method: "POST",
       url,
       data: {
         pvId: data.pvId,
@@ -217,13 +227,14 @@ export async function submitPaymentVoucherForApproval(
       },
     });
 
-    return successResponse(response.data?.data, 'Payment voucher submitted for approval successfully');
+    return successResponse(
+      response.data?.data,
+      "Payment voucher submitted for approval successfully"
+    );
   } catch (error: any) {
-    return handleError(error, 'POST', url);
+    return handleError(error, "POST", url);
   }
 }
-
-
 
 /**
  * Mark Payment Voucher as Paid
@@ -236,7 +247,7 @@ export async function markPaymentVoucherAsPaid(
 
   try {
     const response = await authenticatedApiClient({
-      method: 'POST',
+      method: "POST",
       url,
       data: {
         pvId: data.pvId,
@@ -250,9 +261,12 @@ export async function markPaymentVoucherAsPaid(
       },
     });
 
-    return successResponse(response.data?.data, 'Payment voucher marked as paid successfully');
+    return successResponse(
+      response.data?.data,
+      "Payment voucher marked as paid successfully"
+    );
   } catch (error: any) {
-    return handleError(error, 'POST', url);
+    return handleError(error, "POST", url);
   }
 }
 
@@ -265,13 +279,16 @@ export async function deletePaymentVoucher(pvId: string): Promise<APIResponse> {
 
   try {
     const response = await authenticatedApiClient({
-      method: 'DELETE',
+      method: "DELETE",
       url,
     });
 
-    return successResponse(response.data?.data, 'Payment voucher deleted successfully');
+    return successResponse(
+      response.data?.data,
+      "Payment voucher deleted successfully"
+    );
   } catch (error: any) {
-    return handleError(error, 'DELETE', url);
+    return handleError(error, "DELETE", url);
   }
 }
 
@@ -279,17 +296,22 @@ export async function deletePaymentVoucher(pvId: string): Promise<APIResponse> {
  * Get Payment Voucher Statistics
  * Calls: GET /api/v1/payment-vouchers/stats
  */
-export async function getPaymentVoucherStats(): Promise<APIResponse<PaymentVoucherStats>> {
+export async function getPaymentVoucherStats(): Promise<
+  APIResponse<PaymentVoucherStats>
+> {
   const url = `/api/v1/payment-vouchers/stats`;
 
   try {
     const response = await authenticatedApiClient({
-      method: 'GET',
+      method: "GET",
       url,
     });
 
-    return successResponse(response.data?.data, 'Payment voucher statistics retrieved successfully');
+    return successResponse(
+      response.data?.data,
+      "Payment voucher statistics retrieved successfully"
+    );
   } catch (error: any) {
-    return handleError(error, 'GET', url);
+    return handleError(error, "GET", url);
   }
 }

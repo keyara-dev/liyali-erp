@@ -1096,7 +1096,7 @@ func (s *WorkflowExecutionService) triggerPostApprovalAutomation(ctx context.Con
 		
 		if result.CreatedDocument != nil {
 			if po, ok := result.CreatedDocument.(*models.PurchaseOrder); ok {
-				autoCreatedPO["poNumber"] = po.PONumber
+				autoCreatedPO["documentNumber"] = po.DocumentNumber
 				autoCreatedPO["amount"] = po.TotalAmount
 			}
 		}
@@ -1141,7 +1141,7 @@ func (s *WorkflowExecutionService) triggerPostApprovalAutomation(ctx context.Con
 		
 		if result.CreatedDocument != nil {
 			if grn, ok := result.CreatedDocument.(*models.GoodsReceivedNote); ok {
-				autoCreatedGRN["grnNumber"] = grn.GRNNumber
+				autoCreatedGRN["documentNumber"] = grn.DocumentNumber
 			}
 		}
 		
@@ -1185,7 +1185,7 @@ func (s *WorkflowExecutionService) triggerPostApprovalAutomation(ctx context.Con
 		
 		if result.CreatedDocument != nil {
 			if pv, ok := result.CreatedDocument.(*models.PaymentVoucher); ok {
-				autoCreatedPV["pvNumber"] = pv.PVNumber
+				autoCreatedPV["documentNumber"] = pv.DocumentNumber
 				autoCreatedPV["amount"] = pv.Amount
 			}
 		}

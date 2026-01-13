@@ -1,12 +1,12 @@
-'use client';
+"use client";
 
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { QUERY_KEYS } from '@/lib/constants';
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { QUERY_KEYS } from "@/lib/constants";
 import {
   addQualityIssueToGRN,
   removeQualityIssueFromGRN,
   updateQualityIssueInGRN,
-} from '@/app/_actions/grn-actions';
+} from "@/app/_actions/grn-actions";
 
 /**
  * Quality Issue Type for mutations
@@ -15,14 +15,14 @@ interface QualityIssue {
   id: string;
   itemId: string;
   description: string;
-  severity: 'LOW' | 'MEDIUM' | 'HIGH';
+  severity: "LOW" | "MEDIUM" | "HIGH";
 }
 
 interface GoodsReceivedNote {
   id: string;
-  grnNumber: string;
-  poNumber: string;
-  status: 'DRAFT' | 'SUBMITTED' | 'CONFIRMED' | 'REJECTED' | 'APPROVED';
+  documentNumber: string;
+  poDocumentNumber: string;
+  status: "DRAFT" | "SUBMITTED" | "CONFIRMED" | "REJECTED" | "APPROVED";
   warehouseLocation: string;
   receivedDate: string;
   receivedBy: string;
@@ -37,7 +37,7 @@ interface GoodsReceivedNote {
     variance: number;
     damage: number;
     damageNotes?: string;
-    condition: 'GOOD' | 'DAMAGED' | 'PARTIAL';
+    condition: "GOOD" | "DAMAGED" | "PARTIAL";
   }>;
   qualityIssues: QualityIssue[];
   notes?: string;
@@ -72,7 +72,7 @@ export function useAddQualityIssueMutation(
   const queryClient = useQueryClient();
 
   const mutation = useMutation({
-    mutationFn: async (issue: Omit<QualityIssue, 'id'>) => {
+    mutationFn: async (issue: Omit<QualityIssue, "id">) => {
       const result = await addQualityIssueToGRN(grnId, issue);
       return result;
     },
@@ -91,7 +91,7 @@ export function useAddQualityIssueMutation(
       }
     },
     onError: (error: Error) => {
-      console.error('Failed to add quality issue:', error);
+      console.error("Failed to add quality issue:", error);
     },
   });
 
@@ -138,7 +138,7 @@ export function useRemoveQualityIssueMutation(
       }
     },
     onError: (error: Error) => {
-      console.error('Failed to remove quality issue:', error);
+      console.error("Failed to remove quality issue:", error);
     },
   });
 
@@ -178,7 +178,7 @@ export function useUpdateQualityIssueMutation(
       updates,
     }: {
       issueId: string;
-      updates: Partial<Omit<QualityIssue, 'id'>>;
+      updates: Partial<Omit<QualityIssue, "id">>;
     }) => {
       const result = await updateQualityIssueInGRN(grnId, issueId, updates);
       return result;
@@ -194,7 +194,7 @@ export function useUpdateQualityIssueMutation(
       }
     },
     onError: (error: Error) => {
-      console.error('Failed to update quality issue:', error);
+      console.error("Failed to update quality issue:", error);
     },
   });
 

@@ -1,5 +1,5 @@
 // =============================================================================
-// FILE: app/dashboard/system-configs/users/[id]/user-details-client.tsx
+// FILE: app/(private)/admin/users/[id]/user-details-client.tsx
 // =============================================================================
 "use client";
 

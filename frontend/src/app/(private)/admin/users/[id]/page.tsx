@@ -1,5 +1,5 @@
 // =============================================================================
-// FILE: app/dashboard/system-configs/users/[id]/page.tsx
+// FILE: app/(private)/admin/users/[id]/page.tsx
 // =============================================================================
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
@@ -13,7 +13,9 @@ interface UserDetailsPageProps {
   }>;
 }
 
-export default async function UserDetailsPage({ params }: UserDetailsPageProps) {
+export default async function UserDetailsPage({
+  params,
+}: UserDetailsPageProps) {
   const { id } = await params;
 
   // Fetch user data

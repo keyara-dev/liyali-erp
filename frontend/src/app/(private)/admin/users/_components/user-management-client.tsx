@@ -1,19 +1,15 @@
-'use client'
+"use client";
 
-import { useState, useMemo, ReactNode } from 'react'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Users, Building2, Shield } from 'lucide-react'
-import { SelectField } from '@/components/ui/select-field'
-import { Card } from '@/components/ui/card'
-import { useQuery } from '@tanstack/react-query'
-import DepartmentsConfig from './departments-config'
-import UserRolesConfig from './user-roles-config'
-import { getActiveDepartments } from '@/app/_actions/departments'
+import { useState, ReactNode } from "react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Users, Building2, Shield } from "lucide-react";
+import DepartmentsConfig from "./departments-config";
+import UserRolesConfig from "./user-roles-config";
 
 interface UserManagementClientProps {
-  userId: string
-  userRole: string
-  usersTabContent?: ReactNode
+  userId: string;
+  userRole: string;
+  usersTabContent?: ReactNode;
 }
 
 export function UserManagementClient({
@@ -21,21 +17,9 @@ export function UserManagementClient({
   userRole,
   usersTabContent,
 }: UserManagementClientProps) {
-  const [activeTab, setActiveTab] = useState<'users' | 'departments' | 'roles'>('users')
-  const [selectedDepartmentId, setSelectedDepartmentId] = useState<string>('')
-
-  // Fetch departments from backend
-  const { data: departmentsResponse, isLoading: departmentsLoading } = useQuery({
-    queryKey: ['active-departments'],
-    queryFn: () => getActiveDepartments(),
-    staleTime: 5 * 60 * 1000, // 5 minutes
-  })
-
-  // Get departments from response
-  const departments = useMemo(() => {
-    if (!departmentsResponse?.success || !departmentsResponse?.data) return []
-    return departmentsResponse.data
-  }, [departmentsResponse])
+  const [activeTab, setActiveTab] = useState<"users" | "departments" | "roles">(
+    "users"
+  );
 
   return (
     <div className="space-y-6">
@@ -43,12 +27,17 @@ export function UserManagementClient({
       <div>
         <h1 className="text-2xl font-bold tracking-tight">User Management</h1>
         <p className="text-sm text-muted-foreground">
-          Manage users, departments, roles and access permissions across the system
+          Manage users, departments, roles and access permissions across the
+          system
         </p>
       </div>
 
       {/* Tabbed Interface */}
-      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as any)} className="w-full">
+      <Tabs
+        value={activeTab}
+        onValueChange={(value) => setActiveTab(value as any)}
+        className="w-full"
+      >
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="users" className="gap-2">
             <Users className="h-4 w-4" />
@@ -70,7 +59,10 @@ export function UserManagementClient({
             usersTabContent
           ) : (
             <div className="text-sm text-muted-foreground">
-              <p>User management table is rendered server-side for optimal performance with pagination and filtering.</p>
+              <p>
+                User management table is rendered server-side for optimal
+                performance with pagination and filtering.
+              </p>
             </div>
           )}
         </TabsContent>
@@ -82,41 +74,9 @@ export function UserManagementClient({
 
         {/* Manage Roles Tab */}
         <TabsContent value="roles" className="space-y-4">
-          <Card className="p-4">
-            <div className="space-y-4">
-              <div>
-                <h3 className="text-lg font-semibold mb-2">Select Department</h3>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Choose a department to configure its roles and permissions
-                </p>
-              </div>
-              <SelectField
-                value={selectedDepartmentId}
-                onValueChange={setSelectedDepartmentId}
-                placeholder="Select a department..."
-                options={[
-                  { id: '', name: 'Select a department...' },
-                  ...departments.map((dept) => ({
-                    id: dept.id,
-                    name: dept.name
-                  }))
-                ]}
-                classNames={{
-                  wrapper: "w-full",
-                  input: "!h-10"
-                }}
-                disabled={departmentsLoading}
-              />
-              {departmentsLoading && (
-                <p className="text-sm text-muted-foreground">Loading departments...</p>
-              )}
-            </div>
-          </Card>
-          {selectedDepartmentId && (
-            <UserRolesConfig departmentId={selectedDepartmentId} />
-          )}
+          <UserRolesConfig />
         </TabsContent>
       </Tabs>
     </div>
-  )
+  );
 }

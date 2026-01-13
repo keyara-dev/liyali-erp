@@ -31,7 +31,7 @@ interface POItem {
 
 interface PurchaseOrder {
   id: string;
-  poNumber: string;
+  documentNumber: string;
   status: "DRAFT" | "SUBMITTED" | "IN_REVIEW" | "APPROVED" | "REJECTED";
   vendor: {
     name: string;
@@ -62,12 +62,12 @@ const STAGE_NAMES: Record<number, string> = {
 
 // Mock data generator
 function generateMockPO(poId: string): PurchaseOrder {
-  const poNumber = `PO-2024-${String(Math.floor(Math.random() * 9000) + 1000).padStart(4, "0")}`;
+  const documentNumber = `PO-2024-${String(Math.floor(Math.random() * 9000) + 1000).padStart(4, "0")}`;
   const currentStage = Math.floor(Math.random() * 3) + 1;
 
   return {
     id: poId,
-    poNumber,
+    documentNumber,
     status: currentStage === 3 ? "IN_REVIEW" : "IN_REVIEW",
     vendor: {
       name: "Global Supplies Inc.",
@@ -154,10 +154,10 @@ export function PODetailClient({
       setIsExporting(true);
       // Convert mock PO to PurchaseOrder type from types
       await exportPurchaseOrderPDF(po as any);
-      toast.success('Purchase Order exported as PDF');
+      toast.success("Purchase Order exported as PDF");
     } catch (error) {
-      console.error('PDF export error:', error);
-      toast.error('Failed to export PDF');
+      console.error("PDF export error:", error);
+      toast.error("Failed to export PDF");
     } finally {
       setIsExporting(false);
     }
@@ -193,7 +193,7 @@ export function PODetailClient({
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <PageHeader
-          title={po.poNumber}
+          title={po.documentNumber}
           subtitle="Purchase Order Details"
           badges={[
             {

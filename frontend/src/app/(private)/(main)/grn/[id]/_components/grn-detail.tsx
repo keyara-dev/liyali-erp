@@ -225,10 +225,10 @@ export function GrnDetail({ grnId, userId, userRole }: GrnDetailProps) {
             currentDocument={grn}
             linkedDocuments={{
               requisition: grn.metadata?.requisitionId
-                ? { id: grn.metadata.requisitionId, number: "REQ-2024-001" }
+                ? { id: grn.metadata.requisitionId, documentNumber: "REQ-2024-001" }
                 : undefined,
               purchaseOrder: grn.metadata?.poId
-                ? { id: grn.metadata.poId, number: grn.metadata.poNumber }
+                ? { id: grn.metadata.poId, documentNumber: grn.metadata.poNumber }
                 : undefined,
             }}
           />

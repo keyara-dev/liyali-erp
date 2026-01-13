@@ -179,7 +179,7 @@ func CreateRequisition(c *fiber.Ctx) error {
 	}
 
 	// Create requisition
-	reqNumber := utils.GenerateRequisitionNumber()
+	documentNumber := utils.GenerateDocumentNumber("REQ")
 
 	// Prepare metadata for additional fields
 	metadataMap := map[string]interface{}{}
@@ -196,7 +196,7 @@ func CreateRequisition(c *fiber.Ctx) error {
 	requisition := models.Requisition{
 		ID:                uuid.New().String(),
 		OrganizationID:    organizationID, // Add organization ID
-		REQNumber:         reqNumber,
+		DocumentNumber:    documentNumber,
 		RequesterId:       userID,
 		Title:             req.Title,
 		Description:       req.Description,
@@ -222,7 +222,6 @@ func CreateRequisition(c *fiber.Ctx) error {
 		RequestedBy:       userID,
 		RequestedByName:   user.Name,
 		RequestedByRole:   user.Role,
-		RequisitionNumber: reqNumber,
 		RequestedDate:     time.Now(),
 		Metadata:          metadata,
 
@@ -289,7 +288,7 @@ func GetRequisition(c *fiber.Ctx) error {
 		Preload("Requester").
 		Preload("Category").
 		Preload("PreferredVendor").
-		Where("organization_id = ? AND (id = ? OR req_number = ?)", organizationID, id, id).
+		Where("organization_id = ? AND (id = ? OR document_number = ?)", organizationID, id, id).
 		First(&requisition).Error
 
 	if err != nil {
@@ -592,7 +591,7 @@ func modelToRequisitionResponse(req models.Requisition) types.RequisitionRespons
 
 	return types.RequisitionResponse{
 		ID:                  req.ID,
-		REQNumber:           req.REQNumber,
+		DocumentNumber:      req.DocumentNumber,
 		RequesterID:         req.RequesterId,
 		RequesterName:       requesterName,
 		Title:               req.Title,

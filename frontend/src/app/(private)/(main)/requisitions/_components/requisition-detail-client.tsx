@@ -42,6 +42,7 @@ import {
 } from "@/lib/pdf/pdf-export";
 import { toast } from "sonner";
 import { PDFPreviewDialog } from "@/components/modals/pdf-preview-dialog";
+import { is } from "date-fns/locale";
 
 interface RequisitionDetailClientProps {
   requisitionId: string;
@@ -138,6 +139,7 @@ export function RequisitionDetailClient({
   const canEdit =
     isCreator &&
     (requisition?.status === "draft" || requisition?.status === "rejected");
+
   const canSubmit = canEdit;
 
   if (isLoading && !requisition) {
@@ -175,7 +177,7 @@ export function RequisitionDetailClient({
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <PageHeader
-          title={requisition.requisitionNumber}
+          title={requisition.documentNumber}
           subtitle={`${requisition.title || "Untitled Requisition"} • Created ${new Date(requisition.createdAt).toLocaleDateString("en-ZM", { year: "numeric", month: "long", day: "numeric" })}${requisition.updatedAt && new Date(requisition.updatedAt).getTime() !== new Date(requisition.createdAt).getTime() ? ` • Updated ${new Date(requisition.updatedAt).toLocaleDateString("en-ZM", { year: "numeric", month: "long", day: "numeric" })}` : ""}`}
           badges={[
             {
@@ -194,16 +196,18 @@ export function RequisitionDetailClient({
             className="gap-2 h-11"
           >
             <Eye className="h-4 w-4" />
-            {isExporting ? "Loading..." : "Preview"}
+            Preview
           </Button>
           <Button
             onClick={handleExportPDF}
             disabled={isExporting}
+            isLoading={isExporting}
+            loadingText="Exporting..."
             variant="outline"
             className="gap-2 h-11"
           >
             <Download className="h-4 w-4" />
-            {isExporting ? "Exporting..." : "Export PDF"}
+            Export PDF
           </Button>
           {canEdit && (
             <Button
@@ -219,12 +223,12 @@ export function RequisitionDetailClient({
             <Button
               onClick={handleSubmitForApproval}
               disabled={submitMutation.isPending}
+              isLoading={submitMutation.isPending}
+              loadingText="Submitting..."
               className="gap-2 h-11"
             >
               <Send className="h-4 w-4" />
-              {submitMutation.isPending
-                ? "Submitting..."
-                : "Submit for Approval"}
+              Submit for Approval
             </Button>
           )}
         </div>
@@ -561,7 +565,7 @@ export function RequisitionDetailClient({
                       <p className="text-sm font-medium text-primary-foreground">
                         PO Number:
                         <span className="ml-2 font-mono bg-white/20 px-2 py-1 rounded text-xs">
-                          {(requisition.autoCreatedPO as any)?.poNumber ||
+                          {(requisition.autoCreatedPO as any)?.documentNumber ||
                             "Generated"}
                         </span>
                       </p>
@@ -754,7 +758,7 @@ export function RequisitionDetailClient({
           open={previewOpen}
           onOpenChange={setPreviewOpen}
           pdfBlob={previewBlob}
-          fileName={`REQ-${requisition.requisitionNumber}.pdf`}
+          fileName={`REQ-${requisition.documentNumber}.pdf`}
           onDownload={handleExportPDF}
         />
       )}

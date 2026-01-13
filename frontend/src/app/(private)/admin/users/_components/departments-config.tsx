@@ -28,6 +28,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { ConfirmationModal } from "@/components/modals/confirmation-modal";
 import { toast } from "sonner";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -43,19 +45,21 @@ import {
   UpdateDepartmentRequest,
 } from "@/app/_actions/departments";
 
-const INITIAL_FORM_STATE: CreateDepartmentRequest = {
+const INITIAL_FORM_STATE: CreateDepartmentRequest & { is_active: boolean } = {
   name: "",
   code: "",
   description: "",
   manager_name: "",
+  is_active: true,
 };
 
 export default function DepartmentsConfig() {
   const queryClient = useQueryClient();
   const [openModal, setOpenModal] = useState(false);
   const [editingDept, setEditingDept] = useState<Department | null>(null);
-  const [formData, setFormData] =
-    useState<CreateDepartmentRequest>(INITIAL_FORM_STATE);
+  const [formData, setFormData] = useState<
+    CreateDepartmentRequest & { is_active: boolean }
+  >(INITIAL_FORM_STATE);
   const [error, setError] = useState<string>("");
   const [deleteConfirm, setDeleteConfirm] = useState<{
     open: boolean;
@@ -179,6 +183,7 @@ export default function DepartmentsConfig() {
         code: dept.code,
         description: dept.description || "",
         manager_name: dept.manager_name || "",
+        is_active: dept.is_active,
       });
     } else {
       resetForm();
@@ -557,6 +562,31 @@ export default function DepartmentsConfig() {
               }}
               rows={3}
             />
+
+            {editingDept && (
+              <div className="flex flex-row items-center justify-between rounded-lg border p-4">
+                <div className="space-y-0.5">
+                  <Label className="text-base">Department Status</Label>
+                  <p className="text-sm text-muted-foreground">
+                    {formData.is_active
+                      ? "Department is active"
+                      : "Department is inactive"}
+                  </p>
+                </div>
+                <Switch
+                  checked={formData.is_active}
+                  onCheckedChange={(checked) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      is_active: checked,
+                    }))
+                  }
+                  disabled={
+                    createMutation.isPending || updateMutation.isPending
+                  }
+                />
+              </div>
+            )}
 
             <div className="flex justify-end gap-3 pt-2">
               <DialogClose asChild>

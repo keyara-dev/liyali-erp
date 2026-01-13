@@ -156,12 +156,12 @@ func CreatePaymentVoucher(c *fiber.Ctx) error {
 	}
 
 	// Generate voucher number
-	voucherNumber := utils.GeneratePaymentVoucherNumber()
+	documentNumber := utils.GenerateDocumentNumber("PV")
 
 	voucher := models.PaymentVoucher{
 		ID:             uuid.New().String(),
 		OrganizationID: tenant.OrganizationID, // SECURITY FIX: Set organization ID
-		VoucherNumber:  voucherNumber,
+		DocumentNumber: documentNumber,
 		VendorID:       req.VendorID,
 		InvoiceNumber:  req.InvoiceNumber,
 		Status:         "draft",
@@ -381,7 +381,7 @@ func modelToPaymentVoucherResponse(voucher models.PaymentVoucher) types.PaymentV
 
 	return types.PaymentVoucherResponse{
 		ID:              voucher.ID,
-		VoucherNumber:   voucher.VoucherNumber,
+		DocumentNumber:  voucher.DocumentNumber,
 		VendorID:        voucher.VendorID,
 		VendorName:      vendorName,
 		InvoiceNumber:   voucher.InvoiceNumber,

@@ -59,7 +59,7 @@ export function POApprovalClient({
   return (
     <div className="space-y-6">
       <PageHeader
-        title={po.poNumber}
+        title={po.documentNumber}
         subtitle="Purchase Order Approval"
         onBackClick={handleBack}
         showBackButton={true}
@@ -113,7 +113,10 @@ export function POApprovalClient({
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Subtotal:</span>
                   <span className="font-semibold">
-                    K{(po.subtotal || po.totalAmount || 0).toLocaleString("en-ZM")}
+                    K
+                    {(po.subtotal || po.totalAmount || 0).toLocaleString(
+                      "en-ZM"
+                    )}
                   </span>
                 </div>
                 <div className="flex justify-between text-sm">

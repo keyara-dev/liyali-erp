@@ -180,16 +180,16 @@ func CreatePurchaseOrder(c *fiber.Ctx) error {
 	}
 
 	// Generate PO number
-	poNumber := utils.GeneratePurchaseOrderNumber()
+	documentNumber := utils.GenerateDocumentNumber("PO")
 	orderID := uuid.New().String()
 
-	logging.AddFieldToRequest(c, "po_number", poNumber)
+	logging.AddFieldToRequest(c, "document_number", documentNumber)
 	logging.AddFieldToRequest(c, "order_id", orderID)
 
 	order := models.PurchaseOrder{
 		ID:                orderID,
 		OrganizationID:    tenant.OrganizationID, // SECURITY FIX: Set organization ID
-		PONumber:          poNumber,
+		DocumentNumber:    documentNumber,
 		VendorID:          req.VendorID,
 		Status:            "draft",
 		TotalAmount:       req.TotalAmount,
@@ -207,7 +207,7 @@ func CreatePurchaseOrder(c *fiber.Ctx) error {
 	if err := config.DB.Create(&order).Error; err != nil {
 		logging.LogError(c, err, "failed_to_create_purchase_order", map[string]interface{}{
 			"error_type": "database_error",
-			"po_number":  poNumber,
+			"document_number": documentNumber,
 		})
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"success": false,
@@ -314,7 +314,7 @@ func UpdatePurchaseOrder(c *fiber.Ctx) error {
 	if order.Status != "draft" && order.Status != "pending" {
 		logging.LogWarn(c, "invalid_status_for_update", map[string]interface{}{
 			"current_status": order.Status,
-			"po_number":      order.PONumber,
+			"document_number": order.DocumentNumber,
 		})
 		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
 			"success": false,
@@ -351,7 +351,7 @@ func UpdatePurchaseOrder(c *fiber.Ctx) error {
 	if err := config.DB.Save(&order).Error; err != nil {
 		logging.LogError(c, err, "failed_to_update_purchase_order", map[string]interface{}{
 			"error_type": "database_error",
-			"po_number":  order.PONumber,
+			"document_number": order.DocumentNumber,
 			"changes":    changes,
 		})
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
@@ -405,7 +405,7 @@ func DeletePurchaseOrder(c *fiber.Ctx) error {
 	if order.Status != "draft" {
 		logging.LogWarn(c, "invalid_status_for_deletion", map[string]interface{}{
 			"current_status": order.Status,
-			"po_number":      order.PONumber,
+			"document_number": order.DocumentNumber,
 		})
 		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
 			"success": false,
@@ -416,7 +416,7 @@ func DeletePurchaseOrder(c *fiber.Ctx) error {
 	if err := config.DB.Delete(&order).Error; err != nil {
 		logging.LogError(c, err, "failed_to_delete_purchase_order", map[string]interface{}{
 			"error_type": "database_error",
-			"po_number":  order.PONumber,
+			"document_number": order.DocumentNumber,
 		})
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"success": false,
@@ -449,7 +449,7 @@ func modelToPurchaseOrderResponse(order models.PurchaseOrder) types.PurchaseOrde
 
 	return types.PurchaseOrderResponse{
 		ID:                order.ID,
-		PONumber:          order.PONumber,
+		DocumentNumber:    order.DocumentNumber,
 		VendorID:          order.VendorID,
 		VendorName:        vendorName,
 		Status:            order.Status,

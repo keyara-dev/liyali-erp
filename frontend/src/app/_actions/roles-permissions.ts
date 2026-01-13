@@ -1,7 +1,10 @@
 "use server";
 
 import type { APIResponse } from "@/types";
-import authenticatedApiClient, { handleError, successResponse } from "./api-config";
+import authenticatedApiClient, {
+  handleError,
+  successResponse,
+} from "./api-config";
 
 // ============================================================================
 // TYPES AND INTERFACES
@@ -45,16 +48,21 @@ export interface Permission {
  * Get all roles for the current organization
  * Calls: GET /api/v1/organization/roles
  */
-export async function getRolesAction(): Promise<APIResponse<OrganizationRole[]>> {
+export async function getRolesAction(): Promise<
+  APIResponse<OrganizationRole[]>
+> {
   const url = `/api/v1/organization/roles`;
 
   try {
     const response = await authenticatedApiClient({
       url: url,
-      method: "GET"
+      method: "GET",
     });
 
-    return successResponse(response.data.data || [], "Roles retrieved successfully");
+    return successResponse(
+      response.data.data || [],
+      "Roles retrieved successfully"
+    );
   } catch (error: any) {
     return handleError(error, "GET", url);
   }
@@ -64,7 +72,10 @@ export async function getRolesAction(): Promise<APIResponse<OrganizationRole[]>>
  * Create a new organization role
  * Calls: POST /api/v1/organization/roles
  */
-export async function createRoleAction(name: string, description?: string): Promise<APIResponse<OrganizationRole>> {
+export async function createRoleAction(
+  name: string,
+  description?: string
+): Promise<APIResponse<OrganizationRole>> {
   const url = `/api/v1/organization/roles`;
 
   try {
@@ -75,7 +86,7 @@ export async function createRoleAction(name: string, description?: string): Prom
         name,
         description: description || "",
         permissions: [],
-      }
+      },
     });
 
     return successResponse(response.data.data, "Role created successfully");
@@ -102,7 +113,7 @@ export async function updateRoleAction(
       data: {
         name,
         description: description || "",
-      }
+      },
     });
 
     return successResponse(response.data.data, "Role updated successfully");
@@ -122,7 +133,7 @@ export async function deleteRoleAction(roleId: string): Promise<APIResponse> {
   try {
     await authenticatedApiClient({
       url: url,
-      method: "DELETE"
+      method: "DELETE",
     });
 
     return successResponse(null, "Role deleted successfully");
@@ -139,16 +150,21 @@ export async function deleteRoleAction(roleId: string): Promise<APIResponse> {
  * Get all permissions assigned to a specific role
  * Calls: GET /api/v1/organization/roles/{id}/permissions
  */
-export async function getRolePermissionsAction(roleId: string): Promise<APIResponse<string[]>> {
+export async function getRolePermissionsAction(
+  roleId: string
+): Promise<APIResponse<string[]>> {
   const url = `/api/v1/organization/roles/${roleId}/permissions`;
 
   try {
     const response = await authenticatedApiClient({
       url: url,
-      method: "GET"
+      method: "GET",
     });
 
-    return successResponse(response.data.data || [], "Role permissions retrieved successfully");
+    return successResponse(
+      response.data.data || [],
+      "Role permissions retrieved successfully"
+    );
   } catch (error: any) {
     return handleError(error, "GET", url);
   }
@@ -158,16 +174,21 @@ export async function getRolePermissionsAction(roleId: string): Promise<APIRespo
  * Get all available permissions for the organization
  * Calls: GET /api/v1/organization/permissions
  */
-export async function getAvailablePermissionsAction(): Promise<APIResponse<Permission[]>> {
+export async function getAvailablePermissionsAction(): Promise<
+  APIResponse<string[]>
+> {
   const url = `/api/v1/organization/permissions`;
 
   try {
     const response = await authenticatedApiClient({
       url: url,
-      method: "GET"
+      method: "GET",
     });
 
-    return successResponse(response.data.data || [], "Permissions retrieved successfully");
+    return successResponse(
+      response.data.data || [],
+      "Permissions retrieved successfully"
+    );
   } catch (error: any) {
     return handleError(error, "GET", url);
   }
@@ -186,7 +207,7 @@ export async function assignPermissionAction(
   try {
     await authenticatedApiClient({
       url: url,
-      method: "POST"
+      method: "POST",
     });
 
     return successResponse(null, "Permission assigned successfully");
@@ -208,7 +229,7 @@ export async function removePermissionAction(
   try {
     await authenticatedApiClient({
       url: url,
-      method: "DELETE"
+      method: "DELETE",
     });
 
     return successResponse(null, "Permission removed successfully");
@@ -229,13 +250,13 @@ export const fetchOrganizationRoles = getRolesAction;
 /**
  * @deprecated Use createRoleAction instead
  */
-export const createOrganizationRole = async (data: CreateRoleRequest) => 
+export const createOrganizationRole = async (data: CreateRoleRequest) =>
   await createRoleAction(data.name, data.description);
 
 /**
  * @deprecated Use updateRoleAction instead
  */
-export const updateOrganizationRole = async (data: UpdateRoleRequest) => 
+export const updateOrganizationRole = async (data: UpdateRoleRequest) =>
   await updateRoleAction(data.id, data.name || "", data.description);
 
 /**
@@ -295,7 +316,9 @@ export const removeRolePermission = removePermissionAction;
  * Get role permissions for modules (different system from organization permissions)
  * This is for the module-based permission system
  */
-export async function getModuleRolePermissions(roleId: string): Promise<APIResponse> {
+export async function getModuleRolePermissions(
+  roleId: string
+): Promise<APIResponse> {
   const url = `/api/v1/roles/${roleId}/permissions`;
 
   if (!roleId) {
@@ -354,13 +377,14 @@ export async function bulkUpdateRolePermissions({
     };
   }
 
-  const results: Array<{ moduleId: string; success: boolean; error?: string }> = [];
+  const results: Array<{ moduleId: string; success: boolean; error?: string }> =
+    [];
 
   try {
     // Process all permissions sequentially to avoid race conditions
     for (const perm of permissions) {
       const url = `/api/v1/roles/${roleId}/permissions`;
-      
+
       try {
         await authenticatedApiClient({
           url,

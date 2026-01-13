@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 /**
  * React Query Hooks for Storage - Unified Data Source
@@ -47,13 +47,13 @@
  * - GET /api/payment-vouchers?createdBy=userId - Filter by creator
  */
 
-import { useQuery } from '@tanstack/react-query';
-import { WorkflowDocument, WorkflowDocumentType } from '@/types/workflow';
-import { UserRole } from '@/types/core';
-import { PurchaseOrder } from '@/types/purchase-order';
-import { PaymentVoucher } from '@/types/payment-voucher';
-import { Requisition } from '@/types/requisition';
-import { GoodsReceivedNote } from '@/types/goods-received-note';
+import { useQuery } from "@tanstack/react-query";
+import { WorkflowDocument, WorkflowDocumentType } from "@/types/workflow";
+import { UserRole } from "@/types/core";
+import { PurchaseOrder } from "@/types/purchase-order";
+import { PaymentVoucher } from "@/types/payment-voucher";
+import { Requisition } from "@/types/requisition";
+import { GoodsReceivedNote } from "@/types/goods-received-note";
 import {
   getPurchaseOrders,
   getRequisitions,
@@ -63,7 +63,7 @@ import {
   getPaymentVouchersByCreator,
   getGoodsReceivedNotes,
   getGoodsReceivedNotesByCreator,
-} from '@/lib/storage';
+} from "@/lib/storage";
 
 // ============================================================================
 // Purchase Order Queries
@@ -71,7 +71,7 @@ import {
 
 export const usePurchaseOrdersQuery = () => {
   return useQuery({
-    queryKey: ['purchaseOrders'],
+    queryKey: ["purchaseOrders"],
     queryFn: () => getPurchaseOrders(),
     staleTime: 0, // Always refetch from storage to ensure fresh data
     gcTime: 10 * 60 * 1000, // 10 minutes
@@ -80,7 +80,7 @@ export const usePurchaseOrdersQuery = () => {
 
 export const usePurchaseOrdersByCreatorQuery = (userId: string) => {
   return useQuery({
-    queryKey: ['purchaseOrders', 'byCreator', userId],
+    queryKey: ["purchaseOrders", "byCreator", userId],
     queryFn: () => getPurchaseOrdersByCreator(userId),
     staleTime: 0, // Always refetch from storage to ensure fresh data
     gcTime: 10 * 60 * 1000,
@@ -90,7 +90,7 @@ export const usePurchaseOrdersByCreatorQuery = (userId: string) => {
 
 export const usePurchaseOrdersAsWorkflowDocumentsQuery = (userId?: string) => {
   return useQuery({
-    queryKey: ['purchaseOrders', 'asDocuments', userId],
+    queryKey: ["purchaseOrders", "asDocuments", userId],
     queryFn: () => {
       let orders = getPurchaseOrders();
       if (userId) {
@@ -109,7 +109,7 @@ export const usePurchaseOrdersAsWorkflowDocumentsQuery = (userId?: string) => {
 
 export const useRequisitionsQuery = () => {
   return useQuery({
-    queryKey: ['requisitions'],
+    queryKey: ["requisitions"],
     queryFn: () => getRequisitions(),
     staleTime: 0, // Always refetch from storage to ensure fresh data
     gcTime: 10 * 60 * 1000,
@@ -118,7 +118,7 @@ export const useRequisitionsQuery = () => {
 
 export const useRequisitionsByCreatorQuery = (userId: string) => {
   return useQuery({
-    queryKey: ['requisitions', 'byCreator', userId],
+    queryKey: ["requisitions", "byCreator", userId],
     queryFn: () => getRequisitionsByCreator(userId),
     staleTime: 0, // Always refetch from storage to ensure fresh data
     gcTime: 10 * 60 * 1000,
@@ -128,7 +128,7 @@ export const useRequisitionsByCreatorQuery = (userId: string) => {
 
 export const useRequisitionsAsWorkflowDocumentsQuery = (userId?: string) => {
   return useQuery({
-    queryKey: ['requisitions', 'asDocuments', userId],
+    queryKey: ["requisitions", "asDocuments", userId],
     queryFn: () => {
       let reqs = getRequisitions();
       if (userId) {
@@ -147,7 +147,7 @@ export const useRequisitionsAsWorkflowDocumentsQuery = (userId?: string) => {
 
 export const usePaymentVouchersQuery = () => {
   return useQuery({
-    queryKey: ['paymentVouchers'],
+    queryKey: ["paymentVouchers"],
     queryFn: () => getPaymentVouchers(),
     staleTime: 0, // Always refetch from storage to ensure fresh data
     gcTime: 10 * 60 * 1000,
@@ -156,7 +156,7 @@ export const usePaymentVouchersQuery = () => {
 
 export const usePaymentVouchersByCreatorQuery = (userId: string) => {
   return useQuery({
-    queryKey: ['paymentVouchers', 'byCreator', userId],
+    queryKey: ["paymentVouchers", "byCreator", userId],
     queryFn: () => getPaymentVouchersByCreator(userId),
     staleTime: 0, // Always refetch from storage to ensure fresh data
     gcTime: 10 * 60 * 1000,
@@ -166,7 +166,7 @@ export const usePaymentVouchersByCreatorQuery = (userId: string) => {
 
 export const usePaymentVouchersAsWorkflowDocumentsQuery = (userId?: string) => {
   return useQuery({
-    queryKey: ['paymentVouchers', 'asDocuments', userId],
+    queryKey: ["paymentVouchers", "asDocuments", userId],
     queryFn: () => {
       let vouchers = getPaymentVouchers();
       if (userId) {
@@ -207,7 +207,7 @@ export const usePaymentVouchersAsWorkflowDocumentsQuery = (userId?: string) => {
 
 export const useGoodsReceivedNotesQuery = () => {
   return useQuery({
-    queryKey: ['goodsReceivedNotes'],
+    queryKey: ["goodsReceivedNotes"],
     queryFn: () => getGoodsReceivedNotes(),
     staleTime: 0, // Always refetch from storage to ensure fresh data
     gcTime: 10 * 60 * 1000, // 10 minutes
@@ -216,7 +216,7 @@ export const useGoodsReceivedNotesQuery = () => {
 
 export const useGoodsReceivedNotesByCreatorQuery = (userId: string) => {
   return useQuery({
-    queryKey: ['goodsReceivedNotes', 'byCreator', userId],
+    queryKey: ["goodsReceivedNotes", "byCreator", userId],
     queryFn: () => getGoodsReceivedNotesByCreator(userId),
     staleTime: 0, // Always refetch from storage to ensure fresh data
     gcTime: 10 * 60 * 1000,
@@ -226,7 +226,7 @@ export const useGoodsReceivedNotesByCreatorQuery = (userId: string) => {
 
 export const useGrnsAsWorkflowDocumentsQuery = (userId?: string) => {
   return useQuery({
-    queryKey: ['grns', 'asDocuments', userId],
+    queryKey: ["grns", "asDocuments", userId],
     queryFn: () => {
       let grns = getGoodsReceivedNotes();
       if (userId) {
@@ -243,50 +243,46 @@ export const useGrnsAsWorkflowDocumentsQuery = (userId?: string) => {
 // Helper Functions
 // ============================================================================
 
-function convertToWorkflowDocuments(
-  documents: any[]
-): WorkflowDocument[] {
+function convertToWorkflowDocuments(documents: any[]): WorkflowDocument[] {
   return documents.map((doc) => {
     // Determine document type based on the document structure
-    let docType: WorkflowDocumentType = 'requisition'; // Default fallback
-    
+    let docType: WorkflowDocumentType = "requisition"; // Default fallback
+
     // Check for explicit type property first
     if (doc.type) {
       docType = doc.type as WorkflowDocumentType;
     } else {
-      // Determine type based on unique properties
-      if (doc.grnNumber) {
-        docType = 'goods_received_note';
-      } else if (doc.voucherNumber) {
-        docType = 'payment_voucher';
-      } else if (doc.poNumber && doc.vendorId) {
-        docType = 'purchase_order';
-      } else if (doc.reqNumber || (doc.items && doc.expectedDeliveryDate)) {
-        docType = 'requisition';
+      // Determine type based on unique properties - fallback for legacy data
+      if (doc.documentNumber && doc.poDocumentNumber) {
+        docType = "goods_received_note";
+      } else if (doc.documentNumber && doc.vendorId && doc.invoiceNumber) {
+        docType = "payment_voucher";
+      } else if (doc.documentNumber && doc.vendorId) {
+        docType = "purchase_order";
+      } else if (doc.documentNumber && doc.items && doc.expectedDeliveryDate) {
+        docType = "requisition";
       }
     }
 
     return {
       id: doc.id,
       type: docType,
-      documentNumber: doc.documentNumber || 
-                     doc.grnNumber || 
-                     doc.voucherNumber || 
-                     doc.poNumber || 
-                     doc.reqNumber ||
-                     doc.requisitionNumber || 
-                     doc.id,
-      status: doc.status || 'draft',
+      documentNumber: doc.documentNumber || doc.id,
+      status: doc.status || "draft",
       currentStage: doc.currentStage || doc.approvalStage || 0,
       createdBy: doc.createdBy,
-      createdByUser: doc.createdBy ? {
-        id: doc.createdBy,
-        email: '',
-        name: doc.createdByName || 'Unknown User',
-        role: 'requester' as UserRole,
-      } : undefined,
-      createdAt: doc.createdAt instanceof Date ? doc.createdAt : new Date(doc.createdAt),
-      updatedAt: doc.updatedAt instanceof Date ? doc.updatedAt : new Date(doc.updatedAt),
+      createdByUser: doc.createdBy
+        ? {
+            id: doc.createdBy,
+            email: "",
+            name: doc.createdByName || "Unknown User",
+            role: "requester" as UserRole,
+          }
+        : undefined,
+      createdAt:
+        doc.createdAt instanceof Date ? doc.createdAt : new Date(doc.createdAt),
+      updatedAt:
+        doc.updatedAt instanceof Date ? doc.updatedAt : new Date(doc.updatedAt),
       metadata: doc.metadata,
     };
   });
