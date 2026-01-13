@@ -14,6 +14,7 @@ import (
 	"github.com/liyali/liyali-gateway/utils"
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
+	"gorm.io/gorm"
 )
 
 // ApproverInfo represents an approver
@@ -126,14 +127,112 @@ func (h *ApprovalHandler) GetApprovalTasks(c *fiber.Ctx) error {
 	var total int64
 	query.Model(&models.ApprovalTask{}).Count(&total)
 
-	// Get tasks with pagination
+	// Get tasks with pagination and preload related data
 	var tasks []models.ApprovalTask
-	if err := query.Offset(offset).Limit(limit).Order("created_at DESC").Find(&tasks).Error; err != nil {
+	if err := query.Preload("Approver").Offset(offset).Limit(limit).Order("created_at DESC").Find(&tasks).Error; err != nil {
 		log.Printf("Error fetching approval tasks: %v", err)
 		return utils.SendInternalError(c, "Failed to fetch approval tasks", err)
 	}
 
+	// Populate computed fields for each task
+	for i := range tasks {
+		if err := h.populateComputedFields(db, &tasks[i]); err != nil {
+			log.Printf("Error populating computed fields for task %s: %v", tasks[i].ID, err)
+			// Continue with other tasks even if one fails
+		}
+	}
+
 	return utils.SendPaginatedSuccess(c, tasks, "Approval tasks retrieved successfully", page, limit, total)
+}
+
+// populateComputedFields populates the computed fields for an ApprovalTask
+func (h *ApprovalHandler) populateComputedFields(db *gorm.DB, task *models.ApprovalTask) error {
+	// Populate approver name
+	if task.Approver != nil {
+		task.ApproverName = task.Approver.Name
+	}
+
+	// Populate document-specific fields based on document type
+	switch task.DocumentType {
+	case "requisition":
+		var req models.Requisition
+		if err := db.Where("id = ?", task.DocumentID).First(&req).Error; err == nil {
+			task.DocumentNumber = req.DocumentNumber
+			task.Title = req.Title + " - Approval Required"
+			task.Priority = req.Priority
+			task.TaskType = "REQUISITION_APPROVAL"
+		}
+	case "purchase_order":
+		var po models.PurchaseOrder
+		if err := db.Where("id = ?", task.DocumentID).First(&po).Error; err == nil {
+			task.DocumentNumber = po.DocumentNumber
+			task.Title = po.Title + " - Approval Required"
+			task.Priority = po.Priority
+			task.TaskType = "PURCHASE_ORDER_APPROVAL"
+		}
+	case "payment_voucher":
+		var pv models.PaymentVoucher
+		if err := db.Where("id = ?", task.DocumentID).First(&pv).Error; err == nil {
+			task.DocumentNumber = pv.DocumentNumber
+			task.Title = pv.Title + " - Approval Required"
+			task.Priority = pv.Priority
+			task.TaskType = "PAYMENT_VOUCHER_APPROVAL"
+		}
+	case "budget":
+		var budget models.Budget
+		if err := db.Where("id = ?", task.DocumentID).First(&budget).Error; err == nil {
+			task.DocumentNumber = budget.BudgetCode
+			task.Title = budget.Name + " - Approval Required"
+			task.Priority = "medium" // Budget doesn't have priority field, set default
+			task.TaskType = "BUDGET_APPROVAL"
+		}
+	case "goods_received_note":
+		var grn models.GoodsReceivedNote
+		if err := db.Where("id = ?", task.DocumentID).First(&grn).Error; err == nil {
+			task.DocumentNumber = grn.DocumentNumber
+			task.Title = "GRN " + grn.DocumentNumber + " - Confirmation Required"
+			task.Priority = "medium" // GRN doesn't have priority field, set default
+			task.TaskType = "GOODS_RECEIVED_NOTE_CONFIRMATION"
+		}
+	}
+
+	// Set default values if not populated
+	if task.Priority == "" {
+		task.Priority = "medium"
+	}
+	if task.TaskType == "" {
+		task.TaskType = "APPROVAL"
+	}
+	if task.Title == "" {
+		task.Title = "Approval Required"
+	}
+
+	// Set stage name based on stage number
+	switch task.Stage {
+	case 1:
+		task.StageName = "Manager Approval"
+	case 2:
+		task.StageName = "Finance Approval"
+	case 3:
+		task.StageName = "Final Approval"
+	default:
+		task.StageName = fmt.Sprintf("Stage %d Approval", task.Stage)
+	}
+
+	// Set importance based on priority
+	switch strings.ToLower(task.Priority) {
+	case "high", "urgent":
+		task.Importance = "high"
+	case "low":
+		task.Importance = "low"
+	default:
+		task.Importance = "medium"
+	}
+
+	// Set workflow name (could be made more dynamic later)
+	task.WorkflowName = "Standard Approval Workflow"
+
+	return nil
 }
 
 // GetApprovalTask retrieves a single approval task with full details

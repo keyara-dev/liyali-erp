@@ -53,15 +53,26 @@ export function TasksTable({ refreshTrigger, status }: TasksTableProps) {
   const {
     data: tasks = [],
     isLoading,
+    error,
     refetch,
   } = useApprovalTasks(
     {
       status: status === "pending" ? "PENDING" : undefined,
-      assignedToMe: true, // Only show tasks assigned to current user
+      assignedToMe: false, // Show all tasks for now - can be made configurable later
     },
     pagination.page,
     pagination.page_size
   );
+
+  // Debug logging
+  console.log("TasksTable Debug:", {
+    tasks,
+    isLoading,
+    error,
+    status,
+    pagination,
+    tasksLength: tasks?.length,
+  });
 
   // Refetch when refreshTrigger changes
   useEffect(() => {
@@ -75,8 +86,13 @@ export function TasksTable({ refreshTrigger, status }: TasksTableProps) {
       PURCHASE_ORDER_APPROVAL: "PO Approval",
       PAYMENT_VOUCHER_APPROVAL: "Payment Approval",
       GOODS_RECEIVED_NOTE_CONFIRMATION: "GRN Confirmation",
+      GOODS_RECEIVED_NOTE_APPROVAL: "GRN Confirmation",
     };
-    return labels[type] || type;
+    return (
+      labels[type] ||
+      type?.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase()) ||
+      "Approval"
+    );
   };
 
   const getPriorityColor = (priority: string) => {
@@ -103,14 +119,20 @@ export function TasksTable({ refreshTrigger, status }: TasksTableProps) {
         </Button>
       ),
       cell: ({ row }) => (
-        <div className="font-semibold max-w-xs">{row.getValue("title")}</div>
+        <div className="font-semibold max-w-xs">
+          {row.original.title ||
+            `${row.original.documentType} Approval Required`}
+        </div>
       ),
     },
     {
       accessorKey: "documentNumber",
       header: "Document",
       cell: ({ row }) => (
-        <div className="text-sm font-medium">{row.original.documentNumber}</div>
+        <div className="text-sm font-medium">
+          {row.original.documentNumber ||
+            `${row.original.documentType}-${row.original.documentId.slice(-3)}`}
+        </div>
       ),
     },
     {
@@ -118,7 +140,10 @@ export function TasksTable({ refreshTrigger, status }: TasksTableProps) {
       header: "Type",
       cell: ({ row }) => (
         <div className="text-sm">
-          {getTaskTypeLabel(row.original.taskType || "")}
+          {getTaskTypeLabel(
+            row.original.taskType ||
+              row.original.documentType?.toUpperCase() + "_APPROVAL"
+          )}
         </div>
       ),
     },
@@ -153,7 +178,7 @@ export function TasksTable({ refreshTrigger, status }: TasksTableProps) {
         </Button>
       ),
       cell: ({ row }) => {
-        const dueDate = row.original.dueDate;
+        const dueDate = row.original.dueAt || row.original.dueDate;
         if (!dueDate) return <div>-</div>;
 
         const dueDateObj = new Date(dueDate);
