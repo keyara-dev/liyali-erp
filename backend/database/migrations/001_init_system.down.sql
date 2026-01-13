@@ -25,7 +25,6 @@ DROP TABLE IF EXISTS vendors CASCADE;
 -- Drop legacy compatibility tables
 DROP TABLE IF EXISTS notifications CASCADE;
 DROP TABLE IF EXISTS audit_logs CASCADE;
-DROP TABLE IF EXISTS approval_tasks CASCADE;
 
 -- Drop workflow system tables
 DROP TABLE IF EXISTS task_assignment_history CASCADE;

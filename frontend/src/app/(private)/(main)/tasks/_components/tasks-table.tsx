@@ -15,15 +15,7 @@ import {
   useReactTable,
 } from "@tanstack/react-table";
 import { useRouter } from "next/navigation";
-import {
-  ArrowUpDown,
-  Eye,
-  CheckCircle2,
-  Clock,
-  UserCheck,
-  X,
-  MoreHorizontal,
-} from "lucide-react";
+import { ArrowUpDown, Clock } from "lucide-react";
 
 import {
   Table,
@@ -37,22 +29,16 @@ import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { CustomPagination } from "@/components/ui/custom-pagination";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
   useApprovalTasks,
   useApproveTask,
   useRejectTask,
   useClaimTask,
 } from "@/hooks/use-approval-workflow";
-import { ApprovalTask } from "@/types";
+import { WorkflowTask } from "@/types";
 import { toast } from "sonner";
 import { useSession } from "@/hooks/use-session";
 import { capitalize } from "@/lib/utils";
+import { WorkflowActionButtons } from "@/components/workflows/workflow-action-buttons";
 
 interface TasksTableProps {
   refreshTrigger: number;
@@ -134,19 +120,28 @@ export function TasksTable({ refreshTrigger, status }: TasksTableProps) {
     }
   };
 
-  const canUserActOnTask = (task: ApprovalTask) => {
+  const canUserActOnTask = (task: WorkflowTask) => {
     if (!user) return false;
 
     // Admin can act on any task
     if (user.role === "admin") return true;
 
-    // User can act on tasks assigned to them
-    return task.assignedTo === user.id || task.approverId === user.id;
+    // User can act on tasks assigned to them or their role
+    return (
+      task.assignedTo === user.id ||
+      task.assignedUserId === user.id ||
+      task.claimedBy === user.id ||
+      task.assignedRole === user.role
+    );
   };
 
-  const isTaskAssignedToUser = (task: ApprovalTask) => {
+  const isTaskAssignedToUser = (task: WorkflowTask) => {
     if (!user) return false;
-    return task.assignedTo === user.id;
+    return (
+      task.assignedTo === user.id ||
+      task.assignedUserId === user.id ||
+      task.claimedBy === user.id
+    );
   };
 
   const getTaskTypeLabel = (type: string) => {
@@ -175,7 +170,7 @@ export function TasksTable({ refreshTrigger, status }: TasksTableProps) {
     return colors[priority] || "bg-gray-100 text-gray-800";
   };
 
-  const columns: ColumnDef<ApprovalTask>[] = [
+  const columns: ColumnDef<WorkflowTask>[] = [
     {
       accessorKey: "title",
       header: ({ column }) => (
@@ -191,7 +186,7 @@ export function TasksTable({ refreshTrigger, status }: TasksTableProps) {
       cell: ({ row }) => (
         <div className="font-semibold max-w-xs capitalize">
           {row.original.title ||
-            `${capitalize(row.original.documentType).replaceAll("_", " ")} Requires Approval`}
+            `${capitalize(row.original.entityType || row.original.documentType || "").replaceAll("_", " ")} Requires Approval`}
         </div>
       ),
     },
@@ -201,7 +196,7 @@ export function TasksTable({ refreshTrigger, status }: TasksTableProps) {
       cell: ({ row }) => (
         <div className="text-sm font-medium">
           {row.original.documentNumber ||
-            `${row.original.documentType}-${row.original.documentId.slice(-3)}`}
+            `${row.original.entityType || row.original.documentType}-${(row.original.entityId || row.original.documentId || "").slice(-3)}`}
         </div>
       ),
     },
@@ -212,7 +207,11 @@ export function TasksTable({ refreshTrigger, status }: TasksTableProps) {
         <div className="text-sm">
           {getTaskTypeLabel(
             row.original.taskType ||
-              row.original.documentType?.toUpperCase() + "_APPROVAL"
+              (
+                row.original.entityType ||
+                row.original.documentType ||
+                ""
+              )?.toUpperCase() + "_APPROVAL"
           )}
         </div>
       ),
@@ -268,131 +267,34 @@ export function TasksTable({ refreshTrigger, status }: TasksTableProps) {
       header: "Actions",
       cell: ({ row }) => {
         const task = row.original;
-        const isPending = task.status === "pending";
-        const canAct = canUserActOnTask(task);
-        const isAssigned = isTaskAssignedToUser(task);
 
         return (
-          <div className="flex items-center gap-2">
-            {/* View Button - Always available */}
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => {
-                const docType = task.documentType?.toLowerCase();
-                const docId = task.documentId;
-                const routes: Record<string, string> = {
-                  requisition: `/requisitions/${docId}`,
-                  purchase_order: `/purchase-orders/${docId}`,
-                  payment_voucher: `/payment-vouchers/${docId}`,
-                  goods_received_note: `/grn/${docId}`,
-                  budget: `/budgets/${docId}`,
-                };
-                const url = routes[docType || ""] || `/tasks/${task.id}`;
-                router.push(url);
-              }}
-            >
-              <Eye className="h-4 w-4 mr-1" />
-              View
-            </Button>
-
-            {/* Action Buttons for Pending Tasks */}
-            {isPending && (
-              <>
-                {/* Claim Button - Show if task is not assigned to current user */}
-                {!isAssigned && canAct && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleClaimTask(task.id)}
-                  >
-                    <UserCheck className="h-4 w-4 mr-1" />
-                    Claim
-                  </Button>
-                )}
-
-                {/* Quick Action Buttons - Show if user can act on task */}
-                {canAct && (
-                  <>
-                    <Button
-                      size="sm"
-                      variant="default"
-                      onClick={() => handleApproveTask(task.id)}
-                      className="bg-green-600 hover:bg-green-700"
-                    >
-                      <CheckCircle2 className="h-4 w-4 mr-1" />
-                      Approve
-                    </Button>
-
-                    <Button
-                      size="sm"
-                      variant="destructive"
-                      onClick={() => handleRejectTask(task.id)}
-                    >
-                      <X className="h-4 w-4 mr-1" />
-                      Reject
-                    </Button>
-                  </>
-                )}
-
-                {/* More Actions Dropdown */}
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="sm">
-                      <MoreHorizontal className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem
-                      onClick={() => {
-                        const docType = task.documentType?.toLowerCase();
-                        const docId = task.documentId;
-                        const actionRoutes: Record<string, string> = {
-                          requisition: `/requisitions/${docId}/approval`,
-                          purchase_order: `/purchase-orders/${docId}/approval`,
-                          payment_voucher: `/payment-vouchers/${docId}/approval`,
-                          goods_received_note: `/grn/${docId}/confirmation`,
-                          budget: `/budgets/${docId}/approval`,
-                        };
-                        const url =
-                          actionRoutes[task.taskType?.toLowerCase() || ""] ||
-                          `/tasks/${task.id}`;
-                        router.push(url);
-                      }}
-                    >
-                      <Clock className="h-4 w-4 mr-2" />
-                      Full Review
-                    </DropdownMenuItem>
-
-                    {canAct && (
-                      <>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                          onClick={() => handleClaimTask(task.id)}
-                        >
-                          <UserCheck className="h-4 w-4 mr-2" />
-                          {isAssigned ? "Unclaim Task" : "Claim Task"}
-                        </DropdownMenuItem>
-                      </>
-                    )}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </>
-            )}
-
-            {/* For non-pending tasks, show status-specific actions */}
-            {!isPending && task.status === "approved" && (
-              <Button
-                size="sm"
-                variant="outline"
-                disabled
-                className="text-green-600"
-              >
-                <CheckCircle2 className="h-4 w-4 mr-1" />
-                Approved
-              </Button>
-            )}
-          </div>
+          <WorkflowActionButtons
+            task={task}
+            onClaim={handleClaimTask}
+            onApprove={handleApproveTask}
+            onReject={handleRejectTask}
+            onRefresh={refetch}
+            variant="table"
+            showViewButton={false}
+            onView={(task) => {
+              const docType = (
+                task.entityType ||
+                task.documentType ||
+                ""
+              ).toLowerCase();
+              const docId = task.entityId || task.documentId;
+              const routes: Record<string, string> = {
+                requisition: `/requisitions/${docId}`,
+                purchase_order: `/purchase-orders/${docId}`,
+                payment_voucher: `/payment-vouchers/${docId}`,
+                goods_received_note: `/grn/${docId}`,
+                budget: `/budgets/${docId}`,
+              };
+              const url = routes[docType || ""] || `/tasks/${task.id}`;
+              router.push(url);
+            }}
+          />
         );
       },
     },

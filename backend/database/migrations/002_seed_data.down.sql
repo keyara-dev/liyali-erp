@@ -7,9 +7,6 @@
 
 -- Remove seed data in reverse dependency order
 
--- Remove approval tasks
-DELETE FROM approval_tasks WHERE organization_id IN ('org-demo-001', 'org-enterprise-001');
-
 -- Remove workflow tasks
 DELETE FROM workflow_tasks WHERE organization_id IN ('org-demo-001', 'org-enterprise-001');
 

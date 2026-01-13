@@ -622,43 +622,6 @@ CREATE TABLE IF NOT EXISTS goods_received_notes (
 -- LEGACY COMPATIBILITY TABLES
 -- ============================================================================
 
--- Legacy Approval Tasks (includes document_number from migration 003)
-CREATE TABLE IF NOT EXISTS approval_tasks (
-    id VARCHAR(255) PRIMARY KEY,
-    organization_id VARCHAR(255) NOT NULL,
-    document_id VARCHAR(255) NOT NULL,
-    document_type VARCHAR(50) NOT NULL,
-    approver_id VARCHAR(255) NOT NULL,
-    assigned_to VARCHAR(255) NOT NULL,
-    status VARCHAR(50) DEFAULT 'pending',
-    stage INTEGER DEFAULT 1,
-    comments TEXT,
-    signature TEXT,
-    approved_by VARCHAR(255),
-    approved_at TIMESTAMP,
-    rejected_by VARCHAR(255),
-    rejected_at TIMESTAMP,
-    rejection_reason TEXT,
-    document_number VARCHAR(255), -- Added from migration 003
-    approver_name VARCHAR(255),
-    priority VARCHAR(50) DEFAULT 'medium',
-    due_at TIMESTAMP,
-    task_type VARCHAR(50) DEFAULT 'approval',
-    title VARCHAR(255),
-    workflow_id VARCHAR(255),
-    workflow_name VARCHAR(255),
-    stage_name VARCHAR(255),
-    importance VARCHAR(50) DEFAULT 'medium',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    
-    CONSTRAINT fk_approval_tasks_organization FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE,
-    CONSTRAINT fk_approval_tasks_approver FOREIGN KEY (approver_id) REFERENCES users(id),
-    CONSTRAINT fk_approval_tasks_assigned_to FOREIGN KEY (assigned_to) REFERENCES users(id),
-    CONSTRAINT fk_approval_tasks_approved_by FOREIGN KEY (approved_by) REFERENCES users(id),
-    CONSTRAINT fk_approval_tasks_rejected_by FOREIGN KEY (rejected_by) REFERENCES users(id)
-);
-
 -- Audit Logs
 CREATE TABLE IF NOT EXISTS audit_logs (
     id VARCHAR(255) PRIMARY KEY,
@@ -732,11 +695,14 @@ CREATE INDEX IF NOT EXISTS idx_purchase_orders_organization ON purchase_orders(o
 CREATE INDEX IF NOT EXISTS idx_payment_vouchers_organization ON payment_vouchers(organization_id);
 CREATE INDEX IF NOT EXISTS idx_grns_organization ON goods_received_notes(organization_id);
 
--- Approval task indexes
-CREATE INDEX IF NOT EXISTS idx_approval_tasks_organization ON approval_tasks(organization_id);
-CREATE INDEX IF NOT EXISTS idx_approval_tasks_assigned_to ON approval_tasks(assigned_to);
-CREATE INDEX IF NOT EXISTS idx_approval_tasks_status ON approval_tasks(status);
-CREATE INDEX IF NOT EXISTS idx_approval_tasks_document_number ON approval_tasks(document_number);
+-- Workflow task indexes
+CREATE INDEX IF NOT EXISTS idx_workflow_tasks_organization ON workflow_tasks(organization_id);
+CREATE INDEX IF NOT EXISTS idx_workflow_tasks_assigned_user ON workflow_tasks(assigned_user_id);
+CREATE INDEX IF NOT EXISTS idx_workflow_tasks_assigned_role ON workflow_tasks(assigned_role);
+CREATE INDEX IF NOT EXISTS idx_workflow_tasks_status ON workflow_tasks(status);
+CREATE INDEX IF NOT EXISTS idx_workflow_tasks_entity ON workflow_tasks(entity_id, entity_type);
+CREATE INDEX IF NOT EXISTS idx_workflow_tasks_claimed_by ON workflow_tasks(claimed_by);
+CREATE INDEX IF NOT EXISTS idx_workflow_tasks_due_date ON workflow_tasks(due_date);
 
 -- Vendor and category indexes
 CREATE INDEX IF NOT EXISTS idx_vendors_organization ON vendors(organization_id);
@@ -819,7 +785,7 @@ CREATE TRIGGER update_category_budget_codes_updated_at BEFORE UPDATE ON category
 CREATE TRIGGER update_vendors_updated_at BEFORE UPDATE ON vendors
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
-CREATE TRIGGER update_approval_tasks_updated_at BEFORE UPDATE ON approval_tasks
+CREATE TRIGGER update_workflow_tasks_updated_at BEFORE UPDATE ON workflow_tasks
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 CREATE TRIGGER update_notifications_updated_at BEFORE UPDATE ON notifications
@@ -853,7 +819,7 @@ COMMENT ON TABLE workflow_defaults IS 'Default workflow mappings for entity type
 COMMENT ON TABLE documents IS 'Unified document table for all business document types';
 COMMENT ON TABLE vendors IS 'Organization-scoped vendors for multi-tenant security';
 COMMENT ON TABLE organization_departments IS 'Organization departments with manager name support';
-COMMENT ON TABLE approval_tasks IS 'Legacy approval tasks with document number support';
+COMMENT ON TABLE workflow_tasks IS 'Individual approval tasks within workflow assignments with concurrency control';
 
 -- ============================================================================
 -- MIGRATION COMPLETION LOG

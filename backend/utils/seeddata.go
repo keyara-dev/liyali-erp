@@ -316,36 +316,6 @@ func SeedTestWorkflowTasks(db *gorm.DB) error {
 		log.Printf("Created workflow task for %s", submittedReq.DocumentNumber)
 	}
 
-	// Create legacy approval task for backward compatibility
-	approvalTask := models.ApprovalTask{
-		ID:             "at-req-260111-003-stage1",
-		OrganizationID: "org-demo-001",
-		DocumentID:     submittedReq.ID,
-		DocumentType:   "requisition",
-		ApproverID:     "user-approver-001",
-		AssignedTo:     "user-approver-001",
-		Status:         "pending",
-		Stage:          1,
-		DocumentNumber: submittedReq.DocumentNumber,
-		ApproverName:   "John Approver",
-		Priority:       "medium",
-		TaskType:       "approval",
-		Title:          submittedReq.Title + " - Approval Required",
-		WorkflowName:   "Default Requisition Workflow",
-		StageName:      "Manager Approval",
-		Importance:     "medium",
-	}
-
-	// Check if approval task already exists
-	var existingAT models.ApprovalTask
-	if err := db.Where("id = ?", approvalTask.ID).First(&existingAT).Error; err != nil {
-		if err := db.Create(&approvalTask).Error; err != nil {
-			log.Printf("Error creating approval task: %v", err)
-			return err
-		}
-		log.Printf("Created approval task for %s", submittedReq.DocumentNumber)
-	}
-
 	return nil
 }
 

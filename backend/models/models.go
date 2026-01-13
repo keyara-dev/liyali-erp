@@ -280,42 +280,6 @@ type Vendor struct {
 	UpdatedAt      time.Time     `json:"updatedAt"`
 }
 
-// ApprovalTask represents a pending approval action
-type ApprovalTask struct {
-	ID               string        `gorm:"primaryKey" json:"id"`
-	OrganizationID   string        `gorm:"index;not null" json:"organizationId"`
-	Organization     *Organization `gorm:"foreignKey:OrganizationID" json:"organization,omitempty"`
-	DocumentID       string        `gorm:"index" json:"documentId"`
-	DocumentType     string        `json:"documentType"` // requisition, budget, po, pv, grn
-	ApproverID       string        `json:"approverId"`
-	Approver         *User         `json:"approver,omitempty"`
-	AssignedTo       string        `json:"assignedTo"`       // Current assignee
-	Status           string        `json:"status"`           // pending, approved, rejected
-	Stage            int           `json:"stage"`
-	Comments         *string       `json:"comments"`
-	Signature        *string       `json:"signature"`
-	ApprovedBy       *string       `json:"approvedBy"`
-	ApprovedAt       *time.Time    `json:"approvedAt"`
-	RejectedBy       *string       `json:"rejectedBy"`
-	RejectedAt       *time.Time    `json:"rejectedAt"`
-	RejectionReason  *string       `json:"rejectionReason"`
-
-	// Frontend compatibility fields
-	DocumentNumber   string     `gorm:"-" json:"documentNumber,omitempty"`   // Computed from document reference
-	ApproverName     string     `gorm:"-" json:"approverName,omitempty"`     // Computed from Approver.Name
-	Priority         string     `gorm:"-" json:"priority,omitempty"`         // Computed from document priority
-	DueAt            *time.Time `json:"dueAt,omitempty"`            // Due date for the approval
-	TaskType         string     `gorm:"-" json:"taskType,omitempty"`         // Computed task type for UI display
-	Title            string     `gorm:"-" json:"title,omitempty"`            // Computed human-readable task title
-	WorkflowID       string     `gorm:"-" json:"workflowId,omitempty"`       // Computed workflow ID for the task
-	WorkflowName     string     `gorm:"-" json:"workflowName,omitempty"`     // Computed workflow name for the task
-	StageName        string     `gorm:"-" json:"stageName,omitempty"`        // Computed human-readable stage name
-	Importance       string     `gorm:"-" json:"importance,omitempty"`       // Computed from priority
-
-	CreatedAt        time.Time     `json:"createdAt"`
-	UpdatedAt        time.Time     `json:"updatedAt"`
-}
-
 // AuditLog tracks all document changes
 type AuditLog struct {
 	ID            string         `gorm:"primaryKey" json:"id"`
@@ -371,6 +335,5 @@ func (GoodsReceivedNote) TableName() string { return "goods_received_notes" }
 func (Category) TableName() string { return "categories" }
 func (CategoryBudgetCode) TableName() string { return "category_budget_codes" }
 func (Vendor) TableName() string { return "vendors" }
-func (ApprovalTask) TableName() string { return "approval_tasks" }
 func (AuditLog) TableName() string { return "audit_logs" }
 func (Notification) TableName() string { return "notifications" }

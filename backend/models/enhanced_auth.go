@@ -260,6 +260,21 @@ type WorkflowTask struct {
 	Version      int        `gorm:"default:1;not null" json:"version"`
 	UpdatedBy    *string    `json:"updatedBy,omitempty"`
 	ClaimExpiry  *time.Time `json:"claimExpiry,omitempty"`
+
+	// Frontend compatibility fields - computed at runtime
+	DocumentID       string     `gorm:"-" json:"documentId,omitempty"`       // Maps to EntityID
+	DocumentType     string     `gorm:"-" json:"documentType,omitempty"`     // Maps to EntityType
+	DocumentNumber   string     `gorm:"-" json:"documentNumber,omitempty"`   // Computed from document reference
+	ApproverID       string     `gorm:"-" json:"approverId,omitempty"`       // Maps to AssignedUserID or ClaimedBy
+	AssignedTo       string     `gorm:"-" json:"assignedTo,omitempty"`       // Maps to AssignedUserID or ClaimedBy
+	ApproverName     string     `gorm:"-" json:"approverName,omitempty"`     // Computed from AssignedUser.Name
+	TaskType         string     `gorm:"-" json:"taskType,omitempty"`         // Computed task type for UI display
+	Title            string     `gorm:"-" json:"title,omitempty"`            // Computed human-readable task title
+	WorkflowID       string     `gorm:"-" json:"workflowId,omitempty"`       // Computed workflow ID for the task
+	WorkflowName     string     `gorm:"-" json:"workflowName,omitempty"`     // Computed workflow name for the task
+	Importance       string     `gorm:"-" json:"importance,omitempty"`       // Computed from priority
+	Stage            int        `gorm:"-" json:"stage,omitempty"`            // Maps to StageNumber
+	DueAt            *time.Time `gorm:"-" json:"dueAt,omitempty"`            // Maps to DueDate
 }
 
 // StageApprovalRecord tracks individual approvals per stage for multiple approval support

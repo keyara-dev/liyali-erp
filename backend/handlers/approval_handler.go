@@ -86,11 +86,11 @@ type BulkOperationResponse struct {
 	Errors       []string `json:"errors,omitempty"`
 }
 
-// GetApprovalTasks retrieves approval tasks with pagination and filtering
+// GetApprovalTasks retrieves workflow tasks with pagination and filtering
 func (h *ApprovalHandler) GetApprovalTasks(c *fiber.Ctx) error {
 	db := config.DB
-	organizationID := c.Locals("organizationID").(string) // Fixed: was "organization_id"
-	userID := c.Locals("userID").(string)                 // Fixed: was "user_id"
+	organizationID := c.Locals("organizationID").(string)
+	userID := c.Locals("userID").(string)
 
 	// Extract query parameters
 	page, _ := strconv.Atoi(c.Query("page", "1"))
@@ -108,115 +108,131 @@ func (h *ApprovalHandler) GetApprovalTasks(c *fiber.Ctx) error {
 
 	offset := (page - 1) * limit
 
-	// Build query
-	query := db.Where("organization_id = ?", organizationID)
+	// Build query for workflow_tasks
+	query := db.Table("workflow_tasks").Where("organization_id = ?", organizationID)
 	
-	// Filter by assigned user if requested
+	// Filter by assigned user or role if requested
 	if assignedToMe {
-		query = query.Where("assigned_to = ?", userID)
+		// Get user role for role-based filtering
+		var user models.User
+		if err := db.Where("id = ?", userID).First(&user).Error; err == nil {
+			query = query.Where("(assigned_user_id = ? OR assigned_role = ?)", userID, user.Role)
+		} else {
+			query = query.Where("assigned_user_id = ?", userID)
+		}
 	}
 
 	if status != "" {
 		query = query.Where("status = ?", status)
 	}
 	if documentType != "" {
-		query = query.Where("document_type = ?", documentType)
+		query = query.Where("entity_type = ?", documentType)
 	}
 
 	// Get total count
 	var total int64
-	query.Model(&models.ApprovalTask{}).Count(&total)
+	query.Count(&total)
 
-	// Get tasks with pagination and preload related data
-	var tasks []models.ApprovalTask
-	if err := query.Preload("Approver").Offset(offset).Limit(limit).Order("created_at DESC").Find(&tasks).Error; err != nil {
-		log.Printf("Error fetching approval tasks: %v", err)
-		return utils.SendInternalError(c, "Failed to fetch approval tasks", err)
+	// Get tasks with pagination
+	var tasks []models.WorkflowTask
+	if err := query.Offset(offset).Limit(limit).Order("created_at DESC").Find(&tasks).Error; err != nil {
+		log.Printf("Error fetching workflow tasks: %v", err)
+		return utils.SendInternalError(c, "Failed to fetch workflow tasks", err)
 	}
 
 	// Populate computed fields for each task
 	for i := range tasks {
-		if err := h.populateComputedFields(db, &tasks[i]); err != nil {
+		if err := h.populateWorkflowTaskFields(db, &tasks[i]); err != nil {
 			log.Printf("Error populating computed fields for task %s: %v", tasks[i].ID, err)
 			// Continue with other tasks even if one fails
 		}
 	}
 
-	return utils.SendPaginatedSuccess(c, tasks, "Approval tasks retrieved successfully", page, limit, total)
+	return utils.SendPaginatedSuccess(c, tasks, "Workflow tasks retrieved successfully", page, limit, total)
 }
 
-// populateComputedFields populates the computed fields for an ApprovalTask
-func (h *ApprovalHandler) populateComputedFields(db *gorm.DB, task *models.ApprovalTask) error {
-	// Populate approver name
-	if task.Approver != nil {
-		task.ApproverName = task.Approver.Name
+// populateWorkflowTaskFields populates the computed fields for a WorkflowTask
+func (h *ApprovalHandler) populateWorkflowTaskFields(db *gorm.DB, task *models.WorkflowTask) error {
+	// Map basic fields for frontend compatibility
+	task.DocumentID = task.EntityID
+	task.DocumentType = task.EntityType
+	task.Stage = task.StageNumber
+	task.DueAt = task.DueDate
+	
+	// Set assigned user fields
+	if task.AssignedUserID != nil {
+		task.AssignedTo = *task.AssignedUserID
+		task.ApproverID = *task.AssignedUserID
+		
+		// Get user name if available
+		if task.AssignedUser != nil {
+			task.ApproverName = task.AssignedUser.Name
+		} else {
+			var user models.User
+			if err := db.Where("id = ?", *task.AssignedUserID).First(&user).Error; err == nil {
+				task.ApproverName = user.Name
+			}
+		}
+	} else if task.ClaimedBy != nil {
+		task.AssignedTo = *task.ClaimedBy
+		task.ApproverID = *task.ClaimedBy
+		
+		// Get claimer name if available
+		if task.Claimer != nil {
+			task.ApproverName = task.Claimer.Name
+		} else {
+			var user models.User
+			if err := db.Where("id = ?", *task.ClaimedBy).First(&user).Error; err == nil {
+				task.ApproverName = user.Name
+			}
+		}
 	}
 
-	// Populate document-specific fields based on document type
-	switch task.DocumentType {
+	// Populate document-specific fields based on entity type
+	switch task.EntityType {
 	case "requisition":
 		var req models.Requisition
-		if err := db.Where("id = ?", task.DocumentID).First(&req).Error; err == nil {
+		if err := db.Where("id = ?", task.EntityID).First(&req).Error; err == nil {
 			task.DocumentNumber = req.DocumentNumber
 			task.Title = req.Title + " - Approval Required"
-			task.Priority = req.Priority
 			task.TaskType = "REQUISITION_APPROVAL"
 		}
 	case "purchase_order":
 		var po models.PurchaseOrder
-		if err := db.Where("id = ?", task.DocumentID).First(&po).Error; err == nil {
+		if err := db.Where("id = ?", task.EntityID).First(&po).Error; err == nil {
 			task.DocumentNumber = po.DocumentNumber
 			task.Title = po.Title + " - Approval Required"
-			task.Priority = po.Priority
 			task.TaskType = "PURCHASE_ORDER_APPROVAL"
 		}
 	case "payment_voucher":
 		var pv models.PaymentVoucher
-		if err := db.Where("id = ?", task.DocumentID).First(&pv).Error; err == nil {
+		if err := db.Where("id = ?", task.EntityID).First(&pv).Error; err == nil {
 			task.DocumentNumber = pv.DocumentNumber
 			task.Title = pv.Title + " - Approval Required"
-			task.Priority = pv.Priority
 			task.TaskType = "PAYMENT_VOUCHER_APPROVAL"
 		}
 	case "budget":
 		var budget models.Budget
-		if err := db.Where("id = ?", task.DocumentID).First(&budget).Error; err == nil {
+		if err := db.Where("id = ?", task.EntityID).First(&budget).Error; err == nil {
 			task.DocumentNumber = budget.BudgetCode
 			task.Title = budget.Name + " - Approval Required"
-			task.Priority = "medium" // Budget doesn't have priority field, set default
 			task.TaskType = "BUDGET_APPROVAL"
 		}
 	case "goods_received_note":
 		var grn models.GoodsReceivedNote
-		if err := db.Where("id = ?", task.DocumentID).First(&grn).Error; err == nil {
+		if err := db.Where("id = ?", task.EntityID).First(&grn).Error; err == nil {
 			task.DocumentNumber = grn.DocumentNumber
 			task.Title = "GRN " + grn.DocumentNumber + " - Confirmation Required"
-			task.Priority = "medium" // GRN doesn't have priority field, set default
 			task.TaskType = "GOODS_RECEIVED_NOTE_CONFIRMATION"
 		}
 	}
 
 	// Set default values if not populated
-	if task.Priority == "" {
-		task.Priority = "medium"
-	}
 	if task.TaskType == "" {
 		task.TaskType = "APPROVAL"
 	}
 	if task.Title == "" {
 		task.Title = "Approval Required"
-	}
-
-	// Set stage name based on stage number
-	switch task.Stage {
-	case 1:
-		task.StageName = "Manager Approval"
-	case 2:
-		task.StageName = "Finance Approval"
-	case 3:
-		task.StageName = "Final Approval"
-	default:
-		task.StageName = fmt.Sprintf("Stage %d Approval", task.Stage)
 	}
 
 	// Set importance based on priority
@@ -229,13 +245,24 @@ func (h *ApprovalHandler) populateComputedFields(db *gorm.DB, task *models.Appro
 		task.Importance = "medium"
 	}
 
-	// Set workflow name (could be made more dynamic later)
-	task.WorkflowName = "Standard Approval Workflow"
+	// Get workflow name from workflow assignment
+	var assignment models.WorkflowAssignment
+	if err := db.Where("id = ?", task.WorkflowAssignmentID).First(&assignment).Error; err == nil {
+		task.WorkflowID = assignment.WorkflowID.String()
+		var workflow models.Workflow
+		if err := db.Where("id = ?", assignment.WorkflowID).First(&workflow).Error; err == nil {
+			task.WorkflowName = workflow.Name
+		}
+	}
+
+	if task.WorkflowName == "" {
+		task.WorkflowName = "Standard Approval Workflow"
+	}
 
 	return nil
 }
 
-// GetApprovalTask retrieves a single approval task with full details
+// GetApprovalTask retrieves a single workflow task with full details
 func (h *ApprovalHandler) GetApprovalTask(c *fiber.Ctx) error {
 	taskID := c.Params("id")
 	if taskID == "" {
@@ -243,16 +270,32 @@ func (h *ApprovalHandler) GetApprovalTask(c *fiber.Ctx) error {
 	}
 
 	db := config.DB
-	organizationID := c.Locals("organizationID").(string) // Fixed: was "organizationId"
+	organizationID := c.Locals("organizationID").(string)
 	userID := c.Locals("userID").(string)
 
-	var task models.ApprovalTask
-	if err := db.Where("id = ? AND organization_id = ? AND assigned_to = ?", taskID, organizationID, userID).First(&task).Error; err != nil {
-		log.Printf("Error fetching approval task %s: %v", taskID, err)
-		return utils.SendNotFoundError(c, "Approval task not found or access denied")
+	var task models.WorkflowTask
+	query := db.Where("id = ? AND organization_id = ?", taskID, organizationID)
+	
+	// Check if user can access this task (either assigned to them or they have admin role)
+	var user models.User
+	if err := db.Where("id = ?", userID).First(&user).Error; err == nil {
+		if user.Role != "admin" {
+			// Non-admin users can only see tasks assigned to them or their role
+			query = query.Where("(assigned_user_id = ? OR assigned_role = ?)", userID, user.Role)
+		}
 	}
 
-	return utils.SendSimpleSuccess(c, task, "Approval task retrieved successfully")
+	if err := query.First(&task).Error; err != nil {
+		log.Printf("Error fetching workflow task %s: %v", taskID, err)
+		return utils.SendNotFoundError(c, "Workflow task not found or access denied")
+	}
+
+	// Populate computed fields
+	if err := h.populateWorkflowTaskFields(db, &task); err != nil {
+		log.Printf("Error populating computed fields for task %s: %v", taskID, err)
+	}
+
+	return utils.SendSimpleSuccess(c, task, "Workflow task retrieved successfully")
 }
 
 // ClaimTask claims a workflow task for exclusive access

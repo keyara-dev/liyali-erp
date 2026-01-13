@@ -13,7 +13,7 @@ import {
   FileText,
   AlertTriangle,
 } from "lucide-react";
-import { WorkflowActionButton } from "./workflow-action-button";
+import { WorkflowActionButtons } from "./workflow-action-buttons";
 import { useApprovalWorkflow } from "@/hooks/use-approval-workflow";
 import { formatDistanceToNow } from "date-fns";
 
@@ -216,17 +216,16 @@ export function WorkflowStatusCard({
         )}
 
         {/* Action Buttons */}
-        <div className="border-t pt-4">
-          <WorkflowActionButton
-            documentId={documentId}
-            documentType={documentType}
-            currentUserId={currentUserId}
-            currentUserRole={currentUserRole}
-            variant="inline"
-            showStatus={false}
-            onActionComplete={onActionComplete}
-          />
-        </div>
+        {task && (
+          <div className="border-t pt-4">
+            <WorkflowActionButtons
+              task={task}
+              variant="inline"
+              showStatus={false}
+              onActionComplete={onActionComplete}
+            />
+          </div>
+        )}
 
         {/* Additional Information */}
         {isClaimedByOther && (
