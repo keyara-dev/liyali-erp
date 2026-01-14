@@ -64,8 +64,9 @@ export function ApprovalActionModal({
       newErrors.comments = "Comments must be at least 10 characters long";
     }
 
-    if (!signature.trim()) {
-      newErrors.signature = "Digital signature is required for this action";
+    // Signature is only required for approvals, not rejections
+    if (isApprove && !signature.trim()) {
+      newErrors.signature = "Digital signature is required for approval";
     }
 
     setErrors(newErrors);
@@ -172,25 +173,27 @@ export function ApprovalActionModal({
             </p>
           </div>
 
-          {/* Digital Signature Section */}
-          <div className="space-y-2">
-            <Label className="flex items-center gap-2">
-              <FileSignature className="h-4 w-4" />
-              Digital Signature *
-            </Label>
-            <DigitalSignaturePad
-              onSignatureChange={setSignature}
-              disabled={isLoading}
-              className={errors.signature ? "border-red-500" : ""}
-            />
-            {errors.signature && (
-              <p className="text-sm text-red-600">{errors.signature}</p>
-            )}
-            <p className="text-xs text-gray-500">
-              Your digital signature confirms your identity and authorization
-              for this action.
-            </p>
-          </div>
+          {/* Digital Signature Section - Only for Approvals */}
+          {isApprove && (
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2">
+                <FileSignature className="h-4 w-4" />
+                Digital Signature *
+              </Label>
+              <DigitalSignaturePad
+                onSignatureChange={setSignature}
+                disabled={isLoading}
+                className={errors.signature ? "border-red-500" : ""}
+              />
+              {errors.signature && (
+                <p className="text-sm text-red-600">{errors.signature}</p>
+              )}
+              <p className="text-xs text-gray-500">
+                Your digital signature confirms your identity and authorization
+                for this action.
+              </p>
+            </div>
+          )}
         </div>
 
         <DialogFooter className="flex-col sm:flex-row gap-2">
@@ -204,7 +207,9 @@ export function ApprovalActionModal({
           </Button>
           <Button
             onClick={handleSubmit}
-            disabled={isLoading || !comments.trim() || !signature.trim()}
+            disabled={
+              isLoading || !comments.trim() || (isApprove && !signature.trim())
+            }
             className={`w-full sm:w-auto ${
               isApprove
                 ? "bg-green-600 hover:bg-green-700"

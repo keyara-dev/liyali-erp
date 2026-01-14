@@ -9,6 +9,7 @@ import {
   approveApprovalTask,
   rejectApprovalTask,
   reassignApprovalTask,
+  claimWorkflowTask,
   getApprovalHistory,
   getPendingApprovalCount,
 } from "@/app/_actions/workflow-approval-actions";
@@ -35,6 +36,7 @@ export const useApprovalTasks = (
   filters?: {
     status?: "PENDING" | "APPROVED" | "REJECTED" | "CANCELLED";
     documentType?: string;
+    priority?: string;
     assignedToMe?: boolean;
   },
   page: number = 1,
@@ -45,7 +47,10 @@ export const useApprovalTasks = (
     queryFn: async () => {
       const response = await getApprovalTasks(filters, page, limit);
       if (!response.success) throw new Error(response.message);
-      return response.data || [];
+      return {
+        data: response.data || [],
+        pagination: response.pagination,
+      };
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
@@ -87,15 +92,11 @@ export const useClaimTask = (taskId: string, onSuccess?: () => void) => {
 
   return useMutation({
     mutationFn: async () => {
-      const response = await fetch(`/api/v1/approvals/tasks/${taskId}/claim`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-      });
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(errorText || "Failed to claim task");
+      const response = await claimWorkflowTask(taskId);
+      if (!response.success) {
+        throw new Error(response.message || "Failed to claim task");
       }
-      return response.json();
+      return response.data;
     },
     onSuccess: () => {
       toast.success("Task claimed successfully");

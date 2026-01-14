@@ -55,27 +55,38 @@ func (ns *NotificationService) HandleWorkflowEvent(event NotificationEvent) erro
 
 // notifyApprovalRequired creates notifications for approvers
 func (ns *NotificationService) notifyApprovalRequired(event NotificationEvent) error {
-	// Get approval tasks for this document
-	var tasks []models.ApprovalTask
+	// Get workflow tasks for this document
+	var tasks []models.WorkflowTask
 	if err := ns.db.Where(
-		"document_id = ? AND status = ?",
+		"entity_id = ? AND status = ?",
 		event.DocumentID, "pending",
 	).Find(&tasks).Error; err != nil {
-		return fmt.Errorf("failed to fetch approval tasks: %v", err)
+		return fmt.Errorf("failed to fetch workflow tasks: %v", err)
 	}
 
 	// Create notification for each approver
 	for _, task := range tasks {
+		recipientID := ""
+		if task.AssignedUserID != nil {
+			recipientID = *task.AssignedUserID
+		} else if task.ClaimedBy != nil {
+			recipientID = *task.ClaimedBy
+		}
+
+		if recipientID == "" {
+			continue // Skip tasks without assigned users
+		}
+
 		notification := models.Notification{
 			ID:           uuid.New().String(),
-			RecipientID:  task.ApproverID,
+			RecipientID:  recipientID,
 			Type:         "approval_required",
 			DocumentID:   event.DocumentID,
 			DocumentType: event.DocumentType,
-			Subject:      fmt.Sprintf("Action Required: %s Needs Approval (Stage %d)", event.DocumentType, task.Stage),
+			Subject:      fmt.Sprintf("Action Required: %s Needs Approval (Stage %d)", event.DocumentType, task.StageNumber),
 			Body: fmt.Sprintf(
-				"A %s (ID: %s) requires your approval at stage %d.\nPlease review and take action.",
-				event.DocumentType, event.DocumentID, task.Stage,
+				"A %s (ID: %s) requires your approval at stage %d: %s.\nPlease review and take action.",
+				event.DocumentType, event.DocumentID, task.StageNumber, task.StageName,
 			),
 			Sent:      false,
 			CreatedAt: time.Now(),
@@ -85,7 +96,7 @@ func (ns *NotificationService) notifyApprovalRequired(event NotificationEvent) e
 		if err := ns.db.Create(&notification).Error; err != nil {
 			logging.WithFields(map[string]interface{}{
 				"operation":     "create_approval_notification",
-				"recipient_id":  task.AssignedTo,
+				"recipient_id":  recipientID,
 				"document_id":   event.DocumentID,
 				"document_type": event.DocumentType,
 			}).WithError(err).Error("failed_to_create_approval_notification")

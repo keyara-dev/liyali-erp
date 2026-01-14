@@ -36,7 +36,7 @@ var RequiredTables = []string{
 	"purchase_orders",
 	"payment_vouchers",
 	"goods_received_notes",
-	"approval_tasks",
+	// "approval_tasks", // DEPRECATED: Legacy approval system, kept in DB for backward compatibility
 	"notifications",
 	"audit_logs",
 }

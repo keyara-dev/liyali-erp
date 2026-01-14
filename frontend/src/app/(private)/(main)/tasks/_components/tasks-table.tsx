@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import * as React from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   ColumnDef,
   ColumnFiltersState,
@@ -15,7 +16,7 @@ import {
   useReactTable,
 } from "@tanstack/react-table";
 import { useRouter } from "next/navigation";
-import { ArrowUpDown, Clock } from "lucide-react";
+import { ArrowUpDown, Search, X } from "lucide-react";
 
 import {
   Table,
@@ -27,124 +28,177 @@ import {
 } from "@/components/ui/table";
 import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
-import { CustomPagination } from "@/components/ui/custom-pagination";
+import { Input } from "@/components/ui/input";
 import {
-  useApprovalTasks,
-  useApproveTask,
-  useRejectTask,
-  useClaimTask,
-} from "@/hooks/use-approval-workflow";
-import { WorkflowTask } from "@/types";
-import { toast } from "sonner";
-import { useSession } from "@/hooks/use-session";
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { CustomPagination } from "@/components/ui/custom-pagination";
+import { useApprovalTasks } from "@/hooks/use-approval-workflow";
+import { useDebounce } from "@/hooks/use-debounce";
 import { capitalize } from "@/lib/utils";
+import { QUERY_KEYS } from "@/lib/constants";
 import { WorkflowActionButtons } from "@/components/workflows/workflow-action-buttons";
+import {
+  claimWorkflowTask,
+  approveApprovalTask,
+  rejectApprovalTask,
+  reassignApprovalTask,
+} from "@/app/_actions/workflow-approval-actions";
+import { Badge } from "@/components";
 
-interface TasksTableProps {
-  refreshTrigger: number;
-  status?: "pending" | "in_progress";
+// Define WorkflowTask interface locally to match backend response
+interface WorkflowTask {
+  id: string;
+  status: string;
+  claimedBy?: string;
+  assignedRole?: string;
+  assignedUserId?: string;
+  assignedTo?: string;
+  stageName?: string;
+  claimExpiry?: string;
+  entityType?: string;
+  entityId?: string;
+  documentType?: string;
+  documentId?: string;
+  documentNumber?: string;
+  title?: string;
+  taskType?: string;
+  priority?: string;
+  dueAt?: string;
+  dueDate?: string;
 }
 
-export function TasksTable({ refreshTrigger, status }: TasksTableProps) {
+export function TasksTable() {
   const router = useRouter();
-  const { user } = useSession();
+  const queryClient = useQueryClient();
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
     []
   );
   const [columnVisibility, setColumnVisibility] =
     React.useState<VisibilityState>({});
-  const [pagination, setPagination] = React.useState({
+  const [paginationState, setPaginationState] = React.useState({
     page: 1,
     page_size: 10,
   });
 
-  // Use approval tasks hook with role-based filtering
-  const {
-    data: tasks = [],
-    isLoading,
-    error,
-    refetch,
-  } = useApprovalTasks(
-    {
-      status: status === "pending" ? "PENDING" : undefined,
-      assignedToMe: false, // Show all tasks for now - can be made configurable later
-    },
-    pagination.page,
-    pagination.page_size
+  // Filter states
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [documentTypeFilter, setDocumentTypeFilter] = useState<string>("all");
+  const [priorityFilter, setPriorityFilter] = useState<string>("all");
+
+  // Debounced search query
+  const debouncedSearch = useDebounce(searchQuery, 500);
+
+  // Build filters object - React Query will automatically refetch when this changes
+  const apiFilters = React.useMemo(
+    () => ({
+      status:
+        statusFilter !== "all"
+          ? (statusFilter.toUpperCase() as any)
+          : undefined,
+      documentType:
+        documentTypeFilter !== "all" ? documentTypeFilter : undefined,
+      priority: priorityFilter !== "all" ? priorityFilter : undefined,
+      assignedToMe: false,
+    }),
+    [statusFilter, documentTypeFilter, priorityFilter]
   );
 
-  // Debug logging
-  console.log("TasksTable Debug:", {
-    tasks,
-    isLoading,
-    error,
-    status,
-    pagination,
-    tasksLength: tasks?.length,
-  });
+  const { data: approvalData, isLoading } = useApprovalTasks(
+    apiFilters,
+    paginationState.page,
+    paginationState.page_size
+  );
 
-  // Refetch when refreshTrigger changes
-  useEffect(() => {
-    refetch();
-  }, [refreshTrigger, refetch]);
+  const tasks = approvalData?.data || [];
+  const paginationMeta = approvalData?.pagination;
 
-  // Task action handlers
-  const handleClaimTask = async (taskId: string) => {
-    try {
-      // This would use the claim mutation
-      toast.success("Task claimed successfully");
-      refetch();
-    } catch (error) {
-      toast.error("Failed to claim task");
+  // Client-side filtering for search only
+  const filteredTasks = React.useMemo(() => {
+    let filtered = [...tasks];
+
+    // Apply search filter
+    if (debouncedSearch) {
+      const searchLower = debouncedSearch.toLowerCase();
+      filtered = filtered.filter(
+        (task) =>
+          task.title?.toLowerCase().includes(searchLower) ||
+          task.documentNumber?.toLowerCase().includes(searchLower) ||
+          task.stageName?.toLowerCase().includes(searchLower) ||
+          task.entityType?.toLowerCase().includes(searchLower)
+      );
     }
-  };
 
-  const handleApproveTask = async (taskId: string) => {
-    try {
-      // This would use the approve mutation
-      toast.success("Task approved successfully");
-      refetch();
-    } catch (error) {
-      toast.error("Failed to approve task");
-    }
-  };
+    return filtered;
+  }, [tasks, debouncedSearch]);
 
-  const handleRejectTask = async (taskId: string) => {
-    try {
-      // This would use the reject mutation
-      toast.success("Task rejected successfully");
-      refetch();
-    } catch (error) {
-      toast.error("Failed to reject task");
-    }
-  };
+  // Memoized handlers
+  const handleClaimTask = React.useCallback(
+    async (taskId: string) => {
+      const response = await claimWorkflowTask(taskId);
+      if (!response.success) throw new Error(response.message);
+      await queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.APPROVALS.ALL],
+      });
+    },
+    [queryClient]
+  );
 
-  const canUserActOnTask = (task: WorkflowTask) => {
-    if (!user) return false;
+  const handleApproveTask = React.useCallback(
+    async (taskId: string, data?: { signature: string; comments: string }) => {
+      const response = await approveApprovalTask(taskId, {
+        signature: data?.signature || "",
+        comments: data?.comments || "Approved",
+        stageNumber: 1,
+      });
+      if (!response.success) throw new Error(response.message);
+      await queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.APPROVALS.ALL],
+      });
+    },
+    [queryClient]
+  );
 
-    // Admin can act on any task
-    if (user.role === "admin") return true;
+  const handleRejectTask = React.useCallback(
+    async (taskId: string, data?: { signature: string; comments: string }) => {
+      const response = await rejectApprovalTask(taskId, {
+        signature: data?.signature || "",
+        remarks: data?.comments || "Rejected",
+        comments: data?.comments || "Rejected",
+      });
+      if (!response.success) throw new Error(response.message);
+      await queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.APPROVALS.ALL],
+      });
+    },
+    [queryClient]
+  );
 
-    // User can act on tasks assigned to them or their role
-    return (
-      task.assignedTo === user.id ||
-      task.assignedUserId === user.id ||
-      task.claimedBy === user.id ||
-      task.assignedRole === user.role
-    );
-  };
+  const handleReassignTask = React.useCallback(
+    async (taskId: string, newUserId: string, reason: string) => {
+      const response = await reassignApprovalTask(taskId, {
+        newApproverId: newUserId,
+        reason,
+      });
+      if (!response.success) throw new Error(response.message);
+      await queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.APPROVALS.ALL],
+      });
+    },
+    [queryClient]
+  );
 
-  const isTaskAssignedToUser = (task: WorkflowTask) => {
-    if (!user) return false;
-    return (
-      task.assignedTo === user.id ||
-      task.assignedUserId === user.id ||
-      task.claimedBy === user.id
-    );
-  };
+  const handleRefresh = React.useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.APPROVALS.ALL] });
+  }, [queryClient]);
 
-  const getTaskTypeLabel = (type: string) => {
+  const getTaskTypeLabel = React.useCallback((type: string) => {
     const labels: Record<string, string> = {
       BUDGET_APPROVAL: "Budget Approval",
       REQUISITION_APPROVAL: "Requisition Approval",
@@ -158,157 +212,171 @@ export function TasksTable({ refreshTrigger, status }: TasksTableProps) {
       type?.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase()) ||
       "Approval"
     );
-  };
+  }, []);
 
-  const getPriorityColor = (priority: string) => {
-    const colors: Record<string, string> = {
-      URGENT: "bg-red-100 text-red-800",
-      HIGH: "bg-orange-100 text-orange-800",
-      MEDIUM: "bg-yellow-100 text-yellow-800",
-      LOW: "bg-blue-100 text-blue-800",
-    };
-    return colors[priority] || "bg-gray-100 text-gray-800";
-  };
-
-  const columns: ColumnDef<WorkflowTask>[] = [
-    {
-      accessorKey: "title",
-      header: ({ column }) => (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-          className="-ml-3"
-        >
-          Task Title
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      ),
-      cell: ({ row }) => (
-        <div className="font-semibold max-w-xs capitalize">
-          {row.original.title ||
-            `${capitalize(row.original.entityType || row.original.documentType || "").replaceAll("_", " ")} Requires Approval`}
-        </div>
-      ),
-    },
-    {
-      accessorKey: "documentNumber",
-      header: "Document",
-      cell: ({ row }) => (
-        <div className="text-sm font-medium">
-          {row.original.documentNumber ||
-            `${row.original.entityType || row.original.documentType}-${(row.original.entityId || row.original.documentId || "").slice(-3)}`}
-        </div>
-      ),
-    },
-    {
-      accessorKey: "taskType",
-      header: "Type",
-      cell: ({ row }) => (
-        <div className="text-sm">
-          {getTaskTypeLabel(
-            row.original.taskType ||
-              (
-                row.original.entityType ||
-                row.original.documentType ||
-                ""
-              )?.toUpperCase() + "_APPROVAL"
-          )}
-        </div>
-      ),
-    },
-    {
-      accessorKey: "priority",
-      header: "Priority",
-      cell: ({ row }) => (
-        <span
-          className={`px-2 py-1 rounded text-xs font-medium ${getPriorityColor(row.original.priority || "MEDIUM")}`}
-        >
-          {row.original.priority || "MEDIUM"}
-        </span>
-      ),
-    },
-    {
-      accessorKey: "status",
-      header: "Status",
-      cell: ({ row }) => (
-        <StatusBadge status={row.getValue("status")} type="execution" />
-      ),
-    },
-    {
-      accessorKey: "dueAt",
-      header: ({ column }) => (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-          className="-ml-3"
-        >
-          Due Date
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      ),
-      cell: ({ row }) => {
-        const dueDate = row.original.dueAt || row.original.dueDate;
-        if (!dueDate) return <div>-</div>;
-
-        const dueDateObj = new Date(dueDate);
-        const now = new Date();
-        const isOverdue =
-          dueDateObj < now && row.original.status !== "approved";
-        return (
-          <div className={isOverdue ? "text-red-600 font-semibold" : ""}>
-            {dueDateObj.toLocaleDateString()}
-            {isOverdue && <span className="ml-2 text-xs">Overdue</span>}
+  const columns = React.useMemo<ColumnDef<WorkflowTask>[]>(
+    () => [
+      {
+        accessorKey: "title",
+        header: ({ column }) => (
+          <Button
+            variant="ghost"
+            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+            className="-ml-3"
+          >
+            Task Title
+            <ArrowUpDown className="ml-2 h-4 w-4" />
+          </Button>
+        ),
+        cell: ({ row }) => (
+          <div className="font-semibold max-w-xs capitalize">
+            {row.original.title ||
+              `${capitalize(row.original.entityType || row.original.documentType || "").replaceAll("_", " ")} Requires Approval`}
           </div>
-        );
+        ),
       },
-    },
-    {
-      id: "actions",
-      header: "Actions",
-      cell: ({ row }) => {
-        const task = row.original;
+      {
+        accessorKey: "documentNumber",
+        header: "Document",
+        cell: ({ row }) => (
+          <div className="text-sm font-medium">
+            {row.original.documentNumber ||
+              `${row.original.entityType || row.original.documentType}-${(row.original.entityId || row.original.documentId || "").slice(-3)}`}
+          </div>
+        ),
+      },
+      {
+        accessorKey: "stageName",
+        header: "Stage",
+        cell: ({ row }) => (
+          <div className="text-sm">{row.original.stageName || "Unknown"}</div>
+        ),
+      },
+      {
+        accessorKey: "taskType",
+        header: "Type",
+        cell: ({ row }) => (
+          <div className="text-sm">
+            {getTaskTypeLabel(
+              row.original.taskType ||
+                (
+                  row.original.entityType ||
+                  row.original.documentType ||
+                  ""
+                )?.toUpperCase() + "_APPROVAL"
+            )}
+          </div>
+        ),
+      },
+      {
+        accessorKey: "priority",
+        header: "Priority",
+        cell: ({ row }) => (
+          <Badge
+            variant={
+              row.original.priority?.toLowerCase() == "high"
+                ? "destructive"
+                : row.original.priority?.toLowerCase() == "medium"
+                  ? "warning"
+                  : "info"
+            }
+            className={`px-2 py-1 rounded text-xs uppercase font-medium `}
+          >
+            {row.original.priority || "MEDIUM"}
+          </Badge>
+        ),
+      },
+      {
+        accessorKey: "status",
+        header: "Status",
+        cell: ({ row }) => (
+          <StatusBadge status={row.getValue("status")} type="execution" />
+        ),
+      },
+      {
+        accessorKey: "dueAt",
+        header: ({ column }) => (
+          <Button
+            variant="ghost"
+            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+            className="-ml-3"
+          >
+            Due Date
+            <ArrowUpDown className="ml-2 h-4 w-4" />
+          </Button>
+        ),
+        cell: ({ row }) => {
+          const dueDate = row.original.dueAt || row.original.dueDate;
+          if (!dueDate) return <div>-</div>;
 
-        return (
-          <WorkflowActionButtons
-            task={task}
-            onClaim={handleClaimTask}
-            onApprove={handleApproveTask}
-            onReject={handleRejectTask}
-            onRefresh={refetch}
-            variant="table"
-            showViewButton={false}
-            onView={(task) => {
-              const docType = (
-                task.entityType ||
-                task.documentType ||
-                ""
-              ).toLowerCase();
-              const docId = task.entityId || task.documentId;
-              const routes: Record<string, string> = {
-                requisition: `/requisitions/${docId}`,
-                purchase_order: `/purchase-orders/${docId}`,
-                payment_voucher: `/payment-vouchers/${docId}`,
-                goods_received_note: `/grn/${docId}`,
-                budget: `/budgets/${docId}`,
-              };
-              const url = routes[docType || ""] || `/tasks/${task.id}`;
-              router.push(url);
-            }}
-          />
-        );
+          const dueDateObj = new Date(dueDate);
+          const now = new Date();
+          const isOverdue =
+            dueDateObj < now && row.original.status !== "approved";
+          return (
+            <div className={isOverdue ? "text-red-600 font-semibold" : ""}>
+              {dueDateObj.toLocaleDateString()}
+              {isOverdue && <span className="ml-2 text-xs">Overdue</span>}
+            </div>
+          );
+        },
       },
-    },
-  ];
+      {
+        id: "actions",
+        header: "Actions",
+        cell: ({ row }) => {
+          const task = row.original;
+
+          return (
+            <WorkflowActionButtons
+              task={task as any}
+              onClaim={handleClaimTask}
+              onApprove={handleApproveTask}
+              onReject={handleRejectTask}
+              onReassign={handleReassignTask}
+              onRefresh={handleRefresh}
+              variant="table"
+              showViewButton={false}
+              onView={(task) => {
+                const docType = (
+                  task.entityType ||
+                  task.documentType ||
+                  ""
+                ).toLowerCase();
+                const docId = task.entityId || task.documentId;
+                const routes: Record<string, string> = {
+                  requisition: `/requisitions/${docId}`,
+                  purchase_order: `/purchase-orders/${docId}`,
+                  payment_voucher: `/payment-vouchers/${docId}`,
+                  goods_received_note: `/grn/${docId}`,
+                  budget: `/budgets/${docId}`,
+                };
+                const url = routes[docType || ""] || `/tasks/${task.id}`;
+                router.push(url);
+              }}
+            />
+          );
+        },
+      },
+    ],
+    [
+      getTaskTypeLabel,
+      handleClaimTask,
+      handleApproveTask,
+      handleRejectTask,
+      handleReassignTask,
+      handleRefresh,
+      router,
+    ]
+  );
 
   const table = useReactTable({
-    data: tasks,
+    data: filteredTasks,
     columns,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
     getCoreRowModel: getCoreRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
     onColumnVisibilityChange: setColumnVisibility,
     state: {
       sorting,
@@ -317,25 +385,111 @@ export function TasksTable({ refreshTrigger, status }: TasksTableProps) {
     },
   });
 
+  const clearFilters = () => {
+    setSearchQuery("");
+    setStatusFilter("all");
+    setDocumentTypeFilter("all");
+    setPriorityFilter("all");
+  };
+
+  const hasActiveFilters =
+    searchQuery ||
+    statusFilter !== "all" ||
+    documentTypeFilter !== "all" ||
+    priorityFilter !== "all";
+
   return (
     <div className="space-y-4">
+      {/* Filters */}
+      <div className="flex flex-col gap-4 p-4 bg-gray-50 rounded-lg border">
+        <div className="flex flex-col md:flex-row gap-4">
+          {/* Search Input */}
+          <div className="flex-1">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Input
+                placeholder="Search tasks..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+          </div>
+
+          {/* Filters Selects */}
+          <div className="flex flex-wrap gap-2">
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-[150px]">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Statuses</SelectItem>
+                <SelectItem value="pending">Pending</SelectItem>
+                <SelectItem value="claimed">Claimed</SelectItem>
+                <SelectItem value="completed">Completed</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select
+              value={documentTypeFilter}
+              onValueChange={setDocumentTypeFilter}
+            >
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Document Type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Types</SelectItem>
+                <SelectItem value="requisition">Requisition</SelectItem>
+                <SelectItem value="purchase_order">Purchase Order</SelectItem>
+                <SelectItem value="payment_voucher">Payment Voucher</SelectItem>
+                <SelectItem value="goods_received_note">GRN</SelectItem>
+                <SelectItem value="budget">Budget</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select value={priorityFilter} onValueChange={setPriorityFilter}>
+              <SelectTrigger className="w-[130px]">
+                <SelectValue placeholder="Priority" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Priorities</SelectItem>
+                <SelectItem value="urgent">Urgent</SelectItem>
+                <SelectItem value="high">High</SelectItem>
+                <SelectItem value="medium">Medium</SelectItem>
+                <SelectItem value="low">Low</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {hasActiveFilters && (
+            <Button variant="outline" onClick={clearFilters}>
+              <X className="h-4 w-4 mr-2" />
+              Clear
+            </Button>
+          )}
+        </div>
+
+        <div className="text-sm text-gray-600">
+          Showing {filteredTasks.length} tasks
+          {hasActiveFilters && " (filtered)"}
+        </div>
+      </div>
+
       <div className="rounded-md border">
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
-                {headerGroup.headers.map((header) => {
-                  return (
-                    <TableHead key={header.id}>
-                      {header.isPlaceholder
-                        ? null
-                        : flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )}
-                    </TableHead>
-                  );
-                })}
+                {headerGroup.headers.map((header) => (
+                  <TableHead key={header.id}>
+                    {header.isPlaceholder
+                      ? null
+                      : flexRender(
+                          header.column.columnDef.header,
+                          header.getContext()
+                        )}
+                  </TableHead>
+                ))}
               </TableRow>
             ))}
           </TableHeader>
@@ -343,7 +497,7 @@ export function TasksTable({ refreshTrigger, status }: TasksTableProps) {
             {table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => (
                 <TableRow
-                  key={row.id}
+                  key={row.original.id}
                   data-state={row.getIsSelected() && "selected"}
                 >
                   {row.getVisibleCells().map((cell) => (
@@ -370,40 +524,27 @@ export function TasksTable({ refreshTrigger, status }: TasksTableProps) {
         </Table>
       </div>
 
-      {/* Pagination */}
-      <CustomPagination
-        pagination={{
-          page: pagination.page,
-          limit: pagination.page_size,
-          total: tasks.length,
-          totalPages: Math.ceil(tasks.length / pagination.page_size),
-          hasNext:
-            pagination.page < Math.ceil(tasks.length / pagination.page_size),
-          hasPrev: pagination.page > 1,
-          page_size: pagination.page_size,
-          totalCount: tasks.length,
-          total_pages: Math.ceil(tasks.length / pagination.page_size),
-          has_next:
-            pagination.page < Math.ceil(tasks.length / pagination.page_size),
-          has_prev: pagination.page > 1,
-        }}
-        updatePagination={(newPagination: {
-          page: number;
-          page_size?: number;
-        }) => {
-          setPagination((prev: { page: number; page_size: number }) => ({
-            ...prev,
-            page: newPagination.page,
-            page_size: newPagination.page_size || prev.page_size,
-          }));
-          table.setPageIndex(newPagination.page - 1);
-          if (newPagination.page_size) {
-            table.setPageSize(newPagination.page_size);
-          }
-        }}
-        allowSetPageSize
-        showDetails
-      />
+      {paginationMeta && (
+        <CustomPagination
+          pagination={{
+            ...paginationMeta,
+            page: paginationState.page,
+            page_size: paginationState.page_size,
+          }}
+          updatePagination={(newPagination: {
+            page: number;
+            page_size?: number;
+          }) => {
+            setPaginationState((prev) => ({
+              ...prev,
+              page: newPagination.page,
+              page_size: newPagination.page_size || prev.page_size,
+            }));
+          }}
+          allowSetPageSize
+          showDetails
+        />
+      )}
     </div>
   );
 }

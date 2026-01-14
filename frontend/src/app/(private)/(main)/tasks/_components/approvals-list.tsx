@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
+import * as React from "react";
 import {
   useApprovalTasks,
   usePendingApprovalCount,
@@ -52,92 +53,110 @@ export function ApprovalsList({ userId }: ApprovalsListProps) {
   };
 
   // Fetch approval tasks with filter
-  const filters =
-    statusFilter === "all" ? {} : { status: statusFilter.toUpperCase() as any };
+  const filters = React.useMemo(
+    () =>
+      statusFilter === "all"
+        ? {}
+        : { status: statusFilter.toUpperCase() as any },
+    [statusFilter]
+  );
+
   const {
-    data: tasks = [],
+    data: approvalData,
     isLoading: isTasksLoading,
     error,
     refetch,
   } = useApprovalTasks(filters, page, limit);
+
+  const tasks = approvalData?.data || [];
 
   const handleRefresh = () => {
     refetch();
   };
 
   // Filter tasks based on search and priority
-  const filteredTasks = tasks
-    .filter((task) => {
-      if (priorityFilter !== "all" && task.priority !== priorityFilter) {
-        return false;
-      }
-      if (
-        searchQuery &&
-        !`${task.entityType} ${task.entityId} ${task.stageName}`
-          .toLowerCase()
-          .includes(searchQuery.toLowerCase())
-      ) {
-        return false;
-      }
-      return true;
-    })
-    // Sort tasks
-    .sort((a, b) => {
-      switch (sortBy) {
-        case "priority":
-          const priorityOrder = { HIGH: 0, MEDIUM: 1, LOW: 2 };
-          return (
-            (priorityOrder[a.priority as keyof typeof priorityOrder] || 2) -
-            (priorityOrder[b.priority as keyof typeof priorityOrder] || 2)
-          );
-        case "name":
-          return `${a.entityType}${a.entityId}`.localeCompare(
-            `${b.entityType}${b.entityId}`
-          );
-        case "date":
-        default:
-          return (
-            new Date(b.createdAt || 0).getTime() -
-            new Date(a.createdAt || 0).getTime()
-          );
-      }
-    });
+  const filteredTasks = useMemo(() => {
+    return (
+      tasks
+        .filter((task) => {
+          if (priorityFilter !== "all" && task.priority !== priorityFilter) {
+            return false;
+          }
+          if (
+            searchQuery &&
+            !`${task.entityType} ${task.entityId} ${task.stageName}`
+              .toLowerCase()
+              .includes(searchQuery.toLowerCase())
+          ) {
+            return false;
+          }
+          return true;
+        })
+        // Sort tasks
+        .sort((a, b) => {
+          switch (sortBy) {
+            case "priority":
+              const priorityOrder = { HIGH: 0, MEDIUM: 1, LOW: 2 };
+              return (
+                (priorityOrder[a.priority as keyof typeof priorityOrder] || 2) -
+                (priorityOrder[b.priority as keyof typeof priorityOrder] || 2)
+              );
+            case "name":
+              return `${a.entityType}${a.entityId}`.localeCompare(
+                `${b.entityType}${b.entityId}`
+              );
+            case "date":
+            default:
+              return (
+                new Date(b.createdAt || 0).getTime() -
+                new Date(a.createdAt || 0).getTime()
+              );
+          }
+        })
+    );
+  }, [tasks, priorityFilter, searchQuery, sortBy]);
 
   // Group tasks by status for better organization
-  const groupedTasks = {
-    claimedByMe: filteredTasks.filter((task) => {
-      const status = task.status?.toLowerCase();
-      return status === "claimed" && (task as any).claimedBy === currentUser.id;
+  const groupedTasks = useMemo(
+    () => ({
+      claimedByMe: filteredTasks.filter((task) => {
+        const status = task.status?.toLowerCase();
+        return (
+          status === "claimed" && (task as any).claimedBy === currentUser.id
+        );
+      }),
+      available: filteredTasks.filter((task) => {
+        const status = task.status?.toLowerCase();
+        return (
+          status === "pending" &&
+          ((task as any).assignedRole === currentUser.role ||
+            (task as any).assignedUserId === currentUser.id)
+        );
+      }),
+      claimedByOthers: filteredTasks.filter((task) => {
+        const status = task.status?.toLowerCase();
+        return (
+          status === "claimed" && (task as any).claimedBy !== currentUser.id
+        );
+      }),
+      completed: filteredTasks.filter((task) => {
+        const status = task.status?.toLowerCase();
+        return status === "approved" || status === "rejected";
+      }),
     }),
-    available: filteredTasks.filter((task) => {
-      const status = task.status?.toLowerCase();
-      return (
-        status === "pending" &&
-        ((task as any).assignedRole === currentUser.role ||
-          (task as any).assignedUserId === currentUser.id)
-      );
-    }),
-    claimedByOthers: filteredTasks.filter((task) => {
-      const status = task.status?.toLowerCase();
-      return status === "claimed" && (task as any).claimedBy !== currentUser.id;
-    }),
-    completed: filteredTasks.filter((task) => {
-      const status = task.status?.toLowerCase();
-      return status === "approved" || status === "rejected";
-    }),
-  };
+    [filteredTasks, currentUser.id, currentUser.role]
+  );
 
-  const getStatusStats = () => {
-    return {
+  const stats = useMemo(
+    () => ({
       total: filteredTasks.length,
       claimedByMe: groupedTasks.claimedByMe.length,
       available: groupedTasks.available.length,
       claimedByOthers: groupedTasks.claimedByOthers.length,
       completed: groupedTasks.completed.length,
-    };
-  };
-
-  const stats = getStatusStats();
+    }),
+    [filteredTasks.length, groupedTasks]
+  );
 
   if (error) {
     return (

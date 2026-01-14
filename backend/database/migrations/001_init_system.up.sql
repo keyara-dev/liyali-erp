@@ -274,6 +274,7 @@ CREATE TABLE IF NOT EXISTS workflow_tasks (
     status VARCHAR(50) DEFAULT 'pending',
     priority VARCHAR(50) DEFAULT 'medium',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     claimed_at TIMESTAMP,
     claimed_by VARCHAR(255),
     completed_at TIMESTAMP,

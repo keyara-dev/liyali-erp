@@ -224,6 +224,7 @@ INSERT INTO workflow_tasks (
     status,
     priority,
     created_at,
+    updated_at,
     claimed_at,
     claimed_by,
     completed_at,
@@ -232,10 +233,10 @@ INSERT INTO workflow_tasks (
     updated_by,
     claim_expiry
 ) VALUES 
-    ('wt-req-260111-003-stage1', 'org-demo-001', 'wa-req-260111-003', 'req-003', 'requisition', 1, 'Manager Approval', 'role', 'approver', NULL, 'pending', 'high', CURRENT_TIMESTAMP, NULL, NULL, NULL, CURRENT_TIMESTAMP + INTERVAL '3 days', 1, NULL, NULL),
-    ('wt-req-260111-004-stage1', 'org-demo-001', 'wa-req-260111-004', 'req-004', 'requisition', 1, 'Manager Approval', 'role', 'approver', NULL, 'pending', 'medium', CURRENT_TIMESTAMP, NULL, NULL, NULL, CURRENT_TIMESTAMP + INTERVAL '2 days', 1, NULL, NULL),
-    ('wt-req-260111-005-stage1', 'org-demo-001', 'wa-req-260111-005', 'req-005', 'requisition', 1, 'Manager Approval', 'role', 'approver', NULL, 'pending', 'high', CURRENT_TIMESTAMP, NULL, NULL, NULL, CURRENT_TIMESTAMP + INTERVAL '1 day', 1, NULL, NULL),
-    ('wt-po-260111-002-stage1', 'org-demo-001', 'wa-po-260111-002', 'po-002', 'purchase_order', 1, 'Manager Approval', 'role', 'approver', NULL, 'pending', 'high', CURRENT_TIMESTAMP, NULL, NULL, NULL, CURRENT_TIMESTAMP + INTERVAL '2 days', 1, NULL, NULL)
+    ('wt-req-260111-003-stage1', 'org-demo-001', 'wa-req-260111-003', 'req-003', 'requisition', 1, 'Manager Approval', 'role', 'approver', NULL, 'pending', 'high', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, NULL, NULL, NULL, CURRENT_TIMESTAMP + INTERVAL '3 days', 1, NULL, NULL),
+    ('wt-req-260111-004-stage1', 'org-demo-001', 'wa-req-260111-004', 'req-004', 'requisition', 1, 'Manager Approval', 'role', 'approver', NULL, 'pending', 'medium', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, NULL, NULL, NULL, CURRENT_TIMESTAMP + INTERVAL '2 days', 1, NULL, NULL),
+    ('wt-req-260111-005-stage1', 'org-demo-001', 'wa-req-260111-005', 'req-005', 'requisition', 1, 'Manager Approval', 'role', 'approver', NULL, 'pending', 'high', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, NULL, NULL, NULL, CURRENT_TIMESTAMP + INTERVAL '1 day', 1, NULL, NULL),
+    ('wt-po-260111-002-stage1', 'org-demo-001', 'wa-po-260111-002', 'po-002', 'purchase_order', 1, 'Manager Approval', 'role', 'approver', NULL, 'pending', 'high', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, NULL, NULL, NULL, CURRENT_TIMESTAMP + INTERVAL '2 days', 1, NULL, NULL)
 ON CONFLICT (id) DO NOTHING;
 
 -- ============================================================================

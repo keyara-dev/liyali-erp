@@ -11,33 +11,34 @@ export interface APIResponse<T = any> {
   message?: string;
   data?: T;
   error?: string;
-  status?: number;             // HTTP status code
-  statusCode?: number;         // Alias for status
-  statusText?: string;         // HTTP status text
+  pagination?: PaginationMeta;
+  status?: number; // HTTP status code
+  statusCode?: number; // Alias for status
+  statusText?: string; // HTTP status text
   errors?: Record<string, string[]>;
 }
 
 export interface PaginationMeta {
   page: number;
-  pageSize?: number;           // From api.ts
-  limit?: number;              // From common.ts
+  pageSize?: number; // From api.ts
+  limit?: number; // From common.ts
   total: number;
   totalPages: number;
   hasNext: boolean;
   hasPrev: boolean;
   // Aliases for backward compatibility
-  page_size?: number;          // Alias for pageSize/limit
-  totalCount?: number;         // Alias for total
-  total_pages?: number;        // Alias for totalPages
-  has_next?: boolean;          // Alias for hasNext
-  has_prev?: boolean;          // Alias for hasPrev
+  page_size?: number; // Alias for pageSize/limit
+  totalCount?: number; // Alias for total
+  total_pages?: number; // Alias for totalPages
+  has_next?: boolean; // Alias for hasNext
+  has_prev?: boolean; // Alias for hasPrev
 }
 
 export interface ListResponse<T> {
   success: boolean;
   data: T[];
   pagination?: PaginationMeta;
-  meta?: PaginationMeta;       // Alias for pagination
+  meta?: PaginationMeta; // Alias for pagination
 }
 
 export interface DetailResponse<T> {
@@ -57,80 +58,84 @@ export interface PaginatedResponse<T> {
 
 // ================== CORE ENUMS ==================
 
-export type DocumentStatus = 
-  | 'draft' 
-  | 'pending' 
-  | 'approved' 
-  | 'rejected' 
-  | 'completed'
-  | 'cancelled'
-  | 'submitted'
-  | 'paid'        // For Payment Vouchers
-  | 'fulfilled'   // For Purchase Orders
+export type DocumentStatus =
+  | "draft"
+  | "pending"
+  | "approved"
+  | "rejected"
+  | "completed"
+  | "cancelled"
+  | "submitted"
+  | "paid" // For Payment Vouchers
+  | "fulfilled" // For Purchase Orders
   // Legacy compatibility
-  | 'DRAFT'
-  | 'SUBMITTED'
-  | 'IN_REVIEW'
-  | 'APPROVED'
-  | 'REJECTED'
-  | 'PENDING'
-  | 'COMPLETED'
-  | 'CANCELLED';
+  | "DRAFT"
+  | "SUBMITTED"
+  | "IN_REVIEW"
+  | "APPROVED"
+  | "REJECTED"
+  | "PENDING"
+  | "COMPLETED"
+  | "CANCELLED";
 
-export type Priority = 
-  | 'low' 
-  | 'medium' 
-  | 'high' 
-  | 'urgent'
+export type Priority =
+  | "low"
+  | "medium"
+  | "high"
+  | "urgent"
   // Legacy compatibility
-  | 'URGENT' 
-  | 'HIGH'
-  | 'LOW'
-  | 'MEDIUM';
+  | "URGENT"
+  | "HIGH"
+  | "LOW"
+  | "MEDIUM";
 
-export type ApprovalStatus = 
-  | 'pending' 
-  | 'approved' 
-  | 'rejected' 
-  | 'cancelled'
-  | 'reversed'
+export type ApprovalStatus =
+  | "pending"
+  | "approved"
+  | "rejected"
+  | "cancelled"
+  | "reversed"
   // Legacy compatibility
-  | 'PENDING'
-  | 'APPROVED'
-  | 'REJECTED'
-  | 'REVERSED';
+  | "PENDING"
+  | "APPROVED"
+  | "REJECTED"
+  | "REVERSED";
 
-export type PaymentMethod = 
-  | 'bank_transfer' 
-  | 'cash'
+export type PaymentMethod =
+  | "bank_transfer"
+  | "cash"
   // Legacy compatibility
-  | 'BANK_TRANSFER'
-  | 'CASH';
+  | "BANK_TRANSFER"
+  | "CASH";
 
 // Unified User Role type (combining UserRole and UserType)
-export type UserRole = 
-  | 'admin' 
-  | 'approver' 
-  | 'requester' 
-  | 'finance' 
-  | 'viewer'
-  | 'department_manager'
-  | 'finance_manager'
-  | 'finance_officer'
-  | 'director'
-  | 'cfo'
-  | 'compliance_officer'
-  | 'ceo'
-  | 'superadmin';              // Add superadmin role
+export type UserRole =
+  | "admin"
+  | "approver"
+  | "requester"
+  | "finance"
+  | "viewer"
+  | "department_manager"
+  | "finance_manager"
+  | "finance_officer"
+  | "director"
+  | "cfo"
+  | "compliance_officer"
+  | "ceo"
+  | "superadmin"; // Add superadmin role
 
 // Alias for backward compatibility
 export type UserType = UserRole;
 
-export type ItemCondition = 'good' | 'damaged' | 'missing';
+export type ItemCondition = "good" | "damaged" | "missing";
 
-export type QualityIssueType = 'damaged' | 'missing' | 'wrong_item' | 'quality_issue';
+export type QualityIssueType =
+  | "damaged"
+  | "missing"
+  | "wrong_item"
+  | "quality_issue";
 
-export type QualityIssueSeverity = 'low' | 'medium' | 'high';
+export type QualityIssueSeverity = "low" | "medium" | "high";
 
 // ================== CORE USER & ORGANIZATION TYPES ==================
 
@@ -146,7 +151,7 @@ export interface User {
   isSuperAdmin?: boolean;
   createdAt?: string | Date;
   updatedAt?: string | Date;
-  
+
   // Extended fields for UI compatibility
   permissions?: string[];
   preferences?: any;
@@ -164,7 +169,7 @@ export interface User {
   updated_at?: Date | string;
   last_login?: Date | string;
   expiresAt?: Date | string;
-  token?: string;                  // For session compatibility
+  token?: string; // For session compatibility
 }
 
 export interface Organization {
@@ -198,7 +203,7 @@ export interface ApprovalRecord {
   comments?: string;
   signature?: string;
   approvedAt?: Date;
-  
+
   // Extended fields for UI compatibility (now supported by backend)
   stageNumber?: number;
   stageName?: string;
@@ -235,18 +240,18 @@ export interface ApprovalTask {
   workflowId?: string;
   workflowName?: string;
   stageName?: string;
-  importance?: 'low' | 'medium' | 'high';
+  importance?: "low" | "medium" | "high";
   createdAt: Date;
   updatedAt: Date;
-  
+
   // Legacy compatibility fields
-  entityId?: string;         // Maps to documentId
-  entityType?: string;       // Maps to documentType  
-  entityNumber?: string;     // Maps to documentNumber
-  stageIndex?: number;       // Maps to stage
-  approverUserId?: string;   // Maps to approverId
-  dueDate?: Date;           // Maps to dueAt
-  actionDate?: Date;        // Maps to updatedAt
+  entityId?: string; // Maps to documentId
+  entityType?: string; // Maps to documentType
+  entityNumber?: string; // Maps to documentNumber
+  stageIndex?: number; // Maps to stage
+  approverUserId?: string; // Maps to approverId
+  dueDate?: Date; // Maps to dueAt
+  actionDate?: Date; // Maps to updatedAt
 }
 
 export interface ActionHistoryEntry {
@@ -254,9 +259,9 @@ export interface ActionHistoryEntry {
   action: string;
   performedBy: string;
   performedByName: string;
-  performedByRole?: string;    // Role of the user who performed the action
+  performedByRole?: string; // Role of the user who performed the action
   timestamp: Date;
-  performedAt?: Date;          // Alias for timestamp
+  performedAt?: Date; // Alias for timestamp
   changes?: Record<string, any>;
   comments?: string;
   actionType?: string;
@@ -280,7 +285,7 @@ export interface RejectTaskRequest {
   remarks: string;
   comments?: string;
   signature?: string;
-  returnTo?: 'original_submitter' | 'previous_stage' | string;
+  returnTo?: "original_submitter" | "previous_stage" | string;
 }
 
 export interface ReassignTaskRequest {
@@ -327,7 +332,7 @@ export type BadgeVariant =
 
 export type HealthStatus = "healthy" | "issues" | "down";
 
-export type AllocationStatus = 'under' | 'full' | 'over';
+export type AllocationStatus = "under" | "full" | "over";
 
 // ================== VENDOR & CATEGORY TYPES ==================
 

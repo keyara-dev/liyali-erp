@@ -225,6 +225,7 @@ func SetupRoutes(app *fiber.App, handlerRegistry *handlers.HandlerRegistry, rbac
 	approvals.Get("/", handlerRegistry.Approval.GetApprovalTasks)
 
 	// Specific routes must come before parameterized routes
+	approvals.Get("/stats", handlerRegistry.Approval.GetTaskStats)
 	approvals.Get("/available-approvers", handlerRegistry.Approval.GetAvailableApprovers)
 	approvals.Get("/tasks/overdue", middleware.RequirePermission(rbacService, "approval", "view"), handlerRegistry.Approval.GetOverdueTasks)
 
@@ -251,12 +252,12 @@ func SetupRoutes(app *fiber.App, handlerRegistry *handlers.HandlerRegistry, rbac
 
 	// Generic Document System routes (tenant-scoped) - NEW
 	genericDocs := tenant.Group("/documents")
-	genericDocs.Get("/", middleware.RequirePermission(rbacService, "document", "view"), handlerRegistry.Document.GetDocuments)
-	genericDocs.Get("/my", middleware.RequirePermission(rbacService, "document", "view"), handlerRegistry.Document.GetMyDocuments)
-	genericDocs.Get("/search", middleware.RequirePermission(rbacService, "document", "view"), handlerRegistry.Document.SearchDocuments)
-	genericDocs.Get("/stats", middleware.RequirePermission(rbacService, "document", "view"), handlerRegistry.Document.GetDocumentStats)
-	genericDocs.Get("/:id", middleware.RequirePermission(rbacService, "document", "view"), handlerRegistry.Document.GetDocumentByID)
-	genericDocs.Get("/number/:number", middleware.RequirePermission(rbacService, "document", "view"), handlerRegistry.Document.GetDocumentByNumber)
+	genericDocs.Get("/", handlerRegistry.Document.GetDocuments)
+	genericDocs.Get("/my", handlerRegistry.Document.GetMyDocuments)
+	genericDocs.Get("/search", handlerRegistry.Document.SearchDocuments)
+	genericDocs.Get("/stats", handlerRegistry.Document.GetDocumentStats)
+	genericDocs.Get("/:id", handlerRegistry.Document.GetDocumentByID)
+	genericDocs.Get("/number/:number", handlerRegistry.Document.GetDocumentByNumber)
 	genericDocs.Post("/", middleware.RequirePermission(rbacService, "document", "create"), handlerRegistry.Document.CreateDocument)
 	genericDocs.Put("/:id", middleware.RequirePermission(rbacService, "document", "edit"), handlerRegistry.Document.UpdateDocument)
 	genericDocs.Post("/:id/submit", middleware.RequirePermission(rbacService, "document", "submit"), handlerRegistry.Document.SubmitDocument)
@@ -280,11 +281,11 @@ func SetupRoutes(app *fiber.App, handlerRegistry *handlers.HandlerRegistry, rbac
 	workflows.Get("/:id/usage", middleware.RequirePermission(rbacService, "workflow", "view"), handlerRegistry.Workflow.GetWorkflowUsage)
 	workflows.Post("/validate", middleware.RequirePermission(rbacService, "workflow", "create"), handlerRegistry.Workflow.ValidateWorkflow)
 
-	// Analytics routes (tenant-scoped) - ENABLED
+	// Analytics routes (tenant-scoped) - ENABLED - Accessible to all authenticated users
 	analytics := tenant.Group("/analytics")
-	analytics.Get("/dashboard", middleware.RequirePermission(rbacService, "analytics", "view"), handlers.GetDashboard)
-	analytics.Get("/requisitions/metrics", middleware.RequirePermission(rbacService, "analytics", "view"), handlers.GetRequisitionMetrics)
-	analytics.Get("/approvals/metrics", middleware.RequirePermission(rbacService, "analytics", "view"), handlers.GetApprovalMetrics)
+	analytics.Get("/dashboard", handlers.GetDashboard)
+	analytics.Get("/requisitions/metrics", handlers.GetRequisitionMetrics)
+	analytics.Get("/approvals/metrics", handlers.GetApprovalMetrics)
 
 	// Notifications (tenant-scoped) - ENABLED
 	notifications := tenant.Group("/notifications")

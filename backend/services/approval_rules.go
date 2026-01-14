@@ -3,9 +3,7 @@ package services
 import (
 	"encoding/json"
 	"fmt"
-	"time"
 
-	"github.com/google/uuid"
 	"github.com/liyali/liyali-gateway/logging"
 	"github.com/liyali/liyali-gateway/models"
 	"gorm.io/gorm"
@@ -78,59 +76,17 @@ func (ars *ApprovalRoutingService) GetApproversForDocument(docType string, depar
 }
 
 // RouteDocumentToApprovers creates approval tasks for a document
+// DEPRECATED: This function is part of the legacy approval system.
+// Use WorkflowExecutionService.StartWorkflow() instead for new implementations.
 func (ars *ApprovalRoutingService) RouteDocumentToApprovers(documentID, docType, department string, amount float64, priority string) error {
-	approvers, err := ars.GetApproversForDocument(docType, department, amount, priority)
-	if err != nil {
-		return err
-	}
-
-	// Create approval tasks for each approver
-	now := time.Now()
-	for stage, approverID := range approvers {
-		task := models.ApprovalTask{
-			ID:           uuid.New().String(),
-			DocumentID:   documentID,
-			DocumentType: docType,
-			ApproverID:   approverID,
-			Status:       "pending",
-			Stage:        stage + 1,
-			CreatedAt:    now,
-			UpdatedAt:    now,
-		}
-
-		if err := ars.db.Create(&task).Error; err != nil {
-			logging.WithFields(map[string]interface{}{
-				"operation":   "create_approval_task",
-				"document_id": documentID,
-				"approver_id": approverID,
-			}).WithError(err).Error("failed_to_create_approval_task")
-			return err
-		}
-
-		// Create notification for approver
-		notification := models.Notification{
-			ID:           uuid.New().String(),
-			RecipientID:  approverID,
-			Type:         "approval_required",
-			DocumentID:   documentID,
-			DocumentType: docType,
-			Subject:      fmt.Sprintf("Approval Required: %s", docType),
-			Body:         fmt.Sprintf("A %s requires your approval at stage %d", docType, stage+1),
-			Sent:         false,
-			CreatedAt:    now,
-			UpdatedAt:    now,
-		}
-
-		if err := ars.db.Create(&notification).Error; err != nil {
-			logging.WithFields(map[string]interface{}{
-				"operation":   "create_approval_notification",
-				"document_id": documentID,
-				"approver_id": approverID,
-			}).WithError(err).Error("failed_to_create_approval_notification")
-		}
-	}
-
-	return nil
+	// This function is deprecated and should not be used
+	// The workflow system handles approval routing automatically
+	logging.WithFields(map[string]interface{}{
+		"operation":   "route_document_to_approvers",
+		"document_id": documentID,
+	}).Warn("deprecated_function_called_use_workflow_system_instead")
+	
+	return fmt.Errorf("deprecated: use WorkflowExecutionService.StartWorkflow() instead")
 }
 
 // getAmountRange categorizes amount into low, medium, high

@@ -14,9 +14,16 @@ export default async function DashboardPage() {
     redirect("/login");
   }
 
+  // Extract first name from full name
+  const fullName = String(
+    session?.user?.name || session?.user?.email || "User"
+  );
+  const firstName = fullName.split(" ")[0];
+
   return (
     <DashboardClient
       userId={String(session?.user?.id)}
+      userName={firstName}
       userRole={String(session?.user?.role)}
     />
   );

@@ -3,12 +3,14 @@ import { APIResponse } from "@/types";
 // Response helpers - these are pure utility functions, not server actions
 export function successResponse(
   data: any | null,
-  message: string = "Action completed successfully"
+  message: string = "Action completed successfully",
+  pagination?: any
 ): APIResponse {
   return {
     success: true,
     message,
     data,
+    pagination,
   };
 }
 

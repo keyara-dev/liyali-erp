@@ -1,37 +1,19 @@
-'use client'
+"use client";
 
-import { useEffect, useState } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { getTaskStats } from '@/app/_actions/tasks'
-import { TaskStats } from '@/types/tasks'
-import { AlertCircle, CheckCircle2, Clock, Zap } from 'lucide-react'
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useTaskStats } from "@/hooks/use-task-queries";
+import { AlertCircle, CheckCircle2, Clock, Zap } from "lucide-react";
 
 interface TaskStatsCardsProps {
-  userId: string
-  refreshTrigger: number
+  userId: string;
+  refreshTrigger: number;
 }
 
-export function TaskStatsCards({ userId, refreshTrigger }: TaskStatsCardsProps) {
-  const [stats, setStats] = useState<TaskStats | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-
-  useEffect(() => {
-    async function loadStats() {
-      setIsLoading(true)
-      try {
-        const result = await getTaskStats(userId)
-        if (result.success && result.data) {
-          setStats(result.data)
-        }
-      } catch (error) {
-        console.error('Failed to load task stats:', error)
-      } finally {
-        setIsLoading(false)
-      }
-    }
-
-    loadStats()
-  }, [userId, refreshTrigger])
+export function TaskStatsCards({
+  userId,
+  refreshTrigger,
+}: TaskStatsCardsProps) {
+  const { data: stats, isLoading } = useTaskStats(userId);
 
   if (isLoading || !stats) {
     return (
@@ -39,15 +21,15 @@ export function TaskStatsCards({ userId, refreshTrigger }: TaskStatsCardsProps) 
         {[...Array(4)].map((_, i) => (
           <Card key={i}>
             <CardHeader className="pb-2">
-              <div className="h-4 bg-muted rounded w-20" />
+              <div className="h-4 bg-muted rounded w-20 animate-pulse" />
             </CardHeader>
             <CardContent>
-              <div className="h-8 bg-muted rounded w-12" />
+              <div className="h-8 bg-muted rounded w-12 animate-pulse" />
             </CardContent>
           </Card>
         ))}
       </div>
-    )
+    );
   }
 
   return (
@@ -83,7 +65,9 @@ export function TaskStatsCards({ userId, refreshTrigger }: TaskStatsCardsProps) 
           <AlertCircle className="h-4 w-4 text-red-600" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold text-red-600">{stats.overdueTasks}</div>
+          <div className="text-2xl font-bold text-red-600">
+            {stats.overdueTasks}
+          </div>
           <p className="text-xs text-muted-foreground">Past due date</p>
         </CardContent>
       </Card>
@@ -95,10 +79,12 @@ export function TaskStatsCards({ userId, refreshTrigger }: TaskStatsCardsProps) 
           <CheckCircle2 className="h-4 w-4 text-green-600" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold text-green-600">{stats.completedTasks}</div>
+          <div className="text-2xl font-bold text-green-600">
+            {stats.completedTasks}
+          </div>
           <p className="text-xs text-muted-foreground">Finished tasks</p>
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }

@@ -398,11 +398,15 @@ func (h *NotificationHandler) GetRecentNotifications(c *fiber.Ctx) error {
 			"type":         notification.Type,
 			"subject":      notification.Subject,
 			"body":         notification.Body,
+			"message":      notification.Body, // Frontend expects 'message' field
 			"documentId":   notification.DocumentID,
 			"documentType": notification.DocumentType,
+			"entityId":     notification.EntityID,     // Frontend expects entityId
+			"entityType":   notification.EntityType,   // Frontend expects entityType
 			"isRead":       notification.Sent,
 			"readAt":       notification.SentAt,
 			"createdAt":    notification.CreatedAt,
+			"updatedAt":    notification.UpdatedAt,
 			"importance":   "MEDIUM",
 		}
 

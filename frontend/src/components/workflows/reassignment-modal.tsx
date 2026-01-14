@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { ApprovalTask } from "@/types";
 import { useGetUsers } from "@/hooks/use-users-query";
 import {
   Dialog,
@@ -12,29 +11,32 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import {
-  Loader2,
-  AlertCircle,
-  User,
-  Mail,
-  Building2,
-} from "lucide-react";
+import { Loader2, AlertCircle } from "lucide-react";
+import { SearchSelectField } from "@/components/ui/search-select-field";
+import { capitalize } from "@/lib/utils";
+
+// Define WorkflowTask interface locally
+interface WorkflowTask {
+  id: string;
+  status: string;
+  claimedBy?: string;
+  assignedRole?: string;
+  assignedUserId?: string;
+  stageName?: string;
+  claimExpiry?: string;
+  entityType?: string;
+  entityId?: string;
+  documentType?: string;
+  documentId?: string;
+}
 
 export interface ReassignmentModalProps {
-  task: ApprovalTask;
+  task: WorkflowTask;
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   onReassign: (userId: string, reason: string) => Promise<void>;
@@ -50,7 +52,6 @@ export function ReassignmentModal({
   const [reason, setReason] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
 
   const { data: usersData } = useGetUsers();
 
@@ -58,20 +59,20 @@ export function ReassignmentModal({
   const availableUsers = useMemo(() => {
     if (!usersData) return [];
     return usersData.filter(
-      (u: any) => u.id !== task.approverUserId
+      (u: any) => u.id !== task.assignedUserId && u.id !== task.claimedBy
     );
-  }, [usersData, task.approverUserId]);
+  }, [usersData, task.assignedUserId, task.claimedBy]);
 
-  // Filter by search query
-  const filteredUsers = useMemo(() => {
-    if (!searchQuery) return availableUsers;
-    const query = searchQuery.toLowerCase();
-    return availableUsers.filter(
-      (u) =>
-        u.name?.toLowerCase().includes(query) ||
-        u.email?.toLowerCase().includes(query)
-    );
-  }, [availableUsers, searchQuery]);
+  // Transform users for SearchSelectField
+  const userOptions = useMemo(() => {
+    return availableUsers.map((user: any) => ({
+      id: user.id,
+      name: user.name || user.email,
+      email: user.email,
+      role: user.role,
+      avatar: user.avatar,
+    }));
+  }, [availableUsers]);
 
   const selectedUser = availableUsers.find((u) => u.id === selectedUserId);
 
@@ -94,12 +95,9 @@ export function ReassignmentModal({
       // Reset form
       setSelectedUserId("");
       setReason("");
-      setSearchQuery("");
       onOpenChange(false);
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to reassign task"
-      );
+      setError(err instanceof Error ? err.message : "Failed to reassign task");
     } finally {
       setIsLoading(false);
     }
@@ -121,14 +119,20 @@ export function ReassignmentModal({
           <div className="p-3 bg-muted rounded-lg text-sm">
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <span className="text-muted-foreground font-medium">Entity:</span>
+                <span className="text-muted-foreground font-medium">
+                  Entity:
+                </span>
                 <p className="font-mono">
-                  {task.entityType} #{task.entityNumber}
+                  {capitalize(
+                    task?.entityType || task?.documentType || "Document"
+                  )}
                 </p>
               </div>
               <div>
-                <span className="text-muted-foreground font-medium">Current Assignee:</span>
-                <p>{task.approverName || "Unknown"}</p>
+                <span className="text-muted-foreground font-medium">
+                  Stage:
+                </span>
+                <p>{capitalize(task.stageName || "Unknown")}</p>
               </div>
             </div>
           </div>
@@ -141,46 +145,20 @@ export function ReassignmentModal({
             </Alert>
           )}
 
-          {/* User Selection */}
+          {/* User Selection with SearchSelectField */}
           <div className="space-y-2">
-            <Label>Select New Approver</Label>
-            <Input
+            <SearchSelectField
+              label="Select New Approver"
               placeholder="Search by name or email..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              disabled={isLoading}
-            />
-
-            <Select
               value={selectedUserId}
               onValueChange={setSelectedUserId}
-              disabled={isLoading}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Choose approver..." />
-              </SelectTrigger>
-              <SelectContent>
-                {filteredUsers.length === 0 ? (
-                  <div className="p-4 text-center text-sm text-muted-foreground">
-                    No users available
-                  </div>
-                ) : (
-                  filteredUsers.map((user) => (
-                    <SelectItem key={user.id} value={user.id}>
-                      <div className="flex items-center gap-2">
-                        <Avatar className="h-5 w-5">
-                          <AvatarImage src={user.avatar} />
-                          <AvatarFallback>
-                            {user.name?.charAt(0).toUpperCase()}
-                          </AvatarFallback>
-                        </Avatar>
-                        <span>{user.name || user.email}</span>
-                      </div>
-                    </SelectItem>
-                  ))
-                )}
-              </SelectContent>
-            </Select>
+              options={userOptions}
+              isDisabled={isLoading}
+              onModal={true}
+              classNames={{
+                wrapper: "w-full max-w-full",
+              }}
+            />
           </div>
 
           {/* Selected User Details */}
@@ -195,7 +173,9 @@ export function ReassignmentModal({
                 </Avatar>
                 <div className="flex-1 min-w-0">
                   <h3 className="font-semibold text-sm">{selectedUser.name}</h3>
-                  <p className="text-xs text-muted-foreground">{selectedUser.email}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {selectedUser.email}
+                  </p>
                 </div>
               </div>
 

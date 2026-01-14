@@ -29,15 +29,17 @@ export function POApprovalClient({
   const { data: po, isLoading } = usePurchaseOrderById(poId);
 
   // Fetch approval tasks to find the one for this PO
-  const { data: approvalTasks = [] } = useApprovalTasks(
+  const { data: approvalData } = useApprovalTasks(
     { documentType: "PURCHASE_ORDER" },
     1,
     100
   );
 
+  const approvalTasks = approvalData?.data || [];
+
   // Find the approval task for this PO
   const approvalTask = approvalTasks.find(
-    (task) => task.documentId === poId
+    (task: any) => task.documentId === poId
   ) as ApprovalTask | undefined;
 
   const handleBack = () => {

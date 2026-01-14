@@ -1,65 +1,71 @@
-'use client'
+"use client";
 
-import { useState } from 'react'
-import { Button } from '@/components/ui/button'
-import { Textarea } from '@/components/ui/textarea'
-import { Label } from '@/components/ui/label'
-import { SignatureCanvas } from '@/components/ui/signature-canvas'
-import { Upload, Send, XCircle, Loader2 } from 'lucide-react'
-import { useApprovalTasks, useApproveTask, useRejectTask } from '@/hooks/use-approval-workflow'
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { SignatureCanvas } from "@/components/ui/signature-canvas";
+import { Upload, Send, XCircle, Loader2 } from "lucide-react";
+import {
+  useApprovalTasks,
+  useApproveTask,
+  useRejectTask,
+} from "@/hooks/use-approval-workflow";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog'
+} from "@/components/ui/dialog";
 
 interface GRNApprovalActionPanelProps {
-  grnId: string
-  onApprovalComplete: () => void
+  grnId: string;
+  onApprovalComplete: () => void;
 }
 
 export function GRNApprovalActionPanel({
   grnId,
   onApprovalComplete,
 }: GRNApprovalActionPanelProps) {
-  const [action, setAction] = useState<'approve' | 'reject' | null>(null)
-  const [comments, setComments] = useState('')
-  const [remarks, setRemarks] = useState('')
-  const [signature, setSignature] = useState('')
-  const [showAttachmentDialog, setShowAttachmentDialog] = useState(false)
+  const [action, setAction] = useState<"approve" | "reject" | null>(null);
+  const [comments, setComments] = useState("");
+  const [remarks, setRemarks] = useState("");
+  const [signature, setSignature] = useState("");
+  const [showAttachmentDialog, setShowAttachmentDialog] = useState(false);
 
   // Fetch approval tasks for GRNs
-  const { data: approvalTasks } = useApprovalTasks(
-    { documentType: 'GRN', assignedToMe: true },
+  const { data: approvalData } = useApprovalTasks(
+    { documentType: "GRN", assignedToMe: true },
     1,
     100
-  )
+  );
+
+  const approvalTasks = approvalData?.data || [];
 
   // Find the approval task for this GRN
-  const task = approvalTasks?.find((t) => t.documentId === grnId)
-  const taskId = task?.id || ''
+  const task = approvalTasks.find((t: any) => t.documentId === grnId);
+  const taskId = task?.id || "";
 
   const approveMutation = useApproveTask(taskId, () => {
-    setComments('')
-    setRemarks('')
-    setSignature('')
-    setAction(null)
-    onApprovalComplete()
-  })
+    setComments("");
+    setRemarks("");
+    setSignature("");
+    setAction(null);
+    onApprovalComplete();
+  });
 
   const rejectMutation = useRejectTask(taskId, () => {
-    setComments('')
-    setRemarks('')
-    setSignature('')
-    setAction(null)
-    onApprovalComplete()
-  })
+    setComments("");
+    setRemarks("");
+    setSignature("");
+    setAction(null);
+    onApprovalComplete();
+  });
 
   const handleApprove = async () => {
     if (!signature) {
-      return
+      return;
     }
 
     try {
@@ -67,15 +73,15 @@ export function GRNApprovalActionPanel({
         comments,
         signature,
         stageNumber: task?.stage || 1,
-      })
+      });
     } catch (error) {
-      console.error('Approval error:', error)
+      console.error("Approval error:", error);
     }
-  }
+  };
 
   const handleReject = async () => {
     if (!remarks.trim()) {
-      return
+      return;
     }
 
     try {
@@ -83,13 +89,13 @@ export function GRNApprovalActionPanel({
         remarks,
         comments: remarks,
         signature,
-      })
+      });
     } catch (error) {
-      console.error('Rejection error:', error)
+      console.error("Rejection error:", error);
     }
-  }
+  };
 
-  const isLoading = approveMutation.isPending || rejectMutation.isPending
+  const isLoading = approveMutation.isPending || rejectMutation.isPending;
 
   if (action === null) {
     return (
@@ -97,7 +103,7 @@ export function GRNApprovalActionPanel({
         <h3 className="font-semibold text-sm">Action Required</h3>
         <div className="grid grid-cols-2 gap-2">
           <Button
-            onClick={() => setAction('approve')}
+            onClick={() => setAction("approve")}
             className="bg-green-600 hover:bg-green-700 gap-2"
             disabled={isLoading || !task}
           >
@@ -105,7 +111,7 @@ export function GRNApprovalActionPanel({
             Approve
           </Button>
           <Button
-            onClick={() => setAction('reject')}
+            onClick={() => setAction("reject")}
             variant="destructive"
             className="gap-2"
             disabled={isLoading || !task}
@@ -120,25 +126,25 @@ export function GRNApprovalActionPanel({
           </p>
         )}
       </div>
-    )
+    );
   }
 
   return (
     <div className="space-y-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
       <div>
         <h3 className="font-semibold mb-2">
-          {action === 'approve'
-            ? 'Approve Goods Received Note'
-            : 'Reject Goods Received Note'}
+          {action === "approve"
+            ? "Approve Goods Received Note"
+            : "Reject Goods Received Note"}
         </h3>
         <p className="text-sm text-gray-600 mb-4">
-          {action === 'approve'
-            ? 'Add a signature and optional comments to approve this GRN'
-            : 'Provide remarks explaining the rejection reason for this GRN'}
+          {action === "approve"
+            ? "Add a signature and optional comments to approve this GRN"
+            : "Provide remarks explaining the rejection reason for this GRN"}
         </p>
       </div>
 
-      {action === 'approve' ? (
+      {action === "approve" ? (
         <>
           <div className="space-y-2">
             <Label htmlFor="comments">Comments (Optional)</Label>
@@ -160,9 +166,7 @@ export function GRNApprovalActionPanel({
         </>
       ) : (
         <div className="space-y-2">
-          <Label htmlFor="remarks">
-            Remarks *
-          </Label>
+          <Label htmlFor="remarks">Remarks *</Label>
           <Textarea
             id="remarks"
             placeholder="Required: Please explain why this GRN is being rejected..."
@@ -173,7 +177,8 @@ export function GRNApprovalActionPanel({
             disabled={isLoading}
           />
           <p className="text-xs text-muted-foreground">
-            Detailed remarks are required for rejection to help understand the issues
+            Detailed remarks are required for rejection to help understand the
+            issues
           </p>
         </div>
       )}
@@ -191,32 +196,32 @@ export function GRNApprovalActionPanel({
 
       <div className="flex gap-2">
         <Button
-          onClick={action === 'approve' ? handleApprove : handleReject}
+          onClick={action === "approve" ? handleApprove : handleReject}
           disabled={
             isLoading ||
-            (action === 'reject' && !remarks.trim()) ||
-            (action === 'approve' && !signature)
+            (action === "reject" && !remarks.trim()) ||
+            (action === "approve" && !signature)
           }
           className={
-            action === 'approve'
-              ? 'bg-green-600 hover:bg-green-700 flex-1'
-              : 'bg-red-600 hover:bg-red-700 flex-1'
+            action === "approve"
+              ? "bg-green-600 hover:bg-green-700 flex-1"
+              : "bg-red-600 hover:bg-red-700 flex-1"
           }
         >
           {isLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
           {isLoading
-            ? 'Processing...'
-            : action === 'approve'
-            ? 'Confirm Approval'
-            : 'Confirm Rejection'}
+            ? "Processing..."
+            : action === "approve"
+              ? "Confirm Approval"
+              : "Confirm Rejection"}
         </Button>
         <Button
           variant="outline"
           onClick={() => {
-            setAction(null)
-            setComments('')
-            setRemarks('')
-            setSignature('')
+            setAction(null);
+            setComments("");
+            setRemarks("");
+            setSignature("");
           }}
           disabled={isLoading}
         >
@@ -225,7 +230,10 @@ export function GRNApprovalActionPanel({
       </div>
 
       {/* Attachment Dialog */}
-      <Dialog open={showAttachmentDialog} onOpenChange={setShowAttachmentDialog}>
+      <Dialog
+        open={showAttachmentDialog}
+        onOpenChange={setShowAttachmentDialog}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Add Supporting Documents</DialogTitle>
@@ -243,12 +251,15 @@ export function GRNApprovalActionPanel({
                 PDF, DOC, XLS up to 10MB
               </p>
             </div>
-            <Button onClick={() => setShowAttachmentDialog(false)} className="w-full">
+            <Button
+              onClick={() => setShowAttachmentDialog(false)}
+              className="w-full"
+            >
               Continue
             </Button>
           </div>
         </DialogContent>
       </Dialog>
     </div>
-  )
+  );
 }

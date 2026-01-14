@@ -35,11 +35,13 @@ export function ApprovalActionPanel({
   const [showAttachmentDialog, setShowAttachmentDialog] = useState(false);
 
   // Fetch approval tasks for this requisition
-  const { data: approvalTasks } = useApprovalTasks(
+  const { data: approvalData } = useApprovalTasks(
     { documentType: "REQUISITION", assignedToMe: true },
     1,
     100
   );
+
+  const approvalTasks = approvalData?.data || [];
 
   // Find the approval task for this requisition
   const task = approvalTasks?.find(

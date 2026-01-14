@@ -308,6 +308,13 @@ func (s *WorkflowExecutionService) ApproveWorkflowTaskWithVersion(ctx context.Co
 			return fmt.Errorf("failed to update stage history: %w", err)
 		}
 
+		// Add action history entry for this stage approval
+		actionMessage := fmt.Sprintf("Stage %d (%s) approved by %s", task.StageNumber, task.StageName, user.Name)
+		if err := s.addActionHistoryEntry(tx, assignment.EntityType, assignment.EntityID, userID, "STAGE_APPROVED", actionMessage); err != nil {
+			// Log error but don't fail the approval
+			fmt.Printf("Warning: failed to add action history entry for stage approval: %v\n", err)
+		}
+
 		// Check if this is the last stage
 		workflowCompleted := task.StageNumber >= len(stages)
 		

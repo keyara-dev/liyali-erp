@@ -32,7 +32,13 @@ export type ActivityAction =
   | "deleted";
 
 // Activity Execution Status
-export type ExecutionStatus = "success" | "failed" | "pending";
+export type ExecutionStatus =
+  | "success"
+  | "failed"
+  | "pending"
+  | "claimed"
+  | "completed"
+  | "in_progress";
 
 // Approval Status
 export type ApprovalStatus = "approved" | "rejected" | "pending";
@@ -160,6 +166,18 @@ export const EXECUTION_STATUS_CONFIG: Record<
   pending: {
     variant: "info",
     label: "Pending",
+  },
+  claimed: {
+    variant: "warning",
+    label: "Claimed",
+  },
+  completed: {
+    variant: "success",
+    label: "Completed",
+  },
+  in_progress: {
+    variant: "warning",
+    label: "In Progress",
   },
 };
 

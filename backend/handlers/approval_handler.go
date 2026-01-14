@@ -14,6 +14,7 @@ import (
 	"github.com/liyali/liyali-gateway/utils"
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
+	"gorm.io/datatypes"
 	"gorm.io/gorm"
 )
 
@@ -86,6 +87,113 @@ type BulkOperationResponse struct {
 	Errors       []string `json:"errors,omitempty"`
 }
 
+// GetTaskStats retrieves task statistics for the current user
+// GET /api/v1/approvals/stats
+func (h *ApprovalHandler) GetTaskStats(c *fiber.Ctx) error {
+	db := config.DB
+	organizationID := c.Locals("organizationID").(string)
+	userID := c.Locals("userID").(string)
+
+	// Get user role for role-based filtering
+	var user models.User
+	if err := db.Where("id = ?", userID).First(&user).Error; err != nil {
+		return utils.SendUnauthorizedError(c, "User not found")
+	}
+
+	// Base query for tasks assigned to user or their role
+	baseQuery := db.Table("workflow_tasks").
+		Where("organization_id = ?", organizationID).
+		Where("(assigned_user_id = ? OR assigned_role = ?)", userID, user.Role)
+
+	// Count total tasks
+	var totalTasks int64
+	baseQuery.Count(&totalTasks)
+
+	// Count pending tasks
+	var pendingTasks int64
+	db.Table("workflow_tasks").
+		Where("organization_id = ?", organizationID).
+		Where("(assigned_user_id = ? OR assigned_role = ?)", userID, user.Role).
+		Where("status = ?", "pending").
+		Count(&pendingTasks)
+
+	// Count completed tasks
+	var completedTasks int64
+	db.Table("workflow_tasks").
+		Where("organization_id = ?", organizationID).
+		Where("(assigned_user_id = ? OR assigned_role = ?)", userID, user.Role).
+		Where("status IN (?)", []string{"completed", "approved"}).
+		Count(&completedTasks)
+
+	// Count overdue tasks (pending tasks past due date)
+	var overdueTasks int64
+	db.Table("workflow_tasks").
+		Where("organization_id = ?", organizationID).
+		Where("(assigned_user_id = ? OR assigned_role = ?)", userID, user.Role).
+		Where("status = ?", "pending").
+		Where("due_date < ?", time.Now()).
+		Count(&overdueTasks)
+
+	// Count high priority tasks (high or urgent)
+	var highPriorityTasks int64
+	db.Table("workflow_tasks").
+		Where("organization_id = ?", organizationID).
+		Where("(assigned_user_id = ? OR assigned_role = ?)", userID, user.Role).
+		Where("priority IN (?)", []string{"high", "urgent"}).
+		Where("status = ?", "pending").
+		Count(&highPriorityTasks)
+
+	// Count by entity type
+	type EntityTypeCount struct {
+		EntityType string
+		Count      int64
+	}
+	var byType []EntityTypeCount
+	db.Table("workflow_tasks").
+		Select("entity_type, COUNT(*) as count").
+		Where("organization_id = ?", organizationID).
+		Where("(assigned_user_id = ? OR assigned_role = ?)", userID, user.Role).
+		Where("status = ?", "pending").
+		Group("entity_type").
+		Scan(&byType)
+
+	byTypeMap := make(map[string]int64)
+	for _, item := range byType {
+		byTypeMap[item.EntityType] = item.Count
+	}
+
+	// Count by priority
+	type PriorityCount struct {
+		Priority string
+		Count    int64
+	}
+	var byPriority []PriorityCount
+	db.Table("workflow_tasks").
+		Select("priority, COUNT(*) as count").
+		Where("organization_id = ?", organizationID).
+		Where("(assigned_user_id = ? OR assigned_role = ?)", userID, user.Role).
+		Where("status = ?", "pending").
+		Group("priority").
+		Scan(&byPriority)
+
+	byPriorityMap := make(map[string]int64)
+	for _, item := range byPriority {
+		byPriorityMap[strings.ToUpper(item.Priority)] = item.Count
+	}
+
+	stats := map[string]interface{}{
+		"totalTasks":         totalTasks,
+		"pendingTasks":       pendingTasks,
+		"completedTasks":     completedTasks,
+		"overdueTasks":       overdueTasks,
+		"highPriorityTasks":  highPriorityTasks,
+		"byType":             byTypeMap,
+		"byPriority":         byPriorityMap,
+	}
+
+	return utils.SendSimpleSuccess(c, stats, "Task statistics retrieved successfully")
+}
+
 // GetApprovalTasks retrieves workflow tasks with pagination and filtering
 func (h *ApprovalHandler) GetApprovalTasks(c *fiber.Ctx) error {
 	db := config.DB
@@ -97,6 +205,7 @@ func (h *ApprovalHandler) GetApprovalTasks(c *fiber.Ctx) error {
 	limit, _ := strconv.Atoi(c.Query("limit", "20"))
 	status := c.Query("status", "")
 	documentType := c.Query("document_type", "")
+	priority := c.Query("priority", "")
 	assignedToMe := c.Query("assigned_to_me", "false") == "true"
 
 	if page < 1 {
@@ -123,10 +232,13 @@ func (h *ApprovalHandler) GetApprovalTasks(c *fiber.Ctx) error {
 	}
 
 	if status != "" {
-		query = query.Where("status = ?", status)
+		query = query.Where("LOWER(status) = LOWER(?)", status)
 	}
 	if documentType != "" {
-		query = query.Where("entity_type = ?", documentType)
+		query = query.Where("LOWER(entity_type) = LOWER(?)", documentType)
+	}
+	if priority != "" {
+		query = query.Where("LOWER(priority) = LOWER(?)", priority)
 	}
 
 	// Get total count
@@ -476,10 +588,11 @@ func (h *ApprovalHandler) RejectTask(c *fiber.Ctx) error {
 	})
 }
 
-// ReassignTask reassigns task to different approver
+// ReassignTask reassigns workflow task to different approver
 func (h *ApprovalHandler) ReassignTask(c *fiber.Ctx) error {
 	taskID := c.Params("id")
-	organizationID := c.Locals("organizationID").(string) // Fixed: was "organizationId"
+	organizationID := c.Locals("organizationID").(string)
+	userID := c.Locals("userID").(string)
 
 	var req ReassignTaskRequest
 	if err := c.BodyParser(&req); err != nil {
@@ -499,12 +612,12 @@ func (h *ApprovalHandler) ReassignTask(c *fiber.Ctx) error {
 
 	db := config.DB
 
-	// Get the task
-	var task models.ApprovalTask
+	// Get the workflow task
+	var task models.WorkflowTask
 	if err := db.Where("id = ? AND organization_id = ?", taskID, organizationID).First(&task).Error; err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(types.ErrorResponse{
 			Error:   "Task not found",
-			Message: "Approval task not found",
+			Message: "Workflow task not found",
 		})
 	}
 
@@ -516,23 +629,79 @@ func (h *ApprovalHandler) ReassignTask(c *fiber.Ctx) error {
 		})
 	}
 
-	// Update task assignment
-	task.AssignedTo = req.NewUserID
-	if req.Reason != "" {
-		task.Comments = &req.Reason
+	// Check if user is admin (only admins can reassign tasks)
+	var user models.User
+	if err := db.Where("id = ?", userID).First(&user).Error; err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(types.ErrorResponse{
+			Error:   "User not found",
+			Message: "Current user not found",
+		})
 	}
 
+	if user.Role != "admin" {
+		return c.Status(fiber.StatusForbidden).JSON(types.ErrorResponse{
+			Error:   "Insufficient permissions",
+			Message: "Only administrators can reassign tasks",
+		})
+	}
+
+	// Validate that the new user exists and is active
+	var newUser models.User
+	if err := db.Where("id = ? AND active = ? AND current_organization_id = ?", req.NewUserID, true, organizationID).First(&newUser).Error; err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(types.ErrorResponse{
+			Error:   "Invalid assignee",
+			Message: "Target user not found or inactive",
+		})
+	}
+
+	// Update task assignment - clear any existing claim and assign to new user
+	task.AssignedUserID = &req.NewUserID
+	task.ClaimedBy = nil
+	task.ClaimedAt = nil
+	task.ClaimExpiry = nil
+	task.Version += 1 // Increment version for optimistic locking
+	task.UpdatedBy = &userID
+
 	if err := db.Save(&task).Error; err != nil {
-		log.Printf("Error reassigning approval task: %v", err)
+		log.Printf("Error reassigning workflow task: %v", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(types.ErrorResponse{
 			Error:   "Database error",
 			Message: "Failed to reassign task",
 		})
 	}
 
+	// Create audit log entry
+	changes := datatypes.NewJSONType(map[string]interface{}{
+		"previousAssignee": task.AssignedUserID,
+		"newAssignee":      req.NewUserID,
+		"reason":           req.Reason,
+		"reassignedBy":     user.Name,
+		"reassignedTo":     newUser.Name,
+	})
+	
+	auditLog := models.AuditLog{
+		ID:           fmt.Sprintf("audit-%d", time.Now().UnixNano()),
+		DocumentID:   task.EntityID,
+		DocumentType: task.EntityType,
+		UserID:       userID,
+		Action:       "reassign",
+		Changes:      changes,
+		CreatedAt:    time.Now(),
+	}
+
+	if err := db.Create(&auditLog).Error; err != nil {
+		log.Printf("Error creating audit log for task reassignment: %v", err)
+		// Don't fail the request for audit log errors
+	}
+
 	return c.Status(fiber.StatusOK).JSON(types.SuccessResponse{
 		Message: "Task reassigned successfully",
-		Data:    task,
+		Data: map[string]interface{}{
+			"taskId":        task.ID,
+			"newAssignee":   newUser.Name,
+			"reassignedBy":  user.Name,
+			"reason":        req.Reason,
+		},
 	})
 }
 
@@ -566,13 +735,14 @@ func (h *ApprovalHandler) GetApprovalHistory(c *fiber.Ctx) error {
 		actualDocumentID = documentID
 	}
 
-	var history []models.ApprovalTask
-	if err := db.Where("document_id = ? AND organization_id = ?", actualDocumentID, organizationID).
+	// Get workflow tasks history instead of legacy approval tasks
+	var history []models.WorkflowTask
+	if err := db.Where("entity_id = ? AND organization_id = ?", actualDocumentID, organizationID).
 		Order("created_at ASC").Find(&history).Error; err != nil {
-		log.Printf("Error fetching approval history: %v", err)
+		log.Printf("Error fetching workflow task history: %v", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(types.ErrorResponse{
 			Error:   "Database error",
-			Message: "Failed to fetch approval history",
+			Message: "Failed to fetch workflow task history",
 		})
 	}
 
@@ -660,7 +830,8 @@ func (h *ApprovalHandler) BulkReject(c *fiber.Ctx) error {
 // BulkReassign reassigns multiple tasks at once
 // POST /api/v1/approvals/bulk/reassign
 func (h *ApprovalHandler) BulkReassign(c *fiber.Ctx) error {
-	organizationID := c.Locals("organizationID").(string) // Fixed: was "organizationId"
+	organizationID := c.Locals("organizationID").(string)
+	userID := c.Locals("userID").(string)
 
 	var req BulkReassignRequest
 	if err := c.BodyParser(&req); err != nil {
@@ -678,8 +849,8 @@ func (h *ApprovalHandler) BulkReassign(c *fiber.Ctx) error {
 
 	// Process each task
 	for _, taskID := range req.TaskIDs {
-		// Get the task
-		var task models.ApprovalTask
+		// Get the workflow task
+		var task models.WorkflowTask
 		if err := db.Where("id = ? AND organization_id = ?", taskID, organizationID).First(&task).Error; err != nil {
 			errors = append(errors, "Task "+taskID+": not found")
 			continue
@@ -692,10 +863,8 @@ func (h *ApprovalHandler) BulkReassign(c *fiber.Ctx) error {
 		}
 
 		// Update task assignment
-		task.AssignedTo = req.NewUserID
-		if req.Reason != "" {
-			task.Comments = &req.Reason
-		}
+		task.AssignedUserID = &req.NewUserID
+		task.UpdatedBy = &userID
 
 		if err := db.Save(&task).Error; err != nil {
 			errors = append(errors, "Task "+taskID+": failed to reassign")
@@ -733,10 +902,10 @@ func (h *ApprovalHandler) GetOverdueTasks(c *fiber.Ctx) error {
 
 	db := config.DB
 
-	// Get overdue tasks (tasks created more than 7 days ago and still pending)
-	var tasks []models.ApprovalTask
+	// Get overdue workflow tasks (tasks with due_date in the past and still pending)
+	var tasks []models.WorkflowTask
 	if err := db.Where("organization_id = ? AND status = ? AND created_at < ?", 
-		organizationID, "pending", time.Now().AddDate(0, 0, -7)).
+		organizationID, "pending", time.Now()).
 		Offset(offset).Limit(limit).Order("created_at ASC").Find(&tasks).Error; err != nil {
 		log.Printf("Error fetching overdue tasks: %v", err)
 		return utils.SendInternalError(c, "Failed to retrieve overdue tasks", err)
@@ -744,8 +913,8 @@ func (h *ApprovalHandler) GetOverdueTasks(c *fiber.Ctx) error {
 
 	// Get total count
 	var total int64
-	db.Model(&models.ApprovalTask{}).Where("organization_id = ? AND status = ? AND created_at < ?", 
-		organizationID, "pending", time.Now().AddDate(0, 0, -7)).Count(&total)
+	db.Model(&models.WorkflowTask{}).Where("organization_id = ? AND status = ? AND due_date < ?", 
+		organizationID, "pending", time.Now()).Count(&total)
 
 	return utils.SendPaginatedSuccess(c, tasks, "Overdue tasks retrieved successfully", page, limit, total)
 }

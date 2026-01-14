@@ -15,10 +15,10 @@ import {
 } from "lucide-react";
 import { ActionHistoryEntry, ApprovalRecord } from "@/types";
 import { WorkflowDocument } from "@/types/workflow";
-import { ApprovalActionPanel } from "./approval-action-panel";
+import { ApprovalActionPanel } from "./requisition-approval-panel";
 import { useApprovalPanelData } from "@/hooks/use-approval-history";
 
-interface UnifiedHistoryPanelProps {
+interface ApprovalHistoryPanelProps {
   requisitionId: string;
   requisition: WorkflowDocument;
   userRole: string;
@@ -26,13 +26,13 @@ interface UnifiedHistoryPanelProps {
   approvalChain?: ApprovalRecord[];
 }
 
-export function UnifiedHistoryPanel({
+export function ApprovalHistoryPanel({
   requisitionId,
   requisition,
   userRole,
   actionHistory,
   approvalChain,
-}: UnifiedHistoryPanelProps) {
+}: ApprovalHistoryPanelProps) {
   const {
     approvalHistory,
     availableApprovers,

@@ -25,7 +25,7 @@ import {
 } from "@/hooks/use-requisition-queries";
 import { useRequisitionStorage } from "@/hooks/use-requisition-storage";
 import { Requisition } from "@/types/requisition";
-import { UnifiedHistoryPanel } from "./unified-history-panel";
+import { ApprovalHistoryPanel } from "./approval-history-panel";
 import { CreateRequisitionDialog } from "./create-requisition-dialog";
 import { DocumentLinks } from "@/components/document-links";
 import { WorkflowDocument } from "@/types";
@@ -234,9 +234,9 @@ export function RequisitionDetailClient({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1  gap-6">
         {/* Main Content */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className="  space-y-6">
           {/* Requisition Details */}
           <div className="gradient-primary border-0 overflow-hidden rounded-lg p-6">
             <h2 className="text-lg font-semibold mb-6 text-primary-foreground">
@@ -737,7 +737,7 @@ export function RequisitionDetailClient({
           </Card>
 
           {/* Action History Panel */}
-          <UnifiedHistoryPanel
+          <ApprovalHistoryPanel
             requisitionId={requisition?.id || requisitionId}
             requisition={requisition as any}
             userRole={userRole}

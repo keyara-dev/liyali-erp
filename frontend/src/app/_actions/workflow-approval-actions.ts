@@ -29,6 +29,7 @@ export async function getApprovalTasks(
   filters?: {
     status?: "PENDING" | "APPROVED" | "REJECTED" | "CANCELLED";
     documentType?: string;
+    priority?: string;
     assignedToMe?: boolean;
   },
   page: number = 1,
@@ -44,6 +45,9 @@ export async function getApprovalTasks(
   if (filters?.documentType) {
     params.set("document_type", filters.documentType);
   }
+  if (filters?.priority) {
+    params.set("priority", filters.priority);
+  }
   if (filters?.assignedToMe) {
     params.set("assigned_to_me", "true");
   }
@@ -58,7 +62,8 @@ export async function getApprovalTasks(
 
     return successResponse(
       response.data?.data || [],
-      "Approval tasks retrieved successfully"
+      "Approval tasks retrieved successfully",
+      response.data?.pagination // Pass through pagination metadata
     );
   } catch (error: any) {
     return handleError(error, "GET", url);
@@ -248,12 +253,37 @@ export async function reassignApprovalTask(
       method: "POST",
       url,
       data: {
-        newApproverId: data.newApproverId,
+        newUserId: data.newApproverId, // Backend expects newUserId
         reason: data.reason,
       },
     });
 
     return successResponse(response.data?.data, "Task reassigned successfully");
+  } catch (error: any) {
+    return handleError(error, "POST", url);
+  }
+}
+
+/**
+ * Claim a workflow task
+ * Calls: POST /api/v1/approvals/tasks/{id}/claim
+ */
+export async function claimWorkflowTask(
+  taskId: string
+): Promise<APIResponse<any>> {
+  if (!taskId) {
+    return badRequestResponse("Task ID is required");
+  }
+
+  const url = `/api/v1/approvals/tasks/${taskId}/claim`;
+
+  try {
+    const response = await authenticatedApiClient({
+      method: "POST",
+      url,
+    });
+
+    return successResponse(response.data?.data, "Task claimed successfully");
   } catch (error: any) {
     return handleError(error, "POST", url);
   }

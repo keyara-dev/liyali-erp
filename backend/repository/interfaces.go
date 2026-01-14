@@ -153,23 +153,6 @@ type VendorRepositoryInterface interface {
 	Deactivate(ctx context.Context, id string) error
 }
 
-// ApprovalTaskRepositoryInterface defines the interface for approval task repository operations
-type ApprovalTaskRepositoryInterface interface {
-	Create(ctx context.Context, task *models.ApprovalTask) (*models.ApprovalTask, error)
-	GetByID(ctx context.Context, id string) (*models.ApprovalTask, error)
-	Update(ctx context.Context, task *models.ApprovalTask) (*models.ApprovalTask, error)
-	Delete(ctx context.Context, id string) error
-	List(ctx context.Context, organizationID string, filters map[string]interface{}, limit, offset int) ([]*models.ApprovalTask, error)
-	ListByUser(ctx context.Context, userID string, filters map[string]interface{}, limit, offset int) ([]*models.ApprovalTask, error)
-	ListPending(ctx context.Context, organizationID string, limit, offset int) ([]*models.ApprovalTask, error)
-	ListOverdue(ctx context.Context, organizationID string, limit, offset int) ([]*models.ApprovalTask, error)
-	Count(ctx context.Context, organizationID string, filters map[string]interface{}) (int64, error)
-	CountByUser(ctx context.Context, userID string, filters map[string]interface{}) (int64, error)
-	UpdateStatus(ctx context.Context, id, status string) error
-	UpdateStage(ctx context.Context, id string, stage int) error
-	Reassign(ctx context.Context, id, newAssigneeID string) error
-}
-
 // NotificationRepositoryInterface defines the interface for notification repository operations
 type NotificationRepositoryInterface interface {
 	Create(ctx context.Context, notification *models.Notification) (*models.Notification, error)

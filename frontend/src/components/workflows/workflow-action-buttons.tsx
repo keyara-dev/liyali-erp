@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo, memo } from "react";
 import {
   CheckCircle2,
   X,
@@ -25,6 +25,9 @@ import {
 import { useSession } from "@/hooks/use-session";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
+import { ReassignmentModal } from "./reassignment-modal";
+import { ClaimTaskModal } from "./claim-task-modal";
+import { ApprovalActionModal } from "./approval-action-modal";
 
 // Define WorkflowTask interface locally since it's not exported from types
 interface WorkflowTask {
@@ -44,8 +47,19 @@ interface WorkflowTask {
 interface WorkflowActionButtonsProps {
   task: WorkflowTask;
   onClaim?: (taskId: string) => Promise<void>;
-  onApprove?: (taskId: string) => Promise<void>;
-  onReject?: (taskId: string) => Promise<void>;
+  onApprove?: (
+    taskId: string,
+    data?: { signature: string; comments: string }
+  ) => Promise<void>;
+  onReject?: (
+    taskId: string,
+    data?: { signature: string; comments: string }
+  ) => Promise<void>;
+  onReassign?: (
+    taskId: string,
+    newUserId: string,
+    reason: string
+  ) => Promise<void>;
   onRefresh?: () => void;
   variant?: "table" | "detail" | "dropdown" | "inline" | "compact"; // Enhanced variants
   showViewButton?: boolean;
@@ -54,24 +68,9 @@ interface WorkflowActionButtonsProps {
   onActionComplete?: () => void;
 }
 
-export function WorkflowActionButtons({
-  task,
-  onClaim,
-  onApprove,
-  onReject,
-  onRefresh,
-  variant = "table",
-  showViewButton = true,
-  showStatus = false,
-  onView,
-  onActionComplete,
-}: WorkflowActionButtonsProps) {
-  const { user } = useSession();
-  const [isLoading, setIsLoading] = useState<string | null>(null);
-
-  // Status badge component
-  const StatusBadge = () => {
-    const isPending = task.status === "pending";
+const StatusBadge = memo(
+  ({ task, user }: { task: WorkflowTask; user: any }) => {
+    const isPending = task.status === "pending" || task.status === "CLAIMED";
     const isClaimedByUser = task.claimedBy === user?.id;
     const isClaimedByOther = task.claimedBy && task.claimedBy !== user?.id;
     const isCompleted =
@@ -110,37 +109,67 @@ export function WorkflowActionButtons({
         Unknown
       </Badge>
     );
-  };
+  }
+);
 
-  const canUserClaimTask = () => {
+StatusBadge.displayName = "StatusBadge";
+
+export const WorkflowActionButtons = memo(function WorkflowActionButtons({
+  task,
+  onClaim,
+  onApprove,
+  onReject,
+  onReassign,
+  onRefresh,
+  variant = "table",
+  showViewButton = true,
+  showStatus = false,
+  onView,
+  onActionComplete,
+}: WorkflowActionButtonsProps) {
+  const { user } = useSession();
+  const [isLoading, setIsLoading] = useState<string | null>(null);
+  const [showReassignModal, setShowReassignModal] = useState(false);
+  const [showClaimModal, setShowClaimModal] = useState(false);
+  const [showApprovalModal, setShowApprovalModal] = useState(false);
+  const [approvalAction, setApprovalAction] = useState<"approve" | "reject">(
+    "approve"
+  );
+
+  const isAdmin = user?.role === "admin";
+
+  const canUserClaimTask = useMemo(() => {
     if (!user) return false;
-
-    // Admin can claim any task
     if (user.role === "admin") return true;
 
-    // User can claim tasks assigned to their role or specifically to them
-    return task.assignedRole === user.role || task.assignedUserId === user.id;
-  };
+    const roleMatch =
+      task.assignedRole?.toLowerCase() === user.role?.toLowerCase();
+    const userMatch = task.assignedUserId === user.id;
 
-  const isTaskClaimedByUser = () => {
+    return roleMatch || userMatch;
+  }, [user, task.assignedRole, task.assignedUserId]);
+
+  const isTaskClaimedByUser = useMemo(() => {
     if (!user) return false;
     return task.claimedBy === user.id;
-  };
+  }, [user, task.claimedBy]);
 
-  const isTaskClaimed = () => {
-    return task.status === "claimed" || task.claimedBy !== null;
-  };
+  const isTaskClaimed = useMemo(() => {
+    return (
+      task.claimedBy !== null &&
+      task.claimedBy !== undefined &&
+      task.claimedBy !== ""
+    );
+  }, [task.claimedBy]);
 
-  const canUserApproveReject = () => {
+  const canUserApproveReject = useMemo(() => {
     if (!user) return false;
+    return isTaskClaimedByUser;
+  }, [user, isTaskClaimedByUser]);
 
-    // User can only approve/reject if they have claimed the task
-    return isTaskClaimedByUser();
-  };
-
-  const isPending = task.status === "pending";
-  const canClaim = canUserClaimTask() && !isTaskClaimed();
-  const canApproveReject = canUserApproveReject();
+  const isPending = task.status === "pending" || task.status === "claimed";
+  const canClaim = canUserClaimTask && !isTaskClaimed;
+  const canApproveReject = canUserApproveReject;
 
   const handleAction = async (
     action: string,
@@ -148,14 +177,78 @@ export function WorkflowActionButtons({
   ) => {
     if (!handler) return;
 
+    if (action === "claim") {
+      setShowClaimModal(true);
+      return;
+    }
+
+    if (action === "approve" || action === "reject") {
+      setApprovalAction(action as "approve" | "reject");
+      setShowApprovalModal(true);
+      return;
+    }
+
     setIsLoading(action);
     try {
       await handler(task.id);
       toast.success(`Task ${action}d successfully`);
-      onRefresh?.();
+      if (onRefresh) await onRefresh();
       onActionComplete?.();
     } catch (error) {
       toast.error(`Failed to ${action} task`);
+    } finally {
+      setIsLoading(null);
+    }
+  };
+
+  const handleClaimConfirm = async () => {
+    if (!onClaim) return;
+    setIsLoading("claim");
+    try {
+      await onClaim(task.id);
+      toast.success("Task claimed successfully");
+      setShowClaimModal(false);
+      if (onRefresh) await onRefresh();
+      onActionComplete?.();
+    } catch (error) {
+      toast.error("Failed to claim task");
+    } finally {
+      setIsLoading(null);
+    }
+  };
+
+  const handleApprovalConfirm = async (data: {
+    comments: string;
+    signature: string;
+  }) => {
+    const handler = approvalAction === "approve" ? onApprove : onReject;
+    if (!handler) return;
+    setIsLoading(approvalAction);
+    try {
+      await handler(task.id, data);
+      toast.success(`Task ${approvalAction}d successfully`);
+      setShowApprovalModal(false);
+      if (onRefresh) await onRefresh();
+      onActionComplete?.();
+    } catch (error) {
+      toast.error(`Failed to ${approvalAction} task`);
+    } finally {
+      setIsLoading(null);
+    }
+  };
+
+  const handleReassignment = async (newUserId: string, reason: string) => {
+    if (!onReassign) return;
+    setIsLoading("reassign");
+    try {
+      await onReassign(task.id, newUserId, reason);
+      toast.success("Task reassigned successfully");
+      setShowReassignModal(false);
+      if (onRefresh) onRefresh();
+      onActionComplete?.();
+    } catch (error) {
+      toast.error("Failed to reassign task");
+      throw error;
     } finally {
       setIsLoading(null);
     }
@@ -166,8 +259,6 @@ export function WorkflowActionButtons({
       onView(task);
       return;
     }
-
-    // Default view navigation
     const docType = (task.entityType || task.documentType || "").toLowerCase();
     const docId = task.entityId || task.documentId;
     const routes: Record<string, string> = {
@@ -181,12 +272,10 @@ export function WorkflowActionButtons({
     window.location.href = url;
   };
 
-  // Compact variant (for table cells)
   if (variant === "compact") {
     return (
       <div className="flex items-center gap-2">
-        {showStatus && <StatusBadge />}
-
+        {showStatus && <StatusBadge task={task} user={user} />}
         {isPending && canClaim && (
           <Button
             size="sm"
@@ -199,8 +288,7 @@ export function WorkflowActionButtons({
             Claim
           </Button>
         )}
-
-        {isTaskClaimed() && canApproveReject && (
+        {isTaskClaimed && canApproveReject && (
           <div className="flex gap-1">
             <Button
               size="sm"
@@ -226,91 +314,56 @@ export function WorkflowActionButtons({
     );
   }
 
-  // Inline variant (for detail pages with full status display)
   if (variant === "inline") {
     return (
       <div className="space-y-4">
-        {/* Status Display */}
         <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border">
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2">
               <Clock className="h-4 w-4 text-gray-500" />
               <span className="text-sm font-medium">Workflow Status:</span>
             </div>
-            <StatusBadge />
+            <StatusBadge task={task} user={user} />
           </div>
-
-          {task.claimExpiry && isTaskClaimedByUser() && (
+          {task.claimExpiry && isTaskClaimedByUser && (
             <div className="text-sm text-gray-600">
               Expires: {formatDistanceToNow(new Date(task.claimExpiry))}{" "}
               remaining
             </div>
           )}
         </div>
-
-        {/* Action Buttons */}
         <div className="flex flex-wrap gap-3">
-          {isPending && !isTaskClaimed() && canClaim && (
+          {isPending && !isTaskClaimed && canClaim && (
             <Button
               onClick={() => handleAction("claim", onClaim)}
               disabled={isLoading === "claim"}
               className="bg-blue-600 hover:bg-blue-700"
             >
-              {isLoading === "claim" ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
-                  Claiming...
-                </>
-              ) : (
-                <>
-                  <Users className="h-4 w-4 mr-2" />
-                  Claim for Review
-                </>
-              )}
+              <Users className="h-4 w-4 mr-2" />
+              Claim for Review
             </Button>
           )}
-
-          {isTaskClaimed() && canApproveReject && (
+          {isTaskClaimed && canApproveReject && (
             <>
               <Button
                 onClick={() => handleAction("approve", onApprove)}
                 disabled={isLoading === "approve"}
                 className="bg-green-600 hover:bg-green-700"
               >
-                {isLoading === "approve" ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
-                    Approving...
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle2 className="h-4 w-4 mr-2" />
-                    Approve
-                  </>
-                )}
+                <CheckCircle2 className="h-4 w-4 mr-2" />
+                Approve
               </Button>
-
               <Button
                 onClick={() => handleAction("reject", onReject)}
                 disabled={isLoading === "reject"}
                 className="bg-red-600 hover:bg-red-700"
               >
-                {isLoading === "reject" ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
-                    Rejecting...
-                  </>
-                ) : (
-                  <>
-                    <XCircle className="h-4 w-4 mr-2" />
-                    Reject
-                  </>
-                )}
+                <XCircle className="h-4 w-4 mr-2" />
+                Reject
               </Button>
             </>
           )}
-
-          {isTaskClaimed() && !isTaskClaimedByUser() && (
+          {isTaskClaimed && !isTaskClaimedByUser && (
             <div className="flex items-center gap-2 text-gray-600 bg-gray-100 px-3 py-2 rounded">
               <User className="h-4 w-4" />
               <span className="text-sm">
@@ -318,7 +371,6 @@ export function WorkflowActionButtons({
               </span>
             </div>
           )}
-
           {isPending && !canClaim && (
             <div className="flex items-center gap-2 text-amber-600 bg-amber-50 px-3 py-2 rounded border border-amber-200">
               <AlertTriangle className="h-4 w-4" />
@@ -332,7 +384,6 @@ export function WorkflowActionButtons({
     );
   }
 
-  // Dropdown variant (for table action menus)
   if (variant === "dropdown") {
     return (
       <DropdownMenu>
@@ -343,71 +394,52 @@ export function WorkflowActionButtons({
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-56">
-          {/* Status Display */}
           <div className="px-2 py-1.5 text-sm font-medium text-gray-700 border-b">
             Workflow Status
           </div>
           <div className="px-2 py-1.5 flex items-center justify-between">
             <span className="text-sm text-gray-600">Current:</span>
-            <StatusBadge />
+            <StatusBadge task={task} user={user} />
           </div>
-
           {task.stageName && (
             <div className="px-2 py-1.5 flex items-center justify-between">
               <span className="text-sm text-gray-600">Stage:</span>
               <span className="text-sm font-medium">{task.stageName}</span>
             </div>
           )}
-
           <DropdownMenuSeparator />
-
-          {/* Actions */}
-          {isPending && canClaim && !isTaskClaimed() && (
-            <DropdownMenuItem
-              onClick={() => handleAction("claim", onClaim)}
-              disabled={isLoading === "claim"}
-            >
+          {isPending && canClaim && !isTaskClaimed && (
+            <DropdownMenuItem onClick={() => handleAction("claim", onClaim)}>
               <Users className="mr-2 h-4 w-4" />
               <span>Claim Task</span>
             </DropdownMenuItem>
           )}
-
-          {isTaskClaimed() && canApproveReject && (
+          {isTaskClaimed && canApproveReject && (
             <>
               <DropdownMenuItem
                 onClick={() => handleAction("approve", onApprove)}
-                disabled={isLoading === "approve"}
               >
                 <CheckCircle2 className="mr-2 h-4 w-4 text-green-600" />
                 <span>Approve</span>
               </DropdownMenuItem>
-
               <DropdownMenuItem
                 onClick={() => handleAction("reject", onReject)}
-                disabled={isLoading === "reject"}
               >
                 <XCircle className="mr-2 h-4 w-4 text-red-600" />
                 <span>Reject</span>
               </DropdownMenuItem>
             </>
           )}
-
-          {isTaskClaimed() && !isTaskClaimedByUser() && (
-            <DropdownMenuItem disabled>
-              <User className="mr-2 h-4 w-4" />
-              <span>Claimed by Other</span>
-            </DropdownMenuItem>
-          )}
-
-          {isPending && !canClaim && (
-            <DropdownMenuItem disabled>
-              <AlertTriangle className="mr-2 h-4 w-4 text-amber-500" />
-              <span>Requires {task.assignedRole} role</span>
-            </DropdownMenuItem>
-          )}
-
           <DropdownMenuSeparator />
-
+          {isAdmin && isPending && !isTaskClaimed && onReassign && (
+            <>
+              <DropdownMenuItem onClick={() => setShowReassignModal(true)}>
+                <User className="mr-2 h-4 w-4 text-blue-600" />
+                <span>Reassign Task</span>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+            </>
+          )}
           <DropdownMenuItem onClick={handleView}>
             <Eye className="mr-2 h-4 w-4" />
             <span>View Details</span>
@@ -418,45 +450,37 @@ export function WorkflowActionButtons({
   }
 
   if (variant === "detail") {
-    // Detail page layout - larger buttons, more prominent
     return (
       <div className="flex flex-wrap gap-3">
         {isPending && (
           <>
-            {/* Step 1: Show Claim button if task is not claimed and user can claim */}
-            {!isTaskClaimed() && canClaim && onClaim && (
+            {!isTaskClaimed && canClaim && onClaim && (
               <Button
                 size="default"
                 variant="outline"
                 onClick={() => handleAction("claim", onClaim)}
-                disabled={isLoading === "claim"}
               >
                 <UserCheck className="h-4 w-4 mr-2" />
                 {isLoading === "claim" ? "Claiming..." : "Claim Task"}
               </Button>
             )}
-
-            {/* Step 2: Show Approve/Reject buttons only if user has claimed the task */}
-            {isTaskClaimed() && canApproveReject && (
+            {isTaskClaimed && canApproveReject && (
               <>
                 {onApprove && (
                   <Button
                     size="default"
                     onClick={() => handleAction("approve", onApprove)}
-                    disabled={isLoading === "approve"}
                     className="bg-green-600 hover:bg-green-700"
                   >
                     <CheckCircle2 className="h-4 w-4 mr-2" />
                     {isLoading === "approve" ? "Approving..." : "Approve"}
                   </Button>
                 )}
-
                 {onReject && (
                   <Button
                     size="default"
                     variant="destructive"
                     onClick={() => handleAction("reject", onReject)}
-                    disabled={isLoading === "reject"}
                   >
                     <X className="h-4 w-4 mr-2" />
                     {isLoading === "reject" ? "Rejecting..." : "Reject"}
@@ -464,9 +488,7 @@ export function WorkflowActionButtons({
                 )}
               </>
             )}
-
-            {/* Show status if task is claimed by someone else */}
-            {isTaskClaimed() && !isTaskClaimedByUser() && (
+            {isTaskClaimed && !isTaskClaimedByUser && (
               <div className="flex items-center text-sm text-gray-600">
                 <UserCheck className="h-4 w-4 mr-2" />
                 Task claimed by another user
@@ -474,7 +496,6 @@ export function WorkflowActionButtons({
             )}
           </>
         )}
-
         {!isPending && task.status === "approved" && showStatus && (
           <Button
             size="default"
@@ -486,7 +507,6 @@ export function WorkflowActionButtons({
             Approved
           </Button>
         )}
-
         {!isPending && task.status === "rejected" && showStatus && (
           <Button
             size="default"
@@ -502,7 +522,6 @@ export function WorkflowActionButtons({
     );
   }
 
-  // Table layout - compact buttons
   return (
     <div className="flex items-center justify-end gap-2 ml-auto">
       {showViewButton && (
@@ -516,44 +535,36 @@ export function WorkflowActionButtons({
           View
         </Button>
       )}
-      {/* Action Buttons for Pending Tasks */}
       {isPending && (
         <>
-          {/* Step 1: Show Claim button if task is not claimed and user can claim */}
-          {!isTaskClaimed() && canClaim && onClaim && (
+          {!isTaskClaimed && canClaim && onClaim && (
             <Button
               size="sm"
               variant="outline"
               onClick={() => handleAction("claim", onClaim)}
-              disabled={isLoading === "claim"}
             >
               <UserCheck className="h-4 w-4 mr-1" />
               {isLoading === "claim" ? "..." : "Claim"}
             </Button>
           )}
-
-          {/* Step 2: Show Approve/Reject buttons only if user has claimed the task */}
-          {isTaskClaimed() && canApproveReject && (
+          {isTaskClaimed && canApproveReject && (
             <>
               {onApprove && (
                 <Button
                   size="sm"
                   variant="default"
                   onClick={() => handleAction("approve", onApprove)}
-                  disabled={isLoading === "approve"}
                   className="bg-green-600 hover:bg-green-700"
                 >
                   <CheckCircle2 className="h-4 w-4 mr-1" />
                   {isLoading === "approve" ? "..." : "Approve"}
                 </Button>
               )}
-
               {onReject && (
                 <Button
                   size="sm"
                   variant="destructive"
                   onClick={() => handleAction("reject", onReject)}
-                  disabled={isLoading === "reject"}
                 >
                   <X className="h-4 w-4 mr-1" />
                   {isLoading === "reject" ? "..." : "Reject"}
@@ -561,21 +572,15 @@ export function WorkflowActionButtons({
               )}
             </>
           )}
-
-          {/* Show claimed status if task is claimed by someone else */}
-          {isTaskClaimed() && !isTaskClaimedByUser() && canClaim && (
+          {isTaskClaimed && !isTaskClaimedByUser && canClaim && (
             <Badge variant={"outline"} className="text-xs text-gray-500">
               Claimed
             </Badge>
           )}
         </>
       )}
-
-      {/* More Actions Dropdown */}
       <>
-        {showStatus && <StatusBadge />}
-
-        {/* More Actions Dropdown */}
+        {showStatus && <StatusBadge task={task} user={user} />}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="sm">
@@ -587,22 +592,69 @@ export function WorkflowActionButtons({
               <Clock className="h-4 w-4 mr-2" />
               View Details
             </DropdownMenuItem>
-
-            {canClaim && onClaim && !isTaskClaimed() && (
+            {canClaim && onClaim && !isTaskClaimed && (
               <>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   onClick={() => handleAction("claim", onClaim)}
-                  disabled={isLoading === "claim"}
                 >
                   <UserCheck className="h-4 w-4 mr-2" />
                   Claim Task
                 </DropdownMenuItem>
               </>
             )}
+            {isAdmin && isPending && !isTaskClaimedByUser && onReassign && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => setShowReassignModal(true)}>
+                  <User className="mr-2 h-4 w-4 text-blue-600" />
+                  <span>Reassign Task</span>
+                </DropdownMenuItem>
+              </>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
       </>
+      {showReassignModal && (
+        <ReassignmentModal
+          task={task as any}
+          isOpen={showReassignModal}
+          onOpenChange={setShowReassignModal}
+          onReassign={handleReassignment}
+        />
+      )}
+      {showClaimModal && (
+        <ClaimTaskModal
+          isOpen={showClaimModal}
+          onClose={() => setShowClaimModal(false)}
+          onConfirm={handleClaimConfirm}
+          isLoading={isLoading === "claim"}
+          taskDetails={{
+            entityType: task.entityType || task.documentType || "Task",
+            entityId: task.entityId || task.documentId || task.id,
+            stageName: task.stageName || "Approval",
+            assignedRole: task.assignedRole || "Approver",
+          }}
+        />
+      )}
+      {showApprovalModal && (
+        <ApprovalActionModal
+          isOpen={showApprovalModal}
+          onClose={() => setShowApprovalModal(false)}
+          onConfirm={handleApprovalConfirm}
+          isLoading={isLoading === approvalAction}
+          action={approvalAction}
+          taskDetails={{
+            entityType: task.entityType || task.documentType || "Task",
+            entityId: task.entityId || task.documentId || task.id,
+            stageName: task.stageName || "Approval",
+            claimedBy: user?.name || "You",
+            claimExpiry:
+              task.claimExpiry ||
+              new Date(Date.now() + 30 * 60 * 1000).toISOString(),
+          }}
+        />
+      )}
     </div>
   );
-}
+});
