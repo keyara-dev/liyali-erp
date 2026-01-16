@@ -1,10 +1,29 @@
 # ✅ Deployment Setup Complete
 
-Your Liyali Gateway project is now configured for automated deployment to Google Cloud Run using GitHub Actions and GitHub Container Registry (GHCR).
+Your Liyali Gateway project is now configured for deployment with **two options**:
+
+1. **Fly.io** - Quick demo/staging environment (FREE tier, 15 min setup)
+2. **Google Cloud Run** - Production environment (Pay-as-you-go, 1 hour setup)
+
+## 🎯 Deployment Strategy
+
+```
+Development → Fly.io (Demo/Staging) → GCP Cloud Run (Production)
+```
+
+- **Fly.io**: Perfect for demos, testing, and staging
+- **GCP**: Scale to production when ready
 
 ## 📦 What's Been Configured
 
 ### GitHub Actions Workflows
+
+✅ **Fly.io Deployment** (`.github/workflows/fly-deploy.yml`)
+
+- Triggers on push to `develop` branch
+- Quick demo/staging deployment
+- Free tier friendly
+- Tag commits with `[backend]`, `[frontend]`, or `[all]`
 
 ✅ **Backend Deployment** (`.github/workflows/backend-deploy.yml`)
 
@@ -20,6 +39,22 @@ Your Liyali Gateway project is now configured for automated deployment to Google
 - Optimized with layer caching and npm cache mounts
 - Pushes to GHCR → GCP Artifact Registry → Cloud Run
 - Supports `main` (production) and `develop` (staging) branches
+
+### Fly.io Configuration
+
+✅ **Backend fly.toml** (`backend/fly.toml`)
+
+- Auto-scaling configuration
+- Health checks
+- Free tier optimized (256MB RAM)
+- Auto-stop when idle
+
+✅ **Frontend fly.toml** (`frontend/fly.toml`)
+
+- Next.js optimized settings
+- Health checks
+- Free tier optimized (512MB RAM)
+- Auto-stop when idle
 
 ### Docker Configuration
 
@@ -62,7 +97,135 @@ Your Liyali Gateway project is now configured for automated deployment to Google
 
 ✅ **Comprehensive Guides**
 
-- `DEPLOYMENT_GUIDE.md` - Complete step-by-step deployment guide (100+ pages)
+- `DEPLOYMENT_FLYIO.md` - **START HERE** for quick demo (15 min setup)
+- `DEPLOYMENT_GUIDE.md` - Complete GCP production guide (1 hour setup)
+- `DEPLOYMENT_CHECKLIST.md` - Quick reference checklist
+- `ENVIRONMENT_VARIABLES.md` - All environment variables documented
+- `.github/WORKFLOWS_README.md` - GitHub Actions workflows explained
+
+## 🚀 Quick Start - Choose Your Path
+
+### Option A: Fly.io Demo (Recommended First)
+
+**Time**: 15-20 minutes  
+**Cost**: FREE (within free tier)  
+**Best for**: Demos, testing, staging
+
+**Why start with Fly.io?**
+
+- ✅ No credit card required for signup
+- ✅ Free tier is generous (3 VMs)
+- ✅ No cold starts
+- ✅ Deploy in minutes
+- ✅ Same Docker images work on GCP later
+
+**Quick Start**:
+
+```bash
+# 1. Install Fly.io CLI
+curl -L https://fly.io/install.sh | sh
+
+# 2. Login
+flyctl auth login
+
+# 3. Follow the guide
+# See: DEPLOYMENT_FLYIO.md
+```
+
+### Option B: Google Cloud Run (Production)
+
+**Time**: 1 hour  
+**Cost**: ~$10-30/month (pay-as-you-go)  
+**Best for**: Production, scaling
+
+**When to use GCP?**
+
+- ✅ Ready for production
+- ✅ Need enterprise features
+- ✅ Require advanced scaling
+- ✅ Want GCP ecosystem integration
+
+**Quick Start**: See `DEPLOYMENT_GUIDE.md`
+
+---
+
+## 📚 Documentation Reference
+
+| Document                   | Purpose            | Time   | When to Use              |
+| -------------------------- | ------------------ | ------ | ------------------------ |
+| `DEPLOYMENT_FLYIO.md`      | Fly.io quick setup | 15 min | **Start here** for demos |
+| `DEPLOYMENT_GUIDE.md`      | GCP complete guide | 1 hour | Production deployment    |
+| `DEPLOYMENT_CHECKLIST.md`  | Quick reference    | 5 min  | Every deployment         |
+| `ENVIRONMENT_VARIABLES.md` | All env vars       | -      | Setting up secrets       |
+
+---
+
+## 🎯 Recommended Workflow
+
+### Phase 1: Demo on Fly.io (Week 1)
+
+1. Deploy to Fly.io following `DEPLOYMENT_FLYIO.md`
+2. Test all features
+3. Share with stakeholders
+4. Gather feedback
+5. Iterate quickly
+
+### Phase 2: Staging on Fly.io (Week 2-4)
+
+1. Use `develop` branch for auto-deploy
+2. Test with real data
+3. Performance testing
+4. Security review
+5. Final adjustments
+
+### Phase 3: Production on GCP (When Ready)
+
+1. Follow `DEPLOYMENT_GUIDE.md`
+2. Migrate database from Fly.io
+3. Update DNS to GCP
+4. Monitor performance
+5. Keep Fly.io as staging
+
+---
+
+## ✅ Next Steps
+
+### For Fly.io Demo (15 minutes)
+
+```
+□ Install Fly.io CLI
+□ Create account (flyctl auth signup)
+□ Create PostgreSQL database
+□ Deploy backend (cd backend && flyctl launch)
+□ Set backend secrets
+□ Run database migrations
+□ Deploy frontend (cd frontend && flyctl launch)
+□ Set frontend secrets
+□ Update CORS settings
+□ Test application
+```
+
+**Detailed steps**: See `DEPLOYMENT_FLYIO.md`
+
+### For GCP Production (1 hour)
+
+```
+□ Set up Google Cloud Platform
+□ Create Artifact Registry
+□ Create service account
+□ Set up Prisma.io database
+□ Configure GitHub Secrets
+□ Deploy backend to Cloud Run
+□ Deploy frontend to Cloud Run
+□ Verify deployment
+```
+
+**Detailed steps**: See `DEPLOYMENT_GUIDE.md`
+
+---
+
+## 1️⃣ Set Up Google Cloud Platform (15 minutes)
+
 - `DEPLOYMENT_CHECKLIST.md` - Quick reference checklist
 - `ENVIRONMENT_VARIABLES.md` - All environment variables documented
 - `.github/WORKFLOWS_README.md` - GitHub Actions workflows explained
