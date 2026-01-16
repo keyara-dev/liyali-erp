@@ -10,11 +10,14 @@ WORKDIR /app
 # Copy go mod files first for better caching
 COPY go.mod go.sum ./
 
-# Download dependencies
-RUN go mod download && go mod verify
+# Download dependencies with retry and without verify for initial download
+RUN go mod download
 
 # Copy source code
 COPY . .
+
+# Tidy and verify after copying all files
+RUN go mod tidy && go mod verify
 
 # Build the application with optimizations
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \

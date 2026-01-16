@@ -1,5 +1,5 @@
 # Fly.io configuration for Liyali Gateway Backend
-app = "liyali-backend"
+app = "liyali-gateway-api"
 primary_region = "iad" # Washington D.C. - change to your preferred region
 
 [build]
