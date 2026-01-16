@@ -6,6 +6,9 @@ config();
 const isProduction = process.env.NODE_ENV === "production";
 
 const nextConfig: NextConfig = {
+  // Enable standalone output for Docker deployment
+  output: "standalone",
+
   // assetPrefix: isProduction ? "https://dashboard.shadcnuikit.com" : undefined,
   // typescript: {
   //   ignoreBuildErrors: true,
@@ -15,6 +18,10 @@ const nextConfig: NextConfig = {
       {
         protocol: "http",
         hostname: "localhost",
+      },
+      {
+        protocol: "https",
+        hostname: "*.run.app", // Allow Cloud Run images
       },
     ],
   },

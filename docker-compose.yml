@@ -1,0 +1,91 @@
+version: "3.8"
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: liyali-postgres
+    environment:
+      POSTGRES_USER: liyali
+      POSTGRES_PASSWORD: liyali_dev_password
+      POSTGRES_DB: liyali_gateway
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/database/migrations:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U liyali"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - liyali-network
+
+  # Backend API
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: liyali-backend
+    environment:
+      - DATABASE_URL=postgresql://liyali:liyali_dev_password@postgres:5432/liyali_gateway?sslmode=disable
+      - JWT_SECRET=dev_jwt_secret_change_in_production
+      - ENCRYPTION_KEY=dev_encryption_key_change_in_production
+      - ENV=development
+      - PORT=8080
+      - LOG_LEVEL=debug
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+    networks:
+      - liyali-network
+    restart: unless-stopped
+
+  # Frontend (Development)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    container_name: liyali-frontend
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8080
+      - NEXT_PUBLIC_BASE_URL=http://localhost:3000
+      - NODE_ENV=development
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.next
+    networks:
+      - liyali-network
+    restart: unless-stopped
+
+  # Redis (Optional - for caching)
+  redis:
+    image: redis:7-alpine
+    container_name: liyali-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - liyali-network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  liyali-network:
+    driver: bridge

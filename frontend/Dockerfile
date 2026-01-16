@@ -1,77 +1,95 @@
-# Use the official Node.js image as the base image
-FROM node:18-alpine AS base
+# Production Dockerfile for Frontend
+# Base stage with common dependencies
+FROM node:20-alpine AS base
 
-# Install OpenSSL (required by Prisma)
-RUN apk add --no-cache openssl
+# Install OpenSSL (required by Prisma) and other dependencies
+RUN apk add --no-cache libc6-compat openssl
 
-# Install pnpm
-RUN npm install -g pnpm
-
-# Set working directory
 WORKDIR /app
 
-# Copy workspace files
-COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
-COPY .npmrc ./
+# Copy package files
+COPY package.json package-lock.json* ./
 
-# Install dependencies and build stage
-FROM base AS build
+# Dependencies stage
+FROM base AS deps
+
+# Install dependencies with cache mount for faster builds
+RUN --mount=type=cache,id=npm,target=/root/.npm \
+    npm ci --only=production --ignore-scripts && \
+    npm cache clean --force
+
+# Builder stage
+FROM base AS builder
+
+WORKDIR /app
+
+# Copy dependencies from deps stage
+COPY --from=deps /app/node_modules ./node_modules
+
+# Copy all source files
 COPY . .
 
-# Accept build-time variable
-ARG ADMIN_ENCRYPTION_KEY
-ENV ADMIN_ENCRYPTION_KEY=$ADMIN_ENCRYPTION_KEY
+# Set build-time environment variables
+ARG NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 
-# Install all dependencies with cache mount
-RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --no-frozen-lockfile
+# Disable telemetry during build
+ENV NEXT_TELEMETRY_DISABLED=1
 
-# Generate Prisma client using workspace filter
-RUN pnpm --filter @bgs-tickety/database run prisma:generate
-
-# Set environment variable to skip API calls during build
+# Skip API calls during build if needed
 ENV NEXT_PUBLIC_SKIP_BUILD_STATIC_CHECK=true
 
-# Build the admin application
-RUN pnpm --filter admin build
+# Build the application
+RUN npm run build
 
-# Debug: Check what's in the build output
-RUN ls -la /app/admin/.next/
+# Debug: Verify build output
+RUN echo "Build completed. Checking output..." && \
+    ls -la .next/ && \
+    ls -la .next/standalone/ || echo "No standalone directory found"
 
-# Production stage
-FROM node:18-alpine AS runner
+# Production runner stage
+FROM node:20-alpine AS runner
+
 WORKDIR /app
 
-# Install OpenSSL (required by Prisma)
+# Install OpenSSL (required by Prisma at runtime)
 RUN apk add --no-cache openssl
 
-# Create a non-root user
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
 
-# Copy the Next.js build and application files
-COPY --from=build /app/admin/.next ./.next
-COPY --from=build /app/admin/public ./public
-COPY --from=build /app/admin/package.json ./package.json
-COPY --from=build /app/admin/server.js ./server.js
-COPY --from=build /app/node_modules ./node_modules
+# Create non-root user for security
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 nextjs
 
-# Debug: Check what's copied
-RUN ls -la /app/
-RUN ls -la /app/.next/ || echo "No .next directory"
+# Copy public assets
+COPY --from=builder /app/public ./public
 
-# Set ownership of the application files to nextjs user
+# Copy Next.js standalone build output
+# The standalone output includes all necessary files
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+
+# Debug: Verify copied files
+RUN echo "Files copied to runner stage:" && \
+    ls -la /app/ && \
+    ls -la /app/.next/ || echo "No .next directory"
+
+# Set proper ownership
 USER root
 RUN chown -R nextjs:nodejs /app
 USER nextjs
 
 # Set environment variables for Cloud Run
-ENV NODE_ENV=production
-ENV PORT=8080
-ENV HOSTNAME=0.0.0.0
+ENV PORT=3000
+ENV HOSTNAME="0.0.0.0"
 
 # Expose port
-EXPOSE 8080
+EXPOSE 3000
 
-# The Next.js standalone build puts server.js in the root of standalone output
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
+  CMD node -e "require('http').get('http://localhost:3000/api/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
+
 # Use exec form to ensure proper signal handling
 CMD ["node", "server.js"]
