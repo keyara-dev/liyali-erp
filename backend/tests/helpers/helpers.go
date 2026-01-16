@@ -226,7 +226,7 @@ func (tdb *TestDataBuilder) CreateRequisition(t *testing.T) *models.Requisition 
 	requisition := &models.Requisition{
 		ID:             uuid.New().String(),
 		OrganizationID: tdb.organizationID,
-		REQNumber:      fmt.Sprintf("REQ-%d", time.Now().Unix()),
+		DocumentNumber: fmt.Sprintf("REQ-%d", time.Now().Unix()),
 		Title:          "Test Requisition",
 		Description:    "Test requisition for workflow testing",
 		Status:         "draft",
