@@ -19,38 +19,41 @@ COPY . .
 # Tidy and verify after copying all files
 RUN go mod tidy && go mod verify
 
-# Build the application with optimizations
+# Build the main application
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
     -a \
     -installsuffix cgo \
     -ldflags="-w -s" \
     -o main .
 
+# Build the migration tool
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
+    -a \
+    -installsuffix cgo \
+    -ldflags="-w -s" \
+    -o migrate \
+    ./cmd/migrate-simple
+
 # Final stage - minimal image
 FROM alpine:latest
 
-# Install runtime dependencies including PostgreSQL client
-RUN apk --no-cache add ca-certificates tzdata wget postgresql-client && \
+# Install runtime dependencies
+RUN apk --no-cache add ca-certificates tzdata wget && \
     addgroup -g 1000 appuser && \
     adduser -D -u 1000 -G appuser appuser
 
 # Set working directory
 WORKDIR /app
 
-# Copy the binary from builder
+# Copy the binaries from builder
 COPY --from=builder /app/main .
+COPY --from=builder /app/migrate .
 
 # Copy config files if needed
 COPY --from=builder /app/config ./config
 
 # Copy database migrations
 COPY --from=builder /app/database ./database
-
-# Copy migration script
-COPY --from=builder /app/migrate.sh .
-
-# Make migration script executable
-RUN chmod +x migrate.sh
 
 # Change ownership to non-root user
 RUN chown -R appuser:appuser /app

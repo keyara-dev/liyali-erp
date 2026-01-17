@@ -35,4 +35,4 @@ primary_region = 'jnb'
   memory_mb = 512
 
 [deploy]
-  release_command = "./migrate.sh"
+  release_command = "./migrate"
