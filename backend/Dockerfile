@@ -29,8 +29,8 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
 # Final stage - minimal image
 FROM alpine:latest
 
-# Install runtime dependencies
-RUN apk --no-cache add ca-certificates tzdata wget && \
+# Install runtime dependencies including PostgreSQL client
+RUN apk --no-cache add ca-certificates tzdata wget postgresql-client && \
     addgroup -g 1000 appuser && \
     adduser -D -u 1000 -G appuser appuser
 
@@ -42,6 +42,15 @@ COPY --from=builder /app/main .
 
 # Copy config files if needed
 COPY --from=builder /app/config ./config
+
+# Copy database migrations
+COPY --from=builder /app/database ./database
+
+# Copy migration script
+COPY --from=builder /app/migrate.sh .
+
+# Make migration script executable
+RUN chmod +x migrate.sh
 
 # Change ownership to non-root user
 RUN chown -R appuser:appuser /app
