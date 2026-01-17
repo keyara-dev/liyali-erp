@@ -371,7 +371,7 @@ export function TasksTable() {
   );
 
   const table = useReactTable({
-    data: filteredTasks,
+    data: filteredTasks as WorkflowTask[],
     columns,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
@@ -530,6 +530,14 @@ export function TasksTable() {
             ...paginationMeta,
             page: paginationState.page,
             page_size: paginationState.page_size,
+            limit: paginationMeta.limit || paginationState.page_size,
+            totalCount: paginationMeta.totalCount || paginationMeta.total || 0,
+            total_pages:
+              paginationMeta.total_pages || paginationMeta.totalPages || 0,
+            has_next:
+              paginationMeta.has_next ?? paginationMeta.hasNext ?? false,
+            has_prev:
+              paginationMeta.has_prev ?? paginationMeta.hasPrev ?? false,
           }}
           updatePagination={(newPagination: {
             page: number;

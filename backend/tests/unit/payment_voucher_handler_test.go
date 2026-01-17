@@ -303,7 +303,7 @@ func TestPaymentVoucherResponseFormat(t *testing.T) {
 	t.Run("Payment voucher response structure", func(t *testing.T) {
 		pv := types.PaymentVoucherResponse{
 			ID:              uuid.New().String(),
-			VoucherNumber:   "PV-1640000000-abc12345",
+			DocumentNumber:  "PV-1640000000-abc12345",
 			VendorID:        uuid.New().String(),
 			InvoiceNumber:   "INV-2025-001",
 			Status:          "draft",
@@ -320,8 +320,8 @@ func TestPaymentVoucherResponseFormat(t *testing.T) {
 		if pv.ID == "" {
 			t.Error("Response should have ID")
 		}
-		if pv.VoucherNumber == "" {
-			t.Error("Response should have VoucherNumber")
+		if pv.DocumentNumber == "" {
+			t.Error("Response should have DocumentNumber")
 		}
 		if pv.VendorID == "" {
 			t.Error("Response should have VendorID")
@@ -363,13 +363,13 @@ func TestPaymentVoucherAmountValidation(t *testing.T) {
 func TestPaymentVoucherDuplicatePrevention(t *testing.T) {
 	t.Run("Prevent duplicate invoice numbers", func(t *testing.T) {
 		pv1 := types.PaymentVoucherResponse{
-			VoucherNumber: "PV-1640000000-abc12345",
+			DocumentNumber: "PV-1640000000-abc12345",
 			VendorID:      uuid.New().String(),
 			InvoiceNumber: "INV-2025-001",
 		}
 
 		pv2 := types.PaymentVoucherResponse{
-			VoucherNumber: "PV-1640000001-def67890",
+			DocumentNumber: "PV-1640000001-def67890",
 			VendorID:      pv1.VendorID,
 			InvoiceNumber: "INV-2025-001",
 		}

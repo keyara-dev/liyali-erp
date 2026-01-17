@@ -21,7 +21,7 @@ func TestCreateGRNValidation(t *testing.T) {
 		{
 			name: "Valid GRN request",
 			requestBody: map[string]interface{}{
-				"poNumber":   "PO-20251223-abc12345",
+				"poDocumentNumber": "PO-20251223-abc12345",
 				"receivedBy": "John Doe",
 				"items": []map[string]interface{}{
 					{
@@ -53,7 +53,7 @@ func TestCreateGRNValidation(t *testing.T) {
 		{
 			name: "Missing ReceivedBy",
 			requestBody: map[string]interface{}{
-				"poNumber": "PO-20251223-abc12345",
+				"poDocumentNumber": "PO-20251223-abc12345",
 				"items": []map[string]interface{}{
 					{
 						"description": "Item 1",
@@ -67,7 +67,7 @@ func TestCreateGRNValidation(t *testing.T) {
 		{
 			name: "Missing items",
 			requestBody: map[string]interface{}{
-				"poNumber":   "PO-20251223-abc12345",
+				"poDocumentNumber": "PO-20251223-abc12345",
 				"receivedBy": "John Doe",
 				"items":      []map[string]interface{}{},
 			},
@@ -77,7 +77,7 @@ func TestCreateGRNValidation(t *testing.T) {
 		{
 			name: "Empty items array",
 			requestBody: map[string]interface{}{
-				"poNumber":   "PO-20251223-abc12345",
+				"poDocumentNumber": "PO-20251223-abc12345",
 				"receivedBy": "John Doe",
 			},
 			expectedStatus: http.StatusBadRequest,
@@ -92,7 +92,7 @@ func TestCreateGRNValidation(t *testing.T) {
 			json.Unmarshal(body, &req)
 
 			// Validate request
-			isValid := req.PONumber != "" &&
+			isValid := req.PODocumentNumber != "" &&
 				req.ReceivedBy != "" &&
 				len(req.Items) > 0
 
@@ -151,11 +151,11 @@ func TestGRNStatusValidation(t *testing.T) {
 	}
 }
 
-// TestGRNPONumberValidation tests PO number field
-func TestGRNPONumberValidation(t *testing.T) {
+// TestGRNPODocumentNumberValidation tests PO document number field
+func TestGRNPODocumentNumberValidation(t *testing.T) {
 	tests := []struct {
 		name          string
-		poNumber      string
+		poDocumentNumber string
 		shouldBeValid bool
 	}{
 		{"Valid PO number", "PO-20251223-abc12345", true},
@@ -166,7 +166,7 @@ func TestGRNPONumberValidation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			isValid := tt.poNumber != "" && len(tt.poNumber) > 3
+			isValid := tt.poDocumentNumber != "" && len(tt.poDocumentNumber) > 3
 			if isValid != tt.shouldBeValid {
 				t.Errorf("Expected %v, got %v", tt.shouldBeValid, isValid)
 			}
@@ -322,10 +322,10 @@ func TestGRNStateTransitions(t *testing.T) {
 func TestGRNResponseFormat(t *testing.T) {
 	t.Run("GRN response structure", func(t *testing.T) {
 		grn := types.GRNResponse{
-			ID:         uuid.New().String(),
-			GRNNumber:  "GRN-1640000000-abc12345",
-			PONumber:   "PO-20251223-abc12345",
-			Status:     "draft",
+			ID:                uuid.New().String(),
+			DocumentNumber:    "GRN-1640000000-abc12345",
+			PODocumentNumber:  "PO-20251223-abc12345",
+			Status:            "draft",
 			ReceivedBy: "John Doe",
 			Items: []types.GRNItem{
 				{
@@ -344,11 +344,11 @@ func TestGRNResponseFormat(t *testing.T) {
 		if grn.ID == "" {
 			t.Error("Response should have ID")
 		}
-		if grn.GRNNumber == "" {
-			t.Error("Response should have GRNNumber")
+		if grn.DocumentNumber == "" {
+			t.Error("Response should have DocumentNumber")
 		}
-		if grn.PONumber == "" {
-			t.Error("Response should have PONumber")
+		if grn.PODocumentNumber == "" {
+			t.Error("Response should have PODocumentNumber")
 		}
 		if grn.ReceivedBy == "" {
 			t.Error("Response should have ReceivedBy")
@@ -433,13 +433,13 @@ func TestGRNApprovalWorkflow(t *testing.T) {
 // TestGRNPOLinking tests GRN to PO linking
 func TestGRNPOLinking(t *testing.T) {
 	t.Run("GRN must reference valid PO", func(t *testing.T) {
-		poNumber := "PO-20251223-abc12345"
+		poDocumentNumber := "PO-20251223-abc12345"
 
-		if poNumber == "" {
+		if poDocumentNumber == "" {
 			t.Error("GRN must have linked PO number")
 		}
 
-		if len(poNumber) < 10 {
+		if len(poDocumentNumber) < 10 {
 			t.Error("PO number format should be valid")
 		}
 	})
@@ -449,16 +449,16 @@ func TestGRNPOLinking(t *testing.T) {
 func TestGRNDuplicatePrevention(t *testing.T) {
 	t.Run("Prevent duplicate GRN numbers", func(t *testing.T) {
 		grn1 := types.GRNResponse{
-			GRNNumber: "GRN-1640000000-abc12345",
-			PONumber:  "PO-20251223-abc12345",
+			DocumentNumber:    "GRN-1640000000-abc12345",
+			PODocumentNumber:  "PO-20251223-abc12345",
 		}
 
 		grn2 := types.GRNResponse{
-			GRNNumber: "GRN-1640000000-abc12345",
-			PONumber:  "PO-20251223-abc12345",
+			DocumentNumber:    "GRN-1640000000-abc12345",
+			PODocumentNumber:  "PO-20251223-abc12345",
 		}
 
-		isDuplicate := (grn1.GRNNumber == grn2.GRNNumber)
+		isDuplicate := (grn1.DocumentNumber == grn2.DocumentNumber)
 
 		if !isDuplicate {
 			t.Error("Should detect duplicate GRN numbers")
@@ -541,7 +541,7 @@ func TestGRNReceivedDateValidation(t *testing.T) {
 // BenchmarkGRNValidation benchmarks validation logic
 func BenchmarkGRNValidation(b *testing.B) {
 	req := types.CreateGRNRequest{
-		PONumber:   "PO-20251223-abc12345",
+		PODocumentNumber: "PO-20251223-abc12345",
 		ReceivedBy: "John Doe",
 		Items: []types.GRNItem{
 			{
@@ -556,7 +556,7 @@ func BenchmarkGRNValidation(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_ = req.PONumber != "" && req.ReceivedBy != "" && len(req.Items) > 0
+		_ = req.PODocumentNumber != "" && req.ReceivedBy != "" && len(req.Items) > 0
 	}
 }
 

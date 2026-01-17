@@ -1,22 +1,20 @@
-# Production Dockerfile for Frontend
-# Base stage with common dependencies
-FROM node:20-alpine AS base
+# Production Dockerfile for Frontend using Bun
+# Base stage with Bun
+FROM oven/bun:1-alpine AS base
 
-# Install OpenSSL (required by Prisma) and other dependencies
+# Install OpenSSL and other dependencies
 RUN apk add --no-cache libc6-compat openssl
 
 WORKDIR /app
 
 # Copy package files
-COPY package.json package-lock.json* ./
+COPY package.json bun.lockb* ./
 
 # Dependencies stage
 FROM base AS deps
 
-# Install dependencies with cache mount for faster builds
-RUN --mount=type=cache,id=npm,target=/root/.npm \
-    npm ci --only=production --ignore-scripts && \
-    npm cache clean --force
+# Install all dependencies (including devDependencies for build)
+RUN bun install --frozen-lockfile
 
 # Builder stage
 FROM base AS builder
@@ -40,7 +38,7 @@ ENV NEXT_TELEMETRY_DISABLED=1
 ENV NEXT_PUBLIC_SKIP_BUILD_STATIC_CHECK=true
 
 # Build the application
-RUN npm run build
+RUN bun run build
 
 # Debug: Verify build output
 RUN echo "Build completed. Checking output..." && \
@@ -48,11 +46,11 @@ RUN echo "Build completed. Checking output..." && \
     ls -la .next/standalone/ || echo "No standalone directory found"
 
 # Production runner stage
-FROM node:20-alpine AS runner
+FROM oven/bun:1-alpine AS runner
 
 WORKDIR /app
 
-# Install OpenSSL (required by Prisma at runtime)
+# Install OpenSSL
 RUN apk add --no-cache openssl
 
 ENV NODE_ENV=production
@@ -89,7 +87,7 @@ EXPOSE 3000
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:3000/api/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
+  CMD wget --no-verbose --tries=1 --spider http://localhost:3000/api/health || exit 1
 
 # Use exec form to ensure proper signal handling
-CMD ["node", "server.js"]
+CMD ["bun", "run", "server.js"]

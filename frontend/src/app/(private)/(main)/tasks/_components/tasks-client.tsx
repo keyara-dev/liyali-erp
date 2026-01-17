@@ -51,7 +51,7 @@ export function TasksClient({ userId }: TasksClientProps) {
           <TaskStatsCards userId={userId} refreshTrigger={refreshTrigger} />
 
           {/* Tasks Table with built-in filters */}
-          <TasksTable refreshTrigger={refreshTrigger} />
+          <TasksTable />
         </TabsContent>
 
         {/* Approvals Tab */}

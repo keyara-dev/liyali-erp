@@ -252,7 +252,7 @@ func TestPOResponseFormat(t *testing.T) {
 	t.Run("PO response structure", func(t *testing.T) {
 		po := types.PurchaseOrderResponse{
 			ID:             uuid.New().String(),
-			PONumber:       "PO-20251223-abc12345",
+			DocumentNumber: "PO-20251223-abc12345",
 			VendorID:       uuid.New().String(),
 			Status:         "draft",
 			TotalAmount:    50000,
@@ -266,8 +266,8 @@ func TestPOResponseFormat(t *testing.T) {
 		if po.ID == "" {
 			t.Error("Response should have ID")
 		}
-		if po.PONumber == "" {
-			t.Error("Response should have PONumber")
+		if po.DocumentNumber == "" {
+			t.Error("Response should have DocumentNumber")
 		}
 		if po.VendorID == "" {
 			t.Error("Response should have VendorID")
@@ -331,16 +331,16 @@ func TestPOItemValidation(t *testing.T) {
 func TestPODuplicatePrevention(t *testing.T) {
 	t.Run("Prevent duplicate PO numbers", func(t *testing.T) {
 		po1 := types.PurchaseOrderResponse{
-			PONumber: "PO-20251223-abc12345",
+			DocumentNumber: "PO-20251223-abc12345",
 			VendorID: uuid.New().String(),
 		}
 
 		po2 := types.PurchaseOrderResponse{
-			PONumber: "PO-20251223-abc12345",
+			DocumentNumber: "PO-20251223-abc12345",
 			VendorID: po1.VendorID,
 		}
 
-		isDuplicate := (po1.PONumber == po2.PONumber)
+		isDuplicate := (po1.DocumentNumber == po2.DocumentNumber)
 
 		if !isDuplicate {
 			t.Error("Should detect duplicate PO numbers")

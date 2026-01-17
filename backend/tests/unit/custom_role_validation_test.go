@@ -299,8 +299,8 @@ func TestCustomRoleWorkflowEdgeCases(t *testing.T) {
 	})
 }
 
-// TestCustomRoleAuditTrail tests audit trail functionality with custom roles
-func TestCustomRoleAuditTrail(t *testing.T) {
+// TestCustomRoleAuditTrailValidation tests audit trail functionality with custom roles
+func TestCustomRoleAuditTrailValidation(t *testing.T) {
 	t.Run("Audit record captures custom role information", func(t *testing.T) {
 		// Test that audit records properly capture custom role information
 		
@@ -364,8 +364,8 @@ func TestCustomRoleAuditTrail(t *testing.T) {
 	})
 }
 
-// TestCustomRoleWorkflowStatusReporting tests status reporting with custom roles
-func TestCustomRoleWorkflowStatusReporting(t *testing.T) {
+// TestCustomRoleWorkflowStatusReportingValidation tests status reporting with custom roles
+func TestCustomRoleWorkflowStatusReportingValidation(t *testing.T) {
 	t.Run("Workflow status correctly reports custom role requirements", func(t *testing.T) {
 		// Test that workflow status includes accurate custom role information
 		

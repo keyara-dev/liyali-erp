@@ -22,5 +22,5 @@ export type { WorkflowStageFormProps } from "./workflow-stage-form";
 export { ApprovalTaskCard } from "./approval-task-card";
 export { ApprovalActionModal } from "./approval-action-modal";
 export { ClaimTaskModal } from "./claim-task-modal";
-export { WorkflowActionButton } from "./workflow-action-button";
+export { WorkflowActionButtons } from "./workflow-action-buttons";
 export { WorkflowStatusCard } from "./workflow-status-card";

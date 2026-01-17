@@ -18,7 +18,7 @@ func TestCompleteRequisitionWorkflow(t *testing.T) {
 
 		requisition := types.RequisitionResponse{
 			ID:           requisitionID,
-			ReqNumber:    "REQ-20251223-001",
+			DocumentNumber: "REQ-20251223-001",
 			UserID:       userID,
 			Department:   departmentID,
 			Status:       "draft",

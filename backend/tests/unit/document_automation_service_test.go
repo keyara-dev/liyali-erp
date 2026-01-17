@@ -81,7 +81,7 @@ func TestCreatePurchaseOrderFromRequisition(t *testing.T) {
 		// Create approved requisition with preferred vendor
 		requisition := models.Requisition{
 			ID:                uuid.New().String(),
-			REQNumber:         "REQ-TEST-001",
+			DocumentNumber:    "REQ-TEST-001",
 			RequesterId:       userID,
 			Title:             "Test Requisition",
 			Description:       "Test Description",
@@ -293,7 +293,7 @@ func TestCreateGRNFromPurchaseOrder(t *testing.T) {
 		// Create approved purchase order
 		purchaseOrder := models.PurchaseOrder{
 			ID:             uuid.New().String(),
-			PONumber:       "PO-TEST-001",
+			DocumentNumber: "PO-TEST-001",
 			VendorID:       vendorID,
 			Status:         "approved",
 			TotalAmount:    75000,
@@ -346,13 +346,13 @@ func TestCreateGRNFromPurchaseOrder(t *testing.T) {
 
 		// Verify GRN was created in database
 		var createdGRN models.GoodsReceivedNote
-		if err := db.Where("po_number = ?", purchaseOrder.PONumber).First(&createdGRN).Error; err != nil {
+		if err := db.Where("po_document_number = ?", purchaseOrder.DocumentNumber).First(&createdGRN).Error; err != nil {
 			t.Fatalf("GRN not found in database: %v", err)
 		}
 
 		// Verify GRN data
-		if createdGRN.PONumber != purchaseOrder.PONumber {
-			t.Errorf("Expected PO number %s, got %s", purchaseOrder.PONumber, createdGRN.PONumber)
+		if createdGRN.PODocumentNumber != purchaseOrder.DocumentNumber {
+			t.Errorf("Expected PO number %s, got %s", purchaseOrder.DocumentNumber, createdGRN.PODocumentNumber)
 		}
 
 		if createdGRN.Status != "draft" {
@@ -447,7 +447,7 @@ func TestCreatePaymentVoucherFromGRN(t *testing.T) {
 		// Create linked PO first
 		purchaseOrder := models.PurchaseOrder{
 			ID:             uuid.New().String(),
-			PONumber:       "PO-TEST-002",
+			DocumentNumber: "PO-TEST-002",
 			VendorID:       vendorID,
 			Status:         "approved",
 			TotalAmount:    100000,
@@ -457,10 +457,10 @@ func TestCreatePaymentVoucherFromGRN(t *testing.T) {
 
 		// Create approved GRN
 		grn := models.GoodsReceivedNote{
-			ID:             uuid.New().String(),
-			GRNNumber:      "GRN-TEST-001",
-			PONumber:       purchaseOrder.PONumber,
-			Status:         "approved",
+			ID:                uuid.New().String(),
+			DocumentNumber:    "GRN-TEST-001",
+			PODocumentNumber:  purchaseOrder.DocumentNumber,
+			Status:            "approved",
 			CreatedAt:      time.Now(),
 			UpdatedAt:      time.Now(),
 		}
@@ -491,7 +491,7 @@ func TestCreatePaymentVoucherFromGRN(t *testing.T) {
 
 		// Verify PV was created in database
 		var createdPV models.PaymentVoucher
-		if err := db.Where("linked_po = ?", purchaseOrder.PONumber).First(&createdPV).Error; err != nil {
+		if err := db.Where("linked_po = ?", purchaseOrder.DocumentNumber).First(&createdPV).Error; err != nil {
 			t.Fatalf("PV not found in database: %v", err)
 		}
 
@@ -508,8 +508,8 @@ func TestCreatePaymentVoucherFromGRN(t *testing.T) {
 			t.Errorf("Expected status 'draft', got %s", createdPV.Status)
 		}
 
-		if createdPV.LinkedPO != purchaseOrder.PONumber {
-			t.Errorf("Expected linked PO %s, got %s", purchaseOrder.PONumber, createdPV.LinkedPO)
+		if createdPV.LinkedPO != purchaseOrder.DocumentNumber {
+			t.Errorf("Expected linked PO %s, got %s", purchaseOrder.DocumentNumber, createdPV.LinkedPO)
 		}
 	})
 
@@ -561,9 +561,9 @@ func TestCreatePaymentVoucherFromGRN(t *testing.T) {
 
 	t.Run("Fails when linked PO not found", func(t *testing.T) {
 		grn := models.GoodsReceivedNote{
-			ID:             uuid.New().String(),
-			PONumber:       "NONEXISTENT-PO",
-			Status:         "approved",
+			ID:                uuid.New().String(),
+			PODocumentNumber:  "NONEXISTENT-PO",
+			Status:            "approved",
 		}
 
 		config := services.AutomationConfig{
@@ -728,7 +728,7 @@ func BenchmarkPOCreationFromRequisition(b *testing.B) {
 		// Create unique requisition for each iteration
 		testReq := requisition
 		testReq.ID = uuid.New().String()
-		testReq.REQNumber = fmt.Sprintf("REQ-BENCH-%d", i)
+		testReq.DocumentNumber = fmt.Sprintf("REQ-BENCH-%d", i)
 		db.Create(&testReq)
 
 		_, err := automationService.CreatePurchaseOrderFromRequisition(ctx, &testReq, config)

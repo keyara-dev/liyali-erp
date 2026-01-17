@@ -140,15 +140,15 @@ func TestMultiTenantAnalyticsSeparation(t *testing.T) {
 		assert.Equal(t, 3, len(demoReqs))
 		assert.Equal(t, 4, len(acmeReqs))
 		
-		// Verify different REQ numbers
+		// Verify different DocumentNumber values
 		demoReqNumbers := make([]string, len(demoReqs))
 		for i, req := range demoReqs {
-			demoReqNumbers[i] = req.REQNumber
+			demoReqNumbers[i] = req.DocumentNumber
 		}
 		
 		acmeReqNumbers := make([]string, len(acmeReqs))
 		for i, req := range acmeReqs {
-			acmeReqNumbers[i] = req.REQNumber
+			acmeReqNumbers[i] = req.DocumentNumber
 		}
 		
 		// Verify no overlap in requisition numbers

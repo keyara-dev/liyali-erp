@@ -47,7 +47,6 @@ func TestConcurrentApprovalIssues(t *testing.T) {
 			StageNumber:  1,
 			StageName:    "Manager Approval",
 			RequiredRole: "manager",
-			IsRequired:   true,
 		},
 	}
 	assert.NoError(t, workflow.SetStages(stages))
@@ -133,7 +132,7 @@ func TestConcurrentApprovalIssues(t *testing.T) {
 		// Create a new document for this test
 		documentID := uuid.New().String()
 		
-		assignment, err := workflowExecutionService.AssignWorkflowToDocument(
+		_, err := workflowExecutionService.AssignWorkflowToDocument(
 			context.Background(),
 			orgID,
 			documentID,
@@ -208,7 +207,7 @@ func TestConcurrentApprovalIssues(t *testing.T) {
 		// Create a new document for this test
 		documentID := uuid.New().String()
 		
-		assignment, err := workflowExecutionService.AssignWorkflowToDocument(
+		_, err := workflowExecutionService.AssignWorkflowToDocument(
 			context.Background(),
 			orgID,
 			documentID,
@@ -295,7 +294,6 @@ func TestConcurrentApprovalIssues(t *testing.T) {
 				StageNumber:       1,
 				StageName:         "Manager Consensus",
 				RequiredRole:      "manager",
-				IsRequired:        true,
 				// MISSING: RequiredApprovalCount field
 				// MISSING: Logic to handle multiple approvals from same role
 			},
@@ -314,7 +312,7 @@ func TestConcurrentApprovalIssues(t *testing.T) {
 		// Create a document
 		documentID := uuid.New().String()
 		
-		assignment, err := workflowExecutionService.AssignWorkflowToDocument(
+		_, err := workflowExecutionService.AssignWorkflowToDocument(
 			context.Background(),
 			orgID,
 			documentID,

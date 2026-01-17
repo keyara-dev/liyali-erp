@@ -1,4 +1,4 @@
-name: Deploy to Fly.io
+name: Deploy to Staging Environment - (Fly.io)
 
 on:
   push:
@@ -14,7 +14,8 @@ jobs:
   deploy-backend:
     name: Deploy Backend to Fly.io
     runs-on: ubuntu-latest
-    if: contains(github.event.head_commit.message, '[backend]') || contains(github.event.head_commit.message, '[all]') || github.event_name == 'workflow_dispatch'
+    # Only deploy backend if backend files changed or manual trigger
+    if: github.event_name == 'workflow_dispatch' || contains(join(github.event.commits.*.modified, ' '), 'backend/') || contains(join(github.event.commits.*.added, ' '), 'backend/')
 
     steps:
       - name: Checkout code
@@ -53,7 +54,8 @@ jobs:
     name: Deploy Frontend to Fly.io
     runs-on: ubuntu-latest
     needs: deploy-backend
-    if: contains(github.event.head_commit.message, '[frontend]') || contains(github.event.head_commit.message, '[all]') || github.event_name == 'workflow_dispatch'
+    # Only deploy frontend if frontend files changed or manual trigger
+    if: github.event_name == 'workflow_dispatch' || contains(join(github.event.commits.*.modified, ' '), 'frontend/') || contains(join(github.event.commits.*.added, ' '), 'frontend/')
 
     steps:
       - name: Checkout code

@@ -276,34 +276,29 @@ func TestApprovalChainParsing(t *testing.T) {
 
 // TestApprovalTaskCreation tests approval task structure
 func TestApprovalTaskCreation(t *testing.T) {
-	t.Run("Approval task structure", func(t *testing.T) {
+	t.Run("Workflow task structure", func(t *testing.T) {
 		now := time.Now()
-		task := models.ApprovalTask{
+		task := models.WorkflowTask{
 			ID:           uuid.New().String(),
-			DocumentID:   "req-123",
-			DocumentType: "requisition",
-			ApproverID:   "user-456",
+			EntityID:     "req-123",
+			EntityType:   "requisition",
 			Status:       "pending",
-			Stage:        1,
+			StageNumber:  1,
 			CreatedAt:    now,
-			UpdatedAt:    now,
 		}
 
 		// Verify all required fields are populated
 		if task.ID == "" {
 			t.Error("Task ID should not be empty")
 		}
-		if task.DocumentID == "" {
-			t.Error("Task DocumentID should not be empty")
-		}
-		if task.ApproverID == "" {
-			t.Error("Task ApproverID should not be empty")
+		if task.EntityID == "" {
+			t.Error("Task EntityID should not be empty")
 		}
 		if task.Status != "pending" {
 			t.Errorf("Task Status should be 'pending', got %s", task.Status)
 		}
-		if task.Stage < 1 {
-			t.Error("Task Stage should be >= 1")
+		if task.StageNumber < 1 {
+			t.Error("Task StageNumber should be >= 1")
 		}
 		if task.CreatedAt.IsZero() {
 			t.Error("Task CreatedAt should not be zero")

@@ -2,6 +2,7 @@ package unit
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 	"time"
 
@@ -220,20 +221,20 @@ func TestCustomRoleEdgeCases(t *testing.T) {
 		
 		users := []*models.User{
 			{
-				ID:             user1ID,
-				OrganizationID: orgID,
-				Email:          "user1@test.com",
-				Name:           "User 1",
-				Role:           "custom_approver",
-				IsActive:       true,
+				ID:                    user1ID,
+				CurrentOrganizationID: &orgID,
+				Email:                 "user1@test.com",
+				Name:                  "User 1",
+				Role:                  "custom_approver",
+				Active:                true,
 			},
 			{
-				ID:             user2ID,
-				OrganizationID: orgID,
-				Email:          "user2@test.com",
-				Name:           "User 2",
-				Role:           "custom_approver",
-				IsActive:       true,
+				ID:                    user2ID,
+				CurrentOrganizationID: &orgID,
+				Email:                 "user2@test.com",
+				Name:                  "User 2",
+				Role:                  "custom_approver",
+				Active:                true,
 			},
 		}
 		
@@ -311,15 +312,13 @@ func TestCustomRoleEdgeCases(t *testing.T) {
 		orgID, userID, workflowID := setupCustomRoleTestData(db)
 		
 		// Create a custom role with limited permissions
-		limitedRoleID := uuid.New().String()
 		limitedRole := &models.OrganizationRole{
-			ID:             limitedRoleID,
+			ID:             uuid.New(),
 			OrganizationID: orgID,
 			Name:           "limited_approver",
-			DisplayName:    "Limited Approver",
 			Description:    "Approver with limited permissions",
 			IsSystemRole:   false,
-			IsActive:       true,
+			Active:         true,
 			Permissions:    datatypes.JSON(`["view_documents"]`), // No approval permission
 		}
 		assert.NoError(t, db.Create(limitedRole).Error)
@@ -503,7 +502,7 @@ func setupTestDatabase() *gorm.DB {
 }
 
 // setupCustomRoleTestData creates test organization, custom role, user, and workflow
-func setupCustomRoleTestData(db *gorm.DB) (string, string, string) {
+func setupCustomRoleTestData(db *gorm.DB) (string, string, uuid.UUID) {
 	orgID := uuid.New().String()
 	
 	// Create organization
@@ -516,13 +515,12 @@ func setupCustomRoleTestData(db *gorm.DB) (string, string, string) {
 
 	// Create custom role
 	customRole := &models.OrganizationRole{
-		ID:             uuid.New().String(),
+		ID:             uuid.New(),
 		OrganizationID: orgID,
 		Name:           "custom_approver",
-		DisplayName:    "Custom Approver",
 		Description:    "Custom approval role for testing",
 		IsSystemRole:   false,
-		IsActive:       true,
+		Active:         true,
 		Permissions:    datatypes.JSON(`["approve_documents", "view_documents"]`),
 	}
 	db.Create(customRole)
@@ -530,17 +528,17 @@ func setupCustomRoleTestData(db *gorm.DB) (string, string, string) {
 	// Create user with custom role
 	userID := uuid.New().String()
 	user := &models.User{
-		ID:             userID,
-		OrganizationID: orgID,
-		Email:          "test@example.com",
-		Name:           "Test User",
-		Role:           "custom_approver",
-		IsActive:       true,
+		ID:                    userID,
+		CurrentOrganizationID: &orgID,
+		Email:                 "test@example.com",
+		Name:                  "Test User",
+		Role:                  "custom_approver",
+		Active:                true,
 	}
 	db.Create(user)
 
 	// Create workflow
-	workflowID := uuid.New().String()
+	workflowID := uuid.New()
 	stages := []models.WorkflowStage{
 		{
 			StageNumber:   1,
@@ -550,7 +548,7 @@ func setupCustomRoleTestData(db *gorm.DB) (string, string, string) {
 		},
 	}
 	
-	stagesJSON, _ := datatypes.JSON(stages).MarshalJSON()
+	stagesJSON, _ := json.Marshal(stages)
 	
 	workflow := &models.Workflow{
 		ID:             workflowID,

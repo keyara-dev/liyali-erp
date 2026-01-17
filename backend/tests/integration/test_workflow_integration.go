@@ -100,7 +100,7 @@ func main() {
 	requisition := models.Requisition{
 		ID:             requisitionID,
 		OrganizationID: orgID,
-		REQNumber:      "REQ-TEST-001",
+		DocumentNumber: "REQ-TEST-001",
 		Title:          "Test Requisition",
 		Status:         "draft",
 		RequesterId:    userID,
@@ -111,7 +111,7 @@ func main() {
 	}
 	db.Create(&requisition)
 
-	fmt.Printf("✓ Created requisition %s with status: %s\n", requisition.REQNumber, requisition.Status)
+	fmt.Printf("✓ Created requisition %s with status: %s\n", requisition.DocumentNumber, requisition.Status)
 
 	// Test 1: Manually create workflow assignment (since we don't have full workflow service)
 	fmt.Println("\n--- Test 1: Creating Workflow Assignment ---")
@@ -203,7 +203,7 @@ func main() {
 	rejectionReq := models.Requisition{
 		ID:             rejectionReqID,
 		OrganizationID: orgID,
-		REQNumber:      "REQ-TEST-002",
+		DocumentNumber: "REQ-TEST-002",
 		Title:          "Test Rejection Requisition",
 		Status:         "pending",
 		RequesterId:    userID,

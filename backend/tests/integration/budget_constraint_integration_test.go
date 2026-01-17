@@ -11,8 +11,6 @@ import (
 // TestBudgetAvailabilityCheck tests budget availability verification
 func TestBudgetAvailabilityCheck(t *testing.T) {
 	t.Run("Verify budget is available before creating requisition", func(t *testing.T) {
-		departmentID := uuid.New().String()
-
 		budget := types.BudgetResponse{
 			ID:              uuid.New().String(),
 			TotalBudget:     500000.0,
@@ -86,7 +84,6 @@ func TestReserveFundsEnforcement(t *testing.T) {
 	t.Run("Maintain 10-15% reserve funds", func(t *testing.T) {
 		totalBudget := 500000.0
 		minReserve := totalBudget * 0.10  // 10%
-		maxAllocate := totalBudget * 0.90 // 90%
 
 		tests := []struct {
 			name              string
@@ -299,7 +296,6 @@ func TestBudgetTransferBetweenLineItems(t *testing.T) {
 // TestMultiYearBudgetPlanning tests budget allocation across years
 func TestMultiYearBudgetPlanning(t *testing.T) {
 	t.Run("Plan budgets for multiple fiscal years", func(t *testing.T) {
-		department := "Operations"
 		budgets := map[string]float64{
 			"2024": 300000,
 			"2025": 350000,
