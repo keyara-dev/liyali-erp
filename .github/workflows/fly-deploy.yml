@@ -9,17 +9,35 @@ on:
       - "frontend/**"
       - ".github/workflows/fly-deploy.yml"
   workflow_dispatch: # Allow manual trigger
+    inputs:
+      deploy_backend:
+        description: "Deploy backend"
+        required: false
+        default: "true"
+        type: boolean
+      deploy_frontend:
+        description: "Deploy frontend"
+        required: false
+        default: "true"
+        type: boolean
 
 jobs:
   deploy-backend:
     name: Deploy Backend to Fly.io
     runs-on: ubuntu-latest
-    # Only deploy backend if backend files changed or manual trigger
-    if: github.event_name == 'workflow_dispatch' || contains(join(github.event.commits.*.modified, ' '), 'backend/') || contains(join(github.event.commits.*.added, ' '), 'backend/')
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Debug - Show deployment context
+        run: |
+          echo "Event name: ${{ github.event_name }}"
+          echo "Ref: ${{ github.ref }}"
+          echo "SHA: ${{ github.sha }}"
+          echo "Branch: ${{ github.ref_name }}"
+          git log --oneline -2
+          git show --name-only HEAD
 
       - name: Setup Fly.io CLI
         uses: superfly/flyctl-actions/setup-flyctl@master
@@ -54,8 +72,6 @@ jobs:
     name: Deploy Frontend to Fly.io
     runs-on: ubuntu-latest
     needs: deploy-backend
-    # Only deploy frontend if frontend files changed or manual trigger
-    if: github.event_name == 'workflow_dispatch' || contains(join(github.event.commits.*.modified, ' '), 'frontend/') || contains(join(github.event.commits.*.added, ' '), 'frontend/')
 
     steps:
       - name: Checkout code
