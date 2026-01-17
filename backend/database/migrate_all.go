@@ -181,8 +181,29 @@ func main() {
 }
 
 func createMigrationsTable(db *sql.DB) {
+	// First check if table already exists
+	var exists bool
+	checkQuery := `
+		SELECT EXISTS (
+			SELECT FROM information_schema.tables 
+			WHERE table_schema = 'public' 
+			AND table_name = 'schema_migrations'
+		);
+	`
+	
+	err := db.QueryRow(checkQuery).Scan(&exists)
+	if err != nil {
+		log.Printf("Warning: Failed to check if migrations table exists: %v", err)
+	}
+	
+	if exists {
+		fmt.Println("📊 Migrations table already exists")
+		return
+	}
+	
+	// Create the table
 	query := `
-		CREATE TABLE IF NOT EXISTS schema_migrations (
+		CREATE TABLE schema_migrations (
 			id SERIAL PRIMARY KEY,
 			filename VARCHAR(255) UNIQUE NOT NULL,
 			applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -190,8 +211,15 @@ func createMigrationsTable(db *sql.DB) {
 	`
 	
 	if _, err := db.Exec(query); err != nil {
+		// If it still fails, try to handle the case where table was created concurrently
+		if strings.Contains(err.Error(), "already exists") || strings.Contains(err.Error(), "duplicate") {
+			fmt.Println("📊 Migrations table was created concurrently")
+			return
+		}
 		log.Fatalf("Failed to create migrations table: %v", err)
 	}
+	
+	fmt.Println("✅ Created migrations table")
 }
 
 func hasBeenApplied(db *sql.DB, filename string) bool {
@@ -199,6 +227,10 @@ func hasBeenApplied(db *sql.DB, filename string) bool {
 	query := "SELECT COUNT(*) FROM schema_migrations WHERE filename = $1"
 	err := db.QueryRow(query, filename).Scan(&count)
 	if err != nil {
+		// If table doesn't exist yet, migration hasn't been applied
+		if strings.Contains(err.Error(), "does not exist") {
+			return false
+		}
 		log.Printf("Warning: Failed to check migration status for %s: %v", filename, err)
 		return false
 	}
