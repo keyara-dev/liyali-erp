@@ -1,18 +1,17 @@
-# Fly.io configuration for Liyali Gateway Backend
-app = "liyali-gateway-api"
-primary_region = "iad" # Washington D.C. - change to your preferred region
+# fly.toml app configuration file generated for liyali-gateway-api on 2026-01-16T22:45:49Z
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
+
+app = 'liyali-gateway-api'
+primary_region = 'jnb'
 
 [build]
-  dockerfile = "Dockerfile"
-
-[env]
-  PORT = "8080"
-  ENV = "production"
 
 [http_service]
   internal_port = 8080
   force_https = true
-  auto_stop_machines = true
+  auto_stop_machines = 'stop'
   auto_start_machines = true
   min_machines_running = 0
   processes = ["app"]
@@ -30,7 +29,8 @@ primary_region = "iad" # Washington D.C. - change to your preferred region
     path = "/health"
 
 [[vm]]
-  cpu_kind = "shared"
+  memory = '1gb'
+  cpu_kind = 'shared'
   cpus = 1
   memory_mb = 512
 
