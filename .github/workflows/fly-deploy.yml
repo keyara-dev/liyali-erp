@@ -53,7 +53,7 @@ jobs:
         id: backend-url
         run: |
           cd backend
-          URL=$(flyctl info --json | jq -r '.Hostname')
+          URL=$(flyctl status --json | jq -r '.Hostname // "liyali-gateway-api.fly.dev"')
           echo "url=https://${URL}" >> $GITHUB_OUTPUT
           echo "Backend deployed to: https://${URL}"
         env:
@@ -91,7 +91,7 @@ jobs:
         id: frontend-url
         run: |
           cd frontend
-          URL=$(flyctl info --json | jq -r '.Hostname')
+          URL=$(flyctl status --json | jq -r '.Hostname // "liyali-gateway-frontend.fly.dev"')
           echo "url=https://${URL}" >> $GITHUB_OUTPUT
           echo "Frontend deployed to: https://${URL}"
         env:

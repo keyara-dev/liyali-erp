@@ -1,6 +1,6 @@
 # Fly.io configuration for Liyali Gateway Frontend
 app = "liyali-gateway-frontend"
-primary_region = "iad" # Washington D.C. - change to your preferred region
+primary_region = "jnb" # Johannesburg - same region as backend for optimal performance
 
 [build]
   dockerfile = "Dockerfile"
