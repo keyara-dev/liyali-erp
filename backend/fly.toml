@@ -34,5 +34,6 @@ primary_region = 'jnb'
   cpus = 1
   memory_mb = 512
 
-[deploy]
-  release_command = "./migrate"
+# Note: Migrations should be run manually for production safety
+# To run migrations: flyctl ssh console -a liyali-gateway-api
+# Then: go run cmd/migrate/main.go -migrate
