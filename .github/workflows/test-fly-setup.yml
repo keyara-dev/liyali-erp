@@ -1,0 +1,48 @@
+name: Test Fly.io Setup
+
+on:
+  workflow_dispatch: # Manual trigger only
+
+jobs:
+  test-fly-setup:
+    name: Test Fly.io Configuration
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Fly.io CLI
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Test Fly.io Authentication
+        run: |
+          echo "Testing Fly.io CLI setup..."
+          flyctl version
+          echo "Testing authentication..."
+          flyctl auth whoami || echo "Authentication failed - check FLY_API_TOKEN secret"
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+      - name: List Fly.io Apps
+        run: |
+          echo "Listing Fly.io apps..."
+          flyctl apps list || echo "Failed to list apps"
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+      - name: Check Backend App
+        run: |
+          echo "Checking backend app configuration..."
+          cd backend
+          flyctl info || echo "Backend app not found or not accessible"
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+      - name: Check Frontend App
+        run: |
+          echo "Checking frontend app configuration..."
+          cd frontend
+          flyctl info || echo "Frontend app not found or not accessible"
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
