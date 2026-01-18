@@ -166,7 +166,7 @@ func TestGRNPODocumentNumberValidation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			isValid := tt.poDocumentNumber != "" && len(tt.poDocumentNumber) > 3
+			isValid := tt.poDocumentNumber != "" && len(tt.poDocumentNumber) > 10 && tt.poDocumentNumber[:3] == "PO-"
 			if isValid != tt.shouldBeValid {
 				t.Errorf("Expected %v, got %v", tt.shouldBeValid, isValid)
 			}
@@ -216,7 +216,17 @@ func TestGRNItemQuantityValidation(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			allValid := true
 			for _, item := range tt.items {
-				qty, hasQty := item["quantity"].(float64)
+				// Handle both int and float64 quantities
+				var qty float64
+				var hasQty bool
+				if qtyFloat, ok := item["quantity"].(float64); ok {
+					qty = qtyFloat
+					hasQty = true
+				} else if qtyInt, ok := item["quantity"].(int); ok {
+					qty = float64(qtyInt)
+					hasQty = true
+				}
+				
 				if !hasQty || qty <= 0 {
 					allValid = false
 					break

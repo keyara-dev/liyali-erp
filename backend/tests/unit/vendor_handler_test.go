@@ -3,6 +3,7 @@ package unit
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 
@@ -192,7 +193,7 @@ func TestVendorEmailValidation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			isValid := tt.email != "" && len(tt.email) > 5
+			isValid := tt.email != "" && len(tt.email) > 5 && strings.Contains(tt.email, "@") && strings.Contains(tt.email, ".")
 			if isValid != tt.shouldBeValid {
 				t.Errorf("Expected %v, got %v", tt.shouldBeValid, isValid)
 			}

@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"strings"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -123,6 +124,13 @@ func CreateVendor(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"success": false,
 			"message": "Email is required",
+		})
+	}
+	// Basic email validation
+	if len(req.Email) < 5 || !strings.Contains(req.Email, "@") || !strings.Contains(req.Email, ".") {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"success": false,
+			"message": "Invalid email format",
 		})
 	}
 	if req.Phone == "" {

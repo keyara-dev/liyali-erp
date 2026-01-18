@@ -301,8 +301,28 @@ func TestRequisitionItemValidation(t *testing.T) {
 			allValid := true
 			for _, item := range tt.items {
 				desc, hasDesc := item["description"].(string)
-				qty, hasQty := item["quantity"].(float64)
-				price, hasPrice := item["unitPrice"].(float64)
+				
+				// Handle both int and float64 quantities
+				var qty float64
+				var hasQty bool
+				if qtyFloat, ok := item["quantity"].(float64); ok {
+					qty = qtyFloat
+					hasQty = true
+				} else if qtyInt, ok := item["quantity"].(int); ok {
+					qty = float64(qtyInt)
+					hasQty = true
+				}
+				
+				// Handle both int and float64 prices
+				var price float64
+				var hasPrice bool
+				if priceFloat, ok := item["unitPrice"].(float64); ok {
+					price = priceFloat
+					hasPrice = true
+				} else if priceInt, ok := item["unitPrice"].(int); ok {
+					price = float64(priceInt)
+					hasPrice = true
+				}
 
 				isValidItem := hasDesc && desc != "" && hasQty && qty > 0 && hasPrice && price > 0
 
@@ -423,7 +443,7 @@ func TestRequisitionApprovalLogic(t *testing.T) {
 		} else if requisition.TotalAmount < 50000 {
 			approvers = append(approvers, "approver", "finance", "admin")
 		} else {
-			approvers = append(approvers, "approver", "finance", "admin", "admin")
+			approvers = append(approvers, "approver", "finance", "admin")
 		}
 
 		if requisition.TotalAmount == 50000 {

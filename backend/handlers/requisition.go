@@ -122,6 +122,27 @@ func CreateRequisition(c *fiber.Ctx) error {
 			"message": "At least one item is required",
 		})
 	}
+	// Validate items have positive quantities and valid descriptions
+	for _, item := range req.Items {
+		if item.Description == "" {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"success": false,
+				"message": "All items must have descriptions",
+			})
+		}
+		if item.Quantity <= 0 {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"success": false,
+				"message": "All items must have positive quantities",
+			})
+		}
+		if item.UnitPrice <= 0 {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"success": false,
+				"message": "All items must have positive unit prices",
+			})
+		}
+	}
 	if req.TotalAmount <= 0 {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"success": false,

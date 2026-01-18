@@ -157,11 +157,27 @@ func CreatePurchaseOrder(c *fiber.Ctx) error {
 			"message": "At least one item is required",
 		})
 	}
+	// Validate items have positive quantities
+	for _, item := range req.Items {
+		if item.Quantity <= 0 {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"success": false,
+				"message": "All items must have positive quantities",
+			})
+		}
+	}
 	if req.TotalAmount <= 0 {
 		logging.LogWarn(c, "invalid_total_amount")
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"success": false,
 			"message": "Total amount must be greater than 0",
+		})
+	}
+	// Validate delivery date is not in the past
+	if !req.DeliveryDate.Time.IsZero() && req.DeliveryDate.Time.Before(time.Now().Truncate(24*time.Hour)) {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"success": false,
+			"message": "Delivery date cannot be in the past",
 		})
 	}
 

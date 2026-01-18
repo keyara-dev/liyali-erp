@@ -109,11 +109,27 @@ func CreateGRN(c *fiber.Ctx) error {
 			"message": "PO number is required",
 		})
 	}
+	// Validate PO document number format (should start with "PO-" and be at least 10 characters)
+	if len(req.PODocumentNumber) < 10 || req.PODocumentNumber[:3] != "PO-" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"success": false,
+			"message": "Invalid PO document number format",
+		})
+	}
 	if len(req.Items) == 0 {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"success": false,
 			"message": "At least one item is required",
 		})
+	}
+	// Validate items have positive quantities
+	for _, item := range req.Items {
+		if item.QuantityOrdered <= 0 {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"success": false,
+				"message": "All items must have positive quantities",
+			})
+		}
 	}
 	if req.ReceivedBy == "" {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{

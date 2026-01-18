@@ -78,6 +78,14 @@ func TestCreatePurchaseOrderValidation(t *testing.T) {
 
 			// Validate request
 			isValid := req.VendorID != "" && req.TotalAmount > 0
+			
+			// Check delivery date if provided
+			if !req.DeliveryDate.Time.IsZero() {
+				// Delivery date should not be in the past
+				if req.DeliveryDate.Time.Before(time.Now().Truncate(24*time.Hour)) {
+					isValid = false
+				}
+			}
 
 			if isValid != tt.shouldPass {
 				t.Errorf("Expected %v, got %v", tt.shouldPass, isValid)
@@ -169,7 +177,8 @@ func TestPODeliveryDateValidation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			isValid := tt.deliveryDate.After(now) || tt.deliveryDate.Day() == now.Day()
+			// Check if delivery date is today or in the future
+			isValid := tt.deliveryDate.After(now) || tt.deliveryDate.Truncate(24*time.Hour).Equal(now.Truncate(24*time.Hour))
 
 			if isValid != tt.shouldBeValid {
 				t.Errorf("Expected %v, got %v", tt.shouldBeValid, isValid)
@@ -313,7 +322,17 @@ func TestPOItemValidation(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			allValid := true
 			for _, item := range tt.items {
-				qty, hasQty := item["quantity"].(float64)
+				// Handle both int and float64 quantities
+				var qty float64
+				var hasQty bool
+				if qtyFloat, ok := item["quantity"].(float64); ok {
+					qty = qtyFloat
+					hasQty = true
+				} else if qtyInt, ok := item["quantity"].(int); ok {
+					qty = float64(qtyInt)
+					hasQty = true
+				}
+				
 				if !hasQty || qty <= 0 {
 					allValid = false
 					break

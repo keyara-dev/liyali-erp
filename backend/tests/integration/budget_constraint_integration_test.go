@@ -401,7 +401,7 @@ func TestBudgetAlertThresholds(t *testing.T) {
 
 		alerts := []string{}
 
-		if utilization > 90 {
+		if utilization >= 90 {
 			alerts = append(alerts, "Warning: Budget more than 90% allocated")
 		}
 		if utilization > 100 {
