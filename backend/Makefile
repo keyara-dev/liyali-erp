@@ -10,6 +10,7 @@ help:
 	@echo ""
 	@echo "Available targets:"
 	@echo "  build              - Build the application"
+	@echo "  build-windows      - Build for Windows (amd64)"
 	@echo "  run                - Run the application"
 	@echo "  test               - Run all tests"
 	@echo "  test-unit          - Run unit tests only"
@@ -53,6 +54,11 @@ build:
 	@echo "Building $(APP_NAME)..."
 	go build -o bin/$(APP_NAME) main.go
 	@echo "Build complete: bin/$(APP_NAME)"
+
+build-windows:
+	@echo "Building $(APP_NAME) for Windows..."
+	GOOS=windows GOARCH=amd64 go build -o bin/$(APP_NAME).exe main.go
+	@echo "Build complete: bin/$(APP_NAME).exe"
 
 run:
 	@echo "Running $(APP_NAME) on port $(PORT)..."
@@ -239,6 +245,6 @@ version:
 	@echo "App: $(APP_NAME)"
 	@echo "Port: $(PORT)"
 
-.PHONY: help build run test test-unit test-integration test-verbose test-comprehensive test-api test-api-help test-coverage test-services test-handlers \
+.PHONY: help build build-windows run test test-unit test-integration test-verbose test-comprehensive test-api test-api-help test-coverage test-services test-handlers \
         bench bench-services lint fmt clean clean-all deps db-migrate db-reset watch dev dev-fresh version \
         docker-build docker-run docker-clean ci ci-quick generate verify-separation
