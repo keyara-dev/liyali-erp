@@ -43,14 +43,24 @@ func ErrorResponseWithMessage(message string, errorMsg string) APIResponse {
 	}
 }
 
-// CalculatePagination calculates pagination metadata
-func CalculatePagination(page, pageSize int, total int64) *types.PaginationMeta {
+// NormalizePaginationParams validates and normalizes pagination parameters
+// Returns normalized page and pageSize values
+func NormalizePaginationParams(page, pageSize int) (int, int) {
 	if page < 1 {
 		page = 1
 	}
-	if pageSize < 1 || pageSize > 100 {
+	if pageSize < 1 {
 		pageSize = 10
 	}
+	if pageSize > 100 {
+		pageSize = 100
+	}
+	return page, pageSize
+}
+
+// CalculatePagination calculates pagination metadata
+func CalculatePagination(page, pageSize int, total int64) *types.PaginationMeta {
+	page, pageSize = NormalizePaginationParams(page, pageSize)
 
 	totalPages := int64(math.Ceil(float64(total) / float64(pageSize)))
 	hasNext := int64(page) < totalPages

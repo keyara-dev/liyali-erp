@@ -4,6 +4,7 @@ import (
 	"log"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -12,6 +13,108 @@ import (
 	"github.com/liyali/liyali-gateway/models"
 	"github.com/liyali/liyali-gateway/services"
 )
+
+// RateLimiter implements a simple in-memory rate limiter using token bucket algorithm
+type RateLimiter struct {
+	mu       sync.RWMutex
+	requests map[string]*rateLimitEntry
+	rate     int           // requests per window
+	window   time.Duration // time window
+}
+
+type rateLimitEntry struct {
+	count     int
+	expiresAt time.Time
+}
+
+// NewRateLimiter creates a new rate limiter
+func NewRateLimiter(rate int, window time.Duration) *RateLimiter {
+	rl := &RateLimiter{
+		requests: make(map[string]*rateLimitEntry),
+		rate:     rate,
+		window:   window,
+	}
+	// Start cleanup goroutine
+	go rl.cleanup()
+	return rl
+}
+
+// Allow checks if a request from the given key is allowed
+func (rl *RateLimiter) Allow(key string) bool {
+	rl.mu.Lock()
+	defer rl.mu.Unlock()
+
+	now := time.Now()
+	entry, exists := rl.requests[key]
+
+	if !exists || now.After(entry.expiresAt) {
+		// New window
+		rl.requests[key] = &rateLimitEntry{
+			count:     1,
+			expiresAt: now.Add(rl.window),
+		}
+		return true
+	}
+
+	if entry.count >= rl.rate {
+		return false
+	}
+
+	entry.count++
+	return true
+}
+
+// cleanup removes expired entries periodically
+func (rl *RateLimiter) cleanup() {
+	ticker := time.NewTicker(rl.window)
+	defer ticker.Stop()
+
+	for range ticker.C {
+		rl.mu.Lock()
+		now := time.Now()
+		for key, entry := range rl.requests {
+			if now.After(entry.expiresAt) {
+				delete(rl.requests, key)
+			}
+		}
+		rl.mu.Unlock()
+	}
+}
+
+// Global rate limiters for different endpoints
+var (
+	// Auth endpoints: 10 requests per minute per IP
+	authRateLimiter = NewRateLimiter(10, time.Minute)
+	// Password reset: 3 requests per minute per IP (stricter)
+	passwordResetRateLimiter = NewRateLimiter(3, time.Minute)
+)
+
+// RateLimitMiddleware applies rate limiting to routes
+func RateLimitMiddleware(limiter *RateLimiter) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		// Use IP address as the rate limit key
+		key := c.IP()
+
+		if !limiter.Allow(key) {
+			return c.Status(fiber.StatusTooManyRequests).JSON(fiber.Map{
+				"success": false,
+				"message": "Too many requests. Please try again later.",
+			})
+		}
+
+		return c.Next()
+	}
+}
+
+// AuthRateLimitMiddleware applies rate limiting specifically for auth endpoints
+func AuthRateLimitMiddleware() fiber.Handler {
+	return RateLimitMiddleware(authRateLimiter)
+}
+
+// PasswordResetRateLimitMiddleware applies stricter rate limiting for password reset
+func PasswordResetRateLimitMiddleware() fiber.Handler {
+	return RateLimitMiddleware(passwordResetRateLimiter)
+}
 
 // JWTClaims matches the structure from auth service
 type JWTClaims struct {
@@ -24,13 +127,29 @@ type JWTClaims struct {
 	jwt.RegisteredClaims
 }
 
-// CORS middleware
+// CORS middleware with proper multi-origin support
 func CORSMiddleware() fiber.Handler {
+	// Parse allowed origins once at startup
+	frontendURL := os.Getenv("FRONTEND_URL")
+	allowedOrigins := make(map[string]bool)
+	for _, origin := range strings.Split(frontendURL, ",") {
+		trimmed := strings.TrimSpace(origin)
+		if trimmed != "" {
+			allowedOrigins[trimmed] = true
+		}
+	}
+
 	return func(c *fiber.Ctx) error {
-		c.Set("Access-Control-Allow-Origin", os.Getenv("FRONTEND_URL"))
+		origin := c.Get("Origin")
+
+		// Check if the request origin is allowed
+		if origin != "" && allowedOrigins[origin] {
+			c.Set("Access-Control-Allow-Origin", origin)
+			c.Set("Access-Control-Allow-Credentials", "true")
+		}
+
 		c.Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS, PATCH")
 		c.Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
-		c.Set("Access-Control-Allow-Credentials", "true")
 
 		if c.Method() == "OPTIONS" {
 			return c.SendStatus(200)
@@ -120,7 +239,11 @@ func AuthMiddleware() fiber.Handler {
 		tokenString := parts[1]
 		jwtSecret := os.Getenv("JWT_SECRET")
 		if jwtSecret == "" {
-			jwtSecret = "your-super-secret-jwt-key-change-in-production"
+			// JWT_SECRET should be set by main.go init()
+			// This is a safety check - should never happen
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"error": "Server configuration error",
+			})
 		}
 
 		// Parse and validate JWT token

@@ -23,9 +23,11 @@ func GetRequisitions(c *fiber.Ctx) error {
 
 	db := config.DB
 
-	// Extract pagination parameters
-	page := c.QueryInt("page", 1)
-	pageSize := c.QueryInt("page_size", 10)
+	// Extract and normalize pagination parameters
+	page, pageSize := utils.NormalizePaginationParams(
+		c.QueryInt("page", 1),
+		c.QueryInt("page_size", 10),
+	)
 
 	// Extract filter parameters
 	status := c.Query("status")

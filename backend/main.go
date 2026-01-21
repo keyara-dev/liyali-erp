@@ -35,17 +35,34 @@ func init() {
 	if os.Getenv("DB_USER") == "" {
 		os.Setenv("DB_USER", "postgres")
 	}
-	if os.Getenv("DB_SSL_MODE") == "" {
-		os.Setenv("DB_SSL_MODE", "disable")
-	}
 	if os.Getenv("APP_PORT") == "" {
 		os.Setenv("APP_PORT", "8080")
 	}
 	if os.Getenv("FRONTEND_URL") == "" {
 		os.Setenv("FRONTEND_URL", "http://localhost:3000")
 	}
+
+	// Environment-specific configuration
+	appEnv := os.Getenv("APP_ENV")
+	isProduction := appEnv == "production" || appEnv == "prod"
+
+	// JWT_SECRET is required in production
 	if os.Getenv("JWT_SECRET") == "" {
-		os.Setenv("JWT_SECRET", "your-super-secret-jwt-key-change-in-production")
+		if isProduction {
+			println("FATAL: JWT_SECRET environment variable is required in production mode")
+			os.Exit(1)
+		}
+		// Only use default in development
+		os.Setenv("JWT_SECRET", "dev-only-secret-do-not-use-in-production")
+	}
+
+	// SSL mode defaults: require in production, disable in development
+	if os.Getenv("DB_SSL_MODE") == "" {
+		if isProduction {
+			os.Setenv("DB_SSL_MODE", "require")
+		} else {
+			os.Setenv("DB_SSL_MODE", "disable")
+		}
 	}
 }
 

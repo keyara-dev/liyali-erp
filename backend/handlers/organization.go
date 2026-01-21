@@ -78,29 +78,20 @@ func CreateOrganization(c *fiber.Ctx) error {
 func SwitchOrganization(c *fiber.Ctx) error {
 	userID, ok := c.Locals("userID").(string)
 	if !ok {
-		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-			"error": "User context required",
-		})
+		return utils.SendUnauthorizedError(c, "User context required")
 	}
 
 	orgID := c.Params("id")
 	if orgID == "" {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": "Organization ID is required",
-		})
+		return utils.SendBadRequestError(c, "Organization ID is required")
 	}
 
 	orgService := services.NewOrganizationService(config.DB)
 	if err := orgService.SwitchOrganization(userID, orgID); err != nil {
-		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
-			"error": err.Error(),
-		})
+		return utils.SendForbiddenError(c, "You do not have access to this organization")
 	}
 
-	return c.JSON(fiber.Map{
-		"success": true,
-		"message": "Organization switched successfully",
-	})
+	return utils.SendSimpleSuccess(c, nil, "Organization switched successfully")
 }
 
 // GetOrganizationMembers returns all members of an organization
@@ -108,28 +99,21 @@ func SwitchOrganization(c *fiber.Ctx) error {
 func GetOrganizationMembers(c *fiber.Ctx) error {
 	tenant, err := middleware.GetTenantContext(c)
 	if err != nil {
-		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-			"error": "Organization context required",
-		})
+		return utils.SendUnauthorizedError(c, "Organization context required")
 	}
 
 	orgService := services.NewOrganizationService(config.DB)
 	members, err := orgService.GetOrganizationMembers(tenant.OrganizationID)
 
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": "Failed to fetch organization members",
-		})
+		return utils.SendInternalError(c, "Failed to fetch organization members", err)
 	}
 
 	if len(members) == 0 {
 		members = []models.OrganizationMember{}
 	}
 
-	return c.JSON(fiber.Map{
-		"success": true,
-		"data":    members,
-	})
+	return utils.SendSimpleSuccess(c, members, "Members retrieved successfully")
 }
 
 // AddOrganizationMember adds a user to an organization
@@ -137,9 +121,7 @@ func GetOrganizationMembers(c *fiber.Ctx) error {
 func AddOrganizationMember(c *fiber.Ctx) error {
 	tenant, err := middleware.GetTenantContext(c)
 	if err != nil {
-		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-			"error": "Organization context required",
-		})
+		return utils.SendUnauthorizedError(c, "Organization context required")
 	}
 
 	var req struct {
@@ -148,9 +130,7 @@ func AddOrganizationMember(c *fiber.Ctx) error {
 	}
 
 	if err := c.BodyParser(&req); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": "Invalid request body",
-		})
+		return utils.SendBadRequestError(c, "Invalid request body")
 	}
 
 	if req.Role == "" {
@@ -159,15 +139,10 @@ func AddOrganizationMember(c *fiber.Ctx) error {
 
 	orgService := services.NewOrganizationService(config.DB)
 	if err := orgService.AddMember(tenant.OrganizationID, req.UserID, req.Role); err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": err.Error(),
-		})
+		return utils.SendInternalError(c, "Failed to add member", err)
 	}
 
-	return c.JSON(fiber.Map{
-		"success": true,
-		"message": "Member added successfully",
-	})
+	return utils.SendSimpleSuccess(c, nil, "Member added successfully")
 }
 
 // RemoveOrganizationMember removes a user from an organization
@@ -175,29 +150,20 @@ func AddOrganizationMember(c *fiber.Ctx) error {
 func RemoveOrganizationMember(c *fiber.Ctx) error {
 	tenant, err := middleware.GetTenantContext(c)
 	if err != nil {
-		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-			"error": "Organization context required",
-		})
+		return utils.SendUnauthorizedError(c, "Organization context required")
 	}
 
 	userID := c.Params("userId")
 	if userID == "" {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": "User ID is required",
-		})
+		return utils.SendBadRequestError(c, "User ID is required")
 	}
 
 	orgService := services.NewOrganizationService(config.DB)
 	if err := orgService.RemoveMember(tenant.OrganizationID, userID); err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": err.Error(),
-		})
+		return utils.SendInternalError(c, "Failed to remove member", err)
 	}
 
-	return c.JSON(fiber.Map{
-		"success": true,
-		"message": "Member removed successfully",
-	})
+	return utils.SendSimpleSuccess(c, nil, "Member removed successfully")
 }
 
 // GetOrganizationSettings retrieves organization settings
@@ -205,24 +171,17 @@ func RemoveOrganizationMember(c *fiber.Ctx) error {
 func GetOrganizationSettings(c *fiber.Ctx) error {
 	tenant, err := middleware.GetTenantContext(c)
 	if err != nil {
-		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-			"error": "Organization context required",
-		})
+		return utils.SendUnauthorizedError(c, "Organization context required")
 	}
 
 	orgService := services.NewOrganizationService(config.DB)
 	settings, err := orgService.GetOrganizationSettings(tenant.OrganizationID)
 
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": "Failed to fetch organization settings",
-		})
+		return utils.SendInternalError(c, "Failed to fetch organization settings", err)
 	}
 
-	return c.JSON(fiber.Map{
-		"success": true,
-		"data":    settings,
-	})
+	return utils.SendSimpleSuccess(c, settings, "Settings retrieved successfully")
 }
 
 // UpdateOrganizationSettings updates organization settings
@@ -230,9 +189,7 @@ func GetOrganizationSettings(c *fiber.Ctx) error {
 func UpdateOrganizationSettings(c *fiber.Ctx) error {
 	tenant, err := middleware.GetTenantContext(c)
 	if err != nil {
-		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-			"error": "Organization context required",
-		})
+		return utils.SendUnauthorizedError(c, "Organization context required")
 	}
 
 	var settings struct {
@@ -245,9 +202,7 @@ func UpdateOrganizationSettings(c *fiber.Ctx) error {
 	}
 
 	if err := c.BodyParser(&settings); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": "Invalid request body",
-		})
+		return utils.SendBadRequestError(c, "Invalid request body")
 	}
 
 	orgService := services.NewOrganizationService(config.DB)
@@ -262,15 +217,10 @@ func UpdateOrganizationSettings(c *fiber.Ctx) error {
 	}
 
 	if err := orgService.UpdateOrganizationSettings(tenant.OrganizationID, orgSettings); err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": err.Error(),
-		})
+		return utils.SendInternalError(c, "Failed to update settings", err)
 	}
 
-	return c.JSON(fiber.Map{
-		"success": true,
-		"message": "Settings updated successfully",
-	})
+	return utils.SendSimpleSuccess(c, nil, "Settings updated successfully")
 }
 
 // UpdateOrganization updates organization details

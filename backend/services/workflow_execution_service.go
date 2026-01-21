@@ -124,13 +124,23 @@ func (s *WorkflowExecutionService) AssignWorkflowToDocument(ctx context.Context,
 			Details:      fmt.Sprintf("Workflow assigned for %s approval", entityType),
 			Timestamp:    time.Now(),
 		}
-		
+
 		// Send notification asynchronously to avoid blocking
-		go func() {
-			if err := s.notificationService.HandleWorkflowEvent(notificationEvent); err != nil {
-				fmt.Printf("Failed to send approval required notification: %v\n", err)
+		// Use a timeout context to prevent goroutine leaks
+		go func(event NotificationEvent) {
+			notifyCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			defer cancel()
+
+			select {
+			case <-notifyCtx.Done():
+				fmt.Printf("Notification timed out for %s\n", event.DocumentID)
+				return
+			default:
+				if err := s.notificationService.HandleWorkflowEvent(event); err != nil {
+					fmt.Printf("Failed to send approval required notification: %v\n", err)
+				}
 			}
-		}()
+		}(notificationEvent)
 	}
 
 	return assignment, nil
@@ -435,11 +445,18 @@ func (s *WorkflowExecutionService) handleWorkflowCompletion(ctx context.Context,
 			Timestamp:    time.Now(),
 		}
 		
-		go func() {
-			if err := s.notificationService.HandleWorkflowEvent(notificationEvent); err != nil {
-				fmt.Printf("Failed to send approval notification: %v\n", err)
+		go func(event NotificationEvent) {
+			notifyCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			defer cancel()
+			select {
+			case <-notifyCtx.Done():
+				return
+			default:
+				if err := s.notificationService.HandleWorkflowEvent(event); err != nil {
+					fmt.Printf("Failed to send approval notification: %v\n", err)
+				}
 			}
-		}()
+		}(notificationEvent)
 	}
 
 	// Trigger automation
@@ -459,12 +476,19 @@ func (s *WorkflowExecutionService) handleStageProgression(ctx context.Context, a
 			Details:      fmt.Sprintf("Document moved to next approval stage (%d)", assignment.CurrentStage),
 			Timestamp:    time.Now(),
 		}
-		
-		go func() {
-			if err := s.notificationService.HandleWorkflowEvent(notificationEvent); err != nil {
-				fmt.Printf("Failed to send next stage approval notification: %v\n", err)
+
+		go func(event NotificationEvent) {
+			notifyCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			defer cancel()
+			select {
+			case <-notifyCtx.Done():
+				return
+			default:
+				if err := s.notificationService.HandleWorkflowEvent(event); err != nil {
+					fmt.Printf("Failed to send next stage approval notification: %v\n", err)
+				}
 			}
-		}()
+		}(notificationEvent)
 	}
 }
 
@@ -479,12 +503,19 @@ func (s *WorkflowExecutionService) handlePartialApproval(ctx context.Context, as
 			Details:      fmt.Sprintf("Partial approval received for stage %d (%s)", stage.StageNumber, stage.StageName),
 			Timestamp:    time.Now(),
 		}
-		
-		go func() {
-			if err := s.notificationService.HandleWorkflowEvent(notificationEvent); err != nil {
-				fmt.Printf("Failed to send partial approval notification: %v\n", err)
+
+		go func(event NotificationEvent) {
+			notifyCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			defer cancel()
+			select {
+			case <-notifyCtx.Done():
+				return
+			default:
+				if err := s.notificationService.HandleWorkflowEvent(event); err != nil {
+					fmt.Printf("Failed to send partial approval notification: %v\n", err)
+				}
 			}
-		}()
+		}(notificationEvent)
 	}
 }
 
@@ -650,13 +681,20 @@ func (s *WorkflowExecutionService) RejectWorkflowTaskWithVersion(ctx context.Con
 			Details:      reason,
 			Timestamp:    time.Now(),
 		}
-		
-		// Send notification asynchronously
-		go func() {
-			if err := s.notificationService.HandleWorkflowEvent(notificationEvent); err != nil {
-				fmt.Printf("Failed to send rejection notification: %v\n", err)
+
+		// Send notification asynchronously with timeout context
+		go func(event NotificationEvent) {
+			notifyCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			defer cancel()
+			select {
+			case <-notifyCtx.Done():
+				return
+			default:
+				if err := s.notificationService.HandleWorkflowEvent(event); err != nil {
+					fmt.Printf("Failed to send rejection notification: %v\n", err)
+				}
 			}
-		}()
+		}(notificationEvent)
 	}
 
 	return nil

@@ -199,7 +199,12 @@ func (s *AuthService) Login(ctx context.Context, email, password, ipAddress, use
 	}
 
 	// Clean up old sessions for this user (keep only the latest 5)
-	go s.cleanupOldSessions(context.Background(), user.ID)
+	// Use a timeout context for background cleanup to ensure it doesn't run indefinitely
+	cleanupCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	go func() {
+		defer cancel()
+		s.cleanupOldSessions(cleanupCtx, user.ID)
+	}()
 
 	// Build response
 	response := &LoginResponse{
@@ -382,6 +387,11 @@ func (s *AuthService) ResetPassword(ctx context.Context, token, newPassword stri
 		return ErrInvalidToken
 	}
 
+	// Validate password strength
+	if err := utils.ValidatePasswordStrength(newPassword); err != nil {
+		return fmt.Errorf("password validation failed: %w", err)
+	}
+
 	// Hash new password
 	hashedPassword, err := utils.HashPassword(newPassword)
 	if err != nil {
@@ -436,6 +446,11 @@ func (s *AuthService) ChangePassword(ctx context.Context, userID, currentPasswor
 		return ErrInvalidCredentials
 	}
 
+	// Validate new password strength
+	if err := utils.ValidatePasswordStrength(newPassword); err != nil {
+		return fmt.Errorf("password validation failed: %w", err)
+	}
+
 	// Hash new password
 	hashedPassword, err := utils.HashPassword(newPassword)
 	if err != nil {
@@ -461,6 +476,11 @@ func (s *AuthService) Register(ctx context.Context, email, password, name, role 
 	existingUser, err := s.userRepo.GetByEmail(ctx, email)
 	if err == nil && existingUser != nil {
 		return nil, ErrEmailAlreadyExists
+	}
+
+	// Validate password strength
+	if err := utils.ValidatePasswordStrength(password); err != nil {
+		return nil, fmt.Errorf("password validation failed: %w", err)
 	}
 
 	// Hash password

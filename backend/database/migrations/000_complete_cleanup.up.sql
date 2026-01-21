@@ -15,15 +15,16 @@ BEGIN
     END LOOP;
 END $$;
 
--- Drop all functions
-DO $$ 
+-- Drop all functions (excluding extension-owned functions)
+DO $$
 DECLARE
     r RECORD;
 BEGIN
-    FOR r IN (SELECT p.proname, oidvectortypes(p.proargtypes) as argtypes 
-              FROM pg_proc p 
-              JOIN pg_namespace n ON p.pronamespace = n.oid 
-              WHERE n.nspname = 'public') 
+    FOR r IN (SELECT p.proname, oidvectortypes(p.proargtypes) as argtypes
+              FROM pg_proc p
+              JOIN pg_namespace n ON p.pronamespace = n.oid
+              LEFT JOIN pg_depend d ON d.objid = p.oid AND d.deptype = 'e'
+              WHERE n.nspname = 'public' AND d.objid IS NULL)
     LOOP
         EXECUTE 'DROP FUNCTION IF EXISTS ' || quote_ident(r.proname) || '(' || r.argtypes || ') CASCADE';
     END LOOP;

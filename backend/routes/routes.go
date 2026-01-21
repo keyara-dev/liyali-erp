@@ -18,12 +18,16 @@ func SetupRoutes(app *fiber.App, handlerRegistry *handlers.HandlerRegistry, rbac
 
 	// Public routes (no authentication required)
 	public := apiV1.Group("")
-	public.Post("/auth/login", handlerRegistry.Auth.Login)
-	public.Post("/auth/register", handlerRegistry.Auth.Register)
+
+	// Auth routes with rate limiting
+	public.Post("/auth/login", middleware.AuthRateLimitMiddleware(), handlerRegistry.Auth.Login)
+	public.Post("/auth/register", middleware.AuthRateLimitMiddleware(), handlerRegistry.Auth.Register)
 	public.Post("/auth/verify", handlerRegistry.Auth.VerifyToken)
-	public.Post("/auth/refresh", handlerRegistry.Auth.RefreshToken)
-	public.Post("/auth/password-reset/request", handlerRegistry.Auth.RequestPasswordReset)
-	public.Post("/auth/password-reset/confirm", handlerRegistry.Auth.ResetPassword)
+	public.Post("/auth/refresh", middleware.AuthRateLimitMiddleware(), handlerRegistry.Auth.RefreshToken)
+
+	// Password reset with stricter rate limiting
+	public.Post("/auth/password-reset/request", middleware.PasswordResetRateLimitMiddleware(), handlerRegistry.Auth.RequestPasswordReset)
+	public.Post("/auth/password-reset/confirm", middleware.PasswordResetRateLimitMiddleware(), handlerRegistry.Auth.ResetPassword)
 
 	// Protected routes (authentication required)
 	protected := apiV1.Group("", middleware.AuthMiddleware())

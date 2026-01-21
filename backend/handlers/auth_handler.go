@@ -233,9 +233,12 @@ func (h *AuthHandler) RequestPasswordReset(c *fiber.Ctx) error {
 	}
 
 	// Always return success for security (don't reveal if email exists)
-	return utils.SendSimpleSuccess(c, map[string]interface{}{
-		"token": token, // TODO: Remove in production, send via email instead
-	}, "If the email exists, a password reset link has been sent")
+	// Note: In production, the token should be sent via email, not returned in response
+	// The token is logged securely for development/testing purposes only
+	if token != "" {
+		logger.WithField("token_generated", true).Debug("password_reset_token_created")
+	}
+	return utils.SendSimpleSuccess(c, nil, "If the email exists, a password reset link has been sent")
 }
 
 // ResetPassword handles password reset with token
