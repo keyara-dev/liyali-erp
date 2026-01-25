@@ -38,6 +38,7 @@ import { useSession } from "@/hooks/use-session";
 import { useLogout } from "@/hooks/use-organization-mutations";
 import { useOrganizationContext } from "@/hooks/use-organization";
 import { UpgradeModal } from "@/components/modals/upgrade-modal";
+import { capitalize } from "@/lib/utils";
 
 const TIER_CONFIG = {
   STARTER: {
@@ -72,10 +73,20 @@ const getInitials = (name: string) => {
 };
 
 const formatRole = (role: string) => {
-  return role
-    .split("_")
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-    .join(" ");
+  // Check if role is a UUID (indicates old session data)
+  const uuidRegex =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (uuidRegex.test(role)) {
+    return "Session needs refresh"; // More concise message
+  }
+
+  return capitalize(role.split("_").join(" "));
+};
+
+const isUuidRole = (role: string) => {
+  const uuidRegex =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(role);
 };
 
 export function NavUser() {
@@ -103,6 +114,7 @@ export function NavUser() {
 
   const initials = getInitials(user.name);
   const formattedRole = formatRole(user.role);
+  const hasUuidRole = isUuidRole(user.role);
 
   // Get tier information
   const tier = (currentOrganization?.tier?.toUpperCase() ||
@@ -113,6 +125,25 @@ export function NavUser() {
 
   return (
     <div className="space-y-2 p-2">
+      {/* Plan Section */}
+      <div
+        className="flex items-center gap-3 rounded-lg border p-3 hover:bg-accent/50 transition-colors cursor-pointer"
+        onClick={() => setShowUpgradeModal(true)}
+      >
+        <GemIcon className="h-5 w-5 text-muted-foreground" />
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium">{tierConfig.label} Plan</span>
+            <Badge
+              variant="secondary"
+              className={`text-xs ${tierConfig.color} hover:${tierConfig.color}`}
+            >
+              Active
+            </Badge>
+          </div>
+        </div>
+        <ChevronRightIcon className="h-4 w-4 text-muted-foreground" />
+      </div>
       {/* User Profile Section with Dropdown */}
       <SidebarMenu>
         <SidebarMenuItem>
@@ -134,7 +165,13 @@ export function NavUser() {
                 </Avatar>
                 <div className="grid flex-1 text-left text-sm leading-tight">
                   <span className="truncate font-medium">{user.name}</span>
-                  <span className="text-muted-foreground truncate text-xs">
+                  <span
+                    className={`truncate capitalize text-xs ${
+                      hasUuidRole
+                        ? "text-orange-600 font-medium"
+                        : "text-muted-foreground"
+                    }`}
+                  >
                     {formattedRole}
                   </span>
                 </div>
@@ -182,6 +219,19 @@ export function NavUser() {
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
+              {hasUuidRole && (
+                <>
+                  <DropdownMenuItem
+                    onClick={() => logout()}
+                    disabled={isPending}
+                    className="text-orange-600 focus:text-orange-700"
+                  >
+                    <LogOutIcon className="h-4 w-4" />
+                    <span>Refresh Session (Recommended)</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                </>
+              )}
               <DropdownMenuItem onClick={() => logout()} disabled={isPending}>
                 <LogOutIcon className="h-4 w-4" />
                 <span>{isPending ? "Logging out..." : "Log out"}</span>
@@ -191,28 +241,8 @@ export function NavUser() {
         </SidebarMenuItem>
       </SidebarMenu>
 
-      {/* Plan Section */}
-      <div
-        className="flex items-center gap-3 rounded-lg border p-3 hover:bg-accent/50 transition-colors cursor-pointer"
-        onClick={() => setShowUpgradeModal(true)}
-      >
-        <GemIcon className="h-5 w-5 text-muted-foreground" />
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-medium">{tierConfig.label} Plan</span>
-            <Badge
-              variant="secondary"
-              className={`text-xs ${tierConfig.color} hover:${tierConfig.color}`}
-            >
-              Active
-            </Badge>
-          </div>
-        </div>
-        <ChevronRightIcon className="h-4 w-4 text-muted-foreground" />
-      </div>
-
       {/* Docs and Resources */}
-      <div className="flex items-center gap-3 rounded-lg border p-3 hover:bg-accent/50 transition-colors cursor-pointer">
+      {/* <div className="flex items-center gap-3 rounded-lg border p-3 hover:bg-accent/50 transition-colors cursor-pointer">
         <FileTextIcon className="h-5 w-5 text-muted-foreground" />
         <div className="flex-1">
           <span className="text-sm text-muted-foreground">
@@ -220,10 +250,10 @@ export function NavUser() {
           </span>
         </div>
         <ChevronRightIcon className="h-4 w-4 text-muted-foreground" />
-      </div>
+      </div> */}
 
       {/* System Status */}
-      <div className="flex items-center gap-3 rounded-lg border p-3 hover:bg-accent/50 transition-colors cursor-pointer">
+      {/* <div className="flex items-center gap-3 rounded-lg border p-3 hover:bg-accent/50 transition-colors cursor-pointer">
         <CircleIcon className="h-3 w-3 fill-green-500 text-green-500" />
         <div className="flex-1">
           <span className="text-sm text-muted-foreground">
@@ -231,7 +261,7 @@ export function NavUser() {
           </span>
         </div>
         <ExternalLinkIcon className="h-4 w-4 text-muted-foreground" />
-      </div>
+      </div> */}
 
       <UpgradeModal
         open={showUpgradeModal}

@@ -71,22 +71,19 @@ export default async function UserManagementPage({ searchParams }: PageProps) {
 
   return (
     <div>
-      {/* Header */}
-      <div className="bg-card border-b">
-        <div className="container mx-auto px-4 py-6">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <PageHeader
-              title="Users Management"
-              subtitle="Manage your team members and their account roles"
-            />
-            <div>
-              <CreateUserForm user={null} showTrigger role="admin" />
-            </div>
+      <div className="container mx-auto px-4">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <PageHeader
+            title="Users Management"
+            subtitle="Manage your team members and their account roles"
+          />
+          <div>
+            <CreateUserForm user={null} showTrigger role="admin" />
           </div>
         </div>
       </div>
 
-      <div className="container mx-auto flex flex-col space-y-6 p-4">
+      <div className="container mx-auto flex flex-col px-4">
         {/* User Management Tabs */}
         <UserManagementClient
           userId={session.user.id}

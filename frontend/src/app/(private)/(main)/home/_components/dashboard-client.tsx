@@ -60,10 +60,10 @@ export function DashboardClient({
         <div className="md:col-span-1">
           <WorkflowStatusChart metrics={metrics} />
         </div>
+        <div className="md:col-span-2 grid">
+          <RecentActivity metrics={metrics} />
+        </div>
       </div>
-
-      {/* Recent Activity */}
-      <RecentActivity metrics={metrics} />
     </div>
   );
 }

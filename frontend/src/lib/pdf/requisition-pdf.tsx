@@ -36,7 +36,7 @@ const RequisitionPDF: React.FC<RequisitionPDFProps> = ({
     "REQUISITION",
     documentNumber,
     requisition.id,
-    new Date(requisition.createdAt)
+    new Date(requisition.createdAt),
   );
 
   return (
@@ -504,7 +504,7 @@ const RequisitionPDF: React.FC<RequisitionPDFProps> = ({
                       color: "#1f2937",
                     }}
                   >
-                    TOTAL AMOUNT:
+                    ESTIMATED COST:
                   </Text>
                   <Text
                     style={{

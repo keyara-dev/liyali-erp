@@ -1,4 +1,4 @@
-'use server'
+"use server";
 import "server-only";
 
 import { SignJWT, jwtVerify } from "jose";
@@ -12,8 +12,6 @@ import {
   PERMISSIONS_SESSION,
   SCREEN_LOCK_SESSION,
 } from "@/lib/constants";
-
-
 
 // ============================================================================
 // TYPES
@@ -30,7 +28,7 @@ const getSecretKey = () => {
   const secretKey = process.env.AUTH_SECRET;
   if (!secretKey || secretKey.length < 32) {
     throw new Error(
-      "JWT_SECRET or AUTH_SECRET environment variable must be at least 32 characters"
+      "JWT_SECRET or AUTH_SECRET environment variable must be at least 32 characters",
     );
   }
   return secretKey;
@@ -161,17 +159,20 @@ export async function createAuthSession({
   expiresIn?: number; // Add expiresIn parameter (in seconds)
   user?: AuthUser; // Add user parameter
 }): Promise<void> {
-  const isDev = process.env.NODE_ENV === 'development';
-  
-  if (isDev) console.log("[createAuthSession] Creating session", { 
-    hasToken: !!access_token, 
-    userId: user_id, 
-    orgId: organization_id,
-    expiresIn 
-  });
+  const isDev = process.env.NODE_ENV === "development";
+
+  if (isDev)
+    console.log("[createAuthSession] Creating session", {
+      hasToken: !!access_token,
+      userId: user_id,
+      orgId: organization_id,
+      expiresIn,
+    });
 
   // Use backend's expiresIn value if provided, otherwise fall back to session config
-  const expirationMs = expiresIn ? expiresIn * 1000 : SESSION_CONFIG.SESSION_TTL;
+  const expirationMs = expiresIn
+    ? expiresIn * 1000
+    : SESSION_CONFIG.SESSION_TTL;
   const expiresAt = new Date(Date.now() + expirationMs);
 
   const newSession: AuthSession = {
@@ -193,7 +194,8 @@ export async function createAuthSession({
 
   // Ensure `session` is successfully created before setting the cookie
   if (token) {
-    if (isDev) console.log("[createAuthSession] Setting session cookie", { expiresAt });
+    if (isDev)
+      console.log("[createAuthSession] Setting session cookie", { expiresAt });
     (await cookies()).set(AUTH_SESSION, token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
@@ -201,7 +203,8 @@ export async function createAuthSession({
       sameSite: "strict",
       path: "/",
     });
-    if (isDev) console.log("[createAuthSession] Session cookie set successfully");
+    if (isDev)
+      console.log("[createAuthSession] Session cookie set successfully");
   } else {
     console.error("[createAuthSession] Failed to create session token");
     throw new Error("Failed to create session token.");
@@ -212,7 +215,7 @@ export async function createAuthSession({
  * Check if user has required role
  */
 export async function hasRole(
-  requiredRole: UserRole | UserRole[]
+  requiredRole: UserRole | UserRole[],
 ): Promise<boolean> {
   const user = await getCurrentUser();
   if (!user) return false;
@@ -237,14 +240,27 @@ export async function isAdmin(): Promise<boolean> {
  * Update auth session with new fields
  */
 export async function updateAuthSession(
-  fields: any
+  fields: any,
 ): Promise<AuthSession | undefined> {
+  const isDev = process.env.NODE_ENV === "development";
+
+  if (isDev)
+    console.log("[updateAuthSession] Updating session with fields:", fields);
+
   const { isAuthenticated: isLoggedIn, session: oldSession } =
     await verifySession();
 
   if (isLoggedIn && oldSession) {
+    if (isDev)
+      console.log("[updateAuthSession] Current session:", {
+        hasAccessToken: !!oldSession.access_token,
+        hasRefreshToken: !!oldSession.refresh_token,
+        expiresAt: oldSession.expiresAt,
+        userId: oldSession.user_id,
+      });
+
     const cleanedOldSession = Object.fromEntries(
-      Object.entries(oldSession).filter(([_, value]) => value !== null)
+      Object.entries(oldSession).filter(([_, value]) => value !== null),
     ) as AuthSession;
 
     const newSession: AuthSession = {
@@ -260,7 +276,22 @@ export async function updateAuthSession(
 
     newSession.expiresAt = expiresAt;
 
-    const session = await encrypt(newSession, "30m");
+    if (isDev)
+      console.log("[updateAuthSession] New session:", {
+        hasAccessToken: !!newSession.access_token,
+        hasRefreshToken: !!newSession.refresh_token,
+        expiresAt: newSession.expiresAt,
+        userId: newSession.user_id,
+      });
+
+    // Use dynamic expiration time for JWT encryption
+    const expirationMs = expiresAt.getTime() - Date.now();
+    const expirationTime = `${Math.ceil(expirationMs / 1000)}s`;
+
+    if (isDev)
+      console.log("[updateAuthSession] JWT expiration time:", expirationTime);
+
+    const session = await encrypt(newSession, expirationTime);
 
     if (session) {
       const cookieStore = await cookies();
@@ -271,10 +302,17 @@ export async function updateAuthSession(
         sameSite: "strict",
         path: "/",
       });
+
+      if (isDev)
+        console.log("[updateAuthSession] Session cookie updated successfully");
       return newSession;
     } else {
+      console.error("[updateAuthSession] Failed to encrypt session");
       throw new Error("Failed to update session token.");
     }
+  } else {
+    if (isDev)
+      console.log("[updateAuthSession] No valid session found to update");
   }
   return;
 }
@@ -288,8 +326,8 @@ export async function verifySession(): Promise<{
   permissions?: any[];
   [key: string]: any;
 }> {
-  const isDev = process.env.NODE_ENV === 'development';
-  
+  const isDev = process.env.NODE_ENV === "development";
+
   try {
     const cookieStore = await cookies();
     const cookie = cookieStore.get(AUTH_SESSION)?.value;
@@ -302,7 +340,8 @@ export async function verifySession(): Promise<{
     const decrypted = await decrypt(cookie);
 
     if (!decrypted || decrypted.success === false) {
-      if (isDev) console.log("[verifySession] Failed to decrypt session cookie");
+      if (isDev)
+        console.log("[verifySession] Failed to decrypt session cookie");
       await deleteSession();
       return { isAuthenticated: false, session: null };
     }
@@ -319,17 +358,19 @@ export async function verifySession(): Promise<{
       const now = new Date();
 
       if (expiresAt < now) {
-        if (isDev) console.log("[verifySession] Session expired", { expiresAt, now });
+        if (isDev)
+          console.log("[verifySession] Session expired", { expiresAt, now });
         await deleteSession();
         return { isAuthenticated: false, session: null };
       }
     }
 
-    if (isDev) console.log("[verifySession] Session valid", { 
-      hasToken: !!session.access_token, 
-      userId: session.user_id,
-      expiresAt: session.expiresAt 
-    });
+    if (isDev)
+      console.log("[verifySession] Session valid", {
+        hasToken: !!session.access_token,
+        userId: session.user_id,
+        expiresAt: session.expiresAt,
+      });
 
     return {
       isAuthenticated: true,
@@ -436,5 +477,3 @@ export async function clearScreenLockCookie(): Promise<void> {
   const cookieStore = await cookies();
   cookieStore.delete(SCREEN_LOCK_SESSION);
 }
-
-

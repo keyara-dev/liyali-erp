@@ -19,7 +19,7 @@ export const DEFAULT_PAGINATION = { page: 1, limit: 20 };
 
 export const DEFAULT_DATE_RANGE = {
   start_date: new Date(
-    new Date().getTime() - DEFAULT_DATE_RANGE_DAYS * 24 * 60 * 60 * 1000
+    new Date().getTime() - DEFAULT_DATE_RANGE_DAYS * 24 * 60 * 60 * 1000,
   )
     .toISOString()
     .split("T")[0],
@@ -194,13 +194,19 @@ export const QUERY_KEYS = {
   // Reports & Analytics
   REPORTS: "reports",
   ANALYTICS: "analytics",
-  
+
   // Compliance
   COMPLIANCE: {
     ALL: "compliance-all",
     BY_ID: "compliance-by-id",
     TRACKING: "compliance-tracking",
     REPORTS: "compliance-reports",
+  },
+
+  CONFIG: {
+    ME: "config-me",
+    SETTINGS: "settings",
+    UPDATE: "config-update",
   },
 
   // Activity Logs

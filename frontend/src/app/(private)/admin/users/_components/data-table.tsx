@@ -55,11 +55,11 @@ import { User } from "@/types";
 
 import Search from "@/components/ui/search-field";
 import {
-  activateUser,
-  deactivateUser,
-  resetUserPassword,
-  deleteUser,
-} from "@/app/_actions/user-actions";
+  useDeleteUser,
+  useActivateUser,
+  useDeactivateUser,
+  useResetUserPassword,
+} from "@/hooks/use-users-mutations";
 import { CustomPagination } from "@/components/ui/custom-pagination";
 import { ConfirmationModal } from "@/components/modals/confirmation-modal";
 import CreateUserForm from "./create-user-dialog";
@@ -87,7 +87,7 @@ const getColumns = (
   onToggleStatus: (id: string, isActive: boolean) => void,
   onEdit: (user: User) => void,
   onResetPassword: (id: string) => void,
-  onViewProfile: (id: string) => void
+  onViewProfile: (id: string) => void,
 ): ColumnDef<User>[] => [
   {
     id: "#",
@@ -244,6 +244,58 @@ export default function UsersDataTable({
   const [searchValue, setSearchValue] = React.useState(currentSearch);
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [editingUser, setEditingUser] = React.useState<User | null>(null);
+
+  // Use the delete user mutation hook
+  const deleteUserMutation = useDeleteUser(() => {
+    router.refresh();
+    // Close dialog first, then reset state after animation
+    setDeleteDialog((prev) => ({ ...prev, open: false }));
+    setTimeout(() => {
+      setDeleteDialog({ open: false, userId: null, userName: null });
+    }, 300);
+  });
+
+  // Use the activate user mutation hook
+  const activateUserMutation = useActivateUser(() => {
+    router.refresh();
+    setToggleStatusDialog((prev) => ({ ...prev, open: false }));
+    setTimeout(() => {
+      setToggleStatusDialog({
+        open: false,
+        userId: null,
+        userName: null,
+        activate: null,
+      });
+    }, 300);
+  });
+
+  // Use the deactivate user mutation hook
+  const deactivateUserMutation = useDeactivateUser(() => {
+    router.refresh();
+    setToggleStatusDialog((prev) => ({ ...prev, open: false }));
+    setTimeout(() => {
+      setToggleStatusDialog({
+        open: false,
+        userId: null,
+        userName: null,
+        activate: null,
+      });
+    }, 300);
+  });
+
+  // Use the reset password mutation hook
+  const resetPasswordMutation = useResetUserPassword(() => {
+    router.refresh();
+    setResetPasswordDialog((prev) => ({ ...prev, open: false }));
+    setTimeout(() => {
+      setResetPasswordDialog({
+        open: false,
+        userId: null,
+        userName: null,
+      });
+    }, 300);
+  });
+
   const [deleteDialog, setDeleteDialog] = React.useState<{
     open: boolean;
     userId: string | null;
@@ -274,20 +326,10 @@ export default function UsersDataTable({
     if (!deleteDialog.userId) return;
 
     try {
-      const response = await deleteUser(deleteDialog.userId);
-      if (response.success) {
-        toast.success(response.message || "User deleted successfully");
-        router.refresh();
-        // Close dialog first, then reset state after animation
-        setDeleteDialog((prev) => ({ ...prev, open: false }));
-        setTimeout(() => {
-          setDeleteDialog({ open: false, userId: null, userName: null });
-        }, 300);
-      } else {
-        toast.error(response.message || "Failed to delete user");
-      }
+      await deleteUserMutation.mutateAsync(deleteDialog.userId);
     } catch (error) {
-      toast.error("An unexpected error occurred");
+      // Error handling is done by the mutation hook
+      console.error("Delete user error:", error);
     }
   };
 
@@ -323,33 +365,13 @@ export default function UsersDataTable({
     }
 
     try {
-      const action = toggleStatusDialog.activate
-        ? activateUser
-        : deactivateUser;
-      const response = await action(toggleStatusDialog.userId);
-
-      if (response.success) {
-        const statusText = toggleStatusDialog.activate
-          ? "activated"
-          : "deactivated";
-        toast.success(`User ${statusText} successfully`);
-
-        router.refresh();
-
-        setToggleStatusDialog((prev) => ({ ...prev, open: false }));
-
-        setTimeout(() => {
-          setToggleStatusDialog({
-            open: false,
-            userId: null,
-            userName: null,
-            activate: null,
-          });
-        }, 300);
+      if (toggleStatusDialog.activate) {
+        await activateUserMutation.mutateAsync(toggleStatusDialog.userId);
       } else {
-        toast.error(response.message || "Failed to update user status");
+        await deactivateUserMutation.mutateAsync(toggleStatusDialog.userId);
       }
     } catch (error) {
+      // Error handling is done by the mutation hooks
       console.error("Error toggling user status:", error);
     }
   };
@@ -369,20 +391,15 @@ export default function UsersDataTable({
 
     if (!resetPasswordDialog.userId || !password) return;
 
-    const response = await resetUserPassword(
-      resetPasswordDialog.userId,
-      password
-    );
-    if (response.success) {
-      toast.success(response.message || "Password reset successfully");
-    } else {
-      toast.error(response.message || "Failed to reset password");
+    try {
+      await resetPasswordMutation.mutateAsync({
+        userId: resetPasswordDialog.userId,
+        password: password,
+      });
+    } catch (error) {
+      // Error handling is done by the mutation hook
+      console.error("Error resetting password:", error);
     }
-    // Close dialog first, then reset state after animation
-    setResetPasswordDialog((prev) => ({ ...prev, open: false }));
-    setTimeout(() => {
-      setResetPasswordDialog({ open: false, userId: null, userName: null });
-    }, 300);
   };
 
   const handleEditClick = (user: User) => {
@@ -398,7 +415,7 @@ export default function UsersDataTable({
     handleToggleStatusClick,
     handleEditClick,
     handleResetPasswordClick,
-    handleViewProfile
+    handleViewProfile,
   );
 
   const table = useReactTable({
@@ -508,7 +525,7 @@ export default function UsersDataTable({
   // Get unique roles from data
   const uniqueRoles = React.useMemo(() => {
     return Array.from(
-      new Set(data.filter((user) => user.role).map((user) => user.role))
+      new Set(data.filter((user) => user.role).map((user) => user.role)),
     ).sort();
   }, [data]);
 
@@ -516,8 +533,8 @@ export default function UsersDataTable({
   const uniqueDepartments = React.useMemo(() => {
     return Array.from(
       new Set(
-        data.filter((user) => user.department).map((user) => user.department!)
-      )
+        data.filter((user) => user.department).map((user) => user.department!),
+      ),
     ).sort();
   }, [data]);
 
@@ -660,7 +677,7 @@ export default function UsersDataTable({
                         ? null
                         : flexRender(
                             header.column.columnDef.header,
-                            header.getContext()
+                            header.getContext(),
                           )}
                     </TableHead>
                   ))}
@@ -682,7 +699,7 @@ export default function UsersDataTable({
                       >
                         {flexRender(
                           cell.column.columnDef.cell,
-                          cell.getContext()
+                          cell.getContext(),
                         )}
                       </TableCell>
                     ))}

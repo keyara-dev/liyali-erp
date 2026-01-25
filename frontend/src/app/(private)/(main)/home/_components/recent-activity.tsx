@@ -11,9 +11,17 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty";
 import { Badge } from "@/components/ui/badge";
 import { DashboardMetrics } from "@/types";
-import { Eye } from "lucide-react";
+import { Activity, Eye } from "lucide-react";
 
 interface RecentActivityProps {
   metrics: DashboardMetrics;
@@ -61,9 +69,18 @@ export function RecentActivity({ metrics }: RecentActivityProps) {
           <CardTitle className="text-base">Recent Activity</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-center py-8 text-muted-foreground">
-            No recent activity
-          </div>
+          <Empty>
+            <EmptyHeader>
+              <EmptyMedia variant="icon">
+                <Activity className="h-6 w-6" />
+              </EmptyMedia>
+              <EmptyTitle>No Recent Activity</EmptyTitle>
+              <EmptyDescription>
+                You still have not performed any actions yet.
+              </EmptyDescription>
+            </EmptyHeader>
+            <EmptyContent>{/* ACTION CONTENT HERE */}</EmptyContent>
+          </Empty>
         </CardContent>
       </Card>
     );
@@ -101,8 +118,16 @@ export function RecentActivity({ metrics }: RecentActivityProps) {
                       {DOCUMENT_TYPE_LABELS[activity.type] || activity.type}
                     </TableCell>
                     <TableCell>
-                      <Badge variant={activity.action ? (STATUS_COLORS[activity.action] as any) : 'default'}>
-                        {activity.action ? (STATUS_LABELS[activity.action] || activity.action) : 'Unknown'}
+                      <Badge
+                        variant={
+                          activity.action
+                            ? (STATUS_COLORS[activity.action] as any)
+                            : "default"
+                        }
+                      >
+                        {activity.action
+                          ? STATUS_LABELS[activity.action] || activity.action
+                          : "Unknown"}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">

@@ -260,6 +260,23 @@ func GetOrganizationPermissions(c *fiber.Ctx) error {
 	return utils.SendSimpleSuccess(c, permissions, "Permissions retrieved successfully")
 }
 
+// InitializeDefaultRoles initializes default system roles for an organization
+func InitializeDefaultRoles(c *fiber.Ctx) error {
+	organizationID, ok := c.Locals("organizationID").(string)
+	if !ok {
+		return utils.SendBadRequestError(c, "Organization ID not found")
+	}
+
+	svc := services.NewRoleManagementService(config.DB)
+	err := svc.InitializeDefaultRolesForOrganization(organizationID)
+	if err != nil {
+		log.Printf("Error initializing default roles: %v", err)
+		return utils.SendInternalError(c, "Failed to initialize default roles", err)
+	}
+
+	return utils.SendSimpleSuccess(c, nil, "Default roles initialized successfully")
+}
+
 // PermissionResponse is the response format for permissions
 type PermissionResponse struct {
 	ID          string `json:"id"`

@@ -1,3 +1,6 @@
+import { cn } from "@/lib/utils";
+import * as React from "react";
+import { motion } from "framer-motion";
 import {
   Select,
   SelectContent,
@@ -5,9 +8,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { cn } from "@/lib/utils";
-import { motion } from "framer-motion";
-import * as React from "react";
+import { Spinner } from "./spinner";
 
 type SelectInputProps = React.InputHTMLAttributes<HTMLSelectElement> & {
   label?: string;
@@ -17,10 +18,18 @@ type SelectInputProps = React.InputHTMLAttributes<HTMLSelectElement> & {
   descriptionText?: string;
   isDisabled?: boolean;
   isInvalid?: boolean;
+  isLoading?: boolean;
   value?: string;
   className?: string;
   listItemName?: string;
-  options: { id: string; name: string; [x: string]: any }[];
+  options: {
+    id?: string;
+    name?: string;
+    value: string;
+    label?: string;
+    title?: string;
+    [x: string]: any;
+  }[];
   onValueChange?: (value: string) => void;
   classNames?: {
     wrapper?: string;
@@ -28,6 +37,8 @@ type SelectInputProps = React.InputHTMLAttributes<HTMLSelectElement> & {
     label?: string;
     errorText?: string;
     descriptionText?: string;
+    options?: string;
+    selectContent?: string;
   };
 };
 
@@ -42,6 +53,7 @@ const SelectField = React.forwardRef<HTMLSelectElement, SelectInputProps>(
       classNames,
       onError,
       error,
+      isLoading,
       defaultValue = "",
       placeholder,
       onValueChange,
@@ -53,29 +65,26 @@ const SelectField = React.forwardRef<HTMLSelectElement, SelectInputProps>(
       errorText = "",
       ...props
     },
-    ref
+    ref,
   ) => {
     return (
       <div
-        className={cn(
-          "flex w-full flex-col",
-          classNames?.wrapper,
-          {
-            "cursor-not-allowed opacity-50": isDisabled,
-          }
-        )}
+        className={cn("flex w-full flex-col", classNames?.wrapper, {
+          "cursor-not-allowed opacity-50": isDisabled,
+        })}
       >
         {label && (
           <label
             className={cn(
-              "mb-1 text-sm font-medium text-slate-700",
+              "mb-0.5 pl-1 text-sm font-medium truncate",
               {
                 "text-red-500": onError || isInvalid,
                 "opacity-50": isDisabled || props?.disabled,
               },
-              classNames?.label
+              classNames?.label,
             )}
             htmlFor={name}
+            title={label}
           >
             {label}{" "}
             {props?.required && (
@@ -115,16 +124,29 @@ const SelectField = React.forwardRef<HTMLSelectElement, SelectInputProps>(
               "text-slate-900 selection:bg-primary-100 selection:text-primary-900",
               "capitalize !h-11",
               className,
-              classNames?.input
+              classNames?.input,
             )}
           >
-            <SelectValue placeholder={placeholder} />
+            {isLoading ? (
+              <div className="flex items-center gap-2 text-slate-400">
+                <Spinner className="h-5 w-5" />
+                Loading...
+              </div>
+            ) : (
+              <SelectValue placeholder={placeholder} />
+            )}
           </SelectTrigger>
-          <SelectContent>
-            {options.map((item: any) => {
-              const itemValue = item.id || item?.value;
+          <SelectContent
+            className={cn(classNames?.options, classNames?.selectContent)}
+          >
+            {options?.map((item: any, index) => {
+              const itemValue = item?.value || item.id || index.toString();
               const itemLabel =
-                item?.[String(listItemName)] || item?.name || item?.label;
+                item?.[String(listItemName)] ||
+                item.name ||
+                item?.title ||
+                item?.label ||
+                itemValue;
 
               return (
                 <SelectItem key={itemValue} value={itemValue}>
@@ -138,23 +160,25 @@ const SelectField = React.forwardRef<HTMLSelectElement, SelectInputProps>(
         {((errorText && (isInvalid || onError)) || descriptionText) && (
           <motion.span
             className={cn(
-              "ml-1 text-xs text-slate-500",
+              "ml-1 text-xs text-gray-500",
               {
                 "text-red-600": onError || isInvalid,
               },
               classNames?.descriptionText,
-              classNames?.errorText
+              classNames?.errorText,
             )}
-            initial={{ scale: 0, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ duration: 0.2 }}
+            whileInView={{
+              scale: [0, 1],
+              opacity: [0, 1],
+              transition: { duration: 0.3 },
+            }}
           >
             {errorText ? errorText : descriptionText}
           </motion.span>
         )}
       </div>
     );
-  }
+  },
 );
 
 SelectField.displayName = "SelectField";

@@ -1,3 +1,6 @@
+import { cn } from "@/lib/utils";
+import * as React from "react";
+import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import {
   Command,
@@ -12,10 +15,8 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { cn } from "@/lib/utils";
-import { motion } from "framer-motion";
 import { Check, ChevronsUpDown } from "lucide-react";
-import * as React from "react";
+import { Spinner } from "./spinner";
 
 type SelectInputProps = React.InputHTMLAttributes<HTMLSelectElement> & {
   label?: string;
@@ -24,12 +25,21 @@ type SelectInputProps = React.InputHTMLAttributes<HTMLSelectElement> & {
   errorText?: string;
   descriptionText?: string;
   isDisabled?: boolean;
+  isLoading?: boolean;
   isInvalid?: boolean;
   onModal?: boolean;
   value?: string;
   className?: string;
   listItemName?: string;
-  options: { id: string; name: string; [x: string]: any }[];
+  listItemValue?: string;
+  options: {
+    id: string;
+    name?: string;
+    value?: string;
+    label?: string;
+    title?: string;
+    [x: string]: any;
+  }[];
   onValueChange?: (value: string) => void;
   classNames?: {
     wrapper?: string;
@@ -55,18 +65,46 @@ const SearchSelectField = React.forwardRef<HTMLSelectElement, SelectInputProps>(
       placeholder,
       onValueChange,
       listItemName,
+      listItemValue,
       isInvalid,
       options,
       isDisabled,
+      isLoading,
       descriptionText,
       errorText = "",
       onModal = false,
       ...props
     },
-    ref
+    ref,
   ) => {
     const [open, setOpen] = React.useState(false);
     const [selected, setSelected] = React.useState("");
+    const [searchValue, setSearchValue] = React.useState("");
+
+    // Sync external value prop with internal state
+    React.useEffect(() => {
+      if (value !== undefined && value !== selected) {
+        setSelected(value);
+      }
+    }, [value]);
+
+    // Filter options based on search value
+    const filteredOptions = React.useMemo(() => {
+      if (!searchValue.trim()) return options;
+
+      const lowerSearchValue = searchValue.toLowerCase();
+      return options.filter((item) => {
+        const label =
+          item?.[String(listItemName)] ||
+          item.name ||
+          item?.title ||
+          item?.label ||
+          item.id ||
+          item.value;
+
+        return String(label).toLowerCase().includes(lowerSearchValue);
+      });
+    }, [options, searchValue, listItemName]);
 
     return (
       <div
@@ -76,7 +114,7 @@ const SearchSelectField = React.forwardRef<HTMLSelectElement, SelectInputProps>(
           classNames?.wrapper,
           {
             "cursor-not-allowed opacity-50": isDisabled,
-          }
+          },
         )}
       >
         {label && (
@@ -86,7 +124,7 @@ const SearchSelectField = React.forwardRef<HTMLSelectElement, SelectInputProps>(
               {
                 "text-red-500": onError || isInvalid,
                 "opacity-50": isDisabled || props?.disabled,
-              }
+              },
             )}
             htmlFor={name}
           >
@@ -103,34 +141,72 @@ const SearchSelectField = React.forwardRef<HTMLSelectElement, SelectInputProps>(
               variant="outline"
               role="combobox"
               aria-expanded={open}
+              disabled={isDisabled}
               className={cn(
                 "justify-between",
                 {
-                  "cursor-not-allowed opacity-50": isDisabled,
-                  "border-red-500": onError || isInvalid,
-                  "text-foreground/60": !selected,
+                  "cursor-not-allowed": isDisabled,
+                  "border! border-red-500!": onError || isInvalid,
+                  "text-foreground/70": !selected,
                 },
-                classNames?.input
+                classNames?.input,
               )}
             >
-              {selected
-                ? options.find((item) => item?.id === selected)?.name
-                : placeholder || "Select an item..."}
-              <ChevronsUpDown className="opacity-50" />
+              {/* ADD LOADING STATE */}
+              {isLoading ? (
+                <div className="flex items-center gap-2 text-slate-400">
+                  <Spinner className="h-5 w-5" />
+                  Loading...
+                </div>
+              ) : (
+                <>
+                  <span className="flex-1 truncate text-left">
+                    {selected
+                      ? (() => {
+                          const selectedItem = options.find(
+                            (item) =>
+                              String(item.id || item.value) === selected,
+                          );
+                          if (!selectedItem)
+                            return placeholder || "Select an item...";
+
+                          const label = listItemName
+                            ? selectedItem[listItemName]
+                            : selectedItem?.name ||
+                              selectedItem?.title ||
+                              selectedItem?.label ||
+                              selectedItem?.value;
+
+                          return label || selectedItem;
+                        })()
+                      : placeholder || "Select an item..."}
+                  </span>
+                </>
+              )}
+              <ChevronsUpDown className="ml-2 shrink-0 opacity-50" />
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-[var(--radix-popover-trigger-width)] flex p-0">
+          <PopoverContent className="flex w-[var(--radix-popover-trigger-width)] p-0">
             <Command>
               <CommandInput
                 placeholder="Type here to search..."
                 className="h-9"
+                value={searchValue}
+                onValueChange={setSearchValue}
               />
               <CommandList>
                 <CommandEmpty>No items found.</CommandEmpty>
                 <CommandGroup>
-                  {options.map((item) => {
-                    const itemValue = item.id;
-                    const itemLabel = item?.[String(listItemName)] || item.name;
+                  {filteredOptions.map((item, index) => {
+                    const itemValue = String(
+                      item.id || item.value || index.toString(),
+                    );
+                    const itemLabel =
+                      item?.[String(listItemName)] ||
+                      item.name ||
+                      item?.title ||
+                      item?.label ||
+                      itemValue;
 
                     return (
                       <CommandItem
@@ -149,7 +225,9 @@ const SearchSelectField = React.forwardRef<HTMLSelectElement, SelectInputProps>(
                         <Check
                           className={cn(
                             "ml-auto",
-                            selected === itemValue ? "opacity-100" : "opacity-0"
+                            selected === itemValue
+                              ? "opacity-100"
+                              : "opacity-0",
                           )}
                         />
                       </CommandItem>
@@ -169,7 +247,7 @@ const SearchSelectField = React.forwardRef<HTMLSelectElement, SelectInputProps>(
                 "text-red-600": onError || isInvalid,
               },
               classNames?.descriptionText,
-              classNames?.errorText
+              classNames?.errorText,
             )}
             whileInView={{
               scale: [0, 1],
@@ -182,7 +260,7 @@ const SearchSelectField = React.forwardRef<HTMLSelectElement, SelectInputProps>(
         )}
       </div>
     );
-  }
+  },
 );
 
 SearchSelectField.displayName = "SearchSelectField";

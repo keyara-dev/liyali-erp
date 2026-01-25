@@ -22,8 +22,10 @@ import { DialogClose } from "@radix-ui/react-dialog";
 
 import { User, UserType } from "@/types";
 import { generateRandomString } from "@/lib/utils";
-import { useCreateUser, useUpdateUser } from "@/hooks/use-users-query";
-import { Department } from "@/types/department";
+import { useCreateUser, useUpdateUser } from "@/hooks/use-users-mutations";
+import { useActiveDepartments } from "@/hooks/use-department-queries";
+import { useActiveRoles } from "@/hooks/use-role-queries";
+import { usePermissions } from "@/hooks/use-permissions";
 
 type FormData = {
   username?: string | number | readonly string[] | undefined;
@@ -36,13 +38,6 @@ type FormData = {
   department?: string;
   is_active: boolean;
   password?: string;
-};
-
-type Role = {
-  id: string;
-  name: string;
-  code: string;
-  department_id: string;
 };
 
 export default function CreateUserForm({
@@ -69,9 +64,33 @@ export default function CreateUserForm({
   const dialogOpen = showTrigger ? internalOpen : isOpenModal;
   const setDialogOpen = showTrigger ? setInternalOpen : setIsOpenModal;
 
+  // ALL HOOKS MUST BE CALLED BEFORE ANY CONDITIONAL LOGIC
+  // Check admin permissions
+  const { isAdmin, isLoading: permissionsLoading } = usePermissions();
+
   // TanStack Query mutations
-  const createUserMutation = useCreateUser();
-  const updateUserMutation = useUpdateUser();
+  const createUserMutation = useCreateUser((data) => {
+    console.log("Create user success callback called with:", data);
+    handleCloseModal();
+    // Add a small delay to ensure server-side data is updated
+    setTimeout(() => {
+      console.log("Refreshing router...");
+      router.refresh();
+    }, 500);
+  });
+  const updateUserMutation = useUpdateUser(() => {
+    handleCloseModal();
+    router.refresh();
+  });
+
+  // Fetch departments and roles
+  const { data: departmentsData = [], isLoading: isDepartmentsLoading } =
+    useActiveDepartments();
+  const {
+    data: rolesData = [],
+    isLoading: isRolesLoading,
+    error: rolesError,
+  } = useActiveRoles();
 
   // Initialize form state
   const initialFormState: FormData = useMemo(() => {
@@ -100,18 +119,29 @@ export default function CreateUserForm({
   }, [isEditMode, user?.id, role]);
 
   const [formData, setFormData] = useState<FormData>(
-    initialFormState as FormData
+    initialFormState as FormData,
   );
 
-  // Get departments from mock data
+  // Get departments from API
   const departments = useMemo(() => {
-    // Mock departments data - replace with actual API call
-    return [
-      { id: '1', name: 'Finance', code: 'FIN', description: 'Financial operations', manager_name: 'John Smith', is_active: true, created_at: '2024-01-01', updated_at: '2024-01-01' },
-      { id: '2', name: 'HR', code: 'HR', description: 'Human Resources', manager_name: 'Jane Doe', is_active: true, created_at: '2024-01-01', updated_at: '2024-01-01' },
-      { id: '3', name: 'IT', code: 'IT', description: 'Information Technology', manager_name: 'Bob Johnson', is_active: true, created_at: '2024-01-01', updated_at: '2024-01-01' },
-    ].filter((d) => d.is_active);
-  }, []);
+    return departmentsData.filter((d) => d.is_active);
+  }, [departmentsData]);
+
+  // Get all roles from API (both system and custom roles)
+  const allRoles = useMemo(() => {
+    // All roles come from the API - no hardcoded roles needed
+    // The backend stores both system roles (is_system_role = true) and custom roles (is_system_role = false)
+    if (!rolesData || !Array.isArray(rolesData)) {
+      return [];
+    }
+
+    return rolesData.map((role: any) => ({
+      id: role.id,
+      name: role.name,
+      type: role.isDefault ? "system" : "custom", // Backend sends isDefault for system roles
+      description: role.description,
+    }));
+  }, [rolesData]);
 
   // Reset form when user changes or dialog opens/closes
   useEffect(() => {
@@ -139,6 +169,34 @@ export default function CreateUserForm({
       });
     }
   }, [user?.id, dialogOpen, isEditMode, role]);
+
+  // PERMISSION CHECKS - After all hooks are called
+  // Show loading while checking permissions
+  if (permissionsLoading) {
+    return null; // Or you could return a loading spinner
+  }
+
+  // Show error if roles failed to load
+  if (rolesError) {
+    console.error("Roles loading error:", rolesError);
+  }
+
+  // Early return if not admin - show unauthorized message
+  if (!isAdmin()) {
+    if (showTrigger) {
+      return (
+        <Button
+          size="sm"
+          disabled
+          onClick={() => toast.error("Only administrators can manage users")}
+        >
+          <UserCog className="mr-2 h-4 w-4" />
+          {user ? "Update User" : "Create New User"} (Admin Only)
+        </Button>
+      );
+    }
+    return null; // For modal mode, don't render anything
+  }
 
   const handleCopyPassword = async () => {
     try {
@@ -183,6 +241,12 @@ export default function CreateUserForm({
       toast.error("Email is required");
       return false;
     }
+
+    if (!formData.role) {
+      toast.error("Role is required");
+      return false;
+    }
+
     if (!isEditMode && !formData.password?.trim()) {
       toast.error("Password is required");
       return false;
@@ -200,7 +264,6 @@ export default function CreateUserForm({
     setIsSubmitting(true);
 
     try {
-      let response;
       if (isEditMode) {
         const updateData = {
           email: formData.email,
@@ -209,42 +272,27 @@ export default function CreateUserForm({
           last_name: formData.last_name,
           department_id: formData.department_id,
           is_active: formData.is_active,
-          role,
+          role: formData.role, // Use the selected role from form data
         };
-        response = await updateUserMutation.mutateAsync({
+        await updateUserMutation.mutateAsync({
           userId: user!.id,
           data: updateData,
         });
       } else {
-        response = await createUserMutation.mutateAsync({
+        await createUserMutation.mutateAsync({
           email: formData.email,
           phone: formData.phone || "",
           password: formData.password || generateRandomString(12),
           first_name: formData.first_name,
           last_name: formData.last_name,
           department_id: formData.department_id || "",
-          role,
           username: String(formData.username || ""),
-          branch_id: "",
-          role_id: "",
+          role: formData.role, // Use the selected role from form data
         });
       }
-
-      if (response.success) {
-        toast.success(
-          `User ${isEditMode ? "updated" : "created"} successfully`
-        );
-        handleCloseModal();
-        router.refresh();
-      } else {
-        toast.error(
-          response.message ||
-            `Failed to ${isEditMode ? "update" : "create"} user`
-        );
-      }
     } catch (error) {
+      // Error handling is done by the mutation hooks
       console.error("Form submission error:", error);
-      toast.error("An unexpected error occurred");
     } finally {
       setIsSubmitting(false);
     }
@@ -296,214 +344,185 @@ export default function CreateUserForm({
           </div>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="overflow-y-auto px-6 py-6">
-            <div>
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <div>
-                  <Label htmlFor="first_name">
-                    First Name <span className="text-destructive">*</span>
-                  </Label>
-                  <Input
-                    id="first_name"
-                    placeholder="Bob"
-                    value={formData.first_name}
-                    onChange={(e) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        first_name: e.target.value,
-                      }))
-                    }
-                    disabled={isSubmitting}
-                    required
-                    className="mt-1"
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="last_name">
-                    Last Name <span className="text-destructive">*</span>
-                  </Label>
-                  <Input
-                    id="last_name"
-                    placeholder="Mwale"
-                    value={formData.last_name}
-                    onChange={(e) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        last_name: e.target.value,
-                      }))
-                    }
-                    disabled={isSubmitting}
-                    required
-                    className="mt-1"
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="username">
-                    Username <span className="text-destructive">*</span>
-                  </Label>
-                  <Input
-                    id="username"
-                    placeholder="bmwale"
-                    value={formData.username}
-                    onChange={(e) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        username: e.target.value,
-                      }))
-                    }
-                    disabled={isSubmitting}
-                    required
-                    className="mt-1"
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="email">
-                    Email Address <span className="text-destructive">*</span>
-                  </Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="mail@company.com"
-                    value={formData.email}
-                    onChange={(e) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        email: e.target.value,
-                      }))
-                    }
-                    disabled={isSubmitting}
-                    required
-                    className="mt-1"
-                  />
-                </div>
-              </div>
+        <form onSubmit={handleSubmit} className="">
+          <div className="overflow-y-auto grid gap-4 px-6 py-6">
+            <div className="flex gap-4">
+              <Input
+                id="first_name"
+                placeholder="Bob"
+                label="First Name"
+                value={formData.first_name}
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    first_name: e.target.value,
+                  }))
+                }
+                disabled={isSubmitting}
+                required
+              />
+              <Input
+                id="last_name"
+                label="Last Name"
+                placeholder="Mwale"
+                value={formData.last_name}
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    last_name: e.target.value,
+                  }))
+                }
+                disabled={isSubmitting}
+                required
+              />
+            </div>
+            <Input
+              id="username"
+              placeholder="bmwale"
+              label="Username"
+              value={formData.username}
+              onChange={(e) =>
+                setFormData((prev) => ({
+                  ...prev,
+                  username: e.target.value,
+                }))
+              }
+              disabled={isSubmitting}
+              required
+            />
+            <div className="flex gap-4 items-end">
+              <Input
+                id="email"
+                type="email"
+                label="Email Address"
+                placeholder="mail@company.com"
+                value={formData.email}
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    email: e.target.value,
+                  }))
+                }
+                disabled={isSubmitting}
+                required
+              />
+              <SelectField
+                label="Role"
+                value={formData.role}
+                onValueChange={(value) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    role: value as UserType,
+                  }))
+                }
+                isDisabled={isSubmitting || isRolesLoading}
+                placeholder={
+                  isRolesLoading
+                    ? "Loading roles..."
+                    : rolesError
+                      ? "Error loading roles"
+                      : allRoles.length === 0
+                        ? "No roles available"
+                        : "Select role"
+                }
+                options={[
+                  { id: "", name: "Select role", value: "" },
+                  ...allRoles.map((role) => ({
+                    id: role.id,
+                    name: role.name,
+                    value: role.name, // Send role name instead of role ID
+                  })),
+                ]}
+              />
             </div>
 
-            <div className="mt-4">
-              <div className="grid grid-cols-1 gap-4">
-                <div>
-                  <Label htmlFor="department_id">
-                    Department <span className="text-destructive">*</span>
-                  </Label>
-                  <SelectField
-                    value={formData.department_id}
-                    onValueChange={(value) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        department_id: value,
-                      }))
-                    }
-                    isDisabled={isSubmitting}
-                    placeholder="Select department"
-                    options={[
-                      { id: "", name: "Select department" },
-                      ...departments.map((dept) => ({
-                        id: dept.id,
-                        name: dept.name,
-                      })),
-                    ]}
-                    classNames={{
-                      wrapper: "w-full",
-                      input: "!h-10",
-                    }}
-                  />
-                </div>
+            <SelectField
+              label="Department"
+              value={formData.department_id}
+              onValueChange={(value) =>
+                setFormData((prev) => ({
+                  ...prev,
+                  department_id: value,
+                }))
+              }
+              isDisabled={isSubmitting || isDepartmentsLoading}
+              placeholder={
+                isDepartmentsLoading
+                  ? "Loading departments..."
+                  : "Select department"
+              }
+              options={[
+                { id: "", name: "Select department", value: "" },
+                ...departments.map((dept) => ({
+                  id: dept.id,
+                  name: dept.name,
+                  value: dept.id,
+                })),
+              ]}
+            />
 
-                <div>
-                  <Label htmlFor="role">
-                    Role <span className="text-destructive">*</span>
-                  </Label>
-                  <SelectField
-                    value={formData.role}
-                    onValueChange={(value) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        role: value as UserType,
-                      }))
-                    }
-                    isDisabled={isSubmitting}
-                    placeholder="Select role"
-                    options={[
-                      { id: "", name: "Select role" },
-                      { id: "role-1", name: "Administrator" },
-                      { id: "role-2", name: "Manager" },
-                      { id: "role-3", name: "Viewer" },
-                    ]}
-                    classNames={{
-                      wrapper: "w-full",
-                      input: "!h-10",
-                    }}
-                  />
+            {isEditMode && (
+              <div className="flex flex-row items-center justify-between rounded-lg border p-4">
+                <div className="space-y-0.5">
+                  <Label className="text-base">Account Status</Label>
+                  <p className="text-sm text-muted-foreground">
+                    {formData.is_active
+                      ? "Account is active"
+                      : "Account is deactivated"}
+                  </p>
                 </div>
+                <Switch
+                  checked={formData.is_active}
+                  onCheckedChange={(checked) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      is_active: checked,
+                    }))
+                  }
+                  disabled={isSubmitting}
+                />
+              </div>
+            )}
 
-                {isEditMode && (
-                  <div className="flex flex-row items-center justify-between rounded-lg border p-4">
-                    <div className="space-y-0.5">
-                      <Label className="text-base">Account Status</Label>
-                      <p className="text-sm text-muted-foreground">
-                        {formData.is_active
-                          ? "Account is active"
-                          : "Account is deactivated"}
-                      </p>
-                    </div>
-                    <Switch
-                      checked={formData.is_active}
-                      onCheckedChange={(checked) =>
-                        setFormData((prev) => ({
-                          ...prev,
-                          is_active: checked,
-                        }))
-                      }
+            {!isEditMode && (
+              <div>
+                <Label htmlFor="password">
+                  Password <span className="text-destructive">*</span>
+                </Label>
+                <div className="mt-1 flex w-full flex-col items-center gap-2 sm:flex-row">
+                  <div className="relative flex w-full items-center gap-2">
+                    <Input
+                      id="password"
+                      value={formData.password}
+                      readOnly
+                      className="cursor-default font-mono text-sm"
                       disabled={isSubmitting}
                     />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={handleCopyPassword}
+                      className="hover:bg-muted/5 absolute right-1 shrink-0"
+                      disabled={isSubmitting}
+                    >
+                      {copied ? (
+                        <Check className="h-4 w-4 text-green-600" />
+                      ) : (
+                        <Copy className="h-4 w-4" />
+                      )}
+                    </Button>
                   </div>
-                )}
-
-                {!isEditMode && (
-                  <div>
-                    <Label htmlFor="password">
-                      Password <span className="text-destructive">*</span>
-                    </Label>
-                    <div className="mt-1 flex w-full flex-col items-center gap-2 sm:flex-row">
-                      <div className="relative flex w-full items-center gap-2">
-                        <Input
-                          id="password"
-                          value={formData.password}
-                          readOnly
-                          className="cursor-default font-mono text-sm"
-                          disabled={isSubmitting}
-                        />
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          onClick={handleCopyPassword}
-                          className="hover:bg-muted/5 absolute right-1 shrink-0"
-                          disabled={isSubmitting}
-                        >
-                          {copied ? (
-                            <Check className="h-4 w-4 text-green-600" />
-                          ) : (
-                            <Copy className="h-4 w-4" />
-                          )}
-                        </Button>
-                      </div>
-                      <Button
-                        type="button"
-                        onClick={handleGenerateNewPassword}
-                        disabled={isSubmitting}
-                      >
-                        Generate new password
-                      </Button>
-                    </div>
-                  </div>
-                )}
+                  <Button
+                    type="button"
+                    onClick={handleGenerateNewPassword}
+                    disabled={isSubmitting}
+                  >
+                    Generate new password
+                  </Button>
+                </div>
               </div>
-            </div>
+            )}
           </div>
 
           <DialogFooter className="flex justify-end gap-3 border-t p-4">
@@ -536,5 +555,26 @@ export default function CreateUserForm({
 
 // Convenience wrapper component for just showing the button trigger
 export function CreateUserButton({ role }: { role: UserType }) {
+  const { isAdmin, isLoading: permissionsLoading } = usePermissions();
+
+  // Show loading while checking permissions
+  if (permissionsLoading) {
+    return null; // Or you could return a loading spinner
+  }
+
+  // Show disabled button if not admin
+  if (!isAdmin()) {
+    return (
+      <Button
+        size="sm"
+        disabled
+        onClick={() => toast.error("Only administrators can manage users")}
+      >
+        <Plus className="mr-2 h-4 w-4" />
+        Create New User (Admin Only)
+      </Button>
+    );
+  }
+
   return <CreateUserForm showTrigger={true} role={role} user={null} />;
 }

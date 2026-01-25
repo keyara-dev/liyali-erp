@@ -152,7 +152,7 @@ const columns: ColumnDef<Requisition>[] = [
         onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         className="-ml-3"
       >
-        Total Amount
+        Estimated Cost
         <ArrowUpDown className="ml-2 h-4 w-4" />
       </Button>
     ),

@@ -6,7 +6,11 @@ import { ChevronDownIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 
@@ -67,13 +71,9 @@ function DatePickerComponent({
 
   return (
     <div
-      className={cn(
-        "flex w-full flex-col",
-        classNames?.wrapper,
-        {
-          "cursor-not-allowed opacity-50": isDisabled || disabled,
-        }
-      )}
+      className={cn("flex w-full flex-col", classNames?.wrapper, {
+        "cursor-not-allowed opacity-50": isDisabled || disabled,
+      })}
     >
       {label && (
         <label
@@ -83,14 +83,12 @@ function DatePickerComponent({
               "text-red-500": onError || isInvalid,
               "opacity-50": isDisabled || disabled,
             },
-            classNames?.label
+            classNames?.label,
           )}
           htmlFor={name}
         >
           {label}{" "}
-          {required && (
-            <span className="font-bold text-red-500"> *</span>
-          )}
+          {required && <span className="font-bold text-red-500"> *</span>}
         </label>
       )}
       <Popover open={open} onOpenChange={setOpen}>
@@ -101,7 +99,7 @@ function DatePickerComponent({
             id={name || "date"}
             className={cn(
               // Base styles matching input.tsx
-              "w-full px-4 py-2 text-base bg-white border border-slate-200 rounded-lg transition-all duration-200 outline-none",
+              "w-full px-4 h-11 py-2 text-base bg-white border border-slate-200 rounded-lg transition-all duration-200 outline-none",
               // Focus styles with primary color
               "focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 focus:shadow-lg focus:shadow-primary-500/10",
               // Hover styles
@@ -117,7 +115,7 @@ function DatePickerComponent({
               "text-slate-900 selection:bg-primary-100 selection:text-primary-900",
               "justify-between text-left font-normal",
               !value && "text-slate-400",
-              classNames?.input
+              classNames?.input,
             )}
             disabled={isDisabled || disabled}
           >
@@ -152,7 +150,7 @@ function DatePickerComponent({
               "text-red-600": onError || isInvalid,
             },
             classNames?.descriptionText,
-            classNames?.errorText
+            classNames?.errorText,
           )}
           initial={{ scale: 0, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}

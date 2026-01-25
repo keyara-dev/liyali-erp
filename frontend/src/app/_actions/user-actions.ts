@@ -16,10 +16,8 @@ export interface CreateUserRequest {
   password: string;
   first_name: string;
   last_name: string;
-  branch_id: string;
   department_id: string;
-  role_id: string;
-  role?: UserType;
+  role: UserType;
 }
 
 export interface UpdateUserRequest {
@@ -29,37 +27,46 @@ export interface UpdateUserRequest {
   phone?: string;
   first_name?: string;
   last_name?: string;
-  branch_id?: string;
   department_id?: string;
   role_id?: string;
   is_active?: boolean;
 }
 
 export async function createNewUser(
-  data: CreateUserRequest
+  data: CreateUserRequest,
 ): Promise<APIResponse> {
-  const url = `/api/v1/organization/members`;
+  // Use the dedicated admin user creation endpoint that doesn't create personal organizations
+  const url = `/api/v1/organization/users`;
 
   try {
+    // Create the user directly in the current organization
     const response = await authenticatedApiClient({
       url: url,
       data: {
-        user_id: data.username, // This might need to be adjusted based on backend expectations
+        name: `${data.first_name} ${data.last_name}`,
+        first_name: data.first_name,
+        last_name: data.last_name,
         email: data.email,
+        password: data.password,
         role: data.role || "requester",
-        department: data.department_id,
         department_id: data.department_id,
-        title: `${data.first_name} ${data.last_name}`,
-        active: true,
       },
       method: "POST",
     });
+
+    if (!response.data?.success) {
+      return handleError(
+        new Error(response.data?.message || "Failed to create user"),
+        "POST",
+        url,
+      );
+    }
+
+    console.log("User created successfully:", response.data);
+
     revalidatePath("/admin/users");
 
-    return successResponse(
-      response?.data,
-      "Organization member added successfully"
-    );
+    return successResponse(response.data?.data, "User created successfully");
   } catch (error: Error | any) {
     return handleError(error, "POST", url);
   }
@@ -115,9 +122,11 @@ export async function getUsers(params?: {
         first_name: firstName,
         last_name: lastName,
         email: userData?.email || "",
-        role: member.role || "requester",
+        role: member.role || member.roleName || "requester",
+        role_id: member.roleId || member.role_id || "",
+        role_name: member.roleName || member.role_name || member.role || "",
         department: member.department || "",
-        department_id: member.department_id || "",
+        department_id: member.departmentId || member.department_id || "",
         active: member.active !== undefined ? member.active : true,
         is_active: member.active !== undefined ? member.active : true,
         // Include original member data for reference
@@ -131,7 +140,7 @@ export async function getUsers(params?: {
 
     return successResponse(
       transformedUsers,
-      "Organization members fetched successfully"
+      "Organization members fetched successfully",
     );
   } catch (error) {
     return handleError(error, "GET", url);
@@ -216,7 +225,7 @@ export async function getUserById(id: string): Promise<APIResponse> {
 
 export async function updateUser(
   id: string,
-  data: Partial<User>
+  data: Partial<User>,
 ): Promise<APIResponse> {
   // TODO: Backend needs to implement PUT /api/v1/organization/members/:id endpoint
   // For now, this will return an error indicating the feature is not implemented
@@ -249,7 +258,7 @@ export async function deleteUser(id: string): Promise<APIResponse> {
  */
 export async function toggleUserStatus(
   id: string,
-  isActive: boolean
+  isActive: boolean,
 ): Promise<APIResponse> {
   try {
     // Fetch current user data first
@@ -318,7 +327,7 @@ export async function activateUser(id: string): Promise<APIResponse> {
  */
 export async function toggleUserMFA(
   id: string,
-  enabled: boolean
+  enabled: boolean,
 ): Promise<APIResponse> {
   try {
     // Fetch current user data first
@@ -359,7 +368,7 @@ export async function toggleUserMFA(
  */
 export async function resetUserPassword(
   id: string,
-  password: string
+  password: string,
 ): Promise<APIResponse> {
   const url = `/api/v1/users/${id}/reset-password`;
   try {

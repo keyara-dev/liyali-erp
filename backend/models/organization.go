@@ -58,9 +58,12 @@ type OrganizationMember struct {
 	User           *User  `gorm:"foreignKey:UserID" json:"user,omitempty"`
 
 	// Membership Details
-	Role       string `gorm:"not null" json:"role"` // admin, manager, approver, requester, viewer
-	Department string `json:"department,omitempty"`
-	Title      string `json:"title,omitempty"`
+	Role         string  `gorm:"not null" json:"role"` // admin, manager, approver, requester, viewer
+	RoleID       string  `gorm:"-" json:"roleId,omitempty"` // Computed field for role ID
+	RoleName     string  `gorm:"-" json:"roleName,omitempty"` // Computed field for role name
+	Department   string  `json:"department,omitempty"`
+	DepartmentID *string `gorm:"index" json:"departmentId,omitempty"` // Foreign key to OrganizationDepartment
+	Title        string  `json:"title,omitempty"`
 
 	// Status
 	Active     bool       `gorm:"default:true" json:"active"`

@@ -61,7 +61,7 @@ export async function getRolesAction(): Promise<
 
     return successResponse(
       response.data.data || [],
-      "Roles retrieved successfully"
+      "Roles retrieved successfully",
     );
   } catch (error: any) {
     return handleError(error, "GET", url);
@@ -74,7 +74,7 @@ export async function getRolesAction(): Promise<
  */
 export async function createRoleAction(
   name: string,
-  description?: string
+  description?: string,
 ): Promise<APIResponse<OrganizationRole>> {
   const url = `/api/v1/organization/roles`;
 
@@ -102,7 +102,7 @@ export async function createRoleAction(
 export async function updateRoleAction(
   roleId: string,
   name: string,
-  description?: string
+  description?: string,
 ): Promise<APIResponse<OrganizationRole>> {
   const url = `/api/v1/organization/roles/${roleId}`;
 
@@ -151,7 +151,7 @@ export async function deleteRoleAction(roleId: string): Promise<APIResponse> {
  * Calls: GET /api/v1/organization/roles/{id}/permissions
  */
 export async function getRolePermissionsAction(
-  roleId: string
+  roleId: string,
 ): Promise<APIResponse<string[]>> {
   const url = `/api/v1/organization/roles/${roleId}/permissions`;
 
@@ -163,7 +163,7 @@ export async function getRolePermissionsAction(
 
     return successResponse(
       response.data.data || [],
-      "Role permissions retrieved successfully"
+      "Role permissions retrieved successfully",
     );
   } catch (error: any) {
     return handleError(error, "GET", url);
@@ -187,7 +187,7 @@ export async function getAvailablePermissionsAction(): Promise<
 
     return successResponse(
       response.data.data || [],
-      "Permissions retrieved successfully"
+      "Permissions retrieved successfully",
     );
   } catch (error: any) {
     return handleError(error, "GET", url);
@@ -200,7 +200,7 @@ export async function getAvailablePermissionsAction(): Promise<
  */
 export async function assignPermissionAction(
   roleId: string,
-  permissionId: string
+  permissionId: string,
 ): Promise<APIResponse> {
   const url = `/api/v1/organization/roles/${roleId}/permissions/${permissionId}`;
 
@@ -222,7 +222,7 @@ export async function assignPermissionAction(
  */
 export async function removePermissionAction(
   roleId: string,
-  permissionId: string
+  permissionId: string,
 ): Promise<APIResponse> {
   const url = `/api/v1/organization/roles/${roleId}/permissions/${permissionId}`;
 
@@ -279,7 +279,7 @@ export const getAllRoles = getRolesAction;
 export async function createRole(
   name: string,
   description: string,
-  permissions?: string[]
+  permissions?: string[],
 ): Promise<APIResponse<OrganizationRole>> {
   return createRoleAction(name, description);
 }
@@ -290,7 +290,7 @@ export async function createRole(
 export async function updateRole(
   roleId: string,
   name?: string,
-  description?: string
+  description?: string,
 ): Promise<APIResponse<OrganizationRole>> {
   if (!name) {
     throw new Error("Role name is required");
@@ -317,7 +317,7 @@ export const removeRolePermission = removePermissionAction;
  * This is for the module-based permission system
  */
 export async function getModuleRolePermissions(
-  roleId: string
+  roleId: string,
 ): Promise<APIResponse> {
   const url = `/api/v1/roles/${roleId}/permissions`;
 
@@ -337,7 +337,7 @@ export async function getModuleRolePermissions(
 
     return successResponse(
       permissions,
-      "Role permissions fetched successfully"
+      "Role permissions fetched successfully",
     );
   } catch (error: any) {
     return handleError(error, "GET", url);
@@ -423,7 +423,7 @@ export async function bulkUpdateRolePermissions({
     if (failureCount === 0) {
       return successResponse(
         { results, successCount, failureCount },
-        `Successfully updated ${successCount} permissions`
+        `Successfully updated ${successCount} permissions`,
       );
     } else {
       return {
@@ -438,7 +438,7 @@ export async function bulkUpdateRolePermissions({
     return handleError(
       error,
       "BULK_UPDATE",
-      `/api/v1/roles/${roleId}/permissions`
+      `/api/v1/roles/${roleId}/permissions`,
     );
   }
 }

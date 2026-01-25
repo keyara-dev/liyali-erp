@@ -24,9 +24,20 @@ import {
 } from "@/components/ui/select";
 import { SelectField } from "@/components/ui/select-field";
 import { Plus, Trash2 } from "lucide-react";
-import { RequisitionItem, RequisitionPriority, Requisition } from "@/types/requisition";
-import { useCreateRequisition, useUpdateRequisition } from "@/hooks/use-requisition-mutations";
+import {
+  RequisitionItem,
+  RequisitionPriority,
+  Requisition,
+} from "@/types/requisition";
+import {
+  useCreateRequisition,
+  useUpdateRequisition,
+} from "@/hooks/use-requisition-mutations";
 import { useCategories } from "@/hooks/use-category-queries";
+import { useAllBudgets } from "@/hooks/use-budget-queries";
+import { useActiveDepartments } from "@/hooks/use-department-queries";
+import { cn } from "@/lib/utils";
+import { DatePicker } from "@/components/ui/date-picker";
 
 interface CreateRequisitionDialogProps {
   open: boolean;
@@ -58,7 +69,18 @@ export function CreateRequisitionDialog({
   });
 
   // Fetch categories for the dropdown
-  const { data: categories = [] } = useCategories(1, 50, true);
+  const { data: categories = [], isLoading: categoriesLoading } = useCategories(
+    1,
+    50,
+    true,
+  );
+
+  // Fetch budgets for the dropdown
+  const { data: budgets = [], isLoading: budgetsLoading } = useAllBudgets();
+
+  // Fetch departments for the dropdown
+  const { data: departments = [], isLoading: departmentsLoading } =
+    useActiveDepartments();
 
   const [formData, setFormData] = useState({
     title: "",
@@ -67,14 +89,14 @@ export function CreateRequisitionDialog({
     priority: "medium" as RequisitionPriority,
     requestedFor: "",
     justification: "",
-    budgetCode: "",
+    budgetCode: "N/A",
     costCenter: "",
     projectCode: "",
     currency: "ZMW",
     isEstimate: true,
     requiredByDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
     items: [] as RequisitionItem[],
-    categoryId: "",
+    categoryId: "OTHER",
     otherCategoryText: "",
   });
 
@@ -86,14 +108,14 @@ export function CreateRequisitionDialog({
       priority: "medium",
       requestedFor: "",
       justification: "",
-      budgetCode: "",
+      budgetCode: "N/A",
       costCenter: "",
       projectCode: "",
       currency: "ZMW",
       isEstimate: true,
       requiredByDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
       items: [],
-      categoryId: "",
+      categoryId: "OTHER",
       otherCategoryText: "",
     });
   };
@@ -108,14 +130,16 @@ export function CreateRequisitionDialog({
         priority: editingRequisition.priority || "medium",
         requestedFor: editingRequisition.requestedFor || "",
         justification: editingRequisition.description || "",
-        budgetCode: editingRequisition.budgetCode || "",
+        budgetCode: editingRequisition.budgetCode || "N/A",
         costCenter: editingRequisition.costCenter || "",
         projectCode: editingRequisition.projectCode || "",
         currency: editingRequisition.currency || "ZMW",
         isEstimate: editingRequisition.isEstimate || false,
-        requiredByDate: editingRequisition.requiredByDate ? new Date(editingRequisition.requiredByDate) : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        requiredByDate: editingRequisition.requiredByDate
+          ? new Date(editingRequisition.requiredByDate)
+          : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
         items: editingRequisition.items || [],
-        categoryId: editingRequisition.categoryId || "",
+        categoryId: editingRequisition.categoryId || "OTHER",
         otherCategoryText: editingRequisition.otherCategoryText || "",
       });
     } else if (!isEditing && open) {
@@ -123,25 +147,21 @@ export function CreateRequisitionDialog({
     }
   }, [isEditing, editingRequisition, open]);
 
-  const totalEstimatedCost = formData.items.reduce(
-    (sum, item) => sum + (item.estimatedCost || 0) * item.quantity,
-    0
-  );
-
   const totalAmount = formData.items.reduce(
-    (sum, item) => sum + (item.amount || (item.estimatedCost || 0) * item.quantity),
-    0
+    (sum, item) =>
+      sum + (item.amount || (item.estimatedCost || 0) * item.quantity),
+    0,
   );
 
   const handleAddItem = () => {
     const newItem: RequisitionItem = {
       id: Date.now().toString(),
       description: "",
-      itemDescription: "",  // Alias
+      itemDescription: "", // Alias
       quantity: 1,
       unitPrice: 0,
       amount: 0,
-      estimatedCost: 0,     // Alias
+      estimatedCost: 0, // Alias
     };
     setFormData((prev) => ({
       ...prev,
@@ -159,25 +179,26 @@ export function CreateRequisitionDialog({
   const handleUpdateItem = (
     itemId: string,
     field: keyof RequisitionItem,
-    value: any
+    value: any,
   ) => {
     setFormData((prev) => ({
       ...prev,
       items: prev.items.map((item) => {
         if (item.id === itemId) {
           const updatedItem = { ...item, [field]: value };
-          
+
           // Calculate amount when quantity or estimatedCost changes
-          if (field === 'quantity' || field === 'estimatedCost') {
-            updatedItem.amount = updatedItem.quantity * (updatedItem.estimatedCost || 0);
+          if (field === "quantity" || field === "estimatedCost") {
+            updatedItem.amount =
+              updatedItem.quantity * (updatedItem.estimatedCost || 0);
             updatedItem.unitPrice = updatedItem.estimatedCost || 0;
           }
-          
+
           // Ensure description is set from itemDescription
-          if (field === 'itemDescription') {
+          if (field === "itemDescription") {
             updatedItem.description = value;
           }
-          
+
           return updatedItem;
         }
         return item;
@@ -192,7 +213,7 @@ export function CreateRequisitionDialog({
       return;
     }
     if (!formData.department.trim()) {
-      toast.error("Please enter department");
+      toast.error("Please select a department");
       return;
     }
     if (!formData.requestedFor.trim()) {
@@ -207,8 +228,8 @@ export function CreateRequisitionDialog({
       toast.error("Please provide justification");
       return;
     }
-    if (!formData.budgetCode.trim()) {
-      toast.error("Please enter budget code");
+    if (!formData.budgetCode.trim() || formData.budgetCode === "") {
+      toast.error("Please select a budget code");
       return;
     }
     if (formData.categoryId === "OTHER" && !formData.otherCategoryText.trim()) {
@@ -218,7 +239,9 @@ export function CreateRequisitionDialog({
 
     // Validate all items have descriptions and quantities
     const allItemsValid = formData.items.every(
-      (item) => (item.itemDescription?.trim() || item.description?.trim()) && item.quantity > 0
+      (item) =>
+        (item.itemDescription?.trim() || item.description?.trim()) &&
+        item.quantity > 0,
     );
     if (!allItemsValid) {
       toast.error("Please fill in all item details");
@@ -237,7 +260,10 @@ export function CreateRequisitionDialog({
         items: formData.items,
         totalAmount: totalAmount,
         currency: formData.currency,
-        categoryId: formData.categoryId === "OTHER" ? undefined : formData.categoryId || undefined,
+        categoryId:
+          formData.categoryId === "OTHER"
+            ? undefined
+            : formData.categoryId || undefined,
         preferredVendorId: undefined,
         isEstimate: formData.isEstimate,
         requiredByDate: formData.requiredByDate,
@@ -245,7 +271,10 @@ export function CreateRequisitionDialog({
         costCenter: formData.costCenter || formData.budgetCode,
         projectCode: formData.projectCode || formData.budgetCode,
         requestedFor: formData.requestedFor,
-        otherCategoryText: formData.categoryId === "OTHER" ? formData.otherCategoryText : undefined,
+        otherCategoryText:
+          formData.categoryId === "OTHER"
+            ? formData.otherCategoryText
+            : undefined,
       });
     } else {
       createMutation.mutate({
@@ -257,7 +286,10 @@ export function CreateRequisitionDialog({
         items: formData.items,
         totalAmount: totalAmount,
         currency: formData.currency,
-        categoryId: formData.categoryId === "OTHER" ? undefined : formData.categoryId || undefined,
+        categoryId:
+          formData.categoryId === "OTHER"
+            ? undefined
+            : formData.categoryId || undefined,
         preferredVendorId: undefined,
         isEstimate: formData.isEstimate,
         requiredByDate: formData.requiredByDate,
@@ -265,342 +297,388 @@ export function CreateRequisitionDialog({
         costCenter: formData.costCenter || formData.budgetCode,
         projectCode: formData.projectCode || formData.budgetCode,
         requestedFor: formData.requestedFor,
-        otherCategoryText: formData.categoryId === "OTHER" ? formData.otherCategoryText : undefined,
+        otherCategoryText:
+          formData.categoryId === "OTHER"
+            ? formData.otherCategoryText
+            : undefined,
       });
     }
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl! p-0 overflow-y-auto max-h-[90vh]">
+      <DialogContent className="max-w-5xl! p-0 overflow-y-auto max-h-[90vh]">
         <DialogHeader className="p-4 pb-0">
           <DialogTitle className="font-bold">
             {isEditing ? "Edit Requisition" : "Create New Requisition"}
           </DialogTitle>
           <DialogDescription>
-            {isEditing 
-              ? "Update the requisition details and items" 
-              : "Fill in the requisition details and add items you need"
-            }
+            {isEditing
+              ? "Update the requisition details and items"
+              : "Fill in the requisition details and add items you need"}
           </DialogDescription>
         </DialogHeader>
 
-          <div className="space-y-6 p-4  ">
-            {/* Basic Information */}
-            <div className="space-y-4">
-              <h3 className="font-semibold text-lg">Basic Information</h3>
-
-              <Input
-                label="Title"
-                required
-                placeholder="Enter requisition title"
-                value={formData.title}
-                onChange={(e) =>
-                  setFormData({ ...formData, title: e.target.value })
-                }
-              />
-
-              <div className="grid grid-cols-2 gap-4">
-                <Input
-                  label="Department"
-                  required
-                  placeholder="e.g., Operations"
-                  value={formData.department}
-                  onChange={(e) =>
-                    setFormData({ ...formData, department: e.target.value })
-                  }
-                />
-
-                <SelectField
-                  label="Priority"
-                  required
-                  value={formData.priority}
-                  onValueChange={(value) =>
-                    setFormData({ ...formData, priority: value as RequisitionPriority })
-                  }
-                  options={[
-                    { id: "low", name: "Low" },
-                    { id: "medium", name: "Medium" },
-                    { id: "high", name: "High" },
-                    { id: "urgent", name: "Urgent" },
-                  ]}
-                  placeholder="Select priority"
-                />
+        <div className="space-y-6 p-4  ">
+          {/* Loading State */}
+          {(budgetsLoading || categoriesLoading || departmentsLoading) && (
+            <div className="flex items-center justify-center py-8">
+              <div className="text-center">
+                <div className="h-8 w-8 rounded-full border-4 border-blue-200 border-t-blue-600 animate-spin mx-auto mb-4"></div>
+                <p className="text-gray-600">Loading form data...</p>
               </div>
+            </div>
+          )}
 
-              <div className="grid grid-cols-2 gap-4">
-                <Input
-                  label="Requested For"
-                  required
-                  placeholder="e.g., John Mwale"
-                  value={formData.requestedFor}
-                  onChange={(e) =>
-                    setFormData({ ...formData, requestedFor: e.target.value })
-                  }
-                />
+          {/* Form Content */}
+          {
+            <>
+              {/* Basic Information */}
+              <div className="space-y-4">
+                <h3 className="font-semibold text-lg">Basic Information</h3>
 
-                <SelectField
-                  label="Currency"
-                  value={formData.currency}
-                  onValueChange={(value) =>
-                    setFormData({ ...formData, currency: value })
-                  }
-                  options={[
-                    { id: "ZMW", name: "ZMW" },
-                    { id: "USD", name: "USD" },
-                  ]}
-                  placeholder="Select currency"
-                />
-              </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <Input
+                    label="Title"
+                    required
+                    placeholder="Enter requisition title"
+                    value={formData.title}
+                    onChange={(e) =>
+                      setFormData({ ...formData, title: e.target.value })
+                    }
+                  />
+                  <Input
+                    label="Requested For"
+                    required
+                    placeholder="e.g., John Mwale"
+                    value={formData.requestedFor}
+                    onChange={(e) =>
+                      setFormData({ ...formData, requestedFor: e.target.value })
+                    }
+                  />
+                </div>
 
-              {/* Category Selection */}
-              <SelectField
-                label="Category"
-                className="w-full" 
-                value={formData.categoryId}
-                onValueChange={(value) =>
-                  setFormData({ ...formData, categoryId: value, otherCategoryText: "" })
-                }
-                options={[
-                  ...categories.map((category) => ({
-                    id: category.id,
-                    name: category.name,
-                  })),
-                  { id: "OTHER", name: "Other (specify below)" },
-                ]}
-                placeholder="Select a category"
-              />
+                <div className="grid grid-cols-2 gap-4">
+                  <SelectField
+                    label="Department"
+                    required
+                    isLoading={departmentsLoading}
+                    placeholder="Select department"
+                    value={formData.department}
+                    onValueChange={(value) =>
+                      setFormData({
+                        ...formData,
+                        department: value,
+                        departmentId: Array.isArray(departments)
+                          ? departments.find((d) => d.name === value)?.id ||
+                            value
+                          : value,
+                      })
+                    }
+                    options={
+                      Array.isArray(departments)
+                        ? departments.map((department) => ({
+                            value: department.name,
+                            label: department.name,
+                          }))
+                        : []
+                    }
+                  />
 
-              {/* Other Category Text Input */}
-              {formData.categoryId === "OTHER" && (
-                <Input
-                  label="Specify Category"
-                  required
-                  placeholder="Enter custom category name"
-                  value={formData.otherCategoryText}
-                  onChange={(e) =>
-                    setFormData({ ...formData, otherCategoryText: e.target.value })
-                  }
-                />
-              )}
+                  <SelectField
+                    label="Priority"
+                    required
+                    value={formData.priority}
+                    onValueChange={(value) =>
+                      setFormData({
+                        ...formData,
+                        priority: value as RequisitionPriority,
+                      })
+                    }
+                    options={[
+                      { value: "low", label: "Low" },
+                      { value: "medium", label: "Medium" },
+                      { value: "high", label: "High" },
+                      { value: "urgent", label: "Urgent" },
+                    ]}
+                    placeholder="Select priority"
+                  />
+                </div>
 
-              <div className="grid grid-cols-3 gap-4">
-                <Input
-                  label="Budget Code"
-                  required
-                  placeholder="e.g., CAP-2024-001"
-                  value={formData.budgetCode}
-                  onChange={(e) =>
-                    setFormData({ ...formData, budgetCode: e.target.value })
-                  }
-                />
+                {/* Category Selection */}
+                <div
+                  className={cn("grid grid-cols-1 sm:grid-cols-2 gap-4", {
+                    "sm:grid-cols-2": formData.categoryId === "OTHER",
+                  })}
+                >
+                  <SelectField
+                    label="Category"
+                    className="w-full"
+                    value={formData.categoryId}
+                    onValueChange={(value) =>
+                      setFormData({
+                        ...formData,
+                        categoryId: value,
+                        otherCategoryText: "",
+                      })
+                    }
+                    isLoading={categoriesLoading}
+                    options={[
+                      ...(Array.isArray(categories)
+                        ? categories.map((category) => ({
+                            value: category.id,
+                            label: category.name,
+                          }))
+                        : []),
+                      { value: "OTHER", label: "Other (specify)" },
+                    ]}
+                    placeholder="Select a category"
+                  />
 
-                <Input
-                  label="Cost Center"
-                  placeholder="Cost center"
-                  value={formData.costCenter}
-                  onChange={(e) =>
-                    setFormData({ ...formData, costCenter: e.target.value })
-                  }
-                />
+                  {/* Other Category Text Input */}
+                  {formData.categoryId === "OTHER" && (
+                    <Input
+                      label="Specify Category"
+                      required
+                      placeholder="Enter custom category name"
+                      value={formData.otherCategoryText}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          otherCategoryText: e.target.value,
+                        })
+                      }
+                    />
+                  )}
+                </div>
+
+                <div className="flex gap-4 flex-wrap md:grid grid-cols-3 md:items-end">
+                  <SelectField
+                    label="Budget Code"
+                    required
+                    placeholder="Select budget code"
+                    isLoading={budgetsLoading}
+                    value={formData.budgetCode}
+                    onValueChange={(value) =>
+                      setFormData({ ...formData, budgetCode: value || "N/A" })
+                    }
+                    options={[
+                      { value: "N/A", label: "N/A" },
+                      ...(Array.isArray(budgets)
+                        ? budgets.map((budget) => ({
+                            value: budget.budgetCode,
+                            label: `${budget.budgetCode} - ${budget.name}`,
+                          }))
+                        : []),
+                    ]}
+                  />
+
+                  <SelectField
+                    label="Currency"
+                    value={formData.currency}
+                    onValueChange={(value) =>
+                      setFormData({ ...formData, currency: value })
+                    }
+                    options={[
+                      { value: "ZMW", label: "ZMW" },
+                      { value: "USD", label: "USD" },
+                    ]}
+                    placeholder="Select currency"
+                  />
+
+                  <DatePicker
+                    label="Required By Date"
+                    value={formData.requiredByDate}
+                    onValueChange={(date) =>
+                      setFormData({
+                        ...formData,
+                        requiredByDate: date as Date,
+                      })
+                    }
+                  />
+                </div>
 
                 <Input
                   label="Project Code"
-                  placeholder="Project code"
+                  placeholder="Project code [Optional]"
                   value={formData.projectCode}
                   onChange={(e) =>
                     setFormData({ ...formData, projectCode: e.target.value })
                   }
                 />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <Input
-                  label="Required By Date"
-                  type="date"
-                  value={formData.requiredByDate.toISOString().split('T')[0]}
-                  onChange={(e) =>
-                    setFormData({ ...formData, requiredByDate: new Date(e.target.value) })
-                  }
-                />
 
                 <div className="space-y-2">
-                  <Label htmlFor="isEstimate">Is Estimate</Label>
+                  <Textarea
+                    id="justification"
+                    label="Justification"
+                    required
+                    placeholder="Explain why these items are needed..."
+                    rows={3}
+                    value={formData.justification}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        justification: e.target.value,
+                      })
+                    }
+                  />
+                </div>
+              </div>
+
+              {/* Items Section */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex flex-col gap-2">
+                    <h3 className="font-semibold text-base">Items</h3>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={budgetsLoading || categoriesLoading}
+                    onClick={handleAddItem}
+                    className="gap-2"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Add Item
+                  </Button>
+                </div>
+
+                {formData.items.length > 0 ? (
+                  <div className="space-y-3">
+                    {formData.items.map((item, index) => (
+                      <div
+                        key={item.id}
+                        className="border rounded-lg p-4 space-y-3"
+                      >
+                        <div className="flex items-start justify-between">
+                          <span className="text-sm font-medium text-gray-600">
+                            Item {index + 1}
+                          </span>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleRemoveItem(item.id || "")}
+                            className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Input
+                            label="Description"
+                            required
+                            placeholder="e.g., Office Chair - Ergonomic"
+                            value={item.itemDescription}
+                            onChange={(e) =>
+                              handleUpdateItem(
+                                item.id || "",
+                                "itemDescription",
+                                e.target.value,
+                              )
+                            }
+                          />
+                        </div>
+
+                        <div className="grid grid-cols-3 gap-4">
+                          <Input
+                            type="number"
+                            placeholder="1"
+                            label="Quantity"
+                            min="1"
+                            value={item.quantity}
+                            onChange={(e) =>
+                              handleUpdateItem(
+                                item.id || "",
+                                "quantity",
+                                parseInt(e.target.value) || 1,
+                              )
+                            }
+                          />
+
+                          <Input
+                            type="number"
+                            placeholder="0.00"
+                            label="Est. Unit Cost (ZMW)"
+                            min="0"
+                            value={item.estimatedCost}
+                            onChange={(e) =>
+                              handleUpdateItem(
+                                item.id || "",
+                                "estimatedCost",
+                                parseFloat(e.target.value) || 0,
+                              )
+                            }
+                          />
+
+                          <div className="space-y-2">
+                            <Label>Total ({formData.currency})</Label>
+                            <div className="flex items-center justify-center h-10 bg-gray-50 rounded-lg border border-gray-200">
+                              <span className="font-semibold">
+                                {(
+                                  item.quantity * (item.estimatedCost || 0)
+                                ).toLocaleString("en-US", {
+                                  minimumFractionDigits: 2,
+                                  maximumFractionDigits: 2,
+                                })}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="border-2 border-dashed rounded-lg p-6 text-center">
+                    <p className="text-gray-600 text-sm">
+                      No items added yet. Click "Add Item" to get started.
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Summary */}
+              {formData.items.length > 0 && (
+                <div className="gradient-primary rounded-lg p-4">
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold text-white">
+                      {formData.isEstimate ? "Estimated" : ""} Total Amount
+                    </span>
+                    <span className="text-2xl font-bold text-white tracking-tight">
+                      {formData.currency}{" "}
+                      {totalAmount.toLocaleString("en-US", {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })}
+                    </span>
+                  </div>
                   <div className="flex items-center space-x-2 h-10">
                     <Checkbox
                       id="isEstimate"
                       checked={formData.isEstimate}
                       onCheckedChange={(checked) =>
-                        setFormData({ ...formData, isEstimate: checked === true })
+                        setFormData({
+                          ...formData,
+                          isEstimate: checked === true,
+                        })
                       }
                     />
-                    <span className="text-sm text-gray-600">
+                    <span className="text-sm italic text-white/60">
                       This is an estimated cost
                     </span>
                   </div>
                 </div>
-              </div>
-
-              <div className="space-y-2">
-                <Textarea
-                  id="justification"
-                  label="Justification"
-                  required
-                  placeholder="Explain why these items are needed..."
-                  rows={3}
-                  value={formData.justification}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      justification: e.target.value,
-                    })
-                  }
-                />
-              </div>
-            </div>
-
-            {/* Items Section */}
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="font-semibold text-base">Items *</h3>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={handleAddItem}
-                  className="gap-2"
-                >
-                  <Plus className="h-4 w-4" />
-                  Add Item
-                </Button>
-              </div>
-
-              {formData.items.length > 0 ? (
-                <div className="space-y-3">
-                  {formData.items.map((item, index) => (
-                    <div
-                      key={item.id}
-                      className="border rounded-lg p-4 space-y-3"
-                    >
-                      <div className="flex items-start justify-between">
-                        <span className="text-sm font-medium text-gray-600">
-                          Item {index + 1}
-                        </span>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleRemoveItem(item.id || '')}
-                          className="text-red-500 hover:text-red-700 hover:bg-red-50"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Input
-                        label="Description"
-                        required
-                          placeholder="e.g., Office Chair - Ergonomic"
-                          value={item.itemDescription}
-                          onChange={(e) =>
-                            handleUpdateItem(
-                              item.id || '',
-                              "itemDescription",
-                              e.target.value
-                            )
-                          }
-                        />
-                      </div>
-
-                      <div className="grid grid-cols-3 gap-4">
-                        <Input
-                          type="number"
-                          placeholder="1"
-                          label="Quantity"
-                          min="1"
-                          value={item.quantity}
-                          onChange={(e) =>
-                            handleUpdateItem(
-                              item.id || '',
-                              "quantity",
-                              parseInt(e.target.value) || 1
-                            )
-                          }
-                        />
-
-                        <Input
-                          type="number"
-                          placeholder="0.00"
-                          label="Est. Unit Cost (ZMW)"
-                          min="0"
-                          value={item.estimatedCost}
-                          onChange={(e) =>
-                            handleUpdateItem(
-                              item.id || '',
-                              "estimatedCost",
-                              parseFloat(e.target.value) || 0
-                            )
-                          }
-                        />
-
-                        <div className="space-y-2">
-                          <Label>Total ({formData.currency})</Label>
-                          <div className="flex items-center justify-center h-10 bg-gray-50 rounded-lg border border-gray-200">
-                            <span className="font-semibold">
-                              {(
-                                item.quantity * (item.estimatedCost || 0)
-                              ).toLocaleString("en-US", {
-                                minimumFractionDigits: 2,
-                                maximumFractionDigits: 2,
-                              })}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="border-2 border-dashed rounded-lg p-6 text-center">
-                  <p className="text-gray-600 text-sm">
-                    No items added yet. Click "Add Item" to get started.
-                  </p>
-                </div>
               )}
-            </div>
-
-            {/* Summary */}
-            {formData.items.length > 0 && (
-              <div className="bg-blue-50 rounded-lg p-4">
-                <div className="flex items-center justify-between">
-                  <span className="font-semibold text-gray-700">
-                    Total Amount:
-                  </span>
-                  <span className="text-xl font-bold text-blue-600">
-                    {formData.currency}{" "}
-                    {totalAmount.toLocaleString("en-US", {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    })}
-                  </span>
-                </div>
-                {formData.isEstimate && (
-                  <p className="text-xs text-gray-500 mt-1">
-                    * This is an estimated amount
-                  </p>
-                )}
-              </div>
-            )}
-          </div>
-  
+            </>
+          }
+        </div>
 
         {/* Dialog Footer */}
-        <div 
-        
-        className="bg-card/5 backdrop-blur-xs sticky bottom-0 flex flex-col-reverse justify-end gap-3 p-4 rounded-b-lg border-t py-6 sm:flex-row sm:py-6"
-        // className="flex items-center justify-end gap-3 pt-6 border-t"
-        
+        <div
+          className="bg-card/5 backdrop-blur-xs sticky bottom-0 flex flex-col-reverse justify-end gap-3 p-4 rounded-b-lg border-t py-6 sm:flex-row sm:py-6"
+          // className="flex items-center justify-end gap-3 pt-6 border-t"
         >
           <Button
             variant="outline"

@@ -39,27 +39,23 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
       errorText = "",
       ...props
     },
-    ref
+    ref,
   ) => {
     return (
       <div
-        className={cn(
-          "flex w-full flex-col",
-          classNames?.wrapper,
-          {
-            "cursor-not-allowed opacity-50": isDisabled,
-          }
-        )}
+        className={cn("flex w-full flex-col", classNames?.wrapper, {
+          "cursor-not-allowed opacity-50": isDisabled,
+        })}
       >
         {label && (
           <label
             className={cn(
-              "mb-1 text-sm font-medium text-slate-700",
+              "mb-0.5 text-sm font-medium text-slate-700",
               {
                 "text-red-500": onError || isInvalid,
                 "opacity-50": isDisabled || props?.disabled,
               },
-              classNames?.label
+              classNames?.label,
             )}
             htmlFor={name}
           >
@@ -90,7 +86,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
             // Text styles
             "text-slate-900 selection:bg-primary-100 selection:text-primary-900",
             className,
-            classNames?.input
+            classNames?.input,
           )}
           disabled={isDisabled || props?.disabled}
           id={name}
@@ -110,7 +106,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
                 "text-red-600": onError || isInvalid,
               },
               classNames?.descriptionText,
-              classNames?.errorText
+              classNames?.errorText,
             )}
             initial={{ scale: 0, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
@@ -121,7 +117,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
         )}
       </div>
     );
-  }
+  },
 );
 
 Input.displayName = "Input";

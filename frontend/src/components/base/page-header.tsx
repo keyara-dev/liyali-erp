@@ -19,7 +19,7 @@ interface TStatusBadge {
 interface PageHeaderProps {
   title: string;
   subtitle?: string;
-  description?: string;    // Add description field for compatibility
+  description?: string; // Add description field for compatibility
   badges?: TStatusBadge[];
   onBackClick?: () => void;
   showBackButton?: boolean;
@@ -30,7 +30,7 @@ export function PageHeader({
   subtitle,
   badges,
   onBackClick,
-  showBackButton = true,
+  showBackButton = false,
 }: PageHeaderProps) {
   const router = useRouter();
   return (

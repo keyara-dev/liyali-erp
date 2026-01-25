@@ -2,6 +2,7 @@ package services
 
 import (
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/gosimple/slug"
@@ -50,6 +51,14 @@ func (s *OrganizationService) CreateOrganization(name, description, createdBy st
 	if err := s.db.Create(settings).Error; err != nil {
 		// Log but don't fail - settings are optional
 		return org, nil
+	}
+
+	// Initialize default system roles for the organization
+	roleService := NewRoleManagementService(s.db)
+	if err := roleService.InitializeDefaultRolesForOrganization(org.ID); err != nil {
+		// Log the error but don't fail organization creation
+		// The roles can be created later if needed
+		// TODO: Add proper logging here
 	}
 
 	// Add creator as admin
@@ -118,6 +127,11 @@ func (s *OrganizationService) GetUserOrganizations(userID string) ([]models.Orga
 
 // AddMember adds a user to an organization
 func (s *OrganizationService) AddMember(orgID, userID, role string) error {
+	return s.AddMemberWithDepartment(orgID, userID, role, nil)
+}
+
+// AddMemberWithDepartment adds a user to an organization with optional department assignment
+func (s *OrganizationService) AddMemberWithDepartment(orgID, userID, role string, departmentID *string) error {
 	if orgID == "" || userID == "" {
 		return errors.New("organization ID and user ID are required")
 	}
@@ -134,11 +148,15 @@ func (s *OrganizationService) AddMember(orgID, userID, role string) error {
 	).First(&existing).Error
 
 	if err == nil {
-		// User already exists, just activate if inactive
-		if !existing.Active {
-			return s.db.Model(&existing).Update("active", true).Error
+		// User already exists, just activate if inactive and update department if provided
+		updates := map[string]interface{}{
+			"active": true,
+			"role":   role,
 		}
-		return errors.New("user is already a member of this organization")
+		if departmentID != nil {
+			updates["department_id"] = *departmentID
+		}
+		return s.db.Model(&existing).Updates(updates).Error
 	}
 
 	if !errors.Is(err, gorm.ErrRecordNotFound) {
@@ -151,6 +169,7 @@ func (s *OrganizationService) AddMember(orgID, userID, role string) error {
 		OrganizationID: orgID,
 		UserID:         userID,
 		Role:           role,
+		DepartmentID:   departmentID,
 		Active:         true,
 		JoinedAt:       &now,
 	}
@@ -180,7 +199,7 @@ func (s *OrganizationService) RemoveMember(orgID, userID string) error {
 		Update("active", false).Error
 }
 
-// GetOrganizationMembers returns all members of an organization
+// GetOrganizationMembers returns all members of an organization with detailed role and department info
 func (s *OrganizationService) GetOrganizationMembers(orgID string) ([]models.OrganizationMember, error) {
 	if orgID == "" {
 		return nil, errors.New("organization ID is required")
@@ -189,9 +208,51 @@ func (s *OrganizationService) GetOrganizationMembers(orgID string) ([]models.Org
 	var members []models.OrganizationMember
 	if err := s.db.
 		Preload("User").
+		Preload("Organization").
 		Where("organization_id = ? AND active = ?", orgID, true).
 		Find(&members).Error; err != nil {
 		return nil, err
+	}
+
+	// For each member, we need to enrich the data with department information
+	// Since the current model stores department_id, we need to fetch department details
+	for i := range members {
+		// If the member has a department_id, fetch the department details
+		if members[i].DepartmentID != nil && *members[i].DepartmentID != "" {
+			var department models.OrganizationDepartment
+			if err := s.db.Where("id = ? AND organization_id = ?", *members[i].DepartmentID, orgID).
+				First(&department).Error; err == nil {
+				// Set both department name and ID for frontend use
+				members[i].Department = department.Name
+				// Note: DepartmentID is already set from the database
+			}
+		}
+		
+		// For roles, we need to check if it's a role ID or role name
+		// If it looks like a UUID, try to fetch the role details
+		if len(members[i].Role) == 36 && strings.Contains(members[i].Role, "-") {
+			// This looks like a role ID, try to fetch role details
+			var role models.OrganizationRole
+			if err := s.db.Where("id = ? AND organization_id = ?", members[i].Role, orgID).
+				First(&role).Error; err == nil {
+				// Store both role name and ID
+				members[i].RoleName = role.Name
+				members[i].RoleID = members[i].Role
+				members[i].Role = role.Name // Keep role as the name for backward compatibility
+			}
+		} else {
+			// This is already a role name, try to find the corresponding role ID
+			var role models.OrganizationRole
+			if err := s.db.Where("name = ? AND organization_id = ?", members[i].Role, orgID).
+				First(&role).Error; err == nil {
+				members[i].RoleName = role.Name
+				members[i].RoleID = role.ID.String()
+			} else {
+				// Fallback: role name without ID
+				members[i].RoleName = members[i].Role
+				members[i].RoleID = ""
+			}
+		}
 	}
 
 	return members, nil

@@ -43,6 +43,7 @@ import {
 import { toast } from "sonner";
 import { PDFPreviewDialog } from "@/components/modals/pdf-preview-dialog";
 import { is } from "date-fns/locale";
+import { Badge } from "@/components";
 
 interface RequisitionDetailClientProps {
   requisitionId: string;
@@ -135,12 +136,13 @@ export function RequisitionDetailClient({
     refetch(); // Refresh the data
   };
 
-  const isCreator = requisition?.requestedBy === userId;
+  const isCreator =
+    requisition?.requestedBy === userId || requisition?.requesterId === userId;
   const canEdit =
     isCreator &&
     (requisition?.status === "draft" || requisition?.status === "rejected");
 
-  const canSubmit = canEdit;
+  const canSubmit = requisition?.status === "draft" && isCreator;
 
   if (isLoading && !requisition) {
     return (
@@ -271,8 +273,8 @@ export function RequisitionDetailClient({
                   Priority
                 </label>
                 <div className="flex items-center">
-                  <span
-                    className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${
+                  <Badge
+                    className={`inline-flex capitalize items-center px-2 py-1 rounded-full text-xs font-medium border ${
                       requisition.priority?.toLowerCase() === "urgent"
                         ? "bg-red-100 text-red-800 border-red-200"
                         : requisition.priority?.toLowerCase() === "high"
@@ -283,7 +285,7 @@ export function RequisitionDetailClient({
                     }`}
                   >
                     {requisition.priority || "Medium"}
-                  </span>
+                  </Badge>
                 </div>
               </div>
 
@@ -320,7 +322,7 @@ export function RequisitionDetailClient({
               <div className="space-y-1">
                 <label className="text-xs font-semibold text-primary-foreground/80 uppercase tracking-wider flex items-center gap-1">
                   <DollarSign className="h-3 w-3" />
-                  Total Amount
+                  Estimated Cost
                 </label>
                 <p className="text-base font-bold text-primary-foreground">
                   {requisition.currency}{" "}
@@ -396,7 +398,7 @@ export function RequisitionDetailClient({
                           year: "numeric",
                           month: "long",
                           day: "numeric",
-                        }
+                        },
                       )}
                     </p>
                   </div>
@@ -406,7 +408,7 @@ export function RequisitionDetailClient({
                 <div className="space-y-1">
                   <label className="text-xs font-semibold text-primary-foreground/80 uppercase tracking-wider flex items-center gap-1">
                     <Calendar className="h-3 w-3" />
-                    Required By
+                    Due Date
                   </label>
                   <p
                     className={`text-sm font-medium ${
@@ -422,7 +424,7 @@ export function RequisitionDetailClient({
                         year: "numeric",
                         month: "long",
                         day: "numeric",
-                      }
+                      },
                     )}
                     {new Date(requisition.requiredByDate) < new Date() &&
                       requisition.status !== "completed" && (
@@ -466,46 +468,12 @@ export function RequisitionDetailClient({
 
               {requisition.isEstimate && (
                 <div className="space-y-1">
-                  <label className="text-xs font-semibold text-primary-foreground/80 uppercase tracking-wider">
+                  <p className="text-xs font-semibold text-primary-foreground/80 uppercase tracking-wider">
                     Estimate
-                  </label>
-                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 border border-yellow-200">
+                  </p>
+                  <div className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 border border-yellow-200">
                     Estimated Costs
-                  </span>
-                </div>
-              )}
-
-              {/* Additional Information */}
-              {requisition.organizationId && (
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-primary-foreground/80 uppercase tracking-wider">
-                    Organization ID
-                  </label>
-                  <p className="text-xs font-medium font-mono bg-white/10 px-2 py-1 rounded text-primary-foreground">
-                    {requisition.organizationId}
-                  </p>
-                </div>
-              )}
-
-              {requisition.departmentId && (
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-primary-foreground/80 uppercase tracking-wider">
-                    Department ID
-                  </label>
-                  <p className="text-xs font-medium font-mono bg-white/10 px-2 py-1 rounded text-primary-foreground">
-                    {requisition.departmentId}
-                  </p>
-                </div>
-              )}
-
-              {requisition.preferredVendorName && (
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-primary-foreground/80 uppercase tracking-wider">
-                    Preferred Vendor
-                  </label>
-                  <p className="text-sm font-medium text-primary-foreground">
-                    {requisition.preferredVendorName}
-                  </p>
+                  </div>
                 </div>
               )}
             </div>
@@ -544,7 +512,7 @@ export function RequisitionDetailClient({
                               : String(value)}
                           </p>
                         </div>
-                      )
+                      ),
                     )}
                   </div>
                 </div>
@@ -710,9 +678,7 @@ export function RequisitionDetailClient({
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="font-semibold text-foreground">
-                      {requisition.isEstimate
-                        ? "Total Estimated Cost"
-                        : "Total Amount"}
+                      Estimated Cost
                     </span>
                     <span className="text-2xl font-bold text-emerald-700 dark:text-emerald-400">
                       {requisition.currency}{" "}

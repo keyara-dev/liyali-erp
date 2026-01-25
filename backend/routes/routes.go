@@ -60,6 +60,15 @@ func SetupRoutes(app *fiber.App, handlerRegistry *handlers.HandlerRegistry, rbac
 	orgMgmt.Delete("/members/:userId",
 		middleware.RequirePermission(rbacService, "organization", "manage"),
 		handlers.RemoveOrganizationMember)
+	
+	// Admin user creation endpoint (creates users directly in organization without personal org)
+	orgMgmt.Post("/users",
+		middleware.RequirePermission(rbacService, "organization", "manage"),
+		handlers.CreateOrganizationUser)
+	orgMgmt.Get("/users",
+		middleware.RequirePermission(rbacService, "organization", "view"),
+		handlers.GetOrganizationUsers)
+	
 	orgMgmt.Get("/settings",
 		middleware.RequirePermission(rbacService, "organization", "view"),
 		handlers.GetOrganizationSettings)
@@ -126,6 +135,9 @@ func SetupRoutes(app *fiber.App, handlerRegistry *handlers.HandlerRegistry, rbac
 	orgRoles.Delete("/:roleId",
 		middleware.RequirePermission(rbacService, "organization", "manage"),
 		handlers.DeleteOrganizationRole)
+	orgRoles.Post("/initialize-defaults",
+		middleware.RequirePermission(rbacService, "organization", "manage"),
+		handlers.InitializeDefaultRoles)
 	orgRoles.Get("/:roleId/permissions",
 		middleware.RequirePermission(rbacService, "organization", "manage"),
 		handlers.GetRolePermissions)

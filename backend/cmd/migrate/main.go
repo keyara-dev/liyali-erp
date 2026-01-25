@@ -131,7 +131,7 @@ func runMigration() {
 		{"goods_received_notes", &models.GoodsReceivedNote{}, 0},
 		{"categories", &models.Category{}, 0},
 		{"vendors", &models.Vendor{}, 0},
-		{"approval_tasks", &models.ApprovalTask{}, 0},
+		{"approval_tasks", &models.ApprovalTaskEnhanced{}, 0},
 		{"notifications", &models.Notification{}, 0},
 	}
 

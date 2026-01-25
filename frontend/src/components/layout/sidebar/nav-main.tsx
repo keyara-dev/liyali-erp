@@ -105,11 +105,11 @@ export const navItems: NavGroup[] = [
         href: "/admin/users",
         icon: UsersIcon,
       },
-      {
-        title: "Activity Logs",
-        href: "/admin/logs",
-        icon: ActivityIcon,
-      },
+      // {
+      //   title: "Activity Logs",
+      //   href: "/admin/logs",
+      //   icon: ActivityIcon,
+      // },
       {
         title: "Workflow Management",
         href: "/admin/workflows",
@@ -122,28 +122,18 @@ export const navItems: NavGroup[] = [
     items: [
       {
         title: "Compliance Tracking",
-        href: "/compliance/tracking",
+        href: "/admin/compliance/tracking",
         icon: ShieldAlert,
       },
       {
         title: "System Monitoring",
-        href: "/monitoring",
+        href: "/admin/monitoring",
         icon: Zap,
       },
       {
         title: "QR Verification",
         href: "/verification/qr",
         icon: QrCode,
-      },
-    ],
-  },
-  {
-    title: "Settings",
-    items: [
-      {
-        title: "Settings",
-        href: "/settings",
-        icon: SettingsIcon,
       },
     ],
   },
@@ -166,7 +156,11 @@ export function NavMain() {
 
                 return (
                   <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton asChild isActive={isActive} tooltip={item.title}>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={isActive}
+                      tooltip={item.title}
+                    >
                       <Link href={item.href}>
                         <item.icon />
                         <span>{item.title}</span>

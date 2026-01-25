@@ -345,6 +345,14 @@ func (rms *RoleManagementService) InitializeDefaultRolesForOrganization(organiza
 	}
 
 	for _, roleData := range defaultRoles {
+		// Check if role already exists
+		var existingRole models.OrganizationRole
+		err := rms.db.Where("organization_id = ? AND name = ?", organizationID, roleData.name).First(&existingRole).Error
+		if err == nil {
+			// Role already exists, skip
+			continue
+		}
+
 		role := models.OrganizationRole{
 			ID:             uuid.New(),
 			OrganizationID: organizationID,
@@ -363,8 +371,15 @@ func (rms *RoleManagementService) InitializeDefaultRolesForOrganization(organiza
 				"operation":       "create_default_role",
 				"role_name":       roleData.name,
 				"organization_id": organizationID,
-			}).WithError(err).Warn("failed_to_create_default_role")
+			}).WithError(err).Error("failed_to_create_default_role")
+			return fmt.Errorf("failed to create default role %s: %w", roleData.name, err)
 		}
+
+		logging.WithFields(map[string]interface{}{
+			"operation":       "create_default_role",
+			"role_name":       roleData.name,
+			"organization_id": organizationID,
+		}).Info("successfully_created_default_role")
 	}
 
 	return nil

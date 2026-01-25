@@ -4,7 +4,7 @@ import { APIResponse } from "@/types";
 export function successResponse(
   data: any | null,
   message: string = "Action completed successfully",
-  pagination?: any
+  pagination?: any,
 ): APIResponse {
   return {
     success: true,
@@ -15,7 +15,7 @@ export function successResponse(
 }
 
 export function unauthorizedResponse(
-  message: string = "Unauthorized"
+  message: string = "Unauthorized",
 ): APIResponse {
   return {
     success: false,
@@ -43,7 +43,7 @@ export function methodNotAllowedResponse(): APIResponse {
 export function handleError(
   error: any,
   method = "GET",
-  url: string
+  url: string,
 ): APIResponse {
   console.error({
     endpoint: `${method} |  ~ ${url}`,
@@ -59,7 +59,7 @@ export function handleError(
   if (status === 401) {
     return unauthorizedResponse(
       error?.response?.data?.message ||
-        "Authentication required. Please log in again."
+        "Authentication required. Please log in again.",
     );
   }
 
@@ -76,8 +76,8 @@ export function handleError(
   return {
     success: false,
     message:
-      error?.response?.data?.message ||
       error?.response?.data?.error ||
+      error?.response?.data?.message ||
       error?.response?.message ||
       error?.message ||
       "Oops! Something went wrong. Please try again.",

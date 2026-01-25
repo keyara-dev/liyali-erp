@@ -144,6 +144,8 @@ export interface User {
   email: string;
   name: string;
   role: UserRole;
+  role_id?: string;
+  role_name?: string;
   active?: boolean;
   lastLogin?: string | Date;
   currentOrganizationId?: string;

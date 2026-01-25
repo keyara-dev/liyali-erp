@@ -1,17 +1,17 @@
-'use client';
+"use client";
 
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { QUERY_KEYS } from '@/lib/constants';
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { QUERY_KEYS } from "@/lib/constants";
 import {
   getBudgets,
   getBudgetById,
   createBudget,
   updateBudget,
   submitBudgetForApproval,
-} from '@/app/_actions/budgets';
-import { Budget, CreateBudgetRequest } from '@/types/budget';
-import { useBudgetStorage } from '@/hooks/use-budget-storage';
-import { toast } from 'sonner';
+} from "@/app/_actions/budgets";
+import { Budget, CreateBudgetRequest } from "@/types/budget";
+import { useBudgetStorage } from "@/hooks/use-budget-storage";
+import { toast } from "sonner";
 
 /**
  * Fetch all budgets for a user
@@ -33,6 +33,35 @@ export const useBudgets = (userId: string, initialBudgets?: Budget[]) =>
     },
     initialData: initialBudgets,
     staleTime: Infinity, // Static data
+  });
+
+/**
+ * Fetch all budgets (for dropdowns and selection)
+ * Static data - rarely changes
+ *
+ * @param initialBudgets - Optional initial data from server component
+ * @returns Query result with budgets array
+ *
+ * @example
+ * const { data: budgets, isLoading } = useAllBudgets()
+ */
+export const useAllBudgets = (initialBudgets?: Budget[]) =>
+  useQuery({
+    queryKey: [QUERY_KEYS.BUDGETS.ALL],
+    queryFn: async () => {
+      try {
+        const response = await getBudgets({}, 1, 100); // Get first 100 budgets
+        console.log("Budget response:", response); // Debug log
+        return response.success && Array.isArray(response.data)
+          ? response.data
+          : [];
+      } catch (error) {
+        console.error("Error fetching budgets:", error);
+        return [];
+      }
+    },
+    initialData: initialBudgets || [],
+    staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
 /**
@@ -83,7 +112,11 @@ export const useSaveBudget = (onSuccess?: () => void) => {
     },
     onSuccess: (response) => {
       const isUpdate = (response.data as Budget & { id?: string })?.id;
-      toast.success(isUpdate ? 'Budget updated successfully' : 'Budget created successfully');
+      toast.success(
+        isUpdate
+          ? "Budget updated successfully"
+          : "Budget created successfully",
+      );
 
       // Invalidate budget queries
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.BUDGETS.BY_USER] });
@@ -93,7 +126,7 @@ export const useSaveBudget = (onSuccess?: () => void) => {
       onSuccess?.();
     },
     onError: (error: Error) => {
-      toast.error(error.message || 'Failed to save budget');
+      toast.error(error.message || "Failed to save budget");
     },
   });
 };
@@ -109,7 +142,10 @@ export const useSaveBudget = (onSuccess?: () => void) => {
  * const submitMutation = useSubmitBudgetForApproval(budgetId)
  * await submitMutation.mutateAsync({ submittingUserId: userId })
  */
-export const useSubmitBudgetForApproval = (budgetId: string, onSuccess?: () => void) => {
+export const useSubmitBudgetForApproval = (
+  budgetId: string,
+  onSuccess?: () => void,
+) => {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -117,7 +153,7 @@ export const useSubmitBudgetForApproval = (budgetId: string, onSuccess?: () => v
       const response = await submitBudgetForApproval({
         budgetId,
         submittedBy: data.submittingUserId,
-        submittedByRole: 'requester',
+        submittedByRole: "requester",
         submittingUserId: data.submittingUserId,
       });
 
@@ -127,20 +163,20 @@ export const useSubmitBudgetForApproval = (budgetId: string, onSuccess?: () => v
       return response;
     },
     onSuccess: () => {
-      toast.success('Budget submitted for approval');
+      toast.success("Budget submitted for approval");
 
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.BUDGETS.BY_ID, budgetId] });
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.BUDGETS.BY_ID, budgetId],
+      });
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.BUDGETS.BY_USER] });
 
       onSuccess?.();
     },
     onError: (error: Error) => {
-      toast.error(error.message || 'Failed to submit budget');
+      toast.error(error.message || "Failed to submit budget");
     },
   });
 };
-
-
 
 /**
  * Update budget mutation (for items, metadata, etc.)
@@ -175,17 +211,19 @@ export const useUpdateBudget = (budgetId: string, onSuccess?: () => void) => {
         saveToStorage(response.data);
       }
 
-      toast.success('Budget updated successfully');
+      toast.success("Budget updated successfully");
 
       // Invalidate budget queries
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.BUDGETS.BY_ID, budgetId] });
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.BUDGETS.BY_ID, budgetId],
+      });
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.BUDGETS.BY_USER] });
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.BUDGETS.ALL] });
 
       onSuccess?.();
     },
     onError: (error: Error) => {
-      toast.error(error.message || 'Failed to update budget');
+      toast.error(error.message || "Failed to update budget");
     },
   });
 };
