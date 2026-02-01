@@ -19,6 +19,7 @@ import {
   exportGrnPDF,
   downloadBlob,
 } from '@/lib/pdf/pdf-export'
+import type { GoodsReceivedNote } from '@/types/goods-received-note'
 
 // Dynamic import to avoid SSR issues with react-pdf
 const PDFPreviewDialog = dynamic(
@@ -81,7 +82,14 @@ export function PreviewButton({ documentId, documentNumber, documentType }: Prev
           const result = await getGRNAction(documentId)
           if (result.success && result.data) {
             docData = result.data
-            blob = await getGrnPDFBlob(result.data)
+            // Add required fields for type compatibility with GoodsReceivedNote
+            // The PDF renderer handles both string and Date types for date fields
+            const grnData = {
+              ...result.data,
+              organizationId: (result.data as any).organizationId || '',
+              ownerId: result.data.createdBy || '',
+            } as unknown as GoodsReceivedNote
+            blob = await getGrnPDFBlob(grnData)
           }
           break
         }
@@ -133,9 +141,16 @@ export function PreviewButton({ documentId, documentNumber, documentType }: Prev
           await exportPaymentVoucherPDF(documentData)
           break
         case 'GRN':
-        case 'GOODS_RECEIVED_NOTE':
-          await exportGrnPDF(documentData)
+        case 'GOODS_RECEIVED_NOTE': {
+          // Add required fields for type compatibility
+          const grnData = {
+            ...documentData,
+            organizationId: documentData.organizationId || '',
+            ownerId: documentData.createdBy || '',
+          } as unknown as GoodsReceivedNote
+          await exportGrnPDF(grnData)
           break
+        }
         default:
           if (pdfBlob) {
             downloadBlob(pdfBlob, `${documentNumber}.pdf`)
