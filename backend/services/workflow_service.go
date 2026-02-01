@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -61,6 +62,9 @@ func (s *WorkflowService) CreateWorkflow(ctx context.Context, organizationID, us
 		return nil, fmt.Errorf("validation failed: %w", err)
 	}
 
+	// Normalize entity type to lowercase for consistency
+	req.EntityType = strings.ToLower(req.EntityType)
+
 	// Start transaction
 	tx := s.db.Begin()
 	defer func() {
@@ -69,10 +73,10 @@ func (s *WorkflowService) CreateWorkflow(ctx context.Context, organizationID, us
 		}
 	}()
 
-	// Check if this is the first workflow for this entity type
+	// Check if this is the first workflow for this entity type (case-insensitive)
 	var existingCount int64
 	if err := tx.Model(&models.Workflow{}).
-		Where("organization_id = ? AND entity_type = ?", organizationID, req.EntityType).
+		Where("organization_id = ? AND LOWER(entity_type) = ?", organizationID, req.EntityType).
 		Count(&existingCount).Error; err != nil {
 		tx.Rollback()
 		return nil, fmt.Errorf("failed to check existing workflows: %w", err)
@@ -418,33 +422,34 @@ func (s *WorkflowService) DeleteWorkflow(ctx context.Context, id uuid.UUID, orga
 
 // GetDefaultWorkflow retrieves the default workflow for an entity type
 func (s *WorkflowService) GetDefaultWorkflow(ctx context.Context, organizationID, entityType string) (*models.Workflow, error) {
-	// First, try to find in workflow_defaults table
+	// First, try to find in workflow_defaults table (case-insensitive)
 	var defaultRecord models.WorkflowDefault
-	err := s.db.Where("organization_id = ? AND entity_type = ?", organizationID, entityType).
+	err := s.db.Where("organization_id = ? AND LOWER(entity_type) = LOWER(?)", organizationID, entityType).
 		First(&defaultRecord).Error
-	
+
 	if err == nil {
 		// Found in workflow_defaults table, use that
 		return s.GetWorkflow(ctx, defaultRecord.DefaultWorkflowID, organizationID)
 	}
-	
+
 	if err != gorm.ErrRecordNotFound {
 		return nil, fmt.Errorf("failed to retrieve default workflow: %w", err)
 	}
-	
-	// If not found in workflow_defaults, look for workflows with isDefault=true
+
+	// If not found in workflow_defaults, look for workflows with isDefault=true (case-insensitive)
 	var workflow models.Workflow
-	err = s.db.Model(&models.Workflow{}).Where("organization_id = ? AND entity_type = ? AND is_default = ? AND is_active = ?", 
-		organizationID, entityType, true, true).
+	err = s.db.Model(&models.Workflow{}).
+		Where("organization_id = ? AND LOWER(entity_type) = LOWER(?) AND is_default = ? AND is_active = ?",
+			organizationID, entityType, true, true).
 		First(&workflow).Error
-	
+
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return nil, fmt.Errorf("no default workflow found for entity type: %s", entityType)
 		}
 		return nil, fmt.Errorf("failed to retrieve default workflow: %w", err)
 	}
-	
+
 	return &workflow, nil
 }
 
@@ -680,15 +685,15 @@ func (s *WorkflowService) validateCreateRequest(req CreateWorkflowRequest) error
 }
 
 func (s *WorkflowService) unsetDefaultWorkflows(tx *gorm.DB, organizationID, entityType string) error {
-	// Update all workflows of this entity type to not be default
+	// Update all workflows of this entity type to not be default (case-insensitive)
 	if err := tx.Model(&models.Workflow{}).
-		Where("organization_id = ? AND entity_type = ? AND is_default = ?", organizationID, entityType, true).
+		Where("organization_id = ? AND LOWER(entity_type) = LOWER(?) AND is_default = ?", organizationID, entityType, true).
 		Update("is_default", false).Error; err != nil {
 		return err
 	}
 
-	// Delete existing default workflow records
-	return tx.Where("organization_id = ? AND entity_type = ?", organizationID, entityType).
+	// Delete existing default workflow records (case-insensitive)
+	return tx.Where("organization_id = ? AND LOWER(entity_type) = LOWER(?)", organizationID, entityType).
 		Delete(&models.WorkflowDefault{}).Error
 }
 

@@ -466,7 +466,7 @@ export function PVDetailClient({
           open={previewOpen}
           onOpenChange={setPreviewOpen}
           pdfBlob={previewBlob}
-          fileName={`PV-${pv.documentNumber}.pdf`}
+          fileName={`Payment Voucher: ${pv.documentNumber}`}
           onDownload={handleExportPDF}
         />
       )}

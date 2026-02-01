@@ -97,6 +97,12 @@ export function ApprovalTaskCard({
     );
   }
 
+  // Built-in approver roles that can claim/approve any task
+  const APPROVER_ROLES = ["admin", "approver", "finance", "manager", "supervisor", "department_head"];
+  const isBuiltInApprover = APPROVER_ROLES.some(
+    (role) => role.toLowerCase() === currentUserRole.toLowerCase()
+  );
+
   // Task state calculations
   const isPending = task.status === "pending";
   const isClaimedByMe =
@@ -104,9 +110,23 @@ export function ApprovalTaskCard({
   const isClaimedByOther =
     task.status === "claimed" && task.claimedBy !== currentUserId;
   const isCompleted = task.status === "completed";
-  const canUserClaim =
-    task.assignedRole === currentUserRole ||
-    task.assignedUserId === currentUserId;
+
+  // Permission check for claiming:
+  // 1. If task is assigned to specific user, only that user can claim
+  // 2. If task is role-based, user with that role OR built-in approvers can claim
+  const canUserClaim = (() => {
+    // If specifically assigned to this user
+    if (task.assignedUserId === currentUserId) return true;
+    // If specifically assigned to someone else, this user cannot claim
+    if (task.assignedUserId && task.assignedUserId !== currentUserId) return false;
+    // Check role match (case-insensitive)
+    if (task.assignedRole &&
+        task.assignedRole.toLowerCase() === currentUserRole.toLowerCase()) return true;
+    // Built-in approvers can claim any role-based task
+    if (isBuiltInApprover) return true;
+    return false;
+  })();
+
   const isClaimExpired =
     task.claimExpiry && isAfter(new Date(), new Date(task.claimExpiry));
   const minutesRemaining = Math.floor(timeRemaining / (1000 * 60));
@@ -396,8 +416,9 @@ export function ApprovalTaskCard({
             {/* Permission Message */}
             {isPending && !canUserClaim && (
               <div className="text-sm text-gray-600 bg-gray-50 p-2 rounded">
-                This task requires the "{task.assignedRole}" role to claim and
-                approve.
+                {task.assignedUserId
+                  ? "This task has been assigned to a specific user."
+                  : `This task requires the "${task.assignedRole}" role or an admin/approver role to claim.`}
               </div>
             )}
           </div>

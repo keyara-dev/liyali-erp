@@ -649,6 +649,161 @@ func modelToRequisitionResponse(req models.Requisition) types.RequisitionRespons
 	}
 }
 
+// WithdrawRequisition allows the requester to withdraw a submitted requisition
+// The requisition must be in pending status and not claimed by any approver
+func WithdrawRequisition(c *fiber.Ctx) error {
+	id := c.Params("id")
+	if id == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"success": false,
+			"message": "Requisition ID is required",
+		})
+	}
+
+	// Get organization ID and user ID from context
+	organizationID := c.Locals("organizationID").(string)
+	userID := c.Locals("userID").(string)
+
+	// Get existing requisition
+	var requisition models.Requisition
+	if err := config.DB.Where("id = ? AND organization_id = ?", id, organizationID).First(&requisition).Error; err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
+			"success": false,
+			"message": "Requisition not found",
+		})
+	}
+
+	// Verify that the current user is the requester (only the submitter can withdraw)
+	if requisition.RequesterId != userID {
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
+			"success": false,
+			"message": "Only the requester can withdraw this requisition",
+		})
+	}
+
+	// Check if requisition is in a state that can be withdrawn (pending)
+	if requisition.Status != "pending" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"success": false,
+			"message": fmt.Sprintf("Cannot withdraw requisition in %s status. Only pending requisitions can be withdrawn.", requisition.Status),
+		})
+	}
+
+	// Check if there is an active workflow task that is claimed
+	var workflowTask models.WorkflowTask
+	err := config.DB.Where("entity_id = ? AND entity_type = ? AND status IN (?, ?)",
+		id, "requisition", "pending", "claimed").First(&workflowTask).Error
+
+	if err == nil {
+		// Task exists - check if it's claimed
+		if workflowTask.Status == "claimed" && workflowTask.ClaimedBy != nil {
+			return c.Status(fiber.StatusConflict).JSON(fiber.Map{
+				"success": false,
+				"message": "Cannot withdraw requisition. It is currently being reviewed by an approver.",
+			})
+		}
+	}
+
+	// Start a transaction to ensure all changes are atomic
+	tx := config.DB.Begin()
+	if tx.Error != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"success": false,
+			"message": "Failed to start transaction",
+			"error":   tx.Error.Error(),
+		})
+	}
+
+	// Delete the workflow task(s) for this requisition
+	if err := tx.Where("entity_id = ? AND entity_type = ?", id, "requisition").
+		Delete(&models.WorkflowTask{}).Error; err != nil {
+		tx.Rollback()
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"success": false,
+			"message": "Failed to remove workflow tasks",
+			"error":   err.Error(),
+		})
+	}
+
+	// Delete the workflow assignment(s) for this requisition
+	if err := tx.Where("entity_id = ? AND entity_type = ?", id, "requisition").
+		Delete(&models.WorkflowAssignment{}).Error; err != nil {
+		tx.Rollback()
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"success": false,
+			"message": "Failed to remove workflow assignments",
+			"error":   err.Error(),
+		})
+	}
+
+	// Update requisition status back to draft and reset approval fields
+	previousStatus := requisition.Status
+	requisition.Status = "draft"
+	requisition.ApprovalStage = 0
+	requisition.UpdatedAt = time.Now()
+
+	// Clear approval history since we're reverting to draft
+	requisition.ApprovalHistory = datatypes.NewJSONType([]types.ApprovalRecord{})
+
+	// Add action history entry for withdrawal
+	var actionHistory []types.ActionHistoryEntry
+	actionHistory = requisition.ActionHistory.Data()
+	if actionHistory == nil {
+		actionHistory = []types.ActionHistoryEntry{}
+	}
+
+	// Get user info for action history
+	performerName := "Unknown User"
+	performerRole := "unknown"
+	var user models.User
+	if err := tx.Where("id = ?", userID).First(&user).Error; err == nil {
+		performerName = user.Name
+		performerRole = user.Role
+	}
+
+	actionHistory = append(actionHistory, types.ActionHistoryEntry{
+		ID:              uuid.New().String(),
+		Action:          "WITHDRAW",
+		PerformedBy:     userID,
+		PerformedByName: performerName,
+		PerformedByRole: performerRole,
+		Timestamp:       time.Now(),
+		Comments:        "Requisition withdrawn by requester",
+		ActionType:      "WITHDRAW",
+		PreviousStatus:  previousStatus,
+		NewStatus:       "draft",
+	})
+	requisition.ActionHistory = datatypes.NewJSONType(actionHistory)
+
+	// Save requisition changes
+	if err := tx.Save(&requisition).Error; err != nil {
+		tx.Rollback()
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"success": false,
+			"message": "Failed to update requisition status",
+			"error":   err.Error(),
+		})
+	}
+
+	// Commit transaction
+	if err := tx.Commit().Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"success": false,
+			"message": "Failed to commit changes",
+			"error":   err.Error(),
+		})
+	}
+
+	// Preload requester, category, and vendor for response
+	config.DB.Preload("Requester").Preload("Category").Preload("PreferredVendor").First(&requisition)
+
+	return c.JSON(fiber.Map{
+		"success": true,
+		"data":    modelToRequisitionResponse(requisition),
+		"message": "Requisition withdrawn successfully. You can now edit and re-submit it.",
+	})
+}
+
 // SubmitRequisition submits a requisition for approval using the workflow system
 func SubmitRequisition(c *fiber.Ctx) error {
 	id := c.Params("id")
@@ -703,24 +858,33 @@ func SubmitRequisition(c *fiber.Ctx) error {
 	// Add action history entry for submission
 	var actionHistory []types.ActionHistoryEntry
 	actionHistory = requisition.ActionHistory.Data()
+	if actionHistory == nil {
+		actionHistory = []types.ActionHistoryEntry{}
+	}
 
 	// Get user info for action history
+	performerName := "Unknown User"
+	performerRole := "unknown"
 	var user models.User
 	if err := config.DB.Where("id = ?", userID).First(&user).Error; err == nil {
-		actionHistory = append(actionHistory, types.ActionHistoryEntry{
-			ID:              uuid.New().String(),
-			Action:          "SUBMIT",
-			PerformedBy:     userID,
-			PerformedByName: user.Name,
-			PerformedByRole: user.Role,
-			Timestamp:       time.Now(),
-			Comments:        "Requisition submitted for approval",
-			ActionType:      "SUBMIT",
-			PreviousStatus:  "draft",
-			NewStatus:       "pending",
-		})
-		requisition.ActionHistory = datatypes.NewJSONType(actionHistory)
+		performerName = user.Name
+		performerRole = user.Role
 	}
+
+	// Always add the submit entry
+	actionHistory = append(actionHistory, types.ActionHistoryEntry{
+		ID:              uuid.New().String(),
+		Action:          "SUBMIT",
+		PerformedBy:     userID,
+		PerformedByName: performerName,
+		PerformedByRole: performerRole,
+		Timestamp:       time.Now(),
+		Comments:        "Requisition submitted for approval",
+		ActionType:      "SUBMIT",
+		PreviousStatus:  "draft",
+		NewStatus:       "pending",
+	})
+	requisition.ActionHistory = datatypes.NewJSONType(actionHistory)
 
 	// Save requisition
 	if err := config.DB.Save(&requisition).Error; err != nil {

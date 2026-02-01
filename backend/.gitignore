@@ -36,3 +36,6 @@ go.work
 
 # Binary
 liyali-gateway-backend
+
+# Air live reload
+tmp/

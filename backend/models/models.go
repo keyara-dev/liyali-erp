@@ -75,7 +75,7 @@ type Requisition struct {
 	AutomationUsed      bool                                      `json:"automationUsed,omitempty"`     // Whether automation was used
 	AutoCreatedPO       datatypes.JSON                           `gorm:"type:jsonb" json:"autoCreatedPO,omitempty"` // Auto-created Purchase Order
 	
-	ActionHistory       datatypes.JSONType[[]types.ActionHistoryEntry] `gorm:"-" json:"actionHistory"`
+	ActionHistory       datatypes.JSONType[[]types.ActionHistoryEntry] `gorm:"type:jsonb" json:"actionHistory,omitempty"` // Action history for UI
 	Metadata            datatypes.JSON                           `gorm:"type:jsonb" json:"metadata"`
 
 	CreatedAt         time.Time       `json:"createdAt"`

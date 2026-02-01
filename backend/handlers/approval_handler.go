@@ -1,12 +1,14 @@
 package handlers
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/liyali/liyali-gateway/config"
 	"github.com/liyali/liyali-gateway/models"
 	"github.com/liyali/liyali-gateway/services"
@@ -100,47 +102,100 @@ func (h *ApprovalHandler) GetTaskStats(c *fiber.Ctx) error {
 		return utils.SendUnauthorizedError(c, "User not found")
 	}
 
-	// Base query for tasks assigned to user or their role
-	baseQuery := db.Table("workflow_tasks").
-		Where("organization_id = ?", organizationID).
-		Where("(assigned_user_id = ? OR assigned_role = ?)", userID, user.Role)
+	// Build permission filter - same logic as approval permissions
+	// Users can see tasks if:
+	// 1. Task is assigned directly to them (assigned_user_id = userID)
+	// 2. Task is assigned to their role (assigned_role = user.Role)
+	// 3. User has a built-in approver role (admin, approver, finance, manager, supervisor, department_head)
+	// 4. User has an organization role with approval permissions
+	approverRoles := []string{"admin", "approver", "finance", "manager", "supervisor", "department_head"}
+	isBuiltInApprover := false
+	for _, role := range approverRoles {
+		if strings.EqualFold(user.Role, role) {
+			isBuiltInApprover = true
+			break
+		}
+	}
+
+	// Check for org role with approval permissions
+	hasOrgApprovalPermission := false
+	approvalPermissions := []string{"requisition.approve", "approval.approve", "budget.approve", "purchase_order.approve", "payment_voucher.approve", "grn.approve"}
+	var userOrgRoles []models.UserOrganizationRole
+	if err := db.Where("user_id = ? AND organization_id = ? AND active = ?", userID, organizationID, true).Find(&userOrgRoles).Error; err == nil && len(userOrgRoles) > 0 {
+		for _, userOrgRole := range userOrgRoles {
+			var orgRole models.OrganizationRole
+			if err := db.Where("id = ? AND active = ?", userOrgRole.RoleID, true).First(&orgRole).Error; err != nil {
+				continue
+			}
+			var permissions []string
+			if err := json.Unmarshal(orgRole.Permissions, &permissions); err != nil {
+				continue
+			}
+			for _, perm := range permissions {
+				for _, approvalPerm := range approvalPermissions {
+					if strings.EqualFold(perm, approvalPerm) {
+						hasOrgApprovalPermission = true
+						break
+					}
+				}
+				if hasOrgApprovalPermission {
+					break
+				}
+			}
+			if hasOrgApprovalPermission {
+				break
+			}
+		}
+	}
+
+	// Build the permission condition
+	// If user is a built-in approver or has org approval permissions, they can see ALL tasks in the organization
+	// Otherwise, they can only see tasks assigned to them or their role
+	var permissionCondition string
+	var permissionArgs []interface{}
+
+	if isBuiltInApprover || hasOrgApprovalPermission {
+		// User can see all tasks in the organization
+		permissionCondition = "organization_id = ?"
+		permissionArgs = []interface{}{organizationID}
+	} else {
+		// User can only see tasks assigned to them or their role
+		permissionCondition = "organization_id = ? AND (assigned_user_id = ? OR LOWER(assigned_role) = LOWER(?))"
+		permissionArgs = []interface{}{organizationID, userID, user.Role}
+	}
 
 	// Count total tasks
 	var totalTasks int64
-	baseQuery.Count(&totalTasks)
+	db.Table("workflow_tasks").Where(permissionCondition, permissionArgs...).Count(&totalTasks)
 
 	// Count pending tasks
 	var pendingTasks int64
 	db.Table("workflow_tasks").
-		Where("organization_id = ?", organizationID).
-		Where("(assigned_user_id = ? OR assigned_role = ?)", userID, user.Role).
-		Where("status = ?", "pending").
+		Where(permissionCondition, permissionArgs...).
+		Where("LOWER(status) = LOWER(?)", "pending").
 		Count(&pendingTasks)
 
 	// Count completed tasks
 	var completedTasks int64
 	db.Table("workflow_tasks").
-		Where("organization_id = ?", organizationID).
-		Where("(assigned_user_id = ? OR assigned_role = ?)", userID, user.Role).
-		Where("status IN (?)", []string{"completed", "approved"}).
+		Where(permissionCondition, permissionArgs...).
+		Where("LOWER(status) IN (LOWER(?), LOWER(?))", "completed", "approved").
 		Count(&completedTasks)
 
 	// Count overdue tasks (pending tasks past due date)
 	var overdueTasks int64
 	db.Table("workflow_tasks").
-		Where("organization_id = ?", organizationID).
-		Where("(assigned_user_id = ? OR assigned_role = ?)", userID, user.Role).
-		Where("status = ?", "pending").
-		Where("due_date < ?", time.Now()).
+		Where(permissionCondition, permissionArgs...).
+		Where("LOWER(status) = LOWER(?)", "pending").
+		Where("due_date IS NOT NULL AND due_date < ?", time.Now()).
 		Count(&overdueTasks)
 
 	// Count high priority tasks (high or urgent)
 	var highPriorityTasks int64
 	db.Table("workflow_tasks").
-		Where("organization_id = ?", organizationID).
-		Where("(assigned_user_id = ? OR assigned_role = ?)", userID, user.Role).
-		Where("priority IN (?)", []string{"high", "urgent"}).
-		Where("status = ?", "pending").
+		Where(permissionCondition, permissionArgs...).
+		Where("LOWER(priority) IN (LOWER(?), LOWER(?))", "high", "urgent").
+		Where("LOWER(status) = LOWER(?)", "pending").
 		Count(&highPriorityTasks)
 
 	// Count by entity type
@@ -151,9 +206,8 @@ func (h *ApprovalHandler) GetTaskStats(c *fiber.Ctx) error {
 	var byType []EntityTypeCount
 	db.Table("workflow_tasks").
 		Select("entity_type, COUNT(*) as count").
-		Where("organization_id = ?", organizationID).
-		Where("(assigned_user_id = ? OR assigned_role = ?)", userID, user.Role).
-		Where("status = ?", "pending").
+		Where(permissionCondition, permissionArgs...).
+		Where("LOWER(status) = LOWER(?)", "pending").
 		Group("entity_type").
 		Scan(&byType)
 
@@ -170,9 +224,8 @@ func (h *ApprovalHandler) GetTaskStats(c *fiber.Ctx) error {
 	var byPriority []PriorityCount
 	db.Table("workflow_tasks").
 		Select("priority, COUNT(*) as count").
-		Where("organization_id = ?", organizationID).
-		Where("(assigned_user_id = ? OR assigned_role = ?)", userID, user.Role).
-		Where("status = ?", "pending").
+		Where(permissionCondition, permissionArgs...).
+		Where("LOWER(status) = LOWER(?)", "pending").
 		Group("priority").
 		Scan(&byPriority)
 
@@ -217,18 +270,72 @@ func (h *ApprovalHandler) GetApprovalTasks(c *fiber.Ctx) error {
 
 	offset := (page - 1) * limit
 
+	// Get user role for permission checks
+	var user models.User
+	if err := db.Where("id = ?", userID).First(&user).Error; err != nil {
+		return utils.SendUnauthorizedError(c, "User not found")
+	}
+
 	// Build query for workflow_tasks
 	query := db.Table("workflow_tasks").Where("organization_id = ?", organizationID)
-	
-	// Filter by assigned user or role if requested
+
+	// Build permission filter - same logic as approval permissions
 	if assignedToMe {
-		// Get user role for role-based filtering
-		var user models.User
-		if err := db.Where("id = ?", userID).First(&user).Error; err == nil {
-			query = query.Where("(assigned_user_id = ? OR assigned_role = ?)", userID, user.Role)
-		} else {
-			query = query.Where("assigned_user_id = ?", userID)
+		// Only show tasks assigned specifically to this user or their role
+		query = query.Where("(assigned_user_id = ? OR LOWER(assigned_role) = LOWER(?))", userID, user.Role)
+	} else {
+		// Show all tasks the user can approve based on permissions
+		// Users can see tasks if:
+		// 1. Task is assigned directly to them (assigned_user_id = userID)
+		// 2. Task is assigned to their role (assigned_role = user.Role)
+		// 3. User has a built-in approver role (admin, approver, finance, manager, supervisor, department_head)
+		// 4. User has an organization role with approval permissions
+		approverRoles := []string{"admin", "approver", "finance", "manager", "supervisor", "department_head"}
+		isBuiltInApprover := false
+		for _, role := range approverRoles {
+			if strings.EqualFold(user.Role, role) {
+				isBuiltInApprover = true
+				break
+			}
 		}
+
+		// Check for org role with approval permissions
+		hasOrgApprovalPermission := false
+		approvalPermissions := []string{"requisition.approve", "approval.approve", "budget.approve", "purchase_order.approve", "payment_voucher.approve", "grn.approve"}
+		var userOrgRoles []models.UserOrganizationRole
+		if err := db.Where("user_id = ? AND organization_id = ? AND active = ?", userID, organizationID, true).Find(&userOrgRoles).Error; err == nil && len(userOrgRoles) > 0 {
+			for _, userOrgRole := range userOrgRoles {
+				var orgRole models.OrganizationRole
+				if err := db.Where("id = ? AND active = ?", userOrgRole.RoleID, true).First(&orgRole).Error; err != nil {
+					continue
+				}
+				var permissions []string
+				if err := json.Unmarshal(orgRole.Permissions, &permissions); err != nil {
+					continue
+				}
+				for _, perm := range permissions {
+					for _, approvalPerm := range approvalPermissions {
+						if strings.EqualFold(perm, approvalPerm) {
+							hasOrgApprovalPermission = true
+							break
+						}
+					}
+					if hasOrgApprovalPermission {
+						break
+					}
+				}
+				if hasOrgApprovalPermission {
+					break
+				}
+			}
+		}
+
+		// If user is NOT a built-in approver and doesn't have org approval permissions,
+		// they can only see tasks assigned to them or their role
+		if !isBuiltInApprover && !hasOrgApprovalPermission {
+			query = query.Where("(assigned_user_id = ? OR LOWER(assigned_role) = LOWER(?))", userID, user.Role)
+		}
+		// Otherwise, they can see all tasks in the organization (no additional filter needed)
 	}
 
 	if status != "" {
@@ -260,6 +367,15 @@ func (h *ApprovalHandler) GetApprovalTasks(c *fiber.Ctx) error {
 		}
 	}
 
+	// Debug: Verify task fields before sending
+	for _, task := range tasks {
+		if task.DueAt != nil {
+			log.Printf("[DEBUG] Task %s FINAL: priority=%s, dueAt=%v", task.ID, task.Priority, *task.DueAt)
+		} else {
+			log.Printf("[DEBUG] Task %s FINAL: priority=%s, dueAt=NIL (this is a bug!)", task.ID, task.Priority)
+		}
+	}
+
 	return utils.SendPaginatedSuccess(c, tasks, "Workflow tasks retrieved successfully", page, limit, total)
 }
 
@@ -288,14 +404,16 @@ func (h *ApprovalHandler) populateWorkflowTaskFields(db *gorm.DB, task *models.W
 	} else if task.ClaimedBy != nil {
 		task.AssignedTo = *task.ClaimedBy
 		task.ApproverID = *task.ClaimedBy
-		
+
 		// Get claimer name if available
 		if task.Claimer != nil {
 			task.ApproverName = task.Claimer.Name
+			task.ClaimerName = task.Claimer.Name
 		} else {
 			var user models.User
 			if err := db.Where("id = ?", *task.ClaimedBy).First(&user).Error; err == nil {
 				task.ApproverName = user.Name
+				task.ClaimerName = user.Name
 			}
 		}
 	}
@@ -345,6 +463,22 @@ func (h *ApprovalHandler) populateWorkflowTaskFields(db *gorm.DB, task *models.W
 	}
 	if task.Title == "" {
 		task.Title = "Approval Required"
+	}
+
+	// Set default due date if not set (for tasks created before the default due date feature)
+	if task.DueDate == nil {
+		// Default due date: 7 days from task creation
+		defaultDueDate := task.CreatedAt.Add(7 * 24 * time.Hour)
+		task.DueDate = &defaultDueDate
+		task.DueAt = &defaultDueDate
+		log.Printf("[DEBUG] Task %s: Set default due date to %v (created at %v)", task.ID, defaultDueDate, task.CreatedAt)
+	} else {
+		log.Printf("[DEBUG] Task %s: Has due date %v", task.ID, *task.DueDate)
+	}
+
+	// Ensure priority is set
+	if task.Priority == "" {
+		task.Priority = "medium"
 	}
 
 	// Set importance based on priority
@@ -622,14 +756,14 @@ func (h *ApprovalHandler) ReassignTask(c *fiber.Ctx) error {
 	}
 
 	// Check if task is in pending status
-	if task.Status != "pending" {
+	if task.Status != "pending" && task.Status != "claimed" {
 		return c.Status(fiber.StatusBadRequest).JSON(types.ErrorResponse{
 			Error:   "Invalid task status",
-			Message: "Task is not in pending status",
+			Message: "Task is not in pending or claimed status",
 		})
 	}
 
-	// Check if user is admin (only admins can reassign tasks)
+	// Get current user
 	var user models.User
 	if err := db.Where("id = ?", userID).First(&user).Error; err != nil {
 		return c.Status(fiber.StatusUnauthorized).JSON(types.ErrorResponse{
@@ -638,11 +772,87 @@ func (h *ApprovalHandler) ReassignTask(c *fiber.Ctx) error {
 		})
 	}
 
-	if user.Role != "admin" {
+	// Built-in roles that can reassign tasks
+	reassignRoles := []string{"admin", "approver", "finance", "manager", "supervisor", "department_head"}
+
+	// Reassignment-related permissions to check for in organization roles
+	reassignPermissions := []string{
+		"approval.reassign", "requisition.reassign", "workflow.reassign",
+		"approval.manage", "workflow.manage",
+	}
+
+	// Helper function to check if user has any organization role with reassign permissions
+	checkOrgRoleReassignPermissions := func() bool {
+		var userOrgRoles []models.UserOrganizationRole
+		if err := db.Where("user_id = ? AND organization_id = ? AND active = ?",
+			userID, organizationID, true).Find(&userOrgRoles).Error; err != nil || len(userOrgRoles) == 0 {
+			return false
+		}
+
+		for _, userOrgRole := range userOrgRoles {
+			var orgRole models.OrganizationRole
+			if err := db.Where("id = ? AND active = ?", userOrgRole.RoleID, true).First(&orgRole).Error; err != nil {
+				continue
+			}
+
+			// Parse permissions from JSON
+			var permissions []string
+			if err := json.Unmarshal(orgRole.Permissions, &permissions); err != nil {
+				continue
+			}
+
+			// Check if any reassign permission exists
+			for _, perm := range permissions {
+				for _, reassignPerm := range reassignPermissions {
+					if strings.EqualFold(perm, reassignPerm) {
+						log.Printf("[DEBUG] User has organization role '%s' with reassign permission '%s'", orgRole.Name, perm)
+						return true
+					}
+				}
+			}
+		}
+		return false
+	}
+
+	// Check if user has permission to reassign
+	hasReassignPermission := false
+
+	// Check 1: Built-in role check
+	for _, role := range reassignRoles {
+		if strings.EqualFold(user.Role, role) {
+			hasReassignPermission = true
+			log.Printf("[DEBUG] User has built-in role '%s' - can reassign", user.Role)
+			break
+		}
+	}
+
+	// Check 2: Organization role with reassign permissions
+	if !hasReassignPermission {
+		hasReassignPermission = checkOrgRoleReassignPermissions()
+	}
+
+	if !hasReassignPermission {
 		return c.Status(fiber.StatusForbidden).JSON(types.ErrorResponse{
 			Error:   "Insufficient permissions",
-			Message: "Only administrators can reassign tasks",
+			Message: "You don't have permission to reassign tasks",
 		})
+	}
+
+	// Store previous assignee info for notification
+	var previousAssigneeName string
+	var previousAssigneeID string
+	if task.AssignedUserID != nil {
+		previousAssigneeID = *task.AssignedUserID
+		var prevUser models.User
+		if err := db.Where("id = ?", previousAssigneeID).First(&prevUser).Error; err == nil {
+			previousAssigneeName = prevUser.Name
+		}
+	} else if task.ClaimedBy != nil {
+		previousAssigneeID = *task.ClaimedBy
+		var prevUser models.User
+		if err := db.Where("id = ?", previousAssigneeID).First(&prevUser).Error; err == nil {
+			previousAssigneeName = prevUser.Name
+		}
 	}
 
 	// Validate that the new user exists and is active
@@ -655,7 +865,9 @@ func (h *ApprovalHandler) ReassignTask(c *fiber.Ctx) error {
 	}
 
 	// Update task assignment - clear any existing claim and assign to new user
+	// This ensures ONLY the assigned user can approve/reject
 	task.AssignedUserID = &req.NewUserID
+	task.AssignedRole = nil // Clear role assignment since we're assigning to a specific user
 	task.ClaimedBy = nil
 	task.ClaimedAt = nil
 	task.ClaimExpiry = nil
@@ -672,13 +884,15 @@ func (h *ApprovalHandler) ReassignTask(c *fiber.Ctx) error {
 
 	// Create audit log entry
 	changes := datatypes.NewJSONType(map[string]interface{}{
-		"previousAssignee": task.AssignedUserID,
-		"newAssignee":      req.NewUserID,
-		"reason":           req.Reason,
-		"reassignedBy":     user.Name,
-		"reassignedTo":     newUser.Name,
+		"previousAssignee":     previousAssigneeID,
+		"previousAssigneeName": previousAssigneeName,
+		"newAssignee":          req.NewUserID,
+		"newAssigneeName":      newUser.Name,
+		"reason":               req.Reason,
+		"reassignedBy":         user.Name,
+		"reassignedById":       userID,
 	})
-	
+
 	auditLog := models.AuditLog{
 		ID:           fmt.Sprintf("audit-%d", time.Now().UnixNano()),
 		DocumentID:   task.EntityID,
@@ -694,15 +908,124 @@ func (h *ApprovalHandler) ReassignTask(c *fiber.Ctx) error {
 		// Don't fail the request for audit log errors
 	}
 
+	// Add action history entry to the document
+	if err := addReassignmentActionHistory(db, task.EntityType, task.EntityID, userID, user.Name, previousAssigneeName, newUser.Name, req.Reason); err != nil {
+		log.Printf("Warning: failed to add action history entry for reassignment: %v", err)
+		// Don't fail the request for action history errors
+	}
+
+	// Create in-app notification for the new assignee
+	notification := models.Notification{
+		ID:                 uuid.New().String(),
+		OrganizationID:     organizationID,
+		RecipientID:        req.NewUserID,
+		Type:               "task_reassigned",
+		DocumentID:         task.EntityID,
+		DocumentType:       task.EntityType,
+		EntityID:           task.EntityID,
+		EntityType:         task.EntityType,
+		Subject:            fmt.Sprintf("Task Reassigned: %s Approval", task.EntityType),
+		Body:               fmt.Sprintf("A %s approval task has been reassigned to you by %s. Stage: %s. Reason: %s", task.EntityType, user.Name, task.StageName, req.Reason),
+		Message:            fmt.Sprintf("Task reassigned to you by %s", user.Name),
+		RelatedUserID:      userID,
+		RelatedUserName:    user.Name,
+		ReassignmentReason: req.Reason,
+		Importance:         "HIGH",
+		Sent:               false,
+		IsRead:             false,
+		CreatedAt:          time.Now(),
+		UpdatedAt:          time.Now(),
+	}
+
+	if err := db.Create(&notification).Error; err != nil {
+		log.Printf("Error creating reassignment notification: %v", err)
+		// Don't fail the request for notification errors
+	} else {
+		log.Printf("[DEBUG] Created reassignment notification for user %s", newUser.Name)
+	}
+
+	// If there was a previous assignee (different from the new one), notify them too
+	if previousAssigneeID != "" && previousAssigneeID != req.NewUserID {
+		prevNotification := models.Notification{
+			ID:                 uuid.New().String(),
+			OrganizationID:     organizationID,
+			RecipientID:        previousAssigneeID,
+			Type:               "task_reassigned_away",
+			DocumentID:         task.EntityID,
+			DocumentType:       task.EntityType,
+			EntityID:           task.EntityID,
+			EntityType:         task.EntityType,
+			Subject:            fmt.Sprintf("Task Reassigned: %s Approval", task.EntityType),
+			Body:               fmt.Sprintf("A %s approval task has been reassigned from you to %s by %s. Reason: %s", task.EntityType, newUser.Name, user.Name, req.Reason),
+			Message:            fmt.Sprintf("Task reassigned to %s by %s", newUser.Name, user.Name),
+			RelatedUserID:      userID,
+			RelatedUserName:    user.Name,
+			ReassignmentReason: req.Reason,
+			Importance:         "MEDIUM",
+			Sent:               false,
+			IsRead:             false,
+			CreatedAt:          time.Now(),
+			UpdatedAt:          time.Now(),
+		}
+
+		if err := db.Create(&prevNotification).Error; err != nil {
+			log.Printf("Error creating notification for previous assignee: %v", err)
+		}
+	}
+
 	return c.Status(fiber.StatusOK).JSON(types.SuccessResponse{
 		Message: "Task reassigned successfully",
 		Data: map[string]interface{}{
-			"taskId":        task.ID,
-			"newAssignee":   newUser.Name,
-			"reassignedBy":  user.Name,
-			"reason":        req.Reason,
+			"taskId":              task.ID,
+			"newAssignee":         newUser.Name,
+			"newAssigneeId":       req.NewUserID,
+			"previousAssignee":    previousAssigneeName,
+			"previousAssigneeId":  previousAssigneeID,
+			"reassignedBy":        user.Name,
+			"reason":              req.Reason,
 		},
 	})
+}
+
+// addReassignmentActionHistory adds an action history entry for task reassignment
+func addReassignmentActionHistory(db *gorm.DB, entityType, entityID, performedByID, performedByName, previousAssignee, newAssignee, reason string) error {
+	entry := types.ActionHistoryEntry{
+		ID:              uuid.New().String(),
+		Action:          "TASK_REASSIGNED",
+		PerformedBy:     performedByID,
+		PerformedByName: performedByName,
+		PerformedAt:     time.Now(),
+		Timestamp:       time.Now(),
+		Comments:        fmt.Sprintf("Task reassigned from %s to %s. Reason: %s", previousAssignee, newAssignee, reason),
+	}
+
+	switch strings.ToLower(entityType) {
+	case "requisition":
+		var requisition models.Requisition
+		if err := db.First(&requisition, "id = ?", entityID).Error; err != nil {
+			return fmt.Errorf("failed to find requisition: %w", err)
+		}
+
+		// Get current action history
+		currentHistory := requisition.ActionHistory.Data()
+		if currentHistory == nil {
+			currentHistory = []types.ActionHistoryEntry{}
+		}
+
+		// Append new entry
+		currentHistory = append(currentHistory, entry)
+		requisition.ActionHistory = datatypes.NewJSONType(currentHistory)
+
+		if err := db.Model(&requisition).Update("action_history", requisition.ActionHistory).Error; err != nil {
+			return fmt.Errorf("failed to update action history: %w", err)
+		}
+
+	// Add other document types as needed
+	default:
+		log.Printf("Action history not configured for entity type: %s", entityType)
+	}
+
+	return nil
 }
 
 // GetApprovalHistory retrieves approval history for a document
@@ -987,25 +1310,169 @@ func (h *ApprovalHandler) GetApprovalWorkflowStatus(c *fiber.Ctx) error {
 
 	if len(pendingTasks) > 0 {
 		currentTask := pendingTasks[0]
-		
+
+		// Built-in roles that have approval permissions
+		approverRoles := []string{"admin", "approver", "finance", "manager", "supervisor", "department_head"}
+
+		// Approval-related permissions to check for in organization roles
+		approvalPermissions := []string{
+			"requisition.approve", "approval.approve", "budget.approve",
+			"purchase_order.approve", "payment_voucher.approve", "grn.approve",
+		}
+
+		// Helper function to check if user has any organization role with approval permissions
+		checkOrgRoleApprovalPermissions := func() bool {
+			var userOrgRoles []models.UserOrganizationRole
+			if err := db.Where("user_id = ? AND organization_id = ? AND active = ?",
+				userID, organizationID, true).Find(&userOrgRoles).Error; err != nil || len(userOrgRoles) == 0 {
+				return false
+			}
+
+			for _, userOrgRole := range userOrgRoles {
+				var orgRole models.OrganizationRole
+				if err := db.Where("id = ? AND active = ?", userOrgRole.RoleID, true).First(&orgRole).Error; err != nil {
+					continue
+				}
+
+				// Parse permissions from JSON
+				var permissions []string
+				if err := json.Unmarshal(orgRole.Permissions, &permissions); err != nil {
+					continue
+				}
+
+				// Check if any approval permission exists
+				for _, perm := range permissions {
+					for _, approvalPerm := range approvalPermissions {
+						if strings.EqualFold(perm, approvalPerm) {
+							log.Printf("[DEBUG] User has organization role '%s' with approval permission '%s' - canApprove = true", orgRole.Name, perm)
+							return true
+						}
+					}
+				}
+			}
+			return false
+		}
+
 		// Get user role to check if they can approve
 		var user models.User
 		if err := db.Where("id = ?", userID).First(&user).Error; err == nil {
-			// Check if user's role matches the required role for current task
-			if currentTask.AssignedRole != nil && user.Role == *currentTask.AssignedRole {
-				canApprove = true
-				canReject = true
+			// PRIORITY 1: If task is assigned to a specific user (after reassignment), ONLY that user can approve
+			if currentTask.AssignedUserID != nil && *currentTask.AssignedUserID != "" {
+				log.Printf("[DEBUG] Task is assigned to specific user: %s, checking if current user %s matches", *currentTask.AssignedUserID, userID)
+				if *currentTask.AssignedUserID == userID {
+					log.Printf("[DEBUG] User is the specifically assigned user - canApprove = true")
+					canApprove = true
+					canReject = true
+				} else {
+					log.Printf("[DEBUG] User is NOT the specifically assigned user - canApprove = false")
+					canApprove = false
+					canReject = false
+				}
+			} else if currentTask.AssignedRole != nil {
+				// PRIORITY 2: Check role-based permissions (when task is assigned to a role, not a specific user)
+				assignedRole := *currentTask.AssignedRole
+				log.Printf("[DEBUG] Checking approval permission - User: %s, UserRole: %s, AssignedRole: %s", userID, user.Role, assignedRole)
+
+				// Check if assignedRole is a UUID (custom organization role)
+				if _, parseErr := uuid.Parse(assignedRole); parseErr == nil {
+					// It's a UUID - check if user has this organization role
+					log.Printf("[DEBUG] AssignedRole is a UUID, checking user_organization_roles table")
+					var userOrgRole models.UserOrganizationRole
+					if err := db.Where("user_id = ? AND organization_id = ? AND role_id = ? AND active = ?",
+						userID, organizationID, assignedRole, true).First(&userOrgRole).Error; err == nil {
+						log.Printf("[DEBUG] User has the exact organization role - canApprove = true")
+						canApprove = true
+						canReject = true
+					} else {
+						log.Printf("[DEBUG] User does NOT have the exact organization role: %v", err)
+
+						// Fallback 1: Check if user has a built-in approver role
+						for _, approverRole := range approverRoles {
+							if strings.EqualFold(user.Role, approverRole) {
+								log.Printf("[DEBUG] User has built-in approver role '%s' - canApprove = true", user.Role)
+								canApprove = true
+								canReject = true
+								break
+							}
+						}
+
+						// Fallback 2: Check if user has any organization role with approval permissions
+						if !canApprove && checkOrgRoleApprovalPermissions() {
+							canApprove = true
+							canReject = true
+						}
+					}
+				} else {
+					// It's a built-in role name - check user.Role directly (case-insensitive)
+					log.Printf("[DEBUG] AssignedRole is a built-in role name, comparing with user.Role")
+					if strings.EqualFold(user.Role, assignedRole) {
+						log.Printf("[DEBUG] User role matches (case-insensitive) - canApprove = true")
+						canApprove = true
+						canReject = true
+					} else {
+						// Fallback 1: Check if user has a built-in approver role
+						for _, approverRole := range approverRoles {
+							if strings.EqualFold(user.Role, approverRole) {
+								log.Printf("[DEBUG] User has built-in approver role '%s' - canApprove = true", user.Role)
+								canApprove = true
+								canReject = true
+								break
+							}
+						}
+
+						// Fallback 2: Check if user has any organization role with approval permissions
+						if !canApprove && checkOrgRoleApprovalPermissions() {
+							canApprove = true
+							canReject = true
+						}
+
+						if !canApprove {
+							log.Printf("[DEBUG] User role '%s' does not match assigned role '%s' and has no approval permissions", user.Role, assignedRole)
+						}
+					}
+				}
 			}
 		}
 
 		// Get next approver name
-		if currentTask.AssignedRole != nil {
-			var approver models.User
-			if err := db.Where("current_organization_id = ? AND role = ? AND active = ?", 
-				organizationID, *currentTask.AssignedRole, true).First(&approver).Error; err == nil {
-				nextApprover = approver.Name
+		// PRIORITY 1: If task is assigned to a specific user, show that user's name
+		if currentTask.AssignedUserID != nil && *currentTask.AssignedUserID != "" {
+			var assignedUser models.User
+			if err := db.Where("id = ?", *currentTask.AssignedUserID).First(&assignedUser).Error; err == nil {
+				nextApprover = assignedUser.Name
 			} else {
-				nextApprover = fmt.Sprintf("Any %s", *currentTask.AssignedRole)
+				nextApprover = "Assigned User"
+			}
+		} else if currentTask.AssignedRole != nil {
+			// PRIORITY 2: Role-based assignment
+			assignedRole := *currentTask.AssignedRole
+			roleDisplayName := assignedRole
+
+			// Check if assignedRole is a UUID (custom organization role)
+			if _, parseErr := uuid.Parse(assignedRole); parseErr == nil {
+				// It's a UUID - look up the organization role name
+				var orgRole models.OrganizationRole
+				if err := db.Where("id = ?", assignedRole).First(&orgRole).Error; err == nil {
+					roleDisplayName = orgRole.Name
+				}
+
+				// Find a user with this custom role
+				var userOrgRole models.UserOrganizationRole
+				if err := db.Preload("User").Where("organization_id = ? AND role_id = ? AND active = ?",
+					organizationID, assignedRole, true).First(&userOrgRole).Error; err == nil && userOrgRole.User != nil {
+					nextApprover = userOrgRole.User.Name
+				} else {
+					nextApprover = fmt.Sprintf("Any %s", roleDisplayName)
+				}
+			} else {
+				// It's a built-in role name - use existing logic
+				var approver models.User
+				if err := db.Where("current_organization_id = ? AND role = ? AND active = ?",
+					organizationID, assignedRole, true).First(&approver).Error; err == nil {
+					nextApprover = approver.Name
+				} else {
+					nextApprover = fmt.Sprintf("Any %s", roleDisplayName)
+				}
 			}
 		}
 	}

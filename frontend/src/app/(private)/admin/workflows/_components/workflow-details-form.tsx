@@ -14,11 +14,11 @@ interface WorkflowDetailsFormProps {
 }
 
 const DOCUMENT_TYPES = [
-  { id: "REQUISITION", name: "Requisition" },
-  { id: "PURCHASE_ORDER", name: "Purchase Order" },
-  { id: "PAYMENT_VOUCHER", name: "Payment Voucher" },
-  { id: "GOODS_RECEIVED_NOTE", name: "Goods Received Note" },
-  { id: "BUDGET", name: "Budget" },
+  { value: "requisition", name: "Requisition" },
+  { value: "purchase_order", name: "Purchase Order" },
+  { value: "payment_voucher", name: "Payment Voucher" },
+  { value: "grn", name: "Goods Received Note" },
+  { value: "budget", name: "Budget" },
 ];
 
 export function WorkflowDetailsForm({
@@ -84,7 +84,7 @@ export function WorkflowDetailsForm({
             Set as default workflow for{" "}
             {data.entityType || data.documentType
               ? DOCUMENT_TYPES.find(
-                  (t) => t.id === (data.entityType || data.documentType)
+                  (t) => t.value === (data.entityType || data.documentType)
                 )?.name
               : "selected document type"}
           </label>

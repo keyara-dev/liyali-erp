@@ -29,6 +29,10 @@ func SetupRoutes(app *fiber.App, handlerRegistry *handlers.HandlerRegistry, rbac
 	public.Post("/auth/password-reset/request", middleware.PasswordResetRateLimitMiddleware(), handlerRegistry.Auth.RequestPasswordReset)
 	public.Post("/auth/password-reset/confirm", middleware.PasswordResetRateLimitMiddleware(), handlerRegistry.Auth.ResetPassword)
 
+	// Public document verification (no authentication required)
+	public.Get("/public/verify/:documentNumber", handlerRegistry.Document.VerifyDocumentPublic)
+	public.Get("/public/verify/:documentNumber/document", handlerRegistry.Document.GetDocumentForPDFPublic)
+
 	// Protected routes (authentication required)
 	protected := apiV1.Group("", middleware.AuthMiddleware())
 
@@ -180,6 +184,7 @@ func SetupRoutes(app *fiber.App, handlerRegistry *handlers.HandlerRegistry, rbac
 	requisitions.Put("/:id", middleware.RequirePermission(rbacService, "requisition", "edit"), handlers.UpdateRequisition)
 	requisitions.Delete("/:id", middleware.RequirePermission(rbacService, "requisition", "delete"), handlers.DeleteRequisition)
 	requisitions.Post("/:id/submit", middleware.RequirePermission(rbacService, "requisition", "edit"), handlers.SubmitRequisition)
+	requisitions.Post("/:id/withdraw", middleware.RequirePermission(rbacService, "requisition", "edit"), handlers.WithdrawRequisition)
 	requisitions.Post("/:id/reassign", middleware.RequirePermission(rbacService, "requisition", "approve"), handlers.ReassignRequisition)
 
 	// Budget routes (tenant-scoped)

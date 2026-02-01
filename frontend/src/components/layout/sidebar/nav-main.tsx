@@ -19,12 +19,12 @@ import {
   Search,
   LayoutDashboard,
   ShieldAlert,
-  QrCode,
   Zap,
   FileCheck,
   CheckSquare,
   DollarSign,
   GitBranch,
+  QrCode,
   type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
@@ -43,7 +43,7 @@ type NavGroup = {
 
 export const navItems: NavGroup[] = [
   {
-    title: "Main",
+    title: "MAIN",
     items: [
       {
         title: "Dashboard",
@@ -51,15 +51,11 @@ export const navItems: NavGroup[] = [
         icon: LayoutDashboard,
       },
       {
-        title: "Tasks",
-        href: "/tasks",
-        icon: CheckSquare,
-      },
-      {
-        title: "Search Transactions",
+        title: "Search",
         href: "/search",
         icon: Search,
       },
+
       {
         title: "Requisitions",
         href: "/requisitions",
@@ -83,47 +79,42 @@ export const navItems: NavGroup[] = [
     ],
   },
   {
-    title: "Budget Management",
+    title: "MANAGEMENT",
     items: [
       {
         title: "Budgets",
         href: "/budgets",
         icon: DollarSign,
       },
-    ],
-  },
-  {
-    title: "Admin",
-    items: [
+      {
+        title: "Tasks",
+        href: "/tasks",
+        icon: CheckSquare,
+      },
+      {
+        title: "Document Verification",
+        href: "/admin/verification",
+        icon: QrCode,
+      },
       {
         title: "Reports",
         href: "/admin/reports",
         icon: BarChart3Icon,
       },
+    ],
+  },
+  {
+    title: "ADMIN",
+    items: [
       {
         title: "User Management",
         href: "/admin/users",
         icon: UsersIcon,
       },
-      // {
-      //   title: "Activity Logs",
-      //   href: "/admin/logs",
-      //   icon: ActivityIcon,
-      // },
       {
-        title: "Workflow Management",
+        title: "Workflows",
         href: "/admin/workflows",
         icon: GitBranch,
-      },
-    ],
-  },
-  {
-    title: "Compliance & Monitoring",
-    items: [
-      {
-        title: "Compliance Tracking",
-        href: "/admin/compliance/tracking",
-        icon: ShieldAlert,
       },
       {
         title: "System Monitoring",
@@ -131,9 +122,9 @@ export const navItems: NavGroup[] = [
         icon: Zap,
       },
       {
-        title: "QR Verification",
-        href: "/verification/qr",
-        icon: QrCode,
+        title: "Compliance Tracking",
+        href: "/admin/compliance/tracking",
+        icon: ShieldAlert,
       },
     ],
   },

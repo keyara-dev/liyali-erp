@@ -18,19 +18,15 @@ export async function searchDocuments(
   page: number = 1,
   limit: number = 10
 ): Promise<APIResponse<PaginatedResponse<WorkflowDocument>>> {
-  const { session } = await verifySession()
+  const { isAuthenticated, session } = await verifySession()
 
-  if (!session?.user) {
+  if (!isAuthenticated || !session?.access_token) {
     return unauthorizedResponse()
   }
 
   try {
     const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'
-    const token = session.user.token
-
-    if (!token) {
-      return unauthorizedResponse()
-    }
+    const token = session.access_token
 
     // Build query parameters
     const queryParams = new URLSearchParams()
@@ -79,20 +75,46 @@ export async function searchDocuments(
       } as any
     }
 
-    const data = await response.json()
+    const responseData = await response.json()
+
+    // Backend returns: { success, message, data: [...results], pagination: {...} }
+    // Each result has { document: {...}, relevance, matches }
+    const rawResults = responseData.data || []
+    const pagination = responseData.pagination || {}
+
+    // Transform backend Document to frontend WorkflowDocument format
+    const documents = rawResults.map((result: any) => {
+      // Handle both direct document and wrapped { document, relevance, matches } format
+      const doc = result.document || result
+      return {
+        id: doc.id,
+        documentNumber: doc.documentNumber,
+        type: doc.documentType, // Map documentType to type
+        status: doc.status,
+        title: doc.title,
+        description: doc.description,
+        amount: doc.amount,
+        currency: doc.currency,
+        department: doc.department,
+        createdBy: doc.createdBy,
+        createdAt: doc.createdAt,
+        updatedAt: doc.updatedAt,
+        creator: doc.creator,
+      }
+    })
 
     return {
       success: true,
       message: 'Search completed',
       data: {
-        data: data.documents || [],
+        data: documents,
         pagination: {
-          page: data.page || page,
-          limit: data.pageSize || limit,
-          total: data.total || 0,
-          totalPages: data.totalPages || Math.ceil((data.total || 0) / limit),
-          hasNext: (data.page || page) < (data.totalPages || Math.ceil((data.total || 0) / limit)),
-          hasPrev: (data.page || page) > 1,
+          page: pagination.page || page,
+          limit: pagination.pageSize || limit,
+          total: pagination.total || 0,
+          totalPages: pagination.totalPages || Math.ceil((pagination.total || 0) / limit),
+          hasNext: pagination.hasNext ?? false,
+          hasPrev: pagination.hasPrev ?? false,
         },
       },
       status: 200,
@@ -109,19 +131,15 @@ export async function searchDocuments(
 export async function downloadDocumentPDF(
   documentId: string
 ): Promise<APIResponse<{ downloadUrl: string }>> {
-  const { session } = await verifySession()
+  const { isAuthenticated, session } = await verifySession()
 
-  if (!session?.user) {
+  if (!isAuthenticated || !session?.access_token) {
     return unauthorizedResponse() as any
   }
 
   try {
     const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'
-    const token = session.user.token
-
-    if (!token) {
-      return unauthorizedResponse() as any
-    }
+    const token = session.access_token
 
     const response = await fetch(
       `${backendUrl}/api/v1/documents/${documentId}/download`,

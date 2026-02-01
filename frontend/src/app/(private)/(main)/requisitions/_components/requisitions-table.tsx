@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useEffect } from "react";
+import { useCallback, useMemo, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ColumnDef } from "@tanstack/react-table";
 import {
@@ -13,6 +13,7 @@ import {
   Send,
   PlusCircle,
   FileText,
+  Undo2,
 } from "lucide-react";
 
 import { StatusBadge } from "@/components/status-badge";
@@ -28,6 +29,7 @@ import {
   useRequisitions,
   useSubmitRequisitionForApproval,
 } from "@/hooks/use-requisition-queries";
+import { useWithdrawRequisition } from "@/hooks/use-requisition-mutations";
 import { useApprovalWorkflowStatus } from "@/hooks/use-approval-history";
 import {
   DropdownMenu,
@@ -35,6 +37,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { ConfirmationModal } from "@/components/modals/confirmation-modal";
 
 interface RequisitionsTableProps {
   userId: string;
@@ -266,7 +269,11 @@ function ReqOptionsMenu({
   userRole: string;
   onRefresh: () => void;
 }) {
+  const [showSubmitModal, setShowSubmitModal] = useState(false);
+  const [showWithdrawModal, setShowWithdrawModal] = useState(false);
+
   const submitMutation = useSubmitRequisitionForApproval(req.id, onRefresh);
+  const withdrawMutation = useWithdrawRequisition(onRefresh);
   const { data: workflowStatus } = useApprovalWorkflowStatus(req.id);
 
   const handleSubmitForApproval = async () => {
@@ -277,17 +284,29 @@ function ReqOptionsMenu({
         submittedByRole: userRole,
         comments: `Submitted for approval on ${new Date().toLocaleDateString()}`,
       });
+      setShowSubmitModal(false);
     } catch (error) {
       console.error("Submit error:", error);
     }
   };
 
+  const handleWithdraw = async () => {
+    try {
+      await withdrawMutation.mutateAsync(req.id);
+      setShowWithdrawModal(false);
+    } catch (error) {
+      console.error("Withdraw error:", error);
+    }
+  };
+
   const canSubmit = req.status === "draft" && req.requesterId === userId;
+  const canWithdraw = req.status === "pending" && req.requesterId === userId;
   const canEdit = req.status === "draft" && req.requesterId === userId;
   const canApprove = workflowStatus?.canApprove && req.status === "pending";
   const canReject = workflowStatus?.canReject && req.status === "pending";
 
   return (
+    <>
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant={"outline"}>
@@ -311,11 +330,20 @@ function ReqOptionsMenu({
 
         {canSubmit && (
           <DropdownMenuItem
-            onClick={handleSubmitForApproval}
-            disabled={submitMutation.isPending}
+            onClick={() => setShowSubmitModal(true)}
           >
             <Send className="mr-2 h-4 w-4 text-blue-600" />
-            {submitMutation.isPending ? "Submitting..." : "Submit for Approval"}
+            Submit for Approval
+          </DropdownMenuItem>
+        )}
+
+        {canWithdraw && (
+          <DropdownMenuItem
+            onClick={() => setShowWithdrawModal(true)}
+            className="text-amber-600 focus:text-amber-600"
+          >
+            <Undo2 className="mr-2 h-4 w-4" />
+            Withdraw
           </DropdownMenuItem>
         )}
 
@@ -368,6 +396,29 @@ function ReqOptionsMenu({
         )}
       </DropdownMenuContent>
     </DropdownMenu>
+
+    {/* Submit Confirmation Modal */}
+    <ConfirmationModal
+      open={showSubmitModal}
+      onOpenChange={setShowSubmitModal}
+      onConfirm={handleSubmitForApproval}
+      type="submit"
+      title="Submit for Approval"
+      description={`Are you sure you want to submit requisition ${req.documentNumber || req.id} for approval? Once submitted, it will be sent to the appropriate approvers for review.`}
+      isLoading={submitMutation.isPending}
+    />
+
+    {/* Withdraw Confirmation Modal */}
+    <ConfirmationModal
+      open={showWithdrawModal}
+      onOpenChange={setShowWithdrawModal}
+      onConfirm={handleWithdraw}
+      type="withdraw"
+      title="Withdraw Requisition"
+      description={`Are you sure you want to withdraw requisition ${req.documentNumber || req.id}? It will be reverted to draft status and you can edit and re-submit it later.`}
+      isLoading={withdrawMutation.isPending}
+    />
+    </>
   );
 }
 

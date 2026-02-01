@@ -43,7 +43,7 @@ export const useRequisitions = (
   filters?: {
     status?: string;
     department?: string;
-  }
+  },
 ) =>
   useQuery({
     queryKey: [QUERY_KEYS.REQUISITIONS.ALL, page, limit, filters],
@@ -66,7 +66,7 @@ export const useRequisitions = (
  */
 export const useRequisitionById = (
   requisitionId: string,
-  initialData?: Requisition
+  initialData?: Requisition,
 ) =>
   useQuery({
     queryKey: [QUERY_KEYS.REQUISITIONS.BY_ID, requisitionId],
@@ -135,7 +135,7 @@ export const useSaveRequisition = (onSuccess?: () => void) => {
     mutationFn: async (
       data:
         | CreateRequisitionRequest
-        | (UpdateRequisitionRequest & { requisitionId?: string })
+        | (UpdateRequisitionRequest & { requisitionId?: string }),
     ) => {
       const isUpdate = "requisitionId" in data && data.requisitionId;
 
@@ -163,7 +163,7 @@ export const useSaveRequisition = (onSuccess?: () => void) => {
           offlineMessage: isUpdate
             ? "Requisition changes saved offline. Will sync when connected."
             : "Requisition saved offline. Will sync when connected.",
-        }
+        },
       );
     },
     onSuccess: (result) => {
@@ -176,7 +176,7 @@ export const useSaveRequisition = (onSuccess?: () => void) => {
         toast.success(
           isUpdate
             ? "Requisition updated successfully"
-            : "Requisition created successfully"
+            : "Requisition created successfully",
         );
       }
 
@@ -222,13 +222,13 @@ export const useSaveRequisition = (onSuccess?: () => void) => {
  */
 export const useSubmitRequisitionForApproval = (
   requisitionId: string,
-  onSuccess?: () => void
+  onSuccess?: () => void,
 ) => {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (
-      data: Omit<SubmitRequisitionRequest, "requisitionId">
+      data: Omit<SubmitRequisitionRequest, "requisitionId">,
     ) => {
       return await handleOfflineMutation(
         async () => {
@@ -250,7 +250,7 @@ export const useSubmitRequisitionForApproval = (
           successMessage: "Requisition submitted for approval",
           offlineMessage:
             "Requisition submission saved offline. Will sync when connected.",
-        }
+        },
       );
     },
     onSuccess: (result) => {
@@ -278,6 +278,26 @@ export const useSubmitRequisitionForApproval = (
         queryKey: [QUERY_KEYS.DASHBOARD.ACTIVITIES],
       });
 
+      // Invalidate approval-related queries for approval chain and action tabs
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.APPROVALS.HISTORY],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.APPROVALS.ALL],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.APPROVALS.PENDING],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.TASKS.ALL],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.WORKFLOW_APPROVALS],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.WORKFLOW_HISTORY],
+      });
+
       // Invalidate notifications and workflow-related queries
       queryClient.invalidateQueries({
         queryKey: ["notifications"],
@@ -288,10 +308,14 @@ export const useSubmitRequisitionForApproval = (
       queryClient.invalidateQueries({
         queryKey: ["tasks"],
       });
+      queryClient.invalidateQueries({
+        queryKey: ["approvalTasks"],
+      });
 
       onSuccess?.();
     },
     onError: (error: Error) => {
+      console.log("error -------------->", error);
       toast.error(error.message || "Failed to submit requisition");
     },
   });
@@ -311,7 +335,7 @@ export const useSubmitRequisitionForApproval = (
  */
 export const useDeleteRequisition = (
   requisitionId: string,
-  onSuccess?: () => void
+  onSuccess?: () => void,
 ) => {
   const queryClient = useQueryClient();
 

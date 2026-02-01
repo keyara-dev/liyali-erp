@@ -3,18 +3,19 @@
  * All timeout values are defined here for consistency and easy adjustment
  *
  * Session Flow:
- * 1. User logs in → Session expires based on backend's expiresIn value (default: 1 hour)
- * 2. User idle for 30 minutes → Screen lock appears (IDLE_TIMEOUT)
+ * 1. User logs in → Session expires based on backend's expiresIn value (default: 24 hours)
+ * 2. User idle for 10 minutes → Screen lock appears (IDLE_TIMEOUT)
  * 3. User has 90 seconds to click "I'm still here" (SCREEN_LOCK_COUNTDOWN)
  * 4. If clicked → Session extends based on refresh token response
  * 5. If not clicked → Session terminates after 90 seconds
+ * 6. Token refresh occurs every 20 minutes to keep session alive
  */
 export const SESSION_CONFIG = {
-  // Maximum session duration: 1 hour from login (fallback if backend doesn't provide expiresIn)
-  SESSION_EXPIRY_TIME: 1 * 60 * 60 * 1000,
+  // Maximum session duration: 24 hours from login (fallback if backend doesn't provide expiresIn)
+  SESSION_EXPIRY_TIME: 24 * 60 * 60 * 1000, // 24 hours
 
-  // Idle timeout: After 5 minutes of inactivity, show screen lock
-  IDLE_TIMEOUT: 5 * 60 * 1000, // Changed from 30 minutes to 5 minutes
+  // Idle timeout: After 10 minutes of inactivity, show screen lock
+  IDLE_TIMEOUT: 10 * 60 * 1000, // 10 minutes
 
   // Screen lock countdown: User has 90 seconds to click "I'm still here"
   SCREEN_LOCK_COUNTDOWN: 90 * 1000,
@@ -22,8 +23,11 @@ export const SESSION_CONFIG = {
   // Token refresh: Refresh session before expiry (5 minutes before expiration)
   TOKEN_REFRESH_BUFFER: 5 * 60 * 1000, // 5 minutes buffer
 
+  // Token refresh interval: How often to refresh tokens proactively
+  TOKEN_REFRESH_INTERVAL: 20 * 60 * 1000, // 20 minutes
+
   // Session TTL (for backwards compatibility): Maximum session duration
-  SESSION_TTL: 1 * 60 * 60 * 1000,
+  SESSION_TTL: 24 * 60 * 60 * 1000, // 24 hours
 } as const;
 
 /**

@@ -27,7 +27,7 @@ import { QUERY_KEYS } from "@/lib/constants";
  */
 export const useDepartments = (activeOnly: boolean = true) =>
   useQuery({
-    queryKey: [QUERY_KEYS.DEPARTMENTS?.ALL || "departments", activeOnly],
+    queryKey: [QUERY_KEYS.DEPARTMENTS, "all", activeOnly],
     queryFn: async () => {
       const response = activeOnly
         ? await getActiveDepartments()
@@ -48,7 +48,7 @@ export const useDepartments = (activeOnly: boolean = true) =>
  */
 export const useActiveDepartments = () =>
   useQuery({
-    queryKey: [QUERY_KEYS.DEPARTMENTS?.ACTIVE || "departments-active"],
+    queryKey: [QUERY_KEYS.DEPARTMENTS, "active"],
     queryFn: async () => {
       try {
         const response = await getActiveDepartments();
@@ -79,7 +79,7 @@ export const useDepartmentById = (
   initialData?: Department,
 ) =>
   useQuery({
-    queryKey: [QUERY_KEYS.DEPARTMENTS?.BY_ID || "department", departmentId],
+    queryKey: [QUERY_KEYS.DEPARTMENTS, "by-id", departmentId],
     queryFn: async () => {
       const response = await getDepartmentById(departmentId);
       if (!response.success) throw new Error(response.message);
@@ -122,10 +122,10 @@ export const useCreateDepartment = (onSuccess?: () => void) => {
 
       // Invalidate department queries
       queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.DEPARTMENTS?.ALL || "departments"],
+        queryKey: [QUERY_KEYS.DEPARTMENTS],
       });
       queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.DEPARTMENTS?.ACTIVE || "departments-active"],
+        queryKey: [QUERY_KEYS.DEPARTMENTS, "active"],
       });
 
       onSuccess?.();
@@ -168,13 +168,13 @@ export const useUpdateDepartment = (
       toast.success("Department updated successfully");
 
       queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.DEPARTMENTS?.BY_ID || "department", departmentId],
+        queryKey: [QUERY_KEYS.DEPARTMENTS, "by-id", departmentId],
       });
       queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.DEPARTMENTS?.ALL || "departments"],
+        queryKey: [QUERY_KEYS.DEPARTMENTS],
       });
       queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.DEPARTMENTS?.ACTIVE || "departments-active"],
+        queryKey: [QUERY_KEYS.DEPARTMENTS, "active"],
       });
 
       onSuccess?.();
@@ -214,10 +214,10 @@ export const useDeleteDepartment = (
       toast.success("Department deleted successfully");
 
       queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.DEPARTMENTS?.ALL || "departments"],
+        queryKey: [QUERY_KEYS.DEPARTMENTS],
       });
       queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.DEPARTMENTS?.ACTIVE || "departments-active"],
+        queryKey: [QUERY_KEYS.DEPARTMENTS, "active"],
       });
 
       onSuccess?.();

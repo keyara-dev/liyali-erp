@@ -28,12 +28,14 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import { ApprovalTaskCard } from "@/components/workflows/approval-task-card";
+import { ApprovalTask } from "@/types";
 
 interface ApprovalsListProps {
   userId: string;
+  userRole: string;
 }
 
-export function ApprovalsList({ userId }: ApprovalsListProps) {
+export function ApprovalsList({ userId, userRole }: ApprovalsListProps) {
   const [statusFilter, setStatusFilter] = useState<
     "all" | "pending" | "claimed" | "completed"
   >("pending");
@@ -45,11 +47,19 @@ export function ApprovalsList({ userId }: ApprovalsListProps) {
   const [page, setPage] = useState(1);
   const limit = 10;
 
-  // Mock current user data - replace with actual auth context
+  // Built-in approver roles that can approve any task
+  const APPROVER_ROLES = ["admin", "approver", "finance", "manager", "supervisor", "department_head"];
+
+  // Check if the user has a built-in approver role
+  const isBuiltInApprover = APPROVER_ROLES.some(
+    (role) => role.toLowerCase() === userRole.toLowerCase()
+  );
+
   const currentUser = {
     id: userId,
-    role: "manager", // This should come from actual user context
+    role: userRole,
     name: "Current User",
+    isBuiltInApprover,
   };
 
   // Fetch approval tasks with filter
@@ -116,35 +126,49 @@ export function ApprovalsList({ userId }: ApprovalsListProps) {
     );
   }, [tasks, priorityFilter, searchQuery, sortBy]);
 
+  // Helper to check if user can access a task based on permissions
+  const canUserAccessTask = (task: ApprovalTask) => {
+    // If task is specifically assigned to this user, they can access it
+    if (task.assignedUserId === currentUser.id) {
+      return true;
+    }
+    // If task is assigned to a specific different user, only that user can access
+    if (task.assignedUserId && task.assignedUserId !== currentUser.id) {
+      return false;
+    }
+    // Check if user's role matches the assigned role (case-insensitive)
+    if (task.assignedRole &&
+        task.assignedRole.toLowerCase() === currentUser.role.toLowerCase()) {
+      return true;
+    }
+    // Built-in approvers can access any task (unless specifically assigned to someone else)
+    if (currentUser.isBuiltInApprover) {
+      return true;
+    }
+    return false;
+  };
+
   // Group tasks by status for better organization
   const groupedTasks = useMemo(
     () => ({
       claimedByMe: filteredTasks.filter((task) => {
         const status = task.status?.toLowerCase();
-        return (
-          status === "claimed" && (task as any).claimedBy === currentUser.id
-        );
+        return status === "claimed" && task.claimedBy === currentUser.id;
       }),
       available: filteredTasks.filter((task) => {
         const status = task.status?.toLowerCase();
-        return (
-          status === "pending" &&
-          ((task as any).assignedRole === currentUser.role ||
-            (task as any).assignedUserId === currentUser.id)
-        );
+        return status === "pending" && canUserAccessTask(task);
       }),
       claimedByOthers: filteredTasks.filter((task) => {
         const status = task.status?.toLowerCase();
-        return (
-          status === "claimed" && (task as any).claimedBy !== currentUser.id
-        );
+        return status === "claimed" && task.claimedBy !== currentUser.id;
       }),
       completed: filteredTasks.filter((task) => {
         const status = task.status?.toLowerCase();
-        return status === "approved" || status === "rejected";
+        return status === "approved" || status === "rejected" || status === "completed";
       }),
     }),
-    [filteredTasks, currentUser.id, currentUser.role]
+    [filteredTasks, currentUser.id, currentUser.role, currentUser.isBuiltInApprover]
   );
 
   const stats = useMemo(

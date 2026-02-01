@@ -1,43 +1,43 @@
 /**
  * QR Code utility functions for PDF documents
- * Generates QR codes that encode document information for tracking
+ * Generates QR codes that encode document information for tracking and verification
  */
 
 /**
- * Generate QR code data for a document
- * This creates a URL or string that encodes document information
+ * Get the verification URL for a document
+ * @param documentNumber The document number (unique identifier)
+ * @param organizationId Optional organization ID for additional filtering
  */
-export function generateDocumentQRData(
-  documentType: 'REQUISITION' | 'PURCHASE_ORDER' | 'PAYMENT_VOUCHER',
-  documentNumber: string,
-  documentId: string,
-  timestamp: Date
-): string {
-  // Format: TYPE|NUMBER|ID|TIMESTAMP|CHECKSUM
-  const data = `${documentType}|${documentNumber}|${documentId}|${timestamp.toISOString()}`
-  return data
+export function getVerificationUrl(documentNumber: string, organizationId?: string): string {
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  let url = `${baseUrl}/verify/${encodeURIComponent(documentNumber)}`;
+
+  // Add organization ID as query parameter if provided (for filtering/analytics)
+  if (organizationId) {
+    url += `?org=${encodeURIComponent(organizationId)}`;
+  }
+
+  return url;
 }
 
 /**
- * Generate a unique tracking code for a document
- * Format: TYPE-DOCNUM-HASH-TIMESTAMP
+ * Generate QR code data for a document
+ * Returns the verification URL that can be scanned to verify the document
+ * @param documentType The type of document
+ * @param documentNumber The document number
+ * @param documentId The document UUID
+ * @param timestamp The creation timestamp
+ * @param organizationId Optional organization ID for additional context
  */
-export function generateTrackingCode(
-  documentType: string,
-  documentNumber: string
+export function generateDocumentQRData(
+  documentType: "REQUISITION" | "PURCHASE_ORDER" | "PAYMENT_VOUCHER" | "GRN",
+  documentNumber: string,
+  documentId: string,
+  timestamp: Date,
+  organizationId?: string
 ): string {
-  const typePrefix = documentType === 'REQUISITION' ? 'REQ' :
-                     documentType === 'PURCHASE_ORDER' ? 'PO' :
-                     documentType === 'PAYMENT_VOUCHER' ? 'PV' : 'DOC'
-
-  // Create a simple hash from document number
-  const hash = Math.abs(documentNumber.split('').reduce((acc, char) => {
-    return ((acc << 5) - acc) + char.charCodeAt(0)
-  }, 0)).toString(16).substring(0, 6).toUpperCase()
-
-  const timestamp = new Date().getTime().toString(36).toUpperCase()
-
-  return `${typePrefix}-${hash}-${timestamp}`
+  // Return the verification URL - this is what gets encoded in the QR code
+  return getVerificationUrl(documentNumber, organizationId);
 }
 
 /**
@@ -46,32 +46,66 @@ export function generateTrackingCode(
  */
 export function getQRCodeUrl(data: string, size: number = 200): string {
   // Encode the data for URL
-  const encodedData = encodeURIComponent(data)
+  const encodedData = encodeURIComponent(data);
   // Using QR Server API - free, no authentication needed
-  return `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encodedData}`
+  return `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encodedData}`;
+}
+
+/**
+ * Get the QR code image URL for a document
+ * This returns a URL to a QR code image that encodes the verification URL
+ * @param documentNumber The document number
+ * @param size The size of the QR code image (default: 200)
+ * @param organizationId Optional organization ID for additional context
+ */
+export function getDocumentQRCodeUrl(
+  documentNumber: string,
+  size: number = 200,
+  organizationId?: string
+): string {
+  const verificationUrl = getVerificationUrl(documentNumber, organizationId);
+  return getQRCodeUrl(verificationUrl, size);
 }
 
 /**
  * Create a local QR code as data URL
  * For offline/embedded QR codes in PDFs
  */
-export async function generateQRCodeDataUrl(data: string, size: number = 200): Promise<string> {
+export async function generateQRCodeDataUrl(
+  data: string,
+  size: number = 200
+): Promise<string> {
   try {
-    const QRCode = require('qrcode')
+    const QRCode = require("qrcode");
     // Generate QR code as data URL
     const dataUrl = await QRCode.toDataURL(data, {
-      errorCorrectionLevel: 'H',
-      type: 'image/png',
+      errorCorrectionLevel: "H",
+      type: "image/png",
       quality: 0.95,
       margin: 1,
       width: size,
-    })
-    return dataUrl
+    });
+    return dataUrl;
   } catch (error) {
-    console.error('Error generating QR code:', error)
+    console.error("Error generating QR code:", error);
     // Fallback to online QR service
-    return getQRCodeUrl(data, size)
+    return getQRCodeUrl(data, size);
   }
+}
+
+/**
+ * Generate QR code data URL for a document verification
+ * @param documentNumber The document number
+ * @param size The size of the QR code image (default: 200)
+ * @param organizationId Optional organization ID for additional context
+ */
+export async function generateDocumentQRCodeDataUrl(
+  documentNumber: string,
+  size: number = 200,
+  organizationId?: string
+): Promise<string> {
+  const verificationUrl = getVerificationUrl(documentNumber, organizationId);
+  return generateQRCodeDataUrl(verificationUrl, size);
 }
 
 /**
@@ -88,5 +122,5 @@ export function formatTrackingInfo(
     `ID: ${documentId}`,
     `Status: ${status}`,
     `Created: ${createdDate.toLocaleDateString()}`,
-  ].join(' | ')
+  ].join(" | ");
 }

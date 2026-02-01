@@ -17,12 +17,14 @@ import {
   Clock,
   Tag,
   FileText,
+  Undo2,
 } from "lucide-react";
 import { PageHeader } from "@/components/base/page-header";
 import {
   useRequisitionById,
   useSubmitRequisitionForApproval,
 } from "@/hooks/use-requisition-queries";
+import { useWithdrawRequisition } from "@/hooks/use-requisition-mutations";
 import { useRequisitionStorage } from "@/hooks/use-requisition-storage";
 import { Requisition } from "@/types/requisition";
 import { ApprovalHistoryPanel } from "./approval-history-panel";
@@ -42,6 +44,7 @@ import {
 } from "@/lib/pdf/pdf-export";
 import { toast } from "sonner";
 import { PDFPreviewDialog } from "@/components/modals/pdf-preview-dialog";
+import { ConfirmationModal } from "@/components/modals/confirmation-modal";
 import { is } from "date-fns/locale";
 import { Badge } from "@/components";
 
@@ -64,6 +67,8 @@ export function RequisitionDetailClient({
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewBlob, setPreviewBlob] = useState<Blob | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [showSubmitModal, setShowSubmitModal] = useState(false);
+  const [showWithdrawModal, setShowWithdrawModal] = useState(false);
 
   // Use the new hook with initialData from server component
   const {
@@ -75,6 +80,12 @@ export function RequisitionDetailClient({
   // Submit mutation
   const submitMutation = useSubmitRequisitionForApproval(requisitionId, () => {
     // After successful submission, refetch to get updated data
+    refetch();
+  });
+
+  // Withdraw mutation
+  const withdrawMutation = useWithdrawRequisition(() => {
+    // After successful withdrawal, refetch to get updated data
     refetch();
   });
 
@@ -122,6 +133,7 @@ export function RequisitionDetailClient({
       if (submitMutation.data?.data) {
         saveToStorage(submitMutation.data.data);
       }
+      setShowSubmitModal(false);
     } catch (error) {
       console.error("Submit error:", error);
     }
@@ -136,6 +148,16 @@ export function RequisitionDetailClient({
     refetch(); // Refresh the data
   };
 
+  const handleWithdraw = async () => {
+    if (!requisition) return;
+    try {
+      await withdrawMutation.mutateAsync(requisition.id);
+      setShowWithdrawModal(false);
+    } catch (error) {
+      console.error("Withdraw error:", error);
+    }
+  };
+
   const isCreator =
     requisition?.requestedBy === userId || requisition?.requesterId === userId;
   const canEdit =
@@ -143,6 +165,7 @@ export function RequisitionDetailClient({
     (requisition?.status === "draft" || requisition?.status === "rejected");
 
   const canSubmit = requisition?.status === "draft" && isCreator;
+  const canWithdraw = requisition?.status === "pending" && isCreator;
 
   if (isLoading && !requisition) {
     return (
@@ -223,14 +246,21 @@ export function RequisitionDetailClient({
           )}
           {canSubmit && (
             <Button
-              onClick={handleSubmitForApproval}
-              disabled={submitMutation.isPending}
-              isLoading={submitMutation.isPending}
-              loadingText="Submitting..."
+              onClick={() => setShowSubmitModal(true)}
               className="gap-2 h-11"
             >
               <Send className="h-4 w-4" />
               Submit for Approval
+            </Button>
+          )}
+          {canWithdraw && (
+            <Button
+              onClick={() => setShowWithdrawModal(true)}
+              variant="outline"
+              className="gap-2 h-11 text-amber-600 border-amber-300 hover:bg-amber-50"
+            >
+              <Undo2 className="h-4 w-4" />
+              Withdraw
             </Button>
           )}
         </div>
@@ -724,7 +754,7 @@ export function RequisitionDetailClient({
           open={previewOpen}
           onOpenChange={setPreviewOpen}
           pdfBlob={previewBlob}
-          fileName={`REQ-${requisition.documentNumber}.pdf`}
+          fileName={`Requisition: ${requisition.documentNumber}`}
           onDownload={handleExportPDF}
         />
       )}
@@ -737,6 +767,28 @@ export function RequisitionDetailClient({
         userId={userId}
         editingRequisition={requisition}
         isEditing={true}
+      />
+
+      {/* Submit Confirmation Modal */}
+      <ConfirmationModal
+        open={showSubmitModal}
+        onOpenChange={setShowSubmitModal}
+        onConfirm={handleSubmitForApproval}
+        type="submit"
+        title="Submit for Approval"
+        description={`Are you sure you want to submit requisition ${requisition.documentNumber || requisition.id} for approval? Once submitted, it will be sent to the appropriate approvers for review.`}
+        isLoading={submitMutation.isPending}
+      />
+
+      {/* Withdraw Confirmation Modal */}
+      <ConfirmationModal
+        open={showWithdrawModal}
+        onOpenChange={setShowWithdrawModal}
+        onConfirm={handleWithdraw}
+        type="withdraw"
+        title="Withdraw Requisition"
+        description={`Are you sure you want to withdraw requisition ${requisition.documentNumber || requisition.id}? It will be reverted to draft status and you can edit and re-submit it later.`}
+        isLoading={withdrawMutation.isPending}
       />
     </div>
   );

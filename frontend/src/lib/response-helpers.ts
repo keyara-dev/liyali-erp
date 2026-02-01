@@ -76,8 +76,8 @@ export function handleError(
   return {
     success: false,
     message:
-      error?.response?.data?.error ||
       error?.response?.data?.message ||
+      error?.response?.data?.error ||
       error?.response?.message ||
       error?.message ||
       "Oops! Something went wrong. Please try again.",

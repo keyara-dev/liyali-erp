@@ -17,6 +17,7 @@ import { ActionHistoryEntry, ApprovalRecord } from "@/types";
 import { WorkflowDocument } from "@/types/workflow";
 import { ApprovalActionPanel } from "./requisition-approval-panel";
 import { useApprovalPanelData } from "@/hooks/use-approval-history";
+import { StatusBadge } from "@/components/status-badge";
 
 interface ApprovalHistoryPanelProps {
   requisitionId: string;
@@ -120,7 +121,7 @@ export function ApprovalHistoryPanel({
   const sortedHistory = [...(actionHistory || [])].sort(
     (a, b) =>
       new Date(b.performedAt || b.timestamp || 0).getTime() -
-      new Date(a.performedAt || a.timestamp || 0).getTime()
+      new Date(a.performedAt || a.timestamp || 0).getTime(),
   );
 
   // Combine approval history from both sources
@@ -137,8 +138,8 @@ export function ApprovalHistoryPanel({
             t.approverId === item.approverId) ||
           (t.stageNumber &&
             item.stageNumber &&
-            t.stageNumber === item.stageNumber)
-      )
+            t.stageNumber === item.stageNumber),
+      ),
   );
 
   if (hasError && !actionHistory?.length) {
@@ -215,7 +216,7 @@ export function ApprovalHistoryPanel({
                       </div>
                       <p className="text-xs text-gray-600 mt-1">
                         {new Date(
-                          action.performedAt || action.timestamp || 0
+                          action.performedAt || action.timestamp || 0,
                         ).toLocaleString()}
                       </p>
 
@@ -461,7 +462,7 @@ export function ApprovalHistoryPanel({
                                   </span>
                                   <span className="ml-1">
                                     {new Date(
-                                      stage.completedAt
+                                      stage.completedAt,
                                     ).toLocaleString()}
                                   </span>
                                 </p>
@@ -605,7 +606,7 @@ export function ApprovalHistoryPanel({
                                       {new Date(
                                         approval.actionTakenAt ||
                                           approval.approvedAt ||
-                                          ""
+                                          "",
                                       ).toLocaleString()}
                                     </p>
                                   )}
@@ -623,7 +624,7 @@ export function ApprovalHistoryPanel({
                                   )}
                                 </div>
 
-                                <div className="flex-shrink-0">
+                                <div className="shrink-0">
                                   {getActionIcon(approval.status || "PENDING")}
                                 </div>
                               </div>
@@ -729,8 +730,10 @@ export function ApprovalHistoryPanel({
               ) : (
                 <>
                   {/* Approval Action Panel - Show if user can approve */}
-                  {(requisition.status === "IN_REVIEW" ||
-                    requisition.status === "pending") &&
+                  {/* Check both requisition status and workflow status for pending/in_progress states */}
+                  {(requisition.status?.toLowerCase() === "pending" ||
+                    requisition.status?.toLowerCase() === "in_review" ||
+                    workflowStatus?.status === "in_progress") &&
                   workflowStatus?.canApprove ? (
                     <div className="p-6 bg-blue-50 border border-blue-200 rounded-lg">
                       <h4 className="font-semibold text-lg text-blue-900 mb-2 flex items-center gap-2">
@@ -797,18 +800,11 @@ export function ApprovalHistoryPanel({
 
             {/* Status Badge */}
             <div className="flex items-center justify-center">
-              <Badge
-                variant={
-                  workflowStatus.status === "completed"
-                    ? "default"
-                    : workflowStatus.status === "rejected"
-                      ? "destructive"
-                      : "secondary"
-                }
+              <StatusBadge
+                status={workflowStatus.status || "unknown"}
+                type="approval"
                 className="text-xs px-3 py-1"
-              >
-                {workflowStatus.status?.toUpperCase() || "UNKNOWN"}
-              </Badge>
+              />
             </div>
 
             {/* Next Action */}
@@ -818,7 +814,7 @@ export function ApprovalHistoryPanel({
                 workflowStatus.status !== "rejected" && (
                   <div className="text-right">
                     <p className="text-xs text-gray-500">Next approver:</p>
-                    <p className="font-medium text-gray-700 truncate">
+                    <p className="font-medium text-gray-700 truncate capitalize">
                       {workflowStatus.nextApprover}
                     </p>
                   </div>

@@ -49,8 +49,8 @@ export function WorkflowBuilder({
     const defaultData = {
       name: "",
       description: "",
-      entityType: "REQUISITION",
-      documentType: "REQUISITION", // Keep for compatibility
+      entityType: "requisition",
+      documentType: "requisition", // Keep for compatibility
       stages: [],
       isDefault: false,
       isActive: true,
@@ -68,8 +68,10 @@ export function WorkflowBuilder({
         })) || [];
 
       // Ensure both entityType and documentType are set for compatibility
-      const entityType =
-        initialData.entityType || initialData.documentType || "REQUISITION";
+      // Also normalize to lowercase to match backend expectations
+      const rawEntityType =
+        initialData.entityType || initialData.documentType || "requisition";
+      const entityType = rawEntityType.toLowerCase();
 
       return {
         ...defaultData,

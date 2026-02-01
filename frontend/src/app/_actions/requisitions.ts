@@ -191,6 +191,25 @@ export async function getRequisitionStats(): Promise<APIResponse<RequisitionStat
 }
 
 /**
+ * Withdraw requisition (PENDING only, not claimed)
+ * Calls: POST /api/v1/requisitions/{id}/withdraw
+ */
+export async function withdrawRequisition(requisitionId: string): Promise<APIResponse<Requisition>> {
+  const url = `/api/v1/requisitions/${requisitionId}/withdraw`;
+
+  try {
+    const response = await authenticatedApiClient({
+      method: 'POST',
+      url,
+    });
+
+    return successResponse(response.data?.data, response.data?.message || 'Requisition withdrawn successfully');
+  } catch (error: any) {
+    return handleError(error, 'POST', url);
+  }
+}
+
+/**
  * Delete requisition (DRAFT only)
  * Calls: DELETE /api/v1/requisitions/{id}
  */

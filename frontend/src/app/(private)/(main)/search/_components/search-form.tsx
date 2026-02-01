@@ -18,22 +18,22 @@ interface SearchFormProps {
   isSearching: boolean;
 }
 
-const DOCUMENT_TYPES: { id: string; name: string }[] = [
-  { id: "ALL", name: "All Document Types" },
-  { id: "REQUISITION", name: "Requisitions" },
-  { id: "PURCHASE_ORDER", name: "Purchase Orders" },
-  { id: "PAYMENT_VOUCHER", name: "Payment Vouchers" },
-  { id: "GOODS_RECEIVED_NOTE", name: "Goods Received Notes" },
+const DOCUMENT_TYPES = [
+  { value: "ALL", name: "All Document Types" },
+  { value: "REQUISITION", name: "Requisitions" },
+  { value: "PURCHASE_ORDER", name: "Purchase Orders" },
+  { value: "PAYMENT_VOUCHER", name: "Payment Vouchers" },
+  { value: "GOODS_RECEIVED_NOTE", name: "Goods Received Notes" },
 ];
 
-const STATUSES: { id: string; name: string }[] = [
-  { id: "ALL", name: "All Statuses" },
-  { id: "DRAFT", name: "Draft" },
-  { id: "SUBMITTED", name: "Submitted" },
-  { id: "IN_REVIEW", name: "In Approval" },
-  { id: "APPROVED", name: "Approved" },
-  { id: "REJECTED", name: "Rejected" },
-  { id: "REVERSED", name: "Reversed" },
+const STATUSES = [
+  { value: "ALL", name: "All Statuses" },
+  { value: "DRAFT", name: "Draft" },
+  { value: "SUBMITTED", name: "Submitted" },
+  { value: "IN_REVIEW", name: "In Approval" },
+  { value: "APPROVED", name: "Approved" },
+  { value: "REJECTED", name: "Rejected" },
+  { value: "REVERSED", name: "Reversed" },
 ];
 
 export function SearchForm({ onSearch, isSearching }: SearchFormProps) {

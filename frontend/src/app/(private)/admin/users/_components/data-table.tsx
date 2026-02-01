@@ -572,9 +572,9 @@ export default function UsersDataTable({
                 isDisabled={isPending}
                 placeholder="Status"
                 options={[
-                  { id: "all", name: "All Status" },
-                  { id: "active", name: "Active" },
-                  { id: "inactive", name: "Inactive" },
+                  { value: "all", name: "All Status" },
+                  { value: "active", name: "Active" },
+                  { value: "inactive", name: "Inactive" },
                 ]}
                 classNames={{
                   wrapper: "w-full sm:w-36",
@@ -588,9 +588,9 @@ export default function UsersDataTable({
                 isDisabled={isPending}
                 placeholder="Role"
                 options={[
-                  { id: "all", name: "All Roles" },
+                  { value: "all", name: "All Roles" },
                   ...uniqueRoles.map((role) => ({
-                    id: role,
+                    value: role,
                     name: role,
                   })),
                 ]}
@@ -606,9 +606,9 @@ export default function UsersDataTable({
                 isDisabled={isPending}
                 placeholder="Department"
                 options={[
-                  { id: "all", name: "All Departments" },
+                  { value: "all", name: "All Departments" },
                   ...uniqueDepartments.map((dept) => ({
-                    id: dept,
+                    value: dept,
                     name: dept,
                   })),
                 ]}

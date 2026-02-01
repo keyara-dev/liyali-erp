@@ -32,7 +32,7 @@ type AuthService struct {
 
 // Configuration constants
 const (
-	AccessTokenDuration     = 1 * time.Hour
+	AccessTokenDuration     = 24 * time.Hour     // 24 hours
 	RefreshTokenDuration    = 7 * 24 * time.Hour // 7 days
 	PasswordResetExpiry     = 1 * time.Hour
 	EmailVerificationExpiry = 24 * time.Hour

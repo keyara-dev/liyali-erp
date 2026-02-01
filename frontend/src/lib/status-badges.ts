@@ -16,8 +16,10 @@ type BadgeVariant =
 export type DocumentStatus =
   | "draft"
   | "submitted"
+  | "pending"
   | "in_review"
   | "approved"
+  | "success"
   | "rejected"
   | "reversed";
 
@@ -41,7 +43,11 @@ export type ExecutionStatus =
   | "in_progress";
 
 // Approval Status
-export type ApprovalStatus = "approved" | "rejected" | "pending";
+export type ApprovalStatus =
+  | "approved"
+  | "rejected"
+  | "pending"
+  | "in_progress";
 
 // Compliance Status
 export type ComplianceStatus = "compliant" | "non-compliant" | "pending";
@@ -86,10 +92,20 @@ export const DOCUMENT_STATUS_CONFIG: Record<
     label: "In Review",
     description: "Document is pending approval",
   },
+  pending: {
+    variant: "warning",
+    label: "In Review",
+    description: "Document is pending approval",
+  },
   approved: {
     variant: "success",
     label: "Approved",
     description: "Document has been approved",
+  },
+  success: {
+    variant: "success",
+    label: "Success",
+    description: "Document has been processed successfully",
   },
   rejected: {
     variant: "destructive",
@@ -203,6 +219,10 @@ export const APPROVAL_STATUS_CONFIG: Record<
   pending: {
     variant: "warning",
     label: "Pending",
+  },
+  in_progress: {
+    variant: "warning",
+    label: "In Progress",
   },
 };
 
