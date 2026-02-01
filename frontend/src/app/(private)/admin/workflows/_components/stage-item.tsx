@@ -2,10 +2,11 @@
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Edit2, Trash2, GripVertical } from "lucide-react";
+import { Edit2, Trash2, GripVertical, Edit } from "lucide-react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import type { WorkflowStage } from "@/types/workflow-config";
+import { useActiveRoles } from "@/hooks/use-role-queries";
 
 interface StageItemProps {
   stage: WorkflowStage;
@@ -13,17 +14,11 @@ interface StageItemProps {
   onDelete: () => void;
 }
 
-const APPROVER_ROLE_LABELS: Record<string, string> = {
-  DEPARTMENT_MANAGER: "Department Manager",
-  FINANCE_OFFICER: "Finance Officer",
-  CFO: "CFO",
-  WAREHOUSE_MANAGER: "Warehouse Manager",
-  PROCUREMENT_OFFICER: "Procurement Officer",
-  ADMIN: "Admin",
-};
-
 export function StageItem({ stage, onEdit, onDelete }: StageItemProps) {
   console.log("StageItem rendered with stage:", stage);
+
+  // Fetch roles to resolve role ID to name
+  const { data: roles = [] } = useActiveRoles();
 
   const {
     attributes,
@@ -42,13 +37,10 @@ export function StageItem({ stage, onEdit, onDelete }: StageItemProps) {
     opacity: isDragging ? 0.5 : 1,
   };
 
-  const approverRoleLabel =
-    APPROVER_ROLE_LABELS[
-      stage.approverRole as keyof typeof APPROVER_ROLE_LABELS
-    ] ||
-    stage.approverRole ||
-    stage.requiredRole ||
-    "Not Set";
+  // Find role name by ID, fallback to the raw value if not found
+  const roleId = stage.approverRole || stage.requiredRole;
+  const role = roles.find((r) => r.id === roleId);
+  const approverRoleLabel = role?.name || roleId || "Not Set";
   const requiredApprovalsLabel =
     stage.requiredApprovals === 5 ? "All" : stage.requiredApprovals;
   const hasPermissions = stage.canReject || stage.canReassign;
@@ -85,7 +77,7 @@ export function StageItem({ stage, onEdit, onDelete }: StageItemProps) {
                   {stage.order || stage.stageNumber}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold text-base leading-tight">
+                  <h3 className="font-semibold capitalize text-base leading-tight">
                     {stage.name || stage.stageName}
                   </h3>
                   {stage.description && (
@@ -104,7 +96,7 @@ export function StageItem({ stage, onEdit, onDelete }: StageItemProps) {
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                   Approver Role
                 </p>
-                <p className="text-sm font-semibold mt-1">
+                <p className="text-sm font-semibold capitalize mt-1">
                   {approverRoleLabel}
                 </p>
               </div>
@@ -150,7 +142,7 @@ export function StageItem({ stage, onEdit, onDelete }: StageItemProps) {
                 className="h-8 w-8 p-0"
                 title="Edit stage"
               >
-                <Edit2 className="h-4 w-4" />
+                <Edit className="h-4 w-4" />
               </Button>
               <Button
                 variant="ghost"

@@ -12,6 +12,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useActiveRoles } from "@/hooks/use-role-queries";
 import type { WorkflowStage } from "@/types/workflow-config";
 
 interface StageFormProps {
@@ -21,16 +23,10 @@ interface StageFormProps {
   errors: Record<string, string>;
 }
 
-const APPROVER_ROLES = [
-  { id: "DEPARTMENT_MANAGER", name: "Department Manager" },
-  { id: "FINANCE_OFFICER", name: "Finance Officer" },
-  { id: "CFO", name: "CFO" },
-  { id: "WAREHOUSE_MANAGER", name: "Warehouse Manager" },
-  { id: "PROCUREMENT_OFFICER", name: "Procurement Officer" },
-  { id: "ADMIN", name: "Admin" },
-];
-
 export function StageForm({ stage, onSave, onCancel, errors }: StageFormProps) {
+  // Fetch roles from backend
+  const { data: roles = [], isLoading: rolesLoading } = useActiveRoles();
+
   console.log("StageForm received stage:", stage);
 
   const [formData, setFormData] = useState<WorkflowStage>(() => {
@@ -160,23 +156,27 @@ export function StageForm({ stage, onSave, onCancel, errors }: StageFormProps) {
         <label className="text-sm font-medium">
           Approver Role <span className="text-destructive">*</span>
         </label>
-        <Select
-          value={formData.approverRole}
-          onValueChange={(value) => handleChange("approverRole", value)}
-        >
-          <SelectTrigger
-            className={errors.approverRole ? "border-destructive" : ""}
+        {rolesLoading ? (
+          <Skeleton className="h-10 w-full" />
+        ) : (
+          <Select
+            value={formData.approverRole}
+            onValueChange={(value) => handleChange("approverRole", value)}
           >
-            <SelectValue placeholder="Select approver role" />
-          </SelectTrigger>
-          <SelectContent>
-            {APPROVER_ROLES.map((role) => (
-              <SelectItem key={role.id} value={role.id}>
-                {role.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+            <SelectTrigger
+              className={errors.approverRole ? "border-destructive" : ""}
+            >
+              <SelectValue placeholder="Select approver role" />
+            </SelectTrigger>
+            <SelectContent>
+              {roles.map((role) => (
+                <SelectItem key={role.id} value={role.id}>
+                  {role.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
         {errors.approverRole && (
           <p className="text-sm text-destructive">{errors.approverRole}</p>
         )}

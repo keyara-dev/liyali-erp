@@ -21,7 +21,6 @@ import { DataTable } from "@/components/ui/data-table";
 import {
   Tooltip,
   TooltipContent,
-  TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Requisition } from "@/types/requisition";
@@ -30,14 +29,12 @@ import {
   useSubmitRequisitionForApproval,
 } from "@/hooks/use-requisition-queries";
 import { useApprovalWorkflowStatus } from "@/hooks/use-approval-history";
-import type { ActionButton } from "@/components/ui/action-buttons";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { toast } from "sonner";
 
 interface RequisitionsTableProps {
   userId: string;
@@ -61,7 +58,7 @@ const columns: ColumnDef<Requisition>[] = [
       </Button>
     ),
     cell: ({ row }) => (
-      <div className="font-semibold">
+      <div className="font-semibold uppercase">
         {row.original.documentNumber || row.original.id}
       </div>
     ),
@@ -72,7 +69,7 @@ const columns: ColumnDef<Requisition>[] = [
     cell: ({ row }) => (
       <Tooltip>
         <TooltipTrigger asChild>
-          <div className="max-w-[200px] truncate font-medium cursor-help">
+          <div className="max-w-[200px] truncate capitalize font-medium cursor-help">
             {row.original.title || "-"}
           </div>
         </TooltipTrigger>
@@ -107,7 +104,11 @@ const columns: ColumnDef<Requisition>[] = [
   {
     accessorKey: "department",
     header: "Department",
-    cell: ({ row }) => <div>{row.original.department || "-"}</div>,
+    cell: ({ row }) => (
+      <div className="font-medium capitalize">
+        {row.original.department || "-"}
+      </div>
+    ),
   },
   {
     accessorKey: "priority",
@@ -123,7 +124,7 @@ const columns: ColumnDef<Requisition>[] = [
 
       return (
         <span
-          className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${
+          className={`inline-flex capitalize items-center px-2 py-1 rounded-full text-xs font-medium border ${
             priorityColors[priority as keyof typeof priorityColors] ||
             priorityColors.medium
           }`}
@@ -140,7 +141,7 @@ const columns: ColumnDef<Requisition>[] = [
       const itemsCount = row.original.items?.length || 0;
       return (
         <div className="text-center">
-          <span className="inline-flex items-center justify-center w-6 h-6 text-xs font-medium bg-gray-100 rounded-full">
+          <span className="inline-flex items-center justify-center w-6 h-6 text-xs font-medium bg-foreground/5 rounded-full">
             {itemsCount}
           </span>
         </div>
@@ -395,34 +396,6 @@ export function RequisitionsTable({
     return [];
   }, [requisitions]);
 
-  // const getActions = useCallback(
-  //   (req: Requisition): ActionButton[] => {
-  //     const actions: ActionButton[] = [
-  //       {
-  //         icon: <Eye className="h-3.5 w-3.5" />,
-  //         label: 'View',
-  //         tooltip: 'View Details',
-  //         onClick: () => router.push(`/requisitions/${req.id}`),
-  //       },
-  //     ];
-
-  //     // Only allow edit and delete for draft status
-  //     if (req.status === 'draft') {
-  //       actions.push(
-  //         {
-  //           icon: <Pencil className="h-3.5 w-3.5" />,
-  //           label: 'Edit',
-  //           tooltip: 'Edit Requisition',
-  //           onClick: () => onEditRequisition(req), // Use callback instead of navigation
-  //         }
-  //       );
-  //     }
-
-  //     return actions;
-  //   },
-  //   [router, onEditRequisition]
-  // );
-
   return (
     <DataTable
       columns={columns}
@@ -441,7 +414,7 @@ export function RequisitionsTable({
         ),
       }}
       renderRowActions={(req: Requisition) => (
-        <TooltipProvider>
+        <>
           <ReqOptionsMenu
             req={req}
             router={router}
@@ -450,7 +423,7 @@ export function RequisitionsTable({
             userRole={userRole}
             onRefresh={refetch}
           />
-        </TooltipProvider>
+        </>
       )}
     />
   );

@@ -7,6 +7,7 @@ import { Toaster } from "sonner";
 
 import { useOfflineQueueProcessor } from "@/hooks/use-offline-queue-processor";
 import { TokenRefreshProvider } from "@/components/auth/token-refresh-provider";
+import { TooltipProvider } from "@/components";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -53,9 +54,11 @@ export function Providers({ children }: { children: React.ReactNode }) {
         disableTransitionOnChange
       >
         <QueryClientProvider client={queryClient}>
-          <StorageInitializer>
-            <TokenRefreshProvider>{children}</TokenRefreshProvider>
-          </StorageInitializer>
+          <TooltipProvider>
+            <StorageInitializer>
+              <TokenRefreshProvider>{children}</TokenRefreshProvider>
+            </StorageInitializer>
+          </TooltipProvider>
           <Toaster
             position="top-right"
             expand
