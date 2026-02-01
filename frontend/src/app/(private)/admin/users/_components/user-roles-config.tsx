@@ -10,7 +10,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { ShieldIcon, Plus, Edit, InfoIcon } from "lucide-react";
+import { ShieldIcon, Plus, Edit, Eye, InfoIcon, View } from "lucide-react";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { QUERY_KEYS } from "@/lib/constants";
 import { toast } from "sonner";
@@ -50,7 +50,10 @@ import {
   EmptyTitle,
 } from "@/components/ui/empty";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getRolesAction } from "@/app/_actions/roles-permissions";
+import {
+  getRolesAction,
+  OrganizationRole,
+} from "@/app/_actions/roles-permissions";
 import { createRole, updateRole } from "@/app/_actions/roles-permissions";
 import {
   getAvailablePermissionsAction,
@@ -68,16 +71,6 @@ interface RoleFormData {
   description?: string;
 }
 
-interface Role {
-  id: string;
-  name: string;
-  description?: string;
-  permissions: string[];
-  active: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
-
 interface PermissionGroup {
   resource: string;
   permissions: string[];
@@ -91,7 +84,7 @@ const parsePermission = (permission: string) => {
 
 // Group permissions by resource
 const groupPermissionsByResource = (
-  permissions: string[]
+  permissions: string[],
 ): PermissionGroup[] => {
   const groups: { [key: string]: string[] } = {};
 
@@ -126,28 +119,20 @@ export default function UserRolesConfig({}: RolesPermissionsProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const [openRoleModal, setOpenRoleModal] = useState(false);
-  const [editingRole, setEditingRole] = useState<Role | null>(null);
+  const [editingRole, setEditingRole] = useState<OrganizationRole | null>(null);
 
   // Fetch roles for this organization
-  const { data: rolesData, isLoading: rolesLoading } = useQuery({
+  const { data: roles, isLoading: rolesLoading } = useQuery({
     queryKey: [QUERY_KEYS.ROLES],
     queryFn: async () => {
       // Fetch roles from backend via action
       const response = await getRolesAction();
       if (!response.success)
         throw new Error(response.message || "Failed to fetch roles");
-      return response;
+      return response?.data || [];
     },
     staleTime: 5 * 60 * 1000,
   });
-
-  const rolesResponse = rolesData || { success: true, data: [] };
-
-  const roles: Role[] = useMemo(
-    () =>
-      rolesResponse?.success && rolesResponse.data ? rolesResponse.data : [],
-    [rolesResponse]
-  );
 
   if (rolesLoading) {
     return (
@@ -259,26 +244,31 @@ export default function UserRolesConfig({}: RolesPermissionsProps) {
                 size="sm"
                 variant="ghost"
                 className="absolute right-2 top-2 h-8 w-8 p-0"
+                title={role.isDefault ? "View system role" : "Edit role"}
                 onClick={(e) => {
                   e.stopPropagation();
                   setEditingRole(role);
                   setOpenRoleModal(true);
                 }}
               >
-                <Edit className="h-4 w-4" />
+                {role.isDefault ? (
+                  <View className="h-4 w-4" />
+                ) : (
+                  <Edit className="h-4 w-4" />
+                )}
               </Button>
               <div
                 className="mb-2 flex items-center gap-2"
-                title={role.active ? "Active" : "Inactive"}
+                title={role.isActive ? "Active" : "Inactive"}
               >
                 <ShieldIcon className="h-5 w-5" />
-                <h3 className="font-medium">{role.name}</h3>
+                <h3 className="font-medium capitalize">{role.name}</h3>
               </div>
-              <p className="text-muted-foreground text-sm">
+              <p className="text-muted-foreground text-xs">
                 {role.description || "No description provided"}
               </p>
-              <p className="text-xs text-muted-foreground mt-2">
-                {role.permissions?.length || 0} permissions assigned
+              <p className="text-xs capitalize font-medium text-muted-foreground mt-2">
+                {role.permissionsCount || 0} permissions assigned
               </p>
             </div>
           ))}
@@ -303,8 +293,8 @@ const ROLE_INITIAL_STATE: RoleFormData = {
 interface CreateOrUpdateRoleDialogProps {
   openModal: boolean;
   setOpenModal: React.Dispatch<React.SetStateAction<boolean>>;
-  initialData: Role | null;
-  setInitialData: React.Dispatch<React.SetStateAction<Role | null>>;
+  initialData: OrganizationRole | null;
+  setInitialData: React.Dispatch<React.SetStateAction<OrganizationRole | null>>;
 }
 
 function CreateOrUpdateRoleDialog({
@@ -314,13 +304,14 @@ function CreateOrUpdateRoleDialog({
   setInitialData,
 }: CreateOrUpdateRoleDialogProps) {
   const queryClient = useQueryClient();
+
   const [formData, setFormData] = useState<RoleFormData>(
     initialData
       ? {
           name: initialData.name,
           description: initialData.description || "",
         }
-      : ROLE_INITIAL_STATE
+      : ROLE_INITIAL_STATE,
   );
   const [error, setError] = useState<{ status: boolean; message: string }>({
     status: false,
@@ -399,7 +390,7 @@ function CreateOrUpdateRoleDialog({
   const toggleAllPermissions = () => {
     const allPermissions = availablePermissions;
     const allSelected = allPermissions.every((permission) =>
-      rolePermissions.includes(permission)
+      rolePermissions.includes(permission),
     );
 
     if (allSelected) {
@@ -417,7 +408,7 @@ function CreateOrUpdateRoleDialog({
     return (
       availablePermissions.length > 0 &&
       availablePermissions.every((permission) =>
-        rolePermissions.includes(permission)
+        rolePermissions.includes(permission),
       )
     );
   }, [availablePermissions, rolePermissions]);
@@ -430,13 +421,13 @@ function CreateOrUpdateRoleDialog({
   // Toggle all permissions for a specific resource group
   const toggleGroupPermissions = (groupPermissions: string[]) => {
     const allGroupSelected = groupPermissions.every((permission) =>
-      rolePermissions.includes(permission)
+      rolePermissions.includes(permission),
     );
 
     if (allGroupSelected) {
       // Deselect all permissions in this group
       setRolePermissions((prev) =>
-        prev.filter((p) => !groupPermissions.includes(p))
+        prev.filter((p) => !groupPermissions.includes(p)),
       );
     } else {
       // Select all permissions in this group
@@ -458,7 +449,7 @@ function CreateOrUpdateRoleDialog({
     return (
       groupPermissions.length > 0 &&
       groupPermissions.every((permission) =>
-        rolePermissions.includes(permission)
+        rolePermissions.includes(permission),
       )
     );
   };
@@ -472,7 +463,7 @@ function CreateOrUpdateRoleDialog({
     onSuccess: async (response) => {
       if (response.success) {
         toast.success(
-          `Role ${initialData ? "updated" : "created"} successfully`
+          `Role ${initialData ? "updated" : "created"} successfully`,
         );
 
         // If this is an edit and we have permission changes, save them too
@@ -506,7 +497,7 @@ function CreateOrUpdateRoleDialog({
     try {
       // Get current permissions from the server
       const currentPermissionsResponse = await getRolePermissionsAction(
-        initialData.id
+        initialData.id,
       );
       const currentPermissions = currentPermissionsResponse.success
         ? currentPermissionsResponse.data || []
@@ -514,10 +505,10 @@ function CreateOrUpdateRoleDialog({
 
       // Find permissions to add and remove
       const permissionsToAdd = rolePermissions.filter(
-        (p) => !currentPermissions.includes(p)
+        (p) => !currentPermissions.includes(p),
       );
       const permissionsToRemove = currentPermissions.filter(
-        (p) => !rolePermissions.includes(p)
+        (p) => !rolePermissions.includes(p),
       );
 
       // Add new permissions
@@ -563,11 +554,12 @@ function CreateOrUpdateRoleDialog({
         setHasPermissionChanges(false);
       }
     },
-    [setOpenModal, setInitialData]
+    [setOpenModal, setInitialData],
   );
 
   const isLoading = saveMutation.isPending;
   const permissionGroups = groupPermissionsByResource(availablePermissions);
+  const isSystemRole = initialData?.isDefault ?? false;
 
   return (
     <Dialog open={openModal} onOpenChange={handleOpenChange}>
@@ -578,8 +570,18 @@ function CreateOrUpdateRoleDialog({
       >
         <DialogHeader className="p-4 pb-0">
           <DialogTitle>
-            {initialData ? "Update Role" : "Create New Role"}
+            {initialData
+              ? isSystemRole
+                ? "View System Role"
+                : "Update Role"
+              : "Create New Role"}
           </DialogTitle>
+          {isSystemRole && (
+            <p className="text-sm text-muted-foreground">
+              System roles cannot be modified. You can view the assigned
+              permissions below.
+            </p>
+          )}
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-6 p-4">
           {/* Basic Role Information */}
@@ -592,6 +594,7 @@ function CreateOrUpdateRoleDialog({
                 setFormData((p) => ({ ...p, name: e.target.value }))
               }
               required
+              disabled={isSystemRole}
             />
             <Textarea
               label="Description"
@@ -600,6 +603,7 @@ function CreateOrUpdateRoleDialog({
               onChange={(e) =>
                 setFormData((p) => ({ ...p, description: e.target.value }))
               }
+              disabled={isSystemRole}
             />
           </div>
 
@@ -612,8 +616,9 @@ function CreateOrUpdateRoleDialog({
                   Configure which resources and actions this role can access
                 </p>
 
-                {/* Select All Checkbox */}
-                {!permissionsLoading &&
+                {/* Select All Checkbox - Hide for system roles */}
+                {!isSystemRole &&
+                  !permissionsLoading &&
                   !rolePermissionsLoading &&
                   availablePermissions.length > 0 && (
                     <div className="flex items-center space-x-2 mb-4 p-3 bg-muted/50 rounded-lg">
@@ -636,8 +641,8 @@ function CreateOrUpdateRoleDialog({
                     </div>
                   )}
 
-                {/* Permission Changes Indicator */}
-                {initialData && hasPermissionChanges && (
+                {/* Permission Changes Indicator - Hide for system roles */}
+                {initialData && hasPermissionChanges && !isSystemRole && (
                   <div className="flex items-center justify-between rounded-md border border-amber-200 bg-amber-50 p-3 my-4">
                     <div>
                       <p className="text-sm font-medium text-amber-900">
@@ -669,24 +674,26 @@ function CreateOrUpdateRoleDialog({
                           <h4 className="font-medium text-base">
                             {formatResourceName(group.resource)}
                           </h4>
-                          <div className="flex items-center space-x-2">
-                            <Checkbox
-                              id={`select-all-${group.resource}`}
-                              checked={areAllGroupPermissionsSelected(
-                                group.permissions
-                              )}
-                              onCheckedChange={() =>
-                                toggleGroupPermissions(group.permissions)
-                              }
-                              disabled={isLoading}
-                            />
-                            <label
-                              htmlFor={`select-all-${group.resource}`}
-                              className="text-xs text-muted-foreground cursor-pointer"
-                            >
-                              Select All
-                            </label>
-                          </div>
+                          {!isSystemRole && (
+                            <div className="flex items-center space-x-2">
+                              <Checkbox
+                                id={`select-all-${group.resource}`}
+                                checked={areAllGroupPermissionsSelected(
+                                  group.permissions,
+                                )}
+                                onCheckedChange={() =>
+                                  toggleGroupPermissions(group.permissions)
+                                }
+                                disabled={isLoading}
+                              />
+                              <label
+                                htmlFor={`select-all-${group.resource}`}
+                                className="text-xs text-muted-foreground cursor-pointer"
+                              >
+                                Select All
+                              </label>
+                            </div>
+                          )}
                         </div>
                         <div className="flex flex-wrap gap-4 sm:gap-6">
                           {group.permissions.map((permission) => {
@@ -705,7 +712,7 @@ function CreateOrUpdateRoleDialog({
                                   onCheckedChange={() =>
                                     togglePermission(permission)
                                   }
-                                  disabled={isLoading}
+                                  disabled={isLoading || isSystemRole}
                                 />
                                 <label
                                   htmlFor={permission}
@@ -731,18 +738,24 @@ function CreateOrUpdateRoleDialog({
 
           <div className="bg-card/10 backdrop-blur-xs sticky bottom-0 flex flex-col-reverse justify-end gap-3 p-4 rounded-b-lg border-t py-6 sm:flex-row sm:py-6">
             <DialogClose asChild>
-              <Button type="button" variant="destructive" disabled={isLoading}>
-                Cancel
+              <Button
+                type="button"
+                variant={isSystemRole ? "outline" : "destructive"}
+                disabled={isLoading}
+              >
+                {isSystemRole ? "Close" : "Cancel"}
               </Button>
             </DialogClose>
-            <Button
-              type="submit"
-              disabled={isLoading || !formData.name}
-              isLoading={isLoading}
-              loadingText="Saving..."
-            >
-              {initialData ? "Update Role" : "Create Role"}
-            </Button>
+            {!isSystemRole && (
+              <Button
+                type="submit"
+                disabled={isLoading || !formData.name}
+                isLoading={isLoading}
+                loadingText="Saving..."
+              >
+                {initialData ? "Update Role" : "Create Role"}
+              </Button>
+            )}
           </div>
         </form>
       </DialogContent>

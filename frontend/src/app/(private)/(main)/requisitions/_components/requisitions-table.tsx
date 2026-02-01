@@ -11,6 +11,8 @@ import {
   XCircle,
   MoreVertical,
   Send,
+  PlusCircle,
+  FileText,
 } from "lucide-react";
 
 import { StatusBadge } from "@/components/status-badge";
@@ -41,7 +43,8 @@ interface RequisitionsTableProps {
   userId: string;
   userRole: string;
   refreshTrigger: number;
-  onEditRequisition: (requisition: Requisition) => void; // Add edit callback
+  onEditRequisition: (requisition: Requisition) => void;
+  onCreateRequisition: () => void;
 }
 
 const columns: ColumnDef<Requisition>[] = [
@@ -372,6 +375,7 @@ export function RequisitionsTable({
   userRole,
   refreshTrigger,
   onEditRequisition,
+  onCreateRequisition,
 }: RequisitionsTableProps) {
   const router = useRouter();
   const { data: requisitions = [], refetch } = useRequisitions(1, 50); // Get first 50 requisitions
@@ -425,7 +429,17 @@ export function RequisitionsTable({
       data={data}
       searchKey="title"
       searchPlaceholder="Search by title, document number, or requester..."
-      // actions={getActions}
+      emptyState={{
+        title: "No Requisitions Yet",
+        description: "Get started by creating your first requisition",
+        icon: <FileText className="h-10 w-10 text-muted-foreground" />,
+        action: (
+          <Button onClick={onCreateRequisition}>
+            <PlusCircle className="h-4 w-4 mr-2" />
+            Create Requisition
+          </Button>
+        ),
+      }}
       renderRowActions={(req: Requisition) => (
         <TooltipProvider>
           <ReqOptionsMenu

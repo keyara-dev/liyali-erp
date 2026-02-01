@@ -22,8 +22,11 @@ func NewAnalyticsService(db *gorm.DB) *AnalyticsService {
 
 // GetRequisitionMetrics calculates all requisition metrics
 func (s *AnalyticsService) GetRequisitionMetrics(params types.AnalyticsQueryParams) (*types.RequisitionMetricsResponse, error) {
-	// Build query with date range
+	// Build query with organization filter (required for multi-tenancy)
 	query := s.db
+	if params.OrganizationID != "" {
+		query = query.Where("organization_id = ?", params.OrganizationID)
+	}
 	if params.StartDate != nil {
 		query = query.Where("created_at >= ?", params.StartDate)
 	}

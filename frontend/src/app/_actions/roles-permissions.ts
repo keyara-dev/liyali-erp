@@ -14,10 +14,12 @@ export interface OrganizationRole {
   id: string;
   name: string;
   description?: string;
-  permissions: string[];
-  active: boolean;
-  createdAt: string;
-  updatedAt: string;
+  permissions?: string[];
+  permissionsCount: number;
+  isDefault: boolean;
+  isActive: boolean;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface CreateRoleRequest {
