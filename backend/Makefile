@@ -174,6 +174,10 @@ db-migrate:
 	@echo "Running database migrations..."
 	go run database/migrate_all.go
 
+db-seed-subscriptions:
+	@echo "Seeding subscription data..."
+	go run cmd/seed_subscription_data.go
+
 db-migrate-single:
 	@echo "Running single migration: $(FILE)"
 	@if [ -z "$(FILE)" ]; then echo "Usage: make db-migrate-single FILE=migration_file.sql"; exit 1; fi

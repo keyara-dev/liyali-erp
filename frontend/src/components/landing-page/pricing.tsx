@@ -2,7 +2,7 @@
 
 import React from "react";
 import { motion } from "framer-motion";
-import { usePublicSubscriptionPlans } from "@/hooks/use-subscription-queries";
+import { useSubscriptionPlans } from "@/hooks/use-subscription-queries";
 
 interface PricingCardProps {
   tier: string;
@@ -114,7 +114,7 @@ const PricingCard = ({
 
 export const Pricing = () => {
   // Use the shared TanStack Query hook for fetching subscription plans
-  const { data: apiPlans = [], isLoading } = usePublicSubscriptionPlans();
+  const { data: apiPlans = [], isLoading } = useSubscriptionPlans();
 
   // Transform API plans to match the expected format for PricingCard
   const plans = apiPlans.map((plan) => ({
@@ -238,44 +238,42 @@ export const Pricing = () => {
         </motion.div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 max-w-5xl mx-auto items-stretch">
-          {isLoading ? (
-            // Loading skeleton
-            Array.from({ length: 3 }).map((_, index) => (
-              <div
-                key={index}
-                className="relative p-6 sm:p-8 rounded-2xl sm:rounded-3xl bg-slate-900/40 border border-slate-800 animate-pulse"
-              >
-                <div className="mb-8">
-                  <div className="h-6 w-24 bg-slate-700 rounded mb-2" />
-                  <div className="h-10 w-32 bg-slate-700 rounded mb-3" />
-                  <div className="h-4 w-40 bg-slate-800 rounded" />
+          {isLoading
+            ? // Loading skeleton
+              Array.from({ length: 3 }).map((_, index) => (
+                <div
+                  key={index}
+                  className="relative p-6 sm:p-8 rounded-2xl sm:rounded-3xl bg-slate-900/40 border border-slate-800 animate-pulse"
+                >
+                  <div className="mb-8">
+                    <div className="h-6 w-24 bg-slate-700 rounded mb-2" />
+                    <div className="h-10 w-32 bg-slate-700 rounded mb-3" />
+                    <div className="h-4 w-40 bg-slate-800 rounded" />
+                  </div>
+                  <div className="space-y-4 mb-8">
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <div key={i} className="flex items-center gap-3">
+                        <div className="w-5 h-5 rounded-full bg-slate-700" />
+                        <div className="h-4 flex-1 bg-slate-800 rounded" />
+                      </div>
+                    ))}
+                  </div>
+                  <div className="h-12 w-full bg-slate-700 rounded-full" />
                 </div>
-                <div className="space-y-4 mb-8">
-                  {Array.from({ length: 5 }).map((_, i) => (
-                    <div key={i} className="flex items-center gap-3">
-                      <div className="w-5 h-5 rounded-full bg-slate-700" />
-                      <div className="h-4 flex-1 bg-slate-800 rounded" />
-                    </div>
-                  ))}
-                </div>
-                <div className="h-12 w-full bg-slate-700 rounded-full" />
-              </div>
-            ))
-          ) : (
-            plans.map((plan, index) => (
-              <PricingCard
-                key={plan.tier}
-                tier={plan.tier}
-                price={plan.price}
-                sub={plan.sub}
-                features={plan.features}
-                recommended={plan.recommended}
-                delay={index * 0.1}
-                buttonText={plan.buttonText}
-                onSelect={() => handlePlanSelect(plan.slug)}
-              />
-            ))
-          )}
+              ))
+            : plans.map((plan, index) => (
+                <PricingCard
+                  key={plan.tier}
+                  tier={plan.tier}
+                  price={plan.price}
+                  sub={plan.sub}
+                  features={plan.features}
+                  recommended={plan.recommended}
+                  delay={index * 0.1}
+                  buttonText={plan.buttonText}
+                  onSelect={() => handlePlanSelect(plan.slug)}
+                />
+              ))}
         </div>
 
         {/* Free Trial Banner */}

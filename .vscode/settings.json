@@ -1,4 +1,5 @@
 {
   "kiroAgent.configureMCP": "Disabled",
-  "cSpell.words": ["Liyali"]
+  "cSpell.words": ["Liyali"],
+  "typescript.autoClosingTags": false
 }

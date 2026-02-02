@@ -10,6 +10,7 @@ import {
   Building2,
   X,
   Plus,
+  Lock,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import {
@@ -94,12 +95,6 @@ export function UpgradeModal({
 
   const currentPlanSlug = getCurrentPlanSlug(currentTier);
 
-  console.log("All plans to display:", {
-    allPlans: allPlans.map((p) => ({ name: p.name, slug: p.slug })),
-    currentTier,
-    currentPlanSlug,
-  });
-
   const handlePlanSelect = (planSlug: string) => {
     // Don't allow selecting the current plan
     if (planSlug === currentPlanSlug) {
@@ -146,19 +141,20 @@ export function UpgradeModal({
     }
   };
 
-  const selectedPlanData = plans?.find((p) => p.slug === selectedPlan);
+  const selectedPlanData = plans?.find((p: any) => p.slug === selectedPlan);
 
-  const yearlyDiscount = selectedPlanData
-    ? Math.round(
-        (1 -
-          selectedPlanData.priceYearly / 12 / selectedPlanData.priceMonthly) *
-          100,
-      )
-    : 0;
+  const yearlyDiscount =
+    selectedPlanData && selectedPlanData.priceMonthly > 0
+      ? Math.round(
+          (1 -
+            selectedPlanData.priceYearly / 12 / selectedPlanData.priceMonthly) *
+            100,
+        )
+      : 0;
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-5xl! max-h-[90vh] overflow-y-auto bg-slate-900/95 border-slate-700 backdrop-blur-md">
+      <DialogContent className="max-w-6xl! max-h-[90vh] overflow-y-auto bg-slate-900/98 border-slate-600 backdrop-blur-md">
         {/* Dark Blue Theme Background with Floating Elements */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <motion.div
@@ -195,10 +191,10 @@ export function UpgradeModal({
         </div>
 
         <DialogHeader className="relative z-10">
-          <DialogTitle className="text-2xl text-white">
+          <DialogTitle className="text-2xl text-white font-semibold">
             {step === "plans" ? "Choose Your Plan" : "Complete Your Upgrade"}
           </DialogTitle>
-          <DialogDescription className="text-slate-400">
+          <DialogDescription className="text-slate-300">
             {step === "plans"
               ? "Compare all available plans and upgrade to unlock more features"
               : "Review your selection and complete the upgrade"}
@@ -276,7 +272,7 @@ function PlansStep({
           <h3 className="text-lg font-semibold text-white mb-2">
             Error Loading Plans
           </h3>
-          <p className="text-sm">{error}</p>
+          <p className="text-sm text-slate-300">{error}</p>
         </div>
       </div>
     );
@@ -290,11 +286,11 @@ function PlansStep({
           <h3 className="text-lg font-semibold text-white mb-2">
             No Plans Available
           </h3>
-          <p className="text-sm">
+          <p className="text-sm text-slate-300">
             Unable to load subscription plans. Please contact support.
           </p>
         </div>
-        <div className="text-xs text-slate-500 mt-4">
+        <div className="text-xs text-slate-400 mt-4">
           Current tier: {currentTier} | Plans loaded: {plans?.length || 0}
         </div>
       </div>
@@ -304,7 +300,7 @@ function PlansStep({
   return (
     <div className="space-y-4">
       <div className="text-center mb-6">
-        <p className="text-slate-400 text-sm">
+        <p className="text-slate-300 text-sm">
           You're currently on the{" "}
           <span className="font-semibold text-white">{currentTier}</span> plan
         </p>
@@ -358,20 +354,20 @@ function PlanCard({
       <Card
         className={`relative transition-all duration-300 backdrop-blur-md ${
           isCurrentPlan
-            ? "bg-blue-900/40 border-blue-500 ring-2 ring-blue-500/50 cursor-default"
+            ? "bg-blue-900/50 border-blue-400 ring-2 ring-blue-400/60 cursor-default"
             : isRecommended
-              ? "cursor-pointer bg-slate-800/60 border-slate-600 hover:shadow-2xl ring-2 ring-purple-500/50 scale-105 hover:bg-slate-800/80 hover:border-slate-500"
-              : "cursor-pointer bg-slate-800/60 border-slate-600 hover:shadow-2xl hover:bg-slate-800/80 hover:border-slate-500"
+              ? "cursor-pointer bg-slate-800/70 border-slate-500 hover:shadow-2xl ring-2 ring-purple-400/60 scale-105 hover:bg-slate-800/90 hover:border-slate-400"
+              : "cursor-pointer bg-slate-800/70 border-slate-500 hover:shadow-2xl hover:bg-slate-800/90 hover:border-slate-400"
         }`}
       >
         {isCurrentPlan && (
           <motion.div
-            className="absolute -top-3 left-1/2 transform -translate-x-1/2"
+            className="absolute -top-4 left-1/2 transform -translate-x-1/2"
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
             transition={{ delay: 0.3, type: "spring", stiffness: 500 }}
           >
-            <Badge className="bg-blue-500 text-white shadow-lg shadow-blue-500/30">
+            <Badge className="bg-blue-600/90 text-white shadow-lg shadow-blue-500/30 border border-blue-400/50">
               Current Plan
             </Badge>
           </motion.div>
@@ -379,12 +375,12 @@ function PlanCard({
 
         {!isCurrentPlan && isRecommended && (
           <motion.div
-            className="absolute -top-3 left-1/2 transform -translate-x-1/2"
+            className="absolute -top-4 left-1/2 transform -translate-x-1/2"
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
             transition={{ delay: 0.3, type: "spring", stiffness: 500 }}
           >
-            <Badge className="bg-purple-500 text-white shadow-lg shadow-purple-500/30">
+            <Badge className="bg-purple-600/90 text-white shadow-lg shadow-purple-500/30 border border-purple-400/50">
               Most Popular
             </Badge>
           </motion.div>
@@ -398,8 +394,10 @@ function PlanCard({
           >
             <IconComponent className="h-6 w-6 text-white" />
           </motion.div>
-          <CardTitle className="text-xl text-white">{plan.name}</CardTitle>
-          <CardDescription className="text-slate-400">
+          <CardTitle className="text-xl text-white font-semibold">
+            {plan.name}
+          </CardTitle>
+          <CardDescription className="text-slate-300">
             {plan.description}
           </CardDescription>
 
@@ -416,13 +414,15 @@ function PlanCard({
                     /month
                   </span>
                 </div>
-                <div className="text-sm text-slate-500">
-                  or ${plan.priceYearly}/year (save{" "}
-                  {Math.round(
-                    (1 - plan.priceYearly / 12 / plan.priceMonthly) * 100,
-                  )}
-                  %)
-                </div>
+                {plan.priceMonthly > 0 && plan.priceYearly > 0 && (
+                  <div className="text-sm text-slate-400">
+                    or ${plan.priceYearly}/year (save{" "}
+                    {Math.round(
+                      (1 - plan.priceYearly / 12 / plan.priceMonthly) * 100,
+                    )}
+                    %)
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -433,12 +433,12 @@ function PlanCard({
             {plan.features.map((feature: string, index: number) => (
               <motion.div
                 key={index}
-                className="flex items-center gap-3 text-sm text-slate-300"
+                className="flex items-center gap-3 text-sm text-slate-200"
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: index * 0.1 }}
               >
-                <div className="w-5 h-5 rounded-full flex items-center justify-center shrink-0 border border-green-500 bg-green-500/20 text-green-400">
+                <div className="w-5 h-5 rounded-full flex items-center justify-center shrink-0 border border-green-400 bg-green-500/30 text-green-300">
                   <Check className="h-3 w-3" />
                 </div>
                 <span>{feature}</span>
@@ -455,10 +455,10 @@ function PlanCard({
               disabled={isCurrentPlan}
               className={`w-full transition-all ${
                 isCurrentPlan
-                  ? "bg-blue-600/50 border border-blue-500 text-blue-200 cursor-not-allowed"
+                  ? "bg-blue-600/60 border border-blue-400 text-blue-100 cursor-not-allowed"
                   : isRecommended
                     ? "bg-purple-600 hover:bg-purple-500 text-white shadow-[0_0_20px_rgba(147,51,234,0.3)]"
-                    : "bg-transparent border border-slate-600 text-white hover:bg-slate-700 hover:border-slate-500"
+                    : "bg-transparent border border-slate-500 text-white hover:bg-slate-700 hover:border-slate-400"
               }`}
             >
               {isCurrentPlan ? (
@@ -511,56 +511,71 @@ function PaymentStep({
   return (
     <div className="space-y-6 py-6">
       {/* Plan Summary */}
-      <Card>
+      <Card className="bg-slate-800/70 border-slate-500">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 text-white">
             <Crown className="h-5 w-5" />
             {plan.name}
           </CardTitle>
-          <CardDescription>{plan.description}</CardDescription>
+          <CardDescription className="text-slate-300">
+            {plan.description}
+          </CardDescription>
         </CardHeader>
       </Card>
 
       {/* Billing Cycle Selection */}
       <div className="space-y-4">
-        <h3 className="font-medium">Billing Cycle</h3>
+        <h3 className="font-medium text-white">Billing Cycle</h3>
         <RadioGroup
           value={billingCycle}
           onValueChange={(value) =>
             onBillingCycleChange(value as "monthly" | "yearly")
           }
         >
-          <div className="flex items-center space-x-2 p-4 border rounded-lg">
+          <div className="flex items-center space-x-2 p-4 border border-slate-500 rounded-lg bg-slate-800/50">
             <RadioGroupItem value="monthly" id="monthly" />
-            <Label htmlFor="monthly" className="flex-1 cursor-pointer">
-              <div className="flex justify-between items-center">
+            <Label
+              htmlFor="monthly"
+              className="flex-1 cursor-pointer text-slate-200"
+            >
+              <div className="flex justify-between w-full items-center">
                 <div>
-                  <div className="font-medium">Monthly</div>
-                  <div className="text-sm text-muted-foreground">
-                    Pay monthly
-                  </div>
+                  <div className="font-medium text-white">Monthly</div>
+                  <div className="text-sm text-slate-400">Pay monthly</div>
                 </div>
-                <div className="font-bold">${plan.priceMonthly}/month</div>
+                <div className="font-bold text-white text-xl">
+                  ${plan.priceMonthly}/month
+                </div>
               </div>
             </Label>
           </div>
 
-          <div className="flex items-center space-x-2 p-4 border rounded-lg">
+          <div className="flex items-center space-x-2 p-4 border border-slate-500 rounded-lg bg-slate-800/50">
             <RadioGroupItem value="yearly" id="yearly" />
-            <Label htmlFor="yearly" className="flex-1 cursor-pointer">
-              <div className="flex justify-between items-center">
+            <Label
+              htmlFor="yearly"
+              className="flex-1 cursor-pointer text-slate-200"
+            >
+              <div className="flex justify-between w-full items-center">
                 <div>
-                  <div className="font-medium flex items-center gap-2">
+                  <div className="font-medium flex items-center gap-2 text-white">
                     Yearly
-                    <Badge variant="secondary">Save {yearlyDiscount}%</Badge>
+                    {yearlyDiscount > 0 && (
+                      <Badge
+                        variant="secondary"
+                        className="bg-green-600/20 text-green-300 border-green-500/30"
+                      >
+                        Save {yearlyDiscount}%
+                      </Badge>
+                    )}
                   </div>
-                  <div className="text-sm text-muted-foreground">
-                    Pay annually
-                  </div>
+                  <div className="text-sm text-slate-400">Pay annually</div>
                 </div>
-                <div>
-                  <div className="font-bold">${plan.priceYearly}/year</div>
-                  <div className="text-sm text-muted-foreground">
+                <div className="text-xl">
+                  <div className="font-bold text-white">
+                    ${plan.priceYearly}/year
+                  </div>
+                  <div className="text-base text-slate-400">
                     ${Math.round(plan.priceYearly / 12)}/month
                   </div>
                 </div>
@@ -574,50 +589,49 @@ function PaymentStep({
 
       {/* Order Summary */}
       <div className="space-y-4">
-        <h3 className="font-medium">Order Summary</h3>
+        <h3 className="font-medium text-white">Order Summary</h3>
         <div className="space-y-2">
-          <div className="flex justify-between">
+          <div className="flex justify-between text-slate-200">
             <span>
               {plan.name} ({billingCycle})
             </span>
-            <span>${totalPrice}</span>
+            <span className="text-white">${totalPrice}</span>
           </div>
-          <Separator />
-          <div className="flex justify-between font-bold">
+          <Separator className="bg-slate-600" />
+          <div className="flex justify-between font-bold text-2xl text-white">
             <span>Total</span>
-            <span>${totalPrice}</span>
+            <span className="">${totalPrice}</span>
           </div>
         </div>
       </div>
 
       {/* Actions */}
       <div className="flex gap-3">
-        <Button variant="outline" onClick={onBack} className="flex-1">
+        <Button
+          variant="secondary"
+          onClick={onBack}
+          className="flex-1 border-slate-500 text-slate-200 bg-primary"
+        >
           Back
         </Button>
         <Button
           onClick={onUpgrade}
           disabled={isLoading}
-          className="flex-1 bg-purple-600 hover:bg-purple-500"
+          isLoading={isLoading}
+          loadingText="Processing..."
+          className="flex-1 bg-purple-600 hover:bg-purple-500 text-white"
         >
-          {isLoading ? (
-            <>
-              <Spinner className="h-4 w-4 mr-2" />
-              Processing...
-            </>
-          ) : (
-            <>
-              <CreditCard className="h-4 w-4 mr-2" />
-              Complete Upgrade
-            </>
-          )}
+          <CreditCard className="h-4 w-4 mr-2" />
+          Complete Upgrade
         </Button>
       </div>
 
       {/* Note */}
-      <div className="text-xs text-muted-foreground text-center">
-        By upgrading, you agree to our Terms of Service and Privacy Policy. You
-        can cancel or change your plan at any time.
+      <div className="text-xs text-slate-400 text-center flex items-center justify-center">
+        <Lock className="h-4 w-4 mr-2" />
+        Your payment information is securely processed by Stripe. By upgrading,
+        you agree to our Terms of Service and Privacy Policy. You can cancel or
+        change your plan at any time.
       </div>
     </div>
   );

@@ -15,6 +15,8 @@ type Querier interface {
 	ActivateWorkflow(ctx context.Context, iD pgtype.UUID, organizationID string) (Workflow, error)
 	// User role assignments
 	AssignUserRole(ctx context.Context, userID string, organizationID string, roleID pgtype.UUID, assignedBy *string) (UserOrganizationRole, error)
+	CheckOrganizationFeatureAccess(ctx context.Context, orgID string, featureName string) (bool, error)
+	CheckOrganizationUserLimit(ctx context.Context, id string) (bool, error)
 	CleanupExpiredLockouts(ctx context.Context) error
 	CountActiveSessions(ctx context.Context) (int64, error)
 	CountActiveUsers(ctx context.Context) (int64, error)
@@ -26,11 +28,18 @@ type Querier interface {
 	CountWorkflows(ctx context.Context, organizationID string) (int64, error)
 	CountWorkflowsByDocumentType(ctx context.Context, organizationID string, documentType string) (int64, error)
 	CreateAccountLockout(ctx context.Context, userID string, email string, ipAddress *string, reason string, unlocksAt pgtype.Timestamp) (AccountLockout, error)
+	CreateFeatureFlag(ctx context.Context, name string, description *string, planRequirements []byte, isTrialAllowed *bool, isEnterpriseOnly *bool) (FeatureFlag, error)
 	CreateLoginAttempt(ctx context.Context, arg CreateLoginAttemptParams) (LoginAttempt, error)
 	// Enhanced RBAC with custom organization roles
 	CreateOrganizationRole(ctx context.Context, arg CreateOrganizationRoleParams) (OrganizationRole, error)
+	CreateOrganizationSubscription(ctx context.Context, arg CreateOrganizationSubscriptionParams) (OrganizationSubscription, error)
 	CreatePasswordReset(ctx context.Context, userID string, token string, expiresAt pgtype.Timestamp) (PasswordReset, error)
 	CreateSession(ctx context.Context, userID string, refreshToken string, ipAddress *string, userAgent *string, expiresAt pgtype.Timestamp) (Session, error)
+	// ============================================================================
+	// AUDIT LOG QUERIES
+	// ============================================================================
+	CreateSubscriptionAuditLog(ctx context.Context, arg CreateSubscriptionAuditLogParams) (SubscriptionAuditLog, error)
+	CreateSubscriptionPlan(ctx context.Context, arg CreateSubscriptionPlanParams) (SubscriptionPlan, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
 	CreateWorkflow(ctx context.Context, arg CreateWorkflowParams) (Workflow, error)
 	DeactivateOrganizationRole(ctx context.Context, id pgtype.UUID) error
@@ -43,21 +52,57 @@ type Querier interface {
 	DeleteSession(ctx context.Context, id pgtype.UUID) error
 	DeleteSessionByRefreshToken(ctx context.Context, refreshToken string) error
 	DeleteSessionsByUserID(ctx context.Context, userID string) error
+	DeleteSubscriptionPlan(ctx context.Context, id pgtype.UUID) error
 	DeleteUsedPasswordResets(ctx context.Context) error
 	DeleteWorkflow(ctx context.Context, iD pgtype.UUID, organizationID string) error
+	ExtendOrganizationTrial(ctx context.Context, column1 string, column2 int32, column3 string) error
 	GetAccountLockoutByEmail(ctx context.Context, email string) (AccountLockout, error)
 	GetAccountLockoutHistory(ctx context.Context, userID string, limit int32, offset int32) ([]AccountLockout, error)
 	GetActiveAccountLockout(ctx context.Context, userID string) (AccountLockout, error)
+	// ============================================================================
+	// FEATURE FLAGS QUERIES
+	// ============================================================================
+	GetAllFeatureFlags(ctx context.Context) ([]FeatureFlag, error)
+	// ============================================================================
+	// ADMIN QUERIES
+	// ============================================================================
+	GetAllOrganizationsWithSubscriptionStatus(ctx context.Context, limit int32, offset int32) ([]GetAllOrganizationsWithSubscriptionStatusRow, error)
+	// ============================================================================
+	// SUBSCRIPTION PLANS QUERIES
+	// ============================================================================
+	GetAllSubscriptionPlans(ctx context.Context) ([]SubscriptionPlan, error)
 	GetDefaultWorkflowByDocumentType(ctx context.Context, organizationID string, documentType string) (Workflow, error)
+	GetFeatureFlagByName(ctx context.Context, name string) (FeatureFlag, error)
+	GetFeatureFlagsForPlan(ctx context.Context, planRequirements []byte, column2 interface{}) ([]FeatureFlag, error)
 	GetLoginAttemptsByEmail(ctx context.Context, email string, limit int32, offset int32) ([]LoginAttempt, error)
 	GetLoginAttemptsByUser(ctx context.Context, userID *string, limit int32, offset int32) ([]LoginAttempt, error)
+	GetOrganizationAuditLogs(ctx context.Context, organizationID string, limit int32, offset int32) ([]GetOrganizationAuditLogsRow, error)
+	// ============================================================================
+	// PLAN LIMITS AND ANALYTICS QUERIES
+	// ============================================================================
+	GetOrganizationPlanLimits(ctx context.Context, id string) (GetOrganizationPlanLimitsRow, error)
 	GetOrganizationRoleByID(ctx context.Context, id pgtype.UUID) (OrganizationRole, error)
 	GetOrganizationRoleByName(ctx context.Context, organizationID string, name string) (OrganizationRole, error)
+	GetOrganizationSubscription(ctx context.Context, organizationID string) (OrganizationSubscription, error)
+	// ============================================================================
+	// ORGANIZATION SUBSCRIPTION QUERIES
+	// ============================================================================
+	GetOrganizationSubscriptionDetails(ctx context.Context, organizationID string) (OrganizationSubscriptionDetail, error)
+	// ============================================================================
+	// TRIAL MANAGEMENT QUERIES
+	// ============================================================================
+	GetOrganizationTrialStatus(ctx context.Context, id string) (GetOrganizationTrialStatusRow, error)
 	GetPasswordResetByToken(ctx context.Context, token string) (PasswordReset, error)
+	GetPlanDistribution(ctx context.Context) ([]GetPlanDistributionRow, error)
+	GetRecentAuditLogs(ctx context.Context, limit int32, offset int32) ([]GetRecentAuditLogsRow, error)
 	GetRecentFailedAttempts(ctx context.Context, email string, attemptedAt pgtype.Timestamp) (int64, error)
 	GetRecentFailedAttemptsByIP(ctx context.Context, ipAddress *string, attemptedAt pgtype.Timestamp) (int64, error)
 	GetSessionByRefreshToken(ctx context.Context, refreshToken string) (Session, error)
 	GetSessionsByUserID(ctx context.Context, userID string) ([]Session, error)
+	GetSubscriptionAnalytics(ctx context.Context) (GetSubscriptionAnalyticsRow, error)
+	GetSubscriptionPlanByID(ctx context.Context, id pgtype.UUID) (SubscriptionPlan, error)
+	GetSubscriptionPlanBySlug(ctx context.Context, slug string) (SubscriptionPlan, error)
+	GetTrialsEndingSoon(ctx context.Context) ([]GetTrialsEndingSoonRow, error)
 	GetUserByEmail(ctx context.Context, email string) (User, error)
 	// Enhanced user queries with security features
 	GetUserByID(ctx context.Context, id string) (User, error)
@@ -77,10 +122,18 @@ type Querier interface {
 	MarkPasswordResetAsUsed(ctx context.Context, id pgtype.UUID) error
 	RemoveAllUserRoles(ctx context.Context, userID string, organizationID string) error
 	RemoveUserRole(ctx context.Context, userID string, organizationID string, roleID pgtype.UUID) error
+	SetOrganizationGracePeriod(ctx context.Context, id string) error
+	StartOrganizationTrial(ctx context.Context, dollar_1 string) error
 	UnlockAccount(ctx context.Context, userID string) error
 	UnlockAccountByEmail(ctx context.Context, email string) error
+	UpdateFeatureFlag(ctx context.Context, arg UpdateFeatureFlagParams) (FeatureFlag, error)
+	UpdateOrganizationPlan(ctx context.Context, iD string, currentPlanID pgtype.UUID, subscriptionStatus *string, maxUsersAllowed *int32) error
 	UpdateOrganizationRole(ctx context.Context, iD pgtype.UUID, name string, description *string, permissions []byte) (OrganizationRole, error)
+	UpdateOrganizationSubscription(ctx context.Context, arg UpdateOrganizationSubscriptionParams) (OrganizationSubscription, error)
+	UpdateOrganizationSubscriptionStatus(ctx context.Context, iD string, subscriptionStatus *string) error
 	UpdateSessionRefreshToken(ctx context.Context, iD pgtype.UUID, refreshToken string, expiresAt pgtype.Timestamp, refreshToken_2 string) (int64, error)
+	UpdateSubscriptionPlan(ctx context.Context, arg UpdateSubscriptionPlanParams) (SubscriptionPlan, error)
+	UpdateSubscriptionStatus(ctx context.Context, organizationID string, status string) error
 	UpdateUser(ctx context.Context, arg UpdateUserParams) (User, error)
 	UpdateUserLastLogin(ctx context.Context, id string) error
 	UpdateUserPassword(ctx context.Context, iD string, password string) error

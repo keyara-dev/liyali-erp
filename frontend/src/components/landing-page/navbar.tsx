@@ -99,7 +99,7 @@ export const Navbar = ({ isAuthenticated }: { isAuthenticated: boolean }) => {
           <div className="flex justify-between items-center gap-4 sm:gap-8">
             {/* Logo */}
             <motion.div
-              className="flex items-center gap-2 flex-shrink-0"
+              className="flex items-center gap-2 shrink-0"
               whileHover={{ scale: 1.05 }}
               transition={{ type: "spring", stiffness: 400, damping: 10 }}
             >
@@ -142,7 +142,7 @@ export const Navbar = ({ isAuthenticated }: { isAuthenticated: boolean }) => {
                     whileHover={{ y: -2 }}
                     whileTap={{ scale: 0.95 }}
                   >
-                    {isAuthenticated ? "Dashboard" : "Login"}
+                    {isAuthenticated ? "Go to Dashboard" : "Login"}
                   </motion.button>
                 </Link>
               }
@@ -209,7 +209,7 @@ export const Navbar = ({ isAuthenticated }: { isAuthenticated: boolean }) => {
             <div className="pt-4">
               <Link href={isAuthenticated ? "/home" : "/login"}>
                 <button className="bg-primary-600 hover:bg-primary-700 text-white py-4 px-8 rounded-xl font-bold text-lg shadow-lg shadow-primary-500/30 w-full">
-                  {isAuthenticated ? "Dashboard" : "Login"}
+                  {isAuthenticated ? "Go to Dashboard" : "Login"}
                 </button>
               </Link>
             </div>

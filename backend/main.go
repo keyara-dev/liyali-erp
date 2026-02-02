@@ -69,6 +69,7 @@ func init() {
 func main() {
 	// Initialize structured logging system
 	loggingConfig := logging.SetupLogging()
+	logger := &logging.Logger{}
 	
 	// Initialize database (both GORM and pgx)
 	config.InitDatabase()
@@ -110,9 +111,12 @@ func main() {
 	// Initialize workflow execution service with automation
 	workflowExecutionService := services.NewWorkflowExecutionService(config.DB, workflowService, auditService, automationService)
 	documentService := services.NewDocumentService(documentRepo, auditService)
+	
+	// Initialize subscription service
+	subscriptionService := services.NewSubscriptionService(config.PgxDB, logger)
 
 	// Initialize handler registry
-	handlerRegistry := handlers.NewHandlerRegistry(authService, rbacService, workflowService, workflowExecutionService, documentService, automationService)
+	handlerRegistry := handlers.NewHandlerRegistry(authService, rbacService, workflowService, workflowExecutionService, documentService, automationService, subscriptionService, logger)
 
 	// Create Fiber app with global error handler
 	app := fiber.New(fiber.Config{

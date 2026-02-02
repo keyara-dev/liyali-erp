@@ -1,0 +1,1 @@
+{"success":true,"message":"Trial status retrieved successfully","data":{"organizationId":"org-demo-001","subscriptionStatus":"trial","trialStartDate":"2026-02-02T01:48:22.238824Z","trialEndDate":"2026-02-16T01:48:22.238824Z","planSlug":"STARTER_PLAN","planName":"Starter Plan","daysRemaining":13,"isExpired":false,"isActive":true,"inGracePeriod":false}}
