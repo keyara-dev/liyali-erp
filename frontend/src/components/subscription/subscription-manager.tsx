@@ -165,7 +165,7 @@ export function SubscriptionManager({ className }: SubscriptionManagerProps) {
             <div>
               <h4 className="font-medium mb-3 text-white">Plan Features</h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {currentPlan?.features.map((feature, index) => (
+                {currentPlan?.features.map((feature: any, index: number) => (
                   <motion.div
                     key={index}
                     className="flex items-center gap-3 text-sm text-slate-300"
@@ -197,7 +197,7 @@ export function SubscriptionManager({ className }: SubscriptionManagerProps) {
                 >
                   <Button
                     onClick={() => setShowUpgradeModal(true)}
-                    className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 shadow-[0_0_20px_rgba(147,51,234,0.3)]"
+                    className="w-full bg-linear-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 shadow-[0_0_20px_rgba(147,51,234,0.3)]"
                   >
                     <Crown className="h-4 w-4 mr-2" />
                     Upgrade to Pro

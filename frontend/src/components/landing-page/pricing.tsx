@@ -117,7 +117,7 @@ export const Pricing = () => {
   const { data: apiPlans = [], isLoading } = useSubscriptionPlans();
 
   // Transform API plans to match the expected format for PricingCard
-  const plans = apiPlans.map((plan) => ({
+  const plans = apiPlans.map((plan: any) => ({
     tier: plan.name,
     price: plan.slug === "ENTERPRISE" ? "Custom" : plan.priceMonthly.toString(),
     sub: plan.description,
@@ -261,7 +261,7 @@ export const Pricing = () => {
                   <div className="h-12 w-full bg-slate-700 rounded-full" />
                 </div>
               ))
-            : plans.map((plan, index) => (
+            : plans.map((plan: any, index: number) => (
                 <PricingCard
                   key={plan.tier}
                   tier={plan.tier}

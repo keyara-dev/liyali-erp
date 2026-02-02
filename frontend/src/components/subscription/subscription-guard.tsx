@@ -41,7 +41,7 @@ export function SubscriptionGuard({
   const { data: trialStatus } = useOrganizationTrialStatus(
     currentOrganization?.id || "",
   );
-  const { hasFeature, isLoading } = useFeatureAccess(
+  const { data: hasFeature, isLoading } = useFeatureAccess(
     currentOrganization?.id || "",
     feature || "",
   );
