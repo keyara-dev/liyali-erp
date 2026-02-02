@@ -27,14 +27,6 @@ function WelcomeLayout({ children }: PropsWithChildren) {
 
           <div className="relative z-10">
             {/* Logo Section */}
-            {/* <div className="flex items-center space-x-3 mb-12">
-              <div className="w-10 h-10 bg-white/10 backdrop-blur-sm rounded-xl flex items-center justify-center border border-white/20 shadow-lg">
-                <div className="w-5 h-5 bg-primary-500 rounded-md rotate-45"></div>
-              </div>
-              <span className="text-xl font-bold tracking-tight">
-                Liyali Suite
-              </span>
-            </div> */}
 
             <Logo src="/images/logo/logo-full-suite.svg" />
           </div>
