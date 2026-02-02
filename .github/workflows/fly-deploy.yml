@@ -58,7 +58,19 @@ jobs:
       - name: Deploy Backend
         run: |
           cd backend
-          flyctl deploy --remote-only --wait-timeout 300
+          echo "Deploying backend with migration..."
+          flyctl deploy --remote-only --wait-timeout 600
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+      - name: Check Migration Status
+        run: |
+          cd backend
+          echo "Checking if migration completed successfully..."
+          sleep 10
+
+          # Check app logs for migration status
+          flyctl logs --app liyali-gateway-api | grep -i "migration\|error" | tail -20 || echo "No migration logs found"
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
 
