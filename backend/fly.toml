@@ -8,6 +8,11 @@ primary_region = 'jnb'
 
 [build]
 
+[env]
+  PORT = "8080"
+  APP_ENV = "production"
+  GO_ENV = "production"
+
 [http_service]
   internal_port = 8080
   force_https = true
@@ -29,10 +34,14 @@ primary_region = 'jnb'
     path = "/health"
 
 [[vm]]
-  memory = '1gb'
   cpu_kind = 'shared'
   cpus = 1
   memory_mb = 512
 
 [deploy]
-  release_command = "./migrate"
+  release_command = "go run database/migrate_all.go"
+
+# Secrets (set via flyctl secrets set)
+# DATABASE_URL - PostgreSQL connection string
+# JWT_SECRET - JWT signing secret  
+# CORS_ALLOWED_ORIGINS - Allowed CORS origins

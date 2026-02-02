@@ -25,6 +25,7 @@ jobs:
   deploy-backend:
     name: Deploy Backend to Fly.io
     runs-on: ubuntu-latest
+    if: ${{ github.event.inputs.deploy_backend != 'false' }}
 
     steps:
       - name: Checkout code
@@ -42,10 +43,43 @@ jobs:
       - name: Setup Fly.io CLI
         uses: superfly/flyctl-actions/setup-flyctl@master
 
+      - name: Set Fly.io Secrets
+        run: |
+          cd backend
+          echo "Setting up Fly.io secrets..."
+          flyctl secrets set \
+            DATABASE_URL="${{ secrets.FLY_DATABASE_URL }}" \
+            JWT_SECRET="${{ secrets.JWT_SECRET }}" \
+            CORS_ALLOWED_ORIGINS="${{ secrets.FLY_CORS_ALLOWED_ORIGINS }}" \
+            --app liyali-gateway-api
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
       - name: Deploy Backend
         run: |
           cd backend
-          flyctl deploy --remote-only
+          flyctl deploy --remote-only --wait-timeout 300
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+      - name: Verify Backend Deployment
+        run: |
+          cd backend
+          echo "Waiting for deployment to be ready..."
+          sleep 30
+
+          # Get app URL
+          URL=$(flyctl status --json | jq -r '.Hostname // "liyali-gateway-api.fly.dev"')
+
+          # Test health endpoint
+          echo "Testing health endpoint: https://${URL}/health"
+          curl -f "https://${URL}/health" || {
+            echo "Health check failed!"
+            flyctl logs --app liyali-gateway-api
+            exit 1
+          }
+
+          echo "Backend deployment verified successfully!"
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
 
@@ -59,19 +93,24 @@ jobs:
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
 
-      - name: Deployment Summary
+      - name: Backend Deployment Summary
         run: |
           echo "## 🚀 Backend Deployed to Fly.io" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "- **Environment**: Demo/Staging" >> $GITHUB_STEP_SUMMARY
-          echo "- **App**: liyali-backend" >> $GITHUB_STEP_SUMMARY
+          echo "- **App**: liyali-gateway-api" >> $GITHUB_STEP_SUMMARY
           echo "- **URL**: ${{ steps.backend-url.outputs.url }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Health Check**: ✅ Passed" >> $GITHUB_STEP_SUMMARY
           echo "- **Commit**: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+
+    outputs:
+      backend-url: ${{ steps.backend-url.outputs.url }}
 
   deploy-frontend:
     name: Deploy Frontend to Fly.io
     runs-on: ubuntu-latest
     needs: deploy-backend
+    if: ${{ always() && (needs.deploy-backend.result == 'success' || github.event.inputs.deploy_frontend != 'false') }}
 
     steps:
       - name: Checkout code
@@ -80,10 +119,54 @@ jobs:
       - name: Setup Fly.io CLI
         uses: superfly/flyctl-actions/setup-flyctl@master
 
+      - name: Set Frontend Environment Variables
+        run: |
+          cd frontend
+          echo "Setting up frontend environment variables..."
+
+          # Get backend URL from previous job or use default
+          BACKEND_URL="${{ needs.deploy-backend.outputs.backend-url || 'https://liyali-gateway-api.fly.dev' }}"
+
+          flyctl secrets set \
+            NEXT_PUBLIC_API_URL="${BACKEND_URL}/api/v1" \
+            DATABASE_URL="${{ secrets.FLY_DATABASE_URL }}" \
+            NEXTAUTH_SECRET="${{ secrets.NEXTAUTH_SECRET }}" \
+            NEXTAUTH_URL="https://liyali-gateway-frontend.fly.dev" \
+            --app liyali-gateway-frontend
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
       - name: Deploy Frontend
         run: |
           cd frontend
-          flyctl deploy --remote-only
+          flyctl deploy --remote-only --wait-timeout 300 \
+            --build-arg NEXT_PUBLIC_API_URL="${{ needs.deploy-backend.outputs.backend-url || 'https://liyali-gateway-api.fly.dev' }}/api/v1"
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+      - name: Verify Frontend Deployment
+        run: |
+          cd frontend
+          echo "Waiting for deployment to be ready..."
+          sleep 30
+
+          # Get app URL
+          URL=$(flyctl status --json | jq -r '.Hostname // "liyali-gateway-frontend.fly.dev"')
+
+          # Test health endpoint (try multiple endpoints)
+          echo "Testing frontend endpoints: https://${URL}"
+
+          # Test root endpoint
+          curl -f "https://${URL}/" -o /dev/null -s || {
+            echo "Root endpoint test failed, trying /api/health..."
+            curl -f "https://${URL}/api/health" -o /dev/null -s || {
+              echo "Health check failed! Checking logs..."
+              flyctl logs --app liyali-gateway-frontend
+              exit 1
+            }
+          }
+
+          echo "Frontend deployment verified successfully!"
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
 
@@ -97,11 +180,45 @@ jobs:
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
 
-      - name: Deployment Summary
+      - name: Frontend Deployment Summary
         run: |
           echo "## 🚀 Frontend Deployed to Fly.io" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "- **Environment**: Demo/Staging" >> $GITHUB_STEP_SUMMARY
-          echo "- **App**: liyali-frontend" >> $GITHUB_STEP_SUMMARY
+          echo "- **App**: liyali-gateway-frontend" >> $GITHUB_STEP_SUMMARY
           echo "- **URL**: ${{ steps.frontend-url.outputs.url }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Backend URL**: ${{ needs.deploy-backend.outputs.backend-url }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Health Check**: ✅ Passed" >> $GITHUB_STEP_SUMMARY
           echo "- **Commit**: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+
+  deployment-complete:
+    name: Deployment Complete
+    runs-on: ubuntu-latest
+    needs: [deploy-backend, deploy-frontend]
+    if: always()
+
+    steps:
+      - name: Final Deployment Summary
+        run: |
+          echo "## 🎉 Fly.io Deployment Complete" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Deployment Status" >> $GITHUB_STEP_SUMMARY
+          echo "- **Backend**: ${{ needs.deploy-backend.result == 'success' && '✅ Success' || '❌ Failed' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Frontend**: ${{ needs.deploy-frontend.result == 'success' && '✅ Success' || '❌ Failed' }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### URLs" >> $GITHUB_STEP_SUMMARY
+          echo "- **Frontend**: ${{ needs.deploy-frontend.outputs.frontend-url || 'https://liyali-gateway-frontend.fly.dev' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Backend**: ${{ needs.deploy-backend.outputs.backend-url || 'https://liyali-gateway-api.fly.dev' }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Next Steps" >> $GITHUB_STEP_SUMMARY
+          echo "1. Test the deployed application" >> $GITHUB_STEP_SUMMARY
+          echo "2. Verify all features work correctly" >> $GITHUB_STEP_SUMMARY
+          echo "3. Monitor logs for any issues" >> $GITHUB_STEP_SUMMARY
+
+          # Set overall status
+          if [[ "${{ needs.deploy-backend.result }}" == "success" && "${{ needs.deploy-frontend.result }}" == "success" ]]; then
+            echo "🎉 **Overall Status**: ✅ SUCCESS" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "⚠️ **Overall Status**: ❌ PARTIAL FAILURE" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
