@@ -1,6 +1,5 @@
 "use client";
 
-import React from "react";
 import { motion } from "framer-motion";
 
 interface FeatureCardProps {
@@ -12,7 +11,7 @@ interface FeatureCardProps {
 
 const FeatureCard = ({ icon, title, description, delay }: FeatureCardProps) => (
   <motion.div
-    className="glass-card p-6 sm:p-8 rounded-2xl sm:rounded-3xl hover:shadow-2xl transition-all duration-300 group border border-white/50 bg-white/80 backdrop-blur-sm"
+    className="p-6 sm:p-8 rounded-2xl sm:rounded-3xl transition-all duration-300 group border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-lg hover:shadow-2xl"
     initial={{ opacity: 0, y: 50 }}
     whileInView={{ opacity: 1, y: 0 }}
     viewport={{ once: true }}
@@ -20,16 +19,16 @@ const FeatureCard = ({ icon, title, description, delay }: FeatureCardProps) => (
     whileHover={{ y: -8, scale: 1.02 }}
   >
     <motion.div
-      className="w-14 h-14 bg-gradient-to-br from-primary-50 to-indigo-50 rounded-2xl flex items-center justify-center text-primary-600 text-2xl mb-6 shadow-sm border border-primary-100"
+      className="w-14 h-14 bg-gradient-to-br from-primary-50 to-indigo-50 dark:from-primary-900/50 dark:to-indigo-900/50 rounded-2xl flex items-center justify-center text-primary-600 dark:text-primary-400 text-2xl mb-6 shadow-sm border border-primary-100 dark:border-primary-800"
       whileHover={{ scale: 1.1, rotate: 5 }}
       transition={{ type: "spring", stiffness: 400, damping: 10 }}
     >
       <i className={`fas ${icon}`}></i>
     </motion.div>
-    <h3 className="text-lg sm:text-xl font-bold text-slate-900 mb-3">
+    <h3 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white mb-3">
       {title}
     </h3>
-    <p className="text-sm sm:text-base text-slate-600 leading-relaxed">
+    <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 leading-relaxed">
       {description}
     </p>
   </motion.div>
@@ -78,7 +77,7 @@ export const Features = () => {
   return (
     <section
       id="features"
-      className="py-16 sm:py-20 lg:py-24 bg-white relative"
+      className="py-16 sm:py-20 lg:py-24 bg-white dark:bg-slate-900 relative transition-colors duration-300"
       aria-label="Product features"
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -89,13 +88,13 @@ export const Features = () => {
           viewport={{ once: true }}
           transition={{ duration: 0.8 }}
         >
-          <span className="text-primary-600 font-bold tracking-wider uppercase text-sm">
+          <span className="text-primary-600 dark:text-primary-400 font-bold tracking-wider uppercase text-sm">
             Why Liyali Suite?
           </span>
-          <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-slate-900 mt-2 mb-4">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-slate-900 dark:text-white mt-2 mb-4">
             Everything You Need to Scale
           </h2>
-          <p className="text-base sm:text-lg text-slate-600">
+          <p className="text-base sm:text-lg text-slate-600 dark:text-slate-300">
             Powerful tools integrated into one seamless platform built for
             procurement, workflow automation, and team collaboration.
           </p>

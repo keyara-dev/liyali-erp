@@ -44,7 +44,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             <Logo
               isIcon={!open && !isMobile}
               isFull={open || isMobile}
-              href="/"
+              href="/?landing=true"
               className="my-4 mb-2"
             />
           </SidebarMenuItem>

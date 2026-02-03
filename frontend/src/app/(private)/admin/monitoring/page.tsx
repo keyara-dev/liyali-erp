@@ -1,4 +1,4 @@
-import { MonitoringClient } from './_components/monitoring-client'
+import { MonitoringClient } from '../_components/monitoring-client'
 import { verifySession } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 

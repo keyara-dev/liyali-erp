@@ -104,15 +104,16 @@ type DocumentSearchResult struct {
 
 // DocumentFilter represents filters for document queries
 type DocumentFilter struct {
-	DocumentTypes []string  `json:"documentTypes,omitempty"`
-	Statuses      []string  `json:"statuses,omitempty"`
-	Departments   []string  `json:"departments,omitempty"`
-	CreatedBy     []string  `json:"createdBy,omitempty"`
-	DateFrom      *time.Time `json:"dateFrom,omitempty"`
-	DateTo        *time.Time `json:"dateTo,omitempty"`
-	AmountMin     *float64  `json:"amountMin,omitempty"`
-	AmountMax     *float64  `json:"amountMax,omitempty"`
-	Search        string    `json:"search,omitempty"` // Full-text search
+	DocumentNumber string    `json:"documentNumber,omitempty"` // Exact document number match
+	DocumentTypes  []string  `json:"documentTypes,omitempty"`
+	Statuses       []string  `json:"statuses,omitempty"`
+	Departments    []string  `json:"departments,omitempty"`
+	CreatedBy      []string  `json:"createdBy,omitempty"`
+	DateFrom       *time.Time `json:"dateFrom,omitempty"`
+	DateTo         *time.Time `json:"dateTo,omitempty"`
+	AmountMin      *float64  `json:"amountMin,omitempty"`
+	AmountMax      *float64  `json:"amountMax,omitempty"`
+	Search         string    `json:"search,omitempty"` // Full-text search
 }
 
 // DocumentStats represents document statistics

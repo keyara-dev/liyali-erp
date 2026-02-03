@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useEffect } from "react";
+import { useCallback, useMemo, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ColumnDef } from "@tanstack/react-table";
 import {
@@ -11,6 +11,9 @@ import {
   XCircle,
   MoreVertical,
   Send,
+  PlusCircle,
+  FileText,
+  Undo2,
 } from "lucide-react";
 
 import { StatusBadge } from "@/components/status-badge";
@@ -19,7 +22,6 @@ import { DataTable } from "@/components/ui/data-table";
 import {
   Tooltip,
   TooltipContent,
-  TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Requisition } from "@/types/requisition";
@@ -27,21 +29,22 @@ import {
   useRequisitions,
   useSubmitRequisitionForApproval,
 } from "@/hooks/use-requisition-queries";
+import { useWithdrawRequisition } from "@/hooks/use-requisition-mutations";
 import { useApprovalWorkflowStatus } from "@/hooks/use-approval-history";
-import type { ActionButton } from "@/components/ui/action-buttons";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { toast } from "sonner";
+import { ConfirmationModal } from "@/components/modals/confirmation-modal";
 
 interface RequisitionsTableProps {
   userId: string;
   userRole: string;
   refreshTrigger: number;
-  onEditRequisition: (requisition: Requisition) => void; // Add edit callback
+  onEditRequisition: (requisition: Requisition) => void;
+  onCreateRequisition: () => void;
 }
 
 const columns: ColumnDef<Requisition>[] = [
@@ -58,7 +61,7 @@ const columns: ColumnDef<Requisition>[] = [
       </Button>
     ),
     cell: ({ row }) => (
-      <div className="font-semibold">
+      <div className="font-semibold uppercase">
         {row.original.documentNumber || row.original.id}
       </div>
     ),
@@ -69,7 +72,7 @@ const columns: ColumnDef<Requisition>[] = [
     cell: ({ row }) => (
       <Tooltip>
         <TooltipTrigger asChild>
-          <div className="max-w-[200px] truncate font-medium cursor-help">
+          <div className="max-w-[200px] truncate capitalize font-medium cursor-help">
             {row.original.title || "-"}
           </div>
         </TooltipTrigger>
@@ -104,7 +107,11 @@ const columns: ColumnDef<Requisition>[] = [
   {
     accessorKey: "department",
     header: "Department",
-    cell: ({ row }) => <div>{row.original.department || "-"}</div>,
+    cell: ({ row }) => (
+      <div className="font-medium capitalize">
+        {row.original.department || "-"}
+      </div>
+    ),
   },
   {
     accessorKey: "priority",
@@ -120,7 +127,7 @@ const columns: ColumnDef<Requisition>[] = [
 
       return (
         <span
-          className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${
+          className={`inline-flex capitalize items-center px-2 py-1 rounded-full text-xs font-medium border ${
             priorityColors[priority as keyof typeof priorityColors] ||
             priorityColors.medium
           }`}
@@ -137,7 +144,7 @@ const columns: ColumnDef<Requisition>[] = [
       const itemsCount = row.original.items?.length || 0;
       return (
         <div className="text-center">
-          <span className="inline-flex items-center justify-center w-6 h-6 text-xs font-medium bg-gray-100 rounded-full">
+          <span className="inline-flex items-center justify-center w-6 h-6 text-xs font-medium bg-foreground/5 rounded-full">
             {itemsCount}
           </span>
         </div>
@@ -262,7 +269,11 @@ function ReqOptionsMenu({
   userRole: string;
   onRefresh: () => void;
 }) {
+  const [showSubmitModal, setShowSubmitModal] = useState(false);
+  const [showWithdrawModal, setShowWithdrawModal] = useState(false);
+
   const submitMutation = useSubmitRequisitionForApproval(req.id, onRefresh);
+  const withdrawMutation = useWithdrawRequisition(onRefresh);
   const { data: workflowStatus } = useApprovalWorkflowStatus(req.id);
 
   const handleSubmitForApproval = async () => {
@@ -273,17 +284,29 @@ function ReqOptionsMenu({
         submittedByRole: userRole,
         comments: `Submitted for approval on ${new Date().toLocaleDateString()}`,
       });
+      setShowSubmitModal(false);
     } catch (error) {
       console.error("Submit error:", error);
     }
   };
 
+  const handleWithdraw = async () => {
+    try {
+      await withdrawMutation.mutateAsync(req.id);
+      setShowWithdrawModal(false);
+    } catch (error) {
+      console.error("Withdraw error:", error);
+    }
+  };
+
   const canSubmit = req.status === "draft" && req.requesterId === userId;
+  const canWithdraw = req.status === "pending" && req.requesterId === userId;
   const canEdit = req.status === "draft" && req.requesterId === userId;
   const canApprove = workflowStatus?.canApprove && req.status === "pending";
   const canReject = workflowStatus?.canReject && req.status === "pending";
 
   return (
+    <>
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant={"outline"}>
@@ -307,11 +330,20 @@ function ReqOptionsMenu({
 
         {canSubmit && (
           <DropdownMenuItem
-            onClick={handleSubmitForApproval}
-            disabled={submitMutation.isPending}
+            onClick={() => setShowSubmitModal(true)}
           >
             <Send className="mr-2 h-4 w-4 text-blue-600" />
-            {submitMutation.isPending ? "Submitting..." : "Submit for Approval"}
+            Submit for Approval
+          </DropdownMenuItem>
+        )}
+
+        {canWithdraw && (
+          <DropdownMenuItem
+            onClick={() => setShowWithdrawModal(true)}
+            className="text-amber-600 focus:text-amber-600"
+          >
+            <Undo2 className="mr-2 h-4 w-4" />
+            Withdraw
           </DropdownMenuItem>
         )}
 
@@ -364,6 +396,29 @@ function ReqOptionsMenu({
         )}
       </DropdownMenuContent>
     </DropdownMenu>
+
+    {/* Submit Confirmation Modal */}
+    <ConfirmationModal
+      open={showSubmitModal}
+      onOpenChange={setShowSubmitModal}
+      onConfirm={handleSubmitForApproval}
+      type="submit"
+      title="Submit for Approval"
+      description={`Are you sure you want to submit requisition ${req.documentNumber || req.id} for approval? Once submitted, it will be sent to the appropriate approvers for review.`}
+      isLoading={submitMutation.isPending}
+    />
+
+    {/* Withdraw Confirmation Modal */}
+    <ConfirmationModal
+      open={showWithdrawModal}
+      onOpenChange={setShowWithdrawModal}
+      onConfirm={handleWithdraw}
+      type="withdraw"
+      title="Withdraw Requisition"
+      description={`Are you sure you want to withdraw requisition ${req.documentNumber || req.id}? It will be reverted to draft status and you can edit and re-submit it later.`}
+      isLoading={withdrawMutation.isPending}
+    />
+    </>
   );
 }
 
@@ -372,6 +427,7 @@ export function RequisitionsTable({
   userRole,
   refreshTrigger,
   onEditRequisition,
+  onCreateRequisition,
 }: RequisitionsTableProps) {
   const router = useRouter();
   const { data: requisitions = [], refetch } = useRequisitions(1, 50); // Get first 50 requisitions
@@ -391,43 +447,25 @@ export function RequisitionsTable({
     return [];
   }, [requisitions]);
 
-  // const getActions = useCallback(
-  //   (req: Requisition): ActionButton[] => {
-  //     const actions: ActionButton[] = [
-  //       {
-  //         icon: <Eye className="h-3.5 w-3.5" />,
-  //         label: 'View',
-  //         tooltip: 'View Details',
-  //         onClick: () => router.push(`/requisitions/${req.id}`),
-  //       },
-  //     ];
-
-  //     // Only allow edit and delete for draft status
-  //     if (req.status === 'draft') {
-  //       actions.push(
-  //         {
-  //           icon: <Pencil className="h-3.5 w-3.5" />,
-  //           label: 'Edit',
-  //           tooltip: 'Edit Requisition',
-  //           onClick: () => onEditRequisition(req), // Use callback instead of navigation
-  //         }
-  //       );
-  //     }
-
-  //     return actions;
-  //   },
-  //   [router, onEditRequisition]
-  // );
-
   return (
     <DataTable
       columns={columns}
       data={data}
       searchKey="title"
       searchPlaceholder="Search by title, document number, or requester..."
-      // actions={getActions}
+      emptyState={{
+        title: "No Requisitions Yet",
+        description: "Get started by creating your first requisition",
+        icon: <FileText className="h-10 w-10 text-muted-foreground" />,
+        action: (
+          <Button onClick={onCreateRequisition}>
+            <PlusCircle className="h-4 w-4 mr-2" />
+            Create Requisition
+          </Button>
+        ),
+      }}
       renderRowActions={(req: Requisition) => (
-        <TooltipProvider>
+        <>
           <ReqOptionsMenu
             req={req}
             router={router}
@@ -436,7 +474,7 @@ export function RequisitionsTable({
             userRole={userRole}
             onRefresh={refetch}
           />
-        </TooltipProvider>
+        </>
       )}
     />
   );

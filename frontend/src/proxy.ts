@@ -2,6 +2,76 @@ import { NextResponse, type NextRequest } from "next/server";
 import { verifySession } from "./lib/auth";
 import { AUTH_SESSION } from "./lib/constants";
 
+// ============================================================================
+// ROUTE CONFIGURATION
+// Add routes to these arrays to control access
+// ============================================================================
+
+/**
+ * Authentication routes - pages for login, registration, etc.
+ * Users with valid session will be redirected away from these pages
+ */
+const AUTH_ROUTES = ["/login", "/register", "/otp", "/forgot-password", "/reset-password"];
+
+/**
+ * Public routes - accessible without authentication
+ * Add any public-facing pages here (landing pages, verification, support, etc.)
+ */
+const PUBLIC_ROUTES = [
+  "/",           // Landing page
+  "/verify",     // Document verification (prefix match)
+  "/support",    // Support page
+  "/about",      // About page
+];
+
+/**
+ * Admin routes - require admin role
+ * These routes will verify the user's role before allowing access
+ */
+const ADMIN_ROUTES = ["/admin"];
+
+/**
+ * Static assets - skip middleware entirely for performance
+ */
+const STATIC_ASSET_PREFIXES = [
+  "/web-app-manifest",
+  "/favicon",
+  "/_next",
+  "/static",
+  "/public",
+  "/images",
+  "/logo",
+  "/manifest.json",
+];
+
+// ============================================================================
+// HELPER FUNCTIONS
+// ============================================================================
+
+/**
+ * Check if pathname matches any route in the list (supports prefix matching)
+ */
+function matchesRoute(pathname: string, routes: string[]): boolean {
+  return routes.some((route) => {
+    // Exact match for routes without wildcards
+    if (pathname === route) return true;
+    // Prefix match for routes (e.g., "/verify" matches "/verify/DOC-123")
+    if (pathname.startsWith(route + "/")) return true;
+    return false;
+  });
+}
+
+/**
+ * Check if pathname starts with any prefix
+ */
+function startsWithAny(pathname: string, prefixes: string[]): boolean {
+  return prefixes.some((prefix) => pathname.startsWith(prefix));
+}
+
+// ============================================================================
+// MIDDLEWARE
+// ============================================================================
+
 export default async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const url = request.nextUrl.clone();
@@ -23,32 +93,18 @@ export default async function proxy(request: NextRequest) {
     );
   }
 
-  // Exclude public assets like icons, manifest, and images
-  if (
-    pathname.startsWith("/web-app-manifest") ||
-    pathname.startsWith("/favicon") ||
-    pathname.startsWith("/_next") ||
-    pathname.startsWith("/static") ||
-    pathname.startsWith("/public") ||
-    pathname.startsWith("/manifest.json")
-  ) {
+  // Skip middleware for static assets
+  if (startsWithAny(pathname, STATIC_ASSET_PREFIXES)) {
     return response;
   }
 
-  // ✅ FAST: Check cookie existence only (no JWT decryption for most routes)
+  // Check cookie existence (fast check without JWT decryption)
   const hasAuthCookie = request.cookies.has(AUTH_SESSION);
 
-  // Define authentication pages (login, register, OTP) and public pages
-  const isAuthPage =
-    pathname.startsWith("/login") ||
-    pathname.startsWith("/register") ||
-    pathname.startsWith("/otp");
-  
-  // Allow access to landing page for unauthenticated users
-  const isPublicPage = pathname === "/";
-
-  // Check if accessing admin routes
-  const isAdminRoute = pathname.startsWith("/admin");
+  // Determine route type
+  const isAuthPage = matchesRoute(pathname, AUTH_ROUTES);
+  const isPublicPage = matchesRoute(pathname, PUBLIC_ROUTES);
+  const isAdminRoute = startsWithAny(pathname, ADMIN_ROUTES);
 
   // If no auth cookie and not on auth page or public page, redirect to login
   if (!hasAuthCookie && !isAuthPage && !isPublicPage) {
@@ -56,19 +112,11 @@ export default async function proxy(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // If has auth cookie and on auth page, let the (auth)/layout.tsx handle routing
-  // The layout will check role and redirect appropriately
-  // We don't redirect here to avoid conflicts
-
-  // ✅ NEW: Admin route protection
-  // Verify role for admin routes (requires JWT decode - acceptable for security)
+  // Admin route protection - verify role (requires JWT decode)
   if (isAdminRoute && hasAuthCookie) {
     try {
-      const { session, isAuthenticated, role } = await verifySession();
+      const { isAuthenticated, role } = await verifySession();
 
-      console.log("[Proxy] Admin route check:", "session");
-
-      // If not authenticated or not an admin, redirect to access denied page
       if (!isAuthenticated || role !== "admin") {
         console.log(
           "[Proxy] Non-admin user attempting to access admin route, redirecting to /access-denied"
@@ -77,7 +125,6 @@ export default async function proxy(request: NextRequest) {
         return NextResponse.redirect(url);
       }
     } catch (error) {
-      // If decryption fails, let it through (layout will handle)
       console.error("[Proxy] Admin route check failed:", error);
     }
   }
@@ -94,7 +141,7 @@ export const config = {
      * - _next/image (image optimization files)
      * - public (static assets)
      * - favicon.ico, manifest.json (static files)
-     * - icon*.svg, *.png, *.jpg, *.gif, *.webp, etc. (image files)
+     * - image files and fonts
      */
     "/((?!api|_next/static|_next/image|public|favicon\\.ico|manifest\\.json|icon.*\\.svg|.*\\.png|.*\\.jpg|.*\\.jpeg|.*\\.gif|.*\\.webp|.*\\.svg|.*\\.ico|.*\\.woff|.*\\.woff2|.*\\.ttf|.*\\.eot).*)",
   ],

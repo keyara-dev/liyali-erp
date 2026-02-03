@@ -13,7 +13,7 @@ interface TasksClientProps {
   userRole: string;
 }
 
-export function TasksClient({ userId }: TasksClientProps) {
+export function TasksClient({ userId, userRole }: TasksClientProps) {
   const searchParams = useSearchParams();
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [activeTab, setActiveTab] = useState<"tasks" | "approvals">("tasks");
@@ -56,7 +56,7 @@ export function TasksClient({ userId }: TasksClientProps) {
 
         {/* Approvals Tab */}
         <TabsContent value="approvals" className="space-y-4">
-          <ApprovalsList userId={userId} />
+          <ApprovalsList userId={userId} userRole={userRole} />
         </TabsContent>
       </Tabs>
     </div>

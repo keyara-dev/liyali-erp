@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -137,9 +138,12 @@ func CreateBudget(c *fiber.Ctx) error {
 		"organization_id":  tenant.OrganizationID,
 	})
 
+	// Auto-generate budget code if not provided
 	if req.BudgetCode == "" {
-		logging.LogWarn(c, "budget_code_missing")
-		return utils.SendBadRequestError(c, "Budget code is required")
+		year := time.Now().Year()
+		randomID := uuid.New().String()[:8] // Take first 8 characters
+		req.BudgetCode = fmt.Sprintf("BG-%d-%s", year, strings.ToUpper(randomID))
+		logging.AddFieldToRequest(c, "generated_budget_code", req.BudgetCode)
 	}
 	if req.TotalBudget <= 0 {
 		logging.LogWarn(c, "invalid_total_budget", map[string]interface{}{
@@ -524,6 +528,7 @@ func modelToBudgetResponse(budget models.Budget) types.BudgetResponse {
 		OwnerID:         budget.OwnerID,
 		OwnerName:       ownerName,
 		Department:      budget.Department,
+		DepartmentID:    budget.DepartmentID,
 		Status:          budget.Status,
 		FiscalYear:      budget.FiscalYear,
 		TotalBudget:     budget.TotalBudget,
@@ -531,6 +536,10 @@ func modelToBudgetResponse(budget models.Budget) types.BudgetResponse {
 		RemainingAmount: budget.RemainingAmount,
 		ApprovalStage:   budget.ApprovalStage,
 		ApprovalHistory: approvalHistory,
+		Name:            budget.Name,
+		Description:     budget.Description,
+		Currency:        budget.Currency,
+		CreatedBy:       budget.CreatedBy,
 		CreatedAt:       budget.CreatedAt,
 		UpdatedAt:       budget.UpdatedAt,
 	}

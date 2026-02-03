@@ -59,12 +59,20 @@ export const metadata: Metadata = {
   },
 };
 
-export default async function HomePage() {
+export default async function HomePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
   // Check if user is authenticated
   const { isAuthenticated, session } = await verifySession();
+  const params = await searchParams;
 
-  if (isAuthenticated && session?.user_id) {
-    // User is authenticated - redirect based on their role
+  // Allow authenticated users to view landing page if they explicitly request it
+  const showLanding = params?.landing === "true" || params?.view === "landing";
+
+  if (isAuthenticated && session?.user_id && !showLanding) {
+    // User is authenticated and not explicitly requesting landing page - redirect based on their role
     const userRole = (session.role || "requester").toLowerCase();
 
     // Map roles to their respective pages (using lowercase to match backend)
@@ -82,7 +90,7 @@ export default async function HomePage() {
     redirect(redirectUrl);
   }
 
-  // User is not authenticated - show landing page
+  // User is not authenticated OR explicitly requested landing page - show landing page
   return (
     <>
       {/* Structured Data for SEO */}

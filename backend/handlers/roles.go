@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"log"
 
 	"github.com/gofiber/fiber/v2"
@@ -25,21 +26,25 @@ type UpdateRoleRequest struct {
 
 // RoleResponse is the response format for roles
 type RoleResponse struct {
-	ID          string `json:"id"`
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	IsDefault   bool   `json:"isDefault"`
-	IsActive    bool   `json:"isActive"`
-	CreatedAt   string `json:"createdAt"`
-	UpdatedAt   string `json:"updatedAt"`
+	ID               string `json:"id"`
+	Name             string `json:"name"`
+	Description      string `json:"description"`
+	IsDefault        bool   `json:"isDefault"`
+	IsActive         bool   `json:"isActive"`
+	PermissionsCount int    `json:"permissionsCount"`
+	CreatedAt        string `json:"createdAt"`
+	UpdatedAt        string `json:"updatedAt"`
 }
 
 // GetOrganizationRoles retrieves all roles for the organization
 func GetOrganizationRoles(c *fiber.Ctx) error {
 	organizationID, ok := c.Locals("organizationID").(string)
 	if !ok {
+		log.Printf("GetOrganizationRoles: Organization ID not found in context")
 		return utils.SendBadRequestError(c, "Organization ID not found")
 	}
+
+	log.Printf("GetOrganizationRoles: Fetching roles for organization: %s", organizationID)
 
 	svc := services.NewRoleManagementService(config.DB)
 	roles, err := svc.GetOrganizationRoles(organizationID)
@@ -48,16 +53,45 @@ func GetOrganizationRoles(c *fiber.Ctx) error {
 		return utils.SendInternalError(c, "Failed to fetch roles", err)
 	}
 
+	log.Printf("GetOrganizationRoles: Found %d roles for organization %s", len(roles), organizationID)
+
+	// Auto-initialize default roles if none exist for this organization
+	if len(roles) == 0 {
+		log.Printf("GetOrganizationRoles: No roles found, initializing default roles for organization %s", organizationID)
+		if err := svc.InitializeDefaultRolesForOrganization(organizationID); err != nil {
+			log.Printf("Error initializing default roles: %v", err)
+			// Continue even if initialization fails, just return empty list
+		} else {
+			// Fetch roles again after initialization
+			roles, err = svc.GetOrganizationRoles(organizationID)
+			if err != nil {
+				log.Printf("Error fetching roles after initialization: %v", err)
+			} else {
+				log.Printf("GetOrganizationRoles: After initialization, found %d roles", len(roles))
+			}
+		}
+	}
+
 	responses := make([]RoleResponse, 0, len(roles))
 	for _, role := range roles {
+		// Count permissions from JSONB field
+		permissionsCount := 0
+		if role.Permissions != nil {
+			var permissions []string
+			if err := json.Unmarshal(role.Permissions, &permissions); err == nil {
+				permissionsCount = len(permissions)
+			}
+		}
+
 		responses = append(responses, RoleResponse{
-			ID:          role.ID.String(),
-			Name:        role.Name,
-			Description: role.Description,
-			IsDefault:   role.IsSystemRole,
-			IsActive:    role.Active,
-			CreatedAt:   role.CreatedAt.String(),
-			UpdatedAt:   role.UpdatedAt.String(),
+			ID:               role.ID.String(),
+			Name:             role.Name,
+			Description:      role.Description,
+			IsDefault:        role.IsSystemRole,
+			IsActive:         role.Active,
+			PermissionsCount: permissionsCount,
+			CreatedAt:        role.CreatedAt.String(),
+			UpdatedAt:        role.UpdatedAt.String(),
 		})
 	}
 
@@ -92,13 +126,14 @@ func CreateOrganizationRole(c *fiber.Ctx) error {
 	}
 
 	response := RoleResponse{
-		ID:          role.ID.String(),
-		Name:        role.Name,
-		Description: role.Description,
-		IsDefault:   role.IsSystemRole,
-		IsActive:    role.Active,
-		CreatedAt:   role.CreatedAt.String(),
-		UpdatedAt:   role.UpdatedAt.String(),
+		ID:               role.ID.String(),
+		Name:             role.Name,
+		Description:      role.Description,
+		IsDefault:        role.IsSystemRole,
+		IsActive:         role.Active,
+		PermissionsCount: 0, // New role has no permissions
+		CreatedAt:        role.CreatedAt.String(),
+		UpdatedAt:        role.UpdatedAt.String(),
 	}
 
 	return utils.SendCreatedSuccess(c, response, "Role created successfully")
@@ -152,14 +187,24 @@ func UpdateOrganizationRole(c *fiber.Ctx) error {
 		return utils.SendInternalError(c, "Failed to update role", err)
 	}
 
+	// Count permissions from JSONB field
+	permissionsCount := 0
+	if existingRole.Permissions != nil {
+		var permissions []string
+		if err := json.Unmarshal(existingRole.Permissions, &permissions); err == nil {
+			permissionsCount = len(permissions)
+		}
+	}
+
 	response := RoleResponse{
-		ID:          existingRole.ID.String(),
-		Name:        existingRole.Name,
-		Description: existingRole.Description,
-		IsDefault:   existingRole.IsSystemRole,
-		IsActive:    existingRole.Active,
-		CreatedAt:   existingRole.CreatedAt.String(),
-		UpdatedAt:   existingRole.UpdatedAt.String(),
+		ID:               existingRole.ID.String(),
+		Name:             existingRole.Name,
+		Description:      existingRole.Description,
+		IsDefault:        existingRole.IsSystemRole,
+		IsActive:         existingRole.Active,
+		PermissionsCount: permissionsCount,
+		CreatedAt:        existingRole.CreatedAt.String(),
+		UpdatedAt:        existingRole.UpdatedAt.String(),
 	}
 
 	return utils.SendSimpleSuccess(c, response, "Role updated successfully")

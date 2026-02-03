@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/liyali/liyali-gateway/models"
@@ -133,6 +134,190 @@ func (s *DocumentService) GetDocument(ctx context.Context, id uuid.UUID, organiz
 // GetDocumentByNumber retrieves a document by document number
 func (s *DocumentService) GetDocumentByNumber(ctx context.Context, documentNumber, organizationID string) (*models.Document, error) {
 	return s.documentRepo.GetByNumber(ctx, documentNumber, organizationID)
+}
+
+// PublicDocumentVerification represents the public verification response
+type PublicDocumentVerification struct {
+	Verified       bool     `json:"verified"`
+	DocumentNumber string   `json:"documentNumber"`
+	DocumentType   string   `json:"documentType"`
+	Title          string   `json:"title"`
+	Status         string   `json:"status"`
+	Department     *string  `json:"department,omitempty"`
+	Amount         *float64 `json:"totalAmount,omitempty"`
+	Currency       *string  `json:"currency,omitempty"`
+	OrganizationID string   `json:"organizationId"`
+	Organization   string   `json:"organization,omitempty"`
+	CreatedByName  string   `json:"createdByName,omitempty"`
+	CreatedAt      string   `json:"createdAt"`
+}
+
+// VerifyDocumentPublic verifies a document by document number for public access
+// Returns limited document information for verification purposes
+func (s *DocumentService) VerifyDocumentPublic(ctx context.Context, documentNumber string) (*PublicDocumentVerification, error) {
+	// First, try to get from the generic documents table
+	document, err := s.documentRepo.GetByNumberOnly(ctx, documentNumber)
+	if err == nil && document != nil {
+		// Build verification response with limited information
+		verification := &PublicDocumentVerification{
+			Verified:       true,
+			DocumentNumber: document.DocumentNumber,
+			DocumentType:   document.DocumentType,
+			Title:          document.Title,
+			Status:         document.Status,
+			Department:     document.Department,
+			Amount:         document.Amount,
+			Currency:       document.Currency,
+			OrganizationID: document.OrganizationID,
+			CreatedAt:      document.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+		}
+
+		// Add organization name if available
+		if document.Organization != nil {
+			verification.Organization = document.Organization.Name
+		}
+
+		// Add creator name if available
+		if document.Creator != nil {
+			verification.CreatedByName = document.Creator.Name
+		}
+
+		return verification, nil
+	}
+
+	// If not found in generic documents table, try entity-specific tables based on prefix
+	docType := getDocumentTypeFromNumber(documentNumber)
+
+	switch docType {
+	case "REQUISITION":
+		req, err := s.documentRepo.GetRequisitionByNumberPublic(ctx, documentNumber)
+		if err != nil {
+			return nil, fmt.Errorf("document not found: %w", err)
+		}
+		return buildVerificationFromRequisition(req), nil
+
+	case "PURCHASE_ORDER":
+		po, err := s.documentRepo.GetPurchaseOrderByNumberPublic(ctx, documentNumber)
+		if err != nil {
+			return nil, fmt.Errorf("document not found: %w", err)
+		}
+		return buildVerificationFromPurchaseOrder(po), nil
+
+	case "PAYMENT_VOUCHER":
+		pv, err := s.documentRepo.GetPaymentVoucherByNumberPublic(ctx, documentNumber)
+		if err != nil {
+			return nil, fmt.Errorf("document not found: %w", err)
+		}
+		return buildVerificationFromPaymentVoucher(pv), nil
+
+	case "GRN":
+		grn, err := s.documentRepo.GetGRNByNumberPublic(ctx, documentNumber)
+		if err != nil {
+			return nil, fmt.Errorf("document not found: %w", err)
+		}
+		return buildVerificationFromGRN(grn), nil
+	}
+
+	return nil, fmt.Errorf("document not found")
+}
+
+// getDocumentTypeFromNumber determines document type from document number prefix
+func getDocumentTypeFromNumber(documentNumber string) string {
+	upper := strings.ToUpper(documentNumber)
+	if strings.HasPrefix(upper, "REQ-") {
+		return "REQUISITION"
+	}
+	if strings.HasPrefix(upper, "PO-") {
+		return "PURCHASE_ORDER"
+	}
+	if strings.HasPrefix(upper, "PV-") {
+		return "PAYMENT_VOUCHER"
+	}
+	if strings.HasPrefix(upper, "GRN-") {
+		return "GRN"
+	}
+	return ""
+}
+
+// buildVerificationFromRequisition builds verification response from requisition
+func buildVerificationFromRequisition(req *models.Requisition) *PublicDocumentVerification {
+	verification := &PublicDocumentVerification{
+		Verified:       true,
+		DocumentNumber: req.DocumentNumber,
+		DocumentType:   "REQUISITION",
+		Title:          req.Title,
+		Status:         req.Status,
+		OrganizationID: req.OrganizationID,
+		CreatedAt:      req.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+	}
+	if req.TotalAmount > 0 {
+		verification.Amount = &req.TotalAmount
+	}
+	if req.Currency != "" {
+		verification.Currency = &req.Currency
+	}
+	if req.Requester != nil {
+		verification.CreatedByName = req.Requester.Name
+	}
+	return verification
+}
+
+// buildVerificationFromPurchaseOrder builds verification response from purchase order
+func buildVerificationFromPurchaseOrder(po *models.PurchaseOrder) *PublicDocumentVerification {
+	verification := &PublicDocumentVerification{
+		Verified:       true,
+		DocumentNumber: po.DocumentNumber,
+		DocumentType:   "PURCHASE_ORDER",
+		Title:          po.Title,
+		Status:         po.Status,
+		OrganizationID: po.OrganizationID,
+		CreatedAt:      po.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+	}
+	if po.TotalAmount > 0 {
+		verification.Amount = &po.TotalAmount
+	}
+	if po.Currency != "" {
+		verification.Currency = &po.Currency
+	}
+	return verification
+}
+
+// buildVerificationFromPaymentVoucher builds verification response from payment voucher
+func buildVerificationFromPaymentVoucher(pv *models.PaymentVoucher) *PublicDocumentVerification {
+	verification := &PublicDocumentVerification{
+		Verified:       true,
+		DocumentNumber: pv.DocumentNumber,
+		DocumentType:   "PAYMENT_VOUCHER",
+		Title:          pv.Title,
+		Status:         pv.Status,
+		OrganizationID: pv.OrganizationID,
+		CreatedAt:      pv.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+	}
+	if pv.Amount > 0 {
+		verification.Amount = &pv.Amount
+	}
+	if pv.Currency != "" {
+		verification.Currency = &pv.Currency
+	}
+	return verification
+}
+
+// buildVerificationFromGRN builds verification response from GRN
+func buildVerificationFromGRN(grn *models.GoodsReceivedNote) *PublicDocumentVerification {
+	title := "Goods Received Note - " + grn.DocumentNumber
+	if grn.Notes != "" {
+		title = grn.Notes
+	}
+	verification := &PublicDocumentVerification{
+		Verified:       true,
+		DocumentNumber: grn.DocumentNumber,
+		DocumentType:   "GRN",
+		Title:          title,
+		Status:         grn.Status,
+		OrganizationID: grn.OrganizationID,
+		CreatedAt:      grn.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+	}
+	return verification
 }
 
 // UpdateDocument updates a document
@@ -308,6 +493,65 @@ func (s *DocumentService) SubmitDocument(ctx context.Context, id uuid.UUID, orga
 // GetDocumentStats retrieves document statistics
 func (s *DocumentService) GetDocumentStats(ctx context.Context, organizationID string) (*models.DocumentStats, error) {
 	return s.documentRepo.GetStats(ctx, organizationID)
+}
+
+// PublicDocumentForPDF represents a document response for PDF generation
+type PublicDocumentForPDF struct {
+	DocumentType string      `json:"documentType"`
+	Document     interface{} `json:"document"`
+}
+
+// GetDocumentForPDFPublic retrieves full document data for PDF generation (public endpoint)
+func (s *DocumentService) GetDocumentForPDFPublic(ctx context.Context, documentNumber string) (*PublicDocumentForPDF, error) {
+	result := &PublicDocumentForPDF{}
+
+	// First, try to get from the generic documents table to determine the type
+	genericDoc, err := s.documentRepo.GetByNumberOnly(ctx, documentNumber)
+	if err == nil && genericDoc != nil {
+		result.DocumentType = genericDoc.DocumentType
+	} else {
+		// If not found in generic table, determine type from document number prefix
+		result.DocumentType = getDocumentTypeFromNumber(documentNumber)
+		if result.DocumentType == "" {
+			return nil, fmt.Errorf("document not found")
+		}
+	}
+
+	// Fetch the full document based on type
+	switch result.DocumentType {
+	case "REQUISITION":
+		requisition, err := s.documentRepo.GetRequisitionByNumberPublic(ctx, documentNumber)
+		if err != nil {
+			return nil, fmt.Errorf("requisition not found: %w", err)
+		}
+		result.Document = requisition
+
+	case "PURCHASE_ORDER":
+		po, err := s.documentRepo.GetPurchaseOrderByNumberPublic(ctx, documentNumber)
+		if err != nil {
+			return nil, fmt.Errorf("purchase order not found: %w", err)
+		}
+		result.Document = po
+
+	case "PAYMENT_VOUCHER":
+		pv, err := s.documentRepo.GetPaymentVoucherByNumberPublic(ctx, documentNumber)
+		if err != nil {
+			return nil, fmt.Errorf("payment voucher not found: %w", err)
+		}
+		result.Document = pv
+
+	case "GRN":
+		grn, err := s.documentRepo.GetGRNByNumberPublic(ctx, documentNumber)
+		if err != nil {
+			return nil, fmt.Errorf("GRN not found: %w", err)
+		}
+		result.Document = grn
+
+	default:
+		return nil, fmt.Errorf("unsupported document type for PDF: %s", result.DocumentType)
+	}
+
+	return result, nil
 }
 
 // SyncFromSpecificModel syncs a specific model to the generic document table

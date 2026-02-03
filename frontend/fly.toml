@@ -9,6 +9,7 @@ primary_region = "jnb" # Johannesburg - same region as backend for optimal perfo
   PORT = "3000"
   NODE_ENV = "production"
   NEXT_TELEMETRY_DISABLED = "1"
+  HOSTNAME = "0.0.0.0"
 
 [http_service]
   internal_port = 3000
@@ -34,3 +35,9 @@ primary_region = "jnb" # Johannesburg - same region as backend for optimal perfo
   cpu_kind = "shared"
   cpus = 1
   memory_mb = 512
+
+# Secrets (set via flyctl secrets set)
+# NEXT_PUBLIC_API_URL - Backend API URL
+# DATABASE_URL - PostgreSQL connection string (for server actions)
+# NEXTAUTH_SECRET - NextAuth signing secret
+# NEXTAUTH_URL - Frontend URL for NextAuth

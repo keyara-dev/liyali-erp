@@ -1,13 +1,13 @@
 import { Suspense } from "react";
-import { UserManagementClient } from "./_components/user-management-client";
-import UsersDataTable from "./_components/data-table";
 import { Card, CardContent } from "@/components/ui/card";
-import CreateUserForm from "./_components/create-user-dialog";
 import { User } from "@/types";
 import { PageHeader } from "@/components/base/page-header";
 import { getUsers } from "@/app/_actions/user-actions";
 import { verifySession } from "@/lib/auth";
 import { redirect } from "next/navigation";
+import CreateUserForm from "../_components/create-user-dialog";
+import { UserManagementClient } from "../_components/user-management-client";
+import UsersDataTable from "../_components/data-table";
 
 export const metadata = {
   title: "User Management",

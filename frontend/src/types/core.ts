@@ -226,7 +226,7 @@ export interface ApprovalTask {
   approverId: string;
   approverName?: string;
   assignedTo?: string;
-  status: ApprovalStatus;
+  status: ApprovalStatus | "pending" | "claimed" | "completed" | "expired";
   stage: number;
   comments?: string;
   signature?: string;
@@ -235,7 +235,7 @@ export interface ApprovalTask {
   rejectedBy?: string;
   rejectedAt?: Date;
   rejectionReason?: string;
-  priority?: Priority;
+  priority?: Priority | string;
   dueAt?: Date;
   taskType?: string;
   title?: string;
@@ -245,6 +245,17 @@ export interface ApprovalTask {
   importance?: "low" | "medium" | "high";
   createdAt: Date;
   updatedAt: Date;
+
+  // Assignment fields (from WorkflowTask)
+  assignedRole?: string; // Required role to claim/approve
+  assignedUserId?: string; // Specific user assigned (after reassignment)
+
+  // Claiming fields (from WorkflowTask)
+  claimedBy?: string; // User ID who claimed the task
+  claimerName?: string; // Name of the user who claimed the task
+  claimedAt?: Date; // When the task was claimed
+  claimExpiry?: Date; // When the claim expires
+  version?: number; // For optimistic locking
 
   // Legacy compatibility fields
   entityId?: string; // Maps to documentId

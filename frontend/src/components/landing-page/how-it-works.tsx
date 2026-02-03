@@ -1,6 +1,5 @@
 "use client";
 
-import React from "react";
 import { motion } from "framer-motion";
 
 export const HowItWorks = () => {
@@ -35,7 +34,7 @@ export const HowItWorks = () => {
   return (
     <section
       id="how-it-works"
-      className="py-16 sm:py-20 lg:py-24 bg-slate-50 relative"
+      className="py-16 sm:py-20 lg:py-24 bg-slate-50 dark:bg-slate-800 relative transition-colors duration-300"
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <motion.div
@@ -45,13 +44,13 @@ export const HowItWorks = () => {
           viewport={{ once: true }}
           transition={{ duration: 0.8 }}
         >
-          <span className="text-primary-600 font-bold tracking-wider uppercase text-sm">
+          <span className="text-primary-600 dark:text-primary-400 font-bold tracking-wider uppercase text-sm">
             Streamline Your Procurement
           </span>
-          <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-slate-900 mt-2 mb-4">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-slate-900 dark:text-white mt-2 mb-4">
             From Request to Payment in Minutes
           </h2>
-          <p className="text-base sm:text-lg text-slate-600">
+          <p className="text-base sm:text-lg text-slate-600 dark:text-slate-300">
             Liyali Suite transforms your cycle into a seamless, automated
             experience.
           </p>
@@ -60,7 +59,7 @@ export const HowItWorks = () => {
         <div className="relative">
           {/* Connecting Line (Desktop) */}
           <motion.div
-            className="hidden md:block absolute top-12 left-0 w-full h-1 bg-gradient-to-r from-primary-200 via-blue-200 to-indigo-200 rounded-full -z-10"
+            className="hidden md:block absolute top-12 left-0 w-full h-1 bg-gradient-to-r from-primary-200 via-blue-200 to-indigo-200 dark:from-primary-700 dark:via-blue-700 dark:to-indigo-700 rounded-full -z-10"
             initial={{ scaleX: 0 }}
             whileInView={{ scaleX: 1 }}
             viewport={{ once: true }}
@@ -78,7 +77,7 @@ export const HowItWorks = () => {
                 transition={{ duration: 0.6, delay: idx * 0.1 }}
               >
                 <motion.div
-                  className="w-20 h-20 sm:w-24 sm:h-24 bg-white rounded-full border-4 border-slate-50 shadow-lg flex items-center justify-center mb-4 sm:mb-6 transition-all duration-300"
+                  className="w-20 h-20 sm:w-24 sm:h-24 bg-white dark:bg-slate-700 rounded-full border-4 border-slate-50 dark:border-slate-600 shadow-lg flex items-center justify-center mb-4 sm:mb-6 transition-all duration-300"
                   whileHover={{
                     scale: 1.1,
                     borderColor: "rgb(59 130 246 / 0.3)",
@@ -87,13 +86,13 @@ export const HowItWorks = () => {
                   }}
                 >
                   <i
-                    className={`fas ${step.icon} text-2xl sm:text-3xl text-primary-600`}
+                    className={`fas ${step.icon} text-2xl sm:text-3xl text-primary-600 dark:text-primary-400`}
                   ></i>
                 </motion.div>
-                <h3 className="text-base sm:text-lg font-bold text-slate-900 mb-2">
+                <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white mb-2">
                   {step.title}
                 </h3>
-                <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
+                <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
                   {step.desc}
                 </p>
               </motion.div>
@@ -102,7 +101,7 @@ export const HowItWorks = () => {
         </div>
 
         <motion.div
-          className="mt-16 bg-white rounded-2xl p-8 border border-slate-200 shadow-sm flex flex-col md:flex-row items-center justify-between gap-6"
+          className="mt-16 bg-white dark:bg-slate-700 rounded-2xl p-8 border border-slate-200 dark:border-slate-600 shadow-sm flex flex-col md:flex-row items-center justify-between gap-6"
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
@@ -110,32 +109,34 @@ export const HowItWorks = () => {
         >
           <div className="flex items-start gap-4">
             <motion.div
-              className="bg-primary-100 p-3 rounded-lg text-primary-600"
+              className="bg-primary-100 dark:bg-primary-900/50 p-3 rounded-lg text-primary-600 dark:text-primary-400"
               whileHover={{ scale: 1.1, rotate: 5 }}
             >
               <i className="fas fa-database text-xl"></i>
             </motion.div>
             <div>
-              <h4 className="font-bold text-slate-900 mb-1">
+              <h4 className="font-bold text-slate-900 dark:text-white mb-1">
                 Flexible Workflow Engine
               </h4>
-              <p className="text-slate-600 text-sm">
+              <p className="text-slate-600 dark:text-slate-300 text-sm">
                 Database-driven workflows, condition-based routing, and offline
                 capabilities.
               </p>
             </div>
           </div>
-          <div className="h-px w-full md:w-px md:h-12 bg-slate-200"></div>
+          <div className="h-px w-full md:w-px md:h-12 bg-slate-200 dark:bg-slate-600"></div>
           <div className="flex items-start gap-4">
             <motion.div
-              className="bg-indigo-100 p-3 rounded-lg text-indigo-600"
+              className="bg-indigo-100 dark:bg-indigo-900/50 p-3 rounded-lg text-indigo-600 dark:text-indigo-400"
               whileHover={{ scale: 1.1, rotate: -5 }}
             >
               <i className="fas fa-lock text-xl"></i>
             </motion.div>
             <div>
-              <h4 className="font-bold text-slate-900 mb-1">Audit Ready</h4>
-              <p className="text-slate-600 text-sm">
+              <h4 className="font-bold text-slate-900 dark:text-white mb-1">
+                Audit Ready
+              </h4>
+              <p className="text-slate-600 dark:text-slate-300 text-sm">
                 Complete document chain from request to payment proof for full
                 transparency.
               </p>

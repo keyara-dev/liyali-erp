@@ -19,67 +19,6 @@ type AccountLockout struct {
 	Active    *bool            `json:"active"`
 }
 
-type ApprovalHistory struct {
-	ID        pgtype.UUID      `json:"id"`
-	TaskID    pgtype.UUID      `json:"task_id"`
-	UserID    string           `json:"user_id"`
-	Action    string           `json:"action"`
-	Stage     int32            `json:"stage"`
-	Comment   *string          `json:"comment"`
-	Signature *string          `json:"signature"`
-	IpAddress *string          `json:"ip_address"`
-	UserAgent *string          `json:"user_agent"`
-	Metadata  []byte           `json:"metadata"`
-	CreatedAt pgtype.Timestamp `json:"created_at"`
-}
-
-type ApprovalTask struct {
-	ID              string           `json:"id"`
-	OrganizationID  string           `json:"organization_id"`
-	DocumentID      string           `json:"document_id"`
-	DocumentType    string           `json:"document_type"`
-	ApproverID      string           `json:"approver_id"`
-	AssignedTo      string           `json:"assigned_to"`
-	Status          *string          `json:"status"`
-	Stage           *int32           `json:"stage"`
-	Comments        *string          `json:"comments"`
-	Signature       *string          `json:"signature"`
-	ApprovedBy      *string          `json:"approved_by"`
-	ApprovedAt      pgtype.Timestamp `json:"approved_at"`
-	RejectedBy      *string          `json:"rejected_by"`
-	RejectedAt      pgtype.Timestamp `json:"rejected_at"`
-	RejectionReason *string          `json:"rejection_reason"`
-	Priority        *string          `json:"priority"`
-	DueAt           pgtype.Timestamp `json:"due_at"`
-	TaskType        *string          `json:"task_type"`
-	Title           *string          `json:"title"`
-	WorkflowID      *string          `json:"workflow_id"`
-	WorkflowName    *string          `json:"workflow_name"`
-	StageName       *string          `json:"stage_name"`
-	Importance      *string          `json:"importance"`
-	CreatedAt       pgtype.Timestamp `json:"created_at"`
-	UpdatedAt       pgtype.Timestamp `json:"updated_at"`
-}
-
-type ApprovalTasksEnhanced struct {
-	ID             pgtype.UUID      `json:"id"`
-	OrganizationID string           `json:"organization_id"`
-	DocumentID     string           `json:"document_id"`
-	DocumentType   string           `json:"document_type"`
-	WorkflowID     pgtype.UUID      `json:"workflow_id"`
-	AssignedTo     string           `json:"assigned_to"`
-	AssignedBy     *string          `json:"assigned_by"`
-	Status         string           `json:"status"`
-	CurrentStage   int32            `json:"current_stage"`
-	TotalStages    int32            `json:"total_stages"`
-	Priority       *string          `json:"priority"`
-	DueDate        pgtype.Timestamp `json:"due_date"`
-	Notes          *string          `json:"notes"`
-	Metadata       []byte           `json:"metadata"`
-	CreatedAt      pgtype.Timestamp `json:"created_at"`
-	UpdatedAt      pgtype.Timestamp `json:"updated_at"`
-}
-
 type AuditLog struct {
 	ID           string           `json:"id"`
 	DocumentID   string           `json:"document_id"`
@@ -91,31 +30,28 @@ type AuditLog struct {
 }
 
 type Budget struct {
-	ID              string         `json:"id"`
-	OrganizationID  string         `json:"organization_id"`
-	OwnerID         string         `json:"owner_id"`
-	BudgetCode      string         `json:"budget_code"`
-	Department      *string        `json:"department"`
-	DepartmentID    *string        `json:"department_id"`
-	Status          *string        `json:"status"`
-	FiscalYear      *string        `json:"fiscal_year"`
-	TotalBudget     pgtype.Numeric `json:"total_budget"`
-	AllocatedAmount pgtype.Numeric `json:"allocated_amount"`
-	RemainingAmount pgtype.Numeric `json:"remaining_amount"`
-	ApprovalStage   *int32         `json:"approval_stage"`
-	ApprovalHistory []byte         `json:"approval_history"`
-	// Budget display name
-	Name        *string `json:"name"`
-	Description *string `json:"description"`
-	Currency    *string `json:"currency"`
-	CreatedBy   *string `json:"created_by"`
-	// Budget line items breakdown
-	Items         []byte `json:"items"`
-	ActionHistory []byte `json:"action_history"`
-	// Generic metadata for extensibility
-	Metadata  []byte           `json:"metadata"`
-	CreatedAt pgtype.Timestamp `json:"created_at"`
-	UpdatedAt pgtype.Timestamp `json:"updated_at"`
+	ID              string           `json:"id"`
+	OrganizationID  string           `json:"organization_id"`
+	OwnerID         string           `json:"owner_id"`
+	BudgetCode      string           `json:"budget_code"`
+	Department      *string          `json:"department"`
+	DepartmentID    *string          `json:"department_id"`
+	Status          *string          `json:"status"`
+	FiscalYear      *string          `json:"fiscal_year"`
+	TotalBudget     pgtype.Numeric   `json:"total_budget"`
+	AllocatedAmount pgtype.Numeric   `json:"allocated_amount"`
+	RemainingAmount pgtype.Numeric   `json:"remaining_amount"`
+	ApprovalStage   *int32           `json:"approval_stage"`
+	ApprovalHistory []byte           `json:"approval_history"`
+	Name            *string          `json:"name"`
+	Description     *string          `json:"description"`
+	Currency        *string          `json:"currency"`
+	CreatedBy       *string          `json:"created_by"`
+	Items           []byte           `json:"items"`
+	ActionHistory   []byte           `json:"action_history"`
+	Metadata        []byte           `json:"metadata"`
+	CreatedAt       pgtype.Timestamp `json:"created_at"`
+	UpdatedAt       pgtype.Timestamp `json:"updated_at"`
 }
 
 type Category struct {
@@ -137,6 +73,28 @@ type CategoryBudgetCode struct {
 	UpdatedAt  pgtype.Timestamp `json:"updated_at"`
 }
 
+// Unified document table for all business document types
+type Document struct {
+	ID             pgtype.UUID      `json:"id"`
+	OrganizationID string           `json:"organization_id"`
+	DocumentType   string           `json:"document_type"`
+	DocumentNumber string           `json:"document_number"`
+	Title          string           `json:"title"`
+	Description    *string          `json:"description"`
+	Status         string           `json:"status"`
+	Amount         pgtype.Numeric   `json:"amount"`
+	Currency       *string          `json:"currency"`
+	Department     *string          `json:"department"`
+	CreatedBy      string           `json:"created_by"`
+	UpdatedBy      *string          `json:"updated_by"`
+	WorkflowID     pgtype.UUID      `json:"workflow_id"`
+	Data           []byte           `json:"data"`
+	Metadata       []byte           `json:"metadata"`
+	CreatedAt      pgtype.Timestamp `json:"created_at"`
+	UpdatedAt      pgtype.Timestamp `json:"updated_at"`
+	DeletedAt      pgtype.Timestamp `json:"deleted_at"`
+}
+
 type EmailVerification struct {
 	ID         pgtype.UUID      `json:"id"`
 	UserID     string           `json:"user_id"`
@@ -147,12 +105,23 @@ type EmailVerification struct {
 	CreatedAt  pgtype.Timestamp `json:"created_at"`
 }
 
+type FeatureFlag struct {
+	ID               pgtype.UUID      `json:"id"`
+	Name             string           `json:"name"`
+	Description      *string          `json:"description"`
+	PlanRequirements []byte           `json:"plan_requirements"`
+	IsTrialAllowed   *bool            `json:"is_trial_allowed"`
+	IsEnterpriseOnly *bool            `json:"is_enterprise_only"`
+	IsActive         *bool            `json:"is_active"`
+	CreatedAt        pgtype.Timestamp `json:"created_at"`
+	UpdatedAt        pgtype.Timestamp `json:"updated_at"`
+}
+
 type GoodsReceivedNote struct {
-	ID             string  `json:"id"`
-	OrganizationID string  `json:"organization_id"`
-	GrnNumber      string  `json:"grn_number"`
-	PoNumber       *string `json:"po_number"`
-	// Status: draft, pending, approved, rejected, paid, completed, cancelled
+	ID                string           `json:"id"`
+	OrganizationID    string           `json:"organization_id"`
+	DocumentNumber    string           `json:"document_number"`
+	PoDocumentNumber  *string          `json:"po_document_number"`
 	Status            *string          `json:"status"`
 	ReceivedDate      pgtype.Timestamp `json:"received_date"`
 	ReceivedBy        *string          `json:"received_by"`
@@ -166,15 +135,12 @@ type GoodsReceivedNote struct {
 	Notes             *string          `json:"notes"`
 	StageName         *string          `json:"stage_name"`
 	ApprovedBy        *string          `json:"approved_by"`
-	// Whether automation was used in processing
-	AutomationUsed *bool `json:"automation_used"`
-	// Auto-created payment voucher details
-	AutoCreatedPv []byte `json:"auto_created_pv"`
-	ActionHistory []byte `json:"action_history"`
-	// Generic metadata for extensibility
-	Metadata  []byte           `json:"metadata"`
-	CreatedAt pgtype.Timestamp `json:"created_at"`
-	UpdatedAt pgtype.Timestamp `json:"updated_at"`
+	AutomationUsed    *bool            `json:"automation_used"`
+	AutoCreatedPv     []byte           `json:"auto_created_pv"`
+	ActionHistory     []byte           `json:"action_history"`
+	Metadata          []byte           `json:"metadata"`
+	CreatedAt         pgtype.Timestamp `json:"created_at"`
+	UpdatedAt         pgtype.Timestamp `json:"updated_at"`
 }
 
 type LoginAttempt struct {
@@ -189,52 +155,57 @@ type LoginAttempt struct {
 }
 
 type Notification struct {
-	ID             string           `json:"id"`
-	OrganizationID string           `json:"organization_id"`
-	RecipientID    string           `json:"recipient_id"`
-	Type           string           `json:"type"`
-	DocumentID     *string          `json:"document_id"`
-	DocumentType   *string          `json:"document_type"`
-	Subject        string           `json:"subject"`
-	Body           string           `json:"body"`
-	Sent           *bool            `json:"sent"`
-	SentAt         pgtype.Timestamp `json:"sent_at"`
-	CreatedAt      pgtype.Timestamp `json:"created_at"`
-	UpdatedAt      pgtype.Timestamp `json:"updated_at"`
-}
-
-type NotificationsEnhanced struct {
-	ID             pgtype.UUID      `json:"id"`
-	OrganizationID string           `json:"organization_id"`
-	UserID         string           `json:"user_id"`
-	Type           string           `json:"type"`
-	Title          string           `json:"title"`
-	Message        string           `json:"message"`
-	RelatedID      pgtype.UUID      `json:"related_id"`
-	RelatedType    *string          `json:"related_type"`
-	IsRead         *bool            `json:"is_read"`
-	SentViaEmail   *bool            `json:"sent_via_email"`
-	EmailSentAt    pgtype.Timestamp `json:"email_sent_at"`
-	Priority       *string          `json:"priority"`
-	Metadata       []byte           `json:"metadata"`
-	ExpiresAt      pgtype.Timestamp `json:"expires_at"`
-	CreatedAt      pgtype.Timestamp `json:"created_at"`
+	ID                 pgtype.UUID      `json:"id"`
+	OrganizationID     string           `json:"organization_id"`
+	RecipientID        string           `json:"recipient_id"`
+	Type               string           `json:"type"`
+	DocumentID         *string          `json:"document_id"`
+	DocumentType       *string          `json:"document_type"`
+	Subject            string           `json:"subject"`
+	Body               string           `json:"body"`
+	Sent               *bool            `json:"sent"`
+	SentAt             pgtype.Timestamp `json:"sent_at"`
+	EntityID           *string          `json:"entity_id"`
+	EntityType         *string          `json:"entity_type"`
+	EntityNumber       *string          `json:"entity_number"`
+	RelatedUserID      *string          `json:"related_user_id"`
+	RelatedUserName    *string          `json:"related_user_name"`
+	IsRead             *bool            `json:"is_read"`
+	ReadAt             pgtype.Timestamp `json:"read_at"`
+	ActionTaken        *bool            `json:"action_taken"`
+	ActionTakenAt      pgtype.Timestamp `json:"action_taken_at"`
+	Importance         *string          `json:"importance"`
+	QuickAction        []byte           `json:"quick_action"`
+	ReassignmentReason *string          `json:"reassignment_reason"`
+	Message            *string          `json:"message"`
+	CreatedAt          pgtype.Timestamp `json:"created_at"`
+	UpdatedAt          pgtype.Timestamp `json:"updated_at"`
 }
 
 type Organization struct {
-	ID           string           `json:"id"`
-	Name         string           `json:"name"`
-	Slug         string           `json:"slug"`
-	Description  *string          `json:"description"`
-	LogoUrl      *string          `json:"logo_url"`
-	PrimaryColor *string          `json:"primary_color"`
-	Active       *bool            `json:"active"`
-	Tier         *string          `json:"tier"`
-	CreatedBy    *string          `json:"created_by"`
-	CreatedAt    pgtype.Timestamp `json:"created_at"`
-	UpdatedAt    pgtype.Timestamp `json:"updated_at"`
+	ID                   string           `json:"id"`
+	Name                 string           `json:"name"`
+	Slug                 string           `json:"slug"`
+	Description          *string          `json:"description"`
+	LogoUrl              *string          `json:"logo_url"`
+	PrimaryColor         *string          `json:"primary_color"`
+	Active               *bool            `json:"active"`
+	Tier                 *string          `json:"tier"`
+	CreatedBy            *string          `json:"created_by"`
+	CreatedAt            pgtype.Timestamp `json:"created_at"`
+	UpdatedAt            pgtype.Timestamp `json:"updated_at"`
+	TrialStartDate       pgtype.Timestamp `json:"trial_start_date"`
+	TrialEndDate         pgtype.Timestamp `json:"trial_end_date"`
+	CurrentPlanID        pgtype.UUID      `json:"current_plan_id"`
+	SubscriptionStatus   *string          `json:"subscription_status"`
+	BillingCycleStart    pgtype.Timestamp `json:"billing_cycle_start"`
+	BillingCycleEnd      pgtype.Timestamp `json:"billing_cycle_end"`
+	GracePeriodEndsAt    pgtype.Timestamp `json:"grace_period_ends_at"`
+	MaxUsersAllowed      *int32           `json:"max_users_allowed"`
+	SubscriptionMetadata []byte           `json:"subscription_metadata"`
 }
 
+// Organization departments with manager name support
 type OrganizationDepartment struct {
 	ID             string           `json:"id"`
 	OrganizationID string           `json:"organization_id"`
@@ -242,7 +213,9 @@ type OrganizationDepartment struct {
 	Code           *string          `json:"code"`
 	Description    *string          `json:"description"`
 	ParentID       *string          `json:"parent_id"`
+	ManagerName    *string          `json:"manager_name"`
 	Active         *bool            `json:"active"`
+	IsActive       *bool            `json:"is_active"`
 	CreatedAt      pgtype.Timestamp `json:"created_at"`
 	UpdatedAt      pgtype.Timestamp `json:"updated_at"`
 }
@@ -253,6 +226,7 @@ type OrganizationMember struct {
 	UserID            string           `json:"user_id"`
 	Role              string           `json:"role"`
 	Department        *string          `json:"department"`
+	DepartmentID      *string          `json:"department_id"`
 	Title             *string          `json:"title"`
 	Active            *bool            `json:"active"`
 	InvitedAt         pgtype.Timestamp `json:"invited_at"`
@@ -289,6 +263,46 @@ type OrganizationSetting struct {
 	UpdatedAt                pgtype.Timestamp `json:"updated_at"`
 }
 
+type OrganizationSubscription struct {
+	ID                   pgtype.UUID      `json:"id"`
+	OrganizationID       string           `json:"organization_id"`
+	PlanID               pgtype.UUID      `json:"plan_id"`
+	StripeSubscriptionID *string          `json:"stripe_subscription_id"`
+	Status               string           `json:"status"`
+	CurrentPeriodStart   pgtype.Timestamp `json:"current_period_start"`
+	CurrentPeriodEnd     pgtype.Timestamp `json:"current_period_end"`
+	CancelAtPeriodEnd    *bool            `json:"cancel_at_period_end"`
+	PaymentFailedCount   *int32           `json:"payment_failed_count"`
+	LastPaymentFailedAt  pgtype.Timestamp `json:"last_payment_failed_at"`
+	CreatedAt            pgtype.Timestamp `json:"created_at"`
+	UpdatedAt            pgtype.Timestamp `json:"updated_at"`
+}
+
+type OrganizationSubscriptionDetail struct {
+	OrganizationID       string           `json:"organization_id"`
+	OrganizationName     string           `json:"organization_name"`
+	SubscriptionStatus   *string          `json:"subscription_status"`
+	TrialStartDate       pgtype.Timestamp `json:"trial_start_date"`
+	TrialEndDate         pgtype.Timestamp `json:"trial_end_date"`
+	GracePeriodEndsAt    pgtype.Timestamp `json:"grace_period_ends_at"`
+	MaxUsersAllowed      *int32           `json:"max_users_allowed"`
+	PlanName             *string          `json:"plan_name"`
+	PlanSlug             *string          `json:"plan_slug"`
+	PriceMonthly         pgtype.Numeric   `json:"price_monthly"`
+	PriceYearly          pgtype.Numeric   `json:"price_yearly"`
+	PlanFeatures         []byte           `json:"plan_features"`
+	PlanMaxUsers         *int32           `json:"plan_max_users"`
+	StripeSubscriptionID *string          `json:"stripe_subscription_id"`
+	CurrentPeriodStart   pgtype.Timestamp `json:"current_period_start"`
+	CurrentPeriodEnd     pgtype.Timestamp `json:"current_period_end"`
+	CancelAtPeriodEnd    *bool            `json:"cancel_at_period_end"`
+	PaymentFailedCount   *int32           `json:"payment_failed_count"`
+	LastPaymentFailedAt  pgtype.Timestamp `json:"last_payment_failed_at"`
+	TrialDaysRemaining   int32            `json:"trial_days_remaining"`
+	TrialExpired         bool             `json:"trial_expired"`
+	InGracePeriod        bool             `json:"in_grace_period"`
+}
+
 type PasswordReset struct {
 	ID        pgtype.UUID      `json:"id"`
 	UserID    string           `json:"user_id"`
@@ -299,81 +313,69 @@ type PasswordReset struct {
 }
 
 type PaymentVoucher struct {
-	ID             string         `json:"id"`
-	OrganizationID string         `json:"organization_id"`
-	VoucherNumber  string         `json:"voucher_number"`
-	VendorID       string         `json:"vendor_id"`
-	InvoiceNumber  *string        `json:"invoice_number"`
-	Status         *string        `json:"status"`
-	Amount         pgtype.Numeric `json:"amount"`
-	Currency       *string        `json:"currency"`
-	// Payment method: bank_transfer, cash
-	PaymentMethod   *string          `json:"payment_method"`
-	GlCode          *string          `json:"gl_code"`
-	Description     *string          `json:"description"`
-	ApprovalStage   *int32           `json:"approval_stage"`
-	ApprovalHistory []byte           `json:"approval_history"`
-	LinkedPo        *string          `json:"linked_po"`
-	Title           *string          `json:"title"`
-	Department      *string          `json:"department"`
-	DepartmentID    *string          `json:"department_id"`
-	Priority        *string          `json:"priority"`
-	RequestedByName *string          `json:"requested_by_name"`
-	RequestedDate   pgtype.Timestamp `json:"requested_date"`
-	SubmittedAt     pgtype.Timestamp `json:"submitted_at"`
-	ApprovedAt      pgtype.Timestamp `json:"approved_at"`
-	PaidDate        pgtype.Timestamp `json:"paid_date"`
-	PaymentDueDate  pgtype.Timestamp `json:"payment_due_date"`
-	BudgetCode      *string          `json:"budget_code"`
-	CostCenter      *string          `json:"cost_center"`
-	ProjectCode     *string          `json:"project_code"`
-	// Tax amount for payment
-	TaxAmount pgtype.Numeric `json:"tax_amount"`
-	// Withholding tax amount
-	WithholdingTaxAmount pgtype.Numeric `json:"withholding_tax_amount"`
-	// Actual amount paid
-	PaidAmount                pgtype.Numeric `json:"paid_amount"`
-	SourcePurchaseOrderNumber *string        `json:"source_purchase_order_number"`
-	SourceRequisitionNumber   *string        `json:"source_requisition_number"`
-	// Bank details for payment
-	BankDetails []byte `json:"bank_details"`
-	// Payment line items breakdown
-	Items         []byte  `json:"items"`
-	CreatedBy     *string `json:"created_by"`
-	OwnerID       *string `json:"owner_id"`
-	ActionHistory []byte  `json:"action_history"`
-	// Generic metadata for extensibility
-	Metadata  []byte           `json:"metadata"`
-	CreatedAt pgtype.Timestamp `json:"created_at"`
-	UpdatedAt pgtype.Timestamp `json:"updated_at"`
+	ID                        string           `json:"id"`
+	OrganizationID            string           `json:"organization_id"`
+	DocumentNumber            string           `json:"document_number"`
+	VendorID                  string           `json:"vendor_id"`
+	InvoiceNumber             *string          `json:"invoice_number"`
+	Status                    *string          `json:"status"`
+	Amount                    pgtype.Numeric   `json:"amount"`
+	Currency                  *string          `json:"currency"`
+	PaymentMethod             *string          `json:"payment_method"`
+	GlCode                    *string          `json:"gl_code"`
+	Description               *string          `json:"description"`
+	ApprovalStage             *int32           `json:"approval_stage"`
+	ApprovalHistory           []byte           `json:"approval_history"`
+	LinkedPo                  *string          `json:"linked_po"`
+	Title                     *string          `json:"title"`
+	Department                *string          `json:"department"`
+	DepartmentID              *string          `json:"department_id"`
+	Priority                  *string          `json:"priority"`
+	RequestedByName           *string          `json:"requested_by_name"`
+	RequestedDate             pgtype.Timestamp `json:"requested_date"`
+	SubmittedAt               pgtype.Timestamp `json:"submitted_at"`
+	ApprovedAt                pgtype.Timestamp `json:"approved_at"`
+	PaidDate                  pgtype.Timestamp `json:"paid_date"`
+	PaymentDueDate            pgtype.Timestamp `json:"payment_due_date"`
+	BudgetCode                *string          `json:"budget_code"`
+	CostCenter                *string          `json:"cost_center"`
+	ProjectCode               *string          `json:"project_code"`
+	TaxAmount                 pgtype.Numeric   `json:"tax_amount"`
+	WithholdingTaxAmount      pgtype.Numeric   `json:"withholding_tax_amount"`
+	PaidAmount                pgtype.Numeric   `json:"paid_amount"`
+	SourcePurchaseOrderNumber *string          `json:"source_purchase_order_number"`
+	SourceRequisitionNumber   *string          `json:"source_requisition_number"`
+	BankDetails               []byte           `json:"bank_details"`
+	Items                     []byte           `json:"items"`
+	CreatedBy                 *string          `json:"created_by"`
+	OwnerID                   *string          `json:"owner_id"`
+	ActionHistory             []byte           `json:"action_history"`
+	Metadata                  []byte           `json:"metadata"`
+	CreatedAt                 pgtype.Timestamp `json:"created_at"`
+	UpdatedAt                 pgtype.Timestamp `json:"updated_at"`
 }
 
 type PurchaseOrder struct {
-	ID             string `json:"id"`
-	OrganizationID string `json:"organization_id"`
-	PoNumber       string `json:"po_number"`
-	// Vendor ID - nullable to allow PO creation without vendor
-	VendorID          *string          `json:"vendor_id"`
-	Status            *string          `json:"status"`
-	Items             []byte           `json:"items"`
-	TotalAmount       pgtype.Numeric   `json:"total_amount"`
-	Currency          *string          `json:"currency"`
-	DeliveryDate      pgtype.Timestamp `json:"delivery_date"`
-	ApprovalStage     *int32           `json:"approval_stage"`
-	ApprovalHistory   []byte           `json:"approval_history"`
-	LinkedRequisition *string          `json:"linked_requisition"`
-	Description       *string          `json:"description"`
-	Department        *string          `json:"department"`
-	DepartmentID      *string          `json:"department_id"`
-	// General Ledger code
-	GlCode   *string `json:"gl_code"`
-	Title    *string `json:"title"`
-	Priority *string `json:"priority"`
-	// Subtotal before tax
-	Subtotal pgtype.Numeric `json:"subtotal"`
-	// Tax amount
-	Tax pgtype.Numeric `json:"tax"`
-	// Total amount including tax
+	ID                      string           `json:"id"`
+	OrganizationID          string           `json:"organization_id"`
+	DocumentNumber          string           `json:"document_number"`
+	VendorID                *string          `json:"vendor_id"`
+	Status                  *string          `json:"status"`
+	Items                   []byte           `json:"items"`
+	TotalAmount             pgtype.Numeric   `json:"total_amount"`
+	Currency                *string          `json:"currency"`
+	DeliveryDate            pgtype.Timestamp `json:"delivery_date"`
+	ApprovalStage           *int32           `json:"approval_stage"`
+	ApprovalHistory         []byte           `json:"approval_history"`
+	LinkedRequisition       *string          `json:"linked_requisition"`
+	Description             *string          `json:"description"`
+	Department              *string          `json:"department"`
+	DepartmentID            *string          `json:"department_id"`
+	GlCode                  *string          `json:"gl_code"`
+	Title                   *string          `json:"title"`
+	Priority                *string          `json:"priority"`
+	Subtotal                pgtype.Numeric   `json:"subtotal"`
+	Tax                     pgtype.Numeric   `json:"tax"`
 	Total                   pgtype.Numeric   `json:"total"`
 	BudgetCode              *string          `json:"budget_code"`
 	CostCenter              *string          `json:"cost_center"`
@@ -384,25 +386,21 @@ type PurchaseOrder struct {
 	CreatedBy               *string          `json:"created_by"`
 	OwnerID                 *string          `json:"owner_id"`
 	ActionHistory           []byte           `json:"action_history"`
-	// Generic metadata for extensibility
-	Metadata []byte `json:"metadata"`
-	// Whether automation was used in processing
-	AutomationUsed *bool `json:"automation_used"`
-	// Auto-created GRN details
-	AutoCreatedGrn []byte           `json:"auto_created_grn"`
-	CreatedAt      pgtype.Timestamp `json:"created_at"`
-	UpdatedAt      pgtype.Timestamp `json:"updated_at"`
+	Metadata                []byte           `json:"metadata"`
+	AutomationUsed          *bool            `json:"automation_used"`
+	AutoCreatedGrn          []byte           `json:"auto_created_grn"`
+	CreatedAt               pgtype.Timestamp `json:"created_at"`
+	UpdatedAt               pgtype.Timestamp `json:"updated_at"`
 }
 
 type Requisition struct {
-	ID             string  `json:"id"`
-	OrganizationID string  `json:"organization_id"`
-	ReqNumber      string  `json:"req_number"`
-	RequesterID    string  `json:"requester_id"`
-	Title          string  `json:"title"`
-	Description    *string `json:"description"`
-	Department     *string `json:"department"`
-	// Department ID reference
+	ID                string           `json:"id"`
+	OrganizationID    string           `json:"organization_id"`
+	DocumentNumber    string           `json:"document_number"`
+	RequesterID       string           `json:"requester_id"`
+	Title             string           `json:"title"`
+	Description       *string          `json:"description"`
+	Department        *string          `json:"department"`
 	DepartmentID      *string          `json:"department_id"`
 	Status            *string          `json:"status"`
 	Priority          *string          `json:"priority"`
@@ -415,21 +413,18 @@ type Requisition struct {
 	PreferredVendorID *string          `json:"preferred_vendor_id"`
 	IsEstimate        *bool            `json:"is_estimate"`
 	RequiredByDate    pgtype.Timestamp `json:"required_by_date"`
-	// Cost center for accounting
-	CostCenter *string `json:"cost_center"`
-	// Project code for tracking
-	ProjectCode   *string `json:"project_code"`
-	CreatedBy     *string `json:"created_by"`
-	CreatedByName *string `json:"created_by_name"`
-	CreatedByRole *string `json:"created_by_role"`
-	// Generic metadata for extensibility
-	Metadata []byte `json:"metadata"`
-	// Whether automation was used in processing
-	AutomationUsed *bool `json:"automation_used"`
-	// Auto-created purchase order details
-	AutoCreatedPo []byte           `json:"auto_created_po"`
-	CreatedAt     pgtype.Timestamp `json:"created_at"`
-	UpdatedAt     pgtype.Timestamp `json:"updated_at"`
+	CostCenter        *string          `json:"cost_center"`
+	ProjectCode       *string          `json:"project_code"`
+	CreatedBy         *string          `json:"created_by"`
+	CreatedByName     *string          `json:"created_by_name"`
+	CreatedByRole     *string          `json:"created_by_role"`
+	Metadata          []byte           `json:"metadata"`
+	AutomationUsed    *bool            `json:"automation_used"`
+	AutoCreatedPo     []byte           `json:"auto_created_po"`
+	CreatedAt         pgtype.Timestamp `json:"created_at"`
+	UpdatedAt         pgtype.Timestamp `json:"updated_at"`
+	// JSON array of action history entries for timeline display
+	ActionHistory []byte `json:"action_history"`
 }
 
 type Session struct {
@@ -441,6 +436,62 @@ type Session struct {
 	ExpiresAt    pgtype.Timestamp `json:"expires_at"`
 	CreatedAt    pgtype.Timestamp `json:"created_at"`
 	UpdatedAt    pgtype.Timestamp `json:"updated_at"`
+}
+
+// Tracks individual approvals per workflow stage for multiple approval support
+type StageApprovalRecord struct {
+	ID             string           `json:"id"`
+	OrganizationID string           `json:"organization_id"`
+	WorkflowTaskID string           `json:"workflow_task_id"`
+	StageNumber    int32            `json:"stage_number"`
+	ApproverID     string           `json:"approver_id"`
+	ApproverName   string           `json:"approver_name"`
+	ApproverRole   string           `json:"approver_role"`
+	Action         string           `json:"action"`
+	Comments       *string          `json:"comments"`
+	Signature      *string          `json:"signature"`
+	ApprovedAt     pgtype.Timestamp `json:"approved_at"`
+	IpAddress      *string          `json:"ip_address"`
+	UserAgent      *string          `json:"user_agent"`
+	CreatedAt      pgtype.Timestamp `json:"created_at"`
+}
+
+type SubscriptionAuditLog struct {
+	ID             pgtype.UUID      `json:"id"`
+	OrganizationID string           `json:"organization_id"`
+	Action         string           `json:"action"`
+	OldPlanID      pgtype.UUID      `json:"old_plan_id"`
+	NewPlanID      pgtype.UUID      `json:"new_plan_id"`
+	OldStatus      *string          `json:"old_status"`
+	NewStatus      *string          `json:"new_status"`
+	Metadata       []byte           `json:"metadata"`
+	PerformedBy    *string          `json:"performed_by"`
+	PerformedAt    pgtype.Timestamp `json:"performed_at"`
+}
+
+type SubscriptionPlan struct {
+	ID           pgtype.UUID      `json:"id"`
+	Name         string           `json:"name"`
+	Slug         string           `json:"slug"`
+	Description  *string          `json:"description"`
+	PriceMonthly pgtype.Numeric   `json:"price_monthly"`
+	PriceYearly  pgtype.Numeric   `json:"price_yearly"`
+	Features     []byte           `json:"features"`
+	MaxUsers     *int32           `json:"max_users"`
+	IsActive     *bool            `json:"is_active"`
+	SortOrder    *int32           `json:"sort_order"`
+	Metadata     []byte           `json:"metadata"`
+	CreatedAt    pgtype.Timestamp `json:"created_at"`
+	UpdatedAt    pgtype.Timestamp `json:"updated_at"`
+}
+
+// Tracks round-robin task assignment history for fair distribution
+type TaskAssignmentHistory struct {
+	ID             string           `json:"id"`
+	OrganizationID string           `json:"organization_id"`
+	Role           string           `json:"role"`
+	AssignedUserID string           `json:"assigned_user_id"`
+	AssignedAt     pgtype.Timestamp `json:"assigned_at"`
 }
 
 type User struct {
@@ -469,6 +520,7 @@ type UserOrganizationRole struct {
 	Active         *bool            `json:"active"`
 }
 
+// Organization-scoped vendors for multi-tenant security
 type Vendor struct {
 	ID             string           `json:"id"`
 	OrganizationID string           `json:"organization_id"`
@@ -488,43 +540,39 @@ type Vendor struct {
 
 // Enhanced workflow definitions with frontend compatibility
 type Workflow struct {
-	ID             pgtype.UUID `json:"id"`
-	OrganizationID string      `json:"organization_id"`
-	Name           string      `json:"name"`
-	Description    *string     `json:"description"`
-	DocumentType   string      `json:"document_type"`
-	// Type of entity this workflow applies to (requisition, purchase_order, etc.)
-	EntityType string `json:"entity_type"`
-	Version    *int32 `json:"version"`
-	// JSON array of workflow stages with approval requirements
-	Stages []byte `json:"stages"`
-	// JSON conditions for when this workflow should be applied
-	Conditions []byte           `json:"conditions"`
-	IsActive   *bool            `json:"is_active"`
-	IsDefault  *bool            `json:"is_default"`
-	CreatedBy  *string          `json:"created_by"`
-	CreatedAt  pgtype.Timestamp `json:"created_at"`
-	UpdatedAt  pgtype.Timestamp `json:"updated_at"`
-	DeletedAt  pgtype.Timestamp `json:"deleted_at"`
+	ID             pgtype.UUID      `json:"id"`
+	OrganizationID string           `json:"organization_id"`
+	Name           string           `json:"name"`
+	Description    *string          `json:"description"`
+	DocumentType   string           `json:"document_type"`
+	EntityType     string           `json:"entity_type"`
+	Version        *int32           `json:"version"`
+	Stages         []byte           `json:"stages"`
+	Conditions     []byte           `json:"conditions"`
+	IsActive       *bool            `json:"is_active"`
+	IsDefault      *bool            `json:"is_default"`
+	CreatedBy      *string          `json:"created_by"`
+	CreatedAt      pgtype.Timestamp `json:"created_at"`
+	UpdatedAt      pgtype.Timestamp `json:"updated_at"`
+	DeletedAt      pgtype.Timestamp `json:"deleted_at"`
 }
 
 // Tracks workflow execution for specific entities
 type WorkflowAssignment struct {
-	ID              string      `json:"id"`
-	OrganizationID  string      `json:"organization_id"`
-	EntityID        string      `json:"entity_id"`
-	EntityType      string      `json:"entity_type"`
-	WorkflowID      pgtype.UUID `json:"workflow_id"`
-	WorkflowVersion int32       `json:"workflow_version"`
-	CurrentStage    *int32      `json:"current_stage"`
-	Status          *string     `json:"status"`
-	// JSON array of completed stage executions
-	StageHistory []byte           `json:"stage_history"`
-	AssignedAt   pgtype.Timestamp `json:"assigned_at"`
-	AssignedBy   string           `json:"assigned_by"`
-	CompletedAt  pgtype.Timestamp `json:"completed_at"`
-	CreatedAt    pgtype.Timestamp `json:"created_at"`
-	UpdatedAt    pgtype.Timestamp `json:"updated_at"`
+	ID              string           `json:"id"`
+	OrganizationID  string           `json:"organization_id"`
+	EntityID        string           `json:"entity_id"`
+	EntityType      string           `json:"entity_type"`
+	WorkflowID      pgtype.UUID      `json:"workflow_id"`
+	WorkflowVersion int32            `json:"workflow_version"`
+	CurrentStage    *int32           `json:"current_stage"`
+	Status          *string          `json:"status"`
+	StageHistory    []byte           `json:"stage_history"`
+	AssignedAt      pgtype.Timestamp `json:"assigned_at"`
+	AssignedBy      string           `json:"assigned_by"`
+	CompletedAt     pgtype.Timestamp `json:"completed_at"`
+	CreatedAt       pgtype.Timestamp `json:"created_at"`
+	UpdatedAt       pgtype.Timestamp `json:"updated_at"`
 }
 
 // Default workflow mappings for entity types per organization
@@ -538,24 +586,27 @@ type WorkflowDefault struct {
 	SetAt                  pgtype.Timestamp `json:"set_at"`
 }
 
-// Individual approval tasks within workflow assignments
+// Individual approval tasks within workflow assignments with concurrency control
 type WorkflowTask struct {
-	ID                   string `json:"id"`
-	OrganizationID       string `json:"organization_id"`
-	WorkflowAssignmentID string `json:"workflow_assignment_id"`
-	EntityID             string `json:"entity_id"`
-	EntityType           string `json:"entity_type"`
-	StageNumber          int32  `json:"stage_number"`
-	StageName            string `json:"stage_name"`
-	// How the task is assigned: role or specific_user
-	AssignmentType *string          `json:"assignment_type"`
-	AssignedRole   *string          `json:"assigned_role"`
-	AssignedUserID *string          `json:"assigned_user_id"`
-	Status         *string          `json:"status"`
-	Priority       *string          `json:"priority"`
-	CreatedAt      pgtype.Timestamp `json:"created_at"`
-	ClaimedAt      pgtype.Timestamp `json:"claimed_at"`
-	ClaimedBy      *string          `json:"claimed_by"`
-	CompletedAt    pgtype.Timestamp `json:"completed_at"`
-	DueDate        pgtype.Timestamp `json:"due_date"`
+	ID                   string           `json:"id"`
+	OrganizationID       string           `json:"organization_id"`
+	WorkflowAssignmentID string           `json:"workflow_assignment_id"`
+	EntityID             string           `json:"entity_id"`
+	EntityType           string           `json:"entity_type"`
+	StageNumber          int32            `json:"stage_number"`
+	StageName            string           `json:"stage_name"`
+	AssignmentType       *string          `json:"assignment_type"`
+	AssignedRole         *string          `json:"assigned_role"`
+	AssignedUserID       *string          `json:"assigned_user_id"`
+	Status               *string          `json:"status"`
+	Priority             *string          `json:"priority"`
+	CreatedAt            pgtype.Timestamp `json:"created_at"`
+	UpdatedAt            pgtype.Timestamp `json:"updated_at"`
+	ClaimedAt            pgtype.Timestamp `json:"claimed_at"`
+	ClaimedBy            *string          `json:"claimed_by"`
+	CompletedAt          pgtype.Timestamp `json:"completed_at"`
+	DueDate              pgtype.Timestamp `json:"due_date"`
+	Version              int32            `json:"version"`
+	UpdatedBy            *string          `json:"updated_by"`
+	ClaimExpiry          pgtype.Timestamp `json:"claim_expiry"`
 }

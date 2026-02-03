@@ -5,6 +5,8 @@ import { PageHeader } from "@/components/base/page-header";
 import { WorkflowStatusChart } from "./workflow-status-chart";
 import { RecentActivity } from "./recent-activity";
 import { GreetingCard } from "./greeting-card";
+import { LoadingDashboard } from "../loading";
+import CustomAlert from "@/components/ui/custom-alert";
 
 interface DashboardClientProps {
   userId: string;
@@ -28,6 +30,7 @@ export function DashboardClient({
           subtitle="Loading workflow metrics..."
           showBackButton={false}
         />
+        <LoadingDashboard />
       </div>
     );
   }
@@ -40,6 +43,20 @@ export function DashboardClient({
           subtitle={error?.message || "Failed to load dashboard"}
           showBackButton={false}
         />
+        <CustomAlert
+          type="error"
+          message="Something went wrong while fetching dashboard metrics."
+        />
+        <div className="rounded-lg border bg-red-50 text-destructive p-6">
+          <div className="flex items-center justify-center h-32">
+            <p className="text-muted-foreground">
+              Failed to load dashboard data. <br /> Please try again later.
+            </p>
+            {error && process.env.NODE_ENV != "production" && (
+              <pre>{JSON.stringify(error, null, 2)}</pre>
+            )}
+          </div>
+        </div>
       </div>
     );
   }

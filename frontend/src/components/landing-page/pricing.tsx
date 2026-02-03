@@ -2,6 +2,7 @@
 
 import React from "react";
 import { motion } from "framer-motion";
+import { useSubscriptionPlans } from "@/hooks/use-subscription-queries";
 
 interface PricingCardProps {
   tier: string;
@@ -21,7 +22,8 @@ const PricingCard = ({
   recommended,
   delay,
   buttonText,
-}: PricingCardProps) => (
+  onSelect,
+}: PricingCardProps & { onSelect: () => void }) => (
   <motion.div
     className={`relative p-6 sm:p-8 rounded-2xl sm:rounded-3xl transition-all duration-300 flex flex-col h-full group
             ${
@@ -103,6 +105,7 @@ const PricingCard = ({
       }`}
       whileHover={{ scale: 1.02 }}
       whileTap={{ scale: 0.98 }}
+      onClick={onSelect}
     >
       {buttonText}
     </motion.button>
@@ -110,54 +113,33 @@ const PricingCard = ({
 );
 
 export const Pricing = () => {
-  const plans = [
-    {
-      tier: "Starter",
-      price: "999",
-      sub: "For growing teams",
-      features: [
-        "Up to 50 users",
-        "Core procurement workflows",
-        "Basic approval chains",
-        "Standard analytics",
-        "Email support",
-      ],
-      recommended: false,
-      buttonText: "Choose Starter",
-    },
-    {
-      tier: "Pro",
-      price: "1,999",
-      sub: "For established departments",
-      features: [
-        "Everything in Starter",
-        "Up to 200 users",
-        "Custom workflow builder",
-        "Advanced automation",
-        "Offline capabilities",
-        "Priority support",
-        "API access",
-      ],
-      recommended: true,
-      buttonText: "Choose Pro",
-    },
-    {
-      tier: "Enterprise",
-      price: "Custom",
-      sub: "For large organizations",
-      features: [
-        "Everything in Pro",
-        "Unlimited users",
-        "Dedicated instance",
-        "Custom integrations",
-        "SLA guarantees",
-        "Dedicated success manager",
-        "On-premise option",
-      ],
-      recommended: false,
-      buttonText: "Contact Sales",
-    },
-  ];
+  // Use the shared TanStack Query hook for fetching subscription plans
+  const { data: apiPlans = [], isLoading } = useSubscriptionPlans();
+
+  // Transform API plans to match the expected format for PricingCard
+  const plans = apiPlans.map((plan: any) => ({
+    tier: plan.name,
+    price: plan.slug === "ENTERPRISE" ? "Custom" : plan.priceMonthly.toString(),
+    sub: plan.description,
+    features: plan.features,
+    recommended: plan.slug === "PRO_PLAN",
+    buttonText:
+      plan.slug === "ENTERPRISE" ? "Contact Sales" : `Choose ${plan.name}`,
+    slug: plan.slug,
+  }));
+
+  const handlePlanSelect = (planSlug: string) => {
+    if (planSlug === "ENTERPRISE") {
+      // Enterprise requires contact
+      window.open(
+        "mailto:sales@liyali.com?subject=Enterprise Plan Inquiry",
+        "_blank",
+      );
+    } else {
+      // Redirect to register with plan parameter
+      window.location.href = `/register?plan=${planSlug}&trial=true`;
+    }
+  };
 
   return (
     <section
@@ -256,19 +238,75 @@ export const Pricing = () => {
         </motion.div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 max-w-5xl mx-auto items-stretch">
-          {plans.map((plan, index) => (
-            <PricingCard
-              key={plan.tier}
-              tier={plan.tier}
-              price={plan.price}
-              sub={plan.sub}
-              features={plan.features}
-              recommended={plan.recommended}
-              delay={index * 0.1}
-              buttonText={plan.buttonText}
-            />
-          ))}
+          {isLoading
+            ? // Loading skeleton
+              Array.from({ length: 3 }).map((_, index) => (
+                <div
+                  key={index}
+                  className="relative p-6 sm:p-8 rounded-2xl sm:rounded-3xl bg-slate-900/40 border border-slate-800 animate-pulse"
+                >
+                  <div className="mb-8">
+                    <div className="h-6 w-24 bg-slate-700 rounded mb-2" />
+                    <div className="h-10 w-32 bg-slate-700 rounded mb-3" />
+                    <div className="h-4 w-40 bg-slate-800 rounded" />
+                  </div>
+                  <div className="space-y-4 mb-8">
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <div key={i} className="flex items-center gap-3">
+                        <div className="w-5 h-5 rounded-full bg-slate-700" />
+                        <div className="h-4 flex-1 bg-slate-800 rounded" />
+                      </div>
+                    ))}
+                  </div>
+                  <div className="h-12 w-full bg-slate-700 rounded-full" />
+                </div>
+              ))
+            : plans.map((plan: any, index: number) => (
+                <PricingCard
+                  key={plan.tier}
+                  tier={plan.tier}
+                  price={plan.price}
+                  sub={plan.sub}
+                  features={plan.features}
+                  recommended={plan.recommended}
+                  delay={index * 0.1}
+                  buttonText={plan.buttonText}
+                  onSelect={() => handlePlanSelect(plan.slug)}
+                />
+              ))}
         </div>
+
+        {/* Free Trial Banner */}
+        <motion.div
+          className="mt-12 max-w-4xl mx-auto"
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.8, delay: 0.2 }}
+        >
+          <div className="relative rounded-3xl overflow-hidden bg-gradient-to-r from-blue-800/80 to-purple-800/80 border border-blue-700/50 p-1 md:p-2 backdrop-blur-md">
+            <div className="absolute inset-0 bg-blue-500/5"></div>
+            <div className="relative rounded-2xl bg-blue-900/20 px-6 py-6 md:px-12 md:flex items-center justify-between gap-6">
+              <div className="text-center md:text-left">
+                <h3 className="text-xl md:text-2xl font-bold text-white mb-2">
+                  🎉 Start Your 14-Day Free Trial
+                </h3>
+                <p className="text-blue-200 text-sm">
+                  Try all features risk-free. No credit card required to start
+                  your trial.
+                </p>
+              </div>
+              <motion.button
+                className="mt-4 md:mt-0 w-full md:w-auto bg-white text-blue-900 px-8 py-3 rounded-full font-bold shadow-lg hover:bg-blue-50 transition-all"
+                whileHover={{ y: -4, scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => (window.location.href = "/register?trial=true")}
+              >
+                Start Free Trial
+              </motion.button>
+            </div>
+          </div>
+        </motion.div>
 
         {/* Bottom Banner */}
         <motion.div

@@ -2,7 +2,10 @@ package services
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"log"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -82,6 +85,10 @@ func (s *WorkflowExecutionService) AssignWorkflowToDocument(ctx context.Context,
 
 	// Create the first workflow task
 	firstStage := stages[0]
+
+	// Get priority from the document
+	documentPriority := s.getDocumentPriority(tx, entityID, entityType)
+
 	task := &models.WorkflowTask{
 		ID:                   uuid.New().String(),
 		OrganizationID:       organizationID,
@@ -93,14 +100,25 @@ func (s *WorkflowExecutionService) AssignWorkflowToDocument(ctx context.Context,
 		AssignmentType:       "role",
 		AssignedRole:         &firstStage.RequiredRole,
 		Status:               "pending",
-		Priority:             "medium",
+		Priority:             documentPriority,
 		CreatedAt:            time.Now(),
 	}
 
-	// Set due date if timeout is specified
+	// Set due date - calculate from stage timeout or default, then cap at document's required date
+	var calculatedDueDate time.Time
 	if firstStage.TimeoutHours != nil && *firstStage.TimeoutHours > 0 {
-		dueDate := time.Now().Add(time.Duration(*firstStage.TimeoutHours) * time.Hour)
-		task.DueDate = &dueDate
+		calculatedDueDate = time.Now().Add(time.Duration(*firstStage.TimeoutHours) * time.Hour)
+	} else {
+		// Default due date: 7 days from creation
+		calculatedDueDate = time.Now().Add(7 * 24 * time.Hour)
+	}
+
+	// Cap at document's required by date if it's earlier
+	documentDueDate := s.getDocumentDueDate(tx, entityID, entityType)
+	if documentDueDate != nil && documentDueDate.Before(calculatedDueDate) {
+		task.DueDate = documentDueDate
+	} else {
+		task.DueDate = &calculatedDueDate
 	}
 
 	if err := tx.Create(task).Error; err != nil {
@@ -229,9 +247,103 @@ func (s *WorkflowExecutionService) ApproveWorkflowTaskWithVersion(ctx context.Co
 		return fmt.Errorf("user not found: %w", err)
 	}
 
-	if task.AssignedRole != nil && user.Role != *task.AssignedRole {
-		tx.Rollback()
-		return fmt.Errorf("insufficient permissions: user role '%s' does not match required role '%s'", user.Role, *task.AssignedRole)
+	// Built-in roles that have approval permissions
+	approverRoles := []string{"admin", "approver", "finance", "manager", "supervisor", "department_head"}
+
+	// Approval-related permissions to check for in organization roles
+	approvalPermissions := []string{
+		"requisition.approve", "approval.approve", "budget.approve",
+		"purchase_order.approve", "payment_voucher.approve", "grn.approve",
+	}
+
+	// Helper function to check if user has any organization role with approval permissions
+	checkOrgRoleApprovalPermissions := func() bool {
+		var userOrgRoles []models.UserOrganizationRole
+		if err := tx.Where("user_id = ? AND organization_id = ? AND active = ?",
+			userID, task.OrganizationID, true).Find(&userOrgRoles).Error; err != nil || len(userOrgRoles) == 0 {
+			return false
+		}
+
+		for _, userOrgRole := range userOrgRoles {
+			var orgRole models.OrganizationRole
+			if err := tx.Where("id = ? AND active = ?", userOrgRole.RoleID, true).First(&orgRole).Error; err != nil {
+				continue
+			}
+
+			// Parse permissions from JSON
+			var permissions []string
+			if err := json.Unmarshal(orgRole.Permissions, &permissions); err != nil {
+				continue
+			}
+
+			// Check if any approval permission exists
+			for _, perm := range permissions {
+				for _, approvalPerm := range approvalPermissions {
+					if strings.EqualFold(perm, approvalPerm) {
+						return true
+					}
+				}
+			}
+		}
+		return false
+	}
+
+	// PRIORITY 1: If task is assigned to a specific user (after reassignment), ONLY that user can approve
+	if task.AssignedUserID != nil && *task.AssignedUserID != "" {
+		if *task.AssignedUserID != userID {
+			tx.Rollback()
+			return fmt.Errorf("insufficient permissions: this task has been assigned to a specific user and only they can approve it")
+		}
+		// User is the assigned user - permission granted, skip role checks
+		log.Printf("[DEBUG] User %s is the specifically assigned user for this task - permission granted", userID)
+	} else if task.AssignedRole != nil {
+		// PRIORITY 2: Check role-based permissions (when task is assigned to a role, not a specific user)
+		assignedRole := *task.AssignedRole
+		hasPermission := false
+
+		// Check if assignedRole is a UUID (custom organization role)
+		if _, parseErr := uuid.Parse(assignedRole); parseErr == nil {
+			// It's a UUID - check if user has this organization role
+			var userOrgRole models.UserOrganizationRole
+			if err := tx.Where("user_id = ? AND organization_id = ? AND role_id = ? AND active = ?",
+				userID, task.OrganizationID, assignedRole, true).First(&userOrgRole).Error; err == nil {
+				hasPermission = true
+			} else {
+				// Fallback 1: Check if user has a built-in approver role
+				for _, approverRole := range approverRoles {
+					if strings.EqualFold(user.Role, approverRole) {
+						hasPermission = true
+						break
+					}
+				}
+				// Fallback 2: Check if user has any organization role with approval permissions
+				if !hasPermission {
+					hasPermission = checkOrgRoleApprovalPermissions()
+				}
+			}
+		} else {
+			// It's a built-in role name - check user.Role directly (case-insensitive)
+			if strings.EqualFold(user.Role, assignedRole) {
+				hasPermission = true
+			} else {
+				// Fallback 1: Check if user has a built-in approver role
+				for _, approverRole := range approverRoles {
+					if strings.EqualFold(user.Role, approverRole) {
+						hasPermission = true
+						break
+					}
+				}
+				// Fallback 2: Check if user has any organization role with approval permissions
+				if !hasPermission {
+					hasPermission = checkOrgRoleApprovalPermissions()
+				}
+			}
+		}
+
+		if !hasPermission {
+			tx.Rollback()
+			return fmt.Errorf("insufficient permissions: user does not have the required role '%s'", assignedRole)
+		}
 	}
 
 	// Get the workflow assignment
@@ -352,6 +464,9 @@ func (s *WorkflowExecutionService) ApproveWorkflowTaskWithVersion(ctx context.Co
 
 			assignment.CurrentStage = nextStageNumber
 
+			// Get priority from document for next task
+			nextTaskPriority := s.getDocumentPriority(tx, assignment.EntityID, assignment.EntityType)
+
 			// Create next workflow task
 			nextTask := &models.WorkflowTask{
 				ID:                   uuid.New().String(),
@@ -364,15 +479,26 @@ func (s *WorkflowExecutionService) ApproveWorkflowTaskWithVersion(ctx context.Co
 				AssignmentType:       "role",
 				AssignedRole:         &nextStage.RequiredRole,
 				Status:               "pending",
-				Priority:             "medium",
+				Priority:             nextTaskPriority,
 				Version:              1,
 				CreatedAt:            time.Now(),
 			}
 
-			// Set due date if timeout is specified
+			// Set due date - calculate from stage timeout or default, then cap at document's required date
+			var nextCalculatedDueDate time.Time
 			if nextStage.TimeoutHours != nil && *nextStage.TimeoutHours > 0 {
-				dueDate := time.Now().Add(time.Duration(*nextStage.TimeoutHours) * time.Hour)
-				nextTask.DueDate = &dueDate
+				nextCalculatedDueDate = time.Now().Add(time.Duration(*nextStage.TimeoutHours) * time.Hour)
+			} else {
+				// Default due date: 7 days from creation
+				nextCalculatedDueDate = time.Now().Add(7 * 24 * time.Hour)
+			}
+
+			// Cap at document's required by date if it's earlier
+			nextDocDueDate := s.getDocumentDueDate(tx, assignment.EntityID, assignment.EntityType)
+			if nextDocDueDate != nil && nextDocDueDate.Before(nextCalculatedDueDate) {
+				nextTask.DueDate = nextDocDueDate
+			} else {
+				nextTask.DueDate = &nextCalculatedDueDate
 			}
 
 			if err := tx.Create(nextTask).Error; err != nil {
@@ -571,9 +697,103 @@ func (s *WorkflowExecutionService) RejectWorkflowTaskWithVersion(ctx context.Con
 		return fmt.Errorf("user not found: %w", err)
 	}
 
-	if task.AssignedRole != nil && user.Role != *task.AssignedRole {
-		tx.Rollback()
-		return fmt.Errorf("insufficient permissions: user role '%s' does not match required role '%s'", user.Role, *task.AssignedRole)
+	// Built-in roles that have approval/rejection permissions
+	approverRoles := []string{"admin", "approver", "finance", "manager", "supervisor", "department_head"}
+
+	// Approval-related permissions to check for in organization roles
+	approvalPermissions := []string{
+		"requisition.approve", "approval.approve", "budget.approve",
+		"purchase_order.approve", "payment_voucher.approve", "grn.approve",
+	}
+
+	// Helper function to check if user has any organization role with approval permissions
+	checkOrgRoleApprovalPermissions := func() bool {
+		var userOrgRoles []models.UserOrganizationRole
+		if err := tx.Where("user_id = ? AND organization_id = ? AND active = ?",
+			userID, task.OrganizationID, true).Find(&userOrgRoles).Error; err != nil || len(userOrgRoles) == 0 {
+			return false
+		}
+
+		for _, userOrgRole := range userOrgRoles {
+			var orgRole models.OrganizationRole
+			if err := tx.Where("id = ? AND active = ?", userOrgRole.RoleID, true).First(&orgRole).Error; err != nil {
+				continue
+			}
+
+			// Parse permissions from JSON
+			var permissions []string
+			if err := json.Unmarshal(orgRole.Permissions, &permissions); err != nil {
+				continue
+			}
+
+			// Check if any approval permission exists
+			for _, perm := range permissions {
+				for _, approvalPerm := range approvalPermissions {
+					if strings.EqualFold(perm, approvalPerm) {
+						return true
+					}
+				}
+			}
+		}
+		return false
+	}
+
+	// PRIORITY 1: If task is assigned to a specific user (after reassignment), ONLY that user can reject
+	if task.AssignedUserID != nil && *task.AssignedUserID != "" {
+		if *task.AssignedUserID != userID {
+			tx.Rollback()
+			return fmt.Errorf("insufficient permissions: this task has been assigned to a specific user and only they can reject it")
+		}
+		// User is the assigned user - permission granted, skip role checks
+		log.Printf("[DEBUG] User %s is the specifically assigned user for this task - permission granted for rejection", userID)
+	} else if task.AssignedRole != nil {
+		// PRIORITY 2: Check role-based permissions (when task is assigned to a role, not a specific user)
+		assignedRole := *task.AssignedRole
+		hasPermission := false
+
+		// Check if assignedRole is a UUID (custom organization role)
+		if _, parseErr := uuid.Parse(assignedRole); parseErr == nil {
+			// It's a UUID - check if user has this organization role
+			var userOrgRole models.UserOrganizationRole
+			if err := tx.Where("user_id = ? AND organization_id = ? AND role_id = ? AND active = ?",
+				userID, task.OrganizationID, assignedRole, true).First(&userOrgRole).Error; err == nil {
+				hasPermission = true
+			} else {
+				// Fallback 1: Check if user has a built-in approver role
+				for _, approverRole := range approverRoles {
+					if strings.EqualFold(user.Role, approverRole) {
+						hasPermission = true
+						break
+					}
+				}
+				// Fallback 2: Check if user has any organization role with approval permissions
+				if !hasPermission {
+					hasPermission = checkOrgRoleApprovalPermissions()
+				}
+			}
+		} else {
+			// It's a built-in role name - check user.Role directly (case-insensitive)
+			if strings.EqualFold(user.Role, assignedRole) {
+				hasPermission = true
+			} else {
+				// Fallback 1: Check if user has a built-in approver role
+				for _, approverRole := range approverRoles {
+					if strings.EqualFold(user.Role, approverRole) {
+						hasPermission = true
+						break
+					}
+				}
+				// Fallback 2: Check if user has any organization role with approval permissions
+				if !hasPermission {
+					hasPermission = checkOrgRoleApprovalPermissions()
+				}
+			}
+		}
+
+		if !hasPermission {
+			tx.Rollback()
+			return fmt.Errorf("insufficient permissions: user does not have the required role '%s'", assignedRole)
+		}
 	}
 
 	// Get the workflow assignment
@@ -746,10 +966,19 @@ func (s *WorkflowExecutionService) GetWorkflowStatus(ctx context.Context, organi
 
 	// Build detailed stage progress information
 	for i, stage := range stages {
+		// Resolve role name if RequiredRole is a UUID
+		requiredRoleDisplay := stage.RequiredRole
+		if _, parseErr := uuid.Parse(stage.RequiredRole); parseErr == nil {
+			var orgRole models.OrganizationRole
+			if err := s.db.Where("id = ?", stage.RequiredRole).First(&orgRole).Error; err == nil {
+				requiredRoleDisplay = orgRole.Name
+			}
+		}
+
 		stageInfo := StageProgressInfo{
 			StageNumber:   stage.StageNumber,
 			StageName:     stage.StageName,
-			RequiredRole:  stage.RequiredRole,
+			RequiredRole:  requiredRoleDisplay,
 			Status:        "pending",
 			IsCurrentStage: stage.StageNumber == assignment.CurrentStage,
 		}
@@ -779,7 +1008,19 @@ func (s *WorkflowExecutionService) GetWorkflowStatus(ctx context.Context, organi
 	if len(pendingTasks) > 0 {
 		currentTask := pendingTasks[0]
 		if currentTask.AssignedRole != nil {
-			response.NextApprover = fmt.Sprintf("Required Role: %s", *currentTask.AssignedRole)
+			assignedRole := *currentTask.AssignedRole
+			roleDisplayName := assignedRole
+
+			// Check if assignedRole is a UUID (custom organization role)
+			if _, parseErr := uuid.Parse(assignedRole); parseErr == nil {
+				// It's a UUID - look up the organization role name
+				var orgRole models.OrganizationRole
+				if err := s.db.Where("id = ?", assignedRole).First(&orgRole).Error; err == nil {
+					roleDisplayName = orgRole.Name
+				}
+			}
+
+			response.NextApprover = fmt.Sprintf("Required Role: %s", roleDisplayName)
 		}
 	}
 
@@ -1253,4 +1494,69 @@ func (s *WorkflowExecutionService) UpdateDocumentStatus(tx *gorm.DB, entityType,
 // AddActionHistoryEntry adds an action history entry to the document (public for testing)
 func (s *WorkflowExecutionService) AddActionHistoryEntry(tx *gorm.DB, entityType, entityID, userID, action, comments string) error {
 	return s.addActionHistoryEntry(tx, entityType, entityID, userID, action, comments)
+}
+
+// getDocumentPriority fetches the priority from the document based on entity type
+func (s *WorkflowExecutionService) getDocumentPriority(tx *gorm.DB, entityID, entityType string) string {
+	defaultPriority := "medium"
+
+	switch strings.ToLower(entityType) {
+	case "requisition":
+		var req models.Requisition
+		if err := tx.Where("id = ?", entityID).First(&req).Error; err == nil {
+			if req.Priority != "" {
+				return strings.ToLower(req.Priority)
+			}
+		}
+	case "purchase_order":
+		var po models.PurchaseOrder
+		if err := tx.Where("id = ?", entityID).First(&po).Error; err == nil {
+			if po.Priority != "" {
+				return strings.ToLower(po.Priority)
+			}
+		}
+	case "payment_voucher":
+		var pv models.PaymentVoucher
+		if err := tx.Where("id = ?", entityID).First(&pv).Error; err == nil {
+			if pv.Priority != "" {
+				return strings.ToLower(pv.Priority)
+			}
+		}
+	// budget and goods_received_note don't have priority field - use default
+	}
+
+	return defaultPriority
+}
+
+// getDocumentDueDate fetches the due date from the document based on entity type
+func (s *WorkflowExecutionService) getDocumentDueDate(tx *gorm.DB, entityID, entityType string) *time.Time {
+	switch strings.ToLower(entityType) {
+	case "requisition":
+		var req models.Requisition
+		if err := tx.Where("id = ?", entityID).First(&req).Error; err == nil {
+			if !req.RequiredByDate.IsZero() {
+				return &req.RequiredByDate
+			}
+		}
+	case "purchase_order":
+		var po models.PurchaseOrder
+		if err := tx.Where("id = ?", entityID).First(&po).Error; err == nil {
+			// Try RequiredByDate first (pointer), then DeliveryDate (value)
+			if po.RequiredByDate != nil {
+				return po.RequiredByDate
+			}
+			if !po.DeliveryDate.IsZero() {
+				return &po.DeliveryDate
+			}
+		}
+	case "payment_voucher":
+		var pv models.PaymentVoucher
+		if err := tx.Where("id = ?", entityID).First(&pv).Error; err == nil {
+			if pv.PaymentDueDate != nil {
+				return pv.PaymentDueDate
+			}
+		}
+	}
+
+	return nil
 }

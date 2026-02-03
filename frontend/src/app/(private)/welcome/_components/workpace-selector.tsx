@@ -15,7 +15,8 @@ import Logo from "@/components/base/logo";
 import { WorkspaceSkeleton } from "./workspace-skeleton";
 import { EmptyWorkspaceState } from "./empty-workspace-state";
 import { debugSession } from "@/app/_actions/debug";
-import { TierDisplay } from "@/components/modals/tier-display";
+import { TierDisplay } from "@/components/subscription/tier-display";
+import { UpgradeModal } from "@/components/subscription/upgrade-modal";
 import { trackPageRedirect, trackOrgSwitchError } from "@/lib/auth-monitoring";
 
 interface WorkspaceSelectorProps {
@@ -41,12 +42,30 @@ export function WorkspaceSelector({
     useSelectOrganization();
   const { logout } = useLogout();
   const [selectedOrgId, setSelectedOrgId] = useState<string | null>(
-    currentOrganization?.id ?? null
+    currentOrganization?.id ?? null,
   );
   const [retryCount, setRetryCount] = useState(0);
   const [showSkeleton, setShowSkeleton] = useState(true);
   const [debugInfo, setDebugInfo] = useState<any>(null);
   const [showDebug, setShowDebug] = useState(false);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+
+  // Check for plan selection from registration
+  useEffect(() => {
+    const selectedPlan = localStorage.getItem("selectedPlan");
+    const redirectToUpgrade = localStorage.getItem("redirectToUpgrade");
+
+    if (selectedPlan && redirectToUpgrade === "true" && currentOrganization) {
+      // Clear the stored values
+      localStorage.removeItem("selectedPlan");
+      localStorage.removeItem("redirectToUpgrade");
+
+      // Show upgrade modal after a short delay to ensure everything is loaded
+      setTimeout(() => {
+        setShowUpgradeModal(true);
+      }, 1000);
+    }
+  }, [currentOrganization]);
 
   // Enhanced error recovery for session issues
   useEffect(() => {
@@ -54,7 +73,7 @@ export function WorkspaceSelector({
       if (retryCount < 3) {
         const delay = Math.min(1000 * Math.pow(2, retryCount), 5000);
         console.log(
-          `Session error detected, retrying in ${delay}ms (attempt ${retryCount + 1}/3)`
+          `Session error detected, retrying in ${delay}ms (attempt ${retryCount + 1}/3)`,
         );
 
         setTimeout(() => {
@@ -64,7 +83,7 @@ export function WorkspaceSelector({
       } else {
         // After 3 retries, force logout to clear invalid session
         console.error(
-          "Persistent session error after 3 retries, forcing logout"
+          "Persistent session error after 3 retries, forcing logout",
         );
         logout();
       }
@@ -231,7 +250,7 @@ export function WorkspaceSelector({
                       // Check if the click originated from the upgrade button or its children
                       const target = e.target as HTMLElement;
                       const isUpgradeButton = target.closest(
-                        "button[data-upgrade-button]"
+                        "button[data-upgrade-button]",
                       );
 
                       if (!isUpgradeButton && !isNavigating) {
@@ -246,7 +265,7 @@ export function WorkspaceSelector({
                         "border-primary shadow-sm ring-1 ring-primary/20",
                       !isDefault && "border-border",
                       isNavigating && isSelected && "ring-2 ring-primary/40",
-                      isNavigating && "opacity-50 cursor-not-allowed"
+                      isNavigating && "opacity-50 cursor-not-allowed",
                     )}
                     style={{
                       animationDelay: `${index * 100}ms`,
@@ -326,7 +345,7 @@ export function WorkspaceSelector({
                     "w-full flex items-center justify-center p-4 border border-dashed border-border rounded-lg text-muted-foreground hover:text-foreground hover:border-primary/50 hover:bg-muted/50 transition-all duration-200 group animate-in fade-in-0 slide-in-from-bottom-1",
                     isNavigating
                       ? "opacity-50 cursor-not-allowed hover:text-muted-foreground hover:border-border hover:bg-transparent"
-                      : "cursor-pointer"
+                      : "cursor-pointer",
                   )}
                   onClick={() => !isNavigating && onCreateWorkspace()}
                   style={{
@@ -349,6 +368,15 @@ export function WorkspaceSelector({
           </p>
         </div>
       </div>
+
+      {/* Upgrade Modal */}
+      {currentOrganization && (
+        <UpgradeModal
+          isOpen={showUpgradeModal}
+          onClose={() => setShowUpgradeModal(false)}
+          currentTier={currentOrganization.tier?.toUpperCase() || "STARTER"}
+        />
+      )}
     </div>
   );
 }

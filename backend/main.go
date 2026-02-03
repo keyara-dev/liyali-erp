@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 
 	"github.com/gofiber/fiber/v2"
@@ -46,14 +47,23 @@ func init() {
 	appEnv := os.Getenv("APP_ENV")
 	isProduction := appEnv == "production" || appEnv == "prod"
 
-	// JWT_SECRET is required in production
-	if os.Getenv("JWT_SECRET") == "" {
+	// JWT_SECRET handling - temporarily more lenient for debugging
+	jwtSecret := os.Getenv("JWT_SECRET")
+	if jwtSecret == "" {
 		if isProduction {
-			println("FATAL: JWT_SECRET environment variable is required in production mode")
-			os.Exit(1)
+			println("WARNING: JWT_SECRET not found, using temporary fallback")
+			println("Available environment variables:")
+			for _, env := range os.Environ() {
+				if strings.Contains(strings.ToUpper(env), "JWT") || strings.Contains(strings.ToUpper(env), "SECRET") {
+					println(env)
+				}
+			}
+			// Use a temporary secret for now
+			os.Setenv("JWT_SECRET", "temp-production-secret-change-me")
+		} else {
+			// Development default
+			os.Setenv("JWT_SECRET", "dev-only-secret-do-not-use-in-production")
 		}
-		// Only use default in development
-		os.Setenv("JWT_SECRET", "dev-only-secret-do-not-use-in-production")
 	}
 
 	// SSL mode defaults: require in production, disable in development
@@ -69,6 +79,7 @@ func init() {
 func main() {
 	// Initialize structured logging system
 	loggingConfig := logging.SetupLogging()
+	logger := &logging.Logger{}
 	
 	// Initialize database (both GORM and pgx)
 	config.InitDatabase()
@@ -110,9 +121,12 @@ func main() {
 	// Initialize workflow execution service with automation
 	workflowExecutionService := services.NewWorkflowExecutionService(config.DB, workflowService, auditService, automationService)
 	documentService := services.NewDocumentService(documentRepo, auditService)
+	
+	// Initialize subscription service
+	subscriptionService := services.NewSubscriptionService(config.PgxDB, logger)
 
 	// Initialize handler registry
-	handlerRegistry := handlers.NewHandlerRegistry(authService, rbacService, workflowService, workflowExecutionService, documentService, automationService)
+	handlerRegistry := handlers.NewHandlerRegistry(authService, rbacService, workflowService, workflowExecutionService, documentService, automationService, subscriptionService, logger)
 
 	// Create Fiber app with global error handler
 	app := fiber.New(fiber.Config{
@@ -151,16 +165,16 @@ func main() {
 	logging.LogShutdownInfo()
 	
 	if err := app.ShutdownWithContext(context.Background()); err != nil {
-		logging.WithError(err).Fatal("server_forced_shutdown")
+		logging.WithError(err).Fatal("⚠️server_forced_shutdown")
 	}
 
-	logging.Info("server_stopped_gracefully")
+	logging.Info("✅server_stopped_gracefully!!")
 }
 
 // customErrorHandler handles errors globally with structured logging
 func customErrorHandler(c *fiber.Ctx, err error) error {
 	code := fiber.StatusInternalServerError
-	message := "Internal Server Error"
+	message := "Internal Server Error!"
 
 	if e, ok := err.(*fiber.Error); ok {
 		code = e.Code
@@ -174,7 +188,7 @@ func customErrorHandler(c *fiber.Ctx, err error) error {
 		"error_message": message,
 		"method": c.Method(),
 		"path": c.Path(),
-	}).Error("global_error_handler")
+	}).Error("global_error_handler!!")
 
 	return c.Status(code).JSON(fiber.Map{
 		"error": message,

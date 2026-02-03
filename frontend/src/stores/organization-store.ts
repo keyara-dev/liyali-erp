@@ -176,10 +176,9 @@ export const useOrganizationStore = create<OrganizationState>()(
   }))
 );
 
-// Auto-initialize when the store is created on the client side
-if (typeof window !== "undefined") {
-  useOrganizationStore.getState().initialize();
-}
+// Note: Auto-initialization removed to prevent "Can't perform a React state update
+// on a component that hasn't mounted yet" error. Initialization is now handled
+// by the useOrganizationContext hook via useEffect.
 
 // Subscribe to organization changes to sync with localStorage
 useOrganizationStore.subscribe(

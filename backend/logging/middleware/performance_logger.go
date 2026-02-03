@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v2"
-	"github.com/liyali/liyali-gateway/logging/config"
+	loggingConfig "github.com/liyali/liyali-gateway/logging/config"
 	logContext "github.com/liyali/liyali-gateway/logging/context"
 )
 
@@ -15,7 +15,7 @@ type PerformanceLoggerConfig struct {
 	Skip func(c *fiber.Ctx) bool
 
 	// Config holds logging configuration
-	Config *config.LoggingConfig
+	Config *loggingConfig.LoggingConfig
 
 	// SlowRequestThreshold defines when a request is considered slow
 	SlowRequestThreshold time.Duration
@@ -37,7 +37,7 @@ type PerformanceLoggerConfig struct {
 func DefaultPerformanceLoggerConfig() PerformanceLoggerConfig {
 	return PerformanceLoggerConfig{
 		Skip:                     nil,
-		Config:                   config.DefaultLoggingConfig(),
+		Config:                   loggingConfig.DefaultLoggingConfig(),
 		SlowRequestThreshold:     100 * time.Millisecond,
 		VerySlowRequestThreshold: 1000 * time.Millisecond,
 		EnableMemoryTracking:     false,
@@ -56,7 +56,7 @@ func PerformanceLogger(cfg ...PerformanceLoggerConfig) fiber.Handler {
 
 	// Ensure config is not nil
 	if config.Config == nil {
-		config.Config = config.DefaultLoggingConfig()
+		config.Config = loggingConfig.DefaultLoggingConfig()
 	}
 
 	// Use threshold from logging config if not explicitly set
@@ -147,7 +147,7 @@ func PerformanceLogger(cfg ...PerformanceLoggerConfig) fiber.Handler {
 }
 
 // PerformanceLoggerWithConfig returns a performance logger with custom configuration
-func PerformanceLoggerWithConfig(loggingConfig *config.LoggingConfig) fiber.Handler {
+func PerformanceLoggerWithConfig(loggingConfig *loggingConfig.LoggingConfig) fiber.Handler {
 	cfg := DefaultPerformanceLoggerConfig()
 	cfg.Config = loggingConfig
 	cfg.SlowRequestThreshold = loggingConfig.GetSlowRequestThreshold()
@@ -157,7 +157,7 @@ func PerformanceLoggerWithConfig(loggingConfig *config.LoggingConfig) fiber.Hand
 // PerformanceLoggerForDevelopment returns a performance logger optimized for development
 func PerformanceLoggerForDevelopment() fiber.Handler {
 	cfg := DefaultPerformanceLoggerConfig()
-	cfg.Config = config.DevelopmentConfig()
+	cfg.Config = loggingConfig.DevelopmentConfig()
 	cfg.SlowRequestThreshold = 50 * time.Millisecond  // Lower threshold for dev
 	cfg.VerySlowRequestThreshold = 200 * time.Millisecond
 	cfg.EnableMemoryTracking = true
@@ -173,7 +173,7 @@ func PerformanceLoggerForDevelopment() fiber.Handler {
 // PerformanceLoggerForProduction returns a performance logger optimized for production
 func PerformanceLoggerForProduction() fiber.Handler {
 	cfg := DefaultPerformanceLoggerConfig()
-	cfg.Config = config.ProductionConfig()
+	cfg.Config = loggingConfig.ProductionConfig()
 	cfg.SlowRequestThreshold = 200 * time.Millisecond  // Higher threshold for prod
 	cfg.VerySlowRequestThreshold = 2000 * time.Millisecond
 	cfg.EnableMemoryTracking = false // Disable memory tracking in prod for performance
@@ -199,7 +199,7 @@ func PerformanceLoggerForProduction() fiber.Handler {
 // PerformanceLoggerForTesting returns a performance logger optimized for testing
 func PerformanceLoggerForTesting() fiber.Handler {
 	cfg := DefaultPerformanceLoggerConfig()
-	cfg.Config = config.TestConfig()
+	cfg.Config = loggingConfig.TestConfig()
 	cfg.SlowRequestThreshold = 1000 * time.Millisecond // Very high threshold for tests
 	cfg.VerySlowRequestThreshold = 5000 * time.Millisecond
 	cfg.EnableMemoryTracking = false

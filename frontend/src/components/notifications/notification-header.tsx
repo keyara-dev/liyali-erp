@@ -54,7 +54,7 @@ export function NotificationHeader() {
     // Navigate to document
     const url = getDocumentUrl(
       notification.documentType,
-      notification.documentId
+      notification.documentId,
     );
     router.push(url);
     setIsOpen(false);
@@ -174,7 +174,7 @@ function NotificationItem({
   return (
     <div
       className={`p-3 hover:bg-muted/50 cursor-pointer transition-colors ${
-        !notification.isRead ? "bg-blue-50/50" : ""
+        !notification.isRead ? "bg-blue-600/10 dark:bg-blue-50/50" : ""
       }`}
       onClick={() => onClick(notification)}
     >
@@ -223,7 +223,7 @@ function NotificationItem({
                   variant="ghost"
                   size="sm"
                   onClick={handleMarkAsRead}
-                  className="h-6 w-6 p-0 hover:bg-blue-100"
+                  className="h-6 w-6 p-0 hover:bg-blue-600 hover:text-white dark:hover:bg-blue-100 dark:hover:text-blue-800"
                 >
                   <Check className="h-3 w-3" />
                 </Button>

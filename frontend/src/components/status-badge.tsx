@@ -32,9 +32,11 @@ interface StatusBadgeProps {
   status: string;
   type:
     | "document"
+    | "draft"
     | "action"
     | "execution"
     | "approval"
+    | "success"
     | "compliance"
     | "role"
     | "health";

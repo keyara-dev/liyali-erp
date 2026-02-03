@@ -19,32 +19,39 @@ type DocumentRepositoryInterface interface {
 	Create(ctx context.Context, document *models.Document) (*models.Document, error)
 	GetByID(ctx context.Context, id uuid.UUID, organizationID string) (*models.Document, error)
 	GetByNumber(ctx context.Context, documentNumber, organizationID string) (*models.Document, error)
+	GetByNumberOnly(ctx context.Context, documentNumber string) (*models.Document, error) // Public verification (no org filter)
 	Update(ctx context.Context, document *models.Document) (*models.Document, error)
 	Delete(ctx context.Context, id uuid.UUID, organizationID string) error
-	
+
 	// List operations
 	List(ctx context.Context, organizationID string, filter *models.DocumentFilter, limit, offset int) ([]*models.Document, error)
 	ListByUser(ctx context.Context, organizationID, userID string, limit, offset int) ([]*models.Document, error)
 	ListByType(ctx context.Context, organizationID, documentType string, limit, offset int) ([]*models.Document, error)
 	ListByStatus(ctx context.Context, organizationID, status string, limit, offset int) ([]*models.Document, error)
 	ListByDepartment(ctx context.Context, organizationID, department string, limit, offset int) ([]*models.Document, error)
-	
+
 	// Search operations
 	Search(ctx context.Context, organizationID, query string, filter *models.DocumentFilter, limit, offset int) ([]*models.DocumentSearchResult, error)
-	
+
 	// Count operations
 	Count(ctx context.Context, organizationID string, filter *models.DocumentFilter) (int64, error)
 	CountByType(ctx context.Context, organizationID, documentType string) (int64, error)
 	CountByStatus(ctx context.Context, organizationID, status string) (int64, error)
 	CountByUser(ctx context.Context, organizationID, userID string) (int64, error)
-	
+
 	// Status operations
 	UpdateStatus(ctx context.Context, id uuid.UUID, organizationID, status string) error
 	Submit(ctx context.Context, id uuid.UUID, organizationID string) error
-	
+
 	// Statistics
 	GetStats(ctx context.Context, organizationID string) (*models.DocumentStats, error)
-	
+
+	// Public document retrieval for PDF generation
+	GetRequisitionByNumberPublic(ctx context.Context, documentNumber string) (*models.Requisition, error)
+	GetPurchaseOrderByNumberPublic(ctx context.Context, documentNumber string) (*models.PurchaseOrder, error)
+	GetPaymentVoucherByNumberPublic(ctx context.Context, documentNumber string) (*models.PaymentVoucher, error)
+	GetGRNByNumberPublic(ctx context.Context, documentNumber string) (*models.GoodsReceivedNote, error)
+
 	// Sync operations (to sync with existing specific models)
 	SyncFromRequisition(ctx context.Context, requisition *models.Requisition) error
 	SyncFromBudget(ctx context.Context, budget *models.Budget) error
@@ -107,12 +114,90 @@ func (r *DocumentRepository) GetByNumber(ctx context.Context, documentNumber, or
 		Preload("Updater").
 		Preload("Workflow").
 		First(&document).Error
-	
+
 	if err != nil {
 		return nil, err
 	}
-	
+
 	return &document, nil
+}
+
+// GetByNumberOnly retrieves a document by document number only (for public verification)
+// This is used for public document verification without requiring authentication
+func (r *DocumentRepository) GetByNumberOnly(ctx context.Context, documentNumber string) (*models.Document, error) {
+	var document models.Document
+	err := r.db.WithContext(ctx).
+		Where("document_number = ?", documentNumber).
+		Preload("Creator").
+		Preload("Organization").
+		First(&document).Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &document, nil
+}
+
+// GetRequisitionByNumberPublic retrieves a requisition by document number for public PDF generation
+func (r *DocumentRepository) GetRequisitionByNumberPublic(ctx context.Context, documentNumber string) (*models.Requisition, error) {
+	var requisition models.Requisition
+	err := r.db.WithContext(ctx).
+		Where("document_number = ?", documentNumber).
+		Preload("Requester").
+		Preload("Category").
+		Preload("PreferredVendor").
+		First(&requisition).Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &requisition, nil
+}
+
+// GetPurchaseOrderByNumberPublic retrieves a purchase order by document number for public PDF generation
+func (r *DocumentRepository) GetPurchaseOrderByNumberPublic(ctx context.Context, documentNumber string) (*models.PurchaseOrder, error) {
+	var po models.PurchaseOrder
+	err := r.db.WithContext(ctx).
+		Where("document_number = ?", documentNumber).
+		Preload("Vendor").
+		First(&po).Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &po, nil
+}
+
+// GetPaymentVoucherByNumberPublic retrieves a payment voucher by document number for public PDF generation
+func (r *DocumentRepository) GetPaymentVoucherByNumberPublic(ctx context.Context, documentNumber string) (*models.PaymentVoucher, error) {
+	var pv models.PaymentVoucher
+	err := r.db.WithContext(ctx).
+		Where("document_number = ?", documentNumber).
+		Preload("Vendor").
+		First(&pv).Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &pv, nil
+}
+
+// GetGRNByNumberPublic retrieves a GRN by document number for public PDF generation
+func (r *DocumentRepository) GetGRNByNumberPublic(ctx context.Context, documentNumber string) (*models.GoodsReceivedNote, error) {
+	var grn models.GoodsReceivedNote
+	err := r.db.WithContext(ctx).
+		Where("document_number = ?", documentNumber).
+		First(&grn).Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &grn, nil
 }
 
 // Update updates a document
@@ -219,14 +304,97 @@ func (r *DocumentRepository) ListByDepartment(ctx context.Context, organizationI
 	return documents, err
 }
 
-// Search performs full-text search on documents
+// Search performs full-text search on documents across all entity tables
 func (r *DocumentRepository) Search(ctx context.Context, organizationID, query string, filter *models.DocumentFilter, limit, offset int) ([]*models.DocumentSearchResult, error) {
-	// Build search query with PostgreSQL full-text search
+	var allResults []*models.DocumentSearchResult
+
+	// Check if we need to filter by document type
+	searchTypes := filter.DocumentTypes
+	if len(searchTypes) == 0 {
+		// Search all types if no filter specified
+		searchTypes = []string{"REQUISITION", "PURCHASE_ORDER", "PAYMENT_VOUCHER", "GRN"}
+	}
+
+	// Normalize search types to uppercase
+	normalizedTypes := toUpperSlice(searchTypes)
+
+	// Search requisitions
+	if containsType(normalizedTypes, "REQUISITION") {
+		results, err := r.searchRequisitions(ctx, organizationID, query, filter, limit, offset)
+		if err == nil {
+			allResults = append(allResults, results...)
+		}
+	}
+
+	// Search purchase orders
+	if containsType(normalizedTypes, "PURCHASE_ORDER") || containsType(normalizedTypes, "PO") {
+		results, err := r.searchPurchaseOrders(ctx, organizationID, query, filter, limit, offset)
+		if err == nil {
+			allResults = append(allResults, results...)
+		}
+	}
+
+	// Search payment vouchers
+	if containsType(normalizedTypes, "PAYMENT_VOUCHER") || containsType(normalizedTypes, "PV") {
+		results, err := r.searchPaymentVouchers(ctx, organizationID, query, filter, limit, offset)
+		if err == nil {
+			allResults = append(allResults, results...)
+		}
+	}
+
+	// Search GRNs
+	if containsType(normalizedTypes, "GRN") || containsType(normalizedTypes, "GOODS_RECEIVED_NOTE") {
+		results, err := r.searchGRNs(ctx, organizationID, query, filter, limit, offset)
+		if err == nil {
+			allResults = append(allResults, results...)
+		}
+	}
+
+	// Sort by created_at DESC
+	sortResultsByDate(allResults)
+
+	// Apply pagination to combined results
+	start := offset
+	if start > len(allResults) {
+		start = len(allResults)
+	}
+	end := start + limit
+	if end > len(allResults) {
+		end = len(allResults)
+	}
+
+	return allResults[start:end], nil
+}
+
+// containsType checks if a slice contains a type (case-insensitive)
+func containsType(types []string, target string) bool {
+	targetUpper := strings.ToUpper(target)
+	for _, t := range types {
+		if strings.ToUpper(t) == targetUpper {
+			return true
+		}
+	}
+	return false
+}
+
+// sortResultsByDate sorts results by created_at in descending order
+func sortResultsByDate(results []*models.DocumentSearchResult) {
+	for i := 0; i < len(results)-1; i++ {
+		for j := i + 1; j < len(results); j++ {
+			if results[j].CreatedAt.After(results[i].CreatedAt) {
+				results[i], results[j] = results[j], results[i]
+			}
+		}
+	}
+}
+
+// searchRequisitions searches the requisitions table
+func (r *DocumentRepository) searchRequisitions(ctx context.Context, organizationID, query string, filter *models.DocumentFilter, limit, offset int) ([]*models.DocumentSearchResult, error) {
 	searchQuery := r.db.WithContext(ctx).
+		Model(&models.Requisition{}).
 		Where("organization_id = ?", organizationID).
-		Preload("Creator").
-		Preload("Workflow")
-	
+		Preload("Requester")
+
 	// Apply text search
 	if query != "" {
 		searchTerms := strings.Fields(query)
@@ -237,41 +405,409 @@ func (r *DocumentRepository) Search(ctx context.Context, organizationID, query s
 			)
 		}
 	}
-	
-	// Apply filters
-	searchQuery = r.applyFilters(searchQuery, filter)
-	
-	var documents []*models.Document
-	err := searchQuery.Order("created_at DESC").
-		Limit(limit).
-		Offset(offset).
-		Find(&documents).Error
-	
+
+	// Apply document number filter
+	if filter != nil && filter.DocumentNumber != "" {
+		searchQuery = searchQuery.Where("document_number ILIKE ?", "%"+filter.DocumentNumber+"%")
+	}
+
+	// Apply status filter
+	if filter != nil && len(filter.Statuses) > 0 {
+		searchQuery = searchQuery.Where("UPPER(status) IN ?", toUpperSlice(filter.Statuses))
+	}
+
+	// Apply date filters
+	if filter != nil && filter.DateFrom != nil {
+		searchQuery = searchQuery.Where("created_at >= ?", filter.DateFrom)
+	}
+	if filter != nil && filter.DateTo != nil {
+		searchQuery = searchQuery.Where("created_at <= ?", filter.DateTo)
+	}
+
+	var requisitions []*models.Requisition
+	err := searchQuery.Order("created_at DESC").Find(&requisitions).Error
 	if err != nil {
 		return nil, err
 	}
-	
-	// Convert to search results with relevance scoring
-	results := make([]*models.DocumentSearchResult, len(documents))
-	for i, doc := range documents {
+
+	// Convert to DocumentSearchResult
+	results := make([]*models.DocumentSearchResult, len(requisitions))
+	for i, req := range requisitions {
+		doc := r.requisitionToDocument(req)
 		results[i] = &models.DocumentSearchResult{
 			Document:  *doc,
-			Relevance: r.calculateRelevance(doc, query),
-			Matches:   r.findMatches(doc, query),
+			Relevance: 1.0,
 		}
 	}
-	
+
 	return results, nil
+}
+
+// searchPurchaseOrders searches the purchase_orders table
+func (r *DocumentRepository) searchPurchaseOrders(ctx context.Context, organizationID, query string, filter *models.DocumentFilter, limit, offset int) ([]*models.DocumentSearchResult, error) {
+	searchQuery := r.db.WithContext(ctx).
+		Model(&models.PurchaseOrder{}).
+		Where("organization_id = ?", organizationID).
+		Preload("Vendor")
+
+	// Apply text search
+	if query != "" {
+		searchTerms := strings.Fields(query)
+		for _, term := range searchTerms {
+			searchQuery = searchQuery.Where(
+				"title ILIKE ? OR document_number ILIKE ?",
+				"%"+term+"%", "%"+term+"%",
+			)
+		}
+	}
+
+	// Apply document number filter
+	if filter != nil && filter.DocumentNumber != "" {
+		searchQuery = searchQuery.Where("document_number ILIKE ?", "%"+filter.DocumentNumber+"%")
+	}
+
+	// Apply status filter
+	if filter != nil && len(filter.Statuses) > 0 {
+		searchQuery = searchQuery.Where("UPPER(status) IN ?", toUpperSlice(filter.Statuses))
+	}
+
+	// Apply date filters
+	if filter != nil && filter.DateFrom != nil {
+		searchQuery = searchQuery.Where("created_at >= ?", filter.DateFrom)
+	}
+	if filter != nil && filter.DateTo != nil {
+		searchQuery = searchQuery.Where("created_at <= ?", filter.DateTo)
+	}
+
+	var pos []*models.PurchaseOrder
+	err := searchQuery.Order("created_at DESC").Find(&pos).Error
+	if err != nil {
+		return nil, err
+	}
+
+	// Convert to DocumentSearchResult
+	results := make([]*models.DocumentSearchResult, len(pos))
+	for i, po := range pos {
+		doc := r.purchaseOrderToDocument(po)
+		results[i] = &models.DocumentSearchResult{
+			Document:  *doc,
+			Relevance: 1.0,
+		}
+	}
+
+	return results, nil
+}
+
+// searchPaymentVouchers searches the payment_vouchers table
+func (r *DocumentRepository) searchPaymentVouchers(ctx context.Context, organizationID, query string, filter *models.DocumentFilter, limit, offset int) ([]*models.DocumentSearchResult, error) {
+	searchQuery := r.db.WithContext(ctx).
+		Model(&models.PaymentVoucher{}).
+		Where("organization_id = ?", organizationID).
+		Preload("Vendor")
+
+	// Apply text search
+	if query != "" {
+		searchTerms := strings.Fields(query)
+		for _, term := range searchTerms {
+			searchQuery = searchQuery.Where(
+				"title ILIKE ? OR description ILIKE ? OR document_number ILIKE ?",
+				"%"+term+"%", "%"+term+"%", "%"+term+"%",
+			)
+		}
+	}
+
+	// Apply document number filter
+	if filter != nil && filter.DocumentNumber != "" {
+		searchQuery = searchQuery.Where("document_number ILIKE ?", "%"+filter.DocumentNumber+"%")
+	}
+
+	// Apply status filter
+	if filter != nil && len(filter.Statuses) > 0 {
+		searchQuery = searchQuery.Where("UPPER(status) IN ?", toUpperSlice(filter.Statuses))
+	}
+
+	// Apply date filters
+	if filter != nil && filter.DateFrom != nil {
+		searchQuery = searchQuery.Where("created_at >= ?", filter.DateFrom)
+	}
+	if filter != nil && filter.DateTo != nil {
+		searchQuery = searchQuery.Where("created_at <= ?", filter.DateTo)
+	}
+
+	var pvs []*models.PaymentVoucher
+	err := searchQuery.Order("created_at DESC").Find(&pvs).Error
+	if err != nil {
+		return nil, err
+	}
+
+	// Convert to DocumentSearchResult
+	results := make([]*models.DocumentSearchResult, len(pvs))
+	for i, pv := range pvs {
+		doc := r.paymentVoucherToDocument(pv)
+		results[i] = &models.DocumentSearchResult{
+			Document:  *doc,
+			Relevance: 1.0,
+		}
+	}
+
+	return results, nil
+}
+
+// searchGRNs searches the goods_received_notes table
+func (r *DocumentRepository) searchGRNs(ctx context.Context, organizationID, query string, filter *models.DocumentFilter, limit, offset int) ([]*models.DocumentSearchResult, error) {
+	searchQuery := r.db.WithContext(ctx).
+		Model(&models.GoodsReceivedNote{}).
+		Where("organization_id = ?", organizationID)
+
+	// Apply text search
+	if query != "" {
+		searchTerms := strings.Fields(query)
+		for _, term := range searchTerms {
+			searchQuery = searchQuery.Where(
+				"document_number ILIKE ? OR notes ILIKE ?",
+				"%"+term+"%", "%"+term+"%",
+			)
+		}
+	}
+
+	// Apply document number filter
+	if filter != nil && filter.DocumentNumber != "" {
+		searchQuery = searchQuery.Where("document_number ILIKE ?", "%"+filter.DocumentNumber+"%")
+	}
+
+	// Apply status filter
+	if filter != nil && len(filter.Statuses) > 0 {
+		searchQuery = searchQuery.Where("UPPER(status) IN ?", toUpperSlice(filter.Statuses))
+	}
+
+	// Apply date filters
+	if filter != nil && filter.DateFrom != nil {
+		searchQuery = searchQuery.Where("created_at >= ?", filter.DateFrom)
+	}
+	if filter != nil && filter.DateTo != nil {
+		searchQuery = searchQuery.Where("created_at <= ?", filter.DateTo)
+	}
+
+	var grns []*models.GoodsReceivedNote
+	err := searchQuery.Order("created_at DESC").Find(&grns).Error
+	if err != nil {
+		return nil, err
+	}
+
+	// Convert to DocumentSearchResult
+	results := make([]*models.DocumentSearchResult, len(grns))
+	for i, grn := range grns {
+		doc := r.grnToDocument(grn)
+		results[i] = &models.DocumentSearchResult{
+			Document:  *doc,
+			Relevance: 1.0,
+		}
+	}
+
+	return results, nil
+}
+
+// requisitionToDocument converts a Requisition to a Document
+func (r *DocumentRepository) requisitionToDocument(req *models.Requisition) *models.Document {
+	id, _ := uuid.Parse(req.ID)
+	doc := &models.Document{
+		ID:             id,
+		OrganizationID: req.OrganizationID,
+		DocumentType:   "REQUISITION",
+		DocumentNumber: req.DocumentNumber,
+		Title:          req.Title,
+		Status:         req.Status,
+		Amount:         &req.TotalAmount,
+		Currency:       &req.Currency,
+		CreatedBy:      req.RequesterId,
+		CreatedAt:      req.CreatedAt,
+		UpdatedAt:      req.UpdatedAt,
+	}
+	if req.Description != "" {
+		doc.Description = &req.Description
+	}
+	if req.Department != "" {
+		doc.Department = &req.Department
+	}
+	if req.Requester != nil {
+		doc.Creator = req.Requester
+	}
+	return doc
+}
+
+// purchaseOrderToDocument converts a PurchaseOrder to a Document
+func (r *DocumentRepository) purchaseOrderToDocument(po *models.PurchaseOrder) *models.Document {
+	id, _ := uuid.Parse(po.ID)
+	doc := &models.Document{
+		ID:             id,
+		OrganizationID: po.OrganizationID,
+		DocumentType:   "PURCHASE_ORDER",
+		DocumentNumber: po.DocumentNumber,
+		Title:          po.Title,
+		Status:         po.Status,
+		Amount:         &po.TotalAmount,
+		Currency:       &po.Currency,
+		CreatedBy:      "system",
+		CreatedAt:      po.CreatedAt,
+		UpdatedAt:      po.UpdatedAt,
+	}
+	return doc
+}
+
+// paymentVoucherToDocument converts a PaymentVoucher to a Document
+func (r *DocumentRepository) paymentVoucherToDocument(pv *models.PaymentVoucher) *models.Document {
+	id, _ := uuid.Parse(pv.ID)
+	doc := &models.Document{
+		ID:             id,
+		OrganizationID: pv.OrganizationID,
+		DocumentType:   "PAYMENT_VOUCHER",
+		DocumentNumber: pv.DocumentNumber,
+		Title:          pv.Title,
+		Status:         pv.Status,
+		Amount:         &pv.Amount,
+		Currency:       &pv.Currency,
+		CreatedBy:      "system",
+		CreatedAt:      pv.CreatedAt,
+		UpdatedAt:      pv.UpdatedAt,
+	}
+	if pv.Description != "" {
+		doc.Description = &pv.Description
+	}
+	return doc
+}
+
+// grnToDocument converts a GoodsReceivedNote to a Document
+func (r *DocumentRepository) grnToDocument(grn *models.GoodsReceivedNote) *models.Document {
+	id, _ := uuid.Parse(grn.ID)
+	title := "GRN: " + grn.DocumentNumber
+	if grn.Notes != "" {
+		title = grn.Notes
+	}
+	doc := &models.Document{
+		ID:             id,
+		OrganizationID: grn.OrganizationID,
+		DocumentType:   "GRN",
+		DocumentNumber: grn.DocumentNumber,
+		Title:          title,
+		Status:         grn.Status,
+		CreatedBy:      grn.ReceivedBy,
+		CreatedAt:      grn.CreatedAt,
+		UpdatedAt:      grn.UpdatedAt,
+	}
+	return doc
 }
 
 // Count counts documents with optional filtering
 func (r *DocumentRepository) Count(ctx context.Context, organizationID string, filter *models.DocumentFilter) (int64, error) {
-	query := r.db.WithContext(ctx).
-		Model(&models.Document{}).
-		Where("organization_id = ?", organizationID)
-	
-	query = r.applyFilters(query, filter)
-	
+	var totalCount int64
+
+	// Check if we need to filter by document type
+	searchTypes := []string{}
+	if filter != nil && len(filter.DocumentTypes) > 0 {
+		searchTypes = toUpperSlice(filter.DocumentTypes)
+	} else {
+		// Count all types if no filter specified
+		searchTypes = []string{"REQUISITION", "PURCHASE_ORDER", "PAYMENT_VOUCHER", "GRN"}
+	}
+
+	// Count requisitions
+	if containsType(searchTypes, "REQUISITION") {
+		count, _ := r.countRequisitions(ctx, organizationID, filter)
+		totalCount += count
+	}
+
+	// Count purchase orders
+	if containsType(searchTypes, "PURCHASE_ORDER") || containsType(searchTypes, "PO") {
+		count, _ := r.countPurchaseOrders(ctx, organizationID, filter)
+		totalCount += count
+	}
+
+	// Count payment vouchers
+	if containsType(searchTypes, "PAYMENT_VOUCHER") || containsType(searchTypes, "PV") {
+		count, _ := r.countPaymentVouchers(ctx, organizationID, filter)
+		totalCount += count
+	}
+
+	// Count GRNs
+	if containsType(searchTypes, "GRN") || containsType(searchTypes, "GOODS_RECEIVED_NOTE") {
+		count, _ := r.countGRNs(ctx, organizationID, filter)
+		totalCount += count
+	}
+
+	return totalCount, nil
+}
+
+func (r *DocumentRepository) countRequisitions(ctx context.Context, organizationID string, filter *models.DocumentFilter) (int64, error) {
+	query := r.db.WithContext(ctx).Model(&models.Requisition{}).Where("organization_id = ?", organizationID)
+	if filter != nil && filter.DocumentNumber != "" {
+		query = query.Where("document_number ILIKE ?", "%"+filter.DocumentNumber+"%")
+	}
+	if filter != nil && len(filter.Statuses) > 0 {
+		query = query.Where("UPPER(status) IN ?", toUpperSlice(filter.Statuses))
+	}
+	if filter != nil && filter.DateFrom != nil {
+		query = query.Where("created_at >= ?", filter.DateFrom)
+	}
+	if filter != nil && filter.DateTo != nil {
+		query = query.Where("created_at <= ?", filter.DateTo)
+	}
+	var count int64
+	err := query.Count(&count).Error
+	return count, err
+}
+
+func (r *DocumentRepository) countPurchaseOrders(ctx context.Context, organizationID string, filter *models.DocumentFilter) (int64, error) {
+	query := r.db.WithContext(ctx).Model(&models.PurchaseOrder{}).Where("organization_id = ?", organizationID)
+	if filter != nil && filter.DocumentNumber != "" {
+		query = query.Where("document_number ILIKE ?", "%"+filter.DocumentNumber+"%")
+	}
+	if filter != nil && len(filter.Statuses) > 0 {
+		query = query.Where("UPPER(status) IN ?", toUpperSlice(filter.Statuses))
+	}
+	if filter != nil && filter.DateFrom != nil {
+		query = query.Where("created_at >= ?", filter.DateFrom)
+	}
+	if filter != nil && filter.DateTo != nil {
+		query = query.Where("created_at <= ?", filter.DateTo)
+	}
+	var count int64
+	err := query.Count(&count).Error
+	return count, err
+}
+
+func (r *DocumentRepository) countPaymentVouchers(ctx context.Context, organizationID string, filter *models.DocumentFilter) (int64, error) {
+	query := r.db.WithContext(ctx).Model(&models.PaymentVoucher{}).Where("organization_id = ?", organizationID)
+	if filter != nil && filter.DocumentNumber != "" {
+		query = query.Where("document_number ILIKE ?", "%"+filter.DocumentNumber+"%")
+	}
+	if filter != nil && len(filter.Statuses) > 0 {
+		query = query.Where("UPPER(status) IN ?", toUpperSlice(filter.Statuses))
+	}
+	if filter != nil && filter.DateFrom != nil {
+		query = query.Where("created_at >= ?", filter.DateFrom)
+	}
+	if filter != nil && filter.DateTo != nil {
+		query = query.Where("created_at <= ?", filter.DateTo)
+	}
+	var count int64
+	err := query.Count(&count).Error
+	return count, err
+}
+
+func (r *DocumentRepository) countGRNs(ctx context.Context, organizationID string, filter *models.DocumentFilter) (int64, error) {
+	query := r.db.WithContext(ctx).Model(&models.GoodsReceivedNote{}).Where("organization_id = ?", organizationID)
+	if filter != nil && filter.DocumentNumber != "" {
+		query = query.Where("document_number ILIKE ?", "%"+filter.DocumentNumber+"%")
+	}
+	if filter != nil && len(filter.Statuses) > 0 {
+		query = query.Where("UPPER(status) IN ?", toUpperSlice(filter.Statuses))
+	}
+	if filter != nil && filter.DateFrom != nil {
+		query = query.Where("created_at >= ?", filter.DateFrom)
+	}
+	if filter != nil && filter.DateTo != nil {
+		query = query.Where("created_at <= ?", filter.DateTo)
+	}
 	var count int64
 	err := query.Count(&count).Error
 	return count, err
@@ -398,18 +934,34 @@ func (r *DocumentRepository) GetStats(ctx context.Context, organizationID string
 
 // Helper methods
 
+// toUpperSlice converts a slice of strings to uppercase
+func toUpperSlice(slice []string) []string {
+	result := make([]string, len(slice))
+	for i, s := range slice {
+		result[i] = strings.ToUpper(s)
+	}
+	return result
+}
+
 // applyFilters applies filters to a query
 func (r *DocumentRepository) applyFilters(query *gorm.DB, filter *models.DocumentFilter) *gorm.DB {
 	if filter == nil {
 		return query
 	}
-	
-	if len(filter.DocumentTypes) > 0 {
-		query = query.Where("document_type IN ?", filter.DocumentTypes)
+
+	// Exact document number filter (for specific document lookup)
+	if filter.DocumentNumber != "" {
+		query = query.Where("document_number ILIKE ?", "%"+filter.DocumentNumber+"%")
 	}
-	
+
+	if len(filter.DocumentTypes) > 0 {
+		// Case-insensitive document type matching
+		query = query.Where("UPPER(document_type) IN ?", toUpperSlice(filter.DocumentTypes))
+	}
+
 	if len(filter.Statuses) > 0 {
-		query = query.Where("status IN ?", filter.Statuses)
+		// Case-insensitive status matching
+		query = query.Where("UPPER(status) IN ?", toUpperSlice(filter.Statuses))
 	}
 	
 	if len(filter.Departments) > 0 {

@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef } from "react";
 import { getRefreshToken } from "@/app/_actions/auth";
 import { verifySession } from "@/lib/auth";
-import { shouldRefreshToken, calculateRefreshInterval } from "@/lib/session-config";
+import { shouldRefreshToken, calculateRefreshInterval, SESSION_CONFIG } from "@/lib/session-config";
 import type { APIResponse } from "@/types";
 
 // Query keys for auth-related queries
@@ -79,14 +79,17 @@ export function useTokenRefresh(enabled: boolean = true) {
         const expiresAt = new Date(sessionQuery.data.expiresAt);
         const now = new Date();
         const timeUntilExpiry = expiresAt.getTime() - now.getTime();
-        
-        // Refresh 5 minutes before expiration, but at least every 30 minutes
-        const refreshIn = Math.max(timeUntilExpiry - (5 * 60 * 1000), 30 * 60 * 1000);
+
+        // Refresh 5 minutes before expiration, but at least every 20 minutes
+        const refreshIn = Math.max(
+          timeUntilExpiry - SESSION_CONFIG.TOKEN_REFRESH_BUFFER,
+          SESSION_CONFIG.TOKEN_REFRESH_INTERVAL
+        );
         return Math.max(refreshIn, 60 * 1000); // At least every minute
       }
-      
-      // Default: check every 20 minutes
-      return 20 * 60 * 1000;
+
+      // Default: refresh every 20 minutes (from config)
+      return SESSION_CONFIG.TOKEN_REFRESH_INTERVAL;
     },
     refetchIntervalInBackground: true, // Continue refreshing in background
   });

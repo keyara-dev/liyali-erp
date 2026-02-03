@@ -1,4 +1,4 @@
-.PHONY: help build run test test-unit test-integration test-verbose bench clean deps lint fmt
+.PHONY: help build run test test-unit test-integration test-verbose bench clean deps lint fmt air
 
 # Variables
 APP_NAME=liyali-gateway
@@ -31,6 +31,9 @@ help:
 	@echo "  db-reset           - Reset database (runs cleanup + all migrations)"
 	@echo "  dev                - Start development environment"
 	@echo "  dev-fresh          - Start fresh development environment"
+	@echo "  air                - Run with Air live reload"
+	@echo "  air-install        - Install Air live reload tool"
+	@echo "  watch              - Alias for air"
 	@echo "  verify-separation  - Verify multi-tenant data separation"
 	@echo "  ci                 - Run full CI checks"
 	@echo "  ci-quick           - Run quick CI checks"
@@ -42,7 +45,7 @@ help:
 	@echo "  make test-api"
 	@echo "  make test-comprehensive"
 	@echo "  make dev-fresh"
-	@echo "  PORT=9000 make run"
+	@echo "  PORT=8085 make run"
 
 deps:
 	@echo "Downloading dependencies..."
@@ -153,6 +156,7 @@ fmt:
 clean:
 	@echo "Cleaning up..."
 	rm -f bin/$(APP_NAME)
+	rm -rf tmp/
 	rm -f coverage.out coverage.html
 	rm -f *.test
 	go clean
@@ -170,10 +174,14 @@ db-migrate:
 	@echo "Running database migrations..."
 	go run database/migrate_all.go
 
+db-seed-subscriptions:
+	@echo "Seeding subscription data..."
+	go run cmd/seed_subscription_data.go
+
 db-migrate-single:
 	@echo "Running single migration: $(FILE)"
 	@if [ -z "$(FILE)" ]; then echo "Usage: make db-migrate-single FILE=migration_file.sql"; exit 1; fi
-	go run database/run_sql.go $(FILE)
+	go run database/run_sql.go database/migrations/$(FILE)
 
 db-reset:
 	@echo "Resetting database with fresh migrations..."
@@ -184,9 +192,16 @@ verify-separation:
 	go run cmd/verify-separation/main.go
 
 # Development targets
-watch:
-	@echo "Watching for changes..."
-	reflex -r '\.go$$' -s make run
+air-install:
+	@echo "Installing Air live reload tool..."
+	go install github.com/air-verse/air@latest
+	@echo "Air installed successfully"
+
+air:
+	@echo "Starting with Air live reload..."
+	air
+
+watch: air
 
 dev:
 	@echo "Starting development environment..."
@@ -246,5 +261,5 @@ version:
 	@echo "Port: $(PORT)"
 
 .PHONY: help build build-windows run test test-unit test-integration test-verbose test-comprehensive test-api test-api-help test-coverage test-services test-handlers \
-        bench bench-services lint fmt clean clean-all deps db-migrate db-reset watch dev dev-fresh version \
+        bench bench-services lint fmt clean clean-all deps db-migrate db-reset air air-install watch dev dev-fresh version \
         docker-build docker-run docker-clean ci ci-quick generate verify-separation

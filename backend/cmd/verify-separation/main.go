@@ -156,7 +156,7 @@ func verifyOrganizationData(db *gorm.DB, org models.Organization) {
 	statusCounts := make(map[string]int)
 	for _, req := range requisitions {
 		statusCounts[req.Status]++
-		log.Printf("    - %s (%s) - %s - $%.2f", req.REQNumber, req.Status, req.Title, req.TotalAmount)
+		log.Printf("    - %s (%s) - %s - $%.2f", req.DocumentNumber, req.Status, req.Title, req.TotalAmount)
 	}
 
 	// Show status breakdown

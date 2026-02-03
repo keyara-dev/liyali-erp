@@ -273,19 +273,22 @@ func (h *DocumentHandler) DeleteDocument(c *fiber.Ctx) error {
 	return utils.SendSimpleSuccess(c, nil, "Document deleted successfully")
 }
 
-// SearchDocuments performs full-text search on documents
+// SearchDocuments performs full-text search on documents or lists all documents with filters
 // GET /api/v1/documents/search
+// Supports both full-text search (q param) and filter-based listing
 func (h *DocumentHandler) SearchDocuments(c *fiber.Ctx) error {
 	organizationID := c.Locals("organizationID").(string)
 
-	// Get query parameters
+	// Get query parameters - q is now optional for listing all documents
 	query := c.Query("q", "")
-	if query == "" {
-		return utils.SendBadRequestError(c, "Search query is required")
-	}
+	documentNumber := c.Query("documentNumber", "")
 
+	// Support both 'pageSize' (frontend) and 'limit' (backend convention)
 	page, _ := strconv.Atoi(c.Query("page", "1"))
-	limit, _ := strconv.Atoi(c.Query("limit", "20"))
+	limit, _ := strconv.Atoi(c.Query("limit", ""))
+	if limit == 0 {
+		limit, _ = strconv.Atoi(c.Query("pageSize", "20"))
+	}
 
 	if page < 1 {
 		page = 1
@@ -299,14 +302,23 @@ func (h *DocumentHandler) SearchDocuments(c *fiber.Ctx) error {
 	// Build filter from query parameters
 	filter := &models.DocumentFilter{}
 
-	// Document types filter
-	if documentTypes := c.Query("documentTypes"); documentTypes != "" {
-		filter.DocumentTypes = []string{documentTypes}
+	// Document number filter (for specific document search)
+	if documentNumber != "" {
+		filter.DocumentNumber = documentNumber
 	}
 
-	// Status filter
+	// Document types filter - support both 'documentTypes' and 'documentType' params
+	if documentTypes := c.Query("documentTypes"); documentTypes != "" {
+		filter.DocumentTypes = []string{documentTypes}
+	} else if documentType := c.Query("documentType"); documentType != "" && documentType != "ALL" {
+		filter.DocumentTypes = []string{documentType}
+	}
+
+	// Status filter - support both 'statuses' and 'status' params
 	if statuses := c.Query("statuses"); statuses != "" {
 		filter.Statuses = []string{statuses}
+	} else if status := c.Query("status"); status != "" && status != "ALL" {
+		filter.Statuses = []string{status}
 	}
 
 	// Department filter
@@ -314,7 +326,28 @@ func (h *DocumentHandler) SearchDocuments(c *fiber.Ctx) error {
 		filter.Departments = []string{departments}
 	}
 
-	// Search documents
+	// Date range filter - support both naming conventions
+	if dateFrom := c.Query("dateFrom"); dateFrom != "" {
+		if parsedDate, err := time.Parse("2006-01-02", dateFrom); err == nil {
+			filter.DateFrom = &parsedDate
+		}
+	} else if startDate := c.Query("startDate"); startDate != "" {
+		if parsedDate, err := time.Parse("2006-01-02", startDate); err == nil {
+			filter.DateFrom = &parsedDate
+		}
+	}
+
+	if dateTo := c.Query("dateTo"); dateTo != "" {
+		if parsedDate, err := time.Parse("2006-01-02", dateTo); err == nil {
+			filter.DateTo = &parsedDate
+		}
+	} else if endDate := c.Query("endDate"); endDate != "" {
+		if parsedDate, err := time.Parse("2006-01-02", endDate); err == nil {
+			filter.DateTo = &parsedDate
+		}
+	}
+
+	// Search documents - if query is empty, this will list all documents with filters
 	results, total, err := h.documentService.SearchDocuments(c.Context(), organizationID, query, filter, limit, offset)
 	if err != nil {
 		log.Printf("Error searching documents: %v", err)
@@ -337,4 +370,42 @@ func (h *DocumentHandler) GetDocumentStats(c *fiber.Ctx) error {
 	}
 
 	return utils.SendSimpleSuccess(c, stats, "Document statistics retrieved successfully")
+}
+
+// VerifyDocumentPublic verifies a document by document number (public endpoint)
+// GET /api/v1/public/verify/:documentNumber
+func (h *DocumentHandler) VerifyDocumentPublic(c *fiber.Ctx) error {
+	// Get document number from params
+	documentNumber := c.Params("documentNumber")
+	if documentNumber == "" {
+		return utils.SendBadRequestError(c, "Document number is required")
+	}
+
+	// Verify document
+	verification, err := h.documentService.VerifyDocumentPublic(c.Context(), documentNumber)
+	if err != nil {
+		log.Printf("Error verifying document %s: %v", documentNumber, err)
+		return utils.SendNotFoundError(c, "Document not found or could not be verified")
+	}
+
+	return utils.SendSimpleSuccess(c, verification, "Document verified successfully")
+}
+
+// GetDocumentForPDFPublic retrieves full document data for PDF generation (public endpoint)
+// GET /api/v1/public/verify/:documentNumber/document
+func (h *DocumentHandler) GetDocumentForPDFPublic(c *fiber.Ctx) error {
+	// Get document number from params
+	documentNumber := c.Params("documentNumber")
+	if documentNumber == "" {
+		return utils.SendBadRequestError(c, "Document number is required")
+	}
+
+	// Get full document data for PDF
+	documentData, err := h.documentService.GetDocumentForPDFPublic(c.Context(), documentNumber)
+	if err != nil {
+		log.Printf("Error fetching document for PDF %s: %v", documentNumber, err)
+		return utils.SendNotFoundError(c, "Document not found")
+	}
+
+	return utils.SendSimpleSuccess(c, documentData, "Document retrieved successfully")
 }

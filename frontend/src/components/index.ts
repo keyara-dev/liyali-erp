@@ -37,6 +37,20 @@ export { ApprovalConfirmationDialog } from "./modals/approval-confirmation-dialo
 
 // Modal Components
 export { CreateOrganizationModal } from "./modals/create-organization-modal";
+export { UpgradeModal } from "./subscription/upgrade-modal";
+
+// Subscription Components
+export { SubscriptionManager } from "./subscription/subscription-manager";
+export { TrialCountdown } from "./subscription/trial-countdown";
+export {
+  FeatureGate,
+  InlineFeatureGate,
+  useFeatureGate,
+  FeatureBadge,
+} from "./subscription/feature-gate";
+export { TrialExpiryBanner } from "./subscription/trial-expiry-banner";
+export { OrganizationUpgradeButton } from "./subscription/organization-upgrade-button";
+export { SubscriptionGuard } from "./subscription/subscription-guard";
 
 // Notification Components
 export { NotificationPreferences } from "./notifications/notification-preferences";

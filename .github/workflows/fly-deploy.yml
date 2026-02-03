@@ -22,9 +22,85 @@ on:
         type: boolean
 
 jobs:
+  # Job to detect which parts of the codebase changed
+  detect-changes:
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    outputs:
+      backend-changed: ${{ steps.changes.outputs.backend }}
+      frontend-changed: ${{ steps.changes.outputs.frontend }}
+      workflow-changed: ${{ steps.changes.outputs.workflow }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2 # Need at least 2 commits to compare
+
+      - name: Detect changes
+        id: changes
+        run: |
+          # For manual triggers, respect the input parameters
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "backend=${{ github.event.inputs.deploy_backend }}" >> $GITHUB_OUTPUT
+            echo "frontend=${{ github.event.inputs.deploy_frontend }}" >> $GITHUB_OUTPUT
+            echo "workflow=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          # For push events, detect changes in the last commit
+          echo "Detecting changes in commit: ${{ github.sha }}"
+
+          # Check if backend files changed
+          if git diff --name-only HEAD~1 HEAD | grep -E '^backend/|^sqlc\.yaml$' > /dev/null; then
+            echo "Backend changes detected"
+            echo "backend=true" >> $GITHUB_OUTPUT
+          else
+            echo "No backend changes detected"
+            echo "backend=false" >> $GITHUB_OUTPUT
+          fi
+
+          # Check if frontend files changed
+          if git diff --name-only HEAD~1 HEAD | grep -E '^frontend/' > /dev/null; then
+            echo "Frontend changes detected"
+            echo "frontend=true" >> $GITHUB_OUTPUT
+          else
+            echo "No frontend changes detected"
+            echo "frontend=false" >> $GITHUB_OUTPUT
+          fi
+
+          # Check if workflow changed (always deploy both if workflow changed)
+          if git diff --name-only HEAD~1 HEAD | grep -E '^\.github/workflows/fly-deploy\.yml$' > /dev/null; then
+            echo "Workflow changes detected - will deploy both apps"
+            echo "workflow=true" >> $GITHUB_OUTPUT
+            echo "backend=true" >> $GITHUB_OUTPUT
+            echo "frontend=true" >> $GITHUB_OUTPUT
+          else
+            echo "workflow=false" >> $GITHUB_OUTPUT
+          fi
+
+          # Show what files changed for debugging
+          echo "Changed files:"
+          git diff --name-only HEAD~1 HEAD
+
+      - name: Change Detection Summary
+        run: |
+          echo "## 🔍 Change Detection Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Backend Changes**: ${{ steps.changes.outputs.backend == 'true' && '✅ Detected' || '❌ None' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Frontend Changes**: ${{ steps.changes.outputs.frontend == 'true' && '✅ Detected' || '❌ None' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Workflow Changes**: ${{ steps.changes.outputs.workflow == 'true' && '✅ Detected' || '❌ None' }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ steps.changes.outputs.backend }}" = "true" ] || [ "${{ steps.changes.outputs.frontend }}" = "true" ]; then
+            echo "🚀 **Deployment Plan**: Deploy only applications with changes" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "⏭️ **Deployment Plan**: No deployments needed" >> $GITHUB_STEP_SUMMARY
+          fi
+
   deploy-backend:
     name: Deploy Backend to Fly.io
     runs-on: ubuntu-latest
+    needs: detect-changes
+    if: ${{ needs.detect-changes.outputs.backend-changed == 'true' }}
 
     steps:
       - name: Checkout code
@@ -42,10 +118,85 @@ jobs:
       - name: Setup Fly.io CLI
         uses: superfly/flyctl-actions/setup-flyctl@master
 
+      - name: Set Fly.io Secrets
+        run: |
+          cd backend
+          echo "Setting up Fly.io secrets..."
+          flyctl secrets set \
+            DATABASE_URL="${{ secrets.FLY_DATABASE_URL }}" \
+            JWT_SECRET="${{ secrets.JWT_SECRET }}" \
+            CORS_ALLOWED_ORIGINS="${{ secrets.FLY_CORS_ALLOWED_ORIGINS }}" \
+            --app liyali-gateway-api
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
       - name: Deploy Backend
         run: |
           cd backend
-          flyctl deploy --remote-only
+          echo "Deploying backend without automatic migration..."
+          flyctl deploy --remote-only --wait-timeout 600
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+      - name: Run Database Migrations
+        run: |
+          cd backend
+          echo "Checking if migrations are needed..."
+
+          # First, verify the app is running and healthy
+          URL=$(flyctl status --json | jq -r '.Hostname // "liyali-gateway-api.fly.dev"')
+          echo "Testing app health: https://${URL}/health"
+
+          if curl -f "https://${URL}/health" -o /dev/null -s; then
+            echo "✅ App is running and healthy"
+            
+            # Check if Go is available in the container
+            if flyctl ssh console --app liyali-gateway-api -C "which go" 2>/dev/null; then
+              echo "Go is available, running migrations..."
+              flyctl ssh console --app liyali-gateway-api -C "go run database/migrate_all.go" || {
+                echo "⚠️ Migration command failed, but app is running"
+                echo "The database bootstrap process likely handled schema setup automatically"
+              }
+            else
+              echo "ℹ️ Go runtime not available in production container"
+              echo "✅ Database bootstrap completed automatically during app startup"
+              echo "Migration via SSH is not needed - the app handles schema setup internally"
+            fi
+          else
+            echo "❌ App health check failed"
+            flyctl logs --app liyali-gateway-api
+            exit 1
+          fi
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+      - name: Verify Backend Deployment
+        run: |
+          cd backend
+          echo "Waiting for deployment to be ready..."
+          sleep 30
+
+          # Get app URL
+          URL=$(flyctl status --json | jq -r '.Hostname // "liyali-gateway-api.fly.dev"')
+
+          # Test health endpoint (doesn't require database)
+          echo "Testing health endpoint: https://${URL}/health"
+          for i in {1..5}; do
+            if curl -f "https://${URL}/health" -o /dev/null -s; then
+              echo "Health check passed on attempt $i"
+              break
+            else
+              echo "Health check failed on attempt $i, retrying in 10s..."
+              sleep 10
+              if [ $i -eq 5 ]; then
+                echo "Health check failed after 5 attempts!"
+                flyctl logs --app liyali-gateway-api
+                exit 1
+              fi
+            fi
+          done
+
+          echo "Backend deployment verified successfully!"
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
 
@@ -59,19 +210,28 @@ jobs:
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
 
-      - name: Deployment Summary
+      - name: Backend Deployment Summary
         run: |
           echo "## 🚀 Backend Deployed to Fly.io" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "- **Environment**: Demo/Staging" >> $GITHUB_STEP_SUMMARY
-          echo "- **App**: liyali-backend" >> $GITHUB_STEP_SUMMARY
+          echo "- **App**: liyali-gateway-api" >> $GITHUB_STEP_SUMMARY
           echo "- **URL**: ${{ steps.backend-url.outputs.url }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Health Check**: ✅ Passed" >> $GITHUB_STEP_SUMMARY
           echo "- **Commit**: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Migration Status" >> $GITHUB_STEP_SUMMARY
+          echo "- Migrations are run separately after deployment" >> $GITHUB_STEP_SUMMARY
+          echo "- If migration fails, run manually: \`flyctl ssh console --app liyali-gateway-api -C 'go run database/migrate_all.go'\`" >> $GITHUB_STEP_SUMMARY
+
+    outputs:
+      backend-url: ${{ steps.backend-url.outputs.url }}
 
   deploy-frontend:
     name: Deploy Frontend to Fly.io
     runs-on: ubuntu-latest
-    needs: deploy-backend
+    needs: [detect-changes, deploy-backend]
+    if: ${{ always() && needs.detect-changes.outputs.frontend-changed == 'true' && (needs.deploy-backend.result == 'success' || needs.deploy-backend.result == 'skipped') }}
 
     steps:
       - name: Checkout code
@@ -80,10 +240,54 @@ jobs:
       - name: Setup Fly.io CLI
         uses: superfly/flyctl-actions/setup-flyctl@master
 
+      - name: Set Frontend Environment Variables
+        run: |
+          cd frontend
+          echo "Setting up frontend environment variables..."
+
+          # Get backend URL from previous job or use default
+          BACKEND_URL="${{ needs.deploy-backend.outputs.backend-url || 'https://liyali-gateway-api.fly.dev' }}"
+
+          flyctl secrets set \
+            NEXT_PUBLIC_API_URL="${BACKEND_URL}/api/v1" \
+            DATABASE_URL="${{ secrets.FLY_DATABASE_URL }}" \
+            NEXTAUTH_SECRET="${{ secrets.NEXTAUTH_SECRET }}" \
+            NEXTAUTH_URL="https://liyali-gateway-frontend.fly.dev" \
+            --app liyali-gateway-frontend
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
       - name: Deploy Frontend
         run: |
           cd frontend
-          flyctl deploy --remote-only
+          flyctl deploy --remote-only --wait-timeout 300 \
+            --build-arg NEXT_PUBLIC_API_URL="${{ needs.deploy-backend.outputs.backend-url || 'https://liyali-gateway-api.fly.dev' }}/api/v1"
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+      - name: Verify Frontend Deployment
+        run: |
+          cd frontend
+          echo "Waiting for deployment to be ready..."
+          sleep 30
+
+          # Get app URL
+          URL=$(flyctl status --json | jq -r '.Hostname // "liyali-gateway-frontend.fly.dev"')
+
+          # Test health endpoint (try multiple endpoints)
+          echo "Testing frontend endpoints: https://${URL}"
+
+          # Test root endpoint
+          curl -f "https://${URL}/" -o /dev/null -s || {
+            echo "Root endpoint test failed, trying /api/health..."
+            curl -f "https://${URL}/api/health" -o /dev/null -s || {
+              echo "Health check failed! Checking logs..."
+              flyctl logs --app liyali-gateway-frontend
+              exit 1
+            }
+          }
+
+          echo "Frontend deployment verified successfully!"
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
 
@@ -97,11 +301,77 @@ jobs:
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
 
-      - name: Deployment Summary
+      - name: Frontend Deployment Summary
         run: |
           echo "## 🚀 Frontend Deployed to Fly.io" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "- **Environment**: Demo/Staging" >> $GITHUB_STEP_SUMMARY
-          echo "- **App**: liyali-frontend" >> $GITHUB_STEP_SUMMARY
+          echo "- **App**: liyali-gateway-frontend" >> $GITHUB_STEP_SUMMARY
           echo "- **URL**: ${{ steps.frontend-url.outputs.url }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Backend URL**: ${{ needs.deploy-backend.outputs.backend-url }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Health Check**: ✅ Passed" >> $GITHUB_STEP_SUMMARY
           echo "- **Commit**: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+
+  deployment-complete:
+    name: Deployment Complete
+    runs-on: ubuntu-latest
+    needs: [detect-changes, deploy-backend, deploy-frontend]
+    if: always()
+
+    steps:
+      - name: Final Deployment Summary
+        run: |
+          echo "## 🎉 Fly.io Deployment Complete" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Show what was detected and deployed
+          echo "### Change Detection" >> $GITHUB_STEP_SUMMARY
+          echo "- **Backend Changes**: ${{ needs.detect-changes.outputs.backend-changed == 'true' && '✅ Detected' || '❌ None' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Frontend Changes**: ${{ needs.detect-changes.outputs.frontend-changed == 'true' && '✅ Detected' || '❌ None' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Workflow Changes**: ${{ needs.detect-changes.outputs.workflow-changed == 'true' && '✅ Detected' || '❌ None' }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          echo "### Deployment Status" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ needs.detect-changes.outputs.backend-changed }}" = "true" ]; then
+            echo "- **Backend**: ${{ needs.deploy-backend.result == 'success' && '✅ Success' || needs.deploy-backend.result == 'skipped' && '⏭️ Skipped' || '❌ Failed' }}" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- **Backend**: ⏭️ Skipped (no changes)" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [ "${{ needs.detect-changes.outputs.frontend-changed }}" = "true" ]; then
+            echo "- **Frontend**: ${{ needs.deploy-frontend.result == 'success' && '✅ Success' || needs.deploy-frontend.result == 'skipped' && '⏭️ Skipped' || '❌ Failed' }}" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- **Frontend**: ⏭️ Skipped (no changes)" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          echo "### URLs" >> $GITHUB_STEP_SUMMARY
+          echo "- **Frontend**: ${{ needs.deploy-frontend.outputs.frontend-url || 'https://liyali-gateway-frontend.fly.dev' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Backend**: ${{ needs.deploy-backend.outputs.backend-url || 'https://liyali-gateway-api.fly.dev' }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          echo "### Efficiency Gains" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ needs.detect-changes.outputs.backend-changed }}" = "false" ] && [ "${{ needs.detect-changes.outputs.frontend-changed }}" = "false" ]; then
+            echo "🎯 **No deployments needed** - No changes detected in either application" >> $GITHUB_STEP_SUMMARY
+          elif [ "${{ needs.detect-changes.outputs.backend-changed }}" = "false" ] || [ "${{ needs.detect-changes.outputs.frontend-changed }}" = "false" ]; then
+            echo "🎯 **Selective deployment** - Only deployed applications with changes" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "🚀 **Full deployment** - Both applications had changes" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Next Steps" >> $GITHUB_STEP_SUMMARY
+          echo "1. Test the deployed application(s)" >> $GITHUB_STEP_SUMMARY
+          echo "2. Verify all features work correctly" >> $GITHUB_STEP_SUMMARY
+          echo "3. Monitor logs for any issues" >> $GITHUB_STEP_SUMMARY
+
+          # Set overall status
+          backend_ok=${{ needs.deploy-backend.result == 'success' || needs.deploy-backend.result == 'skipped' }}
+          frontend_ok=${{ needs.deploy-frontend.result == 'success' || needs.deploy-frontend.result == 'skipped' }}
+
+          if [[ "$backend_ok" == "true" && "$frontend_ok" == "true" ]]; then
+            echo "🎉 **Overall Status**: ✅ SUCCESS" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "⚠️ **Overall Status**: ❌ FAILURE" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi

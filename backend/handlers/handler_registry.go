@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"github.com/liyali/liyali-gateway/logging"
 	"github.com/liyali/liyali-gateway/services"
 )
 
@@ -11,6 +12,7 @@ type HandlerRegistry struct {
 	Workflow                *WorkflowHandler
 	Document                *DocumentHandler
 	Notification            *NotificationHandler
+	Subscription            *SubscriptionHandler
 	WorkflowExecutionService *services.WorkflowExecutionService
 	// Add other handlers here as we migrate them
 }
@@ -23,6 +25,8 @@ func NewHandlerRegistry(
 	workflowExecutionService *services.WorkflowExecutionService,
 	documentService *services.DocumentService,
 	automationService *services.DocumentAutomationService,
+	subscriptionService *services.SubscriptionService,
+	logger *logging.Logger,
 ) *HandlerRegistry {
 	return &HandlerRegistry{
 		Auth:                     NewAuthHandler(authService, rbacService),
@@ -30,6 +34,7 @@ func NewHandlerRegistry(
 		Workflow:                 NewWorkflowHandler(workflowService),
 		Document:                 NewDocumentHandler(documentService),
 		Notification:             NewNotificationHandler(),
+		Subscription:             NewSubscriptionHandler(subscriptionService, logger),
 		WorkflowExecutionService: workflowExecutionService,
 	}
 }

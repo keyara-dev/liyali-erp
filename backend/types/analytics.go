@@ -39,8 +39,9 @@ type ApproverStats struct {
 
 // AnalyticsQueryParams represents parameters for filtering analytics
 type AnalyticsQueryParams struct {
-	StartDate  *time.Time
-	EndDate    *time.Time
-	Period     string // daily, weekly, monthly
-	Department string
+	OrganizationID string
+	StartDate      *time.Time
+	EndDate        *time.Time
+	Period         string // daily, weekly, monthly
+	Department     string
 }

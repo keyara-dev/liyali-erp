@@ -29,6 +29,13 @@ func SetupRoutes(app *fiber.App, handlerRegistry *handlers.HandlerRegistry, rbac
 	public.Post("/auth/password-reset/request", middleware.PasswordResetRateLimitMiddleware(), handlerRegistry.Auth.RequestPasswordReset)
 	public.Post("/auth/password-reset/confirm", middleware.PasswordResetRateLimitMiddleware(), handlerRegistry.Auth.ResetPassword)
 
+	// Public document verification (no authentication required)
+	public.Get("/public/verify/:documentNumber", handlerRegistry.Document.VerifyDocumentPublic)
+	public.Get("/public/verify/:documentNumber/document", handlerRegistry.Document.GetDocumentForPDFPublic)
+
+	// Public subscription plans (no authentication required)
+	public.Get("/subscriptions/plans", handlerRegistry.Subscription.GetSubscriptionPlans)
+
 	// Protected routes (authentication required)
 	protected := apiV1.Group("", middleware.AuthMiddleware())
 
@@ -45,6 +52,17 @@ func SetupRoutes(app *fiber.App, handlerRegistry *handlers.HandlerRegistry, rbac
 	orgs.Put("/:id", handlers.UpdateOrganization)
 	orgs.Delete("/:id", handlers.DeleteOrganization)
 	orgs.Post("/:id/switch", handlers.SwitchOrganization)
+
+	// Subscription routes (authentication required, no tenant middleware)
+	// subscriptions := protected.Group("/subscriptions")
+	
+	// Organization-specific subscription routes
+	orgSubs := protected.Group("/organizations/:id")
+	orgSubs.Get("/subscription", handlerRegistry.Subscription.GetOrganizationSubscription)
+	orgSubs.Get("/trial-status", handlerRegistry.Subscription.GetOrganizationTrialStatus)
+	orgSubs.Post("/upgrade", handlerRegistry.Subscription.UpgradeOrganization)
+	orgSubs.Post("/trial/extend", handlerRegistry.Subscription.ExtendOrganizationTrial)
+	orgSubs.Get("/features/check", handlerRegistry.Subscription.CheckFeatureAccess)
 
 	// Tenant-scoped routes (authentication + tenant context required)
 	tenant := apiV1.Group("", middleware.AuthMiddleware(), middleware.TenantMiddleware())
@@ -180,6 +198,7 @@ func SetupRoutes(app *fiber.App, handlerRegistry *handlers.HandlerRegistry, rbac
 	requisitions.Put("/:id", middleware.RequirePermission(rbacService, "requisition", "edit"), handlers.UpdateRequisition)
 	requisitions.Delete("/:id", middleware.RequirePermission(rbacService, "requisition", "delete"), handlers.DeleteRequisition)
 	requisitions.Post("/:id/submit", middleware.RequirePermission(rbacService, "requisition", "edit"), handlers.SubmitRequisition)
+	requisitions.Post("/:id/withdraw", middleware.RequirePermission(rbacService, "requisition", "edit"), handlers.WithdrawRequisition)
 	requisitions.Post("/:id/reassign", middleware.RequirePermission(rbacService, "requisition", "approve"), handlers.ReassignRequisition)
 
 	// Budget routes (tenant-scoped)

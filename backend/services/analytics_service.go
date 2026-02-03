@@ -1,8 +1,11 @@
 package services
 
 import (
+	"crypto/md5"
 	"encoding/json"
+	"fmt"
 	"strings"
+	"time"
 
 	"github.com/liyali/liyali-gateway/logging"
 	"github.com/liyali/liyali-gateway/models"
@@ -12,18 +15,35 @@ import (
 
 // AnalyticsService handles analytics calculations
 type AnalyticsService struct {
-	db *gorm.DB
+	db    *gorm.DB
+	cache *CacheService
 }
 
 // NewAnalyticsService creates a new analytics service
 func NewAnalyticsService(db *gorm.DB) *AnalyticsService {
-	return &AnalyticsService{db: db}
+	return &AnalyticsService{
+		db:    db,
+		cache: NewCacheService(time.Minute * 15), // 15-minute cache for analytics
+	}
 }
 
-// GetRequisitionMetrics calculates all requisition metrics
+// GetRequisitionMetrics calculates all requisition metrics with caching
 func (s *AnalyticsService) GetRequisitionMetrics(params types.AnalyticsQueryParams) (*types.RequisitionMetricsResponse, error) {
-	// Build query with date range
+	// Generate cache key based on parameters
+	cacheKey := s.generateCacheKey(params)
+	
+	// Try to get from cache first
+	if cached, found := s.cache.Get(cacheKey); found {
+		if metrics, ok := cached.(*types.RequisitionMetricsResponse); ok {
+			return metrics, nil
+		}
+	}
+
+	// Build query with organization filter (required for multi-tenancy)
 	query := s.db
+	if params.OrganizationID != "" {
+		query = query.Where("organization_id = ?", params.OrganizationID)
+	}
 	if params.StartDate != nil {
 		query = query.Where("created_at >= ?", params.StartDate)
 	}
@@ -80,11 +100,13 @@ func (s *AnalyticsService) GetRequisitionMetrics(params types.AnalyticsQueryPara
 		topRejectingApprovers = []types.ApproverStats{}
 	}
 
-	// Get total requisitions
+	// Get total requisitions from status counts to avoid extra query
 	var total int64
-	query.Model(&models.Requisition{}).Count(&total)
+	for _, count := range statusCounts {
+		total += count
+	}
 
-	return &types.RequisitionMetricsResponse{
+	result := &types.RequisitionMetricsResponse{
 		StatusCounts:          statusCounts,
 		RejectionRate:         rejectionRate,
 		RejectionsOverTime:    rejectionsOverTime,
@@ -92,16 +114,29 @@ func (s *AnalyticsService) GetRequisitionMetrics(params types.AnalyticsQueryPara
 		TopRejectingApprovers: topRejectingApprovers,
 		TotalRequisitions:     total,
 		Period:                params.Period,
-	}, nil
+	}
+
+	// Cache the result
+	s.cache.Set(cacheKey, result)
+
+	return result, nil
 }
 
-// getStatusCounts counts requisitions by status
+// generateCacheKey creates a unique cache key for analytics parameters
+func (s *AnalyticsService) generateCacheKey(params types.AnalyticsQueryParams) string {
+	data, _ := json.Marshal(params)
+	hash := fmt.Sprintf("%x", md5.Sum(data))
+	return s.cache.AnalyticsKey(params.OrganizationID, hash)
+}
+
+// getStatusCounts counts requisitions by status - optimized with single query
 func (s *AnalyticsService) getStatusCounts(query *gorm.DB) (map[string]int64, error) {
 	var results []struct {
 		Status string
 		Count  int64
 	}
 
+	// Use the new composite index for better performance
 	if err := query.Model(&models.Requisition{}).
 		Select("status, COUNT(*) as count").
 		Group("status").
@@ -117,24 +152,28 @@ func (s *AnalyticsService) getStatusCounts(query *gorm.DB) (map[string]int64, er
 	return statusCounts, nil
 }
 
-// calculateRejectionRate calculates overall rejection rate
+// calculateRejectionRate calculates overall rejection rate - optimized single query
 func (s *AnalyticsService) calculateRejectionRate(query *gorm.DB) (float64, error) {
-	var totalCount int64
-	var rejectedCount int64
+	var result struct {
+		TotalCount    int64
+		RejectedCount int64
+	}
 
-	if err := query.Model(&models.Requisition{}).Count(&totalCount).Error; err != nil {
+	// Single query to get both counts using conditional aggregation
+	if err := query.Model(&models.Requisition{}).
+		Select(`
+			COUNT(*) as total_count,
+			COUNT(CASE WHEN status = 'rejected' THEN 1 END) as rejected_count
+		`).
+		Scan(&result).Error; err != nil {
 		return 0, err
 	}
 
-	if err := query.Model(&models.Requisition{}).Where("status = ?", "rejected").Count(&rejectedCount).Error; err != nil {
-		return 0, err
-	}
-
-	if totalCount == 0 {
+	if result.TotalCount == 0 {
 		return 0, nil
 	}
 
-	return float64(rejectedCount) / float64(totalCount) * 100, nil
+	return float64(result.RejectedCount) / float64(result.TotalCount) * 100, nil
 }
 
 // getRejectionsOverTime groups rejections by time period
@@ -191,11 +230,14 @@ func (s *AnalyticsService) getRejectionsOverTime(query *gorm.DB, period string) 
 	return results, nil
 }
 
-// getRejectionReasons extracts reasons from approval_history JSONB
+// getRejectionReasons extracts reasons from approval_history JSONB - optimized query
 func (s *AnalyticsService) getRejectionReasons(query *gorm.DB) ([]types.RejectionReason, error) {
 	var requisitions []models.Requisition
 
-	if err := query.Where("status = ?", "rejected").Find(&requisitions).Error; err != nil {
+	// Use the partial index for rejected requisitions
+	if err := query.Where("status = ?", "rejected").
+		Select("approval_history").
+		Find(&requisitions).Error; err != nil {
 		return nil, err
 	}
 

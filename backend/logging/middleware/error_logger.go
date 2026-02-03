@@ -5,8 +5,7 @@ import (
 	"runtime/debug"
 
 	"github.com/gofiber/fiber/v2"
-	"github.com/liyali/liyali-gateway/logging"
-	"github.com/liyali/liyali-gateway/logging/config"
+	loggingConfig "github.com/liyali/liyali-gateway/logging/config"
 	logContext "github.com/liyali/liyali-gateway/logging/context"
 )
 
@@ -16,7 +15,7 @@ type ErrorLoggerConfig struct {
 	Skip func(c *fiber.Ctx) bool
 
 	// Config holds logging configuration
-	Config *config.LoggingConfig
+	Config *loggingConfig.LoggingConfig
 
 	// EnableStackTrace enables stack trace logging for errors
 	EnableStackTrace bool
@@ -32,7 +31,7 @@ type ErrorLoggerConfig struct {
 func DefaultErrorLoggerConfig() ErrorLoggerConfig {
 	return ErrorLoggerConfig{
 		Skip:                nil,
-		Config:              config.DefaultLoggingConfig(),
+		Config:              loggingConfig.DefaultLoggingConfig(),
 		EnableStackTrace:    true,
 		CustomErrorHandler:  nil,
 		ErrorFieldExtractor: nil,
@@ -49,7 +48,7 @@ func ErrorLogger(cfg ...ErrorLoggerConfig) fiber.Handler {
 
 	// Ensure config is not nil
 	if config.Config == nil {
-		config.Config = config.DefaultLoggingConfig()
+		config.Config = loggingConfig.DefaultLoggingConfig()
 	}
 
 	return func(c *fiber.Ctx) error {
@@ -169,7 +168,7 @@ func isServerError(err error) bool {
 }
 
 // ErrorLoggerWithConfig returns an error logger with custom configuration
-func ErrorLoggerWithConfig(loggingConfig *config.LoggingConfig) fiber.Handler {
+func ErrorLoggerWithConfig(loggingConfig *loggingConfig.LoggingConfig) fiber.Handler {
 	cfg := DefaultErrorLoggerConfig()
 	cfg.Config = loggingConfig
 	cfg.EnableStackTrace = loggingConfig.EnableStackTrace
@@ -179,7 +178,7 @@ func ErrorLoggerWithConfig(loggingConfig *config.LoggingConfig) fiber.Handler {
 // ErrorLoggerForDevelopment returns an error logger optimized for development
 func ErrorLoggerForDevelopment() fiber.Handler {
 	cfg := DefaultErrorLoggerConfig()
-	cfg.Config = config.DevelopmentConfig()
+	cfg.Config = loggingConfig.DevelopmentConfig()
 	cfg.EnableStackTrace = true
 	cfg.ErrorFieldExtractor = func(c *fiber.Ctx, err error) map[string]interface{} {
 		return map[string]interface{}{
@@ -193,7 +192,7 @@ func ErrorLoggerForDevelopment() fiber.Handler {
 // ErrorLoggerForProduction returns an error logger optimized for production
 func ErrorLoggerForProduction() fiber.Handler {
 	cfg := DefaultErrorLoggerConfig()
-	cfg.Config = config.ProductionConfig()
+	cfg.Config = loggingConfig.ProductionConfig()
 	cfg.EnableStackTrace = true
 	cfg.ErrorFieldExtractor = func(c *fiber.Ctx, err error) map[string]interface{} {
 		fields := map[string]interface{}{
@@ -231,7 +230,7 @@ func ErrorLoggerForProduction() fiber.Handler {
 // ErrorLoggerForTesting returns an error logger optimized for testing
 func ErrorLoggerForTesting() fiber.Handler {
 	cfg := DefaultErrorLoggerConfig()
-	cfg.Config = config.TestConfig()
+	cfg.Config = loggingConfig.TestConfig()
 	cfg.EnableStackTrace = false // Reduce noise in tests
 	return ErrorLogger(cfg)
 }
@@ -251,8 +250,16 @@ func PanicRecovery(cfg ...ErrorLoggerConfig) fiber.Handler {
 				// Get logger from context
 				logger := logContext.FromFiberContext(c)
 
-				// Log panic with minimal information
-				logger.WithField("panic_value", r).Error("panic_recovered")
+				// Log panic with stack trace if enabled
+				fields := map[string]interface{}{
+					"panic_value": r,
+				}
+				
+				if config.EnableStackTrace {
+					fields["stack_trace"] = string(debug.Stack())
+				}
+
+				logger.WithFields(fields).Error("panic_recovered")
 
 				// Return 500 error
 				c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{

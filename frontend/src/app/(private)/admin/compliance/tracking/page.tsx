@@ -1,4 +1,4 @@
-import { ComplianceTrackingClient } from './_components/compliance-tracking-client'
+import { ComplianceTrackingClient } from '../../_components/compliance-tracking-client'
 
 export const metadata = {
   title: 'Compliance Tracking',

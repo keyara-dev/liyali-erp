@@ -15,7 +15,7 @@ import { WorkflowDocument } from "@/types/workflow";
 import { ApprovalConfirmationDialog } from "@/components/modals/approval-confirmation-dialog";
 import { ApprovalHistory } from "@/components/approval-history";
 import { DocumentLinks } from "@/components/document-links";
-import { generateGrnPDF } from "@/lib/pdf-generators/grn-pdf";
+import { exportGrnPDF } from "@/lib/pdf/pdf-export";
 import Link from "next/link";
 
 interface GrnDetailProps {
@@ -89,7 +89,7 @@ export function GrnDetail({ grnId, userId, userRole }: GrnDetailProps) {
     try {
       if (grn) {
         // Call PDF generator with @react-pdf/renderer
-        await generateGrnPDF(grn);
+        await exportGrnPDF(grn as any);
       }
     } catch (error) {
       console.error("Error downloading PDF:", error);

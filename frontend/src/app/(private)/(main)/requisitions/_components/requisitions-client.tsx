@@ -62,6 +62,7 @@ export function RequisitionsClient({
         userRole={userRole}
         refreshTrigger={refreshTrigger}
         onEditRequisition={handleEditRequisition}
+        onCreateRequisition={handleCreateNew}
       />
 
       {/* Create/Edit Dialog */}

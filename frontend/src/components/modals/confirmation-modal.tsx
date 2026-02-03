@@ -8,10 +8,10 @@ import {
   DialogTitle
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { AlertTriangle, Trash2, X, Edit } from "lucide-react";
+import { AlertTriangle, Trash2, X, Edit, Send, Undo2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export type ConfirmationType = "delete" | "close" | "edit" | "default";
+export type ConfirmationType = "delete" | "close" | "edit" | "submit" | "withdraw" | "default";
 
 interface ConfirmationModalProps {
   open: boolean;
@@ -50,6 +50,22 @@ const typeConfig = {
     confirmText: "Confirm",
     variant: "default" as const,
     iconColor: "text-primary "
+  },
+  submit: {
+    icon: Send,
+    title: "Submit for Approval",
+    description: "Are you sure you want to submit this requisition for approval? Once submitted, it will be sent to the appropriate approvers for review.",
+    confirmText: "Submit",
+    variant: "default" as const,
+    iconColor: "text-blue-600 bg-blue-50"
+  },
+  withdraw: {
+    icon: Undo2,
+    title: "Withdraw Requisition",
+    description: "Are you sure you want to withdraw this requisition? It will be reverted to draft status and you can edit and re-submit it later.",
+    confirmText: "Withdraw",
+    variant: "default" as const,
+    iconColor: "text-amber-600 bg-amber-50"
   },
   default: {
     icon: AlertTriangle,

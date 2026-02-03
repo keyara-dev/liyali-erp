@@ -18,11 +18,12 @@ func GetDashboard(c *fiber.Ctx) error {
 		return utils.SendBadRequestError(c, "Organization ID not found")
 	}
 
-	// Parse query parameters
+	// Parse query parameters and include organization ID
 	params := parseAnalyticsParams(c)
+	params.OrganizationID = organizationID
 
 	analyticsService := services.NewAnalyticsService(config.DB)
-	
+
 	// Get requisition metrics
 	reqMetrics, err := analyticsService.GetRequisitionMetrics(params)
 	if err != nil {
@@ -43,8 +44,14 @@ func GetDashboard(c *fiber.Ctx) error {
 
 // GetRequisitionMetrics returns detailed requisition analytics
 func GetRequisitionMetrics(c *fiber.Ctx) error {
-	// Parse query parameters
+	organizationID, ok := c.Locals("organizationID").(string)
+	if !ok {
+		return utils.SendBadRequestError(c, "Organization ID not found")
+	}
+
+	// Parse query parameters and include organization ID
 	params := parseAnalyticsParams(c)
+	params.OrganizationID = organizationID
 
 	analyticsService := services.NewAnalyticsService(config.DB)
 	metrics, err := analyticsService.GetRequisitionMetrics(params)
@@ -58,8 +65,14 @@ func GetRequisitionMetrics(c *fiber.Ctx) error {
 
 // GetApprovalMetrics returns approval-related analytics
 func GetApprovalMetrics(c *fiber.Ctx) error {
-	// Parse query parameters
+	organizationID, ok := c.Locals("organizationID").(string)
+	if !ok {
+		return utils.SendBadRequestError(c, "Organization ID not found")
+	}
+
+	// Parse query parameters and include organization ID
 	params := parseAnalyticsParams(c)
+	params.OrganizationID = organizationID
 
 	analyticsService := services.NewAnalyticsService(config.DB)
 	metrics, err := analyticsService.GetRequisitionMetrics(params)

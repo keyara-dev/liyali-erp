@@ -29,7 +29,7 @@ import {
 } from "lucide-react";
 
 export interface ApprovalActionPanelProps {
-  task: ApprovalTask;
+  task: any;
   onApprovalComplete?: () => void;
 }
 
@@ -274,7 +274,7 @@ export function ApprovalActionPanel({
 
       {/* Reassignment Modal */}
       <ReassignmentModal
-        task={task}
+        task={task as any}
         isOpen={reassignModalOpen}
         onOpenChange={setReassignModalOpen}
         onReassign={handleReassignSubmit}

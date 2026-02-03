@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import {
   createRequisition,
   updateRequisition,
+  withdrawRequisition,
 } from "@/app/_actions/requisitions";
 import {
   CreateRequisitionRequest,
@@ -127,6 +128,92 @@ export const useSubmitRequisition = (onSuccess?: () => void) => {
     },
     onError: (error: Error) => {
       toast.error(error.message || "Failed to submit requisition");
+    },
+  });
+};
+
+/**
+ * Hook for withdrawing a submitted requisition
+ * Only works for pending requisitions that haven't been claimed
+ */
+export const useWithdrawRequisition = (onSuccess?: () => void) => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (requisitionId: string) => {
+      const result = await withdrawRequisition(requisitionId);
+      if (!result.success) {
+        throw new Error(result.message || "Failed to withdraw requisition");
+      }
+      return result;
+    },
+    onSuccess: (result) => {
+      toast.success(result.message || "Requisition withdrawn successfully");
+
+      // Invalidate requisition queries
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.REQUISITIONS.ALL],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.REQUISITIONS.STATS],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["requisitions"],
+      });
+
+      // Invalidate specific requisition if we have the ID
+      if (result.data?.id) {
+        queryClient.invalidateQueries({
+          queryKey: [QUERY_KEYS.REQUISITIONS.BY_ID, result.data.id],
+        });
+      }
+
+      // Invalidate dashboard metrics
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.DASHBOARD.METRICS],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.DASHBOARD.ACTIVITIES],
+      });
+
+      // Invalidate approval-related queries for approval chain and action tabs
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.APPROVALS.HISTORY],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.APPROVALS.ALL],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.APPROVALS.PENDING],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.TASKS.ALL],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.WORKFLOW_APPROVALS],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.WORKFLOW_HISTORY],
+      });
+
+      // Invalidate generic query keys
+      queryClient.invalidateQueries({
+        queryKey: ["approvalTasks"],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["approvals"],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["tasks"],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["notifications"],
+      });
+
+      onSuccess?.();
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Failed to withdraw requisition");
     },
   });
 };

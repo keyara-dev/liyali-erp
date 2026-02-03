@@ -268,6 +268,7 @@ type WorkflowTask struct {
 	ApproverID       string     `gorm:"-" json:"approverId,omitempty"`       // Maps to AssignedUserID or ClaimedBy
 	AssignedTo       string     `gorm:"-" json:"assignedTo,omitempty"`       // Maps to AssignedUserID or ClaimedBy
 	ApproverName     string     `gorm:"-" json:"approverName,omitempty"`     // Computed from AssignedUser.Name
+	ClaimerName      string     `gorm:"-" json:"claimerName,omitempty"`      // Computed from Claimer.Name
 	TaskType         string     `gorm:"-" json:"taskType,omitempty"`         // Computed task type for UI display
 	Title            string     `gorm:"-" json:"title,omitempty"`            // Computed human-readable task title
 	WorkflowID       string     `gorm:"-" json:"workflowId,omitempty"`       // Computed workflow ID for the task

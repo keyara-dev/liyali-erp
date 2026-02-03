@@ -12,11 +12,15 @@ import (
 )
 
 type OrganizationService struct {
-	db *gorm.DB
+	db    *gorm.DB
+	cache *CacheService
 }
 
 func NewOrganizationService(db *gorm.DB) *OrganizationService {
-	return &OrganizationService{db: db}
+	return &OrganizationService{
+		db:    db,
+		cache: NewCacheService(time.Minute * 10), // 10-minute cache for organizations
+	}
 }
 
 // CreateOrganization creates a new organization
@@ -80,6 +84,9 @@ func (s *OrganizationService) CreateOrganization(name, description, createdBy st
 		Where("id = ?", createdBy).
 		Update("current_organization_id", org.ID)
 
+	// Invalidate user cache
+	s.cache.InvalidateUserCache(createdBy)
+
 	return org, nil
 }
 
@@ -103,26 +110,30 @@ func (s *OrganizationService) GetOrganization(orgID string) (*models.Organizatio
 	return &org, nil
 }
 
-// GetUserOrganizations returns all organizations a user belongs to
+// GetUserOrganizations returns all organizations a user belongs to - optimized with caching
 func (s *OrganizationService) GetUserOrganizations(userID string) ([]models.Organization, error) {
 	if userID == "" {
 		return nil, errors.New("user ID is required")
 	}
 
-	var orgs []models.Organization
+	// Use cache service for this expensive query
+	return s.cache.GetUserOrganizations(userID, func() ([]models.Organization, error) {
+		var orgs []models.Organization
 
-	err := s.db.
-		Joins("INNER JOIN organization_members ON organizations.id = organization_members.organization_id").
-		Where("organization_members.user_id = ? AND organization_members.active = ? AND organizations.active = ?",
-			userID, true, true).
-		Distinct("organizations.*").
-		Find(&orgs).Error
+		// Optimized query using the new composite index
+		err := s.db.
+			Joins("INNER JOIN organization_members ON organizations.id = organization_members.organization_id").
+			Where("organization_members.user_id = ? AND organization_members.active = true AND organizations.active = true",
+				userID).
+			Distinct("organizations.*").
+			Find(&orgs).Error
 
-	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-		return nil, err
-	}
+		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, err
+		}
 
-	return orgs, nil
+		return orgs, nil
+	})
 }
 
 // AddMember adds a user to an organization
@@ -174,7 +185,15 @@ func (s *OrganizationService) AddMemberWithDepartment(orgID, userID, role string
 		JoinedAt:       &now,
 	}
 
-	return s.db.Create(member).Error
+	err = s.db.Create(member).Error
+	
+	// Invalidate user cache when membership changes
+	if err == nil {
+		s.cache.InvalidateUserCache(userID)
+		s.cache.InvalidateOrganizationCache(orgID)
+	}
+	
+	return err
 }
 
 // RemoveMember removes a user from an organization (soft delete)

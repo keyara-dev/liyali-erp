@@ -6,8 +6,8 @@ import { ColumnDef } from '@tanstack/react-table'
 import { useRouter } from 'next/navigation'
 import { ArrowUpDown, Eye } from 'lucide-react'
 
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { StatusBadge } from '@/components/status-badge'
 import { Card, CardContent } from '@/components/ui/card'
 import { DataTable } from '@/components/ui/data-table'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -15,7 +15,7 @@ import {
   WorkflowDocument,
   SearchFilters,
 } from '@/types/workflow'
-import { DownloadButton } from './download-button'
+import { PreviewButton } from './preview-button'
 import { useSearchDocuments } from '@/hooks/use-search-queries'
 
 // Table skeleton loader
@@ -47,24 +47,6 @@ interface TransactionResultsProps {
   refreshTrigger: number;
   userRole: string;
   onSearchComplete?: () => void;
-}
-
-const STATUS_COLORS: Record<string, string> = {
-  DRAFT: 'outline',
-  SUBMITTED: 'secondary',
-  IN_REVIEW: 'default',
-  APPROVED: 'default',
-  REJECTED: 'destructive',
-  REVERSED: 'secondary',
-}
-
-const STATUS_LABELS: Record<string, string> = {
-  DRAFT: 'Draft',
-  SUBMITTED: 'Submitted',
-  IN_REVIEW: 'In Approval',
-  APPROVED: 'Approved',
-  REJECTED: 'Rejected',
-  REVERSED: 'Reversed',
 }
 
 const DOCUMENT_TYPE_LABELS: Record<string, string> = {
@@ -150,10 +132,10 @@ export function TransactionResults({
       header: "Status",
       cell: ({ row }) => {
         const status = row.getValue("status") as string | undefined;
-        return (
-          <Badge variant={status ? (STATUS_COLORS[status] as any) : 'outline'}>
-            {status ? (STATUS_LABELS[status] || status) : 'Unknown'}
-          </Badge>
+        return status ? (
+          <StatusBadge status={status} type="document" />
+        ) : (
+          <span className="text-muted-foreground">Unknown</span>
         );
       },
     },
@@ -277,9 +259,10 @@ export function TransactionResults({
                     <Eye className="h-4 w-4" />
                     View
                   </Button>
-                  <DownloadButton
+                  <PreviewButton
                     documentId={doc.id}
                     documentNumber={doc.documentNumber || 'Unknown'}
+                    documentType={docType}
                   />
                 </div>
               )

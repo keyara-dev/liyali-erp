@@ -31,14 +31,17 @@ import {
   CircleIcon,
   MoreVertical,
   GemIcon,
+  Activity,
 } from "lucide-react";
 
 import Link from "next/link";
 import { useSession } from "@/hooks/use-session";
 import { useLogout } from "@/hooks/use-organization-mutations";
 import { useOrganizationContext } from "@/hooks/use-organization";
-import { UpgradeModal } from "@/components/modals/upgrade-modal";
+import { UpgradeModal } from "@/components/subscription/upgrade-modal";
 import { capitalize } from "@/lib/utils";
+import { TierDisplay } from "@/components/modals";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const TIER_CONFIG = {
   STARTER: {
@@ -123,27 +126,15 @@ export function NavUser() {
   const TierIcon = tierConfig.icon;
   const canUpgrade = tier === "STARTER";
 
-  return (
+  const isLoadingUser = !user;
+
+  return isLoadingUser ? (
+    <>
+      <Skeleton className="h-10 w-full rounded-lg" />
+    </>
+  ) : (
     <div className="space-y-2 p-2">
-      {/* Plan Section */}
-      <div
-        className="flex items-center gap-3 rounded-lg border p-3 hover:bg-accent/50 transition-colors cursor-pointer"
-        onClick={() => setShowUpgradeModal(true)}
-      >
-        <GemIcon className="h-5 w-5 text-muted-foreground" />
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-medium">{tierConfig.label} Plan</span>
-            <Badge
-              variant="secondary"
-              className={`text-xs ${tierConfig.color} hover:${tierConfig.color}`}
-            >
-              Active
-            </Badge>
-          </div>
-        </div>
-        <ChevronRightIcon className="h-4 w-4 text-muted-foreground" />
-      </div>
+      <TierDisplay />
       {/* User Profile Section with Dropdown */}
       <SidebarMenu>
         <SidebarMenuItem>
@@ -187,13 +178,7 @@ export function NavUser() {
               <DropdownMenuLabel className="p-0 font-normal">
                 <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
                   <Avatar className="h-8 w-8 rounded-full">
-                    <AvatarImage
-                      src={
-                        user.avatar ||
-                        `https://bundui-images.netlify.app/avatars/01.png`
-                      }
-                      alt={user.name}
-                    />
+                    <AvatarImage src={user.avatar} alt={user.name} />
                     <AvatarFallback>{initials}</AvatarFallback>
                   </Avatar>
                   <div className="grid flex-1 text-left text-sm leading-tight">
@@ -211,11 +196,26 @@ export function NavUser() {
                   <span>Account Settings</span>
                 </Link>
               </DropdownMenuItem>
-              <DropdownMenuItem asChild>
+              {/* <DropdownMenuItem asChild>
                 <Link href="/settings" className="flex items-center gap-2">
                   <PaletteIcon className="h-4 w-4" />
                   <span>Theme</span>
                   <ChevronRightIcon className="ml-auto h-4 w-4" />
+                </Link>
+              </DropdownMenuItem> */}
+              <DropdownMenuItem asChild>
+                <Link href="/welcome" className="flex items-center gap-2">
+                  <ExternalLinkIcon className="h-4 w-4" />
+                  <span>Welcome Screen</span>
+                </Link>
+              </DropdownMenuItem>{" "}
+              <DropdownMenuItem asChild>
+                <Link
+                  href="/?landing=true#about"
+                  className="flex items-center gap-2"
+                >
+                  <ExternalLinkIcon className="h-4 w-4" />
+                  <span>About Liyali</span>
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
@@ -240,6 +240,11 @@ export function NavUser() {
           </DropdownMenu>
         </SidebarMenuItem>
       </SidebarMenu>
+      {/* System Status */}
+      <p className="flex items-center justify-center text-sm gap-2 px-2  transition-colors cursor-pointer">
+        <Activity className="h-4 w-4 text-green-500" />
+        All systems operational
+      </p>
 
       {/* Docs and Resources */}
       {/* <div className="flex items-center gap-3 rounded-lg border p-3 hover:bg-accent/50 transition-colors cursor-pointer">
@@ -251,24 +256,6 @@ export function NavUser() {
         </div>
         <ChevronRightIcon className="h-4 w-4 text-muted-foreground" />
       </div> */}
-
-      {/* System Status */}
-      {/* <div className="flex items-center gap-3 rounded-lg border p-3 hover:bg-accent/50 transition-colors cursor-pointer">
-        <CircleIcon className="h-3 w-3 fill-green-500 text-green-500" />
-        <div className="flex-1">
-          <span className="text-sm text-muted-foreground">
-            All systems operational
-          </span>
-        </div>
-        <ExternalLinkIcon className="h-4 w-4 text-muted-foreground" />
-      </div> */}
-
-      <UpgradeModal
-        open={showUpgradeModal}
-        onOpenChange={setShowUpgradeModal}
-        currentTier={tier}
-        organizationName={currentOrganization?.name || "Organization"}
-      />
     </div>
   );
 }

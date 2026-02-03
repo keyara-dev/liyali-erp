@@ -79,24 +79,11 @@ export default function UserMenu() {
         <DropdownMenuGroup>
           <DropdownMenuItem asChild>
             <Link href="/settings">
-              <BadgeCheck /> Account
+              <BadgeCheck /> Account Settings
             </Link>
           </DropdownMenuItem>
         </DropdownMenuGroup>
-        <DropdownMenuGroup>
-          <DropdownMenuItem asChild>
-            <Link href="/settings">
-              <CreditCard />
-              Settings
-            </Link>
-          </DropdownMenuItem>
-          <DropdownMenuItem asChild>
-            <Link href="#">
-              <Bell />
-              Notifications
-            </Link>
-          </DropdownMenuItem>
-        </DropdownMenuGroup>
+
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={() => logout()} disabled={isPending}>
           <LogOut />

@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { useOrganizationStore } from "@/stores/organization-store";
 import type { Organization } from "@/app/_actions/organizations";
 
@@ -27,7 +28,15 @@ export function useOrganizationContext(): OrganizationContextType {
     refreshOrganizations,
     retryFetch,
     isInitialized,
+    initialize,
   } = useOrganizationStore();
+
+  // Initialize the store after the component has mounted
+  useEffect(() => {
+    if (!isInitialized) {
+      initialize();
+    }
+  }, [isInitialized, initialize]);
 
   return {
     currentOrganization,

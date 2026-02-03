@@ -26,13 +26,14 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
     -ldflags="-w -s" \
     -o main .
 
-# Build the migration tool using the existing migrate_all.go
+# Build the migration tool as part of the main application
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
     -a \
     -installsuffix cgo \
     -ldflags="-w -s" \
     -o migrate \
-    ./database/migrate_all.go
+    -tags migrate \
+    ./cmd/migrate
 
 # Final stage - minimal image
 FROM alpine:latest
