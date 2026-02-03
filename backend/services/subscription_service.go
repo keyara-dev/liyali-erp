@@ -302,6 +302,61 @@ func (s *SubscriptionService) ExtendOrganizationTrial(organizationID string, day
 	return nil
 }
 
+// ResetOrganizationTrial resets the trial period for an organization (admin only)
+func (s *SubscriptionService) ResetOrganizationTrial(organizationID string, trialDays int, reason string, performedBy string) error {
+	logger := &logging.Logger{}
+	
+	logger.Info("Resetting organization trial")
+
+	// Calculate new trial dates
+	now := time.Now()
+	trialStart := now
+	trialEnd := now.AddDate(0, 0, trialDays)
+
+	// Update the organization with new trial dates and reset status
+	query := `
+		UPDATE organizations 
+		SET trial_start_date = $2,
+		    trial_end_date = $3,
+		    subscription_status = 'trial',
+		    grace_period_ends_at = NULL,
+		    updated_at = CURRENT_TIMESTAMP
+		WHERE id = $1
+	`
+	
+	_, err := s.db.Exec(context.Background(), query, organizationID, trialStart, trialEnd)
+	if err != nil {
+		logger.Error("Failed to reset organization trial")
+		return fmt.Errorf("failed to reset trial: %w", err)
+	}
+
+	// Create audit log entry
+	auditQuery := `
+		INSERT INTO subscription_audit_logs (
+			organization_id, action, metadata, performed_by
+		) VALUES ($1, $2, $3, $4)
+	`
+	
+	metadata := map[string]interface{}{
+		"trial_days": trialDays,
+		"reason":     reason,
+		"action_type": "trial_reset",
+		"new_trial_start": trialStart.Format(time.RFC3339),
+		"new_trial_end": trialEnd.Format(time.RFC3339),
+	}
+	metadataJSON, _ := json.Marshal(metadata)
+	
+	_, err = s.db.Exec(context.Background(), auditQuery, organizationID, "trial_reset", metadataJSON, performedBy)
+	if err != nil {
+		logger.Warn("Failed to create audit log for trial reset")
+		// Don't fail the operation if audit logging fails
+	}
+
+	logger.Info("Organization trial reset successfully")
+
+	return nil
+}
+
 // GetOrganizationSubscriptionDetails retrieves comprehensive subscription details
 func (s *SubscriptionService) GetOrganizationSubscriptionDetails(organizationID string) (map[string]interface{}, error) {
 	logger := &logging.Logger{}

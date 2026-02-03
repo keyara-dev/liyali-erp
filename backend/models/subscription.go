@@ -325,6 +325,7 @@ const (
 const (
 	AuditActionTrialStarted     = "trial_started"
 	AuditActionTrialExtended    = "trial_extended"
+	AuditActionTrialReset       = "trial_reset"
 	AuditActionTrialExpired     = "trial_expired"
 	AuditActionUpgraded         = "upgraded"
 	AuditActionDowngraded       = "downgraded"

@@ -183,3 +183,47 @@ func (h *SubscriptionHandler) ExtendOrganizationTrial(c *fiber.Ctx) error {
 
 	return c.JSON(utils.SuccessResponse(trialStatus, "Trial extended successfully", nil))
 }
+
+// ResetOrganizationTrial resets trial period with new dates (admin only)
+func (h *SubscriptionHandler) ResetOrganizationTrial(c *fiber.Ctx) error {
+	logger := logging.FromContext(c)
+	
+	organizationID := c.Params("id")
+	if organizationID == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse("Organization ID is required"))
+	}
+
+	var request struct {
+		TrialDays int    `json:"trialDays" validate:"required,min=1,max=90"`
+		Reason    string `json:"reason" validate:"required,min=5,max=200"`
+	}
+
+	if err := c.BodyParser(&request); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse("Invalid request body"))
+	}
+
+	// Get user info from context (set by auth middleware)
+	userID := c.Locals("user_id").(string)
+	
+	logger.Info("Resetting organization trial")
+
+	err := h.subscriptionService.ResetOrganizationTrial(organizationID, request.TrialDays, request.Reason, userID)
+	if err != nil {
+		logger.Error("Failed to reset organization trial")
+		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse("Failed to reset trial"))
+	}
+
+	// Get updated trial status
+	trialStatus, err := h.subscriptionService.GetOrganizationTrialStatus(organizationID)
+	if err != nil {
+		logger.Warn("Failed to get updated trial status after reset")
+		// Don't fail the request, just return success without updated status
+		return c.JSON(utils.SuccessResponse(map[string]interface{}{
+			"message": "Trial reset successfully",
+		}, "Trial reset successfully", nil))
+	}
+
+	logger.Info("Organization trial reset successfully")
+
+	return c.JSON(utils.SuccessResponse(trialStatus, "Trial reset successfully", nil))
+}

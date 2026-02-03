@@ -61,7 +61,8 @@ func SetupRoutes(app *fiber.App, handlerRegistry *handlers.HandlerRegistry, rbac
 	orgSubs.Get("/subscription", handlerRegistry.Subscription.GetOrganizationSubscription)
 	orgSubs.Get("/trial-status", handlerRegistry.Subscription.GetOrganizationTrialStatus)
 	orgSubs.Post("/upgrade", handlerRegistry.Subscription.UpgradeOrganization)
-	orgSubs.Post("/trial/extend", handlerRegistry.Subscription.ExtendOrganizationTrial)
+	orgSubs.Post("/trial/extend", middleware.AdminMiddleware(), handlerRegistry.Subscription.ExtendOrganizationTrial)
+	orgSubs.Post("/trial/reset", middleware.AdminMiddleware(), handlerRegistry.Subscription.ResetOrganizationTrial)
 	orgSubs.Get("/features/check", handlerRegistry.Subscription.CheckFeatureAccess)
 
 	// Tenant-scoped routes (authentication + tenant context required)
