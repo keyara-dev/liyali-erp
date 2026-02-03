@@ -45,7 +45,7 @@ help:
 	@echo "  make test-api"
 	@echo "  make test-comprehensive"
 	@echo "  make dev-fresh"
-	@echo "  PORT=9000 make run"
+	@echo "  PORT=8085 make run"
 
 deps:
 	@echo "Downloading dependencies..."

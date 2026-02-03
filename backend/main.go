@@ -168,13 +168,13 @@ func main() {
 		logging.WithError(err).Fatal("server_forced_shutdown")
 	}
 
-	logging.Info("server_stopped_gracefully")
+	logging.Info("server_stopped_gracefully!!")
 }
 
 // customErrorHandler handles errors globally with structured logging
 func customErrorHandler(c *fiber.Ctx, err error) error {
 	code := fiber.StatusInternalServerError
-	message := "Internal Server Error"
+	message := "Internal Server Error!"
 
 	if e, ok := err.(*fiber.Error); ok {
 		code = e.Code
