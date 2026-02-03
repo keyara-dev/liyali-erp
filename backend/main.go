@@ -165,10 +165,10 @@ func main() {
 	logging.LogShutdownInfo()
 	
 	if err := app.ShutdownWithContext(context.Background()); err != nil {
-		logging.WithError(err).Fatal("server_forced_shutdown")
+		logging.WithError(err).Fatal("⚠️server_forced_shutdown")
 	}
 
-	logging.Info("server_stopped_gracefully!!")
+	logging.Info("✅server_stopped_gracefully!!")
 }
 
 // customErrorHandler handles errors globally with structured logging
