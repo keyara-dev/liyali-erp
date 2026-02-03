@@ -42,8 +42,8 @@ primary_region = 'jnb'
   memory_mb = 512
 
 [deploy]
-  # release_command = "./migrate"
-  # release_timeout = "10m"
+  release_command = "go run database/migrate_all.go"
+  release_timeout = "15m"
 
 # Secrets (set via flyctl secrets set)
 # DATABASE_URL - PostgreSQL connection string
