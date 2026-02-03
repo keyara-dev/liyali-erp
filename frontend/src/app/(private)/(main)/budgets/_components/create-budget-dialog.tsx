@@ -22,7 +22,6 @@ interface CreateBudgetDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onBudgetCreated: () => void;
-  userId: string;
 }
 
 const departments = [
@@ -50,7 +49,6 @@ export function CreateBudgetDialog({
   open,
   onOpenChange,
   onBudgetCreated,
-  userId,
 }: CreateBudgetDialogProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { saveToStorage } = useBudgetStorage();
@@ -116,7 +114,7 @@ export function CreateBudgetDialog({
         totalBudget: parseFloat(formData.totalAmount),
         allocatedAmount: parseFloat(formData.totalAmount),
         currency: formData.currency,
-        createdBy: userId,
+        // createdBy is automatically handled by the backend from the authenticated user
       });
 
       if (result.success && result.data) {
