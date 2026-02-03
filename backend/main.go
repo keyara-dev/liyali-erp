@@ -188,7 +188,7 @@ func customErrorHandler(c *fiber.Ctx, err error) error {
 		"error_message": message,
 		"method": c.Method(),
 		"path": c.Path(),
-	}).Error("global_error_handler")
+	}).Error("global_error_handler!!")
 
 	return c.Status(code).JSON(fiber.Map{
 		"error": message,
