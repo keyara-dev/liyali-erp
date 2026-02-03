@@ -13,11 +13,11 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
-  CommandSeparator
+  CommandSeparator,
 } from "@/components/ui/command";
 import { Button } from "@/components/ui/button";
 import { DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { navItems } from "@/components/layout/sidebar/nav-main";
+import { routes } from "@/components/layout/sidebar/nav-main";
 
 export default function Search() {
   const [open, setOpen] = useState(false);
@@ -63,7 +63,7 @@ export default function Search() {
         <CommandInput placeholder="Type a command or search..." />
         <CommandList>
           <CommandEmpty>No results found.</CommandEmpty>
-          {navItems.map((route) => (
+          {routes.map((route) => (
             <React.Fragment key={route.title}>
               <CommandGroup heading={route.title}>
                 {route.items.map((item, key) => (
@@ -72,7 +72,8 @@ export default function Search() {
                     onSelect={() => {
                       setOpen(false);
                       router.push(item.href);
-                    }}>
+                    }}
+                  >
                     {item.icon && <item.icon />}
                     <span>{item.title}</span>
                   </CommandItem>

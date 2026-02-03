@@ -62,32 +62,32 @@ export function TrialCountdown({
 
   const getBackgroundStyle = () => {
     if (urgency === "high") {
-      return "bg-red-900/30 border-red-400/50 backdrop-blur-md";
+      return "bg-red-50 border-red-200 dark:bg-red-900/30 dark:border-red-400/50 backdrop-blur-md";
     }
     if (urgency === "medium") {
-      return "bg-yellow-900/30 border-yellow-400/50 backdrop-blur-md";
+      return "bg-yellow-50 border-yellow-200 dark:bg-yellow-900/30 dark:border-yellow-400/50 backdrop-blur-md";
     }
-    return "bg-blue-900/30 border-blue-400/50 backdrop-blur-md";
+    return "bg-blue-50 border-blue-200 dark:bg-blue-900/30 dark:border-blue-400/50 backdrop-blur-md";
   };
 
   const getTextColor = () => {
     if (urgency === "high") {
-      return "text-red-300";
+      return "text-red-800 dark:text-red-300";
     }
     if (urgency === "medium") {
-      return "text-yellow-300";
+      return "text-yellow-800 dark:text-yellow-300";
     }
-    return "text-blue-300";
+    return "text-blue-800 dark:text-blue-300";
   };
 
   const getIconBgColor = () => {
     if (urgency === "high") {
-      return "bg-red-500/30";
+      return "bg-red-100 dark:bg-red-500/30";
     }
     if (urgency === "medium") {
-      return "bg-yellow-500/30";
+      return "bg-yellow-100 dark:bg-yellow-500/30";
     }
-    return "bg-blue-500/30";
+    return "bg-blue-100 dark:bg-blue-500/30";
   };
 
   const getIcon = () => {
@@ -155,7 +155,7 @@ export function TrialCountdown({
                       variant="ghost"
                       size="sm"
                       onClick={() => setIsDismissed(true)}
-                      className="h-7 w-7 p-0 hover:bg-slate-700/50 text-slate-300 hover:text-white"
+                      className="h-7 w-7 p-0 hover:bg-slate-200/50 text-slate-600 hover:text-slate-800 dark:hover:bg-slate-700/50 dark:text-slate-300 dark:hover:text-white"
                     >
                       <X className="h-3 w-3" />
                     </Button>
@@ -242,7 +242,7 @@ export function TrialCountdown({
                         variant="ghost"
                         size="sm"
                         onClick={() => setIsDismissed(true)}
-                        className="text-slate-300 hover:text-white hover:bg-slate-700/50"
+                        className="text-slate-600 hover:text-slate-800 hover:bg-slate-200/50 dark:text-slate-300 dark:hover:text-white dark:hover:bg-slate-700/50"
                       >
                         <X className="h-4 w-4" />
                       </Button>
@@ -254,7 +254,9 @@ export function TrialCountdown({
                 {isTrialActive && (
                   <div className="space-y-2">
                     <div className="flex justify-between text-xs opacity-80">
-                      <span className="text-slate-300">Trial Progress</span>
+                      <span className="text-slate-600 dark:text-slate-300">
+                        Trial Progress
+                      </span>
                       <span className={getTextColor()}>
                         {daysRemaining} days left
                       </span>
@@ -266,7 +268,7 @@ export function TrialCountdown({
                     >
                       <Progress
                         value={trialProgress}
-                        className="h-2 bg-slate-700"
+                        className="h-2 bg-slate-200 dark:bg-slate-700"
                       />
                     </motion.div>
                   </div>
@@ -300,7 +302,7 @@ export function TrialCountdown({
                       <Button
                         variant="ghost"
                         onClick={() => setIsDismissed(true)}
-                        className="px-4 text-slate-300 hover:text-white hover:bg-slate-700/50"
+                        className="px-4 text-slate-600 hover:text-slate-800 hover:bg-slate-200/50 dark:text-slate-300 dark:hover:text-white dark:hover:bg-slate-700/50"
                       >
                         Remind Later
                       </Button>
@@ -314,7 +316,7 @@ export function TrialCountdown({
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ delay: 0.5 }}
-                    className={`text-xs ${getTextColor()} opacity-80 text-center bg-slate-800/30 p-3 rounded-lg backdrop-blur-sm`}
+                    className={`text-xs ${getTextColor()} opacity-80 text-center bg-slate-100/50 dark:bg-slate-800/30 p-3 rounded-lg backdrop-blur-sm`}
                   >
                     {inGracePeriod
                       ? "You have limited access during the grace period. Upgrade to restore full functionality."

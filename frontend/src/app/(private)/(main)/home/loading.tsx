@@ -1,4 +1,4 @@
-export default function Loading() {
+export default function LoadingD() {
   return (
     <div className="max-w-6xl mx-auto">
       {/* Page Header Skeleton */}
@@ -6,7 +6,13 @@ export default function Loading() {
         <div className="h-10 bg-muted rounded-lg w-80 mb-2 animate-pulse"></div>
         <div className="h-6 bg-muted rounded-lg w-64 animate-pulse"></div>
       </div>
+    </div>
+  );
+}
 
+export function LoadingDashboard() {
+  return (
+    <div className="flex flex-col space-y-2">
       {/* Key Metrics Overview Skeleton */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         {[1, 2, 3].map((i) => (

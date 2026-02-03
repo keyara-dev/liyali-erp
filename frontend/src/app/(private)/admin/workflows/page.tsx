@@ -1,4 +1,4 @@
-import { WorkflowsClient } from "./_components/workflows-client";
+import { WorkflowsClient } from "../_components/workflows-client";
 import { requireAdminRole } from "@/lib/admin-guard";
 
 export const metadata = {

@@ -7,12 +7,12 @@ import Link from "next/link";
 export const Hero = () => {
   return (
     <section
-      className="relative pt-24 pb-12 sm:pt-32 sm:pb-16 lg:pt-56 lg:pb-32 overflow-hidden bg-slate-50"
+      className="relative pt-24 pb-12 sm:pt-32 sm:pb-16 lg:pt-56 lg:pb-32 overflow-hidden bg-slate-50 dark:bg-slate-950"
       aria-label="Hero section"
     >
       {/* Background Blobs */}
       <motion.div
-        className="blob bg-blue-200/50 w-96 h-96 rounded-full absolute top-0 left-0 -translate-x-1/2 -translate-y-1/2 blur-3xl"
+        className="blob bg-primary/10 dark:bg-primary-800/20 w-96 h-96 rounded-full absolute top-0 left-0 -translate-x-1/2 -translate-y-1/2 blur-3xl"
         animate={{
           scale: [1, 1.2, 1],
           rotate: [0, 180, 360],
@@ -24,7 +24,7 @@ export const Hero = () => {
         }}
       />
       <motion.div
-        className="blob bg-indigo-200/50 w-80 h-80 rounded-full absolute bottom-0 right-0 translate-x-1/3 translate-y-1/3 blur-3xl"
+        className="blob bg-primary/10 dark:bg-primary-800/20 w-80 h-80 rounded-full absolute bottom-0 right-0 translate-x-1/3 translate-y-1/3 blur-3xl"
         animate={{
           scale: [1.2, 1, 1.2],
           rotate: [360, 180, 0],
@@ -46,7 +46,7 @@ export const Hero = () => {
             transition={{ duration: 0.8, delay: 0.1 }}
           >
             <motion.div
-              className="inline-block px-4 py-1.5 rounded-full bg-white border border-slate-200 text-primary-700 font-semibold text-sm mb-6 shadow-sm"
+              className="inline-block px-4 py-1.5 rounded-full bg-white dark:bg-primary/5 dark:text-blue-400 dark:border-primary-500 border border-slate-200 text-primary-700 font-semibold text-sm mb-6 shadow-sm"
               initial={{ opacity: 0, scale: 0.8 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.6, delay: 0.3 }}
@@ -58,18 +58,18 @@ export const Hero = () => {
               The All-in-One Business Operating Platform
             </motion.div>
             <motion.h1
-              className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold text-slate-900 leading-tight mb-4 sm:mb-6"
+              className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold text-slate-900 dark:text-white leading-tight mb-4 sm:mb-6"
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.4 }}
             >
               Streamline operations with{" "}
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary-600 to-indigo-600">
+              <span className="text-transparent bg-clip-text bg-linear-to-r from-primary-600 to-indigo-600">
                 Liyali Suite
               </span>
             </motion.h1>
             <motion.p
-              className="text-base sm:text-lg text-slate-600 mb-6 sm:mb-8 leading-relaxed max-w-2xl mx-auto lg:mx-0"
+              className="text-base sm:text-lg text-muted-foreground mb-6 sm:mb-8 leading-relaxed max-w-2xl mx-auto lg:mx-0"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.5 }}
@@ -130,34 +130,34 @@ export const Hero = () => {
             transition={{ duration: 0.8, delay: 0.3 }}
           >
             <motion.div
-              className="relative mx-auto rounded-2xl shadow-2xl bg-white border border-slate-200/60 overflow-hidden"
+              className="relative mx-auto rounded-2xl shadow-2xl bg-background border border-slate-200/60 dark:border-border overflow-hidden"
               whileHover={{ scale: 1.02, rotateY: 5 }}
               transition={{ type: "spring", stiffness: 300, damping: 30 }}
             >
               {/* Mock UI Header */}
-              <div className="bg-slate-50 border-b border-slate-100 p-4 flex items-center gap-4">
+              <div className="bg-slate-50 dark:bg-card border-b border-slate-100 dark:border-border p-4 flex items-center gap-4">
                 <div className="flex gap-2">
                   <div className="w-3 h-3 rounded-full bg-red-400"></div>
                   <div className="w-3 h-3 rounded-full bg-amber-400"></div>
                   <div className="w-3 h-3 rounded-full bg-green-400"></div>
                 </div>
-                <div className="flex-1 bg-white h-6 rounded-md shadow-sm"></div>
+                <div className="flex-1 bg-white dark:bg-muted h-6 rounded-md shadow-sm"></div>
               </div>
               {/* Mock UI Body */}
               <div className="p-6 grid grid-cols-3 gap-6">
                 <div className="col-span-1 space-y-4">
                   <motion.div
-                    className="h-20 bg-primary-50 rounded-xl"
+                    className="h-20 bg-primary-50 dark:bg-muted! rounded-xl"
                     animate={{ scale: [1, 1.05, 1] }}
                     transition={{ duration: 2, repeat: Infinity }}
                   />
-                  <div className="h-8 bg-slate-100 rounded-lg w-3/4"></div>
-                  <div className="h-4 bg-slate-50 rounded w-full"></div>
-                  <div className="h-4 bg-slate-50 rounded w-5/6"></div>
+                  <div className="h-8 bg-slate-100 dark:bg-muted rounded-lg w-3/4"></div>
+                  <div className="h-4 bg-slate-50 dark:bg-muted/30 rounded w-full"></div>
+                  <div className="h-4 bg-slate-50 dark:bg-muted/30 rounded w-5/6"></div>
                 </div>
                 <div className="col-span-2 space-y-4">
                   <div className="flex justify-between">
-                    <div className="h-10 w-32 bg-slate-100 rounded-lg"></div>
+                    <div className="h-10 w-32 bg-slate-100 dark:bg-muted rounded-lg"></div>
                     <motion.div
                       className="h-10 w-10 bg-primary-600 rounded-full shadow-lg shadow-primary-500/40"
                       animate={{ rotate: 360 }}
@@ -168,17 +168,17 @@ export const Hero = () => {
                       }}
                     />
                   </div>
-                  <div className="h-40 bg-gradient-to-br from-slate-50 to-slate-100 rounded-xl border border-slate-100"></div>
+                  <div className="h-40 bg-gradient-to-br dark:from-muted dark:to-muted/50 dark:border-border from-slate-50 to-slate-100 rounded-xl border border-slate-100"></div>
                   <div className="grid grid-cols-2 gap-4">
-                    <div className="h-24 bg-white shadow-sm border border-slate-100 rounded-xl"></div>
-                    <div className="h-24 bg-white shadow-sm border border-slate-100 rounded-xl"></div>
+                    <div className="h-24 bg-white dark:bg-muted/50 dark:border-border/30 shadow-sm border border-slate-100 rounded-xl"></div>
+                    <div className="h-24 bg-white dark:bg-muted/50 dark:border-border/30 shadow-sm border border-slate-100 rounded-xl"></div>
                   </div>
                 </div>
               </div>
             </motion.div>
             {/* Floating Badge */}
             <motion.div
-              className="absolute -bottom-6 -left-6 bg-white p-4 rounded-2xl shadow-xl border border-slate-100 flex items-center gap-3"
+              className="absolute -bottom-6 -left-6 bg-white dark:bg-muted dark:border-border p-4 rounded-2xl shadow-xl border border-slate-100 flex items-center gap-3"
               animate={{ y: [0, -10, 0] }}
               transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
             >
@@ -186,10 +186,10 @@ export const Hero = () => {
                 <i className="fas fa-chart-line text-xl"></i>
               </div>
               <div>
-                <p className="text-xs text-slate-500 font-semibold uppercase">
+                <p className="text-xs text-slate-500 dark:text-white/50 font-semibold uppercase">
                   Efficiency
                 </p>
-                <p className="text-lg font-bold text-slate-900">+70%</p>
+                <p className="text-lg font-bold text-foreground">+70%</p>
               </div>
             </motion.div>
           </motion.div>

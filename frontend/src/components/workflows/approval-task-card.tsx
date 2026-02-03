@@ -50,7 +50,7 @@ export function ApprovalTaskCard({
   const [showClaimModal, setShowClaimModal] = useState(false);
   const [showApprovalModal, setShowApprovalModal] = useState(false);
   const [approvalAction, setApprovalAction] = useState<"approve" | "reject">(
-    "approve"
+    "approve",
   );
   const [timeRemaining, setTimeRemaining] = useState<number>(0);
 
@@ -98,9 +98,16 @@ export function ApprovalTaskCard({
   }
 
   // Built-in approver roles that can claim/approve any task
-  const APPROVER_ROLES = ["admin", "approver", "finance", "manager", "supervisor", "department_head"];
+  const APPROVER_ROLES = [
+    "admin",
+    "approver",
+    "finance",
+    "manager",
+    "supervisor",
+    "department_head",
+  ];
   const isBuiltInApprover = APPROVER_ROLES.some(
-    (role) => role.toLowerCase() === currentUserRole.toLowerCase()
+    (role) => role.toLowerCase() === currentUserRole.toLowerCase(),
   );
 
   // Task state calculations
@@ -118,10 +125,14 @@ export function ApprovalTaskCard({
     // If specifically assigned to this user
     if (task.assignedUserId === currentUserId) return true;
     // If specifically assigned to someone else, this user cannot claim
-    if (task.assignedUserId && task.assignedUserId !== currentUserId) return false;
+    if (task.assignedUserId && task.assignedUserId !== currentUserId)
+      return false;
     // Check role match (case-insensitive)
-    if (task.assignedRole &&
-        task.assignedRole.toLowerCase() === currentUserRole.toLowerCase()) return true;
+    if (
+      task.assignedRole &&
+      task.assignedRole.toLowerCase() === currentUserRole.toLowerCase()
+    )
+      return true;
     // Built-in approvers can claim any role-based task
     if (isBuiltInApprover) return true;
     return false;
@@ -137,7 +148,7 @@ export function ApprovalTaskCard({
       await claim();
       setShowClaimModal(false);
       toast.success(
-        "Task claimed successfully! You can now approve or reject it."
+        "Task claimed successfully! You can now approve or reject it.",
       );
     } catch (error: any) {
       toast.error(error.message || "Failed to claim task");
@@ -149,7 +160,7 @@ export function ApprovalTaskCard({
     try {
       await unclaim();
       toast.success(
-        "Task unclaimed successfully. Other users can now claim it."
+        "Task unclaimed successfully. Other users can now claim it.",
       );
     } catch (error: any) {
       toast.error(error.message || "Failed to unclaim task");
@@ -183,7 +194,7 @@ export function ApprovalTaskCard({
         error.message.includes("modified by another user")
       ) {
         toast.error(
-          "Task was modified by another user. Please refresh and try again."
+          "Task was modified by another user. Please refresh and try again.",
         );
       } else {
         toast.error(error.message || `Failed to ${approvalAction} task`);
@@ -221,7 +232,7 @@ export function ApprovalTaskCard({
       <Card
         className={`w-full transition-all duration-200 ${
           isClaimedByMe
-            ? "border-blue-200 bg-blue-50/30"
+            ? "border-blue-600 bg-blue-600/10 dark:border-blue-200 dark:bg-blue-50/30"
             : isClaimedByOther
               ? "border-gray-200 bg-gray-50"
               : "border-gray-200 hover:border-gray-300"
@@ -307,7 +318,7 @@ export function ApprovalTaskCard({
                   {Math.floor(
                     (new Date(task.claimExpiry).getTime() -
                       new Date().getTime()) /
-                      (1000 * 60)
+                      (1000 * 60),
                   )}{" "}
                   minutes
                 </p>
@@ -316,12 +327,12 @@ export function ApprovalTaskCard({
           )}
 
           {isClaimedByMe && (
-            <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
-              <div className="flex items-center gap-2 text-blue-700">
+            <div className="bg-blue-600 p-3 rounded-lg border border-blue-700 dark:bg-blue-50 dark:border-blue-200">
+              <div className="flex items-center gap-2 text-white dark:text-blue-700">
                 <CheckCircle className="h-4 w-4" />
                 <span className="font-medium">You have claimed this task</span>
               </div>
-              <p className="text-sm text-blue-600 mt-1">
+              <p className="text-sm text-blue-100 dark:text-blue-600 mt-1">
                 Please review and take action within {minutesRemaining} minutes,
                 or unclaim to allow others to work on it.
               </p>

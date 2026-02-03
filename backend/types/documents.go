@@ -126,6 +126,7 @@ type BudgetResponse struct {
 	OwnerID         string           `json:"ownerId"`
 	OwnerName       string           `json:"ownerName"`
 	Department      string           `json:"department"`
+	DepartmentID    string           `json:"departmentId,omitempty"`
 	Status          string           `json:"status"`
 	FiscalYear      string           `json:"fiscalYear"`
 	TotalBudget     float64          `json:"totalBudget"`
@@ -133,6 +134,10 @@ type BudgetResponse struct {
 	RemainingAmount float64          `json:"remainingAmount"`
 	ApprovalStage   int              `json:"approvalStage"`
 	ApprovalHistory []ApprovalRecord `json:"approvalHistory"`
+	Name            string           `json:"name,omitempty"`
+	Description     string           `json:"description,omitempty"`
+	Currency        string           `json:"currency,omitempty"`
+	CreatedBy       string           `json:"createdBy,omitempty"`
 	CreatedAt       time.Time        `json:"createdAt"`
 	UpdatedAt       time.Time        `json:"updatedAt"`
 }

@@ -1,11 +1,8 @@
-'use server';
+"use server";
 
-import { APIResponse } from '@/types';
-import {
-  handleError,
-  successResponse,
-} from './api-config';
-import authenticatedApiClient from './api-config';
+import { APIResponse } from "@/types";
+import { handleError, successResponse } from "./api-config";
+import authenticatedApiClient from "./api-config";
 
 export interface Category {
   id: string;
@@ -37,27 +34,34 @@ export interface UpdateCategoryRequest {
 export async function getCategories(
   page: number = 1,
   limit: number = 50,
-  activeOnly: boolean = true
-): Promise<APIResponse<Category[]>> {
+  activeOnly: boolean = true,
+): Promise<APIResponse<{ data: Category[]; pagination?: any }>> {
   const params = new URLSearchParams();
-  params.set('page', page.toString());
-  params.set('limit', limit.toString());
-  
+  params.set("page", page.toString());
+  params.set("limit", limit.toString());
+
   if (activeOnly) {
-    params.set('active', 'true');
+    params.set("active", "true");
   }
 
   const url = `/api/v1/categories?${params.toString()}`;
 
   try {
     const response = await authenticatedApiClient({
-      method: 'GET',
+      method: "GET",
       url,
     });
 
-    return successResponse(response.data?.data || [], 'Categories retrieved successfully');
+    // The backend returns { success: true, data: Category[], pagination: PaginationMeta }
+    return successResponse(
+      {
+        data: response.data?.data || [],
+        pagination: response.data?.pagination,
+      },
+      "Categories retrieved successfully",
+    );
   } catch (error: any) {
-    return handleError(error, 'GET', url);
+    return handleError(error, "GET", url);
   }
 }
 
@@ -65,18 +69,23 @@ export async function getCategories(
  * Get category by ID
  * Calls: GET /api/v1/categories/{id}
  */
-export async function getCategoryById(categoryId: string): Promise<APIResponse<Category>> {
+export async function getCategoryById(
+  categoryId: string,
+): Promise<APIResponse<Category>> {
   const url = `/api/v1/categories/${categoryId}`;
 
   try {
     const response = await authenticatedApiClient({
-      method: 'GET',
+      method: "GET",
       url,
     });
 
-    return successResponse(response.data?.data, 'Category retrieved successfully');
+    return successResponse(
+      response.data?.data,
+      "Category retrieved successfully",
+    );
   } catch (error: any) {
-    return handleError(error, 'GET', url);
+    return handleError(error, "GET", url);
   }
 }
 
@@ -85,13 +94,13 @@ export async function getCategoryById(categoryId: string): Promise<APIResponse<C
  * Calls: POST /api/v1/categories
  */
 export async function createCategory(
-  data: CreateCategoryRequest
+  data: CreateCategoryRequest,
 ): Promise<APIResponse<Category>> {
   const url = `/api/v1/categories`;
 
   try {
     const response = await authenticatedApiClient({
-      method: 'POST',
+      method: "POST",
       url,
       data: {
         name: data.name,
@@ -100,9 +109,12 @@ export async function createCategory(
       },
     });
 
-    return successResponse(response.data?.data, 'Category created successfully');
+    return successResponse(
+      response.data?.data,
+      "Category created successfully",
+    );
   } catch (error: any) {
-    return handleError(error, 'POST', url);
+    return handleError(error, "POST", url);
   }
 }
 
@@ -112,20 +124,23 @@ export async function createCategory(
  */
 export async function updateCategory(
   categoryId: string,
-  data: UpdateCategoryRequest
+  data: UpdateCategoryRequest,
 ): Promise<APIResponse<Category>> {
   const url = `/api/v1/categories/${categoryId}`;
 
   try {
     const response = await authenticatedApiClient({
-      method: 'PUT',
+      method: "PUT",
       url,
       data,
     });
 
-    return successResponse(response.data?.data, 'Category updated successfully');
+    return successResponse(
+      response.data?.data,
+      "Category updated successfully",
+    );
   } catch (error: any) {
-    return handleError(error, 'PUT', url);
+    return handleError(error, "PUT", url);
   }
 }
 
@@ -138,12 +153,12 @@ export async function deleteCategory(categoryId: string): Promise<APIResponse> {
 
   try {
     await authenticatedApiClient({
-      method: 'DELETE',
+      method: "DELETE",
       url,
     });
 
-    return successResponse(null, 'Category deleted successfully');
+    return successResponse(null, "Category deleted successfully");
   } catch (error: any) {
-    return handleError(error, 'DELETE', url);
+    return handleError(error, "DELETE", url);
   }
 }

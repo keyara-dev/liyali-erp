@@ -1,4 +1,4 @@
-import { CreateWorkflowClient } from "./_components/create-workflow-client";
+import { CreateWorkflowClient } from "../../_components/workflow-create-wrapper";
 import { requireAdminRole } from "@/lib/admin-guard";
 
 export const metadata = {
@@ -7,11 +7,11 @@ export const metadata = {
 };
 
 // Disable static generation for this page
-export const dynamic = 'force-dynamic'
+export const dynamic = "force-dynamic";
 
 export default async function CreateWorkflowPage() {
   // Verify admin role at server level
-  const { userId, userRole } = await requireAdminRole()
+  const { userId, userRole } = await requireAdminRole();
 
   return <CreateWorkflowClient userId={userId} userRole={userRole} />;
 }

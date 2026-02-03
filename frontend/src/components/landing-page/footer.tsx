@@ -4,6 +4,7 @@ import React from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import Logo from "../base/logo";
+import ThemeSwitch from "../layout/header/theme-switch";
 
 const LiyaliLogo = () => (
   <svg
@@ -94,24 +95,6 @@ export const Footer = () => {
               Empowering modern businesses with the tools they need to succeed
               in a digital-first world.
             </p>
-            <div className="flex space-x-4">
-              {socialLinks.map((social, index) => (
-                <motion.a
-                  key={social.label}
-                  href={social.href}
-                  className="w-9 h-9 rounded-full bg-slate-800 flex items-center justify-center hover:bg-primary-600 hover:text-white transition-all"
-                  whileHover={{ scale: 1.1, y: -2 }}
-                  whileTap={{ scale: 0.95 }}
-                  initial={{ opacity: 0, scale: 0 }}
-                  whileInView={{ opacity: 1, scale: 1 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.3, delay: index * 0.1 }}
-                  aria-label={social.label}
-                >
-                  <i className={social.icon}></i>
-                </motion.a>
-              ))}
-            </div>
           </motion.div>
 
           {footerSections.map((section, sectionIndex) => (
@@ -156,6 +139,37 @@ export const Footer = () => {
             </motion.div>
           ))}
         </div>
+        <motion.div
+          className="flex gap-4 items-center justify-between w-full pb-6"
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          // viewport={{ once: true }}
+          // transition={{ duration: 0.6, delay: 0.5 }}
+        >
+          <div className="flex items-center space-x-0">
+            <p className="font-bold  mr-4">Theme: </p>
+            <ThemeSwitch compact={false} />
+          </div>
+          <div className="flex items-center space-x-0">
+            <p className="font-bold text-white mr-4">Follow us on: </p>
+            {socialLinks.map((social, index) => (
+              <motion.a
+                key={social.label}
+                href={social.href}
+                className="w-9 h-9 rounded-full bg-slate-800/5 flex items-center justify-center hover:bg-primary-600/5 hover:text-white transition-all"
+                whileHover={{ scale: 1.1, y: -2 }}
+                whileTap={{ scale: 0.95 }}
+                initial={{ opacity: 0, scale: 0 }}
+                whileInView={{ opacity: 1, scale: 1 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.3, delay: index * 0.1 }}
+                aria-label={social.label}
+              >
+                <i className={social.icon}></i>
+              </motion.a>
+            ))}
+          </div>
+        </motion.div>
 
         <motion.div
           className="border-t border-slate-900 pt-8 flex flex-col md:flex-row justify-between items-center text-sm text-slate-600"

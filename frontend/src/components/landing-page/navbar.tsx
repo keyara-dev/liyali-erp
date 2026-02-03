@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import Link from "next/link";
 import Logo from "../base/logo";
 import { cn } from "@/lib/utils";
+import { Button } from "../ui/button";
 
 const LiyaliLogo = () => (
   <svg
@@ -135,17 +136,26 @@ export const Navbar = ({ isAuthenticated }: { isAuthenticated: boolean }) => {
 
             {/* CTA - Right */}
             <div className="hidden md:flex items-center flex-shrink-0">
-              {
-                <Link href={isAuthenticated ? "/home" : "/login"}>
+              <Link href={isAuthenticated ? "/home" : "/login"}>
+                <motion.button
+                  className="bg-primary-600 cursor-pointer hover:bg-primary-500 text-white px-6 py-2 rounded-md text-sm font-bold transition-all shadow-[0_0_20px_rgba(37,99,235,0.3)] hover:shadow-[0_0_25px_rgba(37,99,235,0.5)] border border-primary-500/50"
+                  whileHover={{ y: -2 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  {isAuthenticated ? "Go to Dashboard" : "Login"}
+                </motion.button>
+              </Link>{" "}
+              {!isAuthenticated && (
+                <Link href={"/register"}>
                   <motion.button
-                    className="bg-primary-600 cursor-pointer hover:bg-primary-500 text-white px-6 py-2 rounded-full text-sm font-bold transition-all shadow-[0_0_20px_rgba(37,99,235,0.3)] hover:shadow-[0_0_25px_rgba(37,99,235,0.5)] border border-primary-500/50"
+                    className="bg-primary-600 cursor-pointer hover:bg-primary-500 text-white px-6 py-2 rounded-md text-sm font-bold transition-all shadow-[0_0_20px_rgba(37,99,235,0.3)] hover:shadow-[0_0_25px_rgba(37,99,235,0.5)] border border-primary-500/50"
                     whileHover={{ y: -2 }}
                     whileTap={{ scale: 0.95 }}
                   >
-                    {isAuthenticated ? "Go to Dashboard" : "Login"}
+                    Get Started
                   </motion.button>
                 </Link>
-              }
+              )}
             </div>
 
             {/* Mobile Toggle */}
@@ -207,11 +217,14 @@ export const Navbar = ({ isAuthenticated }: { isAuthenticated: boolean }) => {
               About
             </a>
             <div className="pt-4">
-              <Link href={isAuthenticated ? "/home" : "/login"}>
-                <button className="bg-primary-600 hover:bg-primary-700 text-white py-4 px-8 rounded-xl font-bold text-lg shadow-lg shadow-primary-500/30 w-full">
+              <Button
+                asChild
+                className="font-bold shadow-lg shadow-primary-500/30 w-full"
+              >
+                <Link href={isAuthenticated ? "/home" : "/login"}>
                   {isAuthenticated ? "Go to Dashboard" : "Login"}
-                </button>
-              </Link>
+                </Link>
+              </Button>
             </div>
           </motion.div>
         </motion.div>

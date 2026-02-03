@@ -16,7 +16,7 @@ import {
   useReactTable,
 } from "@tanstack/react-table";
 import { useRouter } from "next/navigation";
-import { ArrowUpDown, Eye } from "lucide-react";
+import { ArrowUpDown, Eye, FolderOpen } from "lucide-react";
 
 import {
   Table,
@@ -26,6 +26,14 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty";
 import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -50,8 +58,11 @@ export function BudgetsTable({
 }: BudgetsTableProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { data: budgetsFromHook = [], isLoading: hookLoading, refetch } =
-    useBudgets(userId); // Get budgets for the current user
+  const {
+    data: budgetsFromHook = [],
+    isLoading: hookLoading,
+    refetch,
+  } = useBudgets(userId); // Get budgets for the current user
 
   // Refetch when refreshTrigger changes (after budget creation)
   useEffect(() => {
@@ -67,10 +78,10 @@ export function BudgetsTable({
     }
     return [];
   }, [budgetsFromHook]);
-  
+
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
-    []
+    [],
   );
   const [columnVisibility, setColumnVisibility] =
     React.useState<VisibilityState>({});
@@ -151,9 +162,7 @@ export function BudgetsTable({
       accessorKey: "approvalStage",
       header: "Approval Stage",
       cell: ({ row }) => (
-        <div className="text-sm">
-          Stage {row.original.approvalStage}
-        </div>
+        <div className="text-sm">Stage {row.original.approvalStage}</div>
       ),
     },
     {
@@ -200,7 +209,7 @@ export function BudgetsTable({
         table.setPageSize(newPagination.page_size);
       }
     },
-    [table]
+    [table],
   );
 
   return (
@@ -217,7 +226,7 @@ export function BudgetsTable({
                         ? null
                         : flexRender(
                             header.column.columnDef.header,
-                            header.getContext()
+                            header.getContext(),
                           )}
                     </TableHead>
                   );
@@ -236,7 +245,7 @@ export function BudgetsTable({
                     <TableCell key={cell.id}>
                       {flexRender(
                         cell.column.columnDef.cell,
-                        cell.getContext()
+                        cell.getContext(),
                       )}
                     </TableCell>
                   ))}
@@ -244,11 +253,26 @@ export function BudgetsTable({
               ))
             ) : (
               <TableRow>
-                <TableCell
-                  colSpan={columns.length}
-                  className="h-24 text-center"
-                >
-                  {hookLoading ? "Loading budgets..." : "No budgets found."}
+                <TableCell colSpan={columns.length} className="h-24 p-0">
+                  <Empty className="border-0">
+                    <EmptyContent>
+                      <EmptyHeader>
+                        <EmptyMedia variant="icon">
+                          <FolderOpen />
+                        </EmptyMedia>
+                        <EmptyTitle>
+                          {hookLoading
+                            ? "Loading budgets..."
+                            : "No budgets found"}
+                        </EmptyTitle>
+                        <EmptyDescription>
+                          {hookLoading
+                            ? "Please wait while we fetch your budgets."
+                            : "You haven't created any budgets yet. Create your first budget to get started."}
+                        </EmptyDescription>
+                      </EmptyHeader>
+                    </EmptyContent>
+                  </Empty>
                 </TableCell>
               </TableRow>
             )}
@@ -261,13 +285,16 @@ export function BudgetsTable({
         pagination={useMemo(
           () => ({
             ...pagination,
-            total_pages: Math.ceil(budgets.length / (pagination.page_size || 10)),
+            total_pages: Math.ceil(
+              budgets.length / (pagination.page_size || 10),
+            ),
             totalCount: budgets.length,
             has_next:
-              pagination.page < Math.ceil(budgets.length / (pagination.page_size || 10)),
+              pagination.page <
+              Math.ceil(budgets.length / (pagination.page_size || 10)),
             has_prev: pagination.page > 1,
           }),
-          [pagination, budgets.length]
+          [pagination, budgets.length],
         )}
         updatePagination={handleUpdatePagination}
         allowSetPageSize

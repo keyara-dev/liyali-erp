@@ -4,7 +4,7 @@
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { getUserById } from "@/app/_actions/user-actions";
-import { UserDetailsClient } from "./user-details-client";
+import { UserDetailsClient } from "../../_components/user-details-client";
 import { Skeleton } from "@/components/ui/skeleton";
 
 interface UserDetailsPageProps {

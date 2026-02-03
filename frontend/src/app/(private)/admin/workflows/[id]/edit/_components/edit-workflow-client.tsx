@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { PageHeader } from "@/components/base/page-header";
-import { WorkflowBuilder } from "../../../_components/workflow-builder";
+import { WorkflowBuilder } from "../../../../_components/workflow-builder";
 import {
   useWorkflowById,
   useUpdateWorkflow,

@@ -37,17 +37,13 @@ const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
       showLimit = false,
       ...props
     },
-    ref
+    ref,
   ) => {
     return (
       <div
-        className={cn(
-          "flex w-full flex-col",
-          classNames?.wrapper,
-          {
-            "cursor-not-allowed opacity-50": isDisabled,
-          }
-        )}
+        className={cn("flex w-full flex-col", classNames?.wrapper, {
+          "cursor-not-allowed opacity-50": isDisabled,
+        })}
       >
         {label && (
           <label
@@ -57,7 +53,7 @@ const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
                 "text-red-500": onError || isInvalid,
                 "opacity-50": isDisabled || props?.disabled,
               },
-              classNames?.label
+              classNames?.label,
             )}
             htmlFor={name}
           >
@@ -71,13 +67,13 @@ const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
           ref={ref}
           className={cn(
             // Base styles matching input.tsx
-            "w-full px-4 py-2 text-base bg-white border border-slate-200 rounded-lg transition-all duration-200 outline-none",
+            "w-full px-4 py-2 text-base bg-foreground/5 border border-border rounded-lg transition-all duration-200 outline-none",
             // Placeholder styles
             "placeholder:text-slate-400",
             // Focus styles with primary color
             "focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 focus:shadow-lg focus:shadow-primary-500/10",
             // Hover styles
-            "hover:border-slate-300",
+            "hover:border-slate-300/50",
             // Error styles
             {
               "border-red-500 focus:border-red-500 focus:ring-red-500/20 focus:shadow-red-500/10":
@@ -90,7 +86,7 @@ const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
             // Textarea specific styles
             "min-h-[80px] resize-vertical",
             className,
-            classNames?.input
+            classNames?.input,
           )}
           disabled={isDisabled || props?.disabled}
           id={name}
@@ -106,7 +102,7 @@ const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
                 "text-red-600": onError || isInvalid,
               },
               classNames?.descriptionText,
-              classNames?.errorText
+              classNames?.errorText,
             )}
             initial={{ scale: 0, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
@@ -122,7 +118,7 @@ const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
         )}
       </div>
     );
-  }
+  },
 );
 
 Textarea.displayName = "Textarea";

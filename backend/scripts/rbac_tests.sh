@@ -123,13 +123,15 @@ test_organization_management() {
             make_request "POST" "$API_URL/organizations/$TEST_ORG_ID/switch" "" "$auth_header" 200
             
             print_status "TESTING" "Update Organization"
-            local org_update='{
-                "name": "Updated Test Organization Unique",
-                "description": "Updated description for test organization with unique name"
-            }'
-            # Use the test organization context for the update
+            local update_timestamp=$(date +%s)
+            local org_update="{
+                \"name\": \"Updated Test Organization Unique $update_timestamp\",
+                \"slug\": \"updated-test-org-unique-$update_timestamp\",
+                \"description\": \"Updated description for test organization with unique name\"
+            }"
+            # Use the test organization context for the update - this should succeed with 200
             local test_org_auth_header="-H 'Authorization: Bearer $ACCESS_TOKEN' -H 'X-Organization-ID: $TEST_ORG_ID'"
-            make_request "PUT" "$API_URL/organizations/$TEST_ORG_ID" "$org_update" "$test_org_auth_header" 401
+            make_request "PUT" "$API_URL/organizations/$TEST_ORG_ID" "$org_update" "$test_org_auth_header" 200
         fi
     fi
     
@@ -234,10 +236,14 @@ test_member_management() {
     make_request "GET" "$API_URL/organization/members" "" "$auth_header" 200
     
     print_status "TESTING" "Add Member to Organization"
-    # Using a presumably non-existent user ID to test rejection
-    local member_data='{"userId":"user-test-002","roleName":"requester"}'
-    # This will fail with 500 due to foreign key constraint (user doesn't exist)
-    make_request "POST" "$API_URL/organization/members" "$member_data" "$auth_header" 500
+    # Using an existing user ID that should work
+    local member_data='{"userId":"user-viewer-001","roleName":"requester"}'
+    # This should succeed with 201 or fail with 409 if already a member
+    local response=$(make_request "POST" "$API_URL/organization/members" "$member_data" "$auth_header" 201 2>/dev/null)
+    if [ $? -ne 0 ]; then
+        # If 201 failed, try expecting 409 (conflict - already a member)
+        make_request "POST" "$API_URL/organization/members" "$member_data" "$auth_header" 409
+    fi
     
     print_status "TESTING" "Remove Member from Organization"
     # This will succeed with 200 even if member doesn't exist (UPDATE affects 0 rows)

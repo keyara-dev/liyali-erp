@@ -1,11 +1,10 @@
 package middleware
 
 import (
-	"strconv"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
-	"github.com/liyali/liyali-gateway/logging/config"
+	loggingConfig "github.com/liyali/liyali-gateway/logging/config"
 	logContext "github.com/liyali/liyali-gateway/logging/context"
 	"github.com/rs/zerolog"
 )
@@ -16,7 +15,7 @@ type RequestLoggerConfig struct {
 	Skip func(c *fiber.Ctx) bool
 
 	// Config holds logging configuration
-	Config *config.LoggingConfig
+	Config *loggingConfig.LoggingConfig
 
 	// CustomFields allows adding custom fields to request logs
 	CustomFields func(c *fiber.Ctx) map[string]interface{}
@@ -32,7 +31,7 @@ type RequestLoggerConfig struct {
 func DefaultRequestLoggerConfig() RequestLoggerConfig {
 	return RequestLoggerConfig{
 		Skip:                   nil,
-		Config:                 config.DefaultLoggingConfig(),
+		Config:                 loggingConfig.DefaultLoggingConfig(),
 		CustomFields:           nil,
 		SkipPaths:              []string{"/health", "/metrics", "/favicon.ico"},
 		SkipSuccessfulRequests: false,
@@ -49,7 +48,7 @@ func RequestLogger(cfg ...RequestLoggerConfig) fiber.Handler {
 
 	// Ensure config is not nil
 	if config.Config == nil {
-		config.Config = config.DefaultLoggingConfig()
+		config.Config = loggingConfig.DefaultLoggingConfig()
 	}
 
 	return func(c *fiber.Ctx) error {
@@ -187,7 +186,7 @@ func determineLogLevel(status int, latency time.Duration, slowThreshold time.Dur
 }
 
 // RequestLoggerWithConfig returns a request logger with custom configuration
-func RequestLoggerWithConfig(loggingConfig *config.LoggingConfig) fiber.Handler {
+func RequestLoggerWithConfig(loggingConfig *loggingConfig.LoggingConfig) fiber.Handler {
 	cfg := DefaultRequestLoggerConfig()
 	cfg.Config = loggingConfig
 	return RequestLogger(cfg)
@@ -196,7 +195,7 @@ func RequestLoggerWithConfig(loggingConfig *config.LoggingConfig) fiber.Handler 
 // RequestLoggerForDevelopment returns a request logger optimized for development
 func RequestLoggerForDevelopment() fiber.Handler {
 	cfg := DefaultRequestLoggerConfig()
-	cfg.Config = config.DevelopmentConfig()
+	cfg.Config = loggingConfig.DevelopmentConfig()
 	cfg.SkipSuccessfulRequests = false
 	cfg.CustomFields = func(c *fiber.Ctx) map[string]interface{} {
 		return map[string]interface{}{
@@ -209,7 +208,7 @@ func RequestLoggerForDevelopment() fiber.Handler {
 // RequestLoggerForProduction returns a request logger optimized for production
 func RequestLoggerForProduction() fiber.Handler {
 	cfg := DefaultRequestLoggerConfig()
-	cfg.Config = config.ProductionConfig()
+	cfg.Config = loggingConfig.ProductionConfig()
 	cfg.SkipSuccessfulRequests = false // Keep all requests in production for monitoring
 	cfg.CustomFields = func(c *fiber.Ctx) map[string]interface{} {
 		fields := map[string]interface{}{
@@ -234,7 +233,7 @@ func RequestLoggerForProduction() fiber.Handler {
 // RequestLoggerForTesting returns a request logger optimized for testing
 func RequestLoggerForTesting() fiber.Handler {
 	cfg := DefaultRequestLoggerConfig()
-	cfg.Config = config.TestConfig()
+	cfg.Config = loggingConfig.TestConfig()
 	cfg.SkipSuccessfulRequests = true // Skip successful requests in tests
 	return RequestLogger(cfg)
 }

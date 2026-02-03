@@ -81,9 +81,11 @@ test_advanced_crud_operations() {
         "title": "Test Requisition",
         "description": "Test requisition for automated testing",
         "priority": "medium",
+        "department": "IT",
         "items": [{
             "description": "Office Supplies",
             "quantity": 10,
+            "unitPrice": 15.00,
             "estimatedCost": 15.00,
             "totalCost": 150.00
         }],
@@ -297,7 +299,7 @@ test_generic_document_system() {
         "documentNumber": "DOC-TEST-001",
         "title": "Test Generic Document",
         "description": "Test document for automated testing",
-        "documentType": "general",
+        "documentType": "REQUISITION",
         "data": {
             "content": "Test document content",
             "category": "testing"

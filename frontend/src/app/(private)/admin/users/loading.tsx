@@ -47,7 +47,7 @@ export default function Loading() {
               </div>
 
               {/* Table Rows */}
-              {[1, 2, 3, 4, 5, 6, 7, 8].map((row) => (
+              {[1, 2, 3, 4 , 5].map((row) => (
                 <div
                   key={row}
                   className="grid grid-cols-6 gap-4 p-4 border-b last:border-b-0"

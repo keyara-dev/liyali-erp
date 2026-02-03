@@ -69,20 +69,20 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
           ref={ref}
           className={cn(
             // Base styles
-            "w-full px-4 py-2 text-base bg-white border border-slate-200 rounded-lg transition-all duration-200 outline-none",
+            "w-full px-4 py-2 text-base bg-foreground/5 border border-border rounded-lg transition-all duration-200 outline-none",
             // Placeholder styles
             "placeholder:text-slate-400",
             // Focus styles with primary color
             "focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 focus:shadow-lg focus:shadow-primary-500/10",
             // Hover styles
-            "hover:border-slate-300",
+            "hover:border-slate-300/50",
             // Error styles
             {
               "border-red-500 focus:border-red-500 focus:ring-red-500/20 focus:shadow-red-500/10":
                 onError || isInvalid,
             },
             // Disabled styles
-            "disabled:bg-slate-50 disabled:text-slate-500 disabled:cursor-not-allowed disabled:opacity-60",
+            "disabled:bg-slate-50/50 disabled:text-slate-500 disabled:cursor-not-allowed disabled:opacity-60",
             // Text styles
             "text-slate-900 selection:bg-primary-100 selection:text-primary-900",
             className,

@@ -1,23 +1,23 @@
-'use client'
+"use client";
 
-import { useState } from 'react'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select'
-import { Textarea } from '@/components/ui/textarea'
+} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import {
   CheckCircle2,
   XCircle,
   ArrowRight,
   Loader2,
   AlertCircle,
-} from 'lucide-react'
+} from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -25,14 +25,14 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
-} from '@/components/ui/dialog'
+} from "@/components/ui/dialog";
 
 interface BulkOperationsToolbarProps {
-  selectedCount: number
-  onApprove: (remarks: string) => Promise<void>
-  onReject: (remarks: string) => Promise<void>
-  onReassign: (userId: string, remarks: string) => Promise<void>
-  isLoading?: boolean
+  selectedCount: number;
+  onApprove: (remarks: string) => Promise<void>;
+  onReject: (remarks: string) => Promise<void>;
+  onReassign: (userId: string, remarks: string) => Promise<void>;
+  isLoading?: boolean;
 }
 
 export function BulkOperationsToolbar({
@@ -42,59 +42,59 @@ export function BulkOperationsToolbar({
   onReassign,
   isLoading = false,
 }: BulkOperationsToolbarProps) {
-  const [showApproveDialog, setShowApproveDialog] = useState(false)
-  const [showRejectDialog, setShowRejectDialog] = useState(false)
-  const [showReassignDialog, setShowReassignDialog] = useState(false)
-  const [remarks, setRemarks] = useState('')
-  const [selectedUserId, setSelectedUserId] = useState('')
-  const [isProcessing, setIsProcessing] = useState(false)
+  const [showApproveDialog, setShowApproveDialog] = useState(false);
+  const [showRejectDialog, setShowRejectDialog] = useState(false);
+  const [showReassignDialog, setShowReassignDialog] = useState(false);
+  const [remarks, setRemarks] = useState("");
+  const [selectedUserId, setSelectedUserId] = useState("");
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const handleApprove = async () => {
-    setIsProcessing(true)
+    setIsProcessing(true);
     try {
-      await onApprove(remarks)
-      setRemarks('')
-      setShowApproveDialog(false)
+      await onApprove(remarks);
+      setRemarks("");
+      setShowApproveDialog(false);
     } finally {
-      setIsProcessing(false)
+      setIsProcessing(false);
     }
-  }
+  };
 
   const handleReject = async () => {
-    setIsProcessing(true)
+    setIsProcessing(true);
     try {
-      await onReject(remarks)
-      setRemarks('')
-      setShowRejectDialog(false)
+      await onReject(remarks);
+      setRemarks("");
+      setShowRejectDialog(false);
     } finally {
-      setIsProcessing(false)
+      setIsProcessing(false);
     }
-  }
+  };
 
   const handleReassign = async () => {
-    setIsProcessing(true)
+    setIsProcessing(true);
     try {
-      await onReassign(selectedUserId, remarks)
-      setRemarks('')
-      setSelectedUserId('')
-      setShowReassignDialog(false)
+      await onReassign(selectedUserId, remarks);
+      setRemarks("");
+      setSelectedUserId("");
+      setShowReassignDialog(false);
     } finally {
-      setIsProcessing(false)
+      setIsProcessing(false);
     }
-  }
+  };
 
   if (selectedCount === 0) {
-    return null
+    return null;
   }
 
   return (
     <>
-      <Card className="border-blue-200 bg-blue-50">
+      <Card className="border-blue-700 bg-blue-600 dark:border-blue-200 dark:bg-blue-50">
         <CardContent className="pt-4 flex items-center justify-between gap-4">
           <div className="flex items-center gap-2">
-            <CheckCircle2 className="h-5 w-5 text-blue-600" />
-            <span className="font-medium text-blue-900">
-              {selectedCount} item{selectedCount !== 1 ? 's' : ''} selected
+            <CheckCircle2 className="h-5 w-5 text-white dark:text-blue-600" />
+            <span className="font-medium text-white dark:text-blue-900">
+              {selectedCount} item{selectedCount !== 1 ? "s" : ""} selected
             </span>
           </div>
 
@@ -141,13 +141,16 @@ export function BulkOperationsToolbar({
           <DialogHeader>
             <DialogTitle>Bulk Approve</DialogTitle>
             <DialogDescription>
-              Approve all {selectedCount} selected item{selectedCount !== 1 ? 's' : ''}?
+              Approve all {selectedCount} selected item
+              {selectedCount !== 1 ? "s" : ""}?
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
             <div>
-              <label className="text-sm font-medium">Approval Comments (Optional)</label>
+              <label className="text-sm font-medium">
+                Approval Comments (Optional)
+              </label>
               <Textarea
                 placeholder="Add any comments about this bulk approval..."
                 value={remarks}
@@ -157,9 +160,9 @@ export function BulkOperationsToolbar({
               />
             </div>
 
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 flex gap-2">
-              <AlertCircle className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
-              <p className="text-sm text-blue-800">
+            <div className="bg-blue-600 border border-blue-700 rounded-lg p-3 flex gap-2 dark:bg-blue-50 dark:border-blue-200">
+              <AlertCircle className="h-5 w-5 text-white flex-shrink-0 mt-0.5 dark:text-blue-600" />
+              <p className="text-sm text-blue-100 dark:text-blue-800">
                 All selected items will be approved and moved to the next stage
               </p>
             </div>
@@ -184,7 +187,7 @@ export function BulkOperationsToolbar({
                   Approving...
                 </>
               ) : (
-                'Approve All'
+                "Approve All"
               )}
             </Button>
           </DialogFooter>
@@ -197,13 +200,16 @@ export function BulkOperationsToolbar({
           <DialogHeader>
             <DialogTitle>Bulk Reject</DialogTitle>
             <DialogDescription>
-              Reject all {selectedCount} selected item{selectedCount !== 1 ? 's' : ''}?
+              Reject all {selectedCount} selected item
+              {selectedCount !== 1 ? "s" : ""}?
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
             <div>
-              <label className="text-sm font-medium text-red-700">Rejection Reason *</label>
+              <label className="text-sm font-medium text-red-700">
+                Rejection Reason *
+              </label>
               <Textarea
                 placeholder="Please provide a reason for rejecting these items..."
                 value={remarks}
@@ -216,7 +222,8 @@ export function BulkOperationsToolbar({
             <div className="bg-red-50 border border-red-200 rounded-lg p-3 flex gap-2">
               <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
               <p className="text-sm text-red-800">
-                All selected items will be rejected and returned to the requester
+                All selected items will be rejected and returned to the
+                requester
               </p>
             </div>
           </div>
@@ -240,7 +247,7 @@ export function BulkOperationsToolbar({
                   Rejecting...
                 </>
               ) : (
-                'Reject All'
+                "Reject All"
               )}
             </Button>
           </DialogFooter>
@@ -253,7 +260,8 @@ export function BulkOperationsToolbar({
           <DialogHeader>
             <DialogTitle>Bulk Reassign</DialogTitle>
             <DialogDescription>
-              Reassign all {selectedCount} selected item{selectedCount !== 1 ? 's' : ''} to a different approver
+              Reassign all {selectedCount} selected item
+              {selectedCount !== 1 ? "s" : ""} to a different approver
             </DialogDescription>
           </DialogHeader>
 
@@ -265,16 +273,24 @@ export function BulkOperationsToolbar({
                   <SelectValue placeholder="Select approver..." />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="user-001">John Smith - Department Manager</SelectItem>
-                  <SelectItem value="user-002">Sarah Johnson - Finance Officer</SelectItem>
-                  <SelectItem value="user-003">Michael Davis - Director</SelectItem>
+                  <SelectItem value="user-001">
+                    John Smith - Department Manager
+                  </SelectItem>
+                  <SelectItem value="user-002">
+                    Sarah Johnson - Finance Officer
+                  </SelectItem>
+                  <SelectItem value="user-003">
+                    Michael Davis - Director
+                  </SelectItem>
                   <SelectItem value="user-004">David Wilson - CFO</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             <div>
-              <label className="text-sm font-medium">Reason for Reassignment (Optional)</label>
+              <label className="text-sm font-medium">
+                Reason for Reassignment (Optional)
+              </label>
               <Textarea
                 placeholder="Add a reason for this reassignment..."
                 value={remarks}
@@ -311,12 +327,12 @@ export function BulkOperationsToolbar({
                   Reassigning...
                 </>
               ) : (
-                'Reassign All'
+                "Reassign All"
               )}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
     </>
-  )
+  );
 }
