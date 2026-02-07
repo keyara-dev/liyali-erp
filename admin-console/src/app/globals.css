@@ -1,0 +1,894 @@
+/* ========================================
+   TAILWIND V4 IMPORTS
+   ======================================== */
+@import "tailwindcss";
+@import "tailwindcss/theme" layer(theme);
+@import "tailwindcss/preflight" layer(base);
+@import "tailwindcss/utilities" layer(utilities);
+@source 'src/**/*.{js,ts,jsx,tsx}';
+
+/* ========================================
+   COLOR SYSTEM (OKLCH)
+
+   Primary Color: #0c54e7 (Vibrant Blue)
+   - Primary-50: #eef7ff (Lightest Blue)
+   - Primary-600: #136cfd (Bright Blue)
+   - Primary-700: #0c54e7 (Base Blue - used as primary)
+
+
+   Accent Color: #f59e0b (Amber/Gold)
+   - Used for highlights, important elements, warnings
+
+   Works seamlessly in both light and dark modes
+   ======================================== */
+:root {
+  /* Core Colors - Light Mode */
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.13 0.028 261.692);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.13 0.028 261.692);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.13 0.028 261.692);
+
+  /* Brand Colors - Cerulean Blue Palette */
+  /* Primary shades for flexible color usage */
+  --primary-50: #eef7ff;
+  --primary-100: #d8edff;
+  --primary-200: #b9dfff;
+  --primary-300: #89ccff;
+  --primary-400: #52b0ff;
+  --primary-500: #2a8cff;
+  --primary-600: #136cfd;
+  --primary-700: #0c54e7;
+  --primary-800: #1144bc;
+  --primary-900: #143e94;
+  --primary-950: #11275a;
+
+  /* Primary (base): Use 700 as default */
+  --primary: oklch(50.989% 0.23128 262.506);
+  --primary-foreground: oklch(100% 0 0);
+
+  /* UI States */
+  --muted: oklch(0.967 0.003 264.542);
+  --muted-foreground: oklch(0.551 0.027 264.364);
+
+  /* Accent: #e49815 (Warm Gold) */
+  --accent: oklch(89.538% 0.04321 263.71);
+  --accent-foreground: oklch(50.989% 0.23128 262.506);
+
+  --destructive: oklch(62.826% 0.25721 28.495);
+  --destructive-foreground: oklch(100% 0 0);
+
+  /* Borders & Inputs */
+  --border: oklch(0.928 0.006 264.531);
+  --input: oklch(0.928 0.006 264.531);
+  --ring: oklch(52.4% 0.21 265.5);
+
+  /* Charts */
+  --chart-1: oklch(52.4% 0.21 265.5);
+  --chart-2: oklch(67.3% 0.157 155.8);
+  --chart-3: oklch(71.5% 0.167 73.5);
+  --chart-4: oklch(0.828 0.189 84.429);
+  --chart-5: oklch(0.65 0.18 142); /* Green for approved status */
+
+  /* Sidebar */
+  --sidebar: oklch(0.985 0.002 247.839);
+  --sidebar-foreground: oklch(0.13 0.028 261.692);
+  --sidebar-primary: oklch(52.4% 0.21 265.5);
+  --sidebar-primary-foreground: oklch(100% 0 0);
+  --sidebar-accent: oklch(81.668% 0.08351 270.198);
+  --sidebar-accent-foreground: oklch(0.13 0.028 261.692);
+  --sidebar-border: oklch(0.928 0.006 264.531);
+  --sidebar-ring: oklch(81.668% 0.08351 270.198);
+
+  /* Border Radius */
+  --radius: 0.625rem;
+
+  /* Admin Console Specific */
+  --sidebar-width: 16rem;
+  --header-height: 3.5rem;
+}
+
+/* Dark Mode */
+.dark {
+  --background: oklch(0.13 0.028 261.692);
+  --foreground: oklch(0.985 0.002 247.839);
+  --card: oklch(0.21 0.034 264.665);
+  --card-foreground: oklch(0.985 0.002 247.839);
+  --popover: oklch(0.21 0.034 264.665);
+  --popover-foreground: oklch(0.985 0.002 247.839);
+
+  --primary-foreground: oklch(100% 0 0);
+
+  --muted: oklch(0.278 0.033 256.848);
+  --muted-foreground: oklch(0.707 0.022 261.325);
+
+  /* Accent: #e49815 - Brighter for dark mode */
+  --accent: oklch(23.705% 0.02842 257.547 / 0.815);
+  --accent-foreground: oklch(0.707 0.022 261.325);
+
+  --destructive: oklch(60.935% 0.23114 27.123);
+  --destructive-foreground: oklch(0.985 0.002 247.839);
+
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(64% 0.22 265.5);
+
+  /* Charts - Updated with new color scheme */
+  --chart-1: oklch(64% 0.22 265.5);
+  --chart-2: oklch(75% 0.165 155.8);
+  --chart-3: oklch(78% 0.175 73.5);
+  --chart-4: oklch(0.627 0.265 303.9);
+  --chart-5: oklch(
+    0.72 0.15 142
+  ); /* Green for approved status - lighter for dark mode */
+
+  /* Sidebar */
+  --sidebar: oklch(0.21 0.034 264.665);
+  --sidebar-foreground: oklch(0.985 0.002 247.839);
+  --sidebar-primary: oklch(64% 0.22 265.5);
+  --sidebar-primary-foreground: oklch(100% 0 0);
+  --sidebar-accent: oklch(78% 0.175 73.5);
+  --sidebar-accent-foreground: oklch(0.13 0.028 261.692);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(64% 0.22 265.5);
+}
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ========================================
+   TAILWIND V4 @theme CONFIGURATION
+   ======================================== */
+@theme {
+  /* Typography */
+  --font-size-base: 14px;
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+
+  /* Layout */
+  --container-center: true;
+  --container-padding: 2rem;
+
+  /* Breakpoints */
+  --breakpoint-sm: 640px;
+  --breakpoint-md: 768px;
+  --breakpoint-lg: 1024px;
+  --breakpoint-xl: 1280px;
+  --breakpoint-2xl: 1536px;
+
+  /* Spacing Scale */
+  --spacing-0: 0px;
+  --spacing-px: 1px;
+  --spacing-0\.5: 0.125rem;
+  --spacing-1: 0.25rem;
+  --spacing-1\.5: 0.375rem;
+  --spacing-2: 0.5rem;
+  --spacing-2\.5: 0.625rem;
+  --spacing-3: 0.75rem;
+  --spacing-3\.5: 0.875rem;
+  --spacing-4: 1rem;
+  --spacing-5: 1.25rem;
+  --spacing-6: 1.5rem;
+  --spacing-7: 1.75rem;
+  --spacing-8: 2rem;
+  --spacing-9: 2.25rem;
+  --spacing-10: 2.5rem;
+  --spacing-11: 2.75rem;
+  --spacing-12: 3rem;
+  --spacing-14: 3.5rem;
+  --spacing-16: 4rem;
+  --spacing-20: 5rem;
+  --spacing-24: 6rem;
+  --spacing-28: 7rem;
+  --spacing-32: 8rem;
+  --spacing-36: 9rem;
+  --spacing-40: 10rem;
+  --spacing-44: 11rem;
+  --spacing-48: 12rem;
+  --spacing-52: 13rem;
+  --spacing-56: 14rem;
+  --spacing-60: 15rem;
+  --spacing-64: 16rem;
+  --spacing-72: 18rem;
+  --spacing-80: 20rem;
+  --spacing-96: 24rem;
+
+  /* Size Scale */
+  --size-0: 0px;
+  --size-px: 1px;
+  --size-0\.5: 0.125rem;
+  --size-1: 0.25rem;
+  --size-1\.5: 0.375rem;
+  --size-2: 0.5rem;
+  --size-2\.5: 0.625rem;
+  --size-3: 0.75rem;
+  --size-3\.5: 0.875rem;
+  --size-4: 1rem;
+  --size-5: 1.25rem;
+  --size-6: 1.5rem;
+  --size-7: 1.75rem;
+  --size-8: 2rem;
+  --size-9: 2.25rem;
+  --size-10: 2.5rem;
+  --size-11: 2.75rem;
+  --size-12: 3rem;
+  --size-14: 3.5rem;
+  --size-16: 4rem;
+  --size-20: 5rem;
+  --size-24: 6rem;
+  --size-28: 7rem;
+  --size-32: 8rem;
+  --size-36: 9rem;
+  --size-40: 10rem;
+  --size-44: 11rem;
+  --size-48: 12rem;
+  --size-52: 13rem;
+  --size-56: 14rem;
+  --size-60: 15rem;
+  --size-64: 16rem;
+  --size-72: 18rem;
+  --size-80: 20rem;
+  --size-96: 24rem;
+  --size-full: 100%;
+  --size-min: min-content;
+  --size-max: max-content;
+  --size-fit: fit-content;
+  --size-screen: 100vh;
+
+  /* Color References (for Tailwind utilities) */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary-50: var(--primary-50);
+  --color-primary-100: var(--primary-100);
+  --color-primary-200: var(--primary-200);
+  --color-primary-300: var(--primary-300);
+  --color-primary-400: var(--primary-400);
+  --color-primary-500: var(--primary-500);
+  --color-primary-600: var(--primary-600);
+  --color-primary-700: var(--primary-700);
+  --color-primary-800: var(--primary-800);
+  --color-primary-900: var(--primary-900);
+  --color-primary-950: var(--primary-950);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  /* Border Radius */
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-full: 9999px;
+
+  --gradient-primary: linear-gradient(
+    to bottom right,
+    var(--primary-400),
+    var(--primary-600),
+    var(--primary-700)
+  );
+
+  /* ========================================
+     ANIMATIONS
+     ======================================== */
+
+  /* Keyframes */
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes accordion-down {
+    from {
+      height: 0;
+    }
+    to {
+      height: var(--radix-accordion-content-height);
+    }
+  }
+
+  @keyframes accordion-up {
+    from {
+      height: var(--radix-accordion-content-height);
+    }
+    to {
+      height: 0;
+    }
+  }
+
+  @keyframes spin {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  @keyframes spin-reverse {
+    to {
+      transform: rotate(-360deg);
+    }
+  }
+
+  @keyframes ping {
+    75%,
+    100% {
+      transform: scale(2);
+      opacity: 0;
+    }
+  }
+
+  @keyframes pulse {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.5;
+    }
+  }
+
+  @keyframes bounce {
+    0%,
+    100% {
+      transform: translateY(-25%);
+      animation-timing-function: cubic-bezier(0.8, 0, 1, 1);
+    }
+    50% {
+      transform: translateY(0);
+      animation-timing-function: cubic-bezier(0, 0, 0.2, 1);
+    }
+  }
+
+  @keyframes marquee {
+    100% {
+      transform: translateY(-50%);
+    }
+  }
+
+  @keyframes blob {
+    0% {
+      transform: translate(0px, 0px) scale(1);
+    }
+    33% {
+      transform: translate(30px, -50px) scale(1.1);
+    }
+    66% {
+      transform: translate(-20px, 20px) scale(0.9);
+    }
+    100% {
+      transform: translate(0px, 0px) scale(1);
+    }
+  }
+
+  /* Animation Variables */
+  --animate-fade-in: fade-in 0.5s linear forwards;
+  --animate-fade-in-slow: fadeIn 1s ease-out forwards;
+  --animate-accordion-down: accordion-down 0.2s ease-out;
+  --animate-accordion-up: accordion-up 0.2s ease-out;
+  --animate-spin: spin 1s linear infinite;
+  --animate-spin-slow: spin 4s linear infinite;
+  --animate-spin-slower: spin 6s linear infinite;
+  --animate-spin-reverse: spin-reverse 1s linear infinite;
+  --animate-spin-reverse-slow: spin-reverse 4s linear infinite;
+  --animate-spin-reverse-slower: spin-reverse 6s linear infinite;
+  --animate-ping: ping 1s cubic-bezier(0, 0, 0.2, 1) infinite;
+  --animate-pulse: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  --animate-bounce: bounce 1s infinite;
+  --animate-marquee: marquee var(--marquee-duration, 20s) linear infinite;
+  --animate-blob: blob 7s infinite cubic-bezier(0.6, -0.28, 0.735, 0.045);
+}
+
+/* ========================================
+   BASE STYLES
+   ======================================== */
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+    border-color: var(--color-border);
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family:
+      system-ui,
+      -apple-system,
+      BlinkMacSystemFont,
+      "Segoe UI",
+      Roboto,
+      Oxygen,
+      Ubuntu,
+      Cantarell,
+      sans-serif;
+    line-height: 1.6;
+    font-feature-settings:
+      "rlig" 1,
+      "calt" 1;
+  }
+}
+
+/* ========================================
+   UTILITIES
+   ======================================== */
+@layer utilities {
+  /* Animation utilities */
+  .animate-fade-in {
+    animation: var(--animate-fade-in-slow);
+  }
+
+  .animate-accordion-down {
+    animation: var(--animate-accordion-down);
+  }
+
+  .animate-accordion-up {
+    animation: var(--animate-accordion-up);
+  }
+
+  .animate-spin {
+    animation: var(--animate-spin);
+  }
+
+  .animate-spin-slow {
+    animation: var(--animate-spin-slow);
+  }
+
+  .animate-spin-slower {
+    animation: var(--animate-spin-slower);
+  }
+
+  .animate-ping {
+    animation: var(--animate-ping);
+  }
+
+  .animate-pulse {
+    animation: var(--animate-pulse);
+  }
+
+  .animate-bounce {
+    animation: var(--animate-bounce);
+  }
+
+  .animate-blob {
+    animation: var(--animate-blob);
+  }
+
+  /* Animation delays */
+  .animation-delay-1000 {
+    animation-delay: 1s;
+  }
+
+  .animation-delay-2000 {
+    animation-delay: 2s;
+  }
+
+  .animation-delay-3000 {
+    animation-delay: 3s;
+  }
+
+  .animation-delay-4000 {
+    animation-delay: 4s;
+  }
+
+  /* Text utilities */
+  .text-shadow {
+    text-shadow: 0px 1px 1px rgba(16, 24, 40, 0.08);
+  }
+
+  /* Backdrop blur */
+  .backdrop-blur-md {
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+
+  /* Glass morphism */
+  .glass {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+  }
+
+  /* Remove number input spinners */
+  input[type="number"]::-webkit-inner-spin-button,
+  input[type="number"]::-webkit-outer-spin-button,
+  input[type="number"] {
+    -webkit-appearance: none;
+    -moz-appearance: textfield;
+    margin: 0;
+  }
+
+  /* No Scrollbar */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  /* Allocation Grid Responsive */
+  .allocation-grid-responsive {
+    display: grid !important;
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 0.75rem !important;
+  }
+
+  @media (min-width: 768px) {
+    .allocation-grid-responsive {
+      grid-template-columns: repeat(4, 1fr) !important;
+    }
+  }
+
+  /* Print Styles */
+  @media print {
+    .no-print {
+      display: none !important;
+    }
+  }
+
+  .gradient-primary {
+    @apply bg-linear-to-br from-primary via-primary-600 to-primary-700;
+  }
+}
+
+/* ========================================
+   CUSTOM SCROLLBAR
+   ======================================== */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  margin-block: 4px;
+  margin-inline: 2px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.1);
+}
+
+::-webkit-scrollbar-thumb {
+  border-radius: 4px;
+  background-color: rgba(0, 0, 0, 0.3);
+}
+
+::-webkit-scrollbar-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(0, 0, 0, 0.3);
+  font-family: monospace;
+}
+
+/* Scrollbar arrows */
+::-webkit-scrollbar-button:vertical:start:decrement {
+  border-top: 6px solid transparent;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-bottom: 6px solid rgba(0, 0, 0, 0.4);
+}
+
+::-webkit-scrollbar-button:vertical:end:increment {
+  border-top: 6px solid rgba(0, 0, 0, 0.4);
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+}
+
+::-webkit-scrollbar-button:horizontal:start:decrement {
+  border-top: 4px solid transparent;
+  border-left: 6px solid transparent;
+  border-right: 6px solid rgba(0, 0, 0, 0.4);
+  border-bottom: 4px solid transparent;
+}
+
+::-webkit-scrollbar-button:horizontal:end:increment {
+  border-top: 4px solid transparent;
+  border-left: 6px solid rgba(0, 0, 0, 0.4);
+  border-right: 6px solid transparent;
+  border-bottom: 4px solid transparent;
+}
+
+/* Dark mode scrollbars */
+.dark ::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.dark ::-webkit-scrollbar-button:vertical:start:decrement {
+  border-bottom-color: rgba(255, 255, 255, 0.4);
+}
+
+.dark ::-webkit-scrollbar-button:vertical:end:increment {
+  border-top-color: rgba(255, 255, 255, 0.4);
+}
+
+.dark ::-webkit-scrollbar-button:horizontal:start:decrement {
+  border-right-color: rgba(255, 255, 255, 0.4);
+}
+
+.dark ::-webkit-scrollbar-button:horizontal:end:increment {
+  border-left-color: rgba(255, 255, 255, 0.4);
+}
+
+/* ========================================
+   CUSTOM TYPOGRAPHY CLASSES
+   ======================================== */
+.heading-1 {
+  font-size: clamp(2rem, 1rem + 3vw, 3rem);
+  font-weight: bold;
+}
+
+.heading-2 {
+  font-size: clamp(1.75rem, 1rem + 2.75vw, 2.5rem);
+  font-weight: bold;
+}
+
+.heading-3 {
+  font-size: clamp(1.5rem, 1rem + 2.5vw, 2rem);
+  font-weight: 600;
+}
+
+.heading-4 {
+  font-size: clamp(1.125rem, 1.125rem + 1vw, 1.5rem);
+  font-weight: 500;
+}
+
+.heading-5 {
+  font-size: clamp(1rem, 1rem + 1vw, 1.125rem);
+  font-weight: 500;
+}
+
+.paragraph {
+  @apply text-xs md:text-sm 2xl:text-base leading-6;
+  color: hsl(var(--heroui-foreground) / 0.7);
+}
+
+/* ========================================
+   GRADIENT UTILITIES
+   ======================================== */
+.gradient-text {
+  background: linear-gradient(135deg, #ec4899, #fbbf24);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.blue-gradient {
+  background: linear-gradient(90deg, #1b64ce 0%, #8c86f0 100%);
+}
+
+.blue-gradient-text {
+  background: linear-gradient(90deg, #1b64ce 0%, #8c86f0 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ========================================
+   IMAGE LOADING STATES (HeroUI)
+   ======================================== */
+img[data-loaded="true"] {
+  opacity: 1 !important;
+}
+
+img {
+  opacity: 1;
+  transition: opacity 300ms ease-in-out;
+}
+
+/* ========================================
+   ADMIN CONSOLE SPECIFIC STYLES
+   ======================================== */
+
+/* Glass card effect for admin console */
+.glass-card {
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Fade in up animation for admin console elements */
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fade-in-up {
+  animation: fade-in-up 0.6s ease-out forwards;
+}
+
+/* Floating animation for admin console elements */
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-20px);
+  }
+}
+
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+/* Rotate Y animation for 3D effects */
+@keyframes rotate-y-12 {
+  0% {
+    transform: rotateY(0deg);
+  }
+  100% {
+    transform: rotateY(12deg);
+  }
+}
+
+.rotate-y-12 {
+  transform: rotateY(12deg);
+}
+
+/* Blob animation for background elements */
+.blob {
+  position: absolute;
+  animation: blob 7s infinite;
+}
+
+/* Primary color utilities for admin console */
+.text-primary-50 {
+  color: var(--primary-50);
+}
+.text-primary-100 {
+  color: var(--primary-100);
+}
+.text-primary-200 {
+  color: var(--primary-200);
+}
+.text-primary-300 {
+  color: var(--primary-300);
+}
+.text-primary-400 {
+  color: var(--primary-400);
+}
+.text-primary-500 {
+  color: var(--primary-500);
+}
+.text-primary-600 {
+  color: var(--primary-600);
+}
+.text-primary-700 {
+  color: var(--primary-700);
+}
+.text-primary-800 {
+  color: var(--primary-800);
+}
+.text-primary-900 {
+  color: var(--primary-900);
+}
+
+.bg-primary-50 {
+  background-color: var(--primary-50);
+}
+.bg-primary-100 {
+  background-color: var(--primary-100);
+}
+.bg-primary-200 {
+  background-color: var(--primary-200);
+}
+.bg-primary-300 {
+  background-color: var(--primary-300);
+}
+.bg-primary-400 {
+  background-color: var(--primary-400);
+}
+.bg-primary-500 {
+  background-color: var(--primary-500);
+}
+.bg-primary-600 {
+  background-color: var(--primary-600);
+}
+.bg-primary-700 {
+  background-color: var(--primary-700);
+}
+.bg-primary-800 {
+  background-color: var(--primary-800);
+}
+.bg-primary-900 {
+  background-color: var(--primary-900);
+}
+
+.border-primary-100 {
+  border-color: var(--primary-100);
+}
+.border-primary-200 {
+  border-color: var(--primary-200);
+}
+.border-primary-500 {
+  border-color: var(--primary-500);
+}
+
+/* Shadow utilities for primary colors */
+.shadow-primary-500\/30 {
+  box-shadow: 0 0 20px rgba(19, 108, 253, 0.3);
+}
+.shadow-primary-500\/40 {
+  box-shadow: 0 0 20px rgba(19, 108, 253, 0.4);
+}
+.shadow-primary-500\/50 {
+  box-shadow: 0 0 25px rgba(19, 108, 253, 0.5);
+}
+.shadow-blue-500\/20 {
+  box-shadow: 0 0 20px rgba(59, 130, 246, 0.2);
+}
+.shadow-blue-500\/30 {
+  box-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
+}
+
+/* Admin console specific responsive utilities */
+@media (max-width: 768px) {
+  .admin-mobile-padding {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+}
+
+/* Smooth scroll behavior for anchor links */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Custom focus styles for admin console buttons */
+.admin-button-focus:focus {
+  outline: 2px solid var(--primary-500);
+  outline-offset: 2px;
+}

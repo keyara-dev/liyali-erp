@@ -8,9 +8,9 @@ export const metadata = {
 };
 
 interface PVApprovalPageProps {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 }
 
 export default async function PVApprovalPage({ params }: PVApprovalPageProps) {
@@ -20,9 +20,11 @@ export default async function PVApprovalPage({ params }: PVApprovalPageProps) {
     redirect("/login");
   }
 
+  const { id } = await params;
+
   return (
     <PVApprovalClient
-      pvId={params.id}
+      pvId={id}
       userId={session.user.id}
       userRole={(session.user as any).role}
     />

@@ -1,32 +1,34 @@
-import { verifySession } from '@/lib/auth'
-import { redirect } from 'next/navigation'
-import { GRNConfirmationClient } from './_components/grn-confirmation-client'
+import { verifySession } from "@/lib/auth";
+import { redirect } from "next/navigation";
+import { GRNConfirmationClient } from "./_components/grn-confirmation-client";
 
 export const metadata = {
-  title: 'GRN Confirmation',
-  description: 'Confirm goods received',
-}
+  title: "GRN Confirmation",
+  description: "Confirm goods received",
+};
 
 interface GRNConfirmationPageProps {
-  params: {
-    id: string
-  }
+  params: Promise<{
+    id: string;
+  }>;
 }
 
 export default async function GRNConfirmationPage({
   params,
 }: GRNConfirmationPageProps) {
-  const { session } = await verifySession()
+  const { session } = await verifySession();
 
   if (!session?.user) {
-    redirect('/login')
+    redirect("/login");
   }
+
+  const { id } = await params;
 
   return (
     <GRNConfirmationClient
-      grnId={params.id}
+      grnId={id}
       userId={session.user.id}
       userRole={(session.user as any).role}
     />
-  )
+  );
 }

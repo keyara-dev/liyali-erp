@@ -1,0 +1,483 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Building2,
+  Users,
+  Calendar,
+  Eye,
+  UserPlus,
+  Globe,
+  Clock,
+  CreditCard,
+  Activity,
+  AlertTriangle,
+} from "lucide-react";
+import { toast } from "sonner";
+import {
+  getAllOrganizations,
+  updateOrganizationStatus,
+  getOrganizationStatistics,
+  type Organization,
+  type OrganizationFilters,
+} from "@/app/_actions/organizations";
+import { OrganizationDetailsDialog } from "./components/organization-details-dialog";
+import { OrganizationActionsDropdown } from "./components/organization-actions-dropdown";
+import { OrganizationCreateDialog } from "./components/organization-create-dialog";
+import { OrganizationAdvancedFilters } from "./components/organization-advanced-filters";
+import { OrganizationBulkActions } from "./components/organization-bulk-actions";
+
+export default function OrganizationsPage() {
+  const [organizations, setOrganizations] = useState<Organization[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [selectedOrganization, setSelectedOrganization] =
+    useState<Organization | null>(null);
+  const [showOrganizationDetails, setShowOrganizationDetails] = useState(false);
+  const [showCreateOrganization, setShowCreateOrganization] = useState(false);
+  const [selectedOrganizations, setSelectedOrganizations] = useState<string[]>(
+    [],
+  );
+
+  // Filters and pagination
+  const [filters, setFilters] = useState<OrganizationFilters>({
+    search: "",
+    status: "all",
+    page: 1,
+    limit: 20,
+    sort_by: "created_at",
+    sort_order: "desc",
+  });
+
+  const [pagination, setPagination] = useState({
+    total: 0,
+    page: 1,
+    limit: 20,
+    totalPages: 0,
+  });
+
+  // Statistics
+  const [stats, setStats] = useState({
+    total_organizations: 0,
+    active_organizations: 0,
+    suspended_organizations: 0,
+    trial_organizations: 0,
+    organizations_created_this_month: 0,
+    total_users_across_organizations: 0,
+    trials_expiring_soon: 0,
+    top_organizations_by_users: [] as Array<{
+      organization_id: string;
+      organization_name: string;
+      user_count: number;
+    }>,
+  });
+
+  useEffect(() => {
+    loadOrganizations();
+    loadStatistics();
+  }, [filters]);
+
+  const loadOrganizations = async () => {
+    setIsLoading(true);
+    try {
+      const result = await getAllOrganizations(filters);
+      if (result.success && result.data) {
+        setOrganizations(result.data.organizations || []);
+        setPagination({
+          total: result.data.total || 0,
+          page: result.data.page || 1,
+          limit: result.data.limit || 20,
+          totalPages: result.data.totalPages || 0,
+        });
+      } else {
+        toast.error("Failed to load organizations");
+      }
+    } catch (error) {
+      toast.error("Failed to load organizations");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const loadStatistics = async () => {
+    try {
+      const result = await getOrganizationStatistics();
+      if (result.success && result.data) {
+        setStats(result.data);
+      }
+    } catch (error) {
+      console.error("Failed to load organization statistics");
+    }
+  };
+
+  const handleStatusChange = async (
+    organizationId: string,
+    status: "active" | "suspended" | "pending",
+  ) => {
+    try {
+      const result = await updateOrganizationStatus(organizationId, status);
+      if (result.success) {
+        toast.success(`Organization ${status} successfully`);
+        loadOrganizations();
+      } else {
+        toast.error(result.message || "Failed to update organization status");
+      }
+    } catch (error) {
+      toast.error("Failed to update organization status");
+    }
+  };
+
+  const handlePageChange = (page: number) => {
+    setFilters((prev) => ({ ...prev, page }));
+  };
+
+  const handleOrganizationSelection = (
+    organizationId: string,
+    checked: boolean,
+  ) => {
+    if (checked) {
+      setSelectedOrganizations((prev) => [...prev, organizationId]);
+    } else {
+      setSelectedOrganizations((prev) =>
+        prev.filter((id) => id !== organizationId),
+      );
+    }
+  };
+
+  const handleFiltersChange = (newFilters: OrganizationFilters) => {
+    setFilters(newFilters);
+  };
+
+  const handleFiltersReset = () => {
+    setFilters({
+      search: "",
+      status: "all",
+      page: 1,
+      limit: 20,
+      sort_by: "created_at",
+      sort_order: "desc",
+    });
+  };
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case "active":
+        return <Badge variant="default">Active</Badge>;
+      case "suspended":
+        return <Badge variant="destructive">Suspended</Badge>;
+      case "pending":
+        return <Badge variant="secondary">Pending</Badge>;
+      default:
+        return <Badge variant="outline">{status}</Badge>;
+    }
+  };
+
+  const getTrialStatusBadge = (trialStatus: string) => {
+    switch (trialStatus) {
+      case "trial":
+        return <Badge variant="secondary">Trial</Badge>;
+      case "subscribed":
+        return <Badge variant="default">Subscribed</Badge>;
+      case "expired":
+        return <Badge variant="destructive">Expired</Badge>;
+      default:
+        return <Badge variant="outline">{trialStatus}</Badge>;
+    }
+  };
+
+  const getTierBadge = (tier: string) => {
+    switch (tier) {
+      case "enterprise":
+        return <Badge variant="default">Enterprise</Badge>;
+      case "professional":
+        return (
+          <Badge className="bg-blue-100 text-blue-800">Professional</Badge>
+        );
+      case "basic":
+        return <Badge variant="secondary">Basic</Badge>;
+      default:
+        return <Badge variant="outline">{tier}</Badge>;
+    }
+  };
+
+  if (isLoading && organizations.length === 0) {
+    return <div>Loading organizations...</div>;
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">
+            Organization Management
+          </h1>
+          <p className="text-muted-foreground">
+            Manage all organizations, subscriptions, and trials
+          </p>
+        </div>
+        <Button onClick={() => setShowCreateOrganization(true)}>
+          <Building2 className="mr-2 h-4 w-4" />
+          Create Organization
+        </Button>
+      </div>
+
+      {/* Statistics Cards */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              Total Organizations
+            </CardTitle>
+            <Building2 className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {stats.total_organizations}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              +{stats.organizations_created_this_month} this month
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              Active Organizations
+            </CardTitle>
+            <Building2 className="h-4 w-4 text-green-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {stats.active_organizations}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {stats.total_users_across_organizations} total users
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              Trial Organizations
+            </CardTitle>
+            <Clock className="h-4 w-4 text-blue-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {stats.trial_organizations}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {stats.trials_expiring_soon} expiring soon
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              Suspended Organizations
+            </CardTitle>
+            <AlertTriangle className="h-4 w-4 text-red-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {stats.suspended_organizations}
+            </div>
+            <p className="text-xs text-muted-foreground">Require attention</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Organizations Management */}
+      <Card>
+        <CardHeader>
+          <CardTitle>All Organizations</CardTitle>
+          <CardDescription>
+            Manage and support all platform organizations
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {/* Advanced Filters */}
+          <OrganizationAdvancedFilters
+            filters={filters}
+            onFiltersChange={handleFiltersChange}
+            onReset={handleFiltersReset}
+          />
+
+          {/* Bulk Actions */}
+          <OrganizationBulkActions
+            organizations={organizations}
+            selectedOrganizations={selectedOrganizations}
+            onSelectionChange={setSelectedOrganizations}
+            onOrganizationsUpdated={loadOrganizations}
+          />
+
+          {/* Organizations List */}
+          <div className="space-y-4">
+            {organizations.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                No organizations found matching your criteria
+              </div>
+            ) : (
+              organizations.map((organization) => (
+                <div
+                  key={organization.id}
+                  className="flex items-center justify-between rounded-lg border p-4 hover:bg-muted/50"
+                >
+                  <div className="flex items-center space-x-4">
+                    <Checkbox
+                      checked={selectedOrganizations.includes(organization.id)}
+                      onCheckedChange={(checked) =>
+                        handleOrganizationSelection(
+                          organization.id,
+                          checked as boolean,
+                        )
+                      }
+                      aria-label={`Select ${organization.name}`}
+                    />
+                    <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
+                      <Building2 className="h-6 w-6 text-primary" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-semibold">{organization.name}</h3>
+                        {getStatusBadge(organization.status)}
+                        {getTrialStatusBadge(organization.trial_status)}
+                        {getTierBadge(organization.subscription_tier)}
+                      </div>
+                      <div className="flex items-center space-x-4 text-sm text-muted-foreground">
+                        <span className="flex items-center">
+                          <Globe className="mr-1 h-3 w-3" />
+                          {organization.domain}
+                        </span>
+                        <span className="flex items-center">
+                          <Users className="mr-1 h-3 w-3" />
+                          {organization.user_count} users
+                        </span>
+                        <span className="flex items-center">
+                          <Calendar className="mr-1 h-3 w-3" />
+                          {new Date(
+                            organization.created_at,
+                          ).toLocaleDateString()}
+                        </span>
+                      </div>
+                      {organization.trial_end_date && (
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="text-xs text-muted-foreground">
+                            Trial ends:{" "}
+                            {new Date(
+                              organization.trial_end_date,
+                            ).toLocaleDateString()}
+                          </span>
+                          {organization.days_remaining !== undefined && (
+                            <Badge
+                              variant={
+                                organization.days_remaining <= 7
+                                  ? "destructive"
+                                  : "secondary"
+                              }
+                              className="text-xs"
+                            >
+                              {organization.days_remaining} days left
+                            </Badge>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <div className="text-right text-sm">
+                      <div className="font-medium">
+                        {organization.subscription_tier} plan
+                      </div>
+                      <div className="text-muted-foreground">
+                        {organization.user_count} /{" "}
+                        {organization.settings?.max_users || "∞"} users
+                      </div>
+                    </div>
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setSelectedOrganization(organization);
+                        setShowOrganizationDetails(true);
+                      }}
+                    >
+                      <Eye className="mr-2 h-4 w-4" />
+                      View Details
+                    </Button>
+
+                    <OrganizationActionsDropdown
+                      organization={organization}
+                      onStatusChange={handleStatusChange}
+                      onOrganizationUpdated={loadOrganizations}
+                    />
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          {/* Pagination */}
+          {pagination.totalPages > 1 && (
+            <div className="flex items-center justify-between mt-6">
+              <div className="text-sm text-muted-foreground">
+                Showing {(pagination.page - 1) * pagination.limit + 1} to{" "}
+                {Math.min(pagination.page * pagination.limit, pagination.total)}{" "}
+                of {pagination.total} organizations
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handlePageChange(pagination.page - 1)}
+                  disabled={pagination.page <= 1}
+                >
+                  Previous
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handlePageChange(pagination.page + 1)}
+                  disabled={pagination.page >= pagination.totalPages}
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Organization Details Dialog */}
+      {selectedOrganization && (
+        <OrganizationDetailsDialog
+          organization={selectedOrganization}
+          open={showOrganizationDetails}
+          onOpenChange={setShowOrganizationDetails}
+          onOrganizationUpdated={loadOrganizations}
+        />
+      )}
+
+      {/* Organization Create Dialog */}
+      <OrganizationCreateDialog
+        open={showCreateOrganization}
+        onOpenChange={setShowCreateOrganization}
+        onOrganizationCreated={loadOrganizations}
+      />
+    </div>
+  );
+}

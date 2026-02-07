@@ -1,0 +1,320 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  BarChart3,
+  Users,
+  Building2,
+  DollarSign,
+  Activity,
+  RefreshCw,
+  AlertCircle,
+} from "lucide-react";
+import { toast } from "sonner";
+import { MetricsGrid } from "./components/metrics-grid";
+import { AnalyticsFilters as AnalyticsFiltersComponent } from "./components/analytics-filters";
+import { getAnalyticsOverview } from "@/app/_actions/analytics";
+import type { AnalyticsFilters } from "@/app/_actions/analytics";
+
+export default function AnalyticsPage() {
+  const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [activeTab, setActiveTab] = useState("overview");
+  const [analyticsData, setAnalyticsData] = useState<any>(null);
+
+  // Filters
+  const [filters, setFilters] = useState<AnalyticsFilters>({
+    date_range: "30d",
+  });
+
+  useEffect(() => {
+    loadAnalyticsData();
+  }, [filters]);
+
+  const loadAnalyticsData = async () => {
+    setIsLoading(true);
+    try {
+      const result = await getAnalyticsOverview(filters);
+      if (result.success && result.data) {
+        setAnalyticsData(result.data);
+      } else {
+        toast.error("Failed to load analytics data");
+      }
+    } catch (error) {
+      toast.error("Failed to load analytics data");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await loadAnalyticsData();
+      toast.success("Analytics data refreshed");
+    } catch (error) {
+      toast.error("Failed to refresh analytics data");
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  const handleFiltersChange = (newFilters: AnalyticsFilters) => {
+    setFilters(newFilters);
+  };
+
+  const handleResetFilters = () => {
+    setFilters({ date_range: "30d" });
+  };
+
+  const handleExport = async (format: "csv" | "pdf" | "excel") => {
+    toast.success(`Analytics report export initiated in ${format} format`);
+  };
+
+  return (
+    <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
+      <div className="flex items-center justify-between space-y-2">
+        <div>
+          <h2 className="text-3xl font-bold tracking-tight">
+            Analytics Dashboard
+          </h2>
+          <p className="text-muted-foreground">
+            Comprehensive analytics and insights for your platform
+          </p>
+        </div>
+        <div className="flex items-center space-x-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+          >
+            <RefreshCw
+              className={`mr-2 h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`}
+            />
+            Refresh
+          </Button>
+        </div>
+      </div>
+
+      {/* Filters */}
+      <AnalyticsFiltersComponent
+        filters={filters}
+        onFiltersChange={handleFiltersChange}
+        onReset={handleResetFilters}
+        onExport={handleExport}
+      />
+
+      {/* Overview Metrics */}
+      <MetricsGrid overview={null} isLoading={isLoading} />
+
+      {/* Analytics Tabs */}
+      <Tabs
+        value={activeTab}
+        onValueChange={setActiveTab}
+        className="space-y-4"
+      >
+        <TabsList className="grid w-full grid-cols-5">
+          <TabsTrigger value="overview" className="flex items-center gap-2">
+            <BarChart3 className="h-4 w-4" />
+            Overview
+          </TabsTrigger>
+          <TabsTrigger value="users" className="flex items-center gap-2">
+            <Users className="h-4 w-4" />
+            Users
+          </TabsTrigger>
+          <TabsTrigger
+            value="organizations"
+            className="flex items-center gap-2"
+          >
+            <Building2 className="h-4 w-4" />
+            Organizations
+          </TabsTrigger>
+          <TabsTrigger value="revenue" className="flex items-center gap-2">
+            <DollarSign className="h-4 w-4" />
+            Revenue
+          </TabsTrigger>
+          <TabsTrigger value="usage" className="flex items-center gap-2">
+            <Activity className="h-4 w-4" />
+            Usage
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="overview" className="space-y-4">
+          <div className="grid gap-4 md:grid-cols-2">
+            <Card>
+              <CardHeader>
+                <CardTitle>Platform Overview</CardTitle>
+                <CardDescription>
+                  Key metrics and performance indicators
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {isLoading ? (
+                  <div className="space-y-4">
+                    <div className="h-4 bg-muted animate-pulse rounded" />
+                    <div className="h-4 bg-muted animate-pulse rounded w-3/4" />
+                    <div className="h-4 bg-muted animate-pulse rounded w-1/2" />
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">
+                        Total Users
+                      </span>
+                      <span className="font-medium">
+                        {analyticsData?.total_users || 0}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">
+                        Total Organizations
+                      </span>
+                      <span className="font-medium">
+                        {analyticsData?.total_organizations || 0}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">
+                        Active Subscriptions
+                      </span>
+                      <span className="font-medium">
+                        {analyticsData?.active_subscriptions || 0}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">
+                        Monthly Active Users
+                      </span>
+                      <span className="font-medium">
+                        {analyticsData?.key_metrics?.monthly_active_users || 0}
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Growth Metrics</CardTitle>
+                <CardDescription>Growth rates and trends</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {isLoading ? (
+                  <div className="space-y-4">
+                    <div className="h-4 bg-muted animate-pulse rounded" />
+                    <div className="h-4 bg-muted animate-pulse rounded w-3/4" />
+                    <div className="h-4 bg-muted animate-pulse rounded w-1/2" />
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">
+                        User Growth Rate
+                      </span>
+                      <span className="font-medium text-green-600">
+                        +{analyticsData?.growth_metrics?.user_growth_rate || 0}%
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">
+                        Organization Growth Rate
+                      </span>
+                      <span className="font-medium text-green-600">
+                        +
+                        {analyticsData?.growth_metrics
+                          ?.organization_growth_rate || 0}
+                        %
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">
+                        Revenue Growth Rate
+                      </span>
+                      <span className="font-medium text-green-600">
+                        +
+                        {analyticsData?.growth_metrics?.revenue_growth_rate ||
+                          0}
+                        %
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">
+                        Churn Rate
+                      </span>
+                      <span className="font-medium text-green-600">
+                        {analyticsData?.growth_metrics?.churn_rate || 0}%
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="users" className="space-y-4">
+          <Card>
+            <CardContent className="flex items-center justify-center h-64">
+              <div className="text-center">
+                <AlertCircle className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+                <p className="text-muted-foreground">
+                  User analytics charts will be integrated here
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="organizations" className="space-y-4">
+          <Card>
+            <CardContent className="flex items-center justify-center h-64">
+              <div className="text-center">
+                <AlertCircle className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+                <p className="text-muted-foreground">
+                  Organization analytics charts will be integrated here
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="revenue" className="space-y-4">
+          <Card>
+            <CardContent className="flex items-center justify-center h-64">
+              <div className="text-center">
+                <AlertCircle className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+                <p className="text-muted-foreground">
+                  Revenue analytics charts will be integrated here
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="usage" className="space-y-4">
+          <Card>
+            <CardContent className="flex items-center justify-center h-64">
+              <div className="text-center">
+                <AlertCircle className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+                <p className="text-muted-foreground">
+                  Usage analytics charts will be integrated here
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}
