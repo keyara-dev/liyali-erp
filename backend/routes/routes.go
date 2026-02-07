@@ -337,5 +337,73 @@ func SetupRoutes(app *fiber.App, handlerRegistry *handlers.HandlerRegistry, rbac
 	audit.Get("/", middleware.RequirePermission(rbacService, "audit_log", "view"), handlers.GetAuditLogs)
 	audit.Get("/document/:documentId", middleware.RequirePermission(rbacService, "audit_log", "view"), handlers.GetDocumentAuditLogs)
 
+	// Admin-only routes (system-wide access)
+	admin := apiV1.Group("/admin", middleware.AuthMiddleware(), middleware.AdminMiddleware())
+	
+	// Admin dashboard and analytics
+	admin.Get("/dashboard", handlers.GetAdminDashboard)
+	admin.Get("/analytics", handlers.GetAdminAnalytics)
+	admin.Get("/system/health", handlers.GetSystemHealth)
+	admin.Get("/system/metrics", handlers.GetSystemMetrics)
+	admin.Get("/system/alerts", handlers.GetSystemAlerts)
+	admin.Get("/system/logs", handlers.GetSystemLogs)
+	
+	// Admin analytics endpoints
+	admin.Get("/analytics/overview", handlers.GetAdminAnalytics)
+	admin.Get("/analytics/users", handlers.GetAdminUserAnalytics)
+	admin.Get("/analytics/organizations", handlers.GetAdminOrganizationAnalytics)
+	admin.Get("/analytics/revenue", handlers.GetAdminRevenueAnalytics)
+	admin.Get("/analytics/usage", handlers.GetAdminUsageAnalytics)
+	
+	// Admin subscription statistics
+	admin.Get("/subscriptions/statistics", handlers.GetSubscriptionStatistics)
+	
+	// Admin subscription management
+	admin.Get("/subscriptions/tiers", handlers.GetAllSubscriptionTiers)
+	admin.Get("/subscriptions/tiers/:id", handlers.GetSubscriptionTierByID)
+	admin.Post("/subscriptions/tiers", handlers.CreateSubscriptionTier)
+	admin.Put("/subscriptions/tiers/:id", handlers.UpdateSubscriptionTier)
+	admin.Delete("/subscriptions/tiers/:id", handlers.DeleteSubscriptionTier)
+	
+	// Admin subscription features management
+	admin.Get("/subscriptions/features", handlers.GetAllSubscriptionFeatures)
+	admin.Post("/subscriptions/features", handlers.CreateSubscriptionFeature)
+	admin.Put("/subscriptions/features/:id", handlers.UpdateSubscriptionFeature)
+	admin.Delete("/subscriptions/features/:id", handlers.DeleteSubscriptionFeature)
+	
+	// Admin trial management
+	admin.Get("/subscriptions/trials", handlers.GetTrialOrganizations)
+	admin.Post("/organizations/:id/change-tier", handlers.ChangeOrganizationTier)
+	admin.Post("/organizations/:id/override-limits", handlers.OverrideOrganizationLimits)
+	
+	// Admin subscription analytics
+	admin.Get("/subscriptions/analytics", handlers.GetSubscriptionAnalytics)
+
+	// Admin settings management
+	admin.Get("/settings", handlers.GetSystemSettings)
+	admin.Get("/settings/:id", handlers.GetSystemSetting)
+	admin.Post("/settings", handlers.CreateSystemSetting)
+	admin.Put("/settings/:id", handlers.UpdateSystemSetting)
+	admin.Delete("/settings/:id", handlers.DeleteSystemSetting)
+	admin.Get("/settings/stats", handlers.GetSettingsStats)
+	admin.Get("/settings/health", handlers.GetSystemHealthStatus)
+	
+	// Admin environment variables
+	admin.Get("/environment-variables", handlers.GetEnvironmentVariables)
+	
+	// Admin feature flags management
+	admin.Get("/feature-flags", handlers.GetFeatureFlags)
+	admin.Get("/feature-flags/:id", handlers.GetFeatureFlag)
+	admin.Post("/feature-flags", handlers.CreateFeatureFlag)
+	admin.Put("/feature-flags/:id", handlers.UpdateFeatureFlag)
+	admin.Delete("/feature-flags/:id", handlers.DeleteFeatureFlag)
+	admin.Post("/feature-flags/:id/toggle", handlers.ToggleFeatureFlag)
+	admin.Post("/feature-flags/:id/archive", handlers.ArchiveFeatureFlag)
+	admin.Get("/feature-flags/stats", handlers.GetFeatureFlagStats)
+	
+	// Feature flag evaluation
+	admin.Post("/feature-flags/:key/evaluate", handlers.EvaluateFeatureFlag)
+	admin.Get("/feature-flags/:key/analytics", handlers.GetFeatureFlagAnalytics)
+
 	// Note: Development tools and test workflow tasks are now created via seed data migrations
 }

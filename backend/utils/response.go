@@ -1,6 +1,8 @@
 package utils
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"math"
 
 	"github.com/gofiber/fiber/v2"
@@ -167,4 +169,21 @@ func SendNotImplementedError(c *fiber.Ctx, message string) error {
 // SendCustomError sends a custom error with specified status code
 func SendCustomError(c *fiber.Ctx, statusCode int, message string, err error) error {
 	return SendError(c, statusCode, message, err)
+}
+
+// GenerateID generates a random ID string
+func GenerateID() string {
+	bytes := make([]byte, 16)
+	rand.Read(bytes)
+	return hex.EncodeToString(bytes)
+}
+
+// SendNotFound sends a 404 not found response
+func SendNotFound(c *fiber.Ctx, message string) error {
+	return SendError(c, fiber.StatusNotFound, message, nil)
+}
+
+// SendBadRequest sends a 400 bad request response
+func SendBadRequest(c *fiber.Ctx, message string) error {
+	return SendError(c, fiber.StatusBadRequest, message, nil)
 }

@@ -14,6 +14,7 @@ backend/scripts/
 ├── workflow_test.sh            # Consolidated workflow & approval system tests
 ├── department_tests.sh        # Department management
 ├── analytics_tests.sh         # Analytics, notifications & system ops
+├── admin_tests.sh             # Admin endpoints (NEW)
 ├── error_tests.sh             # Error handling & security validation
 └── README_TESTS.md            # This documentation
 ```
@@ -38,6 +39,9 @@ cd backend/scripts
 
 # Run only analytics and error handling tests
 ./run_tests.sh analytics errors
+
+# Run only admin endpoint tests
+./run_tests.sh admin
 ```
 
 ### Run Individual Test Scripts
@@ -52,6 +56,7 @@ cd backend/scripts
 ./workflow_test.sh
 ./department_tests.sh
 ./analytics_tests.sh
+./admin_tests.sh
 ./error_tests.sh
 ```
 
@@ -113,6 +118,18 @@ cd backend/scripts
 - Audit logging tests
 - Performance & load testing
 
+### 🔧 Admin Tests (`admin_tests.sh`) - NEW
+
+- Admin authentication & authorization
+- Admin dashboard & analytics (7 endpoints)
+- System health & monitoring (6 endpoints)
+- Subscription management (9 endpoints)
+- Trial management (4 endpoints)
+- Settings management (7 endpoints)
+- Feature flags management (10 endpoints)
+- CRUD operations for all admin resources
+- Admin-only access control validation
+
 ### ⚠️ Error Tests (`error_tests.sh`)
 
 - Error handling & edge cases
@@ -165,9 +182,10 @@ Based on the latest comprehensive test suite execution:
 - **Workflow & Approval**: 94% (35/37 tests) - Includes advanced validation
 - **Department Management**: 100% (15/15 tests)
 - **Analytics & System**: 100% (19/19 tests)
+- **Admin Endpoints**: NEW (44 tests) - Dashboard, subscriptions, settings, feature flags
 - **Error Handling & Security**: 100% (10/10 tests)
 
-**Overall Success Rate: 96% (167/173 tests)**
+**Overall Success Rate: TBD (pending admin test execution)**
 
 ### Key Benefits of Modular Structure
 
@@ -192,6 +210,9 @@ Based on the latest comprehensive test suite execution:
 # During workflow system development
 ./run_tests.sh auth workflows
 
+# During admin console development
+./run_tests.sh auth admin
+
 # Full regression testing
 ./run_tests.sh
 ```
@@ -205,6 +226,9 @@ Based on the latest comprehensive test suite execution:
 # Full test suite (nightly builds)
 ./run_tests.sh
 
+# Admin-focused testing
+./run_tests.sh auth admin
+
 # Security-focused testing
 ./run_tests.sh auth rbac errors
 ```
@@ -217,6 +241,9 @@ Based on the latest comprehensive test suite execution:
 
 # Debug workflow problems
 ./run_tests.sh auth workflows
+
+# Debug admin endpoint issues
+./run_tests.sh auth admin
 
 # Debug performance issues
 ./run_tests.sh auth analytics

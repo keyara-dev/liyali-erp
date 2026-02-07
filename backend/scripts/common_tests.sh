@@ -4,7 +4,7 @@
 # Shared functions and configurations for all test modules
 
 # Configuration
-BASE_URL="http://localhost:8080"
+BASE_URL="http://localhost:8081"
 API_URL="$BASE_URL/api/v1"
 TEST_EMAIL="admin@liyali.com"
 TEST_PASSWORD="password"

@@ -177,6 +177,7 @@ run_all_tests() {
     run_test_module "Workflow Unit Tests" "workflow_unit_tests.sh"
     run_test_module "Department Management" "department_tests.sh"
     run_test_module "Analytics & System" "analytics_tests.sh"
+    run_test_module "Admin Endpoints" "admin_tests.sh"
     run_test_module "Error Handling & Security" "error_tests.sh"
     
     # Optional: Clear context after full run if desired
@@ -235,6 +236,9 @@ run_specific_tests() {
             "analytics"|"notifications"|"system")
                 run_test_module "Analytics & System" "analytics_tests.sh"
                 ;;
+            "admin"|"admin-endpoints")
+                run_test_module "Admin Endpoints" "admin_tests.sh"
+                ;;
             "errors"|"security"|"validation")
                 run_test_module "Error Handling & Security" "error_tests.sh"
                 ;;
@@ -272,6 +276,7 @@ show_help() {
     echo "  unit             Go unit tests and integration tests"
     echo "  departments      Department management and user assignments"
     echo "  analytics        Analytics, notifications, and system operations"
+    echo "  admin            Admin endpoints (dashboard, subscriptions, settings, feature flags)"
     echo "  errors           Error handling, validation, and security tests"
     echo ""
     echo "Examples:"
@@ -279,7 +284,7 @@ show_help() {
     echo "  $0 auth rbac                 # Run only authentication and RBAC tests"
     echo "  $0 documents workflows       # Run only document and workflow tests"
     echo "  $0 custom-roles unit         # Run only custom role and unit tests"
-    echo "  $0 analytics errors          # Run only analytics and error handling tests"
+    echo "  $0 analytics admin           # Run only analytics and admin endpoint tests"
     echo ""
     echo "Individual Test Scripts:"
     echo "  You can also run individual test scripts directly:"
@@ -291,6 +296,7 @@ show_help() {
     echo "  ./workflow_unit_tests.sh     # Workflow unit tests only"
     echo "  ./department_tests.sh        # Department tests only (requires auth context)"
     echo "  ./analytics_tests.sh         # Analytics tests only (requires auth context)"
+    echo "  ./admin_tests.sh             # Admin endpoint tests only (requires admin auth)"
     echo "  ./error_tests.sh             # Error handling tests only (requires auth context)"
     echo ""
 }
@@ -307,6 +313,7 @@ list_modules() {
     echo "🧪 unit          - Go unit tests and integration tests"
     echo "🏢 departments   - Department management and user assignments"
     echo "📊 analytics     - Analytics, notifications, and system operations"
+    echo "🔧 admin         - Admin endpoints (dashboard, subscriptions, settings, feature flags)"
     echo "⚠️  errors       - Error handling, validation, and security tests"
     echo ""
     echo "Use: $0 [module1] [module2] ... to run specific modules"

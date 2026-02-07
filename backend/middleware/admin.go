@@ -12,7 +12,7 @@ func AdminMiddleware() fiber.Handler {
 		logger := logging.FromContext(c)
 		
 		// Get user role from context (set by auth middleware)
-		userRole, ok := c.Locals("user_role").(string)
+		userRole, ok := c.Locals("userRole").(string)
 		if !ok {
 			logger.Error("User role not found in context")
 			return c.Status(fiber.StatusUnauthorized).JSON(utils.ErrorResponse("Authentication required"))
@@ -53,7 +53,7 @@ func SuperAdminMiddleware() fiber.Handler {
 		logger := logging.FromContext(c)
 		
 		// Get user role from context (set by auth middleware)
-		userRole, ok := c.Locals("user_role").(string)
+		userRole, ok := c.Locals("userRole").(string)
 		if !ok {
 			logger.Error("User role not found in context")
 			return c.Status(fiber.StatusUnauthorized).JSON(utils.ErrorResponse("Authentication required"))
@@ -89,13 +89,13 @@ func OrganizationAdminMiddleware() fiber.Handler {
 		}
 
 		// Get user ID and role from context (set by auth middleware)
-		userID, ok := c.Locals("user_id").(string)
+		userID, ok := c.Locals("userID").(string)
 		if !ok {
 			logger.Error("User ID not found in context")
 			return c.Status(fiber.StatusUnauthorized).JSON(utils.ErrorResponse("Authentication required"))
 		}
 
-		userRole, ok := c.Locals("user_role").(string)
+		userRole, ok := c.Locals("userRole").(string)
 		if !ok {
 			logger.Error("User role not found in context")
 			return c.Status(fiber.StatusUnauthorized).JSON(utils.ErrorResponse("Authentication required"))
