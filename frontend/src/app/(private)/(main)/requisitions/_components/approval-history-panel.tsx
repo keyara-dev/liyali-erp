@@ -69,21 +69,21 @@ export function ApprovalHistoryPanel({
     switch (actionType.toUpperCase()) {
       case "APPROVE":
       case "APPROVED":
-        return "bg-green-50 border-green-200";
+        return "bg-green-50 dark:bg-green-950/30 border-green-300 dark:border-green-700";
       case "REJECT":
       case "REJECTED":
-        return "bg-red-50 border-red-200";
+        return "bg-red-50 dark:bg-red-950/30 border-red-300 dark:border-red-700";
       case "CREATE":
-        return "bg-blue-50 border-blue-200";
+        return "bg-blue-50 dark:bg-blue-950/30 border-blue-300 dark:border-blue-700";
       case "UPDATE":
-        return "bg-amber-50 border-amber-200";
+        return "bg-amber-50 dark:bg-amber-950/30 border-amber-300 dark:border-amber-700";
       case "SUBMIT":
-        return "bg-purple-50 border-purple-200";
+        return "bg-purple-50 dark:bg-purple-950/30 border-purple-300 dark:border-purple-700";
       case "REVERSE":
       case "REVERSED":
-        return "bg-amber-50 border-amber-200";
+        return "bg-amber-50 dark:bg-amber-950/30 border-amber-300 dark:border-amber-700";
       default:
-        return "bg-gray-50 border-gray-200";
+        return "bg-gray-50 dark:bg-gray-800/30 border-gray-300 dark:border-gray-600";
     }
   };
 
@@ -196,13 +196,13 @@ export function ApprovalHistoryPanel({
               {sortedHistory.map((action) => (
                 <div
                   key={action.id}
-                  className={`p-4 rounded-lg border ${getActionColor(action.actionType || "unknown")}`}
+                  className={`p-4 rounded-lg border-2 ${getActionColor(action.actionType || "unknown")}`}
                 >
                   <div className="flex items-start gap-3">
                     {getActionIcon(action.actionType || "unknown")}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-semibold text-sm">
+                        <span className="font-semibold text-sm text-gray-900 dark:text-gray-100">
                           {action.performedByName}
                         </span>
                         <Badge variant="outline" className="text-xs">
@@ -214,7 +214,7 @@ export function ApprovalHistoryPanel({
                           </Badge>
                         )}
                       </div>
-                      <p className="text-xs text-gray-600 mt-1">
+                      <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
                         {new Date(
                           action.performedAt || action.timestamp || 0,
                         ).toLocaleString()}
@@ -222,7 +222,7 @@ export function ApprovalHistoryPanel({
 
                       {/* Status transition */}
                       {action.previousStatus && action.newStatus && (
-                        <div className="text-xs mt-2 text-gray-700">
+                        <div className="text-xs mt-2 text-gray-700 dark:text-gray-300">
                           Status:{" "}
                           <span className="font-mono">
                             {action.previousStatus}
@@ -234,7 +234,7 @@ export function ApprovalHistoryPanel({
 
                       {/* Stage info for approval actions */}
                       {action.stageNumber && action.stageName && (
-                        <div className="text-xs mt-2 text-gray-700">
+                        <div className="text-xs mt-2 text-gray-700 dark:text-gray-300">
                           Stage {action.stageNumber}:{" "}
                           <span className="font-semibold">
                             {action.stageName}
@@ -244,14 +244,14 @@ export function ApprovalHistoryPanel({
 
                       {/* Comments */}
                       {action.comments && (
-                        <p className="text-sm mt-2 text-gray-700 italic">
+                        <p className="text-sm mt-2 text-gray-700 dark:text-gray-300 italic">
                           "{action.comments}"
                         </p>
                       )}
 
                       {/* Remarks (for rejections) */}
                       {action.remarks && (
-                        <p className="text-sm mt-2 text-red-700 font-semibold">
+                        <p className="text-sm mt-2 text-red-700 dark:text-red-400 font-semibold">
                           Reason: "{action.remarks}"
                         </p>
                       )}
@@ -315,17 +315,17 @@ export function ApprovalHistoryPanel({
               ) : (
                 <>
                   {/* Workflow Progress Header */}
-                  <div className="text-xs text-gray-600 mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
-                    <p className="font-semibold text-blue-900">
+                  <div className="text-xs mb-4 p-3 bg-white/40 dark:bg-gray-800/40 backdrop-blur-sm rounded-lg border border-gray-200/50 dark:border-gray-700/50 shadow-sm">
+                    <p className="font-semibold text-gray-900 dark:text-gray-100">
                       Workflow Progress Tracker
                     </p>
-                    <p className="text-blue-700">
+                    <p className="text-gray-600 dark:text-gray-400">
                       Track each approval stage and see who has approved or is
                       required to approve
                     </p>
                     {workflowStatus && (
                       <div className="mt-2 flex items-center gap-4">
-                        <span className="text-blue-800 font-medium">
+                        <span className="text-gray-800 dark:text-gray-200 font-medium">
                           Stage {workflowStatus.currentStage} of{" "}
                           {workflowStatus.totalStages}
                         </span>
@@ -352,14 +352,14 @@ export function ApprovalHistoryPanel({
                           key={stage.stageNumber || index}
                           className={`p-4 rounded-lg border-2 transition-all ${
                             stage.status === "approved"
-                              ? "border-green-200 bg-green-50 shadow-sm"
+                              ? "border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-950/30 shadow-sm"
                               : stage.status === "rejected"
-                                ? "border-red-200 bg-red-50 shadow-sm"
+                                ? "border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-950/30 shadow-sm"
                                 : stage.isCurrentStage
-                                  ? "border-blue-300 bg-blue-50 shadow-md ring-2 ring-blue-100"
+                                  ? "border-blue-400 dark:border-blue-600 bg-blue-50 dark:bg-blue-950/30 shadow-md ring-2 ring-blue-200 dark:ring-blue-800"
                                   : stage.status === "completed"
-                                    ? "border-gray-300 bg-gray-50"
-                                    : "border-gray-200 bg-gray-50"
+                                    ? "border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/30"
+                                    : "border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/30"
                           }`}
                         >
                           <div className="flex items-start gap-3">
@@ -385,7 +385,7 @@ export function ApprovalHistoryPanel({
                             <div className="flex-1 min-w-0">
                               {/* Stage Header */}
                               <div className="flex items-center gap-2 flex-wrap mb-2">
-                                <span className="font-semibold text-base">
+                                <span className="font-semibold text-base text-gray-900 dark:text-gray-100">
                                   {stage.stageName ||
                                     `Stage ${stage.stageNumber || index + 1}`}
                                 </span>
@@ -414,7 +414,7 @@ export function ApprovalHistoryPanel({
                                 {stage.isCurrentStage && (
                                   <Badge
                                     variant="outline"
-                                    className="text-xs bg-blue-100 text-blue-800"
+                                    className="text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300"
                                   >
                                     ⏳ Awaiting Action
                                   </Badge>
@@ -424,11 +424,11 @@ export function ApprovalHistoryPanel({
                               {/* Required Role */}
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
                                 <div>
-                                  <p className="text-sm text-gray-700 mb-1">
+                                  <p className="text-sm text-gray-700 dark:text-gray-300 mb-1">
                                     <span className="font-medium">
                                       Required Role:
                                     </span>
-                                    <span className="ml-1 px-2 py-1 bg-gray-100 rounded text-xs font-mono">
+                                    <span className="ml-1 px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded text-xs font-mono">
                                       {stage.requiredRole}
                                     </span>
                                   </p>
@@ -437,15 +437,15 @@ export function ApprovalHistoryPanel({
                                 {/* Approver Info */}
                                 {(stage.approverName || stage.approverId) && (
                                   <div>
-                                    <p className="text-sm text-gray-700 mb-1">
+                                    <p className="text-sm text-gray-700 dark:text-gray-300 mb-1">
                                       <span className="font-medium">
                                         Approved By:
                                       </span>
-                                      <span className="ml-1 text-green-700 font-semibold">
+                                      <span className="ml-1 text-green-700 dark:text-green-400 font-semibold">
                                         {stage.approverName || "Unknown User"}
                                       </span>
                                       {stage.approverRole && (
-                                        <span className="text-gray-500 ml-1">
+                                        <span className="text-gray-500 dark:text-gray-400 ml-1">
                                           ({stage.approverRole})
                                         </span>
                                       )}
@@ -456,7 +456,7 @@ export function ApprovalHistoryPanel({
 
                               {/* Completion Date */}
                               {stage.completedAt && (
-                                <p className="text-xs text-gray-600 mb-2">
+                                <p className="text-xs text-gray-600 dark:text-gray-400 mb-2">
                                   <span className="font-medium">
                                     Completed:
                                   </span>
@@ -470,8 +470,8 @@ export function ApprovalHistoryPanel({
 
                               {/* Comments */}
                               {stage.comments && (
-                                <div className="mt-2 p-3 bg-white/70 rounded border border-gray-200">
-                                  <p className="text-sm text-gray-700">
+                                <div className="mt-2 p-3 bg-white/70 dark:bg-gray-900/30 rounded border border-gray-200 dark:border-gray-700">
+                                  <p className="text-sm text-gray-700 dark:text-gray-300">
                                     <span className="font-medium">
                                       Comments:
                                     </span>
@@ -485,8 +485,8 @@ export function ApprovalHistoryPanel({
                               {/* Current Stage Instructions */}
                               {stage.isCurrentStage &&
                                 stage.status === "pending" && (
-                                  <div className="mt-3 p-3 bg-blue-100 rounded border border-blue-200">
-                                    <p className="text-sm text-blue-800">
+                                  <div className="mt-3 p-3 bg-blue-100 dark:bg-blue-900/30 rounded border border-blue-200 dark:border-blue-700">
+                                    <p className="text-sm text-blue-800 dark:text-blue-300">
                                       <span className="font-medium">
                                         ⚡ Next Action Required:
                                       </span>
@@ -504,13 +504,13 @@ export function ApprovalHistoryPanel({
                             {/* Status Icon */}
                             <div className="flex-shrink-0">
                               {stage.status === "approved" ? (
-                                <CheckCircle className="h-6 w-6 text-green-600" />
+                                <CheckCircle className="h-6 w-6 text-green-600 dark:text-green-400" />
                               ) : stage.status === "rejected" ? (
-                                <XCircle className="h-6 w-6 text-red-600" />
+                                <XCircle className="h-6 w-6 text-red-600 dark:text-red-400" />
                               ) : stage.isCurrentStage ? (
-                                <Clock className="h-6 w-6 text-blue-600 animate-pulse" />
+                                <Clock className="h-6 w-6 text-blue-600 dark:text-blue-400 animate-pulse" />
                               ) : (
-                                <Clock className="h-6 w-6 text-gray-400" />
+                                <Clock className="h-6 w-6 text-gray-400 dark:text-gray-600" />
                               )}
                             </div>
                           </div>

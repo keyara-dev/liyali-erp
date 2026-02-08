@@ -2,6 +2,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { PropsWithChildren } from "react";
 
+export const dynamic = "force-dynamic";
+
 function AuthLayout({ children }: PropsWithChildren) {
   return (
     <div className="min-h-screen w-screen ">
@@ -17,10 +19,7 @@ function AuthLayout({ children }: PropsWithChildren) {
 
       <div className="h-screen flex flex-row p-4">
         {/* Left Panel - Auth Forms */}
-        <div
-          className="bg-primary-700 overflow-clip hidden rounded-[50px] lg:flex w-full items-center justify-center relative"
-        
-        >
+        <div className="bg-primary-700 overflow-clip hidden rounded-[50px] lg:flex w-full items-center justify-center relative">
           <Image
             src="/images/pattern.svg"
             alt="liyali-pattern"
@@ -53,7 +52,10 @@ function AuthLayout({ children }: PropsWithChildren) {
           </div>
 
           <div className="mt-auto pt-8 border-t border-foreground/10 text-center text-slate-500 text-sm">
-            <p>&copy; {new Date().getFullYear()} Liyali Suite. All rights reserved.</p>
+            <p>
+              &copy; {new Date().getFullYear()} Liyali Suite. All rights
+              reserved.
+            </p>
           </div>
         </div>
       </div>

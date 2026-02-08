@@ -286,17 +286,17 @@ export function BudgetApprovalPanel({
               ) : (
                 <>
                   {/* Workflow Progress Header */}
-                  <div className="text-xs text-gray-600 mb-4 p-3 bg-white/40 backdrop-blur-sm rounded-lg border border-gray-200/50 shadow-sm">
-                    <p className="font-semibold text-gray-900">
+                  <div className="text-xs mb-4 p-3 bg-white/40 dark:bg-gray-800/40 backdrop-blur-sm rounded-lg border border-gray-200/50 dark:border-gray-700/50 shadow-sm">
+                    <p className="font-semibold text-gray-900 dark:text-gray-100">
                       Workflow Progress Tracker
                     </p>
-                    <p className="text-gray-600">
+                    <p className="text-gray-600 dark:text-gray-400">
                       Track each approval stage and see who has approved or is
                       required to approve
                     </p>
                     {workflowStatus && (
                       <div className="mt-2 flex items-center gap-4">
-                        <span className="text-gray-800 font-medium">
+                        <span className="text-gray-800 dark:text-gray-200 font-medium">
                           Stage {workflowStatus.currentStage} of{" "}
                           {workflowStatus.totalStages}
                         </span>
@@ -323,12 +323,12 @@ export function BudgetApprovalPanel({
                           key={stage.stageNumber || index}
                           className={`p-4 rounded-lg border-2 transition-all ${
                             stage.status === "approved"
-                              ? "border-green-200 bg-green-50 shadow-sm"
+                              ? "border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-950/30 shadow-sm"
                               : stage.status === "rejected"
-                                ? "border-red-200 bg-red-50 shadow-sm"
+                                ? "border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-950/30 shadow-sm"
                                 : stage.isCurrentStage
-                                  ? "border-blue-300 bg-blue-50 shadow-md ring-2 ring-blue-100"
-                                  : "border-gray-200 bg-gray-50"
+                                  ? "border-blue-400 dark:border-blue-600 bg-blue-50 dark:bg-blue-950/30 shadow-md ring-2 ring-blue-200 dark:ring-blue-800"
+                                  : "border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/30"
                           }`}
                         >
                           <div className="flex items-start gap-3">
@@ -352,7 +352,7 @@ export function BudgetApprovalPanel({
                             <div className="flex-1 min-w-0">
                               {/* Stage Header */}
                               <div className="flex items-center gap-2 flex-wrap mb-2">
-                                <span className="font-semibold capitalize text-base">
+                                <span className="font-semibold capitalize text-base text-gray-900 dark:text-gray-100">
                                   {stage.stageName ||
                                     `Stage ${stage.stageNumber || index + 1}`}
                                 </span>
@@ -381,7 +381,7 @@ export function BudgetApprovalPanel({
                                   stage.status !== "rejected" && (
                                     <Badge
                                       variant="outline"
-                                      className="text-xs bg-blue-100 text-blue-800"
+                                      className="text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300"
                                     >
                                       ⏳ Awaiting Action
                                     </Badge>
@@ -391,11 +391,11 @@ export function BudgetApprovalPanel({
                               {/* Required Role */}
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
                                 <div>
-                                  <p className="text-sm text-gray-700 mb-1">
+                                  <p className="text-sm text-gray-700 dark:text-gray-300 mb-1">
                                     <span className="font-medium">
                                       Required Role:
                                     </span>
-                                    <span className="ml-1 px-2 py-1 capitalize font-medium bg-gray-100 rounded text-xs font-mono">
+                                    <span className="ml-1 px-2 py-1 capitalize font-medium bg-gray-100 dark:bg-gray-800 rounded text-xs font-mono">
                                       {stage.requiredRole}
                                     </span>
                                   </p>
@@ -404,15 +404,15 @@ export function BudgetApprovalPanel({
                                 {/* Approver Info */}
                                 {(stage.approverName || stage.approverId) && (
                                   <div>
-                                    <p className="text-sm text-gray-700 mb-1">
+                                    <p className="text-sm text-gray-700 dark:text-gray-300 mb-1">
                                       <span className="font-medium">
                                         Approved By:
                                       </span>
-                                      <span className="ml-1 text-green-700 font-semibold">
+                                      <span className="ml-1 text-green-700 dark:text-green-400 font-semibold">
                                         {stage.approverName || "Unknown User"}
                                       </span>
                                       {stage.approverRole && (
-                                        <span className="text-gray-500 font-medium capitalize ml-1">
+                                        <span className="text-gray-500 dark:text-gray-400 font-medium capitalize ml-1">
                                           ({stage.approverRole})
                                         </span>
                                       )}
@@ -423,7 +423,7 @@ export function BudgetApprovalPanel({
 
                               {/* Completion Date */}
                               {stage.completedAt && (
-                                <p className="text-xs text-gray-600 mb-2">
+                                <p className="text-xs text-gray-600 dark:text-gray-400 mb-2">
                                   <span className="font-medium">
                                     Completed:
                                   </span>
@@ -437,8 +437,8 @@ export function BudgetApprovalPanel({
 
                               {/* Comments */}
                               {stage.comments && (
-                                <div className="mt-2 p-3 bg-white/70 rounded border border-gray-200">
-                                  <p className="text-sm text-gray-700">
+                                <div className="mt-2 p-3 bg-white/70 dark:bg-gray-900/30 rounded border border-gray-200 dark:border-gray-700">
+                                  <p className="text-sm text-gray-700 dark:text-gray-300">
                                     <span className="font-medium">
                                       Comments:
                                     </span>
@@ -454,8 +454,8 @@ export function BudgetApprovalPanel({
                                 stage.status !== "approved" &&
                                 stage.status !== "rejected" &&
                                 stage.status === "pending" && (
-                                  <div className="mt-3 p-3 bg-blue-100 rounded border border-blue-200">
-                                    <p className="text-sm text-blue-800">
+                                  <div className="mt-3 p-3 bg-blue-100 dark:bg-blue-900/30 rounded border border-blue-200 dark:border-blue-700">
+                                    <p className="text-sm text-blue-800 dark:text-blue-300">
                                       <span className="font-medium">
                                         ⚡ Next Action Required:
                                       </span>
@@ -473,13 +473,13 @@ export function BudgetApprovalPanel({
                             {/* Status Icon */}
                             <div className="shrink-0">
                               {stage.status === "approved" ? (
-                                <CheckCircle className="h-6 w-6 text-green-600" />
+                                <CheckCircle className="h-6 w-6 text-green-600 dark:text-green-400" />
                               ) : stage.status === "rejected" ? (
-                                <XCircle className="h-6 w-6 text-red-600" />
+                                <XCircle className="h-6 w-6 text-red-600 dark:text-red-400" />
                               ) : stage.isCurrentStage ? (
-                                <Clock className="h-6 w-6 text-blue-600 animate-pulse" />
+                                <Clock className="h-6 w-6 text-blue-600 dark:text-blue-400 animate-pulse" />
                               ) : (
-                                <Clock className="h-6 w-6 text-gray-400" />
+                                <Clock className="h-6 w-6 text-gray-400 dark:text-gray-600" />
                               )}
                             </div>
                           </div>
