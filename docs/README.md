@@ -1,85 +1,73 @@
-# Liyali Gateway Documentation
+# Documentation
 
-**Enterprise Workflow Management Platform**
+## Quick Start
 
-A production-ready multi-tenant platform for managing financial workflows with comprehensive authentication, role-based access control, and approval processes.
+1. [Setup Guide](./01-SETUP.md) - Get started quickly
+2. [Development Guide](./02-DEVELOPMENT.md) - Development workflow
+3. [API Documentation](./03-API.md) - API reference
+4. [Deployment Guide](./04-DEPLOYMENT.md) - Deploy to production
+5. [Fly.io Guide](./05-FLY-IO.md) - Deploy to Fly.io
+6. [Recovery Guide](./06-RECOVERY.md) - Disaster recovery
 
-## 🚀 Quick Start
+## Application Documentation
 
-### Prerequisites
-- Go 1.21+
-- Node.js 18+
-- PostgreSQL 14+
+### Backend
 
-### Setup
-```bash
-# Backend
-cd backend
-go mod tidy
-go run main.go
+- [Backend Docs](../backend/docs/) - Complete backend documentation
+- [Quick Start](../backend/docs/01-quick-start.md)
+- [Architecture](../backend/docs/04-architecture.md)
+- [Database](../backend/docs/05-database.md)
+- [API Design](../backend/docs/06-api-design.md)
+- [Authentication](../backend/docs/07-auth.md)
 
-# Frontend
-cd frontend
-npm install
-npm run dev
-```
+### Frontend
 
-## 📚 Documentation Structure
+- [Frontend Docs](../frontend/docs/) - Complete frontend documentation
+- [Quick Start](../frontend/docs/01-quick-start.md)
+- [Architecture](../frontend/docs/04-architecture.md)
+- [SEO](../frontend/docs/SEO.md)
 
-### Essential Guides
-- **[Setup Guide](SETUP.md)** - Complete installation and configuration
-- **[Authentication Guide](AUTH.md)** - User accounts, roles, and permissions  
-- **[API Reference](API.md)** - Complete API documentation
-- **[Development Guide](DEVELOPMENT.md)** - Development workflow and testing
+### Admin Console
 
-### Project Information
-- **[Project Status](STATUS.md)** - Current completion status and metrics
-- **[Roadmap](ROADMAP.md)** - Project timeline and future plans
+- [Admin Console](../admin-console/docs/README.md) - Admin portal documentation
 
-## 🏗️ System Overview
+## Additional Resources
 
-### Core Features
-- ✅ **Multi-tenant Organizations** - Complete isolation and management
-- ✅ **Role-Based Access Control** - 5 system roles + custom roles
-- ✅ **Workflow Management** - Requisitions, POs, Payments, Budgets, GRNs
-- ✅ **Authentication & Security** - JWT, password hashing, session management
-- ✅ **Analytics & Reporting** - Dashboard metrics and insights
+### System Documentation
 
-### Technology Stack
-- **Backend**: Go 1.21+, Fiber, PostgreSQL, SQLC
-- **Frontend**: Next.js 14, React 18, TypeScript, TanStack Query
-- **Database**: PostgreSQL with comprehensive migrations
-- **Testing**: 100+ unit tests, 50+ integration tests
+- [Complete System Status](./COMPLETE_SYSTEM_STATUS.md)
+- [Roadmap](./ROADMAP.md)
 
-## 📊 Current Status
+### Workflow System
 
-**Overall Completion**: ~95% of core features complete
-- **Backend**: 20,000+ lines of Go code
-- **Frontend**: 15,000+ lines of TypeScript/React
-- **API Endpoints**: 60+ endpoints
-- **Test Coverage**: 85%+ of critical paths
+- [Workflow System Audit](./WORKFLOW_SYSTEM_COMPREHENSIVE_AUDIT.md)
+- [Frontend Workflow Guide](./FRONTEND_WORKFLOW_IMPLEMENTATION_GUIDE.md)
 
-## 🔧 Quick Commands
+## Documentation Standards
 
-```bash
-# Backend
-cd backend && go run main.go
+### File Naming
 
-# Frontend  
-cd frontend && npm run dev
+- Use numbered prefixes for ordered docs: `01-SETUP.md`
+- Use UPPERCASE for main docs
+- Use kebab-case for specific topics: `fly-io-deployment.md`
 
-# Tests
-cd backend && go test ./...
-cd frontend && npm test
+### Structure
 
-# Database
-cd backend/database && ./migrate.sh up
-```
+- Keep docs concise and actionable
+- Include code examples
+- Add links to related docs
+- Update with code changes
 
-## 📞 Support
+### Contributing
 
-For detailed information, see the individual guide files in this directory.
+1. Place backend docs in `backend/docs/`
+2. Place frontend docs in `frontend/docs/`
+3. Place admin docs in `admin-console/docs/`
+4. Place shared docs in `docs/`
 
----
+## Need Help?
 
-**Status**: Production Ready | **Last Updated**: January 8, 2025
+- Check relevant documentation section
+- Review code examples
+- Contact development team
+- Open an issue on GitHub

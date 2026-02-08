@@ -7,6 +7,7 @@ on:
     paths:
       - "backend/**"
       - "frontend/**"
+      - "admin-console/**"
       - ".github/workflows/fly-deploy.yml"
   workflow_dispatch: # Allow manual trigger
     inputs:
@@ -20,6 +21,11 @@ on:
         required: false
         default: "true"
         type: boolean
+      deploy_admin:
+        description: "Deploy admin console"
+        required: false
+        default: "true"
+        type: boolean
 
 jobs:
   # Job to detect which parts of the codebase changed
@@ -29,6 +35,7 @@ jobs:
     outputs:
       backend-changed: ${{ steps.changes.outputs.backend }}
       frontend-changed: ${{ steps.changes.outputs.frontend }}
+      admin-changed: ${{ steps.changes.outputs.admin }}
       workflow-changed: ${{ steps.changes.outputs.workflow }}
     steps:
       - name: Checkout code
@@ -43,6 +50,7 @@ jobs:
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             echo "backend=${{ github.event.inputs.deploy_backend }}" >> $GITHUB_OUTPUT
             echo "frontend=${{ github.event.inputs.deploy_frontend }}" >> $GITHUB_OUTPUT
+            echo "admin=${{ github.event.inputs.deploy_admin }}" >> $GITHUB_OUTPUT
             echo "workflow=false" >> $GITHUB_OUTPUT
             exit 0
           fi
@@ -68,12 +76,22 @@ jobs:
             echo "frontend=false" >> $GITHUB_OUTPUT
           fi
 
-          # Check if workflow changed (always deploy both if workflow changed)
+          # Check if admin console files changed
+          if git diff --name-only HEAD~1 HEAD | grep -E '^admin-console/' > /dev/null; then
+            echo "Admin console changes detected"
+            echo "admin=true" >> $GITHUB_OUTPUT
+          else
+            echo "No admin console changes detected"
+            echo "admin=false" >> $GITHUB_OUTPUT
+          fi
+
+          # Check if workflow changed (always deploy all if workflow changed)
           if git diff --name-only HEAD~1 HEAD | grep -E '^\.github/workflows/fly-deploy\.yml$' > /dev/null; then
-            echo "Workflow changes detected - will deploy both apps"
+            echo "Workflow changes detected - will deploy all apps"
             echo "workflow=true" >> $GITHUB_OUTPUT
             echo "backend=true" >> $GITHUB_OUTPUT
             echo "frontend=true" >> $GITHUB_OUTPUT
+            echo "admin=true" >> $GITHUB_OUTPUT
           else
             echo "workflow=false" >> $GITHUB_OUTPUT
           fi
@@ -84,13 +102,14 @@ jobs:
 
       - name: Change Detection Summary
         run: |
-          echo "## 🔍 Change Detection Results" >> $GITHUB_STEP_SUMMARY
+          echo "## � Change Detection Results" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "- **Backend Changes**: ${{ steps.changes.outputs.backend == 'true' && '✅ Detected' || '❌ None' }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Frontend Changes**: ${{ steps.changes.outputs.frontend == 'true' && '✅ Detected' || '❌ None' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Admin Console Changes**: ${{ steps.changes.outputs.admin == 'true' && '✅ Detected' || '❌ None' }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Workflow Changes**: ${{ steps.changes.outputs.workflow == 'true' && '✅ Detected' || '❌ None' }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          if [ "${{ steps.changes.outputs.backend }}" = "true" ] || [ "${{ steps.changes.outputs.frontend }}" = "true" ]; then
+          if [ "${{ steps.changes.outputs.backend }}" = "true" ] || [ "${{ steps.changes.outputs.frontend }}" = "true" ] || [ "${{ steps.changes.outputs.admin }}" = "true" ]; then
             echo "🚀 **Deployment Plan**: Deploy only applications with changes" >> $GITHUB_STEP_SUMMARY
           else
             echo "⏭️ **Deployment Plan**: No deployments needed" >> $GITHUB_STEP_SUMMARY
@@ -312,10 +331,95 @@ jobs:
           echo "- **Health Check**: ✅ Passed" >> $GITHUB_STEP_SUMMARY
           echo "- **Commit**: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
 
+    outputs:
+      frontend-url: ${{ steps.frontend-url.outputs.url }}
+
+  deploy-admin:
+    name: Deploy Admin Console to Fly.io
+    runs-on: ubuntu-latest
+    needs: [detect-changes, deploy-backend]
+    if: ${{ always() && needs.detect-changes.outputs.admin-changed == 'true' && (needs.deploy-backend.result == 'success' || needs.deploy-backend.result == 'skipped') }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Fly.io CLI
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Set Admin Console Environment Variables
+        run: |
+          cd admin-console
+          echo "Setting up admin console environment variables..."
+
+          # Get backend URL from previous job or use default
+          BACKEND_URL="${{ needs.deploy-backend.outputs.backend-url || 'https://liyali-gateway-api.fly.dev' }}"
+
+          flyctl secrets set \
+            NEXT_PUBLIC_API_URL="${BACKEND_URL}/api/v1" \
+            NEXTAUTH_SECRET="${{ secrets.NEXTAUTH_SECRET }}" \
+            NEXTAUTH_URL="https://liyali-admin-console.fly.dev" \
+            --app liyali-admin-console
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+      - name: Deploy Admin Console
+        run: |
+          cd admin-console
+          flyctl deploy --remote-only --wait-timeout 300 \
+            --build-arg NEXT_PUBLIC_API_URL="${{ needs.deploy-backend.outputs.backend-url || 'https://liyali-gateway-api.fly.dev' }}/api/v1"
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+      - name: Verify Admin Console Deployment
+        run: |
+          cd admin-console
+          echo "Waiting for deployment to be ready..."
+          sleep 30
+
+          # Get app URL
+          URL=$(flyctl status --json | jq -r '.Hostname // "liyali-admin-console.fly.dev"')
+
+          # Test root endpoint
+          echo "Testing admin console: https://${URL}"
+          curl -f "https://${URL}/" -o /dev/null -s || {
+            echo "Health check failed! Checking logs..."
+            flyctl logs --app liyali-admin-console
+            exit 1
+          }
+
+          echo "Admin console deployment verified successfully!"
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+      - name: Get Admin Console URL
+        id: admin-url
+        run: |
+          cd admin-console
+          URL=$(flyctl status --json | jq -r '.Hostname // "liyali-admin-console.fly.dev"')
+          echo "url=https://${URL}" >> $GITHUB_OUTPUT
+          echo "Admin console deployed to: https://${URL}"
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+      - name: Admin Console Deployment Summary
+        run: |
+          echo "## 🚀 Admin Console Deployed to Fly.io" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Environment**: Demo/Staging" >> $GITHUB_STEP_SUMMARY
+          echo "- **App**: liyali-admin-console" >> $GITHUB_STEP_SUMMARY
+          echo "- **URL**: ${{ steps.admin-url.outputs.url }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Backend URL**: ${{ needs.deploy-backend.outputs.backend-url }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Health Check**: ✅ Passed" >> $GITHUB_STEP_SUMMARY
+          echo "- **Commit**: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+
+    outputs:
+      admin-url: ${{ steps.admin-url.outputs.url }}
+
   deployment-complete:
     name: Deployment Complete
     runs-on: ubuntu-latest
-    needs: [detect-changes, deploy-backend, deploy-frontend]
+    needs: [detect-changes, deploy-backend, deploy-frontend, deploy-admin]
     if: always()
 
     steps:
@@ -328,6 +432,7 @@ jobs:
           echo "### Change Detection" >> $GITHUB_STEP_SUMMARY
           echo "- **Backend Changes**: ${{ needs.detect-changes.outputs.backend-changed == 'true' && '✅ Detected' || '❌ None' }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Frontend Changes**: ${{ needs.detect-changes.outputs.frontend-changed == 'true' && '✅ Detected' || '❌ None' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Admin Console Changes**: ${{ needs.detect-changes.outputs.admin-changed == 'true' && '✅ Detected' || '❌ None' }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Workflow Changes**: ${{ needs.detect-changes.outputs.workflow-changed == 'true' && '✅ Detected' || '❌ None' }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
@@ -343,20 +448,27 @@ jobs:
           else
             echo "- **Frontend**: ⏭️ Skipped (no changes)" >> $GITHUB_STEP_SUMMARY
           fi
+
+          if [ "${{ needs.detect-changes.outputs.admin-changed }}" = "true" ]; then
+            echo "- **Admin Console**: ${{ needs.deploy-admin.result == 'success' && '✅ Success' || needs.deploy-admin.result == 'skipped' && '⏭️ Skipped' || '❌ Failed' }}" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- **Admin Console**: ⏭️ Skipped (no changes)" >> $GITHUB_STEP_SUMMARY
+          fi
           echo "" >> $GITHUB_STEP_SUMMARY
 
           echo "### URLs" >> $GITHUB_STEP_SUMMARY
           echo "- **Frontend**: ${{ needs.deploy-frontend.outputs.frontend-url || 'https://liyali-gateway-frontend.fly.dev' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Admin Console**: ${{ needs.deploy-admin.outputs.admin-url || 'https://liyali-admin-console.fly.dev' }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Backend**: ${{ needs.deploy-backend.outputs.backend-url || 'https://liyali-gateway-api.fly.dev' }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
           echo "### Efficiency Gains" >> $GITHUB_STEP_SUMMARY
-          if [ "${{ needs.detect-changes.outputs.backend-changed }}" = "false" ] && [ "${{ needs.detect-changes.outputs.frontend-changed }}" = "false" ]; then
-            echo "🎯 **No deployments needed** - No changes detected in either application" >> $GITHUB_STEP_SUMMARY
-          elif [ "${{ needs.detect-changes.outputs.backend-changed }}" = "false" ] || [ "${{ needs.detect-changes.outputs.frontend-changed }}" = "false" ]; then
-            echo "🎯 **Selective deployment** - Only deployed applications with changes" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ needs.detect-changes.outputs.backend-changed }}" = "false" ] && [ "${{ needs.detect-changes.outputs.frontend-changed }}" = "false" ] && [ "${{ needs.detect-changes.outputs.admin-changed }}" = "false" ]; then
+            echo "🎯 **No deployments needed** - No changes detected in any application" >> $GITHUB_STEP_SUMMARY
+          elif [ "${{ needs.detect-changes.outputs.backend-changed }}" = "true" ] && [ "${{ needs.detect-changes.outputs.frontend-changed }}" = "true" ] && [ "${{ needs.detect-changes.outputs.admin-changed }}" = "true" ]; then
+            echo "🚀 **Full deployment** - All applications had changes" >> $GITHUB_STEP_SUMMARY
           else
-            echo "🚀 **Full deployment** - Both applications had changes" >> $GITHUB_STEP_SUMMARY
+            echo "🎯 **Selective deployment** - Only deployed applications with changes" >> $GITHUB_STEP_SUMMARY
           fi
 
           echo "" >> $GITHUB_STEP_SUMMARY
@@ -368,8 +480,9 @@ jobs:
           # Set overall status
           backend_ok=${{ needs.deploy-backend.result == 'success' || needs.deploy-backend.result == 'skipped' }}
           frontend_ok=${{ needs.deploy-frontend.result == 'success' || needs.deploy-frontend.result == 'skipped' }}
+          admin_ok=${{ needs.deploy-admin.result == 'success' || needs.deploy-admin.result == 'skipped' }}
 
-          if [[ "$backend_ok" == "true" && "$frontend_ok" == "true" ]]; then
+          if [[ "$backend_ok" == "true" && "$frontend_ok" == "true" && "$admin_ok" == "true" ]]; then
             echo "🎉 **Overall Status**: ✅ SUCCESS" >> $GITHUB_STEP_SUMMARY
           else
             echo "⚠️ **Overall Status**: ❌ FAILURE" >> $GITHUB_STEP_SUMMARY
