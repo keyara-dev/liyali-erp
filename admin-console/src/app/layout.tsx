@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import React from "react";
 import { ThemeProvider } from "next-themes";
 import NextTopLoader from "nextjs-toploader";
@@ -6,11 +7,20 @@ import { Toaster } from "sonner";
 
 import "./globals.css";
 
-export const metadata = {
-  title: process.env.NEXT_PUBLIC_APP_NAME || "Liyali Admin Console",
+export const metadata: Metadata = {
+  title: {
+    default: "Liyali Admin Console",
+    template: "%s | Liyali Admin",
+  },
   description:
-    process.env.NEXT_PUBLIC_APP_DESCRIPTION ||
-    "Administrative portal for Liyali Gateway system management",
+    "Administrative portal for Liyali Gateway system management. Manage users, organizations, subscriptions, and system settings.",
+  robots: {
+    index: false,
+    follow: false,
+  },
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3001",
+  ),
 };
 
 export default function RootLayout({

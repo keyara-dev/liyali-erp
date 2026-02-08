@@ -1,7 +1,7 @@
 import { MetadataRoute } from "next";
 
 export default function robots(): MetadataRoute.Robots {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://liyali.io";
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://liyali.com";
 
   return {
     rules: [
@@ -9,30 +9,24 @@ export default function robots(): MetadataRoute.Robots {
         userAgent: "*",
         allow: "/",
         disallow: [
-          "/admin/",
           "/api/",
           "/home/",
-          "/requisitions/",
-          "/settings/",
-          "/verification/",
-          "/access-denied",
+          "/admin/",
           "/_next/",
           "/private/",
+          "/dashboard/",
         ],
       },
       {
         userAgent: "Googlebot",
         allow: "/",
         disallow: [
-          "/admin/",
           "/api/",
           "/home/",
-          "/requisitions/",
-          "/settings/",
-          "/verification/",
-          "/access-denied",
+          "/admin/",
           "/_next/",
           "/private/",
+          "/dashboard/",
         ],
       },
     ],

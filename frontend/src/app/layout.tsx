@@ -57,6 +57,7 @@ export const metadata: Metadata = {
         width: 1200,
         height: 630,
         alt: "Liyali Suite - Business Operations Platform",
+        type: "image/png",
       },
     ],
   },
@@ -67,6 +68,7 @@ export const metadata: Metadata = {
       "Streamline your business operations with Liyali Suite - the all-in-one platform for procurement, workflow automation, and team collaboration.",
     images: ["/images/twitter-image.png"],
     creator: "@liyalisuite",
+    site: "@liyalisuite",
   },
   robots: {
     index: true,
@@ -133,7 +135,7 @@ export default function RootLayout({
               "@type": "Organization",
               name: "Liyali Suite",
               url: process.env.NEXT_PUBLIC_APP_URL || "https://liyali.com",
-              logo: `${process.env.NEXT_PUBLIC_APP_URL || "https://liyali.com"}/images/logo/logo-full.svg`,
+              logo: `${process.env.NEXT_PUBLIC_APP_URL || "https://liyali.com"}/icon?<generated>`,
               description:
                 "Modern business operations platform for procurement, workflow automation, and team collaboration",
               foundingDate: "2023",
