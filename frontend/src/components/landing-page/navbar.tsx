@@ -135,7 +135,7 @@ export const Navbar = ({ isAuthenticated }: { isAuthenticated: boolean }) => {
             </div>
 
             {/* CTA - Right */}
-            <div className="hidden md:flex items-center flex-shrink-0">
+            <div className="hidden md:flex gap-4 items-center flex-shrink-0">
               <Link href={isAuthenticated ? "/home" : "/login"}>
                 <motion.button
                   className="bg-primary-600 cursor-pointer hover:bg-primary-500 text-white px-6 py-2 rounded-md text-sm font-bold transition-all shadow-[0_0_20px_rgba(37,99,235,0.3)] hover:shadow-[0_0_25px_rgba(37,99,235,0.5)] border border-primary-500/50"
