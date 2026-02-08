@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -343,7 +344,12 @@ func UpdateBudget(c *fiber.Ctx) error {
 	}
 	// Update items if provided
 	if req.Items != nil {
-		budget.Items = datatypes.NewJSONType(req.Items)
+		itemsJSON, err := json.Marshal(req.Items)
+		if err != nil {
+			logging.LogError(c, err, "failed_to_marshal_budget_items")
+			return utils.SendBadRequestError(c, "Invalid items format")
+		}
+		budget.Items = itemsJSON
 	}
 
 	budget.RemainingAmount = budget.TotalBudget - budget.AllocatedAmount
@@ -531,7 +537,12 @@ func modelToBudgetResponse(budget models.Budget) types.BudgetResponse {
 	approvalHistory = budget.ApprovalHistory.Data()
 
 	var items []interface{}
-	items = budget.Items.Data()
+	if budget.Items != nil && len(budget.Items) > 0 {
+		if err := json.Unmarshal(budget.Items, &items); err != nil {
+			// If unmarshal fails, return empty array
+			items = []interface{}{}
+		}
+	}
 
 	ownerName := ""
 	if budget.Owner != nil {
