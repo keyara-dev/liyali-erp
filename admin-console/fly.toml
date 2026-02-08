@@ -24,13 +24,6 @@ primary_region = "jnb" # Johannesburg - same region as backend for optimal perfo
     hard_limit = 25
     soft_limit = 20
 
-  [[http_service.checks]]
-    grace_period = "60s"
-    interval = "30s"
-    method = "GET"
-    timeout = "10s"
-    path = "/"
-
 [[vm]]
   cpu_kind = "shared"
   cpus = 1
