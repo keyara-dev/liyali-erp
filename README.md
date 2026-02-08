@@ -77,8 +77,8 @@ Access at: http://localhost:3001
 
 - [Deployment Guide](./docs/DEPLOYMENT.md)
 - [Fly.io Guide](./docs/FLY_IO_DEPLOYMENT_GUIDE.md)
-- [Admin Console Deployment](./ADMIN_CONSOLE_DEPLOYMENT_SETUP.md)
-- [📚 Admin Console Deployment Index](./ADMIN_CONSOLE_DEPLOYMENT_INDEX.md) - Start here for admin console deployment
+- [Admin Console Build & Deployment](./docs/ADMIN_CONSOLE_DEPLOYMENT.md)
+- [📚 Admin Console Deployment Index](./admin-console/docs/ADMIN_CONSOLE_DEPLOYMENT_INDEX.md) - Start here for admin console deployment
 
 ## Features
 
