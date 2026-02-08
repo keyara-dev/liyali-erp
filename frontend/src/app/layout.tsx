@@ -51,22 +51,12 @@ export const metadata: Metadata = {
     description:
       "Streamline your business operations with Liyali Suite - the all-in-one platform for procurement, workflow automation, and team collaboration.",
     siteName: "Liyali Suite",
-    images: [
-      {
-        url: "/images/og-image.png",
-        width: 1200,
-        height: 630,
-        alt: "Liyali Suite - Business Operations Platform",
-        type: "image/png",
-      },
-    ],
   },
   twitter: {
     card: "summary_large_image",
     title: "Liyali Suite - Modern Business Operations Platform",
     description:
       "Streamline your business operations with Liyali Suite - the all-in-one platform for procurement, workflow automation, and team collaboration.",
-    images: ["/images/twitter-image.png"],
     creator: "@liyalisuite",
     site: "@liyalisuite",
   },

@@ -4,12 +4,11 @@ import { ImageResponse } from "next/og";
 export const alt = "Liyali Suite - Modern Business Operations Platform";
 export const size = {
   width: 1200,
-  height: 675,
+  height: 630,
 };
-
 export const contentType = "image/png";
 
-// Image generation
+// Image generation - Same as OG image for consistency
 export default async function Image() {
   return new ImageResponse(
     <div
@@ -21,77 +20,50 @@ export default async function Image() {
         flexDirection: "column",
         alignItems: "center",
         justifyContent: "center",
-        fontFamily: "system-ui, sans-serif",
-        position: "relative",
+        color: "white",
+        padding: "80px",
       }}
     >
-      {/* Background decoration */}
-      <div
-        style={{
-          position: "absolute",
-          top: "-50%",
-          right: "-50%",
-          width: "100%",
-          height: "100%",
-          background:
-            "radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%)",
-        }}
-      />
-
-      {/* Content */}
       <div
         style={{
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
           justifyContent: "center",
-          zIndex: 1,
         }}
       >
-        {/* Logo */}
         <div
           style={{
-            width: 100,
-            height: 100,
-            background: "white",
-            borderRadius: 20,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            fontSize: 40,
+            fontSize: 120,
             fontWeight: "bold",
-            color: "#0c54e7",
-            marginBottom: 32,
-            boxShadow: "0 20px 60px rgba(0,0,0,0.3)",
-          }}
-        >
-          L
-        </div>
-
-        {/* Title */}
-        <div
-          style={{
-            fontSize: 56,
-            fontWeight: 800,
-            color: "white",
-            marginBottom: 20,
+            lineHeight: 1.2,
+            marginBottom: "30px",
             textAlign: "center",
-            textShadow: "0 4px 12px rgba(0,0,0,0.2)",
           }}
         >
           Liyali Suite
         </div>
-
-        {/* Subtitle */}
         <div
           style={{
-            fontSize: 28,
-            fontWeight: 400,
-            color: "rgba(255,255,255,0.95)",
+            fontSize: 42,
+            fontWeight: "normal",
+            opacity: 0.95,
+            textAlign: "center",
+            maxWidth: "900px",
+          }}
+        >
+          Modern Business Operations Platform
+        </div>
+        <div
+          style={{
+            fontSize: 32,
+            fontWeight: "normal",
+            opacity: 0.85,
+            marginTop: "30px",
             textAlign: "center",
           }}
         >
-          Streamline Your Business Operations
+          Streamline procurement, workflows & collaboration
         </div>
       </div>
     </div>,
