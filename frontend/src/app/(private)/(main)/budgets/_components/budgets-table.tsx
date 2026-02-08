@@ -159,9 +159,24 @@ export function BudgetsTable({
     {
       accessorKey: "approvalStage",
       header: "Approval Stage",
-      cell: ({ row }) => (
-        <div className="text-sm">Stage {row.original.approvalStage}</div>
-      ),
+      cell: ({ row }) => {
+        const status = row.original.status;
+        const stage = row.original.approvalStage;
+
+        return (
+          <div className="text-sm">
+            {status === "draft"
+              ? "Not submitted"
+              : status === "approved"
+                ? "Completed"
+                : status === "rejected"
+                  ? "Rejected"
+                  : stage > 0
+                    ? `Stage ${stage}`
+                    : "Pending"}
+          </div>
+        );
+      },
     },
     {
       id: "actions",

@@ -42,17 +42,22 @@ export async function updateBudget(
   updates: Partial<Budget>,
 ): Promise<APIResponse<Budget | null>> {
   try {
+    console.log("updateBudget called with:", { budgetId, updates });
+
     const response = await authenticatedApiClient({
       method: "PUT",
       url: `/api/v1/budgets/${budgetId}`,
       data: updates,
     });
 
+    console.log("updateBudget response:", response.data);
+
     return successResponse(
       response.data?.data || null,
       response.data?.message || "Budget updated successfully",
     );
   } catch (error: any) {
+    console.error("updateBudget error:", error);
     return handleError(error, "PUT", `/api/v1/budgets/${budgetId}`);
   }
 }
@@ -105,16 +110,22 @@ export async function getBudgetById(
   budgetId: string,
 ): Promise<APIResponse<Budget | null>> {
   try {
+    console.log("getBudgetById called with:", budgetId);
+
     const response = await authenticatedApiClient({
       method: "GET",
       url: `/api/v1/budgets/${budgetId}`,
     });
+
+    console.log("getBudgetById response:", response.data);
+    console.log("Budget items from API:", response.data?.data?.items);
 
     return successResponse(
       response.data?.data || null,
       response.data?.message || "Budget retrieved successfully",
     );
   } catch (error: any) {
+    console.error("getBudgetById error:", error);
     return handleError(error, "GET", `/api/v1/budgets/${budgetId}`);
   }
 }
@@ -144,5 +155,51 @@ export async function submitBudgetForApproval(
       "POST",
       `/api/v1/budgets/${request.budgetId}/submit`,
     );
+  }
+}
+
+/**
+ * Submit budget for approval (simplified version)
+ */
+export async function submitBudget(
+  budgetId: string,
+  comments?: string,
+): Promise<APIResponse<Budget | null>> {
+  try {
+    const response = await authenticatedApiClient({
+      method: "POST",
+      url: `/api/v1/budgets/${budgetId}/submit`,
+      data: {
+        comments,
+      },
+    });
+
+    return successResponse(
+      response.data?.data || null,
+      response.data?.message || "Budget submitted for approval",
+    );
+  } catch (error: any) {
+    return handleError(error, "POST", `/api/v1/budgets/${budgetId}/submit`);
+  }
+}
+
+/**
+ * Delete a budget (only draft budgets can be deleted)
+ */
+export async function deleteBudget(
+  budgetId: string,
+): Promise<APIResponse<null>> {
+  try {
+    const response = await authenticatedApiClient({
+      method: "DELETE",
+      url: `/api/v1/budgets/${budgetId}`,
+    });
+
+    return successResponse(
+      null,
+      response.data?.message || "Budget deleted successfully",
+    );
+  } catch (error: any) {
+    return handleError(error, "DELETE", `/api/v1/budgets/${budgetId}`);
   }
 }

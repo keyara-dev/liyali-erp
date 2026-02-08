@@ -209,6 +209,18 @@ func CreateBudget(c *fiber.Ctx) error {
 	emptyHistory := []types.ApprovalRecord{}
 	budget.ApprovalHistory = datatypes.NewJSONType(emptyHistory)
 
+	// Initialize action history with CREATE action
+	actionHistory := []types.ActionHistoryEntry{
+		{
+			Action:      "CREATE",
+			PerformedBy: userID,
+			PerformedByName: user.Name,
+			Timestamp:   time.Now(),
+			Comments:    "Budget created",
+		},
+	}
+	budget.ActionHistory = datatypes.NewJSONType(actionHistory)
+
 	logger.Debug("creating_budget_in_database")
 
 	if err := config.DB.Create(&budget).Error; err != nil {
@@ -344,12 +356,17 @@ func UpdateBudget(c *fiber.Ctx) error {
 	}
 	// Update items if provided
 	if req.Items != nil {
+		fmt.Printf("Received items in update request: %+v\n", req.Items)
 		itemsJSON, err := json.Marshal(req.Items)
 		if err != nil {
 			logging.LogError(c, err, "failed_to_marshal_budget_items")
 			return utils.SendBadRequestError(c, "Invalid items format")
 		}
+		fmt.Printf("Marshaled items JSON: %s\n", string(itemsJSON))
 		budget.Items = itemsJSON
+		fmt.Printf("Budget items field updated. Length: %d\n", len(budget.Items))
+	} else {
+		fmt.Printf("No items provided in update request\n")
 	}
 
 	budget.RemainingAmount = budget.TotalBudget - budget.AllocatedAmount
@@ -536,12 +553,25 @@ func modelToBudgetResponse(budget models.Budget) types.BudgetResponse {
 	var approvalHistory []types.ApprovalRecord
 	approvalHistory = budget.ApprovalHistory.Data()
 
-	var items []interface{}
+	var actionHistory []types.ActionHistoryEntry
+	actionHistory = budget.ActionHistory.Data()
+
+	// Always initialize items array (never nil)
+	items := make([]interface{}, 0)
+	
 	if budget.Items != nil && len(budget.Items) > 0 {
 		if err := json.Unmarshal(budget.Items, &items); err != nil {
-			// If unmarshal fails, return empty array
-			items = []interface{}{}
+			// Log the error for debugging
+			fmt.Printf("Error unmarshaling budget items: %v\n", err)
+			fmt.Printf("Raw items data: %s\n", string(budget.Items))
+			// Keep empty array on error
+			items = make([]interface{}, 0)
+		} else {
+			fmt.Printf("Successfully unmarshaled %d budget items\n", len(items))
+			fmt.Printf("Items: %+v\n", items)
 		}
+	} else {
+		fmt.Printf("No items found in budget. Items field is nil or empty\n")
 	}
 
 	ownerName := ""
@@ -549,7 +579,7 @@ func modelToBudgetResponse(budget models.Budget) types.BudgetResponse {
 		ownerName = budget.Owner.Name
 	}
 
-	return types.BudgetResponse{
+	response := types.BudgetResponse{
 		ID:              budget.ID,
 		BudgetCode:      budget.BudgetCode,
 		OwnerID:         budget.OwnerID,
@@ -563,6 +593,7 @@ func modelToBudgetResponse(budget models.Budget) types.BudgetResponse {
 		RemainingAmount: budget.RemainingAmount,
 		ApprovalStage:   budget.ApprovalStage,
 		ApprovalHistory: approvalHistory,
+		ActionHistory:   actionHistory,
 		Name:            budget.Name,
 		Description:     budget.Description,
 		Currency:        budget.Currency,
@@ -571,4 +602,9 @@ func modelToBudgetResponse(budget models.Budget) types.BudgetResponse {
 		CreatedAt:       budget.CreatedAt,
 		UpdatedAt:       budget.UpdatedAt,
 	}
+	
+	fmt.Printf("Final response items: %+v (length: %d)\n", response.Items, len(response.Items))
+	fmt.Printf("Final response action history: %+v (length: %d)\n", response.ActionHistory, len(response.ActionHistory))
+	
+	return response
 }

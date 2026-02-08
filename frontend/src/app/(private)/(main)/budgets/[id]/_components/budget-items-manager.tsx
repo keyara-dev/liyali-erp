@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Plus, Trash2, Edit2, Save, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -62,6 +62,11 @@ export function BudgetItemsManager({
     description: "",
     allocatedAmount: "",
   });
+
+  // Sync local state with prop changes
+  useEffect(() => {
+    setItems(initialItems || []);
+  }, [initialItems]);
 
   // Calculate totals
   const totalAllocated = useMemo(() => {

@@ -28,6 +28,7 @@ interface PageHeaderProps {
 export function PageHeader({
   title,
   subtitle,
+  description,
   badges,
   onBackClick,
   showBackButton = false,
@@ -55,7 +56,7 @@ export function PageHeader({
         <div className="space-y-1">
           <div className="flex flex-wrap items-end gap-2 md:gap-3">
             <h1
-              className="text-2xl md:text-3xl font-bold text-foreground
+              className="text-2xl capitalize md:text-3xl font-bold text-foreground
               dark:text-foreground/90 tracking-tight"
             >
               {title}
@@ -77,6 +78,12 @@ export function PageHeader({
           {subtitle && (
             <p className="text-slate-600 dark:text-slate-400 font-medium text-sm leading-relaxed">
               {subtitle}
+            </p>
+          )}
+
+          {description && (
+            <p className="text-slate-600 dark:text-slate-400 text-sm leading-relaxed mt-2 max-w-2xl">
+              {description}
             </p>
           )}
         </div>

@@ -1,15 +1,9 @@
 "use client";
 
-import { Button } from "@/components";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { CheckCircle2, XCircle, Clock, ClipboardList, Plus } from "lucide-react";
 import { ApprovalRecord } from "@/types";
-import {
-  CheckCircle2,
-  ClipboardListIcon,
-  Clock,
-  Plus,
-  XCircle,
-} from "lucide-react";
 import Link from "next/link";
 
 interface ApprovalChainPanelProps {
@@ -50,7 +44,7 @@ export function ApprovalChainPanel({ approvalChain }: ApprovalChainPanelProps) {
           <div className="relative mb-4">
             <div className="bg-primary/10 absolute inset-0 rounded-full blur-2xl" />
             <div className="bg-canvas border-primary/20 relative rounded-2xl border-2 p-6">
-              <ClipboardListIcon
+              <ClipboardList
                 className="text-primary h-16 w-16"
                 strokeWidth={1.5}
               />

@@ -45,12 +45,12 @@ export function TrialBottomBanner({ className }: TrialBottomBannerProps) {
 
   const getBackgroundStyle = () => {
     if (urgency === "high") {
-      return "bg-gradient-to-r from-red-900/90 to-purple-900/90 border-red-500/30";
+      return "bg-gradient-to-r from-red-900/50 to-purple-900/50 border-red-500/30";
     }
     if (urgency === "medium") {
-      return "bg-gradient-to-r from-yellow-900/90 to-orange-900/90 border-yellow-500/30";
+      return "bg-gradient-to-r from-amber-900/50 to-purple-900/50 border-amber-500/30";
     }
-    return "bg-gradient-to-r from-blue-900/90 to-purple-900/90 border-blue-500/30";
+    return "bg-gradient-to-r from-blue-900/50 to-purple-900/50 border-blue-500/30";
   };
 
   const getIcon = () => {
@@ -78,7 +78,7 @@ export function TrialBottomBanner({ className }: TrialBottomBannerProps) {
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: 100, opacity: 0 }}
           transition={{ duration: 0.3, type: "spring", stiffness: 300 }}
-          className={`fixed bottom-0 left-0 right-0 z-50 ${className}`}
+          className={`fixed bottom-0 left-0 right-0 z-50 opacity-70 ${className}`}
         >
           <div
             className={`${getBackgroundStyle()} backdrop-blur-md border-t shadow-2xl`}

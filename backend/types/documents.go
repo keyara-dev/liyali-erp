@@ -138,11 +138,12 @@ type BudgetResponse struct {
 	RemainingAmount float64          `json:"remainingAmount"`
 	ApprovalStage   int              `json:"approvalStage"`
 	ApprovalHistory []ApprovalRecord `json:"approvalHistory"`
+	ActionHistory   []ActionHistoryEntry `json:"actionHistory,omitempty"`
 	Name            string           `json:"name,omitempty"`
 	Description     string           `json:"description,omitempty"`
 	Currency        string           `json:"currency,omitempty"`
 	CreatedBy       string           `json:"createdBy,omitempty"`
-	Items           []interface{}    `json:"items,omitempty"`
+	Items           []interface{}    `json:"items"`
 	CreatedAt       time.Time        `json:"createdAt"`
 	UpdatedAt       time.Time        `json:"updatedAt"`
 }
