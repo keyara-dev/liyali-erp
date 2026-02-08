@@ -103,7 +103,7 @@ export function useCreateOrganizationMutation() {
           successMessage: "Organization created successfully",
           offlineMessage:
             "Organization saved offline. Will sync when connected.",
-        }
+        },
       );
     },
     onSuccess: (result) => {
@@ -151,7 +151,7 @@ export function useUpdateOrganizationMutation() {
           successMessage: "Organization updated successfully",
           offlineMessage:
             "Organization changes saved offline. Will sync when connected.",
-        }
+        },
       );
     },
     onSuccess: (result, variables) => {
@@ -289,7 +289,7 @@ export function useDeleteOrganizationMutation() {
           successMessage: "Organization deleted successfully",
           offlineMessage:
             "Organization deletion saved offline. Will sync when connected.",
-        }
+        },
       );
     },
     onSuccess: (result) => {
@@ -327,6 +327,43 @@ export function useLogout() {
       await logoutAction();
     },
     onSuccess: () => {
+      // Clear all organizational data from localStorage
+      if (typeof window !== "undefined") {
+        try {
+          // Clear organization-specific data
+          localStorage.removeItem("current-organization-id");
+
+          // Clear all document storage keys
+          const storageKeys = [
+            "liyali-requisitions",
+            "liyali-purchase-orders",
+            "liyali-payment-vouchers",
+            "liyali-goods-received-notes",
+            "liyali-budgets",
+            "liyali-requisition-action-history",
+          ];
+
+          storageKeys.forEach((key) => {
+            localStorage.removeItem(key);
+          });
+
+          // Clear permission cache
+          const allKeys = Object.keys(localStorage);
+          const permissionKeys = allKeys.filter(
+            (key) =>
+              key.startsWith("permissions_") ||
+              key.startsWith("permissions_expiry_"),
+          );
+          permissionKeys.forEach((key) => {
+            localStorage.removeItem(key);
+          });
+
+          console.log("✅ Cleared all organizational data from localStorage");
+        } catch (error) {
+          console.error("Failed to clear localStorage on logout:", error);
+        }
+      }
+
       router.push("/login");
     },
     onError: (error) => {

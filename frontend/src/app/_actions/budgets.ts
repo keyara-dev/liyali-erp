@@ -24,7 +24,11 @@ export async function createBudget(
       data: request,
     });
 
-    return successResponse(response.data, "Budget created successfully");
+    return successResponse(
+      response.data?.data || null,
+      response.data?.message || "Budget created successfully",
+      response.data?.pagination,
+    );
   } catch (error: any) {
     return handleError(error, "POST", "/api/v1/budgets");
   }
@@ -44,7 +48,10 @@ export async function updateBudget(
       data: updates,
     });
 
-    return successResponse(response.data, "Budget updated successfully");
+    return successResponse(
+      response.data?.data || null,
+      response.data?.message || "Budget updated successfully",
+    );
   } catch (error: any) {
     return handleError(error, "PUT", `/api/v1/budgets/${budgetId}`);
   }
@@ -79,7 +86,13 @@ export async function getBudgets(
       params,
     });
 
-    return successResponse(response.data, "Budgets retrieved successfully");
+    // Backend returns { success, data, message, pagination }
+    // Extract the actual budgets array from response.data.data
+    return successResponse(
+      response.data?.data || [],
+      response.data?.message || "Budgets retrieved successfully",
+      response.data?.pagination,
+    );
   } catch (error: any) {
     return handleError(error, "GET", "/api/v1/budgets");
   }
@@ -97,7 +110,10 @@ export async function getBudgetById(
       url: `/api/v1/budgets/${budgetId}`,
     });
 
-    return successResponse(response.data, "Budget retrieved successfully");
+    return successResponse(
+      response.data?.data || null,
+      response.data?.message || "Budget retrieved successfully",
+    );
   } catch (error: any) {
     return handleError(error, "GET", `/api/v1/budgets/${budgetId}`);
   }
@@ -118,7 +134,10 @@ export async function submitBudgetForApproval(
       },
     });
 
-    return successResponse(response.data, "Budget submitted for approval");
+    return successResponse(
+      response.data?.data || null,
+      response.data?.message || "Budget submitted for approval",
+    );
   } catch (error: any) {
     return handleError(
       error,

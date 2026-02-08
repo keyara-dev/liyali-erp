@@ -61,7 +61,7 @@ const useCountdownTimer = (
   open: boolean,
   onTimeout: () => void,
   hasLoggedOutRef: React.RefObject<boolean>,
-  timeoutSeconds: number = DEFAULT_TIMEOUT / 1000
+  timeoutSeconds: number = DEFAULT_TIMEOUT / 1000,
 ) => {
   const [seconds, setSeconds] = useState(timeoutSeconds);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -158,7 +158,7 @@ function ScreenLock({
 
   const progress = useMemo(
     () => (seconds / SCREEN_LOCK_COUNTDOWN_SECONDS) * PROGRESS_CIRCLE_TOTAL,
-    [seconds]
+    [seconds],
   );
 
   return (
@@ -313,7 +313,7 @@ const useScreenLockSync = (loggedIn: boolean) => {
       broadcastChannelRef.current = new BroadcastChannel(SCREEN_LOCK_CHANNEL);
       broadcastChannelRef.current.addEventListener(
         "message",
-        handleBroadcastMessage
+        handleBroadcastMessage,
       );
       logger.debug("✅ BroadcastChannel initialized for multi-tab sync", {
         component: "useScreenLockSync",
@@ -324,7 +324,7 @@ const useScreenLockSync = (loggedIn: boolean) => {
         {
           component: "useScreenLockSync",
           error: (error as Error)?.message,
-        }
+        },
       );
     }
 
@@ -336,7 +336,7 @@ const useScreenLockSync = (loggedIn: boolean) => {
       if (broadcastChannelRef.current) {
         broadcastChannelRef.current.removeEventListener(
           "message",
-          handleBroadcastMessage
+          handleBroadcastMessage,
         );
         broadcastChannelRef.current.close();
         broadcastChannelRef.current = null;
@@ -376,7 +376,7 @@ const useScreenLockSync = (loggedIn: boolean) => {
             sourceTabId: tabIdRef.current,
             thisTabInitiatedLock: thisTabInitiatedLock.current,
             method: "BroadcastChannel",
-          }
+          },
         );
         return;
       } catch (error) {
@@ -385,7 +385,7 @@ const useScreenLockSync = (loggedIn: boolean) => {
           {
             component: "useScreenLockSync",
             error: (error as Error)?.message,
-          }
+          },
         );
       }
     }
@@ -467,7 +467,7 @@ export function IdleTimerContainer({
             {
               component: "IdleTimerContainer",
               isLocked,
-            }
+            },
           );
           setIsIdle(true);
           setIsDialogOpen(true);
@@ -499,11 +499,11 @@ export function IdleTimerContainer({
         refreshError,
         {
           component: "IdleTimerContainer",
-        }
+        },
       );
       toast.warning(
         "⚠️ Your session may be expiring. Please save your work and log back in if needed.",
-        { duration: 10000 }
+        { duration: 10000 },
       );
     }
   }, [refreshError]);
@@ -526,7 +526,7 @@ export function IdleTimerContainer({
           "Screen lock cookie not set, but showing modal anyway (user requirement)",
           {
             component: "IdleTimerContainer.onIdle",
-          }
+          },
         );
       } else {
         logger.info("✅ Screen lock activated successfully", {
@@ -539,7 +539,7 @@ export function IdleTimerContainer({
         lockError,
         {
           component: "IdleTimerContainer.onIdle",
-        }
+        },
       );
     }
   }, [broadcastState, setIsIdle]);
@@ -584,8 +584,49 @@ export function IdleTimerContainer({
           "⚠️ Logout response indicated failure, but proceeding with redirect",
           {
             component: "IdleTimerContainer.handleUserLogOut",
-          }
+          },
         );
+      }
+
+      // Clear all organizational data from localStorage
+      if (typeof window !== "undefined") {
+        try {
+          // Clear organization-specific data
+          localStorage.removeItem("current-organization-id");
+
+          // Clear all document storage keys
+          const storageKeys = [
+            "liyali-requisitions",
+            "liyali-purchase-orders",
+            "liyali-payment-vouchers",
+            "liyali-goods-received-notes",
+            "liyali-budgets",
+            "liyali-requisition-action-history",
+          ];
+
+          storageKeys.forEach((key) => {
+            localStorage.removeItem(key);
+          });
+
+          // Clear permission cache
+          const allKeys = Object.keys(localStorage);
+          const permissionKeys = allKeys.filter(
+            (key) =>
+              key.startsWith("permissions_") ||
+              key.startsWith("permissions_expiry_"),
+          );
+          permissionKeys.forEach((key) => {
+            localStorage.removeItem(key);
+          });
+
+          logger.info("✅ Cleared all organizational data from localStorage", {
+            component: "IdleTimerContainer.handleUserLogOut",
+          });
+        } catch (error) {
+          logger.error("Failed to clear localStorage on logout", error, {
+            component: "IdleTimerContainer.handleUserLogOut",
+          });
+        }
       }
 
       window.location.replace("/login");
@@ -606,7 +647,7 @@ export function IdleTimerContainer({
         "🔓 User clicked 'I'm still here' - attempting to unlock screen",
         {
           component: "IdleTimerContainer.handleStillHere",
-        }
+        },
       );
 
       const success = await lockScreenOnUserIdle(false);
@@ -628,7 +669,7 @@ export function IdleTimerContainer({
         "Screen unlock returned false, attempting fallback token refresh",
         {
           component: "IdleTimerContainer.handleStillHere",
-        }
+        },
       );
 
       const refreshResponse = await getRefreshToken();
