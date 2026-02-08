@@ -114,9 +114,13 @@ type CreateBudgetRequest struct {
 
 // UpdateBudgetRequest represents a budget update request
 type UpdateBudgetRequest struct {
-	Department      string  `json:"department"`
-	TotalBudget     float64 `json:"totalBudget"`
-	AllocatedAmount float64 `json:"allocatedAmount"`
+	Department      string        `json:"department"`
+	TotalBudget     float64       `json:"totalBudget"`
+	AllocatedAmount float64       `json:"allocatedAmount"`
+	Name            string        `json:"name"`
+	Description     string        `json:"description"`
+	Currency        string        `json:"currency"`
+	Items           []interface{} `json:"items"`
 }
 
 // BudgetResponse represents a budget in responses
@@ -138,6 +142,7 @@ type BudgetResponse struct {
 	Description     string           `json:"description,omitempty"`
 	Currency        string           `json:"currency,omitempty"`
 	CreatedBy       string           `json:"createdBy,omitempty"`
+	Items           []interface{}    `json:"items,omitempty"`
 	CreatedAt       time.Time        `json:"createdAt"`
 	UpdatedAt       time.Time        `json:"updatedAt"`
 }

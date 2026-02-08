@@ -332,6 +332,19 @@ func UpdateBudget(c *fiber.Ctx) error {
 	if req.AllocatedAmount >= 0 {
 		budget.AllocatedAmount = req.AllocatedAmount
 	}
+	if req.Name != "" {
+		budget.Name = req.Name
+	}
+	if req.Description != "" {
+		budget.Description = req.Description
+	}
+	if req.Currency != "" {
+		budget.Currency = req.Currency
+	}
+	// Update items if provided
+	if req.Items != nil {
+		budget.Items = datatypes.NewJSONType(req.Items)
+	}
 
 	budget.RemainingAmount = budget.TotalBudget - budget.AllocatedAmount
 	budget.UpdatedAt = time.Now()
@@ -517,6 +530,9 @@ func modelToBudgetResponse(budget models.Budget) types.BudgetResponse {
 	var approvalHistory []types.ApprovalRecord
 	approvalHistory = budget.ApprovalHistory.Data()
 
+	var items []interface{}
+	items = budget.Items.Data()
+
 	ownerName := ""
 	if budget.Owner != nil {
 		ownerName = budget.Owner.Name
@@ -540,6 +556,7 @@ func modelToBudgetResponse(budget models.Budget) types.BudgetResponse {
 		Description:     budget.Description,
 		Currency:        budget.Currency,
 		CreatedBy:       budget.CreatedBy,
+		Items:           items,
 		CreatedAt:       budget.CreatedAt,
 		UpdatedAt:       budget.UpdatedAt,
 	}

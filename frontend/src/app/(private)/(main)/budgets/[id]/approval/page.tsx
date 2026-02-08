@@ -8,7 +8,13 @@ import {
   ApprovalActionPanel,
   ApprovalHistory,
 } from "@/components/workflows";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -16,7 +22,7 @@ import {
   AlertCircle,
   CheckCircle2,
   ClockIcon,
-  DollarSign,
+  Banknote,
   TrendingUp,
   User,
   Calendar,
@@ -30,7 +36,7 @@ export default function BudgetApprovalPage() {
 
   // Fetch budget data if we have a documentId from the task
   const budgetId = task?.documentId;
-  const { data: budget } = useBudgetById(budgetId || '');
+  const { data: budget } = useBudgetById(budgetId || "");
 
   if (isLoading) {
     return (
@@ -71,15 +77,15 @@ export default function BudgetApprovalPage() {
               task.status === "pending"
                 ? "default"
                 : task.status === "approved"
-                ? "secondary"
-                : "destructive"
+                  ? "secondary"
+                  : "destructive"
             }
           >
             {task.status === "pending"
               ? "Pending Approval"
               : task.status === "approved"
-              ? "Approved"
-              : "Rejected"}
+                ? "Approved"
+                : "Rejected"}
           </Badge>
         </div>
       </div>
@@ -150,7 +156,7 @@ export default function BudgetApprovalPage() {
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <DollarSign className="h-5 w-5" />
+                  <Banknote className="h-5 w-5" />
                   Budget Details
                 </CardTitle>
                 <CardDescription>
@@ -218,9 +224,23 @@ export default function BudgetApprovalPage() {
 
           {/* Completed Approval Alert */}
           {task.status !== "pending" && (
-            <Alert className={task.status === "approved" ? "bg-green-50 border-green-200 dark:bg-green-900/20" : "bg-red-50 border-red-200 dark:bg-red-900/20"}>
-              <CheckCircle2 className={`h-4 w-4 ${task.status === "approved" ? "text-green-600" : "text-red-600"}`} />
-              <AlertDescription className={task.status === "approved" ? "text-green-700 dark:text-green-200" : "text-red-700 dark:text-red-200"}>
+            <Alert
+              className={
+                task.status === "approved"
+                  ? "bg-green-50 border-green-200 dark:bg-green-900/20"
+                  : "bg-red-50 border-red-200 dark:bg-red-900/20"
+              }
+            >
+              <CheckCircle2
+                className={`h-4 w-4 ${task.status === "approved" ? "text-green-600" : "text-red-600"}`}
+              />
+              <AlertDescription
+                className={
+                  task.status === "approved"
+                    ? "text-green-700 dark:text-green-200"
+                    : "text-red-700 dark:text-red-200"
+                }
+              >
                 {task.status === "approved"
                   ? "This budget has been approved and is proceeding to the next stage."
                   : "This budget has been rejected. Contact the requester for more information."}

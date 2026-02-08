@@ -26,15 +26,15 @@ export interface Budget {
   approvalHistory: any[];
   createdAt: Date;
   updatedAt: Date;
-  
+
   // Business requirement fields
   name: string;
   description: string;
   currency: string;
-  totalAmount: number;             // Same as totalBudget
+  totalAmount: number; // Same as totalBudget
   createdBy: string;
   items: any[];
-  
+
   // UI compatibility fields
   documentNumber?: string;
   currentStage?: number;
@@ -81,6 +81,7 @@ export interface UpdateBudgetRequest {
   name?: string;
   description?: string;
   currency?: string;
+  items?: BudgetItem[];
 }
 
 export interface ApproveBudgetRequest {
@@ -89,7 +90,7 @@ export interface ApproveBudgetRequest {
   approvingUserRole: string;
   signature: string;
   comments?: string;
-  stageNumber?: number;        // For multi-stage approvals
+  stageNumber?: number; // For multi-stage approvals
 }
 
 export interface RejectBudgetRequest {
@@ -98,28 +99,28 @@ export interface RejectBudgetRequest {
   rejectingUserRole: string;
   remarks: string;
   signature: string;
-  rejectionReason?: string;    // Alias for remarks
-  comments?: string;           // Additional comments
+  rejectionReason?: string; // Alias for remarks
+  comments?: string; // Additional comments
 }
 
 export interface SubmitBudgetRequest {
   budgetId: string;
   submittedBy: string;
   submittedByRole: string;
-  submittingUserId?: string;   // Alias for submittedBy
+  submittingUserId?: string; // Alias for submittedBy
   comments?: string;
 }
 
 export interface BudgetFilters {
   status?: BudgetStatus;
   department?: string;
-  departmentId?: string;       // Alias for department
+  departmentId?: string; // Alias for department
   fiscalYear?: string;
   search?: string;
-  searchTerm?: string;         // Alias for search
+  searchTerm?: string; // Alias for search
   page?: number;
   limit?: number;
-  userId?: string;             // For user-specific filtering
+  userId?: string; // For user-specific filtering
 }
 
 // ============================================================================
@@ -138,4 +139,10 @@ export interface BudgetStats {
 // TYPE ALIASES
 // ============================================================================
 
-export type BudgetStatus = "draft"| "pending" | "approved" | "rejected" | "completed" | "cancelled";
+export type BudgetStatus =
+  | "draft"
+  | "pending"
+  | "approved"
+  | "rejected"
+  | "completed"
+  | "cancelled";
