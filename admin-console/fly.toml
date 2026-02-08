@@ -25,10 +25,10 @@ primary_region = "jnb" # Johannesburg - same region as backend for optimal perfo
     soft_limit = 20
 
   [[http_service.checks]]
-    grace_period = "10s"
+    grace_period = "30s"
     interval = "30s"
     method = "GET"
-    timeout = "5s"
+    timeout = "10s"
     path = "/"
 
 [[vm]]
