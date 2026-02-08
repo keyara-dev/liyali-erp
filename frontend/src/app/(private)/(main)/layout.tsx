@@ -1,5 +1,5 @@
 import { PropsWithChildren } from "react";
-import { IdleTimerContainer } from "@/components/base/screen-lock";
+import { SessionTimeoutContainer } from "@/components/session/session-timeout-warning";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { verifySession } from "@/lib/auth";
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
@@ -9,11 +9,11 @@ export const dynamic = "force-dynamic";
 export default async function DashboardLayoutProvider({
   children,
 }: PropsWithChildren) {
-  const { session, isAuthenticated } = await verifySession(); // Replace with actual session retrieval logic
+  const { session, isAuthenticated } = await verifySession();
 
   return (
     <>
-      <IdleTimerContainer session={session} />
+      <SessionTimeoutContainer session={session} />
       <SidebarProvider
         style={
           {
