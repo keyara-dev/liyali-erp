@@ -64,18 +64,18 @@ export function BudgetApprovalPanel({
     switch (actionType.toUpperCase()) {
       case "APPROVE":
       case "APPROVED":
-        return "bg-green-50 border-green-200";
+        return "bg-green-50 dark:bg-green-950/30 border-green-300 dark:border-green-700";
       case "REJECT":
       case "REJECTED":
-        return "bg-red-50 border-red-200";
+        return "bg-red-50 dark:bg-red-950/30 border-red-300 dark:border-red-700";
       case "CREATE":
-        return "bg-blue-50 border-blue-200";
+        return "bg-blue-50 dark:bg-blue-950/30 border-blue-300 dark:border-blue-700";
       case "UPDATE":
-        return "bg-amber-50 border-amber-200";
+        return "bg-amber-50 dark:bg-amber-950/30 border-amber-300 dark:border-amber-700";
       case "SUBMIT":
-        return "bg-purple-50 border-purple-200";
+        return "bg-purple-50 dark:bg-purple-950/30 border-purple-300 dark:border-purple-700";
       default:
-        return "bg-gray-50 border-gray-200";
+        return "bg-gray-50 dark:bg-gray-800/30 border-gray-300 dark:border-gray-600";
     }
   };
 
@@ -169,13 +169,13 @@ export function BudgetApprovalPanel({
               {sortedHistory.map((action) => (
                 <div
                   key={action.id}
-                  className={`p-4 rounded-lg border ${getActionColor(action.actionType || "unknown")}`}
+                  className={`p-4 rounded-lg border-2 ${getActionColor(action.actionType || "unknown")}`}
                 >
                   <div className="flex items-start gap-3">
                     {getActionIcon(action.actionType || "unknown")}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-semibold text-sm">
+                        <span className="font-semibold text-sm text-gray-900 dark:text-gray-100">
                           {action.performedByName}
                         </span>
                         <Badge variant="outline" className="text-xs">
@@ -187,7 +187,7 @@ export function BudgetApprovalPanel({
                           </Badge>
                         )}
                       </div>
-                      <p className="text-xs text-gray-600 mt-1">
+                      <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
                         {new Date(
                           action.performedAt || action.timestamp || 0,
                         ).toLocaleString()}
@@ -195,7 +195,7 @@ export function BudgetApprovalPanel({
 
                       {/* Status transition */}
                       {action.previousStatus && action.newStatus && (
-                        <div className="text-xs mt-2 text-gray-700">
+                        <div className="text-xs mt-2 text-gray-700 dark:text-gray-300">
                           Status:{" "}
                           <span className="font-mono">
                             {action.previousStatus}
@@ -207,7 +207,7 @@ export function BudgetApprovalPanel({
 
                       {/* Stage info for approval actions */}
                       {action.stageNumber && action.stageName && (
-                        <div className="text-xs mt-2 text-gray-700">
+                        <div className="text-xs mt-2 text-gray-700 dark:text-gray-300">
                           Stage {action.stageNumber}:{" "}
                           <span className="font-semibold">
                             {action.stageName}
@@ -217,14 +217,14 @@ export function BudgetApprovalPanel({
 
                       {/* Comments */}
                       {action.comments && (
-                        <p className="text-sm mt-2 text-gray-700 italic">
+                        <p className="text-sm mt-2 text-gray-700 dark:text-gray-300 italic">
                           "{action.comments}"
                         </p>
                       )}
 
                       {/* Remarks (for rejections) */}
                       {action.remarks && (
-                        <p className="text-sm mt-2 text-red-700 font-semibold">
+                        <p className="text-sm mt-2 text-red-700 dark:text-red-400 font-semibold">
                           Reason: "{action.remarks}"
                         </p>
                       )}
