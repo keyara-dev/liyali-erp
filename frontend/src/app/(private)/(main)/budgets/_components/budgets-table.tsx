@@ -44,14 +44,12 @@ import { Pagination } from "@/types";
 import { QUERY_KEYS } from "@/lib/constants";
 
 interface BudgetsTableProps {
-  userId: string;
   userRole: string;
   refreshTrigger: number;
   onBudgetAction: () => void;
 }
 
 export function BudgetsTable({
-  userId,
   userRole,
   refreshTrigger,
   onBudgetAction,
@@ -62,7 +60,7 @@ export function BudgetsTable({
     data: budgetsFromHook = [],
     isLoading: hookLoading,
     refetch,
-  } = useBudgets(userId); // Get budgets for the current user
+  } = useBudgets(); // Get all budgets for the organization
 
   // Refetch when refreshTrigger changes (after budget creation)
   useEffect(() => {

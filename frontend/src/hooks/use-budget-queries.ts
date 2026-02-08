@@ -14,25 +14,24 @@ import { useBudgetStorage } from "@/hooks/use-budget-storage";
 import { toast } from "sonner";
 
 /**
- * Fetch all budgets for a user
- * Static data - rarely changes
+ * Fetch all budgets for the organization
+ * Standard data - 5 minute refresh interval
  *
- * @param userId - User ID to fetch budgets for
  * @param initialBudgets - Optional initial data from server component
  * @returns Query result with budgets array
  *
  * @example
- * const { data: budgets, isLoading } = useBudgets(userId, initialBudgets)
+ * const { data: budgets, isLoading } = useBudgets(initialBudgets)
  */
-export const useBudgets = (userId: string, initialBudgets?: Budget[]) =>
+export const useBudgets = (initialBudgets?: Budget[]) =>
   useQuery({
-    queryKey: [QUERY_KEYS.BUDGETS.BY_USER, userId],
+    queryKey: [QUERY_KEYS.BUDGETS.ALL],
     queryFn: async () => {
-      const response = await getBudgets({ userId });
+      const response = await getBudgets({}, 1, 100); // Get all organization budgets
       return response.success ? response.data : [];
     },
     initialData: initialBudgets,
-    staleTime: Infinity, // Static data
+    staleTime: 5 * 60 * 1000, // 5 minutes - allow refetching
   });
 
 /**
@@ -119,7 +118,6 @@ export const useSaveBudget = (onSuccess?: () => void) => {
       );
 
       // Invalidate budget queries
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.BUDGETS.BY_USER] });
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.BUDGETS.ALL] });
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.BUDGETS.STATS] });
 
@@ -168,7 +166,7 @@ export const useSubmitBudgetForApproval = (
       queryClient.invalidateQueries({
         queryKey: [QUERY_KEYS.BUDGETS.BY_ID, budgetId],
       });
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.BUDGETS.BY_USER] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.BUDGETS.ALL] });
 
       onSuccess?.();
     },
@@ -217,7 +215,6 @@ export const useUpdateBudget = (budgetId: string, onSuccess?: () => void) => {
       queryClient.invalidateQueries({
         queryKey: [QUERY_KEYS.BUDGETS.BY_ID, budgetId],
       });
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.BUDGETS.BY_USER] });
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.BUDGETS.ALL] });
 
       onSuccess?.();

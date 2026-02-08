@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   Dialog,
   DialogContent,
@@ -14,24 +15,17 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { SelectField } from "@/components/ui/select-field";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { InfoIcon } from "lucide-react";
+import { InfoIcon, Loader2 } from "lucide-react";
 import { createBudget } from "@/app/_actions/budgets";
+import { useActiveDepartments } from "@/hooks/use-department-queries";
 import { useBudgetStorage } from "@/hooks/use-budget-storage";
+import { QUERY_KEYS } from "@/lib/constants";
 
 interface CreateBudgetDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onBudgetCreated: () => void;
 }
-
-const departments = [
-  { id: "dept-it", label: "Information Technology" },
-  { id: "dept-hr", label: "Human Resources" },
-  { id: "dept-ops", label: "Operations" },
-  { id: "dept-sales", label: "Sales" },
-  { id: "dept-marketing", label: "Marketing" },
-  { id: "dept-finance", label: "Finance" },
-];
 
 const currencies = [
   { code: "ZMW", label: "Zambian Kwacha (K)" },
@@ -51,7 +45,10 @@ export function CreateBudgetDialog({
   onBudgetCreated,
 }: CreateBudgetDialogProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { data: departments = [], isLoading: isLoadingDepartments } =
+    useActiveDepartments();
   const { saveToStorage } = useBudgetStorage();
+  const queryClient = useQueryClient();
   const [formData, setFormData] = useState({
     name: "",
     description: "",
@@ -85,7 +82,7 @@ export function CreateBudgetDialog({
     setFormData((prev) => ({
       ...prev,
       departmentId,
-      department: dept?.label || "",
+      department: dept?.name || "",
     }));
   };
 
@@ -120,6 +117,12 @@ export function CreateBudgetDialog({
       if (result.success && result.data) {
         // Store the new budget in localStorage (single source of truth)
         saveToStorage(result.data);
+
+        // Invalidate all budget queries to force refetch
+        queryClient.invalidateQueries({
+          queryKey: [QUERY_KEYS.BUDGETS.BY_USER],
+        });
+        queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.BUDGETS.ALL] });
 
         // Show success toast
         toast.success(`Budget "${formData.name}" created successfully`);
@@ -208,15 +211,25 @@ export function CreateBudgetDialog({
           <SelectField
             label="Department"
             required
-            placeholder="Select a department"
+            placeholder={
+              isLoadingDepartments
+                ? "Loading departments..."
+                : "Select a department"
+            }
             value={formData.departmentId}
             onValueChange={handleDepartmentChange}
-            disabled={isSubmitting}
+            disabled={isSubmitting || isLoadingDepartments}
             options={departments.map((dept) => ({
               value: dept.id,
-              label: dept.label,
+              label: dept.name,
             }))}
           />
+          {isLoadingDepartments && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="h-3 w-3 animate-spin" />
+              <span>Loading departments...</span>
+            </div>
+          )}
 
           {/* Fiscal Year */}
           <Input

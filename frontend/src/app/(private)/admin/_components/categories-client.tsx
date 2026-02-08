@@ -31,6 +31,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { SearchSelectField } from "@/components/ui/search-select-field";
 import { useQueryClient } from "@tanstack/react-query";
 import { QUERY_KEYS } from "@/lib/constants";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -42,6 +43,7 @@ import {
   useUpdateCategory,
   useDeleteCategory,
 } from "@/hooks/use-category-queries";
+import { useAllBudgets } from "@/hooks/use-budget-queries";
 import { Category } from "@/app/_actions/categories";
 import { PageHeader } from "@/components/base/page-header";
 import { PlusCircledIcon } from "@radix-ui/react-icons";
@@ -345,12 +347,16 @@ function CreateOrUpdateCategoryDialog({
     message: "",
   });
   const [formData, setFormData] = useState(CATEGORY_INITIAL_STATE);
-  const [budgetCodeInput, setBudgetCodeInput] = useState("");
+  const [selectedBudgetId, setSelectedBudgetId] = useState("");
+
+  // Fetch all budgets for the dropdown
+  const { data: budgets = [], isLoading: budgetsLoading } = useAllBudgets();
 
   const createMutation = useCreateCategory(() => {
     setOpenModal(false);
     setInitialData(null);
     setFormData(CATEGORY_INITIAL_STATE);
+    setSelectedBudgetId("");
     onSuccess();
   });
 
@@ -358,6 +364,7 @@ function CreateOrUpdateCategoryDialog({
     setOpenModal(false);
     setInitialData(null);
     setFormData(CATEGORY_INITIAL_STATE);
+    setSelectedBudgetId("");
     onSuccess();
   });
 
@@ -382,7 +389,7 @@ function CreateOrUpdateCategoryDialog({
         setFormData(CATEGORY_INITIAL_STATE);
         setError({ status: false, message: "" });
         setInitialData(null);
-        setBudgetCodeInput("");
+        setSelectedBudgetId("");
       }, 200);
 
       return () => clearTimeout(timer);
@@ -410,15 +417,18 @@ function CreateOrUpdateCategoryDialog({
   };
 
   const addBudgetCode = () => {
-    if (
-      budgetCodeInput.trim() &&
-      !formData.budgetCodes.includes(budgetCodeInput.trim())
-    ) {
+    if (!selectedBudgetId) return;
+
+    const selectedBudget = budgets.find((b) => b.id === selectedBudgetId);
+    if (!selectedBudget) return;
+
+    const budgetCode = selectedBudget.budgetCode;
+    if (budgetCode && !formData.budgetCodes.includes(budgetCode)) {
       setFormData((prev) => ({
         ...prev,
-        budgetCodes: [...prev.budgetCodes, budgetCodeInput.trim()],
+        budgetCodes: [...prev.budgetCodes, budgetCode],
       }));
-      setBudgetCodeInput("");
+      setSelectedBudgetId("");
     }
   };
 
@@ -440,7 +450,7 @@ function CreateOrUpdateCategoryDialog({
           setFormData(CATEGORY_INITIAL_STATE);
           setError({ status: false, message: "" });
           setInitialData(null);
-          setBudgetCodeInput("");
+          setSelectedBudgetId("");
         }
       }}
     >
@@ -476,22 +486,30 @@ function CreateOrUpdateCategoryDialog({
             <label className="text-sm font-medium">
               Budget Codes (Optional)
             </label>
-            <div className="flex gap-2 items-center">
-              <Input
-                placeholder="Enter budget code"
-                value={budgetCodeInput}
-                onChange={(e) => setBudgetCodeInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    addBudgetCode();
-                  }
-                }}
-              />
+            <p className="text-xs text-muted-foreground">
+              Select budgets to associate with this category
+            </p>
+            <div className="flex gap-2 items-start">
+              <div className="flex-1">
+                <SearchSelectField
+                  placeholder="Search budgets by name or code..."
+                  value={selectedBudgetId}
+                  onValueChange={setSelectedBudgetId}
+                  isLoading={budgetsLoading}
+                  options={budgets.map((budget) => ({
+                    id: budget.id,
+                    value: budget.id,
+                    name: `${budget.budgetCode} - ${budget.name}`,
+                    label: `${budget.budgetCode} - ${budget.name}`,
+                  }))}
+                  listItemName="name"
+                />
+              </div>
               <Button
                 type="button"
                 onClick={addBudgetCode}
-                disabled={!budgetCodeInput.trim()}
+                disabled={!selectedBudgetId || budgetsLoading}
+                className="mt-0"
               >
                 Add
               </Button>

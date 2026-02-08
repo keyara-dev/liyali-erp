@@ -1,35 +1,32 @@
-'use server'
+"use server";
 
-import { APIResponse } from '@/types'
+import { APIResponse } from "@/types";
 import {
   Budget,
   BudgetStatus,
   CreateBudgetRequest,
   SubmitBudgetRequest,
-  BudgetFilters
-} from '@/types/budget'
-import authenticatedApiClient from './api-config'
-import { handleError, successResponse, badRequestResponse } from './api-config'
+  BudgetFilters,
+} from "@/types/budget";
+import authenticatedApiClient from "./api-config";
+import { handleError, successResponse, badRequestResponse } from "./api-config";
 
 /**
  * Create a new budget draft
  */
 export async function createBudget(
-  request: Omit<CreateBudgetRequest, 'createdBy'> & { status?: BudgetStatus }
+  request: Omit<CreateBudgetRequest, "createdBy"> & { status?: BudgetStatus },
 ): Promise<APIResponse<Budget | null>> {
   try {
     const response = await authenticatedApiClient({
-      method: 'POST',
-      url: '/api/v1/budgets',
-      data: request
-    })
+      method: "POST",
+      url: "/api/v1/budgets",
+      data: request,
+    });
 
-    return successResponse(
-      response.data,
-      'Budget created successfully'
-    )
+    return successResponse(response.data, "Budget created successfully");
   } catch (error: any) {
-    return handleError(error, 'POST', '/api/v1/budgets')
+    return handleError(error, "POST", "/api/v1/budgets");
   }
 }
 
@@ -38,21 +35,18 @@ export async function createBudget(
  */
 export async function updateBudget(
   budgetId: string,
-  updates: Partial<Budget>
+  updates: Partial<Budget>,
 ): Promise<APIResponse<Budget | null>> {
   try {
     const response = await authenticatedApiClient({
-      method: 'PUT',
+      method: "PUT",
       url: `/api/v1/budgets/${budgetId}`,
-      data: updates
-    })
+      data: updates,
+    });
 
-    return successResponse(
-      response.data,
-      'Budget updated successfully'
-    )
+    return successResponse(response.data, "Budget updated successfully");
   } catch (error: any) {
-    return handleError(error, 'PUT', `/api/v1/budgets/${budgetId}`)
+    return handleError(error, "PUT", `/api/v1/budgets/${budgetId}`);
   }
 }
 
@@ -62,53 +56,50 @@ export async function updateBudget(
 export async function getBudgets(
   filters?: BudgetFilters,
   page: number = 1,
-  limit: number = 10
+  limit: number = 10,
 ): Promise<APIResponse<Budget[] | null>> {
   try {
     const params: any = {
       page,
-      limit
-    }
+      limit,
+    };
 
     // Add filter parameters if provided
     if (filters) {
-      if (filters.status) params.status = filters.status
-      if (filters.fiscalYear) params.fiscalYear = filters.fiscalYear
-      if (filters.departmentId) params.departmentId = filters.departmentId
-      if (filters.searchTerm) params.search = filters.searchTerm
+      if (filters.status) params.status = filters.status;
+      if (filters.fiscalYear) params.fiscalYear = filters.fiscalYear;
+      if (filters.departmentId) params.departmentId = filters.departmentId;
+      if (filters.searchTerm) params.search = filters.searchTerm;
+      if (filters.userId) params.userId = filters.userId;
     }
 
     const response = await authenticatedApiClient({
-      method: 'GET',
-      url: '/api/v1/budgets',
-      params
-    })
+      method: "GET",
+      url: "/api/v1/budgets",
+      params,
+    });
 
-    return successResponse(
-      response.data,
-      'Budgets retrieved successfully'
-    )
+    return successResponse(response.data, "Budgets retrieved successfully");
   } catch (error: any) {
-    return handleError(error, 'GET', '/api/v1/budgets')
+    return handleError(error, "GET", "/api/v1/budgets");
   }
 }
 
 /**
  * Get budget by ID
  */
-export async function getBudgetById(budgetId: string): Promise<APIResponse<Budget | null>> {
+export async function getBudgetById(
+  budgetId: string,
+): Promise<APIResponse<Budget | null>> {
   try {
     const response = await authenticatedApiClient({
-      method: 'GET',
-      url: `/api/v1/budgets/${budgetId}`
-    })
+      method: "GET",
+      url: `/api/v1/budgets/${budgetId}`,
+    });
 
-    return successResponse(
-      response.data,
-      'Budget retrieved successfully'
-    )
+    return successResponse(response.data, "Budget retrieved successfully");
   } catch (error: any) {
-    return handleError(error, 'GET', `/api/v1/budgets/${budgetId}`)
+    return handleError(error, "GET", `/api/v1/budgets/${budgetId}`);
   }
 }
 
@@ -116,24 +107,23 @@ export async function getBudgetById(budgetId: string): Promise<APIResponse<Budge
  * Submit budget for approval
  */
 export async function submitBudgetForApproval(
-  request: SubmitBudgetRequest
+  request: SubmitBudgetRequest,
 ): Promise<APIResponse<Budget | null>> {
   try {
     const response = await authenticatedApiClient({
-      method: 'POST',
+      method: "POST",
       url: `/api/v1/budgets/${request.budgetId}/submit`,
       data: {
-        submittingUserId: request.submittingUserId
-      }
-    })
+        submittingUserId: request.submittingUserId,
+      },
+    });
 
-    return successResponse(
-      response.data,
-      'Budget submitted for approval'
-    )
+    return successResponse(response.data, "Budget submitted for approval");
   } catch (error: any) {
-    return handleError(error, 'POST', `/api/v1/budgets/${request.budgetId}/submit`)
+    return handleError(
+      error,
+      "POST",
+      `/api/v1/budgets/${request.budgetId}/submit`,
+    );
   }
 }
-
-
