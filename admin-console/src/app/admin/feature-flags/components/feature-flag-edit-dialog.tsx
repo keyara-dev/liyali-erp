@@ -61,11 +61,12 @@ interface FeatureFlagEditDialogProps {
     flag: Omit<
       FeatureFlag,
       | "id"
-      | "createdAt"
-      | "updatedAt"
-      | "createdBy"
-      | "updatedBy"
-      | "evaluationCount"
+      | "created_at"
+      | "updated_at"
+      | "created_by"
+      | "updated_by"
+      | "evaluation_count"
+      | "last_evaluated"
     >,
   ) => void;
   isLoading?: boolean;
@@ -83,7 +84,7 @@ export function FeatureFlagEditDialog({
     name: "",
     description: "",
     type: "boolean" as FeatureFlag["type"],
-    defaultValue: "false",
+    default_value: "false",
     enabled: false,
     environment: "all" as FeatureFlag["environment"],
     category: "feature" as FeatureFlag["category"],
@@ -95,8 +96,8 @@ export function FeatureFlagEditDialog({
       userSegments: [] as string[],
     },
     variations: [] as Variation[],
-    isArchived: false,
-    expiresAt: undefined as string | undefined,
+    is_archived: false,
+    expires_at: undefined as string | undefined,
   });
 
   const [validationErrors, setValidationErrors] = useState<
@@ -137,19 +138,19 @@ export function FeatureFlagEditDialog({
         name: flag.name,
         description: flag.description,
         type: flag.type,
-        defaultValue: flag.defaultValue,
+        default_value: flag.default_value,
         enabled: flag.enabled,
         environment: flag.environment,
         category: flag.category,
         tags: flag.tags,
         targeting: flag.targeting,
         variations: flag.variations,
-        isArchived: flag.isArchived,
-        expiresAt: flag.expiresAt,
+        is_archived: flag.is_archived,
+        expires_at: flag.expires_at,
       });
       setTagInput(flag.tags.join(", "));
       setSegmentInput(flag.targeting.userSegments.join(", "));
-      setExpiryDate(flag.expiresAt ? new Date(flag.expiresAt) : undefined);
+      setExpiryDate(flag.expires_at ? new Date(flag.expires_at) : undefined);
     } else {
       // Set default variations based on type
       const defaultVariations: Variation[] = [
@@ -176,7 +177,7 @@ export function FeatureFlagEditDialog({
         name: "",
         description: "",
         type: "boolean",
-        defaultValue: "false",
+        default_value: "false",
         enabled: false,
         environment: "all",
         category: "feature",
@@ -188,8 +189,8 @@ export function FeatureFlagEditDialog({
           userSegments: [],
         },
         variations: defaultVariations,
-        isArchived: false,
-        expiresAt: undefined,
+        is_archived: false,
+        expires_at: undefined,
       });
       setTagInput("");
       setSegmentInput("");
@@ -243,7 +244,7 @@ export function FeatureFlagEditDialog({
 
   const handleExpiryDateChange = (date?: Date) => {
     setExpiryDate(date);
-    handleInputChange("expiresAt", date?.toISOString());
+    handleInputChange("expires_at", date?.toISOString());
   };
 
   const addVariation = () => {
@@ -794,21 +795,21 @@ export function FeatureFlagEditDialog({
 
               <div className="flex items-center space-x-2">
                 <Switch
-                  checked={formData.isArchived}
+                  checked={formData.is_archived}
                   onCheckedChange={(checked) =>
-                    handleInputChange("isArchived", checked)
+                    handleInputChange("is_archived", checked)
                   }
                 />
                 <Label>Archived</Label>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="defaultValue">Default Value</Label>
+                <Label htmlFor="default_value">Default Value</Label>
                 <Input
-                  id="defaultValue"
-                  value={formData.defaultValue}
+                  id="default_value"
+                  value={formData.default_value}
                   onChange={(e) =>
-                    handleInputChange("defaultValue", e.target.value)
+                    handleInputChange("default_value", e.target.value)
                   }
                   placeholder="Default value when flag is disabled"
                 />

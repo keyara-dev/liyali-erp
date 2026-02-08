@@ -130,11 +130,12 @@ export default function FeatureFlagsPage() {
     flagData: Omit<
       FeatureFlag,
       | "id"
-      | "createdAt"
-      | "updatedAt"
-      | "createdBy"
-      | "updatedBy"
-      | "evaluationCount"
+      | "created_at"
+      | "updated_at"
+      | "created_by"
+      | "updated_by"
+      | "evaluation_count"
+      | "last_evaluated"
     >,
   ) => {
     try {
@@ -159,11 +160,12 @@ export default function FeatureFlagsPage() {
     flagData: Omit<
       FeatureFlag,
       | "id"
-      | "createdAt"
-      | "updatedAt"
-      | "createdBy"
-      | "updatedBy"
-      | "evaluationCount"
+      | "created_at"
+      | "updated_at"
+      | "created_by"
+      | "updated_by"
+      | "evaluation_count"
+      | "last_evaluated"
     >,
   ) => {
     if (!editingFlag) return;
@@ -246,11 +248,11 @@ export default function FeatureFlagsPage() {
       id: "",
       key: `${flag.key}_copy`,
       name: `${flag.name} (Copy)`,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      createdBy: "current-user",
-      updatedBy: "current-user",
-      evaluationCount: 0,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      created_by: "current-user",
+      updated_by: "current-user",
+      evaluation_count: 0,
       enabled: false,
     });
   };

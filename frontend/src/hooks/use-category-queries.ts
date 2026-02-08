@@ -40,7 +40,14 @@ export const useCategories = (
     ],
     queryFn: async () => {
       const response = await getCategories(page, limit, activeOnly);
-      return response.success && response.data ? response.data.data : [];
+      if (
+        response.success &&
+        response.data &&
+        Array.isArray(response.data.data)
+      ) {
+        return response.data.data;
+      }
+      return [];
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
   });

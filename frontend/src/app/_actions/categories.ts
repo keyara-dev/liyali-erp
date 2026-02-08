@@ -7,11 +7,11 @@ import authenticatedApiClient from "./api-config";
 export interface Category {
   id: string;
   name: string;
-  description: string;
-  budgetCodes: string[];
+  description?: string | null;
+  budgetCodes?: string[] | null;
   active: boolean;
-  createdAt: Date;
-  updatedAt: Date;
+  createdAt?: string | Date | null;
+  updatedAt?: string | Date | null;
 }
 
 export interface CreateCategoryRequest {

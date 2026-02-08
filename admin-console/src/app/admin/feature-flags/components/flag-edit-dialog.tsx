@@ -62,11 +62,12 @@ interface FlagEditDialogProps {
     flag: Omit<
       FeatureFlag,
       | "id"
-      | "createdAt"
-      | "updatedAt"
-      | "createdBy"
-      | "updatedBy"
-      | "evaluationCount"
+      | "created_at"
+      | "updated_at"
+      | "created_by"
+      | "updated_by"
+      | "evaluation_count"
+      | "last_evaluated"
     >,
   ) => void;
   isLoading?: boolean;
@@ -84,7 +85,7 @@ export function FlagEditDialog({
     name: "",
     description: "",
     type: "boolean" as FeatureFlag["type"],
-    defaultValue: "false",
+    default_value: "false",
     enabled: false,
     environment: "all" as FeatureFlag["environment"],
     category: "feature" as FeatureFlag["category"],
@@ -96,8 +97,8 @@ export function FlagEditDialog({
       userSegments: [] as string[],
     },
     variations: [] as Variation[],
-    isArchived: false,
-    expiresAt: undefined as string | undefined,
+    is_archived: false,
+    expires_at: undefined as string | undefined,
   });
 
   const [tagInput, setTagInput] = useState("");
@@ -149,20 +150,20 @@ export function FlagEditDialog({
         name: flag.name,
         description: flag.description,
         type: flag.type,
-        defaultValue: flag.defaultValue,
+        default_value: flag.default_value,
         enabled: flag.enabled,
         environment: flag.environment,
         category: flag.category,
         tags: flag.tags,
         targeting: flag.targeting,
         variations: flag.variations,
-        isArchived: flag.isArchived,
-        expiresAt: flag.expiresAt,
+        is_archived: flag.is_archived,
+        expires_at: flag.expires_at,
       });
       setTagInput(flag.tags.join(", "));
       setSegmentInput(flag.targeting.userSegments.join(", "));
-      if (flag.expiresAt) {
-        setExpiryDate(new Date(flag.expiresAt));
+      if (flag.expires_at) {
+        setExpiryDate(new Date(flag.expires_at));
       }
     } else {
       // Initialize with default variations based on type
@@ -172,7 +173,7 @@ export function FlagEditDialog({
         name: "",
         description: "",
         type: "boolean",
-        defaultValue: "false",
+        default_value: "false",
         enabled: false,
         environment: "all",
         category: "feature",
@@ -184,8 +185,8 @@ export function FlagEditDialog({
           userSegments: [],
         },
         variations: defaultVariations,
-        isArchived: false,
-        expiresAt: undefined,
+        is_archived: false,
+        expires_at: undefined,
       });
       setTagInput("");
       setSegmentInput("");
@@ -256,13 +257,13 @@ export function FlagEditDialog({
 
   const handleTypeChange = (type: FeatureFlag["type"]) => {
     const defaultVariations = getDefaultVariations(type);
-    const defaultValue =
+    const default_value =
       type === "boolean" ? "false" : type === "number" ? "0" : "";
 
     setFormData((prev) => ({
       ...prev,
       type,
-      defaultValue,
+      default_value,
       variations: defaultVariations,
     }));
   };
@@ -290,7 +291,7 @@ export function FlagEditDialog({
 
   const handleExpiryDateChange = (date?: Date) => {
     setExpiryDate(date);
-    handleInputChange("expiresAt", date?.toISOString());
+    handleInputChange("expires_at", date?.toISOString());
   };
 
   const addVariation = () => {
@@ -999,9 +1000,9 @@ export function FlagEditDialog({
               <div className="space-y-2">
                 <Label>Default Value</Label>
                 <Input
-                  value={formData.defaultValue}
+                  value={formData.default_value}
                   onChange={(e) =>
-                    handleInputChange("defaultValue", e.target.value)
+                    handleInputChange("default_value", e.target.value)
                   }
                   placeholder="Default value when flag is disabled"
                 />

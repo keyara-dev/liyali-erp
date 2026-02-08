@@ -362,12 +362,12 @@ export function ConfigurationTemplates({
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-2">
                           <span className="font-medium">{setting.key}</span>
-                          {setting.isRequired && (
+                          {setting.is_required && (
                             <Badge variant="destructive" className="text-xs">
                               Required
                             </Badge>
                           )}
-                          {setting.isSecret && (
+                          {setting.is_secret && (
                             <Badge variant="secondary" className="text-xs">
                               Secret
                             </Badge>
@@ -382,10 +382,10 @@ export function ConfigurationTemplates({
                           {setting.description}
                         </p>
                       )}
-                      {setting.defaultValue && (
+                      {setting.default_value && (
                         <p className="text-sm mt-1">
                           <span className="font-medium">Default:</span>{" "}
-                          {setting.defaultValue}
+                          {setting.default_value}
                         </p>
                       )}
                     </div>

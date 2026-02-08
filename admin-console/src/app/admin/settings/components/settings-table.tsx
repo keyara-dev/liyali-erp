@@ -116,7 +116,7 @@ export function SettingsTable({
   };
 
   const formatValue = (setting: SystemSetting) => {
-    if (setting.isSecret && !showSecretValues[setting.id]) {
+    if (setting.is_secret && !showSecretValues[setting.id]) {
       return "***HIDDEN***";
     }
 
@@ -248,10 +248,10 @@ export function SettingsTable({
                   <div className="flex items-center space-x-2">
                     <div className="flex items-center space-x-1">
                       <span className="font-medium">{setting.key}</span>
-                      {setting.isRequired && (
+                      {setting.is_required && (
                         <AlertTriangle className="h-3 w-3 text-red-500" />
                       )}
-                      {setting.isSecret && (
+                      {setting.is_secret && (
                         <Lock className="h-3 w-3 text-amber-500" />
                       )}
                     </div>
@@ -274,7 +274,7 @@ export function SettingsTable({
                         <span
                           className={cn(
                             setting.type === "boolean" && "font-mono",
-                            setting.isSecret &&
+                            setting.is_secret &&
                               !showSecretValues[setting.id] &&
                               "text-muted-foreground",
                           )}
@@ -283,7 +283,7 @@ export function SettingsTable({
                         </span>
                       )}
                     </div>
-                    {setting.isSecret && (
+                    {setting.is_secret && (
                       <Button
                         variant="ghost"
                         size="sm"
@@ -336,10 +336,10 @@ export function SettingsTable({
                 <TableCell>
                   <div className="text-sm">
                     <div>
-                      {format(new Date(setting.lastModified), "MMM dd, yyyy")}
+                      {format(new Date(setting.updated_at), "MMM dd, yyyy")}
                     </div>
                     <div className="text-xs text-muted-foreground">
-                      {format(new Date(setting.lastModified), "HH:mm")}
+                      {format(new Date(setting.updated_at), "HH:mm")}
                     </div>
                   </div>
                 </TableCell>
@@ -373,9 +373,9 @@ export function SettingsTable({
 
                       <DropdownMenuItem
                         onClick={() => onToggleSecret(setting.id)}
-                        disabled={!setting.isSecret}
+                        disabled={!setting.is_secret}
                       >
-                        {setting.isSecret ? (
+                        {setting.is_secret ? (
                           <>
                             <Unlock className="mr-2 h-4 w-4" />
                             Make Non-Secret
@@ -393,7 +393,7 @@ export function SettingsTable({
                       <DropdownMenuItem
                         onClick={() => onDelete(setting.id)}
                         className="text-red-600"
-                        disabled={setting.isRequired}
+                        disabled={setting.is_required}
                       >
                         <Trash2 className="mr-2 h-4 w-4" />
                         Delete Setting

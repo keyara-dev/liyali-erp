@@ -296,7 +296,7 @@ export function FeatureFlagAnalyticsDialog({
                       <div>
                         <span className="font-medium">Created:</span>
                         <p className="text-muted-foreground">
-                          {format(new Date(flag.createdAt), "MMM dd, yyyy")}
+                          {format(new Date(flag.created_at), "MMM dd, yyyy")}
                         </p>
                       </div>
                     </div>

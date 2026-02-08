@@ -45,7 +45,10 @@ interface SettingEditDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSave: (
-    setting: Omit<SystemSetting, "id" | "lastModified" | "modifiedBy">,
+    setting: Omit<
+      SystemSetting,
+      "id" | "created_at" | "updated_at" | "created_by" | "updated_by"
+    >,
   ) => void;
   isLoading?: boolean;
 }
@@ -63,9 +66,9 @@ export function SettingEditDialog({
     type: "string" as SystemSetting["type"],
     category: "general" as SystemSetting["category"],
     description: "",
-    defaultValue: "",
-    isRequired: false,
-    isSecret: false,
+    default_value: "",
+    is_required: false,
+    is_secret: false,
     environment: "all" as SystemSetting["environment"],
     validation: {
       min: undefined as number | undefined,
@@ -115,9 +118,9 @@ export function SettingEditDialog({
         type: setting.type,
         category: setting.category,
         description: setting.description,
-        defaultValue: setting.defaultValue,
-        isRequired: setting.isRequired,
-        isSecret: setting.isSecret,
+        default_value: setting.default_value,
+        is_required: setting.is_required,
+        is_secret: setting.is_secret,
         environment: setting.environment,
         validation: {
           min: setting.validation?.min,
@@ -127,7 +130,7 @@ export function SettingEditDialog({
         },
       });
       setOptionsInput(setting.validation?.options?.join(", ") || "");
-      setShowValue(!setting.isSecret);
+      setShowValue(!setting.is_secret);
     } else {
       setFormData({
         key: "",
@@ -135,9 +138,9 @@ export function SettingEditDialog({
         type: "string",
         category: "general",
         description: "",
-        defaultValue: "",
-        isRequired: false,
-        isSecret: false,
+        default_value: "",
+        is_required: false,
+        is_secret: false,
         environment: "all",
         validation: {
           min: undefined,
@@ -204,8 +207,8 @@ export function SettingEditDialog({
       if (formData.value && isNaN(Number(formData.value))) {
         errors.value = "Value must be a valid number";
       }
-      if (formData.defaultValue && isNaN(Number(formData.defaultValue))) {
-        errors.defaultValue = "Default value must be a valid number";
+      if (formData.default_value && isNaN(Number(formData.default_value))) {
+        errors.default_value = "Default value must be a valid number";
       }
     }
 
@@ -217,10 +220,10 @@ export function SettingEditDialog({
         errors.value = "Value must be true or false";
       }
       if (
-        formData.defaultValue &&
-        !["true", "false"].includes(formData.defaultValue.toLowerCase())
+        formData.default_value &&
+        !["true", "false"].includes(formData.default_value.toLowerCase())
       ) {
-        errors.defaultValue = "Default value must be true or false";
+        errors.default_value = "Default value must be true or false";
       }
     }
 
@@ -232,11 +235,11 @@ export function SettingEditDialog({
           errors.value = "Value must be valid JSON";
         }
       }
-      if (formData.defaultValue) {
+      if (formData.default_value) {
         try {
-          JSON.parse(formData.defaultValue);
+          JSON.parse(formData.default_value);
         } catch {
-          errors.defaultValue = "Default value must be valid JSON";
+          errors.default_value = "Default value must be valid JSON";
         }
       }
     }
@@ -252,14 +255,14 @@ export function SettingEditDialog({
           errors.value = "Value must be a valid JSON array";
         }
       }
-      if (formData.defaultValue) {
+      if (formData.default_value) {
         try {
-          const parsed = JSON.parse(formData.defaultValue);
+          const parsed = JSON.parse(formData.default_value);
           if (!Array.isArray(parsed)) {
-            errors.defaultValue = "Default value must be a valid JSON array";
+            errors.default_value = "Default value must be a valid JSON array";
           }
         } catch {
-          errors.defaultValue = "Default value must be a valid JSON array";
+          errors.default_value = "Value must be a valid JSON array";
         }
       }
     }
@@ -314,7 +317,7 @@ export function SettingEditDialog({
   const resetToDefault = () => {
     setFormData((prev) => ({
       ...prev,
-      value: prev.defaultValue,
+      value: prev.default_value,
     }));
   };
 
@@ -406,7 +409,7 @@ export function SettingEditDialog({
               <div className="space-y-2">
                 <Label htmlFor="value" className="flex items-center gap-2">
                   Current Value
-                  {formData.defaultValue && (
+                  {formData.default_value && (
                     <Button
                       type="button"
                       variant="ghost"
@@ -435,14 +438,16 @@ export function SettingEditDialog({
                       className={cn(
                         "font-mono text-sm",
                         validationErrors.value && "border-red-500",
-                        formData.isSecret && !showValue && "text-security-disc",
+                        formData.is_secret &&
+                          !showValue &&
+                          "text-security-disc",
                       )}
                     />
                   ) : (
                     <Input
                       id="value"
                       type={
-                        formData.isSecret && !showValue ? "password" : "text"
+                        formData.is_secret && !showValue ? "password" : "text"
                       }
                       value={formData.value}
                       onChange={(e) =>
@@ -458,7 +463,7 @@ export function SettingEditDialog({
                       className={cn(validationErrors.value && "border-red-500")}
                     />
                   )}
-                  {formData.isSecret && (
+                  {formData.is_secret && (
                     <Button
                       type="button"
                       variant="ghost"
@@ -482,13 +487,13 @@ export function SettingEditDialog({
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="defaultValue">Default Value</Label>
+                <Label htmlFor="default_value">Default Value</Label>
                 {formData.type === "json" || formData.type === "array" ? (
                   <Textarea
-                    id="defaultValue"
-                    value={formData.defaultValue}
+                    id="default_value"
+                    value={formData.default_value}
                     onChange={(e) =>
-                      handleInputChange("defaultValue", e.target.value)
+                      handleInputChange("default_value", e.target.value)
                     }
                     placeholder={
                       formData.type === "json"
@@ -497,15 +502,15 @@ export function SettingEditDialog({
                     }
                     className={cn(
                       "font-mono text-sm",
-                      validationErrors.defaultValue && "border-red-500",
+                      validationErrors.default_value && "border-red-500",
                     )}
                   />
                 ) : (
                   <Input
-                    id="defaultValue"
-                    value={formData.defaultValue}
+                    id="default_value"
+                    value={formData.default_value}
                     onChange={(e) =>
-                      handleInputChange("defaultValue", e.target.value)
+                      handleInputChange("default_value", e.target.value)
                     }
                     placeholder={
                       formData.type === "boolean"
@@ -515,13 +520,13 @@ export function SettingEditDialog({
                           : "Enter default value..."
                     }
                     className={cn(
-                      validationErrors.defaultValue && "border-red-500",
+                      validationErrors.default_value && "border-red-500",
                     )}
                   />
                 )}
-                {validationErrors.defaultValue && (
+                {validationErrors.default_value && (
                   <p className="text-sm text-red-600">
-                    {validationErrors.defaultValue}
+                    {validationErrors.default_value}
                   </p>
                 )}
               </div>
@@ -587,13 +592,16 @@ export function SettingEditDialog({
             <div className="flex items-center space-x-6">
               <div className="flex items-center space-x-2">
                 <Switch
-                  id="isRequired"
-                  checked={formData.isRequired}
+                  id="is_required"
+                  checked={formData.is_required}
                   onCheckedChange={(checked) =>
-                    handleInputChange("isRequired", checked)
+                    handleInputChange("is_required", checked)
                   }
                 />
-                <Label htmlFor="isRequired" className="flex items-center gap-1">
+                <Label
+                  htmlFor="is_required"
+                  className="flex items-center gap-1"
+                >
                   Required Setting
                   <AlertTriangle className="h-3 w-3 text-red-500" />
                 </Label>
@@ -601,13 +609,13 @@ export function SettingEditDialog({
 
               <div className="flex items-center space-x-2">
                 <Switch
-                  id="isSecret"
-                  checked={formData.isSecret}
+                  id="is_secret"
+                  checked={formData.is_secret}
                   onCheckedChange={(checked) =>
-                    handleInputChange("isSecret", checked)
+                    handleInputChange("is_secret", checked)
                   }
                 />
-                <Label htmlFor="isSecret" className="flex items-center gap-1">
+                <Label htmlFor="is_secret" className="flex items-center gap-1">
                   Secret Setting
                   <Eye className="h-3 w-3 text-amber-500" />
                 </Label>
@@ -710,7 +718,7 @@ export function SettingEditDialog({
           )}
 
           {/* Warnings */}
-          {formData.isRequired && (
+          {formData.is_required && (
             <Alert>
               <AlertTriangle className="h-4 w-4" />
               <AlertDescription>
@@ -720,7 +728,7 @@ export function SettingEditDialog({
             </Alert>
           )}
 
-          {formData.isSecret && (
+          {formData.is_secret && (
             <Alert>
               <Info className="h-4 w-4" />
               <AlertDescription>

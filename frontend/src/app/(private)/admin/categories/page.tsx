@@ -16,7 +16,9 @@ export default async function CategoriesPage({ searchParams }: PageProps) {
   // Fetch categories from the backend
   const categoriesResponse = await getCategories(page, limit, activeOnly);
   const categories =
-    categoriesResponse.success && categoriesResponse.data
+    categoriesResponse.success &&
+    categoriesResponse.data &&
+    Array.isArray(categoriesResponse.data.data)
       ? categoriesResponse.data.data
       : [];
   const apiPagination =
@@ -26,12 +28,12 @@ export default async function CategoriesPage({ searchParams }: PageProps) {
 
   // Create pagination object from API response
   const pagination = {
-    page: apiPagination?.page || page,
-    page_size: apiPagination?.pageSize || limit,
-    total: apiPagination?.total || 0,
-    total_pages: apiPagination?.totalPages || 1,
-    has_next: apiPagination?.hasNext || false,
-    has_prev: apiPagination?.hasPrev || false,
+    page: apiPagination?.page ?? page,
+    page_size: apiPagination?.pageSize ?? limit,
+    total: apiPagination?.total ?? 0,
+    total_pages: apiPagination?.totalPages ?? 1,
+    has_next: apiPagination?.hasNext ?? false,
+    has_prev: apiPagination?.hasPrev ?? false,
   };
 
   return (

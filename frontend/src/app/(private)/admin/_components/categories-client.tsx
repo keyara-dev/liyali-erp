@@ -69,7 +69,9 @@ export function CategoriesClient({
   const router = useRouter();
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
-  const [categories, setCategories] = useState<Category[]>(initialCategories);
+  const [categories, setCategories] = useState<Category[]>(
+    Array.isArray(initialCategories) ? initialCategories : [],
+  );
   const [openModal, setOpenModal] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -113,10 +115,12 @@ export function CategoriesClient({
   };
 
   useEffect(() => {
-    if (liveCategories) {
+    if (liveCategories && Array.isArray(liveCategories)) {
       setCategories(liveCategories);
-    } else {
+    } else if (initialCategories && Array.isArray(initialCategories)) {
       setCategories(initialCategories);
+    } else {
+      setCategories([]);
     }
   }, [liveCategories, initialCategories]);
 
@@ -172,7 +176,7 @@ export function CategoriesClient({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {categories.length === 0 ? (
+            {!Array.isArray(categories) || categories.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={5} align="center">
                   <Empty>
@@ -209,7 +213,9 @@ export function CategoriesClient({
                   <TableCell>
                     <div className="flex items-center gap-2">
                       <Tag className="text-muted-foreground h-4 w-4" />
-                      <span className="font-medium">{category.name}</span>
+                      <span className="font-medium">
+                        {category.name || "Unnamed"}
+                      </span>
                     </div>
                   </TableCell>
                   <TableCell>
@@ -220,6 +226,7 @@ export function CategoriesClient({
                   <TableCell>
                     <div className="flex flex-wrap gap-1">
                       {category.budgetCodes &&
+                      Array.isArray(category.budgetCodes) &&
                       category.budgetCodes.length > 0 ? (
                         category.budgetCodes.map((code, index) => (
                           <span
@@ -286,7 +293,7 @@ export function CategoriesClient({
         </Table>
       </div>
 
-      {categories.length > 0 && (
+      {Array.isArray(categories) && categories.length > 0 && (
         <CustomPagination
           pagination={customPaginationData}
           updatePagination={updatePagination}
@@ -374,7 +381,9 @@ function CreateOrUpdateCategoryDialog({
       setFormData({
         name: initialData.name || "",
         description: initialData.description || "",
-        budgetCodes: initialData.budgetCodes || [],
+        budgetCodes: Array.isArray(initialData.budgetCodes)
+          ? initialData.budgetCodes
+          : [],
       });
     } else {
       setFormData(CATEGORY_INITIAL_STATE);
@@ -423,19 +432,27 @@ function CreateOrUpdateCategoryDialog({
     if (!selectedBudget) return;
 
     const budgetCode = selectedBudget.budgetCode;
-    if (budgetCode && !formData.budgetCodes.includes(budgetCode)) {
+    const currentBudgetCodes = Array.isArray(formData.budgetCodes)
+      ? formData.budgetCodes
+      : [];
+
+    if (budgetCode && !currentBudgetCodes.includes(budgetCode)) {
       setFormData((prev) => ({
         ...prev,
-        budgetCodes: [...prev.budgetCodes, budgetCode],
+        budgetCodes: [...currentBudgetCodes, budgetCode],
       }));
       setSelectedBudgetId("");
     }
   };
 
   const removeBudgetCode = (codeToRemove: string) => {
+    const currentBudgetCodes = Array.isArray(formData.budgetCodes)
+      ? formData.budgetCodes
+      : [];
+
     setFormData((prev) => ({
       ...prev,
-      budgetCodes: prev.budgetCodes.filter((code) => code !== codeToRemove),
+      budgetCodes: currentBudgetCodes.filter((code) => code !== codeToRemove),
     }));
   };
 
@@ -515,25 +532,27 @@ function CreateOrUpdateCategoryDialog({
               </Button>
             </div>
 
-            {formData.budgetCodes.length > 0 && (
-              <div className="flex flex-wrap gap-2 mt-2">
-                {formData.budgetCodes.map((code, index) => (
-                  <span
-                    key={index}
-                    className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full flex items-center gap-1"
-                  >
-                    {code}
-                    <button
-                      type="button"
-                      onClick={() => removeBudgetCode(code)}
-                      className="text-blue-600 hover:text-blue-800"
+            {formData.budgetCodes &&
+              Array.isArray(formData.budgetCodes) &&
+              formData.budgetCodes.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {formData.budgetCodes.map((code, index) => (
+                    <span
+                      key={index}
+                      className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full flex items-center gap-1"
                     >
-                      <X className="h-3 w-3" />
-                    </button>
-                  </span>
-                ))}
-              </div>
-            )}
+                      {code}
+                      <button
+                        type="button"
+                        onClick={() => removeBudgetCode(code)}
+                        className="text-blue-600 hover:text-blue-800"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
           </div>
 
           {error.status && (

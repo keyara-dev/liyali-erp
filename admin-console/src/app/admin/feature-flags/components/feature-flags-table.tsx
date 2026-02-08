@@ -222,7 +222,7 @@ export function FeatureFlagsTable({
             return (
               <TableRow
                 key={flag.id}
-                className={cn(flag.isArchived && "opacity-60")}
+                className={cn(flag.is_archived && "opacity-60")}
               >
                 <TableCell>
                   <Checkbox
@@ -237,10 +237,10 @@ export function FeatureFlagsTable({
                   <div className="space-y-1">
                     <div className="flex items-center space-x-2">
                       <span className="font-medium">{flag.name}</span>
-                      {flag.isArchived && (
+                      {flag.is_archived && (
                         <Archive className="h-3 w-3 text-muted-foreground" />
                       )}
-                      {isExpiringSoon(flag.expiresAt) && (
+                      {isExpiringSoon(flag.expires_at) && (
                         <Clock className="h-3 w-3 text-amber-500" />
                       )}
                     </div>
@@ -278,7 +278,7 @@ export function FeatureFlagsTable({
                     <Switch
                       checked={flag.enabled}
                       onCheckedChange={() => onToggle(flag.id)}
-                      disabled={flag.isArchived}
+                      disabled={flag.is_archived}
                     />
                     <Badge
                       variant={flag.enabled ? "default" : "secondary"}
@@ -363,12 +363,12 @@ export function FeatureFlagsTable({
                     <div className="flex items-center space-x-1">
                       <TrendingUp className="h-3 w-3 text-muted-foreground" />
                       <span className="text-sm font-medium">
-                        {flag.evaluationCount.toLocaleString()}
+                        {flag.evaluation_count.toLocaleString()}
                       </span>
                     </div>
-                    {flag.lastEvaluated && (
+                    {flag.last_evaluated && (
                       <div className="text-xs text-muted-foreground">
-                        Last: {format(new Date(flag.lastEvaluated), "HH:mm")}
+                        Last: {format(new Date(flag.last_evaluated), "HH:mm")}
                       </div>
                     )}
                   </div>
@@ -377,25 +377,25 @@ export function FeatureFlagsTable({
                 <TableCell>
                   <div className="text-sm">
                     <div>
-                      {format(new Date(flag.updatedAt), "MMM dd, yyyy")}
+                      {format(new Date(flag.updated_at), "MMM dd, yyyy")}
                     </div>
                     <div className="text-xs text-muted-foreground">
-                      {format(new Date(flag.updatedAt), "HH:mm")}
+                      {format(new Date(flag.updated_at), "HH:mm")}
                     </div>
                     <div className="text-xs text-muted-foreground">
-                      by {flag.updatedBy.split("@")[0]}
+                      by {flag.updated_by.split("@")[0]}
                     </div>
                   </div>
-                  {flag.expiresAt && (
+                  {flag.expires_at && (
                     <div
                       className={cn(
                         "text-xs mt-1",
-                        isExpiringSoon(flag.expiresAt)
+                        isExpiringSoon(flag.expires_at)
                           ? "text-amber-600"
                           : "text-muted-foreground",
                       )}
                     >
-                      Expires: {format(new Date(flag.expiresAt), "MMM dd")}
+                      Expires: {format(new Date(flag.expires_at), "MMM dd")}
                     </div>
                   )}
                 </TableCell>
@@ -425,7 +425,7 @@ export function FeatureFlagsTable({
 
                       <DropdownMenuSeparator />
 
-                      {!flag.isArchived ? (
+                      {!flag.is_archived ? (
                         <DropdownMenuItem onClick={() => onArchive(flag.id)}>
                           <Archive className="mr-2 h-4 w-4" />
                           Archive Flag
@@ -442,7 +442,7 @@ export function FeatureFlagsTable({
                       <DropdownMenuItem
                         onClick={() => onDelete(flag.id)}
                         className="text-red-600"
-                        disabled={flag.enabled && !flag.isArchived}
+                        disabled={flag.enabled && !flag.is_archived}
                       >
                         <Trash2 className="mr-2 h-4 w-4" />
                         Delete Flag

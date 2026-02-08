@@ -223,7 +223,7 @@ export function SubscriptionAnalyticsTab() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {analytics.tiers.map((tier, index) => (
+              {analytics.tiers.map((tier: any, index: number) => (
                 <div key={tier.name} className="space-y-2">
                   <div className="flex justify-between items-center">
                     <div className="flex items-center gap-2">

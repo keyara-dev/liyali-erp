@@ -135,7 +135,10 @@ export default function SettingsPage() {
   };
 
   const handleCreateSetting = async (
-    settingData: Omit<SystemSetting, "id" | "lastModified" | "modifiedBy">,
+    settingData: Omit<
+      SystemSetting,
+      "id" | "created_at" | "updated_at" | "created_by" | "updated_by"
+    >,
   ) => {
     try {
       await createSystemSetting(settingData);
@@ -156,7 +159,10 @@ export default function SettingsPage() {
   };
 
   const handleUpdateSetting = async (
-    settingData: Omit<SystemSetting, "id" | "lastModified" | "modifiedBy">,
+    settingData: Omit<
+      SystemSetting,
+      "id" | "created_at" | "updated_at" | "created_by" | "updated_by"
+    >,
   ) => {
     if (!editingSetting) return;
 
@@ -406,8 +412,8 @@ export default function SettingsPage() {
                 ...setting,
                 id: "",
                 key: `${setting.key}_copy`,
-                lastModified: new Date().toISOString(),
-                modifiedBy: "current-user",
+                updated_at: new Date().toISOString(),
+                updated_by: "current-user",
               });
             }}
             isLoading={isLoading}

@@ -24,14 +24,15 @@ interface DashboardData {
   total_organizations: number;
   active_organizations: number;
   trial_organizations: number;
-  expiring_trials: number;
+  expired_trials: number;
   total_users: number;
   active_users: number;
-  recent_organizations: Array<{
+  recent_activities: Array<{
     id: string;
-    name: string;
-    created_at: string;
-    status: string;
+    action: string;
+    user: string;
+    timestamp: string;
+    details: string;
   }>;
   system_health: {
     uptime: string;
@@ -186,7 +187,7 @@ export default function AdminDashboard() {
               {data?.trial_organizations || 0}
             </div>
             <p className="text-xs text-muted-foreground">
-              {data?.expiring_trials || 0} expiring soon
+              {data?.expired_trials || 0} expired
             </p>
           </CardContent>
         </Card>
@@ -214,23 +215,24 @@ export default function AdminDashboard() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {data?.recent_organizations?.slice(0, 5).map((org) => (
-                <div key={org.id} className="flex items-center justify-between">
+              {data?.recent_activities?.slice(0, 5).map((activity) => (
+                <div
+                  key={activity.id}
+                  className="flex items-center justify-between"
+                >
                   <div>
-                    <p className="font-medium">{org.name}</p>
+                    <p className="font-medium">{activity.action}</p>
                     <p className="text-sm text-muted-foreground">
-                      {formatTimeAgo(org.created_at)}
+                      {formatTimeAgo(activity.timestamp)}
                     </p>
                   </div>
-                  <Badge
-                    variant={org.status === "trial" ? "secondary" : "default"}
-                  >
-                    {org.status}
-                  </Badge>
+                  <p className="text-xs text-muted-foreground">
+                    {activity.user}
+                  </p>
                 </div>
               )) || (
                 <p className="text-sm text-muted-foreground">
-                  No recent organizations
+                  No recent activities
                 </p>
               )}
             </div>
@@ -244,13 +246,13 @@ export default function AdminDashboard() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {data?.expiring_trials && data.expiring_trials > 0 && (
+              {data?.expired_trials && data.expired_trials > 0 && (
                 <div className="flex items-start space-x-3">
                   <AlertTriangle className="h-4 w-4 text-yellow-500 mt-0.5" />
                   <div className="flex-1">
                     <p className="text-sm">
-                      {data.expiring_trials} trial organization
-                      {data.expiring_trials > 1 ? "s" : ""} expiring in 7 days
+                      {data.expired_trials} trial organization
+                      {data.expired_trials > 1 ? "s" : ""} have expired
                     </p>
                     <p className="text-xs text-muted-foreground">Just now</p>
                   </div>
@@ -268,8 +270,8 @@ export default function AdminDashboard() {
                 </div>
               </div>
 
-              {(!data?.recent_organizations ||
-                data.recent_organizations.length === 0) && (
+              {(!data?.recent_activities ||
+                data.recent_activities.length === 0) && (
                 <div className="flex items-start space-x-3">
                   <TrendingUp className="h-4 w-4 text-blue-500 mt-0.5" />
                   <div className="flex-1">
