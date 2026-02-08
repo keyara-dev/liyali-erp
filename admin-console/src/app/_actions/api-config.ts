@@ -3,7 +3,7 @@ import { ADMIN_SESSION } from "@/lib/constants";
 import axiosClient, { AxiosRequestConfig, AxiosRequestHeaders } from "axios";
 
 export const axios = axiosClient.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:8081",
+  baseURL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080",
 });
 
 // Reusable error handler following DRY principle
