@@ -413,6 +413,20 @@ func SubmitPaymentVoucher(c *fiber.Ctx) error {
 	organizationID := c.Locals("organizationID").(string)
 	userID := c.Locals("userID").(string)
 
+	var submitReq types.SubmitDocumentRequest
+	if err := c.BodyParser(&submitReq); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"success": false,
+			"message": "Invalid request body",
+		})
+	}
+	if submitReq.WorkflowID == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"success": false,
+			"message": "workflowId is required",
+		})
+	}
+
 	// Get existing payment voucher
 	var voucher models.PaymentVoucher
 	if err := config.DB.Where("id = ? AND organization_id = ?", id, organizationID).First(&voucher).Error; err != nil {
@@ -434,8 +448,8 @@ func SubmitPaymentVoucher(c *fiber.Ctx) error {
 	workflowExecutionService := c.Locals("workflowExecutionService").(*services.WorkflowExecutionService)
 
 	// Assign workflow to the payment voucher
-	assignment, err := workflowExecutionService.AssignWorkflowToDocument(
-		c.Context(), organizationID, voucher.ID, "payment_voucher", userID,
+	assignment, err := workflowExecutionService.AssignWorkflowToDocumentWithID(
+		c.Context(), organizationID, voucher.ID, "payment_voucher", submitReq.WorkflowID, userID,
 	)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{

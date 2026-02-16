@@ -73,7 +73,7 @@ func (s *DocumentAutomationService) CreatePurchaseOrderFromRequisition(
 	// Handle vendor - create PO with or without vendor
 	var vendorID string
 	var vendorName string = "To Be Determined"
-	
+
 	if requisition.PreferredVendorID != nil && *requisition.PreferredVendorID != "" {
 		// Verify vendor exists if provided
 		var vendor models.Vendor
@@ -115,7 +115,7 @@ func (s *DocumentAutomationService) CreatePurchaseOrderFromRequisition(
 		ID:                uuid.New().String(),
 		DocumentNumber:    documentNumber,
 		VendorID:          vendorID, // Now can be the placeholder vendor ID
-		Status:            "draft", // Start as draft for review
+		Status:            "draft",  // Start as draft for review
 		TotalAmount:       requisition.TotalAmount,
 		Currency:          requisition.Currency,
 		DeliveryDate:      time.Now().AddDate(0, 1, 0), // Default 1 month delivery
@@ -124,23 +124,23 @@ func (s *DocumentAutomationService) CreatePurchaseOrderFromRequisition(
 		CreatedAt:         time.Now(),
 		UpdatedAt:         time.Now(),
 		OrganizationID:    requisition.OrganizationID,
-		
+
 		// Add description to track auto-creation details
-		Description:       fmt.Sprintf("Auto-created from requisition %s. Vendor: %s", requisition.DocumentNumber, vendorName),
-		
+		Description: fmt.Sprintf("Auto-created from requisition %s. Vendor: %s", requisition.DocumentNumber, vendorName),
+
 		// Copy additional fields from requisition
-		Department:        requisition.Department,
-		DepartmentID:      requisition.DepartmentId,
-		Title:             fmt.Sprintf("PO for %s", requisition.Title),
-		BudgetCode:        requisition.BudgetCode,
-		CostCenter:        requisition.CostCenter,
-		ProjectCode:       requisition.ProjectCode,
-		
+		Department:   requisition.Department,
+		DepartmentID: requisition.DepartmentId,
+		Title:        fmt.Sprintf("PO for %s", requisition.Title),
+		BudgetCode:   requisition.BudgetCode,
+		CostCenter:   requisition.CostCenter,
+		ProjectCode:  requisition.ProjectCode,
+
 		// Link to source requisition
-		SourceRequisitionId:     &requisition.ID,
-		
+		SourceRequisitionId: &requisition.ID,
+
 		// Mark as auto-created
-		AutomationUsed:    true,
+		AutomationUsed: true,
 	}
 
 	// Set items
@@ -314,7 +314,7 @@ func (s *DocumentAutomationService) CreatePaymentVoucherFromGRN(
 		ID:             uuid.New().String(),
 		DocumentNumber: documentNumber,
 		VendorID:       purchaseOrder.VendorID,
-		InvoiceNumber:  "", // To be filled when invoice is received
+		InvoiceNumber:  "",      // To be filled when invoice is received
 		Status:         "draft", // Start as draft for finance team
 		Amount:         purchaseOrder.TotalAmount,
 		Currency:       purchaseOrder.Currency,
@@ -368,9 +368,9 @@ func (s *DocumentAutomationService) CreatePaymentVoucherFromGRN(
 // GetDefaultAutomationConfig returns the default automation configuration
 func (s *DocumentAutomationService) GetDefaultAutomationConfig() AutomationConfig {
 	return AutomationConfig{
-		AutoCreatePOFromRequisition: true,
-		AutoCreateGRNFromPO:         true,
-		AutoCreatePVFromGRN:         true,
+		AutoCreatePOFromRequisition: false,
+		AutoCreateGRNFromPO:         false,
+		AutoCreatePVFromGRN:         false,
 		RequireApprovalForAuto:      true,
 	}
 }

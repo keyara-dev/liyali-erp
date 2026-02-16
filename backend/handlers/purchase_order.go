@@ -222,7 +222,7 @@ func CreatePurchaseOrder(c *fiber.Ctx) error {
 
 	if err := config.DB.Create(&order).Error; err != nil {
 		logging.LogError(c, err, "failed_to_create_purchase_order", map[string]interface{}{
-			"error_type": "database_error",
+			"error_type":      "database_error",
 			"document_number": documentNumber,
 		})
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
@@ -329,7 +329,7 @@ func UpdatePurchaseOrder(c *fiber.Ctx) error {
 
 	if order.Status != "draft" && order.Status != "pending" {
 		logging.LogWarn(c, "invalid_status_for_update", map[string]interface{}{
-			"current_status": order.Status,
+			"current_status":  order.Status,
 			"document_number": order.DocumentNumber,
 		})
 		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
@@ -366,9 +366,9 @@ func UpdatePurchaseOrder(c *fiber.Ctx) error {
 
 	if err := config.DB.Save(&order).Error; err != nil {
 		logging.LogError(c, err, "failed_to_update_purchase_order", map[string]interface{}{
-			"error_type": "database_error",
+			"error_type":      "database_error",
 			"document_number": order.DocumentNumber,
-			"changes":    changes,
+			"changes":         changes,
 		})
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"success": false,
@@ -420,7 +420,7 @@ func DeletePurchaseOrder(c *fiber.Ctx) error {
 
 	if order.Status != "draft" {
 		logging.LogWarn(c, "invalid_status_for_deletion", map[string]interface{}{
-			"current_status": order.Status,
+			"current_status":  order.Status,
 			"document_number": order.DocumentNumber,
 		})
 		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
@@ -431,7 +431,7 @@ func DeletePurchaseOrder(c *fiber.Ctx) error {
 
 	if err := config.DB.Delete(&order).Error; err != nil {
 		logging.LogError(c, err, "failed_to_delete_purchase_order", map[string]interface{}{
-			"error_type": "database_error",
+			"error_type":      "database_error",
 			"document_number": order.DocumentNumber,
 		})
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
@@ -499,6 +499,20 @@ func SubmitPurchaseOrder(c *fiber.Ctx) error {
 	organizationID := c.Locals("organizationID").(string)
 	userID := c.Locals("userID").(string)
 
+	var submitReq types.SubmitDocumentRequest
+	if err := c.BodyParser(&submitReq); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"success": false,
+			"message": "Invalid request body",
+		})
+	}
+	if submitReq.WorkflowID == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"success": false,
+			"message": "workflowId is required",
+		})
+	}
+
 	logging.AddFieldsToRequest(c, map[string]interface{}{
 		"operation": "submit_purchase_order",
 		"order_id":  id,
@@ -531,8 +545,8 @@ func SubmitPurchaseOrder(c *fiber.Ctx) error {
 	workflowExecutionService := c.Locals("workflowExecutionService").(*services.WorkflowExecutionService)
 
 	// Assign workflow to the purchase order
-	assignment, err := workflowExecutionService.AssignWorkflowToDocument(
-		c.Context(), organizationID, order.ID, "purchase_order", userID,
+	assignment, err := workflowExecutionService.AssignWorkflowToDocumentWithID(
+		c.Context(), organizationID, order.ID, "purchase_order", submitReq.WorkflowID, userID,
 	)
 	if err != nil {
 		logging.LogError(c, err, "workflow_assignment_failed", map[string]interface{}{

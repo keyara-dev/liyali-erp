@@ -212,11 +212,11 @@ func CreateBudget(c *fiber.Ctx) error {
 	// Initialize action history with CREATE action
 	actionHistory := []types.ActionHistoryEntry{
 		{
-			Action:      "CREATE",
-			PerformedBy: userID,
+			Action:          "CREATE",
+			PerformedBy:     userID,
 			PerformedByName: user.Name,
-			Timestamp:   time.Now(),
-			Comments:    "Budget created",
+			Timestamp:       time.Now(),
+			Comments:        "Budget created",
 		},
 	}
 	budget.ActionHistory = datatypes.NewJSONType(actionHistory)
@@ -496,6 +496,14 @@ func SubmitBudget(c *fiber.Ctx) error {
 	userID := c.Locals("userID").(string)
 	organizationID := c.Locals("organizationID").(string)
 
+	var submitReq types.SubmitDocumentRequest
+	if err := c.BodyParser(&submitReq); err != nil {
+		return utils.SendBadRequestError(c, "Invalid request body")
+	}
+	if submitReq.WorkflowID == "" {
+		return utils.SendBadRequestError(c, "workflowId is required")
+	}
+
 	// Add user context
 	logging.AddFieldsToRequest(c, map[string]interface{}{
 		"user_id":         userID,
@@ -508,7 +516,9 @@ func SubmitBudget(c *fiber.Ctx) error {
 	logger.Debug("assigning_workflow_to_budget")
 
 	// Assign workflow to the budget
-	_, err = workflowExecutionService.AssignWorkflowToDocument(c.Context(), organizationID, budget.ID, "budget", userID)
+	_, err = workflowExecutionService.AssignWorkflowToDocumentWithID(
+		c.Context(), organizationID, budget.ID, "budget", submitReq.WorkflowID, userID,
+	)
 	if err != nil {
 		logging.LogError(c, err, "failed_to_assign_workflow_to_budget")
 		return utils.SendInternalError(c, "Failed to assign workflow to budget", err)
@@ -558,7 +568,7 @@ func modelToBudgetResponse(budget models.Budget) types.BudgetResponse {
 
 	// Always initialize items array (never nil)
 	items := make([]interface{}, 0)
-	
+
 	if budget.Items != nil && len(budget.Items) > 0 {
 		if err := json.Unmarshal(budget.Items, &items); err != nil {
 			// Log the error for debugging
@@ -602,9 +612,9 @@ func modelToBudgetResponse(budget models.Budget) types.BudgetResponse {
 		CreatedAt:       budget.CreatedAt,
 		UpdatedAt:       budget.UpdatedAt,
 	}
-	
+
 	fmt.Printf("Final response items: %+v (length: %d)\n", response.Items, len(response.Items))
 	fmt.Printf("Final response action history: %+v (length: %d)\n", response.ActionHistory, len(response.ActionHistory))
-	
+
 	return response
 }

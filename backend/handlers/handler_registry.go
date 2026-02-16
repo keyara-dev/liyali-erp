@@ -7,12 +7,13 @@ import (
 
 // HandlerRegistry holds all application handlers
 type HandlerRegistry struct {
-	Auth                    *AuthHandler
-	Approval                *ApprovalHandler
-	Workflow                *WorkflowHandler
-	Document                *DocumentHandler
-	Notification            *NotificationHandler
-	Subscription            *SubscriptionHandler
+	Auth                     *AuthHandler
+	Approval                 *ApprovalHandler
+	Workflow                 *WorkflowHandler
+	Document                 *DocumentHandler
+	Generation               *DocumentGenerationHandler
+	Notification             *NotificationHandler
+	Subscription             *SubscriptionHandler
 	WorkflowExecutionService *services.WorkflowExecutionService
 	// Add other handlers here as we migrate them
 }
@@ -24,7 +25,7 @@ func NewHandlerRegistry(
 	workflowService *services.WorkflowService,
 	workflowExecutionService *services.WorkflowExecutionService,
 	documentService *services.DocumentService,
-	automationService *services.DocumentAutomationService,
+	documentGenerationService *services.DocumentGenerationService,
 	subscriptionService *services.SubscriptionService,
 	logger *logging.Logger,
 ) *HandlerRegistry {
@@ -33,6 +34,7 @@ func NewHandlerRegistry(
 		Approval:                 NewApprovalHandler(),
 		Workflow:                 NewWorkflowHandler(workflowService),
 		Document:                 NewDocumentHandler(documentService),
+		Generation:               NewDocumentGenerationHandler(documentGenerationService),
 		Notification:             NewNotificationHandler(),
 		Subscription:             NewSubscriptionHandler(subscriptionService, logger),
 		WorkflowExecutionService: workflowExecutionService,

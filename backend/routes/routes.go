@@ -48,6 +48,7 @@ func SetupRoutes(app *fiber.App, handlerRegistry *handlers.HandlerRegistry, rbac
 	// Organization routes (authentication required, no tenant middleware)
 	orgs := protected.Group("/organizations")
 	orgs.Get("/", handlers.GetUserOrganizations)
+	orgs.Get("/:id", handlers.GetOrganizationByID)
 	orgs.Post("/", handlers.CreateOrganization)
 	orgs.Put("/:id", handlers.UpdateOrganization)
 	orgs.Delete("/:id", handlers.DeleteOrganization)
@@ -55,7 +56,7 @@ func SetupRoutes(app *fiber.App, handlerRegistry *handlers.HandlerRegistry, rbac
 
 	// Subscription routes (authentication required, no tenant middleware)
 	// subscriptions := protected.Group("/subscriptions")
-	
+
 	// Organization-specific subscription routes
 	orgSubs := protected.Group("/organizations/:id")
 	orgSubs.Get("/subscription", handlerRegistry.Subscription.GetOrganizationSubscription)
@@ -79,7 +80,7 @@ func SetupRoutes(app *fiber.App, handlerRegistry *handlers.HandlerRegistry, rbac
 	orgMgmt.Delete("/members/:userId",
 		middleware.RequirePermission(rbacService, "organization", "manage"),
 		handlers.RemoveOrganizationMember)
-	
+
 	// Admin user creation endpoint (creates users directly in organization without personal org)
 	orgMgmt.Post("/users",
 		middleware.RequirePermission(rbacService, "organization", "manage"),
@@ -87,7 +88,7 @@ func SetupRoutes(app *fiber.App, handlerRegistry *handlers.HandlerRegistry, rbac
 	orgMgmt.Get("/users",
 		middleware.RequirePermission(rbacService, "organization", "view"),
 		handlers.GetOrganizationUsers)
-	
+
 	orgMgmt.Get("/settings",
 		middleware.RequirePermission(rbacService, "organization", "view"),
 		handlers.GetOrganizationSettings)
@@ -296,6 +297,7 @@ func SetupRoutes(app *fiber.App, handlerRegistry *handlers.HandlerRegistry, rbac
 	genericDocs.Get("/number/:number", handlerRegistry.Document.GetDocumentByNumber)
 	genericDocs.Post("/", middleware.RequirePermission(rbacService, "document", "create"), handlerRegistry.Document.CreateDocument)
 	genericDocs.Put("/:id", middleware.RequirePermission(rbacService, "document", "edit"), handlerRegistry.Document.UpdateDocument)
+	genericDocs.Post("/generate", middleware.RequirePermission(rbacService, "document", "create"), handlerRegistry.Generation.GenerateDocument)
 	genericDocs.Post("/:id/submit", middleware.RequirePermission(rbacService, "document", "submit"), handlerRegistry.Document.SubmitDocument)
 	genericDocs.Delete("/:id", middleware.RequirePermission(rbacService, "document", "delete"), handlerRegistry.Document.DeleteDocument)
 
@@ -339,7 +341,7 @@ func SetupRoutes(app *fiber.App, handlerRegistry *handlers.HandlerRegistry, rbac
 
 	// Admin-only routes (system-wide access)
 	admin := apiV1.Group("/admin", middleware.AuthMiddleware(), middleware.AdminMiddleware())
-	
+
 	// Admin dashboard and analytics
 	admin.Get("/dashboard", handlers.GetAdminDashboard)
 	admin.Get("/analytics", handlers.GetAdminAnalytics)
@@ -347,35 +349,35 @@ func SetupRoutes(app *fiber.App, handlerRegistry *handlers.HandlerRegistry, rbac
 	admin.Get("/system/metrics", handlers.GetSystemMetrics)
 	admin.Get("/system/alerts", handlers.GetSystemAlerts)
 	admin.Get("/system/logs", handlers.GetSystemLogs)
-	
+
 	// Admin analytics endpoints
 	admin.Get("/analytics/overview", handlers.GetAdminAnalytics)
 	admin.Get("/analytics/users", handlers.GetAdminUserAnalytics)
 	admin.Get("/analytics/organizations", handlers.GetAdminOrganizationAnalytics)
 	admin.Get("/analytics/revenue", handlers.GetAdminRevenueAnalytics)
 	admin.Get("/analytics/usage", handlers.GetAdminUsageAnalytics)
-	
+
 	// Admin subscription statistics
 	admin.Get("/subscriptions/statistics", handlers.GetSubscriptionStatistics)
-	
+
 	// Admin subscription management
 	admin.Get("/subscriptions/tiers", handlers.GetAllSubscriptionTiers)
 	admin.Get("/subscriptions/tiers/:id", handlers.GetSubscriptionTierByID)
 	admin.Post("/subscriptions/tiers", handlers.CreateSubscriptionTier)
 	admin.Put("/subscriptions/tiers/:id", handlers.UpdateSubscriptionTier)
 	admin.Delete("/subscriptions/tiers/:id", handlers.DeleteSubscriptionTier)
-	
+
 	// Admin subscription features management
 	admin.Get("/subscriptions/features", handlers.GetAllSubscriptionFeatures)
 	admin.Post("/subscriptions/features", handlers.CreateSubscriptionFeature)
 	admin.Put("/subscriptions/features/:id", handlers.UpdateSubscriptionFeature)
 	admin.Delete("/subscriptions/features/:id", handlers.DeleteSubscriptionFeature)
-	
+
 	// Admin trial management
 	admin.Get("/subscriptions/trials", handlers.GetTrialOrganizations)
 	admin.Post("/organizations/:id/change-tier", handlers.ChangeOrganizationTier)
 	admin.Post("/organizations/:id/override-limits", handlers.OverrideOrganizationLimits)
-	
+
 	// Admin subscription analytics
 	admin.Get("/subscriptions/analytics", handlers.GetSubscriptionAnalytics)
 
@@ -387,10 +389,10 @@ func SetupRoutes(app *fiber.App, handlerRegistry *handlers.HandlerRegistry, rbac
 	admin.Delete("/settings/:id", handlers.DeleteSystemSetting)
 	admin.Get("/settings/stats", handlers.GetSettingsStats)
 	admin.Get("/settings/health", handlers.GetSystemHealthStatus)
-	
+
 	// Admin environment variables
 	admin.Get("/environment-variables", handlers.GetEnvironmentVariables)
-	
+
 	// Admin feature flags management
 	admin.Get("/feature-flags", handlers.GetFeatureFlags)
 	admin.Get("/feature-flags/:id", handlers.GetFeatureFlag)
@@ -400,7 +402,7 @@ func SetupRoutes(app *fiber.App, handlerRegistry *handlers.HandlerRegistry, rbac
 	admin.Post("/feature-flags/:id/toggle", handlers.ToggleFeatureFlag)
 	admin.Post("/feature-flags/:id/archive", handlers.ArchiveFeatureFlag)
 	admin.Get("/feature-flags/stats", handlers.GetFeatureFlagStats)
-	
+
 	// Feature flag evaluation
 	admin.Post("/feature-flags/:key/evaluate", handlers.EvaluateFeatureFlag)
 	admin.Get("/feature-flags/:key/analytics", handlers.GetFeatureFlagAnalytics)

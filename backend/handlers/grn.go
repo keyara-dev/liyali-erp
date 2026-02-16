@@ -151,16 +151,16 @@ func CreateGRN(c *fiber.Ctx) error {
 	documentNumber := utils.GenerateDocumentNumber("GRN")
 
 	grn := models.GoodsReceivedNote{
-		ID:             uuid.New().String(),
-		OrganizationID: tenant.OrganizationID, // SECURITY FIX: Set organization ID
-		DocumentNumber: documentNumber,
+		ID:               uuid.New().String(),
+		OrganizationID:   tenant.OrganizationID, // SECURITY FIX: Set organization ID
+		DocumentNumber:   documentNumber,
 		PODocumentNumber: req.PODocumentNumber,
-		Status:         "draft",
-		ReceivedDate:   time.Now(),
-		ReceivedBy:     req.ReceivedBy,
-		ApprovalStage:  0,
-		CreatedAt:      time.Now(),
-		UpdatedAt:      time.Now(),
+		Status:           "draft",
+		ReceivedDate:     time.Now(),
+		ReceivedBy:       req.ReceivedBy,
+		ApprovalStage:    0,
+		CreatedAt:        time.Now(),
+		UpdatedAt:        time.Now(),
 	}
 
 	grn.Items = datatypes.NewJSONType(req.Items)
@@ -353,18 +353,18 @@ func modelToGRNResponse(grn models.GoodsReceivedNote) types.GRNResponse {
 	approvalHistory = grn.ApprovalHistory.Data()
 
 	return types.GRNResponse{
-		ID:              grn.ID,
-		DocumentNumber:  grn.DocumentNumber,
+		ID:               grn.ID,
+		DocumentNumber:   grn.DocumentNumber,
 		PODocumentNumber: grn.PODocumentNumber,
-		Status:          grn.Status,
-		ReceivedDate:    grn.ReceivedDate,
-		ReceivedBy:      grn.ReceivedBy,
-		Items:           items,
-		QualityIssues:   qualityIssues,
-		ApprovalStage:   grn.ApprovalStage,
-		ApprovalHistory: approvalHistory,
-		CreatedAt:       grn.CreatedAt,
-		UpdatedAt:       grn.UpdatedAt,
+		Status:           grn.Status,
+		ReceivedDate:     grn.ReceivedDate,
+		ReceivedBy:       grn.ReceivedBy,
+		Items:            items,
+		QualityIssues:    qualityIssues,
+		ApprovalStage:    grn.ApprovalStage,
+		ApprovalHistory:  approvalHistory,
+		CreatedAt:        grn.CreatedAt,
+		UpdatedAt:        grn.UpdatedAt,
 	}
 }
 
@@ -381,6 +381,20 @@ func SubmitGRN(c *fiber.Ctx) error {
 	// Get organization ID and user ID from context
 	organizationID := c.Locals("organizationID").(string)
 	userID := c.Locals("userID").(string)
+
+	var submitReq types.SubmitDocumentRequest
+	if err := c.BodyParser(&submitReq); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"success": false,
+			"message": "Invalid request body",
+		})
+	}
+	if submitReq.WorkflowID == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"success": false,
+			"message": "workflowId is required",
+		})
+	}
 
 	// Get existing GRN
 	var grn models.GoodsReceivedNote
@@ -403,8 +417,8 @@ func SubmitGRN(c *fiber.Ctx) error {
 	workflowExecutionService := c.Locals("workflowExecutionService").(*services.WorkflowExecutionService)
 
 	// Assign workflow to the GRN
-	assignment, err := workflowExecutionService.AssignWorkflowToDocument(
-		c.Context(), organizationID, grn.ID, "grn", userID,
+	assignment, err := workflowExecutionService.AssignWorkflowToDocumentWithID(
+		c.Context(), organizationID, grn.ID, "grn", submitReq.WorkflowID, userID,
 	)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{

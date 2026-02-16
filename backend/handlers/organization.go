@@ -57,6 +57,7 @@ func CreateOrganization(c *fiber.Ctx) error {
 	var req struct {
 		Name        string `json:"name" validate:"required"`
 		Description string `json:"description"`
+		LogoURL     string `json:"logoUrl"`
 	}
 
 	if err := c.BodyParser(&req); err != nil {
@@ -64,13 +65,44 @@ func CreateOrganization(c *fiber.Ctx) error {
 	}
 
 	orgService := services.NewOrganizationService(config.DB)
-	org, err := orgService.CreateOrganization(req.Name, req.Description, userID)
+	org, err := orgService.CreateOrganization(req.Name, req.Description, req.LogoURL, userID)
 
 	if err != nil {
 		return utils.SendInternalError(c, err.Error(), err)
 	}
 
 	return utils.SendCreatedSuccess(c, org, "Organization created successfully")
+}
+
+// GetOrganizationByID returns organization details by ID
+// GET /api/v1/organizations/:id
+func GetOrganizationByID(c *fiber.Ctx) error {
+	userID, ok := c.Locals("userID").(string)
+	if !ok {
+		return utils.SendUnauthorizedError(c, "User context required")
+	}
+
+	orgID := c.Params("id")
+	if orgID == "" {
+		return utils.SendBadRequestError(c, "Organization ID is required")
+	}
+
+	orgService := services.NewOrganizationService(config.DB)
+
+	canManage, err := orgService.CanUserManageOrganization(userID, orgID)
+	if err != nil {
+		return utils.SendInternalError(c, "Failed to verify permissions", err)
+	}
+	if !canManage {
+		return utils.SendForbiddenError(c, "You don't have permission to view this organization")
+	}
+
+	org, err := orgService.GetOrganization(orgID)
+	if err != nil {
+		return utils.SendNotFoundError(c, "Organization not found")
+	}
+
+	return utils.SendSimpleSuccess(c, org, "Organization retrieved successfully")
 }
 
 // SwitchOrganization sets user's current organization
@@ -237,8 +269,9 @@ func UpdateOrganization(c *fiber.Ctx) error {
 	}
 
 	var req struct {
-		Name        string `json:"name" validate:"required"`
-		Description string `json:"description"`
+		Name        string  `json:"name" validate:"required"`
+		Description string  `json:"description"`
+		LogoURL     *string `json:"logoUrl"`
 	}
 
 	if err := c.BodyParser(&req); err != nil {
@@ -256,7 +289,7 @@ func UpdateOrganization(c *fiber.Ctx) error {
 		return utils.SendForbiddenError(c, "You don't have permission to update this organization")
 	}
 
-	if err := orgService.UpdateOrganization(orgID, req.Name, req.Description); err != nil {
+	if err := orgService.UpdateOrganization(orgID, req.Name, req.Description, req.LogoURL); err != nil {
 		return utils.SendInternalError(c, err.Error(), err)
 	}
 

@@ -235,18 +235,18 @@ func CreateRequisition(c *fiber.Ctx) error {
 		ApprovalStage:     0,
 
 		// Business requirement fields
-		BudgetCode:        req.BudgetCode,
-		CostCenter:        req.CostCenter,
-		ProjectCode:       req.ProjectCode,
-		RequiredByDate:    req.RequiredByDate,
-		CreatedBy:         userID,    // From token
-		CreatedByName:     user.Name, // From authenticated user
-		CreatedByRole:     user.Role, // From authenticated user
-		RequestedBy:       userID,
-		RequestedByName:   user.Name,
-		RequestedByRole:   user.Role,
-		RequestedDate:     time.Now(),
-		Metadata:          metadata,
+		BudgetCode:      req.BudgetCode,
+		CostCenter:      req.CostCenter,
+		ProjectCode:     req.ProjectCode,
+		RequiredByDate:  req.RequiredByDate,
+		CreatedBy:       userID,    // From token
+		CreatedByName:   user.Name, // From authenticated user
+		CreatedByRole:   user.Role, // From authenticated user
+		RequestedBy:     userID,
+		RequestedByName: user.Name,
+		RequestedByRole: user.Role,
+		RequestedDate:   time.Now(),
+		Metadata:        metadata,
 
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
@@ -818,6 +818,20 @@ func SubmitRequisition(c *fiber.Ctx) error {
 	organizationID := c.Locals("organizationID").(string)
 	userID := c.Locals("userID").(string)
 
+	var submitReq types.SubmitDocumentRequest
+	if err := c.BodyParser(&submitReq); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"success": false,
+			"message": "Invalid request body",
+		})
+	}
+	if submitReq.WorkflowID == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"success": false,
+			"message": "workflowId is required",
+		})
+	}
+
 	// Get existing requisition
 	var requisition models.Requisition
 	if err := config.DB.Where("id = ? AND organization_id = ?", id, organizationID).First(&requisition).Error; err != nil {
@@ -840,8 +854,8 @@ func SubmitRequisition(c *fiber.Ctx) error {
 	workflowExecutionService := c.Locals("workflowExecutionService").(*services.WorkflowExecutionService)
 
 	// Assign workflow to the requisition
-	assignment, err := workflowExecutionService.AssignWorkflowToDocument(
-		c.Context(), organizationID, requisition.ID, "requisition", userID,
+	assignment, err := workflowExecutionService.AssignWorkflowToDocumentWithID(
+		c.Context(), organizationID, requisition.ID, "requisition", submitReq.WorkflowID, userID,
 	)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{

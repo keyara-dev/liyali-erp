@@ -11,53 +11,53 @@ import (
 
 // CreateRequisitionRequest represents a requisition creation request
 type CreateRequisitionRequest struct {
-	Title             string                 `json:"title" validate:"required,min=3"`
-	Description       string                 `json:"description" validate:"required,min=10"`
-	Department        string                 `json:"department" validate:"required"`
-	DepartmentId      string                 `json:"departmentId"`
-	Priority          string                 `json:"priority" validate:"required,oneof=low medium high urgent"`
-	Items             []RequisitionItem       `json:"items" validate:"required,min=1"`
-	TotalAmount       float64                `json:"totalAmount" validate:"required,gt=0"`
-	Currency          string                 `json:"currency" validate:"required"`
-	CategoryID        *string                `json:"categoryId" validate:"omitempty,uuid"`
-	PreferredVendorID *string                `json:"preferredVendorId" validate:"omitempty,uuid"`
-	IsEstimate        bool                   `json:"isEstimate"`
-	
+	Title             string            `json:"title" validate:"required,min=3"`
+	Description       string            `json:"description" validate:"required,min=10"`
+	Department        string            `json:"department" validate:"required"`
+	DepartmentId      string            `json:"departmentId"`
+	Priority          string            `json:"priority" validate:"required,oneof=low medium high urgent"`
+	Items             []RequisitionItem `json:"items" validate:"required,min=1"`
+	TotalAmount       float64           `json:"totalAmount" validate:"required,gt=0"`
+	Currency          string            `json:"currency" validate:"required"`
+	CategoryID        *string           `json:"categoryId" validate:"omitempty,uuid"`
+	PreferredVendorID *string           `json:"preferredVendorId" validate:"omitempty,uuid"`
+	IsEstimate        bool              `json:"isEstimate"`
+
 	// Business requirement fields
-	BudgetCode        string                 `json:"budgetCode"`
-	CostCenter        string                 `json:"costCenter"`
-	ProjectCode       string                 `json:"projectCode"`
-	RequiredByDate    time.Time              `json:"requiredByDate"`
-	RequestedFor      string                 `json:"requestedFor"`      // Who the requisition is for
-	OtherCategoryText string                 `json:"otherCategoryText"` // Custom category name when "OTHER" is selected
+	BudgetCode        string    `json:"budgetCode"`
+	CostCenter        string    `json:"costCenter"`
+	ProjectCode       string    `json:"projectCode"`
+	RequiredByDate    time.Time `json:"requiredByDate"`
+	RequestedFor      string    `json:"requestedFor"`      // Who the requisition is for
+	OtherCategoryText string    `json:"otherCategoryText"` // Custom category name when "OTHER" is selected
 }
 
 // UpdateRequisitionRequest represents a requisition update request
 type UpdateRequisitionRequest struct {
-	Title             string           `json:"title"`
-	Description       string           `json:"description"`
-	Department        string           `json:"department"`
-	Priority          string           `json:"priority"`
+	Title             string            `json:"title"`
+	Description       string            `json:"description"`
+	Department        string            `json:"department"`
+	Priority          string            `json:"priority"`
 	Items             []RequisitionItem `json:"items"`
-	TotalAmount       float64          `json:"totalAmount"`
-	Currency          string           `json:"currency"`
-	CategoryID        *string          `json:"categoryId" validate:"omitempty,uuid"`
-	PreferredVendorID *string          `json:"preferredVendorId" validate:"omitempty,uuid"`
-	IsEstimate        *bool            `json:"isEstimate"`
+	TotalAmount       float64           `json:"totalAmount"`
+	Currency          string            `json:"currency"`
+	CategoryID        *string           `json:"categoryId" validate:"omitempty,uuid"`
+	PreferredVendorID *string           `json:"preferredVendorId" validate:"omitempty,uuid"`
+	IsEstimate        *bool             `json:"isEstimate"`
 }
 
 // RequisitionItem represents an item in a requisition
 type RequisitionItem struct {
-	ID              *string `json:"id,omitempty"`
-	Description     string  `json:"description"`
-	ItemDescription *string `json:"itemDescription,omitempty"` // Alias for description
-	Quantity        int     `json:"quantity"`
-	UnitPrice       float64 `json:"unitPrice"`
-	Amount          float64 `json:"amount"`
+	ID              *string  `json:"id,omitempty"`
+	Description     string   `json:"description"`
+	ItemDescription *string  `json:"itemDescription,omitempty"` // Alias for description
+	Quantity        int      `json:"quantity"`
+	UnitPrice       float64  `json:"unitPrice"`
+	Amount          float64  `json:"amount"`
 	EstimatedCost   *float64 `json:"estimatedCost,omitempty"` // Alias for amount
-	Unit            *string `json:"unit,omitempty"`
-	Category        *string `json:"category,omitempty"`
-	Notes           *string `json:"notes,omitempty"`
+	Unit            *string  `json:"unit,omitempty"`
+	Category        *string  `json:"category,omitempty"`
+	Notes           *string  `json:"notes,omitempty"`
 }
 
 // RequisitionResponse represents a requisition in responses
@@ -71,7 +71,7 @@ type RequisitionResponse struct {
 	Department          string            `json:"department"`
 	Status              string            `json:"status"`
 	Priority            string            `json:"priority"`
-	Items               []RequisitionItem  `json:"items"`
+	Items               []RequisitionItem `json:"items"`
 	TotalAmount         float64           `json:"totalAmount"`
 	Currency            string            `json:"currency"`
 	CategoryID          *string           `json:"categoryId,omitempty"`
@@ -81,35 +81,35 @@ type RequisitionResponse struct {
 	IsEstimate          bool              `json:"isEstimate"`
 	ApprovalStage       int               `json:"approvalStage"`
 	ApprovalHistory     []ApprovalRecord  `json:"approvalHistory"`
-	
+
 	// Business requirement fields
-	BudgetCode          string            `json:"budgetCode,omitempty"`
-	CostCenter          string            `json:"costCenter,omitempty"`
-	ProjectCode         string            `json:"projectCode,omitempty"`
-	RequiredByDate      time.Time         `json:"requiredByDate,omitempty"`
-	RequestedFor        string            `json:"requestedFor,omitempty"`        // From metadata
-	OtherCategoryText   string            `json:"otherCategoryText,omitempty"`   // From metadata
-	
+	BudgetCode        string    `json:"budgetCode,omitempty"`
+	CostCenter        string    `json:"costCenter,omitempty"`
+	ProjectCode       string    `json:"projectCode,omitempty"`
+	RequiredByDate    time.Time `json:"requiredByDate,omitempty"`
+	RequestedFor      string    `json:"requestedFor,omitempty"`      // From metadata
+	OtherCategoryText string    `json:"otherCategoryText,omitempty"` // From metadata
+
 	// Action history for frontend
-	ActionHistory       []ActionHistoryEntry `json:"actionHistory,omitempty"`
-	
-	CreatedAt           time.Time         `json:"createdAt"`
-	UpdatedAt           time.Time         `json:"updatedAt"`
+	ActionHistory []ActionHistoryEntry `json:"actionHistory,omitempty"`
+
+	CreatedAt time.Time `json:"createdAt"`
+	UpdatedAt time.Time `json:"updatedAt"`
 }
 
 // ================== BUDGET TYPES ==================
 
 // CreateBudgetRequest represents a budget creation request
 type CreateBudgetRequest struct {
-	BudgetCode      string  `json:"budgetCode,omitempty"`                    // Optional - can be auto-generated
-	Name            string  `json:"name,omitempty"`                          // Budget name/title
-	Description     string  `json:"description,omitempty"`                   // Budget description
+	BudgetCode      string  `json:"budgetCode,omitempty"`  // Optional - can be auto-generated
+	Name            string  `json:"name,omitempty"`        // Budget name/title
+	Description     string  `json:"description,omitempty"` // Budget description
 	Department      string  `json:"department" validate:"required"`
-	DepartmentID    string  `json:"departmentId,omitempty"`                  // Department ID
+	DepartmentID    string  `json:"departmentId,omitempty"` // Department ID
 	FiscalYear      string  `json:"fiscalYear" validate:"required"`
 	TotalBudget     float64 `json:"totalBudget" validate:"required,gt=0"`
 	AllocatedAmount float64 `json:"allocatedAmount" validate:"required,gte=0"`
-	Currency        string  `json:"currency,omitempty"`                      // Currency
+	Currency        string  `json:"currency,omitempty"` // Currency
 }
 
 // UpdateBudgetRequest represents a budget update request
@@ -125,27 +125,27 @@ type UpdateBudgetRequest struct {
 
 // BudgetResponse represents a budget in responses
 type BudgetResponse struct {
-	ID              string           `json:"id"`
-	BudgetCode      string           `json:"budgetCode"`
-	OwnerID         string           `json:"ownerId"`
-	OwnerName       string           `json:"ownerName"`
-	Department      string           `json:"department"`
-	DepartmentID    string           `json:"departmentId,omitempty"`
-	Status          string           `json:"status"`
-	FiscalYear      string           `json:"fiscalYear"`
-	TotalBudget     float64          `json:"totalBudget"`
-	AllocatedAmount float64          `json:"allocatedAmount"`
-	RemainingAmount float64          `json:"remainingAmount"`
-	ApprovalStage   int              `json:"approvalStage"`
-	ApprovalHistory []ApprovalRecord `json:"approvalHistory"`
+	ID              string               `json:"id"`
+	BudgetCode      string               `json:"budgetCode"`
+	OwnerID         string               `json:"ownerId"`
+	OwnerName       string               `json:"ownerName"`
+	Department      string               `json:"department"`
+	DepartmentID    string               `json:"departmentId,omitempty"`
+	Status          string               `json:"status"`
+	FiscalYear      string               `json:"fiscalYear"`
+	TotalBudget     float64              `json:"totalBudget"`
+	AllocatedAmount float64              `json:"allocatedAmount"`
+	RemainingAmount float64              `json:"remainingAmount"`
+	ApprovalStage   int                  `json:"approvalStage"`
+	ApprovalHistory []ApprovalRecord     `json:"approvalHistory"`
 	ActionHistory   []ActionHistoryEntry `json:"actionHistory,omitempty"`
-	Name            string           `json:"name,omitempty"`
-	Description     string           `json:"description,omitempty"`
-	Currency        string           `json:"currency,omitempty"`
-	CreatedBy       string           `json:"createdBy,omitempty"`
-	Items           []interface{}    `json:"items"`
-	CreatedAt       time.Time        `json:"createdAt"`
-	UpdatedAt       time.Time        `json:"updatedAt"`
+	Name            string               `json:"name,omitempty"`
+	Description     string               `json:"description,omitempty"`
+	Currency        string               `json:"currency,omitempty"`
+	CreatedBy       string               `json:"createdBy,omitempty"`
+	Items           []interface{}        `json:"items"`
+	CreatedAt       time.Time            `json:"createdAt"`
+	UpdatedAt       time.Time            `json:"updatedAt"`
 }
 
 // ================== PURCHASE ORDER TYPES ==================
@@ -158,25 +158,25 @@ type FlexibleDate struct {
 // UnmarshalJSON implements custom JSON unmarshaling for flexible date formats
 func (fd *FlexibleDate) UnmarshalJSON(data []byte) error {
 	str := strings.Trim(string(data), "\"")
-	
+
 	// Try RFC3339 format first (2006-01-02T15:04:05Z07:00)
 	if t, err := time.Parse(time.RFC3339, str); err == nil {
 		fd.Time = t
 		return nil
 	}
-	
+
 	// Try date-only format (2006-01-02)
 	if t, err := time.Parse("2006-01-02", str); err == nil {
 		fd.Time = t
 		return nil
 	}
-	
+
 	// Try datetime format without timezone (2006-01-02T15:04:05)
 	if t, err := time.Parse("2006-01-02T15:04:05", str); err == nil {
 		fd.Time = t
 		return nil
 	}
-	
+
 	return fmt.Errorf("invalid date format: %s (expected RFC3339, date-only, or datetime)", str)
 }
 
@@ -210,47 +210,47 @@ type POItem struct {
 	Quantity    int     `json:"quantity"`
 	UnitPrice   float64 `json:"unitPrice"`
 	Amount      float64 `json:"amount"`
-	
+
 	// Frontend compatibility fields - CRITICAL: These must match frontend exactly
-	ID          string  `json:"id,omitempty"`          // Item identifier - ADDED
-	ItemNumber  string  `json:"itemNumber,omitempty"`  // Item number/SKU - ADDED
-	ItemCode    string  `json:"itemCode,omitempty"`    // Item code - ADDED
-	Category    string  `json:"category,omitempty"`    // Item category - ADDED
-	Unit        string  `json:"unit,omitempty"`        // Unit of measurement - ADDED
-	TotalPrice  float64 `json:"totalPrice,omitempty"`  // Total price (alias for amount) - ADDED
-	Notes       string  `json:"notes,omitempty"`       // Item notes - ADDED
+	ID         string  `json:"id,omitempty"`         // Item identifier - ADDED
+	ItemNumber string  `json:"itemNumber,omitempty"` // Item number/SKU - ADDED
+	ItemCode   string  `json:"itemCode,omitempty"`   // Item code - ADDED
+	Category   string  `json:"category,omitempty"`   // Item category - ADDED
+	Unit       string  `json:"unit,omitempty"`       // Unit of measurement - ADDED
+	TotalPrice float64 `json:"totalPrice,omitempty"` // Total price (alias for amount) - ADDED
+	Notes      string  `json:"notes,omitempty"`      // Item notes - ADDED
 }
 
 // PurchaseOrderResponse represents a PO in responses
 type PurchaseOrderResponse struct {
-	ID              string           `json:"id"`
-	DocumentNumber  string           `json:"documentNumber"`
-	VendorID        string           `json:"vendorId"`
-	VendorName      string           `json:"vendorName"`
-	Status          string           `json:"status"`
-	Items           []POItem         `json:"items"`
-	TotalAmount     float64          `json:"totalAmount"`
-	Currency        string           `json:"currency"`
-	DeliveryDate    time.Time        `json:"deliveryDate"`
-	ApprovalStage   int              `json:"approvalStage"`
-	ApprovalHistory []ApprovalRecord `json:"approvalHistory"`
-	LinkedRequisition string         `json:"linkedRequisition"`
-	CreatedAt       time.Time        `json:"createdAt"`
-	UpdatedAt       time.Time        `json:"updatedAt"`
+	ID                string           `json:"id"`
+	DocumentNumber    string           `json:"documentNumber"`
+	VendorID          string           `json:"vendorId"`
+	VendorName        string           `json:"vendorName"`
+	Status            string           `json:"status"`
+	Items             []POItem         `json:"items"`
+	TotalAmount       float64          `json:"totalAmount"`
+	Currency          string           `json:"currency"`
+	DeliveryDate      time.Time        `json:"deliveryDate"`
+	ApprovalStage     int              `json:"approvalStage"`
+	ApprovalHistory   []ApprovalRecord `json:"approvalHistory"`
+	LinkedRequisition string           `json:"linkedRequisition"`
+	CreatedAt         time.Time        `json:"createdAt"`
+	UpdatedAt         time.Time        `json:"updatedAt"`
 }
 
 // ================== PAYMENT VOUCHER TYPES ==================
 
 // CreatePaymentVoucherRequest represents a payment voucher creation request
 type CreatePaymentVoucherRequest struct {
-	VendorID      string `json:"vendorId" validate:"required"`
-	InvoiceNumber string `json:"invoiceNumber" validate:"required"`
+	VendorID      string  `json:"vendorId" validate:"required"`
+	InvoiceNumber string  `json:"invoiceNumber" validate:"required"`
 	Amount        float64 `json:"amount" validate:"required,gt=0"`
-	Currency      string `json:"currency" validate:"required"`
-	PaymentMethod string `json:"paymentMethod" validate:"required,oneof=bank_transfer cash"`
-	GLCode        string `json:"glCode" validate:"required"`
-	Description   string `json:"description" validate:"required,min=10"`
-	LinkedPO      string `json:"linkedPO"`
+	Currency      string  `json:"currency" validate:"required"`
+	PaymentMethod string  `json:"paymentMethod" validate:"required,oneof=bank_transfer cash"`
+	GLCode        string  `json:"glCode" validate:"required"`
+	Description   string  `json:"description" validate:"required,min=10"`
+	LinkedPO      string  `json:"linkedPO"`
 }
 
 // UpdatePaymentVoucherRequest represents a payment voucher update request
@@ -288,26 +288,26 @@ type PaymentVoucherResponse struct {
 
 // CreateGRNRequest represents a GRN creation request
 type CreateGRNRequest struct {
-	PODocumentNumber string         `json:"poDocumentNumber" validate:"required"`
-	Items     []GRNItem      `json:"items" validate:"required,min=1"`
-	ReceivedBy string        `json:"receivedBy" validate:"required"`
+	PODocumentNumber string    `json:"poDocumentNumber" validate:"required"`
+	Items            []GRNItem `json:"items" validate:"required,min=1"`
+	ReceivedBy       string    `json:"receivedBy" validate:"required"`
 }
 
 // UpdateGRNRequest represents a GRN update request
 type UpdateGRNRequest struct {
-	Items      []GRNItem      `json:"items"`
-	ReceivedBy string         `json:"receivedBy"`
+	Items         []GRNItem      `json:"items"`
+	ReceivedBy    string         `json:"receivedBy"`
 	QualityIssues []QualityIssue `json:"qualityIssues"`
 }
 
 // GRNItem represents an item in a GRN
 type GRNItem struct {
-	Description    string  `json:"description"`
-	QuantityOrdered int     `json:"quantityOrdered"`
-	QuantityReceived int    `json:"quantityReceived"`
-	Variance       int     `json:"variance"`
-	Condition      string  `json:"condition"` // good, damaged, defective
-	Notes          *string `json:"notes,omitempty"` // Optional notes for the item
+	Description      string  `json:"description"`
+	QuantityOrdered  int     `json:"quantityOrdered"`
+	QuantityReceived int     `json:"quantityReceived"`
+	Variance         int     `json:"variance"`
+	Condition        string  `json:"condition"`       // good, damaged, defective
+	Notes            *string `json:"notes,omitempty"` // Optional notes for the item
 }
 
 // QualityIssue represents a quality issue in GRN
@@ -320,18 +320,18 @@ type QualityIssue struct {
 
 // GRNResponse represents a GRN in responses
 type GRNResponse struct {
-	ID              string           `json:"id"`
-	DocumentNumber  string           `json:"documentNumber"`
-	PODocumentNumber string          `json:"poDocumentNumber"`
-	Status          string           `json:"status"`
-	ReceivedDate    time.Time        `json:"receivedDate"`
-	ReceivedBy      string           `json:"receivedBy"`
-	Items           []GRNItem        `json:"items"`
-	QualityIssues   []QualityIssue   `json:"qualityIssues"`
-	ApprovalStage   int              `json:"approvalStage"`
-	ApprovalHistory []ApprovalRecord `json:"approvalHistory"`
-	CreatedAt       time.Time        `json:"createdAt"`
-	UpdatedAt       time.Time        `json:"updatedAt"`
+	ID               string           `json:"id"`
+	DocumentNumber   string           `json:"documentNumber"`
+	PODocumentNumber string           `json:"poDocumentNumber"`
+	Status           string           `json:"status"`
+	ReceivedDate     time.Time        `json:"receivedDate"`
+	ReceivedBy       string           `json:"receivedBy"`
+	Items            []GRNItem        `json:"items"`
+	QualityIssues    []QualityIssue   `json:"qualityIssues"`
+	ApprovalStage    int              `json:"approvalStage"`
+	ApprovalHistory  []ApprovalRecord `json:"approvalHistory"`
+	CreatedAt        time.Time        `json:"createdAt"`
+	UpdatedAt        time.Time        `json:"updatedAt"`
 }
 
 // ================== VENDOR TYPES ==================
@@ -430,22 +430,22 @@ type MessageResponse struct {
 
 // ActionHistoryEntry represents an action history entry
 type ActionHistoryEntry struct {
-	ID               string                 `json:"id"`
-	Action           string                 `json:"action"`
-	PerformedBy      string                 `json:"performedBy"`
-	PerformedByName  string                 `json:"performedByName"`
-	PerformedByRole  string                 `json:"performedByRole,omitempty"`
-	Timestamp        time.Time              `json:"timestamp"`
-	PerformedAt      time.Time              `json:"performedAt,omitempty"` // Alias for timestamp
-	Changes          map[string]interface{} `json:"changes,omitempty"`
-	Comments         string                 `json:"comments,omitempty"`
-	ActionType       string                 `json:"actionType,omitempty"`
-	NewStatus        string                 `json:"newStatus,omitempty"`
-	PreviousStatus   string                 `json:"previousStatus,omitempty"`   // Previous status before action - ADDED
-	Remarks          string                 `json:"remarks,omitempty"`
-	StageNumber      int                    `json:"stageNumber,omitempty"`
-	StageName        string                 `json:"stageName,omitempty"`
-	ChangedFields    map[string]interface{} `json:"changedFields,omitempty"`
+	ID              string                 `json:"id"`
+	Action          string                 `json:"action"`
+	PerformedBy     string                 `json:"performedBy"`
+	PerformedByName string                 `json:"performedByName"`
+	PerformedByRole string                 `json:"performedByRole,omitempty"`
+	Timestamp       time.Time              `json:"timestamp"`
+	PerformedAt     time.Time              `json:"performedAt,omitempty"` // Alias for timestamp
+	Changes         map[string]interface{} `json:"changes,omitempty"`
+	Comments        string                 `json:"comments,omitempty"`
+	ActionType      string                 `json:"actionType,omitempty"`
+	NewStatus       string                 `json:"newStatus,omitempty"`
+	PreviousStatus  string                 `json:"previousStatus,omitempty"` // Previous status before action - ADDED
+	Remarks         string                 `json:"remarks,omitempty"`
+	StageNumber     int                    `json:"stageNumber,omitempty"`
+	StageName       string                 `json:"stageName,omitempty"`
+	ChangedFields   map[string]interface{} `json:"changedFields,omitempty"`
 }
 
 // PaymentItem represents an item in a payment voucher
@@ -454,4 +454,9 @@ type PaymentItem struct {
 	Amount      float64 `json:"amount"`
 	GLCode      string  `json:"glCode,omitempty"`
 	TaxAmount   float64 `json:"taxAmount,omitempty"`
+}
+
+// SubmitDocumentRequest represents workflow selection for submission.
+type SubmitDocumentRequest struct {
+	WorkflowID string `json:"workflowId" validate:"required,uuid"`
 }

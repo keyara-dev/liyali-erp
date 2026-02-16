@@ -512,6 +512,7 @@ func (s *AuthService) Register(ctx context.Context, email, password, name, role 
 		org, err := orgService.CreateOrganization(
 			fmt.Sprintf("%s's Organization", name),
 			fmt.Sprintf("Personal organization for %s", name),
+			"",
 			createdUser.ID,
 		)
 		if err != nil {

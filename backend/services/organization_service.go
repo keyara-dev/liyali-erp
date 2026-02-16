@@ -5,10 +5,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gosimple/slug"
 	"github.com/google/uuid"
-	"gorm.io/gorm"
+	"github.com/gosimple/slug"
 	"github.com/liyali/liyali-gateway/models"
+	"gorm.io/gorm"
 )
 
 type OrganizationService struct {
@@ -24,7 +24,7 @@ func NewOrganizationService(db *gorm.DB) *OrganizationService {
 }
 
 // CreateOrganization creates a new organization
-func (s *OrganizationService) CreateOrganization(name, description, createdBy string) (*models.Organization, error) {
+func (s *OrganizationService) CreateOrganization(name, description, logoURL, createdBy string) (*models.Organization, error) {
 	if name == "" {
 		return nil, errors.New("organization name is required")
 	}
@@ -38,6 +38,7 @@ func (s *OrganizationService) CreateOrganization(name, description, createdBy st
 		Name:        name,
 		Slug:        slug.Make(name),
 		Description: description,
+		LogoURL:     logoURL,
 		Active:      true,
 		Tier:        "starter",
 		CreatedBy:   createdBy,
@@ -186,13 +187,13 @@ func (s *OrganizationService) AddMemberWithDepartment(orgID, userID, role string
 	}
 
 	err = s.db.Create(member).Error
-	
+
 	// Invalidate user cache when membership changes
 	if err == nil {
 		s.cache.InvalidateUserCache(userID)
 		s.cache.InvalidateOrganizationCache(orgID)
 	}
-	
+
 	return err
 }
 
@@ -246,7 +247,7 @@ func (s *OrganizationService) GetOrganizationMembers(orgID string) ([]models.Org
 				// Note: DepartmentID is already set from the database
 			}
 		}
-		
+
 		// For roles, we need to check if it's a role ID or role name
 		// If it looks like a UUID, try to fetch the role details
 		if len(members[i].Role) == 36 && strings.Contains(members[i].Role, "-") {
@@ -343,9 +344,9 @@ func (s *OrganizationService) GetOrganizationSettings(orgID string) (*models.Org
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			// Return default settings if not found
 			return &models.OrganizationSettings{
-				ID:             uuid.New().String(),
-				OrganizationID: orgID,
-				Currency:       "USD",
+				ID:              uuid.New().String(),
+				OrganizationID:  orgID,
+				Currency:        "USD",
 				FiscalYearStart: 1,
 			}, nil
 		}
@@ -356,7 +357,7 @@ func (s *OrganizationService) GetOrganizationSettings(orgID string) (*models.Org
 }
 
 // UpdateOrganization updates organization details
-func (s *OrganizationService) UpdateOrganization(orgID string, name, description string) error {
+func (s *OrganizationService) UpdateOrganization(orgID string, name, description string, logoURL *string) error {
 	if orgID == "" {
 		return errors.New("organization ID is required")
 	}
@@ -365,14 +366,19 @@ func (s *OrganizationService) UpdateOrganization(orgID string, name, description
 		return errors.New("organization name is required")
 	}
 
+	updates := map[string]interface{}{
+		"name":        name,
+		"slug":        slug.Make(name),
+		"description": description,
+		"updated_at":  time.Now(),
+	}
+	if logoURL != nil {
+		updates["logo_url"] = *logoURL
+	}
+
 	return s.db.Model(&models.Organization{}).
 		Where("id = ? AND active = ?", orgID, true).
-		Updates(map[string]interface{}{
-			"name":        name,
-			"slug":        slug.Make(name),
-			"description": description,
-			"updated_at":  time.Now(),
-		}).Error
+		Updates(updates).Error
 }
 
 // DeleteOrganization soft deletes an organization and all related data

@@ -17,20 +17,20 @@ import (
 
 // WorkflowExecutionService handles workflow assignment and execution
 type WorkflowExecutionService struct {
-	db                *gorm.DB
-	workflowService   *WorkflowService
-	auditService      *AuditService
-	automationService *DocumentAutomationService
+	db                  *gorm.DB
+	workflowService     *WorkflowService
+	auditService        *AuditService
+	automationService   *DocumentAutomationService
 	notificationService *NotificationService
 }
 
 // NewWorkflowExecutionService creates a new workflow execution service
 func NewWorkflowExecutionService(db *gorm.DB, workflowService *WorkflowService, auditService *AuditService, automationService *DocumentAutomationService) *WorkflowExecutionService {
 	return &WorkflowExecutionService{
-		db:                db,
-		workflowService:   workflowService,
-		auditService:      auditService,
-		automationService: automationService,
+		db:                  db,
+		workflowService:     workflowService,
+		auditService:        auditService,
+		automationService:   automationService,
 		notificationService: NewNotificationService(db),
 	}
 }
@@ -43,6 +43,40 @@ func (s *WorkflowExecutionService) AssignWorkflowToDocument(ctx context.Context,
 		return nil, fmt.Errorf("failed to get default workflow: %w", err)
 	}
 
+	return s.assignWorkflow(ctx, organizationID, entityID, entityType, userID, workflow)
+}
+
+// AssignWorkflowToDocumentWithID assigns a user-selected workflow to a document.
+func (s *WorkflowExecutionService) AssignWorkflowToDocumentWithID(
+	ctx context.Context,
+	organizationID, entityID, entityType, workflowID, userID string,
+) (*models.WorkflowAssignment, error) {
+	workflowUUID, err := uuid.Parse(workflowID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid workflow ID format")
+	}
+
+	workflow, err := s.workflowService.GetWorkflow(ctx, workflowUUID, organizationID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get selected workflow: %w", err)
+	}
+
+	if !workflow.IsActive {
+		return nil, fmt.Errorf("selected workflow is inactive")
+	}
+
+	if !strings.EqualFold(workflow.EntityType, entityType) {
+		return nil, fmt.Errorf("workflow entity type mismatch")
+	}
+
+	return s.assignWorkflow(ctx, organizationID, entityID, entityType, userID, workflow)
+}
+
+func (s *WorkflowExecutionService) assignWorkflow(
+	ctx context.Context,
+	organizationID, entityID, entityType, userID string,
+	workflow *models.Workflow,
+) (*models.WorkflowAssignment, error) {
 	// Get workflow stages
 	stages, err := workflow.GetStages()
 	if err != nil {
@@ -170,7 +204,7 @@ func (s *WorkflowExecutionService) GetWorkflowAssignment(ctx context.Context, or
 	err := s.db.Where("organization_id = ? AND entity_id = ?", organizationID, entityID).
 		Preload("Workflow").
 		First(&assignment).Error
-	
+
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return nil, nil // No workflow assigned
@@ -187,7 +221,7 @@ func (s *WorkflowExecutionService) GetPendingWorkflowTasks(ctx context.Context, 
 	err := s.db.Where("organization_id = ? AND entity_id = ? AND status = ?", organizationID, entityID, "pending").
 		Order("stage_number ASC").
 		Find(&tasks).Error
-	
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to get pending workflow tasks: %w", err)
 	}
@@ -365,18 +399,18 @@ func (s *WorkflowExecutionService) ApproveWorkflowTaskWithVersion(ctx context.Co
 	// Record this approval in stage approval records
 	now := time.Now()
 	approvalRecord := &models.StageApprovalRecord{
-		ID:               uuid.New().String(),
-		OrganizationID:   assignment.OrganizationID,
-		WorkflowTaskID:   taskID,
-		StageNumber:      task.StageNumber,
-		ApproverID:       userID,
-		ApproverName:     user.Name,
-		ApproverRole:     user.Role,
-		Action:           "approved",
-		Comments:         comments,
-		Signature:        signature,
-		ApprovedAt:       now,
-		CreatedAt:        now,
+		ID:             uuid.New().String(),
+		OrganizationID: assignment.OrganizationID,
+		WorkflowTaskID: taskID,
+		StageNumber:    task.StageNumber,
+		ApproverID:     userID,
+		ApproverName:   user.Name,
+		ApproverRole:   user.Role,
+		Action:         "approved",
+		Comments:       comments,
+		Signature:      signature,
+		ApprovedAt:     now,
+		CreatedAt:      now,
 	}
 
 	if err := tx.Create(approvalRecord).Error; err != nil {
@@ -439,19 +473,19 @@ func (s *WorkflowExecutionService) ApproveWorkflowTaskWithVersion(ctx context.Co
 
 		// Check if this is the last stage
 		workflowCompleted := task.StageNumber >= len(stages)
-		
+
 		if workflowCompleted {
 			// Workflow completed
 			assignment.Status = "completed"
 			assignment.CompletedAt = &now
 			assignment.CurrentStage = len(stages)
-			
+
 			// Update the actual document status to "approved"
 			if err := s.updateDocumentStatus(tx, assignment.EntityType, assignment.EntityID, "approved"); err != nil {
 				tx.Rollback()
 				return fmt.Errorf("failed to update document status: %w", err)
 			}
-			
+
 			// Add action history entry to the document
 			if err := s.addActionHistoryEntry(tx, assignment.EntityType, assignment.EntityID, userID, "WORKFLOW_COMPLETED", "Document approved through workflow system"); err != nil {
 				// Log error but don't fail the approval
@@ -570,7 +604,7 @@ func (s *WorkflowExecutionService) handleWorkflowCompletion(ctx context.Context,
 			Details:      "Document has been fully approved through workflow",
 			Timestamp:    time.Now(),
 		}
-		
+
 		go func(event NotificationEvent) {
 			notifyCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 			defer cancel()
@@ -826,18 +860,18 @@ func (s *WorkflowExecutionService) RejectWorkflowTaskWithVersion(ctx context.Con
 
 	// Record this rejection in stage approval records
 	approvalRecord := &models.StageApprovalRecord{
-		ID:               uuid.New().String(),
-		OrganizationID:   assignment.OrganizationID,
-		WorkflowTaskID:   taskID,
-		StageNumber:      task.StageNumber,
-		ApproverID:       userID,
-		ApproverName:     user.Name,
-		ApproverRole:     user.Role,
-		Action:           "rejected",
-		Comments:         reason,
-		Signature:        signature,
-		ApprovedAt:       now,
-		CreatedAt:        now,
+		ID:             uuid.New().String(),
+		OrganizationID: assignment.OrganizationID,
+		WorkflowTaskID: taskID,
+		StageNumber:    task.StageNumber,
+		ApproverID:     userID,
+		ApproverName:   user.Name,
+		ApproverRole:   user.Role,
+		Action:         "rejected",
+		Comments:       reason,
+		Signature:      signature,
+		ApprovedAt:     now,
+		CreatedAt:      now,
 	}
 
 	if err := tx.Create(approvalRecord).Error; err != nil {
@@ -873,7 +907,7 @@ func (s *WorkflowExecutionService) RejectWorkflowTaskWithVersion(ctx context.Con
 		tx.Rollback()
 		return fmt.Errorf("failed to update document status: %w", err)
 	}
-	
+
 	// Add action history entry to the document
 	if err := s.addActionHistoryEntry(tx, assignment.EntityType, assignment.EntityID, userID, "WORKFLOW_REJECTED", reason); err != nil {
 		// Log error but don't fail the rejection
@@ -976,10 +1010,10 @@ func (s *WorkflowExecutionService) GetWorkflowStatus(ctx context.Context, organi
 		}
 
 		stageInfo := StageProgressInfo{
-			StageNumber:   stage.StageNumber,
-			StageName:     stage.StageName,
-			RequiredRole:  requiredRoleDisplay,
-			Status:        "pending",
+			StageNumber:    stage.StageNumber,
+			StageName:      stage.StageName,
+			RequiredRole:   requiredRoleDisplay,
+			Status:         "pending",
 			IsCurrentStage: stage.StageNumber == assignment.CurrentStage,
 		}
 
@@ -1066,7 +1100,7 @@ func (s *WorkflowExecutionService) GetAvailableApproversForWorkflow(ctx context.
 
 	// Get the current pending task
 	currentTask := pendingTasks[0]
-	
+
 	if currentTask.AssignedRole == nil {
 		return []ApproverInfo{}, nil
 	}
@@ -1075,7 +1109,7 @@ func (s *WorkflowExecutionService) GetAvailableApproversForWorkflow(ctx context.
 	var approvers []ApproverInfo
 	err = s.db.Table("users").
 		Select("users.id, users.name, users.email, users.role").
-		Where("users.current_organization_id = ? AND users.active = ? AND users.role = ?", 
+		Where("users.current_organization_id = ? AND users.active = ? AND users.role = ?",
 			organizationID, true, *currentTask.AssignedRole).
 		Find(&approvers).Error
 
@@ -1102,11 +1136,11 @@ func (s *WorkflowExecutionService) ClaimWorkflowTask(ctx context.Context, taskID
 		Where("id = ? AND status = ? AND (claimed_by IS NULL OR claim_expiry < ?)",
 			taskID, "pending", time.Now()).
 		Updates(map[string]interface{}{
-			"claimed_by":    userID,
-			"claimed_at":    time.Now(),
-			"claim_expiry":  time.Now().Add(30 * time.Minute), // 30-minute claim
-			"status":        "claimed",
-			"version":       gorm.Expr("version + 1"),
+			"claimed_by":   userID,
+			"claimed_at":   time.Now(),
+			"claim_expiry": time.Now().Add(30 * time.Minute), // 30-minute claim
+			"status":       "claimed",
+			"version":      gorm.Expr("version + 1"),
 		})
 
 	if result.Error != nil {
@@ -1147,11 +1181,11 @@ func (s *WorkflowExecutionService) UnclaimWorkflowTask(ctx context.Context, task
 	result := tx.Model(&task).
 		Where("id = ? AND claimed_by = ?", taskID, userID).
 		Updates(map[string]interface{}{
-			"claimed_by":    nil,
-			"claimed_at":    nil,
-			"claim_expiry":  nil,
-			"status":        "pending",
-			"version":       gorm.Expr("version + 1"),
+			"claimed_by":   nil,
+			"claimed_at":   nil,
+			"claim_expiry": nil,
+			"status":       "pending",
+			"version":      gorm.Expr("version + 1"),
 		})
 
 	if result.Error != nil {
@@ -1249,15 +1283,15 @@ func (s *WorkflowExecutionService) updateDocumentStatus(tx *gorm.DB, entityType,
 // addActionHistoryEntry adds an action history entry to the document
 func (s *WorkflowExecutionService) addActionHistoryEntry(tx *gorm.DB, entityType, entityID, userID, action, comments string) error {
 	actionEntry := types.ActionHistoryEntry{
-		ID:               uuid.New().String(),
-		ActionType:       action,
-		PerformedBy:      userID,
-		PerformedByName:  "", // Will be filled by caller if needed
-		PerformedByRole:  "", // Will be filled by caller if needed
-		PerformedAt:      time.Now(),
-		Comments:         comments,
-		PreviousStatus:   "", // Could be enhanced to track status transitions
-		NewStatus:        "approved",
+		ID:              uuid.New().String(),
+		ActionType:      action,
+		PerformedBy:     userID,
+		PerformedByName: "", // Will be filled by caller if needed
+		PerformedByRole: "", // Will be filled by caller if needed
+		PerformedAt:     time.Now(),
+		Comments:        comments,
+		PreviousStatus:  "", // Could be enhanced to track status transitions
+		NewStatus:       "approved",
 	}
 
 	switch entityType {
@@ -1266,76 +1300,76 @@ func (s *WorkflowExecutionService) addActionHistoryEntry(tx *gorm.DB, entityType
 		if err := tx.Where("id = ?", entityID).First(&requisition).Error; err != nil {
 			return err
 		}
-		
+
 		// Get existing history
 		var history []types.ActionHistoryEntry
 		history = requisition.ActionHistory.Data()
-		
+
 		// Add new entry
 		history = append(history, actionEntry)
-		
+
 		// Update with new history
 		requisition.ActionHistory = datatypes.NewJSONType(history)
-		
+
 		return tx.Save(&requisition).Error
-		
+
 	case "BUDGET", "budget":
 		var budget models.Budget
 		if err := tx.Where("id = ?", entityID).First(&budget).Error; err != nil {
 			return err
 		}
-		
+
 		var history []types.ActionHistoryEntry
 		history = budget.ActionHistory.Data()
 		history = append(history, actionEntry)
-		
+
 		budget.ActionHistory = datatypes.NewJSONType(history)
-		
+
 		return tx.Save(&budget).Error
-		
+
 	case "PURCHASE_ORDER", "purchase_order":
 		var po models.PurchaseOrder
 		if err := tx.Where("id = ?", entityID).First(&po).Error; err != nil {
 			return err
 		}
-		
+
 		var history []types.ActionHistoryEntry
 		history = po.ActionHistory.Data()
 		history = append(history, actionEntry)
-		
+
 		po.ActionHistory = datatypes.NewJSONType(history)
-		
+
 		return tx.Save(&po).Error
-		
+
 	case "PAYMENT_VOUCHER", "payment_voucher":
 		var pv models.PaymentVoucher
 		if err := tx.Where("id = ?", entityID).First(&pv).Error; err != nil {
 			return err
 		}
-		
+
 		var history []types.ActionHistoryEntry
 		history = pv.ActionHistory.Data()
 		history = append(history, actionEntry)
-		
+
 		pv.ActionHistory = datatypes.NewJSONType(history)
-		
+
 		return tx.Save(&pv).Error
-		
+
 	case "GRN", "grn":
 		var grn models.GoodsReceivedNote
 		if err := tx.Where("id = ?", entityID).First(&grn).Error; err != nil {
 			return err
 		}
-		
+
 		var history []types.ActionHistoryEntry
 		history = grn.ActionHistory.Data()
 		history = append(history, actionEntry)
-		
+
 		grn.ActionHistory = datatypes.NewJSONType(history)
-		
+
 		return tx.Save(&grn).Error
 	}
-	
+
 	return nil
 }
 
@@ -1346,143 +1380,143 @@ func (s *WorkflowExecutionService) triggerPostApprovalAutomation(ctx context.Con
 	}
 
 	config := s.automationService.GetDefaultAutomationConfig()
-	
+
 	switch entityType {
 	case "REQUISITION", "requisition":
 		if !config.AutoCreatePOFromRequisition {
 			return nil // Automation disabled
 		}
-		
+
 		// Get the approved requisition
 		var requisition models.Requisition
 		if err := s.db.Where("id = ?", entityID).First(&requisition).Error; err != nil {
 			return fmt.Errorf("failed to get requisition: %w", err)
 		}
-		
+
 		// Validate automation prerequisites
 		if err := s.automationService.ValidateAutomationPrerequisites("requisition", &requisition); err != nil {
 			return fmt.Errorf("automation prerequisites not met: %w", err)
 		}
-		
+
 		// Create purchase order
 		result, err := s.automationService.CreatePurchaseOrderFromRequisition(ctx, &requisition, config)
 		if err != nil {
 			return fmt.Errorf("failed to create purchase order: %w", err)
 		}
-		
+
 		if !result.Success {
 			return fmt.Errorf("purchase order creation failed: %s", result.Error)
 		}
-		
+
 		// Update requisition with auto-created PO info
 		autoCreatedPO := map[string]interface{}{
-			"id":       result.DocumentID,
-			"created":  true,
+			"id":      result.DocumentID,
+			"created": true,
 		}
-		
+
 		if result.CreatedDocument != nil {
 			if po, ok := result.CreatedDocument.(*models.PurchaseOrder); ok {
 				autoCreatedPO["documentNumber"] = po.DocumentNumber
 				autoCreatedPO["amount"] = po.TotalAmount
 			}
 		}
-		
+
 		autoCreatedJSON, _ := datatypes.NewJSONType(autoCreatedPO).MarshalJSON()
 		s.db.Model(&requisition).Updates(map[string]interface{}{
 			"automation_used": true,
 			"auto_created_po": datatypes.JSON(autoCreatedJSON),
 		})
-		
+
 	case "PURCHASE_ORDER", "purchase_order":
 		if !config.AutoCreateGRNFromPO {
 			return nil // Automation disabled
 		}
-		
+
 		// Get the approved purchase order
 		var po models.PurchaseOrder
 		if err := s.db.Where("id = ?", entityID).First(&po).Error; err != nil {
 			return fmt.Errorf("failed to get purchase order: %w", err)
 		}
-		
+
 		// Validate automation prerequisites
 		if err := s.automationService.ValidateAutomationPrerequisites("purchase_order", &po); err != nil {
 			return fmt.Errorf("automation prerequisites not met: %w", err)
 		}
-		
+
 		// Create GRN
 		result, err := s.automationService.CreateGRNFromPurchaseOrder(ctx, &po, config)
 		if err != nil {
 			return fmt.Errorf("failed to create GRN: %w", err)
 		}
-		
+
 		if !result.Success {
 			return fmt.Errorf("GRN creation failed: %s", result.Error)
 		}
-		
+
 		// Update PO with auto-created GRN info
 		autoCreatedGRN := map[string]interface{}{
 			"id":      result.DocumentID,
 			"created": true,
 		}
-		
+
 		if result.CreatedDocument != nil {
 			if grn, ok := result.CreatedDocument.(*models.GoodsReceivedNote); ok {
 				autoCreatedGRN["documentNumber"] = grn.DocumentNumber
 			}
 		}
-		
+
 		autoCreatedJSON, _ := datatypes.NewJSONType(autoCreatedGRN).MarshalJSON()
 		s.db.Model(&po).Updates(map[string]interface{}{
-			"automation_used":   true,
+			"automation_used":  true,
 			"auto_created_grn": datatypes.JSON(autoCreatedJSON),
 		})
-		
+
 	case "GRN", "grn":
 		if !config.AutoCreatePVFromGRN {
 			return nil // Automation disabled
 		}
-		
+
 		// Get the approved GRN
 		var grn models.GoodsReceivedNote
 		if err := s.db.Where("id = ?", entityID).First(&grn).Error; err != nil {
 			return fmt.Errorf("failed to get GRN: %w", err)
 		}
-		
+
 		// Validate automation prerequisites
 		if err := s.automationService.ValidateAutomationPrerequisites("grn", &grn); err != nil {
 			return fmt.Errorf("automation prerequisites not met: %w", err)
 		}
-		
+
 		// Create Payment Voucher
 		result, err := s.automationService.CreatePaymentVoucherFromGRN(ctx, &grn, config)
 		if err != nil {
 			return fmt.Errorf("failed to create payment voucher: %w", err)
 		}
-		
+
 		if !result.Success {
 			return fmt.Errorf("payment voucher creation failed: %s", result.Error)
 		}
-		
+
 		// Update GRN with auto-created PV info
 		autoCreatedPV := map[string]interface{}{
 			"id":      result.DocumentID,
 			"created": true,
 		}
-		
+
 		if result.CreatedDocument != nil {
 			if pv, ok := result.CreatedDocument.(*models.PaymentVoucher); ok {
 				autoCreatedPV["documentNumber"] = pv.DocumentNumber
 				autoCreatedPV["amount"] = pv.Amount
 			}
 		}
-		
+
 		autoCreatedJSON, _ := datatypes.NewJSONType(autoCreatedPV).MarshalJSON()
 		s.db.Model(&grn).Updates(map[string]interface{}{
 			"automation_used": true,
 			"auto_created_pv": datatypes.JSON(autoCreatedJSON),
 		})
 	}
-	
+
 	return nil
 }
 
@@ -1522,7 +1556,7 @@ func (s *WorkflowExecutionService) getDocumentPriority(tx *gorm.DB, entityID, en
 				return strings.ToLower(pv.Priority)
 			}
 		}
-	// budget and goods_received_note don't have priority field - use default
+		// budget and goods_received_note don't have priority field - use default
 	}
 
 	return defaultPriority
