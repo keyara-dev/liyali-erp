@@ -14,13 +14,25 @@ import {
   TrendingDown,
   DollarSign,
   Users,
-  Calendar,
-  BarChart3,
-  PieChart,
   Activity,
 } from "lucide-react";
+import {
+  BarChart,
+  Bar,
+  PieChart,
+  Pie,
+  Cell,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  Legend,
+} from "recharts";
 import { toast } from "sonner";
 import { getSubscriptionAnalytics } from "@/app/_actions/subscriptions";
+
+const TIER_COLORS = ["#3b82f6", "#22c55e", "#a855f7", "#f59e0b", "#ef4444"];
 
 export function SubscriptionAnalyticsTab() {
   const [analytics, setAnalytics] = useState<any>(null);
@@ -309,24 +321,80 @@ export function SubscriptionAnalyticsTab() {
         </CardContent>
       </Card>
 
-      {/* Growth Trends */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Growth Trends</CardTitle>
-          <CardDescription>Subscription growth over time</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="h-64 flex items-center justify-center text-muted-foreground">
-            <div className="text-center">
-              <BarChart3 className="h-12 w-12 mx-auto mb-2" />
-              <p>Chart visualization would go here</p>
-              <p className="text-sm">
-                Integration with charting library needed
-              </p>
+      {/* Growth Trends - Revenue & Subscribers by Tier */}
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Revenue by Tier</CardTitle>
+            <CardDescription>Monthly revenue breakdown per tier</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={analytics.tiers}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" tick={{ fontSize: 12 }} />
+                  <YAxis
+                    tick={{ fontSize: 12 }}
+                    tickFormatter={(value) => `$${value}`}
+                  />
+                  <Tooltip
+                    formatter={(value: number) => [
+                      `$${value.toLocaleString()}`,
+                      "Revenue",
+                    ]}
+                  />
+                  <Bar
+                    dataKey="revenue"
+                    fill="#3b82f6"
+                    radius={[4, 4, 0, 0]}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
             </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Tier Distribution</CardTitle>
+            <CardDescription>Subscriber count per tier</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={analytics.tiers}
+                    dataKey="count"
+                    nameKey="name"
+                    cx="50%"
+                    cy="50%"
+                    outerRadius={80}
+                    label={({ name, percentage }) =>
+                      `${name} (${percentage}%)`
+                    }
+                  >
+                    {analytics.tiers.map((_: any, index: number) => (
+                      <Cell
+                        key={index}
+                        fill={TIER_COLORS[index % TIER_COLORS.length]}
+                      />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    formatter={(value: number, name: string) => [
+                      `${value} subscribers`,
+                      name,
+                    ]}
+                  />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

@@ -416,3 +416,57 @@ export async function overrideOrganizationLimits(
     return handleError(error);
   }
 }
+
+/**
+ * Extend organization trial period (Admin only)
+ * Adds days to the existing trial/grace period rather than resetting it
+ */
+export async function extendOrganizationTrial(
+  organizationId: string,
+  request: {
+    daysToAdd: number;
+    reason: string;
+  },
+): Promise<APIResponse<any>> {
+  const url = `/api/v1/organizations/${organizationId}/trial/extend`;
+
+  try {
+    const response = await authenticatedApiClient({
+      url: url,
+      method: "POST",
+      data: request,
+    });
+
+    return successResponse(
+      response?.data?.data || response?.data,
+      "Trial extended successfully",
+    );
+  } catch (error: Error | any) {
+    return handleError(error);
+  }
+}
+
+/**
+ * Get audit logs for an organization (tier changes, limit overrides, etc.)
+ */
+export async function getOrganizationAuditLogs(
+  organizationId: string,
+  page: number = 1,
+  limit: number = 20,
+): Promise<APIResponse<any>> {
+  const url = `/api/v1/audit-logs?organizationId=${organizationId}&page=${page}&limit=${limit}`;
+
+  try {
+    const response = await authenticatedApiClient({
+      url: url,
+      method: "GET",
+    });
+
+    return successResponse(
+      response?.data?.data || response?.data,
+      "Audit logs retrieved successfully",
+    );
+  } catch (error: Error | any) {
+    return handleError(error);
+  }
+}

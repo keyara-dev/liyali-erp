@@ -41,6 +41,8 @@ import {
   type OrganizationActivity,
   type TrialResetRequest,
 } from "@/app/_actions/organizations";
+import { ChangeTierDialog } from "./change-tier-dialog";
+import { OverrideLimitsDialog } from "./override-limits-dialog";
 
 interface OrganizationDetailsDialogProps {
   organization: Organization;
@@ -60,6 +62,8 @@ export function OrganizationDetailsDialog({
   const [activities, setActivities] = useState<OrganizationActivity[]>([]);
   const [subscription, setSubscription] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [showChangeTier, setShowChangeTier] = useState(false);
+  const [showOverrideLimits, setShowOverrideLimits] = useState(false);
 
   useEffect(() => {
     if (open && organization) {
@@ -429,6 +433,55 @@ export function OrganizationDetailsDialog({
                 )}
               </CardContent>
             </Card>
+
+            {/* Subscription Action Buttons */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm">Subscription Actions</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowChangeTier(true)}
+                  >
+                    <Activity className="mr-2 h-4 w-4" />
+                    Change Tier
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowOverrideLimits(true)}
+                  >
+                    <Settings className="mr-2 h-4 w-4" />
+                    Override Limits
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Change Tier Dialog */}
+            <ChangeTierDialog
+              organization={organization}
+              open={showChangeTier}
+              onOpenChange={setShowChangeTier}
+              onSuccess={() => {
+                onOrganizationUpdated();
+                loadOrganizationDetails();
+              }}
+            />
+
+            {/* Override Limits Dialog */}
+            <OverrideLimitsDialog
+              organization={organization}
+              open={showOverrideLimits}
+              onOpenChange={setShowOverrideLimits}
+              onSuccess={() => {
+                onOrganizationUpdated();
+                loadOrganizationDetails();
+              }}
+            />
           </TabsContent>
 
           <TabsContent value="activity" className="space-y-4">

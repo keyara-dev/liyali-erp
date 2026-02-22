@@ -39,6 +39,7 @@ import {
 } from "@/app/_actions/organizations";
 import { OrganizationEditDialog } from "./organization-edit-dialog";
 import { TrialResetDialog } from "@/components/trial-reset-dialog";
+import { ManageSubscriptionDialog } from "./manage-subscription-dialog";
 
 interface OrganizationActionsDropdownProps {
   organization: Organization;
@@ -59,6 +60,7 @@ export function OrganizationActionsDropdown({
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showTrialResetDialog, setShowTrialResetDialog] = useState(false);
+  const [showManageSubscription, setShowManageSubscription] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSuspendOrganization = async () => {
@@ -156,7 +158,7 @@ export function OrganizationActionsDropdown({
             </DropdownMenuItem>
           )}
 
-          <DropdownMenuItem onClick={() => {}}>
+          <DropdownMenuItem onClick={() => setShowManageSubscription(true)}>
             <CreditCard className="mr-2 h-4 w-4" />
             Manage Subscription
           </DropdownMenuItem>
@@ -293,6 +295,14 @@ export function OrganizationActionsDropdown({
           }}
         />
       )}
+
+      {/* Manage Subscription Dialog */}
+      <ManageSubscriptionDialog
+        organization={organization}
+        open={showManageSubscription}
+        onOpenChange={setShowManageSubscription}
+        onOrganizationUpdated={onOrganizationUpdated}
+      />
     </>
   );
 }
