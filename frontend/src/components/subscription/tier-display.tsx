@@ -125,23 +125,20 @@ export function TierDisplay({
         onClick={() => (canUpgrade ? setShowUpgradeModal(true) : undefined)}
         className={`cursor-pointer ${canUpgrade ? "hover:opacity-80" : ""}`}
       >
-        <Card className="border border-primary/20 shadow-none px-0 backdrop-blur-md">
-          <CardContent className="py-2 px-2">
+        <Card className="border border-border hover:bg-primary-50 shadow-none px-0 backdrop-blur-md">
+          <CardContent className="p-1 px-1">
             <div className="flex items-center  w-full justify-between">
               <div className="flex items-center">
                 <div className="flex items-center gap-2">
                   <motion.div
-                    className={`p-2 rounded-lg bg-linear-to-r ${tierConfig.gradient} shadow-lg`}
+                    className={`p-1.5 rounded-lg bg-linear-to-r ${tierConfig.gradient} shadow-lg`}
                     whileHover={{ scale: 1.1, rotate: 5 }}
                     transition={{ duration: 0.2 }}
                   >
-                    <IconComponent className="h-5 w-5 text-white " />
+                    <IconComponent className="h-4 w-4 text-white " />
                   </motion.div>
                   <div className="flex flex-col">
                     <span className="font-medium">{tierConfig.label} Plan</span>
-                    <p className="text-xs truncate ">
-                      {tierConfig.description}
-                    </p>
                   </div>
                 </div>
               </div>
