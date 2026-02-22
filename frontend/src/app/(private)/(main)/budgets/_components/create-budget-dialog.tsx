@@ -20,6 +20,8 @@ import { createBudget } from "@/app/_actions/budgets";
 import { useActiveDepartments } from "@/hooks/use-department-queries";
 import { useBudgetStorage } from "@/hooks/use-budget-storage";
 import { QUERY_KEYS } from "@/lib/constants";
+import { useConfigurationStatus } from "@/hooks/use-configuration-status";
+import { ConfigurationChecklistBanner } from "@/components/ui/configuration-checklist-banner";
 
 interface CreateBudgetDialogProps {
   open: boolean;
@@ -49,6 +51,11 @@ export function CreateBudgetDialog({
     useActiveDepartments();
   const { saveToStorage } = useBudgetStorage();
   const queryClient = useQueryClient();
+
+  // Check configuration status
+  const configStatus = useConfigurationStatus({
+    includeWorkflow: false, // Budgets don't require workflow at creation
+  });
   const [formData, setFormData] = useState({
     name: "",
     description: "",
@@ -169,6 +176,16 @@ export function CreateBudgetDialog({
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Configuration Checklist Banner */}
+          {!configStatus.allConfigured && (
+            <ConfigurationChecklistBanner
+              requirements={configStatus.requirements}
+              isLoading={configStatus.isLoading}
+              title="Configuration Required"
+              description="Complete the following configurations before creating a budget:"
+            />
+          )}
+
           {/* Alert about budget items */}
           <Alert>
             <InfoIcon className="h-4 w-4" />
@@ -279,7 +296,11 @@ export function CreateBudgetDialog({
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={isSubmitting} className="flex-1">
+            <Button
+              type="submit"
+              disabled={isSubmitting || !configStatus.allConfigured}
+              className="flex-1"
+            >
               {isSubmitting ? "Creating..." : "Create Budget"}
             </Button>
           </div>
