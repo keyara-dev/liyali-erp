@@ -26,6 +26,7 @@ npm run dev  # http://localhost:3000
 
 - **[QUICK_REFERENCE.md](QUICK_REFERENCE.md)** - Quick commands and patterns
 - **[DEVELOPER_GUIDE.md](DEVELOPER_GUIDE.md)** - Detailed development guide
+- **[DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md)** - Complete deployment guide
 - **[FEATURES_IMPLEMENTED.md](FEATURES_IMPLEMENTED.md)** - Feature documentation
 - **[.kiro/specs/](.kiro/specs/)** - Feature specifications
 
@@ -112,18 +113,34 @@ npm run lint
 
 ## 🚢 Deployment
 
-### Fly.io (Recommended)
+### Using Makefile (Recommended)
+
+```bash
+# Deploy all apps
+make deploy
+
+# Deploy individual apps
+make deploy-backend    # Backend only
+make deploy-web        # Web frontend only
+make deploy-admin      # Admin console only
+
+# Pre-deployment checks
+make pre-deploy        # Verify env, build, test, migrate
+```
+
+### Fly.io (Direct)
 
 ```bash
 cd backend && fly deploy
 cd frontend && fly deploy
+cd admin-console && fly deploy
 ```
 
 ### Manual
 
-1. Build: `go build` (backend), `npm run build` (frontend)
+1. Build: `make build` or individual builds
 2. Set environment variables
-3. Run migrations: `go run cmd/migrate/main.go`
+3. Run migrations: `make migrate`
 4. Deploy and restart services
 
 ---

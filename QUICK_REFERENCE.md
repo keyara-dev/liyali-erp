@@ -214,22 +214,42 @@ IMAGEKIT_PRIVATE_KEY=your_private_key
 
 ## Deployment
 
-### Fly.io
+### Using Makefile (Recommended)
+
+```bash
+# Deploy all apps
+make deploy
+
+# Deploy individual apps
+make deploy-backend    # Backend only
+make deploy-web        # Web frontend only
+make deploy-admin      # Admin console only
+
+# Pre-deployment checks
+make pre-deploy        # Verify env, build, test, migrate
+```
+
+### Fly.io (Direct)
 
 ```bash
 cd backend && fly deploy
 cd frontend && fly deploy
+cd admin-console && fly deploy
 ```
 
 ### Manual
 
 ```bash
 # Backend
-go build -o app .
+cd backend && go build -o app .
 # Deploy binary + set env vars
 
 # Frontend
-npm run build
+cd frontend && npm run build
+# Deploy .next/ + set env vars
+
+# Admin Console
+cd admin-console && npm run build
 # Deploy .next/ + set env vars
 ```
 
@@ -259,12 +279,33 @@ npm run build
 ## Useful Commands
 
 ```bash
+# Makefile Commands (Recommended)
+make help                      # Show all commands
+make deploy                    # Deploy all apps
+make deploy-backend            # Deploy backend only
+make deploy-web                # Deploy web only
+make deploy-admin              # Deploy admin only
+make build                     # Build all apps
+make test                      # Run all tests
+make migrate                   # Run migrations
+make clean                     # Clean artifacts
+make pre-deploy                # Pre-deployment checks
+
 # Backend
+cd backend
 go run main.go                 # Dev server
 go test ./...                  # Tests
 go build                       # Build
+go run cmd/migrate/main.go     # Run migrations
 
-# Frontend
+# Frontend (Web)
+cd frontend
+npm run dev                    # Dev server
+npm run build                  # Build + type check
+npm run lint                   # Lint
+
+# Admin Console
+cd admin-console
 npm run dev                    # Dev server
 npm run build                  # Build + type check
 npm run lint                   # Lint

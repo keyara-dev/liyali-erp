@@ -534,14 +534,87 @@ npm run build
 
 ---
 
+## Deployment
+
+### Using Makefile (Recommended)
+
+```bash
+# Deploy all apps
+make deploy
+
+# Deploy individual apps
+make deploy-backend    # Backend only
+make deploy-web        # Web frontend only
+make deploy-admin      # Admin console only
+
+# Pre-deployment checks
+make pre-deploy        # Verify env, build, test, migrate
+
+# Build commands
+make build             # Build all apps
+make build-backend     # Build backend only
+make build-web         # Build web only
+make build-admin       # Build admin only
+
+# Testing
+make test              # Run all tests
+make test-backend      # Backend tests only
+make test-web          # Frontend tests only
+
+# Database
+make migrate           # Run migrations
+
+# Utilities
+make clean             # Clean build artifacts
+make check-env         # Verify environment setup
+make verify            # Build + test
+```
+
+### Fly.io (Direct)
+
+```bash
+cd backend && fly deploy
+cd frontend && fly deploy
+cd admin-console && fly deploy
+```
+
+### Manual Deployment
+
+1. **Build**:
+
+   ```bash
+   make build
+   # Or individually:
+   cd backend && go build -o app .
+   cd frontend && npm run build
+   cd admin-console && npm run build
+   ```
+
+2. **Set Environment Variables**:
+   - Backend: DATABASE_URL, JWT_SECRET, APP_PORT, FRONTEND_URL
+   - Frontend: NEXT_PUBLIC_API_URL, IMAGEKIT keys
+   - Admin Console: NEXT_PUBLIC_API_URL
+
+3. **Run Migrations**:
+
+   ```bash
+   make migrate
+   # Or: cd backend && go run cmd/migrate/main.go
+   ```
+
+4. **Deploy and Restart Services**
+
+---
+
 ## Deployment Checklist
 
-- [ ] Run migrations
-- [ ] Update environment variables
-- [ ] Build backend: `go build`
-- [ ] Build frontend: `npm run build`
-- [ ] Test endpoints
-- [ ] Check logs
+- [ ] Run `make check-env` to verify environment files
+- [ ] Run `make pre-deploy` for full verification
+- [ ] Run migrations: `make migrate`
+- [ ] Build all apps: `make build`
+- [ ] Test all apps: `make test`
+- [ ] Deploy: `make deploy` or individual deploys
+- [ ] Check logs after deployment
 - [ ] Verify database connections
 - [ ] Test authentication
 - [ ] Monitor performance
@@ -551,17 +624,40 @@ npm run build
 ## Useful Commands
 
 ```bash
+# Makefile Commands (Recommended)
+make help                         # Show all available commands
+make deploy                       # Deploy all apps
+make deploy-backend               # Deploy backend only
+make deploy-web                   # Deploy web only
+make deploy-admin                 # Deploy admin only
+make build                        # Build all apps
+make test                         # Run all tests
+make migrate                      # Run migrations
+make clean                        # Clean artifacts
+make pre-deploy                   # Pre-deployment checks
+make dev-backend                  # Run backend in dev mode
+make dev-web                      # Run web in dev mode
+make dev-admin                    # Run admin in dev mode
+
 # Backend
+cd backend
 go run main.go                    # Run server
 go test ./...                     # Run tests
 go build -o app .                 # Build binary
 go run cmd/migrate/main.go        # Run migrations
 
-# Frontend
+# Frontend (Web)
+cd frontend
 npm run dev                       # Development server
 npm run build                     # Production build
 npm run lint                      # Lint code
 npx shadcn@latest add button      # Add UI component
+
+# Admin Console
+cd admin-console
+npm run dev                       # Development server
+npm run build                     # Production build
+npm run lint                      # Lint code
 
 # Database
 psql $DATABASE_URL                # Connect to DB
