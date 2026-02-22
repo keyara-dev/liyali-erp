@@ -1,7 +1,7 @@
 # Liyali Gateway - Makefile
 # Deployment and build automation for all apps
 
-.PHONY: help deploy deploy-all deploy-backend deploy-web deploy-admin build build-all build-backend build-web build-admin test clean migrate
+.PHONY: help deploy deploy-all deploy-backend deploy-web deploy-admin build build-all build-backend build-web build-admin test test-backend test-web clean migrate install check-env verify pre-deploy logs status open ssh-backend ssh-web ssh-admin restart scale-backend scale-web scale-admin dev-backend dev-web dev-admin
 
 # Default target
 help:
@@ -27,11 +27,29 @@ help:
 	@echo "  make test-backend        - Run backend tests"
 	@echo "  make test-web            - Run web frontend tests"
 	@echo ""
-	@echo "Utilities:"
-	@echo "  make clean               - Clean build artifacts"
+	@echo "Development:"
 	@echo "  make dev-backend         - Run backend in dev mode"
 	@echo "  make dev-web             - Run web frontend in dev mode"
 	@echo "  make dev-admin           - Run admin console in dev mode"
+	@echo ""
+	@echo "Fly.io Management:"
+	@echo "  make logs                - View logs for all apps"
+	@echo "  make status              - Check status of all apps"
+	@echo "  make open                - Open all apps in browser"
+	@echo "  make restart             - Restart all apps"
+	@echo "  make ssh-backend         - SSH into backend"
+	@echo "  make ssh-web             - SSH into frontend"
+	@echo "  make ssh-admin           - SSH into admin console"
+	@echo "  make scale-backend       - Show backend scale info"
+	@echo "  make scale-web           - Show frontend scale info"
+	@echo "  make scale-admin         - Show admin console scale info"
+	@echo ""
+	@echo "Utilities:"
+	@echo "  make clean               - Clean build artifacts"
+	@echo "  make install             - Install dependencies"
+	@echo "  make check-env           - Verify environment setup"
+	@echo "  make verify              - Build + test"
+	@echo "  make pre-deploy          - Full pre-deployment checks"
 
 # ============================================================================
 # DEPLOYMENT COMMANDS
@@ -45,20 +63,20 @@ deploy-all: deploy
 
 # Deploy backend
 deploy-backend:
-	@echo "🚀 Deploying backend..."
-	@cd backend && fly deploy
+	@echo "🚀 Deploying backend (liyali-gateway-api)..."
+	@flyctl deploy --app liyali-gateway-api --config backend/fly.toml --dockerfile backend/Dockerfile
 	@echo "✅ Backend deployed!"
 
 # Deploy web frontend
 deploy-web:
-	@echo "🚀 Deploying web frontend..."
-	@cd frontend && fly deploy
+	@echo "🚀 Deploying web frontend (liyali-gateway-frontend)..."
+	@flyctl deploy --app liyali-gateway-frontend --config frontend/fly.toml --dockerfile frontend/Dockerfile
 	@echo "✅ Web frontend deployed!"
 
 # Deploy admin console
 deploy-admin:
-	@echo "🚀 Deploying admin console..."
-	@cd admin-console && fly deploy
+	@echo "🚀 Deploying admin console (liyali-admin-console)..."
+	@flyctl deploy --app liyali-admin-console --config admin-console/fly.toml --dockerfile admin-console/Dockerfile
 	@echo "✅ Admin console deployed!"
 
 # ============================================================================
@@ -178,3 +196,76 @@ verify: build test
 pre-deploy: check-env verify migrate
 	@echo "✅ Pre-deployment checks complete!"
 	@echo "Ready to deploy!"
+
+# ============================================================================
+# FLY.IO MANAGEMENT COMMANDS
+# ============================================================================
+
+# View logs for all apps
+logs:
+	@echo "📋 Viewing logs (press Ctrl+C to stop)..."
+	@echo "Backend logs:"
+	@flyctl logs --app liyali-gateway-api &
+	@echo "Frontend logs:"
+	@flyctl logs --app liyali-gateway-frontend &
+	@echo "Admin Console logs:"
+	@flyctl logs --app liyali-admin-console &
+	@wait
+
+# View status of all apps
+status:
+	@echo "📊 Checking app status..."
+	@echo "\nBackend (liyali-gateway-api):"
+	@flyctl status --app liyali-gateway-api
+	@echo "\nFrontend (liyali-gateway-frontend):"
+	@flyctl status --app liyali-gateway-frontend
+	@echo "\nAdmin Console (liyali-admin-console):"
+	@flyctl status --app liyali-admin-console
+
+# Open apps in browser
+open:
+	@echo "🌐 Opening apps in browser..."
+	@flyctl open --app liyali-gateway-api
+	@flyctl open --app liyali-gateway-frontend
+	@flyctl open --app liyali-admin-console
+
+# SSH into backend
+ssh-backend:
+	@echo "🔐 SSH into backend..."
+	@flyctl ssh console --app liyali-gateway-api
+
+# SSH into frontend
+ssh-web:
+	@echo "🔐 SSH into frontend..."
+	@flyctl ssh console --app liyali-gateway-frontend
+
+# SSH into admin console
+ssh-admin:
+	@echo "🔐 SSH into admin console..."
+	@flyctl ssh console --app liyali-admin-console
+
+# Restart all apps
+restart:
+	@echo "🔄 Restarting all apps..."
+	@flyctl apps restart liyali-gateway-api
+	@flyctl apps restart liyali-gateway-frontend
+	@flyctl apps restart liyali-admin-console
+	@echo "✅ All apps restarted!"
+
+# Scale backend
+scale-backend:
+	@echo "📈 Current backend scale:"
+	@flyctl scale show --app liyali-gateway-api
+	@echo "\nTo scale, run: flyctl scale count <number> --app liyali-gateway-api"
+
+# Scale frontend
+scale-web:
+	@echo "📈 Current frontend scale:"
+	@flyctl scale show --app liyali-gateway-frontend
+	@echo "\nTo scale, run: flyctl scale count <number> --app liyali-gateway-frontend"
+
+# Scale admin console
+scale-admin:
+	@echo "📈 Current admin console scale:"
+	@flyctl scale show --app liyali-admin-console
+	@echo "\nTo scale, run: flyctl scale count <number> --app liyali-admin-console"
