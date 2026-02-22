@@ -30,12 +30,14 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import {
-  getAllUsers,
-  updateUserStatus,
-  getUserStatistics,
   type PlatformUser,
   type UserFilters,
 } from "@/app/_actions/users";
+import {
+  useUsers,
+  useUserStats,
+  useUpdateUserStatus,
+} from "@/hooks/use-users";
 import { UserDetailsDialog } from "./components/user-details-dialog";
 import { UserActionsDropdown } from "./components/user-actions-dropdown";
 import { UserBulkActions } from "./components/user-bulk-actions";
@@ -44,8 +46,6 @@ import { UserCreateDialog } from "./components/user-create-dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 
 export default function UsersPage() {
-  const [users, setUsers] = useState<PlatformUser[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [selectedUser, setSelectedUser] = useState<PlatformUser | null>(null);
   const [showUserDetails, setShowUserDetails] = useState(false);
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
@@ -61,76 +61,49 @@ export default function UsersPage() {
     sort_order: "desc",
   });
 
-  const [pagination, setPagination] = useState({
-    total: 0,
-    page: 1,
-    limit: 20,
-    totalPages: 0,
-  });
+  // TanStack Query hooks
+  const { data: userData, isLoading, error: userError } = useUsers(filters);
+  const { data: statsData } = useUserStats();
+  const updateStatusMutation = useUpdateUserStatus();
 
-  // Statistics
-  const [stats, setStats] = useState({
+  const users = userData?.users ?? [];
+  const pagination = {
+    total: userData?.total ?? 0,
+    page: userData?.page ?? 1,
+    limit: userData?.limit ?? 20,
+    totalPages: userData?.totalPages ?? 0,
+  };
+
+  const stats = statsData ?? {
     total_users: 0,
     active_users: 0,
     suspended_users: 0,
     pending_users: 0,
     users_created_this_month: 0,
     users_logged_in_today: 0,
-  });
+  };
 
   useEffect(() => {
-    loadUsers();
-    loadStatistics();
-  }, [filters]);
-
-  const loadUsers = async () => {
-    setIsLoading(true);
-    try {
-      const result = await getAllUsers(filters);
-      if (result.success && result.data) {
-        setUsers(result.data.users || []);
-        setPagination({
-          total: result.data.total || 0,
-          page: result.data.page || 1,
-          limit: result.data.limit || 20,
-          totalPages: result.data.totalPages || 0,
-        });
-      } else {
-        toast.error("Failed to load users");
-      }
-    } catch (error) {
-      toast.error("Failed to load users");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const loadStatistics = async () => {
-    try {
-      const result = await getUserStatistics();
-      if (result.success && result.data) {
-        setStats(result.data);
-      }
-    } catch (error) {
-      console.error("Failed to load user statistics");
-    }
-  };
+    if (userError) toast.error("Failed to load users");
+  }, [userError]);
 
   const handleStatusChange = async (
     userId: string,
     status: "active" | "suspended" | "inactive",
   ) => {
-    try {
-      const result = await updateUserStatus(userId, status);
-      if (result.success) {
-        toast.success(`User ${status} successfully`);
-        loadUsers();
-      } else {
-        toast.error(result.message || "Failed to update user status");
-      }
-    } catch (error) {
-      toast.error("Failed to update user status");
-    }
+    updateStatusMutation.mutate(
+      { id: userId, status },
+      {
+        onSuccess: (result) => {
+          if (result.success) {
+            toast.success(`User ${status} successfully`);
+          } else {
+            toast.error(result.message || "Failed to update user status");
+          }
+        },
+        onError: () => toast.error("Failed to update user status"),
+      },
+    );
   };
 
   const handlePageChange = (page: number) => {
@@ -289,7 +262,7 @@ export default function UsersPage() {
             users={users}
             selectedUsers={selectedUsers}
             onSelectionChange={setSelectedUsers}
-            onUsersUpdated={loadUsers}
+            onUsersUpdated={() => {}}
           />
 
           {/* Users List */}
@@ -396,7 +369,7 @@ export default function UsersPage() {
                     <UserActionsDropdown
                       user={user}
                       onStatusChange={handleStatusChange}
-                      onUserUpdated={loadUsers}
+                      onUserUpdated={() => {}}
                     />
                   </div>
                 </div>
@@ -441,7 +414,7 @@ export default function UsersPage() {
           user={selectedUser}
           open={showUserDetails}
           onOpenChange={setShowUserDetails}
-          onUserUpdated={loadUsers}
+          onUserUpdated={() => {}}
         />
       )}
 
@@ -449,7 +422,7 @@ export default function UsersPage() {
       <UserCreateDialog
         open={showCreateUser}
         onOpenChange={setShowCreateUser}
-        onUserCreated={loadUsers}
+        onUserCreated={() => {}}
       />
     </div>
   );

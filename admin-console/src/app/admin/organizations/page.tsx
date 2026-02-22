@@ -25,12 +25,14 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import {
-  getAllOrganizations,
-  updateOrganizationStatus,
-  getOrganizationStatistics,
   type Organization,
   type OrganizationFilters,
 } from "@/app/_actions/organizations";
+import {
+  useOrganizations,
+  useOrganizationStats,
+  useUpdateOrganizationStatus,
+} from "@/hooks/use-organizations";
 import { OrganizationDetailsDialog } from "./components/organization-details-dialog";
 import { OrganizationActionsDropdown } from "./components/organization-actions-dropdown";
 import { OrganizationCreateDialog } from "./components/organization-create-dialog";
@@ -38,8 +40,6 @@ import { OrganizationAdvancedFilters } from "./components/organization-advanced-
 import { OrganizationBulkActions } from "./components/organization-bulk-actions";
 
 export default function OrganizationsPage() {
-  const [organizations, setOrganizations] = useState<Organization[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [selectedOrganization, setSelectedOrganization] =
     useState<Organization | null>(null);
   const [showOrganizationDetails, setShowOrganizationDetails] = useState(false);
@@ -58,15 +58,24 @@ export default function OrganizationsPage() {
     sort_order: "desc",
   });
 
-  const [pagination, setPagination] = useState({
-    total: 0,
-    page: 1,
-    limit: 20,
-    totalPages: 0,
-  });
+  // TanStack Query hooks
+  const {
+    data: orgData,
+    isLoading,
+    error: orgError,
+  } = useOrganizations(filters);
+  const { data: stats } = useOrganizationStats();
+  const updateStatusMutation = useUpdateOrganizationStatus();
 
-  // Statistics
-  const [stats, setStats] = useState({
+  const organizations = orgData?.organizations ?? [];
+  const pagination = {
+    total: orgData?.total ?? 0,
+    page: orgData?.page ?? 1,
+    limit: orgData?.limit ?? 20,
+    totalPages: orgData?.totalPages ?? 0,
+  };
+
+  const statsData = stats ?? {
     total_organizations: 0,
     active_organizations: 0,
     suspended_organizations: 0,
@@ -74,66 +83,32 @@ export default function OrganizationsPage() {
     organizations_created_this_month: 0,
     total_users_across_organizations: 0,
     trials_expiring_soon: 0,
-    top_organizations_by_users: [] as Array<{
-      organization_id: string;
-      organization_name: string;
-      user_count: number;
-    }>,
-  });
+    top_organizations_by_users: [],
+  };
 
   useEffect(() => {
-    loadOrganizations();
-    loadStatistics();
-  }, [filters]);
-
-  const loadOrganizations = async () => {
-    setIsLoading(true);
-    try {
-      const result = await getAllOrganizations(filters);
-      if (result.success && result.data) {
-        setOrganizations(result.data.organizations || []);
-        setPagination({
-          total: result.data.total || 0,
-          page: result.data.page || 1,
-          limit: result.data.limit || 20,
-          totalPages: result.data.totalPages || 0,
-        });
-      } else {
-        toast.error("Failed to load organizations");
-      }
-    } catch (error) {
-      toast.error("Failed to load organizations");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const loadStatistics = async () => {
-    try {
-      const result = await getOrganizationStatistics();
-      if (result.success && result.data) {
-        setStats(result.data);
-      }
-    } catch (error) {
-      console.error("Failed to load organization statistics");
-    }
-  };
+    if (orgError) toast.error("Failed to load organizations");
+  }, [orgError]);
 
   const handleStatusChange = async (
     organizationId: string,
     status: "active" | "suspended" | "pending",
   ) => {
-    try {
-      const result = await updateOrganizationStatus(organizationId, status);
-      if (result.success) {
-        toast.success(`Organization ${status} successfully`);
-        loadOrganizations();
-      } else {
-        toast.error(result.message || "Failed to update organization status");
-      }
-    } catch (error) {
-      toast.error("Failed to update organization status");
-    }
+    updateStatusMutation.mutate(
+      { id: organizationId, status },
+      {
+        onSuccess: (result) => {
+          if (result.success) {
+            toast.success(`Organization ${status} successfully`);
+          } else {
+            toast.error(
+              result.message || "Failed to update organization status",
+            );
+          }
+        },
+        onError: () => toast.error("Failed to update organization status"),
+      },
+    );
   };
 
   const handlePageChange = (page: number) => {
@@ -241,10 +216,10 @@ export default function OrganizationsPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {stats.total_organizations}
+              {statsData.total_organizations}
             </div>
             <p className="text-xs text-muted-foreground">
-              +{stats.organizations_created_this_month} this month
+              +{statsData.organizations_created_this_month} this month
             </p>
           </CardContent>
         </Card>
@@ -258,10 +233,10 @@ export default function OrganizationsPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {stats.active_organizations}
+              {statsData.active_organizations}
             </div>
             <p className="text-xs text-muted-foreground">
-              {stats.total_users_across_organizations} total users
+              {statsData.total_users_across_organizations} total users
             </p>
           </CardContent>
         </Card>
@@ -275,10 +250,10 @@ export default function OrganizationsPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {stats.trial_organizations}
+              {statsData.trial_organizations}
             </div>
             <p className="text-xs text-muted-foreground">
-              {stats.trials_expiring_soon} expiring soon
+              {statsData.trials_expiring_soon} expiring soon
             </p>
           </CardContent>
         </Card>
@@ -292,7 +267,7 @@ export default function OrganizationsPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {stats.suspended_organizations}
+              {statsData.suspended_organizations}
             </div>
             <p className="text-xs text-muted-foreground">Require attention</p>
           </CardContent>
@@ -320,7 +295,7 @@ export default function OrganizationsPage() {
             organizations={organizations}
             selectedOrganizations={selectedOrganizations}
             onSelectionChange={setSelectedOrganizations}
-            onOrganizationsUpdated={loadOrganizations}
+            onOrganizationsUpdated={() => {}}
           />
 
           {/* Organizations List */}
@@ -423,7 +398,7 @@ export default function OrganizationsPage() {
                     <OrganizationActionsDropdown
                       organization={organization}
                       onStatusChange={handleStatusChange}
-                      onOrganizationUpdated={loadOrganizations}
+                      onOrganizationUpdated={() => {}}
                     />
                   </div>
                 </div>
@@ -468,7 +443,7 @@ export default function OrganizationsPage() {
           organization={selectedOrganization}
           open={showOrganizationDetails}
           onOpenChange={setShowOrganizationDetails}
-          onOrganizationUpdated={loadOrganizations}
+          onOrganizationUpdated={() => {}}
         />
       )}
 
@@ -476,7 +451,7 @@ export default function OrganizationsPage() {
       <OrganizationCreateDialog
         open={showCreateOrganization}
         onOpenChange={setShowCreateOrganization}
-        onOrganizationCreated={loadOrganizations}
+        onOrganizationCreated={() => {}}
       />
     </div>
   );

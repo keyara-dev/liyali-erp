@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import React from "react";
-import { ThemeProvider } from "next-themes";
 import NextTopLoader from "nextjs-toploader";
 import { cn } from "@/lib/utils";
 import { Toaster } from "sonner";
+import { Providers } from "./providers";
 
 import "./globals.css";
 
@@ -34,12 +34,7 @@ export default function RootLayout({
         suppressHydrationWarning
         className={cn("bg-background font-sans antialiased")}
       >
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="light"
-          enableSystem
-          disableTransitionOnChange
-        >
+        <Providers>
           {children}
           <Toaster position="top-center" richColors />
           <NextTopLoader
@@ -47,7 +42,7 @@ export default function RootLayout({
             showSpinner={false}
             height={2}
           />
-        </ThemeProvider>
+        </Providers>
       </body>
     </html>
   );

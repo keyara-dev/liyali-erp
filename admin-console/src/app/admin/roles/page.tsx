@@ -46,16 +46,18 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import {
-  getRoles,
-  getPermissions,
-  getRoleStats,
-  deleteRole,
   exportRoles,
   type Role,
   type Permission,
   type RoleStats,
   type RoleFilters,
 } from "@/app/_actions/roles";
+import {
+  useRoles,
+  usePermissions,
+  useRoleStats,
+  useDeleteRole,
+} from "@/hooks/use-roles";
 import { RoleFiltersComponent } from "./components/role-filters";
 import { RoleStatsGrid } from "./components/role-stats-grid";
 import { RoleCreateDialog } from "./components/role-create-dialog";
@@ -66,11 +68,6 @@ import { RoleBulkActions } from "./components/role-bulk-actions";
 import { PermissionsOverview } from "./components/permissions-overview";
 
 export default function RolesPage() {
-  const [roles, setRoles] = useState<Role[]>([]);
-  const [permissions, setPermissions] = useState<Permission[]>([]);
-  const [stats, setStats] = useState<RoleStats | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isRefreshing, setIsRefreshing] = useState(false);
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState("roles");
 
@@ -85,10 +82,7 @@ export default function RolesPage() {
   const [filters, setFilters] = useState<RoleFilters>({});
   const [searchTerm, setSearchTerm] = useState("");
 
-  useEffect(() => {
-    loadRolesData();
-  }, [filters]);
-
+  // Debounced search
   useEffect(() => {
     const delayedSearch = setTimeout(() => {
       if (searchTerm !== (filters.search || "")) {
@@ -99,52 +93,24 @@ export default function RolesPage() {
     return () => clearTimeout(delayedSearch);
   }, [searchTerm]);
 
-  const loadRolesData = async (isRefresh = false) => {
-    if (isRefresh) {
-      setIsRefreshing(true);
-    } else {
-      setIsLoading(true);
-    }
+  // TanStack Query hooks
+  const {
+    data: roles = [],
+    isLoading,
+    error: rolesError,
+    refetch: refetchRoles,
+    isRefetching,
+  } = useRoles(filters);
+  const { data: permissions = [] } = usePermissions();
+  const { data: stats = null } = useRoleStats();
+  const deleteRoleMutation = useDeleteRole();
 
-    try {
-      // Load all data in parallel
-      const [rolesResult, permissionsResult, statsResult] = await Promise.all([
-        getRoles(filters),
-        getPermissions(),
-        getRoleStats(),
-      ]);
-
-      // Handle roles result
-      if (rolesResult.success) {
-        setRoles(rolesResult.data || []);
-      } else {
-        toast.error("Failed to load roles");
-      }
-
-      // Handle permissions result
-      if (permissionsResult.success) {
-        setPermissions(permissionsResult.data || []);
-      } else {
-        toast.error("Failed to load permissions");
-      }
-
-      // Handle stats result
-      if (statsResult.success) {
-        setStats(statsResult.data || null);
-      } else {
-        toast.error("Failed to load role statistics");
-      }
-    } catch (error) {
-      console.error("Error loading roles data:", error);
-      toast.error("Failed to load roles data");
-    } finally {
-      setIsLoading(false);
-      setIsRefreshing(false);
-    }
-  };
+  useEffect(() => {
+    if (rolesError) toast.error("Failed to load roles data");
+  }, [rolesError]);
 
   const handleRefresh = () => {
-    loadRolesData(true);
+    refetchRoles();
   };
 
   const handleFiltersChange = (newFilters: RoleFilters) => {
@@ -226,23 +192,20 @@ export default function RolesPage() {
         `Are you sure you want to delete the role "${role.display_name}"?`,
       )
     ) {
-      try {
-        const result = await deleteRole(role.id);
-        if (result.success) {
-          toast.success("Role deleted successfully");
-          loadRolesData();
-        } else {
-          toast.error("Failed to delete role");
-        }
-      } catch (error) {
-        console.error("Error deleting role:", error);
-        toast.error("Failed to delete role");
-      }
+      deleteRoleMutation.mutate(role.id, {
+        onSuccess: (result) => {
+          if (result.success) {
+            toast.success("Role deleted successfully");
+          } else {
+            toast.error("Failed to delete role");
+          }
+        },
+        onError: () => toast.error("Failed to delete role"),
+      });
     }
   };
 
   const handleRoleUpdated = () => {
-    loadRolesData();
     setShowCreateDialog(false);
     setShowEditDialog(false);
     setShowCloneDialog(false);
@@ -265,10 +228,10 @@ export default function RolesPage() {
             variant="outline"
             size="sm"
             onClick={handleRefresh}
-            disabled={isRefreshing}
+            disabled={isRefetching}
           >
             <RefreshCw
-              className={`mr-2 h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`}
+              className={`mr-2 h-4 w-4 ${isRefetching ? "animate-spin" : ""}`}
             />
             Refresh
           </Button>
@@ -320,7 +283,6 @@ export default function RolesPage() {
               selectedRoles={selectedRoles}
               onActionComplete={() => {
                 setSelectedRoles([]);
-                loadRolesData();
               }}
             />
           )}

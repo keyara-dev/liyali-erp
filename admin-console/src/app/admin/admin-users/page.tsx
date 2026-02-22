@@ -33,14 +33,16 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import {
-  getAdminUsers,
-  getAdminUserStats,
-  getAdminRoles,
   type AdminUser,
   type AdminUserStats,
   type AdminUserFilters,
   type AdminRole,
 } from "@/app/_actions/admin-users";
+import {
+  useAdminUsers,
+  useAdminUserStats,
+  useAdminRoles,
+} from "@/hooks/use-admin-users";
 import { AdminUserFiltersComponent } from "./components/admin-user-filters";
 import { AdminUserStatsGrid } from "./components/admin-user-stats-grid";
 import { AdminUserCreateDialog } from "./components/admin-user-create-dialog";
@@ -50,11 +52,6 @@ import { AdminUserActionsDropdown } from "./components/admin-user-actions-dropdo
 import { AdminUserBulkActions } from "./components/admin-user-bulk-actions";
 
 export default function AdminUsersPage() {
-  const [users, setUsers] = useState<AdminUser[]>([]);
-  const [stats, setStats] = useState<AdminUserStats | null>(null);
-  const [roles, setRoles] = useState<AdminRole[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isRefreshing, setIsRefreshing] = useState(false);
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
 
   // Dialog states
@@ -67,10 +64,7 @@ export default function AdminUsersPage() {
   const [filters, setFilters] = useState<AdminUserFilters>({});
   const [searchTerm, setSearchTerm] = useState("");
 
-  useEffect(() => {
-    loadAdminUsersData();
-  }, [filters]);
-
+  // Debounced search
   useEffect(() => {
     const delayedSearch = setTimeout(() => {
       if (searchTerm !== (filters.search || "")) {
@@ -81,52 +75,23 @@ export default function AdminUsersPage() {
     return () => clearTimeout(delayedSearch);
   }, [searchTerm]);
 
-  const loadAdminUsersData = async (isRefresh = false) => {
-    if (isRefresh) {
-      setIsRefreshing(true);
-    } else {
-      setIsLoading(true);
-    }
+  // TanStack Query hooks
+  const {
+    data: users = [],
+    isLoading,
+    error: usersError,
+    refetch: refetchUsers,
+    isRefetching,
+  } = useAdminUsers(filters);
+  const { data: stats = null } = useAdminUserStats();
+  const { data: roles = [] } = useAdminRoles();
 
-    try {
-      // Load all data in parallel
-      const [usersResult, statsResult, rolesResult] = await Promise.all([
-        getAdminUsers(filters),
-        getAdminUserStats(),
-        getAdminRoles(),
-      ]);
-
-      // Handle users result
-      if (usersResult.success) {
-        setUsers(usersResult.data || []);
-      } else {
-        toast.error("Failed to load admin users");
-      }
-
-      // Handle stats result
-      if (statsResult.success) {
-        setStats(statsResult.data || null);
-      } else {
-        toast.error("Failed to load admin user statistics");
-      }
-
-      // Handle roles result
-      if (rolesResult.success) {
-        setRoles(rolesResult.data || []);
-      } else {
-        toast.error("Failed to load admin roles");
-      }
-    } catch (error) {
-      console.error("Error loading admin users data:", error);
-      toast.error("Failed to load admin users data");
-    } finally {
-      setIsLoading(false);
-      setIsRefreshing(false);
-    }
-  };
+  useEffect(() => {
+    if (usersError) toast.error("Failed to load admin users");
+  }, [usersError]);
 
   const handleRefresh = () => {
-    loadAdminUsersData(true);
+    refetchUsers();
   };
 
   const handleFiltersChange = (newFilters: AdminUserFilters) => {
@@ -140,7 +105,6 @@ export default function AdminUsersPage() {
 
   const handleExport = async (format: "csv" | "json" | "excel") => {
     try {
-      // Export functionality would be implemented here
       toast.success(
         `Admin users export initiated. Download will be available shortly.`,
       );
@@ -180,7 +144,6 @@ export default function AdminUsersPage() {
   };
 
   const handleUserUpdated = () => {
-    loadAdminUsersData();
     setShowCreateDialog(false);
     setShowEditDialog(false);
     setSelectedUser(null);
@@ -229,10 +192,10 @@ export default function AdminUsersPage() {
             variant="outline"
             size="sm"
             onClick={handleRefresh}
-            disabled={isRefreshing}
+            disabled={isRefetching}
           >
             <RefreshCw
-              className={`mr-2 h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`}
+              className={`mr-2 h-4 w-4 ${isRefetching ? "animate-spin" : ""}`}
             />
             Refresh
           </Button>
@@ -263,7 +226,6 @@ export default function AdminUsersPage() {
           selectedUsers={selectedUsers}
           onActionComplete={() => {
             setSelectedUsers([]);
-            loadAdminUsersData();
           }}
           roles={roles}
         />
@@ -404,7 +366,7 @@ export default function AdminUsersPage() {
                         user={user}
                         onAction={handleUserAction}
                         onUserUpdated={handleUserUpdated}
-                        currentUserId="current-user-id" // This should come from auth context
+                        currentUserId="current-user-id"
                       />
                     </TableCell>
                   </TableRow>

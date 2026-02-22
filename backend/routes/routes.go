@@ -407,5 +407,78 @@ func SetupRoutes(app *fiber.App, handlerRegistry *handlers.HandlerRegistry, rbac
 	admin.Post("/feature-flags/:key/evaluate", handlers.EvaluateFeatureFlag)
 	admin.Get("/feature-flags/:key/analytics", handlers.GetFeatureFlagAnalytics)
 
+	// ===== Admin User Management =====
+	adminUsers := admin.Group("/users")
+	adminUsers.Get("/statistics", handlers.AdminGetUserStatistics) // Static routes before :id
+	adminUsers.Get("/", handlers.AdminGetAllUsers)
+	adminUsers.Get("/:id", handlers.AdminGetUserById)
+	adminUsers.Put("/:id", handlers.AdminUpdateUser)
+	adminUsers.Put("/:id/status", handlers.AdminUpdateUserStatus)
+	adminUsers.Get("/:id/activity", handlers.AdminGetUserActivity)
+	adminUsers.Get("/:id/sessions", handlers.AdminGetUserSessions)
+	adminUsers.Delete("/:id/sessions/:sessionId", handlers.AdminTerminateUserSession)
+	adminUsers.Delete("/:id/sessions", handlers.AdminTerminateAllUserSessions)
+	adminUsers.Post("/:id/reset-password", handlers.AdminResetUserPassword)
+	adminUsers.Post("/:id/impersonate", handlers.AdminImpersonateUser)
+	adminUsers.Get("/:id/organizations", handlers.AdminGetUserOrganizations)
+	adminUsers.Put("/:id/organizations/:orgId", handlers.AdminUpdateUserOrgRole)
+	adminUsers.Delete("/:id/organizations/:orgId", handlers.AdminRemoveUserFromOrg)
+
+	// ===== Admin Organization Management =====
+	adminOrgs := admin.Group("/organizations")
+	adminOrgs.Get("/statistics", handlers.AdminGetOrganizationStatistics) // Static routes before :id
+	adminOrgs.Get("/", handlers.AdminGetAllOrganizations)
+	adminOrgs.Post("/", handlers.AdminCreateOrganization)
+	adminOrgs.Get("/:id", handlers.AdminGetOrganizationById)
+	adminOrgs.Put("/:id", handlers.AdminUpdateOrganization)
+	adminOrgs.Delete("/:id", handlers.AdminDeleteOrganization)
+	adminOrgs.Put("/:id/status", handlers.AdminUpdateOrganizationStatus)
+	adminOrgs.Get("/:id/users", handlers.AdminGetOrganizationUsers)
+	adminOrgs.Get("/:id/activity", handlers.AdminGetOrganizationActivity)
+	adminOrgs.Get("/:id/trial/status", handlers.AdminGetOrgTrialStatus)
+	adminOrgs.Get("/:id/subscription", handlers.AdminGetOrgSubscription)
+	// Note: /:id/change-tier, /:id/override-limits already registered above via subscription handlers
+
+	// ===== Admin Roles & Permissions =====
+	adminRoles := admin.Group("/roles")
+	adminRoles.Get("/stats", handlers.AdminGetRoleStats) // Static routes before :id
+	adminRoles.Post("/export", handlers.AdminExportRoles)
+	adminRoles.Post("/bulk-update", handlers.AdminBulkUpdateRoles)
+	adminRoles.Get("/", handlers.AdminGetAllRoles)
+	adminRoles.Post("/", handlers.AdminCreateRole)
+	adminRoles.Get("/:id", handlers.AdminGetRoleById)
+	adminRoles.Put("/:id", handlers.AdminUpdateRole)
+	adminRoles.Delete("/:id", handlers.AdminDeleteRole)
+	adminRoles.Get("/:id/users", handlers.AdminGetRoleUsers)
+	adminRoles.Post("/:id/assign", handlers.AdminAssignRoleToUsers)
+	adminRoles.Post("/:id/remove", handlers.AdminRemoveRoleFromUsers)
+	adminRoles.Post("/:id/clone", handlers.AdminCloneRole)
+	adminRoles.Get("/:id/audit", handlers.AdminGetRoleAuditHistory)
+
+	adminPerms := admin.Group("/permissions")
+	adminPerms.Get("/", handlers.AdminGetAllPermissions)
+	adminPerms.Get("/by-category", handlers.AdminGetPermissionsByCategory)
+
+	// ===== Admin Console Users (admin-level users) =====
+	adminAdminUsers := admin.Group("/admin-users")
+	adminAdminUsers.Get("/stats", handlers.AdminGetAdminUserStats) // Static routes before :id
+	adminAdminUsers.Post("/export", handlers.AdminExportAdminUsers)
+	adminAdminUsers.Post("/bulk-update", handlers.AdminBulkUpdateAdminUsers)
+	adminAdminUsers.Get("/", handlers.AdminGetAdminUsers)
+	adminAdminUsers.Post("/", handlers.AdminCreateAdminUser)
+	adminAdminUsers.Get("/:id", handlers.AdminGetAdminUser)
+	adminAdminUsers.Put("/:id", handlers.AdminUpdateAdminUser)
+	adminAdminUsers.Delete("/:id", handlers.AdminDeleteAdminUser)
+	adminAdminUsers.Post("/:id/activate", handlers.AdminActivateAdminUser)
+	adminAdminUsers.Post("/:id/deactivate", handlers.AdminDeactivateAdminUser)
+	adminAdminUsers.Post("/:id/unlock", handlers.AdminUnlockAdminUser)
+	adminAdminUsers.Post("/:id/reset-password", handlers.AdminResetAdminPassword)
+	adminAdminUsers.Post("/:id/two-factor", handlers.AdminToggleTwoFactor)
+	adminAdminUsers.Get("/:id/activity", handlers.AdminGetAdminUserActivity)
+	adminAdminUsers.Get("/:id/sessions", handlers.AdminGetAdminUserSessions)
+	adminAdminUsers.Post("/:id/sessions/:sessionId/terminate", handlers.AdminTerminateAdminSession)
+	adminAdminUsers.Post("/:id/sessions/terminate-all", handlers.AdminTerminateAllAdminSessions)
+	adminAdminUsers.Post("/:id/impersonate", handlers.AdminImpersonateAdminUser)
+
 	// Note: Development tools and test workflow tasks are now created via seed data migrations
 }
