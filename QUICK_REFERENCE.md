@@ -232,9 +232,10 @@ make pre-deploy        # Verify env, build, test, migrate
 ### Fly.io (Direct)
 
 ```bash
-cd backend && fly deploy
-cd frontend && fly deploy
-cd admin-console && fly deploy
+# From project root with explicit paths
+flyctl deploy --app liyali-gateway-api --config backend/fly.toml --dockerfile backend/Dockerfile
+flyctl deploy --app liyali-gateway-frontend --config frontend/fly.toml --dockerfile frontend/Dockerfile
+flyctl deploy --app liyali-admin-console --config admin-console/fly.toml --dockerfile admin-console/Dockerfile
 ```
 
 ### Manual
@@ -315,8 +316,9 @@ psql $DATABASE_URL             # Connect
 psql $DATABASE_URL -c "SELECT 1"  # Test
 
 # Fly.io
-fly logs                       # View logs
-fly ssh console                # SSH
+flyctl logs --app <app-name>      # View logs
+flyctl status --app <app-name>    # Check status
+flyctl ssh console --app <app-name> # SSH
 ```
 
 ---

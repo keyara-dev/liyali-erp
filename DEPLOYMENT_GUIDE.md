@@ -136,10 +136,13 @@ make deploy-admin
 #### Option C: Manual Fly.io Deployment
 
 ```bash
-cd backend && fly deploy
-cd frontend && fly deploy
-cd admin-console && fly deploy
+# From project root, deploy with explicit paths
+flyctl deploy --app liyali-gateway-api --config backend/fly.toml --dockerfile backend/Dockerfile
+flyctl deploy --app liyali-gateway-frontend --config frontend/fly.toml --dockerfile frontend/Dockerfile
+flyctl deploy --app liyali-admin-console --config admin-console/fly.toml --dockerfile admin-console/Dockerfile
 ```
+
+**Note**: Always run flyctl deploy from the project root with explicit `--app`, `--config`, and `--dockerfile` flags for clarity and consistency.
 
 ---
 
@@ -206,9 +209,9 @@ NEXT_PUBLIC_IMAGEKIT_URL_ENDPOINT=https://ik.imagekit.io/your_id
 
 3. **Create Apps** (if not already created):
    ```bash
-   cd backend && fly launch
-   cd frontend && fly launch
-   cd admin-console && fly launch
+   flyctl launch --config backend/fly.toml
+   flyctl launch --config frontend/fly.toml
+   flyctl launch --config admin-console/fly.toml
    ```
 
 #### Deploy
@@ -217,28 +220,30 @@ NEXT_PUBLIC_IMAGEKIT_URL_ENDPOINT=https://ik.imagekit.io/your_id
 make deploy
 ```
 
-Or individually:
+Or individually from project root:
 
 ```bash
-cd backend && fly deploy
-cd frontend && fly deploy
-cd admin-console && fly deploy
+flyctl deploy --app liyali-gateway-api --config backend/fly.toml --dockerfile backend/Dockerfile
+flyctl deploy --app liyali-gateway-frontend --config frontend/fly.toml --dockerfile frontend/Dockerfile
+flyctl deploy --app liyali-admin-console --config admin-console/fly.toml --dockerfile admin-console/Dockerfile
 ```
+
+**Important**: Always run flyctl deploy from the project root with explicit `--app`, `--config`, and `--dockerfile` flags.
 
 #### View Logs
 
 ```bash
-cd backend && fly logs
-cd frontend && fly logs
-cd admin-console && fly logs
+flyctl logs --app liyali-gateway-api
+flyctl logs --app liyali-gateway-frontend
+flyctl logs --app liyali-admin-console
 ```
 
 #### SSH Access
 
 ```bash
-cd backend && fly ssh console
-cd frontend && fly ssh console
-cd admin-console && fly ssh console
+flyctl ssh console --app liyali-gateway-api
+flyctl ssh console --app liyali-gateway-frontend
+flyctl ssh console --app liyali-admin-console
 ```
 
 ### Other Platforms
@@ -357,9 +362,9 @@ If deployment fails or issues occur:
 
 ```bash
 # Rollback to previous version
-cd backend && fly releases rollback
-cd frontend && fly releases rollback
-cd admin-console && fly releases rollback
+flyctl releases rollback --app liyali-gateway-api
+flyctl releases rollback --app liyali-gateway-frontend
+flyctl releases rollback --app liyali-admin-console
 ```
 
 ### Manual Rollback
@@ -459,9 +464,9 @@ psql $DATABASE_URL -c "SELECT id, email, role FROM users WHERE role = 'admin';"
 fly dashboard
 
 # View resource usage
-cd backend && fly status
-cd frontend && fly status
-cd admin-console && fly status
+flyctl status --app liyali-gateway-api
+flyctl status --app liyali-gateway-frontend
+flyctl status --app liyali-admin-console
 ```
 
 ### Database Monitoring
@@ -480,13 +485,10 @@ psql $DATABASE_URL -c "SELECT pg_size_pretty(pg_database_size('postgres'));"
 ### Log Aggregation
 
 ```bash
-# Tail all logs
-make logs  # If you add this to Makefile
-
-# Or individually
-cd backend && fly logs --tail &
-cd frontend && fly logs --tail &
-cd admin-console && fly logs --tail &
+# Tail all logs (from project root)
+flyctl logs --tail --app liyali-gateway-api &
+flyctl logs --tail --app liyali-gateway-frontend &
+flyctl logs --tail --app liyali-admin-console &
 ```
 
 ---
@@ -497,23 +499,23 @@ cd admin-console && fly logs --tail &
 
 ```bash
 # Scale backend
-cd backend && fly scale count 2
+flyctl scale count 2 --app liyali-gateway-api
 
 # Scale frontend
-cd frontend && fly scale count 2
+flyctl scale count 2 --app liyali-gateway-frontend
 
 # Scale admin console
-cd admin-console && fly scale count 2
+flyctl scale count 2 --app liyali-admin-console
 ```
 
 ### Vertical Scaling (Fly.io)
 
 ```bash
 # Increase resources
-cd backend && fly scale vm shared-cpu-2x
+flyctl scale vm shared-cpu-2x --app liyali-gateway-api
 
 # Check current scale
-cd backend && fly status
+flyctl status --app liyali-gateway-api
 ```
 
 ---

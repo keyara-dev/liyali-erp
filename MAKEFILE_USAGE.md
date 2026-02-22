@@ -28,6 +28,14 @@ make deploy-web          # Deploy web frontend only
 make deploy-admin        # Deploy admin console only
 ```
 
+**How it works**: The Makefile runs flyctl deploy from the project root with explicit paths:
+
+```bash
+flyctl deploy --app liyali-gateway-api --config backend/fly.toml --dockerfile backend/Dockerfile
+flyctl deploy --app liyali-gateway-frontend --config frontend/fly.toml --dockerfile frontend/Dockerfile
+flyctl deploy --app liyali-admin-console --config admin-console/fly.toml --dockerfile admin-console/Dockerfile
+```
+
 ---
 
 ## Build Commands
