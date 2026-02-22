@@ -1,6 +1,10 @@
 import React from "react";
 import { Document, Page, Text, View, Image } from "@react-pdf/renderer";
-import { GoodsReceivedNote, GRNItem, QualityIssue } from "@/types/goods-received-note";
+import {
+  GoodsReceivedNote,
+  GRNItem,
+  QualityIssue,
+} from "@/types/goods-received-note";
 import { pdfStyles } from "../pdf/pdf-styles";
 import { generateDocumentQRData } from "../pdf/qr-utils";
 import { PDFHeader, PDFFooter } from "../pdf/requisition-pdf";
@@ -9,6 +13,7 @@ import { capitalize } from "../utils";
 interface GRNPDFProps {
   grn: GoodsReceivedNote;
   qrCodeUrl?: string;
+  organizationLogoUrl?: string;
 }
 
 const getStatusColor = (status: string) => {
@@ -60,13 +65,17 @@ const getSeverityColor = (severity: string) => {
   }
 };
 
-const GoodsReceivedNotePDF: React.FC<GRNPDFProps> = ({ grn, qrCodeUrl }) => {
+const GoodsReceivedNotePDF: React.FC<GRNPDFProps> = ({
+  grn,
+  qrCodeUrl,
+  organizationLogoUrl,
+}) => {
   const documentNumber = grn.documentNumber;
   const qrData = generateDocumentQRData(
     "GRN",
     documentNumber,
     grn.id,
-    new Date(grn.createdAt)
+    new Date(grn.createdAt),
   );
 
   return (
@@ -100,9 +109,7 @@ const GoodsReceivedNotePDF: React.FC<GRNPDFProps> = ({ grn, qrCodeUrl }) => {
               STATUS
             </Text>
             <View style={{ marginBottom: 0, flexDirection: "row", gap: 4 }}>
-              <View
-                style={[pdfStyles.statusBadge, getStatusColor(grn.status)]}
-              >
+              <View style={[pdfStyles.statusBadge, getStatusColor(grn.status)]}>
                 <Text style={{ fontSize: 9 }}>{capitalize(grn.status)}</Text>
               </View>
             </View>
@@ -640,7 +647,7 @@ const GoodsReceivedNotePDF: React.FC<GRNPDFProps> = ({ grn, qrCodeUrl }) => {
         </View>
 
         {/* Footer */}
-        <PDFFooter />
+        <PDFFooter organizationLogoUrl={organizationLogoUrl} />
       </Page>
     </Document>
   );

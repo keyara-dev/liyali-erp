@@ -132,6 +132,7 @@ export function useCreateOrganizationMutation() {
  */
 export function useUpdateOrganizationMutation() {
   const queryClient = useQueryClient();
+  const { refreshOrganizations } = useOrganizationContext();
 
   const mutation = useMutation({
     mutationFn: async (data: UpdateOrganizationRequest) => {
@@ -154,16 +155,19 @@ export function useUpdateOrganizationMutation() {
         },
       );
     },
-    onSuccess: (result, variables) => {
+    onSuccess: async (result, variables) => {
       if (isOfflineResult(result)) {
         // Already handled by offline helper
       } else {
         toast.success("Organization updated successfully");
       }
+      // Invalidate queries
       queryClient.invalidateQueries({ queryKey: ["organizations"] });
       queryClient.invalidateQueries({
         queryKey: ["organization", variables.id],
       });
+      // Refresh organization store to update currentOrganization
+      await refreshOrganizations();
     },
     onError: (error) => {
       console.error("Failed to update organization:", error);

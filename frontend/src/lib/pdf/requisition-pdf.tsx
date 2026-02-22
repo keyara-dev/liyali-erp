@@ -8,13 +8,20 @@ import { capitalize } from "../utils";
 interface RequisitionPDFProps {
   requisition: Requisition;
   qrCodeUrl?: string;
+  organizationLogoUrl?: string;
 }
 
 interface PDFHeaderProps {
   title?: string;
 }
 
-export const PDFHeader = ({ title = "PURCHASE REQUISITION" }: PDFHeaderProps) => (
+interface PDFFooterProps {
+  organizationLogoUrl?: string;
+}
+
+export const PDFHeader = ({
+  title = "PURCHASE REQUISITION",
+}: PDFHeaderProps) => (
   <View
     style={{
       marginBottom: 15,
@@ -35,13 +42,12 @@ export const PDFHeader = ({ title = "PURCHASE REQUISITION" }: PDFHeaderProps) =>
       <Text style={{ fontSize: 11, fontWeight: "bold", marginBottom: 3 }}>
         REPUBLIC OF ZAMBIA
       </Text>
-      <Text style={{ fontSize: 13, fontWeight: "bold" }}>
-        {title}
-      </Text>
+      <Text style={{ fontSize: 13, fontWeight: "bold" }}>{title}</Text>
     </View>
   </View>
 );
-export const PDFFooter = () => (
+
+export const PDFFooter = ({ organizationLogoUrl }: PDFFooterProps) => (
   <View
     style={{
       display: "flex",
@@ -68,7 +74,7 @@ export const PDFFooter = () => (
     </View>
     <View style={{ marginBottom: 0, marginTop: "auto", paddingTop: 10 }}>
       <Image
-        src="/images/logo/logo-full-light.png"
+        src={organizationLogoUrl || "/images/logo/logo-full-light.png"}
         style={{ width: 80, height: 24 }}
       />
     </View>
@@ -95,6 +101,7 @@ const getStatusColor = (status: string) => {
 const RequisitionPDF: React.FC<RequisitionPDFProps> = ({
   requisition,
   qrCodeUrl,
+  organizationLogoUrl,
 }) => {
   const documentNumber = requisition.documentNumber;
   const qrData = generateDocumentQRData(
@@ -274,7 +281,9 @@ const RequisitionPDF: React.FC<RequisitionPDFProps> = ({
                 CATEGORY
               </Text>
               <Text style={{ fontSize: 10 }}>
-                {requisition.categoryName || requisition.otherCategoryText || "—"}
+                {requisition.categoryName ||
+                  requisition.otherCategoryText ||
+                  "—"}
               </Text>
             </View>
           </View>
@@ -694,7 +703,7 @@ const RequisitionPDF: React.FC<RequisitionPDFProps> = ({
         </View>
 
         {/* Footer */}
-        <PDFFooter />
+        <PDFFooter organizationLogoUrl={organizationLogoUrl} />
       </Page>
     </Document>
   );

@@ -8,12 +8,18 @@ import { ArrowLeft, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import { OrganizationLogoUpload } from "@/components/ui/organization-logo-upload";
 import { useCreateOrganizationMutation } from "@/hooks/use-organization-mutations";
 import type { CreateOrganizationRequest } from "@/app/_actions/organizations";
+import { useState } from "react";
 
 const createOrganizationSchema = z.object({
-  name: z.string().min(1, "Organization name is required").max(100, "Name must be less than 100 characters"),
+  name: z
+    .string()
+    .min(1, "Organization name is required")
+    .max(100, "Name must be less than 100 characters"),
   description: z.string().optional(),
+  logoUrl: z.string().optional(),
 });
 
 type CreateOrganizationForm = z.infer<typeof createOrganizationSchema>;
@@ -24,8 +30,13 @@ interface CreateWorkspaceProps {
   isModal?: boolean;
 }
 
-export function CreateWorkspace({ onBack, onSuccess, isModal = false }: CreateWorkspaceProps) {
+export function CreateWorkspace({
+  onBack,
+  onSuccess,
+  isModal = false,
+}: CreateWorkspaceProps) {
   const { createOrganization, isPending } = useCreateOrganizationMutation();
+  const [logoUrl, setLogoUrl] = useState<string>("");
 
   const {
     register,
@@ -37,8 +48,11 @@ export function CreateWorkspace({ onBack, onSuccess, isModal = false }: CreateWo
     defaultValues: {
       name: "",
       description: "",
+      logoUrl: "",
     },
   });
+
+  const organizationName = register("name").value || "New Workspace";
 
   const onSubmit = async (data: CreateOrganizationForm) => {
     try {
@@ -46,12 +60,14 @@ export function CreateWorkspace({ onBack, onSuccess, isModal = false }: CreateWo
       const cleanData: CreateOrganizationRequest = {
         name: data.name,
         description: data.description || undefined,
+        logoUrl: logoUrl || undefined,
       };
 
       const result = await createOrganization(cleanData);
-      
+
       // Handle success
       reset();
+      setLogoUrl("");
       onSuccess?.(result);
     } catch (error) {
       // Error is already handled by the mutation hook
@@ -68,7 +84,9 @@ export function CreateWorkspace({ onBack, onSuccess, isModal = false }: CreateWo
       className={isModal ? "w-full" : "w-full max-w-lg"}
     >
       {/* Card */}
-      <div className={isModal ? "space-y-6" : "bg-card rounded-lg p-8 space-y-6"}>
+      <div
+        className={isModal ? "space-y-6" : "bg-card rounded-lg p-8 space-y-6"}
+      >
         {/* Header with Back Button */}
         <div className="space-y-4">
           {!isModal && (
@@ -83,7 +101,7 @@ export function CreateWorkspace({ onBack, onSuccess, isModal = false }: CreateWo
               Back to workspaces
             </Button>
           )}
-          
+
           <div>
             <h1 className="text-2xl font-bold text-foreground">
               Create new workspace
@@ -96,6 +114,24 @@ export function CreateWorkspace({ onBack, onSuccess, isModal = false }: CreateWo
 
         {/* Form */}
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          {/* Logo Upload */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.05 }}
+          >
+            <label className="block text-sm font-medium mb-2">
+              Workspace Logo
+            </label>
+            <OrganizationLogoUpload
+              currentLogoUrl={logoUrl}
+              organizationName={organizationName}
+              onLogoChange={setLogoUrl}
+              disabled={isPending}
+              size="md"
+            />
+          </motion.div>
+
           {/* Organization Name */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
@@ -149,7 +185,11 @@ export function CreateWorkspace({ onBack, onSuccess, isModal = false }: CreateWo
                   Cancel
                 </Button>
               )}
-              <Button type="submit" disabled={isPending} className={isModal ? "flex-1" : "w-full"}>
+              <Button
+                type="submit"
+                disabled={isPending}
+                className={isModal ? "flex-1" : "w-full"}
+              >
                 {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Create Workspace
               </Button>

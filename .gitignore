@@ -55,3 +55,4 @@ me/bun.lockb
 claude
 scripts/
 scripts
+.kiro/*

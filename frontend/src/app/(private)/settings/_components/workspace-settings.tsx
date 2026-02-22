@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useOrganizationContext } from "@/hooks/use-organization";
 import {
   useUpdateOrganizationMutation,
@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { OrganizationLogoUpload } from "@/components/ui/organization-logo-upload";
 import {
   Card,
   CardContent,
@@ -41,12 +42,30 @@ export function WorkspaceSettings() {
   const [formData, setFormData] = useState({
     name: currentOrganization?.name || "",
     description: currentOrganization?.description || "",
+    logoUrl: currentOrganization?.logoUrl || "",
   });
 
   const [hasChanges, setHasChanges] = useState(false);
 
+  // Sync form data when currentOrganization changes
+  useEffect(() => {
+    if (currentOrganization) {
+      setFormData({
+        name: currentOrganization.name || "",
+        description: currentOrganization.description || "",
+        logoUrl: currentOrganization.logoUrl || "",
+      });
+      setHasChanges(false);
+    }
+  }, [currentOrganization]);
+
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
+    setHasChanges(true);
+  };
+
+  const handleLogoChange = (url: string) => {
+    setFormData((prev) => ({ ...prev, logoUrl: url }));
     setHasChanges(true);
   };
 
@@ -66,6 +85,7 @@ export function WorkspaceSettings() {
         id: currentOrganization.id,
         name: formData.name.trim(),
         description: formData.description.trim(),
+        logoUrl: formData.logoUrl,
       });
       setHasChanges(false);
     } catch (error) {
@@ -101,6 +121,28 @@ export function WorkspaceSettings() {
 
   return (
     <div className="space-y-6">
+      {/* Workspace Logo */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Building2 className="h-5 w-5" />
+            Workspace Logo
+          </CardTitle>
+          <CardDescription>
+            Upload a logo to represent your workspace
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <OrganizationLogoUpload
+            currentLogoUrl={formData.logoUrl}
+            organizationName={formData.name || "Workspace"}
+            onLogoChange={handleLogoChange}
+            disabled={isUpdating}
+            size="lg"
+          />
+        </CardContent>
+      </Card>
+
       {/* Workspace Details */}
       <Card>
         <CardHeader>

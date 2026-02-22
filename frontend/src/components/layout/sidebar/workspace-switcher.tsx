@@ -18,8 +18,8 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { OrganizationAvatar } from "@/components/ui/organization-avatar";
 import { useOrganizationContext } from "@/hooks/use-organization";
 import { CreateOrganizationModal } from "@/components/modals/create-organization-modal";
 import { useSidebar } from "@/components/ui/sidebar";
@@ -55,26 +55,6 @@ export function WorkspaceSwitcher() {
     // The new organization will be automatically selected
   };
 
-  const getInitials = (name: string) => {
-    return name
-      .split(" ")
-      .map((n) => n[0])
-      .join("")
-      .toUpperCase()
-      .slice(0, 2);
-  };
-
-  const getTierColor = (tier?: string) => {
-    switch (tier?.toUpperCase()) {
-      case "PRO":
-        return "bg-purple-100 text-purple-700";
-      case "ENTERPRISE":
-        return "bg-emerald-100 text-emerald-700";
-      default:
-        return "bg-blue-100 text-blue-700";
-    }
-  };
-
   if (isLoading || !currentOrganization) {
     return (
       <div className="flex items-center gap-2 px-2 py-1.5">
@@ -100,21 +80,15 @@ export function WorkspaceSwitcher() {
             aria-label="Select workspace"
             className={cn(
               "w-full justify-between h-auto p-2",
-              !sidebarOpen && "px-2"
+              !sidebarOpen && "px-2",
             )}
           >
             <div className="flex items-center gap-2 min-w-0">
-              <Avatar className="h-7 w-7 rounded-lg">
-                <AvatarImage
-                  src={currentOrganization.logoUrl}
-                  alt={currentOrganization.name}
-                />
-                <AvatarFallback className="rounded-lg  bg-primary text-primary-foreground">
-                  <span className="text-base">
-                    {getInitials(currentOrganization.name)}
-                  </span>
-                </AvatarFallback>
-              </Avatar>
+              <OrganizationAvatar
+                name={currentOrganization.name}
+                logoUrl={currentOrganization.logoUrl}
+                size="sm"
+              />
               {sidebarOpen && (
                 <div className="flex-1 text-left min-w-0">
                   <div className="font-medium text-sm truncate">
@@ -149,12 +123,11 @@ export function WorkspaceSwitcher() {
                     onSelect={() => handleSelectWorkspace(org.id)}
                     className="flex items-center gap-2 p-2"
                   >
-                    <Avatar className="h-7 w-7 rounded-lg">
-                      <AvatarImage src={org.logoUrl} alt={org.name} />
-                      <AvatarFallback className="rounded-lg bg-muted !text-base">
-                        {getInitials(org.name)}
-                      </AvatarFallback>
-                    </Avatar>
+                    <OrganizationAvatar
+                      name={org.name}
+                      logoUrl={org.logoUrl}
+                      size="sm"
+                    />
                     <div className="flex-1 min-w-0">
                       <div className="font-medium text-xs truncate">
                         {org.name}
@@ -172,7 +145,7 @@ export function WorkspaceSwitcher() {
                         "ml-auto h-4 w-4",
                         currentOrganization?.id === org.id
                           ? "opacity-100"
-                          : "opacity-0"
+                          : "opacity-0",
                       )}
                     />
                   </CommandItem>

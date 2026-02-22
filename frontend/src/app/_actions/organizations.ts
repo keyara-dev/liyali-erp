@@ -23,12 +23,14 @@ export interface Organization {
 export interface CreateOrganizationRequest {
   name: string;
   description?: string;
+  logoUrl?: string;
 }
 
 export interface UpdateOrganizationRequest {
   id: string;
   name?: string;
   description?: string;
+  logoUrl?: string;
 }
 
 export interface OrganizationMember {
@@ -85,7 +87,7 @@ export async function fetchUserOrganizations(): Promise<Organization[]> {
  * Calls: POST /api/v1/organizations
  */
 export async function createOrganization(
-  data: CreateOrganizationRequest
+  data: CreateOrganizationRequest,
 ): Promise<APIResponse<Organization>> {
   const url = `/api/v1/organizations`;
 
@@ -96,12 +98,13 @@ export async function createOrganization(
       data: {
         name: data.name,
         description: data.description,
+        logoUrl: data.logoUrl,
       },
     });
 
     return successResponse(
       response.data.data,
-      "Organization created successfully"
+      "Organization created successfully",
     );
   } catch (error: any) {
     return handleError(error, "POST", url);
@@ -113,7 +116,7 @@ export async function createOrganization(
  * Calls: GET /api/v1/organizations/{id}
  */
 export async function getOrganizationById(
-  orgId: string
+  orgId: string,
 ): Promise<APIResponse<Organization>> {
   const url = `/api/v1/organizations/${orgId}`;
 
@@ -125,7 +128,7 @@ export async function getOrganizationById(
 
     return successResponse(
       response.data.data,
-      "Organization retrieved successfully"
+      "Organization retrieved successfully",
     );
   } catch (error: any) {
     return handleError(error, "GET", url);
@@ -137,7 +140,7 @@ export async function getOrganizationById(
  * Calls: PUT /api/v1/organizations/{id}
  */
 export async function updateOrganization(
-  data: UpdateOrganizationRequest
+  data: UpdateOrganizationRequest,
 ): Promise<APIResponse<Organization>> {
   const url = `/api/v1/organizations/${data.id}`;
 
@@ -148,12 +151,13 @@ export async function updateOrganization(
       data: {
         name: data.name,
         description: data.description,
+        logoUrl: data.logoUrl,
       },
     });
 
     return successResponse(
       response.data.data,
-      "Organization updated successfully"
+      "Organization updated successfully",
     );
   } catch (error: any) {
     return handleError(error, "PUT", url);
@@ -190,7 +194,7 @@ export async function switchOrganization(orgId: string): Promise<string> {
     const { session: updatedSession } = await verifySession();
     if (updatedSession?.organization_id !== orgId) {
       console.warn(
-        "Organization switch verification failed, but backend succeeded"
+        "Organization switch verification failed, but backend succeeded",
       );
       // Don't throw error as backend succeeded - frontend will sync on next request
     }
@@ -209,7 +213,7 @@ export async function switchOrganization(orgId: string): Promise<string> {
 export async function fetchOrganizationMembers(
   page: number = 1,
   limit: number = 20,
-  role?: string
+  role?: string,
 ): Promise<APIResponse<OrganizationMember[]>> {
   const params = new URLSearchParams();
   params.set("page", page.toString());
@@ -228,7 +232,7 @@ export async function fetchOrganizationMembers(
 
     return successResponse(
       response.data.data || [],
-      "Members retrieved successfully"
+      "Members retrieved successfully",
     );
   } catch (error: any) {
     return handleError(error, "GET", url);
@@ -240,7 +244,7 @@ export async function fetchOrganizationMembers(
  * Calls: POST /api/v1/organization/members
  */
 export async function addOrganizationMember(
-  data: AddMemberRequest
+  data: AddMemberRequest,
 ): Promise<APIResponse<OrganizationMember>> {
   const url = `/api/v1/organization/members`;
 
@@ -267,7 +271,7 @@ export async function addOrganizationMember(
  * Calls: DELETE /api/v1/organization/members/{userId}
  */
 export async function removeOrganizationMember(
-  userId: string
+  userId: string,
 ): Promise<APIResponse> {
   const url = `/api/v1/organization/members/${userId}`;
 
@@ -300,7 +304,7 @@ export async function getOrganizationSettings(): Promise<
 
     return successResponse(
       response.data.data,
-      "Settings retrieved successfully"
+      "Settings retrieved successfully",
     );
   } catch (error: any) {
     return handleError(error, "GET", url);
@@ -312,7 +316,7 @@ export async function getOrganizationSettings(): Promise<
  * Calls: PUT /api/v1/organization/settings
  */
 export async function updateOrganizationSettings(
-  data: OrganizationSettings
+  data: OrganizationSettings,
 ): Promise<APIResponse<OrganizationSettings>> {
   const url = `/api/v1/organization/settings`;
 
@@ -340,7 +344,7 @@ export async function updateOrganizationSettings(
  * Calls: DELETE /api/v1/organizations/{id}
  */
 export async function deleteOrganization(
-  orgId: string
+  orgId: string,
 ): Promise<APIResponse<null>> {
   const url = `/api/v1/organizations/${orgId}`;
 

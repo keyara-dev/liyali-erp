@@ -9,6 +9,7 @@ import { capitalize } from "../utils";
 interface PaymentVoucherPDFProps {
   paymentVoucher: PaymentVoucher;
   qrCodeUrl?: string;
+  organizationLogoUrl?: string;
 }
 
 const getStatusColor = (status: string) => {
@@ -37,13 +38,14 @@ const getStatusColor = (status: string) => {
 const PaymentVoucherPDF: React.FC<PaymentVoucherPDFProps> = ({
   paymentVoucher,
   qrCodeUrl,
+  organizationLogoUrl,
 }) => {
   const documentNumber = paymentVoucher.documentNumber;
   const qrData = generateDocumentQRData(
     "PAYMENT_VOUCHER",
     documentNumber,
     paymentVoucher.id,
-    new Date(paymentVoucher.createdAt)
+    new Date(paymentVoucher.createdAt),
   );
 
   return (
@@ -801,7 +803,7 @@ const PaymentVoucherPDF: React.FC<PaymentVoucherPDFProps> = ({
                         </Text>
                       )}
                     </View>
-                  )
+                  ),
                 )}
               </View>
             </View>
@@ -853,7 +855,7 @@ const PaymentVoucherPDF: React.FC<PaymentVoucherPDFProps> = ({
         </View>
 
         {/* Footer */}
-        <PDFFooter />
+        <PDFFooter organizationLogoUrl={organizationLogoUrl} />
       </Page>
     </Document>
   );

@@ -9,6 +9,26 @@ import { PurchaseOrder } from "@/types/purchase-order";
 import { PaymentVoucher } from "@/types/payment-voucher";
 import { GoodsReceivedNote } from "@/types/goods-received-note";
 import { getDocumentQRCodeUrl } from "./qr-utils";
+import { getOrganizationById } from "@/app/_actions/organizations";
+
+/**
+ * Get organization logo URL
+ * @param organizationId The organization ID
+ * @returns Promise with logo URL or undefined
+ */
+async function getOrganizationLogoUrl(
+  organizationId: string,
+): Promise<string | undefined> {
+  try {
+    const response = await getOrganizationById(organizationId);
+    if (response.success && response.data?.logoUrl) {
+      return response.data.logoUrl;
+    }
+  } catch (error) {
+    console.error("Failed to fetch organization logo:", error);
+  }
+  return undefined;
+}
 
 /**
  * Export a Requisition as PDF
@@ -16,11 +36,22 @@ import { getDocumentQRCodeUrl } from "./qr-utils";
  * @returns Promise with blob
  */
 export async function exportRequisitionPDF(
-  requisition: Requisition
+  requisition: Requisition,
 ): Promise<Blob> {
   const fileName = `${requisition.documentNumber}.pdf`;
-  const qrCodeUrl = getDocumentQRCodeUrl(requisition.documentNumber, 200, requisition.organizationId);
-  const doc = React.createElement(RequisitionPDF, { requisition, qrCodeUrl });
+  const qrCodeUrl = getDocumentQRCodeUrl(
+    requisition.documentNumber,
+    200,
+    requisition.organizationId,
+  );
+  const organizationLogoUrl = await getOrganizationLogoUrl(
+    requisition.organizationId,
+  );
+  const doc = React.createElement(RequisitionPDF, {
+    requisition,
+    qrCodeUrl,
+    organizationLogoUrl,
+  });
   const blob = await pdf(doc as any).toBlob();
 
   // Trigger download
@@ -35,11 +66,22 @@ export async function exportRequisitionPDF(
  * @returns Promise with blob
  */
 export async function exportPurchaseOrderPDF(
-  purchaseOrder: PurchaseOrder
+  purchaseOrder: PurchaseOrder,
 ): Promise<Blob> {
   const fileName = `${purchaseOrder.documentNumber}.pdf`;
-  const qrCodeUrl = getDocumentQRCodeUrl(purchaseOrder.documentNumber, 200, purchaseOrder.organizationId);
-  const doc = React.createElement(PurchaseOrderPDF, { purchaseOrder, qrCodeUrl });
+  const qrCodeUrl = getDocumentQRCodeUrl(
+    purchaseOrder.documentNumber,
+    200,
+    purchaseOrder.organizationId,
+  );
+  const organizationLogoUrl = await getOrganizationLogoUrl(
+    purchaseOrder.organizationId,
+  );
+  const doc = React.createElement(PurchaseOrderPDF, {
+    purchaseOrder,
+    qrCodeUrl,
+    organizationLogoUrl,
+  });
   const blob = await pdf(doc as any).toBlob();
 
   // Trigger download
@@ -54,11 +96,22 @@ export async function exportPurchaseOrderPDF(
  * @returns Promise with blob
  */
 export async function exportPaymentVoucherPDF(
-  paymentVoucher: PaymentVoucher
+  paymentVoucher: PaymentVoucher,
 ): Promise<Blob> {
   const fileName = `${paymentVoucher.documentNumber}.pdf`;
-  const qrCodeUrl = getDocumentQRCodeUrl(paymentVoucher.documentNumber, 200, paymentVoucher.organizationId);
-  const doc = React.createElement(PaymentVoucherPDF, { paymentVoucher, qrCodeUrl });
+  const qrCodeUrl = getDocumentQRCodeUrl(
+    paymentVoucher.documentNumber,
+    200,
+    paymentVoucher.organizationId,
+  );
+  const organizationLogoUrl = await getOrganizationLogoUrl(
+    paymentVoucher.organizationId,
+  );
+  const doc = React.createElement(PaymentVoucherPDF, {
+    paymentVoucher,
+    qrCodeUrl,
+    organizationLogoUrl,
+  });
   const blob = await pdf(doc as any).toBlob();
 
   // Trigger download
@@ -89,10 +142,21 @@ export function downloadBlob(blob: Blob, fileName: string): void {
  * @returns Promise with blob
  */
 export async function getRequisitionPDFBlob(
-  requisition: Requisition
+  requisition: Requisition,
 ): Promise<Blob> {
-  const qrCodeUrl = getDocumentQRCodeUrl(requisition.documentNumber, 200, requisition.organizationId);
-  const doc = React.createElement(RequisitionPDF, { requisition, qrCodeUrl });
+  const qrCodeUrl = getDocumentQRCodeUrl(
+    requisition.documentNumber,
+    200,
+    requisition.organizationId,
+  );
+  const organizationLogoUrl = await getOrganizationLogoUrl(
+    requisition.organizationId,
+  );
+  const doc = React.createElement(RequisitionPDF, {
+    requisition,
+    qrCodeUrl,
+    organizationLogoUrl,
+  });
   return pdf(doc as any).toBlob();
 }
 
@@ -102,10 +166,21 @@ export async function getRequisitionPDFBlob(
  * @returns Promise with blob
  */
 export async function getPurchaseOrderPDFBlob(
-  purchaseOrder: PurchaseOrder
+  purchaseOrder: PurchaseOrder,
 ): Promise<Blob> {
-  const qrCodeUrl = getDocumentQRCodeUrl(purchaseOrder.documentNumber, 200, purchaseOrder.organizationId);
-  const doc = React.createElement(PurchaseOrderPDF, { purchaseOrder, qrCodeUrl });
+  const qrCodeUrl = getDocumentQRCodeUrl(
+    purchaseOrder.documentNumber,
+    200,
+    purchaseOrder.organizationId,
+  );
+  const organizationLogoUrl = await getOrganizationLogoUrl(
+    purchaseOrder.organizationId,
+  );
+  const doc = React.createElement(PurchaseOrderPDF, {
+    purchaseOrder,
+    qrCodeUrl,
+    organizationLogoUrl,
+  });
   return pdf(doc as any).toBlob();
 }
 
@@ -115,10 +190,21 @@ export async function getPurchaseOrderPDFBlob(
  * @returns Promise with blob
  */
 export async function getPaymentVoucherPDFBlob(
-  paymentVoucher: PaymentVoucher
+  paymentVoucher: PaymentVoucher,
 ): Promise<Blob> {
-  const qrCodeUrl = getDocumentQRCodeUrl(paymentVoucher.documentNumber, 200, paymentVoucher.organizationId);
-  const doc = React.createElement(PaymentVoucherPDF, { paymentVoucher, qrCodeUrl });
+  const qrCodeUrl = getDocumentQRCodeUrl(
+    paymentVoucher.documentNumber,
+    200,
+    paymentVoucher.organizationId,
+  );
+  const organizationLogoUrl = await getOrganizationLogoUrl(
+    paymentVoucher.organizationId,
+  );
+  const doc = React.createElement(PaymentVoucherPDF, {
+    paymentVoucher,
+    qrCodeUrl,
+    organizationLogoUrl,
+  });
   return pdf(doc as any).toBlob();
 }
 
@@ -128,7 +214,7 @@ export async function getPaymentVoucherPDFBlob(
  * @returns Promise with data URL
  */
 export async function getRequisitionPDFUrl(
-  requisition: Requisition
+  requisition: Requisition,
 ): Promise<string> {
   const blob = await getRequisitionPDFBlob(requisition);
   return URL.createObjectURL(blob);
@@ -140,7 +226,7 @@ export async function getRequisitionPDFUrl(
  * @returns Promise with data URL
  */
 export async function getPurchaseOrderPDFUrl(
-  purchaseOrder: PurchaseOrder
+  purchaseOrder: PurchaseOrder,
 ): Promise<string> {
   const blob = await getPurchaseOrderPDFBlob(purchaseOrder);
   return URL.createObjectURL(blob);
@@ -152,7 +238,7 @@ export async function getPurchaseOrderPDFUrl(
  * @returns Promise with data URL
  */
 export async function getPaymentVoucherPDFUrl(
-  paymentVoucher: PaymentVoucher
+  paymentVoucher: PaymentVoucher,
 ): Promise<string> {
   const blob = await getPaymentVoucherPDFBlob(paymentVoucher);
   return URL.createObjectURL(blob);
@@ -163,12 +249,19 @@ export async function getPaymentVoucherPDFUrl(
  * @param grn The goods received note to export
  * @returns Promise with blob
  */
-export async function exportGrnPDF(
-  grn: GoodsReceivedNote
-): Promise<Blob> {
+export async function exportGrnPDF(grn: GoodsReceivedNote): Promise<Blob> {
   const fileName = `${grn.documentNumber}.pdf`;
-  const qrCodeUrl = getDocumentQRCodeUrl(grn.documentNumber, 200, grn.organizationId);
-  const doc = React.createElement(GoodsReceivedNotePDF, { grn, qrCodeUrl });
+  const qrCodeUrl = getDocumentQRCodeUrl(
+    grn.documentNumber,
+    200,
+    grn.organizationId,
+  );
+  const organizationLogoUrl = await getOrganizationLogoUrl(grn.organizationId);
+  const doc = React.createElement(GoodsReceivedNotePDF, {
+    grn,
+    qrCodeUrl,
+    organizationLogoUrl,
+  });
   const blob = await pdf(doc as any).toBlob();
 
   // Trigger download
@@ -182,11 +275,18 @@ export async function exportGrnPDF(
  * @param grn The goods received note to export
  * @returns Promise with blob
  */
-export async function getGrnPDFBlob(
-  grn: GoodsReceivedNote
-): Promise<Blob> {
-  const qrCodeUrl = getDocumentQRCodeUrl(grn.documentNumber, 200, grn.organizationId);
-  const doc = React.createElement(GoodsReceivedNotePDF, { grn, qrCodeUrl });
+export async function getGrnPDFBlob(grn: GoodsReceivedNote): Promise<Blob> {
+  const qrCodeUrl = getDocumentQRCodeUrl(
+    grn.documentNumber,
+    200,
+    grn.organizationId,
+  );
+  const organizationLogoUrl = await getOrganizationLogoUrl(grn.organizationId);
+  const doc = React.createElement(GoodsReceivedNotePDF, {
+    grn,
+    qrCodeUrl,
+    organizationLogoUrl,
+  });
   return pdf(doc as any).toBlob();
 }
 
@@ -195,9 +295,7 @@ export async function getGrnPDFBlob(
  * @param grn The goods received note to export
  * @returns Promise with data URL
  */
-export async function getGrnPDFUrl(
-  grn: GoodsReceivedNote
-): Promise<string> {
+export async function getGrnPDFUrl(grn: GoodsReceivedNote): Promise<string> {
   const blob = await getGrnPDFBlob(grn);
   return URL.createObjectURL(blob);
 }
