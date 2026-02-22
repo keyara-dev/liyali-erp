@@ -14,6 +14,7 @@ type HandlerRegistry struct {
 	Generation               *DocumentGenerationHandler
 	Notification             *NotificationHandler
 	Subscription             *SubscriptionHandler
+	Reports                  *ReportsHandler
 	WorkflowExecutionService *services.WorkflowExecutionService
 	// Add other handlers here as we migrate them
 }
@@ -27,6 +28,7 @@ func NewHandlerRegistry(
 	documentService *services.DocumentService,
 	documentGenerationService *services.DocumentGenerationService,
 	subscriptionService *services.SubscriptionService,
+	reportsService *services.ReportsService,
 	logger *logging.Logger,
 ) *HandlerRegistry {
 	return &HandlerRegistry{
@@ -37,6 +39,7 @@ func NewHandlerRegistry(
 		Generation:               NewDocumentGenerationHandler(documentGenerationService),
 		Notification:             NewNotificationHandler(),
 		Subscription:             NewSubscriptionHandler(subscriptionService, logger),
+		Reports:                  NewReportsHandler(reportsService),
 		WorkflowExecutionService: workflowExecutionService,
 	}
 }

@@ -42,6 +42,7 @@ export function CreateWorkspace({
     register,
     handleSubmit,
     reset,
+    watch,
     formState: { errors },
   } = useForm<CreateOrganizationForm>({
     resolver: zodResolver(createOrganizationSchema),
@@ -52,7 +53,7 @@ export function CreateWorkspace({
     },
   });
 
-  const organizationName = register("name").value || "New Workspace";
+  const organizationName = watch("name") || "New Workspace";
 
   const onSubmit = async (data: CreateOrganizationForm) => {
     try {

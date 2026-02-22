@@ -1,51 +1,163 @@
-'use client'
+"use client";
 
-import { useState } from 'react'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Button } from '@/components/ui/button'
-import { ApprovalReports } from './approval-reports'
-import { UserActivityReports } from './user-activity-reports'
-import { SystemStatistics } from './system-statistics'
-import { AnalyticsDashboard } from '@/components/workflows/analytics-dashboard'
-import { Download, RefreshCw } from 'lucide-react'
+import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
+import { ApprovalReports } from "./approval-reports";
+import { UserActivityReports } from "./user-activity-reports";
+import { SystemStatistics } from "./system-statistics";
+import { AnalyticsDashboard } from "@/components/workflows/analytics-dashboard";
+import { Download, RefreshCw } from "lucide-react";
+import { QUERY_KEYS } from "@/lib/constants";
+import { notify } from "@/lib/utils";
+import {
+  useSystemStats,
+  useApprovalMetrics,
+  useUserActivity,
+  useAnalyticsDashboard,
+} from "@/hooks/use-reports-queries";
+import {
+  exportSystemStatsToCSV,
+  exportApprovalMetricsToCSV,
+  exportUserActivityToCSV,
+  exportAnalyticsDashboardToCSV,
+} from "@/lib/export-utils";
 
 interface AdminReportsClientProps {
-  userId: string
-  userRole: string
+  userId: string;
+  userRole: string;
 }
 
-export function AdminReportsClient({ userId, userRole }: AdminReportsClientProps) {
-  const [activeTab, setActiveTab] = useState('overview')
-  const [isRefreshing, setIsRefreshing] = useState(false)
+export function AdminReportsClient({
+  userId,
+  userRole,
+}: AdminReportsClientProps) {
+  const [activeTab, setActiveTab] = useState("overview");
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const queryClient = useQueryClient();
+
+  // Get data for export
+  const { data: systemStats } = useSystemStats();
+  const { data: approvalMetrics } = useApprovalMetrics();
+  const { data: userActivity } = useUserActivity();
+  const { data: analytics } = useAnalyticsDashboard();
 
   const handleRefresh = async () => {
-    setIsRefreshing(true)
+    setIsRefreshing(true);
     try {
-      await new Promise((resolve) => setTimeout(resolve, 1000))
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: [QUERY_KEYS.REPORTS.SYSTEM_STATS],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: [QUERY_KEYS.REPORTS.APPROVAL_METRICS],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: [QUERY_KEYS.REPORTS.USER_ACTIVITY],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: [QUERY_KEYS.REPORTS.ANALYTICS],
+        }),
+      ]);
+      notify({
+        title: "Success",
+        description: "Reports refreshed successfully",
+        type: "success",
+      });
+    } catch (error) {
+      notify({
+        title: "Error",
+        description: "Failed to refresh reports. Please try again.",
+        type: "error",
+      });
     } finally {
-      setIsRefreshing(false)
+      setIsRefreshing(false);
     }
-  }
+  };
 
   const handleExport = () => {
-    const csv = `Workflow Analytics Report
-Generated: ${new Date().toISOString()}
-
-METRICS SUMMARY
-Total Pending,24
-Total Approved,187
-Total Rejected,12
-Avg Approval Time,3.2 days
-SLA Compliance,94%`
-
-    const blob = new Blob([csv], { type: 'text/csv' })
-    const url = window.URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `analytics-report-${new Date().toISOString().split('T')[0]}.csv`
-    a.click()
-    window.URL.revokeObjectURL(url)
-  }
+    try {
+      switch (activeTab) {
+        case "overview":
+          if (systemStats) {
+            exportSystemStatsToCSV(systemStats);
+            notify({
+              title: "Success",
+              description: "System statistics exported to CSV",
+              type: "success",
+            });
+          } else {
+            notify({
+              title: "Error",
+              description: "No data available to export",
+              type: "error",
+            });
+          }
+          break;
+        case "analytics":
+          if (analytics) {
+            exportAnalyticsDashboardToCSV(analytics);
+            notify({
+              title: "Success",
+              description: "Analytics dashboard exported to CSV",
+              type: "success",
+            });
+          } else {
+            notify({
+              title: "Error",
+              description: "No data available to export",
+              type: "error",
+            });
+          }
+          break;
+        case "approvals":
+          if (approvalMetrics) {
+            exportApprovalMetricsToCSV(approvalMetrics);
+            notify({
+              title: "Success",
+              description: "Approval metrics exported to CSV",
+              type: "success",
+            });
+          } else {
+            notify({
+              title: "Error",
+              description: "No data available to export",
+              type: "error",
+            });
+          }
+          break;
+        case "activity":
+          if (userActivity) {
+            exportUserActivityToCSV(userActivity);
+            notify({
+              title: "Success",
+              description: "User activity exported to CSV",
+              type: "success",
+            });
+          } else {
+            notify({
+              title: "Error",
+              description: "No data available to export",
+              type: "error",
+            });
+          }
+          break;
+        default:
+          notify({
+            title: "Error",
+            description: "Unknown tab selected",
+            type: "error",
+          });
+      }
+    } catch (error) {
+      notify({
+        title: "Error",
+        description: "An error occurred during export",
+        type: "error",
+      });
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -64,14 +176,12 @@ SLA Compliance,94%`
             onClick={handleRefresh}
             disabled={isRefreshing}
           >
-            <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+            <RefreshCw
+              className={`h-4 w-4 mr-2 ${isRefreshing ? "animate-spin" : ""}`}
+            />
             Refresh
           </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleExport}
-          >
+          <Button variant="outline" size="sm" onClick={handleExport}>
             <Download className="h-4 w-4 mr-2" />
             Export
           </Button>
@@ -108,5 +218,5 @@ SLA Compliance,94%`
         </TabsContent>
       </Tabs>
     </div>
-  )
+  );
 }

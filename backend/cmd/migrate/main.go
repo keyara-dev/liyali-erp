@@ -47,7 +47,9 @@ func main() {
 	// Filter and sort .up.sql files
 	var migrationFiles []string
 	for _, file := range files {
-		if strings.HasSuffix(file.Name(), ".up.sql") && !strings.Contains(file.Name(), "cleanup") {
+		if strings.HasSuffix(file.Name(), ".up.sql") && 
+		   !strings.Contains(file.Name(), "cleanup") &&
+		   !strings.Contains(file.Name(), "000_drop_all_tables") {
 			migrationFiles = append(migrationFiles, file.Name())
 		}
 	}
@@ -58,7 +60,8 @@ func main() {
 	// Create migrations table if it doesn't exist
 	createMigrationsTable := `
 		CREATE TABLE IF NOT EXISTS schema_migrations (
-			version VARCHAR(255) PRIMARY KEY,
+			id SERIAL PRIMARY KEY,
+			filename VARCHAR(255) UNIQUE NOT NULL,
 			applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 		);
 	`
@@ -70,7 +73,7 @@ func main() {
 	for _, filename := range migrationFiles {
 		// Check if migration already applied
 		var count int
-		err := db.QueryRow("SELECT COUNT(*) FROM schema_migrations WHERE version = $1", filename).Scan(&count)
+		err := db.QueryRow("SELECT COUNT(*) FROM schema_migrations WHERE filename = $1", filename).Scan(&count)
 		if err != nil {
 			log.Fatalf("Failed to check migration status: %v", err)
 		}
@@ -95,7 +98,7 @@ func main() {
 		}
 
 		// Record migration as applied
-		if _, err := db.Exec("INSERT INTO schema_migrations (version) VALUES ($1)", filename); err != nil {
+		if _, err := db.Exec("INSERT INTO schema_migrations (filename) VALUES ($1)", filename); err != nil {
 			log.Fatalf("Failed to record migration %s: %v", filename, err)
 		}
 

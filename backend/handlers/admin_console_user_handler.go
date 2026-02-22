@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"log"
 	"strings"
 	"time"
@@ -15,6 +16,88 @@ import (
 // Admin users are regular users filtered by role IN ('admin', 'super_admin', 'compliance_officer')
 
 var adminRoles = []string{"admin", "super_admin", "compliance_officer"}
+
+// adminUserToFrontend transforms a raw DB user row into the AdminUser shape the frontend expects
+func adminUserToFrontend(user map[string]interface{}) map[string]interface{} {
+	name, _ := user["name"].(string)
+	parts := strings.SplitN(name, " ", 2)
+	firstName := ""
+	lastName := ""
+	if len(parts) >= 1 {
+		firstName = parts[0]
+	}
+	if len(parts) >= 2 {
+		lastName = parts[1]
+	}
+
+	// Count active sessions
+	var sessionCount int64
+	db := config.DB
+	if uid, ok := user["id"]; ok {
+		db.Table("sessions").Where("user_id = ? AND expires_at > ?", uid, time.Now()).Count(&sessionCount)
+	}
+
+	// Check if locked
+	var lockCount int64
+	if uid, ok := user["id"]; ok {
+		db.Table("account_lockouts").Where("user_id = ? AND active = ?", uid, true).Count(&lockCount)
+	}
+
+	// Populate roles from user_organization_roles
+	var roles []map[string]interface{}
+	if uid, ok := user["id"]; ok {
+		db.Table("user_organization_roles").
+			Select(`organization_roles.id, organization_roles.name,
+				COALESCE(organization_roles.display_name, organization_roles.name) as display_name,
+				COALESCE(organization_roles.permissions, '[]') as permissions`).
+			Joins("LEFT JOIN organization_roles ON organization_roles.id = user_organization_roles.role_id").
+			Where("user_organization_roles.user_id = ?", uid).
+			Find(&roles)
+	}
+	if roles == nil {
+		roles = []map[string]interface{}{}
+	}
+
+	// Collect all permission IDs from roles
+	allPermissions := []string{}
+	for _, r := range roles {
+		if permRaw, ok := r["permissions"]; ok && permRaw != nil {
+			var permIDs []string
+			switch v := permRaw.(type) {
+			case string:
+				_ = json.Unmarshal([]byte(v), &permIDs)
+			case []byte:
+				_ = json.Unmarshal(v, &permIDs)
+			}
+			allPermissions = append(allPermissions, permIDs...)
+		}
+	}
+
+	result := map[string]interface{}{
+		"id":                 user["id"],
+		"email":              user["email"],
+		"first_name":         firstName,
+		"last_name":          lastName,
+		"full_name":          name,
+		"avatar_url":         nil,
+		"is_active":          user["is_active"],
+		"is_super_admin":     user["is_super_admin"],
+		"last_login_at":      user["last_login"],
+		"created_at":         user["created_at"],
+		"updated_at":         user["updated_at"],
+		"roles":              roles,
+		"permissions":        allPermissions,
+		"login_attempts":     0,
+		"is_locked":          lockCount > 0,
+		"locked_until":       nil,
+		"two_factor_enabled": false,
+		"session_count":      sessionCount,
+		"last_activity_at":   user["last_login"],
+		"created_by":         nil,
+		"updated_by":         nil,
+	}
+	return result
+}
 
 // AdminGetAdminUsers returns all admin-level users
 func AdminGetAdminUsers(c *fiber.Ctx) error {
@@ -50,10 +133,15 @@ func AdminGetAdminUsers(c *fiber.Ctx) error {
 
 	query = query.Order("created_at DESC")
 
-	var users []map[string]interface{}
-	if err := query.Find(&users).Error; err != nil {
+	var rawUsers []map[string]interface{}
+	if err := query.Find(&rawUsers).Error; err != nil {
 		log.Printf("Error getting admin users: %v", err)
 		return utils.SendInternalError(c, "Failed to retrieve admin users", err)
+	}
+
+	users := make([]map[string]interface{}, len(rawUsers))
+	for i, u := range rawUsers {
+		users[i] = adminUserToFrontend(u)
 	}
 
 	return utils.SendSimpleSuccess(c, users, "Admin users retrieved successfully")
@@ -63,20 +151,81 @@ func AdminGetAdminUsers(c *fiber.Ctx) error {
 func AdminGetAdminUserStats(c *fiber.Ctx) error {
 	db := config.DB
 
-	baseQuery := db.Table("users").Where("deleted_at IS NULL AND (role IN ? OR is_super_admin = ?)", adminRoles, true)
+	adminFilter := "deleted_at IS NULL AND (role IN ? OR is_super_admin = ?)"
 
-	var totalAdmins, activeAdmins, superAdmins int64
+	var totalAdmins, activeAdmins, superAdmins, lockedAccounts, twoFactorEnabled, neverLoggedIn int64
 
-	baseQuery.Count(&totalAdmins)
-
-	db.Table("users").Where("deleted_at IS NULL AND (role IN ? OR is_super_admin = ?) AND active = ?", adminRoles, true, true).Count(&activeAdmins)
+	db.Table("users").Where(adminFilter, adminRoles, true).Count(&totalAdmins)
+	db.Table("users").Where(adminFilter+" AND active = ?", adminRoles, true, true).Count(&activeAdmins)
 	db.Table("users").Where("deleted_at IS NULL AND is_super_admin = ?", true).Count(&superAdmins)
 
+	// Locked accounts
+	db.Table("account_lockouts").
+		Joins("JOIN users ON users.id = account_lockouts.user_id").
+		Where("account_lockouts.active = ? AND ("+adminFilter+")", true, adminRoles, true).
+		Distinct("account_lockouts.user_id").Count(&lockedAccounts)
+
+	// Never logged in
+	db.Table("users").Where(adminFilter+" AND last_login IS NULL", adminRoles, true).Count(&neverLoggedIn)
+
+	// Recent logins (last 7 days)
+	sevenDaysAgo := time.Now().AddDate(0, 0, -7)
+	var recentLogins int64
+	db.Table("users").Where(adminFilter+" AND last_login >= ?", adminRoles, true, sevenDaysAgo).Count(&recentLogins)
+
+	// Activity stats
+	today := time.Now().Truncate(24 * time.Hour)
+	weekAgo := time.Now().AddDate(0, 0, -7)
+	monthAgo := time.Now().AddDate(0, -1, 0)
+	var dailyActive, weeklyActive, monthlyActive int64
+	db.Table("users").Where(adminFilter+" AND last_login >= ?", adminRoles, true, today).Count(&dailyActive)
+	db.Table("users").Where(adminFilter+" AND last_login >= ?", adminRoles, true, weekAgo).Count(&weeklyActive)
+	db.Table("users").Where(adminFilter+" AND last_login >= ?", adminRoles, true, monthAgo).Count(&monthlyActive)
+
+	// Security stats
+	var failedLoginAttempts, passwordResets, accountLockouts int64
+	db.Table("admin_audit_logs").Where("action = ? AND created_at >= ?", "failed_login", monthAgo).Count(&failedLoginAttempts)
+	db.Table("admin_audit_logs").Where("action = ? AND created_at >= ?", "admin_password_reset", monthAgo).Count(&passwordResets)
+	db.Table("admin_audit_logs").Where("action LIKE ? AND created_at >= ?", "%lockout%", monthAgo).Count(&accountLockouts)
+
+	// Role distribution
+	var roleDistribution []map[string]interface{}
+	db.Table("users").
+		Select("role as role_name, COUNT(*) as user_count").
+		Where(adminFilter, adminRoles, true).
+		Group("role").
+		Find(&roleDistribution)
+
+	for i := range roleDistribution {
+		roleDistribution[i]["role_id"] = roleDistribution[i]["role_name"]
+		if totalAdmins > 0 {
+			if count, ok := roleDistribution[i]["user_count"].(int64); ok {
+				roleDistribution[i]["percentage"] = float64(count) / float64(totalAdmins) * 100
+			}
+		} else {
+			roleDistribution[i]["percentage"] = 0
+		}
+	}
+
 	stats := map[string]interface{}{
-		"total_admins":  totalAdmins,
-		"active_admins": activeAdmins,
-		"super_admins":  superAdmins,
-		"locked_admins": 0, // No lock mechanism currently
+		"total_admin_users":  totalAdmins,
+		"active_admin_users": activeAdmins,
+		"super_admins":       superAdmins,
+		"locked_accounts":    lockedAccounts,
+		"two_factor_enabled": twoFactorEnabled,
+		"recent_logins":      recentLogins,
+		"never_logged_in":    neverLoggedIn,
+		"role_distribution":  roleDistribution,
+		"activity_stats": map[string]interface{}{
+			"daily_active":   dailyActive,
+			"weekly_active":  weeklyActive,
+			"monthly_active": monthlyActive,
+		},
+		"security_stats": map[string]interface{}{
+			"failed_login_attempts": failedLoginAttempts,
+			"password_resets":       passwordResets,
+			"account_lockouts":      accountLockouts,
+		},
 	}
 
 	return utils.SendSimpleSuccess(c, stats, "Admin user statistics retrieved successfully")
@@ -100,7 +249,7 @@ func AdminGetAdminUser(c *fiber.Ctx) error {
 		return utils.SendNotFound(c, "Admin user not found")
 	}
 
-	return utils.SendSimpleSuccess(c, user, "Admin user retrieved successfully")
+	return utils.SendSimpleSuccess(c, adminUserToFrontend(user), "Admin user retrieved successfully")
 }
 
 // AdminCreateAdminUser creates a new admin user
@@ -182,10 +331,13 @@ func AdminCreateAdminUser(c *fiber.Ctx) error {
 		"created_at":    now,
 	})
 
-	// Remove password from response
+	// Return frontend-compatible shape
+	user["is_active"] = request.IsActive
+	user["is_super_admin"] = request.IsSuperAdmin
+	user["last_login"] = nil
 	delete(user, "password")
 
-	return utils.SendCreatedSuccess(c, user, "Admin user created successfully")
+	return utils.SendCreatedSuccess(c, adminUserToFrontend(user), "Admin user created successfully")
 }
 
 // AdminUpdateAdminUser updates an admin user

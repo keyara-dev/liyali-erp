@@ -1,7 +1,9 @@
-'use client'
+"use client";
 
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useAnalyticsDashboard } from "@/hooks/use-reports-queries";
 import {
   TrendingUp,
   CheckCircle2,
@@ -11,68 +13,39 @@ import {
   PieChart as PieChartIcon,
   LineChart as LineChartIcon,
   Target,
-} from 'lucide-react'
-
-interface MetricsData {
-  totalPending: number
-  totalApproved: number
-  totalRejected: number
-  avgApprovalTime: string
-  slaCompliance: number
-  bottleneckStage: string
-  bottleneckDays: number
-}
-
-interface TimelineData {
-  date: string
-  approved: number
-  rejected: number
-  pending: number
-}
-
-interface StageMetricsData {
-  stage: string
-  avgTime: string
-  count: number
-  slaCompliance: number
-}
-
-// Mock metrics data
-const METRICS_DATA: MetricsData = {
-  totalPending: 24,
-  totalApproved: 187,
-  totalRejected: 12,
-  avgApprovalTime: '3.2 days',
-  slaCompliance: 94,
-  bottleneckStage: 'Finance Officer Review',
-  bottleneckDays: 4.5,
-}
-
-const TIMELINE_DATA: TimelineData[] = [
-  { date: 'Nov 20', approved: 8, rejected: 1, pending: 5 },
-  { date: 'Nov 21', approved: 12, rejected: 2, pending: 8 },
-  { date: 'Nov 22', approved: 15, rejected: 1, pending: 12 },
-  { date: 'Nov 23', approved: 18, rejected: 3, pending: 15 },
-  { date: 'Nov 24', approved: 22, rejected: 2, pending: 18 },
-  { date: 'Nov 25', approved: 28, rejected: 1, pending: 22 },
-  { date: 'Nov 26', approved: 35, rejected: 2, pending: 24 },
-]
-
-const STAGE_METRICS: StageMetricsData[] = [
-  { stage: 'Department Manager', avgTime: '1.2 days', count: 45, slaCompliance: 98 },
-  { stage: 'Finance Officer', avgTime: '4.5 days', count: 38, slaCompliance: 85 },
-  { stage: 'Director/CFO', avgTime: '2.1 days', count: 42, slaCompliance: 95 },
-]
-
-const APPROVAL_DISTRIBUTION = [
-  { type: 'Requisition', count: 67, percentage: 28 },
-  { type: 'Budget', count: 58, percentage: 24 },
-  { type: 'Purchase Order', count: 54, percentage: 22 },
-  { type: 'Payment Voucher', count: 42, percentage: 17 },
-  { type: 'GRN', count: 20, percentage: 9 },
-]
+} from "lucide-react";
 
 export function AnalyticsDashboard() {
+  // Fetch live analytics from database
+  const { data: analytics, isLoading, error } = useAnalyticsDashboard();
+
+  if (isLoading) {
+    return (
+      <div className="text-center py-8 text-muted-foreground">
+        Loading analytics dashboard...
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <Alert variant="destructive">
+        <AlertCircle className="h-4 w-4" />
+        <AlertDescription>
+          Failed to load analytics. Please try again.
+        </AlertDescription>
+      </Alert>
+    );
+  }
+
+  if (!analytics) {
+    return (
+      <div className="text-center py-8 text-muted-foreground">
+        No analytics data available
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Key Metrics */}
@@ -85,7 +58,7 @@ export function AnalyticsDashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">{METRICS_DATA.totalPending}</div>
+            <div className="text-3xl font-bold">{analytics.totalPending}</div>
             <p className="text-xs text-muted-foreground mt-2">
               Awaiting approval
             </p>
@@ -101,10 +74,10 @@ export function AnalyticsDashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-green-600">{METRICS_DATA.totalApproved}</div>
-            <p className="text-xs text-muted-foreground mt-2">
-              This period
-            </p>
+            <div className="text-3xl font-bold text-green-600">
+              {analytics.totalApproved}
+            </div>
+            <p className="text-xs text-muted-foreground mt-2">This period</p>
             <div className="mt-3 h-2 bg-green-200 rounded-full"></div>
           </CardContent>
         </Card>
@@ -117,7 +90,9 @@ export function AnalyticsDashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-red-600">{METRICS_DATA.totalRejected}</div>
+            <div className="text-3xl font-bold text-red-600">
+              {analytics.totalRejected}
+            </div>
             <p className="text-xs text-muted-foreground mt-2">
               Returned to requester
             </p>
@@ -134,7 +109,7 @@ export function AnalyticsDashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-blue-600">
-              {METRICS_DATA.avgApprovalTime}
+              {analytics.avgApprovalTime.toFixed(1)} days
             </div>
             <p className="text-xs text-muted-foreground mt-2">
               Average turnaround
@@ -151,11 +126,16 @@ export function AnalyticsDashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">{METRICS_DATA.slaCompliance}%</div>
+            <div className="text-3xl font-bold">
+              {analytics.slaCompliance.toFixed(1)}%
+            </div>
             <p className="text-xs text-muted-foreground mt-2">
               On-time delivery
             </p>
-            <div className="mt-3 h-2 bg-green-200 rounded-full" style={{ width: `${METRICS_DATA.slaCompliance}%` }}></div>
+            <div
+              className="mt-3 h-2 bg-green-200 rounded-full"
+              style={{ width: `${analytics.slaCompliance}%` }}
+            ></div>
           </CardContent>
         </Card>
       </div>
@@ -171,30 +151,36 @@ export function AnalyticsDashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {TIMELINE_DATA.map((item, index) => (
-              <div key={index} className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">{item.date}</span>
-                  <span className="font-medium">
-                    ✓ {item.approved} | ✗ {item.rejected} | ⏳ {item.pending}
-                  </span>
-                </div>
-                <div className="flex gap-1 h-2 bg-muted rounded-full overflow-hidden">
-                  <div
-                    className="bg-green-500"
-                    style={{ width: `${(item.approved / 40) * 100}%` }}
-                  ></div>
-                  <div
-                    className="bg-red-500"
-                    style={{ width: `${(item.rejected / 40) * 100}%` }}
-                  ></div>
-                  <div
-                    className="bg-yellow-500"
-                    style={{ width: `${(item.pending / 40) * 100}%` }}
-                  ></div>
-                </div>
+            {analytics.approvalTrends.length === 0 ? (
+              <div className="text-center py-4 text-muted-foreground">
+                No trend data available
               </div>
-            ))}
+            ) : (
+              analytics.approvalTrends.map((item, index) => (
+                <div key={index} className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">{item.date}</span>
+                    <span className="font-medium">
+                      ✓ {item.approved} | ✗ {item.rejected} | ⏳ {item.pending}
+                    </span>
+                  </div>
+                  <div className="flex gap-1 h-2 bg-muted rounded-full overflow-hidden">
+                    <div
+                      className="bg-green-500"
+                      style={{ width: `${(item.approved / 40) * 100}%` }}
+                    ></div>
+                    <div
+                      className="bg-red-500"
+                      style={{ width: `${(item.rejected / 40) * 100}%` }}
+                    ></div>
+                    <div
+                      className="bg-yellow-500"
+                      style={{ width: `${(item.pending / 40) * 100}%` }}
+                    ></div>
+                  </div>
+                </div>
+              ))
+            )}
           </CardContent>
         </Card>
 
@@ -207,20 +193,28 @@ export function AnalyticsDashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            {APPROVAL_DISTRIBUTION.map((item, index) => (
-              <div key={index} className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="font-medium">{item.type}</span>
-                  <span className="text-muted-foreground">{item.count} ({item.percentage}%)</span>
-                </div>
-                <div className="h-3 bg-muted rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-gradient-to-r from-blue-500 to-purple-500"
-                    style={{ width: `${item.percentage}%` }}
-                  ></div>
-                </div>
+            {analytics.documentDistribution.length === 0 ? (
+              <div className="text-center py-4 text-muted-foreground">
+                No distribution data available
               </div>
-            ))}
+            ) : (
+              analytics.documentDistribution.map((item, index) => (
+                <div key={index} className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="font-medium">{item.type}</span>
+                    <span className="text-muted-foreground">
+                      {item.count} ({item.percentage.toFixed(1)}%)
+                    </span>
+                  </div>
+                  <div className="h-3 bg-muted rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-linear-to-r from-blue-500 to-purple-500"
+                      style={{ width: `${item.percentage}%` }}
+                    ></div>
+                  </div>
+                </div>
+              ))
+            )}
           </CardContent>
         </Card>
       </div>
@@ -236,46 +230,61 @@ export function AnalyticsDashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {STAGE_METRICS.map((metric, index) => (
-              <div key={index} className="space-y-2 pb-4 border-b last:border-b-0">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <p className="font-medium">{metric.stage}</p>
-                    <p className="text-sm text-muted-foreground">{metric.count} items processed</p>
-                  </div>
-                  <Badge
-                    variant="outline"
-                    className={
-                      metric.slaCompliance >= 90
-                        ? 'bg-green-50 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-300 dark:border-green-800'
-                        : metric.slaCompliance >= 80
-                        ? 'bg-yellow-50 text-yellow-700 border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-300 dark:border-yellow-800'
-                        : 'bg-red-50 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-300 dark:border-red-800'
-                    }
-                  >
-                    {metric.slaCompliance}% SLA
-                  </Badge>
-                </div>
-                <div className="space-y-1">
-                  <div className="flex justify-between text-xs">
-                    <span className="text-muted-foreground">Avg Processing Time</span>
-                    <span className="font-medium">{metric.avgTime}</span>
-                  </div>
-                  <div className="h-2 bg-muted rounded-full overflow-hidden">
-                    <div
+            {analytics.stageMetrics.length === 0 ? (
+              <div className="text-center py-4 text-muted-foreground">
+                No stage metrics available
+              </div>
+            ) : (
+              analytics.stageMetrics.map((metric, index) => (
+                <div
+                  key={index}
+                  className="space-y-2 pb-4 border-b last:border-b-0"
+                >
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <p className="font-medium">{metric.stageName}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {metric.documentCount} items processed
+                      </p>
+                    </div>
+                    <Badge
+                      variant="outline"
                       className={
                         metric.slaCompliance >= 90
-                          ? 'h-full bg-green-500'
+                          ? "bg-green-50 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-300 dark:border-green-800"
                           : metric.slaCompliance >= 80
-                          ? 'h-full bg-yellow-500'
-                          : 'h-full bg-red-500'
+                            ? "bg-yellow-50 text-yellow-700 border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-300 dark:border-yellow-800"
+                            : "bg-red-50 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-300 dark:border-red-800"
                       }
-                      style={{ width: `${metric.slaCompliance}%` }}
-                    ></div>
+                    >
+                      {metric.slaCompliance.toFixed(1)}% SLA
+                    </Badge>
+                  </div>
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-xs">
+                      <span className="text-muted-foreground">
+                        Avg Processing Time
+                      </span>
+                      <span className="font-medium">
+                        {metric.avgProcessingTime.toFixed(1)} days
+                      </span>
+                    </div>
+                    <div className="h-2 bg-muted rounded-full overflow-hidden">
+                      <div
+                        className={
+                          metric.slaCompliance >= 90
+                            ? "h-full bg-green-500"
+                            : metric.slaCompliance >= 80
+                              ? "h-full bg-yellow-500"
+                              : "h-full bg-red-500"
+                        }
+                        style={{ width: `${metric.slaCompliance}%` }}
+                      ></div>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))
+            )}
           </CardContent>
         </Card>
 
@@ -289,47 +298,60 @@ export function AnalyticsDashboard() {
           </CardHeader>
           <CardContent className="space-y-6">
             {/* Current Bottleneck */}
-            <div className="p-4 border-2 border-orange-200 dark:border-orange-800 rounded-lg bg-orange-50 dark:bg-orange-950/30">
-              <div className="flex items-start gap-3">
-                <Target className="h-5 w-5 text-orange-600 flex-shrink-0 mt-0.5" />
-                <div className="flex-1">
-                  <p className="font-semibold text-orange-900 dark:text-orange-100">Current Bottleneck</p>
-                  <p className="text-sm text-orange-800 dark:text-orange-200 mt-1">
-                    {METRICS_DATA.bottleneckStage}
-                  </p>
-                  <p className="text-xs text-orange-700 dark:text-orange-300 mt-2">
-                    ⏱️ Average {METRICS_DATA.bottleneckDays} days at this stage
-                  </p>
+            {analytics.bottleneck ? (
+              <>
+                <div className="p-4 border-2 border-orange-200 dark:border-orange-800 rounded-lg bg-orange-50 dark:bg-orange-950/30">
+                  <div className="flex items-start gap-3">
+                    <Target className="h-5 w-5 text-orange-600 shrink-0 mt-0.5" />
+                    <div className="flex-1">
+                      <p className="font-semibold text-orange-900 dark:text-orange-100">
+                        Current Bottleneck
+                      </p>
+                      <p className="text-sm text-orange-800 dark:text-orange-200 mt-1">
+                        {analytics.bottleneck.stageName}
+                      </p>
+                      <p className="text-xs text-orange-700 dark:text-orange-300 mt-2">
+                        ⏱️ Average {analytics.bottleneck.avgDays.toFixed(1)}{" "}
+                        days at this stage
+                      </p>
+                      <p className="text-xs text-orange-700 dark:text-orange-300 mt-1">
+                        📊 {analytics.bottleneck.documentCount} documents
+                        processed
+                      </p>
+                    </div>
+                  </div>
                 </div>
+
+                {/* Recommendations */}
+                <div className="space-y-2">
+                  <p className="font-medium text-sm">Recommendations:</p>
+                  <ul className="space-y-2 text-sm text-muted-foreground">
+                    <li className="flex gap-2">
+                      <span className="text-green-600 font-bold">•</span>
+                      <span>
+                        Consider adding additional capacity at this stage
+                      </span>
+                    </li>
+                    <li className="flex gap-2">
+                      <span className="text-green-600 font-bold">•</span>
+                      <span>
+                        Review approval criteria for faster processing
+                      </span>
+                    </li>
+                    <li className="flex gap-2">
+                      <span className="text-green-600 font-bold">•</span>
+                      <span>Implement parallel approvals where applicable</span>
+                    </li>
+                  </ul>
+                </div>
+              </>
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                <CheckCircle2 className="h-12 w-12 mx-auto mb-2 text-green-500" />
+                <p>No bottlenecks detected</p>
+                <p className="text-xs mt-1">All stages are performing well</p>
               </div>
-            </div>
-
-            {/* Recommendations */}
-            <div className="space-y-2">
-              <p className="font-medium text-sm">Recommendations:</p>
-              <ul className="space-y-2 text-sm text-muted-foreground">
-                <li className="flex gap-2">
-                  <span className="text-green-600 font-bold">•</span>
-                  <span>Consider adding additional Finance Officer capacity</span>
-                </li>
-                <li className="flex gap-2">
-                  <span className="text-green-600 font-bold">•</span>
-                  <span>Review approval criteria for faster processing</span>
-                </li>
-                <li className="flex gap-2">
-                  <span className="text-green-600 font-bold">•</span>
-                  <span>Implement parallel approvals where applicable</span>
-                </li>
-              </ul>
-            </div>
-
-            {/* Trend */}
-            <div className="flex items-center gap-2 pt-2 border-t">
-              <TrendingUp className="h-4 w-4 text-green-600" />
-              <p className="text-xs text-muted-foreground">
-                Bottleneck reducing: was 5.2 days last week
-              </p>
-            </div>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -347,23 +369,34 @@ export function AnalyticsDashboard() {
             <div className="space-y-2">
               <p className="text-sm font-medium">✅ Strengths</p>
               <ul className="text-sm text-muted-foreground space-y-1">
-                <li>• High overall SLA compliance (94%)</li>
-                <li>• Fast Department Manager approvals</li>
-                <li>• Consistent approval rates</li>
+                <li>
+                  • High overall SLA compliance (
+                  {analytics.slaCompliance.toFixed(1)}%)
+                </li>
+                <li>• {analytics.totalApproved} documents approved</li>
+                <li>• Consistent approval processing</li>
               </ul>
             </div>
             <div className="space-y-2">
               <p className="text-sm font-medium">⚠️ Areas to Improve</p>
               <ul className="text-sm text-muted-foreground space-y-1">
-                <li>• Finance Officer stage bottleneck</li>
-                <li>• Higher rejection rate needed review</li>
-                <li>• GRN processing efficiency</li>
+                {analytics.bottleneck && (
+                  <li>• {analytics.bottleneck.stageName} stage bottleneck</li>
+                )}
+                {analytics.totalRejected > 0 && (
+                  <li>• {analytics.totalRejected} rejections need review</li>
+                )}
+                {analytics.avgApprovalTime > 3 && (
+                  <li>• Average approval time above target</li>
+                )}
               </ul>
             </div>
             <div className="space-y-2">
               <p className="text-sm font-medium">📊 Key Actions</p>
               <ul className="text-sm text-muted-foreground space-y-1">
-                <li>• Monitor Finance Officer queue</li>
+                <li>
+                  • Monitor pending queue ({analytics.totalPending} items)
+                </li>
                 <li>• Review rejected items trends</li>
                 <li>• Optimize approval workflow</li>
               </ul>
@@ -372,5 +405,5 @@ export function AnalyticsDashboard() {
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }

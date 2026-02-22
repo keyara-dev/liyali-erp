@@ -1,219 +1,168 @@
 # Liyali Gateway
 
-Modern business operations platform for procurement, workflow automation, and team collaboration.
+A modern procurement management system with approval workflows, document management, and comprehensive reporting.
 
-## Project Structure
+---
+
+## 🚀 Quick Start
+
+```bash
+# Backend
+cd backend
+cp .env.example .env
+go run cmd/migrate/main.go
+go run main.go  # http://localhost:8081
+
+# Frontend
+cd frontend
+cp .env.example .env
+npm install
+npm run dev  # http://localhost:3000
+```
+
+---
+
+## 📚 Documentation
+
+- **[QUICK_REFERENCE.md](QUICK_REFERENCE.md)** - Quick commands and patterns
+- **[DEVELOPER_GUIDE.md](DEVELOPER_GUIDE.md)** - Detailed development guide
+- **[FEATURES_IMPLEMENTED.md](FEATURES_IMPLEMENTED.md)** - Feature documentation
+- **[.kiro/specs/](.kiro/specs/)** - Feature specifications
+
+---
+
+## 🛠 Tech Stack
+
+**Backend**: Go 1.21+ • Fiber v2 • PostgreSQL 15+  
+**Frontend**: Next.js 16 • TypeScript 5+ • React Query • Tailwind CSS  
+**Deployment**: Fly.io
+
+---
+
+## 📦 Key Features
+
+- ✅ Admin Reports & Analytics (live data)
+- ✅ Workflow Selection System
+- ✅ Configuration Checklist
+- ✅ Organization Logo Upload (ImageKit)
+- ✅ Session Management & Auto-refresh
+- ✅ PDF Generation
+- ✅ Subscription Management
+- ✅ Document Management (Requisitions, POs, PVs, GRNs, Budgets)
+
+---
+
+## 🏗 Project Structure
 
 ```
 liyali-gateway/
-├── backend/              # Go backend API
-├── frontend/             # Next.js user application
-├── admin-console/        # Next.js admin portal
-├── docs/                 # Shared documentation
-└── scripts/              # Utility scripts
+├── backend/           # Go/Fiber backend
+│   ├── handlers/     # HTTP endpoints
+│   ├── services/     # Business logic
+│   ├── repository/   # Database layer
+│   └── models/       # Data structures
+│
+├── frontend/         # Next.js frontend
+│   └── src/
+│       ├── app/      # Pages & server actions
+│       ├── components/ # UI components
+│       ├── hooks/    # React Query hooks
+│       └── types/    # TypeScript types
+│
+└── .kiro/specs/      # Feature specifications
 ```
 
-## Quick Start
+---
 
-### Prerequisites
+## 🔐 Environment Variables
 
-- Go 1.21+
-- Node.js 18+
-- PostgreSQL 14+
-- Docker (optional)
-
-### Backend
-
-```bash
-cd backend
-go mod download
-make migrate
-make seed
-make dev
-```
-
-Access at: http://localhost:8080
-
-### Frontend
-
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-Access at: http://localhost:3000
-
-### Admin Console
-
-```bash
-cd admin-console
-npm install
-npm run dev
-```
-
-Access at: http://localhost:3001
-
-## Documentation
-
-### Backend
-
-- [Quick Start](./backend/docs/01-quick-start.md)
-- [API Reference](./backend/docs/13-api-reference.md)
-- [Database](./backend/docs/DATABASE_IMPLEMENTATION.md)
-- [Testing](./backend/docs/TESTING.md)
-
-### Frontend
-
-- [Quick Start](./frontend/docs/01-quick-start.md)
-- [Architecture](./frontend/docs/04-architecture.md)
-- [SEO](./frontend/docs/SEO.md)
-
-### Admin Console
-
-- [README](./admin-console/docs/README.md)
-
-### Deployment
-
-- [Deployment Guide](./docs/DEPLOYMENT.md)
-- [Fly.io Guide](./docs/FLY_IO_DEPLOYMENT_GUIDE.md)
-- [Admin Console Build & Deployment](./docs/ADMIN_CONSOLE_DEPLOYMENT.md)
-- [📚 Admin Console Deployment Index](./admin-console/docs/ADMIN_CONSOLE_DEPLOYMENT_INDEX.md) - Start here for admin console deployment
-
-## Features
-
-### Core Features
-
-- ✅ Multi-tenant architecture
-- ✅ Role-based access control (RBAC)
-- ✅ Workflow automation
-- ✅ Document management
-- ✅ Real-time notifications
-- ✅ Audit logging
-
-### Subscription System
-
-- ✅ Multiple subscription plans
-- ✅ Feature-based access control
-- ✅ Usage tracking
-- ✅ Trial management
-
-### Admin Features
-
-- ✅ User management
-- ✅ Organization management
-- ✅ System settings
-- ✅ Feature flags
-- ✅ Analytics dashboard
-
-## Tech Stack
-
-### Backend
-
-- **Language**: Go 1.21
-- **Framework**: Fiber
-- **Database**: PostgreSQL + SQLC
-- **Auth**: JWT
-- **Docs**: OpenAPI/Swagger
-
-### Frontend
-
-- **Framework**: Next.js 14
-- **UI**: Tailwind CSS + shadcn/ui
-- **State**: Zustand + React Query
-- **Forms**: React Hook Form + Zod
-
-### Admin Console
-
-- **Framework**: Next.js 14
-- **UI**: Tailwind CSS + shadcn/ui
-- **State**: React Query
-
-## Development
-
-### Environment Variables
-
-Create `.env` files in each directory:
-
-**Backend** (`.env`):
+### Backend (.env)
 
 ```env
-DATABASE_URL=postgresql://user:pass@localhost:5432/liyali_gateway
+DATABASE_URL=postgres://user:pass@host:5432/db?sslmode=require
 JWT_SECRET=your-secret-key
-PORT=8080
+APP_PORT=8081
+FRONTEND_URL=https://your-frontend.com
 ```
 
-**Frontend** (`.env.local`):
+### Frontend (.env)
 
 ```env
-NEXT_PUBLIC_API_URL=http://localhost:8080
-NEXT_PUBLIC_APP_URL=http://localhost:3000
+NEXT_PUBLIC_API_URL=https://your-backend.com
+NEXT_PUBLIC_IMAGEKIT_PUBLIC_KEY=your_key
+IMAGEKIT_PRIVATE_KEY=your_private_key
 ```
 
-**Admin Console** (`.env.local`):
+---
 
-```env
-NEXT_PUBLIC_API_URL=http://localhost:8080
-```
-
-### Running Tests
-
-**Backend**:
+## 🧪 Testing
 
 ```bash
+# Backend
 cd backend
 go test ./...
-```
 
-**Frontend**:
-
-```bash
+# Frontend
 cd frontend
-npm test
+npm run build  # Type checking
+npm run lint
 ```
 
-## Deployment
+---
 
-### Docker Compose
+## 🚢 Deployment
+
+### Fly.io (Recommended)
 
 ```bash
-docker-compose up -d
+cd backend && fly deploy
+cd frontend && fly deploy
 ```
 
-### Individual Services
+### Manual
 
-**Backend**:
+1. Build: `go build` (backend), `npm run build` (frontend)
+2. Set environment variables
+3. Run migrations: `go run cmd/migrate/main.go`
+4. Deploy and restart services
 
-```bash
-cd backend
-docker build -t liyali-backend .
-docker run -p 8080:8080 liyali-backend
-```
+---
 
-**Frontend**:
+## 📖 Development Workflow
 
-```bash
-cd frontend
-docker build -t liyali-frontend .
-docker run -p 3000:3000 liyali-frontend
-```
+### Adding a New Feature
 
-### Fly.io
+1. **Backend**: Model → Repository → Service → Handler → Route
+2. **Frontend**: Type → Server Action → Hook → Component
+3. **Database**: Create migration files
+4. **Documentation**: Update relevant docs
 
-See [Fly.io Deployment Guide](./FLY_IO_DEPLOYMENT_GUIDE.md)
+See [DEVELOPER_GUIDE.md](DEVELOPER_GUIDE.md) for detailed examples.
 
-## Contributing
+---
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Write/update tests
-5. Submit a pull request
+## 🤝 Contributing
 
-## License
+1. Create feature branch: `git checkout -b feat/feature-name`
+2. Make changes following code patterns
+3. Test thoroughly
+4. Commit with clear messages
+5. Push and create PR
+
+---
+
+## 📝 License
 
 Proprietary - All rights reserved
 
-## Support
+---
 
-For support, email support@liyali.com or open an issue.
+## 🆘 Support
+
+- Check documentation in root directory
+- Review `.kiro/specs/` for feature details
+- Check existing code for examples
+
+---
+
+**Last Updated**: February 23, 2026

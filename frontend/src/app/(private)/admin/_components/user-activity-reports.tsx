@@ -1,10 +1,9 @@
-'use client'
+"use client";
 
-import { useQuery } from '@tanstack/react-query'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { getDashboardMetrics } from '@/app/_actions/dashboard'
-import { DashboardMetrics } from '@/types'
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useUserActivity } from "@/hooks/use-reports-queries";
 import {
   Table,
   TableBody,
@@ -12,54 +11,41 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table'
-import { User, Users, CheckCircle2 } from 'lucide-react'
-import { QUERY_KEYS } from '@/lib/constants'
-
-interface UserStat {
-  id: string
-  name: string
-  role: string
-  approvedCount: number
-  activeDocuments: number
-  lastActivity: string
-}
+} from "@/components/ui/table";
+import { User, Users, CheckCircle2, AlertCircle } from "lucide-react";
 
 export function UserActivityReports() {
-  // Fetch dashboard metrics
-  const { data: metrics, isLoading } = useQuery<DashboardMetrics>({
-    queryKey: [QUERY_KEYS.DASHBOARD.METRICS],
-    queryFn: async () => {
-      const result = await getDashboardMetrics()
-      if (result.success && result.data) {
-        return result.data
-      }
-      throw new Error('Failed to fetch metrics')
-    },
-    staleTime: 5 * 60 * 1000, // 5 minutes
-  })
+  // Fetch live user activity from database
+  const { data: activity, isLoading, error } = useUserActivity();
 
-  // Fetch user activity statistics from backend
-  const { data: userStats = [] } = useQuery<UserStat[]>({
-    queryKey: ['user-activity-stats'],
-    queryFn: async () => {
-      const response = await fetch('/api/users/activity-stats')
-      if (!response.ok) throw new Error('Failed to fetch user stats')
-      return response.json()
-    },
-    staleTime: 5 * 60 * 1000, // 5 minutes
-  })
-
-  if (isLoading || !metrics) {
+  if (isLoading) {
     return (
       <div className="text-center py-8 text-muted-foreground">
         Loading user activity reports...
       </div>
-    )
+    );
   }
 
-  const topContributors = userStats.slice(0, 3)
-  const totalUsers = userStats.length
+  if (error) {
+    return (
+      <Alert variant="destructive">
+        <AlertCircle className="h-4 w-4" />
+        <AlertDescription>
+          Failed to load user activity. Please try again.
+        </AlertDescription>
+      </Alert>
+    );
+  }
+
+  if (!activity) {
+    return (
+      <div className="text-center py-8 text-muted-foreground">
+        No user activity data available
+      </div>
+    );
+  }
+
+  const topContributors = activity.users.slice(0, 3);
 
   return (
     <div className="space-y-6">
@@ -73,9 +59,9 @@ export function UserActivityReports() {
             <Users className="h-5 w-5 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">{totalUsers}</div>
+            <div className="text-3xl font-bold">{activity.activeUsers}</div>
             <p className="text-xs text-muted-foreground mt-1">
-              {Math.round((totalUsers / (totalUsers || 1)) * 100)}% active
+              {activity.users.length} total users
             </p>
           </CardContent>
         </Card>
@@ -89,7 +75,7 @@ export function UserActivityReports() {
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold">
-              {userStats.reduce((sum, user) => sum + user.activeDocuments, 0)}
+              {activity.documentsInProgress}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
               Across all users
@@ -105,9 +91,7 @@ export function UserActivityReports() {
             <CheckCircle2 className="h-5 w-5 text-accent" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">
-              {userStats.reduce((sum, user) => sum + user.approvedCount, 0)}
-            </div>
+            <div className="text-3xl font-bold">{activity.totalActions}</div>
             <p className="text-xs text-muted-foreground mt-1">
               Approvals and rejections
             </p>
@@ -122,25 +106,40 @@ export function UserActivityReports() {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {topContributors.map((user, index) => (
-              <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
-                <div className="flex items-center gap-3 flex-1">
-                  <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                    <span className="text-sm font-semibold text-primary">
-                      {user.name.charAt(0)}
-                    </span>
-                  </div>
-                  <div className="flex-1">
-                    <p className="font-medium">{user.name}</p>
-                    <p className="text-xs text-muted-foreground">{user.role.replace(/_/g, ' ')}</p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <Badge variant="secondary">{user.approvedCount} approvals</Badge>
-                  <p className="text-xs text-muted-foreground mt-1">{user.activeDocuments} active</p>
-                </div>
+            {topContributors.length === 0 ? (
+              <div className="text-center py-4 text-muted-foreground">
+                No contributors yet
               </div>
-            ))}
+            ) : (
+              topContributors.map((user, index) => (
+                <div
+                  key={user.id}
+                  className="flex items-center justify-between p-3 border rounded-lg"
+                >
+                  <div className="flex items-center gap-3 flex-1">
+                    <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                      <span className="text-sm font-semibold text-primary">
+                        {user.name.charAt(0)}
+                      </span>
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-medium">{user.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {user.role.replace(/_/g, " ")}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <Badge variant="secondary">
+                      {user.approvalCount} approvals
+                    </Badge>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {user.activeDocuments} active
+                    </p>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </CardContent>
       </Card>
@@ -158,29 +157,57 @@ export function UserActivityReports() {
                   <TableHead>User</TableHead>
                   <TableHead>Role</TableHead>
                   <TableHead className="text-right">Approvals</TableHead>
+                  <TableHead className="text-right">Rejections</TableHead>
                   <TableHead className="text-right">Active Docs</TableHead>
                   <TableHead>Last Activity</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {userStats.map((user, index) => (
-                  <TableRow key={index}>
-                    <TableCell className="font-medium">{user.name}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline">{user.role.replace(/_/g, ' ')}</Badge>
-                    </TableCell>
-                    <TableCell className="text-right">{user.approvedCount}</TableCell>
-                    <TableCell className="text-right">{user.activeDocuments}</TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {user.lastActivity}
+                {activity.users.length === 0 ? (
+                  <TableRow>
+                    <TableCell
+                      colSpan={6}
+                      className="text-center py-4 text-muted-foreground"
+                    >
+                      No user activity found
                     </TableCell>
                   </TableRow>
-                ))}
+                ) : (
+                  activity.users.map((user) => (
+                    <TableRow key={user.id}>
+                      <TableCell className="font-medium">{user.name}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline">
+                          {user.role.replace(/_/g, " ")}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {user.approvalCount}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {user.rejectionCount}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {user.activeDocuments}
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {user.lastActivity
+                          ? new Date(user.lastActivity).toLocaleDateString([], {
+                              month: "short",
+                              day: "numeric",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })
+                          : "N/A"}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
               </TableBody>
             </Table>
           </div>
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }

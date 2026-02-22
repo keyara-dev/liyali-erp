@@ -229,6 +229,20 @@ func AdminGetOrganizationById(c *fiber.Ctx) error {
 		org["settings"] = settings
 	}
 
+	// Add contact_info and billing_info stubs (frontend expects these nested objects)
+	org["contact_info"] = map[string]interface{}{
+		"email":   nil,
+		"phone":   nil,
+		"address": nil,
+		"city":    nil,
+		"country": nil,
+	}
+	org["billing_info"] = map[string]interface{}{
+		"billing_email":   nil,
+		"payment_method":  nil,
+		"billing_address": nil,
+	}
+
 	return utils.SendSimpleSuccess(c, org, "Organization retrieved successfully")
 }
 
@@ -539,6 +553,14 @@ func AdminGetOrganizationActivity(c *fiber.Ctx) error {
 		Order("created_at DESC").
 		Offset(offset).Limit(limit).
 		Find(&activities)
+
+	// Map fields to match frontend OrganizationActivity interface
+	for i := range activities {
+		activities[i]["timestamp"] = activities[i]["created_at"]
+		if _, ok := activities[i]["description"]; !ok {
+			activities[i]["description"] = activities[i]["action"]
+		}
+	}
 
 	response := map[string]interface{}{
 		"activities": activities,

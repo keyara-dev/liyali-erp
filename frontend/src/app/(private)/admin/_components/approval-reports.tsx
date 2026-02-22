@@ -1,12 +1,11 @@
-'use client'
+"use client";
 
-import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { getDashboardMetrics } from '@/app/_actions/dashboard'
-import { DashboardMetrics } from '@/types'
-import { Input } from '@/components/ui/input'
+import { useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useApprovalMetrics } from "@/hooks/use-reports-queries";
+import { Input } from "@/components/ui/input";
 import {
   Table,
   TableBody,
@@ -14,46 +13,73 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table'
-import { Search } from 'lucide-react'
-import { QUERY_KEYS } from '@/lib/constants'
+} from "@/components/ui/table";
+import { Search, AlertCircle } from "lucide-react";
 
 export function ApprovalReports() {
-  const [searchTerm, setSearchTerm] = useState('')
+  const [searchTerm, setSearchTerm] = useState("");
 
-  // Fetch metrics using React Query with caching
-  const { data: metrics, isLoading } = useQuery<DashboardMetrics>({
-    queryKey: [QUERY_KEYS.DASHBOARD.METRICS],
-    queryFn: async () => {
-      const result = await getDashboardMetrics()
-      if (result.success && result.data) {
-        return result.data
-      }
-      throw new Error('Failed to fetch metrics')
-    },
-    staleTime: 5 * 60 * 1000, // 5 minutes
-  })
+  // Fetch live approval metrics from database
+  const { data: metrics, isLoading, error } = useApprovalMetrics();
 
-  if (isLoading || !metrics) {
+  if (isLoading) {
     return (
       <div className="text-center py-8 text-muted-foreground">
         Loading approval reports...
       </div>
-    )
+    );
   }
 
-  const filteredActivity = metrics.recentActivity.filter((item) =>
-    (item.documentNumber || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-    item.user.toLowerCase().includes(searchTerm.toLowerCase())
-  )
-
-  const statusColors: Record<string, string> = {
-    APPROVED: 'default',
-    REJECTED: 'destructive',
-    IN_REVIEW: 'default',
-    SUBMITTED: 'secondary',
-    DRAFT: 'outline',
+  if (error) {
+    return (
+      <Alert variant="destructive">
+        <AlertCircle className="h-4 w-4" />
+        <AlertDescription>
+          Failed to load approval reports. Please try again.
+        </AlertDescription>
+      </Alert>
+    );
   }
+
+  if (!metrics) {
+    return (
+      <div className="text-center py-8 text-muted-foreground">
+        No approval data available
+      </div>
+    );
+  }
+
+  const filteredActivity = metrics.recentApprovals.filter(
+    (item) =>
+      (item.documentNumber || "")
+        .toLowerCase()
+        .includes(searchTerm.toLowerCase()) ||
+      item.approverName.toLowerCase().includes(searchTerm.toLowerCase()),
+  );
+
+  const statusColors: Record<
+    string,
+    "default" | "destructive" | "secondary" | "outline"
+  > = {
+    approved: "default",
+    rejected: "destructive",
+  };
+
+  const formatDocumentType = (type: string) => {
+    const typeMap: Record<string, string> = {
+      requisition: "Requisition",
+      REQUISITION: "Requisition",
+      purchase_order: "Purchase Order",
+      PURCHASE_ORDER: "Purchase Order",
+      payment_voucher: "Payment Voucher",
+      PAYMENT_VOUCHER: "Payment Voucher",
+      grn: "GRN",
+      GRN: "GRN",
+      budget: "Budget",
+      BUDGET: "Budget",
+    };
+    return typeMap[type] || type;
+  };
 
   return (
     <div className="space-y-6">
@@ -67,13 +93,10 @@ export function ApprovalReports() {
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-secondary">
-              {metrics.approvedDocuments}
+              {metrics.totalApproved}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              {metrics.totalDocuments > 0
-                ? Math.round(((metrics.approvedDocuments || 0) / metrics.totalDocuments) * 100)
-                : 0}
-              % of total
+              {metrics.approvalRate.toFixed(1)}% approval rate
             </p>
           </CardContent>
         </Card>
@@ -86,13 +109,10 @@ export function ApprovalReports() {
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-destructive">
-              {metrics.rejectedDocuments}
+              {metrics.totalRejected}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              {metrics.totalDocuments > 0
-                ? Math.round(((metrics.rejectedDocuments || 0) / metrics.totalDocuments) * 100)
-                : 0}
-              % of total
+              {(100 - metrics.approvalRate).toFixed(1)}% rejection rate
             </p>
           </CardContent>
         </Card>
@@ -105,7 +125,7 @@ export function ApprovalReports() {
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-accent">
-              {metrics.pendingApproval}
+              {metrics.totalPending}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
               Awaiting next approver
@@ -124,7 +144,7 @@ export function ApprovalReports() {
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search by document or user..."
+              placeholder="Search by document or approver..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10"
@@ -146,7 +166,10 @@ export function ApprovalReports() {
               <TableBody>
                 {filteredActivity.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center py-4 text-muted-foreground">
+                    <TableCell
+                      colSpan={5}
+                      className="text-center py-4 text-muted-foreground"
+                    >
                       No approvals found
                     </TableCell>
                   </TableRow>
@@ -157,28 +180,22 @@ export function ApprovalReports() {
                         {activity.documentNumber}
                       </TableCell>
                       <TableCell className="text-sm">
-                        {activity.type === 'REQUISITION'
-                          ? 'Requisition'
-                          : activity.type === 'PURCHASE_ORDER'
-                            ? 'PO'
-                            : activity.type === 'PAYMENT_VOUCHER'
-                              ? 'Voucher'
-                              : 'GRN'}
+                        {formatDocumentType(activity.documentType)}
                       </TableCell>
                       <TableCell>
-                        <Badge variant={statusColors[activity.action || ''] as any}>
-                          {activity.action || 'Unknown'}
+                        <Badge variant={statusColors[activity.action]}>
+                          {activity.action}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">
-                        {activity.user}
+                        {activity.approverName}
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">
-                        {new Date(activity.timestamp).toLocaleDateString([], {
-                          month: 'short',
-                          day: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit',
+                        {new Date(activity.createdAt).toLocaleDateString([], {
+                          month: "short",
+                          day: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
                         })}
                       </TableCell>
                     </TableRow>
@@ -190,5 +207,5 @@ export function ApprovalReports() {
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }

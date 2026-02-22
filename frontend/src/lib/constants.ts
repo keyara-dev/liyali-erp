@@ -192,7 +192,12 @@ export const QUERY_KEYS = {
   SEARCH_RESULTS: "search-results",
 
   // Reports & Analytics
-  REPORTS: "reports",
+  REPORTS: {
+    SYSTEM_STATS: "reports-system-stats",
+    APPROVAL_METRICS: "reports-approval-metrics",
+    USER_ACTIVITY: "reports-user-activity",
+    ANALYTICS: "reports-analytics",
+  },
   ANALYTICS: "analytics",
 
   // Compliance

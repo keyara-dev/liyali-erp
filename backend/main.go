@@ -93,6 +93,7 @@ func main() {
 	roleRepo := repository.NewOrganizationRoleRepository(config.PgxDB)
 	workflowRepo := repository.NewWorkflowRepository(config.PgxDB, config.DB)
 	documentRepo := repository.NewDocumentRepository(config.PgxDB, config.DB)
+	reportsRepo := repository.NewReportsRepository(config.PgxDB)
 
 	// Initialize audit service
 	auditService := &services.AuditService{}
@@ -126,6 +127,9 @@ func main() {
 	// Initialize subscription service
 	subscriptionService := services.NewSubscriptionService(config.PgxDB, logger)
 
+	// Initialize reports service
+	reportsService := services.NewReportsService(reportsRepo)
+
 	// Initialize handler registry
 	handlerRegistry := handlers.NewHandlerRegistry(
 		authService,
@@ -135,6 +139,7 @@ func main() {
 		documentService,
 		documentGenerationService,
 		subscriptionService,
+		reportsService,
 		logger,
 	)
 

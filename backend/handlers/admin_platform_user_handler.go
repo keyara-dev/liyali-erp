@@ -12,6 +12,37 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+// platformUserEnrich adds missing fields that the frontend PlatformUser interface expects
+func platformUserEnrich(user map[string]interface{}) map[string]interface{} {
+	db := config.DB
+	user["email_verified"] = true
+	user["login_count"] = 0
+	user["phone"] = nil
+	user["profile"] = nil
+
+	if uid, ok := user["id"]; ok {
+		var orgs []map[string]interface{}
+		db.Table("organization_members").
+			Select(`organization_members.organization_id,
+				organizations.name as organization_name,
+				COALESCE(organizations.slug, '') as organization_domain,
+				organization_members.role,
+				CASE WHEN organization_members.active = true THEN 'active' ELSE 'suspended' END as status,
+				organization_members.joined_at`).
+			Joins("LEFT JOIN organizations ON organizations.id = organization_members.organization_id").
+			Where("organization_members.user_id = ?", uid).
+			Find(&orgs)
+
+		for i := range orgs {
+			orgs[i]["permissions"] = []string{}
+			orgs[i]["is_primary"] = i == 0
+		}
+		user["organizations"] = orgs
+	}
+
+	return user
+}
+
 // AdminGetAllUsers returns all platform users with filters and pagination
 func AdminGetAllUsers(c *fiber.Ctx) error {
 	db := config.DB
@@ -30,7 +61,7 @@ func AdminGetAllUsers(c *fiber.Ctx) error {
 
 	query := db.Table("users").
 		Select(`users.id, users.email, users.name, users.role,
-			CASE WHEN users.active = true THEN 'active' ELSE 'suspended' END as status,
+			CASE WHEN users.active = true THEN 'active' WHEN users.active = false AND users.last_login IS NULL THEN 'pending' ELSE 'suspended' END as status,
 			users.created_at, users.updated_at, users.last_login,
 			(SELECT COUNT(*) FROM organization_members WHERE organization_members.user_id = users.id AND organization_members.active = true) as organization_count`).
 		Where("users.deleted_at IS NULL")
@@ -81,10 +112,15 @@ func AdminGetAllUsers(c *fiber.Ctx) error {
 	}
 	query = query.Order(sortCol + " " + sortOrder)
 
-	var users []map[string]interface{}
-	if err := query.Offset(offset).Limit(limit).Find(&users).Error; err != nil {
+	var rawUsers []map[string]interface{}
+	if err := query.Offset(offset).Limit(limit).Find(&rawUsers).Error; err != nil {
 		log.Printf("Error getting users: %v", err)
 		return utils.SendInternalError(c, "Failed to retrieve users", err)
+	}
+
+	users := make([]map[string]interface{}, len(rawUsers))
+	for i, u := range rawUsers {
+		users[i] = platformUserEnrich(u)
 	}
 
 	totalPages := int(math.Ceil(float64(total) / float64(limit)))
@@ -175,7 +211,16 @@ func AdminGetUserById(c *fiber.Ctx) error {
 		Where("organization_members.user_id = ?", userID).
 		Find(&orgs)
 
+	for i := range orgs {
+		orgs[i]["permissions"] = []string{}
+		orgs[i]["is_primary"] = i == 0
+	}
+
 	user["organizations"] = orgs
+	user["email_verified"] = true
+	user["login_count"] = 0
+	user["phone"] = nil
+	user["profile"] = nil
 
 	return utils.SendSimpleSuccess(c, user, "User retrieved successfully")
 }
@@ -301,6 +346,13 @@ func AdminGetUserActivity(c *fiber.Ctx) error {
 		Offset(offset).Limit(limit).
 		Find(&activities)
 
+	for i := range activities {
+		activities[i]["timestamp"] = activities[i]["created_at"]
+		if _, ok := activities[i]["description"]; !ok {
+			activities[i]["description"] = activities[i]["action"]
+		}
+	}
+
 	response := map[string]interface{}{
 		"activities": activities,
 		"total":      total,
@@ -414,6 +466,11 @@ func AdminGetUserOrganizations(c *fiber.Ctx) error {
 
 	if err != nil {
 		return utils.SendInternalError(c, "Failed to retrieve user organizations", err)
+	}
+
+	for i := range orgs {
+		orgs[i]["permissions"] = []string{}
+		orgs[i]["is_primary"] = i == 0
 	}
 
 	return utils.SendSimpleSuccess(c, orgs, "User organizations retrieved successfully")

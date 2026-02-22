@@ -88,7 +88,6 @@ export function CreatePVFromPODialog({
           {!configStatus.allConfigured && (
             <ConfigurationChecklistBanner
               requirements={configStatus.requirements}
-              isLoading={configStatus.isLoading}
               title="Configuration Required"
               description="Complete the following configurations before creating a payment voucher:"
             />

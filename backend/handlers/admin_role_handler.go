@@ -68,6 +68,57 @@ var AllAdminPermissions = []AdminPermission{
 	{ID: "audit.view", Name: "audit.view", DisplayName: "View Audit Logs", Description: "View audit trail", Category: "Audit"},
 }
 
+// roleToFrontend transforms a raw DB role row into the Role shape the frontend expects
+func roleToFrontend(role map[string]interface{}) map[string]interface{} {
+	// Map 'active' -> 'is_active'
+	if active, ok := role["active"]; ok {
+		role["is_active"] = active
+	}
+
+	// Add display_name from name if not present
+	if _, ok := role["display_name"]; !ok {
+		if name, ok := role["name"].(string); ok {
+			role["display_name"] = name
+		}
+	}
+
+	// Parse permissions JSON into Permission objects
+	if permRaw, ok := role["permissions"]; ok && permRaw != nil {
+		var permIDs []string
+		switch v := permRaw.(type) {
+		case string:
+			json.Unmarshal([]byte(v), &permIDs)
+		case []byte:
+			json.Unmarshal(v, &permIDs)
+		}
+
+		// Convert permission IDs to full Permission objects
+		permissions := make([]map[string]interface{}, 0)
+		for _, pid := range permIDs {
+			for _, ap := range AllAdminPermissions {
+				if ap.ID == pid {
+					permissions = append(permissions, map[string]interface{}{
+						"id":                   ap.ID,
+						"name":                 ap.Name,
+						"display_name":         ap.DisplayName,
+						"description":          ap.Description,
+						"resource":             ap.Category,
+						"action":               ap.Name,
+						"category":             ap.Category,
+						"is_system_permission": true,
+					})
+					break
+				}
+			}
+		}
+		role["permissions"] = permissions
+	} else {
+		role["permissions"] = []interface{}{}
+	}
+
+	return role
+}
+
 // AdminGetAllRoles returns all roles with filters
 func AdminGetAllRoles(c *fiber.Ctx) error {
 	db := config.DB
@@ -104,10 +155,15 @@ func AdminGetAllRoles(c *fiber.Ctx) error {
 
 	query = query.Order("organization_roles.is_system_role DESC, organization_roles.name ASC")
 
-	var roles []map[string]interface{}
-	if err := query.Find(&roles).Error; err != nil {
+	var rawRoles []map[string]interface{}
+	if err := query.Find(&rawRoles).Error; err != nil {
 		log.Printf("Error getting roles: %v", err)
 		return utils.SendInternalError(c, "Failed to retrieve roles", err)
+	}
+
+	roles := make([]map[string]interface{}, len(rawRoles))
+	for i, r := range rawRoles {
+		roles[i] = roleToFrontend(r)
 	}
 
 	return utils.SendSimpleSuccess(c, roles, "Roles retrieved successfully")
@@ -117,18 +173,45 @@ func AdminGetAllRoles(c *fiber.Ctx) error {
 func AdminGetRoleStats(c *fiber.Ctx) error {
 	db := config.DB
 
-	var totalRoles, activeRoles, systemRoles, usersWithRoles int64
+	var totalRoles, activeRoles, systemRoles, customRoles, usersWithRoles int64
 
 	db.Table("organization_roles").Count(&totalRoles)
 	db.Table("organization_roles").Where("active = ?", true).Count(&activeRoles)
 	db.Table("organization_roles").Where("is_system_role = ?", true).Count(&systemRoles)
+	db.Table("organization_roles").Where("is_system_role = ?", false).Count(&customRoles)
 	db.Table("user_organization_roles").Where("active = ?", true).Distinct("user_id").Count(&usersWithRoles)
 
+	// Role distribution
+	var roleDistribution []map[string]interface{}
+	db.Table("organization_roles").
+		Select(`organization_roles.id as role_id,
+			organization_roles.name as role_name,
+			(SELECT COUNT(*) FROM user_organization_roles WHERE user_organization_roles.role_id = organization_roles.id AND user_organization_roles.active = true) as user_count`).
+		Find(&roleDistribution)
+
+	// Calculate total users for percentage
+	var totalAssignments int64
+	db.Table("user_organization_roles").Where("active = ?", true).Count(&totalAssignments)
+
+	for i := range roleDistribution {
+		if totalAssignments > 0 {
+			if count, ok := roleDistribution[i]["user_count"].(int64); ok {
+				roleDistribution[i]["percentage"] = float64(count) / float64(totalAssignments) * 100
+			}
+		} else {
+			roleDistribution[i]["percentage"] = 0
+		}
+	}
+
 	stats := map[string]interface{}{
-		"total_roles":      totalRoles,
-		"active_roles":     activeRoles,
-		"system_roles":     systemRoles,
-		"users_with_roles": usersWithRoles,
+		"total_roles":           totalRoles,
+		"active_roles":          activeRoles,
+		"system_roles":          systemRoles,
+		"custom_roles":          customRoles,
+		"total_permissions":     len(AllAdminPermissions),
+		"roles_with_users":      usersWithRoles,
+		"most_used_permissions": []interface{}{},
+		"role_distribution":     roleDistribution,
 	}
 
 	return utils.SendSimpleSuccess(c, stats, "Role statistics retrieved successfully")
@@ -150,7 +233,7 @@ func AdminGetRoleById(c *fiber.Ctx) error {
 		return utils.SendNotFound(c, "Role not found")
 	}
 
-	return utils.SendSimpleSuccess(c, role, "Role retrieved successfully")
+	return utils.SendSimpleSuccess(c, roleToFrontend(role), "Role retrieved successfully")
 }
 
 // AdminCreateRole creates a new role

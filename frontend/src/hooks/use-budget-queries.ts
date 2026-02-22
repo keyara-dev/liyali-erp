@@ -147,9 +147,13 @@ export const useSubmitBudgetForApproval = (
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (data: { submittingUserId: string }) => {
+    mutationFn: async (data: {
+      submittingUserId: string;
+      workflowId: string;
+    }) => {
       const response = await submitBudgetForApproval({
         budgetId,
+        workflowId: data.workflowId,
         submittedBy: data.submittingUserId,
         submittedByRole: "requester",
         submittingUserId: data.submittingUserId,

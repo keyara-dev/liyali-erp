@@ -8,7 +8,7 @@ import { Loader2, Info, AlertCircle, CheckCircle2 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { cn } from "@/lib/utils";
 
-interface WorkflowSelectorProps {
+export interface WorkflowSelectorProps {
   entityType:
     | "requisition"
     | "purchase_order"
@@ -189,7 +189,7 @@ function WorkflowDetails({ workflow }: WorkflowDetailsProps) {
             Approval Stages:
           </p>
           <div className="space-y-1">
-            {workflow.stages.slice(0, 3).map((stage, index) => (
+            {workflow.stages.slice(0, 3).map((stage: any, index: number) => (
               <div key={index} className="flex items-center gap-2 text-xs">
                 <span className="flex items-center justify-center w-5 h-5 rounded-full bg-primary/10 text-primary font-medium">
                   {stage.stageNumber || index + 1}
