@@ -25,10 +25,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Requisition } from "@/types/requisition";
-import {
-  useRequisitions,
-  useSubmitRequisitionForApproval,
-} from "@/hooks/use-requisition-queries";
+import { useRequisitions } from "@/hooks/use-requisition-queries";
 import { useWithdrawRequisition } from "@/hooks/use-requisition-mutations";
 import { useApprovalWorkflowStatus } from "@/hooks/use-approval-history";
 import {
@@ -39,12 +36,15 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { ConfirmationModal } from "@/components/modals/confirmation-modal";
 
+import { RequisitionFilters } from "./requisitions-filters";
+
 interface RequisitionsTableProps {
   userId: string;
   userRole: string;
   refreshTrigger: number;
   onEditRequisition: (requisition: Requisition) => void;
   onCreateRequisition: () => void;
+  filters?: RequisitionFilters;
 }
 
 const columns: ColumnDef<Requisition>[] = [
@@ -269,26 +269,10 @@ function ReqOptionsMenu({
   userRole: string;
   onRefresh: () => void;
 }) {
-  const [showSubmitModal, setShowSubmitModal] = useState(false);
   const [showWithdrawModal, setShowWithdrawModal] = useState(false);
 
-  const submitMutation = useSubmitRequisitionForApproval(req.id, onRefresh);
   const withdrawMutation = useWithdrawRequisition(onRefresh);
   const { data: workflowStatus } = useApprovalWorkflowStatus(req.id);
-
-  const handleSubmitForApproval = async () => {
-    try {
-      await submitMutation.mutateAsync({
-        submittedBy: userId,
-        submittedByName: req.requesterName || "User",
-        submittedByRole: userRole,
-        comments: `Submitted for approval on ${new Date().toLocaleDateString()}`,
-      });
-      setShowSubmitModal(false);
-    } catch (error) {
-      console.error("Submit error:", error);
-    }
-  };
 
   const handleWithdraw = async () => {
     try {
@@ -307,117 +291,110 @@ function ReqOptionsMenu({
 
   return (
     <>
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant={"outline"}>
-          <MoreVertical className="h-4 w-4" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-48">
-        <DropdownMenuItem
-          onClick={() => router.push(`/requisitions/${req.id}`)}
-        >
-          <Eye className="mr-2 h-4 w-4" />
-          View Details
-        </DropdownMenuItem>
-
-        {canEdit && (
-          <DropdownMenuItem onClick={() => onEditRequisition(req)}>
-            <Pencil className="mr-2 h-4 w-4" />
-            Edit Requisition
-          </DropdownMenuItem>
-        )}
-
-        {canSubmit && (
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant={"outline"}>
+            <MoreVertical className="h-4 w-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-48">
           <DropdownMenuItem
-            onClick={() => setShowSubmitModal(true)}
+            onClick={() => router.push(`/requisitions/${req.id}`)}
           >
-            <Send className="mr-2 h-4 w-4 text-blue-600" />
-            Submit for Approval
+            <Eye className="mr-2 h-4 w-4" />
+            View Details
           </DropdownMenuItem>
-        )}
 
-        {canWithdraw && (
-          <DropdownMenuItem
-            onClick={() => setShowWithdrawModal(true)}
-            className="text-amber-600 focus:text-amber-600"
-          >
-            <Undo2 className="mr-2 h-4 w-4" />
-            Withdraw
-          </DropdownMenuItem>
-        )}
+          {canEdit && (
+            <DropdownMenuItem onClick={() => onEditRequisition(req)}>
+              <Pencil className="mr-2 h-4 w-4" />
+              Edit Requisition
+            </DropdownMenuItem>
+          )}
 
-        {canApprove && (
-          <DropdownMenuItem
-            onClick={() => router.push(`/requisitions/${req.id}?tab=approvals`)}
-          >
-            <CheckCircle2 className="mr-2 h-4 w-4 text-green-600" />
-            Approve
-          </DropdownMenuItem>
-        )}
+          {canSubmit && (
+            <DropdownMenuItem
+              onClick={() => router.push(`/requisitions/${req.id}`)}
+            >
+              <Send className="mr-2 h-4 w-4 text-blue-600" />
+              Submit for Approval
+            </DropdownMenuItem>
+          )}
 
-        {canReject && (
-          <DropdownMenuItem
-            onClick={() => router.push(`/requisitions/${req.id}?tab=approvals`)}
-          >
-            <XCircle className="mr-2 h-4 w-4 text-red-600" />
-            Reject
-          </DropdownMenuItem>
-        )}
+          {canWithdraw && (
+            <DropdownMenuItem
+              onClick={() => setShowWithdrawModal(true)}
+              className="text-amber-600 focus:text-amber-600"
+            >
+              <Undo2 className="mr-2 h-4 w-4" />
+              Withdraw
+            </DropdownMenuItem>
+          )}
 
-        {req.status === "draft" && req.requesterId === userId && (
-          <DropdownMenuItem
-            onClick={() => console.log("Delete requisition:", req.id)}
-            className="text-red-600 focus:text-red-600"
-          >
-            <XCircle className="mr-2 h-4 w-4" />
-            Delete
-          </DropdownMenuItem>
-        )}
+          {canApprove && (
+            <DropdownMenuItem
+              onClick={() =>
+                router.push(`/requisitions/${req.id}?tab=approvals`)
+              }
+            >
+              <CheckCircle2 className="mr-2 h-4 w-4 text-green-600" />
+              Approve
+            </DropdownMenuItem>
+          )}
 
-        {/* Show additional info */}
-        {req.categoryName && (
-          <div className="px-2 py-1.5 text-xs text-muted-foreground border-t">
-            Category: {req.categoryName}
-          </div>
-        )}
-        {req.otherCategoryText && (
-          <div className="px-2 py-1.5 text-xs text-muted-foreground">
-            Custom: {req.otherCategoryText}
-          </div>
-        )}
+          {canReject && (
+            <DropdownMenuItem
+              onClick={() =>
+                router.push(`/requisitions/${req.id}?tab=approvals`)
+              }
+            >
+              <XCircle className="mr-2 h-4 w-4 text-red-600" />
+              Reject
+            </DropdownMenuItem>
+          )}
 
-        {/* Show workflow status */}
-        {workflowStatus && (
-          <div className="px-2 py-1.5 text-xs text-muted-foreground border-t">
-            Workflow: Stage {workflowStatus.currentStage}/
-            {workflowStatus.totalStages}
-          </div>
-        )}
-      </DropdownMenuContent>
-    </DropdownMenu>
+          {req.status === "draft" && req.requesterId === userId && (
+            <DropdownMenuItem
+              onClick={() => console.log("Delete requisition:", req.id)}
+              className="text-red-600 focus:text-red-600"
+            >
+              <XCircle className="mr-2 h-4 w-4" />
+              Delete
+            </DropdownMenuItem>
+          )}
 
-    {/* Submit Confirmation Modal */}
-    <ConfirmationModal
-      open={showSubmitModal}
-      onOpenChange={setShowSubmitModal}
-      onConfirm={handleSubmitForApproval}
-      type="submit"
-      title="Submit for Approval"
-      description={`Are you sure you want to submit requisition ${req.documentNumber || req.id} for approval? Once submitted, it will be sent to the appropriate approvers for review.`}
-      isLoading={submitMutation.isPending}
-    />
+          {/* Show additional info */}
+          {req.categoryName && (
+            <div className="px-2 py-1.5 text-xs text-muted-foreground border-t">
+              Category: {req.categoryName}
+            </div>
+          )}
+          {req.otherCategoryText && (
+            <div className="px-2 py-1.5 text-xs text-muted-foreground">
+              Custom: {req.otherCategoryText}
+            </div>
+          )}
 
-    {/* Withdraw Confirmation Modal */}
-    <ConfirmationModal
-      open={showWithdrawModal}
-      onOpenChange={setShowWithdrawModal}
-      onConfirm={handleWithdraw}
-      type="withdraw"
-      title="Withdraw Requisition"
-      description={`Are you sure you want to withdraw requisition ${req.documentNumber || req.id}? It will be reverted to draft status and you can edit and re-submit it later.`}
-      isLoading={withdrawMutation.isPending}
-    />
+          {/* Show workflow status */}
+          {workflowStatus && (
+            <div className="px-2 py-1.5 text-xs text-muted-foreground border-t">
+              Workflow: Stage {workflowStatus.currentStage}/
+              {workflowStatus.totalStages}
+            </div>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      {/* Withdraw Confirmation Modal */}
+      <ConfirmationModal
+        open={showWithdrawModal}
+        onOpenChange={setShowWithdrawModal}
+        onConfirm={handleWithdraw}
+        type="withdraw"
+        title="Withdraw Requisition"
+        description={`Are you sure you want to withdraw requisition ${req.documentNumber || req.id}? It will be reverted to draft status and you can edit and re-submit it later.`}
+        isLoading={withdrawMutation.isPending}
+      />
     </>
   );
 }
@@ -428,34 +405,75 @@ export function RequisitionsTable({
   refreshTrigger,
   onEditRequisition,
   onCreateRequisition,
+  filters = {},
 }: RequisitionsTableProps) {
   const router = useRouter();
-  const { data: requisitions = [], refetch } = useRequisitions(1, 50); // Get first 50 requisitions
+  const { data: requisitions = [], refetch } = useRequisitions(
+    1,
+    100,
+    filters.status
+      ? { status: filters.status, department: filters.department }
+      : undefined,
+  );
 
   // Refetch when refreshTrigger changes
   useEffect(() => {
     refetch();
   }, [refreshTrigger, refetch]);
 
-  // Memoize the data to prevent unnecessary re-renders
-  // React Query returns a new array reference on each render,
-  // so we memoize based on the actual content changes
-  const data = useMemo(() => {
-    if (requisitions && requisitions.length > 0) {
-      return requisitions;
+  // Apply client-side filters
+  const filteredData = useMemo(() => {
+    if (!requisitions || requisitions.length === 0) return [];
+
+    let filtered = [...requisitions];
+
+    // Filter by search term
+    if (filters.searchTerm) {
+      const searchLower = filters.searchTerm.toLowerCase();
+      filtered = filtered.filter(
+        (req) =>
+          req.documentNumber?.toLowerCase().includes(searchLower) ||
+          req.title?.toLowerCase().includes(searchLower) ||
+          req.requesterName?.toLowerCase().includes(searchLower),
+      );
     }
-    return [];
-  }, [requisitions]);
+
+    // Filter by priority
+    if (filters.priority) {
+      filtered = filtered.filter(
+        (req) =>
+          req.priority?.toLowerCase() === filters.priority?.toLowerCase(),
+      );
+    }
+
+    // Filter by date range
+    if (filters.startDate) {
+      filtered = filtered.filter(
+        (req) => new Date(req.createdAt) >= filters.startDate!,
+      );
+    }
+
+    if (filters.endDate) {
+      filtered = filtered.filter(
+        (req) => new Date(req.createdAt) <= filters.endDate!,
+      );
+    }
+
+    return filtered;
+  }, [requisitions, filters]);
 
   return (
     <DataTable
       columns={columns}
-      data={data}
-      searchKey="title"
-      searchPlaceholder="Search by title, document number, or requester..."
+      data={filteredData}
+      // searchKey="title"
+      // searchPlaceholder="Search by title, document number, or requester..."
       emptyState={{
-        title: "No Requisitions Yet",
-        description: "Get started by creating your first requisition",
+        title: "No Requisitions Found",
+        description:
+          filters.status || filters.department || filters.searchTerm
+            ? "No requisitions match your current filters. Try adjusting your search criteria."
+            : "Get started by creating your first requisition",
         icon: <FileText className="h-10 w-10 text-muted-foreground" />,
         action: (
           <Button onClick={onCreateRequisition}>

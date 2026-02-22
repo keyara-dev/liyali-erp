@@ -18,12 +18,12 @@ import Loader from "./loader";
 
 const variants = {
   base: cn(
-    "relative rounded-md flex justify-center items-center flex-col cursor-pointer min-h-[150px] min-w-[200px] border border-dashed border-gray-400 dark:border-gray-300 transition-colors duration-200 ease-in-out"
+    "relative rounded-md flex justify-center items-center flex-col cursor-pointer min-h-[150px] min-w-[200px] border border-dashed border-border transition-colors duration-200 ease-in-out"
   ),
   image: "border-0 p-0 min-h-0 min-w-0 relative  dark:bg-foreground-900 rounded-md",
   active: "border-2",
   disabled:
-    "bg-gray-200 border-gray-300 cursor-default pointer-events-none bg-opacity-30 dark:bg-gray-700",
+    "bg-muted border-border cursor-default pointer-events-none bg-opacity-30",
   accept: "border border-blue-500 bg-blue-500 bg-opacity-10",
   reject: "border border-red-700 bg-red-700 bg-opacity-10"
 };
@@ -307,7 +307,7 @@ export const SingleFileDropzone = React.forwardRef<any, DropZoneProps>(
                 "w-full flex-row items-center justify-between": isLandscape
               })}>
               <DocumentArrowUpIcon
-                className={cn("absolute h-24 w-24 text-gray-200", {
+                className={cn("absolute h-24 w-24 text-muted-foreground/30", {
                   "m-0 h-8 w-8": isLandscape
                 })}
               />
@@ -340,7 +340,7 @@ export const SingleFileDropzone = React.forwardRef<any, DropZoneProps>(
           ) : (
             // ********************* FILE UPLOAD ICON ******************* //
             <div
-              className={cn("flex flex-col items-center justify-center text-xs text-gray-400", {
+              className={cn("flex flex-col items-center justify-center text-xs text-muted-foreground", {
                 "w-full flex-row items-center justify-between": isLandscape
               })}>
               <div
@@ -348,7 +348,7 @@ export const SingleFileDropzone = React.forwardRef<any, DropZoneProps>(
                   "flex-row gap-2 font-medium": isLandscape
                 })}>
                 <CloudArrowUpIcon className={cn("mb-2 h-12 w-12", { "m-0 w-8": isLandscape })} />
-                <div className="text-gray-400">
+                <div className="text-muted-foreground">
                   Drag & Drop to Upload - ({formatFileSize(MAX_FILE_SIZE)}) Max.
                 </div>
               </div>

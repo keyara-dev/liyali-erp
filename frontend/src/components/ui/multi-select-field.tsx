@@ -108,7 +108,7 @@ export function MultiSelectField({
                 </Badge>
               ))}
               {isLoading ? (
-                <div className="flex items-center gap-2 text-slate-400">
+                <div className="flex items-center gap-2 text-slate-400 dark:text-slate-500">
                   <Spinner className="h-4 w-4" />
                   <span className="text-sm">Loading...</span>
                 </div>

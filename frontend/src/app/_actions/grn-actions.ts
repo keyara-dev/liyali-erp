@@ -65,7 +65,7 @@ export interface GoodsReceivedNote {
  * Calls: GET /api/v1/grns/{id}
  */
 export async function getGRNAction(
-  grnId: string
+  grnId: string,
 ): Promise<APIResponse<GoodsReceivedNote>> {
   const url = `/api/v1/grns/${grnId}`;
 
@@ -92,7 +92,7 @@ export async function getGRNsAction(
   filters?: {
     status?: string;
     poDocumentNumber?: string;
-  }
+  },
 ): Promise<APIResponse<GoodsReceivedNote[]>> {
   const params = new URLSearchParams();
   params.set("page", page.toString());
@@ -115,7 +115,7 @@ export async function getGRNsAction(
 
     return successResponse(
       response.data?.data || [],
-      "GRNs fetched successfully"
+      "GRNs fetched successfully",
     );
   } catch (error: any) {
     return handleError(error, "GET", url);
@@ -131,7 +131,7 @@ export async function createGRNAction(
   items: GRNItem[],
   receivedBy: string,
   warehouseLocation?: string,
-  notes?: string
+  notes?: string,
 ): Promise<APIResponse<GoodsReceivedNote>> {
   const url = `/api/v1/grns`;
 
@@ -169,7 +169,7 @@ export async function updateGRNAction(
     qualityIssues?: QualityIssue[];
     warehouseLocation?: string;
     notes?: string;
-  }
+  },
 ): Promise<APIResponse<GoodsReceivedNote>> {
   const url = `/api/v1/grns/${grnId}`;
 
@@ -193,7 +193,7 @@ export async function updateGRNAction(
  */
 export async function addQualityIssueToGRN(
   grnId: string,
-  issue: Omit<QualityIssue, "id">
+  issue: Omit<QualityIssue, "id">,
 ): Promise<APIResponse<GoodsReceivedNote>> {
   try {
     // First fetch the current GRN to get existing quality issues
@@ -229,7 +229,7 @@ export async function addQualityIssueToGRN(
  */
 export async function removeQualityIssueFromGRN(
   grnId: string,
-  issueId: string
+  issueId: string,
 ): Promise<APIResponse<GoodsReceivedNote>> {
   try {
     // First fetch the current GRN
@@ -243,7 +243,7 @@ export async function removeQualityIssueFromGRN(
 
     // Filter out the quality issue
     const updatedQualityIssues = (grn.qualityIssues || []).filter(
-      (issue) => issue.id !== issueId
+      (issue) => issue.id !== issueId,
     );
 
     // Update the GRN with the filtered quality issues
@@ -262,7 +262,7 @@ export async function removeQualityIssueFromGRN(
 export async function updateQualityIssueInGRN(
   grnId: string,
   issueId: string,
-  updates: Partial<Omit<QualityIssue, "id">>
+  updates: Partial<Omit<QualityIssue, "id">>,
 ): Promise<APIResponse<GoodsReceivedNote>> {
   try {
     // First fetch the current GRN
@@ -281,7 +281,7 @@ export async function updateQualityIssueInGRN(
             ...issue,
             ...updates,
           }
-        : issue
+        : issue,
     );
 
     // Update the GRN with the updated quality issues
@@ -298,7 +298,7 @@ export async function updateQualityIssueInGRN(
  * Calls: DELETE /api/v1/grns/{id}
  */
 export async function deleteGRNAction(
-  grnId: string
+  grnId: string,
 ): Promise<APIResponse<null>> {
   const url = `/api/v1/grns/${grnId}`;
 
@@ -315,12 +315,48 @@ export async function deleteGRNAction(
 }
 
 /**
+ * Submit GRN for Approval
+ * Calls: POST /api/v1/grns/{id}/submit
+ */
+export async function submitGRNForApproval(data: {
+  grnId: string;
+  workflowId: string;
+  submittedBy: string;
+  submittedByName: string;
+  submittedByRole: string;
+  comments?: string;
+}): Promise<APIResponse<GoodsReceivedNote>> {
+  const url = `/api/v1/grns/${data.grnId}/submit`;
+
+  try {
+    const response = await authenticatedApiClient({
+      method: "POST",
+      url,
+      data: {
+        workflowId: data.workflowId, // REQUIRED by backend
+        submittedBy: data.submittedBy,
+        submittedByName: data.submittedByName,
+        submittedByRole: data.submittedByRole,
+        comments: data.comments,
+      },
+    });
+
+    return successResponse(
+      response.data?.data,
+      "GRN submitted for approval successfully",
+    );
+  } catch (error: any) {
+    return handleError(error, "POST", url);
+  }
+}
+
+/**
  * Confirm a GRN (Mark as confirmed/received)
  * This would be called after all quality checks are done
  * Backend needs to implement: POST /api/v1/grns/{id}/confirm
  */
 export async function confirmGRNAction(
-  grnId: string
+  grnId: string,
 ): Promise<APIResponse<GoodsReceivedNote>> {
   const url = `/api/v1/grns/${grnId}/confirm`;
 

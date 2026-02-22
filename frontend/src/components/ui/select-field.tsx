@@ -108,7 +108,7 @@ const SelectField = React.forwardRef<HTMLSelectElement, SelectInputProps>(
             }
             className={cn(
               // Base styles matching input.tsx
-              "w-full px-4 py-1.5 text-base bg-foreground/5 border border-border rounded-lg transition-all duration-200 outline-none",
+              "w-full px-4 py-2 text-base bg-foreground/5 border border-border rounded-lg transition-all duration-200 outline-none",
               // Placeholder styles
               "placeholder:text-slate-400 dark:placeholder:text-slate-500",
               // Focus styles with primary color

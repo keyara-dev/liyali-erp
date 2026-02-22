@@ -190,7 +190,7 @@ export function DigitalSignaturePad({
         </TabsList>
 
         <TabsContent value="draw" className="mt-4">
-          <div className="relative border-2 border-dashed border-gray-300 rounded-lg p-2 bg-white">
+          <div className="relative border-2 border-dashed border-border rounded-lg p-2 bg-background">
             <canvas
               ref={canvasRef}
               width={width}
@@ -210,7 +210,7 @@ export function DigitalSignaturePad({
 
             {!hasSignature && !disabled && (
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                <p className="text-gray-400 text-sm">
+                <p className="text-muted-foreground text-sm">
                   Sign here with your mouse or finger
                 </p>
               </div>
@@ -219,7 +219,7 @@ export function DigitalSignaturePad({
         </TabsContent>
 
         <TabsContent value="upload" className="mt-4">
-          <div className="relative border-2 border-dashed border-gray-300 rounded-lg p-4 bg-white">
+          <div className="relative border-2 border-dashed border-border rounded-lg p-4 bg-background">
             <input
               ref={fileInputRef}
               type="file"
@@ -239,8 +239,8 @@ export function DigitalSignaturePad({
               </div>
             ) : (
               <div className="flex flex-col items-center justify-center py-8 gap-3">
-                <Upload className="h-12 w-12 text-gray-400" />
-                <p className="text-gray-500 text-sm text-center">
+                <Upload className="h-12 w-12 text-muted-foreground" />
+                <p className="text-muted-foreground text-sm text-center">
                   Upload your signature as an image
                 </p>
                 <Button
@@ -253,7 +253,7 @@ export function DigitalSignaturePad({
                   <Upload className="h-4 w-4 mr-2" />
                   Choose File
                 </Button>
-                <p className="text-xs text-gray-400 text-center">
+                <p className="text-xs text-muted-foreground text-center">
                   PNG, JPG, or GIF (max 2MB)
                 </p>
               </div>
@@ -283,7 +283,7 @@ export function DigitalSignaturePad({
         )}
       </div>
 
-      <p className="text-xs text-gray-500">
+      <p className="text-xs text-muted-foreground">
         Your signature will be securely stored and used for audit purposes.
       </p>
     </div>

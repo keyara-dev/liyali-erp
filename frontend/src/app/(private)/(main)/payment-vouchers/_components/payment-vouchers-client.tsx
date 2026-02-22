@@ -1,61 +1,56 @@
-'use client'
+"use client";
 
-import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-import { Button } from '@/components/ui/button'
-import { PageHeader } from '@/components/base/page-header'
-import { Plus } from 'lucide-react'
-import { PaymentVouchersTable } from './payment-vouchers-table'
+import { PageHeader } from "@/components/base/page-header";
+import { ApprovedPurchaseOrdersTable } from "./approved-purchase-orders-table";
+import { PaymentVouchersTable } from "./payment-vouchers-table";
+import { Separator } from "@/components/ui/separator";
 
 interface PaymentVouchersClientProps {
-  userId: string
-  userRole: string
+  userId: string;
+  userRole: string;
 }
 
 export function PaymentVouchersClient({
   userId,
   userRole,
 }: PaymentVouchersClientProps) {
-  const router = useRouter()
-  const [isLoading, setIsLoading] = useState(false)
-  const [paymentVouchers, setPaymentVouchers] = useState([])
-  const [refreshTrigger, setRefreshTrigger] = useState(0)
-
-  useEffect(() => {
-    setIsLoading(true)
-    // Load payment vouchers from mock data or API
-    setIsLoading(false)
-  }, [refreshTrigger])
-
-  const handleRefresh = () => {
-    setRefreshTrigger((prev) => prev + 1)
-  }
-
   return (
     <div className="space-y-6">
-      {/* Page Header with Create Button */}
-      <div className="flex items-center justify-between">
-        <PageHeader
-          title="Payment Vouchers"
-          subtitle="Manage payment vouchers for approved goods and services"
-          showBackButton={false}
-        />
-        <Button
-          onClick={() => router.push('/payment-vouchers/create')}
-          className="bg-blue-600 hover:bg-blue-700 gap-2"
-        >
-          <Plus className="h-4 w-4" />
-          Create Payment Voucher
-        </Button>
+      {/* Page Header */}
+      <PageHeader
+        title="Payment Vouchers"
+        subtitle="Create payment vouchers from approved purchase orders and manage existing PVs"
+        showBackButton={false}
+      />
+
+      {/* Approved Purchase Orders Table */}
+      <div className="space-y-3">
+        <div>
+          <h2 className="text-lg font-semibold">Approved Purchase Orders</h2>
+          <p className="text-sm text-muted-foreground">
+            Select a purchase order to create a payment voucher
+          </p>
+        </div>
+        <ApprovedPurchaseOrdersTable userId={userId} userRole={userRole} />
       </div>
 
+      <Separator className="my-8" />
+
       {/* Payment Vouchers Table */}
-      <PaymentVouchersTable
-        userId={userId}
-        userRole={userRole}
-        refreshTrigger={refreshTrigger}
-        onRefresh={handleRefresh}
-      />
+      <div className="space-y-3">
+        <div>
+          <h2 className="text-lg font-semibold">Payment Vouchers</h2>
+          <p className="text-sm text-muted-foreground">
+            View and manage all payment vouchers
+          </p>
+        </div>
+        <PaymentVouchersTable
+          userId={userId}
+          userRole={userRole}
+          refreshTrigger={0}
+          onRefresh={() => {}}
+        />
+      </div>
     </div>
-  )
+  );
 }

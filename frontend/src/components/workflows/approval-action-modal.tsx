@@ -119,11 +119,11 @@ export function ApprovalActionModal({
             </div>
 
             {isApprove ? (
-              <div className="bg-green-50 p-3 rounded-lg border border-green-200">
-                <p className="text-sm text-green-800">
+              <div className="bg-green-50 dark:bg-green-950/30 p-3 rounded-lg border border-green-200 dark:border-green-800">
+                <p className="text-sm text-green-800 dark:text-green-200">
                   <strong>Approving this task will:</strong>
                 </p>
-                <ul className="text-sm text-green-700 mt-1 space-y-1">
+                <ul className="text-sm text-green-700 dark:text-green-300 mt-1 space-y-1">
                   <li>• Move the document to the next approval stage</li>
                   <li>• Send notifications to relevant stakeholders</li>
                   <li>• Create a permanent audit record of your approval</li>
@@ -131,11 +131,11 @@ export function ApprovalActionModal({
                 </ul>
               </div>
             ) : (
-              <div className="bg-red-50 p-3 rounded-lg border border-red-200">
-                <p className="text-sm text-red-800">
+              <div className="bg-red-50 dark:bg-red-950/30 p-3 rounded-lg border border-red-200 dark:border-red-800">
+                <p className="text-sm text-red-800 dark:text-red-200">
                   <strong>Rejecting this task will:</strong>
                 </p>
-                <ul className="text-sm text-red-700 mt-1 space-y-1">
+                <ul className="text-sm text-red-700 dark:text-red-300 mt-1 space-y-1">
                   <li>• Return the document to the requester for revision</li>
                   <li>• Stop the current workflow process</li>
                   <li>• Send rejection notification with your comments</li>
@@ -166,9 +166,9 @@ export function ApprovalActionModal({
               disabled={isLoading}
             />
             {errors.comments && (
-              <p className="text-sm text-red-600">{errors.comments}</p>
+              <p className="text-sm text-destructive">{errors.comments}</p>
             )}
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-muted-foreground">
               {comments.length}/500 characters (minimum 10 required)
             </p>
           </div>
@@ -186,9 +186,9 @@ export function ApprovalActionModal({
                 className={errors.signature ? "border-red-500" : ""}
               />
               {errors.signature && (
-                <p className="text-sm text-red-600">{errors.signature}</p>
+                <p className="text-sm text-destructive">{errors.signature}</p>
               )}
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-muted-foreground">
                 Your digital signature confirms your identity and authorization
                 for this action.
               </p>

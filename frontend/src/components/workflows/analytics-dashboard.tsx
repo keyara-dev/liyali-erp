@@ -179,7 +179,7 @@ export function AnalyticsDashboard() {
                     ✓ {item.approved} | ✗ {item.rejected} | ⏳ {item.pending}
                   </span>
                 </div>
-                <div className="flex gap-1 h-2 bg-gray-100 rounded-full overflow-hidden">
+                <div className="flex gap-1 h-2 bg-muted rounded-full overflow-hidden">
                   <div
                     className="bg-green-500"
                     style={{ width: `${(item.approved / 40) * 100}%` }}
@@ -213,7 +213,7 @@ export function AnalyticsDashboard() {
                   <span className="font-medium">{item.type}</span>
                   <span className="text-muted-foreground">{item.count} ({item.percentage}%)</span>
                 </div>
-                <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
+                <div className="h-3 bg-muted rounded-full overflow-hidden">
                   <div
                     className="h-full bg-gradient-to-r from-blue-500 to-purple-500"
                     style={{ width: `${item.percentage}%` }}
@@ -247,10 +247,10 @@ export function AnalyticsDashboard() {
                     variant="outline"
                     className={
                       metric.slaCompliance >= 90
-                        ? 'bg-green-50 text-green-700 border-green-200'
+                        ? 'bg-green-50 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-300 dark:border-green-800'
                         : metric.slaCompliance >= 80
-                        ? 'bg-yellow-50 text-yellow-700 border-yellow-200'
-                        : 'bg-red-50 text-red-700 border-red-200'
+                        ? 'bg-yellow-50 text-yellow-700 border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-300 dark:border-yellow-800'
+                        : 'bg-red-50 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-300 dark:border-red-800'
                     }
                   >
                     {metric.slaCompliance}% SLA
@@ -261,7 +261,7 @@ export function AnalyticsDashboard() {
                     <span className="text-muted-foreground">Avg Processing Time</span>
                     <span className="font-medium">{metric.avgTime}</span>
                   </div>
-                  <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                  <div className="h-2 bg-muted rounded-full overflow-hidden">
                     <div
                       className={
                         metric.slaCompliance >= 90
@@ -289,15 +289,15 @@ export function AnalyticsDashboard() {
           </CardHeader>
           <CardContent className="space-y-6">
             {/* Current Bottleneck */}
-            <div className="p-4 border-2 border-orange-200 rounded-lg bg-orange-50">
+            <div className="p-4 border-2 border-orange-200 dark:border-orange-800 rounded-lg bg-orange-50 dark:bg-orange-950/30">
               <div className="flex items-start gap-3">
                 <Target className="h-5 w-5 text-orange-600 flex-shrink-0 mt-0.5" />
                 <div className="flex-1">
-                  <p className="font-semibold text-orange-900">Current Bottleneck</p>
-                  <p className="text-sm text-orange-800 mt-1">
+                  <p className="font-semibold text-orange-900 dark:text-orange-100">Current Bottleneck</p>
+                  <p className="text-sm text-orange-800 dark:text-orange-200 mt-1">
                     {METRICS_DATA.bottleneckStage}
                   </p>
-                  <p className="text-xs text-orange-700 mt-2">
+                  <p className="text-xs text-orange-700 dark:text-orange-300 mt-2">
                     ⏱️ Average {METRICS_DATA.bottleneckDays} days at this stage
                   </p>
                 </div>

@@ -33,7 +33,7 @@ const typeConfig = {
       "Are you sure you want to perform a delete action on this entry? This action cannot be undone.",
     confirmText: "Confirm",
     variant: "destructive" as const,
-    iconColor: "text-destructive bg-red-50 p-1"
+    iconColor: "text-destructive bg-destructive/10 p-1"
   },
   close: {
     icon: X,
@@ -57,7 +57,7 @@ const typeConfig = {
     description: "Are you sure you want to submit this requisition for approval? Once submitted, it will be sent to the appropriate approvers for review.",
     confirmText: "Submit",
     variant: "default" as const,
-    iconColor: "text-blue-600 bg-blue-50"
+    iconColor: "text-blue-600 bg-blue-50 dark:bg-blue-950/30"
   },
   withdraw: {
     icon: Undo2,
@@ -65,7 +65,7 @@ const typeConfig = {
     description: "Are you sure you want to withdraw this requisition? It will be reverted to draft status and you can edit and re-submit it later.",
     confirmText: "Withdraw",
     variant: "default" as const,
-    iconColor: "text-amber-600 bg-amber-50"
+    iconColor: "text-amber-600 bg-amber-50 dark:bg-amber-950/30"
   },
   default: {
     icon: AlertTriangle,

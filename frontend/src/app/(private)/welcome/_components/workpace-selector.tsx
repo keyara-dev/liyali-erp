@@ -158,9 +158,13 @@ export function WorkspaceSelector({
               </h1>
               <p className="text-muted-foreground text-sm text-left">
                 Signed in as{" "}
-                <span className="font-medium text-foreground">
-                  {user?.email || "User"}
-                </span>
+                {user?.email ? (
+                  <span className="font-medium text-foreground">
+                    {user.email}
+                  </span>
+                ) : (
+                  <span className="inline-block h-4 w-32 bg-muted animate-pulse rounded align-middle" />
+                )}
               </p>
             </div>
             {showSignOut && (

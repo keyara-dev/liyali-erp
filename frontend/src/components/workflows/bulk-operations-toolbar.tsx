@@ -219,9 +219,9 @@ export function BulkOperationsToolbar({
               />
             </div>
 
-            <div className="bg-red-50 border border-red-200 rounded-lg p-3 flex gap-2">
+            <div className="bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg p-3 flex gap-2">
               <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
-              <p className="text-sm text-red-800">
+              <p className="text-sm text-red-800 dark:text-red-200">
                 All selected items will be rejected and returned to the
                 requester
               </p>
@@ -300,9 +300,9 @@ export function BulkOperationsToolbar({
               />
             </div>
 
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 flex gap-2">
+            <div className="bg-yellow-50 dark:bg-yellow-950/30 border border-yellow-200 dark:border-yellow-800 rounded-lg p-3 flex gap-2">
               <AlertCircle className="h-5 w-5 text-yellow-600 flex-shrink-0 mt-0.5" />
-              <p className="text-sm text-yellow-800">
+              <p className="text-sm text-yellow-800 dark:text-yellow-200">
                 All selected items will be reassigned to the new approver
               </p>
             </div>

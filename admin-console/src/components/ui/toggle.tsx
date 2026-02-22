@@ -51,9 +51,9 @@ const Toggle = React.forwardRef<HTMLButtonElement, ToggleProps>(
     };
 
     const variantClasses = {
-      default: checked ? "bg-black" : "bg-gray-300",
-      success: checked ? "bg-green-600" : "bg-gray-300",
-      warning: checked ? "bg-yellow-500" : "bg-gray-300",
+      default: checked ? "bg-foreground" : "bg-muted-foreground/30",
+      success: checked ? "bg-green-600" : "bg-muted-foreground/30",
+      warning: checked ? "bg-yellow-500" : "bg-muted-foreground/30",
     };
 
     const currentSize = sizeClasses[size];
@@ -63,7 +63,7 @@ const Toggle = React.forwardRef<HTMLButtonElement, ToggleProps>(
       <button
         type="button"
         className={cn(
-          "relative inline-flex items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2",
+          "relative inline-flex items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
           currentSize.track,
           currentVariant,
           (disabled || loading) && "opacity-50 cursor-not-allowed",
@@ -85,13 +85,13 @@ const Toggle = React.forwardRef<HTMLButtonElement, ToggleProps>(
         >
           {loading && (
             <div className="flex items-center justify-center space-x-0.5">
-              <div className="w-1 h-1 bg-gray-500 rounded-full animate-pulse"></div>
+              <div className="w-1 h-1 bg-muted-foreground rounded-full animate-pulse"></div>
               <div
-                className="w-1 h-1 bg-gray-500 rounded-full animate-pulse"
+                className="w-1 h-1 bg-muted-foreground rounded-full animate-pulse"
                 style={{ animationDelay: "0.1s" }}
               ></div>
               <div
-                className="w-1 h-1 bg-gray-500 rounded-full animate-pulse"
+                className="w-1 h-1 bg-muted-foreground rounded-full animate-pulse"
                 style={{ animationDelay: "0.2s" }}
               ></div>
             </div>

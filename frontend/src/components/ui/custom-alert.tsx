@@ -34,7 +34,7 @@ function CustomAlert({
   return (
     <div
       className={cn(
-        `p-4 flex items-start gap-4 bg-slate-100 text-black rounded-lg mb-4`,
+        `p-4 flex items-start gap-4 bg-muted text-foreground rounded-lg mb-4`,
         {
           "bg-blue-600 text-white border border-blue-700 dark:bg-blue-50 dark:text-blue-800 dark:border-blue-200":
             type === "info",

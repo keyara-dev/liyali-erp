@@ -52,7 +52,7 @@ export function ErrorBoundary({ children, fallback }: ErrorBoundaryProps) {
   if (error && isClient) {
     return (
       fallback?.(error, handleRetry) || (
-        <div className="flex items-center justify-center min-h-screen bg-gray-50 dark:bg-gray-900">
+        <div className="flex items-center justify-center min-h-screen bg-muted">
           <div className="w-full max-w-md px-4 py-6">
             <Alert variant="destructive">
               <AlertTriangle className="h-4 w-4" />
@@ -79,7 +79,7 @@ export function ErrorBoundary({ children, fallback }: ErrorBoundaryProps) {
               </Button>
             </div>
 
-            <div className="mt-6 p-3 bg-gray-100 dark:bg-gray-800 rounded text-xs text-gray-600 dark:text-gray-400">
+            <div className="mt-6 p-3 bg-muted rounded text-xs text-muted-foreground">
               <p className="font-semibold mb-1">Error Details:</p>
               <p className="font-mono break-words">{error.message}</p>
             </div>

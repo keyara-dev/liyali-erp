@@ -105,6 +105,7 @@ export interface RejectBudgetRequest {
 
 export interface SubmitBudgetRequest {
   budgetId: string;
+  workflowId: string; // REQUIRED - Workflow to use for approval
   submittedBy: string;
   submittedByRole: string;
   submittingUserId?: string; // Alias for submittedBy

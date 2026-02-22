@@ -133,6 +133,7 @@ export interface UpdatePaymentVoucherRequest {
 export interface SubmitPaymentVoucherRequest {
   paymentVoucherId: string;
   pvId?: string; // Alias for paymentVoucherId
+  workflowId: string; // REQUIRED - Workflow to use for approval
   submittingUserId: string;
   submittedBy?: string; // Alias for submittingUserId
   submittedByName: string;

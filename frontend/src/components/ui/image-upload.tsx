@@ -90,10 +90,10 @@ export function ImageUpload({
       <div
         className={`relative border-2 border-dashed rounded-lg p-6 text-center transition-all duration-200 ${
           dragActive
-            ? "border-blue-500 bg-blue-50"
+            ? "border-primary bg-primary/10"
             : uploading
-            ? "border-gray-300 bg-gray-50"
-            : "border-gray-300 hover:border-gray-400 hover:bg-gray-50"
+            ? "border-border bg-muted"
+            : "border-border hover:border-muted-foreground/50 hover:bg-muted"
         } ${disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
         onDragEnter={handleDrag}
         onDragLeave={handleDrag}
@@ -116,19 +116,19 @@ export function ImageUpload({
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
             </div>
             <div className="space-y-2">
-              <p className="text-sm text-gray-600">Uploading image...</p>
-              <div className="w-full bg-gray-200 rounded-full h-2">
+              <p className="text-sm text-muted-foreground">Uploading image...</p>
+              <div className="w-full bg-muted rounded-full h-2">
                 <div
                   className="bg-blue-600 h-2 rounded-full transition-all duration-300"
                   style={{ width: `${uploadProgress}%` }}
                 />
               </div>
-              <p className="text-xs text-gray-500">{uploadProgress}%</p>
+              <p className="text-xs text-muted-foreground">{uploadProgress}%</p>
             </div>
           </div>
         ) : (
           <div className="space-y-3">
-            <div className="w-12 h-12 mx-auto text-gray-400">
+            <div className="w-12 h-12 mx-auto text-muted-foreground">
               <svg
                 fill="none"
                 stroke="currentColor"
@@ -144,11 +144,11 @@ export function ImageUpload({
               </svg>
             </div>
             <div>
-              <p className="text-sm text-gray-900">
+              <p className="text-sm text-foreground">
                 <span className="font-semibold">Click to upload</span> or drag
                 and drop
               </p>
-              <p className="text-xs text-gray-600">PNG, JPG, GIF up to 10MB</p>
+              <p className="text-xs text-muted-foreground">PNG, JPG, GIF up to 10MB</p>
             </div>
           </div>
         )}
@@ -162,7 +162,7 @@ export function ImageUpload({
               className={`relative group cursor-pointer transition-all duration-200 rounded-lg ${
                 index === 0
                   ? "ring-2 ring-blue-500 ring-offset-2"
-                  : "hover:ring-2 hover:ring-gray-300 hover:ring-offset-1"
+                  : "hover:ring-2 hover:ring-border hover:ring-offset-1"
               }`}
               onClick={() => {
                 if (!disabled) {
@@ -170,7 +170,7 @@ export function ImageUpload({
                 }
               }}
             >
-              <div className="aspect-square bg-gray-100 rounded-lg overflow-hidden">
+              <div className="aspect-square bg-muted rounded-lg overflow-hidden">
                 <img
                   src={url}
                   alt={`Product image ${index + 1}`}

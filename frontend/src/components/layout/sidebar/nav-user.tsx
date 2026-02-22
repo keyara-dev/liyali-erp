@@ -99,25 +99,9 @@ export function NavUser() {
   const { currentOrganization } = useOrganizationContext();
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
-  if (!user) {
-    return (
-      <div className="space-y-2 p-2">
-        <div className="flex items-center gap-3 rounded-lg border p-3">
-          <Avatar className="h-8 w-8">
-            <AvatarFallback>...</AvatarFallback>
-          </Avatar>
-          <div className="flex-1">
-            <div className="h-4 w-24 bg-muted animate-pulse rounded mb-1"></div>
-            <div className="h-3 w-16 bg-muted animate-pulse rounded"></div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  const initials = getInitials(user.name);
-  const formattedRole = formatRole(user.role);
-  const hasUuidRole = isUuidRole(user.role);
+  const initials = user ? getInitials(user.name) : "";
+  const formattedRole = user ? formatRole(user.role) : "";
+  const hasUuidRole = user ? isUuidRole(user.role) : false;
 
   // Get tier information
   const tier = (currentOrganization?.tier?.toUpperCase() ||
@@ -126,125 +110,124 @@ export function NavUser() {
   const TierIcon = tierConfig.icon;
   const canUpgrade = tier === "STARTER";
 
-  const isLoadingUser = !user;
-
-  return isLoadingUser ? (
-    <>
-      <Skeleton className="h-10 w-full rounded-lg" />
-    </>
-  ) : (
+  return (
     <div className="space-y-2 p-2">
       <TierDisplay />
       {/* User Profile Section with Dropdown */}
       <SidebarMenu>
         <SidebarMenuItem>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <SidebarMenuButton
-                size="lg"
-                className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground h-auto p-3"
-              >
-                <Avatar className="h-8 w-8 rounded-full">
-                  <AvatarImage
-                    src={
-                      user.avatar ||
-                      `https://bundui-images.netlify.app/avatars/01.png`
-                    }
-                    alt={user.name}
-                  />
-                  <AvatarFallback>{initials}</AvatarFallback>
-                </Avatar>
-                <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-medium">{user.name}</span>
-                  <span
-                    className={`truncate capitalize text-xs ${
-                      hasUuidRole
-                        ? "text-orange-600 font-medium"
-                        : "text-muted-foreground"
-                    }`}
-                  >
-                    {formattedRole}
-                  </span>
-                </div>
-                <MoreVertical className="ml-auto h-4 w-4" />
-              </SidebarMenuButton>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              className="w-56 rounded-lg"
-              side={isMobile ? "bottom" : "right"}
-              align="end"
-              sideOffset={4}
-            >
-              <DropdownMenuLabel className="p-0 font-normal">
-                <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
+          {!user ? (
+            <div className="flex items-center gap-2 p-1.5 rounded-lg bg-sidebar-accent/5 border">
+              <Skeleton className="h-8 w-8 rounded-full" />
+              <div className="grid flex-1 text-left text-sm leading-tight">
+                <Skeleton className="h-4 w-24 mb-1"></Skeleton>
+                <Skeleton className="h-3 w-16 rounded"></Skeleton>
+              </div>
+            </div>
+          ) : (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <SidebarMenuButton
+                  size="lg"
+                  className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground h-auto"
+                >
                   <Avatar className="h-8 w-8 rounded-full">
-                    <AvatarImage src={user.avatar} alt={user.name} />
+                    <AvatarImage
+                      src={
+                        user.avatar ||
+                        `https://bundui-images.netlify.app/avatars/01.png`
+                      }
+                      alt={user.name}
+                    />
                     <AvatarFallback>{initials}</AvatarFallback>
                   </Avatar>
                   <div className="grid flex-1 text-left text-sm leading-tight">
                     <span className="truncate font-medium">{user.name}</span>
-                    <span className="text-muted-foreground truncate text-xs">
-                      {user.email}
+                    <span
+                      className={`truncate capitalize text-xs ${
+                        hasUuidRole
+                          ? "text-orange-600 font-medium"
+                          : "text-muted-foreground"
+                      }`}
+                    >
+                      {formattedRole}
                     </span>
                   </div>
-                </div>
-              </DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem asChild>
-                <Link href="/settings" className="flex items-center gap-2">
-                  <UserIcon className="h-4 w-4" />
-                  <span>Account Settings</span>
-                </Link>
-              </DropdownMenuItem>
-              {/* <DropdownMenuItem asChild>
+                  <MoreVertical className="ml-auto h-4 w-4" />
+                </SidebarMenuButton>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                className="w-56 rounded-lg"
+                side={isMobile ? "bottom" : "right"}
+                align="end"
+                sideOffset={4}
+              >
+                <DropdownMenuLabel className="p-0 font-normal">
+                  <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
+                    <Avatar className="h-8 w-8 rounded-full">
+                      <AvatarImage src={user.avatar} alt={user.name} />
+                      <AvatarFallback>{initials}</AvatarFallback>
+                    </Avatar>
+                    <div className="grid flex-1 text-left text-sm leading-tight">
+                      <span className="truncate font-medium">{user.name}</span>
+                      <span className="text-muted-foreground truncate text-xs">
+                        {user.email}
+                      </span>
+                    </div>
+                  </div>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <Link href="/settings" className="flex items-center gap-2">
+                    <UserIcon className="h-4 w-4" />
+                    <span>Account Settings</span>
+                  </Link>
+                </DropdownMenuItem>
+                {/* <DropdownMenuItem asChild>
                 <Link href="/settings" className="flex items-center gap-2">
                   <PaletteIcon className="h-4 w-4" />
                   <span>Theme</span>
                   <ChevronRightIcon className="ml-auto h-4 w-4" />
                 </Link>
               </DropdownMenuItem> */}
-              <DropdownMenuItem asChild>
-                <Link href="/welcome" className="flex items-center gap-2">
-                  <ExternalLinkIcon className="h-4 w-4" />
-                  <span>Welcome Screen</span>
-                </Link>
-              </DropdownMenuItem>{" "}
-              <DropdownMenuItem asChild>
-                <Link
-                  href="/?landing=true#about"
-                  className="flex items-center gap-2"
-                >
-                  <ExternalLinkIcon className="h-4 w-4" />
-                  <span>About Liyali</span>
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              {hasUuidRole && (
-                <>
-                  <DropdownMenuItem
-                    onClick={() => logout()}
-                    disabled={isPending}
-                    className="text-orange-600 focus:text-orange-700"
+                <DropdownMenuItem asChild>
+                  <Link href="/welcome" className="flex items-center gap-2">
+                    <ExternalLinkIcon className="h-4 w-4" />
+                    <span>Welcome Screen</span>
+                  </Link>
+                </DropdownMenuItem>{" "}
+                <DropdownMenuItem asChild>
+                  <Link
+                    href="/?landing=true#about"
+                    className="flex items-center gap-2"
                   >
-                    <LogOutIcon className="h-4 w-4" />
-                    <span>Refresh Session (Recommended)</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                </>
-              )}
-              <DropdownMenuItem onClick={() => logout()} disabled={isPending}>
-                <LogOutIcon className="h-4 w-4" />
-                <span>{isPending ? "Logging out..." : "Log out"}</span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+                    <ExternalLinkIcon className="h-4 w-4" />
+                    <span>About Liyali</span>
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                {hasUuidRole && (
+                  <>
+                    <DropdownMenuItem
+                      onClick={() => logout()}
+                      disabled={isPending}
+                      className="text-orange-600 focus:text-orange-700"
+                    >
+                      <LogOutIcon className="h-4 w-4" />
+                      <span>Refresh Session (Recommended)</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                  </>
+                )}
+                <DropdownMenuItem onClick={() => logout()} disabled={isPending}>
+                  <LogOutIcon className="h-4 w-4" />
+                  <span>{isPending ? "Logging out..." : "Log out"}</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </SidebarMenuItem>
       </SidebarMenu>
-      {/* System Status */}
-      <p className="flex items-center justify-center text-sm gap-2 px-2  transition-colors cursor-pointer">
-        <Activity className="h-4 w-4 text-green-500" />
-        All systems operational
-      </p>
 
       {/* Docs and Resources */}
       {/* <div className="flex items-center gap-3 rounded-lg border p-3 hover:bg-accent/50 transition-colors cursor-pointer">

@@ -132,6 +132,7 @@ export interface UpdateRequisitionRequest {
 
 export interface SubmitRequisitionRequest {
   requisitionId: string;
+  workflowId: string; // REQUIRED - Workflow to use for approval
   submittedBy: string;
   submittedByName: string;
   submittedByRole: string;

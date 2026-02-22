@@ -75,9 +75,9 @@ export function ApprovalTaskCard({
       <Card className="w-full">
         <CardContent className="p-6">
           <div className="animate-pulse space-y-4">
-            <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-            <div className="h-4 bg-gray-200 rounded w-1/2"></div>
-            <div className="h-10 bg-gray-200 rounded"></div>
+            <div className="h-4 bg-muted rounded w-3/4"></div>
+            <div className="h-4 bg-muted rounded w-1/2"></div>
+            <div className="h-10 bg-muted rounded"></div>
           </div>
         </CardContent>
       </Card>
@@ -234,18 +234,18 @@ export function ApprovalTaskCard({
           isClaimedByMe
             ? "border-blue-600 bg-blue-600/10 dark:border-blue-200 dark:bg-blue-50/30"
             : isClaimedByOther
-              ? "border-gray-200 bg-gray-50"
-              : "border-gray-200 hover:border-gray-300"
+              ? "border-border bg-muted/50"
+              : "border-border hover:border-border/80"
         }`}
       >
         <CardHeader className="pb-3">
           <div className="flex items-start justify-between">
             <div className="space-y-1">
               <CardTitle className="text-lg flex items-center gap-2">
-                <FileText className="h-5 w-5 text-gray-600" />
+                <FileText className="h-5 w-5 text-muted-foreground" />
                 {task.entityType} #{task.entityId}
               </CardTitle>
-              <p className="text-sm text-gray-600">{task.stageName}</p>
+              <p className="text-sm text-muted-foreground">{task.stageName}</p>
             </div>
             {getStatusBadge()}
           </div>
@@ -255,21 +255,21 @@ export function ApprovalTaskCard({
           {/* Task Details */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
             <div className="flex items-center gap-2">
-              <Users className="h-4 w-4 text-gray-500" />
-              <span className="text-gray-600">Required Role:</span>
+              <Users className="h-4 w-4 text-muted-foreground" />
+              <span className="text-muted-foreground">Required Role:</span>
               <span className="font-medium">{task.assignedRole}</span>
             </div>
 
             <div className="flex items-center gap-2">
-              <Calendar className="h-4 w-4 text-gray-500" />
-              <span className="text-gray-600">Created:</span>
+              <Calendar className="h-4 w-4 text-muted-foreground" />
+              <span className="text-muted-foreground">Created:</span>
               <span>{formatDistanceToNow(new Date(task.createdAt))} ago</span>
             </div>
 
             {task.dueDate && (
               <div className="flex items-center gap-2">
-                <Clock className="h-4 w-4 text-gray-500" />
-                <span className="text-gray-600">Due:</span>
+                <Clock className="h-4 w-4 text-muted-foreground" />
+                <span className="text-muted-foreground">Due:</span>
                 <span
                   className={
                     isAfter(new Date(), new Date(task.dueDate))
@@ -288,7 +288,7 @@ export function ApprovalTaskCard({
             {isClaimedByMe && task.claimExpiry && (
               <div className="flex items-center gap-2">
                 <Timer className="h-4 w-4 text-amber-500" />
-                <span className="text-gray-600">Claim expires:</span>
+                <span className="text-muted-foreground">Claim expires:</span>
                 <span
                   className={
                     minutesRemaining < 10
@@ -304,8 +304,8 @@ export function ApprovalTaskCard({
 
           {/* Claim Status Information */}
           {isClaimedByOther && (
-            <div className="bg-gray-50 p-3 rounded-lg border border-gray-200">
-              <div className="flex items-center gap-2 text-gray-700">
+            <div className="bg-muted/50 p-3 rounded-lg border border-border">
+              <div className="flex items-center gap-2 text-foreground">
                 <User className="h-4 w-4" />
                 <span className="font-medium">
                   Currently being reviewed by{" "}
@@ -313,7 +313,7 @@ export function ApprovalTaskCard({
                 </span>
               </div>
               {task.claimExpiry && (
-                <p className="text-sm text-gray-600 mt-1">
+                <p className="text-sm text-muted-foreground mt-1">
                   Claim expires in{" "}
                   {Math.floor(
                     (new Date(task.claimExpiry).getTime() -
@@ -426,7 +426,7 @@ export function ApprovalTaskCard({
 
             {/* Permission Message */}
             {isPending && !canUserClaim && (
-              <div className="text-sm text-gray-600 bg-gray-50 p-2 rounded">
+              <div className="text-sm text-muted-foreground bg-muted/50 p-2 rounded">
                 {task.assignedUserId
                   ? "This task has been assigned to a specific user."
                   : `This task requires the "${task.assignedRole}" role or an admin/approver role to claim.`}

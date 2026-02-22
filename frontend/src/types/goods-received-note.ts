@@ -86,6 +86,34 @@ export interface UpdateGRNRequest {
   notes?: string;
 }
 
+export interface SubmitGRNRequest {
+  grnId: string;
+  workflowId: string; // REQUIRED - Workflow to use for approval
+  submittedBy: string;
+  submittedByName: string;
+  submittedByRole: string;
+  comments?: string;
+}
+
+export interface ApproveGRNRequest {
+  grnId: string;
+  approvingUserId: string;
+  approvingUserName: string;
+  approvingUserRole: string;
+  signature: string;
+  comments?: string;
+}
+
+export interface RejectGRNRequest {
+  grnId: string;
+  rejectingUserId: string;
+  rejectingUserName: string;
+  rejectingUserRole: string;
+  remarks: string;
+  signature: string;
+  comments?: string;
+}
+
 // ============================================================================
 // STATISTICS TYPES
 // ============================================================================

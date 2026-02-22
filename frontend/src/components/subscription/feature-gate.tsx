@@ -44,7 +44,7 @@ export function FeatureGate({
   if (isLoading) {
     return (
       <div className={`animate-pulse ${className}`}>
-        <div className="h-32 bg-gray-200 rounded-lg"></div>
+        <div className="h-32 bg-muted rounded-lg"></div>
       </div>
     );
   }
@@ -94,16 +94,16 @@ function FeatureLockedCard({
     PRO_PLAN: {
       name: "Pro",
       icon: Crown,
-      color: "text-purple-600",
-      bgColor: "bg-purple-50",
-      borderColor: "border-purple-200",
+      color: "text-purple-600 dark:text-purple-400",
+      bgColor: "bg-purple-50 dark:bg-purple-950/30",
+      borderColor: "border-purple-200 dark:border-purple-800",
     },
     ENTERPRISE: {
       name: "Enterprise",
       icon: Building2,
-      color: "text-emerald-600",
-      bgColor: "bg-emerald-50",
-      borderColor: "border-emerald-200",
+      color: "text-emerald-600 dark:text-emerald-400",
+      bgColor: "bg-emerald-50 dark:bg-emerald-950/30",
+      borderColor: "border-emerald-200 dark:border-emerald-800",
     },
   };
 
@@ -138,7 +138,7 @@ function FeatureLockedCard({
         className={`${config.bgColor} ${config.borderColor} border-2 border-dashed`}
       >
         <CardHeader className="text-center pb-4">
-          <div className="mx-auto p-3 rounded-full bg-white shadow-sm w-fit">
+          <div className="mx-auto p-3 rounded-full bg-background shadow-sm w-fit">
             <Lock className={`h-6 w-6 ${config.color}`} />
           </div>
           <CardTitle className="flex items-center justify-center gap-2">
@@ -261,12 +261,12 @@ export function FeatureBadge({
     PRO_PLAN: {
       name: "Pro",
       icon: Crown,
-      color: "bg-purple-100 text-purple-700",
+      color: "bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300",
     },
     ENTERPRISE: {
       name: "Enterprise",
       icon: Building2,
-      color: "bg-emerald-100 text-emerald-700",
+      color: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300",
     },
   };
 

@@ -16,9 +16,13 @@ import authenticatedApiClient from "./api-config";
 /**
  * Create a Purchase Order from an approved Requisition
  * Calls: POST /api/v1/purchase-orders/from-requisition
+ *
+ * Note: The workflowId is stored but not used during creation.
+ * It will be used when the PO is submitted for approval.
  */
 export async function createPurchaseOrderFromRequisition(
-  requisition: Requisition
+  requisition: Requisition,
+  workflowId?: string,
 ): Promise<APIResponse<PurchaseOrder>> {
   const url = `/api/v1/purchase-orders/from-requisition`;
 
@@ -46,12 +50,13 @@ export async function createPurchaseOrderFromRequisition(
         requestedBy: requisition.requestedBy,
         requestedByName: requisition.requestedByName,
         requestedByRole: requisition.requestedByRole,
+        workflowId, // Store for later use when submitting
       },
     });
 
     return successResponse(
       response.data?.data,
-      "Purchase Order created from requisition successfully"
+      "Purchase Order created from requisition successfully",
     );
   } catch (error: any) {
     return handleError(error, "POST", url);
@@ -63,7 +68,7 @@ export async function createPurchaseOrderFromRequisition(
  * Calls: POST /api/v1/purchase-orders
  */
 export async function createPurchaseOrder(
-  data: CreatePurchaseOrderRequest
+  data: CreatePurchaseOrderRequest,
 ): Promise<APIResponse<PurchaseOrder>> {
   const url = `/api/v1/purchase-orders`;
 
@@ -93,7 +98,7 @@ export async function createPurchaseOrder(
 
     return successResponse(
       response.data?.data,
-      "Purchase Order created successfully"
+      "Purchase Order created successfully",
     );
   } catch (error: any) {
     return handleError(error, "POST", url);
@@ -110,7 +115,7 @@ export async function getPurchaseOrders(
   filters?: {
     status?: string;
     department?: string;
-  }
+  },
 ): Promise<APIResponse<PurchaseOrder[]>> {
   const params = new URLSearchParams();
   params.set("page", page.toString());
@@ -133,7 +138,7 @@ export async function getPurchaseOrders(
 
     return successResponse(
       response.data?.data || [],
-      "Purchase orders retrieved successfully"
+      "Purchase orders retrieved successfully",
     );
   } catch (error: any) {
     return handleError(error, "GET", url);
@@ -145,7 +150,7 @@ export async function getPurchaseOrders(
  * Calls: GET /api/v1/purchase-orders/{id}
  */
 export async function getPurchaseOrderById(
-  poId: string
+  poId: string,
 ): Promise<APIResponse<PurchaseOrder>> {
   const url = `/api/v1/purchase-orders/${poId}`;
 
@@ -157,7 +162,7 @@ export async function getPurchaseOrderById(
 
     return successResponse(
       response.data?.data,
-      "Purchase order retrieved successfully"
+      "Purchase order retrieved successfully",
     );
   } catch (error: any) {
     return handleError(error, "GET", url);
@@ -169,7 +174,7 @@ export async function getPurchaseOrderById(
  * Calls: PUT /api/v1/purchase-orders/{id}
  */
 export async function updatePurchaseOrder(
-  data: UpdatePurchaseOrderRequest
+  data: UpdatePurchaseOrderRequest,
 ): Promise<APIResponse<PurchaseOrder>> {
   const url = `/api/v1/purchase-orders/${data.poId}`;
 
@@ -193,7 +198,7 @@ export async function updatePurchaseOrder(
 
     return successResponse(
       response.data?.data,
-      "Purchase order updated successfully"
+      "Purchase order updated successfully",
     );
   } catch (error: any) {
     return handleError(error, "PUT", url);
@@ -205,7 +210,7 @@ export async function updatePurchaseOrder(
  * Calls: POST /api/v1/purchase-orders/{id}/submit
  */
 export async function submitPurchaseOrderForApproval(
-  data: SubmitPurchaseOrderRequest
+  data: SubmitPurchaseOrderRequest,
 ): Promise<APIResponse<PurchaseOrder>> {
   const url = `/api/v1/purchase-orders/${data.poId}/submit`;
 
@@ -214,6 +219,7 @@ export async function submitPurchaseOrderForApproval(
       method: "POST",
       url,
       data: {
+        workflowId: data.workflowId, // REQUIRED by backend
         comments: data.comments,
         submittedBy: data.submittedBy,
         submittedByName: data.submittedByName,
@@ -223,7 +229,7 @@ export async function submitPurchaseOrderForApproval(
 
     return successResponse(
       response.data?.data,
-      "Purchase order submitted for approval"
+      "Purchase order submitted for approval",
     );
   } catch (error: any) {
     return handleError(error, "POST", url);
@@ -247,7 +253,7 @@ export async function getPurchaseOrderStats(): Promise<
 
     return successResponse(
       response.data?.data,
-      "Statistics retrieved successfully"
+      "Statistics retrieved successfully",
     );
   } catch (error: any) {
     return handleError(error, "GET", url);

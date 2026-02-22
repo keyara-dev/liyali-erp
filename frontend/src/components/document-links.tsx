@@ -56,7 +56,7 @@ export function DocumentLinks({
         <div className="space-y-2">
           {/* Requisition */}
           {requisition && (
-            <div className="flex items-center justify-between bg-white dark:bg-slate-900 p-3 rounded border">
+            <div className="flex items-center justify-between bg-background p-3 rounded border">
               <div>
                 <p className="text-sm text-muted-foreground">Requisition</p>
                 <p className="font-medium">{requisition.documentNumber}</p>
@@ -71,7 +71,7 @@ export function DocumentLinks({
 
           {/* Purchase Order */}
           {purchaseOrder && (
-            <div className="flex items-center justify-between bg-white dark:bg-slate-900 p-3 rounded border">
+            <div className="flex items-center justify-between bg-background p-3 rounded border">
               <div>
                 <p className="text-sm text-muted-foreground">Purchase Order</p>
                 <p className="font-medium">{purchaseOrder.documentNumber}</p>
@@ -86,7 +86,7 @@ export function DocumentLinks({
 
           {/* GRN */}
           {grn && (
-            <div className="flex items-center justify-between bg-white dark:bg-slate-900 p-3 rounded border">
+            <div className="flex items-center justify-between bg-background p-3 rounded border">
               <div>
                 <p className="text-sm text-muted-foreground">
                   Goods Received Note
@@ -103,7 +103,7 @@ export function DocumentLinks({
 
           {/* Payment Voucher */}
           {paymentVoucher && (
-            <div className="flex items-center justify-between bg-white dark:bg-slate-900 p-3 rounded border">
+            <div className="flex items-center justify-between bg-background p-3 rounded border">
               <div>
                 <p className="text-sm text-muted-foreground">Payment Voucher</p>
                 <p className="font-medium">{paymentVoucher.documentNumber}</p>

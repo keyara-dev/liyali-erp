@@ -47,9 +47,9 @@ export function WorkflowStatusCard({
         </CardHeader>
         <CardContent>
           <div className="animate-pulse space-y-4">
-            <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-            <div className="h-4 bg-gray-200 rounded w-1/2"></div>
-            <div className="h-10 bg-gray-200 rounded"></div>
+            <div className="h-4 bg-muted rounded w-3/4"></div>
+            <div className="h-4 bg-muted rounded w-1/2"></div>
+            <div className="h-10 bg-muted rounded"></div>
           </div>
         </CardContent>
       </Card>
@@ -66,7 +66,7 @@ export function WorkflowStatusCard({
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center gap-2 text-gray-600">
+          <div className="flex items-center gap-2 text-muted-foreground">
             <AlertTriangle className="h-4 w-4" />
             <span className="text-sm">
               No active workflow for this document
@@ -116,7 +116,7 @@ export function WorkflowStatusCard({
           <FileText className="h-5 w-5" />
           Workflow Status
           {documentNumber && (
-            <span className="text-sm font-normal text-gray-600">
+            <span className="text-sm font-normal text-muted-foreground">
               - {documentType} #{documentNumber}
             </span>
           )}
@@ -124,12 +124,12 @@ export function WorkflowStatusCard({
       </CardHeader>
       <CardContent className="space-y-6">
         {/* Current Status */}
-        <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+        <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
           <div className="flex items-center gap-3">
             {getStatusIcon()}
             <div>
-              <p className="font-medium text-gray-900">{getStatusText()}</p>
-              <p className="text-sm text-gray-600">
+              <p className="font-medium text-foreground">{getStatusText()}</p>
+              <p className="text-sm text-muted-foreground">
                 Stage: {task.stageName} • Required Role: {task.assignedRole}
               </p>
             </div>
@@ -152,15 +152,15 @@ export function WorkflowStatusCard({
         {/* Timing Information */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
           <div className="flex items-center gap-2">
-            <Clock className="h-4 w-4 text-gray-500" />
-            <span className="text-gray-600">Created:</span>
+            <Clock className="h-4 w-4 text-muted-foreground" />
+            <span className="text-muted-foreground">Created:</span>
             <span>{formatDistanceToNow(new Date(task.createdAt))} ago</span>
           </div>
 
           {task.dueDate && (
             <div className="flex items-center gap-2">
-              <Clock className="h-4 w-4 text-gray-500" />
-              <span className="text-gray-600">Due:</span>
+              <Clock className="h-4 w-4 text-muted-foreground" />
+              <span className="text-muted-foreground">Due:</span>
               <span
                 className={
                   new Date(task.dueDate) < new Date()
@@ -178,8 +178,8 @@ export function WorkflowStatusCard({
 
           {task.claimedAt && (
             <div className="flex items-center gap-2">
-              <User className="h-4 w-4 text-gray-500" />
-              <span className="text-gray-600">Claimed:</span>
+              <User className="h-4 w-4 text-muted-foreground" />
+              <span className="text-muted-foreground">Claimed:</span>
               <span>{formatDistanceToNow(new Date(task.claimedAt))} ago</span>
             </div>
           )}
@@ -187,7 +187,7 @@ export function WorkflowStatusCard({
           {task.claimExpiry && isClaimedByMe && (
             <div className="flex items-center gap-2">
               <Clock className="h-4 w-4 text-amber-500" />
-              <span className="text-gray-600">Expires:</span>
+              <span className="text-muted-foreground">Expires:</span>
               <span className="text-amber-600 font-medium">
                 {formatDistanceToNow(new Date(task.claimExpiry))} remaining
               </span>
@@ -199,12 +199,12 @@ export function WorkflowStatusCard({
         {task.currentStage && task.totalStages && (
           <div className="space-y-2">
             <div className="flex items-center justify-between text-sm">
-              <span className="text-gray-600">Progress</span>
+              <span className="text-muted-foreground">Progress</span>
               <span className="font-medium">
                 Stage {task.currentStage} of {task.totalStages}
               </span>
             </div>
-            <div className="w-full bg-gray-200 rounded-full h-2">
+            <div className="w-full bg-muted rounded-full h-2">
               <div
                 className="bg-blue-600 h-2 rounded-full transition-all duration-300"
                 style={{
@@ -229,12 +229,12 @@ export function WorkflowStatusCard({
 
         {/* Additional Information */}
         {isClaimedByOther && (
-          <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
-            <div className="flex items-center gap-2 text-amber-800">
+          <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
+            <div className="flex items-center gap-2 text-amber-800 dark:text-amber-200">
               <Users className="h-4 w-4" />
               <span className="font-medium">Task Currently Under Review</span>
             </div>
-            <p className="text-sm text-amber-700 mt-1">
+            <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">
               {task.claimerName || "Another user"} is currently reviewing this
               document.
               {task.claimExpiry && (
@@ -262,12 +262,12 @@ export function WorkflowStatusCard({
         )}
 
         {isCompleted && (
-          <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-            <div className="flex items-center gap-2 text-green-800">
+          <div className="bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg p-3">
+            <div className="flex items-center gap-2 text-green-800 dark:text-green-200">
               <CheckCircle className="h-4 w-4" />
               <span className="font-medium">Workflow Completed</span>
             </div>
-            <p className="text-sm text-green-700 mt-1">
+            <p className="text-sm text-green-700 dark:text-green-300 mt-1">
               This document has successfully completed the approval workflow.
             </p>
           </div>

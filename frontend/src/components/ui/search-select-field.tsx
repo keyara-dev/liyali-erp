@@ -120,7 +120,7 @@ const SearchSelectField = React.forwardRef<HTMLSelectElement, SelectInputProps>(
         {label && (
           <label
             className={cn(
-              "pl-1 text-sm font-medium text-nowrap text-slate-900/80 mb-0.5",
+              "pl-1 text-sm font-medium text-nowrap text-slate-700 dark:text-slate-300 mb-0.5",
               {
                 "text-red-500": onError || isInvalid,
                 "opacity-50": isDisabled || props?.disabled,
@@ -154,7 +154,7 @@ const SearchSelectField = React.forwardRef<HTMLSelectElement, SelectInputProps>(
             >
               {/* ADD LOADING STATE */}
               {isLoading ? (
-                <div className="flex items-center gap-2 text-slate-400">
+                <div className="flex items-center gap-2 text-slate-400 dark:text-slate-500">
                   <Spinner className="h-5 w-5" />
                   Loading...
                 </div>
@@ -242,9 +242,9 @@ const SearchSelectField = React.forwardRef<HTMLSelectElement, SelectInputProps>(
         {((errorText && (isInvalid || onError)) || descriptionText) && (
           <motion.span
             className={cn(
-              "ml-1 text-xs text-gray-500",
+              "ml-1 text-xs text-slate-500 dark:text-slate-400",
               {
-                "text-red-600": onError || isInvalid,
+                "text-red-600 dark:text-red-400": onError || isInvalid,
               },
               classNames?.descriptionText,
               classNames?.errorText,

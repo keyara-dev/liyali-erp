@@ -100,10 +100,10 @@ export function RichTextRenderer({
               <HeaderTag
                 key={key}
                 className={`
-                  font-bold text-gray-900 mb-2
+                  font-bold text-gray-900 dark:text-slate-100 mb-2
                   ${
                     level === 2
-                      ? "text-3xl border-b pb-2 border-gray-100/80"
+                      ? "text-3xl border-b pb-2 border-border"
                       : ""
                   }
                   ${level === 3 ? "text-2xl" : ""}
@@ -121,7 +121,7 @@ export function RichTextRenderer({
             return (
               <p
                 key={key}
-                className="my-4 text-[clamp(12px,12px+0.35vw,1rem)] text-gray-700 leading-relaxed"
+                className="my-4 text-[clamp(12px,12px+0.35vw,1rem)] text-gray-700 dark:text-slate-300 leading-relaxed"
               >
                 {paragraphContent}
               </p>
@@ -155,7 +155,7 @@ export function RichTextRenderer({
                   return (
                     <li
                       key={`${key}-${itemIndex}`}
-                      className="mb-1 text-gray-700 text-[clamp(12px,12px+0.35vw,1rem)]"
+                      className="mb-1 text-gray-700 dark:text-slate-300 text-[clamp(12px,12px+0.35vw,1rem)]"
                     >
                       {itemContent}
                     </li>

@@ -39,7 +39,7 @@ export function Dropdown({
         size="sm"
         variant="ghost"
         onClick={() => setIsOpen(!isOpen)}
-        className="p-2 rounded-md hover:bg-gray-100 transition-colors"
+        className="p-2 rounded-md hover:bg-accent transition-colors"
       >
         {trigger}
       </Button>
@@ -47,7 +47,7 @@ export function Dropdown({
       {isOpen && (
         <div
           className={cn(
-            "fixed bg-white rounded-md shadow-xl border border-gray-200 py-1 z-[9999] min-w-[140px] max-w-sm",
+            "fixed bg-popover rounded-md shadow-xl border border-border py-1 z-[9999] min-w-[140px] max-w-sm",
             align === "right" ? "right-0" : "left-0"
           )}
           style={{
@@ -87,9 +87,9 @@ export function DropdownItem({
     <button
       onClick={onClick}
       className={cn(
-        "w-full text-left px-3 py-2 text-sm hover:bg-gray-100 transition-colors",
-        variant === "default" && "text-gray-900 hover:text-gray-900",
-        variant === "destructive" && "text-red-600 hover:bg-red-50"
+        "w-full text-left px-3 py-2 text-sm hover:bg-accent transition-colors",
+        variant === "default" && "text-popover-foreground",
+        variant === "destructive" && "text-destructive hover:bg-destructive/10"
       )}
     >
       {children}

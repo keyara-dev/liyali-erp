@@ -52,7 +52,7 @@ export function ApprovalFlowDisplay({
       case "current":
         return <Clock className="h-6 w-6 text-blue-600 animate-pulse" />;
       default:
-        return <div className="h-6 w-6 rounded-full border-2 border-gray-300" />;
+        return <div className="h-6 w-6 rounded-full border-2 border-border" />;
     }
   };
 

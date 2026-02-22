@@ -141,7 +141,9 @@ export async function submitBudgetForApproval(
       method: "POST",
       url: `/api/v1/budgets/${request.budgetId}/submit`,
       data: {
+        workflowId: request.workflowId, // REQUIRED by backend
         submittingUserId: request.submittingUserId,
+        comments: request.comments,
       },
     });
 
@@ -163,6 +165,7 @@ export async function submitBudgetForApproval(
  */
 export async function submitBudget(
   budgetId: string,
+  workflowId: string,
   comments?: string,
 ): Promise<APIResponse<Budget | null>> {
   try {
@@ -170,6 +173,7 @@ export async function submitBudget(
       method: "POST",
       url: `/api/v1/budgets/${budgetId}/submit`,
       data: {
+        workflowId, // REQUIRED by backend
         comments,
       },
     });

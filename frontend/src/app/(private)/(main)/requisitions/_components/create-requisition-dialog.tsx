@@ -38,6 +38,8 @@ import { useAllBudgets } from "@/hooks/use-budget-queries";
 import { useActiveDepartments } from "@/hooks/use-department-queries";
 import { cn } from "@/lib/utils";
 import { DatePicker } from "@/components/ui/date-picker";
+import { useConfigurationStatus } from "@/hooks/use-configuration-status";
+import { ConfigurationChecklistBanner } from "@/components/ui/configuration-checklist-banner";
 
 interface CreateRequisitionDialogProps {
   open: boolean;
@@ -81,6 +83,11 @@ export function CreateRequisitionDialog({
   // Fetch departments for the dropdown
   const { data: departments = [], isLoading: departmentsLoading } =
     useActiveDepartments();
+
+  // Check configuration status for required fields
+  const configStatus = useConfigurationStatus({
+    includeWorkflow: false, // Workflow is only required for submission, not creation
+  });
 
   const [formData, setFormData] = useState({
     title: "",
@@ -320,6 +327,16 @@ export function CreateRequisitionDialog({
         </DialogHeader>
 
         <div className="space-y-6 p-4  ">
+          {/* Configuration Checklist Banner - Show if any required configs are missing */}
+          {!configStatus.allConfigured && !configStatus.isLoading && (
+            <ConfigurationChecklistBanner
+              requirements={configStatus.requirements}
+              variant="creation"
+              title="Complete Required Configurations"
+              description="The following configurations must be set up before you can create requisitions:"
+            />
+          )}
+
           {/* Loading State */}
           {(budgetsLoading || categoriesLoading || departmentsLoading) && (
             <div className="flex items-center justify-center py-8">
@@ -615,8 +632,8 @@ export function CreateRequisitionDialog({
 
                           <div className="space-y-2">
                             <Label>Total ({formData.currency})</Label>
-                            <div className="flex items-center justify-center h-10 bg-gray-50 rounded-lg border border-gray-200">
-                              <span className="font-semibold">
+                            <div className="flex items-center justify-center py-1 bg-foreground/5 rounded-lg border border-border">
+                              <span className="font-semibold text-primary-600 dark:text-primary-300 ">
                                 {(
                                   item.quantity * (item.estimatedCost || 0)
                                 ).toLocaleString("en-US", {
@@ -692,6 +709,11 @@ export function CreateRequisitionDialog({
             isLoading={createMutation.isPending || updateMutation.isPending}
             loadingText={isEditing ? "Updating..." : "Creating..."}
             className="min-w-32"
+            disabled={
+              createMutation.isPending ||
+              updateMutation.isPending ||
+              !configStatus.allConfigured
+            }
           >
             {isEditing ? "Update Requisition" : "Create Requisition"}
           </Button>

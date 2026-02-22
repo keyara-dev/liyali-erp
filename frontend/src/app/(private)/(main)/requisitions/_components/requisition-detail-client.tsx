@@ -44,8 +44,8 @@ import {
 } from "@/lib/pdf/pdf-export";
 import { toast } from "sonner";
 import { PDFPreviewDialog } from "@/components/modals/pdf-preview-dialog";
+import { RequisitionSubmitDialog } from "./requisition-submit-dialog";
 import { ConfirmationModal } from "@/components/modals/confirmation-modal";
-import { is } from "date-fns/locale";
 import { Badge } from "@/components";
 
 interface RequisitionDetailClientProps {
@@ -67,7 +67,7 @@ export function RequisitionDetailClient({
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewBlob, setPreviewBlob] = useState<Blob | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [showSubmitModal, setShowSubmitModal] = useState(false);
+  const [showSubmitDialog, setShowSubmitDialog] = useState(false);
   const [showWithdrawModal, setShowWithdrawModal] = useState(false);
 
   // Use the new hook with initialData from server component
@@ -118,22 +118,28 @@ export function RequisitionDetailClient({
     }
   };
 
-  const handleSubmitForApproval = async () => {
+  const handleSubmitForApproval = async (
+    workflowId: string,
+    comments?: string,
+  ) => {
     if (!requisition) return;
 
     try {
       await submitMutation.mutateAsync({
+        workflowId,
         submittedBy: userId,
         submittedByName: requisition.requestedByName || "User",
         submittedByRole: requisition.requestedByRole || userRole,
-        comments: `Submitted for approval on ${new Date().toLocaleDateString()}`,
+        comments:
+          comments ||
+          `Submitted for approval on ${new Date().toLocaleDateString()}`,
       });
 
       // Also save to localStorage
       if (submitMutation.data?.data) {
         saveToStorage(submitMutation.data.data);
       }
-      setShowSubmitModal(false);
+      setShowSubmitDialog(false);
     } catch (error) {
       console.error("Submit error:", error);
     }
@@ -246,7 +252,7 @@ export function RequisitionDetailClient({
           )}
           {canSubmit && (
             <Button
-              onClick={() => setShowSubmitModal(true)}
+              onClick={() => setShowSubmitDialog(true)}
               className="gap-2 h-11"
             >
               <Send className="h-4 w-4" />
@@ -769,15 +775,13 @@ export function RequisitionDetailClient({
         isEditing={true}
       />
 
-      {/* Submit Confirmation Modal */}
-      <ConfirmationModal
-        open={showSubmitModal}
-        onOpenChange={setShowSubmitModal}
-        onConfirm={handleSubmitForApproval}
-        type="submit"
-        title="Submit for Approval"
-        description={`Are you sure you want to submit requisition ${requisition.documentNumber || requisition.id} for approval? Once submitted, it will be sent to the appropriate approvers for review.`}
-        isLoading={submitMutation.isPending}
+      {/* Submit Dialog */}
+      <RequisitionSubmitDialog
+        open={showSubmitDialog}
+        onOpenChange={setShowSubmitDialog}
+        requisition={requisition}
+        onSubmit={handleSubmitForApproval}
+        isSubmitting={submitMutation.isPending}
       />
 
       {/* Withdraw Confirmation Modal */}

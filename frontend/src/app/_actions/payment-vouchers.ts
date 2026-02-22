@@ -17,9 +17,13 @@ import authenticatedApiClient from "./api-config";
  * Create Payment Voucher from approved Purchase Order
  * Automatically triggered when PO is approved
  * Calls: POST /api/v1/payment-vouchers/from-po
+ *
+ * Note: The workflowId is stored but not used during creation.
+ * It will be used when the PV is submitted for approval.
  */
 export async function createPaymentVoucherFromPurchaseOrder(
-  po: PurchaseOrder
+  po: PurchaseOrder,
+  workflowId?: string,
 ): Promise<APIResponse<PaymentVoucher>> {
   const url = `/api/v1/payment-vouchers/from-po`;
 
@@ -46,12 +50,13 @@ export async function createPaymentVoucherFromPurchaseOrder(
         costCenter: po.costCenter,
         projectCode: po.projectCode,
         sourceRequisitionId: po.sourceRequisitionId,
+        workflowId, // Store for later use when submitting
       },
     });
 
     return successResponse(
       response.data?.data,
-      "Payment voucher created from purchase order successfully"
+      "Payment voucher created from purchase order successfully",
     );
   } catch (error: any) {
     return handleError(error, "POST", url);
@@ -63,7 +68,7 @@ export async function createPaymentVoucherFromPurchaseOrder(
  * Calls: POST /api/v1/payment-vouchers
  */
 export async function createPaymentVoucher(
-  data: CreatePaymentVoucherRequest
+  data: CreatePaymentVoucherRequest,
 ): Promise<APIResponse<PaymentVoucher>> {
   const url = `/api/v1/payment-vouchers`;
 
@@ -98,7 +103,7 @@ export async function createPaymentVoucher(
 
     return successResponse(
       response.data?.data,
-      "Payment voucher created successfully"
+      "Payment voucher created successfully",
     );
   } catch (error: any) {
     return handleError(error, "POST", url);
@@ -115,7 +120,7 @@ export async function getPaymentVouchers(
   filters?: {
     status?: string;
     department?: string;
-  }
+  },
 ): Promise<APIResponse<PaymentVoucher[]>> {
   const params = new URLSearchParams();
   params.set("page", page.toString());
@@ -138,7 +143,7 @@ export async function getPaymentVouchers(
 
     return successResponse(
       response.data?.data || [],
-      "Payment vouchers retrieved successfully"
+      "Payment vouchers retrieved successfully",
     );
   } catch (error: any) {
     return handleError(error, "GET", url);
@@ -150,7 +155,7 @@ export async function getPaymentVouchers(
  * Calls: GET /api/v1/payment-vouchers/{id}
  */
 export async function getPaymentVoucherById(
-  pvId: string
+  pvId: string,
 ): Promise<APIResponse<PaymentVoucher>> {
   const url = `/api/v1/payment-vouchers/${pvId}`;
 
@@ -162,7 +167,7 @@ export async function getPaymentVoucherById(
 
     return successResponse(
       response.data?.data,
-      "Payment voucher retrieved successfully"
+      "Payment voucher retrieved successfully",
     );
   } catch (error: any) {
     return handleError(error, "GET", url);
@@ -174,7 +179,7 @@ export async function getPaymentVoucherById(
  * Calls: PUT /api/v1/payment-vouchers/{id}
  */
 export async function updatePaymentVoucher(
-  data: UpdatePaymentVoucherRequest
+  data: UpdatePaymentVoucherRequest,
 ): Promise<APIResponse<PaymentVoucher>> {
   const url = `/api/v1/payment-vouchers/${data.pvId}`;
 
@@ -198,7 +203,7 @@ export async function updatePaymentVoucher(
 
     return successResponse(
       response.data?.data,
-      "Payment voucher updated successfully"
+      "Payment voucher updated successfully",
     );
   } catch (error: any) {
     return handleError(error, "PUT", url);
@@ -210,7 +215,7 @@ export async function updatePaymentVoucher(
  * Calls: POST /api/v1/payment-vouchers/{id}/submit
  */
 export async function submitPaymentVoucherForApproval(
-  data: SubmitPaymentVoucherRequest
+  data: SubmitPaymentVoucherRequest,
 ): Promise<APIResponse<PaymentVoucher>> {
   const url = `/api/v1/payment-vouchers/${data.pvId}/submit`;
 
@@ -219,6 +224,7 @@ export async function submitPaymentVoucherForApproval(
       method: "POST",
       url,
       data: {
+        workflowId: data.workflowId, // REQUIRED by backend
         pvId: data.pvId,
         submittedBy: data.submittedBy,
         submittedByName: data.submittedByName,
@@ -229,7 +235,7 @@ export async function submitPaymentVoucherForApproval(
 
     return successResponse(
       response.data?.data,
-      "Payment voucher submitted for approval successfully"
+      "Payment voucher submitted for approval successfully",
     );
   } catch (error: any) {
     return handleError(error, "POST", url);
@@ -241,7 +247,7 @@ export async function submitPaymentVoucherForApproval(
  * Calls: POST /api/v1/payment-vouchers/{id}/mark-paid
  */
 export async function markPaymentVoucherAsPaid(
-  data: MarkPaymentVoucherPaidRequest
+  data: MarkPaymentVoucherPaidRequest,
 ): Promise<APIResponse<PaymentVoucher>> {
   const url = `/api/v1/payment-vouchers/${data.pvId}/mark-paid`;
 
@@ -263,7 +269,7 @@ export async function markPaymentVoucherAsPaid(
 
     return successResponse(
       response.data?.data,
-      "Payment voucher marked as paid successfully"
+      "Payment voucher marked as paid successfully",
     );
   } catch (error: any) {
     return handleError(error, "POST", url);
@@ -285,7 +291,7 @@ export async function deletePaymentVoucher(pvId: string): Promise<APIResponse> {
 
     return successResponse(
       response.data?.data,
-      "Payment voucher deleted successfully"
+      "Payment voucher deleted successfully",
     );
   } catch (error: any) {
     return handleError(error, "DELETE", url);
@@ -309,7 +315,7 @@ export async function getPaymentVoucherStats(): Promise<
 
     return successResponse(
       response.data?.data,
-      "Payment voucher statistics retrieved successfully"
+      "Payment voucher statistics retrieved successfully",
     );
   } catch (error: any) {
     return handleError(error, "GET", url);

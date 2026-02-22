@@ -99,7 +99,7 @@ function DatePickerComponent({
             id={name || "date"}
             className={cn(
               // Base styles matching input.tsx
-              "w-full px-4 h-11 py-2 text-base bg-foreground/5 border border-border rounded-lg transition-all duration-200 outline-none",
+              "w-full px-4 py-1 text-base bg-foreground/5 border border-border rounded-lg transition-all duration-200 outline-none",
               // Focus styles with primary color
               "focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 focus:shadow-lg focus:shadow-primary-500/10",
               // Hover styles

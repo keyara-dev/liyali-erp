@@ -163,10 +163,10 @@ export function BudgetDetailClientEnhanced({
     }
   };
 
-  const handleBudgetSubmit = async (comments?: string) => {
+  const handleBudgetSubmit = async (workflowId: string, comments?: string) => {
     setIsSubmitting(true);
     try {
-      const response = await submitBudget(budgetId, comments);
+      const response = await submitBudget(budgetId, workflowId, comments);
       if (response.success) {
         toast.success("Budget submitted for approval");
         setIsSubmitDialogOpen(false);

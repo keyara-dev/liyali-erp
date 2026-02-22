@@ -317,16 +317,16 @@ export const WorkflowActionButtons = memo(function WorkflowActionButtons({
   if (variant === "inline") {
     return (
       <div className="space-y-4">
-        <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border">
+        <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg border">
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2">
-              <Clock className="h-4 w-4 text-gray-500" />
+              <Clock className="h-4 w-4 text-muted-foreground" />
               <span className="text-sm font-medium">Workflow Status:</span>
             </div>
             <StatusBadge task={task} user={user} />
           </div>
           {task.claimExpiry && isTaskClaimedByUser && (
-            <div className="text-sm text-gray-600">
+            <div className="text-sm text-muted-foreground">
               Expires: {formatDistanceToNow(new Date(task.claimExpiry))}{" "}
               remaining
             </div>
@@ -364,7 +364,7 @@ export const WorkflowActionButtons = memo(function WorkflowActionButtons({
             </>
           )}
           {isTaskClaimed && !isTaskClaimedByUser && (
-            <div className="flex items-center gap-2 text-gray-600 bg-gray-100 px-3 py-2 rounded">
+            <div className="flex items-center gap-2 text-muted-foreground bg-muted px-3 py-2 rounded">
               <User className="h-4 w-4" />
               <span className="text-sm">
                 Currently being reviewed by another user
@@ -394,16 +394,16 @@ export const WorkflowActionButtons = memo(function WorkflowActionButtons({
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-56">
-          <div className="px-2 py-1.5 text-sm font-medium text-gray-700 border-b">
+          <div className="px-2 py-1.5 text-sm font-medium text-foreground border-b">
             Workflow Status
           </div>
           <div className="px-2 py-1.5 flex items-center justify-between">
-            <span className="text-sm text-gray-600">Current:</span>
+            <span className="text-sm text-muted-foreground">Current:</span>
             <StatusBadge task={task} user={user} />
           </div>
           {task.stageName && (
             <div className="px-2 py-1.5 flex items-center justify-between">
-              <span className="text-sm text-gray-600">Stage:</span>
+              <span className="text-sm text-muted-foreground">Stage:</span>
               <span className="text-sm font-medium">{task.stageName}</span>
             </div>
           )}
@@ -489,7 +489,7 @@ export const WorkflowActionButtons = memo(function WorkflowActionButtons({
               </>
             )}
             {isTaskClaimed && !isTaskClaimedByUser && (
-              <div className="flex items-center text-sm text-gray-600">
+              <div className="flex items-center text-sm text-muted-foreground">
                 <UserCheck className="h-4 w-4 mr-2" />
                 Task claimed by another user
               </div>
@@ -573,7 +573,7 @@ export const WorkflowActionButtons = memo(function WorkflowActionButtons({
             </>
           )}
           {isTaskClaimed && !isTaskClaimedByUser && canClaim && (
-            <Badge variant={"outline"} className="text-xs text-gray-500">
+            <Badge variant={"outline"} className="text-xs text-muted-foreground">
               Claimed
             </Badge>
           )}

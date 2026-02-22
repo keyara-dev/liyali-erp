@@ -1,45 +1,56 @@
-'use client'
+"use client";
 
-import { useState } from 'react'
-import { PlusCircledIcon } from '@radix-ui/react-icons'
-import { Button } from '@/components/ui/button'
-import { PageHeader } from '@/components/base/page-header'
-import { RequisitionsTable } from './requisitions-table'
-import { CreateRequisitionDialog } from './create-requisition-dialog'
-import { Requisition } from '@/types/requisition'
+import { useState } from "react";
+import { PlusCircledIcon } from "@radix-ui/react-icons";
+import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/base/page-header";
+import { RequisitionsTable } from "./requisitions-table";
+import { CreateRequisitionDialog } from "./create-requisition-dialog";
+import {
+  RequisitionsFilters,
+  RequisitionFilters,
+} from "./requisitions-filters";
+import { Requisition } from "@/types/requisition";
 
 interface RequisitionsClientProps {
-  userId: string
-  userRole: string
+  userId: string;
+  userRole: string;
 }
 
 export function RequisitionsClient({
   userId,
   userRole,
 }: RequisitionsClientProps) {
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
-  const [refreshTrigger, setRefreshTrigger] = useState(0)
-  const [editingRequisition, setEditingRequisition] = useState<Requisition | null>(null)
-  const [isEditing, setIsEditing] = useState(false)
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [editingRequisition, setEditingRequisition] =
+    useState<Requisition | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [filters, setFilters] = useState<RequisitionFilters>({});
 
   const handleRequisitionCreated = () => {
-    setIsCreateDialogOpen(false)
-    setIsEditing(false)
-    setEditingRequisition(null)
-    setRefreshTrigger((prev) => prev + 1)
-  }
+    setIsCreateDialogOpen(false);
+    setIsEditing(false);
+    setEditingRequisition(null);
+    setRefreshTrigger((prev) => prev + 1);
+  };
 
   const handleCreateNew = () => {
-    setIsEditing(false)
-    setEditingRequisition(null)
-    setIsCreateDialogOpen(true)
-  }
+    setIsEditing(false);
+    setEditingRequisition(null);
+    setIsCreateDialogOpen(true);
+  };
 
   const handleEditRequisition = (requisition: Requisition) => {
-    setIsEditing(true)
-    setEditingRequisition(requisition)
-    setIsCreateDialogOpen(true)
-  }
+    setIsEditing(true);
+    setEditingRequisition(requisition);
+    setIsCreateDialogOpen(true);
+  };
+
+  const handleFiltersChange = (newFilters: RequisitionFilters) => {
+    setFilters(newFilters);
+    setRefreshTrigger((prev) => prev + 1);
+  };
 
   return (
     <div className="space-y-6">
@@ -56,6 +67,12 @@ export function RequisitionsClient({
         </Button>
       </div>
 
+      {/* Filters */}
+      <RequisitionsFilters
+        filters={filters}
+        onFiltersChange={handleFiltersChange}
+      />
+
       {/* Requisitions Table */}
       <RequisitionsTable
         userId={userId}
@@ -63,6 +80,7 @@ export function RequisitionsClient({
         refreshTrigger={refreshTrigger}
         onEditRequisition={handleEditRequisition}
         onCreateRequisition={handleCreateNew}
+        filters={filters}
       />
 
       {/* Create/Edit Dialog */}
@@ -75,5 +93,5 @@ export function RequisitionsClient({
         isEditing={isEditing}
       />
     </div>
-  )
+  );
 }

@@ -54,7 +54,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
         {label && (
           <label
             className={cn(
-              "text-sm font-medium text-slate-700 dark:text-slate-300",
+              "text-sm mb-0.5 font-medium text-slate-700 dark:text-slate-300",
               {
                 "text-red-500": onError || isInvalid,
                 "opacity-50": isDisabled || props?.disabled,
@@ -83,7 +83,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
             ref={ref}
             className={cn(
               // Base styles
-              "w-full px-4 py-1 text-base bg-foreground/5 border border-border rounded-lg transition-all duration-200 outline-none",
+              "w-full px-4 py-1.25 text-base bg-foreground/5 border border-border rounded-lg transition-all duration-200 outline-none",
               // Placeholder styles
               "placeholder:text-slate-400 dark:placeholder:text-slate-500",
               // Focus styles with primary color

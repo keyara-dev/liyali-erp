@@ -132,7 +132,7 @@ export default function FirstLogin({ open }: { open?: boolean }) {
             <button
               type="button"
               onClick={() => togglePassword("password")}
-              className="absolute top-2/3 right-3 -translate-y-1/3 text-slate-400 transition-colors hover:text-slate-600"
+              className="absolute top-2/3 right-3 -translate-y-1/3 text-muted-foreground transition-colors hover:text-foreground"
               disabled={isLoading}
             >
               {showPassword.password ? (
@@ -161,7 +161,7 @@ export default function FirstLogin({ open }: { open?: boolean }) {
             <button
               type="button"
               onClick={() => togglePassword("newPassword")}
-              className="absolute top-2/3 right-3 -translate-y-1/3 text-slate-400 transition-colors hover:text-slate-600"
+              className="absolute top-2/3 right-3 -translate-y-1/3 text-muted-foreground transition-colors hover:text-foreground"
               disabled={isLoading}
             >
               {showPassword.newPassword ? (
@@ -198,7 +198,7 @@ export default function FirstLogin({ open }: { open?: boolean }) {
             <button
               type="button"
               onClick={() => togglePassword("confirmPassword")}
-              className="absolute top-2/3 right-3 -translate-y-1/3 text-slate-400 transition-colors hover:text-slate-600"
+              className="absolute top-2/3 right-3 -translate-y-1/3 text-muted-foreground transition-colors hover:text-foreground"
               disabled={isLoading}
             >
               {showPassword.confirmPassword ? (

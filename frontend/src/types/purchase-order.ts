@@ -123,6 +123,7 @@ export interface UpdatePurchaseOrderRequest {
 export interface SubmitPurchaseOrderRequest {
   purchaseOrderId: string;
   poId?: string; // Alias for purchaseOrderId
+  workflowId: string; // REQUIRED - Workflow to use for approval
   submittingUserId: string;
   submittedBy?: string; // Alias for submittingUserId
   submittedByName: string;

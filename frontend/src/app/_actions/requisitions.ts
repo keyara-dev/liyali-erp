@@ -1,4 +1,4 @@
-'use server';
+"use server";
 
 import {
   Requisition,
@@ -6,27 +6,23 @@ import {
   UpdateRequisitionRequest,
   SubmitRequisitionRequest,
   RequisitionStats,
-} from '@/types/requisition';
-import { APIResponse, PurchaseOrder } from '@/types';
-import {
-  handleError,
-  successResponse,
-  badRequestResponse,
-} from './api-config';
-import authenticatedApiClient from './api-config';
+} from "@/types/requisition";
+import { APIResponse, PurchaseOrder } from "@/types";
+import { handleError, successResponse, badRequestResponse } from "./api-config";
+import authenticatedApiClient from "./api-config";
 
 /**
  * Create a new requisition
  * Calls: POST /api/v1/requisitions
  */
 export async function createRequisition(
-  data: CreateRequisitionRequest
+  data: CreateRequisitionRequest,
 ): Promise<APIResponse<Requisition>> {
   const url = `/api/v1/requisitions`;
 
   try {
     const response = await authenticatedApiClient({
-      method: 'POST',
+      method: "POST",
       url,
       data: {
         title: data.title,
@@ -49,9 +45,12 @@ export async function createRequisition(
       },
     });
 
-    return successResponse(response.data?.data, 'Requisition created successfully');
+    return successResponse(
+      response.data?.data,
+      "Requisition created successfully",
+    );
   } catch (error: any) {
-    return handleError(error, 'POST', url);
+    return handleError(error, "POST", url);
   }
 }
 
@@ -65,30 +64,33 @@ export async function getRequisitions(
   filters?: {
     status?: string;
     department?: string;
-  }
+  },
 ): Promise<APIResponse<Requisition[]>> {
   const params = new URLSearchParams();
-  params.set('page', page.toString());
-  params.set('limit', limit.toString());
+  params.set("page", page.toString());
+  params.set("limit", limit.toString());
 
   if (filters?.status) {
-    params.set('status', filters.status);
+    params.set("status", filters.status);
   }
   if (filters?.department) {
-    params.set('department', filters.department);
+    params.set("department", filters.department);
   }
 
   const url = `/api/v1/requisitions?${params.toString()}`;
 
   try {
     const response = await authenticatedApiClient({
-      method: 'GET',
+      method: "GET",
       url,
     });
 
-    return successResponse(response.data?.data || [], 'Requisitions retrieved successfully');
+    return successResponse(
+      response.data?.data || [],
+      "Requisitions retrieved successfully",
+    );
   } catch (error: any) {
-    return handleError(error, 'GET', url);
+    return handleError(error, "GET", url);
   }
 }
 
@@ -96,18 +98,23 @@ export async function getRequisitions(
  * Get requisition by ID
  * Calls: GET /api/v1/requisitions/{id}
  */
-export async function getRequisitionById(requisitionId: string): Promise<APIResponse<Requisition>> {
+export async function getRequisitionById(
+  requisitionId: string,
+): Promise<APIResponse<Requisition>> {
   const url = `/api/v1/requisitions/${requisitionId}`;
 
   try {
     const response = await authenticatedApiClient({
-      method: 'GET',
+      method: "GET",
       url,
     });
 
-    return successResponse(response.data?.data, 'Requisition retrieved successfully');
+    return successResponse(
+      response.data?.data,
+      "Requisition retrieved successfully",
+    );
   } catch (error: any) {
-    return handleError(error, 'GET', url);
+    return handleError(error, "GET", url);
   }
 }
 
@@ -116,13 +123,13 @@ export async function getRequisitionById(requisitionId: string): Promise<APIResp
  * Calls: PUT /api/v1/requisitions/{id}
  */
 export async function updateRequisition(
-  data: UpdateRequisitionRequest
+  data: UpdateRequisitionRequest,
 ): Promise<APIResponse<Requisition>> {
   const url = `/api/v1/requisitions/${data.requisitionId}`;
 
   try {
     const response = await authenticatedApiClient({
-      method: 'PUT',
+      method: "PUT",
       url,
       data: {
         title: data.title,
@@ -136,9 +143,12 @@ export async function updateRequisition(
       },
     });
 
-    return successResponse(response.data?.data, 'Requisition updated successfully');
+    return successResponse(
+      response.data?.data,
+      "Requisition updated successfully",
+    );
   } catch (error: any) {
-    return handleError(error, 'PUT', url);
+    return handleError(error, "PUT", url);
   }
 }
 
@@ -147,15 +157,16 @@ export async function updateRequisition(
  * Calls: POST /api/v1/requisitions/{id}/submit
  */
 export async function submitRequisitionForApproval(
-  data: SubmitRequisitionRequest
+  data: SubmitRequisitionRequest,
 ): Promise<APIResponse<Requisition>> {
   const url = `/api/v1/requisitions/${data.requisitionId}/submit`;
 
   try {
     const response = await authenticatedApiClient({
-      method: 'POST',
+      method: "POST",
       url,
       data: {
+        workflowId: data.workflowId, // REQUIRED by backend
         comments: data.comments,
         submittedBy: data.submittedBy,
         submittedByName: data.submittedByName,
@@ -163,30 +174,36 @@ export async function submitRequisitionForApproval(
       },
     });
 
-    return successResponse(response.data?.data, 'Requisition submitted for approval');
+    return successResponse(
+      response.data?.data,
+      "Requisition submitted for approval",
+    );
   } catch (error: any) {
-    return handleError(error, 'POST', url);
+    return handleError(error, "POST", url);
   }
 }
-
-
 
 /**
  * Get requisition statistics
  * Calls: GET /api/v1/requisitions/stats
  */
-export async function getRequisitionStats(): Promise<APIResponse<RequisitionStats>> {
+export async function getRequisitionStats(): Promise<
+  APIResponse<RequisitionStats>
+> {
   const url = `/api/v1/requisitions/stats`;
 
   try {
     const response = await authenticatedApiClient({
-      method: 'GET',
+      method: "GET",
       url,
     });
 
-    return successResponse(response.data?.data, 'Statistics retrieved successfully');
+    return successResponse(
+      response.data?.data,
+      "Statistics retrieved successfully",
+    );
   } catch (error: any) {
-    return handleError(error, 'GET', url);
+    return handleError(error, "GET", url);
   }
 }
 
@@ -194,18 +211,23 @@ export async function getRequisitionStats(): Promise<APIResponse<RequisitionStat
  * Withdraw requisition (PENDING only, not claimed)
  * Calls: POST /api/v1/requisitions/{id}/withdraw
  */
-export async function withdrawRequisition(requisitionId: string): Promise<APIResponse<Requisition>> {
+export async function withdrawRequisition(
+  requisitionId: string,
+): Promise<APIResponse<Requisition>> {
   const url = `/api/v1/requisitions/${requisitionId}/withdraw`;
 
   try {
     const response = await authenticatedApiClient({
-      method: 'POST',
+      method: "POST",
       url,
     });
 
-    return successResponse(response.data?.data, response.data?.message || 'Requisition withdrawn successfully');
+    return successResponse(
+      response.data?.data,
+      response.data?.message || "Requisition withdrawn successfully",
+    );
   } catch (error: any) {
-    return handleError(error, 'POST', url);
+    return handleError(error, "POST", url);
   }
 }
 
@@ -213,17 +235,19 @@ export async function withdrawRequisition(requisitionId: string): Promise<APIRes
  * Delete requisition (DRAFT only)
  * Calls: DELETE /api/v1/requisitions/{id}
  */
-export async function deleteRequisition(requisitionId: string): Promise<APIResponse> {
+export async function deleteRequisition(
+  requisitionId: string,
+): Promise<APIResponse> {
   const url = `/api/v1/requisitions/${requisitionId}`;
 
   try {
     await authenticatedApiClient({
-      method: 'DELETE',
+      method: "DELETE",
       url,
     });
 
-    return successResponse(null, 'Requisition deleted successfully');
+    return successResponse(null, "Requisition deleted successfully");
   } catch (error: any) {
-    return handleError(error, 'DELETE', url);
+    return handleError(error, "DELETE", url);
   }
 }

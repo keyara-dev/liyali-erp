@@ -84,7 +84,7 @@ export function MultiSelectModal({
       {isLoading ? (
         <div className="border-input ring-offset-background focus-within:ring-ring flex items-center gap-2 rounded-md border px-3 py-2">
           <Spinner className="h-4 w-4" />
-          <span className="text-sm text-slate-400">Loading...</span>
+          <span className="text-sm text-slate-400 dark:text-slate-500">Loading...</span>
         </div>
       ) : (
         <button
@@ -143,7 +143,7 @@ export function MultiSelectModal({
 
             {/* Selected Items Display */}
             {selectedOptions.length > 0 && (
-              <div className="rounded-md border bg-slate-50 p-4 dark:bg-slate-900">
+              <div className="rounded-md border bg-muted/50 p-4">
                 <h4 className="mb-3 flex items-center justify-between text-sm font-medium">
                   <span>Selected Items ({selectedOptions.length})</span>
                   {selectedOptions.length > 0 && (
@@ -152,7 +152,7 @@ export function MultiSelectModal({
                       variant="ghost"
                       size="sm"
                       onClick={() => onValueChange([])}
-                      className="text-xs text-red-500 hover:text-red-700">
+                      className="text-xs text-destructive hover:text-destructive/80">
                       Clear All
                     </Button>
                   )}
@@ -193,8 +193,8 @@ export function MultiSelectModal({
                           className={cn(
                             "flex cursor-pointer items-center gap-3 rounded-md p-2 transition-colors",
                             {
-                              "bg-slate-100 dark:bg-slate-800": isSelected,
-                              "hover:bg-slate-50 dark:hover:bg-slate-900": !isSelected
+                              "bg-muted": isSelected,
+                              "hover:bg-muted/50": !isSelected
                             }
                           )}
                           onClick={() => handleToggleSelect(option.value)}>

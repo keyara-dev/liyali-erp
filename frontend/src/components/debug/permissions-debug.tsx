@@ -49,12 +49,12 @@ export function PermissionsDebug() {
 
   if (error) {
     return (
-      <Card className="w-full max-w-2xl border-red-200">
+      <Card className="w-full max-w-2xl border-destructive">
         <CardHeader>
-          <CardTitle className="text-red-600">Permission Error</CardTitle>
+          <CardTitle className="text-destructive">Permission Error</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-red-500">{error.message}</p>
+          <p className="text-destructive">{error.message}</p>
         </CardContent>
       </Card>
     );
@@ -65,39 +65,39 @@ export function PermissionsDebug() {
   const getSourceInfo = (source: typeof permissionSource) => {
     switch (source) {
       case 'backend':
-        return { 
-          label: '🌐 Backend API', 
-          color: 'bg-green-100 text-green-800',
+        return {
+          label: '🌐 Backend API',
+          color: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
           description: 'Permissions loaded from live API and cached'
         };
       case 'user_session':
-        return { 
-          label: '👤 User Session', 
-          color: 'bg-blue-100 text-blue-800',
+        return {
+          label: '👤 User Session',
+          color: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
           description: 'Permissions included in user session'
         };
       case 'cache':
-        return { 
-          label: '📦 Local Cache', 
-          color: 'bg-purple-100 text-purple-800',
+        return {
+          label: '📦 Local Cache',
+          color: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
           description: 'Cached permissions from previous API call (offline mode)'
         };
       case 'fallback_builtin':
-        return { 
-          label: '🏗️ Built-in Fallback', 
-          color: 'bg-yellow-100 text-yellow-800',
+        return {
+          label: '🏗️ Built-in Fallback',
+          color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
           description: 'Hardcoded permissions for built-in role (deprecated)'
         };
       case 'fallback_viewer':
-        return { 
-          label: '🚨 Emergency Fallback', 
-          color: 'bg-red-100 text-red-800',
+        return {
+          label: '🚨 Emergency Fallback',
+          color: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
           description: 'Emergency permissions (no cache available)'
         };
       default:
-        return { 
-          label: '❓ Unknown', 
-          color: 'bg-gray-100 text-gray-800',
+        return {
+          label: '❓ Unknown',
+          color: 'bg-muted text-muted-foreground',
           description: 'Unknown permission source'
         };
     }
@@ -136,24 +136,24 @@ export function PermissionsDebug() {
         {/* Permission Source Info */}
         <div>
           <h3 className="font-semibold mb-2">Permission Source</h3>
-          <div className="bg-gray-50 p-3 rounded">
+          <div className="bg-muted p-3 rounded">
             <div className="flex items-center gap-2 mb-2">
               <span className={`px-2 py-1 rounded text-xs font-medium ${sourceInfo.color}`}>
                 {sourceInfo.label}
               </span>
             </div>
-            <p className="text-sm text-gray-600">{sourceInfo.description}</p>
+            <p className="text-sm text-muted-foreground">{sourceInfo.description}</p>
           </div>
         </div>
 
         {/* Raw Permissions from Backend */}
         <div>
           <h3 className="font-semibold mb-2">Raw Backend Permissions</h3>
-          <div className="bg-gray-50 p-3 rounded text-sm max-h-32 overflow-y-auto">
+          <div className="bg-muted p-3 rounded text-sm max-h-32 overflow-y-auto">
             {rawPermissions.length > 0 ? (
               <pre className="whitespace-pre-wrap">{JSON.stringify(rawPermissions, null, 2)}</pre>
             ) : (
-              <p className="text-gray-500">No raw permissions found</p>
+              <p className="text-muted-foreground">No raw permissions found</p>
             )}
           </div>
         </div>
@@ -169,7 +169,7 @@ export function PermissionsDebug() {
                 </Badge>
               ))
             ) : (
-              <p className="text-gray-500">No permissions found</p>
+              <p className="text-muted-foreground">No permissions found</p>
             )}
           </div>
         </div>
@@ -208,11 +208,11 @@ export function PermissionsDebug() {
         {/* Cache Information */}
         <div>
           <h3 className="font-semibold mb-2">Cache Information</h3>
-          <div className="bg-gray-50 p-3 rounded text-sm">
-            <p className="text-gray-600 mb-2">
+          <div className="bg-muted p-3 rounded text-sm">
+            <p className="text-muted-foreground mb-2">
               <strong>All role permissions</strong> (built-in and custom) are cached for 24 hours when successfully loaded from the API.
             </p>
-            <p className="text-gray-600">
+            <p className="text-muted-foreground">
               Use "Clear Cache" to test emergency fallback behavior when both API and cache fail.
             </p>
           </div>

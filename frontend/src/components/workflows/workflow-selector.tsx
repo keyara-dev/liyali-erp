@@ -1,265 +1,216 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { CustomWorkflow } from "@/types";
-import { useWorkflows } from "@/hooks/use-workflow-queries";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
-import {
-  AlertCircle,
-  CheckCircle2,
-  ChevronRight,
-  Workflow as WorkflowIcon,
-} from "lucide-react";
+import { useEffect, useState } from "react";
+import { SelectField } from "@/components/ui/select-field";
+import { useWorkflows, useDefaultWorkflow } from "@/hooks/use-workflow-queries";
+import type { Workflow } from "@/types/workflow-config";
+import { Loader2, Info, AlertCircle, CheckCircle2 } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { cn } from "@/lib/utils";
 
-export interface WorkflowSelectorProps {
-  entityType: string;
-  onSelect: (workflow: CustomWorkflow) => void;
+interface WorkflowSelectorProps {
+  entityType:
+    | "requisition"
+    | "purchase_order"
+    | "budget"
+    | "grn"
+    | "payment_voucher";
+  value: string;
+  onChange: (workflowId: string) => void;
   disabled?: boolean;
-  showRecent?: boolean;
+  required?: boolean;
+  error?: string;
+  showDetails?: boolean;
+  className?: string;
 }
 
 export function WorkflowSelector({
   entityType,
-  onSelect,
+  value,
+  onChange,
   disabled = false,
-  showRecent = true,
+  required = true,
+  error,
+  showDetails = true,
+  className,
 }: WorkflowSelectorProps) {
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [hasAutoSelected, setHasAutoSelected] = useState(false);
 
-  const { data: workflows, isLoading } = useWorkflows();
+  // Fetch workflows for this entity type
+  const {
+    data: workflows,
+    isLoading,
+    error: fetchError,
+  } = useWorkflows({
+    entityType,
+    isActive: true,
+  });
 
-  // Filter workflows by entity type and transform to CustomWorkflow format
-  const availableWorkflows = useMemo(() => {
-    if (!workflows) return [];
-    return workflows
-      .filter(
-        (w: any) =>
-          w.applicableEntityTypes?.includes(entityType) ||
-          w.entityType === entityType
-      )
-      .map((w: any): CustomWorkflow => ({
-        ...w,
-        applicableEntityTypes: w.applicableEntityTypes || [w.entityType],
-        isTemplate: w.isTemplate || false,
-      }));
-  }, [workflows, entityType]);
+  // Fetch default workflow
+  const { data: defaultWorkflow } = useDefaultWorkflow(entityType);
 
-  // Get recently used workflows from localStorage
-  const recentWorkflows = useMemo(() => {
-    if (!showRecent) return [];
-    try {
-      const recent = localStorage.getItem(
-        `workflow-recent-${entityType}`
-      );
-      if (!recent) return [];
-      const ids = JSON.parse(recent) as string[];
-      return availableWorkflows.filter((w) => ids.includes(w.id)).slice(0, 3);
-    } catch {
-      return [];
+  // Auto-select default workflow on mount
+  useEffect(() => {
+    if (hasAutoSelected) return;
+
+    if (!value && defaultWorkflow) {
+      onChange(defaultWorkflow.id);
+      setHasAutoSelected(true);
+    } else if (!value && workflows && workflows.length > 0) {
+      // If no default, select the first workflow
+      onChange(workflows[0].id);
+      setHasAutoSelected(true);
     }
-  }, [availableWorkflows, showRecent, entityType]);
+  }, [defaultWorkflow, workflows, value, onChange, hasAutoSelected]);
 
-  const handleSelect = (workflow: CustomWorkflow) => {
-    setSelectedId(workflow.id);
-    setIsExpanded(false);
-    onSelect(workflow);
+  // Find selected workflow for details
+  const selectedWorkflow = workflows?.find((w) => w.id === value);
 
-    // Store in recent
-    if (showRecent) {
-      try {
-        const key = `workflow-recent-${entityType}`;
-        const recent = localStorage.getItem(key);
-        const ids = recent ? JSON.parse(recent) : [];
-        const updated = [
-          workflow.id,
-          ...ids.filter((id: string) => id !== workflow.id),
-        ].slice(0, 5);
-        localStorage.setItem(key, JSON.stringify(updated));
-      } catch {
-        // Silent fail on localStorage
-      }
-    }
-  };
-
-  const selectedWorkflow = availableWorkflows.find(
-    (w) => w.id === selectedId
-  );
-
+  // Render loading state
   if (isLoading) {
     return (
-      <Card>
-        <CardHeader>
-          <Skeleton className="h-6 w-40" />
-          <Skeleton className="h-4 w-60 mt-2" />
-        </CardHeader>
-        <CardContent>
-          <Skeleton className="h-10 w-full" />
-        </CardContent>
-      </Card>
+      <div className={cn("space-y-2", className)}>
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Loading workflows...
+        </div>
+      </div>
     );
   }
 
-  if (availableWorkflows.length === 0) {
+  // Render error state
+  if (fetchError) {
     return (
-      <Card className="border-yellow-200 bg-yellow-50 dark:bg-yellow-900/20">
-        <CardContent className="flex items-center gap-3 pt-6">
-          <AlertCircle className="h-5 w-5 text-yellow-600 dark:text-yellow-500 flex-shrink-0" />
-          <div>
-            <h3 className="font-semibold text-yellow-900 dark:text-yellow-200">
-              No Workflows Available
-            </h3>
-            <p className="text-sm text-yellow-800 dark:text-yellow-300">
-              No published workflows for {entityType}. Contact your administrator.
-            </p>
-          </div>
-        </CardContent>
-      </Card>
+      <div className={cn("space-y-2", className)}>
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            Failed to load workflows. Please try again or contact support.
+          </AlertDescription>
+        </Alert>
+      </div>
     );
   }
+
+  // Render no workflows state
+  if (!workflows || workflows.length === 0) {
+    return (
+      <div className={cn("space-y-2", className)}>
+        <Alert>
+          <Info className="h-4 w-4" />
+          <AlertDescription>
+            No workflows available for this document type. Please contact your
+            administrator to set up approval workflows.
+          </AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
+
+  // Prepare options for SelectField
+  const options = workflows.map((workflow) => ({
+    value: workflow.id,
+    label: workflow.name,
+  }));
+
+  // Handle select change - extract value from event or use directly
+  const handleChange = (valueOrEvent: any) => {
+    const newValue =
+      typeof valueOrEvent === "string"
+        ? valueOrEvent
+        : valueOrEvent?.target?.value || valueOrEvent;
+    onChange(newValue);
+  };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <WorkflowIcon className="h-5 w-5" />
-          Select Approval Workflow
-        </CardTitle>
-        <CardDescription>
-          Choose a workflow to route this {entityType.toLowerCase()} through
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {/* Recent Workflows */}
-        {recentWorkflows.length > 0 && (
-          <div className="space-y-2">
-            <h3 className="text-sm font-medium text-muted-foreground">
-              Recently Used
-            </h3>
-            <div className="grid gap-2">
-              {recentWorkflows.map((workflow) => (
-                <button
-                  key={workflow.id}
-                  onClick={() => handleSelect(workflow)}
-                  className="flex items-center justify-between p-3 rounded-lg border border-primary/20 bg-primary/5 hover:bg-primary/10 transition-colors text-left"
-                >
-                  <div className="flex-1 min-w-0">
-                    <h4 className="font-medium text-sm">{workflow.name}</h4>
-                    <p className="text-xs text-muted-foreground truncate">
-                      {workflow.description}
-                    </p>
-                  </div>
-                  <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0 ml-2" />
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
+    <div className={cn("space-y-3", className)}>
+      <div className="space-y-2">
+        <SelectField
+          label="Approval Workflow"
+          value={value}
+          onChange={handleChange}
+          options={options}
+          placeholder="Select a workflow"
+          disabled={disabled}
+          required={required}
+          error={error}
+        />
 
-        {/* Workflow Selector */}
-        <div className="space-y-2">
-          <h3 className="text-sm font-medium text-muted-foreground">
-            All Workflows
-          </h3>
-          <Select
-            value={selectedId || ""}
-            onValueChange={(id) => {
-              const workflow = availableWorkflows.find((w) => w.id === id);
-              if (workflow) {
-                handleSelect(workflow);
-              }
-            }}
-            disabled={disabled}
-          >
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Select a workflow..." />
-            </SelectTrigger>
-            <SelectContent>
-              {availableWorkflows.map((workflow) => (
-                <SelectItem key={workflow.id} value={workflow.id}>
-                  <div className="flex items-center gap-2">
-                    <span>{workflow.name}</span>
-                    {workflow.id === selectedId && (
-                      <CheckCircle2 className="h-4 w-4 text-green-600" />
-                    )}
-                  </div>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* Selected Workflow Details */}
         {selectedWorkflow && (
-          <div className="pt-4 border-t space-y-3">
-            <div>
-              <h3 className="font-semibold text-base">{selectedWorkflow.name}</h3>
-              <p className="text-sm text-muted-foreground">
-                {selectedWorkflow.description}
-              </p>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <h4 className="text-xs font-semibold text-muted-foreground uppercase">
-                  Stages
-                </h4>
-                <p className="text-lg font-bold">
-                  {selectedWorkflow.stages?.length || 0}
-                </p>
-              </div>
-              <div>
-                <h4 className="text-xs font-semibold text-muted-foreground uppercase">
-                  Status
-                </h4>
-                <Badge className="mt-1">Published</Badge>
-              </div>
-            </div>
-
-            {selectedWorkflow.stages && selectedWorkflow.stages.length > 0 && (
-              <div>
-                <h4 className="text-sm font-semibold mb-2">Approval Chain</h4>
-                <div className="space-y-1">
-                  {selectedWorkflow.stages.map((stage, index) => (
-                    <div
-                      key={index}
-                      className="flex items-center gap-2 text-xs"
-                    >
-                      <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-primary/20 text-primary font-semibold">
-                        {index + 1}
-                      </span>
-                      <span className="font-medium">{stage.stageName}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            <Button
-              onClick={() => onSelect(selectedWorkflow)}
-              className="w-full"
-            >
-              Use This Workflow
-            </Button>
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <CheckCircle2 className="h-3 w-3 text-green-600" />
+            <span>Selected workflow for {entityType.replace("_", " ")}</span>
           </div>
         )}
-      </CardContent>
-    </Card>
+      </div>
+
+      {showDetails && selectedWorkflow && (
+        <WorkflowDetails workflow={selectedWorkflow} />
+      )}
+    </div>
+  );
+}
+
+interface WorkflowDetailsProps {
+  workflow: any; // Using any to handle different workflow type structures
+}
+
+function WorkflowDetails({ workflow }: WorkflowDetailsProps) {
+  const stagesCount = workflow.stages?.length || 0;
+
+  return (
+    <div className="rounded-lg border bg-muted/50 p-3 space-y-2">
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex-1 space-y-1">
+          <div className="flex items-center gap-2">
+            <h4 className="text-sm font-medium">{workflow.name}</h4>
+          </div>
+
+          {workflow.description && (
+            <p className="text-xs text-muted-foreground">
+              {workflow.description}
+            </p>
+          )}
+        </div>
+      </div>
+
+      <div className="flex items-center gap-4 text-xs text-muted-foreground">
+        <div className="flex items-center gap-1">
+          <Info className="h-3 w-3" />
+          <span>
+            {stagesCount} approval {stagesCount === 1 ? "stage" : "stages"}
+          </span>
+        </div>
+      </div>
+
+      {workflow.stages && workflow.stages.length > 0 && (
+        <div className="pt-2 border-t space-y-1">
+          <p className="text-xs font-medium text-muted-foreground">
+            Approval Stages:
+          </p>
+          <div className="space-y-1">
+            {workflow.stages.slice(0, 3).map((stage, index) => (
+              <div key={index} className="flex items-center gap-2 text-xs">
+                <span className="flex items-center justify-center w-5 h-5 rounded-full bg-primary/10 text-primary font-medium">
+                  {stage.stageNumber || index + 1}
+                </span>
+                <span className="text-muted-foreground">
+                  {stage.stageName || stage.name}
+                  {stage.requiredRole && (
+                    <span className="text-xs ml-1">({stage.requiredRole})</span>
+                  )}
+                </span>
+              </div>
+            ))}
+            {workflow.stages.length > 3 && (
+              <p className="text-xs text-muted-foreground pl-7">
+                +{workflow.stages.length - 3} more{" "}
+                {workflow.stages.length - 3 === 1 ? "stage" : "stages"}
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
   );
 }

@@ -16,12 +16,13 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Budget } from "@/types/budget";
 import { Loader2, Send, CheckCircle2, AlertCircle } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
+import { WorkflowSelector } from "@/components/workflows/workflow-selector";
 
 interface BudgetSubmitDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   budget: Budget;
-  onSubmit: (comments?: string) => Promise<void>;
+  onSubmit: (workflowId: string, comments?: string) => Promise<void>;
   isSubmitting: boolean;
 }
 
@@ -33,43 +34,70 @@ export function BudgetSubmitDialog({
   isSubmitting,
 }: BudgetSubmitDialogProps) {
   const [comments, setComments] = useState("");
+  const [workflowId, setWorkflowId] = useState("");
+  const [workflowError, setWorkflowError] = useState<string | null>(null);
 
   const utilizationPercentage =
     (budget.allocatedAmount / budget.totalBudget) * 100;
   const isOverBudget = budget.allocatedAmount > budget.totalBudget;
   const hasItems = budget.items && budget.items.length > 0;
 
-  const canSubmit = !isOverBudget && hasItems;
+  const canSubmit = !isOverBudget && hasItems && workflowId;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Validate workflow selection
+    if (!workflowId) {
+      setWorkflowError("Please select a workflow");
+      return;
+    }
+
     if (!canSubmit) return;
 
-    await onSubmit(comments);
-    setComments(""); // Reset comments after submission
+    setWorkflowError(null);
+    await onSubmit(workflowId, comments);
+    setComments("");
+    setWorkflowId("");
   };
 
   const handleClose = () => {
     if (!isSubmitting) {
       setComments("");
+      setWorkflowId("");
+      setWorkflowError(null);
       onOpenChange(false);
     }
   };
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Send className="h-5 w-5" />
             Submit Budget for Approval
           </DialogTitle>
           <DialogDescription>
-            Review the budget summary before submitting for approval workflow.
+            Select an approval workflow and review the budget summary before
+            submitting.
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Workflow Selector */}
+          <WorkflowSelector
+            entityType="budget"
+            value={workflowId}
+            onChange={setWorkflowId}
+            disabled={isSubmitting}
+            required
+            error={workflowError || undefined}
+            showDetails={true}
+          />
+
+          <Separator />
+
           {/* Budget Summary */}
           <div className="space-y-3 rounded-lg border p-4 bg-muted/50">
             <div className="flex justify-between items-center">

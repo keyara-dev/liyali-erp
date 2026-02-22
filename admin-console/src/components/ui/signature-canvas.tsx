@@ -110,10 +110,10 @@ export const SignatureCanvas = forwardRef<SignatureCanvasHandle, SignatureCanvas
   return (
     <Card className={`p-4 ${className}`}>
       <div className="space-y-4">
-        <div className="text-sm font-medium text-gray-700">
+        <div className="text-sm font-medium text-slate-700 dark:text-slate-300">
           Digital Signature
         </div>
-        <div className={`border border-gray-300 rounded-md ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}>
+        <div className={`border border-border rounded-md ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}>
           <canvas
             ref={canvasRef}
             width={width}
@@ -135,7 +135,7 @@ export const SignatureCanvas = forwardRef<SignatureCanvasHandle, SignatureCanvas
           >
             Clear
           </Button>
-          <div className="text-xs text-gray-500">
+          <div className="text-xs text-muted-foreground">
             Sign above to provide your digital signature
           </div>
         </div>
