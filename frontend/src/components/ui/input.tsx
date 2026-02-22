@@ -11,6 +11,8 @@ type InputProps = React.InputHTMLAttributes<HTMLInputElement> & {
   descriptionText?: string;
   isDisabled?: boolean;
   isInvalid?: boolean;
+  startContent?: React.ReactNode;
+  endContent?: React.ReactNode;
   classNames?: {
     wrapper?: string;
     input?: string;
@@ -23,6 +25,8 @@ type InputProps = React.InputHTMLAttributes<HTMLInputElement> & {
 const Input = React.forwardRef<HTMLInputElement, InputProps>(
   (
     {
+      startContent,
+      endContent,
       className,
       type,
       label,
@@ -50,7 +54,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
         {label && (
           <label
             className={cn(
-              "mb-0.5 text-sm font-medium text-slate-700",
+              "text-sm font-medium text-slate-700 dark:text-slate-300",
               {
                 "text-red-500": onError || isInvalid,
                 "opacity-50": isDisabled || props?.disabled,
@@ -65,45 +69,63 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
             )}
           </label>
         )}
-        <input
-          ref={ref}
-          className={cn(
-            // Base styles
-            "w-full px-4 py-2 text-base bg-foreground/5 border border-border rounded-lg transition-all duration-200 outline-none",
-            // Placeholder styles
-            "placeholder:text-slate-400",
-            // Focus styles with primary color
-            "focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 focus:shadow-lg focus:shadow-primary-500/10",
-            // Hover styles
-            "hover:border-slate-300/50",
-            // Error styles
-            {
-              "border-red-500 focus:border-red-500 focus:ring-red-500/20 focus:shadow-red-500/10":
-                onError || isInvalid,
-            },
-            // Disabled styles
-            "disabled:bg-slate-50/50 disabled:text-slate-500 disabled:cursor-not-allowed disabled:opacity-60",
-            // Text styles
-            "text-slate-900 selection:bg-primary-100 selection:text-primary-900",
-            className,
-            classNames?.input,
-          )}
-          disabled={isDisabled || props?.disabled}
-          id={name}
-          maxLength={maxLength}
-          max={max}
-          min={min}
-          name={name}
-          type={type}
-          {...props}
-        />
+        <div
+          className={cn("w-full flex items-center relative", {
+            "gap-2 ": startContent || endContent,
+          })}
+        >
+          {startContent ? (
+            <span className="absolute px-2 w-5 h-5 aspect-square grid items-center">
+              {startContent}
+            </span>
+          ) : null}
+          <input
+            ref={ref}
+            className={cn(
+              // Base styles
+              "w-full px-4 py-1 text-base bg-foreground/5 border border-border rounded-lg transition-all duration-200 outline-none",
+              // Placeholder styles
+              "placeholder:text-slate-400 dark:placeholder:text-slate-500",
+              // Focus styles with primary color
+              "focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 focus:shadow-lg focus:shadow-primary-500/10",
+              // Hover styles
+              "hover:border-slate-300/50",
+              // Error styles
+              {
+                "border-red-500 focus:border-red-500 focus:ring-red-500/20 focus:shadow-red-500/10":
+                  onError || isInvalid,
+              },
+              // Disabled styles
+              "disabled:bg-slate-50/50 disabled:text-slate-500 disabled:cursor-not-allowed disabled:opacity-60",
+              // Text styles
+              "text-slate-900 dark:text-slate-100 selection:bg-primary-100 selection:text-primary-900",
+              { "pl-8 ": startContent },
+              { "pr-8 ": endContent },
+              className,
+              classNames?.input,
+            )}
+            disabled={isDisabled || props?.disabled}
+            id={name}
+            maxLength={maxLength}
+            max={max}
+            min={min}
+            name={name}
+            type={type}
+            {...props}
+          />
+          {endContent ? (
+            <span className="absolute px-2 w-5 h-5 aspect-square grid items-center">
+              {endContent}
+            </span>
+          ) : null}
+        </div>
 
         {((errorText && (isInvalid || onError)) || descriptionText) && (
           <motion.span
             className={cn(
-              "ml-1 text-xs text-slate-500",
+              "ml-1 text-xs text-slate-500 dark:text-slate-400",
               {
-                "text-red-600": onError || isInvalid,
+                "text-red-600 dark:text-red-400": onError || isInvalid,
               },
               classNames?.descriptionText,
               classNames?.errorText,
