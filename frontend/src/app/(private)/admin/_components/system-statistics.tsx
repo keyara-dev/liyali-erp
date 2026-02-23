@@ -55,17 +55,20 @@ export function SystemStatistics() {
 
   // Prepare chart data for document types
   const chartData = [
-    { name: "Requisitions", count: stats.documentTypeBreakdown.requisitions },
+    {
+      name: "Requisitions",
+      count: stats?.documentTypeBreakdown?.requisitions || 0,
+    },
     {
       name: "Purchase Orders",
-      count: stats.documentTypeBreakdown.purchaseOrders,
+      count: stats?.documentTypeBreakdown?.purchaseOrders || 0,
     },
     {
       name: "Payment Vouchers",
-      count: stats.documentTypeBreakdown.paymentVouchers,
+      count: stats?.documentTypeBreakdown?.paymentVouchers || 0,
     },
-    { name: "GRN", count: stats.documentTypeBreakdown.grn },
-    { name: "Budgets", count: stats.documentTypeBreakdown.budgets },
+    { name: "GRN", count: stats?.documentTypeBreakdown?.grn || 0 },
+    { name: "Budgets", count: stats?.documentTypeBreakdown?.budgets || 0 },
   ];
 
   return (
@@ -80,7 +83,9 @@ export function SystemStatistics() {
             <FileText className="h-5 w-5 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">{stats.totalDocuments}</div>
+            <div className="text-3xl font-bold">
+              {stats?.totalDocuments || 0}
+            </div>
             <p className="text-xs text-muted-foreground mt-1">All time</p>
           </CardContent>
         </Card>
@@ -94,10 +99,10 @@ export function SystemStatistics() {
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold">
-              {stats.approvalRate.toFixed(1)}%
+              {(stats?.approvalRate || 0).toFixed(1)}%
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              {stats.approvedDocuments} approved
+              {stats?.approvedDocuments || 0} approved
             </p>
           </CardContent>
         </Card>
@@ -111,7 +116,7 @@ export function SystemStatistics() {
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold">
-              {stats.averageApprovalTime.toFixed(1)}
+              {(stats?.averageApprovalTime || 0).toFixed(1)}
             </div>
             <p className="text-xs text-muted-foreground mt-1">days</p>
           </CardContent>
@@ -126,10 +131,10 @@ export function SystemStatistics() {
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold">
-              {stats.rejectionRate.toFixed(1)}%
+              {(stats?.rejectionRate || 0).toFixed(1)}%
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              {stats.rejectedDocuments} rejected
+              {stats?.rejectedDocuments || 0} rejected
             </p>
           </CardContent>
         </Card>
@@ -165,27 +170,27 @@ export function SystemStatistics() {
             {[
               {
                 label: "Draft",
-                value: stats.statusBreakdown.draft,
+                value: stats?.statusBreakdown?.draft || 0,
                 variant: "outline" as const,
               },
               {
                 label: "Submitted",
-                value: stats.statusBreakdown.submitted,
+                value: stats?.statusBreakdown?.submitted || 0,
                 variant: "secondary" as const,
               },
               {
                 label: "In Review",
-                value: stats.statusBreakdown.inReview,
+                value: stats?.statusBreakdown?.inReview || 0,
                 variant: "default" as const,
               },
               {
                 label: "Approved",
-                value: stats.statusBreakdown.approved,
+                value: stats?.statusBreakdown?.approved || 0,
                 variant: "default" as const,
               },
               {
                 label: "Rejected",
-                value: stats.statusBreakdown.rejected,
+                value: stats?.statusBreakdown?.rejected || 0,
                 variant: "destructive" as const,
               },
             ].map((item) => (

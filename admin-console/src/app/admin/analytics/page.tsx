@@ -36,6 +36,7 @@ export default function AnalyticsPage() {
     isLoading,
     refetch,
     isRefetching,
+    error,
   } = useAnalyticsOverview(filters);
 
   const isRefreshing = isRefetching;
@@ -95,8 +96,33 @@ export default function AnalyticsPage() {
         onExport={handleExport}
       />
 
+      {/* Error State */}
+      {error && (
+        <Card className="border-destructive">
+          <CardContent className="flex items-center gap-3 p-4">
+            <AlertCircle className="h-5 w-5 text-destructive" />
+            <div>
+              <p className="font-medium text-destructive">
+                Failed to load analytics
+              </p>
+              <p className="text-sm text-muted-foreground">
+                {error instanceof Error ? error.message : "Please try again"}
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRefresh}
+              className="ml-auto"
+            >
+              Retry
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Overview Metrics */}
-      <MetricsGrid overview={null} isLoading={isLoading} />
+      <MetricsGrid overview={analyticsData} isLoading={isLoading} />
 
       {/* Analytics Tabs */}
       <Tabs

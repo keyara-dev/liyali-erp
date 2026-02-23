@@ -45,7 +45,7 @@ export function UserActivityReports() {
     );
   }
 
-  const topContributors = activity.users.slice(0, 3);
+  const topContributors = (activity?.users || []).slice(0, 3);
 
   return (
     <div className="space-y-6">
@@ -59,9 +59,11 @@ export function UserActivityReports() {
             <Users className="h-5 w-5 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">{activity.activeUsers}</div>
+            <div className="text-3xl font-bold">
+              {activity?.activeUsers || 0}
+            </div>
             <p className="text-xs text-muted-foreground mt-1">
-              {activity.users.length} total users
+              {activity?.users?.length || 0} total users
             </p>
           </CardContent>
         </Card>
@@ -75,7 +77,7 @@ export function UserActivityReports() {
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold">
-              {activity.documentsInProgress}
+              {activity?.documentsInProgress || 0}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
               Across all users
@@ -91,7 +93,9 @@ export function UserActivityReports() {
             <CheckCircle2 className="h-5 w-5 text-accent" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">{activity.totalActions}</div>
+            <div className="text-3xl font-bold">
+              {activity?.totalActions || 0}
+            </div>
             <p className="text-xs text-muted-foreground mt-1">
               Approvals and rejections
             </p>
@@ -163,7 +167,7 @@ export function UserActivityReports() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {activity.users.length === 0 ? (
+                {(activity?.users || []).length === 0 ? (
                   <TableRow>
                     <TableCell
                       colSpan={6}
@@ -173,7 +177,7 @@ export function UserActivityReports() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  activity.users.map((user) => (
+                  (activity?.users || []).map((user) => (
                     <TableRow key={user.id}>
                       <TableCell className="font-medium">{user.name}</TableCell>
                       <TableCell>

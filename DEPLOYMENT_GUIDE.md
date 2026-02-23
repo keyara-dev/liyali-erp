@@ -136,13 +136,19 @@ make deploy-admin
 #### Option C: Manual Fly.io Deployment
 
 ```bash
-# From project root, deploy with explicit paths
-flyctl deploy --app liyali-gateway-api --config backend/fly.toml --dockerfile backend/Dockerfile
-flyctl deploy --app liyali-gateway-frontend --config frontend/fly.toml --dockerfile frontend/Dockerfile
-flyctl deploy --app liyali-admin-console --config admin-console/fly.toml --dockerfile admin-console/Dockerfile
+# Deploy from each app's directory (recommended to avoid large build context)
+cd backend && flyctl deploy --app liyali-gateway-api
+cd frontend && flyctl deploy --app liyali-gateway-frontend
+cd admin-console && flyctl deploy --app liyali-admin-console
 ```
 
-**Note**: Always run flyctl deploy from the project root with explicit `--app`, `--config`, and `--dockerfile` flags for clarity and consistency.
+**Important**: Deploy from each app's directory to use the local `.dockerignore` file and avoid uploading unnecessary files. This keeps the build context small and deployment fast.
+
+**Alternative** (if you need to deploy from root):
+
+```bash
+flyctl deploy --app liyali-gateway-api --config backend/fly.toml --dockerfile backend/Dockerfile --local-only
+```
 
 ---
 
@@ -220,15 +226,16 @@ NEXT_PUBLIC_IMAGEKIT_URL_ENDPOINT=https://ik.imagekit.io/your_id
 make deploy
 ```
 
-Or individually from project root:
+Or individually:
 
 ```bash
-flyctl deploy --app liyali-gateway-api --config backend/fly.toml --dockerfile backend/Dockerfile
-flyctl deploy --app liyali-gateway-frontend --config frontend/fly.toml --dockerfile frontend/Dockerfile
-flyctl deploy --app liyali-admin-console --config admin-console/fly.toml --dockerfile admin-console/Dockerfile
+# Deploy from each app's directory (avoids large build context)
+cd backend && flyctl deploy --app liyali-gateway-api
+cd frontend && flyctl deploy --app liyali-gateway-frontend
+cd admin-console && flyctl deploy --app liyali-admin-console
 ```
 
-**Important**: Always run flyctl deploy from the project root with explicit `--app`, `--config`, and `--dockerfile` flags.
+**Why cd into directories?** This ensures flyctl uses the local `.dockerignore` file, keeping the build context small (only includes necessary files, not the entire monorepo).
 
 #### View Logs
 

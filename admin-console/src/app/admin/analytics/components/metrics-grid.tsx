@@ -15,7 +15,7 @@ import {
 import { type AnalyticsOverview } from "@/app/_actions/analytics";
 
 interface MetricsGridProps {
-  overview: AnalyticsOverview | null;
+  overview: AnalyticsOverview | null | undefined;
   isLoading?: boolean;
 }
 
@@ -102,15 +102,17 @@ export function MetricsGrid({ overview, isLoading }: MetricsGridProps) {
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">
-            {formatNumber(overview.total_users)}
+            {formatNumber(overview?.total_users || 0)}
           </div>
           <div className="flex items-center text-xs text-muted-foreground">
-            {getTrendIcon(overview.growth_metrics.user_growth_rate)}
+            {getTrendIcon(overview?.growth_metrics?.user_growth_rate || 0)}
             <span
-              className={`ml-1 ${getTrendColor(overview.growth_metrics.user_growth_rate)}`}
+              className={`ml-1 ${getTrendColor(overview?.growth_metrics?.user_growth_rate || 0)}`}
             >
-              {formatPercentage(overview.growth_metrics.user_growth_rate)} from
-              last period
+              {formatPercentage(
+                overview?.growth_metrics?.user_growth_rate || 0,
+              )}{" "}
+              from last period
             </span>
           </div>
         </CardContent>
@@ -124,15 +126,17 @@ export function MetricsGrid({ overview, isLoading }: MetricsGridProps) {
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">
-            {formatNumber(overview.total_organizations)}
+            {formatNumber(overview?.total_organizations || 0)}
           </div>
           <div className="flex items-center text-xs text-muted-foreground">
-            {getTrendIcon(overview.growth_metrics.organization_growth_rate)}
+            {getTrendIcon(
+              overview?.growth_metrics?.organization_growth_rate || 0,
+            )}
             <span
-              className={`ml-1 ${getTrendColor(overview.growth_metrics.organization_growth_rate)}`}
+              className={`ml-1 ${getTrendColor(overview?.growth_metrics?.organization_growth_rate || 0)}`}
             >
               {formatPercentage(
-                overview.growth_metrics.organization_growth_rate,
+                overview?.growth_metrics?.organization_growth_rate || 0,
               )}{" "}
               from last period
             </span>
@@ -148,14 +152,16 @@ export function MetricsGrid({ overview, isLoading }: MetricsGridProps) {
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">
-            {formatCurrency(overview.total_revenue)}
+            {formatCurrency(overview?.total_revenue || 0)}
           </div>
           <div className="flex items-center text-xs text-muted-foreground">
-            {getTrendIcon(overview.growth_metrics.revenue_growth_rate)}
+            {getTrendIcon(overview?.growth_metrics?.revenue_growth_rate || 0)}
             <span
-              className={`ml-1 ${getTrendColor(overview.growth_metrics.revenue_growth_rate)}`}
+              className={`ml-1 ${getTrendColor(overview?.growth_metrics?.revenue_growth_rate || 0)}`}
             >
-              {formatPercentage(overview.growth_metrics.revenue_growth_rate)}{" "}
+              {formatPercentage(
+                overview?.growth_metrics?.revenue_growth_rate || 0,
+              )}{" "}
               from last period
             </span>
           </div>
@@ -172,15 +178,18 @@ export function MetricsGrid({ overview, isLoading }: MetricsGridProps) {
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">
-            {formatNumber(overview.active_subscriptions)}
+            {formatNumber(overview?.active_subscriptions || 0)}
           </div>
           <div className="flex items-center text-xs text-muted-foreground">
             <Activity className="h-3 w-3 mr-1" />
             <span>
-              {(
-                (overview.active_subscriptions / overview.total_organizations) *
-                100
-              ).toFixed(1)}
+              {overview?.total_organizations && overview?.active_subscriptions
+                ? (
+                    (overview.active_subscriptions /
+                      overview.total_organizations) *
+                    100
+                  ).toFixed(1)
+                : "0.0"}
               % conversion rate
             </span>
           </div>
@@ -197,15 +206,18 @@ export function MetricsGrid({ overview, isLoading }: MetricsGridProps) {
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">
-            {formatNumber(overview.key_metrics.monthly_active_users)}
+            {formatNumber(overview?.key_metrics?.monthly_active_users || 0)}
           </div>
           <div className="flex items-center text-xs text-muted-foreground">
             <span>
-              {(
-                (overview.key_metrics.monthly_active_users /
-                  overview.total_users) *
-                100
-              ).toFixed(1)}
+              {overview?.total_users &&
+              overview?.key_metrics?.monthly_active_users
+                ? (
+                    (overview.key_metrics.monthly_active_users /
+                      overview.total_users) *
+                    100
+                  ).toFixed(1)
+                : "0.0"}
               % of total users
             </span>
           </div>
@@ -222,11 +234,15 @@ export function MetricsGrid({ overview, isLoading }: MetricsGridProps) {
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">
-            {Math.round(overview.key_metrics.average_session_duration / 60)}m
+            {Math.round(
+              (overview?.key_metrics?.average_session_duration || 0) / 60,
+            )}
+            m
           </div>
           <div className="flex items-center text-xs text-muted-foreground">
             <span>
-              {overview.key_metrics.average_session_duration} seconds average
+              {overview?.key_metrics?.average_session_duration || 0} seconds
+              average
             </span>
           </div>
         </CardContent>
@@ -242,18 +258,18 @@ export function MetricsGrid({ overview, isLoading }: MetricsGridProps) {
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">
-            {overview.key_metrics.feature_adoption_rate.toFixed(1)}%
+            {(overview?.key_metrics?.feature_adoption_rate || 0).toFixed(1)}%
           </div>
           <div className="flex items-center text-xs text-muted-foreground">
             <Badge
               variant={
-                overview.key_metrics.feature_adoption_rate > 70
+                (overview?.key_metrics?.feature_adoption_rate || 0) > 70
                   ? "default"
                   : "secondary"
               }
               className="text-xs"
             >
-              {overview.key_metrics.feature_adoption_rate > 70
+              {(overview?.key_metrics?.feature_adoption_rate || 0) > 70
                 ? "Good"
                 : "Needs Improvement"}
             </Badge>
@@ -269,18 +285,20 @@ export function MetricsGrid({ overview, isLoading }: MetricsGridProps) {
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">
-            {overview.growth_metrics.churn_rate.toFixed(1)}%
+            {(overview?.growth_metrics?.churn_rate || 0).toFixed(1)}%
           </div>
           <div className="flex items-center text-xs text-muted-foreground">
             <Badge
               variant={
-                overview.growth_metrics.churn_rate < 5
+                (overview?.growth_metrics?.churn_rate || 0) < 5
                   ? "default"
                   : "destructive"
               }
               className="text-xs"
             >
-              {overview.growth_metrics.churn_rate < 5 ? "Healthy" : "High"}
+              {(overview?.growth_metrics?.churn_rate || 0) < 5
+                ? "Healthy"
+                : "High"}
             </Badge>
           </div>
         </CardContent>

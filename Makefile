@@ -64,19 +64,19 @@ deploy-all: deploy
 # Deploy backend
 deploy-backend:
 	@echo "🚀 Deploying backend (liyali-gateway-api)..."
-	@flyctl deploy --app liyali-gateway-api --config backend/fly.toml --dockerfile backend/Dockerfile
+	@cd backend && flyctl deploy --app liyali-gateway-api
 	@echo "✅ Backend deployed!"
 
 # Deploy web frontend
 deploy-web:
 	@echo "🚀 Deploying web frontend (liyali-gateway-frontend)..."
-	@flyctl deploy --app liyali-gateway-frontend --config frontend/fly.toml --dockerfile frontend/Dockerfile
+	@cd frontend && flyctl deploy --app liyali-gateway-frontend
 	@echo "✅ Web frontend deployed!"
 
 # Deploy admin console
 deploy-admin:
 	@echo "🚀 Deploying admin console (liyali-admin-console)..."
-	@flyctl deploy --app liyali-admin-console --config admin-console/fly.toml --dockerfile admin-console/Dockerfile
+	@cd admin-console && flyctl deploy --app liyali-admin-console
 	@echo "✅ Admin console deployed!"
 
 # ============================================================================

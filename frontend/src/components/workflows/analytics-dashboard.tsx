@@ -58,7 +58,9 @@ export function AnalyticsDashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">{analytics.totalPending}</div>
+            <div className="text-3xl font-bold">
+              {analytics?.totalPending || 0}
+            </div>
             <p className="text-xs text-muted-foreground mt-2">
               Awaiting approval
             </p>
@@ -75,7 +77,7 @@ export function AnalyticsDashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-green-600">
-              {analytics.totalApproved}
+              {analytics?.totalApproved || 0}
             </div>
             <p className="text-xs text-muted-foreground mt-2">This period</p>
             <div className="mt-3 h-2 bg-green-200 rounded-full"></div>
@@ -91,7 +93,7 @@ export function AnalyticsDashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-red-600">
-              {analytics.totalRejected}
+              {analytics?.totalRejected || 0}
             </div>
             <p className="text-xs text-muted-foreground mt-2">
               Returned to requester
@@ -109,7 +111,7 @@ export function AnalyticsDashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-blue-600">
-              {analytics.avgApprovalTime.toFixed(1)} days
+              {(analytics?.avgApprovalTime || 0).toFixed(1)} days
             </div>
             <p className="text-xs text-muted-foreground mt-2">
               Average turnaround
@@ -127,14 +129,14 @@ export function AnalyticsDashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold">
-              {analytics.slaCompliance.toFixed(1)}%
+              {(analytics?.slaCompliance || 0).toFixed(1)}%
             </div>
             <p className="text-xs text-muted-foreground mt-2">
               On-time delivery
             </p>
             <div
               className="mt-3 h-2 bg-green-200 rounded-full"
-              style={{ width: `${analytics.slaCompliance}%` }}
+              style={{ width: `${analytics?.slaCompliance || 0}%` }}
             ></div>
           </CardContent>
         </Card>
@@ -151,12 +153,12 @@ export function AnalyticsDashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {analytics.approvalTrends.length === 0 ? (
+            {(analytics?.approvalTrends || []).length === 0 ? (
               <div className="text-center py-4 text-muted-foreground">
                 No trend data available
               </div>
             ) : (
-              analytics.approvalTrends.map((item, index) => (
+              (analytics?.approvalTrends || []).map((item, index) => (
                 <div key={index} className="space-y-2">
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">{item.date}</span>
@@ -193,12 +195,12 @@ export function AnalyticsDashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            {analytics.documentDistribution.length === 0 ? (
+            {(analytics?.documentDistribution || []).length === 0 ? (
               <div className="text-center py-4 text-muted-foreground">
                 No distribution data available
               </div>
             ) : (
-              analytics.documentDistribution.map((item, index) => (
+              (analytics?.documentDistribution || []).map((item, index) => (
                 <div key={index} className="space-y-2">
                   <div className="flex justify-between text-sm">
                     <span className="font-medium">{item.type}</span>
@@ -230,12 +232,12 @@ export function AnalyticsDashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {analytics.stageMetrics.length === 0 ? (
+            {(analytics?.stageMetrics || []).length === 0 ? (
               <div className="text-center py-4 text-muted-foreground">
                 No stage metrics available
               </div>
             ) : (
-              analytics.stageMetrics.map((metric, index) => (
+              (analytics?.stageMetrics || []).map((metric, index) => (
                 <div
                   key={index}
                   className="space-y-2 pb-4 border-b last:border-b-0"
@@ -298,7 +300,7 @@ export function AnalyticsDashboard() {
           </CardHeader>
           <CardContent className="space-y-6">
             {/* Current Bottleneck */}
-            {analytics.bottleneck ? (
+            {analytics?.bottleneck ? (
               <>
                 <div className="p-4 border-2 border-orange-200 dark:border-orange-800 rounded-lg bg-orange-50 dark:bg-orange-950/30">
                   <div className="flex items-start gap-3">
@@ -311,11 +313,12 @@ export function AnalyticsDashboard() {
                         {analytics.bottleneck.stageName}
                       </p>
                       <p className="text-xs text-orange-700 dark:text-orange-300 mt-2">
-                        ⏱️ Average {analytics.bottleneck.avgDays.toFixed(1)}{" "}
-                        days at this stage
+                        ⏱️ Average{" "}
+                        {(analytics.bottleneck.avgDays || 0).toFixed(1)} days at
+                        this stage
                       </p>
                       <p className="text-xs text-orange-700 dark:text-orange-300 mt-1">
-                        📊 {analytics.bottleneck.documentCount} documents
+                        📊 {analytics.bottleneck.documentCount || 0} documents
                         processed
                       </p>
                     </div>
@@ -371,22 +374,24 @@ export function AnalyticsDashboard() {
               <ul className="text-sm text-muted-foreground space-y-1">
                 <li>
                   • High overall SLA compliance (
-                  {analytics.slaCompliance.toFixed(1)}%)
+                  {(analytics?.slaCompliance || 0).toFixed(1)}%)
                 </li>
-                <li>• {analytics.totalApproved} documents approved</li>
+                <li>• {analytics?.totalApproved || 0} documents approved</li>
                 <li>• Consistent approval processing</li>
               </ul>
             </div>
             <div className="space-y-2">
               <p className="text-sm font-medium">⚠️ Areas to Improve</p>
               <ul className="text-sm text-muted-foreground space-y-1">
-                {analytics.bottleneck && (
+                {analytics?.bottleneck && (
                   <li>• {analytics.bottleneck.stageName} stage bottleneck</li>
                 )}
-                {analytics.totalRejected > 0 && (
-                  <li>• {analytics.totalRejected} rejections need review</li>
+                {(analytics?.totalRejected || 0) > 0 && (
+                  <li>
+                    • {analytics?.totalRejected || 0} rejections need review
+                  </li>
                 )}
-                {analytics.avgApprovalTime > 3 && (
+                {(analytics?.avgApprovalTime || 0) > 3 && (
                   <li>• Average approval time above target</li>
                 )}
               </ul>
@@ -395,7 +400,7 @@ export function AnalyticsDashboard() {
               <p className="text-sm font-medium">📊 Key Actions</p>
               <ul className="text-sm text-muted-foreground space-y-1">
                 <li>
-                  • Monitor pending queue ({analytics.totalPending} items)
+                  • Monitor pending queue ({analytics?.totalPending || 0} items)
                 </li>
                 <li>• Review rejected items trends</li>
                 <li>• Optimize approval workflow</li>

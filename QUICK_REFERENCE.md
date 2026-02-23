@@ -232,11 +232,13 @@ make pre-deploy        # Verify env, build, test, migrate
 ### Fly.io (Direct)
 
 ```bash
-# From project root with explicit paths
-flyctl deploy --app liyali-gateway-api --config backend/fly.toml --dockerfile backend/Dockerfile
-flyctl deploy --app liyali-gateway-frontend --config frontend/fly.toml --dockerfile frontend/Dockerfile
-flyctl deploy --app liyali-admin-console --config admin-console/fly.toml --dockerfile admin-console/Dockerfile
+# Deploy from each app's directory (recommended)
+cd backend && flyctl deploy --app liyali-gateway-api
+cd frontend && flyctl deploy --app liyali-gateway-frontend
+cd admin-console && flyctl deploy --app liyali-admin-console
 ```
+
+**Note**: Deploying from each app's directory uses the local `.dockerignore` and keeps build context small.
 
 ### Manual
 

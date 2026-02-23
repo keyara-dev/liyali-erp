@@ -49,7 +49,7 @@ export function ApprovalReports() {
     );
   }
 
-  const filteredActivity = metrics.recentApprovals.filter(
+  const filteredActivity = (metrics?.recentApprovals || []).filter(
     (item) =>
       (item.documentNumber || "")
         .toLowerCase()
@@ -93,10 +93,10 @@ export function ApprovalReports() {
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-secondary">
-              {metrics.totalApproved}
+              {metrics?.totalApproved || 0}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              {metrics.approvalRate.toFixed(1)}% approval rate
+              {(metrics?.approvalRate || 0).toFixed(1)}% approval rate
             </p>
           </CardContent>
         </Card>
@@ -109,10 +109,10 @@ export function ApprovalReports() {
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-destructive">
-              {metrics.totalRejected}
+              {metrics?.totalRejected || 0}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              {(100 - metrics.approvalRate).toFixed(1)}% rejection rate
+              {(100 - (metrics?.approvalRate || 0)).toFixed(1)}% rejection rate
             </p>
           </CardContent>
         </Card>
@@ -125,7 +125,7 @@ export function ApprovalReports() {
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-accent">
-              {metrics.totalPending}
+              {metrics?.totalPending || 0}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
               Awaiting next approver
