@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { notify } from "@/lib/notify";
@@ -10,7 +10,6 @@ import {
   FileText,
   Plus,
   Download,
-  Upload,
 } from "lucide-react";
 
 // Components
@@ -20,22 +19,25 @@ import { FeatureFlagsTable } from "./components/feature-flags-table";
 import { FeatureFlagEditDialog } from "./components/feature-flag-edit-dialog";
 import { FeatureFlagAnalyticsDialog } from "./components/feature-flag-analytics-dialog";
 
-// Actions
+// Hooks
 import {
-  getFeatureFlags,
-  getFeatureFlagStats,
-  getFlagTemplates,
-  createFeatureFlag,
-  updateFeatureFlag,
-  deleteFeatureFlag,
-  toggleFeatureFlag,
-  archiveFeatureFlag,
+  useFeatureFlags,
+  useFeatureFlagStats,
+  useCreateFeatureFlag,
+  useUpdateFeatureFlag,
+  useDeleteFeatureFlag,
+  useToggleFeatureFlag,
+  useArchiveFeatureFlag,
+} from "@/hooks/use-feature-flags";
+
+// Actions (for operations not covered by hooks)
+import {
   bulkUpdateFlags,
   exportFeatureFlags,
   importFeatureFlags,
+  getFlagTemplates,
   type FeatureFlag,
   type FeatureFlagFilters,
-  type FeatureFlagStats,
   type FlagTemplate,
   type BulkFlagOperation,
 } from "@/app/_actions/feature-flags";
@@ -43,87 +45,35 @@ import {
 export default function FeatureFlagsPage() {
   // State
   const [activeTab, setActiveTab] = useState("flags");
-  const [flags, setFlags] = useState<FeatureFlag[]>([]);
-  const [stats, setStats] = useState<FeatureFlagStats | null>(null);
-  const [templates, setTemplates] = useState<FlagTemplate[]>([]);
   const [filters, setFilters] = useState<FeatureFlagFilters>({});
   const [selectedFlags, setSelectedFlags] = useState<string[]>([]);
   const [editingFlag, setEditingFlag] = useState<FeatureFlag | null>(null);
   const [analyticsFlag, setAnalyticsFlag] = useState<FeatureFlag | null>(null);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showAnalyticsDialog, setShowAnalyticsDialog] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Load initial data
-  useEffect(() => {
-    loadInitialData();
-  }, []);
+  // TanStack Query hooks
+  const {
+    data: flags = [],
+    isLoading,
+    refetch: refetchFlags,
+    isRefetching: isRefreshing,
+  } = useFeatureFlags(filters);
+  const { data: stats, refetch: refetchStats } = useFeatureFlagStats();
 
-  // Load flags when filters change
-  useEffect(() => {
-    loadFlags();
-  }, [filters]);
-
-  const loadInitialData = async () => {
-    setIsLoading(true);
-    try {
-      const [flagsData, statsData, templatesData] = await Promise.all([
-        getFeatureFlags(),
-        getFeatureFlagStats(),
-        getFlagTemplates(),
-      ]);
-
-      setFlags(flagsData);
-      setStats(statsData);
-      setTemplates(templatesData);
-    } catch (error) {
-      notify("Failed to load feature flags data.", {
-        title: "Error",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const loadFlags = async () => {
-    if (isLoading) return; // Don't reload during initial load
-
-    try {
-      const flagsData = await getFeatureFlags(filters);
-      setFlags(flagsData);
-    } catch (error) {
-      notify("Failed to load flags.", {
-        title: "Error",
-        variant: "destructive",
-      });
-    }
-  };
+  // Mutation hooks
+  const createFlagMutation = useCreateFeatureFlag();
+  const updateFlagMutation = useUpdateFeatureFlag();
+  const deleteFlagMutation = useDeleteFeatureFlag();
+  const toggleFlagMutation = useToggleFeatureFlag();
+  const archiveFlagMutation = useArchiveFeatureFlag();
 
   const refreshData = async () => {
-    setIsRefreshing(true);
-    try {
-      const [flagsData, statsData] = await Promise.all([
-        getFeatureFlags(filters),
-        getFeatureFlagStats(),
-      ]);
-
-      setFlags(flagsData);
-      setStats(statsData);
-
-      notify("Data refreshed successfully.", {
-        title: "Success",
-        variant: "success",
-      });
-    } catch (error) {
-      notify("Failed to refresh data.", {
-        title: "Error",
-        variant: "destructive",
-      });
-    } finally {
-      setIsRefreshing(false);
-    }
+    await Promise.all([refetchFlags(), refetchStats()]);
+    notify("Data refreshed successfully.", {
+      title: "Success",
+      variant: "success",
+    });
   };
 
   const handleCreateFlag = async (
@@ -139,11 +89,8 @@ export default function FeatureFlagsPage() {
     >,
   ) => {
     try {
-      await createFeatureFlag(flagData);
+      await createFlagMutation.mutateAsync(flagData);
       setShowCreateDialog(false);
-      await loadFlags();
-      await loadStats();
-
       notify("Feature flag created successfully.", {
         title: "Success",
         variant: "success",
@@ -171,11 +118,11 @@ export default function FeatureFlagsPage() {
     if (!editingFlag) return;
 
     try {
-      await updateFeatureFlag(editingFlag.id, flagData);
+      await updateFlagMutation.mutateAsync({
+        id: editingFlag.id,
+        updates: flagData,
+      });
       setEditingFlag(null);
-      await loadFlags();
-      await loadStats();
-
       notify("Feature flag updated successfully.", {
         title: "Success",
         variant: "success",
@@ -190,10 +137,7 @@ export default function FeatureFlagsPage() {
 
   const handleDeleteFlag = async (flagId: string) => {
     try {
-      await deleteFeatureFlag(flagId);
-      await loadFlags();
-      await loadStats();
-
+      await deleteFlagMutation.mutateAsync(flagId);
       notify("Feature flag deleted successfully.", {
         title: "Success",
         variant: "success",
@@ -208,10 +152,7 @@ export default function FeatureFlagsPage() {
 
   const handleToggleFlag = async (flagId: string) => {
     try {
-      await toggleFeatureFlag(flagId);
-      await loadFlags();
-      await loadStats();
-
+      await toggleFlagMutation.mutateAsync(flagId);
       notify("Feature flag toggled successfully.", {
         title: "Success",
         variant: "success",
@@ -226,10 +167,7 @@ export default function FeatureFlagsPage() {
 
   const handleArchiveFlag = async (flagId: string) => {
     try {
-      await archiveFeatureFlag(flagId);
-      await loadFlags();
-      await loadStats();
-
+      await archiveFlagMutation.mutateAsync(flagId);
       notify("Feature flag archived successfully.", {
         title: "Success",
         variant: "success",
@@ -266,8 +204,8 @@ export default function FeatureFlagsPage() {
     try {
       await bulkUpdateFlags(operation);
       setSelectedFlags([]);
-      await loadFlags();
-      await loadStats();
+      await refetchFlags();
+      await refetchStats();
 
       notify(`Bulk ${operation.action} completed successfully.`, {
         title: "Success",
@@ -329,8 +267,8 @@ export default function FeatureFlagsPage() {
           overwriteExisting: false,
         });
 
-        await loadFlags();
-        await loadStats();
+        await refetchFlags();
+        await refetchStats();
 
         notify(
           `Import completed. ${result.imported} flags imported, ${result.skipped} skipped.`,
@@ -347,15 +285,6 @@ export default function FeatureFlagsPage() {
       }
     };
     input.click();
-  };
-
-  const loadStats = async () => {
-    try {
-      const statsData = await getFeatureFlagStats();
-      setStats(statsData);
-    } catch (error) {
-      // Silently fail for stats
-    }
   };
 
   return (

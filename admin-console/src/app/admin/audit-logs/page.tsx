@@ -9,7 +9,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -37,15 +36,15 @@ import {
 import { format } from "date-fns";
 import { toast } from "sonner";
 import {
-  getAuditLogs,
-  getAuditLogStats,
-  getAuditLogAnalytics,
   exportAuditLogs,
   type AuditLog,
   type AuditLogFilters,
-  type AuditLogStats,
-  type AuditLogAnalytics,
 } from "@/app/_actions/audit-logs";
+import {
+  useAuditLogs,
+  useAuditLogStats,
+  useAuditLogAnalytics,
+} from "@/hooks/use-audit-logs";
 import { AuditLogFiltersComponent } from "./components/audit-log-filters";
 import { AuditLogStatsGrid } from "./components/audit-log-stats-grid";
 import { AuditLogDetailsSheet } from "./components/audit-log-details-sheet";
@@ -53,19 +52,12 @@ import { SecurityEventsPanel } from "./components/security-events-panel";
 import { AuditLogAnalyticsCharts } from "./components/audit-log-analytics-charts";
 
 export default function AuditLogsPage() {
-  const [logs, setLogs] = useState<AuditLog[]>([]);
-  const [stats, setStats] = useState<AuditLogStats | null>(null);
-  const [analytics, setAnalytics] = useState<AuditLogAnalytics | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isRefreshing, setIsRefreshing] = useState(false);
   const [selectedLog, setSelectedLog] = useState<AuditLog | null>(null);
   const [showDetailsSheet, setShowDetailsSheet] = useState(false);
   const [activeTab, setActiveTab] = useState("logs");
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalLogs, setTotalLogs] = useState(0);
   const pageSize = 50;
 
   // Filters
@@ -76,9 +68,23 @@ export default function AuditLogsPage() {
   // Search
   const [searchTerm, setSearchTerm] = useState("");
 
-  useEffect(() => {
-    loadAuditData();
-  }, [filters, currentPage]);
+  // TanStack Query hooks
+  const {
+    data: logsData,
+    isLoading: isLoadingLogs,
+    refetch: refetchLogs,
+    isRefetching,
+  } = useAuditLogs(filters, currentPage, pageSize);
+  const { data: stats, isLoading: isLoadingStats } =
+    useAuditLogStats(filters);
+  const { data: analytics, isLoading: isLoadingAnalytics } =
+    useAuditLogAnalytics(filters);
+
+  const isLoading = isLoadingLogs || isLoadingStats || isLoadingAnalytics;
+  const isRefreshing = isRefetching;
+  const logs = logsData?.logs ?? [];
+  const totalLogs = logsData?.total ?? 0;
+  const totalPages = logsData?.totalPages ?? 1;
 
   useEffect(() => {
     const delayedSearch = setTimeout(() => {
@@ -91,54 +97,8 @@ export default function AuditLogsPage() {
     return () => clearTimeout(delayedSearch);
   }, [searchTerm]);
 
-  const loadAuditData = async (isRefresh = false) => {
-    if (isRefresh) {
-      setIsRefreshing(true);
-    } else {
-      setIsLoading(true);
-    }
-
-    try {
-      // Load all data in parallel
-      const [logsResult, statsResult, analyticsResult] = await Promise.all([
-        getAuditLogs(filters, currentPage, pageSize),
-        getAuditLogStats(filters),
-        getAuditLogAnalytics(filters),
-      ]);
-
-      // Handle logs result
-      if (logsResult.success && logsResult.data) {
-        setLogs(logsResult.data.logs);
-        setTotalLogs(logsResult.data.total);
-        setTotalPages(logsResult.data.totalPages);
-      } else {
-        toast.error("Failed to load audit logs");
-      }
-
-      // Handle stats result
-      if (statsResult.success) {
-        setStats(statsResult.data || null);
-      } else {
-        toast.error("Failed to load audit statistics");
-      }
-
-      // Handle analytics result
-      if (analyticsResult.success) {
-        setAnalytics(analyticsResult.data || null);
-      } else {
-        toast.error("Failed to load audit analytics");
-      }
-    } catch (error) {
-      console.error("Error loading audit data:", error);
-      toast.error("Failed to load audit data");
-    } finally {
-      setIsLoading(false);
-      setIsRefreshing(false);
-    }
-  };
-
   const handleRefresh = () => {
-    loadAuditData(true);
+    refetchLogs();
   };
 
   const handleFiltersChange = (newFilters: AuditLogFilters) => {
@@ -174,21 +134,6 @@ export default function AuditLogsPage() {
   const handleLogClick = (log: AuditLog) => {
     setSelectedLog(log);
     setShowDetailsSheet(true);
-  };
-
-  const getSeverityColor = (severity: string) => {
-    switch (severity) {
-      case "critical":
-        return "text-red-600";
-      case "high":
-        return "text-orange-600";
-      case "medium":
-        return "text-yellow-600";
-      case "low":
-        return "text-green-600";
-      default:
-        return "text-gray-600";
-    }
   };
 
   const getSeverityBadge = (severity: string) => {
@@ -274,7 +219,7 @@ export default function AuditLogsPage() {
       />
 
       {/* Stats Grid */}
-      <AuditLogStatsGrid stats={stats} isLoading={isLoading} />
+      <AuditLogStatsGrid stats={stats ?? null} isLoading={isLoading} />
 
       {/* Main Content Tabs */}
       <Tabs
@@ -476,13 +421,13 @@ export default function AuditLogsPage() {
         </TabsContent>
 
         <TabsContent value="security" className="space-y-4">
-          <SecurityEventsPanel stats={stats} isLoading={isLoading} />
+          <SecurityEventsPanel stats={stats ?? null} isLoading={isLoading} />
         </TabsContent>
 
         <TabsContent value="analytics" className="space-y-4">
           <AuditLogAnalyticsCharts
-            analytics={analytics}
-            stats={stats}
+            analytics={analytics ?? null}
+            stats={stats ?? null}
             isLoading={isLoading}
           />
         </TabsContent>

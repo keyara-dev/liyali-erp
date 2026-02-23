@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import {
   Card,
   CardContent,
@@ -8,7 +7,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Users,
@@ -18,58 +16,12 @@ import {
   TrendingUp,
   AlertTriangle,
 } from "lucide-react";
-import { getAdminDashboardMetrics } from "@/app/_actions/dashboard";
-
-interface DashboardData {
-  total_organizations: number;
-  active_organizations: number;
-  trial_organizations: number;
-  expired_trials: number;
-  total_users: number;
-  active_users: number;
-  recent_activities: Array<{
-    id: string;
-    action: string;
-    user: string;
-    timestamp: string;
-    details: string;
-  }>;
-  system_health: {
-    uptime: string;
-    cpu_usage: number;
-    memory_usage: number;
-    disk_usage: number;
-  };
-}
+import { useDashboardMetrics } from "@/hooks/use-dashboard";
 
 export default function AdminDashboard() {
-  const [data, setData] = useState<DashboardData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { data, isLoading, error } = useDashboardMetrics();
 
-  useEffect(() => {
-    async function fetchDashboardData() {
-      try {
-        setLoading(true);
-        const response = await getAdminDashboardMetrics();
-
-        if (response.success && response.data) {
-          setData(response.data);
-        } else {
-          setError(response.message || "Failed to load dashboard data");
-        }
-      } catch (err) {
-        setError("An error occurred while loading dashboard data");
-        console.error("Dashboard error:", err);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    fetchDashboardData();
-  }, []);
-
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="space-y-6">
         <div>
@@ -111,7 +63,7 @@ export default function AdminDashboard() {
           <CardContent className="pt-6">
             <div className="flex items-center space-x-2 text-red-600">
               <AlertTriangle className="h-4 w-4" />
-              <span>{error}</span>
+              <span>{error.message || "Failed to load dashboard data"}</span>
             </div>
           </CardContent>
         </Card>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import {
   Card,
   CardContent,
@@ -8,7 +8,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -17,14 +16,10 @@ import {
   Settings,
   Clock,
   BarChart3,
-  Plus,
   Users,
-  Building2,
   TrendingUp,
-  AlertTriangle,
 } from "lucide-react";
-import { toast } from "sonner";
-import { getSubscriptionStatistics } from "@/app/_actions/subscriptions";
+import { useSubscriptionStatistics } from "@/hooks/use-subscriptions";
 
 // Import tab components
 import { SubscriptionTiersTab } from "./components/subscription-tiers-tab";
@@ -34,42 +29,7 @@ import { SubscriptionAnalyticsTab } from "./components/subscription-analytics-ta
 
 export default function SubscriptionsPage() {
   const [activeTab, setActiveTab] = useState("tiers");
-  const [stats, setStats] = useState<any>(null);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    loadStatistics();
-  }, []);
-
-  const loadStatistics = async () => {
-    try {
-      const result = await getSubscriptionStatistics();
-      if (result.success && result.data) {
-        setStats(result.data);
-      } else {
-        // Fallback to default values if API fails
-        setStats({
-          total_tiers: 4,
-          active_subscriptions: 0,
-          trial_organizations: 0,
-          monthly_revenue: 0,
-          revenue_growth: 0,
-        });
-      }
-    } catch (error) {
-      console.error("Failed to load subscription statistics:", error);
-      // Fallback to default values
-      setStats({
-        total_tiers: 4,
-        active_subscriptions: 0,
-        trial_organizations: 0,
-        monthly_revenue: 0,
-        revenue_growth: 0,
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const { data: stats, isLoading } = useSubscriptionStatistics();
 
   if (isLoading) {
     return (
@@ -174,8 +134,8 @@ export default function SubscriptionsPage() {
               ${(stats?.monthly_revenue || 0).toLocaleString()}
             </div>
             <p className="text-xs text-muted-foreground">
-              {stats?.revenue_growth > 0 ? "+" : ""}
-              {stats?.revenue_growth || 0}% from last month
+              {(stats?.revenue_growth ?? 0) > 0 ? "+" : ""}
+              {stats?.revenue_growth ?? 0}% from last month
             </p>
           </CardContent>
         </Card>
@@ -207,9 +167,9 @@ export default function SubscriptionsPage() {
               <TabsTrigger value="trials" className="flex items-center gap-2">
                 <Clock className="h-4 w-4" />
                 Trial Management
-                {stats?.trial_organizations > 0 && (
+                {(stats?.trial_organizations ?? 0) > 0 && (
                   <Badge variant="secondary" className="ml-1">
-                    {stats.trial_organizations}
+                    {stats?.trial_organizations}
                   </Badge>
                 )}
               </TabsTrigger>

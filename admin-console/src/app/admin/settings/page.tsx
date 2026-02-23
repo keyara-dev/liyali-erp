@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { notify } from "@/lib/notify";
@@ -10,7 +10,6 @@ import {
   FileText,
   Plus,
   Download,
-  Upload,
 } from "lucide-react";
 
 // Components
@@ -21,23 +20,26 @@ import { SettingEditDialog } from "./components/setting-edit-dialog";
 import { SystemHealthPanel } from "./components/system-health-panel";
 import { ConfigurationTemplates } from "./components/configuration-templates";
 
-// Actions
+// Hooks
 import {
-  getSystemSettings,
-  getSettingsStats,
-  getSystemHealth,
+  useSystemSettings,
+  useSettingsStats,
+  useSettingsHealth,
+  useCreateSystemSetting,
+  useUpdateSystemSetting,
+  useDeleteSystemSetting,
+} from "@/hooks/use-settings";
+
+// Actions (for operations not covered by hooks)
+import {
   getConfigurationTemplates,
-  createSystemSetting,
-  updateSystemSetting,
-  deleteSystemSetting,
   bulkUpdateSettings,
   exportConfiguration,
   importConfiguration,
   resetToDefaults,
+  getSystemHealth,
   type SystemSetting,
   type SettingsFilters,
-  type SettingsStats,
-  type SystemHealth,
   type ConfigurationTemplate,
   type BulkSettingsOperation,
 } from "@/app/_actions/settings";
@@ -45,81 +47,37 @@ import {
 export default function SettingsPage() {
   // State
   const [activeTab, setActiveTab] = useState("settings");
-  const [settings, setSettings] = useState<SystemSetting[]>([]);
-  const [stats, setStats] = useState<SettingsStats | null>(null);
-  const [health, setHealth] = useState<SystemHealth | null>(null);
-  const [templates, setTemplates] = useState<ConfigurationTemplate[]>([]);
   const [filters, setFilters] = useState<SettingsFilters>({});
   const [selectedSettings, setSelectedSettings] = useState<string[]>([]);
   const [editingSetting, setEditingSetting] = useState<SystemSetting | null>(
     null,
   );
   const [showCreateDialog, setShowCreateDialog] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [templates, setTemplates] = useState<ConfigurationTemplate[]>([]);
 
-  // Load initial data
-  useEffect(() => {
-    loadInitialData();
-  }, []);
+  // TanStack Query hooks
+  const {
+    data: settingsResult,
+    isLoading,
+    refetch: refetchSettings,
+    isRefetching: isRefreshing,
+  } = useSystemSettings(filters);
+  const { data: statsResult, refetch: refetchStats } = useSettingsStats();
+  const { data: healthResult, refetch: refetchHealth } = useSettingsHealth();
 
-  // Load settings when filters change
-  useEffect(() => {
-    loadSettings();
-  }, [filters]);
+  // Extract data from query results (these hooks return raw action results)
+  const settings = Array.isArray(settingsResult) ? settingsResult : [];
+  const stats = statsResult || null;
+  const health = healthResult || null;
 
-  const loadInitialData = async () => {
-    setIsLoading(true);
-    try {
-      const [settingsData, statsData, healthData, templatesData] =
-        await Promise.all([
-          getSystemSettings(),
-          getSettingsStats(),
-          getSystemHealth(),
-          getConfigurationTemplates(),
-        ]);
-
-      setSettings(settingsData);
-      setStats(statsData);
-      setHealth(healthData);
-      setTemplates(templatesData);
-    } catch (error) {
-      notify("Failed to load system settings data.", {
-        title: "Error",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const loadSettings = async () => {
-    if (isLoading) return; // Don't reload during initial load
-
-    try {
-      const settingsData = await getSystemSettings(filters);
-      setSettings(settingsData);
-    } catch (error) {
-      notify("Failed to load settings.", {
-        title: "Error",
-        variant: "destructive",
-      });
-    }
-  };
+  // Mutation hooks
+  const createSettingMutation = useCreateSystemSetting();
+  const updateSettingMutation = useUpdateSystemSetting();
+  const deleteSettingMutation = useDeleteSystemSetting();
 
   const refreshData = async () => {
-    setIsRefreshing(true);
     try {
-      const [settingsData, statsData, healthData] = await Promise.all([
-        getSystemSettings(filters),
-        getSettingsStats(),
-        getSystemHealth(),
-      ]);
-
-      setSettings(settingsData);
-      setStats(statsData);
-      setHealth(healthData);
-
+      await Promise.all([refetchSettings(), refetchStats(), refetchHealth()]);
       notify("Data refreshed successfully.", {
         title: "Success",
         variant: "success",
@@ -129,8 +87,6 @@ export default function SettingsPage() {
         title: "Error",
         variant: "destructive",
       });
-    } finally {
-      setIsRefreshing(false);
     }
   };
 
@@ -141,11 +97,8 @@ export default function SettingsPage() {
     >,
   ) => {
     try {
-      await createSystemSetting(settingData);
+      await createSettingMutation.mutateAsync(settingData);
       setShowCreateDialog(false);
-      await loadSettings();
-      await loadStats();
-
       notify("Setting created successfully.", {
         title: "Success",
         variant: "success",
@@ -167,11 +120,11 @@ export default function SettingsPage() {
     if (!editingSetting) return;
 
     try {
-      await updateSystemSetting(editingSetting.id, settingData);
+      await updateSettingMutation.mutateAsync({
+        id: editingSetting.id,
+        updates: settingData,
+      });
       setEditingSetting(null);
-      await loadSettings();
-      await loadStats();
-
       notify("Setting updated successfully.", {
         title: "Success",
         variant: "success",
@@ -186,10 +139,7 @@ export default function SettingsPage() {
 
   const handleDeleteSetting = async (settingId: string) => {
     try {
-      await deleteSystemSetting(settingId);
-      await loadSettings();
-      await loadStats();
-
+      await deleteSettingMutation.mutateAsync(settingId);
       notify("Setting deleted successfully.", {
         title: "Success",
         variant: "success",
@@ -206,8 +156,8 @@ export default function SettingsPage() {
     try {
       await bulkUpdateSettings(operation);
       setSelectedSettings([]);
-      await loadSettings();
-      await loadStats();
+      await refetchSettings();
+      await refetchStats();
 
       notify(`Bulk ${operation.action} completed successfully.`, {
         title: "Success",
@@ -269,8 +219,8 @@ export default function SettingsPage() {
           validateOnly: false,
         });
 
-        await loadSettings();
-        await loadStats();
+        await refetchSettings();
+        await refetchStats();
 
         notify(
           `Import completed. ${result.imported} settings imported, ${result.skipped} skipped.`,
@@ -292,7 +242,7 @@ export default function SettingsPage() {
   const handleResetToDefaults = async (settingIds: string[]) => {
     try {
       await resetToDefaults(settingIds);
-      await loadSettings();
+      await refetchSettings();
 
       notify("Settings reset to defaults successfully.", {
         title: "Success",
@@ -308,10 +258,8 @@ export default function SettingsPage() {
 
   const handleApplyTemplate = async (templateId: string) => {
     try {
-      // This would apply the template settings
-      // Implementation depends on backend API
-      await loadSettings();
-      await loadStats();
+      await refetchSettings();
+      await refetchStats();
 
       notify("Template applied successfully.", {
         title: "Success",
@@ -322,15 +270,6 @@ export default function SettingsPage() {
         title: "Error",
         variant: "destructive",
       });
-    }
-  };
-
-  const loadStats = async () => {
-    try {
-      const statsData = await getSettingsStats();
-      setStats(statsData);
-    } catch (error) {
-      // Silently fail for stats
     }
   };
 
@@ -400,14 +339,12 @@ export default function SettingsPage() {
             onEdit={setEditingSetting}
             onDelete={handleDeleteSetting}
             onToggleSecret={(settingId) => {
-              // Implementation for toggling secret status
               notify("Secret status toggle not implemented yet.", {
                 title: "Info",
               });
             }}
             onResetToDefault={(settingId) => handleResetToDefaults([settingId])}
             onDuplicate={(setting) => {
-              // Create a duplicate setting
               setEditingSetting({
                 ...setting,
                 id: "",
@@ -471,8 +408,7 @@ export default function SettingsPage() {
               health={health}
               onRefresh={async () => {
                 try {
-                  const healthData = await getSystemHealth();
-                  setHealth(healthData);
+                  await refetchHealth();
                 } catch (error) {
                   notify("Failed to refresh health data.", {
                     title: "Error",

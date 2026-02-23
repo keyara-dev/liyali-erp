@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import {
   Card,
   CardContent,
@@ -24,101 +24,57 @@ import {
   TrendingDown,
   RefreshCw,
   Bell,
-  Settings,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
-  getSystemHealth,
-  getSystemMetrics,
-  getSystemAlerts,
-  acknowledgeAlert,
-  type SystemHealth,
-  type SystemMetrics,
-  type SystemAlert,
-} from "@/app/_actions/system-health";
+  useSystemHealth,
+  useSystemMetrics,
+  useSystemAlerts,
+  useAcknowledgeAlert,
+} from "@/hooks/use-system-health";
 import { SystemMetricsChart } from "./components/system-metrics-chart";
 import { SystemAlertsPanel } from "./components/system-alerts-panel";
 import { DatabaseHealthCard } from "./components/database-health-card";
 import { APIHealthCard } from "./components/api-health-card";
 
 export default function SystemHealthPage() {
-  const [systemHealth, setSystemHealth] = useState<SystemHealth | null>(null);
-  const [systemMetrics, setSystemMetrics] = useState<SystemMetrics | null>(
-    null,
-  );
-  const [systemAlerts, setSystemAlerts] = useState<SystemAlert[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isRefreshing, setIsRefreshing] = useState(false);
   const [autoRefresh, setAutoRefresh] = useState(true);
 
-  useEffect(() => {
-    loadSystemData();
+  const {
+    data: systemHealth,
+    isLoading: isLoadingHealth,
+    refetch: refetchHealth,
+    isRefetching: isRefetchingHealth,
+  } = useSystemHealth();
 
-    // Set up auto-refresh every 30 seconds
-    let interval: NodeJS.Timeout;
-    if (autoRefresh) {
-      interval = setInterval(() => {
-        loadSystemData(true);
-      }, 30000);
-    }
+  const {
+    data: systemMetrics,
+    isLoading: isLoadingMetrics,
+    refetch: refetchMetrics,
+  } = useSystemMetrics();
 
-    return () => {
-      if (interval) clearInterval(interval);
-    };
-  }, [autoRefresh]);
+  const {
+    data: alertsData,
+    isLoading: isLoadingAlerts,
+    refetch: refetchAlerts,
+  } = useSystemAlerts();
 
-  const loadSystemData = async (isAutoRefresh = false) => {
-    if (!isAutoRefresh) {
-      setIsLoading(true);
-    } else {
-      setIsRefreshing(true);
-    }
+  const acknowledgeAlertMutation = useAcknowledgeAlert();
 
-    try {
-      // Load system health
-      const healthResult = await getSystemHealth();
-      if (healthResult.success && healthResult.data) {
-        setSystemHealth(healthResult.data);
-      }
-
-      // Load system metrics
-      const metricsResult = await getSystemMetrics();
-      if (metricsResult.success && metricsResult.data) {
-        setSystemMetrics(metricsResult.data);
-      }
-
-      // Load system alerts
-      const alertsResult = await getSystemAlerts();
-      if (alertsResult.success && alertsResult.data) {
-        setSystemAlerts(
-          Array.isArray(alertsResult.data) ? alertsResult.data : [],
-        );
-      } else {
-        setSystemAlerts([]);
-      }
-    } catch (error) {
-      if (!isAutoRefresh) {
-        toast.error("Failed to load system data");
-      }
-    } finally {
-      setIsLoading(false);
-      setIsRefreshing(false);
-    }
-  };
+  const systemAlerts = Array.isArray(alertsData) ? alertsData : [];
+  const isLoading = isLoadingHealth || isLoadingMetrics || isLoadingAlerts;
+  const isRefreshing = isRefetchingHealth;
 
   const handleRefresh = () => {
-    loadSystemData();
+    refetchHealth();
+    refetchMetrics();
+    refetchAlerts();
   };
 
   const handleAcknowledgeAlert = async (alertId: string) => {
     try {
-      const result = await acknowledgeAlert(alertId);
-      if (result.success) {
-        toast.success("Alert acknowledged");
-        loadSystemData(true);
-      } else {
-        toast.error("Failed to acknowledge alert");
-      }
+      await acknowledgeAlertMutation.mutateAsync(alertId);
+      toast.success("Alert acknowledged");
     } catch (error) {
       toast.error("Failed to acknowledge alert");
     }
@@ -236,16 +192,13 @@ export default function SystemHealthPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {Array.isArray(systemAlerts)
-                ? systemAlerts.filter((alert) => alert.status === "active")
-                    .length
-                : 0}
+              {systemAlerts.filter((alert) => alert.status === "active").length}
             </div>
             <p className="text-xs text-muted-foreground">
-              {Array.isArray(systemAlerts)
-                ? systemAlerts.filter((alert) => alert.severity === "critical")
-                    .length
-                : 0}{" "}
+              {
+                systemAlerts.filter((alert) => alert.severity === "critical")
+                  .length
+              }{" "}
               critical
             </p>
           </CardContent>
@@ -337,14 +290,14 @@ export default function SystemHealthPage() {
           </CardContent>
         </Card>
 
-        <SystemMetricsChart metrics={systemMetrics} />
+        <SystemMetricsChart metrics={systemMetrics ?? null} />
       </div>
 
       {/* System Alerts */}
       <SystemAlertsPanel
         alerts={systemAlerts}
         onAcknowledgeAlert={handleAcknowledgeAlert}
-        onRefresh={() => loadSystemData(true)}
+        onRefresh={() => refetchAlerts()}
       />
     </div>
   );

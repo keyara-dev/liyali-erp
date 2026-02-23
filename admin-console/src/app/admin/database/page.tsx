@@ -16,23 +16,19 @@ import {
   Activity,
   HardDrive,
   Search,
-  Settings,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
-  getDatabaseConnections,
-  getDatabaseMetrics,
-  getDatabaseQueries,
-  getDatabaseBackups,
-  getDatabaseStats,
   exportDatabaseData,
-  type DatabaseConnection,
-  type DatabaseMetrics,
-  type DatabaseQuery,
-  type DatabaseBackup,
-  type DatabaseStats,
   type DatabaseFilters,
 } from "@/app/_actions/database";
+import {
+  useDatabaseConnections,
+  useDatabaseMetrics,
+  useDatabaseQueries,
+  useDatabaseBackups,
+  useDatabaseStats,
+} from "@/hooks/use-database";
 import { DatabaseFiltersComponent } from "./components/database-filters";
 import { DatabaseStatsGrid } from "./components/database-stats-grid";
 import { DatabaseConnectionsTable } from "./components/database-connections-table";
@@ -40,24 +36,29 @@ import { DatabaseQueryPanel } from "./components/database-query-panel";
 import { DatabaseBackupsPanel } from "./components/database-backups-panel";
 
 export default function DatabasePage() {
-  const [connections, setConnections] = useState<DatabaseConnection[]>([]);
-  const [metrics, setMetrics] = useState<DatabaseMetrics[]>([]);
-  const [queries, setQueries] = useState<DatabaseQuery[]>([]);
-  const [backups, setBackups] = useState<DatabaseBackup[]>([]);
-  const [stats, setStats] = useState<DatabaseStats | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isRefreshing, setIsRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
-
-  // Filters
   const [filters, setFilters] = useState<DatabaseFilters>({
     time_range: "24h",
   });
   const [searchTerm, setSearchTerm] = useState("");
 
-  useEffect(() => {
-    loadDatabaseData();
-  }, [filters]);
+  // TanStack Query hooks
+  const {
+    data: connections = [],
+    isLoading: isLoadingConnections,
+    refetch: refetchConnections,
+    isRefetching,
+  } = useDatabaseConnections(filters);
+  const { data: metrics = [], refetch: refetchMetrics } =
+    useDatabaseMetrics(filters);
+  const { data: queries = [], refetch: refetchQueries } =
+    useDatabaseQueries(filters);
+  const { data: backups = [], refetch: refetchBackups } =
+    useDatabaseBackups(filters);
+  const { data: stats, refetch: refetchStats } = useDatabaseStats();
+
+  const isLoading = isLoadingConnections;
+  const isRefreshing = isRefetching;
 
   useEffect(() => {
     const delayedSearch = setTimeout(() => {
@@ -69,74 +70,12 @@ export default function DatabasePage() {
     return () => clearTimeout(delayedSearch);
   }, [searchTerm]);
 
-  const loadDatabaseData = async (isRefresh = false) => {
-    if (isRefresh) {
-      setIsRefreshing(true);
-    } else {
-      setIsLoading(true);
-    }
-
-    try {
-      // Load all data in parallel
-      const [
-        connectionsResult,
-        metricsResult,
-        queriesResult,
-        backupsResult,
-        statsResult,
-      ] = await Promise.all([
-        getDatabaseConnections(filters),
-        getDatabaseMetrics(filters),
-        getDatabaseQueries(filters),
-        getDatabaseBackups(filters),
-        getDatabaseStats(),
-      ]);
-
-      // Handle connections result
-      if (connectionsResult.success) {
-        setConnections(connectionsResult.data || []);
-      } else {
-        toast.error("Failed to load database connections");
-      }
-
-      // Handle metrics result
-      if (metricsResult.success) {
-        setMetrics(metricsResult.data || []);
-      } else {
-        toast.error("Failed to load database metrics");
-      }
-
-      // Handle queries result
-      if (queriesResult.success) {
-        setQueries(queriesResult.data || []);
-      } else {
-        toast.error("Failed to load database queries");
-      }
-
-      // Handle backups result
-      if (backupsResult.success) {
-        setBackups(backupsResult.data || []);
-      } else {
-        toast.error("Failed to load database backups");
-      }
-
-      // Handle stats result
-      if (statsResult.success) {
-        setStats(statsResult.data || null);
-      } else {
-        toast.error("Failed to load database statistics");
-      }
-    } catch (error) {
-      console.error("Error loading database data:", error);
-      toast.error("Failed to load database data");
-    } finally {
-      setIsLoading(false);
-      setIsRefreshing(false);
-    }
-  };
-
   const handleRefresh = () => {
-    loadDatabaseData(true);
+    refetchConnections();
+    refetchMetrics();
+    refetchQueries();
+    refetchBackups();
+    refetchStats();
   };
 
   const handleFiltersChange = (newFilters: DatabaseFilters) => {
@@ -176,7 +115,7 @@ export default function DatabasePage() {
   };
 
   const handleDataUpdated = () => {
-    loadDatabaseData();
+    handleRefresh();
   };
 
   return (
@@ -217,7 +156,7 @@ export default function DatabasePage() {
       />
 
       {/* Stats Grid */}
-      <DatabaseStatsGrid stats={stats} isLoading={isLoading} />
+      <DatabaseStatsGrid stats={stats ?? null} isLoading={isLoading} />
 
       {/* Main Content Tabs */}
       <Tabs

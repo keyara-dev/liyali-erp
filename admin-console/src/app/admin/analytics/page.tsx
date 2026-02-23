@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import {
   Card,
   CardContent,
@@ -22,49 +22,30 @@ import {
 import { toast } from "sonner";
 import { MetricsGrid } from "./components/metrics-grid";
 import { AnalyticsFilters as AnalyticsFiltersComponent } from "./components/analytics-filters";
-import { getAnalyticsOverview } from "@/app/_actions/analytics";
+import { useAnalyticsOverview } from "@/hooks/use-analytics";
 import type { AnalyticsFilters } from "@/app/_actions/analytics";
 
 export default function AnalyticsPage() {
-  const [isLoading, setIsLoading] = useState(true);
-  const [isRefreshing, setIsRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
-  const [analyticsData, setAnalyticsData] = useState<any>(null);
-
-  // Filters
   const [filters, setFilters] = useState<AnalyticsFilters>({
     date_range: "30d",
   });
 
-  useEffect(() => {
-    loadAnalyticsData();
-  }, [filters]);
+  const {
+    data: analyticsData,
+    isLoading,
+    refetch,
+    isRefetching,
+  } = useAnalyticsOverview(filters);
 
-  const loadAnalyticsData = async () => {
-    setIsLoading(true);
-    try {
-      const result = await getAnalyticsOverview(filters);
-      if (result.success && result.data) {
-        setAnalyticsData(result.data);
-      } else {
-        toast.error("Failed to load analytics data");
-      }
-    } catch (error) {
-      toast.error("Failed to load analytics data");
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const isRefreshing = isRefetching;
 
   const handleRefresh = async () => {
-    setIsRefreshing(true);
     try {
-      await loadAnalyticsData();
+      await refetch();
       toast.success("Analytics data refreshed");
     } catch (error) {
       toast.error("Failed to refresh analytics data");
-    } finally {
-      setIsRefreshing(false);
     }
   };
 

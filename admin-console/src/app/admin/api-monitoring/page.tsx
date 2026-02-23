@@ -20,20 +20,17 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import {
-  getAPIEndpoints,
-  getAPIMetrics,
-  getAPIErrors,
-  getAPIAlerts,
-  getAPIStats,
-  getAPICategories,
   exportAPIData,
-  type APIEndpoint,
-  type APIMetrics,
-  type APIError,
-  type APIAlert,
-  type APIStats,
   type APIFilters,
 } from "@/app/_actions/api-monitoring";
+import {
+  useAPIEndpoints,
+  useAPIMetrics,
+  useAPIErrors,
+  useAPIAlerts,
+  useAPIStats,
+  useAPICategories,
+} from "@/hooks/use-api-monitoring";
 import { APIMonitoringFiltersComponent } from "./components/api-monitoring-filters";
 import { APIStatsGrid } from "./components/api-stats-grid";
 import { APIEndpointsTable } from "./components/api-endpoints-table";
@@ -42,23 +39,28 @@ import { APIAlertsPanel } from "./components/api-alerts-panel";
 import { APIPerformanceChart } from "./components/api-performance-chart";
 
 export default function APIMonitoringPage() {
-  const [endpoints, setEndpoints] = useState<APIEndpoint[]>([]);
-  const [metrics, setMetrics] = useState<APIMetrics[]>([]);
-  const [errors, setErrors] = useState<APIError[]>([]);
-  const [alerts, setAlerts] = useState<APIAlert[]>([]);
-  const [stats, setStats] = useState<APIStats | null>(null);
-  const [categories, setCategories] = useState<string[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isRefreshing, setIsRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
-
-  // Filters
   const [filters, setFilters] = useState<APIFilters>({ time_range: "24h" });
   const [searchTerm, setSearchTerm] = useState("");
 
-  useEffect(() => {
-    loadAPIMonitoringData();
-  }, [filters]);
+  // TanStack Query hooks
+  const {
+    data: endpoints = [],
+    isLoading: isLoadingEndpoints,
+    refetch: refetchEndpoints,
+    isRefetching,
+  } = useAPIEndpoints(filters);
+  const { data: metrics = [], refetch: refetchMetrics } =
+    useAPIMetrics(filters);
+  const { data: errors = [], refetch: refetchErrors } =
+    useAPIErrors(filters);
+  const { data: alerts = [], refetch: refetchAlerts } =
+    useAPIAlerts(filters);
+  const { data: stats, refetch: refetchStats } = useAPIStats();
+  const { data: categories = [] } = useAPICategories();
+
+  const isLoading = isLoadingEndpoints;
+  const isRefreshing = isRefetching;
 
   useEffect(() => {
     const delayedSearch = setTimeout(() => {
@@ -70,83 +72,12 @@ export default function APIMonitoringPage() {
     return () => clearTimeout(delayedSearch);
   }, [searchTerm]);
 
-  const loadAPIMonitoringData = async (isRefresh = false) => {
-    if (isRefresh) {
-      setIsRefreshing(true);
-    } else {
-      setIsLoading(true);
-    }
-
-    try {
-      // Load all data in parallel
-      const [
-        endpointsResult,
-        metricsResult,
-        errorsResult,
-        alertsResult,
-        statsResult,
-        categoriesResult,
-      ] = await Promise.all([
-        getAPIEndpoints(filters),
-        getAPIMetrics(filters),
-        getAPIErrors(filters),
-        getAPIAlerts(filters),
-        getAPIStats(),
-        getAPICategories(),
-      ]);
-
-      // Handle endpoints result
-      if (endpointsResult.success) {
-        setEndpoints(endpointsResult.data || []);
-      } else {
-        toast.error("Failed to load API endpoints");
-      }
-
-      // Handle metrics result
-      if (metricsResult.success) {
-        setMetrics(metricsResult.data || []);
-      } else {
-        toast.error("Failed to load API metrics");
-      }
-
-      // Handle errors result
-      if (errorsResult.success) {
-        setErrors(errorsResult.data || []);
-      } else {
-        toast.error("Failed to load API errors");
-      }
-
-      // Handle alerts result
-      if (alertsResult.success) {
-        setAlerts(alertsResult.data || []);
-      } else {
-        toast.error("Failed to load API alerts");
-      }
-
-      // Handle stats result
-      if (statsResult.success) {
-        setStats(statsResult.data || null);
-      } else {
-        toast.error("Failed to load API statistics");
-      }
-
-      // Handle categories result
-      if (categoriesResult.success) {
-        setCategories(categoriesResult.data || []);
-      } else {
-        toast.error("Failed to load API categories");
-      }
-    } catch (error) {
-      console.error("Error loading API monitoring data:", error);
-      toast.error("Failed to load API monitoring data");
-    } finally {
-      setIsLoading(false);
-      setIsRefreshing(false);
-    }
-  };
-
   const handleRefresh = () => {
-    loadAPIMonitoringData(true);
+    refetchEndpoints();
+    refetchMetrics();
+    refetchErrors();
+    refetchAlerts();
+    refetchStats();
   };
 
   const handleFiltersChange = (newFilters: APIFilters) => {
@@ -181,7 +112,7 @@ export default function APIMonitoringPage() {
   };
 
   const handleDataUpdated = () => {
-    loadAPIMonitoringData();
+    handleRefresh();
   };
 
   return (
@@ -220,7 +151,7 @@ export default function APIMonitoringPage() {
       />
 
       {/* Stats Grid */}
-      <APIStatsGrid stats={stats} isLoading={isLoading} />
+      <APIStatsGrid stats={stats ?? null} isLoading={isLoading} />
 
       {/* Main Content Tabs */}
       <Tabs
