@@ -26,15 +26,15 @@ func (r *ReportsRepository) QueryDocumentStats(
 ) (*models.ReportDocumentStats, error) {
 	query := `
 		WITH all_documents AS (
-			SELECT id, status, created_at, 'requisition' as doc_type FROM requisitions WHERE organization_id = $1 AND deleted_at IS NULL
+			SELECT id, status, created_at, 'requisition' as doc_type FROM requisitions WHERE organization_id = $1
 			UNION ALL
-			SELECT id, status, created_at, 'purchase_order' FROM purchase_orders WHERE organization_id = $1 AND deleted_at IS NULL
+			SELECT id, status, created_at, 'purchase_order' FROM purchase_orders WHERE organization_id = $1
 			UNION ALL
-			SELECT id, status, created_at, 'payment_voucher' FROM payment_vouchers WHERE organization_id = $1 AND deleted_at IS NULL
+			SELECT id, status, created_at, 'payment_voucher' FROM payment_vouchers WHERE organization_id = $1
 			UNION ALL
-			SELECT id, status, created_at, 'grn' FROM grn WHERE organization_id = $1 AND deleted_at IS NULL
+			SELECT id, status, created_at, 'grn' FROM grn WHERE organization_id = $1
 			UNION ALL
-			SELECT id, status, created_at, 'budget' FROM budgets WHERE organization_id = $1 AND deleted_at IS NULL
+			SELECT id, status, created_at, 'budget' FROM budgets WHERE organization_id = $1
 		),
 		filtered_docs AS (
 			SELECT * FROM all_documents
@@ -184,9 +184,10 @@ func (r *ReportsRepository) QueryUserActivity(
 				COUNT(*) FILTER (WHERE sar.action = 'rejected') as rejection_count,
 				MAX(sar.approved_at) as last_activity
 			FROM users u
-			LEFT JOIN stage_approval_records sar ON u.id = sar.approver_id
-			WHERE u.organization_id = $1
-			  AND u.deleted_at IS NULL
+			INNER JOIN organization_members om ON u.id = om.user_id
+			LEFT JOIN stage_approval_records sar ON u.id = sar.approver_id AND sar.organization_id = $1
+			WHERE om.organization_id = $1
+			  AND om.active = true
 			GROUP BY u.id, u.name, u.email, u.role
 		),
 		active_docs AS (
@@ -194,13 +195,13 @@ func (r *ReportsRepository) QueryUserActivity(
 				created_by,
 				COUNT(*) as active_count
 			FROM (
-				SELECT created_by FROM requisitions WHERE organization_id = $1 AND status IN ('draft', 'submitted', 'in_review') AND deleted_at IS NULL
+				SELECT created_by FROM requisitions WHERE organization_id = $1 AND status IN ('draft', 'submitted', 'in_review')
 				UNION ALL
-				SELECT created_by FROM purchase_orders WHERE organization_id = $1 AND status IN ('draft', 'submitted', 'in_review') AND deleted_at IS NULL
+				SELECT created_by FROM purchase_orders WHERE organization_id = $1 AND status IN ('draft', 'submitted', 'in_review')
 				UNION ALL
-				SELECT created_by FROM payment_vouchers WHERE organization_id = $1 AND status IN ('draft', 'submitted', 'in_review') AND deleted_at IS NULL
+				SELECT created_by FROM payment_vouchers WHERE organization_id = $1 AND status IN ('draft', 'submitted', 'in_review')
 				UNION ALL
-				SELECT created_by FROM budgets WHERE organization_id = $1 AND status IN ('draft', 'submitted', 'in_review') AND deleted_at IS NULL
+				SELECT created_by FROM budgets WHERE organization_id = $1 AND status IN ('draft', 'submitted', 'in_review')
 			) docs
 			GROUP BY created_by
 		)
@@ -279,13 +280,13 @@ func (r *ReportsRepository) QueryApprovalTrends(
 				COUNT(*) as pending
 			FROM date_series ds
 			CROSS JOIN (
-				SELECT id FROM requisitions WHERE organization_id = $1 AND status IN ('in_review', 'pending') AND deleted_at IS NULL
+				SELECT id FROM requisitions WHERE organization_id = $1 AND status IN ('in_review', 'pending')
 				UNION ALL
-				SELECT id FROM purchase_orders WHERE organization_id = $1 AND status IN ('in_review', 'pending') AND deleted_at IS NULL
+				SELECT id FROM purchase_orders WHERE organization_id = $1 AND status IN ('in_review', 'pending')
 				UNION ALL
-				SELECT id FROM payment_vouchers WHERE organization_id = $1 AND status IN ('in_review', 'pending') AND deleted_at IS NULL
+				SELECT id FROM payment_vouchers WHERE organization_id = $1 AND status IN ('in_review', 'pending')
 				UNION ALL
-				SELECT id FROM budgets WHERE organization_id = $1 AND status IN ('in_review', 'pending') AND deleted_at IS NULL
+				SELECT id FROM budgets WHERE organization_id = $1 AND status IN ('in_review', 'pending')
 			) docs
 			GROUP BY ds.date
 		)
