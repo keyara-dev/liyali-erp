@@ -24,6 +24,19 @@ func (r *ReportsRepository) QueryDocumentStats(
 	startDate string,
 	endDate string,
 ) (*models.ReportDocumentStats, error) {
+	// Convert empty strings to nil for SQL NULL handling
+	var startDateParam, endDateParam interface{}
+	if startDate == "" {
+		startDateParam = nil
+	} else {
+		startDateParam = startDate
+	}
+	if endDate == "" {
+		endDateParam = nil
+	} else {
+		endDateParam = endDate
+	}
+
 	query := `
 		WITH all_documents AS (
 			SELECT id, status, created_at, 'requisition' as doc_type FROM requisitions WHERE organization_id = $1
@@ -70,7 +83,7 @@ func (r *ReportsRepository) QueryDocumentStats(
 	`
 
 	var stats models.ReportDocumentStats
-	err := r.db.QueryRow(ctx, query, organizationID, startDate, endDate).Scan(
+	err := r.db.QueryRow(ctx, query, organizationID, startDateParam, endDateParam).Scan(
 		&stats.Total,
 		&stats.Approved,
 		&stats.Rejected,
