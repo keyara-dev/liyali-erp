@@ -125,7 +125,7 @@ export function TierDisplay({
         onClick={() => (canUpgrade ? setShowUpgradeModal(true) : undefined)}
         className={`cursor-pointer ${canUpgrade ? "hover:opacity-80" : ""}`}
       >
-        <Card className="border border-border hover:bg-primary-50 shadow-none px-0 backdrop-blur-md">
+        <Card className="border border-border hover:bg-primary-50/10 shadow-none px-0 backdrop-blur-md">
           <CardContent className="p-1 px-1">
             <div className="flex items-center  w-full justify-between">
               <div className="flex items-center">

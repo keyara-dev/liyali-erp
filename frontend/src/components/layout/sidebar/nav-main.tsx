@@ -205,7 +205,7 @@ export function NavMain() {
                               </DropdownMenuLabel>
                               {item.items?.map((item) => (
                                 <DropdownMenuItem
-                                  className="hover:text-foreground active:text-foreground active:bg-primary/10! hover:bg-primary/10!"
+                                  className="hover:text-foreground active:text-foreground active:bg-primary/20 hover:bg-primary/20"
                                   asChild
                                   key={item.title}
                                 >
@@ -218,7 +218,7 @@ export function NavMain() {
                         <Collapsible className="group/collapsible block group-data-[collapsible=icon]:hidden">
                           <CollapsibleTrigger asChild>
                             <SidebarMenuButton
-                              className="hover:text-foreground active:text-foreground hover:bg-primary/10 active:bg-primary/10"
+                              className="hover:text-foreground active:text-foreground hover:bg-primary/20 active:bg-primary/20"
                               tooltip={item.title}
                             >
                               {item.icon && <item.icon />}
@@ -231,7 +231,7 @@ export function NavMain() {
                               {item?.items?.map((subItem, key) => (
                                 <SidebarMenuSubItem key={key}>
                                   <SidebarMenuSubButton
-                                    className="hover:text-foreground active:text-foreground hover:bg-primary/10 active:bg-primary/10"
+                                    className="hover:text-foreground active:text-foreground hover:bg-primary/20 active:bg-primary/20"
                                     isActive={pathname === subItem.href}
                                     asChild
                                   >
@@ -250,7 +250,7 @@ export function NavMain() {
                       </>
                     ) : (
                       <SidebarMenuButton
-                        className="hover:text-foreground active:text-foreground hover:bg-primary/10 active:bg-primary/10"
+                        className="hover:text-foreground active:text-foreground hover:bg-primary/20 active:bg-primary/20"
                         isActive={pathname === item.href}
                         tooltip={item.title}
                         asChild

@@ -85,7 +85,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
               // Base styles
               "w-full px-4 py-1.25 text-base bg-foreground/5 border border-border rounded-lg transition-all duration-200 outline-none",
               // Placeholder styles
-              "placeholder:text-slate-400 dark:placeholder:text-slate-500",
+              "placeholder:text-slate-400 dark:placeholder:text-foreground/30",
               // Focus styles with primary color
               "focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 focus:shadow-lg focus:shadow-primary-500/10",
               // Hover styles
@@ -96,7 +96,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
                   onError || isInvalid,
               },
               // Disabled styles
-              "disabled:bg-slate-50/50 disabled:text-slate-500 disabled:cursor-not-allowed disabled:opacity-60",
+              "disabled:bg-slate-50/50 disabled:cursor-not-allowed disabled:dark:bg-slate-50/10 disabled:text-foreground/70",
               // Text styles
               "text-slate-900 dark:text-slate-100 selection:bg-primary-100 selection:text-primary-900",
               { "pl-8 ": startContent },

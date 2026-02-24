@@ -31,6 +31,7 @@ interface UseConfigurationStatusOptions {
     | "purchase_order"
     | "payment_voucher"
     | "grn";
+  excludeBudgets?: boolean; // Exclude budget requirement (for budget creation)
 }
 
 /**
@@ -40,8 +41,11 @@ interface UseConfigurationStatusOptions {
 export function useConfigurationStatus(
   options: UseConfigurationStatusOptions = {},
 ): ConfigurationStatus {
-  const { includeWorkflow = false, workflowEntityType = "requisition" } =
-    options;
+  const {
+    includeWorkflow = false,
+    workflowEntityType = "requisition",
+    excludeBudgets = false,
+  } = options;
 
   // Fetch configuration data
   const { data: departments = [], isLoading: departmentsLoading } =
@@ -78,7 +82,11 @@ export function useConfigurationStatus(
         navigateTo: "/admin/categories",
         isLoading: categoriesLoading,
       },
-      {
+    ];
+
+    // Only include budget requirement if not excluded
+    if (!excludeBudgets) {
+      reqs.push({
         id: "budgets",
         label: "Budget Codes",
         description: "At least one budget must be configured",
@@ -86,8 +94,8 @@ export function useConfigurationStatus(
         count: Array.isArray(budgets) ? budgets.length : 0,
         navigateTo: "/admin/budgets",
         isLoading: budgetsLoading,
-      },
-    ];
+      });
+    }
 
     // Conditionally add workflow requirement
     if (includeWorkflow) {
@@ -114,6 +122,7 @@ export function useConfigurationStatus(
     workflowsLoading,
     includeWorkflow,
     workflowEntityType,
+    excludeBudgets,
   ]);
 
   const allConfigured = requirements.every((req) => req.isConfigured);
