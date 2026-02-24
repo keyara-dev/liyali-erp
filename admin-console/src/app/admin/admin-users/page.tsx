@@ -33,6 +33,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import {
+  exportAdminUsers,
   type AdminUser,
   type AdminUserStats,
   type AdminUserFilters,
@@ -105,9 +106,21 @@ export default function AdminUsersPage() {
 
   const handleExport = async (format: "csv" | "json" | "excel") => {
     try {
-      toast.success(
-        `Admin users export initiated. Download will be available shortly.`,
-      );
+      const result = await exportAdminUsers(format, filters);
+      if (result.success && result.data) {
+        const blob = new Blob([JSON.stringify(result.data, null, 2)], {
+          type: "application/json",
+        });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `admin-users-export-${new Date().toISOString().split("T")[0]}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+        toast.success("Admin users exported successfully");
+      } else {
+        toast.error(result.message || "Failed to export admin users");
+      }
     } catch (error) {
       console.error("Error exporting admin users:", error);
       toast.error("Failed to export admin users");

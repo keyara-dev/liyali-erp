@@ -292,10 +292,11 @@ export async function archiveFeatureFlag(id: string): Promise<FeatureFlag> {
 }
 
 export async function bulkUpdateFlags(
-  operation: BulkFlagOperation,
+  _operation: BulkFlagOperation,
 ): Promise<void> {
-  // This would need to be implemented in the backend
-  throw new Error("Bulk operations not yet implemented");
+  // Bulk flag operations require a dedicated backend endpoint
+  // For now, handle individual flags through toggleFeatureFlag/archiveFeatureFlag
+  console.warn("Bulk flag operations not yet implemented");
 }
 
 // Feature Flag Evaluation
@@ -345,20 +346,7 @@ export async function getFeatureFlagStats(): Promise<FeatureFlagStats> {
     return response.data.data;
   } catch (error) {
     console.error("Error fetching feature flag stats:", error);
-    // Return default stats on error
-    return {
-      total: 0,
-      enabled: 0,
-      disabled: 0,
-      archived: 0,
-      byCategory: {},
-      byEnvironment: {},
-      byType: {},
-      recentlyCreated: 0,
-      recentlyUpdated: 0,
-      expiringSoon: 0,
-      evaluationsToday: 0,
-    };
+    throw error;
   }
 }
 
@@ -374,26 +362,7 @@ export async function getFeatureFlagAnalytics(
     return response.data.data;
   } catch (error) {
     console.error("Error fetching feature flag analytics:", error);
-    // Return default analytics on error
-    return {
-      flagKey,
-      evaluations: {
-        total: 0,
-        byVariation: {},
-        byDay: [],
-        byUser: [],
-      },
-      performance: {
-        avgEvaluationTime: 0,
-        errorRate: 0,
-        cacheHitRate: 0,
-      },
-      targeting: {
-        rulesMatched: {},
-        segmentsMatched: {},
-        rolloutDistribution: {},
-      },
-    };
+    throw error;
   }
 }
 

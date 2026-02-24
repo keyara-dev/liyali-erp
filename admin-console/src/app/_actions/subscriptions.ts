@@ -290,7 +290,7 @@ export async function resetOrganizationTrial(
   organizationId: string,
   request: TrialResetRequest,
 ): Promise<APIResponse<any>> {
-  const url = `/api/v1/organizations/${organizationId}/trial/reset`;
+  const url = `/api/v1/admin/organizations/${organizationId}/trial/reset`;
 
   try {
     const response = await authenticatedApiClient({
@@ -428,7 +428,7 @@ export async function extendOrganizationTrial(
     reason: string;
   },
 ): Promise<APIResponse<any>> {
-  const url = `/api/v1/organizations/${organizationId}/trial/extend`;
+  const url = `/api/v1/admin/organizations/${organizationId}/trial/extend`;
 
   try {
     const response = await authenticatedApiClient({
@@ -454,7 +454,7 @@ export async function getOrganizationAuditLogs(
   page: number = 1,
   limit: number = 20,
 ): Promise<APIResponse<any>> {
-  const url = `/api/v1/audit-logs?organizationId=${organizationId}&page=${page}&limit=${limit}`;
+  const url = `/api/v1/admin/audit-logs?organizationId=${organizationId}&page=${page}&limit=${limit}`;
 
   try {
     const response = await authenticatedApiClient({

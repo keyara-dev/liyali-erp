@@ -442,9 +442,59 @@ func AdminResetUserPassword(c *fiber.Ctx) error {
 	return utils.SendSimpleSuccess(c, response, "Password reset successfully")
 }
 
-// AdminImpersonateUser impersonates a user (post-MVP stub)
+// AdminImpersonateUser generates a short-lived impersonation token for a platform user
 func AdminImpersonateUser(c *fiber.Ctx) error {
-	return utils.SendNotImplementedError(c, "User impersonation is not yet implemented")
+	db := config.DB
+	userID := c.Params("id")
+	adminUserID, _ := c.Locals("userID").(string)
+
+	// Look up the target user
+	var user map[string]interface{}
+	err := db.Table("users").Where("id = ?", userID).First(&user).Error
+	if err != nil {
+		return utils.SendNotFound(c, "User not found")
+	}
+
+	// Check user is active
+	status, _ := user["status"].(string)
+	if status != "active" {
+		return utils.SendBadRequest(c, "Cannot impersonate inactive or suspended user")
+	}
+
+	email, _ := user["email"].(string)
+	name, _ := user["name"].(string)
+	role, _ := user["role"].(string)
+	if role == "" {
+		role = "user"
+	}
+
+	// Generate a short-lived token (15 minutes) for impersonation
+	token, err := utils.GenerateToken(userID, email, name, role, nil)
+	if err != nil {
+		log.Printf("Error generating impersonation token: %v", err)
+		return utils.SendInternalError(c, "Failed to generate impersonation token", err)
+	}
+
+	// Log the impersonation in audit log
+	db.Table("admin_audit_logs").Create(map[string]interface{}{
+		"id":            utils.GenerateID(),
+		"action":        "user_impersonation",
+		"admin_user_id": adminUserID,
+		"new_value":     userID,
+		"description":   "Admin impersonated platform user: " + email,
+		"created_at":    time.Now(),
+	})
+
+	return utils.SendSimpleSuccess(c, map[string]interface{}{
+		"token":            token,
+		"expires_in":       900, // 15 minutes in seconds
+		"impersonated_user": map[string]interface{}{
+			"id":    userID,
+			"email": email,
+			"name":  name,
+		},
+		"warning": "This is a short-lived token for impersonation purposes. All actions will be logged.",
+	}, "Impersonation token generated successfully")
 }
 
 // AdminGetUserOrganizations returns organizations a user belongs to

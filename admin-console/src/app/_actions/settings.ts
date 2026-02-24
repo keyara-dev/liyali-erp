@@ -245,11 +245,9 @@ export async function deleteSystemSetting(id: string): Promise<void> {
 }
 
 export async function bulkUpdateSettings(
-  operation: BulkSettingsOperation,
-): Promise<void> {
-  // This would need to be implemented in the backend
-  // For now, throw an error indicating it's not implemented
-  throw new Error("Bulk operations not yet implemented");
+  _operation: BulkSettingsOperation,
+): Promise<{ success: false; message: string }> {
+  return { success: false, message: "Bulk operations not yet implemented" };
 }
 
 // Environment Variables Management
@@ -299,34 +297,20 @@ export async function getSystemHealth(): Promise<SystemHealth> {
     return response.data.data;
   } catch (error) {
     console.error("Error fetching system health:", error);
-    // Return a default health status on error
-    return {
-      status: "critical",
-      score: 0,
-      checks: [
-        {
-          name: "API Connection",
-          status: "fail",
-          message: "Unable to connect to backend API",
-          lastChecked: new Date().toISOString(),
-        },
-      ],
-      recommendations: ["Check backend API connectivity"],
-    };
+    throw error;
   }
 }
 
 export async function validateConfiguration(
-  configId: string,
+  _configId: string,
 ): Promise<{ isValid: boolean; errors: string[] }> {
-  // This would be implemented in the backend
   return {
-    isValid: true,
-    errors: [],
+    isValid: false,
+    errors: ["Configuration validation not yet implemented"],
   };
 }
 
-// Configuration Audit
+// Configuration Audit - queries admin audit logs filtered by setting-related actions
 export async function getConfigurationAudit(filters?: {
   settingKey?: string;
   userId?: string;
@@ -334,8 +318,42 @@ export async function getConfigurationAudit(filters?: {
   startDate?: string;
   endDate?: string;
 }): Promise<ConfigurationAudit[]> {
-  // This would be implemented with a proper audit log system
-  return [];
+  try {
+    const params = new URLSearchParams();
+    params.append("action", filters?.action || "setting");
+    if (filters?.userId) params.append("user_id", filters.userId);
+    if (filters?.startDate) params.append("start_date", filters.startDate);
+    if (filters?.endDate) params.append("end_date", filters.endDate);
+    params.append("limit", "50");
+
+    const response = await authenticatedApiClient({
+      url: `/api/v1/admin/audit-logs?${params.toString()}`,
+      method: "GET",
+    });
+
+    const logs = response?.data?.data || [];
+    return (logs as any[]).map((log: any): ConfigurationAudit => ({
+      id: log.id || "",
+      action: (log.action?.includes("create")
+        ? "create"
+        : log.action?.includes("delete")
+          ? "delete"
+          : "update") as ConfigurationAudit["action"],
+      settingKey: log.new_value || log.action || "",
+      oldValue: log.previous_value || "",
+      newValue: log.new_value || "",
+      environment: "production",
+      userId: log.admin_user_id || "system",
+      userName: log.admin_user_id || "System",
+      timestamp: log.created_at || new Date().toISOString(),
+      ipAddress: log.ip_address || "",
+      userAgent: log.user_agent || "",
+      reason: log.description || "",
+    }));
+  } catch (error) {
+    console.error("Error fetching configuration audit:", error);
+    return [];
+  }
 }
 
 // Settings Statistics
@@ -349,17 +367,7 @@ export async function getSettingsStats(): Promise<SettingsStats> {
     return response.data.data;
   } catch (error) {
     console.error("Error fetching settings stats:", error);
-    // Return default stats on error
-    return {
-      total: 0,
-      byCategory: {},
-      byEnvironment: {},
-      byType: {},
-      secretSettings: 0,
-      requiredSettings: 0,
-      recentlyModified: 0,
-      healthScore: 0,
-    };
+    throw error;
   }
 }
 
@@ -404,12 +412,17 @@ export async function importConfiguration(
 }
 
 // Reset and Restore Operations
-export async function resetToDefaults(settingIds: string[]): Promise<void> {
-  // This would be implemented in the backend
-  throw new Error("Reset to defaults not yet implemented");
+export async function resetToDefaults(
+  _settingIds: string[],
+): Promise<{ success: false; message: string }> {
+  return { success: false, message: "Reset to defaults not yet implemented" };
 }
 
-export async function restoreConfiguration(backupId: string): Promise<void> {
-  // This would be implemented in the backend
-  throw new Error("Configuration restore not yet implemented");
+export async function restoreConfiguration(
+  _backupId: string,
+): Promise<{ success: false; message: string }> {
+  return {
+    success: false,
+    message: "Configuration restore not yet implemented",
+  };
 }

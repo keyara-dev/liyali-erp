@@ -30,15 +30,10 @@ import {
   useArchiveFeatureFlag,
 } from "@/hooks/use-feature-flags";
 
-// Actions (for operations not covered by hooks)
+// Types from actions
 import {
-  bulkUpdateFlags,
-  exportFeatureFlags,
-  importFeatureFlags,
-  getFlagTemplates,
   type FeatureFlag,
   type FeatureFlagFilters,
-  type FlagTemplate,
   type BulkFlagOperation,
 } from "@/app/_actions/feature-flags";
 
@@ -200,91 +195,25 @@ export default function FeatureFlagsPage() {
     setShowAnalyticsDialog(true);
   };
 
-  const handleBulkOperation = async (operation: BulkFlagOperation) => {
-    try {
-      await bulkUpdateFlags(operation);
-      setSelectedFlags([]);
-      await refetchFlags();
-      await refetchStats();
-
-      notify(`Bulk ${operation.action} completed successfully.`, {
-        title: "Success",
-        variant: "success",
-      });
-    } catch (error) {
-      notify(`Failed to perform bulk ${operation.action}.`, {
-        title: "Error",
-        variant: "destructive",
-      });
-    }
+  const handleBulkOperation = async (_operation: BulkFlagOperation) => {
+    notify("Bulk operations are coming soon.", {
+      title: "Coming Soon",
+      variant: "default",
+    });
   };
 
   const handleExport = async () => {
-    try {
-      const exportData = await exportFeatureFlags(
-        selectedFlags.length > 0 ? selectedFlags : undefined,
-      );
-
-      // Create and download file
-      const blob = new Blob([JSON.stringify(exportData, null, 2)], {
-        type: "application/json",
-      });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `feature-flags-export-${new Date().toISOString().split("T")[0]}.json`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-
-      notify("Feature flags exported successfully.", {
-        title: "Success",
-        variant: "success",
-      });
-    } catch (error) {
-      notify("Failed to export feature flags.", {
-        title: "Error",
-        variant: "destructive",
-      });
-    }
+    notify("Export functionality is coming soon.", {
+      title: "Coming Soon",
+      variant: "default",
+    });
   };
 
   const handleImport = () => {
-    const input = document.createElement("input");
-    input.type = "file";
-    input.accept = ".json";
-    input.onchange = async (e) => {
-      const file = (e.target as HTMLInputElement).files?.[0];
-      if (!file) return;
-
-      try {
-        const text = await file.text();
-        const data = JSON.parse(text);
-
-        const result = await importFeatureFlags({
-          flags: data.flags || [data], // Support both single flag and export format
-          overwriteExisting: false,
-        });
-
-        await refetchFlags();
-        await refetchStats();
-
-        notify(
-          `Import completed. ${result.imported} flags imported, ${result.skipped} skipped.`,
-          {
-            title: "Success",
-            variant: "success",
-          },
-        );
-      } catch (error) {
-        notify("Failed to import feature flags.", {
-          title: "Error",
-          variant: "destructive",
-        });
-      }
-    };
-    input.click();
+    notify("Import functionality is coming soon.", {
+      title: "Coming Soon",
+      variant: "default",
+    });
   };
 
   return (
@@ -423,10 +352,11 @@ export default function FeatureFlagsPage() {
         {/* Analytics Tab */}
         <TabsContent value="analytics" className="space-y-6">
           <div className="text-center py-12">
-            <BarChart3 className="mx-auto h-12 w-12 text-muted-foreground" />
+            <BarChart3 className="mx-auto h-12 w-12 text-muted-foreground/50" />
             <h3 className="mt-4 text-lg font-semibold">Global Analytics</h3>
-            <p className="text-muted-foreground">
-              Global feature flag analytics dashboard will be implemented here.
+            <p className="text-sm text-muted-foreground mt-1">Coming Soon</p>
+            <p className="text-xs text-muted-foreground/70 mt-2 max-w-md mx-auto">
+              Track flag evaluation rates, variant distributions, and performance metrics across all feature flags.
             </p>
           </div>
         </TabsContent>
@@ -434,10 +364,11 @@ export default function FeatureFlagsPage() {
         {/* Templates Tab */}
         <TabsContent value="templates" className="space-y-6">
           <div className="text-center py-12">
-            <FileText className="mx-auto h-12 w-12 text-muted-foreground" />
+            <FileText className="mx-auto h-12 w-12 text-muted-foreground/50" />
             <h3 className="mt-4 text-lg font-semibold">Flag Templates</h3>
-            <p className="text-muted-foreground">
-              Feature flag templates gallery will be implemented here.
+            <p className="text-sm text-muted-foreground mt-1">Coming Soon</p>
+            <p className="text-xs text-muted-foreground/70 mt-2 max-w-md mx-auto">
+              Pre-built flag configurations for common patterns like gradual rollouts, A/B tests, and kill switches.
             </p>
           </div>
         </TabsContent>
@@ -445,10 +376,11 @@ export default function FeatureFlagsPage() {
         {/* Audit Tab */}
         <TabsContent value="audit" className="space-y-6">
           <div className="text-center py-12">
-            <FileText className="mx-auto h-12 w-12 text-muted-foreground" />
+            <FileText className="mx-auto h-12 w-12 text-muted-foreground/50" />
             <h3 className="mt-4 text-lg font-semibold">Audit Trail</h3>
-            <p className="text-muted-foreground">
-              Feature flag audit trail will be implemented here.
+            <p className="text-sm text-muted-foreground mt-1">Coming Soon</p>
+            <p className="text-xs text-muted-foreground/70 mt-2 max-w-md mx-auto">
+              Complete history of flag changes including who made changes, when, and what was modified.
             </p>
           </div>
         </TabsContent>

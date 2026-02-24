@@ -115,7 +115,42 @@ export default function SystemHealthPage() {
   };
 
   if (isLoading) {
-    return <div>Loading system health data...</div>;
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">System Health</h1>
+            <p className="text-muted-foreground">Monitor system performance and health</p>
+          </div>
+        </div>
+        <div className="grid gap-4 md:grid-cols-4">
+          {[...Array(4)].map((_, i) => (
+            <Card key={i}>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <div className="h-4 w-24 bg-muted animate-pulse rounded" />
+                <div className="h-4 w-4 bg-muted animate-pulse rounded" />
+              </CardHeader>
+              <CardContent>
+                <div className="h-8 w-16 bg-muted animate-pulse rounded mb-2" />
+                <div className="h-3 w-20 bg-muted animate-pulse rounded" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+        <div className="grid gap-4 md:grid-cols-2">
+          <Card>
+            <CardContent className="p-6">
+              <div className="h-48 bg-muted animate-pulse rounded" />
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-6">
+              <div className="h-48 bg-muted animate-pulse rounded" />
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
   }
 
   return (

@@ -115,15 +115,19 @@ export default function AuditLogsPage() {
   const handleExport = async (format: "csv" | "json" | "pdf") => {
     try {
       const result = await exportAuditLogs(format, filters);
-      if (result.success) {
-        toast.success(
-          `Audit logs export initiated. Download will be available shortly.`,
-        );
-        if (result.data?.download_url) {
-          window.open(result.data.download_url, "_blank");
-        }
+      if (result.success && result.data) {
+        const blob = new Blob([JSON.stringify(result.data, null, 2)], {
+          type: "application/json",
+        });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `audit-logs-export-${new Date().toISOString().split("T")[0]}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+        toast.success("Audit logs exported successfully");
       } else {
-        toast.error("Failed to export audit logs");
+        toast.error(result.message || "Failed to export audit logs");
       }
     } catch (error) {
       console.error("Error exporting audit logs:", error);
@@ -442,9 +446,11 @@ export default function AuditLogsPage() {
             </CardHeader>
             <CardContent>
               <div className="text-center py-8">
-                <AlertTriangle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <p className="text-muted-foreground">
-                  Compliance features coming soon
+                <AlertTriangle className="h-12 w-12 text-muted-foreground/50 mx-auto mb-4" />
+                <h3 className="text-lg font-semibold">Compliance Dashboard</h3>
+                <p className="text-sm text-muted-foreground mt-1">Coming Soon</p>
+                <p className="text-xs text-muted-foreground/70 mt-2 max-w-md mx-auto">
+                  Compliance monitoring with policy enforcement, regulatory reporting, and data retention management.
                 </p>
               </div>
             </CardContent>

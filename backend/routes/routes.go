@@ -13,8 +13,8 @@ func SetupRoutes(app *fiber.App, handlerRegistry *handlers.HandlerRegistry, rbac
 	// Health check (no versioning)
 	app.Get("/health", handlers.HealthCheck)
 
-	// API v1 - Version 1 routes
-	apiV1 := app.Group("/api/v1")
+	// API v1 - Version 1 routes (with API metrics collection)
+	apiV1 := app.Group("/api/v1", middleware.APIMetricsMiddleware())
 
 	// Public routes (no authentication required)
 	public := apiV1.Group("")
@@ -551,6 +551,15 @@ func SetupRoutes(app *fiber.App, handlerRegistry *handlers.HandlerRegistry, rbac
 	admin.Put("/system/config", handlers.UpdateSystemConfig)
 	admin.Post("/system/services/:name/restart", handlers.RestartSystemService)
 	admin.Post("/system/cache/clear", handlers.ClearSystemCache)
+
+	// ===== Admin Notifications =====
+	adminNotifications := admin.Group("/notifications")
+	adminNotifications.Get("/stats", handlers.GetAdminNotificationStats)
+	adminNotifications.Get("/", handlers.GetAdminNotifications)
+	adminNotifications.Post("/", handlers.CreateAdminNotification)
+	adminNotifications.Post("/bulk-delete", handlers.BulkDeleteAdminNotifications)
+	adminNotifications.Delete("/:id", handlers.DeleteAdminNotification)
+	adminNotifications.Post("/:id/read", handlers.MarkAdminNotificationRead)
 
 	// Note: Development tools and test workflow tasks are now created via seed data migrations
 }

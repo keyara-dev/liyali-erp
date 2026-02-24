@@ -106,20 +106,16 @@ export function UserActionsDropdown({
     setIsLoading(true);
     try {
       const result = await impersonateUser(user.id);
-      if (result.success && result.data) {
-        // Store impersonation token and redirect to main app
-        localStorage.setItem(
-          "impersonation_token",
-          result.data.impersonation_token,
+      if (result.success) {
+        const data = (result as any).data;
+        toast.success(
+          `Impersonation token generated. Token expires in ${data?.expires_in || 900} seconds.`,
         );
-        localStorage.setItem("impersonation_expires", result.data.expires_at);
-
-        // Open main app in new tab with impersonation
-        const mainAppUrl =
-          process.env.NEXT_PUBLIC_FRONTEND_URL || "http://localhost:3000";
-        window.open(`${mainAppUrl}?impersonate=true`, "_blank");
-
-        toast.success(`Now impersonating ${user.name}`);
+        // Copy token to clipboard for use
+        if (data?.token) {
+          await navigator.clipboard.writeText(data.token);
+          toast.info("Impersonation token copied to clipboard");
+        }
       } else {
         toast.error(result.message || "Failed to impersonate user");
       }

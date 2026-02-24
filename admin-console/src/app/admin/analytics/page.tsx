@@ -22,7 +22,17 @@ import {
 import { toast } from "sonner";
 import { MetricsGrid } from "./components/metrics-grid";
 import { AnalyticsFilters as AnalyticsFiltersComponent } from "./components/analytics-filters";
-import { useAnalyticsOverview } from "@/hooks/use-analytics";
+import { UserAnalyticsChart } from "./components/user-analytics-chart";
+import { OrganizationAnalyticsChart } from "./components/organization-analytics-chart";
+import { RevenueAnalyticsChart } from "./components/revenue-analytics-chart";
+import { UsageAnalyticsChart } from "./components/usage-analytics-chart";
+import {
+  useAnalyticsOverview,
+  useUserAnalytics,
+  useOrganizationAnalytics,
+  useRevenueAnalytics,
+  useUsageAnalytics,
+} from "@/hooks/use-analytics";
 import type { AnalyticsFilters } from "@/app/_actions/analytics";
 
 export default function AnalyticsPage() {
@@ -38,6 +48,15 @@ export default function AnalyticsPage() {
     isRefetching,
     error,
   } = useAnalyticsOverview(filters);
+
+  const { data: userAnalytics, isLoading: isLoadingUsers } =
+    useUserAnalytics(filters);
+  const { data: orgAnalytics, isLoading: isLoadingOrgs } =
+    useOrganizationAnalytics(filters);
+  const { data: revenueAnalytics, isLoading: isLoadingRevenue } =
+    useRevenueAnalytics(filters);
+  const { data: usageAnalytics, isLoading: isLoadingUsage } =
+    useUsageAnalytics(filters);
 
   const isRefreshing = isRefetching;
 
@@ -271,55 +290,31 @@ export default function AnalyticsPage() {
         </TabsContent>
 
         <TabsContent value="users" className="space-y-4">
-          <Card>
-            <CardContent className="flex items-center justify-center h-64">
-              <div className="text-center">
-                <AlertCircle className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-                <p className="text-muted-foreground">
-                  User analytics charts will be integrated here
-                </p>
-              </div>
-            </CardContent>
-          </Card>
+          <UserAnalyticsChart
+            analytics={userAnalytics ?? null}
+            isLoading={isLoadingUsers}
+          />
         </TabsContent>
 
         <TabsContent value="organizations" className="space-y-4">
-          <Card>
-            <CardContent className="flex items-center justify-center h-64">
-              <div className="text-center">
-                <AlertCircle className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-                <p className="text-muted-foreground">
-                  Organization analytics charts will be integrated here
-                </p>
-              </div>
-            </CardContent>
-          </Card>
+          <OrganizationAnalyticsChart
+            analytics={orgAnalytics ?? null}
+            isLoading={isLoadingOrgs}
+          />
         </TabsContent>
 
         <TabsContent value="revenue" className="space-y-4">
-          <Card>
-            <CardContent className="flex items-center justify-center h-64">
-              <div className="text-center">
-                <AlertCircle className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-                <p className="text-muted-foreground">
-                  Revenue analytics charts will be integrated here
-                </p>
-              </div>
-            </CardContent>
-          </Card>
+          <RevenueAnalyticsChart
+            analytics={revenueAnalytics ?? null}
+            isLoading={isLoadingRevenue}
+          />
         </TabsContent>
 
         <TabsContent value="usage" className="space-y-4">
-          <Card>
-            <CardContent className="flex items-center justify-center h-64">
-              <div className="text-center">
-                <AlertCircle className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-                <p className="text-muted-foreground">
-                  Usage analytics charts will be integrated here
-                </p>
-              </div>
-            </CardContent>
-          </Card>
+          <UsageAnalyticsChart
+            analytics={usageAnalytics ?? null}
+            isLoading={isLoadingUsage}
+          />
         </TabsContent>
       </Tabs>
     </div>

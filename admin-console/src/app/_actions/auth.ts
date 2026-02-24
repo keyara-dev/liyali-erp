@@ -58,10 +58,6 @@ export async function loginAdmin(data: LoginRequest): Promise<AuthResponse> {
     const apiResponse = result;
     const loginData = result.data; // The actual LoginResponse is in the data field
 
-    // Debug: Log the actual response structure
-    console.log("API Response:", JSON.stringify(apiResponse, null, 2));
-    console.log("Login data:", JSON.stringify(loginData, null, 2));
-
     if (!apiResponse.success) {
       return {
         success: false,

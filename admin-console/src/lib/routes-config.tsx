@@ -76,16 +76,8 @@ export const admin_routes: AdminRoutesType[] = [
         href: "/admin/audit-logs",
         icon: "FileText",
       },
-      {
-        title: "API Monitoring",
-        href: "/admin/api-monitoring",
-        icon: "Zap",
-      },
-      {
-        title: "Database",
-        href: "/admin/database",
-        icon: "Database",
-      },
+      { title: "API Monitoring", href: "/admin/api-monitoring", icon: "Zap" },
+      { title: "Database", href: "/admin/database", icon: "Database" },
     ],
   },
   {
@@ -101,11 +93,7 @@ export const admin_routes: AdminRoutesType[] = [
         href: "/admin/feature-flags",
         icon: "Flag",
       },
-      {
-        title: "Notifications",
-        href: "/admin/notifications",
-        icon: "Bell",
-      },
+      { title: "Notifications", href: "/admin/notifications", icon: "Bell" },
     ],
   },
 ];

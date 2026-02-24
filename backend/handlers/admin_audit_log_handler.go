@@ -474,10 +474,84 @@ func GetAdminAuditLogByID(c *fiber.Ctx) error {
 	return utils.SendSimpleSuccess(c, mapAuditLogRow(row), "Audit log retrieved successfully")
 }
 
-// ExportAdminAuditLogs is an MVP stub that returns 501 Not Implemented.
+// ExportAdminAuditLogs exports audit logs as JSON matching the applied filters.
 // POST /api/v1/admin/audit-logs/export
 func ExportAdminAuditLogs(c *fiber.Ctx) error {
-	return utils.SendNotImplementedError(c, "Audit log export is not yet implemented")
+	db := config.DB
+
+	query := db.Table("admin_audit_logs")
+
+	// Apply the same filters as GetAdminAuditLogs
+	if userID := c.Query("user_id"); userID != "" {
+		query = query.Where("admin_user_id = ?", userID)
+	}
+	if organizationID := c.Query("organization_id"); organizationID != "" {
+		query = query.Where("organization_id = ?", organizationID)
+	}
+	if actionType := c.Query("action_type"); actionType != "" {
+		query = query.Where("action ILIKE ?", "%"+actionType+"%")
+	}
+	if search := c.Query("search"); search != "" {
+		searchPattern := "%" + search + "%"
+		query = query.Where("action ILIKE ? OR details::text ILIKE ?", searchPattern, searchPattern)
+	}
+	if dateRange := c.Query("date_range"); dateRange != "" {
+		now := time.Now()
+		switch dateRange {
+		case "1h":
+			query = query.Where("created_at >= ?", now.Add(-1*time.Hour))
+		case "24h":
+			query = query.Where("created_at >= ?", now.Add(-24*time.Hour))
+		case "7d":
+			query = query.Where("created_at >= ?", now.AddDate(0, 0, -7))
+		case "30d":
+			query = query.Where("created_at >= ?", now.AddDate(0, 0, -30))
+		case "90d":
+			query = query.Where("created_at >= ?", now.AddDate(0, 0, -90))
+		}
+	}
+	if startDate := c.Query("start_date"); startDate != "" {
+		if t, err := time.Parse("2006-01-02", startDate); err == nil {
+			query = query.Where("created_at >= ?", t)
+		}
+	}
+	if endDate := c.Query("end_date"); endDate != "" {
+		if t, err := time.Parse("2006-01-02", endDate); err == nil {
+			query = query.Where("created_at <= ?", t.Add(24*time.Hour))
+		}
+	}
+
+	// Limit export to 10000 rows for safety
+	var rows []adminAuditLogRow
+	if err := query.
+		Order("created_at DESC").
+		Limit(10000).
+		Find(&rows).Error; err != nil {
+		log.Printf("Error exporting audit logs: %v", err)
+		return utils.SendInternalError(c, "Failed to export audit logs", err)
+	}
+
+	results := make([]map[string]interface{}, 0, len(rows))
+	for _, row := range rows {
+		results = append(results, mapAuditLogRow(row))
+	}
+
+	exportData := map[string]interface{}{
+		"logs":        results,
+		"total_count": len(results),
+		"exported_at": time.Now().Format(time.RFC3339),
+		"filters_applied": map[string]string{
+			"user_id":    c.Query("user_id"),
+			"action_type": c.Query("action_type"),
+			"date_range": c.Query("date_range"),
+			"search":     c.Query("search"),
+		},
+	}
+
+	c.Set("Content-Disposition", fmt.Sprintf("attachment; filename=audit-logs-export-%s.json", time.Now().Format("2006-01-02")))
+	c.Set("Content-Type", "application/json")
+
+	return c.JSON(exportData)
 }
 
 // GetAdminAuditLogSecurityEvents returns audit logs filtered for security-related actions.
@@ -596,11 +670,9 @@ func CreateAdminAuditLog(c *fiber.Ctx) error {
 	return utils.SendCreatedSuccess(c, mapAuditLogRow(row), "Audit log entry created successfully")
 }
 
-// GetAdminAuditLogRetentionSettings returns the current retention settings (MVP stub).
-// GET /api/v1/admin/audit-logs/retention-settings
-func GetAdminAuditLogRetentionSettings(c *fiber.Ctx) error {
-	// Return sensible defaults since retention settings are not yet persisted
-	settings := map[string]interface{}{
+// retentionSettingsDefaults returns sensible default retention settings
+func retentionSettingsDefaults() map[string]interface{} {
+	return map[string]interface{}{
 		"retention_days":         90,
 		"auto_archive_enabled":  false,
 		"archive_after_days":    60,
@@ -609,14 +681,42 @@ func GetAdminAuditLogRetentionSettings(c *fiber.Ctx) error {
 		"compress_after_days":   30,
 		"export_before_delete":  true,
 		"excluded_action_types": []string{},
-		"updated_at":            nil,
-		"updated_by":            nil,
 	}
-
-	return utils.SendSimpleSuccess(c, settings, "Retention settings retrieved successfully")
 }
 
-// UpdateAdminAuditLogRetentionSettings updates the retention settings (MVP stub).
+// GetAdminAuditLogRetentionSettings returns the current retention settings.
+// Reads from system_settings table, falls back to defaults.
+// GET /api/v1/admin/audit-logs/retention-settings
+func GetAdminAuditLogRetentionSettings(c *fiber.Ctx) error {
+	db := config.DB
+	defaults := retentionSettingsDefaults()
+
+	// Try to load persisted settings from system_settings
+	var settingRow map[string]interface{}
+	err := db.Table("system_settings").Where("key = ?", "audit_log_retention").First(&settingRow).Error
+
+	if err == nil {
+		// Parse the stored JSON value
+		valueStr, ok := settingRow["value"].(string)
+		if ok {
+			var persisted map[string]interface{}
+			if jsonErr := json.Unmarshal([]byte(valueStr), &persisted); jsonErr == nil {
+				// Merge persisted with defaults (persisted values take priority)
+				for k, v := range persisted {
+					defaults[k] = v
+				}
+				defaults["updated_at"] = settingRow["updated_at"]
+			}
+		}
+	} else {
+		defaults["updated_at"] = nil
+		defaults["updated_by"] = nil
+	}
+
+	return utils.SendSimpleSuccess(c, defaults, "Retention settings retrieved successfully")
+}
+
+// UpdateAdminAuditLogRetentionSettings persists retention settings to system_settings.
 // PUT /api/v1/admin/audit-logs/retention-settings
 func UpdateAdminAuditLogRetentionSettings(c *fiber.Ctx) error {
 	var req map[string]interface{}
@@ -626,23 +726,58 @@ func UpdateAdminAuditLogRetentionSettings(c *fiber.Ctx) error {
 
 	userID, _ := c.Locals("userID").(string)
 
-	// For the MVP, just echo back the settings the user sent with metadata
-	settings := map[string]interface{}{
-		"retention_days":         getMapValueOrDefault(req, "retention_days", 90),
-		"auto_archive_enabled":  getMapValueOrDefault(req, "auto_archive_enabled", false),
-		"archive_after_days":    getMapValueOrDefault(req, "archive_after_days", 60),
-		"auto_delete_enabled":   getMapValueOrDefault(req, "auto_delete_enabled", false),
-		"delete_after_days":     getMapValueOrDefault(req, "delete_after_days", 365),
-		"compress_after_days":   getMapValueOrDefault(req, "compress_after_days", 30),
-		"export_before_delete":  getMapValueOrDefault(req, "export_before_delete", true),
-		"excluded_action_types": getMapValueOrDefault(req, "excluded_action_types", []string{}),
-		"updated_at":            time.Now(),
-		"updated_by":            userID,
+	// Build the settings from request merged with defaults
+	defaults := retentionSettingsDefaults()
+	for k, v := range req {
+		defaults[k] = v
 	}
 
-	_ = fmt.Sprintf("Retention settings updated by user %s", userID)
+	// Serialize to JSON for storage
+	settingsJSON, err := json.Marshal(defaults)
+	if err != nil {
+		return utils.SendInternalError(c, "Failed to serialize settings", err)
+	}
 
-	return utils.SendSimpleSuccess(c, settings, "Retention settings updated successfully")
+	now := time.Now()
+	valueStr := string(settingsJSON)
+
+	// Upsert into system_settings
+	var existing map[string]interface{}
+	dbErr := config.DB.Table("system_settings").Where("key = ?", "audit_log_retention").First(&existing).Error
+
+	if dbErr != nil {
+		// Insert new
+		config.DB.Table("system_settings").Create(map[string]interface{}{
+			"id":          utils.GenerateID(),
+			"key":         "audit_log_retention",
+			"value":       valueStr,
+			"category":    "audit",
+			"description": "Audit log retention configuration",
+			"created_at":  now,
+			"updated_at":  now,
+		})
+	} else {
+		// Update existing
+		config.DB.Table("system_settings").Where("key = ?", "audit_log_retention").Updates(map[string]interface{}{
+			"value":      valueStr,
+			"updated_at": now,
+		})
+	}
+
+	// Log the change
+	config.DB.Table("admin_audit_logs").Create(map[string]interface{}{
+		"id":            utils.GenerateID(),
+		"action":        "retention_settings_updated",
+		"admin_user_id": userID,
+		"new_value":     valueStr,
+		"description":   fmt.Sprintf("Audit log retention settings updated by admin %s", userID),
+		"created_at":    now,
+	})
+
+	defaults["updated_at"] = now
+	defaults["updated_by"] = userID
+
+	return utils.SendSimpleSuccess(c, defaults, "Retention settings updated successfully")
 }
 
 // getMapValueOrDefault returns the value from a map or the provided default.

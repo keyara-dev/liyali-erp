@@ -41,10 +41,10 @@ import {
   deactivateAdminUser,
   unlockAdminUser,
   resetAdminUserPassword,
-  toggleTwoFactor,
   deleteAdminUser,
   terminateAllAdminUserSessions,
   impersonateAdminUser,
+  toggleTwoFactor,
   type AdminUser,
 } from "@/app/_actions/admin-users";
 
@@ -150,17 +150,19 @@ export function AdminUserActionsDropdown({
   const handleToggleTwoFactor = async () => {
     setIsLoading(true);
     try {
-      const result = await toggleTwoFactor(user.id, !user.two_factor_enabled);
+      const result = await toggleTwoFactor(
+        user.id,
+        !user.two_factor_enabled,
+      );
       if (result.success) {
         toast.success(
-          `Two-factor authentication ${user.two_factor_enabled ? "disabled" : "enabled"} successfully`,
+          `Two-factor authentication ${user.two_factor_enabled ? "disabled" : "enabled"} for user`,
         );
         onUserUpdated();
       } else {
-        toast.error("Failed to toggle two-factor authentication");
+        toast.error(result.message || "Failed to toggle 2FA");
       }
     } catch (error) {
-      console.error("Error toggling 2FA:", error);
       toast.error("Failed to toggle two-factor authentication");
     } finally {
       setIsLoading(false);
@@ -210,18 +212,19 @@ export function AdminUserActionsDropdown({
     try {
       const result = await impersonateAdminUser(user.id);
       if (result.success) {
-        toast.success("Impersonation started successfully");
-        // Handle impersonation token - typically redirect or store token
-        if (result.data?.impersonation_token) {
-          // Store token and redirect or handle as needed
-          console.log("Impersonation token:", result.data.impersonation_token);
+        const data = (result as any).data;
+        toast.success(
+          `Impersonation token generated. Token expires in ${data?.expires_in || 900} seconds.`,
+        );
+        if (data?.token) {
+          await navigator.clipboard.writeText(data.token);
+          toast.info("Impersonation token copied to clipboard");
         }
       } else {
-        toast.error("Failed to start impersonation");
+        toast.error(result.message || "Failed to impersonate admin user");
       }
     } catch (error) {
-      console.error("Error starting impersonation:", error);
-      toast.error("Failed to start impersonation");
+      toast.error("Failed to impersonate admin user");
     } finally {
       setIsLoading(false);
     }

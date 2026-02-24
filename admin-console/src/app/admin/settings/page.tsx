@@ -30,14 +30,8 @@ import {
   useDeleteSystemSetting,
 } from "@/hooks/use-settings";
 
-// Actions (for operations not covered by hooks)
+// Types from actions
 import {
-  getConfigurationTemplates,
-  bulkUpdateSettings,
-  exportConfiguration,
-  importConfiguration,
-  resetToDefaults,
-  getSystemHealth,
   type SystemSetting,
   type SettingsFilters,
   type ConfigurationTemplate,
@@ -152,108 +146,32 @@ export default function SettingsPage() {
     }
   };
 
-  const handleBulkOperation = async (operation: BulkSettingsOperation) => {
-    try {
-      await bulkUpdateSettings(operation);
-      setSelectedSettings([]);
-      await refetchSettings();
-      await refetchStats();
-
-      notify(`Bulk ${operation.action} completed successfully.`, {
-        title: "Success",
-        variant: "success",
-      });
-    } catch (error) {
-      notify(`Failed to perform bulk ${operation.action}.`, {
-        title: "Error",
-        variant: "destructive",
-      });
-    }
+  const handleBulkOperation = async (_operation: BulkSettingsOperation) => {
+    notify("Bulk operations are coming soon.", {
+      title: "Coming Soon",
+      variant: "default",
+    });
   };
 
   const handleExport = async () => {
-    try {
-      const exportData = await exportConfiguration(
-        "all",
-        selectedSettings.length > 0 ? selectedSettings : undefined,
-      );
-
-      // Create and download file
-      const blob = new Blob([JSON.stringify(exportData, null, 2)], {
-        type: "application/json",
-      });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `settings-export-${new Date().toISOString().split("T")[0]}.json`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-
-      notify("Settings exported successfully.", {
-        title: "Success",
-        variant: "success",
-      });
-    } catch (error) {
-      notify("Failed to export settings.", {
-        title: "Error",
-        variant: "destructive",
-      });
-    }
+    notify("Export functionality is coming soon.", {
+      title: "Coming Soon",
+      variant: "default",
+    });
   };
 
   const handleImport = () => {
-    const input = document.createElement("input");
-    input.type = "file";
-    input.accept = ".json";
-    input.onchange = async (e) => {
-      const file = (e.target as HTMLInputElement).files?.[0];
-      if (!file) return;
-
-      try {
-        const result = await importConfiguration({
-          file,
-          environment: "all",
-          overwriteExisting: false,
-          validateOnly: false,
-        });
-
-        await refetchSettings();
-        await refetchStats();
-
-        notify(
-          `Import completed. ${result.imported} settings imported, ${result.skipped} skipped.`,
-          {
-            title: "Success",
-            variant: "success",
-          },
-        );
-      } catch (error) {
-        notify("Failed to import settings.", {
-          title: "Error",
-          variant: "destructive",
-        });
-      }
-    };
-    input.click();
+    notify("Import functionality is coming soon.", {
+      title: "Coming Soon",
+      variant: "default",
+    });
   };
 
-  const handleResetToDefaults = async (settingIds: string[]) => {
-    try {
-      await resetToDefaults(settingIds);
-      await refetchSettings();
-
-      notify("Settings reset to defaults successfully.", {
-        title: "Success",
-        variant: "success",
-      });
-    } catch (error) {
-      notify("Failed to reset settings.", {
-        title: "Error",
-        variant: "destructive",
-      });
-    }
+  const handleResetToDefaults = async (_settingIds: string[]) => {
+    notify("Reset to defaults is coming soon.", {
+      title: "Coming Soon",
+      variant: "default",
+    });
   };
 
   const handleApplyTemplate = async (templateId: string) => {
@@ -438,10 +356,11 @@ export default function SettingsPage() {
         {/* Audit Tab */}
         <TabsContent value="audit" className="space-y-6">
           <div className="text-center py-12">
-            <FileText className="mx-auto h-12 w-12 text-muted-foreground" />
-            <h3 className="mt-4 text-lg font-semibold">Audit Trail</h3>
-            <p className="text-muted-foreground">
-              Configuration audit trail will be implemented here.
+            <FileText className="mx-auto h-12 w-12 text-muted-foreground/50" />
+            <h3 className="mt-4 text-lg font-semibold">Configuration Audit Trail</h3>
+            <p className="text-sm text-muted-foreground mt-1">Coming Soon</p>
+            <p className="text-xs text-muted-foreground/70 mt-2 max-w-md mx-auto">
+              Track all configuration changes with who made them, when, and what was modified.
             </p>
           </div>
         </TabsContent>

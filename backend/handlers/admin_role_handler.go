@@ -520,14 +520,99 @@ func AdminCloneRole(c *fiber.Ctx) error {
 	return utils.SendCreatedSuccess(c, cloned, "Role cloned successfully")
 }
 
-// AdminExportRoles exports roles (post-MVP stub)
+// AdminExportRoles exports roles as JSON
 func AdminExportRoles(c *fiber.Ctx) error {
-	return utils.SendNotImplementedError(c, "Role export is not yet implemented")
+	db := config.DB
+
+	query := db.Table("organization_roles")
+
+	if search := c.Query("search"); search != "" {
+		searchPattern := "%" + search + "%"
+		query = query.Where("name ILIKE ? OR COALESCE(display_name, '') ILIKE ? OR COALESCE(description, '') ILIKE ?",
+			searchPattern, searchPattern, searchPattern)
+	}
+
+	var roles []map[string]interface{}
+	if err := query.
+		Order("created_at DESC").
+		Limit(10000).
+		Find(&roles).Error; err != nil {
+		log.Printf("Error exporting roles: %v", err)
+		return utils.SendInternalError(c, "Failed to export roles", err)
+	}
+
+	// Enrich each role with permissions and user count
+	enrichedRoles := make([]map[string]interface{}, 0, len(roles))
+	for _, role := range roles {
+		enriched := roleToFrontend(role)
+		enrichedRoles = append(enrichedRoles, enriched)
+	}
+
+	exportData := map[string]interface{}{
+		"roles":       enrichedRoles,
+		"total_count": len(enrichedRoles),
+		"exported_at": time.Now().Format(time.RFC3339),
+	}
+
+	c.Set("Content-Disposition", "attachment; filename=roles-export-"+time.Now().Format("2006-01-02")+".json")
+	c.Set("Content-Type", "application/json")
+
+	return c.JSON(exportData)
 }
 
-// AdminBulkUpdateRoles bulk updates roles (post-MVP stub)
+// AdminBulkUpdateRoles applies bulk actions to roles
 func AdminBulkUpdateRoles(c *fiber.Ctx) error {
-	return utils.SendNotImplementedError(c, "Bulk role update is not yet implemented")
+	db := config.DB
+
+	var req struct {
+		RoleIDs []string `json:"role_ids"`
+		Action  string   `json:"action"` // activate, deactivate, delete
+	}
+	if err := c.BodyParser(&req); err != nil {
+		return utils.SendBadRequest(c, "Invalid request body")
+	}
+	if len(req.RoleIDs) == 0 {
+		return utils.SendBadRequest(c, "No role IDs provided")
+	}
+	if req.Action == "" {
+		return utils.SendBadRequest(c, "Action is required")
+	}
+
+	var affected int64
+	switch req.Action {
+	case "activate":
+		result := db.Table("organization_roles").
+			Where("id IN ? AND COALESCE(is_system_role, false) = false", req.RoleIDs).
+			Update("active", true)
+		affected = result.RowsAffected
+		if result.Error != nil {
+			return utils.SendInternalError(c, "Failed to activate roles", result.Error)
+		}
+	case "deactivate":
+		result := db.Table("organization_roles").
+			Where("id IN ? AND COALESCE(is_system_role, false) = false", req.RoleIDs).
+			Update("active", false)
+		affected = result.RowsAffected
+		if result.Error != nil {
+			return utils.SendInternalError(c, "Failed to deactivate roles", result.Error)
+		}
+	case "delete":
+		result := db.Table("organization_roles").
+			Where("id IN ? AND COALESCE(is_system_role, false) = false", req.RoleIDs).
+			Delete(nil)
+		affected = result.RowsAffected
+		if result.Error != nil {
+			return utils.SendInternalError(c, "Failed to delete roles", result.Error)
+		}
+	default:
+		return utils.SendBadRequest(c, "Invalid action. Supported: activate, deactivate, delete")
+	}
+
+	return utils.SendSimpleSuccess(c, map[string]interface{}{
+		"action":   req.Action,
+		"affected": affected,
+		"total":    len(req.RoleIDs),
+	}, "Bulk operation completed successfully")
 }
 
 // AdminGetRoleAuditHistory returns audit history for a role

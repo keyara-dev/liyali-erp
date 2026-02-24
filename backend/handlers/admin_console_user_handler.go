@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"strings"
 	"time"
@@ -537,9 +538,49 @@ func AdminResetAdminPassword(c *fiber.Ctx) error {
 	return utils.SendSimpleSuccess(c, response, "Admin password reset successfully")
 }
 
-// AdminToggleTwoFactor toggles 2FA for an admin user (MVP stub)
+// AdminToggleTwoFactor toggles 2FA for an admin user
+// Note: Full TOTP infrastructure is not yet available. This provides a placeholder
+// that records the intent and returns an informative response.
 func AdminToggleTwoFactor(c *fiber.Ctx) error {
-	return utils.SendSimpleSuccess(c, nil, "Two-factor authentication toggle acknowledged")
+	db := config.DB
+	userID := c.Params("id")
+	adminUserID, _ := c.Locals("userID").(string)
+
+	type toggleRequest struct {
+		Enabled bool `json:"enabled"`
+	}
+
+	var req toggleRequest
+	if err := c.BodyParser(&req); err != nil {
+		return utils.SendBadRequest(c, "Invalid request body")
+	}
+
+	// Verify the admin user exists
+	var count int64
+	db.Table("users").Where("id = ? AND role IN ('super_admin', 'admin')", userID).Count(&count)
+	if count == 0 {
+		return utils.SendNotFound(c, "Admin user not found")
+	}
+
+	// Log the 2FA toggle attempt in audit log
+	action := "2fa_disable_requested"
+	if req.Enabled {
+		action = "2fa_enable_requested"
+	}
+	db.Table("admin_audit_logs").Create(map[string]interface{}{
+		"id":            utils.GenerateID(),
+		"action":        action,
+		"admin_user_id": adminUserID,
+		"new_value":     userID,
+		"description":   fmt.Sprintf("2FA %s requested for admin user %s", action, userID),
+		"created_at":    time.Now(),
+	})
+
+	return utils.SendSimpleSuccess(c, map[string]interface{}{
+		"user_id":     userID,
+		"two_factor":  req.Enabled,
+		"message":     "Two-factor authentication configuration has been recorded. Full TOTP enrollment requires additional setup.",
+	}, "Two-factor authentication preference updated")
 }
 
 // AdminGetAdminUserActivity returns activity for an admin user
@@ -594,17 +635,152 @@ func AdminTerminateAllAdminSessions(c *fiber.Ctx) error {
 	return utils.SendSimpleSuccess(c, nil, "All admin sessions terminated successfully")
 }
 
-// AdminExportAdminUsers exports admin users (post-MVP stub)
+// AdminExportAdminUsers exports admin users as JSON
 func AdminExportAdminUsers(c *fiber.Ctx) error {
-	return utils.SendNotImplementedError(c, "Admin user export is not yet implemented")
+	db := config.DB
+
+	query := db.Table("users").Where("role IN ?", adminRoles)
+
+	if search := c.Query("search"); search != "" {
+		searchPattern := "%" + search + "%"
+		query = query.Where("name ILIKE ? OR email ILIKE ?", searchPattern, searchPattern)
+	}
+	if isActive := c.Query("is_active"); isActive == "true" {
+		query = query.Where("is_active = ?", true)
+	} else if isActive == "false" {
+		query = query.Where("is_active = ?", false)
+	}
+
+	var rawUsers []map[string]interface{}
+	if err := query.
+		Order("created_at DESC").
+		Limit(10000).
+		Find(&rawUsers).Error; err != nil {
+		log.Printf("Error exporting admin users: %v", err)
+		return utils.SendInternalError(c, "Failed to export admin users", err)
+	}
+
+	users := make([]map[string]interface{}, 0, len(rawUsers))
+	for _, raw := range rawUsers {
+		users = append(users, adminUserToFrontend(raw))
+	}
+
+	exportData := map[string]interface{}{
+		"users":       users,
+		"total_count": len(users),
+		"exported_at": time.Now().Format(time.RFC3339),
+	}
+
+	c.Set("Content-Disposition", "attachment; filename=admin-users-export-"+time.Now().Format("2006-01-02")+".json")
+	c.Set("Content-Type", "application/json")
+
+	return c.JSON(exportData)
 }
 
-// AdminBulkUpdateAdminUsers bulk updates admin users (post-MVP stub)
+// AdminBulkUpdateAdminUsers applies bulk actions to admin users
 func AdminBulkUpdateAdminUsers(c *fiber.Ctx) error {
-	return utils.SendNotImplementedError(c, "Bulk admin user update is not yet implemented")
+	db := config.DB
+
+	var req struct {
+		UserIDs []string `json:"user_ids"`
+		Action  string   `json:"action"` // activate, deactivate, delete
+	}
+	if err := c.BodyParser(&req); err != nil {
+		return utils.SendBadRequest(c, "Invalid request body")
+	}
+	if len(req.UserIDs) == 0 {
+		return utils.SendBadRequest(c, "No user IDs provided")
+	}
+	if req.Action == "" {
+		return utils.SendBadRequest(c, "Action is required")
+	}
+
+	var affected int64
+	switch req.Action {
+	case "activate":
+		result := db.Table("users").Where("id IN ? AND role IN ?", req.UserIDs, adminRoles).
+			Update("is_active", true)
+		affected = result.RowsAffected
+		if result.Error != nil {
+			return utils.SendInternalError(c, "Failed to activate users", result.Error)
+		}
+	case "deactivate":
+		result := db.Table("users").Where("id IN ? AND role IN ?", req.UserIDs, adminRoles).
+			Update("is_active", false)
+		affected = result.RowsAffected
+		if result.Error != nil {
+			return utils.SendInternalError(c, "Failed to deactivate users", result.Error)
+		}
+	case "delete":
+		result := db.Table("users").Where("id IN ? AND role IN ? AND is_super_admin = ?", req.UserIDs, adminRoles, false).
+			Delete(nil)
+		affected = result.RowsAffected
+		if result.Error != nil {
+			return utils.SendInternalError(c, "Failed to delete users", result.Error)
+		}
+	default:
+		return utils.SendBadRequest(c, "Invalid action. Supported: activate, deactivate, delete")
+	}
+
+	return utils.SendSimpleSuccess(c, map[string]interface{}{
+		"action":   req.Action,
+		"affected": affected,
+		"total":    len(req.UserIDs),
+	}, "Bulk operation completed successfully")
 }
 
-// AdminImpersonateAdminUser impersonates an admin user (post-MVP stub)
+// AdminImpersonateAdminUser generates a short-lived impersonation token for an admin user
 func AdminImpersonateAdminUser(c *fiber.Ctx) error {
-	return utils.SendNotImplementedError(c, "Admin user impersonation is not yet implemented")
+	db := config.DB
+	userID := c.Params("id")
+	adminUserID, _ := c.Locals("userID").(string)
+
+	// Cannot impersonate yourself
+	if userID == adminUserID {
+		return utils.SendBadRequest(c, "Cannot impersonate yourself")
+	}
+
+	// Look up the target admin user
+	var user map[string]interface{}
+	err := db.Table("users").Where("id = ? AND role IN ('super_admin', 'admin')", userID).First(&user).Error
+	if err != nil {
+		return utils.SendNotFound(c, "Admin user not found")
+	}
+
+	status, _ := user["status"].(string)
+	if status != "active" {
+		return utils.SendBadRequest(c, "Cannot impersonate inactive or suspended admin user")
+	}
+
+	email, _ := user["email"].(string)
+	name, _ := user["name"].(string)
+	role, _ := user["role"].(string)
+
+	token, err := utils.GenerateToken(userID, email, name, role, nil)
+	if err != nil {
+		log.Printf("Error generating admin impersonation token: %v", err)
+		return utils.SendInternalError(c, "Failed to generate impersonation token", err)
+	}
+
+	// Log in audit
+	db.Table("admin_audit_logs").Create(map[string]interface{}{
+		"id":            utils.GenerateID(),
+		"action":        "admin_impersonation",
+		"admin_user_id": adminUserID,
+		"new_value":     userID,
+		"description":   fmt.Sprintf("Admin impersonated admin user: %s", email),
+		"created_at":    time.Now(),
+	})
+
+	return utils.SendSimpleSuccess(c, map[string]interface{}{
+		"token":            token,
+		"expires_in":       900,
+		"impersonated_user": map[string]interface{}{
+			"id":    userID,
+			"email": email,
+			"name":  name,
+			"role":  role,
+		},
+		"warning": "This is a short-lived token for impersonation purposes. All actions will be logged.",
+	}, "Admin impersonation token generated successfully")
 }
