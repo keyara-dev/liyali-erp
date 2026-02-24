@@ -32,7 +32,7 @@ func (r *ReportsRepository) QueryDocumentStats(
 			UNION ALL
 			SELECT id, status, created_at, 'payment_voucher' FROM payment_vouchers WHERE organization_id = $1
 			UNION ALL
-			SELECT id, status, created_at, 'grn' FROM grn WHERE organization_id = $1
+			SELECT id, status, created_at, 'grn' FROM goods_received_notes WHERE organization_id = $1
 			UNION ALL
 			SELECT id, status, created_at, 'budget' FROM budgets WHERE organization_id = $1
 		),
@@ -127,7 +127,7 @@ func (r *ReportsRepository) QueryApprovalActivity(
 		LEFT JOIN requisitions r ON wt.entity_id = r.id AND wt.entity_type = 'REQUISITION'
 		LEFT JOIN purchase_orders po ON wt.entity_id = po.id AND wt.entity_type = 'PURCHASE_ORDER'
 		LEFT JOIN payment_vouchers pv ON wt.entity_id = pv.id AND wt.entity_type = 'PAYMENT_VOUCHER'
-		LEFT JOIN grn g ON wt.entity_id = g.id AND wt.entity_type = 'GRN'
+		LEFT JOIN goods_received_notes g ON wt.entity_id = g.id AND wt.entity_type = 'GRN'
 		LEFT JOIN budgets b ON wt.entity_id = b.id AND wt.entity_type = 'BUDGET'
 		WHERE sar.organization_id = $1
 		  AND sar.action IN ('approved', 'rejected')
