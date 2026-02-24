@@ -9,42 +9,46 @@ import authenticatedApiClient, {
 export interface SubscriptionTier {
   id: string;
   name: string;
-  display_name: string;
+  displayName: string;
   description: string;
-  price_monthly: number;
-  price_yearly: number;
-  max_users: number;
-  max_organizations?: number;
-  storage_limit_gb: number;
+  priceMonthly: number;
+  priceYearly: number;
+  maxWorkspaces: number;
+  maxTeamMembers: number;
+  maxDocuments: number;
+  maxWorkflows: number;
+  maxCustomRoles: number;
   features: string[];
-  is_active: boolean;
-  sort_order: number;
-  created_at: string;
-  updated_at: string;
+  isActive: boolean;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface SubscriptionFeature {
   id: string;
   name: string;
-  display_name: string;
+  displayName: string;
   description: string;
   category: string;
-  is_active: boolean;
-  created_at: string;
+  isActive: boolean;
+  createdAt: string;
 }
 
 export interface CreateTierRequest {
   name: string;
-  display_name: string;
+  displayName: string;
   description: string;
-  price_monthly: number;
-  price_yearly: number;
-  max_users: number;
-  max_organizations?: number;
-  storage_limit_gb: number;
+  priceMonthly: number;
+  priceYearly: number;
+  maxWorkspaces: number;
+  maxTeamMembers: number;
+  maxDocuments: number;
+  maxWorkflows: number;
+  maxCustomRoles: number;
   features: string[];
-  is_active: boolean;
-  sort_order: number;
+  isActive: boolean;
+  sortOrder: number;
 }
 
 export interface UpdateTierRequest extends Partial<CreateTierRequest> {
@@ -290,7 +294,7 @@ export async function resetOrganizationTrial(
   organizationId: string,
   request: TrialResetRequest,
 ): Promise<APIResponse<any>> {
-  const url = `/api/v1/admin/organizations/${organizationId}/trial/reset`;
+  const url = `/api/v1/organizations/${organizationId}/trial/reset`;
 
   try {
     const response = await authenticatedApiClient({
@@ -428,7 +432,7 @@ export async function extendOrganizationTrial(
     reason: string;
   },
 ): Promise<APIResponse<any>> {
-  const url = `/api/v1/admin/organizations/${organizationId}/trial/extend`;
+  const url = `/api/v1/organizations/${organizationId}/trial/extend`;
 
   try {
     const response = await authenticatedApiClient({

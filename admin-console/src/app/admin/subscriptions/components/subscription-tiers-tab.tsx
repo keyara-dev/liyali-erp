@@ -9,7 +9,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -20,7 +20,9 @@ import {
   Users,
   HardDrive,
   Check,
-  X,
+  FileText,
+  Workflow,
+  Shield,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -44,15 +46,18 @@ export function SubscriptionTiersTab() {
   // Form state
   const [formData, setFormData] = useState<CreateTierRequest>({
     name: "",
-    display_name: "",
+    displayName: "",
     description: "",
-    price_monthly: 0,
-    price_yearly: 0,
-    max_users: 10,
-    storage_limit_gb: 10,
+    priceMonthly: 0,
+    priceYearly: 0,
+    maxWorkspaces: 1,
+    maxTeamMembers: 10,
+    maxDocuments: 100,
+    maxWorkflows: 5,
+    maxCustomRoles: 0,
     features: [],
-    is_active: true,
-    sort_order: 0,
+    isActive: true,
+    sortOrder: 0,
   });
 
   useEffect(() => {
@@ -68,12 +73,30 @@ export function SubscriptionTiersTab() {
       ]);
 
       if (tiersResult.success) {
-        setTiers(tiersResult.data || []);
+        console.log("Raw tiers data:", tiersResult.data);
+        // Ensure features is always an array
+        const normalizedTiers = (tiersResult.data || []).map((tier) => ({
+          ...tier,
+          features: Array.isArray(tier.features)
+            ? tier.features
+            : typeof tier.features === "string"
+              ? JSON.parse(tier.features)
+              : [],
+        }));
+        console.log("Normalized tiers:", normalizedTiers);
+        setTiers(normalizedTiers);
+      } else {
+        console.error("Failed to load tiers:", tiersResult.message);
+        toast.error(tiersResult.message || "Failed to load tiers");
       }
       if (featuresResult.success) {
+        console.log("Features data:", featuresResult.data);
         setFeatures(featuresResult.data || []);
+      } else {
+        console.error("Failed to load features:", featuresResult.message);
       }
     } catch (error) {
+      console.error("Error loading subscription data:", error);
       toast.error("Failed to load subscription data");
     } finally {
       setIsLoading(false);
@@ -129,15 +152,18 @@ export function SubscriptionTiersTab() {
   const resetForm = () => {
     setFormData({
       name: "",
-      display_name: "",
+      displayName: "",
       description: "",
-      price_monthly: 0,
-      price_yearly: 0,
-      max_users: 10,
-      storage_limit_gb: 10,
+      priceMonthly: 0,
+      priceYearly: 0,
+      maxWorkspaces: 1,
+      maxTeamMembers: 10,
+      maxDocuments: 100,
+      maxWorkflows: 5,
+      maxCustomRoles: 0,
       features: [],
-      is_active: true,
-      sort_order: 0,
+      isActive: true,
+      sortOrder: 0,
     });
     setEditingTier(null);
     setIsCreating(false);
@@ -146,16 +172,18 @@ export function SubscriptionTiersTab() {
   const startEdit = (tier: SubscriptionTier) => {
     setFormData({
       name: tier.name,
-      display_name: tier.display_name,
+      displayName: tier.displayName,
       description: tier.description,
-      price_monthly: tier.price_monthly,
-      price_yearly: tier.price_yearly,
-      max_users: tier.max_users,
-      max_organizations: tier.max_organizations,
-      storage_limit_gb: tier.storage_limit_gb,
+      priceMonthly: tier.priceMonthly,
+      priceYearly: tier.priceYearly,
+      maxWorkspaces: tier.maxWorkspaces,
+      maxTeamMembers: tier.maxTeamMembers,
+      maxDocuments: tier.maxDocuments,
+      maxWorkflows: tier.maxWorkflows,
+      maxCustomRoles: tier.maxCustomRoles,
       features: tier.features,
-      is_active: tier.is_active,
-      sort_order: tier.sort_order,
+      isActive: tier.isActive,
+      sortOrder: tier.sortOrder,
     });
     setEditingTier(tier);
     setIsCreating(true);
@@ -171,7 +199,35 @@ export function SubscriptionTiersTab() {
   };
 
   if (isLoading) {
-    return <div>Loading subscription tiers...</div>;
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <Skeleton className="h-6 w-48 mb-2" />
+            <Skeleton className="h-4 w-64" />
+          </div>
+          <Skeleton className="h-10 w-32" />
+        </div>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {[...Array(3)].map((_, i) => (
+            <Card key={i}>
+              <CardHeader>
+                <Skeleton className="h-6 w-32 mb-2" />
+                <Skeleton className="h-4 w-full" />
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <Skeleton className="h-8 w-24" />
+                <div className="space-y-2">
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-4 w-3/4" />
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -212,18 +268,22 @@ export function SubscriptionTiersTab() {
                     onChange={(e) =>
                       setFormData((prev) => ({ ...prev, name: e.target.value }))
                     }
-                    placeholder="basic, professional, enterprise"
+                    placeholder="starter, pro, custom"
                     required
+                    disabled={!!editingTier}
                   />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Lowercase, no spaces. Cannot be changed after creation.
+                  </p>
                 </div>
                 <div>
                   <label className="text-sm font-medium">Display Name</label>
                   <Input
-                    value={formData.display_name}
+                    value={formData.displayName}
                     onChange={(e) =>
                       setFormData((prev) => ({
                         ...prev,
-                        display_name: e.target.value,
+                        displayName: e.target.value,
                       }))
                     }
                     placeholder="Professional Plan"
@@ -247,18 +307,18 @@ export function SubscriptionTiersTab() {
                 />
               </div>
 
-              <div className="grid grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm font-medium">
                     Monthly Price ($)
                   </label>
                   <Input
                     type="number"
-                    value={formData.price_monthly}
+                    value={formData.priceMonthly}
                     onChange={(e) =>
                       setFormData((prev) => ({
                         ...prev,
-                        price_monthly: parseFloat(e.target.value) || 0,
+                        priceMonthly: parseFloat(e.target.value) || 0,
                       }))
                     }
                     min="0"
@@ -271,43 +331,117 @@ export function SubscriptionTiersTab() {
                   </label>
                   <Input
                     type="number"
-                    value={formData.price_yearly}
+                    value={formData.priceYearly}
                     onChange={(e) =>
                       setFormData((prev) => ({
                         ...prev,
-                        price_yearly: parseFloat(e.target.value) || 0,
+                        priceYearly: parseFloat(e.target.value) || 0,
                       }))
                     }
                     min="0"
                     step="0.01"
                   />
                 </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-4">
                 <div>
-                  <label className="text-sm font-medium">Max Users</label>
+                  <label className="text-sm font-medium">
+                    Max Team Members
+                  </label>
                   <Input
                     type="number"
-                    value={formData.max_users}
+                    value={formData.maxTeamMembers}
                     onChange={(e) =>
                       setFormData((prev) => ({
                         ...prev,
-                        max_users: parseInt(e.target.value) || 0,
+                        maxTeamMembers: parseInt(e.target.value) || 0,
                       }))
                     }
-                    min="1"
+                    min="-1"
+                    placeholder="-1 for unlimited"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Use -1 for unlimited
+                  </p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Max Workspaces</label>
+                  <Input
+                    type="number"
+                    value={formData.maxWorkspaces}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        maxWorkspaces: parseInt(e.target.value) || 0,
+                      }))
+                    }
+                    min="-1"
+                    placeholder="-1 for unlimited"
                   />
                 </div>
                 <div>
-                  <label className="text-sm font-medium">Storage (GB)</label>
+                  <label className="text-sm font-medium">Max Documents</label>
                   <Input
                     type="number"
-                    value={formData.storage_limit_gb}
+                    value={formData.maxDocuments}
                     onChange={(e) =>
                       setFormData((prev) => ({
                         ...prev,
-                        storage_limit_gb: parseInt(e.target.value) || 0,
+                        maxDocuments: parseInt(e.target.value) || 0,
                       }))
                     }
-                    min="1"
+                    min="-1"
+                    placeholder="-1 for unlimited"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <label className="text-sm font-medium">Max Workflows</label>
+                  <Input
+                    type="number"
+                    value={formData.maxWorkflows}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        maxWorkflows: parseInt(e.target.value) || 0,
+                      }))
+                    }
+                    min="-1"
+                    placeholder="-1 for unlimited"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium">
+                    Max Custom Roles
+                  </label>
+                  <Input
+                    type="number"
+                    value={formData.maxCustomRoles}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        maxCustomRoles: parseInt(e.target.value) || 0,
+                      }))
+                    }
+                    min="-1"
+                    placeholder="-1 for unlimited"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Sort Order</label>
+                  <Input
+                    type="number"
+                    value={formData.sortOrder}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        sortOrder: parseInt(e.target.value) || 0,
+                      }))
+                    }
+                    min="0"
                   />
                 </div>
               </div>
@@ -331,7 +465,7 @@ export function SubscriptionTiersTab() {
                         className="rounded"
                       />
                       <label htmlFor={feature.id} className="text-sm">
-                        {feature.display_name}
+                        {feature.displayName}
                       </label>
                     </div>
                   ))}
@@ -342,11 +476,11 @@ export function SubscriptionTiersTab() {
                 <input
                   type="checkbox"
                   id="is_active"
-                  checked={formData.is_active}
+                  checked={formData.isActive}
                   onChange={(e) =>
                     setFormData((prev) => ({
                       ...prev,
-                      is_active: e.target.checked,
+                      isActive: e.target.checked,
                     }))
                   }
                 />
@@ -375,8 +509,8 @@ export function SubscriptionTiersTab() {
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle className="flex items-center gap-2">
-                  {tier.display_name}
-                  {!tier.is_active && (
+                  {tier.displayName || tier.name || "Unnamed Tier"}
+                  {!tier.isActive && (
                     <Badge variant="secondary">Inactive</Badge>
                   )}
                 </CardTitle>
@@ -397,48 +531,78 @@ export function SubscriptionTiersTab() {
                   </Button>
                 </div>
               </div>
-              <CardDescription>{tier.description}</CardDescription>
+              <CardDescription>
+                {tier.description || "No description"}
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1">
                   <DollarSign className="h-4 w-4" />
-                  <span className="font-semibold">
-                    ${tier.price_monthly}/mo
-                  </span>
+                  <span className="font-semibold">${tier.priceMonthly}/mo</span>
                 </div>
                 <div className="text-sm text-muted-foreground">
-                  ${tier.price_yearly}/yr
+                  ${tier.priceYearly}/yr
                 </div>
               </div>
 
               <div className="space-y-2">
                 <div className="flex items-center gap-2 text-sm">
                   <Users className="h-4 w-4" />
-                  Up to {tier.max_users} users
+                  {tier.maxTeamMembers === -1
+                    ? "Unlimited"
+                    : `Up to ${tier.maxTeamMembers}`}{" "}
+                  team members
                 </div>
                 <div className="flex items-center gap-2 text-sm">
                   <HardDrive className="h-4 w-4" />
-                  {tier.storage_limit_gb}GB storage
+                  {tier.maxWorkspaces === -1
+                    ? "Unlimited"
+                    : tier.maxWorkspaces}{" "}
+                  workspace{tier.maxWorkspaces !== 1 ? "s" : ""}
                 </div>
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <FileText className="h-4 w-4" />
+                  {tier.maxDocuments === -1
+                    ? "Unlimited"
+                    : tier.maxDocuments}{" "}
+                  documents
+                </div>
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Workflow className="h-4 w-4" />
+                  {tier.maxWorkflows === -1
+                    ? "Unlimited"
+                    : tier.maxWorkflows}{" "}
+                  workflows
+                </div>
+                {tier.maxCustomRoles > 0 && (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Shield className="h-4 w-4" />
+                    {tier.maxCustomRoles === -1
+                      ? "Unlimited"
+                      : tier.maxCustomRoles}{" "}
+                    custom roles
+                  </div>
+                )}
               </div>
 
               <div>
                 <p className="text-sm font-medium mb-2">Features:</p>
                 <div className="space-y-1">
-                  {tier.features.slice(0, 3).map((featureId) => {
-                    const feature = features.find((f) => f.id === featureId);
-                    return feature ? (
-                      <div
-                        key={featureId}
-                        className="flex items-center gap-2 text-sm"
-                      >
-                        <Check className="h-3 w-3 text-green-600" />
-                        {feature.display_name}
-                      </div>
-                    ) : null;
-                  })}
-                  {tier.features.length > 3 && (
+                  {Array.isArray(tier.features) &&
+                    tier.features.slice(0, 3).map((featureId) => {
+                      const feature = features.find((f) => f.id === featureId);
+                      return feature ? (
+                        <div
+                          key={featureId}
+                          className="flex items-center gap-2 text-sm"
+                        >
+                          <Check className="h-3 w-3 text-green-600" />
+                          {feature.displayName}
+                        </div>
+                      ) : null;
+                    })}
+                  {Array.isArray(tier.features) && tier.features.length > 3 && (
                     <div className="text-sm text-muted-foreground">
                       +{tier.features.length - 3} more features
                     </div>

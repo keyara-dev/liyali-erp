@@ -196,7 +196,7 @@ Items are grouped by area and sorted by priority within each group.
 1. **Audit service** - Implement `LogAction` and `LogEvent` so all actions are tracked
 2. **Bulk operations** - Replace simulated bulk approve/reject with real DB operations
 3. **2FA infrastructure** - Add TOTP secret generation, QR enrollment, verification endpoint
-4. **Payment integration** - Stripe checkout for subscription upgrades
+4. **Payment integration** - PayBoss checkout for subscription upgrades
 
 ### Sprint 2: Admin Console Polish (estimated: ~2 days)
 1. **Feature flag bulk operations** - Backend endpoint + wire frontend

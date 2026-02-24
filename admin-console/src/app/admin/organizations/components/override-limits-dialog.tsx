@@ -100,7 +100,9 @@ export function OverrideLimitsDialog({
       storageLimitGb === undefined &&
       selectedFeatures.length === 0
     ) {
-      setError("Please specify at least one override (users, storage, or features)");
+      setError(
+        "Please specify at least one override (users, storage, or features)",
+      );
       return;
     }
 
@@ -122,10 +124,7 @@ export function OverrideLimitsDialog({
       if (selectedFeatures.length > 0) request.features = selectedFeatures;
       if (expiresAt) request.expires_at = new Date(expiresAt).toISOString();
 
-      const result = await overrideOrganizationLimits(
-        organization.id,
-        request,
-      );
+      const result = await overrideOrganizationLimits(organization.id, request);
 
       if (result.success) {
         toast.success("Organization limits overridden successfully");
@@ -163,9 +162,8 @@ export function OverrideLimitsDialog({
             Override Organization Limits
           </DialogTitle>
           <DialogDescription>
-            Temporarily override limits for{" "}
-            <strong>{organization.name}</strong>. These overrides take
-            precedence over tier defaults.
+            Temporarily override limits for <strong>{organization.name}</strong>
+            . These overrides take precedence over tier defaults.
           </DialogDescription>
         </DialogHeader>
 
@@ -176,7 +174,9 @@ export function OverrideLimitsDialog({
             <div className="grid grid-cols-2 gap-2 text-sm">
               <div>
                 <span className="text-muted-foreground">Tier:</span>{" "}
-                <Badge variant="outline">{organization.subscription_tier}</Badge>
+                <Badge variant="outline">
+                  {organization.subscription_tier}
+                </Badge>
               </div>
               <div>
                 <span className="text-muted-foreground">Max Users:</span>{" "}
@@ -185,9 +185,7 @@ export function OverrideLimitsDialog({
               <div className="col-span-2">
                 <span className="text-muted-foreground">Features:</span>{" "}
                 {currentFeatures.length > 0 ? (
-                  <span className="text-xs">
-                    {currentFeatures.join(", ")}
-                  </span>
+                  <span className="text-xs">{currentFeatures.join(", ")}</span>
                 ) : (
                   "None"
                 )}
@@ -304,7 +302,7 @@ export function OverrideLimitsDialog({
                                   htmlFor={feature.id}
                                   className={`text-sm leading-none ${alreadyEnabled ? "text-muted-foreground" : ""}`}
                                 >
-                                  {feature.display_name || feature.name}
+                                  {feature.displayName || feature.name}
                                   {alreadyEnabled && (
                                     <span className="text-xs ml-1">
                                       (active)

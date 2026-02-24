@@ -8,7 +8,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   TrendingUp,
   TrendingDown,
@@ -62,7 +62,36 @@ export function SubscriptionAnalyticsTab() {
   }, [timeRange]);
 
   if (isLoading) {
-    return <div>Loading analytics...</div>;
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <Skeleton className="h-6 w-48" />
+          <Skeleton className="h-10 w-32" />
+        </div>
+        <div className="grid gap-4 md:grid-cols-4">
+          {[...Array(4)].map((_, i) => (
+            <Card key={i}>
+              <CardHeader>
+                <Skeleton className="h-4 w-32 mb-2" />
+                <Skeleton className="h-8 w-24" />
+              </CardHeader>
+            </Card>
+          ))}
+        </div>
+        <div className="grid gap-4 md:grid-cols-2">
+          {[...Array(2)].map((_, i) => (
+            <Card key={i}>
+              <CardHeader>
+                <Skeleton className="h-6 w-48" />
+              </CardHeader>
+              <CardContent>
+                <Skeleton className="h-64 w-full" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+    );
   }
 
   if (!analytics) {
@@ -326,7 +355,9 @@ export function SubscriptionAnalyticsTab() {
         <Card>
           <CardHeader>
             <CardTitle>Revenue by Tier</CardTitle>
-            <CardDescription>Monthly revenue breakdown per tier</CardDescription>
+            <CardDescription>
+              Monthly revenue breakdown per tier
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="h-64">
@@ -344,11 +375,7 @@ export function SubscriptionAnalyticsTab() {
                       "Revenue",
                     ]}
                   />
-                  <Bar
-                    dataKey="revenue"
-                    fill="#3b82f6"
-                    radius={[4, 4, 0, 0]}
-                  />
+                  <Bar dataKey="revenue" fill="#3b82f6" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -371,9 +398,7 @@ export function SubscriptionAnalyticsTab() {
                     cx="50%"
                     cy="50%"
                     outerRadius={80}
-                    label={({ name, percentage }) =>
-                      `${name} (${percentage}%)`
-                    }
+                    label={({ name, percentage }) => `${name} (${percentage}%)`}
                   >
                     {analytics.tiers.map((_: any, index: number) => (
                       <Cell

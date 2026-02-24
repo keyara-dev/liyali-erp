@@ -430,20 +430,44 @@ function PlanCard({
 
         <CardContent className="space-y-4">
           <div className="space-y-3">
-            {plan.features.map((feature: string, index: number) => (
-              <motion.div
-                key={index}
-                className="flex items-center gap-3 text-sm text-slate-200"
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: index * 0.1 }}
-              >
-                <div className="w-5 h-5 rounded-full flex items-center justify-center shrink-0 border border-green-400 bg-green-500/30 text-green-300">
-                  <Check className="h-3 w-3" />
-                </div>
-                <span>{feature}</span>
-              </motion.div>
-            ))}
+            {plan.featureDetails && plan.featureDetails.length > 0
+              ? plan.featureDetails.map((feature: any, index: number) => (
+                  <motion.div
+                    key={feature.id || index}
+                    className="flex items-start gap-3 text-sm"
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: index * 0.1 }}
+                  >
+                    <div className="w-5 h-5 rounded-full flex items-center justify-center shrink-0 border border-green-400 bg-green-500/30 text-green-300 mt-0.5">
+                      <Check className="h-3 w-3" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="font-medium text-slate-200">
+                        {feature.displayName}
+                      </div>
+                      {feature.description && (
+                        <div className="text-xs text-slate-400 mt-0.5">
+                          {feature.description}
+                        </div>
+                      )}
+                    </div>
+                  </motion.div>
+                ))
+              : plan.features.map((feature: string, index: number) => (
+                  <motion.div
+                    key={index}
+                    className="flex items-center gap-3 text-sm text-slate-200"
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: index * 0.1 }}
+                  >
+                    <div className="w-5 h-5 rounded-full flex items-center justify-center shrink-0 border border-green-400 bg-green-500/30 text-green-300">
+                      <Check className="h-3 w-3" />
+                    </div>
+                    <span>{feature}</span>
+                  </motion.div>
+                ))}
           </div>
 
           <motion.div

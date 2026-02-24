@@ -9,7 +9,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -31,15 +31,24 @@ import {
 } from "@/app/_actions/subscriptions";
 
 const FEATURE_CATEGORIES = [
-  "Core Features",
-  "Advanced Features",
-  "Integrations",
-  "Analytics",
-  "Security",
-  "Support",
-  "Storage",
-  "API Access",
+  "core",
+  "workflow",
+  "analytics",
+  "security",
+  "support",
+  "integration",
+  "customization",
 ];
+
+const CATEGORY_DISPLAY_NAMES: Record<string, string> = {
+  core: "Core Features",
+  workflow: "Workflow",
+  analytics: "Analytics",
+  security: "Security",
+  support: "Support",
+  integration: "Integrations",
+  customization: "Customization",
+};
 
 export function FeaturesManagementTab() {
   const [features, setFeatures] = useState<SubscriptionFeature[]>([]);
@@ -52,10 +61,10 @@ export function FeaturesManagementTab() {
   // Form state
   const [formData, setFormData] = useState({
     name: "",
-    display_name: "",
+    displayName: "",
     description: "",
-    category: "Core Features",
-    is_active: true,
+    category: "core",
+    isActive: true,
   });
 
   useEffect(() => {
@@ -124,12 +133,12 @@ export function FeaturesManagementTab() {
   const toggleFeatureStatus = async (feature: SubscriptionFeature) => {
     try {
       const result = await updateSubscriptionFeature(feature.id, {
-        is_active: !feature.is_active,
+        isActive: !feature.isActive,
       });
 
       if (result.success) {
         toast.success(
-          `Feature ${feature.is_active ? "deactivated" : "activated"}`,
+          `Feature ${feature.isActive ? "deactivated" : "activated"}`,
         );
         loadFeatures();
       } else {
@@ -143,10 +152,10 @@ export function FeaturesManagementTab() {
   const resetForm = () => {
     setFormData({
       name: "",
-      display_name: "",
+      displayName: "",
       description: "",
-      category: "Core Features",
-      is_active: true,
+      category: "core",
+      isActive: true,
     });
     setEditingFeature(null);
     setIsCreating(false);
@@ -155,10 +164,10 @@ export function FeaturesManagementTab() {
   const startEdit = (feature: SubscriptionFeature) => {
     setFormData({
       name: feature.name,
-      display_name: feature.display_name,
+      displayName: feature.displayName,
       description: feature.description,
       category: feature.category,
-      is_active: feature.is_active,
+      isActive: feature.isActive,
     });
     setEditingFeature(feature);
     setIsCreating(true);
@@ -178,7 +187,33 @@ export function FeaturesManagementTab() {
   );
 
   if (isLoading) {
-    return <div>Loading features...</div>;
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <Skeleton className="h-6 w-48 mb-2" />
+            <Skeleton className="h-4 w-64" />
+          </div>
+          <Skeleton className="h-10 w-32" />
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {[...Array(8)].map((_, i) => (
+            <Skeleton key={i} className="h-8 w-32" />
+          ))}
+        </div>
+        <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+          {[...Array(6)].map((_, i) => (
+            <Card key={i}>
+              <CardContent className="p-4 space-y-3">
+                <Skeleton className="h-6 w-full" />
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-3/4" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -212,7 +247,8 @@ export function FeaturesManagementTab() {
             size="sm"
             onClick={() => setSelectedCategory(category)}
           >
-            {category} ({featuresByCategory[category]?.length || 0})
+            {CATEGORY_DISPLAY_NAMES[category]} (
+            {featuresByCategory[category]?.length || 0})
           </Button>
         ))}
       </div>
@@ -247,11 +283,11 @@ export function FeaturesManagementTab() {
                 <div>
                   <label className="text-sm font-medium">Display Name</label>
                   <Input
-                    value={formData.display_name}
+                    value={formData.displayName}
                     onChange={(e) =>
                       setFormData((prev) => ({
                         ...prev,
-                        display_name: e.target.value,
+                        displayName: e.target.value,
                       }))
                     }
                     placeholder="Advanced Analytics"
@@ -290,7 +326,7 @@ export function FeaturesManagementTab() {
                 >
                   {FEATURE_CATEGORIES.map((category) => (
                     <option key={category} value={category}>
-                      {category}
+                      {CATEGORY_DISPLAY_NAMES[category]}
                     </option>
                   ))}
                 </select>
@@ -300,11 +336,11 @@ export function FeaturesManagementTab() {
                 <input
                   type="checkbox"
                   id="is_active"
-                  checked={formData.is_active}
+                  checked={formData.isActive}
                   onChange={(e) =>
                     setFormData((prev) => ({
                       ...prev,
-                      is_active: e.target.checked,
+                      isActive: e.target.checked,
                     }))
                   }
                 />
@@ -339,7 +375,7 @@ export function FeaturesManagementTab() {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Tag className="h-5 w-5" />
-                    {category}
+                    {CATEGORY_DISPLAY_NAMES[category]}
                     <Badge variant="secondary">{categoryFeatures.length}</Badge>
                   </CardTitle>
                 </CardHeader>
@@ -393,9 +429,9 @@ function FeatureCard({
     <div className="border rounded-lg p-4 space-y-3">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <h4 className="font-medium">{feature.display_name}</h4>
-          <Badge variant={feature.is_active ? "success" : "secondary"}>
-            {feature.is_active ? "Active" : "Inactive"}
+          <h4 className="font-medium">{feature.displayName}</h4>
+          <Badge variant={feature.isActive ? "success" : "secondary"}>
+            {feature.isActive ? "Active" : "Inactive"}
           </Badge>
         </div>
         <div className="flex gap-1">
@@ -403,9 +439,9 @@ function FeatureCard({
             size="icon"
             variant="ghost"
             onClick={() => onToggleStatus(feature)}
-            title={feature.is_active ? "Deactivate" : "Activate"}
+            title={feature.isActive ? "Deactivate" : "Activate"}
           >
-            {feature.is_active ? (
+            {feature.isActive ? (
               <ToggleRight className="h-4 w-4 text-green-600" />
             ) : (
               <ToggleLeft className="h-4 w-4 text-gray-400" />
@@ -427,7 +463,9 @@ function FeatureCard({
       <p className="text-sm text-muted-foreground">{feature.description}</p>
 
       <div className="flex items-center gap-2 text-xs">
-        <Badge variant="outline">{feature.category}</Badge>
+        <Badge variant="outline">
+          {CATEGORY_DISPLAY_NAMES[feature.category] || feature.category}
+        </Badge>
         <span className="text-muted-foreground">ID: {feature.name}</span>
       </div>
     </div>

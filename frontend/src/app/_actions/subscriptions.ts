@@ -11,18 +11,32 @@ const BACKEND_URL =
   process.env.API_URL ||
   "http://localhost:8080";
 
+export interface FeatureDetail {
+  id: string;
+  name: string;
+  displayName: string;
+  description: string;
+  category: string;
+}
+
 export interface SubscriptionPlan {
   id: string;
   name: string;
   slug: string;
+  displayName: string;
   description: string;
   priceMonthly: number;
   priceYearly: number;
+  maxWorkspaces: number;
+  maxTeamMembers: number;
+  maxDocuments: number;
+  maxWorkflows: number;
+  maxCustomRoles: number;
   features: string[];
-  maxUsers: number;
+  featureDetails: FeatureDetail[];
   isActive: boolean;
   sortOrder: number;
-  metadata: {
+  metadata?: {
     offline_capabilities?: boolean;
     api_access?: boolean;
     custom_roles?: boolean;

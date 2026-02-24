@@ -19,7 +19,7 @@ type Organization struct {
 
 	// Status
 	Active bool   `gorm:"default:true" json:"active"`
-	Tier   string `gorm:"default:starter" json:"tier"` // starter, pro, enterprise
+	Tier   string `gorm:"column:subscription_tier;default:starter" json:"tier"` // starter, pro, custom
 
 	// Relationships
 	CreatedBy string `json:"createdBy"`

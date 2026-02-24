@@ -25,21 +25,36 @@ func NewSubscriptionService(db *pgxpool.Pool, logger *logging.Logger) *Subscript
 	}
 }
 
+// FeatureDetail represents full feature information
+type FeatureDetail struct {
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	DisplayName string `json:"displayName"`
+	Description string `json:"description"`
+	Category    string `json:"category"`
+}
+
 // SubscriptionPlan represents a subscription plan
 type SubscriptionPlan struct {
-	ID           string                 `json:"id"`
-	Name         string                 `json:"name"`
-	Slug         string                 `json:"slug"`
-	Description  string                 `json:"description"`
-	PriceMonthly float64                `json:"priceMonthly"`
-	PriceYearly  float64                `json:"priceYearly"`
-	Features     []string               `json:"features"`
-	MaxUsers     int32                  `json:"maxUsers"`
-	IsActive     bool                   `json:"isActive"`
-	SortOrder    int32                  `json:"sortOrder"`
-	Metadata     map[string]interface{} `json:"metadata"`
-	CreatedAt    time.Time              `json:"createdAt"`
-	UpdatedAt    time.Time              `json:"updatedAt"`
+	ID             string                 `json:"id"`
+	Name           string                 `json:"name"`
+	Slug           string                 `json:"slug"`
+	DisplayName    string                 `json:"displayName"`
+	Description    string                 `json:"description"`
+	PriceMonthly   float64                `json:"priceMonthly"`
+	PriceYearly    float64                `json:"priceYearly"`
+	MaxWorkspaces  int32                  `json:"maxWorkspaces"`
+	MaxTeamMembers int32                  `json:"maxTeamMembers"`
+	MaxDocuments   int32                  `json:"maxDocuments"`
+	MaxWorkflows   int32                  `json:"maxWorkflows"`
+	MaxCustomRoles int32                  `json:"maxCustomRoles"`
+	Features       []string               `json:"features"`
+	FeatureDetails []FeatureDetail        `json:"featureDetails"`
+	IsActive       bool                   `json:"isActive"`
+	SortOrder      int32                  `json:"sortOrder"`
+	Metadata       map[string]interface{} `json:"metadata,omitempty"`
+	CreatedAt      time.Time              `json:"createdAt"`
+	UpdatedAt      time.Time              `json:"updatedAt"`
 }
 
 // OrganizationTrialStatus represents trial status information
@@ -64,73 +79,124 @@ type FeatureAccessResult struct {
 }
 
 // GetAllSubscriptionPlans retrieves all active subscription plans from database
+// Now queries the NEW subscription_tiers table with full feature details
 func (s *SubscriptionService) GetAllSubscriptionPlans() ([]SubscriptionPlan, error) {
 	// Create a simple logger for service operations
 	logger := &logging.Logger{}
 	
-	logger.Info("Retrieving subscription plans from database")
+	logger.Info("Retrieving subscription plans from subscription_tiers table")
 
+	// Query subscription_tiers with full feature details from subscription_features
 	query := `
-		SELECT id, name, slug, description, price_monthly, price_yearly, 
-		       features, max_users, is_active, sort_order, metadata, 
-		       created_at, updated_at
-		FROM subscription_plans 
-		WHERE is_active = true 
-		ORDER BY sort_order ASC
+		SELECT
+			st.id,
+			st.name,
+			st.name as slug,
+			st.display_name,
+			st.description,
+			st.price_monthly,
+			st.price_yearly,
+			st.max_workspaces,
+			st.max_team_members,
+			st.max_documents,
+			st.max_workflows,
+			st.max_custom_roles,
+			st.features,
+			st.is_active,
+			st.sort_order,
+			st.created_at,
+			st.updated_at,
+			COALESCE(
+				json_agg(
+					json_build_object(
+						'id', sf.id,
+						'name', sf.name,
+						'displayName', sf.display_name,
+						'description', sf.description,
+						'category', sf.category
+					) ORDER BY sf.category, sf.display_name
+				) FILTER (WHERE sf.id IS NOT NULL),
+				'[]'
+			) as feature_details
+		FROM subscription_tiers st
+		LEFT JOIN subscription_features sf ON sf.name = ANY(st.features::text[])
+		WHERE st.is_active = true
+		GROUP BY st.id, st.name, st.display_name, st.description, st.price_monthly, 
+		         st.price_yearly, st.max_workspaces, st.max_team_members, st.max_documents,
+		         st.max_workflows, st.max_custom_roles, st.features, st.is_active, 
+		         st.sort_order, st.created_at, st.updated_at
+		ORDER BY st.sort_order ASC
 	`
 
 	rows, err := s.db.Query(context.Background(), query)
 	if err != nil {
-		logger.Error("Failed to query subscription plans")
-		return nil, fmt.Errorf("failed to query subscription plans: %w", err)
+		logger.Error("Failed to query subscription tiers: " + err.Error())
+		return nil, fmt.Errorf("failed to query subscription tiers: %w", err)
 	}
 	defer rows.Close()
 
 	var plans []SubscriptionPlan
 	for rows.Next() {
 		var plan SubscriptionPlan
-		var featuresJSON, metadataJSON []byte
+		var featuresJSON, featureDetailsJSON []byte
 
 		err := rows.Scan(
 			&plan.ID,
 			&plan.Name,
 			&plan.Slug,
+			&plan.DisplayName,
 			&plan.Description,
 			&plan.PriceMonthly,
 			&plan.PriceYearly,
+			&plan.MaxWorkspaces,
+			&plan.MaxTeamMembers,
+			&plan.MaxDocuments,
+			&plan.MaxWorkflows,
+			&plan.MaxCustomRoles,
 			&featuresJSON,
-			&plan.MaxUsers,
 			&plan.IsActive,
 			&plan.SortOrder,
-			&metadataJSON,
 			&plan.CreatedAt,
 			&plan.UpdatedAt,
+			&featureDetailsJSON,
 		)
 		if err != nil {
-			logger.Error("Failed to scan subscription plan")
-			return nil, fmt.Errorf("failed to scan subscription plan: %w", err)
+			logger.Error("Failed to scan subscription tier")
+			return nil, fmt.Errorf("failed to scan subscription tier: %w", err)
 		}
 
-		// Parse JSON fields
+		// Parse feature names array
 		if err := json.Unmarshal(featuresJSON, &plan.Features); err != nil {
-			logger.Error("Failed to parse plan features JSON")
-			return nil, fmt.Errorf("failed to parse plan features: %w", err)
+			logger.Error("Failed to parse tier features JSON")
+			return nil, fmt.Errorf("failed to parse tier features: %w", err)
 		}
 
-		if err := json.Unmarshal(metadataJSON, &plan.Metadata); err != nil {
-			logger.Error("Failed to parse plan metadata JSON")
-			return nil, fmt.Errorf("failed to parse plan metadata: %w", err)
+		// Parse feature details array
+		if err := json.Unmarshal(featureDetailsJSON, &plan.FeatureDetails); err != nil {
+			logger.Error("Failed to parse feature details JSON")
+			return nil, fmt.Errorf("failed to parse feature details: %w", err)
+		}
+
+		// Convert tier name to uppercase slug format for backward compatibility
+		// starter -> STARTER_PLAN, pro -> PRO_PLAN, custom -> ENTERPRISE
+		switch plan.Name {
+		case "starter":
+			plan.Slug = "STARTER_PLAN"
+		case "pro":
+			plan.Slug = "PRO_PLAN"
+		case "custom":
+			plan.Slug = "ENTERPRISE"
 		}
 
 		plans = append(plans, plan)
 	}
 
 	if err := rows.Err(); err != nil {
-		logger.Error("Error iterating subscription plans")
-		return nil, fmt.Errorf("error iterating subscription plans: %w", err)
+		logger.Error("Error iterating subscription tiers")
+		return nil, fmt.Errorf("error iterating subscription tiers: %w", err)
 	}
 
-	logger.Info("Retrieved subscription plans from database")
+	logger.Info("Retrieved subscription plans from subscription_tiers table")
 
 	return plans, nil
 }
@@ -404,11 +470,11 @@ func (s *SubscriptionService) GetOrganizationSubscriptionDetails(organizationID 
 		"plan":        currentPlan,
 		"planLimits": map[string]interface{}{
 			"organizationId":    organizationID,
-			"maxUsersAllowed":   currentPlan.MaxUsers,
-			"planMaxUsers":      currentPlan.MaxUsers,
+			"maxUsersAllowed":   currentPlan.MaxTeamMembers,
+			"planMaxUsers":      currentPlan.MaxTeamMembers,
 			"planMetadata":      currentPlan.Metadata,
 			"currentUserCount":  currentUserCount,
-			"canAddUsers":       currentPlan.MaxUsers == -1 || currentUserCount < int(currentPlan.MaxUsers),
+			"canAddUsers":       currentPlan.MaxTeamMembers == -1 || currentUserCount < int(currentPlan.MaxTeamMembers),
 		},
 	}
 

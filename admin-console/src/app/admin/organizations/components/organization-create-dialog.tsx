@@ -26,31 +26,14 @@ import {
   createOrganization,
   type CreateOrganizationRequest,
 } from "@/app/_actions/organizations";
-import { Building2, Mail, User, Settings, Clock } from "lucide-react";
+import { useSubscriptionTiers } from "@/hooks/use-subscriptions";
+import { Building2, Mail, User, Settings, Clock, Loader2 } from "lucide-react";
 
 interface OrganizationCreateDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onOrganizationCreated: () => void;
 }
-
-const SUBSCRIPTION_TIERS = [
-  {
-    value: "basic",
-    label: "Basic",
-    description: "Essential features for small teams",
-  },
-  {
-    value: "professional",
-    label: "Professional",
-    description: "Advanced features for growing businesses",
-  },
-  {
-    value: "enterprise",
-    label: "Enterprise",
-    description: "Full feature set for large organizations",
-  },
-];
 
 const TRIAL_DURATIONS = [
   { value: 7, label: "7 days" },
@@ -66,12 +49,16 @@ export function OrganizationCreateDialog({
   onOrganizationCreated,
 }: OrganizationCreateDialogProps) {
   const [isLoading, setIsLoading] = useState(false);
+
+  // Fetch tiers from API
+  const { data: tiers, isLoading: tiersLoading } = useSubscriptionTiers();
+
   const [formData, setFormData] = useState<CreateOrganizationRequest>({
     name: "",
     domain: "",
     admin_name: "",
     admin_email: "",
-    subscription_tier: "basic",
+    subscription_tier: "starter",
     trial_days: 30,
     settings: {
       max_users: 50,
@@ -203,8 +190,8 @@ export function OrganizationCreateDialog({
     }));
   };
 
-  const selectedTier = SUBSCRIPTION_TIERS.find(
-    (tier) => tier.value === formData.subscription_tier,
+  const selectedTier = tiers?.find(
+    (tier) => tier.name === formData.subscription_tier,
   );
 
   return (
@@ -335,21 +322,30 @@ export function OrganizationCreateDialog({
                     onValueChange={(value) =>
                       handleInputChange("subscription_tier", value as any)
                     }
+                    disabled={tiersLoading}
                   >
                     <SelectTrigger
                       className={
                         errors.subscription_tier ? "border-red-500" : ""
                       }
                     >
-                      <SelectValue placeholder="Select subscription tier" />
+                      <SelectValue
+                        placeholder={
+                          tiersLoading
+                            ? "Loading tiers..."
+                            : "Select subscription tier"
+                        }
+                      />
                     </SelectTrigger>
                     <SelectContent>
-                      {SUBSCRIPTION_TIERS.map((tier) => (
-                        <SelectItem key={tier.value} value={tier.value}>
+                      {tiers?.map((tier) => (
+                        <SelectItem key={tier.id} value={tier.name}>
                           <div className="flex flex-col">
-                            <span className="font-medium">{tier.label}</span>
+                            <span className="font-medium">
+                              {tier.display_name}
+                            </span>
                             <span className="text-sm text-muted-foreground">
-                              {tier.description}
+                              ${tier.price_monthly}/month
                             </span>
                           </div>
                         </SelectItem>

@@ -33,11 +33,13 @@ import {
   useOrganizationStats,
   useUpdateOrganizationStatus,
 } from "@/hooks/use-organizations";
+import { useSubscriptionTiers } from "@/hooks/use-subscriptions";
 import { OrganizationDetailsDialog } from "./components/organization-details-dialog";
 import { OrganizationActionsDropdown } from "./components/organization-actions-dropdown";
 import { OrganizationCreateDialog } from "./components/organization-create-dialog";
 import { OrganizationAdvancedFilters } from "./components/organization-advanced-filters";
 import { OrganizationBulkActions } from "./components/organization-bulk-actions";
+import { ChangeTierDialog } from "@/components/change-tier-dialog";
 
 export default function OrganizationsPage() {
   const [selectedOrganization, setSelectedOrganization] =
@@ -63,8 +65,10 @@ export default function OrganizationsPage() {
     data: orgData,
     isLoading,
     error: orgError,
+    refetch: refetchOrganizations,
   } = useOrganizations(filters);
   const { data: stats } = useOrganizationStats();
+  const { data: tiers } = useSubscriptionTiers();
   const updateStatusMutation = useUpdateOrganizationStatus();
 
   const organizations = orgData?.organizations ?? [];
@@ -171,6 +175,13 @@ export default function OrganizationsPage() {
 
   const getTierBadge = (tier: string) => {
     switch (tier) {
+      case "custom":
+        return <Badge variant="default">Custom</Badge>;
+      case "pro":
+        return <Badge className="bg-blue-100 text-blue-800">Pro</Badge>;
+      case "starter":
+        return <Badge variant="secondary">Starter</Badge>;
+      // Legacy tier names (for backward compatibility)
       case "enterprise":
         return <Badge variant="default">Enterprise</Badge>;
       case "professional":
@@ -184,6 +195,14 @@ export default function OrganizationsPage() {
     }
   };
 
+  const getTierInfo = (tierName: string) => {
+    const tier = tiers?.find((t) => t.name === tierName);
+    return {
+      displayName: tier?.displayName || tierName,
+      maxUsers: tier?.maxTeamMembers || 0,
+    };
+  };
+
   if (isLoading && organizations.length === 0) {
     return (
       <div className="space-y-6">
@@ -192,7 +211,9 @@ export default function OrganizationsPage() {
             <Building2 className="h-8 w-8" />
             Organizations
           </h1>
-          <p className="text-muted-foreground">Manage organizations and workspaces</p>
+          <p className="text-muted-foreground">
+            Manage organizations and workspaces
+          </p>
         </div>
         <div className="grid gap-4 md:grid-cols-4">
           {[...Array(4)].map((_, i) => (
@@ -415,13 +436,27 @@ export default function OrganizationsPage() {
                   <div className="flex items-center space-x-2">
                     <div className="text-right text-sm">
                       <div className="font-medium">
-                        {organization.subscription_tier} plan
+                        {
+                          getTierInfo(organization.subscription_tier)
+                            .displayName
+                        }{" "}
+                        plan
                       </div>
                       <div className="text-muted-foreground">
                         {organization.user_count} /{" "}
-                        {organization.settings?.max_users || "∞"} users
+                        {getTierInfo(organization.subscription_tier)
+                          .maxUsers === -1
+                          ? "∞"
+                          : getTierInfo(organization.subscription_tier)
+                              .maxUsers}{" "}
+                        users
                       </div>
                     </div>
+
+                    <ChangeTierDialog
+                      organization={organization}
+                      onSuccess={() => refetchOrganizations()}
+                    />
 
                     <Button
                       variant="outline"

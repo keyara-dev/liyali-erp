@@ -1,57 +1,61 @@
 package handlers
 
 import (
+	"fmt"
 	"log"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/liyali/liyali-gateway/config"
+	"github.com/liyali/liyali-gateway/models"
 	"github.com/liyali/liyali-gateway/utils"
 )
 
 // Admin Subscription Management Handlers
 // These handlers provide comprehensive subscription management for administrators
 
-// SubscriptionTier represents a subscription tier
-type SubscriptionTier struct {
-	ID               string    `json:"id" gorm:"primaryKey"`
-	Name             string    `json:"name" gorm:"uniqueIndex"`
-	DisplayName      string    `json:"display_name"`
-	Description      string    `json:"description"`
-	PriceMonthly     float64   `json:"price_monthly"`
-	PriceYearly      float64   `json:"price_yearly"`
-	MaxUsers         int       `json:"max_users"`
-	MaxOrganizations *int      `json:"max_organizations,omitempty"`
-	StorageLimitGB   int       `json:"storage_limit_gb"`
-	Features         string    `json:"features"` // JSON array stored as string
-	IsActive         bool      `json:"is_active"`
-	SortOrder        int       `json:"sort_order"`
-	CreatedAt        time.Time `json:"created_at"`
-	UpdatedAt        time.Time `json:"updated_at"`
-}
-
-// SubscriptionFeature represents a subscription feature
-type SubscriptionFeature struct {
-	ID          string    `json:"id" gorm:"primaryKey"`
-	Name        string    `json:"name" gorm:"uniqueIndex"`
-	DisplayName string    `json:"display_name"`
-	Description string    `json:"description"`
-	Category    string    `json:"category"`
-	IsActive    bool      `json:"is_active"`
-	CreatedAt   time.Time `json:"created_at"`
-}
-
 // GetAllSubscriptionTiers returns all subscription tiers for admin management
 func GetAllSubscriptionTiers(c *fiber.Ctx) error {
 	db := config.DB
 
-	var tiers []SubscriptionTier
+	var tiers []models.SubscriptionTier
 	if err := db.Order("sort_order ASC, created_at ASC").Find(&tiers).Error; err != nil {
 		log.Printf("Error getting subscription tiers: %v", err)
 		return utils.SendInternalError(c, "Failed to retrieve subscription tiers", err)
 	}
 
-	return utils.SendSimpleSuccess(c, tiers, "Subscription tiers retrieved successfully")
+	// Build response with computed fields
+	responses := make([]models.TierResponse, len(tiers))
+	for i, tier := range tiers {
+		features, _ := tier.GetFeatureList()
+		
+		// Count organizations using this tier
+		var orgCount int64
+		db.Table("organizations").Where("subscription_tier = ?", tier.Name).Count(&orgCount)
+
+		responses[i] = models.TierResponse{
+			ID:                tier.ID,
+			Name:              tier.Name,
+			DisplayName:       tier.DisplayName,
+			Description:       tier.Description,
+			PriceMonthly:      tier.PriceMonthly,
+			PriceYearly:       tier.PriceYearly,
+			MaxWorkspaces:     tier.MaxWorkspaces,
+			MaxTeamMembers:    tier.MaxTeamMembers,
+			MaxDocuments:      tier.MaxDocuments,
+			MaxWorkflows:      tier.MaxWorkflows,
+			MaxCustomRoles:    tier.MaxCustomRoles,
+			Features:          features,
+			IsActive:          tier.IsActive,
+			SortOrder:         tier.SortOrder,
+			CreatedAt:         tier.CreatedAt,
+			UpdatedAt:         tier.UpdatedAt,
+			FeatureCount:      len(features),
+			OrganizationCount: int(orgCount),
+		}
+	}
+
+	return utils.SendSimpleSuccess(c, responses, "Subscription tiers retrieved successfully")
 }
 
 // GetSubscriptionTierByID returns a specific subscription tier
@@ -59,145 +63,55 @@ func GetSubscriptionTierByID(c *fiber.Ctx) error {
 	db := config.DB
 	tierID := c.Params("id")
 
-	var tier SubscriptionTier
+	var tier models.SubscriptionTier
 	if err := db.First(&tier, "id = ?", tierID).Error; err != nil {
 		log.Printf("Error getting subscription tier %s: %v", tierID, err)
 		return utils.SendNotFound(c, "Subscription tier not found")
 	}
 
-	return utils.SendSimpleSuccess(c, tier, "Subscription tier retrieved successfully")
+	features, _ := tier.GetFeatureList()
+	var orgCount int64
+	db.Table("organizations").Where("subscription_tier = ?", tier.Name).Count(&orgCount)
+
+	response := models.TierResponse{
+		ID:                tier.ID,
+		Name:              tier.Name,
+		DisplayName:       tier.DisplayName,
+		Description:       tier.Description,
+		PriceMonthly:      tier.PriceMonthly,
+		PriceYearly:       tier.PriceYearly,
+		MaxWorkspaces:     tier.MaxWorkspaces,
+		MaxTeamMembers:    tier.MaxTeamMembers,
+		MaxDocuments:      tier.MaxDocuments,
+		MaxWorkflows:      tier.MaxWorkflows,
+		MaxCustomRoles:    tier.MaxCustomRoles,
+		Features:          features,
+		IsActive:          tier.IsActive,
+		SortOrder:         tier.SortOrder,
+		CreatedAt:         tier.CreatedAt,
+		UpdatedAt:         tier.UpdatedAt,
+		FeatureCount:      len(features),
+		OrganizationCount: int(orgCount),
+	}
+
+	return utils.SendSimpleSuccess(c, response, "Subscription tier retrieved successfully")
 }
 
 // CreateSubscriptionTier creates a new subscription tier
 func CreateSubscriptionTier(c *fiber.Ctx) error {
-	db := config.DB
-
-	var request struct {
-		Name             string   `json:"name" validate:"required,min=2,max=50"`
-		DisplayName      string   `json:"display_name" validate:"required,min=2,max=100"`
-		Description      string   `json:"description" validate:"required,min=10,max=500"`
-		PriceMonthly     float64  `json:"price_monthly" validate:"required,min=0"`
-		PriceYearly      float64  `json:"price_yearly" validate:"required,min=0"`
-		MaxUsers         int      `json:"max_users" validate:"required,min=1"`
-		MaxOrganizations *int     `json:"max_organizations,omitempty"`
-		StorageLimitGB   int      `json:"storage_limit_gb" validate:"required,min=1"`
-		Features         []string `json:"features" validate:"required"`
-		IsActive         bool     `json:"is_active"`
-		SortOrder        int      `json:"sort_order" validate:"min=0"`
-	}
-
+	var request models.CreateTierRequest
 	if err := c.BodyParser(&request); err != nil {
 		return utils.SendBadRequest(c, "Invalid request body")
 	}
 
-	// Convert features array to JSON string
-	featuresJSON := `["` + request.Features[0]
-	for i := 1; i < len(request.Features); i++ {
-		featuresJSON += `","` + request.Features[i]
-	}
-	featuresJSON += `"]`
-
-	tier := SubscriptionTier{
-		ID:               utils.GenerateID(),
-		Name:             request.Name,
-		DisplayName:      request.DisplayName,
-		Description:      request.Description,
-		PriceMonthly:     request.PriceMonthly,
-		PriceYearly:      request.PriceYearly,
-		MaxUsers:         request.MaxUsers,
-		MaxOrganizations: request.MaxOrganizations,
-		StorageLimitGB:   request.StorageLimitGB,
-		Features:         featuresJSON,
-		IsActive:         request.IsActive,
-		SortOrder:        request.SortOrder,
-		CreatedAt:        time.Now(),
-		UpdatedAt:        time.Now(),
-	}
-
-	if err := db.Create(&tier).Error; err != nil {
-		log.Printf("Error creating subscription tier: %v", err)
-		return utils.SendInternalError(c, "Failed to create subscription tier", err)
-	}
-
-	return utils.SendSimpleSuccess(c, tier, "Subscription tier created successfully")
+	// Use the handler from subscription_tier_handler.go
+	return CreateTier(c)
 }
 
 // UpdateSubscriptionTier updates an existing subscription tier
 func UpdateSubscriptionTier(c *fiber.Ctx) error {
-	db := config.DB
-	tierID := c.Params("id")
-
-	var tier SubscriptionTier
-	if err := db.First(&tier, "id = ?", tierID).Error; err != nil {
-		return utils.SendNotFound(c, "Subscription tier not found")
-	}
-
-	var request struct {
-		Name             *string   `json:"name,omitempty"`
-		DisplayName      *string   `json:"display_name,omitempty"`
-		Description      *string   `json:"description,omitempty"`
-		PriceMonthly     *float64  `json:"price_monthly,omitempty"`
-		PriceYearly      *float64  `json:"price_yearly,omitempty"`
-		MaxUsers         *int      `json:"max_users,omitempty"`
-		MaxOrganizations *int      `json:"max_organizations,omitempty"`
-		StorageLimitGB   *int      `json:"storage_limit_gb,omitempty"`
-		Features         []string  `json:"features,omitempty"`
-		IsActive         *bool     `json:"is_active,omitempty"`
-		SortOrder        *int      `json:"sort_order,omitempty"`
-	}
-
-	if err := c.BodyParser(&request); err != nil {
-		return utils.SendBadRequest(c, "Invalid request body")
-	}
-
-	// Update fields if provided
-	if request.Name != nil {
-		tier.Name = *request.Name
-	}
-	if request.DisplayName != nil {
-		tier.DisplayName = *request.DisplayName
-	}
-	if request.Description != nil {
-		tier.Description = *request.Description
-	}
-	if request.PriceMonthly != nil {
-		tier.PriceMonthly = *request.PriceMonthly
-	}
-	if request.PriceYearly != nil {
-		tier.PriceYearly = *request.PriceYearly
-	}
-	if request.MaxUsers != nil {
-		tier.MaxUsers = *request.MaxUsers
-	}
-	if request.MaxOrganizations != nil {
-		tier.MaxOrganizations = request.MaxOrganizations
-	}
-	if request.StorageLimitGB != nil {
-		tier.StorageLimitGB = *request.StorageLimitGB
-	}
-	if len(request.Features) > 0 {
-		featuresJSON := `["` + request.Features[0]
-		for i := 1; i < len(request.Features); i++ {
-			featuresJSON += `","` + request.Features[i]
-		}
-		featuresJSON += `"]`
-		tier.Features = featuresJSON
-	}
-	if request.IsActive != nil {
-		tier.IsActive = *request.IsActive
-	}
-	if request.SortOrder != nil {
-		tier.SortOrder = *request.SortOrder
-	}
-
-	tier.UpdatedAt = time.Now()
-
-	if err := db.Save(&tier).Error; err != nil {
-		log.Printf("Error updating subscription tier: %v", err)
-		return utils.SendInternalError(c, "Failed to update subscription tier", err)
-	}
-
-	return utils.SendSimpleSuccess(c, tier, "Subscription tier updated successfully")
+	// Use the handler from subscription_tier_handler.go
+	return UpdateTier(c)
 }
 
 // DeleteSubscriptionTier deletes a subscription tier
@@ -205,16 +119,23 @@ func DeleteSubscriptionTier(c *fiber.Ctx) error {
 	db := config.DB
 	tierID := c.Params("id")
 
-	var tier SubscriptionTier
+	var tier models.SubscriptionTier
 	if err := db.First(&tier, "id = ?", tierID).Error; err != nil {
 		return utils.SendNotFound(c, "Subscription tier not found")
+	}
+
+	// Prevent deleting if less than 3 tiers would remain
+	var tierCount int64
+	db.Model(&models.SubscriptionTier{}).Where("is_active = ?", true).Count(&tierCount)
+	if tierCount <= 3 {
+		return utils.SendBadRequest(c, "Cannot delete tier: minimum 3 tiers required")
 	}
 
 	// Check if tier is in use by any organizations
 	var orgCount int64
 	db.Table("organizations").Where("subscription_tier = ?", tier.Name).Count(&orgCount)
 	if orgCount > 0 {
-		return utils.SendBadRequest(c, "Cannot delete tier that is in use by organizations")
+		return utils.SendBadRequest(c, fmt.Sprintf("Cannot delete tier that is in use by %d organizations", orgCount))
 	}
 
 	if err := db.Delete(&tier).Error; err != nil {
@@ -226,10 +147,11 @@ func DeleteSubscriptionTier(c *fiber.Ctx) error {
 }
 
 // GetAllSubscriptionFeatures returns all subscription features
+// GetAllSubscriptionFeatures returns all subscription features
 func GetAllSubscriptionFeatures(c *fiber.Ctx) error {
 	db := config.DB
 
-	var features []SubscriptionFeature
+	var features []models.SubscriptionFeature
 	if err := db.Order("category ASC, name ASC").Find(&features).Error; err != nil {
 		log.Printf("Error getting subscription features: %v", err)
 		return utils.SendInternalError(c, "Failed to retrieve subscription features", err)
@@ -254,7 +176,7 @@ func CreateSubscriptionFeature(c *fiber.Ctx) error {
 		return utils.SendBadRequest(c, "Invalid request body")
 	}
 
-	feature := SubscriptionFeature{
+	feature := models.SubscriptionFeature{
 		ID:          utils.GenerateID(),
 		Name:        request.Name,
 		DisplayName: request.DisplayName,
@@ -277,7 +199,7 @@ func UpdateSubscriptionFeature(c *fiber.Ctx) error {
 	db := config.DB
 	featureID := c.Params("id")
 
-	var feature SubscriptionFeature
+	var feature models.SubscriptionFeature
 	if err := db.First(&feature, "id = ?", featureID).Error; err != nil {
 		return utils.SendNotFound(c, "Subscription feature not found")
 	}
@@ -324,7 +246,7 @@ func DeleteSubscriptionFeature(c *fiber.Ctx) error {
 	db := config.DB
 	featureID := c.Params("id")
 
-	var feature SubscriptionFeature
+	var feature models.SubscriptionFeature
 	if err := db.First(&feature, "id = ?", featureID).Error; err != nil {
 		return utils.SendNotFound(c, "Subscription feature not found")
 	}
@@ -353,7 +275,7 @@ func GetTrialOrganizations(c *fiber.Ctx) error {
 		SubscriptionStatus string    `json:"subscription_status"`
 	}
 
-	// Get organizations with trial information
+	// Get organizations with trial information (PostgreSQL syntax)
 	query := `
 		SELECT 
 			o.id,
@@ -362,20 +284,20 @@ func GetTrialOrganizations(c *fiber.Ctx) error {
 			o.trial_end_date,
 			CASE 
 				WHEN o.trial_end_date IS NULL THEN 0
-				ELSE CAST(julianday(o.trial_end_date) - julianday('now') AS INTEGER)
+				ELSE CAST(EXTRACT(DAY FROM (o.trial_end_date - CURRENT_TIMESTAMP)) AS INTEGER)
 			END as days_remaining,
 			CASE 
 				WHEN o.trial_end_date IS NULL THEN 'no_trial'
-				WHEN o.trial_end_date < datetime('now') THEN 'expired'
+				WHEN o.trial_end_date < CURRENT_TIMESTAMP THEN 'expired'
 				ELSE 'active'
 			END as status,
-			COALESCE(o.subscription_tier, 'basic') as subscription_tier,
+			COALESCE(o.subscription_tier, 'starter') as subscription_tier,
 			COALESCE(o.subscription_status, 'trial') as subscription_status
 		FROM organizations o
 		ORDER BY 
 			CASE 
 				WHEN o.trial_end_date IS NULL THEN 3
-				WHEN o.trial_end_date < datetime('now') THEN 1
+				WHEN o.trial_end_date < CURRENT_TIMESTAMP THEN 1
 				ELSE 2
 			END,
 			o.trial_end_date ASC
@@ -396,80 +318,6 @@ func GetTrialOrganizations(c *fiber.Ctx) error {
 	return utils.SendSimpleSuccess(c, organizations, "Trial organizations retrieved successfully")
 }
 
-// ChangeOrganizationTier allows admin to change an organization's subscription tier
-func ChangeOrganizationTier(c *fiber.Ctx) error {
-	db := config.DB
-	orgID := c.Params("id")
-
-	var request struct {
-		NewTier    string `json:"new_tier" validate:"required"`
-		Reason     string `json:"reason" validate:"required,min=10,max=500"`
-		OverrideLimits bool `json:"override_limits"`
-	}
-
-	if err := c.BodyParser(&request); err != nil {
-		return utils.SendBadRequest(c, "Invalid request body")
-	}
-
-	// Verify organization exists
-	var org struct {
-		ID                 string `json:"id"`
-		Name               string `json:"name"`
-		SubscriptionTier   string `json:"subscription_tier"`
-		SubscriptionStatus string `json:"subscription_status"`
-	}
-
-	if err := db.Table("organizations").
-		Select("id, name, COALESCE(subscription_tier, 'basic') as subscription_tier, COALESCE(subscription_status, 'trial') as subscription_status").
-		Where("id = ?", orgID).
-		First(&org).Error; err != nil {
-		return utils.SendNotFound(c, "Organization not found")
-	}
-
-	// Verify new tier exists
-	var tier SubscriptionTier
-	if err := db.First(&tier, "name = ? AND is_active = ?", request.NewTier, true).Error; err != nil {
-		return utils.SendBadRequest(c, "Invalid or inactive subscription tier")
-	}
-
-	// Update organization tier
-	updates := map[string]interface{}{
-		"subscription_tier":   request.NewTier,
-		"subscription_status": "active",
-		"updated_at":         time.Now(),
-	}
-
-	if err := db.Table("organizations").Where("id = ?", orgID).Updates(updates).Error; err != nil {
-		log.Printf("Error updating organization tier: %v", err)
-		return utils.SendInternalError(c, "Failed to update organization tier", err)
-	}
-
-	// Log the tier change for audit purposes
-	auditLog := map[string]interface{}{
-		"id":             utils.GenerateID(),
-		"organization_id": orgID,
-		"action":         "tier_change",
-		"old_value":      org.SubscriptionTier,
-		"new_value":      request.NewTier,
-		"reason":         request.Reason,
-		"admin_user_id":  c.Locals("userID"),
-		"created_at":     time.Now(),
-	}
-
-	db.Table("admin_audit_logs").Create(auditLog)
-
-	response := map[string]interface{}{
-		"organization_id": orgID,
-		"organization_name": org.Name,
-		"old_tier":       org.SubscriptionTier,
-		"new_tier":       request.NewTier,
-		"reason":         request.Reason,
-		"changed_by":     c.Locals("userID"),
-		"changed_at":     time.Now(),
-	}
-
-	return utils.SendSimpleSuccess(c, response, "Organization tier changed successfully")
-}
 
 // GetSubscriptionAnalytics returns comprehensive subscription analytics for admin
 func GetSubscriptionAnalytics(c *fiber.Ctx) error {
@@ -659,88 +507,3 @@ func GetSubscriptionAnalytics(c *fiber.Ctx) error {
 	return utils.SendSimpleSuccess(c, analytics, "Subscription analytics retrieved successfully")
 }
 
-// OverrideOrganizationLimits allows admin to override subscription limits for an organization
-func OverrideOrganizationLimits(c *fiber.Ctx) error {
-	db := config.DB
-	orgID := c.Params("id")
-
-	var request struct {
-		MaxUsers       *int    `json:"max_users,omitempty"`
-		StorageLimitGB *int    `json:"storage_limit_gb,omitempty"`
-		Features       []string `json:"features,omitempty"`
-		Reason         string  `json:"reason" validate:"required,min=10,max=500"`
-		ExpiresAt      *time.Time `json:"expires_at,omitempty"`
-	}
-
-	if err := c.BodyParser(&request); err != nil {
-		return utils.SendBadRequest(c, "Invalid request body")
-	}
-
-	// Verify organization exists
-	var org struct {
-		ID   string `json:"id"`
-		Name string `json:"name"`
-	}
-
-	if err := db.Table("organizations").
-		Select("id, name").
-		Where("id = ?", orgID).
-		First(&org).Error; err != nil {
-		return utils.SendNotFound(c, "Organization not found")
-	}
-
-	// Create or update organization override record
-	override := map[string]interface{}{
-		"id":              utils.GenerateID(),
-		"organization_id": orgID,
-		"max_users":       request.MaxUsers,
-		"storage_limit_gb": request.StorageLimitGB,
-		"reason":          request.Reason,
-		"admin_user_id":   c.Locals("userID"),
-		"expires_at":      request.ExpiresAt,
-		"created_at":      time.Now(),
-		"updated_at":      time.Now(),
-	}
-
-	if len(request.Features) > 0 {
-		featuresJSON := `["` + request.Features[0]
-		for i := 1; i < len(request.Features); i++ {
-			featuresJSON += `","` + request.Features[i]
-		}
-		featuresJSON += `"]`
-		override["features"] = featuresJSON
-	}
-
-	// Use UPSERT logic - delete existing and create new
-	db.Table("organization_limit_overrides").Where("organization_id = ?", orgID).Delete(nil)
-	
-	if err := db.Table("organization_limit_overrides").Create(override).Error; err != nil {
-		log.Printf("Error creating organization limit override: %v", err)
-		return utils.SendInternalError(c, "Failed to create limit override", err)
-	}
-
-	// Log the override for audit purposes
-	auditLog := map[string]interface{}{
-		"id":             utils.GenerateID(),
-		"organization_id": orgID,
-		"action":         "limit_override",
-		"details":        request,
-		"reason":         request.Reason,
-		"admin_user_id":  c.Locals("userID"),
-		"created_at":     time.Now(),
-	}
-
-	db.Table("admin_audit_logs").Create(auditLog)
-
-	response := map[string]interface{}{
-		"organization_id":   orgID,
-		"organization_name": org.Name,
-		"overrides":         request,
-		"reason":            request.Reason,
-		"created_by":        c.Locals("userID"),
-		"created_at":        time.Now(),
-		"expires_at":        request.ExpiresAt,
-	}
-
-	return utils.SendSimpleSuccess(c, response, "Organization limits overridden successfully")
-}

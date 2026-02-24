@@ -447,3 +447,34 @@ export async function getOrganizationStatistics(): Promise<
     return handleError(error);
   }
 }
+
+/**
+ * Change organization subscription tier (Admin only)
+ */
+export async function changeOrganizationTier(
+  organizationId: string,
+  request: {
+    tier: string;
+    reason: string;
+  },
+): Promise<APIResponse<any>> {
+  const url = `/api/v1/admin/organizations/${organizationId}/change-tier`;
+
+  try {
+    const response = await authenticatedApiClient({
+      url: url,
+      method: "POST",
+      data: {
+        newTier: request.tier,
+        reason: request.reason,
+      },
+    });
+
+    return successResponse(
+      response?.data?.data || response?.data,
+      "Subscription tier changed successfully",
+    );
+  } catch (error: Error | any) {
+    return handleError(error);
+  }
+}

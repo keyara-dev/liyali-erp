@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { type AnalyticsFilters } from "@/app/_actions/analytics";
+import { useSubscriptionTiers } from "@/hooks/use-subscriptions";
 
 interface AnalyticsFiltersProps {
   filters: AnalyticsFilters;
@@ -40,12 +41,6 @@ const DATE_RANGES = [
   { value: "90d", label: "Last 90 days" },
   { value: "1y", label: "Last year" },
   { value: "custom", label: "Custom range" },
-];
-
-const SUBSCRIPTION_TIERS = [
-  { value: "basic", label: "Basic" },
-  { value: "professional", label: "Professional" },
-  { value: "enterprise", label: "Enterprise" },
 ];
 
 const USER_ROLES = [
@@ -71,6 +66,9 @@ export function AnalyticsFilters({
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [startDate, setStartDate] = useState<Date>();
   const [endDate, setEndDate] = useState<Date>();
+
+  // Fetch tiers from API
+  const { data: tiers, isLoading: tiersLoading } = useSubscriptionTiers();
 
   const updateFilter = (key: keyof AnalyticsFilters, value: any) => {
     onFiltersChange({
@@ -276,15 +274,18 @@ export function AnalyticsFilters({
                 onValueChange={(value) =>
                   updateFilter("subscription_tier", value || undefined)
                 }
+                disabled={tiersLoading}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="All tiers" />
+                  <SelectValue
+                    placeholder={tiersLoading ? "Loading..." : "All tiers"}
+                  />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="">All tiers</SelectItem>
-                  {SUBSCRIPTION_TIERS.map((tier) => (
-                    <SelectItem key={tier.value} value={tier.value}>
-                      {tier.label}
+                  {tiers?.map((tier) => (
+                    <SelectItem key={tier.id} value={tier.name}>
+                      {tier.display_name}
                     </SelectItem>
                   ))}
                 </SelectContent>

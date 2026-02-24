@@ -276,7 +276,9 @@ function OverviewTab({
               <span className="text-sm text-muted-foreground">Users:</span>
               <span className="text-sm font-medium">
                 {organization.user_count} /{" "}
-                {organization.settings?.max_users || currentTier?.max_users || "∞"}
+                {organization.settings?.max_users ||
+                  currentTier?.max_users ||
+                  "∞"}
               </span>
             </div>
             <div className="flex items-center justify-between">
@@ -286,7 +288,9 @@ function OverviewTab({
               </span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">Custom Branding:</span>
+              <span className="text-sm text-muted-foreground">
+                Custom Branding:
+              </span>
               {organization.settings?.custom_branding ? (
                 <CheckCircle className="h-4 w-4 text-green-500" />
               ) : (
@@ -331,9 +335,7 @@ function OverviewTab({
                 <span className="text-muted-foreground">End:</span>
                 <p className="font-medium">
                   {organization.trial_end_date
-                    ? new Date(
-                        organization.trial_end_date,
-                      ).toLocaleDateString()
+                    ? new Date(organization.trial_end_date).toLocaleDateString()
                     : "N/A"}
                 </p>
               </div>
@@ -522,7 +524,11 @@ function ChangeTierTab({
         </div>
       )}
 
-      <Button type="submit" disabled={isLoading || !selectedTier} className="w-full">
+      <Button
+        type="submit"
+        disabled={isLoading || !selectedTier}
+        className="w-full"
+      >
         {isLoading ? (
           <>
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -615,10 +621,7 @@ function OverrideLimitsTab({
       if (selectedFeatures.length > 0) request.features = selectedFeatures;
       if (expiresAt) request.expires_at = new Date(expiresAt).toISOString();
 
-      const result = await overrideOrganizationLimits(
-        organization.id,
-        request,
-      );
+      const result = await overrideOrganizationLimits(organization.id, request);
 
       if (result.success) {
         toast.success("Limits overridden successfully");
@@ -646,9 +649,7 @@ function OverrideLimitsTab({
           <span>
             Max Users: {organization.settings?.max_users || "Default"}
           </span>
-          <span>
-            Features: {currentFeatures.length} enabled
-          </span>
+          <span>Features: {currentFeatures.length} enabled</span>
         </div>
       </div>
 
@@ -664,9 +665,7 @@ function OverrideLimitsTab({
             placeholder="Keep default"
             value={maxUsers ?? ""}
             onChange={(e) =>
-              setMaxUsers(
-                e.target.value ? parseInt(e.target.value) : undefined,
-              )
+              setMaxUsers(e.target.value ? parseInt(e.target.value) : undefined)
             }
           />
         </div>
@@ -744,7 +743,7 @@ function OverrideLimitsTab({
                           htmlFor={`override-${feature.id}`}
                           className={`text-xs leading-none ${alreadyEnabled ? "text-muted-foreground" : ""}`}
                         >
-                          {feature.display_name || feature.name}
+                          {feature.displayName || feature.name}
                           {alreadyEnabled && " (active)"}
                         </label>
                       </div>
@@ -886,7 +885,9 @@ function TrialTab({
         <div className="grid grid-cols-3 gap-4 text-sm">
           <div>
             <span className="text-muted-foreground">Status:</span>
-            <p className="font-medium capitalize">{organization.trial_status}</p>
+            <p className="font-medium capitalize">
+              {organization.trial_status}
+            </p>
           </div>
           <div>
             <span className="text-muted-foreground">End Date:</span>
@@ -992,7 +993,9 @@ function TrialTab({
             clears any grace period.
           </p>
           <div className="space-y-2">
-            <label className="text-sm font-medium">New Trial Duration (days)</label>
+            <label className="text-sm font-medium">
+              New Trial Duration (days)
+            </label>
             <Input
               type="number"
               min="1"
@@ -1066,16 +1069,18 @@ function HistoryTab({
   }
 
   const getActionBadge = (action: string) => {
-    if (action.includes("tier") || action.includes("upgrade") || action.includes("downgrade")) {
+    if (
+      action.includes("tier") ||
+      action.includes("upgrade") ||
+      action.includes("downgrade")
+    ) {
       return <Badge className="bg-blue-100 text-blue-800">{action}</Badge>;
     }
     if (action.includes("override") || action.includes("limit")) {
       return <Badge className="bg-purple-100 text-purple-800">{action}</Badge>;
     }
     if (action.includes("trial")) {
-      return (
-        <Badge className="bg-yellow-100 text-yellow-800">{action}</Badge>
-      );
+      return <Badge className="bg-yellow-100 text-yellow-800">{action}</Badge>;
     }
     return <Badge variant="outline">{action}</Badge>;
   };
@@ -1095,16 +1100,12 @@ function HistoryTab({
               {getActionBadge(log.action || "unknown")}
               <span className="text-xs text-muted-foreground flex-shrink-0">
                 {log.createdAt || log.created_at
-                  ? new Date(
-                      log.createdAt || log.created_at,
-                    ).toLocaleString()
+                  ? new Date(log.createdAt || log.created_at).toLocaleString()
                   : ""}
               </span>
             </div>
             {log.description && (
-              <p className="text-sm text-muted-foreground">
-                {log.description}
-              </p>
+              <p className="text-sm text-muted-foreground">{log.description}</p>
             )}
             {log.changes && (
               <div className="text-xs text-muted-foreground bg-muted/50 p-2 rounded">

@@ -10,6 +10,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/liyali/liyali-gateway/config"
+	"github.com/liyali/liyali-gateway/models"
 	"github.com/liyali/liyali-gateway/utils"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -627,7 +628,7 @@ func AdminGetOrgSubscription(c *fiber.Ctx) error {
 	if t, ok := org["subscription_tier"].(string); ok {
 		tierName = t
 	}
-	var tier SubscriptionTier
+	var tier models.SubscriptionTier
 	db.First(&tier, "name = ?", tierName)
 
 	// Get settings

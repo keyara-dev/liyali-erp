@@ -27,18 +27,13 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { type OrganizationFilters } from "@/app/_actions/organizations";
+import { useSubscriptionTiers } from "@/hooks/use-subscriptions";
 
 interface OrganizationAdvancedFiltersProps {
   filters: OrganizationFilters;
   onFiltersChange: (filters: OrganizationFilters) => void;
   onReset: () => void;
 }
-
-const SUBSCRIPTION_TIERS = [
-  { value: "basic", label: "Basic" },
-  { value: "professional", label: "Professional" },
-  { value: "enterprise", label: "Enterprise" },
-];
 
 const TRIAL_STATUSES = [
   { value: "trial", label: "Trial" },
@@ -61,6 +56,9 @@ export function OrganizationAdvancedFilters({
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [dateFrom, setDateFrom] = useState<Date>();
   const [dateTo, setDateTo] = useState<Date>();
+
+  // Fetch tiers from API
+  const { data: tiers, isLoading: tiersLoading } = useSubscriptionTiers();
 
   const updateFilter = (key: keyof OrganizationFilters, value: any) => {
     onFiltersChange({
@@ -186,15 +184,18 @@ export function OrganizationAdvancedFilters({
                 onValueChange={(value) =>
                   updateFilter("subscription_tier", value || undefined)
                 }
+                disabled={tiersLoading}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="All tiers" />
+                  <SelectValue
+                    placeholder={tiersLoading ? "Loading..." : "All tiers"}
+                  />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="">All tiers</SelectItem>
-                  {SUBSCRIPTION_TIERS.map((tier) => (
-                    <SelectItem key={tier.value} value={tier.value}>
-                      {tier.label}
+                  {tiers?.map((tier) => (
+                    <SelectItem key={tier.id} value={tier.name}>
+                      {tier.display_name}
                     </SelectItem>
                   ))}
                 </SelectContent>

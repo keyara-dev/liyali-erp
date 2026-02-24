@@ -30,7 +30,16 @@ import {
   type Organization,
   type UpdateOrganizationRequest,
 } from "@/app/_actions/organizations";
-import { Building2, Mail, Phone, Globe, Settings, Users } from "lucide-react";
+import { useSubscriptionTiers } from "@/hooks/use-subscriptions";
+import {
+  Building2,
+  Mail,
+  Phone,
+  Globe,
+  Settings,
+  Users,
+  Loader2,
+} from "lucide-react";
 
 interface OrganizationEditDialogProps {
   organization: Organization | null;
@@ -38,24 +47,6 @@ interface OrganizationEditDialogProps {
   onOpenChange: (open: boolean) => void;
   onOrganizationUpdated: () => void;
 }
-
-const SUBSCRIPTION_TIERS = [
-  {
-    value: "basic",
-    label: "Basic",
-    description: "Essential features for small teams",
-  },
-  {
-    value: "professional",
-    label: "Professional",
-    description: "Advanced features for growing businesses",
-  },
-  {
-    value: "enterprise",
-    label: "Enterprise",
-    description: "Full feature set for large organizations",
-  },
-];
 
 const AVAILABLE_FEATURES = [
   "advanced_analytics",
@@ -78,6 +69,9 @@ export function OrganizationEditDialog({
 }: OrganizationEditDialogProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState<UpdateOrganizationRequest>({});
+
+  // Fetch tiers from API
+  const { data: tiers, isLoading: tiersLoading } = useSubscriptionTiers();
 
   useEffect(() => {
     if (organization && open) {
@@ -216,17 +210,26 @@ export function OrganizationEditDialog({
                   onValueChange={(value) =>
                     handleInputChange("subscription_tier", value as any)
                   }
+                  disabled={tiersLoading}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select subscription tier" />
+                    <SelectValue
+                      placeholder={
+                        tiersLoading
+                          ? "Loading tiers..."
+                          : "Select subscription tier"
+                      }
+                    />
                   </SelectTrigger>
                   <SelectContent>
-                    {SUBSCRIPTION_TIERS.map((tier) => (
-                      <SelectItem key={tier.value} value={tier.value}>
+                    {tiers?.map((tier) => (
+                      <SelectItem key={tier.id} value={tier.name}>
                         <div className="flex flex-col">
-                          <span className="font-medium">{tier.label}</span>
+                          <span className="font-medium">
+                            {tier.display_name}
+                          </span>
                           <span className="text-sm text-muted-foreground">
-                            {tier.description}
+                            ${tier.price_monthly}/month
                           </span>
                         </div>
                       </SelectItem>

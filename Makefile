@@ -1,7 +1,7 @@
 # Liyali Gateway - Makefile
 # Deployment and build automation for all apps
 
-.PHONY: help deploy deploy-all deploy-backend deploy-web deploy-admin build build-all build-backend build-web build-admin test test-backend test-web clean migrate install check-env verify pre-deploy logs status open ssh-backend ssh-web ssh-admin restart scale-backend scale-web scale-admin dev-backend dev-web dev-admin
+.PHONY: help deploy deploy-all deploy-backend deploy-web deploy-admin build build-all build-backend build-web build-admin test test-backend test-web clean migrate indexes install check-env verify pre-deploy logs status open ssh-backend ssh-web ssh-admin restart scale-backend scale-web scale-admin dev-backend dev-web dev-admin air
 
 # Default target
 help:
@@ -21,6 +21,12 @@ help:
 	@echo ""
 	@echo "Database:"
 	@echo "  make migrate             - Run database migrations"
+	@echo "  make indexes             - Create concurrent indexes (performance optimization)"
+	@echo ""
+	@echo "  📖 Database Documentation:"
+	@echo "     backend/database/README.md              - Database management guide"
+	@echo "     backend/database/migrations/README.md   - Detailed migration guide"
+	@echo "     backend/database/MIGRATION_SUMMARY.md   - Migration history"
 	@echo ""
 	@echo "Testing:"
 	@echo "  make test                - Run all tests"
@@ -29,6 +35,7 @@ help:
 	@echo ""
 	@echo "Development:"
 	@echo "  make dev-backend         - Run backend in dev mode"
+	@echo "  make air                 - Run backend with air (hot-reload)"
 	@echo "  make dev-web             - Run web frontend in dev mode"
 	@echo "  make dev-admin           - Run admin console in dev mode"
 	@echo ""
@@ -114,8 +121,14 @@ build-admin:
 # Run database migrations
 migrate:
 	@echo "🗄️  Running database migrations..."
-	@cd backend && go run cmd/migrate/main.go
+	@cd backend && export $$(cat .env | grep -v '^#' | xargs) && go run cmd/migrate/main.go
 	@echo "✅ Migrations completed!"
+
+# Create concurrent indexes (run separately, not in transaction)
+indexes:
+	@echo "📊 Creating concurrent indexes..."
+	@cd backend && export $$(cat .env | grep -v '^#' | xargs) && psql $$DATABASE_URL -f database/scripts/create_concurrent_indexes.sql
+	@echo "✅ Indexes created!"
 
 # ============================================================================
 # TESTING COMMANDS
@@ -145,6 +158,11 @@ test-web:
 dev-backend:
 	@echo "🔧 Starting backend in dev mode..."
 	@cd backend && go run main.go
+
+# Run backend with air (hot-reload)
+air:
+	@echo "🔥 Starting backend with air (hot-reload)..."
+	@cd backend && air
 
 # Run web frontend in dev mode
 dev-web:
