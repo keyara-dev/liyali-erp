@@ -119,7 +119,9 @@ func (s *SubscriptionService) GetAllSubscriptionPlans() ([]SubscriptionPlan, err
 				'[]'
 			) as feature_details
 		FROM subscription_tiers st
-		LEFT JOIN subscription_features sf ON sf.name = ANY(st.features::text[])
+		LEFT JOIN subscription_features sf ON sf.name = ANY(
+			SELECT jsonb_array_elements_text(st.features)
+		)
 		WHERE st.is_active = true
 		GROUP BY st.id, st.name, st.display_name, st.description, st.price_monthly, 
 		         st.price_yearly, st.max_workspaces, st.max_team_members, st.max_documents,
