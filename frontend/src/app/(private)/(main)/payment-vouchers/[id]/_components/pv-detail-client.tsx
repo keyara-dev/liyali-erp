@@ -239,18 +239,22 @@ export function PVDetailClient({
           disabled={isExporting}
           variant="outline"
           className="gap-2 h-11 mt-2 mr-2"
+          isLoading={isExporting}
+          loadingText="Loading..."
         >
           <Eye className="h-4 w-4" />
-          {isExporting ? "Loading..." : "Preview"}
+          Preview
         </Button>
         <Button
           onClick={handleExportPDF}
           disabled={isExporting}
           variant="outline"
           className="gap-2 h-11 mt-2"
+          isLoading={isExporting}
+          loadingText="Exporting..."
         >
           <Download className="h-4 w-4" />
-          {isExporting ? "Exporting..." : "Export PDF"}
+          Export PDF
         </Button>
       </div>
 

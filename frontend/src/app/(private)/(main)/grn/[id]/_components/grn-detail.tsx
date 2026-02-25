@@ -152,9 +152,11 @@ export function GrnDetail({ grnId, userId, userRole }: GrnDetailProps) {
             onClick={handleDownloadPDF}
             disabled={isDownloadingPDF}
             className="gap-2"
+            isLoading={isDownloadingPDF}
+            loadingText="Generating..."
           >
             <Download className="h-4 w-4" />
-            {isDownloadingPDF ? "Generating..." : "Download PDF"}
+            Download PDF
           </Button>
         </div>
       </div>

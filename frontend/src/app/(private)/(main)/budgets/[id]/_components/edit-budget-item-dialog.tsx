@@ -215,8 +215,8 @@ export function EditBudgetItemDialog({
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={isSubmitting} className="flex-1">
-              {isSubmitting ? 'Updating...' : 'Update Item'}
+            <Button type="submit" disabled={isSubmitting} className="flex-1" isLoading={isSubmitting} loadingText="Updating...">
+              Update Item
             </Button>
           </div>
         </form>

@@ -209,9 +209,11 @@ export function PODetailClient({
           disabled={isExporting}
           variant="outline"
           className="gap-2 h-11 mt-2"
+          isLoading={isExporting}
+          loadingText="Exporting..."
         >
           <Download className="h-4 w-4" />
-          {isExporting ? "Exporting..." : "Export PDF"}
+          Export PDF
         </Button>
       </div>
 

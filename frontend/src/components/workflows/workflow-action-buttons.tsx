@@ -471,9 +471,11 @@ export const WorkflowActionButtons = memo(function WorkflowActionButtons({
                     size="default"
                     onClick={() => handleAction("approve", onApprove)}
                     className="bg-green-600 hover:bg-green-700"
+                    isLoading={isLoading === "approve"}
+                    loadingText="Approving..."
                   >
                     <CheckCircle2 className="h-4 w-4 mr-2" />
-                    {isLoading === "approve" ? "Approving..." : "Approve"}
+                    Approve
                   </Button>
                 )}
                 {onReject && (
@@ -481,9 +483,11 @@ export const WorkflowActionButtons = memo(function WorkflowActionButtons({
                     size="default"
                     variant="destructive"
                     onClick={() => handleAction("reject", onReject)}
+                    isLoading={isLoading === "reject"}
+                    loadingText="Rejecting..."
                   >
                     <X className="h-4 w-4 mr-2" />
-                    {isLoading === "reject" ? "Rejecting..." : "Reject"}
+                    Reject
                   </Button>
                 )}
               </>

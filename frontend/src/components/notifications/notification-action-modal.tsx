@@ -74,8 +74,10 @@ export function NotificationActionModal({
           <Button
             onClick={handleAction}
             disabled={isLoading || (requiresComment && !comment.trim())}
+            isLoading={isLoading}
+            loadingText="Processing..."
           >
-            {isLoading ? "Processing..." : actionLabel}
+            {actionLabel}
           </Button>
         </DialogFooter>
       </DialogContent>

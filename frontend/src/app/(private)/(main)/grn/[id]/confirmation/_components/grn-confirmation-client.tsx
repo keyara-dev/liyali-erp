@@ -344,8 +344,10 @@ export function GRNConfirmationClient({
                   onClick={handleConfirm}
                   disabled={isSubmitting}
                   className="w-full bg-green-600 hover:bg-green-700"
+                  isLoading={isSubmitting}
+                  loadingText="Confirming..."
                 >
-                  {isSubmitting ? "Confirming..." : "Confirm Receipt"}
+                  Confirm Receipt
                 </Button>
 
                 <Button
@@ -353,8 +355,10 @@ export function GRNConfirmationClient({
                   disabled={isSubmitting}
                   variant="destructive"
                   className="w-full"
+                  isLoading={isSubmitting}
+                  loadingText="Rejecting..."
                 >
-                  {isSubmitting ? "Rejecting..." : "Reject GRN"}
+                  Reject GRN
                 </Button>
 
                 <Button

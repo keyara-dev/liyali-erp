@@ -192,8 +192,8 @@ export function CreateOrUpdateDepartment({
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={mutation.isPending}>
-              {mutation.isPending ? "Saving..." : "Save"}
+            <Button type="submit" disabled={mutation.isPending} isLoading={mutation.isPending} loadingText="Saving...">
+              Save
             </Button>
           </div>
         </form>

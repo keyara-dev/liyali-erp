@@ -100,8 +100,8 @@ export function ApprovalConfirmationDialog({
           <Button variant="outline" onClick={onCancel} disabled={isSubmitting}>
             Cancel
           </Button>
-          <Button onClick={handleSubmit} disabled={isSubmitting}>
-            {isSubmitting ? 'Approving...' : 'Approve'}
+          <Button onClick={handleSubmit} disabled={isSubmitting} isLoading={isSubmitting} loadingText="Approving...">
+            Approve
           </Button>
         </DialogFooter>
       </DialogContent>

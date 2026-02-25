@@ -41,8 +41,8 @@ export function RichTextEditor({
         className={`${classNames?.editor || ''} min-h-96`}
       />
       <div className="flex gap-2 mt-4">
-        <Button onClick={handleSave} disabled={isSaving}>
-          {isSaving ? 'Saving...' : 'Save'}
+        <Button onClick={handleSave} disabled={isSaving} isLoading={isSaving} loadingText="Saving...">
+          Save
         </Button>
         <Button variant="outline" onClick={onCancel} disabled={isSaving}>
           Cancel

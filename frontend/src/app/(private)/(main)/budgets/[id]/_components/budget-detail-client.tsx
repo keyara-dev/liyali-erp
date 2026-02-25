@@ -68,6 +68,11 @@ export function BudgetDetailClientEnhanced({
       console.log("Budget items from API:", budget.items);
       console.log("Budget items type:", typeof budget.items);
       console.log("Budget items is array:", Array.isArray(budget.items));
+      console.log("Budget action history:", budget.actionHistory);
+      console.log(
+        "Budget action history length:",
+        budget.actionHistory?.length,
+      );
 
       // Ensure items have the correct structure
       const formattedItems = Array.isArray(budget.items)
@@ -109,9 +114,18 @@ export function BudgetDetailClientEnhanced({
       if (response.success) {
         toast.success("Budget items saved successfully");
         setHasUnsavedChanges(false);
-        // Refresh budget data
-        queryClient.invalidateQueries({
+
+        // Invalidate and refetch budget data to get updated action history
+        await queryClient.invalidateQueries({
           queryKey: [QUERY_KEYS.BUDGETS.BY_ID, budgetId],
+        });
+        await queryClient.refetchQueries({
+          queryKey: [QUERY_KEYS.BUDGETS.BY_ID, budgetId],
+        });
+
+        // Also invalidate the budgets list
+        queryClient.invalidateQueries({
+          queryKey: [QUERY_KEYS.BUDGETS.ALL],
         });
       } else {
         toast.error(response.message || "Failed to save budget items");
@@ -246,9 +260,11 @@ export function BudgetDetailClientEnhanced({
               onClick={handleSaveBudgetItems}
               disabled={isSubmitting}
               className="gap-2"
+              isLoading={isSubmitting}
+              loadingText="Saving..."
             >
               <Save className="h-4 w-4" />
-              {isSubmitting ? "Saving..." : "Save Changes"}
+              Save Changes
             </Button>
           )}
           {canSubmit && !hasUnsavedChanges && (
