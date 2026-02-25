@@ -353,12 +353,12 @@ func (r *ReportsRepository) QueryStageMetrics(
 			SELECT
 				wt.stage_number,
 				wt.stage_name,
-				EXTRACT(EPOCH FROM (sar.approved_at - wt.assigned_at)) / 86400 as processing_days
+				EXTRACT(EPOCH FROM (sar.approved_at - wt.created_at)) / 86400 as processing_days
 			FROM workflow_tasks wt
 			INNER JOIN stage_approval_records sar ON wt.id = sar.workflow_task_id
 			WHERE wt.organization_id = $1
 			  AND sar.action IN ('approved', 'rejected')
-			  AND wt.assigned_at IS NOT NULL
+			  AND wt.created_at IS NOT NULL
 		)
 		SELECT
 			stage_name,
@@ -407,12 +407,12 @@ func (r *ReportsRepository) QueryBottleneck(
 		WITH stage_times AS (
 			SELECT
 				wt.stage_name,
-				EXTRACT(EPOCH FROM (sar.approved_at - wt.assigned_at)) / 86400 as processing_days
+				EXTRACT(EPOCH FROM (sar.approved_at - wt.created_at)) / 86400 as processing_days
 			FROM workflow_tasks wt
 			INNER JOIN stage_approval_records sar ON wt.id = sar.workflow_task_id
 			WHERE wt.organization_id = $1
 			  AND sar.action IN ('approved', 'rejected')
-			  AND wt.assigned_at IS NOT NULL
+			  AND wt.created_at IS NOT NULL
 		)
 		SELECT
 			stage_name,
