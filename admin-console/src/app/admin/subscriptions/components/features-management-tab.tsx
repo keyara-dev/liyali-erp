@@ -9,6 +9,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -91,11 +92,20 @@ export function FeaturesManagementTab() {
     e.preventDefault();
 
     try {
+      // Convert camelCase to snake_case for API
+      const apiData = {
+        name: formData.name,
+        display_name: formData.displayName,
+        description: formData.description,
+        category: formData.category,
+        is_active: formData.isActive,
+      };
+
       let result;
       if (editingFeature) {
-        result = await updateSubscriptionFeature(editingFeature.id, formData);
+        result = await updateSubscriptionFeature(editingFeature.id, apiData);
       } else {
-        result = await createSubscriptionFeature(formData);
+        result = await createSubscriptionFeature(apiData);
       }
 
       if (result.success) {
@@ -133,12 +143,12 @@ export function FeaturesManagementTab() {
   const toggleFeatureStatus = async (feature: SubscriptionFeature) => {
     try {
       const result = await updateSubscriptionFeature(feature.id, {
-        isActive: !feature.isActive,
+        is_active: !feature.is_active,
       });
 
       if (result.success) {
         toast.success(
-          `Feature ${feature.isActive ? "deactivated" : "activated"}`,
+          `Feature ${feature.is_active ? "deactivated" : "activated"}`,
         );
         loadFeatures();
       } else {
@@ -164,10 +174,10 @@ export function FeaturesManagementTab() {
   const startEdit = (feature: SubscriptionFeature) => {
     setFormData({
       name: feature.name,
-      displayName: feature.displayName,
+      displayName: feature.display_name,
       description: feature.description,
       category: feature.category,
-      isActive: feature.isActive,
+      isActive: feature.is_active,
     });
     setEditingFeature(feature);
     setIsCreating(true);
@@ -429,9 +439,9 @@ function FeatureCard({
     <div className="border rounded-lg p-4 space-y-3">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <h4 className="font-medium">{feature.displayName}</h4>
-          <Badge variant={feature.isActive ? "success" : "secondary"}>
-            {feature.isActive ? "Active" : "Inactive"}
+          <h4 className="font-medium">{feature.display_name}</h4>
+          <Badge variant={feature.is_active ? "success" : "secondary"}>
+            {feature.is_active ? "Active" : "Inactive"}
           </Badge>
         </div>
         <div className="flex gap-1">
@@ -439,9 +449,9 @@ function FeatureCard({
             size="icon"
             variant="ghost"
             onClick={() => onToggleStatus(feature)}
-            title={feature.isActive ? "Deactivate" : "Activate"}
+            title={feature.is_active ? "Deactivate" : "Activate"}
           >
-            {feature.isActive ? (
+            {feature.is_active ? (
               <ToggleRight className="h-4 w-4 text-green-600" />
             ) : (
               <ToggleLeft className="h-4 w-4 text-gray-400" />

@@ -176,8 +176,8 @@ export function ChangeTierDialog({
                       <div className="flex items-center gap-2">
                         <span>{tier.display_name || tier.name}</span>
                         <span className="text-xs text-muted-foreground">
-                          ${tier.price_monthly}/mo &middot; {tier.max_users}{" "}
-                          users
+                          ${tier.price_monthly}/mo &middot;{" "}
+                          {tier.max_team_members} users
                         </span>
                       </div>
                     </SelectItem>
@@ -197,8 +197,8 @@ export function ChangeTierDialog({
               </p>
               <div className="flex gap-4 text-xs text-muted-foreground pt-1">
                 <span>${selectedTierDetails.price_monthly}/month</span>
-                <span>{selectedTierDetails.max_users} max users</span>
-                <span>{selectedTierDetails.storage_limit_gb} GB storage</span>
+                <span>{selectedTierDetails.max_team_members} max users</span>
+                <span>{selectedTierDetails.max_documents} documents</span>
               </div>
             </div>
           )}

@@ -20,11 +20,16 @@ export interface Organization {
   created_at: string;
   status: "active" | "suspended" | "pending";
   subscription_tier: "basic" | "professional" | "enterprise";
+  subscription_status: "trial" | "active" | "expired" | "cancelled";
   user_count: number;
   trial_status: "trial" | "subscribed" | "expired";
   trial_start_date?: string;
   trial_end_date?: string;
   days_remaining?: number;
+  settings?: {
+    max_users?: number;
+    custom_branding?: boolean;
+  };
 }
 
 // User types

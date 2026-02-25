@@ -14,6 +14,7 @@ export interface Organization {
   updated_at: string;
   status: "active" | "suspended" | "pending";
   subscription_tier: "basic" | "professional" | "enterprise";
+  subscription_status: "trial" | "active" | "expired" | "cancelled";
   user_count: number;
   trial_status: "trial" | "subscribed" | "expired";
   trial_start_date?: string;

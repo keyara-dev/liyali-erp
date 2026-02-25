@@ -58,7 +58,7 @@ export function OrganizationCreateDialog({
     domain: "",
     admin_name: "",
     admin_email: "",
-    subscription_tier: "starter",
+    subscription_tier: "basic",
     trial_days: 30,
     settings: {
       max_users: 50,

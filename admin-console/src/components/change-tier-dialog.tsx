@@ -106,7 +106,7 @@ export function ChangeTierDialog({
 
       if (result.success) {
         toast.success(
-          `Subscription tier changed to ${newTier?.displayName || selectedTier}`,
+          `Subscription tier changed to ${newTier?.display_name || selectedTier}`,
         );
         setIsOpen(false);
         setReason("");
@@ -182,10 +182,10 @@ export function ChangeTierDialog({
             <div className="flex items-center gap-2 text-sm">
               <span className="text-muted-foreground">Current Tier:</span>
               <Badge variant="default">
-                {currentTier?.displayName || "Unknown"}
+                {currentTier?.display_name || "Unknown"}
               </Badge>
               <span className="text-muted-foreground">
-                ${currentTier?.priceMonthly || 0}/month
+                ${currentTier?.price_monthly || 0}/month
               </span>
             </div>
           </div>
@@ -208,9 +208,9 @@ export function ChangeTierDialog({
                       disabled={tier.name === organization.subscription_tier}
                     >
                       <div className="flex items-center justify-between w-full">
-                        <span className="font-medium">{tier.displayName}</span>
+                        <span className="font-medium">{tier.display_name}</span>
                         <span className="text-muted-foreground text-sm ml-4">
-                          ${tier.priceMonthly}/month
+                          ${tier.price_monthly}/month
                         </span>
                       </div>
                     </SelectItem>
@@ -229,24 +229,24 @@ export function ChangeTierDialog({
                   </div>
                   <div className="space-y-2">
                     <div className="font-semibold">
-                      {currentTier?.displayName}
+                      {currentTier?.display_name}
                     </div>
                     <div className="text-sm text-muted-foreground">
-                      ${currentTier?.priceMonthly}/month
+                      ${currentTier?.price_monthly}/month
                     </div>
                     <div className="text-xs space-y-1">
                       <div>
                         👥{" "}
-                        {currentTier?.maxTeamMembers === -1
+                        {currentTier?.max_team_members === -1
                           ? "Unlimited"
-                          : currentTier?.maxTeamMembers}{" "}
+                          : currentTier?.max_team_members}{" "}
                         users
                       </div>
                       <div>
                         📄{" "}
-                        {currentTier?.maxDocuments === -1
+                        {currentTier?.max_documents === -1
                           ? "Unlimited"
-                          : currentTier?.maxDocuments}{" "}
+                          : currentTier?.max_documents}{" "}
                         documents
                       </div>
                     </div>
@@ -264,23 +264,23 @@ export function ChangeTierDialog({
                     New Tier
                   </div>
                   <div className="space-y-2">
-                    <div className="font-semibold">{newTier.displayName}</div>
+                    <div className="font-semibold">{newTier.display_name}</div>
                     <div className="text-sm text-muted-foreground">
-                      ${newTier.priceMonthly}/month
+                      ${newTier.price_monthly}/month
                     </div>
                     <div className="text-xs space-y-1">
                       <div>
                         👥{" "}
-                        {newTier.maxTeamMembers === -1
+                        {newTier.max_team_members === -1
                           ? "Unlimited"
-                          : newTier.maxTeamMembers}{" "}
+                          : newTier.max_team_members}{" "}
                         users
                       </div>
                       <div>
                         📄{" "}
-                        {newTier.maxDocuments === -1
+                        {newTier.max_documents === -1
                           ? "Unlimited"
-                          : newTier.maxDocuments}{" "}
+                          : newTier.max_documents}{" "}
                         documents
                       </div>
                     </div>
@@ -303,7 +303,9 @@ export function ChangeTierDialog({
                     >
                       <Check className="h-4 w-4 text-green-600 shrink-0 mt-0.5" />
                       <div className="flex-1">
-                        <div className="font-medium">{feature.displayName}</div>
+                        <div className="font-medium">
+                          {feature.display_name}
+                        </div>
                         {feature.description && (
                           <div className="text-xs text-muted-foreground mt-0.5">
                             {feature.description}

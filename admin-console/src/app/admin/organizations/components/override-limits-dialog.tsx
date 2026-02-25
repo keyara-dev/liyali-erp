@@ -302,7 +302,7 @@ export function OverrideLimitsDialog({
                                   htmlFor={feature.id}
                                   className={`text-sm leading-none ${alreadyEnabled ? "text-muted-foreground" : ""}`}
                                 >
-                                  {feature.displayName || feature.name}
+                                  {feature.display_name || feature.name}
                                   {alreadyEnabled && (
                                     <span className="text-xs ml-1">
                                       (active)

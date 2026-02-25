@@ -198,8 +198,8 @@ export default function OrganizationsPage() {
   const getTierInfo = (tierName: string) => {
     const tier = tiers?.find((t) => t.name === tierName);
     return {
-      displayName: tier?.displayName || tierName,
-      maxUsers: tier?.maxTeamMembers || 0,
+      displayName: tier?.display_name || tierName,
+      maxUsers: tier?.max_team_members || 0,
     };
   };
 

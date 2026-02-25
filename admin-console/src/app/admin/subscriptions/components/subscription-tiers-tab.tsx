@@ -9,6 +9,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -46,18 +47,18 @@ export function SubscriptionTiersTab() {
   // Form state
   const [formData, setFormData] = useState<CreateTierRequest>({
     name: "",
-    displayName: "",
+    display_name: "",
     description: "",
-    priceMonthly: 0,
-    priceYearly: 0,
-    maxWorkspaces: 1,
-    maxTeamMembers: 10,
-    maxDocuments: 100,
-    maxWorkflows: 5,
-    maxCustomRoles: 0,
+    price_monthly: 0,
+    price_yearly: 0,
+    max_workspaces: 1,
+    max_team_members: 10,
+    max_documents: 100,
+    max_workflows: 5,
+    max_custom_roles: 0,
     features: [],
-    isActive: true,
-    sortOrder: 0,
+    is_active: true,
+    sort_order: 0,
   });
 
   useEffect(() => {
@@ -152,18 +153,18 @@ export function SubscriptionTiersTab() {
   const resetForm = () => {
     setFormData({
       name: "",
-      displayName: "",
+      display_name: "",
       description: "",
-      priceMonthly: 0,
-      priceYearly: 0,
-      maxWorkspaces: 1,
-      maxTeamMembers: 10,
-      maxDocuments: 100,
-      maxWorkflows: 5,
-      maxCustomRoles: 0,
+      price_monthly: 0,
+      price_yearly: 0,
+      max_workspaces: 1,
+      max_team_members: 10,
+      max_documents: 100,
+      max_workflows: 5,
+      max_custom_roles: 0,
       features: [],
-      isActive: true,
-      sortOrder: 0,
+      is_active: true,
+      sort_order: 0,
     });
     setEditingTier(null);
     setIsCreating(false);
@@ -172,18 +173,18 @@ export function SubscriptionTiersTab() {
   const startEdit = (tier: SubscriptionTier) => {
     setFormData({
       name: tier.name,
-      displayName: tier.displayName,
+      display_name: tier.display_name,
       description: tier.description,
-      priceMonthly: tier.priceMonthly,
-      priceYearly: tier.priceYearly,
-      maxWorkspaces: tier.maxWorkspaces,
-      maxTeamMembers: tier.maxTeamMembers,
-      maxDocuments: tier.maxDocuments,
-      maxWorkflows: tier.maxWorkflows,
-      maxCustomRoles: tier.maxCustomRoles,
+      price_monthly: tier.price_monthly,
+      price_yearly: tier.price_yearly,
+      max_workspaces: tier.max_workspaces,
+      max_team_members: tier.max_team_members,
+      max_documents: tier.max_documents,
+      max_workflows: tier.max_workflows,
+      max_custom_roles: tier.max_custom_roles,
       features: tier.features,
-      isActive: tier.isActive,
-      sortOrder: tier.sortOrder,
+      is_active: tier.is_active,
+      sort_order: tier.sort_order,
     });
     setEditingTier(tier);
     setIsCreating(true);
@@ -279,11 +280,11 @@ export function SubscriptionTiersTab() {
                 <div>
                   <label className="text-sm font-medium">Display Name</label>
                   <Input
-                    value={formData.displayName}
+                    value={formData.display_name}
                     onChange={(e) =>
                       setFormData((prev) => ({
                         ...prev,
-                        displayName: e.target.value,
+                        display_name: e.target.value,
                       }))
                     }
                     placeholder="Professional Plan"
@@ -314,11 +315,11 @@ export function SubscriptionTiersTab() {
                   </label>
                   <Input
                     type="number"
-                    value={formData.priceMonthly}
+                    value={formData.price_monthly}
                     onChange={(e) =>
                       setFormData((prev) => ({
                         ...prev,
-                        priceMonthly: parseFloat(e.target.value) || 0,
+                        price_monthly: parseFloat(e.target.value) || 0,
                       }))
                     }
                     min="0"
@@ -331,11 +332,11 @@ export function SubscriptionTiersTab() {
                   </label>
                   <Input
                     type="number"
-                    value={formData.priceYearly}
+                    value={formData.price_yearly}
                     onChange={(e) =>
                       setFormData((prev) => ({
                         ...prev,
-                        priceYearly: parseFloat(e.target.value) || 0,
+                        price_yearly: parseFloat(e.target.value) || 0,
                       }))
                     }
                     min="0"
@@ -351,11 +352,11 @@ export function SubscriptionTiersTab() {
                   </label>
                   <Input
                     type="number"
-                    value={formData.maxTeamMembers}
+                    value={formData.max_team_members}
                     onChange={(e) =>
                       setFormData((prev) => ({
                         ...prev,
-                        maxTeamMembers: parseInt(e.target.value) || 0,
+                        max_team_members: parseInt(e.target.value) || 0,
                       }))
                     }
                     min="-1"
@@ -369,11 +370,11 @@ export function SubscriptionTiersTab() {
                   <label className="text-sm font-medium">Max Workspaces</label>
                   <Input
                     type="number"
-                    value={formData.maxWorkspaces}
+                    value={formData.max_workspaces}
                     onChange={(e) =>
                       setFormData((prev) => ({
                         ...prev,
-                        maxWorkspaces: parseInt(e.target.value) || 0,
+                        max_workspaces: parseInt(e.target.value) || 0,
                       }))
                     }
                     min="-1"
@@ -384,11 +385,11 @@ export function SubscriptionTiersTab() {
                   <label className="text-sm font-medium">Max Documents</label>
                   <Input
                     type="number"
-                    value={formData.maxDocuments}
+                    value={formData.max_documents}
                     onChange={(e) =>
                       setFormData((prev) => ({
                         ...prev,
-                        maxDocuments: parseInt(e.target.value) || 0,
+                        max_documents: parseInt(e.target.value) || 0,
                       }))
                     }
                     min="-1"
@@ -402,11 +403,11 @@ export function SubscriptionTiersTab() {
                   <label className="text-sm font-medium">Max Workflows</label>
                   <Input
                     type="number"
-                    value={formData.maxWorkflows}
+                    value={formData.max_workflows}
                     onChange={(e) =>
                       setFormData((prev) => ({
                         ...prev,
-                        maxWorkflows: parseInt(e.target.value) || 0,
+                        max_workflows: parseInt(e.target.value) || 0,
                       }))
                     }
                     min="-1"
@@ -419,11 +420,11 @@ export function SubscriptionTiersTab() {
                   </label>
                   <Input
                     type="number"
-                    value={formData.maxCustomRoles}
+                    value={formData.max_custom_roles}
                     onChange={(e) =>
                       setFormData((prev) => ({
                         ...prev,
-                        maxCustomRoles: parseInt(e.target.value) || 0,
+                        max_custom_roles: parseInt(e.target.value) || 0,
                       }))
                     }
                     min="-1"
@@ -434,11 +435,11 @@ export function SubscriptionTiersTab() {
                   <label className="text-sm font-medium">Sort Order</label>
                   <Input
                     type="number"
-                    value={formData.sortOrder}
+                    value={formData.sort_order}
                     onChange={(e) =>
                       setFormData((prev) => ({
                         ...prev,
-                        sortOrder: parseInt(e.target.value) || 0,
+                        sort_order: parseInt(e.target.value) || 0,
                       }))
                     }
                     min="0"
@@ -465,7 +466,7 @@ export function SubscriptionTiersTab() {
                         className="rounded"
                       />
                       <label htmlFor={feature.id} className="text-sm">
-                        {feature.displayName}
+                        {feature.display_name}
                       </label>
                     </div>
                   ))}
@@ -476,11 +477,11 @@ export function SubscriptionTiersTab() {
                 <input
                   type="checkbox"
                   id="is_active"
-                  checked={formData.isActive}
+                  checked={formData.is_active}
                   onChange={(e) =>
                     setFormData((prev) => ({
                       ...prev,
-                      isActive: e.target.checked,
+                      is_active: e.target.checked,
                     }))
                   }
                 />
@@ -509,8 +510,8 @@ export function SubscriptionTiersTab() {
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle className="flex items-center gap-2">
-                  {tier.displayName || tier.name || "Unnamed Tier"}
-                  {!tier.isActive && (
+                  {tier.display_name || tier.name || "Unnamed Tier"}
+                  {!tier.is_active && (
                     <Badge variant="secondary">Inactive</Badge>
                   )}
                 </CardTitle>
@@ -539,48 +540,50 @@ export function SubscriptionTiersTab() {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1">
                   <DollarSign className="h-4 w-4" />
-                  <span className="font-semibold">${tier.priceMonthly}/mo</span>
+                  <span className="font-semibold">
+                    ${tier.price_monthly}/mo
+                  </span>
                 </div>
                 <div className="text-sm text-muted-foreground">
-                  ${tier.priceYearly}/yr
+                  ${tier.price_yearly}/yr
                 </div>
               </div>
 
               <div className="space-y-2">
                 <div className="flex items-center gap-2 text-sm">
                   <Users className="h-4 w-4" />
-                  {tier.maxTeamMembers === -1
+                  {tier.max_team_members === -1
                     ? "Unlimited"
-                    : `Up to ${tier.maxTeamMembers}`}{" "}
+                    : `Up to ${tier.max_team_members}`}{" "}
                   team members
                 </div>
                 <div className="flex items-center gap-2 text-sm">
                   <HardDrive className="h-4 w-4" />
-                  {tier.maxWorkspaces === -1
+                  {tier.max_workspaces === -1
                     ? "Unlimited"
-                    : tier.maxWorkspaces}{" "}
-                  workspace{tier.maxWorkspaces !== 1 ? "s" : ""}
+                    : tier.max_workspaces}{" "}
+                  workspace{tier.max_workspaces !== 1 ? "s" : ""}
                 </div>
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <FileText className="h-4 w-4" />
-                  {tier.maxDocuments === -1
+                  {tier.max_documents === -1
                     ? "Unlimited"
-                    : tier.maxDocuments}{" "}
+                    : tier.max_documents}{" "}
                   documents
                 </div>
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Workflow className="h-4 w-4" />
-                  {tier.maxWorkflows === -1
+                  {tier.max_workflows === -1
                     ? "Unlimited"
-                    : tier.maxWorkflows}{" "}
+                    : tier.max_workflows}{" "}
                   workflows
                 </div>
-                {tier.maxCustomRoles > 0 && (
+                {tier.max_custom_roles > 0 && (
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Shield className="h-4 w-4" />
-                    {tier.maxCustomRoles === -1
+                    {tier.max_custom_roles === -1
                       ? "Unlimited"
-                      : tier.maxCustomRoles}{" "}
+                      : tier.max_custom_roles}{" "}
                     custom roles
                   </div>
                 )}
@@ -598,7 +601,7 @@ export function SubscriptionTiersTab() {
                           className="flex items-center gap-2 text-sm"
                         >
                           <Check className="h-3 w-3 text-green-600" />
-                          {feature.displayName}
+                          {feature.display_name}
                         </div>
                       ) : null;
                     })}

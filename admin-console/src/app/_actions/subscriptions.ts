@@ -9,46 +9,46 @@ import authenticatedApiClient, {
 export interface SubscriptionTier {
   id: string;
   name: string;
-  displayName: string;
+  display_name: string;
   description: string;
-  priceMonthly: number;
-  priceYearly: number;
-  maxWorkspaces: number;
-  maxTeamMembers: number;
-  maxDocuments: number;
-  maxWorkflows: number;
-  maxCustomRoles: number;
+  price_monthly: number;
+  price_yearly: number;
+  max_workspaces: number;
+  max_team_members: number;
+  max_documents: number;
+  max_workflows: number;
+  max_custom_roles: number;
   features: string[];
-  isActive: boolean;
-  sortOrder: number;
-  createdAt: string;
-  updatedAt: string;
+  is_active: boolean;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface SubscriptionFeature {
   id: string;
   name: string;
-  displayName: string;
+  display_name: string;
   description: string;
   category: string;
-  isActive: boolean;
-  createdAt: string;
+  is_active: boolean;
+  created_at: string;
 }
 
 export interface CreateTierRequest {
   name: string;
-  displayName: string;
+  display_name: string;
   description: string;
-  priceMonthly: number;
-  priceYearly: number;
-  maxWorkspaces: number;
-  maxTeamMembers: number;
-  maxDocuments: number;
-  maxWorkflows: number;
-  maxCustomRoles: number;
+  price_monthly: number;
+  price_yearly: number;
+  max_workspaces: number;
+  max_team_members: number;
+  max_documents: number;
+  max_workflows: number;
+  max_custom_roles: number;
   features: string[];
-  isActive: boolean;
-  sortOrder: number;
+  is_active: boolean;
+  sort_order: number;
 }
 
 export interface UpdateTierRequest extends Partial<CreateTierRequest> {

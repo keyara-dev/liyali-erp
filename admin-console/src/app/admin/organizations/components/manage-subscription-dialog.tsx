@@ -277,14 +277,14 @@ function OverviewTab({
               <span className="text-sm font-medium">
                 {organization.user_count} /{" "}
                 {organization.settings?.max_users ||
-                  currentTier?.max_users ||
+                  currentTier?.max_team_members ||
                   "∞"}
               </span>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">Storage:</span>
               <span className="text-sm font-medium">
-                {currentTier?.storage_limit_gb || "N/A"} GB
+                {currentTier?.max_documents || "N/A"} documents
               </span>
             </div>
             <div className="flex items-center justify-between">
@@ -468,7 +468,8 @@ function ChangeTierTab({
                   <div className="flex items-center gap-2">
                     <span>{tier.display_name || tier.name}</span>
                     <span className="text-xs text-muted-foreground">
-                      ${tier.price_monthly}/mo &middot; {tier.max_users} users
+                      ${tier.price_monthly}/mo &middot; {tier.max_team_members}{" "}
+                      users
                     </span>
                   </div>
                 </SelectItem>
@@ -488,8 +489,8 @@ function ChangeTierTab({
           </p>
           <div className="flex gap-4 text-xs text-muted-foreground pt-1">
             <span>${selectedTierDetails.price_monthly}/month</span>
-            <span>{selectedTierDetails.max_users} max users</span>
-            <span>{selectedTierDetails.storage_limit_gb} GB storage</span>
+            <span>{selectedTierDetails.max_team_members} max users</span>
+            <span>{selectedTierDetails.max_documents} documents</span>
           </div>
         </div>
       )}
@@ -743,7 +744,7 @@ function OverrideLimitsTab({
                           htmlFor={`override-${feature.id}`}
                           className={`text-xs leading-none ${alreadyEnabled ? "text-muted-foreground" : ""}`}
                         >
-                          {feature.displayName || feature.name}
+                          {feature.display_name || feature.name}
                           {alreadyEnabled && " (active)"}
                         </label>
                       </div>
