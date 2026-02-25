@@ -3,6 +3,7 @@ package models
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -179,13 +180,23 @@ func (ws *WorkflowStage) Validate() error {
 	return nil
 }
 
-// WorkflowConditions defines when a workflow should be applied
+// WorkflowConditions defines when a workflow should be applied and routing behavior
 type WorkflowConditions struct {
-	AmountRange  *AmountRange               `json:"amountRange,omitempty"`
-	Departments  []string                   `json:"departments,omitempty"`
-	Priority     []string                   `json:"priority,omitempty"`
-	Categories   []string                   `json:"categories,omitempty"`
-	CustomFields map[string]interface{}     `json:"customFields,omitempty"`
+	AmountRange  *AmountRange           `json:"amountRange,omitempty"`
+	Departments  []string               `json:"departments,omitempty"`
+	Priority     []string               `json:"priority,omitempty"`
+	Categories   []string               `json:"categories,omitempty"`
+	CustomFields map[string]interface{} `json:"customFields,omitempty"`
+
+	// Routing behavior
+	RoutingType    string `json:"routingType,omitempty"`    // "procurement" (default) or "accounting"
+	AutoApprove    bool   `json:"autoApprove,omitempty"`    // Skip workflow stages when criteria met
+	AutoGeneratePO bool   `json:"autoGeneratePO,omitempty"` // Auto-create PO after approval
+	AutoApprovePO  bool   `json:"autoApprovePO,omitempty"`  // Create PO as "approved" not "draft"
+
+	// Auto-approval criteria (only evaluated when AutoApprove is true)
+	AutoApprovalMaxAmount  *float64 `json:"autoApprovalMaxAmount,omitempty"`  // Max amount for auto-approval
+	AutoApprovalCategories []string `json:"autoApprovalCategories,omitempty"` // e.g. ["petty_cash","stationery"]
 }
 
 // AmountRange defines monetary range conditions
@@ -526,10 +537,34 @@ func (w *Workflow) Validate() error {
 	if w.EntityType == "" {
 		return fmt.Errorf("entity type is required")
 	}
+
+	// Allow 0 stages only if auto-approve is enabled on the workflow conditions
 	if len(w.Stages) == 0 {
-		return fmt.Errorf("workflow must have at least one stage")
+		conditions, _ := w.GetConditions()
+		if conditions != nil && conditions.AutoApprove {
+			return nil
+		}
+		return fmt.Errorf("workflow must have at least one stage (or enable auto-approval)")
 	}
 	return nil
+}
+
+// IsAccountingWorkflow returns true if this workflow is configured for the accounting/direct-payment path.
+func (w *Workflow) IsAccountingWorkflow() bool {
+	conditions, err := w.GetConditions()
+	if err != nil || conditions == nil {
+		return false
+	}
+	return strings.EqualFold(conditions.RoutingType, "accounting")
+}
+
+// SupportsAutoApproval returns true if this workflow supports auto-approval.
+func (w *Workflow) SupportsAutoApproval() bool {
+	conditions, err := w.GetConditions()
+	if err != nil || conditions == nil {
+		return false
+	}
+	return conditions.AutoApprove
 }
 
 // Helper methods for WorkflowAssignment
@@ -592,12 +627,111 @@ func (wt *WorkflowTask) IsOverdue() bool {
 }
 
 // Helper methods for WorkflowConditions
+
+// documentData is an internal representation used for condition matching.
+type documentData struct {
+	TotalAmount float64
+	Department  string
+	Priority    string
+	CategoryID  string
+}
+
+// extractDocumentData extracts comparable fields from various document types.
+func extractDocumentData(document interface{}) (documentData, bool) {
+	switch d := document.(type) {
+	case *Requisition:
+		catID := ""
+		if d.CategoryID != nil {
+			catID = *d.CategoryID
+		}
+		return documentData{
+			TotalAmount: d.TotalAmount,
+			Department:  d.Department,
+			Priority:    d.Priority,
+			CategoryID:  catID,
+		}, true
+	case *PurchaseOrder:
+		return documentData{
+			TotalAmount: d.TotalAmount,
+			Department:  d.Department,
+			Priority:    d.Priority,
+		}, true
+	case *PaymentVoucher:
+		return documentData{
+			TotalAmount: d.Amount,
+		}, true
+	default:
+		return documentData{}, false
+	}
+}
+
+// stringSliceContains checks if a slice contains a string (case-insensitive).
+func stringSliceContains(slice []string, val string) bool {
+	for _, s := range slice {
+		if strings.EqualFold(s, val) {
+			return true
+		}
+	}
+	return false
+}
+
+// MatchesDocument checks whether a document satisfies this condition set.
 func (wc *WorkflowConditions) MatchesDocument(document interface{}) bool {
 	if wc == nil {
-		return true // No conditions means always match
+		return true
 	}
-	
-	// This would need to be implemented based on your document structure
-	// For now, returning true as a placeholder
+
+	doc, ok := extractDocumentData(document)
+	if !ok {
+		return true // Unknown type, match by default
+	}
+
+	if wc.AmountRange != nil {
+		if wc.AmountRange.Min != nil && doc.TotalAmount < *wc.AmountRange.Min {
+			return false
+		}
+		if wc.AmountRange.Max != nil && doc.TotalAmount > *wc.AmountRange.Max {
+			return false
+		}
+	}
+
+	if len(wc.Departments) > 0 && doc.Department != "" {
+		if !stringSliceContains(wc.Departments, doc.Department) {
+			return false
+		}
+	}
+
+	if len(wc.Priority) > 0 && doc.Priority != "" {
+		if !stringSliceContains(wc.Priority, doc.Priority) {
+			return false
+		}
+	}
+
+	if len(wc.Categories) > 0 && doc.CategoryID != "" {
+		if !stringSliceContains(wc.Categories, doc.CategoryID) {
+			return false
+		}
+	}
+
+	return true
+}
+
+// MeetsAutoApprovalCriteria checks if a document qualifies for auto-approval
+// under this workflow's conditions. Returns false if AutoApprove is not enabled.
+func (wc *WorkflowConditions) MeetsAutoApprovalCriteria(totalAmount float64, categoryID string) bool {
+	if wc == nil || !wc.AutoApprove {
+		return false
+	}
+
+	if wc.AutoApprovalMaxAmount != nil && totalAmount > *wc.AutoApprovalMaxAmount {
+		return false
+	}
+
+	if len(wc.AutoApprovalCategories) > 0 {
+		if !stringSliceContains(wc.AutoApprovalCategories, categoryID) {
+			return false
+		}
+	}
+
 	return true
 }

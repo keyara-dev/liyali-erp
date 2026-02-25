@@ -257,7 +257,15 @@ export const useSubmitRequisitionForApproval = (
       if (isOfflineResult(result)) {
         // Already handled by offline helper
       } else {
-        toast.success("Requisition submitted for approval");
+        // Show toast based on routing path
+        const routing = result?.data?.routing;
+        if (routing?.autoApproved) {
+          toast.success("Requisition auto-approved! Purchase Order generated.");
+        } else if (routing?.path === "accounting") {
+          toast.success("Requisition submitted for accounting approval");
+        } else {
+          toast.success("Requisition submitted for approval");
+        }
       }
 
       queryClient.invalidateQueries({

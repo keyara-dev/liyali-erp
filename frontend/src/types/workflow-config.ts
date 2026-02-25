@@ -41,6 +41,21 @@ export interface WorkflowStage {
   timeoutHours?: number;       // Timeout in hours
 }
 
+export interface WorkflowConditions {
+  amountRange?: { min?: number; max?: number };
+  departments?: string[];
+  priority?: string[];
+  categories?: string[];
+  customFields?: Record<string, unknown>;
+  // Routing behavior
+  routingType?: "procurement" | "accounting";
+  autoApprove?: boolean;
+  autoGeneratePO?: boolean;
+  autoApprovePO?: boolean;
+  autoApprovalMaxAmount?: number;
+  autoApprovalCategories?: string[];
+}
+
 export interface WorkflowFormData {
   name: string;
   description: string;
@@ -49,6 +64,7 @@ export interface WorkflowFormData {
   isActive: boolean;
   isDefault?: boolean;         // Is this the default workflow
   stages: WorkflowStage[];
+  conditions?: WorkflowConditions;
 }
 
 export interface Workflow {
@@ -60,12 +76,13 @@ export interface Workflow {
   isActive: boolean;
   status?: string;             // Workflow status (active, inactive, draft)
   stages: WorkflowStage[];
-  applicableEntityTypes: string[];
-  organizationId: string;
+  conditions?: WorkflowConditions;
+  applicableEntityTypes?: string[];
+  organizationId?: string;
   createdBy: string;
-  createdAt: Date;
-  updatedAt: Date;
-  
+  createdAt: Date | string;
+  updatedAt: Date | string;
+
   // Extended fields for UI compatibility (should be added to backend)
   isTemplate?: boolean;        // Is this a template workflow
 }

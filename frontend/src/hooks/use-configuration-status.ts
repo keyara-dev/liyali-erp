@@ -56,11 +56,11 @@ export function useConfigurationStatus(
     true,
   );
   const { data: budgets = [], isLoading: budgetsLoading } = useAllBudgets();
-  const { data: workflows = [], isLoading: workflowsLoading } = useWorkflows(
-    includeWorkflow
+  const { data: workflows = [], isLoading: workflowsLoading } = useWorkflows({
+    filter: includeWorkflow
       ? { entityType: workflowEntityType, isActive: true }
       : undefined,
-  );
+  });
 
   const requirements = useMemo<ConfigurationRequirement[]>(() => {
     const reqs: ConfigurationRequirement[] = [
@@ -92,7 +92,7 @@ export function useConfigurationStatus(
         description: "At least one budget must be configured",
         isConfigured: Array.isArray(budgets) && budgets.length > 0,
         count: Array.isArray(budgets) ? budgets.length : 0,
-        navigateTo: "/admin/budgets",
+        navigateTo: "/budgets",
         isLoading: budgetsLoading,
       });
     }

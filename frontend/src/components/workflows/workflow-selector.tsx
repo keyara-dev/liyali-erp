@@ -3,8 +3,8 @@
 import { useEffect, useState } from "react";
 import { SelectField } from "@/components/ui/select-field";
 import { useWorkflows, useDefaultWorkflow } from "@/hooks/use-workflow-queries";
-import type { Workflow } from "@/types/workflow-config";
-import { Loader2, Info, AlertCircle, CheckCircle2 } from "lucide-react";
+import type { Workflow, WorkflowConditions } from "@/types/workflow-config";
+import { Loader2, Info, AlertCircle, CheckCircle2, Zap, ShoppingCart } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { cn } from "@/lib/utils";
 
@@ -17,6 +17,7 @@ export interface WorkflowSelectorProps {
     | "payment_voucher";
   value: string;
   onChange: (workflowId: string) => void;
+  onWorkflowSelect?: (workflow: Workflow | null) => void;
   disabled?: boolean;
   required?: boolean;
   error?: string;
@@ -28,6 +29,7 @@ export function WorkflowSelector({
   entityType,
   value,
   onChange,
+  onWorkflowSelect,
   disabled = false,
   required = true,
   error,
@@ -42,8 +44,7 @@ export function WorkflowSelector({
     isLoading,
     error: fetchError,
   } = useWorkflows({
-    entityType,
-    isActive: true,
+    filter: { entityType, isActive: true },
   });
 
   // Fetch default workflow
@@ -64,7 +65,12 @@ export function WorkflowSelector({
   }, [defaultWorkflow, workflows, value, onChange, hasAutoSelected]);
 
   // Find selected workflow for details
-  const selectedWorkflow = workflows?.find((w) => w.id === value);
+  const selectedWorkflow = workflows?.find((w) => w.id === value) ?? null;
+
+  // Notify parent of selected workflow changes
+  useEffect(() => {
+    onWorkflowSelect?.(selectedWorkflow);
+  }, [selectedWorkflow, onWorkflowSelect]);
 
   // Render loading state
   if (isLoading) {
@@ -107,11 +113,15 @@ export function WorkflowSelector({
     );
   }
 
-  // Prepare options for SelectField
-  const options = workflows.map((workflow) => ({
-    value: workflow.id,
-    label: workflow.name,
-  }));
+  // Prepare options for SelectField with routing type indicator
+  const options = workflows.map((workflow) => {
+    const routingType = workflow.conditions?.routingType;
+    const suffix = routingType === "accounting" ? " [Accounting]" : routingType === "procurement" ? " [Procurement]" : "";
+    return {
+      value: workflow.id,
+      label: `${workflow.name}${suffix}`,
+    };
+  });
 
   // Handle select change - extract value from event or use directly
   const handleChange = (valueOrEvent: any) => {
@@ -157,6 +167,9 @@ interface WorkflowDetailsProps {
 
 function WorkflowDetails({ workflow }: WorkflowDetailsProps) {
   const stagesCount = workflow.stages?.length || 0;
+  const conditions: WorkflowConditions | undefined = workflow.conditions;
+  const routingType = conditions?.routingType || "procurement";
+  const isAccounting = routingType === "accounting";
 
   return (
     <div className="rounded-lg border bg-muted/50 p-3 space-y-2">
@@ -164,6 +177,17 @@ function WorkflowDetails({ workflow }: WorkflowDetailsProps) {
         <div className="flex-1 space-y-1">
           <div className="flex items-center gap-2">
             <h4 className="text-sm font-medium">{workflow.name}</h4>
+            {isAccounting ? (
+              <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-medium text-amber-800">
+                <Zap className="h-3 w-3" />
+                Accounting
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-medium text-blue-800">
+                <ShoppingCart className="h-3 w-3" />
+                Procurement
+              </span>
+            )}
           </div>
 
           {workflow.description && (
@@ -181,6 +205,17 @@ function WorkflowDetails({ workflow }: WorkflowDetailsProps) {
             {stagesCount} approval {stagesCount === 1 ? "stage" : "stages"}
           </span>
         </div>
+        {isAccounting && conditions?.autoApprove && (
+          <div className="flex items-center gap-1 text-amber-600">
+            <Zap className="h-3 w-3" />
+            <span>
+              Auto-approval
+              {conditions.autoApprovalMaxAmount
+                ? ` up to ${conditions.autoApprovalMaxAmount.toLocaleString()}`
+                : ""}
+            </span>
+          </div>
+        )}
       </div>
 
       {workflow.stages && workflow.stages.length > 0 && (

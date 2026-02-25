@@ -183,6 +183,56 @@ func (s *DocumentAutomationService) CreatePurchaseOrderFromRequisition(
 	}, nil
 }
 
+// CreatePurchaseOrderFromRequisitionWithStatus creates a PO with the specified target status.
+// Used by the conditional routing system where the PO may need to be "approved" immediately
+// (e.g., accounting/direct-payment path) instead of the default "draft".
+func (s *DocumentAutomationService) CreatePurchaseOrderFromRequisitionWithStatus(
+	ctx context.Context,
+	requisition *models.Requisition,
+	targetStatus string,
+) (*AutomationResult, error) {
+	if requisition.Status != "approved" {
+		return &AutomationResult{
+			Success: false,
+			Error:   fmt.Errorf("requisition must be approved to create PO"),
+		}, nil
+	}
+
+	// Force automation enabled for this call
+	config := AutomationConfig{
+		AutoCreatePOFromRequisition: true,
+	}
+
+	result, err := s.CreatePurchaseOrderFromRequisition(ctx, requisition, config)
+	if err != nil {
+		return result, err
+	}
+	if result == nil || !result.Success {
+		return result, nil
+	}
+
+	// If the target status differs from "draft", update the auto-created PO
+	if targetStatus != "draft" && result.DocumentID != "" {
+		if err := s.db.Model(&models.PurchaseOrder{}).
+			Where("id = ?", result.DocumentID).
+			Updates(map[string]interface{}{
+				"status":     targetStatus,
+				"updated_at": time.Now(),
+			}).Error; err != nil {
+			fmt.Printf("Warning: failed to update auto-PO status to %s: %v\n", targetStatus, err)
+		}
+
+		if s.auditService != nil {
+			s.auditService.LogEvent(ctx, "system", "", "po_auto_status_set",
+				"purchase_order", result.DocumentID,
+				fmt.Sprintf("Auto-created PO set to %s status via workflow routing", targetStatus),
+				"", "")
+		}
+	}
+
+	return result, nil
+}
+
 // CreateGRNFromPurchaseOrder automatically creates a GRN template from an approved PO
 func (s *DocumentAutomationService) CreateGRNFromPurchaseOrder(
 	ctx context.Context,

@@ -627,7 +627,9 @@ func (s *WorkflowService) GetWorkflowStages(workflow *models.Workflow) ([]models
 	return workflow.GetStages()
 }
 
-// ValidateWorkflowStages validates workflow stages
+// ValidateWorkflowStages validates workflow stages.
+// Note: 0 stages is allowed when auto-approve is enabled — callers should check
+// conditions before calling this method. See validateCreateRequest().
 func (s *WorkflowService) ValidateWorkflowStages(stages []models.WorkflowStage) error {
 	if len(stages) == 0 {
 		return fmt.Errorf("workflow must have at least one stage")
@@ -676,8 +678,13 @@ func (s *WorkflowService) validateCreateRequest(req CreateWorkflowRequest) error
 	if req.EntityType == "" {
 		return fmt.Errorf("entity type is required")
 	}
+
+	// Allow 0 stages only when auto-approve is enabled in conditions
 	if len(req.Stages) == 0 {
-		return fmt.Errorf("workflow must have at least one stage")
+		if req.Conditions != nil && req.Conditions.AutoApprove {
+			return nil // Valid: auto-approve workflow with no manual stages
+		}
+		return fmt.Errorf("workflow must have at least one stage (or enable auto-approval)")
 	}
 
 	// Validate stages

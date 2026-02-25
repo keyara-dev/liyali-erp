@@ -125,7 +125,7 @@ export function RequisitionDetailClient({
     if (!requisition) return;
 
     try {
-      await submitMutation.mutateAsync({
+      const result = await submitMutation.mutateAsync({
         workflowId,
         submittedBy: userId,
         submittedByName: requisition.requestedByName || "User",
@@ -135,9 +135,21 @@ export function RequisitionDetailClient({
           `Submitted for approval on ${new Date().toLocaleDateString()}`,
       });
 
+      // Check for auto-approval with auto-created PO
+      const responseData = result?.data;
+      const routingData = responseData?.routing;
+      const autoCreatedPO = responseData?.autoCreatedPO;
+
+      if (routingData?.autoApproved && autoCreatedPO?.id) {
+        // Auto-approved path: redirect to the auto-created PO
+        setShowSubmitDialog(false);
+        router.push(`/purchase-orders/${autoCreatedPO.id}`);
+        return;
+      }
+
       // Also save to localStorage
-      if (submitMutation.data?.data) {
-        saveToStorage(submitMutation.data.data);
+      if (result?.data) {
+        saveToStorage(result.data);
       }
       setShowSubmitDialog(false);
     } catch (error) {

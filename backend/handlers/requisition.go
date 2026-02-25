@@ -853,75 +853,108 @@ func SubmitRequisition(c *fiber.Ctx) error {
 	// This will be passed from the route handler
 	workflowExecutionService := c.Locals("workflowExecutionService").(*services.WorkflowExecutionService)
 
-	// Assign workflow to the requisition
-	assignment, err := workflowExecutionService.AssignWorkflowToDocumentWithID(
-		c.Context(), organizationID, requisition.ID, "requisition", submitReq.WorkflowID, userID,
+	// Use routing-aware submission that handles both procurement and accounting paths
+	routingResult, err := workflowExecutionService.SubmitRequisitionWithRouting(
+		c.Context(), organizationID, requisition.ID, submitReq.WorkflowID, userID, &requisition,
 	)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"success": false,
-			"message": "Failed to assign workflow to requisition",
+			"message": "Failed to submit requisition",
 			"error":   err.Error(),
 		})
 	}
 
-	// Update requisition status to pending
-	requisition.Status = "pending"
-	requisition.UpdatedAt = time.Now()
+	// If auto-approved, the requisition status was already updated by the routing service.
+	// Otherwise, update to "pending" and add action history.
+	if !routingResult.AutoApproved {
+		requisition.Status = "pending"
+		requisition.UpdatedAt = time.Now()
 
-	// Add action history entry for submission
-	var actionHistory []types.ActionHistoryEntry
-	actionHistory = requisition.ActionHistory.Data()
-	if actionHistory == nil {
-		actionHistory = []types.ActionHistoryEntry{}
-	}
+		// Add action history entry for submission
+		var actionHistory []types.ActionHistoryEntry
+		actionHistory = requisition.ActionHistory.Data()
+		if actionHistory == nil {
+			actionHistory = []types.ActionHistoryEntry{}
+		}
 
-	// Get user info for action history
-	performerName := "Unknown User"
-	performerRole := "unknown"
-	var user models.User
-	if err := config.DB.Where("id = ?", userID).First(&user).Error; err == nil {
-		performerName = user.Name
-		performerRole = user.Role
-	}
+		// Get user info for action history
+		performerName := "Unknown User"
+		performerRole := "unknown"
+		var user models.User
+		if err := config.DB.Where("id = ?", userID).First(&user).Error; err == nil {
+			performerName = user.Name
+			performerRole = user.Role
+		}
 
-	// Always add the submit entry
-	actionHistory = append(actionHistory, types.ActionHistoryEntry{
-		ID:              uuid.New().String(),
-		Action:          "SUBMIT",
-		PerformedBy:     userID,
-		PerformedByName: performerName,
-		PerformedByRole: performerRole,
-		Timestamp:       time.Now(),
-		Comments:        "Requisition submitted for approval",
-		ActionType:      "SUBMIT",
-		PreviousStatus:  "draft",
-		NewStatus:       "pending",
-	})
-	requisition.ActionHistory = datatypes.NewJSONType(actionHistory)
-
-	// Save requisition
-	if err := config.DB.Save(&requisition).Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"success": false,
-			"message": "Failed to update requisition status",
-			"error":   err.Error(),
+		actionHistory = append(actionHistory, types.ActionHistoryEntry{
+			ID:              uuid.New().String(),
+			Action:          "SUBMIT",
+			PerformedBy:     userID,
+			PerformedByName: performerName,
+			PerformedByRole: performerRole,
+			Timestamp:       time.Now(),
+			Comments:        "Requisition submitted for approval",
+			ActionType:      "SUBMIT",
+			PreviousStatus:  "draft",
+			NewStatus:       "pending",
 		})
+		requisition.ActionHistory = datatypes.NewJSONType(actionHistory)
+
+		// Save requisition
+		if err := config.DB.Save(&requisition).Error; err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"success": false,
+				"message": "Failed to update requisition status",
+				"error":   err.Error(),
+			})
+		}
+	} else {
+		// Reload the auto-approved requisition to get the latest state
+		if err := config.DB.Where("id = ? AND organization_id = ?", requisition.ID, organizationID).First(&requisition).Error; err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"success": false,
+				"message": "Failed to reload requisition after auto-approval",
+				"error":   err.Error(),
+			})
+		}
 	}
 
 	// Preload requester, category, and vendor
 	config.DB.Preload("Requester").Preload("Category").Preload("PreferredVendor").First(&requisition)
 
+	// Build response with routing information
+	responseData := fiber.Map{
+		"requisition": modelToRequisitionResponse(requisition),
+		"routing": fiber.Map{
+			"path":         routingResult.RoutingPath,
+			"autoApproved": routingResult.AutoApproved,
+		},
+	}
+
+	// Include workflow assignment info if available
+	if routingResult.Assignment != nil {
+		responseData["workflow"] = fiber.Map{
+			"assignmentId": routingResult.Assignment.ID,
+			"workflowId":   routingResult.Assignment.WorkflowID,
+			"currentStage": routingResult.Assignment.CurrentStage,
+			"status":       routingResult.Assignment.Status,
+		}
+	}
+
+	// Include auto-created PO info if available
+	if routingResult.AutoCreatedPO != nil && routingResult.AutoCreatedPO.Success {
+		poID := routingResult.AutoCreatedPO.DocumentID
+		if routingResult.AutoCreatedPOID != "" {
+			poID = routingResult.AutoCreatedPOID
+		}
+		responseData["autoCreatedPO"] = fiber.Map{
+			"id": poID,
+		}
+	}
+
 	return c.JSON(types.DetailResponse{
 		Success: true,
-		Data: fiber.Map{
-			"requisition": modelToRequisitionResponse(requisition),
-			"workflow": fiber.Map{
-				"assignmentId": assignment.ID,
-				"workflowId":   assignment.WorkflowID,
-				"currentStage": assignment.CurrentStage,
-				"status":       assignment.Status,
-			},
-		},
+		Data:    responseData,
 	})
 }

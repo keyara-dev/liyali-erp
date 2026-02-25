@@ -1,3 +1,4 @@
+import { getWorkflows } from "@/app/_actions/workflows";
 import { WorkflowsClient } from "../_components/workflows-client";
 import { requireAdminRole } from "@/lib/admin-guard";
 
@@ -7,11 +8,12 @@ export const metadata = {
 };
 
 // Disable static generation for this page
-export const dynamic = 'force-dynamic'
+export const dynamic = "force-dynamic";
 
 export default async function WorkflowsPage() {
   // Verify admin role at server level
-  const { userId, userRole } = await requireAdminRole()
+  const { userId, userRole } = await requireAdminRole();
+  const response = await getWorkflows();
 
-  return <WorkflowsClient userId={userId} userRole={userRole} />;
+  return <WorkflowsClient initialData={response?.data} />;
 }

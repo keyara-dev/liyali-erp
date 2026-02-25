@@ -30,8 +30,7 @@ export function WorkflowRequirementBanner({
 }: WorkflowRequirementBannerProps) {
   const router = useRouter();
   const { data: workflows = [], isLoading } = useWorkflows({
-    entityType,
-    isActive: true,
+    filter: { entityType, isActive: true },
   });
 
   const hasWorkflows = Array.isArray(workflows) && workflows.length > 0;

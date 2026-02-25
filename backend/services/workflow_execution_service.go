@@ -72,6 +72,229 @@ func (s *WorkflowExecutionService) AssignWorkflowToDocumentWithID(
 	return s.assignWorkflow(ctx, organizationID, entityID, entityType, userID, workflow)
 }
 
+// SubmitRoutingResult contains the result of a routing-aware requisition submission.
+type SubmitRoutingResult struct {
+	RoutingPath     string                      `json:"routingPath"`              // "accounting" or "procurement"
+	AutoApproved    bool                        `json:"autoApproved"`
+	Assignment      *models.WorkflowAssignment  `json:"assignment,omitempty"`
+	AutoCreatedPO   *AutomationResult           `json:"autoCreatedPO,omitempty"`
+	AutoCreatedPOID string                      `json:"autoCreatedPoId,omitempty"`
+}
+
+// SubmitRequisitionWithRouting handles requisition submission with conditional routing.
+// It checks the selected workflow's conditions and either:
+//   - Auto-approves + auto-generates PO (accounting path with 0 stages + criteria met), or
+//   - Assigns the normal workflow stages (procurement or accounting with stages)
+func (s *WorkflowExecutionService) SubmitRequisitionWithRouting(
+	ctx context.Context,
+	organizationID, entityID, workflowID, userID string,
+	requisition *models.Requisition,
+) (*SubmitRoutingResult, error) {
+	// 1. Fetch and validate the workflow
+	workflowUUID, err := uuid.Parse(workflowID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid workflow ID format")
+	}
+
+	workflow, err := s.workflowService.GetWorkflow(ctx, workflowUUID, organizationID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get workflow: %w", err)
+	}
+
+	if !workflow.IsActive {
+		return nil, fmt.Errorf("selected workflow is inactive")
+	}
+
+	if !strings.EqualFold(workflow.EntityType, "requisition") {
+		return nil, fmt.Errorf("workflow entity type mismatch: expected requisition")
+	}
+
+	// 2. Parse workflow conditions
+	conditions, _ := workflow.GetConditions()
+
+	// 3. Determine routing path
+	isAccountingPath := conditions != nil && strings.EqualFold(conditions.RoutingType, "accounting")
+
+	if !isAccountingPath {
+		// PROCUREMENT PATH: Standard workflow assignment
+		assignment, err := s.assignWorkflow(ctx, organizationID, entityID, "requisition", userID, workflow)
+		if err != nil {
+			return nil, err
+		}
+		return &SubmitRoutingResult{
+			RoutingPath:  "procurement",
+			AutoApproved: false,
+			Assignment:   assignment,
+		}, nil
+	}
+
+	// ACCOUNTING PATH: Check auto-approval eligibility
+	stages, _ := workflow.GetStages()
+	categoryID := ""
+	if requisition.CategoryID != nil {
+		categoryID = *requisition.CategoryID
+	}
+
+	shouldAutoApprove := conditions.MeetsAutoApprovalCriteria(requisition.TotalAmount, categoryID) && len(stages) == 0
+
+	if !shouldAutoApprove {
+		// Accounting workflow but either has stages or doesn't meet auto-criteria.
+		// Run through the workflow stages (lightweight approval).
+		assignment, err := s.assignWorkflow(ctx, organizationID, entityID, "requisition", userID, workflow)
+		if err != nil {
+			return nil, err
+		}
+		return &SubmitRoutingResult{
+			RoutingPath:  "accounting",
+			AutoApproved: false,
+			Assignment:   assignment,
+		}, nil
+	}
+
+	// AUTO-APPROVE PATH: 0 stages + criteria met
+	return s.autoApproveAndGeneratePO(ctx, organizationID, entityID, userID, requisition, workflow, conditions)
+}
+
+// autoApproveAndGeneratePO handles instant auto-approval of a requisition and optional PO generation.
+func (s *WorkflowExecutionService) autoApproveAndGeneratePO(
+	ctx context.Context,
+	organizationID, entityID, userID string,
+	requisition *models.Requisition,
+	workflow *models.Workflow,
+	conditions *models.WorkflowConditions,
+) (*SubmitRoutingResult, error) {
+	tx := s.db.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	now := time.Now()
+
+	// 1. Create a workflow assignment record for audit trail (marked as auto-completed)
+	assignment := &models.WorkflowAssignment{
+		ID:              uuid.New().String(),
+		OrganizationID:  organizationID,
+		EntityID:        entityID,
+		EntityType:      "requisition",
+		WorkflowID:      workflow.ID,
+		WorkflowVersion: workflow.Version,
+		CurrentStage:    0,
+		Status:          "completed",
+		StageHistory:    datatypes.JSON{},
+		AssignedAt:      now,
+		AssignedBy:      userID,
+		CompletedAt:     &now,
+		CreatedAt:       now,
+		UpdatedAt:       now,
+	}
+
+	autoExecution := models.StageExecution{
+		StageNumber:  0,
+		StageName:    "Auto-Approval",
+		ApproverID:   "system",
+		ApproverName: "System Auto-Approval",
+		ApproverRole: "system",
+		Action:       "auto_approved",
+		Comments:     "Automatically approved based on workflow conditions",
+		ExecutedAt:   now,
+	}
+	if err := assignment.AddStageExecution(autoExecution); err != nil {
+		tx.Rollback()
+		return nil, fmt.Errorf("failed to add auto-approval to history: %w", err)
+	}
+
+	if err := tx.Create(assignment).Error; err != nil {
+		tx.Rollback()
+		return nil, fmt.Errorf("failed to create auto-approval assignment: %w", err)
+	}
+
+	// 2. Update requisition status to "approved"
+	if err := s.updateDocumentStatus(tx, "requisition", entityID, "approved"); err != nil {
+		tx.Rollback()
+		return nil, fmt.Errorf("failed to update requisition status: %w", err)
+	}
+
+	// 3. Add action history entry
+	if err := s.addActionHistoryEntry(tx, "requisition", entityID, "system", "AUTO_APPROVED",
+		"Requisition auto-approved via accounting workflow"); err != nil {
+		fmt.Printf("Warning: failed to add action history: %v\n", err)
+	}
+
+	// Commit the requisition approval
+	if err := tx.Commit().Error; err != nil {
+		return nil, fmt.Errorf("failed to commit auto-approval: %w", err)
+	}
+
+	result := &SubmitRoutingResult{
+		RoutingPath:  "accounting",
+		AutoApproved: true,
+		Assignment:   assignment,
+	}
+
+	// 4. Auto-generate PO if configured
+	if conditions.AutoGeneratePO && s.automationService != nil {
+		// Refresh requisition status for the automation service check
+		requisition.Status = "approved"
+
+		targetStatus := "draft"
+		if conditions.AutoApprovePO {
+			targetStatus = "approved"
+		}
+
+		poResult, err := s.automationService.CreatePurchaseOrderFromRequisitionWithStatus(
+			ctx, requisition, targetStatus,
+		)
+		if err != nil {
+			fmt.Printf("Warning: auto-PO generation failed: %v\n", err)
+		} else if poResult != nil && poResult.Success {
+			result.AutoCreatedPO = poResult
+			result.AutoCreatedPOID = poResult.DocumentID
+
+			// Update requisition with auto-created PO info
+			autoCreatedPO := map[string]interface{}{
+				"id":      poResult.DocumentID,
+				"created": true,
+			}
+			if po, ok := poResult.CreatedDocument.(models.PurchaseOrder); ok {
+				autoCreatedPO["documentNumber"] = po.DocumentNumber
+				autoCreatedPO["amount"] = po.TotalAmount
+			}
+			autoCreatedJSON, _ := datatypes.NewJSONType(autoCreatedPO).MarshalJSON()
+			s.db.Model(&models.Requisition{}).Where("id = ?", entityID).Updates(map[string]interface{}{
+				"automation_used": true,
+				"auto_created_po": datatypes.JSON(autoCreatedJSON),
+			})
+		}
+	}
+
+	// 5. Send notification
+	if s.notificationService != nil {
+		event := NotificationEvent{
+			Type:         "document_auto_approved",
+			DocumentID:   entityID,
+			DocumentType: "requisition",
+			Action:       "auto_approved",
+			ActorID:      "system",
+			Details:      "Requisition auto-approved via accounting workflow",
+			Timestamp:    now,
+		}
+		go func(e NotificationEvent) {
+			notifyCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			defer cancel()
+			select {
+			case <-notifyCtx.Done():
+				return
+			default:
+				s.notificationService.HandleWorkflowEvent(e)
+			}
+		}(event)
+	}
+
+	return result, nil
+}
+
 func (s *WorkflowExecutionService) assignWorkflow(
 	ctx context.Context,
 	organizationID, entityID, entityType, userID string,
@@ -1383,6 +1606,59 @@ func (s *WorkflowExecutionService) triggerPostApprovalAutomation(ctx context.Con
 
 	switch entityType {
 	case "REQUISITION", "requisition":
+		// First, check the workflow's own conditions for auto-PO generation.
+		// This handles the case where a requisition goes through workflow stages
+		// and upon final approval, should auto-create a PO.
+		var assignment models.WorkflowAssignment
+		if err := s.db.Where("entity_id = ?", entityID).
+			Preload("Workflow").
+			First(&assignment).Error; err == nil && assignment.Workflow != nil {
+
+			conditions, _ := assignment.Workflow.GetConditions()
+			if conditions != nil && conditions.AutoGeneratePO {
+				// Workflow has auto-PO generation enabled
+				var requisition models.Requisition
+				if err := s.db.Where("id = ?", entityID).First(&requisition).Error; err != nil {
+					return fmt.Errorf("failed to get requisition for auto-PO: %w", err)
+				}
+
+				targetStatus := "draft"
+				if conditions.AutoApprovePO {
+					targetStatus = "approved"
+				}
+
+				result, err := s.automationService.CreatePurchaseOrderFromRequisitionWithStatus(
+					ctx, &requisition, targetStatus,
+				)
+				if err != nil {
+					return fmt.Errorf("failed to auto-create PO from workflow config: %w", err)
+				}
+
+				if result != nil && result.Success {
+					// Update requisition with auto-created PO info
+					autoCreatedPO := map[string]interface{}{
+						"id":      result.DocumentID,
+						"created": true,
+					}
+					if result.CreatedDocument != nil {
+						if po, ok := result.CreatedDocument.(models.PurchaseOrder); ok {
+							autoCreatedPO["documentNumber"] = po.DocumentNumber
+							autoCreatedPO["amount"] = po.TotalAmount
+						}
+					}
+
+					autoCreatedJSON, _ := datatypes.NewJSONType(autoCreatedPO).MarshalJSON()
+					s.db.Model(&requisition).Updates(map[string]interface{}{
+						"automation_used": true,
+						"auto_created_po": datatypes.JSON(autoCreatedJSON),
+					})
+				}
+
+				return nil // PO generated via workflow config, done
+			}
+		}
+
+		// Fall through to legacy hardcoded config check (backward compat)
 		if !config.AutoCreatePOFromRequisition {
 			return nil // Automation disabled
 		}
@@ -1415,7 +1691,7 @@ func (s *WorkflowExecutionService) triggerPostApprovalAutomation(ctx context.Con
 		}
 
 		if result.CreatedDocument != nil {
-			if po, ok := result.CreatedDocument.(*models.PurchaseOrder); ok {
+			if po, ok := result.CreatedDocument.(models.PurchaseOrder); ok {
 				autoCreatedPO["documentNumber"] = po.DocumentNumber
 				autoCreatedPO["amount"] = po.TotalAmount
 			}

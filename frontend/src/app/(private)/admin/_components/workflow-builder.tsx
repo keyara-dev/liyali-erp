@@ -231,8 +231,10 @@ export function WorkflowBuilder({
     if (!formData.entityType && !formData.documentType) {
       errors.entityType = "Document type is required";
     }
-    if (formData.stages.length === 0) {
-      errors.stages = "At least one stage is required";
+    // Allow 0 stages when auto-approve is enabled (accounting workflow)
+    const hasAutoApprove = formData.conditions?.autoApprove === true;
+    if (formData.stages.length === 0 && !hasAutoApprove) {
+      errors.stages = "At least one stage is required (or enable auto-approval)";
     }
 
     setFormErrors(errors);

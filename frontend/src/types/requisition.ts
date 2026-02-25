@@ -161,6 +161,28 @@ export interface RejectRequisitionRequest {
 }
 
 // ============================================================================
+// ROUTING / SUBMIT RESPONSE TYPES
+// ============================================================================
+
+export interface SubmitRoutingResponse {
+  requisition: Requisition;
+  routing: {
+    path: "procurement" | "accounting";
+    autoApproved: boolean;
+  };
+  workflow?: {
+    assignmentId: string;
+    workflowId: string;
+    currentStage: number;
+    status: string;
+  };
+  autoCreatedPO?: {
+    id: string;
+    status: string;
+  };
+}
+
+// ============================================================================
 // STATISTICS TYPES
 // ============================================================================
 

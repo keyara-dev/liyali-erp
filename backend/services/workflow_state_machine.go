@@ -53,6 +53,7 @@ func (wsm *WorkflowStateMachine) initializeTransitions() {
 	// Requisition transitions
 	wsm.transitions["requisition"] = []WorkflowTransition{
 		{From: StateDraft, To: StatePending, Action: "submit", RequiredRole: ""},
+		{From: StateDraft, To: StateApproved, Action: "auto_approve", RequiredRole: "system"},
 		{From: StatePending, To: StateApproved, Action: "approve", RequiredRole: "approver"},
 		{From: StatePending, To: StateRejected, Action: "reject", RequiredRole: "approver"},
 		{From: StateRejected, To: StateDraft, Action: "reopen", RequiredRole: "requester"},
