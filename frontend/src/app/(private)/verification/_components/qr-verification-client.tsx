@@ -15,6 +15,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { CheckCircle2, AlertCircle, QrCode } from "lucide-react";
+import { PageHeader } from "@/components/base/page-header";
 
 interface QRVerificationClientProps {
   userId: string;
@@ -88,7 +89,7 @@ export function QRVerificationClient({
     if (!qrInput) return;
 
     const found = VERIFIED_DOCUMENTS.find(
-      (doc) => doc.qrCode === qrInput || doc.documentNumber === qrInput
+      (doc) => doc.qrCode === qrInput || doc.documentNumber === qrInput,
     );
     setScanResult(found || null);
     setScanned(true);
@@ -97,14 +98,10 @@ export function QRVerificationClient({
   return (
     <div className="space-y-6">
       {/* Page Header */}
-      <div>
-        <h1 className="text-xl font-bold tracking-tight lg:text-2xl">
-          QR Code Verification
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          Verify and authenticate documents using QR codes
-        </p>
-      </div>
+      <PageHeader
+        title="Document Verification"
+        subtitle="Verify and authenticate documents using Document Numbers or QR codes"
+      />
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">

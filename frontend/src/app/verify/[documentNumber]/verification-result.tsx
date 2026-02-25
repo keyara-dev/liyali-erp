@@ -32,11 +32,15 @@ import {
   getPurchaseOrderPDFBlob,
   getPaymentVoucherPDFBlob,
 } from "@/lib/pdf/pdf-export";
+import Logo from "@/components/base/logo";
 
 // Dynamic import to avoid SSR issues with react-pdf (uses browser-only APIs like DOMMatrix)
 const PDFPreviewDialog = dynamic(
-  () => import("@/components/modals/pdf-preview-dialog").then((mod) => mod.PDFPreviewDialog),
-  { ssr: false }
+  () =>
+    import("@/components/modals/pdf-preview-dialog").then(
+      (mod) => mod.PDFPreviewDialog,
+    ),
+  { ssr: false },
 );
 
 interface VerificationResultProps {
@@ -108,7 +112,10 @@ export function VerificationResult({
           blob = await getPaymentVoucherPDFBlob(docData.document);
           break;
         default:
-          console.error("Unsupported document type for PDF:", docData.documentType);
+          console.error(
+            "Unsupported document type for PDF:",
+            docData.documentType,
+          );
           return null;
       }
 
@@ -154,7 +161,10 @@ export function VerificationResult({
           await exportPaymentVoucherPDF(docData.document);
           break;
         default:
-          console.error("Unsupported document type for PDF:", docData.documentType);
+          console.error(
+            "Unsupported document type for PDF:",
+            docData.documentType,
+          );
       }
     } catch (error) {
       console.error("Error downloading PDF:", error);
@@ -175,20 +185,7 @@ export function VerificationResult({
       {/* Header */}
       <div className="text-center mb-8">
         <div className="flex justify-center mb-4">
-          <Image
-            src="/images/logo/logo-full-light.png"
-            alt="Liyali Logo"
-            width={150}
-            height={45}
-            className="dark:hidden"
-          />
-          <Image
-            src="/images/logo/logo-full-dark.png"
-            alt="Liyali Logo"
-            width={150}
-            height={45}
-            className="hidden dark:block"
-          />
+          <Logo isFull />
         </div>
         <h1 className="text-2xl font-bold text-foreground">
           Document Verification
@@ -329,7 +326,7 @@ export function VerificationResult({
                           </p>
                           <p className="text-sm">
                             {new Date(
-                              result.document.createdAt
+                              result.document.createdAt,
                             ).toLocaleDateString()}
                           </p>
                         </div>
@@ -382,9 +379,11 @@ export function VerificationResult({
                   <Separator />
 
                   {/* PDF Actions */}
-                  {["REQUISITION", "PURCHASE_ORDER", "PAYMENT_VOUCHER"].includes(
-                    result.document.documentType
-                  ) && (
+                  {[
+                    "REQUISITION",
+                    "PURCHASE_ORDER",
+                    "PAYMENT_VOUCHER",
+                  ].includes(result.document.documentType) && (
                     <div className="flex gap-3 justify-center">
                       <Button
                         variant="outline"
@@ -419,8 +418,7 @@ export function VerificationResult({
                   {/* Verification Timestamp */}
                   <div className="bg-muted/30 rounded-lg p-3 text-center">
                     <p className="text-xs text-muted-foreground">
-                      Verified on{" "}
-                      {new Date(result.verifiedAt).toLocaleString()}
+                      Verified on {new Date(result.verifiedAt).toLocaleString()}
                     </p>
                   </div>
                 </>
@@ -445,7 +443,7 @@ export function VerificationResult({
 
       {/* Footer */}
       <div className="text-center mt-8 text-xs text-muted-foreground">
-        <p>Republic of Zambia - Government Document Verification System</p>
+        <p> Liyali Document Verification System</p>
         <p className="mt-1">Powered by Liyali</p>
       </div>
 

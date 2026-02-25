@@ -121,7 +121,7 @@ export const routes: NavGroup[] = [
       },
       {
         title: "Document Verification",
-        href: "/admin/verification",
+        href: "/verification",
         icon: QrCode,
       },
       {
