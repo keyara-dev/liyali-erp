@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -98,6 +98,12 @@ export function NavUser() {
   const { logout, isPending } = useLogout();
   const { currentOrganization } = useOrganizationContext();
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [isClient, setIsClient] = useState(false);
+
+  // Ensure we only render user content on client to avoid hydration mismatch
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   const initials = user ? getInitials(user.name) : "";
   const formattedRole = user ? formatRole(user.role) : "";
@@ -116,7 +122,7 @@ export function NavUser() {
       {/* User Profile Section with Dropdown */}
       <SidebarMenu>
         <SidebarMenuItem>
-          {!user ? (
+          {!isClient || !user ? (
             <div className="flex items-center gap-2 p-1.5 rounded-lg bg-sidebar-accent/5 border">
               <Skeleton className="h-8 w-8 rounded-full" />
               <div className="grid flex-1 text-left text-sm leading-tight">
