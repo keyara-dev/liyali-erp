@@ -6,6 +6,7 @@ import authenticatedApiClient, {
   successResponse,
   badRequestResponse,
 } from "./api-config";
+import { revalidatePath } from "next/cache";
 
 // Types for workflow operations
 export interface WorkflowStage {
@@ -57,7 +58,7 @@ export interface WorkflowListFilter {
  * Get all workflows with optional filtering
  */
 export async function getWorkflows(
-  filter?: WorkflowListFilter
+  filter?: WorkflowListFilter,
 ): Promise<APIResponse<Workflow[]>> {
   const url = `/api/v1/workflows`;
 
@@ -89,7 +90,7 @@ export async function getWorkflows(
  * Get a specific workflow by ID
  */
 export async function getWorkflowById(
-  workflowId: string
+  workflowId: string,
 ): Promise<APIResponse<Workflow>> {
   if (!workflowId) {
     return badRequestResponse("Workflow ID is required");
@@ -114,7 +115,7 @@ export async function getWorkflowById(
  * Create a new workflow
  */
 export async function createWorkflow(
-  formData: WorkflowFormData
+  formData: WorkflowFormData,
 ): Promise<APIResponse<Workflow>> {
   const url = `/api/v1/workflows`;
 
@@ -151,7 +152,7 @@ export async function createWorkflow(
       method: "POST",
       data: backendData,
     });
-
+    revalidatePath("/admin/workflows", "page");
     const workflow = response.data.data || response.data;
     return successResponse(workflow, "Workflow created successfully");
   } catch (error: any) {
@@ -164,7 +165,7 @@ export async function createWorkflow(
  */
 export async function updateWorkflow(
   workflowId: string,
-  formData: Partial<WorkflowFormData>
+  formData: Partial<WorkflowFormData>,
 ): Promise<APIResponse<Workflow>> {
   if (!workflowId) {
     return badRequestResponse("Workflow ID is required");
@@ -214,7 +215,7 @@ export async function updateWorkflow(
  * Delete a workflow
  */
 export async function deleteWorkflow(
-  workflowId: string
+  workflowId: string,
 ): Promise<APIResponse<null>> {
   if (!workflowId) {
     return badRequestResponse("Workflow ID is required");
@@ -239,7 +240,7 @@ export async function deleteWorkflow(
  */
 export async function duplicateWorkflow(
   workflowId: string,
-  newName?: string
+  newName?: string,
 ): Promise<APIResponse<Workflow>> {
   if (!workflowId) {
     return badRequestResponse("Workflow ID is required");
@@ -265,7 +266,7 @@ export async function duplicateWorkflow(
  * Activate a workflow
  */
 export async function activateWorkflow(
-  workflowId: string
+  workflowId: string,
 ): Promise<APIResponse<Workflow>> {
   if (!workflowId) {
     return badRequestResponse("Workflow ID is required");
@@ -290,7 +291,7 @@ export async function activateWorkflow(
  * Deactivate a workflow
  */
 export async function deactivateWorkflow(
-  workflowId: string
+  workflowId: string,
 ): Promise<APIResponse<Workflow>> {
   if (!workflowId) {
     return badRequestResponse("Workflow ID is required");
@@ -316,7 +317,7 @@ export async function deactivateWorkflow(
  */
 export async function setDefaultWorkflow(
   workflowId: string,
-  entityType: string
+  entityType: string,
 ): Promise<APIResponse<null>> {
   if (!workflowId || !entityType) {
     return badRequestResponse("Workflow ID and entity type are required");
@@ -341,7 +342,7 @@ export async function setDefaultWorkflow(
  * Get default workflow for an entity type
  */
 export async function getDefaultWorkflow(
-  entityType: string
+  entityType: string,
 ): Promise<APIResponse<Workflow>> {
   if (!entityType) {
     return badRequestResponse("Entity type is required");
@@ -367,7 +368,7 @@ export async function getDefaultWorkflow(
  */
 export async function resolveWorkflowForEntity(
   entityType: string,
-  document?: any
+  document?: any,
 ): Promise<APIResponse<Workflow>> {
   if (!entityType) {
     return badRequestResponse("Entity type is required");
@@ -396,7 +397,7 @@ export async function resolveWorkflowForEntity(
  * Get workflow usage statistics
  */
 export async function getWorkflowUsage(
-  workflowId: string
+  workflowId: string,
 ): Promise<
   APIResponse<{ workflowId: string; usageCount: number; canDelete: boolean }>
 > {
@@ -423,7 +424,7 @@ export async function getWorkflowUsage(
  * Validate workflow configuration
  */
 export async function validateWorkflow(
-  workflowData: WorkflowFormData
+  workflowData: WorkflowFormData,
 ): Promise<APIResponse<{ valid: boolean; message: string }>> {
   const url = `/api/v1/workflows/validate`;
 

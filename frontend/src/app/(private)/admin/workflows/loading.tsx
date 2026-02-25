@@ -1,97 +1,102 @@
-export default function Loading() {
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+
+export default function WorkflowsLoadingPage() {
   return (
     <div className="space-y-6">
       {/* Page Header Skeleton */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <div className="h-8 bg-muted rounded-lg w-48 mb-2 animate-pulse"></div>
-          <div className="h-5 bg-muted rounded-lg w-64 animate-pulse"></div>
-        </div>
-        <div className="h-10 bg-muted rounded-md w-40 animate-pulse"></div>
-      </div>
-
-      {/* Workflow Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        {[1, 2, 3, 4].map((i) => (
-          <div key={i} className="bg-card rounded-lg border p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="h-4 bg-muted rounded w-20 mb-2 animate-pulse"></div>
-                <div className="h-8 bg-muted rounded w-12 animate-pulse"></div>
-              </div>
-              <div className="w-8 h-8 bg-muted rounded animate-pulse"></div>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Filters Skeleton */}
-      <div className="flex flex-wrap gap-4 p-4 bg-card rounded-lg border">
-        <div className="h-10 bg-muted rounded-md w-48 animate-pulse"></div>
-        <div className="h-10 bg-muted rounded-md w-32 animate-pulse"></div>
-        <div className="h-10 bg-muted rounded-md w-32 animate-pulse"></div>
-      </div>
-
-      {/* Workflows List Skeleton */}
-      <div className="space-y-4">
-        {[1, 2, 3, 4, 5].map((i) => (
-          <div key={i} className="bg-card rounded-lg border p-6">
-            <div className="flex items-start justify-between mb-4">
-              <div className="flex-1">
-                <div className="h-6 bg-muted rounded w-64 mb-2 animate-pulse"></div>
-                <div className="h-4 bg-muted rounded w-48 animate-pulse"></div>
-              </div>
-              <div className="flex space-x-2">
-                <div className="h-6 bg-muted rounded-full w-16 animate-pulse"></div>
-                <div className="h-6 bg-muted rounded-full w-20 animate-pulse"></div>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-              {[1, 2, 3, 4].map((j) => (
-                <div key={j} className="space-y-1">
-                  <div className="h-3 bg-muted rounded w-16 animate-pulse"></div>
-                  <div className="h-4 bg-muted rounded w-24 animate-pulse"></div>
-                </div>
-              ))}
-            </div>
-
-            {/* Workflow Steps Preview */}
-            <div className="mb-4">
-              <div className="h-4 bg-muted rounded w-20 mb-2 animate-pulse"></div>
-              <div className="flex space-x-2">
-                {[1, 2, 3, 4].map((step) => (
-                  <div key={step} className="flex items-center">
-                    <div className="w-8 h-8 bg-muted rounded-full animate-pulse"></div>
-                    {step < 4 && (
-                      <div className="w-8 h-0.5 bg-muted animate-pulse"></div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="flex justify-end space-x-2">
-              <div className="h-8 bg-muted rounded w-20 animate-pulse"></div>
-              <div className="h-8 bg-muted rounded w-24 animate-pulse"></div>
-              <div className="h-8 bg-muted rounded w-20 animate-pulse"></div>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Pagination Skeleton */}
       <div className="flex items-center justify-between">
-        <div className="h-4 bg-muted rounded w-32 animate-pulse"></div>
-        <div className="flex space-x-2">
-          {[1, 2, 3, 4].map((i) => (
-            <div
-              key={i}
-              className="h-8 w-8 bg-muted rounded animate-pulse"
-            ></div>
-          ))}
+        <div className="space-y-2">
+          <Skeleton className="h-8 w-64" />
+          <Skeleton className="h-5 w-96" />
         </div>
+        <Skeleton className="h-10 w-40" />
       </div>
+
+      {/* Card with Table Skeleton */}
+      <Card>
+        <CardHeader>
+          <CardTitle>
+            <Skeleton className="h-6 w-48" />
+          </CardTitle>
+          <CardDescription>
+            <Skeleton className="h-4 w-96" />
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="overflow-x-auto rounded-xl border">
+            <Table>
+              <TableHeader className="uppercase bg-muted">
+                <TableRow>
+                  <TableHead>
+                    <Skeleton className="h-4 w-16" />
+                  </TableHead>
+                  <TableHead>
+                    <Skeleton className="h-4 w-28" />
+                  </TableHead>
+                  <TableHead className="text-center">
+                    <Skeleton className="h-4 w-16 mx-auto" />
+                  </TableHead>
+                  <TableHead>
+                    <Skeleton className="h-4 w-16" />
+                  </TableHead>
+                  <TableHead>
+                    <Skeleton className="h-4 w-24" />
+                  </TableHead>
+                  <TableHead className="text-right">
+                    <Skeleton className="h-4 w-16 ml-auto" />
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <TableRow key={i}>
+                    <TableCell>
+                      <div className="space-y-2">
+                        <Skeleton className="h-5 w-48" />
+                        <Skeleton className="h-4 w-64" />
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-5 w-32" />
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <Skeleton className="h-5 w-8 mx-auto" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-6 w-20 rounded-full" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-5 w-24" />
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-2">
+                        <Skeleton className="h-8 w-8" />
+                        <Skeleton className="h-8 w-8" />
+                        <Skeleton className="h-8 w-8" />
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

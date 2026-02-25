@@ -126,7 +126,7 @@ export function SiteHeader() {
               <Avatar className="h-8 w-8">
                 <AvatarImage src="" alt={user?.name || "Admin"} />
                 <AvatarFallback className="bg-primary/10">
-                  {user ? getInitials(user.name) : <User className="h-4 w-4" />}
+                  <User className="h-4 w-4" />
                 </AvatarFallback>
               </Avatar>
             </Button>

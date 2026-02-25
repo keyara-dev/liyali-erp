@@ -86,48 +86,28 @@ func (s *SubscriptionService) GetAllSubscriptionPlans() ([]SubscriptionPlan, err
 	
 	logger.Info("Retrieving subscription plans from subscription_tiers table")
 
-	// Query subscription_tiers with full feature details from subscription_features
+	// First, get the basic tier information
 	query := `
 		SELECT
-			st.id,
-			st.name,
-			st.name as slug,
-			st.display_name,
-			st.description,
-			st.price_monthly,
-			st.price_yearly,
-			st.max_workspaces,
-			st.max_team_members,
-			st.max_documents,
-			st.max_workflows,
-			st.max_custom_roles,
-			st.features,
-			st.is_active,
-			st.sort_order,
-			st.created_at,
-			st.updated_at,
-			COALESCE(
-				json_agg(
-					json_build_object(
-						'id', sf.id,
-						'name', sf.name,
-						'displayName', sf.display_name,
-						'description', sf.description,
-						'category', sf.category
-					) ORDER BY sf.category, sf.display_name
-				) FILTER (WHERE sf.id IS NOT NULL),
-				'[]'
-			) as feature_details
-		FROM subscription_tiers st
-		LEFT JOIN subscription_features sf ON sf.name = ANY(
-			SELECT jsonb_array_elements_text(st.features)
-		)
-		WHERE st.is_active = true
-		GROUP BY st.id, st.name, st.display_name, st.description, st.price_monthly, 
-		         st.price_yearly, st.max_workspaces, st.max_team_members, st.max_documents,
-		         st.max_workflows, st.max_custom_roles, st.features, st.is_active, 
-		         st.sort_order, st.created_at, st.updated_at
-		ORDER BY st.sort_order ASC
+			id,
+			name,
+			display_name,
+			description,
+			price_monthly,
+			price_yearly,
+			max_workspaces,
+			max_users,
+			max_documents,
+			max_workflows,
+			max_custom_roles,
+			features,
+			is_active,
+			sort_order,
+			created_at,
+			updated_at
+		FROM subscription_tiers
+		WHERE is_active = true
+		ORDER BY sort_order ASC
 	`
 
 	rows, err := s.db.Query(context.Background(), query)
@@ -140,12 +120,11 @@ func (s *SubscriptionService) GetAllSubscriptionPlans() ([]SubscriptionPlan, err
 	var plans []SubscriptionPlan
 	for rows.Next() {
 		var plan SubscriptionPlan
-		var featuresJSON, featureDetailsJSON []byte
+		var featuresJSON []byte
 
 		err := rows.Scan(
 			&plan.ID,
 			&plan.Name,
-			&plan.Slug,
 			&plan.DisplayName,
 			&plan.Description,
 			&plan.PriceMonthly,
@@ -160,23 +139,44 @@ func (s *SubscriptionService) GetAllSubscriptionPlans() ([]SubscriptionPlan, err
 			&plan.SortOrder,
 			&plan.CreatedAt,
 			&plan.UpdatedAt,
-			&featureDetailsJSON,
 		)
 		if err != nil {
-			logger.Error("Failed to scan subscription tier")
+			logger.Error("Failed to scan subscription tier: " + err.Error())
 			return nil, fmt.Errorf("failed to scan subscription tier: %w", err)
 		}
 
 		// Parse feature names array
-		if err := json.Unmarshal(featuresJSON, &plan.Features); err != nil {
-			logger.Error("Failed to parse tier features JSON")
-			return nil, fmt.Errorf("failed to parse tier features: %w", err)
+		if len(featuresJSON) > 0 {
+			if err := json.Unmarshal(featuresJSON, &plan.Features); err != nil {
+				logger.Error("Failed to parse tier features JSON: " + err.Error())
+				// Don't fail, just use empty array
+				plan.Features = []string{}
+			}
+		} else {
+			plan.Features = []string{}
 		}
 
-		// Parse feature details array
-		if err := json.Unmarshal(featureDetailsJSON, &plan.FeatureDetails); err != nil {
-			logger.Error("Failed to parse feature details JSON")
-			return nil, fmt.Errorf("failed to parse feature details: %w", err)
+		// Initialize empty feature details array
+		plan.FeatureDetails = []FeatureDetail{}
+
+		// Try to fetch feature details if we have feature names
+		if len(plan.Features) > 0 {
+			featureQuery := `
+				SELECT id, name, display_name, description, category
+				FROM subscription_features
+				WHERE name = ANY($1)
+				ORDER BY category, display_name
+			`
+			featureRows, err := s.db.Query(context.Background(), featureQuery, plan.Features)
+			if err == nil {
+				defer featureRows.Close()
+				for featureRows.Next() {
+					var detail FeatureDetail
+					if err := featureRows.Scan(&detail.ID, &detail.Name, &detail.DisplayName, &detail.Description, &detail.Category); err == nil {
+						plan.FeatureDetails = append(plan.FeatureDetails, detail)
+					}
+				}
+			}
 		}
 
 		// Convert tier name to uppercase slug format for backward compatibility
@@ -188,13 +188,15 @@ func (s *SubscriptionService) GetAllSubscriptionPlans() ([]SubscriptionPlan, err
 			plan.Slug = "PRO_PLAN"
 		case "custom":
 			plan.Slug = "ENTERPRISE"
+		default:
+			plan.Slug = plan.Name
 		}
 
 		plans = append(plans, plan)
 	}
 
 	if err := rows.Err(); err != nil {
-		logger.Error("Error iterating subscription tiers")
+		logger.Error("Error iterating subscription tiers: " + err.Error())
 		return nil, fmt.Errorf("error iterating subscription tiers: %w", err)
 	}
 

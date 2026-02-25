@@ -47,12 +47,14 @@ interface BudgetsTableProps {
   userRole: string;
   refreshTrigger: number;
   onBudgetAction: () => void;
+  initialData?: Budget[];
 }
 
 export function BudgetsTable({
   userRole,
   refreshTrigger,
   onBudgetAction,
+  initialData,
 }: BudgetsTableProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -60,7 +62,7 @@ export function BudgetsTable({
     data: budgetsFromHook = [],
     isLoading: hookLoading,
     refetch,
-  } = useBudgets(); // Get all budgets for the organization
+  } = useBudgets(initialData); // Pass initialData to the hook
 
   // Refetch when refreshTrigger changes (after budget creation)
   useEffect(() => {

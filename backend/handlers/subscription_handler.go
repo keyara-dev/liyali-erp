@@ -27,7 +27,7 @@ func (h *SubscriptionHandler) GetSubscriptionPlans(c *fiber.Ctx) error {
 
 	plans, err := h.subscriptionService.GetAllSubscriptionPlans()
 	if err != nil {
-		logger.Error("Failed to get subscription plans")
+		logger.Error("Failed to get subscription plans: " + err.Error())
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse("Failed to retrieve subscription plans"))
 	}
 

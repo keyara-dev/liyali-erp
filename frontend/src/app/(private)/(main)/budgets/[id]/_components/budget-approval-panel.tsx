@@ -105,6 +105,14 @@ export function BudgetApprovalPanel({
       new Date(a.performedAt || a.timestamp || 0).getTime(),
   );
 
+  // Debug logging
+  console.log("BudgetApprovalPanel - actionHistory prop:", actionHistory);
+  console.log("BudgetApprovalPanel - sortedHistory:", sortedHistory);
+  console.log(
+    "BudgetApprovalPanel - sortedHistory length:",
+    sortedHistory.length,
+  );
+
   // Combine approval history from both sources
   const combinedApprovalHistory = [
     ...(approvalHistory || []),

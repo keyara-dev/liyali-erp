@@ -28,26 +28,17 @@ export default function UserMenu() {
   const { user } = useSession();
   const { logout, isPending } = useLogout();
 
-  if (!user) {
-    return (
-      <Avatar className="rounded-full">
-        <AvatarFallback>...</AvatarFallback>
-      </Avatar>
-    );
-  }
-
-  const initials = getInitials(user.name || "User");
+  const initials = user?.name ? getInitials(user.name) : "...";
+  const userName = user?.name || "User";
+  const userEmail = user?.email || "";
+  const userAvatar =
+    user?.avatar || `https://bundui-images.netlify.app/avatars/01.png`;
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Avatar className="rounded-full cursor-pointer">
-          <AvatarImage
-            src={
-              user.avatar || `https://bundui-images.netlify.app/avatars/01.png`
-            }
-            alt={user.name}
-          />
+          <AvatarImage src={userAvatar} alt={userName} />
           <AvatarFallback>{initials}</AvatarFallback>
         </Avatar>
       </DropdownMenuTrigger>
@@ -58,19 +49,13 @@ export default function UserMenu() {
         <DropdownMenuLabel className="p-0">
           <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
             <Avatar className="rounded-full">
-              <AvatarImage
-                src={
-                  user.avatar ||
-                  `https://bundui-images.netlify.app/avatars/01.png`
-                }
-                alt={user.name}
-              />
+              <AvatarImage src={userAvatar} alt={userName} />
               <AvatarFallback>{initials}</AvatarFallback>
             </Avatar>
             <div className="grid flex-1 text-left text-sm leading-tight">
-              <span className="truncate font-semibold">{user.name}</span>
+              <span className="truncate font-semibold">{userName}</span>
               <span className="text-muted-foreground truncate text-xs">
-                {user.email}
+                {userEmail}
               </span>
             </div>
           </div>
@@ -85,7 +70,10 @@ export default function UserMenu() {
         </DropdownMenuGroup>
 
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={() => logout()} disabled={isPending}>
+        <DropdownMenuItem
+          onClick={() => logout()}
+          disabled={isPending || !user}
+        >
           <LogOut />
           {isPending ? "Logging out..." : "Log out"}
         </DropdownMenuItem>

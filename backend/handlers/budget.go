@@ -212,11 +212,15 @@ func CreateBudget(c *fiber.Ctx) error {
 	// Initialize action history with CREATE action
 	actionHistory := []types.ActionHistoryEntry{
 		{
-			Action:          "CREATE",
+			ID:              uuid.New().String(),
+			Action:          "BUDGET_CREATED",
+			ActionType:      "BUDGET_CREATED",
 			PerformedBy:     userID,
 			PerformedByName: user.Name,
 			Timestamp:       time.Now(),
+			PerformedAt:     time.Now(),
 			Comments:        "Budget created",
+			Metadata:        map[string]interface{}{},
 		},
 	}
 	budget.ActionHistory = datatypes.NewJSONType(actionHistory)
@@ -305,6 +309,12 @@ func UpdateBudget(c *fiber.Ctx) error {
 		return utils.SendBadRequestError(c, "Invalid request body")
 	}
 
+	// Get user ID from context
+	userID := c.Locals("userID")
+	if userID == nil {
+		userID = "system"
+	}
+
 	// Add context
 	logging.AddFieldsToRequest(c, map[string]interface{}{
 		"budget_id":        id,
@@ -313,6 +323,7 @@ func UpdateBudget(c *fiber.Ctx) error {
 		"new_total_budget": req.TotalBudget,
 		"new_allocated":    req.AllocatedAmount,
 		"organization_id":  tenant.OrganizationID,
+		"user_id":          userID,
 	})
 
 	logger.Debug("fetching_budget_for_update")
@@ -336,23 +347,32 @@ func UpdateBudget(c *fiber.Ctx) error {
 
 	logger.Debug("updating_budget_fields")
 
-	if req.Department != "" {
+	// Track what was updated for action history
+	var updates []string
+
+	if req.Department != "" && req.Department != budget.Department {
 		budget.Department = req.Department
+		updates = append(updates, "department")
 	}
-	if req.TotalBudget > 0 {
+	if req.TotalBudget > 0 && req.TotalBudget != budget.TotalBudget {
 		budget.TotalBudget = req.TotalBudget
+		updates = append(updates, "total budget")
 	}
-	if req.AllocatedAmount >= 0 {
+	if req.AllocatedAmount >= 0 && req.AllocatedAmount != budget.AllocatedAmount {
 		budget.AllocatedAmount = req.AllocatedAmount
+		updates = append(updates, "allocated amount")
 	}
-	if req.Name != "" {
+	if req.Name != "" && req.Name != budget.Name {
 		budget.Name = req.Name
+		updates = append(updates, "name")
 	}
-	if req.Description != "" {
+	if req.Description != "" && req.Description != budget.Description {
 		budget.Description = req.Description
+		updates = append(updates, "description")
 	}
-	if req.Currency != "" {
+	if req.Currency != "" && req.Currency != budget.Currency {
 		budget.Currency = req.Currency
+		updates = append(updates, "currency")
 	}
 	// Update items if provided
 	if req.Items != nil {
@@ -365,6 +385,7 @@ func UpdateBudget(c *fiber.Ctx) error {
 		fmt.Printf("Marshaled items JSON: %s\n", string(itemsJSON))
 		budget.Items = itemsJSON
 		fmt.Printf("Budget items field updated. Length: %d\n", len(budget.Items))
+		updates = append(updates, "budget items")
 	} else {
 		fmt.Printf("No items provided in update request\n")
 	}
@@ -375,11 +396,66 @@ func UpdateBudget(c *fiber.Ctx) error {
 	// Add updated values to context
 	logging.AddFieldsToRequest(c, map[string]interface{}{
 		"updated_remaining_amount": budget.RemainingAmount,
+		"updates":                  updates,
 	})
 
-	if err := config.DB.Save(&budget).Error; err != nil {
+	// Start transaction for atomic update with action history
+	tx := config.DB.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	if err := tx.Save(&budget).Error; err != nil {
+		tx.Rollback()
 		logging.LogError(c, err, "failed_to_save_updated_budget")
 		return utils.SendInternalError(c, "Failed to update budget", err)
+	}
+
+	// Add action history entry if there were updates
+	if len(updates) > 0 {
+		// Get user name from database
+		var user models.User
+		userName := "System Administrator"
+		if err := config.DB.Where("id = ?", userID).First(&user).Error; err == nil {
+			userName = user.Name
+		}
+
+		actionMessage := fmt.Sprintf("Updated %s", strings.Join(updates, ", "))
+		actionEntry := types.ActionHistoryEntry{
+			ID:              uuid.New().String(),
+			Action:          "BUDGET_UPDATED",
+			ActionType:      "BUDGET_UPDATED",
+			PerformedBy:     fmt.Sprintf("%v", userID),
+			PerformedByName: userName,
+			Timestamp:       time.Now(),
+			PerformedAt:     time.Now(),
+			Comments:        actionMessage,
+			Metadata:        map[string]interface{}{},
+		}
+
+		// Get existing history
+		var history []types.ActionHistoryEntry
+		history = budget.ActionHistory.Data()
+
+		// Add new entry
+		history = append(history, actionEntry)
+
+		// Update with new history
+		budget.ActionHistory = datatypes.NewJSONType(history)
+
+		if err := tx.Save(&budget).Error; err != nil {
+			tx.Rollback()
+			logging.LogError(c, err, "failed_to_save_action_history")
+			return utils.SendInternalError(c, "Failed to update action history", err)
+		}
+	}
+
+	// Commit transaction
+	if err := tx.Commit().Error; err != nil {
+		logging.LogError(c, err, "failed_to_commit_budget_update")
+		return utils.SendInternalError(c, "Failed to commit budget update", err)
 	}
 
 	config.DB.Preload("Owner").First(&budget)

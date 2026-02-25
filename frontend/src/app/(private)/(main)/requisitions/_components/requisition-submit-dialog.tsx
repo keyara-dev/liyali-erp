@@ -255,18 +255,15 @@ export function RequisitionSubmitDialog({
           )}
 
           {/* Comments */}
-          <div className="space-y-2">
-            <Label htmlFor="comments">Comments (Optional)</Label>
-            <Textarea
-              id="comments"
-              placeholder="Add any comments or notes for the approvers..."
-              value={comments}
-              onChange={(e) => setComments(e.target.value)}
-              disabled={isSubmitting}
-              rows={4}
-            />
-          </div>
-
+          <Textarea
+            id="comments"
+            label="Comments (Optional)"
+            placeholder="Add any comments or notes for the approvers..."
+            value={comments}
+            onChange={(e) => setComments(e.target.value)}
+            disabled={isSubmitting}
+            rows={4}
+          />
         </div>
 
         {/* Sticky Footer */}

@@ -44,7 +44,13 @@ export interface WorkflowStage {
  * @param filter - Optional filter parameters
  * @returns Query result with workflows array
  */
-export const useWorkflows = (filter?: WorkflowListFilter) =>
+export const useWorkflows = ({
+  filter,
+  initialData,
+}: {
+  filter?: WorkflowListFilter;
+  initialData?: Workflow[];
+}) =>
   useQuery({
     queryKey: [QUERY_KEYS.WORKFLOWS.ALL, filter],
     queryFn: async () => {
@@ -55,6 +61,7 @@ export const useWorkflows = (filter?: WorkflowListFilter) =>
       return response.data;
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
+    initialData,
   });
 
 /**

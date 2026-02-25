@@ -446,6 +446,7 @@ type ActionHistoryEntry struct {
 	StageNumber     int                    `json:"stageNumber,omitempty"`
 	StageName       string                 `json:"stageName,omitempty"`
 	ChangedFields   map[string]interface{} `json:"changedFields,omitempty"`
+	Metadata        map[string]interface{} `json:"metadata,omitempty"`
 }
 
 // PaymentItem represents an item in a payment voucher

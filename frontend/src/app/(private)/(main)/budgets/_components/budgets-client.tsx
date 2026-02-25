@@ -6,12 +6,14 @@ import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/base/page-header";
 import { BudgetsTable } from "./budgets-table";
 import { CreateBudgetDialog } from "./create-budget-dialog";
+import { Budget } from "@/types/budget";
 
 interface BudgetsClientProps {
   userRole: string;
+  initialData?: Budget[];
 }
 
-export function BudgetsClient({ userRole }: BudgetsClientProps) {
+export function BudgetsClient({ userRole, initialData }: BudgetsClientProps) {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
@@ -47,6 +49,7 @@ export function BudgetsClient({ userRole }: BudgetsClientProps) {
         userRole={userRole}
         refreshTrigger={refreshTrigger}
         onBudgetAction={handleBudgetAction}
+        initialData={initialData}
       />
 
       {/* Create Budget Dialog */}
