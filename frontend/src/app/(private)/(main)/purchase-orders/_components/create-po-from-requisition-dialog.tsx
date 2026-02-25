@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Requisition } from "@/types/requisition";
-import { Loader2, FileText, CheckCircle2, AlertCircle } from "lucide-react";
+import { FileText, CheckCircle2, AlertCircle } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { WorkflowSelector } from "@/components/workflows/workflow-selector";
 import { useConfigurationStatus } from "@/hooks/use-configuration-status";
@@ -192,18 +192,9 @@ export function CreatePOFromRequisitionDialog({
           >
             Cancel
           </Button>
-          <Button onClick={handleConfirm} disabled={isCreating || !canCreate}>
-            {isCreating ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Creating...
-              </>
-            ) : (
-              <>
-                <FileText className="mr-2 h-4 w-4" />
-                Create Purchase Order
-              </>
-            )}
+          <Button onClick={handleConfirm} disabled={isCreating || !canCreate} isLoading={isCreating} loadingText="Creating...">
+            <FileText className="mr-2 h-4 w-4" />
+            Create Purchase Order
           </Button>
         </DialogFooter>
       </DialogContent>

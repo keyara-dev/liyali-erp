@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Download, Loader2 } from 'lucide-react'
+import { Download } from 'lucide-react'
 import { downloadDocumentPDF } from '@/app/_actions/search'
 
 interface DownloadButtonProps {
@@ -44,13 +44,11 @@ export function DownloadButton({ documentId, documentNumber }: DownloadButtonPro
       onClick={handleDownload}
       disabled={isLoading}
       className="gap-1"
+      isLoading={isLoading}
+      loadingText="Downloading..."
     >
-      {isLoading ? (
-        <Loader2 className="h-4 w-4 animate-spin" />
-      ) : (
-        <Download className="h-4 w-4" />
-      )}
-      {isLoading ? 'Downloading...' : 'Download'}
+      <Download className="h-4 w-4" />
+      Download
     </Button>
   )
 }

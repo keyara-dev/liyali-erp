@@ -17,7 +17,6 @@ import {
   XCircle,
   Download,
   Eye,
-  Loader2,
 } from "lucide-react";
 import Image from "next/image";
 import {
@@ -389,25 +388,19 @@ export function VerificationResult({
                         variant="outline"
                         onClick={handlePreview}
                         disabled={isLoadingPDF}
-                        className="flex items-center gap-2"
+                        isLoading={isLoadingPDF}
+                        loadingText="Loading..."
                       >
-                        {isLoadingPDF ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <Eye className="h-4 w-4" />
-                        )}
+                        <Eye className="h-4 w-4" />
                         Preview PDF
                       </Button>
                       <Button
                         onClick={handleDownload}
                         disabled={isDownloading}
-                        className="flex items-center gap-2"
+                        isLoading={isDownloading}
+                        loadingText="Downloading..."
                       >
-                        {isDownloading ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <Download className="h-4 w-4" />
-                        )}
+                        <Download className="h-4 w-4" />
                         Download PDF
                       </Button>
                     </div>

@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import { updateGeneralSettings } from '@/app/_actions/settings'
-import { AlertCircle, CheckCircle, Loader2 } from 'lucide-react'
+import { AlertCircle, CheckCircle } from 'lucide-react'
 
 export function GeneralSettings() {
   const [isLoading, setIsLoading] = useState(false)
@@ -187,9 +187,8 @@ export function GeneralSettings() {
           </div>
 
           <div className="flex gap-3 pt-4">
-            <Button type="submit" disabled={isLoading}>
-              {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {isLoading ? 'Saving...' : 'Save Settings'}
+            <Button type="submit" disabled={isLoading} isLoading={isLoading} loadingText="Saving...">
+              Save Settings
             </Button>
           </div>
         </form>

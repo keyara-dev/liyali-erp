@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { SignatureCanvas } from "@/components/ui/signature-canvas";
-import { Upload, Send, XCircle, Loader2 } from "lucide-react";
+import { Upload, Send, XCircle } from "lucide-react";
 import {
   useApprovalTasks,
   useApproveTask,
@@ -202,13 +202,10 @@ export function PVApprovalActionPanel({
               ? "bg-green-600 hover:bg-green-700 flex-1"
               : "bg-red-600 hover:bg-red-700 flex-1"
           }
+          isLoading={isLoading}
+          loadingText="Processing..."
         >
-          {isLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-          {isLoading
-            ? "Processing..."
-            : action === "approve"
-              ? "Confirm Approval"
-              : "Confirm Rejection"}
+          {action === "approve" ? "Confirm Approval" : "Confirm Rejection"}
         </Button>
         <Button
           variant="outline"

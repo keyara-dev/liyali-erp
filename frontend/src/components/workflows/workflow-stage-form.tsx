@@ -18,7 +18,6 @@ import { Badge } from "@/components/ui/badge";
 import {
   CheckCircle2,
   AlertCircle,
-  Loader2,
   Info,
 } from "lucide-react";
 
@@ -267,15 +266,10 @@ export function WorkflowStageForm({
               type="submit"
               disabled={isLoading}
               className="flex-1"
+              isLoading={isLoading}
+              loadingText="Processing..."
             >
-              {isLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Processing...
-                </>
-              ) : (
-                "Continue to Next Stage"
-              )}
+              Continue to Next Stage
             </Button>
             {onCancel && (
               <Button

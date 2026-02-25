@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import dynamic from 'next/dynamic'
 import { Button } from '@/components/ui/button'
-import { Eye, Loader2 } from 'lucide-react'
+import { Eye } from 'lucide-react'
 import { getRequisitionById } from '@/app/_actions/requisitions'
 import { getPurchaseOrderById } from '@/app/_actions/purchase-orders'
 import { getPaymentVoucherById } from '@/app/_actions/payment-vouchers'
@@ -184,13 +184,11 @@ export function PreviewButton({ documentId, documentNumber, documentType }: Prev
         onClick={handlePreview}
         disabled={isLoading}
         className="gap-1"
+        isLoading={isLoading}
+        loadingText="Loading..."
       >
-        {isLoading ? (
-          <Loader2 className="h-4 w-4 animate-spin" />
-        ) : (
-          <Eye className="h-4 w-4" />
-        )}
-        {isLoading ? 'Loading...' : 'Preview'}
+        <Eye className="h-4 w-4" />
+        Preview
       </Button>
 
       {pdfBlob && (

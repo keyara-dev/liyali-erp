@@ -5,7 +5,6 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -14,7 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Budget } from "@/types/budget";
-import { Loader2, Send, CheckCircle2, AlertCircle } from "lucide-react";
+import { Send, CheckCircle2, AlertCircle } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { WorkflowSelector } from "@/components/workflows/workflow-selector";
 
@@ -44,9 +43,7 @@ export function BudgetSubmitDialog({
 
   const canSubmit = !isOverBudget && hasItems && workflowId;
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
+  const handleSubmit = async () => {
     // Validate workflow selection
     if (!workflowId) {
       setWorkflowError("Please select a workflow");
@@ -84,7 +81,7 @@ export function BudgetSubmitDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="space-y-4">
           {/* Workflow Selector */}
           <WorkflowSelector
             entityType="budget"
@@ -199,31 +196,28 @@ export function BudgetSubmitDialog({
             />
           </div>
 
-          {/* Actions */}
-          <DialogFooter className="gap-2 sm:gap-0">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleClose}
-              disabled={isSubmitting}
-            >
-              Cancel
-            </Button>
-            <Button type="submit" disabled={isSubmitting || !canSubmit}>
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Submitting...
-                </>
-              ) : (
-                <>
-                  <Send className="mr-2 h-4 w-4" />
-                  Submit for Approval
-                </>
-              )}
-            </Button>
-          </DialogFooter>
-        </form>
+        </div>
+
+        {/* Sticky Footer */}
+        <div className="bg-card/5 backdrop-blur-xs sticky bottom-0 flex flex-col-reverse justify-end gap-3 p-4 rounded-b-lg border-t py-6 sm:flex-row sm:py-6">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleClose}
+            disabled={isSubmitting}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={handleSubmit}
+            disabled={isSubmitting || !canSubmit}
+            isLoading={isSubmitting}
+            loadingText="Submitting..."
+          >
+            <Send className="mr-2 h-4 w-4" />
+            Submit for Approval
+          </Button>
+        </div>
       </DialogContent>
     </Dialog>
   );

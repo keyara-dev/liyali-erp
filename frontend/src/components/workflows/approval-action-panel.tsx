@@ -24,7 +24,6 @@ import {
   XCircle,
   Repeat2,
   AlertCircle,
-  Loader2,
   Info,
 } from "lucide-react";
 
@@ -186,18 +185,11 @@ export function ApprovalActionPanel({
               disabled={isLoading}
               className="bg-green-600 hover:bg-green-700"
               size="lg"
+              isLoading={approveMutation.isPending}
+              loadingText="Approving..."
             >
-              {approveMutation.isPending ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Approving...
-                </>
-              ) : (
-                <>
-                  <CheckCircle2 className="mr-2 h-4 w-4" />
-                  Approve
-                </>
-              )}
+              <CheckCircle2 className="mr-2 h-4 w-4" />
+              Approve
             </Button>
 
             {/* Reject Button */}
@@ -206,18 +198,11 @@ export function ApprovalActionPanel({
               disabled={isLoading}
               variant="destructive"
               size="lg"
+              isLoading={rejectMutation.isPending}
+              loadingText="Rejecting..."
             >
-              {rejectMutation.isPending ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Rejecting...
-                </>
-              ) : (
-                <>
-                  <XCircle className="mr-2 h-4 w-4" />
-                  Reject
-                </>
-              )}
+              <XCircle className="mr-2 h-4 w-4" />
+              Reject
             </Button>
 
             {/* Reassign Button */}
@@ -226,18 +211,11 @@ export function ApprovalActionPanel({
               disabled={isLoading}
               variant="outline"
               size="lg"
+              isLoading={reassignMutation.isPending}
+              loadingText="Reassigning..."
             >
-              {reassignMutation.isPending ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Reassigning...
-                </>
-              ) : (
-                <>
-                  <Repeat2 className="mr-2 h-4 w-4" />
-                  Reassign
-                </>
-              )}
+              <Repeat2 className="mr-2 h-4 w-4" />
+              Reassign
             </Button>
           </div>
 

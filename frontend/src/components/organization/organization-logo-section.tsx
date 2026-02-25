@@ -5,7 +5,6 @@ import { toast } from "sonner";
 import { OrganizationLogoUpload } from "@/components/ui/organization-logo-upload";
 import { Button } from "@/components/ui/button";
 import { useUpdateOrganizationMutation } from "@/hooks/use-organization-mutations";
-import { Loader2 } from "lucide-react";
 
 interface OrganizationLogoSectionProps {
   organizationId: string;
@@ -78,8 +77,7 @@ export function OrganizationLogoSection({
 
       {hasChanges && (
         <div className="flex gap-2">
-          <Button onClick={handleSave} disabled={isPending}>
-            {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          <Button onClick={handleSave} disabled={isPending} isLoading={isPending} loadingText="Saving...">
             Save Changes
           </Button>
           <Button variant="outline" onClick={handleCancel} disabled={isPending}>

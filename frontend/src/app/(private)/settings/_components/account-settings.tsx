@@ -15,7 +15,7 @@ import {
 import { UserAvatarUpload } from "@/components/ui/user-avatar-upload";
 import { updateUserProfile } from "@/app/_actions/settings";
 import { User } from "@/types/auth";
-import { AlertCircle, CheckCircle, Loader2 } from "lucide-react";
+import { AlertCircle, CheckCircle } from "lucide-react";
 
 interface AccountSettingsProps {
   user: User | null;
@@ -180,9 +180,8 @@ export function AccountSettings({
           </div>
 
           <div className="flex gap-3 pt-4">
-            <Button type="submit" disabled={isLoading}>
-              {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {isLoading ? "Saving..." : "Save Changes"}
+            <Button type="submit" disabled={isLoading} isLoading={isLoading} loadingText="Saving...">
+              Save Changes
             </Button>
           </div>
         </form>

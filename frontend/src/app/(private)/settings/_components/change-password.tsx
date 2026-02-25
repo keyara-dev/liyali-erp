@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { changePassword } from '@/app/_actions/settings'
-import { AlertCircle, CheckCircle, Loader2, Eye, EyeOff } from 'lucide-react'
+import { AlertCircle, CheckCircle, Eye, EyeOff } from 'lucide-react'
 
 export function ChangePassword() {
   const [isLoading, setIsLoading] = useState(false)
@@ -164,9 +164,8 @@ export function ChangePassword() {
           </div>
 
           <div className="flex gap-3 pt-4">
-            <Button type="submit" disabled={isLoading}>
-              {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {isLoading ? 'Updating...' : 'Update Password'}
+            <Button type="submit" disabled={isLoading} isLoading={isLoading} loadingText="Updating...">
+              Update Password
             </Button>
           </div>
         </form>

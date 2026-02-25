@@ -162,15 +162,10 @@ export function NotificationPreferences({
           <Button
             onClick={handleSave}
             disabled={!hasChanges || updateMutation.isPending}
+            isLoading={updateMutation.isPending}
+            loadingText="Saving..."
           >
-            {updateMutation.isPending ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Saving...
-              </>
-            ) : (
-              "Save Preferences"
-            )}
+            Save Preferences
           </Button>
 
           {savedMessage && (

@@ -15,7 +15,6 @@ import {
   CheckCircle2,
   XCircle,
   ArrowRight,
-  Loader2,
   AlertCircle,
 } from "lucide-react";
 import {
@@ -180,15 +179,10 @@ export function BulkOperationsToolbar({
               onClick={handleApprove}
               disabled={isProcessing}
               className="bg-green-600 hover:bg-green-700"
+              isLoading={isProcessing}
+              loadingText="Approving..."
             >
-              {isProcessing ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Approving...
-                </>
-              ) : (
-                "Approve All"
-              )}
+              Approve All
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -240,15 +234,10 @@ export function BulkOperationsToolbar({
               onClick={handleReject}
               disabled={isProcessing || !remarks}
               className="bg-red-600 hover:bg-red-700"
+              isLoading={isProcessing}
+              loadingText="Rejecting..."
             >
-              {isProcessing ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Rejecting...
-                </>
-              ) : (
-                "Reject All"
-              )}
+              Reject All
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -320,15 +309,10 @@ export function BulkOperationsToolbar({
               onClick={handleReassign}
               disabled={isProcessing || !selectedUserId}
               className="bg-yellow-600 hover:bg-yellow-700"
+              isLoading={isProcessing}
+              loadingText="Reassigning..."
             >
-              {isProcessing ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Reassigning...
-                </>
-              ) : (
-                "Reassign All"
-              )}
+              Reassign All
             </Button>
           </DialogFooter>
         </DialogContent>

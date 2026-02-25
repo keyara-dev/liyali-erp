@@ -4,7 +4,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { motion } from "framer-motion";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -190,8 +190,9 @@ export function CreateWorkspace({
                 type="submit"
                 disabled={isPending}
                 className={isModal ? "flex-1" : "w-full"}
+                isLoading={isPending}
+                loadingText="Creating..."
               >
-                {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Create Workspace
               </Button>
             </div>

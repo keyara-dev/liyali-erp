@@ -182,13 +182,10 @@ export function WorkspaceSettings() {
             <Button
               onClick={handleUpdateWorkspace}
               disabled={!hasChanges || isUpdating || !formData.name.trim()}
-              className="flex items-center gap-2"
+              isLoading={isUpdating}
+              loadingText="Saving..."
             >
-              {isUpdating ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Save className="h-4 w-4" />
-              )}
+              <Save className="h-4 w-4" />
               Save Changes
             </Button>
           </div>
@@ -255,13 +252,10 @@ export function WorkspaceSettings() {
               <Button
                 variant="destructive"
                 disabled={isDeleting}
-                className="flex items-center gap-2"
+                isLoading={isDeleting}
+                loadingText="Deleting..."
               >
-                {isDeleting ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Trash2 className="h-4 w-4" />
-                )}
+                <Trash2 className="h-4 w-4" />
                 Delete Workspace
               </Button>
             </AlertDialogTrigger>

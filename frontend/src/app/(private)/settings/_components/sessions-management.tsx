@@ -164,15 +164,11 @@ export function SessionsManagement() {
                     onClick={() => handleRevokeSession(session.id)}
                     disabled={revoking === session.id}
                     className="ml-4"
+                    isLoading={revoking === session.id}
+                    loadingText="Revoking..."
                   >
-                    {revoking === session.id ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <>
-                        <LogOut className="h-4 w-4 mr-2" />
-                        Revoke
-                      </>
-                    )}
+                    <LogOut className="h-4 w-4 mr-2" />
+                    Revoke
                   </Button>
                 )}
               </div>

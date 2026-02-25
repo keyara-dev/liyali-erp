@@ -214,15 +214,8 @@ export function BudgetEditDialog({
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                "Save Changes"
-              )}
+            <Button type="submit" disabled={isSubmitting} isLoading={isSubmitting} loadingText="Saving...">
+              Save Changes
             </Button>
           </DialogFooter>
         </form>

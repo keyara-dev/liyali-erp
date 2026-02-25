@@ -1,11 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -14,7 +13,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Requisition } from "@/types/requisition";
-import { Loader2, Send, CheckCircle2, AlertCircle } from "lucide-react";
+import type { Workflow } from "@/types/workflow-config";
+import { Send, CheckCircle2, AlertCircle, Zap, ShoppingCart, Info } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { WorkflowSelector } from "@/components/workflows/workflow-selector";
 import { WorkflowRequirementBanner } from "@/components/ui/workflow-requirement-banner";
@@ -27,6 +27,63 @@ interface RequisitionSubmitDialogProps {
   isSubmitting: boolean;
 }
 
+function getRoutingPreview(
+  workflow: Workflow | null,
+  requisition: Requisition,
+): { type: "auto" | "accounting-stages" | "procurement"; message: string } | null {
+  if (!workflow) return null;
+
+  const conditions = workflow.conditions;
+  if (!conditions) {
+    return {
+      type: "procurement",
+      message: "Standard procurement approval workflow.",
+    };
+  }
+
+  const isAccounting = conditions.routingType === "accounting";
+
+  if (!isAccounting) {
+    return {
+      type: "procurement",
+      message: "Standard procurement approval workflow.",
+    };
+  }
+
+  // Check if auto-approval criteria are met
+  const stagesCount = workflow.stages?.length || 0;
+  if (conditions.autoApprove && stagesCount === 0) {
+    const maxAmount = conditions.autoApprovalMaxAmount;
+    const withinAmount = !maxAmount || requisition.totalAmount <= maxAmount;
+
+    if (withinAmount) {
+      return {
+        type: "auto",
+        message:
+          "This requisition qualifies for auto-approval. A Purchase Order will be generated automatically.",
+      };
+    } else {
+      return {
+        type: "accounting-stages",
+        message: `This is an accounting workflow but the requisition amount exceeds the auto-approval limit of ${maxAmount?.toLocaleString()}. It requires manual approval.`,
+      };
+    }
+  }
+
+  // Accounting workflow with stages
+  if (stagesCount > 0) {
+    return {
+      type: "accounting-stages",
+      message: `Accounting workflow with ${stagesCount} approval ${stagesCount === 1 ? "stage" : "stages"}. A Purchase Order will be auto-generated after approval.`,
+    };
+  }
+
+  return {
+    type: "procurement",
+    message: "Standard procurement approval workflow.",
+  };
+}
+
 export function RequisitionSubmitDialog({
   open,
   onOpenChange,
@@ -37,13 +94,18 @@ export function RequisitionSubmitDialog({
   const [comments, setComments] = useState("");
   const [workflowId, setWorkflowId] = useState("");
   const [workflowError, setWorkflowError] = useState<string | null>(null);
+  const [selectedWorkflow, setSelectedWorkflow] = useState<Workflow | null>(null);
 
   const hasItems = requisition.items && requisition.items.length > 0;
   const canSubmit = hasItems && workflowId;
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const routingPreview = getRoutingPreview(selectedWorkflow, requisition);
 
+  const handleWorkflowSelect = useCallback((workflow: Workflow | null) => {
+    setSelectedWorkflow(workflow);
+  }, []);
+
+  const handleSubmit = async () => {
     // Validate workflow selection
     if (!workflowId) {
       setWorkflowError("Please select a workflow");
@@ -63,6 +125,7 @@ export function RequisitionSubmitDialog({
       setComments("");
       setWorkflowId("");
       setWorkflowError(null);
+      setSelectedWorkflow(null);
       onOpenChange(false);
     }
   };
@@ -81,7 +144,7 @@ export function RequisitionSubmitDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="space-y-4">
           {/* Workflow Requirement Banner - Shows if no workflows configured */}
           <WorkflowRequirementBanner entityType="requisition" />
 
@@ -90,11 +153,35 @@ export function RequisitionSubmitDialog({
             entityType="requisition"
             value={workflowId}
             onChange={setWorkflowId}
+            onWorkflowSelect={handleWorkflowSelect}
             disabled={isSubmitting}
             required
             error={workflowError || undefined}
             showDetails={true}
           />
+
+          {/* Routing Preview */}
+          {routingPreview && (
+            <Alert
+              variant="default"
+              className={
+                routingPreview.type === "auto"
+                  ? "border-amber-300 bg-amber-50 text-amber-900"
+                  : routingPreview.type === "accounting-stages"
+                    ? "border-amber-200 bg-amber-50/50 text-amber-800"
+                    : "border-blue-200 bg-blue-50/50 text-blue-800"
+              }
+            >
+              {routingPreview.type === "auto" ? (
+                <Zap className="h-4 w-4 text-amber-600" />
+              ) : routingPreview.type === "accounting-stages" ? (
+                <Info className="h-4 w-4 text-amber-600" />
+              ) : (
+                <ShoppingCart className="h-4 w-4 text-blue-600" />
+              )}
+              <AlertDescription>{routingPreview.message}</AlertDescription>
+            </Alert>
+          )}
 
           <Separator />
 
@@ -157,7 +244,7 @@ export function RequisitionSubmitDialog({
             </Alert>
           )}
 
-          {canSubmit && (
+          {canSubmit && !routingPreview && (
             <Alert>
               <CheckCircle2 className="h-4 w-4" />
               <AlertDescription>
@@ -180,31 +267,30 @@ export function RequisitionSubmitDialog({
             />
           </div>
 
-          {/* Actions */}
-          <DialogFooter className="gap-2 sm:gap-0">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleClose}
-              disabled={isSubmitting}
-            >
-              Cancel
-            </Button>
-            <Button type="submit" disabled={isSubmitting || !canSubmit}>
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Submitting...
-                </>
-              ) : (
-                <>
-                  <Send className="mr-2 h-4 w-4" />
-                  Submit for Approval
-                </>
-              )}
-            </Button>
-          </DialogFooter>
-        </form>
+        </div>
+
+        {/* Sticky Footer */}
+        <div className="bg-card/5 backdrop-blur-xs sticky bottom-0 flex flex-col-reverse justify-end gap-3 p-4 rounded-b-lg border-t py-6 sm:flex-row sm:py-6">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleClose}
+            disabled={isSubmitting}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={handleSubmit}
+            disabled={isSubmitting || !canSubmit}
+            isLoading={isSubmitting}
+            loadingText="Submitting..."
+          >
+            <Send className="mr-2 h-4 w-4" />
+            {routingPreview?.type === "auto"
+              ? "Auto-Approve & Generate PO"
+              : "Submit for Approval"}
+          </Button>
+        </div>
       </DialogContent>
     </Dialog>
   );

@@ -302,8 +302,10 @@ export function CreateBudgetDialog({
               type="submit"
               disabled={isSubmitting || !configStatus.allConfigured}
               className="flex-1 sm:flex-none"
+              isLoading={isSubmitting}
+              loadingText="Creating..."
             >
-              {isSubmitting ? "Creating..." : "Create Budget"}
+              Create Budget
             </Button>
           </div>
         </form>

@@ -16,7 +16,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, AlertCircle } from "lucide-react";
+import { AlertCircle } from "lucide-react";
 import { SearchSelectField } from "@/components/ui/search-select-field";
 import { capitalize } from "@/lib/utils";
 
@@ -224,15 +224,10 @@ export function ReassignmentModal({
           <Button
             onClick={handleReassign}
             disabled={isLoading || !selectedUserId || !reason.trim()}
+            isLoading={isLoading}
+            loadingText="Reassigning..."
           >
-            {isLoading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Reassigning...
-              </>
-            ) : (
-              "Confirm Reassignment"
-            )}
+            Confirm Reassignment
           </Button>
         </DialogFooter>
       </DialogContent>

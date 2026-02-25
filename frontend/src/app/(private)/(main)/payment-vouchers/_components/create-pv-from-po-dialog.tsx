@@ -12,7 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { PurchaseOrder } from "@/types/purchase-order";
-import { Loader2, FileText, CheckCircle2, AlertCircle } from "lucide-react";
+import { FileText, CheckCircle2, AlertCircle } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { WorkflowSelector } from "@/components/workflows/workflow-selector";
 import { useConfigurationStatus } from "@/hooks/use-configuration-status";
@@ -201,18 +201,9 @@ export function CreatePVFromPODialog({
           >
             Cancel
           </Button>
-          <Button onClick={handleConfirm} disabled={isCreating || !canCreate}>
-            {isCreating ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Creating...
-              </>
-            ) : (
-              <>
-                <FileText className="mr-2 h-4 w-4" />
-                Create Payment Voucher
-              </>
-            )}
+          <Button onClick={handleConfirm} disabled={isCreating || !canCreate} isLoading={isCreating} loadingText="Creating...">
+            <FileText className="mr-2 h-4 w-4" />
+            Create Payment Voucher
           </Button>
         </DialogFooter>
       </DialogContent>
