@@ -9,6 +9,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { LimitGate } from "@/components/subscription/limit-gate";
 import { PageHeader } from "@/components/base/page-header";
 import {
   Plus,
@@ -106,12 +107,14 @@ export function WorkflowsClient({ initialData }: WorkflowsClientProps) {
           subtitle="Create and manage custom approval workflows"
           showBackButton={false}
         />
-        <Link href="/admin/workflows/create">
-          <Button className="gap-2">
-            <Plus className="h-4 w-4" />
-            Create Workflow
-          </Button>
-        </Link>
+        <LimitGate resource="workflow">
+          <Link href="/admin/workflows/create">
+            <Button className="gap-2">
+              <Plus className="h-4 w-4" />
+              Create Workflow
+            </Button>
+          </Link>
+        </LimitGate>
       </div>
 
       <Card>

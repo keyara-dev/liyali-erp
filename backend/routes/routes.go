@@ -76,6 +76,7 @@ func SetupRoutes(app *fiber.App, handlerRegistry *handlers.HandlerRegistry, rbac
 		handlers.GetOrganizationMembers)
 	orgMgmt.Post("/members",
 		middleware.RequirePermission(rbacService, "organization", "manage"),
+		middleware.CheckLimit("team_member"),
 		handlers.AddOrganizationMember)
 	orgMgmt.Delete("/members/:userId",
 		middleware.RequirePermission(rbacService, "organization", "manage"),
@@ -84,10 +85,13 @@ func SetupRoutes(app *fiber.App, handlerRegistry *handlers.HandlerRegistry, rbac
 	// Admin user creation endpoint (creates users directly in organization without personal org)
 	orgMgmt.Post("/users",
 		middleware.RequirePermission(rbacService, "organization", "manage"),
+		middleware.CheckLimit("team_member"),
 		handlers.CreateOrganizationUser)
 	orgMgmt.Get("/users",
 		middleware.RequirePermission(rbacService, "organization", "view"),
 		handlers.GetOrganizationUsers)
+
+	orgMgmt.Get("/usage", handlers.GetOrganizationUsage)
 
 	orgMgmt.Get("/settings",
 		middleware.RequirePermission(rbacService, "organization", "view"),
@@ -106,6 +110,7 @@ func SetupRoutes(app *fiber.App, handlerRegistry *handlers.HandlerRegistry, rbac
 		handlers.GetOrganizationDepartment)
 	orgDepts.Post("/",
 		middleware.RequirePermission(rbacService, "organization", "manage"),
+		middleware.CheckLimit("department"),
 		handlers.CreateOrganizationDepartment)
 	orgDepts.Put("/:id",
 		middleware.RequirePermission(rbacService, "organization", "manage"),
@@ -148,6 +153,8 @@ func SetupRoutes(app *fiber.App, handlerRegistry *handlers.HandlerRegistry, rbac
 		handlers.GetOrganizationRoles)
 	orgRoles.Post("/",
 		middleware.RequirePermission(rbacService, "organization", "manage"),
+		middleware.RequireFeature("custom_roles"),
+		middleware.CheckLimit("custom_role"),
 		handlers.CreateOrganizationRole)
 	orgRoles.Put("/:roleId",
 		middleware.RequirePermission(rbacService, "organization", "manage"),
@@ -195,7 +202,7 @@ func SetupRoutes(app *fiber.App, handlerRegistry *handlers.HandlerRegistry, rbac
 	// Requisition routes (tenant-scoped)
 	requisitions := tenant.Group("/requisitions", middleware.InjectWorkflowExecutionService(handlerRegistry.WorkflowExecutionService))
 	requisitions.Get("/", middleware.RequirePermission(rbacService, "requisition", "view"), handlers.GetRequisitions)
-	requisitions.Post("/", middleware.RequirePermission(rbacService, "requisition", "create"), handlers.CreateRequisition)
+	requisitions.Post("/", middleware.RequirePermission(rbacService, "requisition", "create"), middleware.CheckLimit("requisition"), handlers.CreateRequisition)
 	requisitions.Get("/:id", middleware.RequirePermission(rbacService, "requisition", "view"), handlers.GetRequisition)
 	requisitions.Put("/:id", middleware.RequirePermission(rbacService, "requisition", "edit"), handlers.UpdateRequisition)
 	requisitions.Delete("/:id", middleware.RequirePermission(rbacService, "requisition", "delete"), handlers.DeleteRequisition)
@@ -206,7 +213,7 @@ func SetupRoutes(app *fiber.App, handlerRegistry *handlers.HandlerRegistry, rbac
 	// Budget routes (tenant-scoped)
 	budgets := tenant.Group("/budgets", middleware.InjectWorkflowExecutionService(handlerRegistry.WorkflowExecutionService))
 	budgets.Get("/", middleware.RequirePermission(rbacService, "budget", "view"), handlers.GetBudgets)
-	budgets.Post("/", middleware.RequirePermission(rbacService, "budget", "create"), handlers.CreateBudget)
+	budgets.Post("/", middleware.RequirePermission(rbacService, "budget", "create"), middleware.CheckLimit("budget"), handlers.CreateBudget)
 	budgets.Get("/:id", middleware.RequirePermission(rbacService, "budget", "view"), handlers.GetBudget)
 	budgets.Put("/:id", middleware.RequirePermission(rbacService, "budget", "edit"), handlers.UpdateBudget)
 	budgets.Delete("/:id", middleware.RequirePermission(rbacService, "budget", "delete"), handlers.DeleteBudget)
@@ -215,7 +222,7 @@ func SetupRoutes(app *fiber.App, handlerRegistry *handlers.HandlerRegistry, rbac
 	// Purchase Order routes (tenant-scoped)
 	pos := tenant.Group("/purchase-orders", middleware.InjectWorkflowExecutionService(handlerRegistry.WorkflowExecutionService))
 	pos.Get("/", middleware.RequirePermission(rbacService, "purchase_order", "view"), handlers.GetPurchaseOrders)
-	pos.Post("/", middleware.RequirePermission(rbacService, "purchase_order", "create"), handlers.CreatePurchaseOrder)
+	pos.Post("/", middleware.RequirePermission(rbacService, "purchase_order", "create"), middleware.CheckLimit("purchase_order"), handlers.CreatePurchaseOrder)
 	pos.Get("/:id", middleware.RequirePermission(rbacService, "purchase_order", "view"), handlers.GetPurchaseOrder)
 	pos.Put("/:id", middleware.RequirePermission(rbacService, "purchase_order", "edit"), handlers.UpdatePurchaseOrder)
 	pos.Delete("/:id", middleware.RequirePermission(rbacService, "purchase_order", "delete"), handlers.DeletePurchaseOrder)
@@ -224,7 +231,7 @@ func SetupRoutes(app *fiber.App, handlerRegistry *handlers.HandlerRegistry, rbac
 	// Payment Voucher routes (tenant-scoped)
 	pvs := tenant.Group("/payment-vouchers", middleware.InjectWorkflowExecutionService(handlerRegistry.WorkflowExecutionService))
 	pvs.Get("/", middleware.RequirePermission(rbacService, "payment_voucher", "view"), handlers.GetPaymentVouchers)
-	pvs.Post("/", middleware.RequirePermission(rbacService, "payment_voucher", "create"), handlers.CreatePaymentVoucher)
+	pvs.Post("/", middleware.RequirePermission(rbacService, "payment_voucher", "create"), middleware.CheckLimit("payment_voucher"), handlers.CreatePaymentVoucher)
 	pvs.Get("/:id", middleware.RequirePermission(rbacService, "payment_voucher", "view"), handlers.GetPaymentVoucher)
 	pvs.Put("/:id", middleware.RequirePermission(rbacService, "payment_voucher", "edit"), handlers.UpdatePaymentVoucher)
 	pvs.Delete("/:id", middleware.RequirePermission(rbacService, "payment_voucher", "delete"), handlers.DeletePaymentVoucher)
@@ -233,7 +240,7 @@ func SetupRoutes(app *fiber.App, handlerRegistry *handlers.HandlerRegistry, rbac
 	// GRN routes (tenant-scoped)
 	grns := tenant.Group("/grns", middleware.InjectWorkflowExecutionService(handlerRegistry.WorkflowExecutionService))
 	grns.Get("/", middleware.RequirePermission(rbacService, "grn", "view"), handlers.GetGRNs)
-	grns.Post("/", middleware.RequirePermission(rbacService, "grn", "create"), handlers.CreateGRN)
+	grns.Post("/", middleware.RequirePermission(rbacService, "grn", "create"), middleware.CheckLimit("grn"), handlers.CreateGRN)
 	grns.Get("/:id", middleware.RequirePermission(rbacService, "grn", "view"), handlers.GetGRN)
 	grns.Put("/:id", middleware.RequirePermission(rbacService, "grn", "edit"), handlers.UpdateGRN)
 	grns.Delete("/:id", middleware.RequirePermission(rbacService, "grn", "delete"), handlers.DeleteGRN)
@@ -253,7 +260,7 @@ func SetupRoutes(app *fiber.App, handlerRegistry *handlers.HandlerRegistry, rbac
 	// Vendor routes (tenant-scoped)
 	vendors := tenant.Group("/vendors")
 	vendors.Get("/", middleware.RequirePermission(rbacService, "vendor", "view"), handlers.GetVendors)
-	vendors.Post("/", middleware.RequirePermission(rbacService, "vendor", "create"), handlers.CreateVendor)
+	vendors.Post("/", middleware.RequirePermission(rbacService, "vendor", "create"), middleware.CheckLimit("vendor"), handlers.CreateVendor)
 	vendors.Get("/:id", middleware.RequirePermission(rbacService, "vendor", "view"), handlers.GetVendor)
 	vendors.Put("/:id", middleware.RequirePermission(rbacService, "vendor", "edit"), handlers.UpdateVendor)
 
@@ -278,9 +285,9 @@ func SetupRoutes(app *fiber.App, handlerRegistry *handlers.HandlerRegistry, rbac
 
 	// Bulk approval operations (tenant-scoped) - ENABLED
 	bulk := approvals.Group("/bulk")
-	bulk.Post("/approve", middleware.RequireWorkflowPermission("approve"), handlerRegistry.Approval.BulkApprove)
-	bulk.Post("/reject", middleware.RequireWorkflowPermission("reject"), handlerRegistry.Approval.BulkReject)
-	bulk.Post("/reassign", middleware.RequirePermission(rbacService, "approval", "reassign"), handlerRegistry.Approval.BulkReassign)
+	bulk.Post("/approve", middleware.RequireFeature("bulk_operations"), middleware.RequireWorkflowPermission("approve"), handlerRegistry.Approval.BulkApprove)
+	bulk.Post("/reject", middleware.RequireFeature("bulk_operations"), middleware.RequireWorkflowPermission("reject"), handlerRegistry.Approval.BulkReject)
+	bulk.Post("/reassign", middleware.RequireFeature("bulk_operations"), middleware.RequirePermission(rbacService, "approval", "reassign"), handlerRegistry.Approval.BulkReassign)
 
 	// Approval history routes (tenant-scoped) - Updated to use new handler
 	documents := tenant.Group("/documents", middleware.InjectWorkflowExecutionService(handlerRegistry.WorkflowExecutionService))
@@ -297,7 +304,7 @@ func SetupRoutes(app *fiber.App, handlerRegistry *handlers.HandlerRegistry, rbac
 	genericDocs.Get("/number/:number", handlerRegistry.Document.GetDocumentByNumber)
 	genericDocs.Post("/", middleware.RequirePermission(rbacService, "document", "create"), handlerRegistry.Document.CreateDocument)
 	genericDocs.Put("/:id", middleware.RequirePermission(rbacService, "document", "edit"), handlerRegistry.Document.UpdateDocument)
-	genericDocs.Post("/generate", middleware.RequirePermission(rbacService, "document", "create"), handlerRegistry.Generation.GenerateDocument)
+	genericDocs.Post("/generate", middleware.RequirePermission(rbacService, "document", "create"), middleware.RequireFeature("advanced_workflows"), handlerRegistry.Generation.GenerateDocument)
 	genericDocs.Post("/:id/submit", middleware.RequirePermission(rbacService, "document", "submit"), handlerRegistry.Document.SubmitDocument)
 	genericDocs.Delete("/:id", middleware.RequirePermission(rbacService, "document", "delete"), handlerRegistry.Document.DeleteDocument)
 
@@ -306,14 +313,14 @@ func SetupRoutes(app *fiber.App, handlerRegistry *handlers.HandlerRegistry, rbac
 	workflows.Get("/", middleware.RequirePermission(rbacService, "workflow", "view"), handlerRegistry.Workflow.GetWorkflows)
 	workflows.Get("/:id", middleware.RequirePermission(rbacService, "workflow", "view"), handlerRegistry.Workflow.GetWorkflowByID)
 	workflows.Get("/default/:documentType", middleware.RequirePermission(rbacService, "workflow", "view"), handlerRegistry.Workflow.GetDefaultWorkflow)
-	workflows.Post("/", middleware.RequirePermission(rbacService, "workflow", "create"), handlerRegistry.Workflow.CreateWorkflow)
+	workflows.Post("/", middleware.RequirePermission(rbacService, "workflow", "create"), middleware.CheckLimit("workflow"), handlerRegistry.Workflow.CreateWorkflow)
 	workflows.Put("/:id", middleware.RequirePermission(rbacService, "workflow", "edit"), handlerRegistry.Workflow.UpdateWorkflow)
 	workflows.Post("/:id/activate", middleware.RequirePermission(rbacService, "workflow", "manage"), handlerRegistry.Workflow.ActivateWorkflow)
 	workflows.Post("/:id/deactivate", middleware.RequirePermission(rbacService, "workflow", "manage"), handlerRegistry.Workflow.DeactivateWorkflow)
 	workflows.Delete("/:id", middleware.RequirePermission(rbacService, "workflow", "delete"), handlerRegistry.Workflow.DeleteWorkflow)
 
 	// New frontend-compatible workflow endpoints
-	workflows.Post("/:id/duplicate", middleware.RequirePermission(rbacService, "workflow", "create"), handlerRegistry.Workflow.DuplicateWorkflow)
+	workflows.Post("/:id/duplicate", middleware.RequirePermission(rbacService, "workflow", "create"), middleware.CheckLimit("workflow"), handlerRegistry.Workflow.DuplicateWorkflow)
 	workflows.Post("/:id/set-default", middleware.RequirePermission(rbacService, "workflow", "manage"), handlerRegistry.Workflow.SetDefaultWorkflow)
 	workflows.Post("/resolve", middleware.RequirePermission(rbacService, "workflow", "view"), handlerRegistry.Workflow.ResolveWorkflow)
 	workflows.Get("/:id/usage", middleware.RequirePermission(rbacService, "workflow", "view"), handlerRegistry.Workflow.GetWorkflowUsage)
@@ -321,9 +328,9 @@ func SetupRoutes(app *fiber.App, handlerRegistry *handlers.HandlerRegistry, rbac
 
 	// Analytics routes (tenant-scoped) - ENABLED - Accessible to all authenticated users
 	analytics := tenant.Group("/analytics")
-	analytics.Get("/dashboard", handlers.GetDashboard)
-	analytics.Get("/requisitions/metrics", handlers.GetRequisitionMetrics)
-	analytics.Get("/approvals/metrics", handlers.GetApprovalMetrics)
+	analytics.Get("/dashboard", middleware.RequireFeature("advanced_analytics"), handlers.GetDashboard)
+	analytics.Get("/requisitions/metrics", middleware.RequireFeature("advanced_analytics"), handlers.GetRequisitionMetrics)
+	analytics.Get("/approvals/metrics", middleware.RequireFeature("advanced_analytics"), handlers.GetApprovalMetrics)
 
 	// Notifications (tenant-scoped) - ENABLED
 	notifications := tenant.Group("/notifications")
@@ -336,8 +343,8 @@ func SetupRoutes(app *fiber.App, handlerRegistry *handlers.HandlerRegistry, rbac
 
 	// Audit Logs (tenant-scoped) - ENABLED
 	audit := tenant.Group("/audit-logs")
-	audit.Get("/", middleware.RequirePermission(rbacService, "audit_log", "view"), handlers.GetAuditLogs)
-	audit.Get("/document/:documentId", middleware.RequirePermission(rbacService, "audit_log", "view"), handlers.GetDocumentAuditLogs)
+	audit.Get("/", middleware.RequirePermission(rbacService, "audit_log", "view"), middleware.RequireFeature("audit_logs_90_days"), handlers.GetAuditLogs)
+	audit.Get("/document/:documentId", middleware.RequirePermission(rbacService, "audit_log", "view"), middleware.RequireFeature("audit_logs_90_days"), handlers.GetDocumentAuditLogs)
 
 	// Admin-only routes (system-wide access)
 	admin := apiV1.Group("/admin", middleware.AuthMiddleware(), middleware.AdminMiddleware())

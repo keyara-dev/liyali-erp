@@ -288,6 +288,24 @@ export async function getOrganizationFeatures(
 }
 
 /**
+ * Get organization resource usage and limits (tenant-scoped)
+ */
+export async function getOrganizationUsage(): Promise<APIResponse> {
+  const url = `/api/v1/organization/usage`;
+
+  try {
+    const response = await authenticatedApiClient({
+      url,
+      method: "GET",
+    });
+
+    return successResponse(response.data?.data);
+  } catch (error) {
+    return handleError(error, "GET", url);
+  }
+}
+
+/**
  * Check feature access for organization
  */
 export async function checkFeatureAccess(

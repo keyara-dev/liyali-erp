@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { User } from "@/types";
+import { LimitGate } from "@/components/subscription/limit-gate";
 import { PageHeader } from "@/components/base/page-header";
 import { getUsers } from "@/app/_actions/user-actions";
 import { verifySession } from "@/lib/auth";
@@ -77,9 +78,9 @@ export default async function UserManagementPage({ searchParams }: PageProps) {
             title="Users Management"
             subtitle="Manage your team members and their account roles"
           />
-          <div>
+          <LimitGate resource="team_member">
             <CreateUserForm user={null} showTrigger role="admin" />
-          </div>
+          </LimitGate>
         </div>
       </div>
 

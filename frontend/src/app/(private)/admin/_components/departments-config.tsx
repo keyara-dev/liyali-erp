@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Plus, Edit, Trash2, RotateCcw, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { LimitGate } from "@/components/subscription/limit-gate";
 import {
   Card,
   CardContent,
@@ -349,10 +350,12 @@ export default function DepartmentsConfig() {
               Create and manage departments in your organization
             </CardDescription>
           </div>
-          <Button onClick={() => handleOpenModal()} size="sm" className="gap-2">
-            <Plus className="h-4 w-4" />
-            Add Department
-          </Button>
+          <LimitGate resource="department">
+            <Button onClick={() => handleOpenModal()} size="sm" className="gap-2">
+              <Plus className="h-4 w-4" />
+              Add Department
+            </Button>
+          </LimitGate>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="space-y-4">

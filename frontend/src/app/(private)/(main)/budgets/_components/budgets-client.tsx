@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { PlusCircledIcon } from "@radix-ui/react-icons";
 import { Button } from "@/components/ui/button";
+import { LimitGate } from "@/components/subscription/limit-gate";
 import { PageHeader } from "@/components/base/page-header";
 import { BudgetsTable } from "./budgets-table";
 import { CreateBudgetDialog } from "./create-budget-dialog";
@@ -35,13 +36,15 @@ export function BudgetsClient({ userRole, initialData }: BudgetsClientProps) {
           subtitle="Manage and track departmental budgets"
           showBackButton={false}
         />
-        <Button
-          onClick={() => setIsCreateDialogOpen(true)}
-          className="mt-2 h-11"
-        >
-          <PlusCircledIcon className="h-4 w-4" />
-          Create Budget
-        </Button>
+        <LimitGate resource="budget">
+          <Button
+            onClick={() => setIsCreateDialogOpen(true)}
+            className="mt-2 h-11"
+          >
+            <PlusCircledIcon className="h-4 w-4" />
+            Create Budget
+          </Button>
+        </LimitGate>
       </div>
 
       {/* Budgets Table */}

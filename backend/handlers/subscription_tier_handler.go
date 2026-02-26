@@ -10,6 +10,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/liyali/liyali-gateway/cache"
 	"github.com/liyali/liyali-gateway/config"
+	"github.com/liyali/liyali-gateway/middleware"
 	"github.com/liyali/liyali-gateway/models"
 	"github.com/liyali/liyali-gateway/utils"
 	"gorm.io/datatypes"
@@ -384,7 +385,7 @@ func GetOrganizationSubscription(c *fiber.Ctx) error {
 func GetOrganizationFeatures(c *fiber.Ctx) error {
 	orgID := c.Params("id")
 
-	features, err := GetOrganizationFeaturesHelper(orgID)
+	features, err := middleware.GetOrganizationFeatures(orgID)
 	if err != nil {
 		log.Printf("Error getting features for org %s: %v", orgID, err)
 		return utils.SendInternalError(c, "Failed to get features", err)
@@ -400,7 +401,7 @@ func GetOrganizationFeatures(c *fiber.Ctx) error {
 func GetOrganizationLimits(c *fiber.Ctx) error {
 	orgID := c.Params("id")
 
-	limits, err := GetEffectiveLimitsHelper(orgID)
+	limits, err := middleware.GetEffectiveLimits(orgID)
 	if err != nil {
 		log.Printf("Error getting limits for org %s: %v", orgID, err)
 		return utils.SendInternalError(c, "Failed to get limits", err)
@@ -409,31 +410,36 @@ func GetOrganizationLimits(c *fiber.Ctx) error {
 	return utils.SendSimpleSuccess(c, limits, "Limits retrieved successfully")
 }
 
-// GetOrganizationUsage returns current usage for an organization
+// GetOrganizationUsage returns current usage and limits for an organization.
+// Supports both admin (orgID from URL param) and tenant (orgID from context) usage.
 func GetOrganizationUsage(c *fiber.Ctx) error {
+	// Try URL param first (admin routes), then tenant context
 	orgID := c.Params("id")
+	if orgID == "" {
+		if id, ok := c.Locals("organizationID").(string); ok {
+			orgID = id
+		}
+	}
+	if orgID == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse("Organization ID required"))
+	}
 
-	usage, err := GetOrganizationUsageHelper(orgID)
+	limits, err := middleware.GetEffectiveLimits(orgID)
+	if err != nil {
+		log.Printf("Error getting limits for org %s: %v", orgID, err)
+		return utils.SendInternalError(c, "Failed to get limits", err)
+	}
+
+	usage, err := middleware.GetOrganizationUsage(orgID)
 	if err != nil {
 		log.Printf("Error getting usage for org %s: %v", orgID, err)
 		return utils.SendInternalError(c, "Failed to get usage", err)
 	}
 
-	return utils.SendSimpleSuccess(c, usage, "Usage retrieved successfully")
-}
+	result := models.LimitsWithUsage{
+		Limits: *limits,
+		Usage:  *usage,
+	}
 
-// Helper functions (these would import from middleware package)
-func GetOrganizationFeaturesHelper(orgID string) ([]string, error) {
-	// Implementation would call middleware.GetOrganizationFeatures
-	return []string{}, nil
-}
-
-func GetEffectiveLimitsHelper(orgID string) (*models.EffectiveLimits, error) {
-	// Implementation would call middleware.GetEffectiveLimits
-	return &models.EffectiveLimits{}, nil
-}
-
-func GetOrganizationUsageHelper(orgID string) (*models.OrganizationUsage, error) {
-	// Implementation would call middleware.GetOrganizationUsage
-	return &models.OrganizationUsage{}, nil
+	return utils.SendSimpleSuccess(c, result, "Usage retrieved successfully")
 }

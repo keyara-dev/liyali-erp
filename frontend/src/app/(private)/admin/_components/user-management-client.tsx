@@ -6,6 +6,7 @@ import { Users, Building2, Shield, Logs } from "lucide-react";
 import DepartmentsConfig from "./departments-config";
 import UserRolesConfig from "./user-roles-config";
 import { ActivityLogsClient } from "./activity-logs-client";
+import { FeatureGate } from "@/components/subscription/feature-gate";
 import AccessDeniedPage from "@/app/(private)/access-denied/page";
 
 interface UserManagementClientProps {
@@ -70,12 +71,16 @@ export function UserManagementClient({
 
         {/* Manage Roles Tab */}
         <TabsContent value="roles" className="space-y-4">
-          <UserRolesConfig />
+          <FeatureGate feature="custom_roles">
+            <UserRolesConfig />
+          </FeatureGate>
         </TabsContent>
         {/* Activity Logs Tab */}
         <TabsContent value="logs" className="space-y-4">
           {userRole == "admin" ? (
-            <ActivityLogsClient userId={userId} userRole={userRole} />
+            <FeatureGate feature="audit_logs_90_days">
+              <ActivityLogsClient userId={userId} userRole={userRole} />
+            </FeatureGate>
           ) : (
             <AccessDeniedPage />
           )}

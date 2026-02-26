@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { PlusCircledIcon } from "@radix-ui/react-icons";
 import { Button } from "@/components/ui/button";
+import { LimitGate } from "@/components/subscription/limit-gate";
 import { PageHeader } from "@/components/base/page-header";
 import { RequisitionsTable } from "./requisitions-table";
 import { CreateRequisitionDialog } from "./create-requisition-dialog";
@@ -61,10 +62,12 @@ export function RequisitionsClient({
           subtitle="Request and track requisition forms through the approval workflow"
           showBackButton={false}
         />
-        <Button onClick={handleCreateNew} className="mt-2 h-11">
-          <PlusCircledIcon className="h-4 w-4" />
-          Create Requisition
-        </Button>
+        <LimitGate resource="requisition">
+          <Button onClick={handleCreateNew} className="mt-2 h-11">
+            <PlusCircledIcon className="h-4 w-4" />
+            Create Requisition
+          </Button>
+        </LimitGate>
       </div>
 
       {/* Filters */}

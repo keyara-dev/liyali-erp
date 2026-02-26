@@ -69,7 +69,23 @@ export function handleError(
       message:
         error?.response?.data?.message ||
         "You don't have permission to perform this action.",
-      data: null,
+      data: error?.response?.data?.featureName
+        ? { featureName: error.response.data.featureName, errorType: "feature_locked" }
+        : null,
+    };
+  }
+
+  // Preserve structured tier limit errors (400 from CheckLimit middleware)
+  if (status === 400 && error?.response?.data?.resourceType) {
+    return {
+      success: false,
+      message: error.response.data.message,
+      data: {
+        errorType: "limit_reached",
+        resourceType: error.response.data.resourceType,
+        currentUsage: error.response.data.currentUsage,
+        limit: error.response.data.limit,
+      },
     };
   }
 

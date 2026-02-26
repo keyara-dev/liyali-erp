@@ -57,6 +57,20 @@ func CheckLimit(resourceType string) fiber.Handler {
 			limit = limits.MaxWorkflows
 		case "custom_role":
 			limit = limits.MaxCustomRoles
+		case "requisition":
+			limit = limits.MaxRequisitions
+		case "budget":
+			limit = limits.MaxBudgets
+		case "purchase_order":
+			limit = limits.MaxPurchaseOrders
+		case "payment_voucher":
+			limit = limits.MaxPaymentVouchers
+		case "grn":
+			limit = limits.MaxGRNs
+		case "department":
+			limit = limits.MaxDepartments
+		case "vendor":
+			limit = limits.MaxVendors
 		default:
 			// Unknown resource type, allow by default
 			return c.Next()
@@ -132,14 +146,21 @@ func queryEffectiveLimits(orgID string) (*models.EffectiveLimits, error) {
 
 	// Start with tier limits
 	limits := &models.EffectiveLimits{
-		OrganizationID: orgID,
-		TierName:       tier.Name,
-		MaxWorkspaces:  tier.MaxWorkspaces,
-		MaxTeamMembers: tier.MaxTeamMembers,
-		MaxDocuments:   tier.MaxDocuments,
-		MaxWorkflows:   tier.MaxWorkflows,
-		MaxCustomRoles: tier.MaxCustomRoles,
-		HasOverrides:   false,
+		OrganizationID:     orgID,
+		TierName:           tier.Name,
+		MaxWorkspaces:      tier.MaxWorkspaces,
+		MaxTeamMembers:     tier.MaxTeamMembers,
+		MaxDocuments:       tier.MaxDocuments,
+		MaxWorkflows:       tier.MaxWorkflows,
+		MaxCustomRoles:     tier.MaxCustomRoles,
+		MaxRequisitions:    tier.MaxRequisitions,
+		MaxBudgets:         tier.MaxBudgets,
+		MaxPurchaseOrders:  tier.MaxPurchaseOrders,
+		MaxPaymentVouchers: tier.MaxPaymentVouchers,
+		MaxGRNs:            tier.MaxGRNs,
+		MaxDepartments:     tier.MaxDepartments,
+		MaxVendors:         tier.MaxVendors,
+		HasOverrides:       false,
 	}
 
 	// Check for overrides
@@ -165,6 +186,27 @@ func queryEffectiveLimits(orgID string) (*models.EffectiveLimits, error) {
 		}
 		if override.MaxCustomRoles != nil {
 			limits.MaxCustomRoles = *override.MaxCustomRoles
+		}
+		if override.MaxRequisitions != nil {
+			limits.MaxRequisitions = *override.MaxRequisitions
+		}
+		if override.MaxBudgets != nil {
+			limits.MaxBudgets = *override.MaxBudgets
+		}
+		if override.MaxPurchaseOrders != nil {
+			limits.MaxPurchaseOrders = *override.MaxPurchaseOrders
+		}
+		if override.MaxPaymentVouchers != nil {
+			limits.MaxPaymentVouchers = *override.MaxPaymentVouchers
+		}
+		if override.MaxGRNs != nil {
+			limits.MaxGRNs = *override.MaxGRNs
+		}
+		if override.MaxDepartments != nil {
+			limits.MaxDepartments = *override.MaxDepartments
+		}
+		if override.MaxVendors != nil {
+			limits.MaxVendors = *override.MaxVendors
 		}
 	}
 
@@ -213,6 +255,62 @@ func getCurrentUsage(orgID, resourceType string) (int, error) {
 			Count(&count).Error
 		if err != nil {
 			return 0, fmt.Errorf("failed to count custom roles: %w", err)
+		}
+
+	case "requisition":
+		err := db.Table("requisitions").
+			Where("organization_id = ? AND deleted_at IS NULL", orgID).
+			Count(&count).Error
+		if err != nil {
+			return 0, fmt.Errorf("failed to count requisitions: %w", err)
+		}
+
+	case "budget":
+		err := db.Table("budgets").
+			Where("organization_id = ? AND deleted_at IS NULL", orgID).
+			Count(&count).Error
+		if err != nil {
+			return 0, fmt.Errorf("failed to count budgets: %w", err)
+		}
+
+	case "purchase_order":
+		err := db.Table("purchase_orders").
+			Where("organization_id = ? AND deleted_at IS NULL", orgID).
+			Count(&count).Error
+		if err != nil {
+			return 0, fmt.Errorf("failed to count purchase orders: %w", err)
+		}
+
+	case "payment_voucher":
+		err := db.Table("payment_vouchers").
+			Where("organization_id = ? AND deleted_at IS NULL", orgID).
+			Count(&count).Error
+		if err != nil {
+			return 0, fmt.Errorf("failed to count payment vouchers: %w", err)
+		}
+
+	case "grn":
+		err := db.Table("goods_received_notes").
+			Where("organization_id = ? AND deleted_at IS NULL", orgID).
+			Count(&count).Error
+		if err != nil {
+			return 0, fmt.Errorf("failed to count GRNs: %w", err)
+		}
+
+	case "department":
+		err := db.Table("organization_departments").
+			Where("organization_id = ? AND active = ?", orgID, true).
+			Count(&count).Error
+		if err != nil {
+			return 0, fmt.Errorf("failed to count departments: %w", err)
+		}
+
+	case "vendor":
+		err := db.Table("vendors").
+			Where("organization_id = ? AND deleted_at IS NULL", orgID).
+			Count(&count).Error
+		if err != nil {
+			return 0, fmt.Errorf("failed to count vendors: %w", err)
 		}
 
 	default:
@@ -278,6 +376,55 @@ func GetOrganizationUsage(orgID string) (*models.OrganizationUsage, error) {
 		usage.CurrentCustomRoles = count
 		if limits.MaxCustomRoles > 0 {
 			usage.CustomRolesPercent = float64(count) / float64(limits.MaxCustomRoles) * 100
+		}
+	}
+
+	if count, err := getCurrentUsage(orgID, "requisition"); err == nil {
+		usage.CurrentRequisitions = count
+		if limits.MaxRequisitions > 0 {
+			usage.RequisitionsPercent = float64(count) / float64(limits.MaxRequisitions) * 100
+		}
+	}
+
+	if count, err := getCurrentUsage(orgID, "budget"); err == nil {
+		usage.CurrentBudgets = count
+		if limits.MaxBudgets > 0 {
+			usage.BudgetsPercent = float64(count) / float64(limits.MaxBudgets) * 100
+		}
+	}
+
+	if count, err := getCurrentUsage(orgID, "purchase_order"); err == nil {
+		usage.CurrentPurchaseOrders = count
+		if limits.MaxPurchaseOrders > 0 {
+			usage.PurchaseOrdersPercent = float64(count) / float64(limits.MaxPurchaseOrders) * 100
+		}
+	}
+
+	if count, err := getCurrentUsage(orgID, "payment_voucher"); err == nil {
+		usage.CurrentPaymentVouchers = count
+		if limits.MaxPaymentVouchers > 0 {
+			usage.PaymentVouchersPercent = float64(count) / float64(limits.MaxPaymentVouchers) * 100
+		}
+	}
+
+	if count, err := getCurrentUsage(orgID, "grn"); err == nil {
+		usage.CurrentGRNs = count
+		if limits.MaxGRNs > 0 {
+			usage.GRNsPercent = float64(count) / float64(limits.MaxGRNs) * 100
+		}
+	}
+
+	if count, err := getCurrentUsage(orgID, "department"); err == nil {
+		usage.CurrentDepartments = count
+		if limits.MaxDepartments > 0 {
+			usage.DepartmentsPercent = float64(count) / float64(limits.MaxDepartments) * 100
+		}
+	}
+
+	if count, err := getCurrentUsage(orgID, "vendor"); err == nil {
+		usage.CurrentVendors = count
+		if limits.MaxVendors > 0 {
+			usage.VendorsPercent = float64(count) / float64(limits.MaxVendors) * 100
 		}
 	}
 

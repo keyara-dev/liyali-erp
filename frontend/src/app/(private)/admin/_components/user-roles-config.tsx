@@ -10,6 +10,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { LimitGate } from "@/components/subscription/limit-gate";
 import { ShieldIcon, Plus, Edit, Eye, InfoIcon, View } from "lucide-react";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { QUERY_KEYS } from "@/lib/constants";
@@ -222,16 +223,18 @@ export default function UserRolesConfig({}: RolesPermissionsProps) {
               configured separately for each role.
             </p>
           </div>
-          <Button
-            size="sm"
-            onClick={() => {
-              setEditingRole(null);
-              setOpenRoleModal(true);
-            }}
-          >
-            <Plus className="mr-2 h-4 w-4" />
-            Add New Role
-          </Button>
+          <LimitGate resource="custom_role">
+            <Button
+              size="sm"
+              onClick={() => {
+                setEditingRole(null);
+                setOpenRoleModal(true);
+              }}
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Add New Role
+            </Button>
+          </LimitGate>
         </div>
 
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
