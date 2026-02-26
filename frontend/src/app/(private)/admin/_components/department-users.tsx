@@ -13,7 +13,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
 import { Department } from "@/types/department";
 import { createDepartment, updateDepartment } from "@/app/_actions/config-actions";
 import { QUERY_KEYS } from "@/lib/constants";
@@ -127,58 +126,52 @@ export function CreateOrUpdateDepartment({
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="name">Department Name *</Label>
-            <Input
-              id="name"
-              value={formData.name}
-              onChange={(e) =>
-                setFormData({ ...formData, name: e.target.value })
-              }
-              placeholder="Enter department name"
-              disabled={mutation.isPending}
-            />
-          </div>
+          <Input
+            label="Department Name"
+            required
+            id="name"
+            value={formData.name}
+            onChange={(e) =>
+              setFormData({ ...formData, name: e.target.value })
+            }
+            placeholder="Enter department name"
+            disabled={mutation.isPending}
+          />
 
-          <div className="space-y-2">
-            <Label htmlFor="code">Department Code *</Label>
-            <Input
-              id="code"
-              value={formData.code}
-              onChange={(e) =>
-                setFormData({ ...formData, code: e.target.value })
-              }
-              placeholder="Enter department code"
-              disabled={mutation.isPending}
-            />
-          </div>
+          <Input
+            label="Department Code"
+            required
+            id="code"
+            value={formData.code}
+            onChange={(e) =>
+              setFormData({ ...formData, code: e.target.value })
+            }
+            placeholder="Enter department code"
+            disabled={mutation.isPending}
+          />
 
-          <div className="space-y-2">
-            <Label htmlFor="manager_name">Manager Name</Label>
-            <Input
-              id="manager_name"
-              value={formData.manager_name}
-              onChange={(e) =>
-                setFormData({ ...formData, manager_name: e.target.value })
-              }
-              placeholder="Enter manager name"
-              disabled={mutation.isPending}
-            />
-          </div>
+          <Input
+            label="Manager Name"
+            id="manager_name"
+            value={formData.manager_name}
+            onChange={(e) =>
+              setFormData({ ...formData, manager_name: e.target.value })
+            }
+            placeholder="Enter manager name"
+            disabled={mutation.isPending}
+          />
 
-          <div className="space-y-2">
-            <Label htmlFor="description">Description</Label>
-            <Textarea
-              id="description"
-              value={formData.description}
-              onChange={(e) =>
-                setFormData({ ...formData, description: e.target.value })
-              }
-              placeholder="Enter department description"
-              disabled={mutation.isPending}
-              rows={4}
-            />
-          </div>
+          <Textarea
+            label="Description"
+            id="description"
+            value={formData.description}
+            onChange={(e) =>
+              setFormData({ ...formData, description: e.target.value })
+            }
+            placeholder="Enter department description"
+            disabled={mutation.isPending}
+            rows={4}
+          />
 
           <div className="flex justify-end gap-2 pt-4">
             <Button

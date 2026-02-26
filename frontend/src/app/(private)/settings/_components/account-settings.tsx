@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Card,
   CardContent,
@@ -128,56 +127,48 @@ export function AccountSettings({
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="name">Full Name</Label>
-            <Input
-              id="name"
-              placeholder="Enter your full name"
-              value={formData.name}
-              onChange={(e) => handleInputChange("name", e.target.value)}
-              disabled={isLoading}
-            />
-          </div>
+          <Input
+            label="Full Name"
+            id="name"
+            placeholder="Enter your full name"
+            value={formData.name}
+            onChange={(e) => handleInputChange("name", e.target.value)}
+            disabled={isLoading}
+          />
 
-          <div className="space-y-2">
-            <Label htmlFor="email">Email Address</Label>
-            <Input
-              id="email"
-              type="email"
-              placeholder="Enter your email address"
-              value={formData.email}
-              onChange={(e) => handleInputChange("email", e.target.value)}
-              disabled={isLoading}
-            />
-            <p className="text-xs text-muted-foreground">
-              We'll use this email for account notifications and password
-              recovery
-            </p>
-          </div>
+          <Input
+            label="Email Address"
+            id="email"
+            type="email"
+            placeholder="Enter your email address"
+            value={formData.email}
+            onChange={(e) => handleInputChange("email", e.target.value)}
+            disabled={isLoading}
+          />
+          <p className="text-xs text-muted-foreground">
+            We'll use this email for account notifications and password
+            recovery
+          </p>
 
-          <div className="space-y-2">
-            <Label htmlFor="department">Department</Label>
-            <Input
-              id="department"
-              placeholder="Your department"
-              value={formData.department}
-              onChange={(e) => handleInputChange("department", e.target.value)}
-              disabled={isLoading}
-            />
-          </div>
+          <Input
+            label="Department"
+            id="department"
+            placeholder="Your department"
+            value={formData.department}
+            onChange={(e) => handleInputChange("department", e.target.value)}
+            disabled={isLoading}
+          />
 
-          <div className="space-y-2">
-            <Label htmlFor="role">Role</Label>
-            <Input
-              id="role"
-              value={user?.role || "N/A"}
-              disabled
-              className="cursor-not-allowed"
-            />
-            <p className="text-xs text-muted-foreground">
-              Your role is managed by administrators
-            </p>
-          </div>
+          <Input
+            label="Role"
+            id="role"
+            value={user?.role || "N/A"}
+            disabled
+            className="cursor-not-allowed"
+          />
+          <p className="text-xs text-muted-foreground">
+            Your role is managed by administrators
+          </p>
 
           <div className="flex gap-3 pt-4">
             <Button type="submit" disabled={isLoading} isLoading={isLoading} loadingText="Saving...">

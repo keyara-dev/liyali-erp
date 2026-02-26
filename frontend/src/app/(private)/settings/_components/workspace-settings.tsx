@@ -155,28 +155,24 @@ export function WorkspaceSettings() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="workspace-name">Workspace Name</Label>
-            <Input
-              id="workspace-name"
-              value={formData.name}
-              onChange={(e) => handleInputChange("name", e.target.value)}
-              placeholder="Enter workspace name"
-              disabled={isUpdating}
-            />
-          </div>
+          <Input
+            label="Workspace Name"
+            id="workspace-name"
+            value={formData.name}
+            onChange={(e) => handleInputChange("name", e.target.value)}
+            placeholder="Enter workspace name"
+            disabled={isUpdating}
+          />
 
-          <div className="space-y-2">
-            <Label htmlFor="workspace-description">Description</Label>
-            <Textarea
-              id="workspace-description"
-              value={formData.description}
-              onChange={(e) => handleInputChange("description", e.target.value)}
-              placeholder="Enter workspace description (optional)"
-              rows={3}
-              disabled={isUpdating}
-            />
-          </div>
+          <Textarea
+            label="Description"
+            id="workspace-description"
+            value={formData.description}
+            onChange={(e) => handleInputChange("description", e.target.value)}
+            placeholder="Enter workspace description (optional)"
+            rows={3}
+            disabled={isUpdating}
+          />
 
           <div className="flex justify-end">
             <Button

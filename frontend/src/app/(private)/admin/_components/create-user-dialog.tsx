@@ -486,13 +486,12 @@ export default function CreateUserForm({
 
             {!isEditMode && (
               <div>
-                <Label htmlFor="password">
-                  Password <span className="text-destructive">*</span>
-                </Label>
-                <div className="mt-1 flex w-full flex-col items-center gap-2 sm:flex-row">
+                <div className="flex w-full flex-col items-center gap-2 sm:flex-row">
                   <div className="relative flex w-full items-center gap-2">
                     <Input
                       id="password"
+                      label="Password"
+                      required
                       value={formData.password}
                       readOnly
                       className="cursor-default font-mono text-sm"

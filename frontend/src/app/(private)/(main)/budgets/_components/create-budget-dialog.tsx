@@ -15,7 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { SelectField } from "@/components/ui/select-field";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { InfoIcon, Loader2 } from "lucide-react";
+import { InfoIcon } from "lucide-react";
 import { createBudget } from "@/app/_actions/budgets";
 import { useActiveDepartments } from "@/hooks/use-department-queries";
 import { useBudgetStorage } from "@/hooks/use-budget-storage";
@@ -235,17 +235,12 @@ export function CreateBudgetDialog({
               value={formData.departmentId}
               onValueChange={handleDepartmentChange}
               disabled={isSubmitting || isLoadingDepartments}
+              isLoading={isLoadingDepartments}
               options={departments.map((dept) => ({
                 value: dept.id,
                 label: dept.name,
               }))}
             />
-            {isLoadingDepartments && (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Loader2 className="h-3 w-3 animate-spin" />
-                <span>Loading departments...</span>
-              </div>
-            )}
 
             {/* Fiscal Year */}
             <Input

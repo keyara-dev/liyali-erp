@@ -10,7 +10,6 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Budget } from "@/types/budget";
 import { Send, CheckCircle2, AlertCircle } from "lucide-react";
@@ -184,17 +183,15 @@ export function BudgetSubmitDialog({
           )}
 
           {/* Comments */}
-          <div className="space-y-2">
-            <Label htmlFor="comments">Comments (Optional)</Label>
-            <Textarea
-              id="comments"
-              placeholder="Add any comments or notes for the approvers..."
-              value={comments}
-              onChange={(e) => setComments(e.target.value)}
-              disabled={isSubmitting}
-              rows={4}
-            />
-          </div>
+          <Textarea
+            label="Comments (Optional)"
+            id="comments"
+            placeholder="Add any comments or notes for the approvers..."
+            value={comments}
+            onChange={(e) => setComments(e.target.value)}
+            disabled={isSubmitting}
+            rows={4}
+          />
 
         </div>
 

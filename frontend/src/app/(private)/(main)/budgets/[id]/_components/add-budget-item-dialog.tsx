@@ -11,7 +11,6 @@ import {
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { BudgetItem } from '@/types/budget'
 import { validateBudgetItem, calculateTotalAllocated, calculateRemainingBudget } from '@/lib/budget-validation'
@@ -118,43 +117,39 @@ export function AddBudgetItemDialog({
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Category */}
-          <div className="space-y-2">
-            <Label htmlFor="category">Category *</Label>
-            <Input
-              id="category"
-              placeholder="e.g., Hardware, Software, Personnel"
-              value={formData.category}
-              onChange={(e) => handleInputChange('category', e.target.value)}
-              disabled={isSubmitting}
-            />
-          </div>
+          <Input
+            label="Category"
+            required
+            id="category"
+            placeholder="e.g., Hardware, Software, Personnel"
+            value={formData.category}
+            onChange={(e) => handleInputChange('category', e.target.value)}
+            disabled={isSubmitting}
+          />
 
           {/* Description */}
-          <div className="space-y-2">
-            <Label htmlFor="description">Description</Label>
-            <Textarea
-              id="description"
-              placeholder="Describe this budget item (optional)"
-              value={formData.description}
-              onChange={(e) => handleInputChange('description', e.target.value)}
-              disabled={isSubmitting}
-              rows={3}
-            />
-          </div>
+          <Textarea
+            label="Description"
+            id="description"
+            placeholder="Describe this budget item (optional)"
+            value={formData.description}
+            onChange={(e) => handleInputChange('description', e.target.value)}
+            disabled={isSubmitting}
+            rows={3}
+          />
 
           {/* Allocated Amount */}
-          <div className="space-y-2">
-            <Label htmlFor="allocatedAmount">Allocated Amount *</Label>
-            <Input
-              id="allocatedAmount"
-              type="number"
-              placeholder="0.00"
-              step="0.01"
-              value={formData.allocatedAmount}
-              onChange={(e) => handleInputChange('allocatedAmount', e.target.value)}
-              disabled={isSubmitting}
-            />
-          </div>
+          <Input
+            label="Allocated Amount"
+            required
+            id="allocatedAmount"
+            type="number"
+            placeholder="0.00"
+            step="0.01"
+            value={formData.allocatedAmount}
+            onChange={(e) => handleInputChange('allocatedAmount', e.target.value)}
+            disabled={isSubmitting}
+          />
 
           {/* Actions */}
           <div className="flex gap-2 pt-4">

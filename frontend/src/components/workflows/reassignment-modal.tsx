@@ -11,7 +11,6 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -188,20 +187,17 @@ export function ReassignmentModal({
           )}
 
           {/* Reason */}
-          <div className="space-y-2">
-            <Label htmlFor="reason">Reason for Reassignment</Label>
-            <Textarea
-              id="reason"
-              placeholder="Explain why you're reassigning this task..."
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              disabled={isLoading}
-              className="min-h-24 resize-none"
-            />
-            <p className="text-xs text-muted-foreground">
-              {reason.length}/500 characters
-            </p>
-          </div>
+          <Textarea
+            id="reason"
+            label="Reason for Reassignment"
+            placeholder="Explain why you're reassigning this task..."
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            disabled={isLoading}
+            className="min-h-24 resize-none"
+            maxLength={500}
+            showLimit
+          />
 
           {/* Info Alert */}
           <Alert>

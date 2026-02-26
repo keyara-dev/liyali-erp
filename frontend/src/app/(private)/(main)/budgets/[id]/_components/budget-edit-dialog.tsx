@@ -13,10 +13,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { SelectField } from "@/components/ui/select-field";
-import { Label } from "@/components/ui/label";
 import { Budget } from "@/types/budget";
 import { useActiveDepartments } from "@/hooks/use-department-queries";
-import { Loader2 } from "lucide-react";
 
 interface BudgetEditDialogProps {
   open: boolean;
@@ -108,100 +106,85 @@ export function BudgetEditDialog({
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Budget Name */}
-          <div className="space-y-2">
-            <Label htmlFor="name">Budget Name *</Label>
-            <Input
-              id="name"
-              required
-              placeholder="e.g., IT Department Annual Budget 2024"
-              value={formData.name}
-              onChange={(e) => handleInputChange("name", e.target.value)}
-              disabled={isSubmitting}
-            />
-          </div>
+          <Input
+            label="Budget Name"
+            required
+            id="name"
+            placeholder="e.g., IT Department Annual Budget 2024"
+            value={formData.name}
+            onChange={(e) => handleInputChange("name", e.target.value)}
+            disabled={isSubmitting}
+          />
 
           {/* Description */}
-          <div className="space-y-2">
-            <Label htmlFor="description">Description</Label>
-            <Textarea
-              id="description"
-              placeholder="Add a description for this budget (optional)"
-              value={formData.description}
-              onChange={(e) => handleInputChange("description", e.target.value)}
-              disabled={isSubmitting}
-              rows={3}
-            />
-          </div>
+          <Textarea
+            label="Description"
+            id="description"
+            placeholder="Add a description for this budget (optional)"
+            value={formData.description}
+            onChange={(e) => handleInputChange("description", e.target.value)}
+            disabled={isSubmitting}
+            rows={3}
+          />
 
           {/* Department */}
-          <div className="space-y-2">
-            <Label htmlFor="department">Department *</Label>
-            <SelectField
-              placeholder={
-                isLoadingDepartments
-                  ? "Loading departments..."
-                  : "Select a department"
-              }
-              value={formData.departmentId}
-              onValueChange={handleDepartmentChange}
-              disabled={isSubmitting || isLoadingDepartments}
-              options={departments.map((dept) => ({
-                value: dept.id,
-                label: dept.name,
-              }))}
-            />
-            {isLoadingDepartments && (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Loader2 className="h-3 w-3 animate-spin" />
-                <span>Loading departments...</span>
-              </div>
-            )}
-          </div>
+          <SelectField
+            label="Department"
+            required
+            placeholder={
+              isLoadingDepartments
+                ? "Loading departments..."
+                : "Select a department"
+            }
+            value={formData.departmentId}
+            onValueChange={handleDepartmentChange}
+            disabled={isSubmitting || isLoadingDepartments}
+            isLoading={isLoadingDepartments}
+            options={departments.map((dept) => ({
+              value: dept.id,
+              label: dept.name,
+            }))}
+          />
 
           {/* Fiscal Year */}
-          <div className="space-y-2">
-            <Label htmlFor="fiscalYear">Fiscal Year *</Label>
-            <Input
-              id="fiscalYear"
-              required
-              type="number"
-              placeholder="2024"
-              value={formData.fiscalYear}
-              onChange={(e) => handleInputChange("fiscalYear", e.target.value)}
-              disabled={isSubmitting}
-            />
-          </div>
+          <Input
+            label="Fiscal Year"
+            required
+            id="fiscalYear"
+            type="number"
+            placeholder="2024"
+            value={formData.fiscalYear}
+            onChange={(e) => handleInputChange("fiscalYear", e.target.value)}
+            disabled={isSubmitting}
+          />
 
           {/* Total Budget and Currency */}
           <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="totalBudget">Total Budget *</Label>
-              <Input
-                id="totalBudget"
-                required
-                type="number"
-                placeholder="0.00"
-                step="0.01"
-                value={formData.totalBudget}
-                onChange={(e) =>
-                  handleInputChange("totalBudget", e.target.value)
-                }
-                disabled={isSubmitting}
-              />
-            </div>
+            <Input
+              label="Total Budget"
+              required
+              id="totalBudget"
+              type="number"
+              placeholder="0.00"
+              step="0.01"
+              value={formData.totalBudget}
+              onChange={(e) =>
+                handleInputChange("totalBudget", e.target.value)
+              }
+              disabled={isSubmitting}
+            />
 
-            <div className="space-y-2">
-              <Label htmlFor="currency">Currency *</Label>
-              <SelectField
-                value={formData.currency}
-                onValueChange={(value) => handleInputChange("currency", value)}
-                disabled={isSubmitting}
-                options={currencies.map((curr) => ({
-                  value: curr.code,
-                  label: curr.label,
-                }))}
-              />
-            </div>
+            <SelectField
+              label="Currency"
+              required
+              value={formData.currency}
+              onValueChange={(value) => handleInputChange("currency", value)}
+              disabled={isSubmitting}
+              options={currencies.map((curr) => ({
+                value: curr.code,
+                label: curr.label,
+              }))}
+            />
           </div>
 
           {/* Actions */}

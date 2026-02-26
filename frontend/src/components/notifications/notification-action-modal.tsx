@@ -11,7 +11,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
 
 export interface NotificationActionModalProps {
   open: boolean;
@@ -55,16 +54,14 @@ export function NotificationActionModal({
         </DialogHeader>
 
         {requiresComment && (
-          <div className="space-y-2">
-            <Label htmlFor="comment">Comment</Label>
-            <Textarea
-              id="comment"
-              placeholder="Add a comment..."
-              value={comment}
-              onChange={(e) => setComment(e.target.value)}
-              rows={3}
-            />
-          </div>
+          <Textarea
+            label="Comment"
+            id="comment"
+            placeholder="Add a comment..."
+            value={comment}
+            onChange={(e) => setComment(e.target.value)}
+            rows={3}
+          />
         )}
 
         <DialogFooter>

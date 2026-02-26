@@ -11,7 +11,6 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import {
   Table,
@@ -380,33 +379,32 @@ export function BudgetItemsManager({
           </DialogHeader>
 
           <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="category">Category *</Label>
-              <Input
-                id="category"
-                placeholder="e.g., Salaries, Equipment, Travel"
-                value={formData.category}
-                onChange={(e) =>
-                  setFormData({ ...formData, category: e.target.value })
-                }
-              />
-            </div>
+            <Input
+              label="Category"
+              required
+              id="category"
+              placeholder="e.g., Salaries, Equipment, Travel"
+              value={formData.category}
+              onChange={(e) =>
+                setFormData({ ...formData, category: e.target.value })
+              }
+            />
 
-            <div className="space-y-2">
-              <Label htmlFor="description">Description *</Label>
-              <Input
-                id="description"
-                placeholder="Brief description of this budget item"
-                value={formData.description}
-                onChange={(e) =>
-                  setFormData({ ...formData, description: e.target.value })
-                }
-              />
-            </div>
+            <Input
+              label="Description"
+              required
+              id="description"
+              placeholder="Brief description of this budget item"
+              value={formData.description}
+              onChange={(e) =>
+                setFormData({ ...formData, description: e.target.value })
+              }
+            />
 
-            <div className="space-y-2">
-              <Label htmlFor="amount">Amount ({currency}) *</Label>
+            <div>
               <Input
+                label={`Amount (${currency})`}
+                required
                 id="amount"
                 type="number"
                 step="0.01"

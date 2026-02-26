@@ -3,7 +3,6 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { changePassword } from '@/app/_actions/settings'
 import { AlertCircle, CheckCircle, Eye, EyeOff } from 'lucide-react'
@@ -93,74 +92,68 @@ export function ChangePassword() {
             </div>
           )}
 
-          <div className="space-y-2">
-            <Label htmlFor="currentPassword">Current Password</Label>
-            <div className="relative">
-              <Input
-                id="currentPassword"
-                type={showPasswords.current ? 'text' : 'password'}
-                placeholder="Enter your current password"
-                value={formData.currentPassword}
-                onChange={(e) => handleInputChange('currentPassword', e.target.value)}
-                disabled={isLoading}
-              />
-              <button
-                type="button"
-                onClick={() => togglePasswordVisibility('current')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
-              >
-                {showPasswords.current ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </button>
-            </div>
+          <div className="relative">
+            <Input
+              label="Current Password"
+              id="currentPassword"
+              type={showPasswords.current ? 'text' : 'password'}
+              placeholder="Enter your current password"
+              value={formData.currentPassword}
+              onChange={(e) => handleInputChange('currentPassword', e.target.value)}
+              disabled={isLoading}
+            />
+            <button
+              type="button"
+              onClick={() => togglePasswordVisibility('current')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+            >
+              {showPasswords.current ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </button>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="newPassword">New Password</Label>
-            <div className="relative">
-              <Input
-                id="newPassword"
-                type={showPasswords.new ? 'text' : 'password'}
-                placeholder="Enter your new password"
-                value={formData.newPassword}
-                onChange={(e) => handleInputChange('newPassword', e.target.value)}
-                disabled={isLoading}
-              />
-              <button
-                type="button"
-                onClick={() => togglePasswordVisibility('new')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
-              >
-                {showPasswords.new ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </button>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Must be at least 8 characters long
-            </p>
+          <div className="relative">
+            <Input
+              label="New Password"
+              id="newPassword"
+              type={showPasswords.new ? 'text' : 'password'}
+              placeholder="Enter your new password"
+              value={formData.newPassword}
+              onChange={(e) => handleInputChange('newPassword', e.target.value)}
+              disabled={isLoading}
+            />
+            <button
+              type="button"
+              onClick={() => togglePasswordVisibility('new')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+            >
+              {showPasswords.new ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </button>
           </div>
+          <p className="text-xs text-muted-foreground">
+            Must be at least 8 characters long
+          </p>
 
-          <div className="space-y-2">
-            <Label htmlFor="confirmPassword">Confirm New Password</Label>
-            <div className="relative">
-              <Input
-                id="confirmPassword"
-                type={showPasswords.confirm ? 'text' : 'password'}
-                placeholder="Confirm your new password"
-                value={formData.confirmPassword}
-                onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
-                disabled={isLoading}
-              />
-              <button
-                type="button"
-                onClick={() => togglePasswordVisibility('confirm')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
-              >
-                {showPasswords.confirm ? (
-                  <EyeOff className="h-4 w-4" />
-                ) : (
-                  <Eye className="h-4 w-4" />
-                )}
-              </button>
-            </div>
+          <div className="relative">
+            <Input
+              label="Confirm New Password"
+              id="confirmPassword"
+              type={showPasswords.confirm ? 'text' : 'password'}
+              placeholder="Confirm your new password"
+              value={formData.confirmPassword}
+              onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
+              disabled={isLoading}
+            />
+            <button
+              type="button"
+              onClick={() => togglePasswordVisibility('confirm')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+            >
+              {showPasswords.confirm ? (
+                <EyeOff className="h-4 w-4" />
+              ) : (
+                <Eye className="h-4 w-4" />
+              )}
+            </button>
           </div>
 
           <div className="flex gap-3 pt-4">

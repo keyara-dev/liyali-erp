@@ -186,20 +186,17 @@ export function QualityIssueReportDialog({
           </div>
 
           {/* Issue Description */}
-          <div className="space-y-2">
-            <Label htmlFor="description">Issue Description *</Label>
-            <Textarea
-              id="description"
-              placeholder="Describe the quality issue, defect, or damage..."
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              rows={4}
-              className="resize-none"
-            />
-            <p className="text-xs text-muted-foreground">
-              {description.length}/500 characters
-            </p>
-          </div>
+          <Textarea
+            label="Issue Description"
+            required
+            id="description"
+            placeholder="Describe the quality issue, defect, or damage..."
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            rows={4}
+            className="resize-none"
+            descriptionText={`${description.length}/500 characters`}
+          />
         </div>
 
         <DialogFooter>

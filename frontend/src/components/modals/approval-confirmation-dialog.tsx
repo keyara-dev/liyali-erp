@@ -84,16 +84,14 @@ export function ApprovalConfirmationDialog({
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="comments">Comments (Optional)</Label>
-            <Textarea
-              id="comments"
-              placeholder="Add any approval comments..."
-              value={approvalComments}
-              onChange={(e) => setApprovalComments(e.target.value)}
-              className="h-24"
-            />
-          </div>
+          <Textarea
+            label="Comments (Optional)"
+            id="comments"
+            placeholder="Add any approval comments..."
+            value={approvalComments}
+            onChange={(e) => setApprovalComments(e.target.value)}
+            className="h-24"
+          />
         </div>
 
         <DialogFooter className="gap-2">

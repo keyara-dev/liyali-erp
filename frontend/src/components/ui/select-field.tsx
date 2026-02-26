@@ -69,7 +69,7 @@ const SelectField = React.forwardRef<HTMLSelectElement, SelectInputProps>(
   ) => {
     return (
       <div
-        className={cn("flex w-full  flex-col", classNames?.wrapper, {
+        className={cn("flex w-full flex-col", classNames?.wrapper, {
           "cursor-not-allowed opacity-50": isDisabled,
         })}
       >

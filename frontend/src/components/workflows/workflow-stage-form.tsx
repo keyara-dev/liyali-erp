@@ -11,7 +11,6 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -181,16 +180,11 @@ export function WorkflowStageForm({
                 !hasValue;
 
               return (
-                <div key={field.name} className="space-y-2">
-                  <Label htmlFor={field.name}>
-                    {field.label}
-                    {field.required && (
-                      <span className="text-red-600 ml-1">*</span>
-                    )}
-                  </Label>
-
+                <div key={field.name}>
                   {field.type === "textarea" ? (
                     <Textarea
+                      label={field.label}
+                      required={field.required}
                       id={field.name}
                       placeholder={field.placeholder}
                       value={formData[field.name] || ""}
@@ -208,6 +202,8 @@ export function WorkflowStageForm({
                     />
                   ) : (
                     <Input
+                      label={field.label}
+                      required={field.required}
                       id={field.name}
                       type={field.type}
                       placeholder={field.placeholder}

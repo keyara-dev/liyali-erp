@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
 import { SignatureCanvas } from "@/components/ui/signature-canvas";
 import {
   Card,
@@ -197,18 +196,16 @@ export function BudgetApprovalActionPanel({
 
         {action === "approve" ? (
           <>
-            <div className="space-y-3">
-              <Label htmlFor="comments">Comments (Optional)</Label>
-              <Textarea
-                id="comments"
-                placeholder="Add any approval comments, conditions, or recommendations..."
-                value={comments}
-                onChange={(e) => setComments(e.target.value)}
-                rows={3}
-                className="resize-none"
-                disabled={isLoading}
-              />
-            </div>
+            <Textarea
+              label="Comments (Optional)"
+              id="comments"
+              placeholder="Add any approval comments, conditions, or recommendations..."
+              value={comments}
+              onChange={(e) => setComments(e.target.value)}
+              rows={3}
+              className="resize-none"
+              disabled={isLoading}
+            />
 
             <SignatureCanvas
               onSignatureChange={setSignature}
@@ -216,9 +213,10 @@ export function BudgetApprovalActionPanel({
             />
           </>
         ) : (
-          <div className="space-y-3">
-            <Label htmlFor="remarks">Rejection Remarks *</Label>
+          <>
             <Textarea
+              label="Rejection Remarks"
+              required
               id="remarks"
               placeholder="Required: Explain in detail why this budget is being rejected. This helps the requester understand the issues and resubmit appropriately."
               value={remarks}
@@ -226,25 +224,20 @@ export function BudgetApprovalActionPanel({
               rows={4}
               className="resize-none"
               disabled={isLoading}
+              descriptionText="Detailed remarks are required for rejection to provide clear feedback"
             />
-            <p className="text-xs text-muted-foreground">
-              Detailed remarks are required for rejection to provide clear
-              feedback
-            </p>
 
-            <div className="space-y-3 pt-2">
-              <Label htmlFor="comments">Additional Comments (Optional)</Label>
-              <Textarea
-                id="comments"
-                placeholder="Any additional context or suggestions for improvement..."
-                value={comments}
-                onChange={(e) => setComments(e.target.value)}
-                rows={2}
-                className="resize-none"
-                disabled={isLoading}
-              />
-            </div>
-          </div>
+            <Textarea
+              label="Additional Comments (Optional)"
+              id="comments"
+              placeholder="Any additional context or suggestions for improvement..."
+              value={comments}
+              onChange={(e) => setComments(e.target.value)}
+              rows={2}
+              className="resize-none"
+              disabled={isLoading}
+            />
+          </>
         )}
 
         <div className="flex gap-3 pt-4">

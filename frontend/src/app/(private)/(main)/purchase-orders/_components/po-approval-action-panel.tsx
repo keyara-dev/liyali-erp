@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
 import { SignatureCanvas } from "@/components/ui/signature-canvas";
 import { Upload, Send, XCircle } from "lucide-react";
 import {
@@ -141,18 +140,16 @@ export function POApprovalActionPanel({
 
       {action === "approve" ? (
         <>
-          <div className="space-y-2">
-            <Label htmlFor="comments">Comments (Optional)</Label>
-            <Textarea
-              id="comments"
-              placeholder="Add any approval comments or recommendations..."
-              value={comments}
-              onChange={(e) => setComments(e.target.value)}
-              rows={3}
-              className="resize-none"
-              disabled={isLoading}
-            />
-          </div>
+          <Textarea
+            label="Comments (Optional)"
+            id="comments"
+            placeholder="Add any approval comments or recommendations..."
+            value={comments}
+            onChange={(e) => setComments(e.target.value)}
+            rows={3}
+            className="resize-none"
+            disabled={isLoading}
+          />
 
           <SignatureCanvas
             onSignatureChange={setSignature}
@@ -160,22 +157,18 @@ export function POApprovalActionPanel({
           />
         </>
       ) : (
-        <div className="space-y-2">
-          <Label htmlFor="remarks">Remarks *</Label>
-          <Textarea
-            id="remarks"
-            placeholder="Required: Please explain why this purchase order is being rejected..."
-            value={remarks}
-            onChange={(e) => setRemarks(e.target.value)}
-            rows={4}
-            className="resize-none"
-            disabled={isLoading}
-          />
-          <p className="text-xs text-muted-foreground">
-            Detailed remarks are required for rejection to help the requester
-            understand the issues
-          </p>
-        </div>
+        <Textarea
+          label="Remarks"
+          required
+          id="remarks"
+          placeholder="Required: Please explain why this purchase order is being rejected..."
+          value={remarks}
+          onChange={(e) => setRemarks(e.target.value)}
+          rows={4}
+          className="resize-none"
+          disabled={isLoading}
+          descriptionText="Detailed remarks are required for rejection to help the requester understand the issues"
+        />
       )}
 
       <Button
