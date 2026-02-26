@@ -4,15 +4,8 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { SelectField } from "@/components/ui/select-field";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Skeleton } from "@/components/ui/skeleton";
 import { useActiveRoles } from "@/hooks/use-role-queries";
 import type { WorkflowStage } from "@/types/workflow-config";
 
@@ -125,88 +118,60 @@ export function StageForm({ stage, onSave, onCancel, errors }: StageFormProps) {
   return (
     <div className="space-y-6">
       {/* Stage Name */}
-      <div className="space-y-2">
-        <label className="text-sm font-medium">
-          Stage Name <span className="text-destructive">*</span>
-        </label>
-        <Input
-          placeholder="e.g., Department Manager Review"
-          value={formData.name}
-          onChange={(e) => handleChange("name", e.target.value)}
-          className={errors.name ? "border-destructive" : ""}
-        />
-        {errors.name && (
-          <p className="text-sm text-destructive">{errors.name}</p>
-        )}
-      </div>
+      <Input
+        label="Stage Name"
+        required
+        placeholder="e.g., Department Manager Review"
+        value={formData.name}
+        onChange={(e) => handleChange("name", e.target.value)}
+        className={errors.name ? "border-destructive" : ""}
+        isInvalid={!!errors.name}
+        errorText={errors.name}
+      />
 
       {/* Description */}
-      <div className="space-y-2">
-        <label className="text-sm font-medium">Description</label>
-        <Textarea
-          placeholder="Describe what this stage is responsible for..."
-          value={formData.description}
-          onChange={(e) => handleChange("description", e.target.value)}
-          rows={2}
-        />
-      </div>
+      <Textarea
+        label="Description"
+        placeholder="Describe what this stage is responsible for..."
+        value={formData.description}
+        onChange={(e) => handleChange("description", e.target.value)}
+        rows={2}
+      />
 
       {/* Approver Role */}
-      <div className="space-y-2">
-        <label className="text-sm font-medium">
-          Approver Role <span className="text-destructive">*</span>
-        </label>
-        {rolesLoading ? (
-          <Skeleton className="h-10 w-full" />
-        ) : (
-          <Select
-            value={formData.approverRole}
-            onValueChange={(value) => handleChange("approverRole", value)}
-          >
-            <SelectTrigger
-              className={errors.approverRole ? "border-destructive" : ""}
-            >
-              <SelectValue placeholder="Select approver role" />
-            </SelectTrigger>
-            <SelectContent>
-              {roles.map((role) => (
-                <SelectItem key={role.id} value={role.id}>
-                  {role.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        )}
-        {errors.approverRole && (
-          <p className="text-sm text-destructive">{errors.approverRole}</p>
-        )}
-      </div>
+      <SelectField
+        label="Approver Role"
+        required
+        placeholder="Select approver role"
+        value={formData.approverRole}
+        onValueChange={(value) => handleChange("approverRole", value)}
+        isLoading={rolesLoading}
+        isInvalid={!!errors.approverRole}
+        errorText={errors.approverRole}
+        options={roles.map((role) => ({
+          value: role.id,
+          label: role.name,
+        }))}
+      />
 
       {/* Required Approvals */}
-      <div className="space-y-2">
-        <label className="text-sm font-medium">
-          Required Approvals <span className="text-destructive">*</span>
-        </label>
-        <Select
-          value={String(formData.requiredApprovals)}
-          onValueChange={(value) =>
-            handleChange("requiredApprovals", parseInt(value))
-          }
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Select number of approvals" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="1">1 Approval</SelectItem>
-            <SelectItem value="2">2 Approvals</SelectItem>
-            <SelectItem value="3">3 Approvals</SelectItem>
-            <SelectItem value="5">All Approvals</SelectItem>
-          </SelectContent>
-        </Select>
-        {errors.requiredApprovals && (
-          <p className="text-sm text-destructive">{errors.requiredApprovals}</p>
-        )}
-      </div>
+      <SelectField
+        label="Required Approvals"
+        required
+        placeholder="Select number of approvals"
+        value={String(formData.requiredApprovals)}
+        onValueChange={(value) =>
+          handleChange("requiredApprovals", parseInt(value))
+        }
+        isInvalid={!!errors.requiredApprovals}
+        errorText={errors.requiredApprovals}
+        options={[
+          { value: "1", label: "1 Approval" },
+          { value: "2", label: "2 Approvals" },
+          { value: "3", label: "3 Approvals" },
+          { value: "5", label: "All Approvals" },
+        ]}
+      />
 
       {/* Permissions */}
       <div className="space-y-3 border-t pt-4">

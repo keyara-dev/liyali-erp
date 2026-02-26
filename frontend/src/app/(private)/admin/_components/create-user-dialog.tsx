@@ -416,14 +416,13 @@ export default function CreateUserForm({
                   }))
                 }
                 isDisabled={isSubmitting || isRolesLoading}
+                isLoading={isRolesLoading}
                 placeholder={
-                  isRolesLoading
-                    ? "Loading roles..."
-                    : rolesError
-                      ? "Error loading roles"
-                      : allRoles.length === 0
-                        ? "No roles available"
-                        : "Select role"
+                  rolesError
+                    ? "Error loading roles"
+                    : allRoles.length === 0
+                      ? "No roles available"
+                      : "Select role"
                 }
                 options={[
                   { id: "", name: "Select role", value: "" },
@@ -446,11 +445,8 @@ export default function CreateUserForm({
                 }))
               }
               isDisabled={isSubmitting || isDepartmentsLoading}
-              placeholder={
-                isDepartmentsLoading
-                  ? "Loading departments..."
-                  : "Select department"
-              }
+              isLoading={isDepartmentsLoading}
+              placeholder="Select department"
               options={[
                 { id: "", name: "Select department", value: "" },
                 ...departments.map((dept) => ({
