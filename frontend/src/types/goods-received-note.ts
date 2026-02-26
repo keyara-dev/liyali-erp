@@ -46,6 +46,11 @@ export interface GoodsReceivedNote {
   createdAt: Date;
   updatedAt: Date;
 
+  // Budget tracking fields (propagated from linked PO)
+  budgetCode: string;
+  costCenter: string;
+  projectCode: string;
+
   // Business requirement fields
   createdBy: string;
   ownerId: string; // Same as createdBy

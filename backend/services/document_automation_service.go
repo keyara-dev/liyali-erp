@@ -285,6 +285,11 @@ func (s *DocumentAutomationService) CreateGRNFromPurchaseOrder(
 		CreatedAt:        time.Now(),
 		UpdatedAt:        time.Now(),
 		OrganizationID:   purchaseOrder.OrganizationID,
+
+		// Propagate budget tracking fields from PO
+		BudgetCode:  purchaseOrder.BudgetCode,
+		CostCenter:  purchaseOrder.CostCenter,
+		ProjectCode: purchaseOrder.ProjectCode,
 	}
 
 	// Set items
@@ -374,6 +379,11 @@ func (s *DocumentAutomationService) CreatePaymentVoucherFromGRN(
 		CreatedAt:      time.Now(),
 		UpdatedAt:      time.Now(),
 		OrganizationID: grn.OrganizationID,
+
+		// Propagate budget tracking fields from linked PO
+		BudgetCode:  purchaseOrder.BudgetCode,
+		CostCenter:  purchaseOrder.CostCenter,
+		ProjectCode: purchaseOrder.ProjectCode,
 	}
 
 	// Initialize empty approval history

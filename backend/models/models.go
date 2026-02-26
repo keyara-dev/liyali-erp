@@ -58,15 +58,15 @@ type Requisition struct {
 	IsEstimate        bool            `json:"isEstimate"`
 
 	// Business requirement fields
-	BudgetCode          string                                    `gorm:"-" json:"budgetCode"`          // Stored in metadata
+	BudgetCode          string                                    `json:"budgetCode"`
 	RequestedByName     string                                    `gorm:"-" json:"requestedByName"`     // Computed from RequesterName
 	RequestedByRole     string                                    `gorm:"-" json:"requestedByRole"`     // Computed from Requester.Role
 	RequestedBy         string                                    `gorm:"-" json:"requestedBy"`         // Computed from RequesterId
 	TotalApprovalStages int                                       `gorm:"-" json:"totalApprovalStages"` // Computed
 	RequestedDate       time.Time                                 `gorm:"-" json:"requestedDate"`       // Computed from CreatedAt
 	RequiredByDate      time.Time                                 `json:"requiredByDate"`
-	CostCenter          string                                    `gorm:"-" json:"costCenter"`          // Stored in metadata
-	ProjectCode         string                                    `gorm:"-" json:"projectCode"`         // Stored in metadata
+	CostCenter          string                                    `json:"costCenter"`
+	ProjectCode         string                                    `json:"projectCode"`
 	CreatedBy           string                                    `gorm:"-" json:"createdBy"`           // Computed from RequesterId
 	CreatedByName       string                                    `gorm:"-" json:"createdByName"`       // Computed from RequesterName
 	CreatedByRole       string                                    `gorm:"-" json:"createdByRole"`       // Computed from Requester.Role
@@ -220,6 +220,11 @@ type GoodsReceivedNote struct {
 	QualityIssues     datatypes.JSONType[[]types.QualityIssue] `gorm:"type:jsonb" json:"qualityIssues"`
 	ApprovalStage     int             `json:"approvalStage"`
 	ApprovalHistory   datatypes.JSONType[[]types.ApprovalRecord] `gorm:"type:jsonb" json:"approvalHistory"`
+
+	// Budget tracking fields (propagated from linked PO)
+	BudgetCode        string                                    `json:"budgetCode,omitempty"`
+	CostCenter        string                                    `json:"costCenter,omitempty"`
+	ProjectCode       string                                    `json:"projectCode,omitempty"`
 
 	// Extended fields for UI compatibility and business requirements
 	CreatedBy         string                                    `json:"createdBy,omitempty"`         // Creator user ID
