@@ -30,8 +30,7 @@ export function ImageUpload({
       // Placeholder: In production, this would upload to ImageKit or another service
       toast.success("Image upload placeholder - install @imagekit/next to enable uploads");
       setUploadProgress(100);
-    } catch (error) {
-      console.error("Upload error:", error);
+    } catch {
       toast.error("Failed to upload image. Please try again.");
     } finally {
       setUploading(false);
@@ -74,7 +73,6 @@ export function ImageUpload({
   };
 
   const setMainImage = (index: number) => {
-    console.log("Setting main image:", index);
     if (index === 0) {
       return;
     }

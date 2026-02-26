@@ -128,23 +128,16 @@ export interface SubscriptionPlansResponse {
 }
 
 export async function getSubscriptionPlans(): Promise<APIResponse> {
-  console.log("Server action: Fetching subscription plans from:", BACKEND_URL);
-
   const url = `/api/v1/subscriptions/plans`;
   try {
-    console.log("Server action: Making request to:", url);
-
     const response = await axios.get(url, {
       headers: {
         "Content-Type": "application/json",
       },
     });
 
-    console.log("Server action: Plan slugs:", response.data);
     return successResponse(response.data?.data);
   } catch (error) {
-    console.error("Server action: Error fetching subscription plans:", error);
-
     return handleError(error, "GET", url);
   }
 }
@@ -160,8 +153,6 @@ export async function getSubscriptionPlan(slug: string): Promise<APIResponse> {
 
     return successResponse(response.data?.data);
   } catch (error) {
-    console.error("Server action: Error fetching subscription plans:", error);
-
     return handleError(error, "GET", url);
   }
 }
@@ -186,10 +177,6 @@ export async function getOrganizationSubscription(
 
     return successResponse(response.data?.data);
   } catch (error) {
-    console.error(
-      "Server action: Error fetching organization subscription:",
-      error,
-    );
     return handleError(error, "GET", url);
   }
 }
@@ -210,7 +197,6 @@ export async function getOrganizationTrialStatus(
 
     return successResponse(response.data?.data);
   } catch (error) {
-    console.error("Server action: Error fetching trial status:", error);
     return handleError(error, "GET", url);
   }
 }
@@ -233,7 +219,6 @@ export async function upgradeOrganization(
 
     return successResponse(response.data?.data);
   } catch (error) {
-    console.error("Server action: Error upgrading organization:", error);
     return handleError(error, "POST", url);
   }
 }
@@ -256,7 +241,6 @@ export async function downgradeOrganization(
 
     return successResponse(response.data?.data);
   } catch (error) {
-    console.error("Server action: Error downgrading organization:", error);
     return handleError(error, "POST", url);
   }
 }
@@ -279,7 +263,6 @@ export async function extendOrganizationTrial(
 
     return successResponse(response.data?.data);
   } catch (error) {
-    console.error("Server action: Error extending trial:", error);
     return handleError(error, "POST", url);
   }
 }
@@ -300,10 +283,6 @@ export async function getOrganizationFeatures(
 
     return successResponse(response.data?.data);
   } catch (error) {
-    console.error(
-      "Server action: Error fetching organization features:",
-      error,
-    );
     return handleError(error, "GET", url);
   }
 }
@@ -325,7 +304,6 @@ export async function checkFeatureAccess(
 
     return successResponse(response.data?.data);
   } catch (error) {
-    console.error("Server action: Error checking feature access:", error);
     return handleError(error, "GET", url);
   }
 }

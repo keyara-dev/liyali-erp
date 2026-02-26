@@ -42,22 +42,17 @@ export async function updateBudget(
   updates: Partial<Budget>,
 ): Promise<APIResponse<Budget | null>> {
   try {
-    console.log("updateBudget called with:", { budgetId, updates });
-
     const response = await authenticatedApiClient({
       method: "PUT",
       url: `/api/v1/budgets/${budgetId}`,
       data: updates,
     });
 
-    console.log("updateBudget response:", response.data);
-
     return successResponse(
       response.data?.data || null,
       response.data?.message || "Budget updated successfully",
     );
   } catch (error: any) {
-    console.error("updateBudget error:", error);
     return handleError(error, "PUT", `/api/v1/budgets/${budgetId}`);
   }
 }
@@ -110,22 +105,16 @@ export async function getBudgetById(
   budgetId: string,
 ): Promise<APIResponse<Budget | null>> {
   try {
-    console.log("getBudgetById called with:", budgetId);
-
     const response = await authenticatedApiClient({
       method: "GET",
       url: `/api/v1/budgets/${budgetId}`,
     });
-
-    console.log("getBudgetById response:", response.data);
-    console.log("Budget items from API:", response.data?.data?.items);
 
     return successResponse(
       response.data?.data || null,
       response.data?.message || "Budget retrieved successfully",
     );
   } catch (error: any) {
-    console.error("getBudgetById error:", error);
     return handleError(error, "GET", `/api/v1/budgets/${budgetId}`);
   }
 }

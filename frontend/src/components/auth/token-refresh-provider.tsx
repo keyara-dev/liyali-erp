@@ -35,14 +35,12 @@ export function TokenRefreshProvider({
     return () => clearTimeout(timer);
   }, []);
 
-  const { isRefreshing, refreshError, needsRefresh, isAuthenticated, session } =
+  const { refreshError } =
     useTokenRefresh(enabled && !isInitialLoad);
 
-  // Show toast notifications for refresh events (optional)
+  // Show toast notifications for critical refresh errors
   useEffect(() => {
     if (refreshError) {
-      console.error("Token refresh failed:", refreshError);
-
       // Only show user-facing error for critical issues
       if (
         refreshError.message?.includes("No refresh token") ||
@@ -52,32 +50,6 @@ export function TokenRefreshProvider({
       }
     }
   }, [refreshError]);
-
-  // Debug logging for token refresh events
-  useEffect(() => {
-    if (process.env.NODE_ENV === "development") {
-      console.log("🔍 Token Refresh Debug:", {
-        isAuthenticated,
-        needsRefresh,
-        isRefreshing,
-        hasRefreshToken: !!session?.refresh_token,
-        expiresAt: session?.expiresAt,
-        timeUntilExpiry: session?.expiresAt
-          ? Math.round(
-              (new Date(session.expiresAt).getTime() - Date.now()) / 1000,
-            ) + "s"
-          : "N/A",
-        refreshError: refreshError?.message,
-      });
-    }
-  }, [isAuthenticated, needsRefresh, isRefreshing, session, refreshError]);
-
-  // Optional: Show refresh indicator (for debugging)
-  useEffect(() => {
-    if (process.env.NODE_ENV === "development" && isRefreshing) {
-      console.log("🔄 Refreshing token...");
-    }
-  }, [isRefreshing]);
 
   return (
     <>
@@ -100,9 +72,8 @@ export function useExtendSession() {
     try {
       await refreshNow();
       toast.success("Session extended successfully");
-    } catch (error) {
+    } catch {
       toast.error("Failed to extend session");
-      console.error("Session extension failed:", error);
     }
   };
 

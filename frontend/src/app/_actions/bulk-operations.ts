@@ -55,10 +55,6 @@ export async function bulkApproveTasks(request: BulkApproveRequest) {
     const successCount = request.taskIds.length
     const failedCount = 0
 
-    // Record in audit log
-    // TODO: Log to audit trail
-    console.log(`[BULK APPROVE] User ${request.userId} approved ${successCount} tasks`)
-
     return {
       success: true,
       data: {
@@ -116,11 +112,6 @@ export async function bulkRejectTasks(request: BulkRejectRequest) {
     const rejectedCount = request.taskIds.length
     const failedCount = 0
 
-    // Record in audit log
-    // TODO: Log to audit trail
-    console.log(`[BULK REJECT] User ${request.userId} rejected ${rejectedCount} tasks`)
-    console.log(`[REJECTION REASON]`, request.remarks)
-
     return {
       success: true,
       data: {
@@ -177,11 +168,6 @@ export async function bulkReassignTasks(request: BulkReassignRequest) {
     // Simulate successful bulk reassignment
     const reassignedCount = request.taskIds.length
     const failedCount = 0
-
-    // Record in audit log
-    // TODO: Log to audit trail
-    console.log(`[BULK REASSIGN] User ${request.userId} reassigned ${reassignedCount} tasks`)
-    console.log(`[TO APPROVER]`, request.newApproverId, request.newApproverName)
 
     return {
       success: true,

@@ -41,8 +41,7 @@ export function useSelectOrganization() {
       setIsRedirecting(true);
       router.push("/home");
     },
-    onError: (error) => {
-      console.error("Failed to switch organization:", error);
+    onError: () => {
       setIsRedirecting(false);
     },
   });
@@ -68,9 +67,7 @@ export function useSwitchOrganizationMutation() {
       // Invalidate all queries to refetch with new organization context
       queryClient.invalidateQueries();
     },
-    onError: (error) => {
-      console.error("Failed to switch organization:", error);
-    },
+    onError: () => {},
   });
 
   return {
@@ -115,7 +112,6 @@ export function useCreateOrganizationMutation() {
       queryClient.invalidateQueries({ queryKey: ["organizations"] });
     },
     onError: (error) => {
-      console.error("Failed to create organization:", error);
       toast.error(error?.message || "Failed to create organization");
     },
   });
@@ -169,9 +165,7 @@ export function useUpdateOrganizationMutation() {
       // Refresh organization store to update currentOrganization
       await refreshOrganizations();
     },
-    onError: (error) => {
-      console.error("Failed to update organization:", error);
-    },
+    onError: () => {},
   });
 
   return {
@@ -198,9 +192,7 @@ export function useAddMemberMutation() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["organization-members"] });
     },
-    onError: (error) => {
-      console.error("Failed to add member:", error);
-    },
+    onError: () => {},
   });
 
   return {
@@ -227,9 +219,7 @@ export function useRemoveMemberMutation() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["organization-members"] });
     },
-    onError: (error) => {
-      console.error("Failed to remove member:", error);
-    },
+    onError: () => {},
   });
 
   return {
@@ -256,9 +246,7 @@ export function useUpdateSettingsMutation() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["organization-settings"] });
     },
-    onError: (error) => {
-      console.error("Failed to update settings:", error);
-    },
+    onError: () => {},
   });
 
   return {
@@ -308,7 +296,6 @@ export function useDeleteOrganizationMutation() {
       router.push("/welcome");
     },
     onError: (error) => {
-      console.error("Failed to delete organization:", error);
       toast.error(error?.message || "Failed to delete organization");
     },
   });
@@ -362,17 +349,14 @@ export function useLogout() {
             localStorage.removeItem(key);
           });
 
-          console.log("✅ Cleared all organizational data from localStorage");
-        } catch (error) {
-          console.error("Failed to clear localStorage on logout:", error);
+        } catch {
+          // Best-effort localStorage cleanup
         }
       }
 
       router.push("/login");
     },
-    onError: (error) => {
-      console.error("Logout failed:", error);
-    },
+    onError: () => {},
   });
 
   return {

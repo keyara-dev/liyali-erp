@@ -77,35 +77,25 @@ const ORGANIZATION_SCOPED_TAGS = [
  */
 export async function revalidateOrganizationCache(organizationId?: string) {
   try {
-    console.log(
-      `[Server Cache] Revalidating cache for organization: ${organizationId || "all"}`
-    );
-
     // Revalidate all organization-scoped paths
     for (const path of ORGANIZATION_SCOPED_PATHS) {
       try {
         revalidatePath(path);
-        revalidatePath(`${path}/[...slug]`); // Revalidate dynamic routes
-        console.log(`[Server Cache] Revalidated path: ${path}`);
-      } catch (error) {
-        console.warn(
-          `[Server Cache] Failed to revalidate path ${path}:`,
-          error
-        );
+        revalidatePath(`${path}/[...slug]`);
+      } catch {
+        // Path revalidation can fail for non-existent routes
       }
     }
 
     // Revalidate all organization-scoped cache tags
     for (const tag of ORGANIZATION_SCOPED_TAGS) {
       try {
-        // Note: revalidateTag in Next.js 16+ might have different signature
         (revalidateTag as any)(tag);
         if (organizationId) {
-          (revalidateTag as any)(`${tag}-${organizationId}`); // Organization-specific tags
+          (revalidateTag as any)(`${tag}-${organizationId}`);
         }
-        console.log(`[Server Cache] Revalidated tag: ${tag}`);
-      } catch (error) {
-        console.warn(`[Server Cache] Failed to revalidate tag ${tag}:`, error);
+      } catch {
+        // Tag revalidation can fail for unused tags
       }
     }
 
@@ -113,13 +103,8 @@ export async function revalidateOrganizationCache(organizationId?: string) {
     revalidatePath("/(private)", "layout");
     revalidatePath("/(private)/(main)", "layout");
 
-    console.log("[Server Cache] Organization cache revalidation completed");
     return { success: true, message: "Cache revalidated successfully" };
   } catch (error) {
-    console.error(
-      "[Server Cache] Failed to revalidate organization cache:",
-      error
-    );
     return {
       success: false,
       message: "Failed to revalidate cache",
@@ -133,25 +118,16 @@ export async function revalidateOrganizationCache(organizationId?: string) {
  */
 export async function revalidateSpecificPaths(paths: string[]) {
   try {
-    console.log(
-      `[Server Cache] Revalidating specific paths: ${paths.join(", ")}`
-    );
-
     for (const path of paths) {
       try {
         revalidatePath(path);
-        console.log(`[Server Cache] Revalidated path: ${path}`);
-      } catch (error) {
-        console.warn(
-          `[Server Cache] Failed to revalidate path ${path}:`,
-          error
-        );
+      } catch {
+        // Path revalidation can fail for non-existent routes
       }
     }
 
     return { success: true, message: "Paths revalidated successfully" };
   } catch (error) {
-    console.error("[Server Cache] Failed to revalidate specific paths:", error);
     return {
       success: false,
       message: "Failed to revalidate paths",
@@ -165,22 +141,16 @@ export async function revalidateSpecificPaths(paths: string[]) {
  */
 export async function revalidateSpecificTags(tags: string[]) {
   try {
-    console.log(
-      `[Server Cache] Revalidating specific tags: ${tags.join(", ")}`
-    );
-
     for (const tag of tags) {
       try {
         (revalidateTag as any)(tag);
-        console.log(`[Server Cache] Revalidated tag: ${tag}`);
-      } catch (error) {
-        console.warn(`[Server Cache] Failed to revalidate tag ${tag}:`, error);
+      } catch {
+        // Tag revalidation can fail for unused tags
       }
     }
 
     return { success: true, message: "Tags revalidated successfully" };
   } catch (error) {
-    console.error("[Server Cache] Failed to revalidate specific tags:", error);
     return {
       success: false,
       message: "Failed to revalidate tags",
@@ -194,11 +164,9 @@ export async function revalidateSpecificTags(tags: string[]) {
  */
 export async function revalidateCurrentPage() {
   try {
-    // This will be called from the client with the current pathname
     revalidatePath("/", "page");
     return { success: true, message: "Current page revalidated" };
   } catch (error) {
-    console.error("[Server Cache] Failed to revalidate current page:", error);
     return {
       success: false,
       message: "Failed to revalidate current page",

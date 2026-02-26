@@ -28,8 +28,7 @@ export async function getCurrentUserSession(): Promise<{
       user: session?.user ?? null,
       isAuthenticated: isAuthenticated,
     };
-  } catch (error) {
-    console.error("Failed to get session:", error);
+  } catch {
     return {
       user: null,
       isAuthenticated: false,
@@ -57,8 +56,7 @@ export async function checkUserRoleAction(
 ): Promise<boolean> {
   try {
     return await hasRole(requiredRole as any);
-  } catch (error) {
-    console.error("Failed to check user role:", error);
+  } catch {
     return false;
   }
 }
@@ -80,8 +78,7 @@ export async function checkUserRoleAction(
 export async function checkIsAdminAction(): Promise<boolean> {
   try {
     return await isAdmin();
-  } catch (error) {
-    console.error("Failed to check admin status:", error);
+  } catch {
     return false;
   }
 }

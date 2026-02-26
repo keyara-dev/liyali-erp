@@ -41,19 +41,6 @@ const createErrorHandler = () => async (error: Error | any) => {
 
   const { status, data } = error.response;
 
-  // Handle token expiration (403 with "token has expired" message)
-  // if (
-  //   status === 403 &&
-  //   (data?.error === "token has expired" || data?.message === "token has expired")
-  // ) {
-  //   console.log("[AUTH] Token expired - logging out user");
-  //   const response = await logUserOut("expired token");
-
-  //   if (response.success) {
-  //     redirect("/auth/login");
-  //   }
-  // }
-
   // Handle specific error codes
   const errorMap: { [x: string]: string } = {
     400: "Bad request",
@@ -66,7 +53,6 @@ const createErrorHandler = () => async (error: Error | any) => {
 
   return Promise.reject({
     ...error,
-    // details: data?.errors || {},
     type: "API",
     status,
     message:
@@ -80,7 +66,6 @@ const errorHandler = createErrorHandler();
 
 // Apply the same interceptors to both API clients
 axios.interceptors.response.use(responseHandler, errorHandler);
-// externalApiClient.interceptors.response.use(responseHandler, errorHandler);
 
 export type RequestType = AxiosRequestConfig & {
   contentType?: AxiosRequestHeaders["Content-Type"];
@@ -92,39 +77,20 @@ const authenticatedApiClient = async (
 ): Promise<any> => {
   const maxRetries = 3;
   const retryDelay = 500; // 500ms delay between retries
-  const isDev = process.env.NODE_ENV === "development";
 
   try {
-    if (isDev)
-      console.log(
-        `[authenticatedApiClient] Attempt ${retryCount + 1}/${maxRetries + 1} for ${request.url}`
-      );
-
     // Enhanced session verification
     const { isAuthenticated, session } = await verifySession();
 
     if (!isAuthenticated || !session?.access_token) {
-      if (isDev)
-        console.log(
-          `[authenticatedApiClient] No valid session found on attempt ${retryCount + 1}`
-        );
-
       // If no session and we haven't retried yet, wait a bit and try again
       if (retryCount < maxRetries) {
-        if (isDev)
-          console.log(
-            `[authenticatedApiClient] Retrying in ${retryDelay}ms...`
-          );
         await new Promise((resolve) => setTimeout(resolve, retryDelay));
         return authenticatedApiClient(request, retryCount + 1);
       }
 
       throw new Error("No valid session found");
     }
-    if (isDev)
-      console.log(
-        `[authenticatedApiClient] Session found, making request to ${request.url}`
-      );
 
     const headers: any = {
       "Content-type": request.contentType
@@ -148,17 +114,8 @@ const authenticatedApiClient = async (
 
     return await axios(config);
   } catch (error: any) {
-    if (isDev)
-      console.log(
-        `[authenticatedApiClient] Error on attempt ${retryCount + 1}:`,
-        error.message
-      );
     // If it's a session error and we haven't exhausted retries, try again
     if (error.message === "No valid session found" && retryCount < maxRetries) {
-      if (isDev)
-        console.log(
-          `[authenticatedApiClient] Retrying due to session error in ${retryDelay * (retryCount + 1)}ms...`
-        );
       await new Promise((resolve) =>
         setTimeout(resolve, retryDelay * (retryCount + 1))
       );

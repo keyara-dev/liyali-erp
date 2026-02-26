@@ -77,7 +77,6 @@ export async function getGRNAction(
 
     return successResponse(response.data?.data, "GRN retrieved successfully");
   } catch (error: any) {
-    console.error("Error fetching GRN:", error);
     return handleError(error, "GET", url);
   }
 }

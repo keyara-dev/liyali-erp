@@ -40,25 +40,16 @@ export type {
  * Hook to get all subscription plans using server action
  */
 export function useSubscriptionPlans() {
-  console.log("useSubscriptionPlans: Hook called");
-
   return useQuery({
     queryKey: ["subscription-plans"],
     queryFn: async () => {
-      console.log("useSubscriptionPlans: Calling server action...");
       const response = await getSubscriptionPlans();
-      console.log("useSubscriptionPlans: Server action response:", response);
-
-      // If the response is not successful and has no fallback data, throw error
       if (!response.success) {
         throw new Error(response.message);
       }
       return response;
     },
-    select: (data) => {
-      console.log("useSubscriptionPlans: Selecting data:", data.data.plans);
-      return data.data.plans;
-    },
+    select: (data) => data.data.plans,
     staleTime: 5 * 60 * 1000, // 5 minutes
     retry: 3,
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),

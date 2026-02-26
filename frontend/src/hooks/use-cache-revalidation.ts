@@ -5,7 +5,6 @@ import { useQueryClient } from "@tanstack/react-query";
 import { usePathname, useRouter } from "next/navigation";
 import { clearOrganizationCache, invalidateQueries } from "@/lib/cache-manager";
 import {
-  revalidateOrganizationCache,
   revalidateSpecificPaths,
   revalidateSpecificTags,
 } from "@/app/_actions/cache-revalidation";
@@ -25,27 +24,15 @@ export function useCacheRevalidation() {
   const revalidateOrganizationData = useCallback(
     async (organizationId?: string) => {
       try {
-        console.log("[useCacheRevalidation] Revalidating organization data...");
-
-        // Clear client-side cache
         await clearOrganizationCache({
           queryClient,
           clearLocalStorage: true,
           revalidateServerCache: true,
         });
 
-        // Force refresh the current page to show new data
         router.refresh();
-
-        console.log(
-          "[useCacheRevalidation] Organization data revalidated successfully"
-        );
         return { success: true };
       } catch (error) {
-        console.error(
-          "[useCacheRevalidation] Failed to revalidate organization data:",
-          error
-        );
         return { success: false, error };
       }
     },
@@ -58,19 +45,9 @@ export function useCacheRevalidation() {
   const revalidateQueries = useCallback(
     async (patterns: string[]) => {
       try {
-        console.log(
-          `[useCacheRevalidation] Revalidating queries: ${patterns.join(", ")}`
-        );
-
         await invalidateQueries(patterns, queryClient);
-
-        console.log("[useCacheRevalidation] Queries revalidated successfully");
         return { success: true };
       } catch (error) {
-        console.error(
-          "[useCacheRevalidation] Failed to revalidate queries:",
-          error
-        );
         return { success: false, error };
       }
     },
@@ -83,14 +60,9 @@ export function useCacheRevalidation() {
   const revalidatePaths = useCallback(
     async (paths: string[]) => {
       try {
-        console.log(
-          `[useCacheRevalidation] Revalidating paths: ${paths.join(", ")}`
-        );
-
         const result = await revalidateSpecificPaths(paths);
 
         if (result.success) {
-          // Force refresh if current path is being revalidated
           if (paths.some((path) => pathname.startsWith(path))) {
             router.refresh();
           }
@@ -98,10 +70,6 @@ export function useCacheRevalidation() {
 
         return result;
       } catch (error) {
-        console.error(
-          "[useCacheRevalidation] Failed to revalidate paths:",
-          error
-        );
         return { success: false, error };
       }
     },
@@ -114,23 +82,14 @@ export function useCacheRevalidation() {
   const revalidateTags = useCallback(
     async (tags: string[]) => {
       try {
-        console.log(
-          `[useCacheRevalidation] Revalidating tags: ${tags.join(", ")}`
-        );
-
         const result = await revalidateSpecificTags(tags);
 
         if (result.success) {
-          // Refresh the page to show updated data
           router.refresh();
         }
 
         return result;
       } catch (error) {
-        console.error(
-          "[useCacheRevalidation] Failed to revalidate tags:",
-          error
-        );
         return { success: false, error };
       }
     },
@@ -142,25 +101,10 @@ export function useCacheRevalidation() {
    */
   const revalidateCurrentPage = useCallback(async () => {
     try {
-      console.log(
-        `[useCacheRevalidation] Revalidating current page: ${pathname}`
-      );
-
-      // Invalidate queries for current page
       await queryClient.invalidateQueries();
-
-      // Revalidate server-side cache for current path
       await revalidatePaths([pathname]);
-
-      console.log(
-        "[useCacheRevalidation] Current page revalidated successfully"
-      );
       return { success: true };
     } catch (error) {
-      console.error(
-        "[useCacheRevalidation] Failed to revalidate current page:",
-        error
-      );
       return { success: false, error };
     }
   }, [pathname, queryClient, revalidatePaths]);
@@ -170,27 +114,17 @@ export function useCacheRevalidation() {
    */
   const forceHardRefresh = useCallback(async () => {
     try {
-      console.log("[useCacheRevalidation] Performing hard refresh...");
-
-      // Clear all client-side cache
       await queryClient.clear();
 
-      // Clear localStorage (except preserved keys)
       await clearOrganizationCache({
         queryClient,
         clearLocalStorage: true,
-        revalidateServerCache: false, // Skip server revalidation for hard refresh
+        revalidateServerCache: false,
       });
 
-      // Force reload the page
       window.location.reload();
-
       return { success: true };
     } catch (error) {
-      console.error(
-        "[useCacheRevalidation] Failed to perform hard refresh:",
-        error
-      );
       return { success: false, error };
     }
   }, [queryClient]);
@@ -200,20 +134,9 @@ export function useCacheRevalidation() {
    */
   const revalidateNotifications = useCallback(async () => {
     try {
-      console.log("[useCacheRevalidation] Revalidating notifications...");
-
-      // Invalidate notification queries
       await queryClient.invalidateQueries({ queryKey: ["notifications"] });
-
-      console.log(
-        "[useCacheRevalidation] Notifications revalidated successfully"
-      );
       return { success: true };
     } catch (error) {
-      console.error(
-        "[useCacheRevalidation] Failed to revalidate notifications:",
-        error
-      );
       return { success: false, error };
     }
   }, [queryClient]);
@@ -223,25 +146,14 @@ export function useCacheRevalidation() {
    */
   const revalidateWorkflowData = useCallback(async () => {
     try {
-      console.log("[useCacheRevalidation] Revalidating workflow data...");
-
-      // Invalidate workflow and notification queries
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["approvals"] }),
         queryClient.invalidateQueries({ queryKey: ["workflow"] }),
         queryClient.invalidateQueries({ queryKey: ["notifications"] }),
         queryClient.invalidateQueries({ queryKey: ["tasks"] }),
       ]);
-
-      console.log(
-        "[useCacheRevalidation] Workflow data revalidated successfully"
-      );
       return { success: true };
     } catch (error) {
-      console.error(
-        "[useCacheRevalidation] Failed to revalidate workflow data:",
-        error
-      );
       return { success: false, error };
     }
   }, [queryClient]);

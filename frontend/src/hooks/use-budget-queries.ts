@@ -50,12 +50,10 @@ export const useAllBudgets = (initialBudgets?: Budget[]) =>
     queryFn: async () => {
       try {
         const response = await getBudgets({}, 1, 100); // Get first 100 budgets
-        console.log("Budget response:", response); // Debug log
         return response.success && Array.isArray(response.data)
           ? response.data
           : [];
-      } catch (error) {
-        console.error("Error fetching budgets:", error);
+      } catch {
         return [];
       }
     },

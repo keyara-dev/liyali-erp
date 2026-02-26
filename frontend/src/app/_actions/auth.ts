@@ -33,29 +33,19 @@ export async function loginAction(
   password: string,
 ): Promise<APIResponse<any>> {
   const url = `/api/v1/auth/login`;
-  const isDev = process.env.NODE_ENV === "development";
-
   try {
-    if (isDev) console.log("[loginAction] Starting login for", email);
     const query = await axios.post(url, {
       email,
       password,
     });
 
     const response = query?.data;
-    if (isDev)
-      console.log("[loginAction] Backend response", {
-        success: response.success,
-        hasToken: !!response.data?.accessToken,
-        hasUser: !!response.data?.user,
-      });
 
     // Backend returns: { success, message, data: { accessToken, refreshToken, expiresIn, user, organization } }
     if (!response.success || !response.data?.accessToken) {
       return unauthorizedResponse(response.message || "Login failed");
     }
 
-    if (isDev) console.log("[loginAction] Creating auth session...");
     // Create session with backend token and expiration
     await createAuthSession({
       access_token: response.data.accessToken,
@@ -67,10 +57,8 @@ export async function loginAction(
       user: response.data.user, // Add the full user object
     });
 
-    if (isDev) console.log("[loginAction] Session created successfully");
     return successResponse(response.data.user, response.message);
   } catch (error: Error | any) {
-    console.error("[loginAction] Login error:", error);
     return handleError(error, "POST", url);
   }
 }
@@ -201,49 +189,27 @@ export async function logUserOut(
  */
 export async function getRefreshToken(): Promise<APIResponse<any>> {
   const url = `/api/v1/auth/refresh`;
-  const isDev = process.env.NODE_ENV === "development";
 
   try {
-    if (isDev) console.log("[getRefreshToken] Starting token refresh...");
-
     const { session } = await verifySession();
 
     if (!session?.refresh_token) {
-      if (isDev)
-        console.log("[getRefreshToken] No refresh token available in session");
       return unauthorizedResponse("No refresh token available");
     }
-
-    if (isDev)
-      console.log("[getRefreshToken] Current session:", {
-        hasAccessToken: !!session.access_token,
-        hasRefreshToken: !!session.refresh_token,
-        expiresAt: session.expiresAt,
-        userId: session.user_id,
-      });
 
     // Call backend refresh endpoint with the stored refresh token
     const response = await authenticatedApiClient({
       url,
       method: "POST",
-      data: { refreshToken: session.refresh_token }, // Use stored refresh token
+      data: { refreshToken: session.refresh_token },
     });
-
-    if (isDev)
-      console.log("[getRefreshToken] Backend response:", {
-        success: response.data?.success,
-        hasNewToken: !!response.data?.data?.accessToken,
-        hasNewRefreshToken: !!response.data?.data?.refreshToken,
-        expiresIn: response.data?.data?.expiresIn,
-      });
 
     // Backend returns: { success, message, data: { accessToken, expiresIn, refreshToken? } }
     const newToken = response.data.data?.accessToken;
     const expiresIn = response.data.data?.expiresIn;
-    const newRefreshToken = response.data.data?.refreshToken; // New refresh token from rotation
+    const newRefreshToken = response.data.data?.refreshToken;
 
     if (!newToken) {
-      if (isDev) console.log("[getRefreshToken] No new token in response");
       return unauthorizedResponse("Failed to refresh token");
     }
 
@@ -251,28 +217,18 @@ export async function getRefreshToken(): Promise<APIResponse<any>> {
     const expirationMs = expiresIn ? expiresIn * 1000 : 30 * 60 * 1000; // fallback to 30 minutes
     const newExpiresAt = new Date(Date.now() + expirationMs);
 
-    if (isDev)
-      console.log("[getRefreshToken] Updating session with new token:", {
-        expiresIn,
-        newExpiresAt,
-        hasNewRefreshToken: !!newRefreshToken,
-      });
-
     // Update session with new tokens (both access and refresh if rotated)
     const sessionUpdate: any = {
       access_token: newToken,
-      expiresAt: newExpiresAt, // Use backend's expiration time
-      expiresIn, // Update expiresIn as well
+      expiresAt: newExpiresAt,
+      expiresIn,
     };
 
-    // Update refresh token if backend provided a new one (token rotation)
     if (newRefreshToken) {
       sessionUpdate.refresh_token = newRefreshToken;
     }
 
     await updateAuthSession(sessionUpdate);
-
-    if (isDev) console.log("[getRefreshToken] Session updated successfully");
 
     return successResponse(
       {
@@ -284,7 +240,6 @@ export async function getRefreshToken(): Promise<APIResponse<any>> {
       "Token refreshed successfully",
     );
   } catch (error: any) {
-    console.error("[getRefreshToken] Error refreshing token:", error);
     return handleError(error, "POST", url);
   }
 }

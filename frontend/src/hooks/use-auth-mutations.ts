@@ -69,11 +69,8 @@ export function useLoginMutation() {
             if (isAuthenticated) {
               sessionReady = true;
             }
-          } catch (error) {
-            console.log(
-              `Session verification attempt ${attempts + 1} failed:`,
-              error
-            );
+          } catch {
+            // Session not yet available, will retry
           }
 
           attempts++;
@@ -82,14 +79,12 @@ export function useLoginMutation() {
         if (sessionReady) {
           router.push("/welcome");
         } else {
-          console.error("Session not ready after login, max attempts reached");
           setIsRedirecting(false);
           throw new Error("Session initialization failed");
         }
       }
     },
-    onError: (error) => {
-      console.error("Login failed:", error);
+    onError: () => {
       setIsRedirecting(false);
     },
   });
@@ -155,11 +150,8 @@ export function useSignupMutation() {
             if (isAuthenticated) {
               sessionReady = true;
             }
-          } catch (error) {
-            console.log(
-              `Signup session verification attempt ${attempts + 1} failed:`,
-              error
-            );
+          } catch {
+            // Session not yet available, will retry
           }
 
           attempts++;
@@ -168,14 +160,12 @@ export function useSignupMutation() {
         if (sessionReady) {
           router.push("/welcome");
         } else {
-          console.error("Session not ready after signup, max attempts reached");
           setIsRedirecting(false);
           throw new Error("Session initialization failed after signup");
         }
       }
     },
-    onError: (error) => {
-      console.error("Signup failed:", error);
+    onError: () => {
       setIsRedirecting(false);
     },
   });
@@ -211,9 +201,7 @@ export function useSendResetEmailMutation() {
     mutationFn: async ({ email }: { email: string }) => {
       return await sendResetEmail(email);
     },
-    onError: (error) => {
-      console.error("Failed to send reset email:", error);
-    },
+    onError: () => {},
   });
 
   return {
@@ -263,9 +251,7 @@ export function useResetPasswordMutation() {
         router.push("/login?password_reset=true");
       }
     },
-    onError: (error) => {
-      console.error("Password reset failed:", error);
-    },
+    onError: () => {},
   });
 
   return {
@@ -308,9 +294,7 @@ export function useChangePasswordMutation() {
     }) => {
       return await changePassword(oldPassword, newPassword);
     },
-    onError: (error) => {
-      console.error("Failed to change password:", error);
-    },
+    onError: () => {},
   });
 
   return {
