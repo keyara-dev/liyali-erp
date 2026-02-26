@@ -87,7 +87,7 @@ type OrganizationRoleRepositoryInterface interface {
 
 	// List operations
 	List(ctx context.Context, organizationID string, limit, offset int) ([]*sqlc.OrganizationRole, error)
-	ListSystem(ctx context.Context, organizationID string) ([]*sqlc.OrganizationRole, error)
+	ListSystem(ctx context.Context) ([]*sqlc.OrganizationRole, error) // Global system roles (org_id IS NULL)
 	ListCustom(ctx context.Context, organizationID string, limit, offset int) ([]*sqlc.OrganizationRole, error)
 	Count(ctx context.Context, organizationID string) (int64, error)
 	CountCustom(ctx context.Context, organizationID string) (int64, error)

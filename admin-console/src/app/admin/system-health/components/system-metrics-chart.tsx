@@ -89,7 +89,8 @@ export function SystemMetricsChart({ metrics }: SystemMetricsChartProps) {
                 className="text-xs"
                 tick={{ fontSize: 12 }}
               />
-              <YAxis className="text-xs" tick={{ fontSize: 12 }} />
+              <YAxis yAxisId="left" className="text-xs" tick={{ fontSize: 12 }} />
+              <YAxis yAxisId="right" orientation="right" className="text-xs" tick={{ fontSize: 12 }} />
               <Tooltip content={<CustomTooltip />} />
               <Legend />
               <Line
@@ -99,6 +100,7 @@ export function SystemMetricsChart({ metrics }: SystemMetricsChartProps) {
                 strokeWidth={2}
                 dot={false}
                 name="CPU Usage"
+                yAxisId="left"
               />
               <Line
                 type="monotone"
@@ -107,6 +109,7 @@ export function SystemMetricsChart({ metrics }: SystemMetricsChartProps) {
                 strokeWidth={2}
                 dot={false}
                 name="Memory Usage"
+                yAxisId="left"
               />
               <Line
                 type="monotone"

@@ -247,15 +247,6 @@ function PlansStep({
   isLoading,
   error,
 }: PlansStepProps) {
-  console.log("PlansStep Debug:", {
-    plans,
-    currentTier,
-    currentPlanSlug,
-    isLoading,
-    error,
-    plansCount: plans?.length,
-  });
-
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -297,22 +288,59 @@ function PlansStep({
     );
   }
 
+  // Sort plans by sortOrder and compute unique features per tier
+  const sortedPlans = [...plans].sort(
+    (a: any, b: any) => a.sortOrder - b.sortOrder,
+  );
+
+  // Build feature display name lookup
+  const featureDisplayNames: Record<string, { displayName: string; description: string }> = {};
+  for (const plan of sortedPlans) {
+    for (const detail of plan.featureDetails || []) {
+      featureDisplayNames[detail.name] = {
+        displayName: detail.displayName,
+        description: detail.description,
+      };
+    }
+  }
+
+  // Compute unique features and inherited tier for each plan
+  let previousFeatures = new Set<string>();
+  const plansWithUniqueFeatures = sortedPlans.map((plan: any, idx: number) => {
+    const currentFeatures = new Set<string>(plan.features || []);
+    const uniqueFeatures = (plan.features || []).filter(
+      (f: string) => !previousFeatures.has(f),
+    );
+    const inheritedTierName =
+      previousFeatures.size > 0 ? sortedPlans[idx - 1]?.displayName : undefined;
+
+    const uniqueFeatureDetails = uniqueFeatures.slice(0, 10).map((f: string) => ({
+      name: f,
+      displayName:
+        featureDisplayNames[f]?.displayName ||
+        f.replace(/_/g, " ").replace(/\b\w/g, (c: string) => c.toUpperCase()),
+      description: featureDisplayNames[f]?.description || "",
+    }));
+
+    previousFeatures = currentFeatures;
+
+    return { ...plan, uniqueFeatureDetails, inheritedTierName };
+  });
+
   return (
     <div className="space-y-4">
       <div className="text-center mb-6">
         <p className="text-slate-300 text-sm">
-          You're currently on the{" "}
+          You&apos;re currently on the{" "}
           <span className="font-semibold text-white">{currentTier}</span> plan
         </p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 py-6">
-        {plans.map((plan) => (
+        {plansWithUniqueFeatures.map((plan) => (
           <PlanCard
             key={plan.id}
             plan={plan}
-            currentTier={currentTier}
-            currentPlanSlug={currentPlanSlug}
             isCurrentPlan={plan.slug === currentPlanSlug}
             onSelect={() => onSelectPlan(plan.slug)}
           />
@@ -324,16 +352,12 @@ function PlansStep({
 
 interface PlanCardProps {
   plan: any;
-  currentTier: string;
-  currentPlanSlug: string;
   isCurrentPlan: boolean;
   onSelect: () => void;
 }
 
 function PlanCard({
   plan,
-  currentTier,
-  currentPlanSlug,
   isCurrentPlan,
   onSelect,
 }: PlanCardProps) {
@@ -395,7 +419,7 @@ function PlanCard({
             <IconComponent className="h-6 w-6 text-white" />
           </motion.div>
           <CardTitle className="text-xl text-white font-semibold">
-            {plan.name}
+            {plan.displayName}
           </CardTitle>
           <CardDescription className="text-slate-300">
             {plan.description}
@@ -429,45 +453,40 @@ function PlanCard({
         </CardHeader>
 
         <CardContent className="space-y-4">
+          {plan.inheritedTierName ? (
+            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-500/10 border border-blue-500/20 mb-1">
+              <Zap className="h-3.5 w-3.5 text-blue-400" />
+              <span className="text-sm font-medium text-blue-300">
+                Everything in {plan.inheritedTierName}, plus:
+              </span>
+            </div>
+          ) : (
+            <p className="text-sm font-semibold text-slate-300 mb-1">Includes:</p>
+          )}
           <div className="space-y-3">
-            {plan.featureDetails && plan.featureDetails.length > 0
-              ? plan.featureDetails.map((feature: any, index: number) => (
-                  <motion.div
-                    key={feature.id || index}
-                    className="flex items-start gap-3 text-sm"
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: index * 0.1 }}
-                  >
-                    <div className="w-5 h-5 rounded-full flex items-center justify-center shrink-0 border border-green-400 bg-green-500/30 text-green-300 mt-0.5">
-                      <Check className="h-3 w-3" />
+            {(plan.uniqueFeatureDetails || []).map((feature: any, index: number) => (
+              <motion.div
+                key={feature.name}
+                className="flex items-start gap-3 text-sm"
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: index * 0.05 }}
+              >
+                <div className="w-5 h-5 rounded-full flex items-center justify-center shrink-0 border border-green-400 bg-green-500/30 text-green-300 mt-0.5">
+                  <Check className="h-3 w-3" />
+                </div>
+                <div className="flex-1">
+                  <div className="font-medium text-slate-200">
+                    {feature.displayName}
+                  </div>
+                  {feature.description && (
+                    <div className="text-xs text-slate-400 mt-0.5">
+                      {feature.description}
                     </div>
-                    <div className="flex-1">
-                      <div className="font-medium text-slate-200">
-                        {feature.displayName}
-                      </div>
-                      {feature.description && (
-                        <div className="text-xs text-slate-400 mt-0.5">
-                          {feature.description}
-                        </div>
-                      )}
-                    </div>
-                  </motion.div>
-                ))
-              : plan.features.map((feature: string, index: number) => (
-                  <motion.div
-                    key={index}
-                    className="flex items-center gap-3 text-sm text-slate-200"
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: index * 0.1 }}
-                  >
-                    <div className="w-5 h-5 rounded-full flex items-center justify-center shrink-0 border border-green-400 bg-green-500/30 text-green-300">
-                      <Check className="h-3 w-3" />
-                    </div>
-                    <span>{feature}</span>
-                  </motion.div>
-                ))}
+                  )}
+                </div>
+              </motion.div>
+            ))}
           </div>
 
           <motion.div
@@ -498,7 +517,7 @@ function PlanCard({
               ) : (
                 <>
                   <Crown className="h-4 w-4 mr-2" />
-                  Upgrade to {plan.name}
+                  Upgrade to {plan.displayName}
                 </>
               )}
             </Button>

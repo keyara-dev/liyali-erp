@@ -90,10 +90,10 @@ export function ManageSubscriptionDialog({
       ]);
 
       if (tiersResult.success && tiersResult.data) {
-        setTiers(tiersResult.data.filter((t) => t.is_active));
+        setTiers(tiersResult.data.filter((t) => t.isActive));
       }
       if (featuresResult.success && featuresResult.data) {
-        setFeatures(featuresResult.data.filter((f) => f.is_active));
+        setFeatures(featuresResult.data.filter((f) => f.isActive));
       }
       if (logsResult.success && logsResult.data) {
         setAuditLogs(
@@ -256,7 +256,7 @@ function OverviewTab({
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-muted-foreground">Price:</span>
                   <span className="text-sm font-medium">
-                    ${currentTier.price_monthly}/mo
+                    ${currentTier.priceMonthly}/mo
                   </span>
                 </div>
               </>
@@ -277,14 +277,14 @@ function OverviewTab({
               <span className="text-sm font-medium">
                 {organization.user_count} /{" "}
                 {organization.settings?.max_users ||
-                  currentTier?.max_team_members ||
+                  currentTier?.maxTeamMembers ||
                   "∞"}
               </span>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">Storage:</span>
               <span className="text-sm font-medium">
-                {currentTier?.max_documents || "N/A"} documents
+                {currentTier?.maxDocuments || "N/A"} documents
               </span>
             </div>
             <div className="flex items-center justify-between">
@@ -416,9 +416,9 @@ function ChangeTierTab({
     setIsLoading(true);
     try {
       const result = await changeOrganizationTier(organization.id, {
-        new_tier: selectedTier,
+        newTier: selectedTier,
         reason: reason.trim(),
-        override_limits: overrideLimits,
+        overrideLimits: overrideLimits,
       });
 
       if (result.success) {
@@ -466,9 +466,9 @@ function ChangeTierTab({
                   disabled={tier.name === organization.subscription_tier}
                 >
                   <div className="flex items-center gap-2">
-                    <span>{tier.display_name || tier.name}</span>
+                    <span>{tier.displayName || tier.name}</span>
                     <span className="text-xs text-muted-foreground">
-                      ${tier.price_monthly}/mo &middot; {tier.max_team_members}{" "}
+                      ${tier.priceMonthly}/mo &middot; {tier.maxTeamMembers}{" "}
                       users
                     </span>
                   </div>
@@ -482,15 +482,15 @@ function ChangeTierTab({
       {selectedTierDetails && (
         <div className="rounded-lg border p-3 bg-blue-50 dark:bg-blue-950/20 space-y-1">
           <p className="text-sm font-medium">
-            {selectedTierDetails.display_name || selectedTierDetails.name}
+            {selectedTierDetails.displayName || selectedTierDetails.name}
           </p>
           <p className="text-xs text-muted-foreground">
             {selectedTierDetails.description}
           </p>
           <div className="flex gap-4 text-xs text-muted-foreground pt-1">
-            <span>${selectedTierDetails.price_monthly}/month</span>
-            <span>{selectedTierDetails.max_team_members} max users</span>
-            <span>{selectedTierDetails.max_documents} documents</span>
+            <span>${selectedTierDetails.priceMonthly}/month</span>
+            <span>{selectedTierDetails.maxTeamMembers} max users</span>
+            <span>{selectedTierDetails.maxDocuments} documents</span>
           </div>
         </div>
       )}
@@ -744,7 +744,7 @@ function OverrideLimitsTab({
                           htmlFor={`override-${feature.id}`}
                           className={`text-xs leading-none ${alreadyEnabled ? "text-muted-foreground" : ""}`}
                         >
-                          {feature.display_name || feature.name}
+                          {feature.displayName || feature.name}
                           {alreadyEnabled && " (active)"}
                         </label>
                       </div>

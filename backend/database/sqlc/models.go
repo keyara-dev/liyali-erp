@@ -239,7 +239,7 @@ type OrganizationMember struct {
 
 type OrganizationRole struct {
 	ID             pgtype.UUID      `json:"id"`
-	OrganizationID string           `json:"organization_id"`
+	OrganizationID *string          `json:"organization_id"` // nil for global system roles
 	Name           string           `json:"name"`
 	Description    *string          `json:"description"`
 	IsSystemRole   *bool            `json:"is_system_role"`

@@ -1,4 +1,4 @@
--- Enhanced RBAC with custom organization roles
+-- Enhanced RBAC with global system roles + org custom roles
 
 -- name: CreateOrganizationRole :one
 INSERT INTO organization_roles (
@@ -11,28 +11,34 @@ INSERT INTO organization_roles (
 SELECT * FROM organization_roles WHERE id = $1 AND active = true;
 
 -- name: GetOrganizationRoleByName :one
-SELECT * FROM organization_roles 
-WHERE organization_id = $1 AND name = $2 AND active = true;
+SELECT * FROM organization_roles
+WHERE ((organization_id = $1 AND name = $2) OR (organization_id IS NULL AND is_system_role = true AND name = $2))
+AND active = true
+LIMIT 1;
 
 -- name: ListOrganizationRoles :many
-SELECT * FROM organization_roles 
-WHERE organization_id = $1 AND active = true
+SELECT * FROM organization_roles
+WHERE (
+    (organization_id = $1 AND active = true)
+    OR
+    (organization_id IS NULL AND is_system_role = true AND active = true)
+)
 ORDER BY is_system_role DESC, name ASC
 LIMIT $2 OFFSET $3;
 
 -- name: ListSystemRoles :many
-SELECT * FROM organization_roles 
-WHERE organization_id = $1 AND is_system_role = true AND active = true
+SELECT * FROM organization_roles
+WHERE organization_id IS NULL AND is_system_role = true AND active = true
 ORDER BY name ASC;
 
 -- name: ListCustomRoles :many
-SELECT * FROM organization_roles 
+SELECT * FROM organization_roles
 WHERE organization_id = $1 AND is_system_role = false AND active = true
 ORDER BY name ASC
 LIMIT $2 OFFSET $3;
 
 -- name: UpdateOrganizationRole :one
-UPDATE organization_roles SET 
+UPDATE organization_roles SET
     name = COALESCE($2, name),
     description = COALESCE($3, description),
     permissions = COALESCE($4, permissions),
@@ -41,17 +47,17 @@ WHERE id = $1 AND is_system_role = false
 RETURNING *;
 
 -- name: DeactivateOrganizationRole :exec
-UPDATE organization_roles SET 
+UPDATE organization_roles SET
     active = false,
     updated_at = NOW()
 WHERE id = $1 AND is_system_role = false;
 
 -- name: CountOrganizationRoles :one
-SELECT COUNT(*) FROM organization_roles 
-WHERE organization_id = $1 AND active = true;
+SELECT COUNT(*) FROM organization_roles
+WHERE ((organization_id = $1 AND active = true) OR (organization_id IS NULL AND is_system_role = true AND active = true));
 
 -- name: CountCustomRoles :one
-SELECT COUNT(*) FROM organization_roles 
+SELECT COUNT(*) FROM organization_roles
 WHERE organization_id = $1 AND is_system_role = false AND active = true;
 
 -- User role assignments
@@ -74,12 +80,12 @@ INNER JOIN organization_roles org_roles ON uor.role_id = org_roles.id
 WHERE uor.user_id = $1 AND uor.organization_id = $2 AND uor.active = true;
 
 -- name: RemoveUserRole :exec
-UPDATE user_organization_roles SET 
+UPDATE user_organization_roles SET
     active = false
 WHERE user_id = $1 AND organization_id = $2 AND role_id = $3;
 
 -- name: RemoveAllUserRoles :exec
-UPDATE user_organization_roles SET 
+UPDATE user_organization_roles SET
     active = false
 WHERE user_id = $1 AND organization_id = $2;
 

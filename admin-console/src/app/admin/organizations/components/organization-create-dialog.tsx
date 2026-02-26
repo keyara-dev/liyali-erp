@@ -342,10 +342,10 @@ export function OrganizationCreateDialog({
                         <SelectItem key={tier.id} value={tier.name}>
                           <div className="flex flex-col">
                             <span className="font-medium">
-                              {tier.display_name}
+                              {tier.displayName}
                             </span>
                             <span className="text-sm text-muted-foreground">
-                              ${tier.price_monthly}/month
+                              ${tier.priceMonthly}/month
                             </span>
                           </div>
                         </SelectItem>

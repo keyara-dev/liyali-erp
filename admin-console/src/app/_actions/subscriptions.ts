@@ -9,49 +9,65 @@ import authenticatedApiClient, {
 export interface SubscriptionTier {
   id: string;
   name: string;
-  display_name: string;
+  displayName: string;
   description: string;
-  price_monthly: number;
-  price_yearly: number;
-  max_workspaces: number;
-  max_team_members: number;
-  max_documents: number;
-  max_workflows: number;
-  max_custom_roles: number;
+  priceMonthly: number;
+  priceYearly: number;
+  maxWorkspaces: number;
+  maxTeamMembers: number;
+  maxDocuments: number;
+  maxWorkflows: number;
+  maxCustomRoles: number;
+  maxRequisitions: number;
+  maxBudgets: number;
+  maxPurchaseOrders: number;
+  maxPaymentVouchers: number;
+  maxGRNs: number;
+  maxDepartments: number;
+  maxVendors: number;
   features: string[];
-  is_active: boolean;
-  sort_order: number;
-  created_at: string;
-  updated_at: string;
+  isActive: boolean;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+  featureCount?: number;
+  organizationCount?: number;
 }
 
 export interface SubscriptionFeature {
   id: string;
   name: string;
-  display_name: string;
+  displayName: string;
   description: string;
   category: string;
-  is_active: boolean;
-  created_at: string;
+  isActive: boolean;
+  createdAt: string;
 }
 
 export interface CreateTierRequest {
   name: string;
-  display_name: string;
+  displayName: string;
   description: string;
-  price_monthly: number;
-  price_yearly: number;
-  max_workspaces: number;
-  max_team_members: number;
-  max_documents: number;
-  max_workflows: number;
-  max_custom_roles: number;
+  priceMonthly: number;
+  priceYearly: number;
+  maxWorkspaces: number;
+  maxTeamMembers: number;
+  maxDocuments: number;
+  maxWorkflows: number;
+  maxCustomRoles: number;
+  maxRequisitions?: number;
+  maxBudgets?: number;
+  maxPurchaseOrders?: number;
+  maxPaymentVouchers?: number;
+  maxGRNs?: number;
+  maxDepartments?: number;
+  maxVendors?: number;
   features: string[];
-  is_active: boolean;
-  sort_order: number;
+  isActive: boolean;
+  sortOrder: number;
 }
 
-export interface UpdateTierRequest extends Partial<CreateTierRequest> {
+export interface UpdateTierRequest extends Partial<Omit<CreateTierRequest, "name">> {
   id: string;
 }
 
@@ -201,7 +217,7 @@ export async function getAllSubscriptionFeatures(): Promise<
  * Create new subscription feature
  */
 export async function createSubscriptionFeature(
-  request: Omit<SubscriptionFeature, "id" | "created_at">,
+  request: Omit<SubscriptionFeature, "id" | "createdAt">,
 ): Promise<APIResponse<SubscriptionFeature | null>> {
   const url = "/api/v1/admin/subscriptions/features";
 
@@ -226,7 +242,7 @@ export async function createSubscriptionFeature(
  */
 export async function updateSubscriptionFeature(
   featureId: string,
-  request: Partial<Omit<SubscriptionFeature, "id" | "created_at">>,
+  request: Partial<Omit<SubscriptionFeature, "id" | "createdAt">>,
 ): Promise<APIResponse<SubscriptionFeature | null>> {
   const url = `/api/v1/admin/subscriptions/features/${featureId}`;
 
@@ -367,9 +383,9 @@ export async function getSubscriptionStatistics(): Promise<
 export async function changeOrganizationTier(
   organizationId: string,
   request: {
-    new_tier: string;
+    newTier: string;
     reason: string;
-    override_limits?: boolean;
+    overrideLimits?: boolean;
   },
 ): Promise<APIResponse<any>> {
   const url = `/api/v1/admin/organizations/${organizationId}/change-tier`;

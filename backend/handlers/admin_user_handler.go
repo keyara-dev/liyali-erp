@@ -147,14 +147,7 @@ func CreateOrganizationUser(c *fiber.Ctx) error {
 	// Remove the separate department assignment since it's now handled above
 	// The AddMemberWithDepartment method handles both role and department assignment
 
-	// Initialize default roles for the user in this organization
-	roleService := services.NewRoleManagementService(tx)
-	if err := roleService.InitializeDefaultRolesForOrganization(tenant.OrganizationID); err != nil {
-		// Don't fail, just log warning - roles might already exist
-		logging.WithFields(map[string]interface{}{
-			"organization_id": tenant.OrganizationID,
-		}).WithError(err).Warn("failed_to_initialize_default_roles")
-	}
+	// System roles are now global — no per-org initialization needed
 
 	// Commit transaction
 	if err := tx.Commit().Error; err != nil {

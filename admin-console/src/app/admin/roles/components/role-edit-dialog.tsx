@@ -32,6 +32,7 @@ interface RoleEditDialogProps {
   role: Role | null;
   permissions: Permission[];
   onRoleUpdated: () => void;
+  isSuperAdmin?: boolean;
 }
 
 export function RoleEditDialog({
@@ -40,6 +41,7 @@ export function RoleEditDialog({
   role,
   permissions,
   onRoleUpdated,
+  isSuperAdmin = false,
 }: RoleEditDialogProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState<UpdateRoleRequest>({
@@ -181,9 +183,13 @@ export function RoleEditDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden">
         <DialogHeader>
-          <DialogTitle>Edit Role</DialogTitle>
+          <DialogTitle>
+            {role.is_system_role ? "Edit System Role" : "Edit Role"}
+          </DialogTitle>
           <DialogDescription>
-            Update role information and permissions
+            {role.is_system_role
+              ? "Update system role permissions (name cannot be changed)"
+              : "Update role information and permissions"}
           </DialogDescription>
         </DialogHeader>
 
@@ -240,7 +246,7 @@ export function RoleEditDialog({
                   onCheckedChange={(checked) =>
                     handleInputChange("is_active", checked)
                   }
-                  disabled={role.is_system_role}
+                  disabled={role.is_system_role && !isSuperAdmin}
                 />
                 <Label htmlFor="is_active">Active Role</Label>
                 {role.is_system_role && (

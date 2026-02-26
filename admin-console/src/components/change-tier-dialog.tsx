@@ -106,7 +106,7 @@ export function ChangeTierDialog({
 
       if (result.success) {
         toast.success(
-          `Subscription tier changed to ${newTier?.display_name || selectedTier}`,
+          `Subscription tier changed to ${newTier?.displayName || selectedTier}`,
         );
         setIsOpen(false);
         setReason("");
@@ -182,10 +182,10 @@ export function ChangeTierDialog({
             <div className="flex items-center gap-2 text-sm">
               <span className="text-muted-foreground">Current Tier:</span>
               <Badge variant="default">
-                {currentTier?.display_name || "Unknown"}
+                {currentTier?.displayName || "Unknown"}
               </Badge>
               <span className="text-muted-foreground">
-                ${currentTier?.price_monthly || 0}/month
+                ${currentTier?.priceMonthly || 0}/month
               </span>
             </div>
           </div>
@@ -208,9 +208,9 @@ export function ChangeTierDialog({
                       disabled={tier.name === organization.subscription_tier}
                     >
                       <div className="flex items-center justify-between w-full">
-                        <span className="font-medium">{tier.display_name}</span>
+                        <span className="font-medium">{tier.displayName}</span>
                         <span className="text-muted-foreground text-sm ml-4">
-                          ${tier.price_monthly}/month
+                          ${tier.priceMonthly}/month
                         </span>
                       </div>
                     </SelectItem>
@@ -221,32 +221,32 @@ export function ChangeTierDialog({
 
             {/* Tier Comparison */}
             {selectedTier !== organization.subscription_tier && newTier && (
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-9 gap-4">
                 {/* Current Tier */}
-                <div className="rounded-lg border p-4">
+                <div className="rounded-lg border col-span-4 p-4">
                   <div className="text-sm font-medium mb-2 text-muted-foreground">
                     Current
                   </div>
                   <div className="space-y-2">
                     <div className="font-semibold">
-                      {currentTier?.display_name}
+                      {currentTier?.displayName}
                     </div>
                     <div className="text-sm text-muted-foreground">
-                      ${currentTier?.price_monthly}/month
+                      ${currentTier?.priceMonthly}/month
                     </div>
                     <div className="text-xs space-y-1">
                       <div>
                         👥{" "}
-                        {currentTier?.max_team_members === -1
+                        {currentTier?.maxTeamMembers === -1
                           ? "Unlimited"
-                          : currentTier?.max_team_members}{" "}
+                          : currentTier?.maxTeamMembers}{" "}
                         users
                       </div>
                       <div>
                         📄{" "}
-                        {currentTier?.max_documents === -1
+                        {currentTier?.maxDocuments === -1
                           ? "Unlimited"
-                          : currentTier?.max_documents}{" "}
+                          : currentTier?.maxDocuments}{" "}
                         documents
                       </div>
                     </div>
@@ -259,28 +259,28 @@ export function ChangeTierDialog({
                 </div>
 
                 {/* New Tier */}
-                <div className="rounded-lg border p-4 bg-primary/5 border-primary/20">
+                <div className="rounded-lg border col-span-4 p-4 bg-primary/5 border-primary/20">
                   <div className="text-sm font-medium mb-2 text-primary">
                     New Tier
                   </div>
                   <div className="space-y-2">
-                    <div className="font-semibold">{newTier.display_name}</div>
+                    <div className="font-semibold">{newTier.displayName}</div>
                     <div className="text-sm text-muted-foreground">
-                      ${newTier.price_monthly}/month
+                      ${newTier.priceMonthly}/month
                     </div>
                     <div className="text-xs space-y-1">
                       <div>
                         👥{" "}
-                        {newTier.max_team_members === -1
+                        {newTier.maxTeamMembers === -1
                           ? "Unlimited"
-                          : newTier.max_team_members}{" "}
+                          : newTier.maxTeamMembers}{" "}
                         users
                       </div>
                       <div>
                         📄{" "}
-                        {newTier.max_documents === -1
+                        {newTier.maxDocuments === -1
                           ? "Unlimited"
-                          : newTier.max_documents}{" "}
+                          : newTier.maxDocuments}{" "}
                         documents
                       </div>
                     </div>
@@ -292,29 +292,61 @@ export function ChangeTierDialog({
             {/* Features Preview */}
             {selectedTier !== organization.subscription_tier && newTier && (
               <div className="rounded-lg border p-4 bg-muted/30">
-                <div className="text-sm font-medium mb-3">
-                  Features Included ({newTierFeatures.length} features):
-                </div>
-                <div className="space-y-2 max-h-60 overflow-y-auto">
-                  {newTierFeatures.map((feature: any) => (
-                    <div
-                      key={feature.id}
-                      className="flex items-start gap-2 text-sm"
-                    >
-                      <Check className="h-4 w-4 text-green-600 shrink-0 mt-0.5" />
-                      <div className="flex-1">
-                        <div className="font-medium">
-                          {feature.display_name}
+                {(() => {
+                  // Compute unique features for the new tier
+                  const sortedTiers = [...(tiers || [])].sort(
+                    (a, b) => a.sortOrder - b.sortOrder,
+                  );
+                  const newTierIndex = sortedTiers.findIndex(
+                    (t) => t.name === newTier.name,
+                  );
+                  const previousTier =
+                    newTierIndex > 0 ? sortedTiers[newTierIndex - 1] : null;
+                  const previousFeatureNames = new Set(
+                    previousTier?.features || [],
+                  );
+                  const uniqueFeatures = newTierFeatures.filter(
+                    (f: any) => !previousFeatureNames.has(f.name),
+                  );
+                  const displayFeatures = uniqueFeatures.slice(0, 10);
+
+                  return (
+                    <>
+                      {previousTier ? (
+                        <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-primary/10 border border-primary/20 mb-3">
+                          <ArrowRight className="h-3.5 w-3.5 text-primary" />
+                          <span className="text-sm font-medium text-primary">
+                            Everything in {previousTier.displayName}, plus:
+                          </span>
                         </div>
-                        {feature.description && (
-                          <div className="text-xs text-muted-foreground mt-0.5">
-                            {feature.description}
+                      ) : (
+                        <div className="text-sm font-medium mb-3">
+                          Features Included:
+                        </div>
+                      )}
+                      <div className="space-y-2 max-h-60 overflow-y-auto">
+                        {displayFeatures.map((feature: any) => (
+                          <div
+                            key={feature.id}
+                            className="flex items-start gap-2 text-sm"
+                          >
+                            <Check className="h-4 w-4 text-green-600 shrink-0 mt-0.5" />
+                            <div className="flex-1">
+                              <div className="font-medium">
+                                {feature.displayName}
+                              </div>
+                              {feature.description && (
+                                <div className="text-xs text-muted-foreground mt-0.5">
+                                  {feature.description}
+                                </div>
+                              )}
+                            </div>
                           </div>
-                        )}
+                        ))}
                       </div>
-                    </div>
-                  ))}
-                </div>
+                    </>
+                  );
+                })()}
               </div>
             )}
 
@@ -325,6 +357,8 @@ export function ChangeTierDialog({
               </label>
               <Textarea
                 id="reason"
+                // label="Reason for Change"
+                required
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
                 placeholder="Explain why you're changing the subscription tier (e.g., customer upgrade request, trial conversion, special arrangement)..."

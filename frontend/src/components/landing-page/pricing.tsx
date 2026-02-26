@@ -8,7 +8,8 @@ interface PricingCardProps {
   tier: string;
   price: string | number;
   sub: string;
-  features: string[];
+  features: { name: string; displayName: string }[];
+  inheritedTier?: string;
   recommended: boolean;
   delay: number;
   buttonText: string;
@@ -19,6 +20,7 @@ const PricingCard = ({
   price,
   sub,
   features,
+  inheritedTier,
   recommended,
   delay,
   buttonText,
@@ -55,16 +57,12 @@ const PricingCard = ({
       </h3>
       <div className="flex items-baseline gap-1">
         {price === "Custom" ? (
-          <span
-            className={`text-3xl font-extrabold ${recommended ? "text-white" : "text-white"}`}
-          >
+          <span className="text-3xl font-extrabold text-white">
             Custom Pricing
           </span>
         ) : (
           <>
-            <span
-              className={`text-4xl font-extrabold ${recommended ? "text-white" : "text-white"}`}
-            >
+            <span className="text-4xl font-extrabold text-white">
               ${price}
             </span>
             <span className="text-slate-400 font-medium">/mo</span>
@@ -75,23 +73,34 @@ const PricingCard = ({
     </div>
 
     <div className="flex-1">
-      <p className="text-sm font-semibold text-slate-300 mb-4">Includes:</p>
-      <ul className="space-y-4 mb-8">
+      {inheritedTier ? (
+        <div className="mb-5">
+          <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-500/10 border border-blue-500/20">
+            <i className="fas fa-arrow-up text-blue-400 text-xs"></i>
+            <span className="text-sm font-medium text-blue-300">
+              Everything in {inheritedTier}, plus:
+            </span>
+          </div>
+        </div>
+      ) : (
+        <p className="text-sm font-semibold text-slate-300 mb-4">Includes:</p>
+      )}
+      <ul className="space-y-3.5 mb-8">
         {features.map((feature, idx) => (
           <motion.li
-            key={idx}
+            key={feature.name}
             className="flex items-center gap-3 text-slate-400 group-hover:text-slate-300 transition-colors"
             initial={{ opacity: 0, x: -20 }}
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true }}
-            transition={{ delay: delay + idx * 0.1 }}
+            transition={{ delay: delay + idx * 0.05 }}
           >
             <div
               className={`mt-0.5 w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 border ${recommended ? "border-blue-500 bg-blue-500/20 text-blue-400" : "border-slate-700 bg-slate-800 text-slate-400"}`}
             >
               <i className="fas fa-check text-[10px]"></i>
             </div>
-            <span className="text-sm leading-tight">{feature}</span>
+            <span className="text-sm leading-tight">{feature.displayName}</span>
           </motion.li>
         ))}
       </ul>
@@ -116,17 +125,63 @@ export const Pricing = () => {
   // Use the shared TanStack Query hook for fetching subscription plans
   const { data: apiPlans = [], isLoading } = useSubscriptionPlans();
 
-  // Transform API plans to match the expected format for PricingCard
-  const plans = apiPlans.map((plan: any) => ({
-    tier: plan.name,
-    price: plan.slug === "ENTERPRISE" ? "Custom" : plan.priceMonthly.toString(),
-    sub: plan.description,
-    features: plan.features,
-    recommended: plan.slug === "PRO_PLAN",
-    buttonText:
-      plan.slug === "ENTERPRISE" ? "Contact Sales" : `Choose ${plan.name}`,
-    slug: plan.slug,
-  }));
+  // Build a lookup map from feature name to display name
+  const featureDisplayNames = React.useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const plan of apiPlans) {
+      for (const detail of plan.featureDetails || []) {
+        map[detail.name] = detail.displayName;
+      }
+    }
+    return map;
+  }, [apiPlans]);
+
+  // Sort plans by sortOrder and compute unique features per tier
+  const sortedPlans = React.useMemo(
+    () => [...apiPlans].sort((a: any, b: any) => a.sortOrder - b.sortOrder),
+    [apiPlans],
+  );
+
+  const plans = React.useMemo(() => {
+    let previousFeatures = new Set<string>();
+
+    return sortedPlans.map((plan: any) => {
+      const currentFeatures = new Set<string>(plan.features || []);
+      // Features unique to this tier (not in the previous tier)
+      const uniqueFeatures = plan.features.filter(
+        (f: string) => !previousFeatures.has(f),
+      );
+      const inheritedTier =
+        previousFeatures.size > 0
+          ? sortedPlans.find(
+              (p: any) => p.sortOrder === plan.sortOrder - 1,
+            )?.displayName
+          : undefined;
+
+      // Map to display names, cap at 10
+      const displayFeatures = uniqueFeatures.slice(0, 10).map((f: string) => ({
+        name: f,
+        displayName:
+          featureDisplayNames[f] ||
+          f.replace(/_/g, " ").replace(/\b\w/g, (c: string) => c.toUpperCase()),
+      }));
+
+      previousFeatures = currentFeatures;
+
+      return {
+        tier: plan.displayName,
+        price:
+          plan.slug === "ENTERPRISE" ? "Custom" : plan.priceMonthly.toString(),
+        sub: plan.description,
+        features: displayFeatures,
+        inheritedTier,
+        recommended: plan.slug === "PRO_PLAN",
+        buttonText:
+          plan.slug === "ENTERPRISE" ? "Contact Sales" : `Choose ${plan.displayName}`,
+        slug: plan.slug,
+      };
+    });
+  }, [sortedPlans, featureDisplayNames]);
 
   const handlePlanSelect = (planSlug: string) => {
     if (planSlug === "ENTERPRISE") {
@@ -268,6 +323,7 @@ export const Pricing = () => {
                   price={plan.price}
                   sub={plan.sub}
                   features={plan.features}
+                  inheritedTier={plan.inheritedTier}
                   recommended={plan.recommended}
                   delay={index * 0.1}
                   buttonText={plan.buttonText}

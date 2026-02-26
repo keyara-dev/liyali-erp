@@ -73,10 +73,11 @@ type AccountLockout struct {
 	Active     bool      `gorm:"default:true" json:"active"`
 }
 
-// OrganizationRole represents a custom role within an organization
+// OrganizationRole represents a role (global system role or org-specific custom role)
+// System roles have OrganizationID = nil (global), custom roles have OrganizationID set
 type OrganizationRole struct {
 	ID             uuid.UUID      `gorm:"type:uuid;primary_key;default:gen_random_uuid()" json:"id"`
-	OrganizationID string         `gorm:"index;not null" json:"organizationId"`
+	OrganizationID *string        `gorm:"index" json:"organizationId"` // nil for global system roles
 	Organization   *Organization  `gorm:"foreignKey:OrganizationID" json:"organization,omitempty"`
 	Name           string         `gorm:"not null" json:"name"`
 	Description    string         `json:"description"`

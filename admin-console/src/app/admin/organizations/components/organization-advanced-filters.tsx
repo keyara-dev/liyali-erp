@@ -195,7 +195,7 @@ export function OrganizationAdvancedFilters({
                   <SelectItem value="">All tiers</SelectItem>
                   {tiers?.map((tier) => (
                     <SelectItem key={tier.id} value={tier.name}>
-                      {tier.display_name}
+                      {tier.displayName}
                     </SelectItem>
                   ))}
                 </SelectContent>

@@ -35,7 +35,7 @@ func (rms *RoleManagementService) CreateOrganizationRole(
 
 	role := models.OrganizationRole{
 		ID:             uuid.New(),
-		OrganizationID: organizationID,
+		OrganizationID: &organizationID,
 		Name:           name,
 		Description:    description,
 		IsSystemRole:   false,
@@ -128,12 +128,14 @@ func (rms *RoleManagementService) GetOrganizationRole(roleID string) (*models.Or
 	return &role, nil
 }
 
-// GetOrganizationRoles retrieves all roles for an organization
+// GetOrganizationRoles retrieves all roles visible to an organization
+// Returns global system roles (org_id IS NULL) + org-specific custom roles
 func (rms *RoleManagementService) GetOrganizationRoles(organizationID string) ([]models.OrganizationRole, error) {
 	var roles []models.OrganizationRole
-	if err := rms.db.Where("organization_id = ? AND active = ?", organizationID, true).
-		Order("created_at DESC").
-		Find(&roles).Error; err != nil {
+	if err := rms.db.Where(
+		"((organization_id = ? AND active = ?) OR (organization_id IS NULL AND is_system_role = ? AND active = ?)) AND name != 'super_admin'",
+		organizationID, true, true, true,
+	).Order("is_system_role DESC, name ASC").Find(&roles).Error; err != nil {
 		return nil, fmt.Errorf("failed to fetch roles")
 	}
 	return roles, nil
@@ -273,24 +275,50 @@ func (rms *RoleManagementService) GetOrganizationPermissions(organizationID stri
 // System default roles cannot be deleted by users
 func (rms *RoleManagementService) isSystemDefaultRole(roleName string) bool {
 	systemDefaultRoles := map[string]bool{
-		"admin":     true,
-		"approver":  true,
-		"requester": true,
-		"finance":   true,
-		"viewer":    true,
+		"super_admin": true,
+		"admin":       true,
+		"approver":    true,
+		"requester":   true,
+		"finance":     true,
+		"viewer":      true,
 	}
 	// Case-insensitive check
 	return systemDefaultRoles[strings.ToLower(roleName)]
 }
 
-// InitializeDefaultRolesForOrganization creates default roles for a new organization
+// InitializeDefaultRolesForOrganization is deprecated.
+// System roles are now global (organization_id = NULL) and managed via EnsureGlobalSystemRoles().
+// This method is kept for backward compatibility but is a no-op.
 func (rms *RoleManagementService) InitializeDefaultRolesForOrganization(organizationID string) error {
-	// Define default roles
+	logging.WithFields(map[string]interface{}{
+		"organization_id": organizationID,
+	}).Info("InitializeDefaultRolesForOrganization called but is now a no-op: system roles are global")
+	return nil
+}
+
+// EnsureGlobalSystemRoles creates global system roles if they don't exist.
+// Called at application startup. System roles have organization_id = NULL.
+func (rms *RoleManagementService) EnsureGlobalSystemRoles() error {
 	defaultRoles := []struct {
 		name        string
 		description string
 		permissions []string
 	}{
+		{
+			name:        "super_admin",
+			description: "Full platform access with all permissions",
+			permissions: []string{
+				"requisition:view", "requisition:create", "requisition:edit", "requisition:delete", "requisition:approve", "requisition:reject",
+				"budget:view", "budget:create", "budget:edit", "budget:delete", "budget:approve", "budget:reject",
+				"purchase_order:view", "purchase_order:create", "purchase_order:edit", "purchase_order:delete", "purchase_order:approve", "purchase_order:reject",
+				"payment_voucher:view", "payment_voucher:create", "payment_voucher:edit", "payment_voucher:delete", "payment_voucher:approve", "payment_voucher:reject",
+				"grn:view", "grn:create", "grn:edit", "grn:delete",
+				"vendor:view", "vendor:create", "vendor:edit", "vendor:delete",
+				"category:view", "category:create", "category:edit", "category:delete",
+				"organization:view", "organization:edit", "organization:manage_users", "organization:manage_workflows",
+				"analytics:view", "audit_log:view",
+			},
+		},
 		{
 			name:        "admin",
 			description: "Full administrative access",
@@ -345,41 +373,37 @@ func (rms *RoleManagementService) InitializeDefaultRolesForOrganization(organiza
 	}
 
 	for _, roleData := range defaultRoles {
-		// Check if role already exists
+		// Check if global system role already exists
 		var existingRole models.OrganizationRole
-		err := rms.db.Where("organization_id = ? AND name = ?", organizationID, roleData.name).First(&existingRole).Error
+		err := rms.db.Where("name = ? AND is_system_role = ? AND organization_id IS NULL", roleData.name, true).First(&existingRole).Error
 		if err == nil {
-			// Role already exists, skip
-			continue
+			continue // Already exists
 		}
 
 		role := models.OrganizationRole{
 			ID:             uuid.New(),
-			OrganizationID: organizationID,
+			OrganizationID: nil, // Global system role
 			Name:           roleData.name,
 			Description:    roleData.description,
 			IsSystemRole:   true,
 			Active:         true,
 		}
 
-		// Convert permissions to JSON
 		permissionsJSON, _ := json.Marshal(roleData.permissions)
 		role.Permissions = datatypes.JSON(permissionsJSON)
 
 		if err := rms.db.Create(&role).Error; err != nil {
 			logging.WithFields(map[string]interface{}{
-				"operation":       "create_default_role",
-				"role_name":       roleData.name,
-				"organization_id": organizationID,
-			}).WithError(err).Error("failed_to_create_default_role")
-			return fmt.Errorf("failed to create default role %s: %w", roleData.name, err)
+				"operation": "ensure_global_system_role",
+				"role_name": roleData.name,
+			}).WithError(err).Error("failed_to_create_global_system_role")
+			return fmt.Errorf("failed to create global system role %s: %w", roleData.name, err)
 		}
 
 		logging.WithFields(map[string]interface{}{
-			"operation":       "create_default_role",
-			"role_name":       roleData.name,
-			"organization_id": organizationID,
-		}).Info("successfully_created_default_role")
+			"operation": "ensure_global_system_role",
+			"role_name": roleData.name,
+		}).Info("created_global_system_role")
 	}
 
 	return nil

@@ -52,6 +52,7 @@ import {
   type RoleStats,
   type RoleFilters,
 } from "@/app/_actions/roles";
+import { getAdminSessionStatus } from "@/app/_actions/auth";
 import {
   useRoles,
   usePermissions,
@@ -70,6 +71,14 @@ import { PermissionsOverview } from "./components/permissions-overview";
 export default function RolesPage() {
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState("roles");
+  const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
+  const isSuperAdmin = currentUserRole === "super_admin";
+
+  useEffect(() => {
+    getAdminSessionStatus().then((status) => {
+      setCurrentUserRole(status.role);
+    });
+  }, []);
 
   // Dialog states
   const [showCreateDialog, setShowCreateDialog] = useState(false);
@@ -407,6 +416,7 @@ export default function RolesPage() {
                               </DropdownMenuItem>
                               <DropdownMenuItem
                                 onClick={() => handleRoleAction("edit", role)}
+                                disabled={role.is_system_role && !isSuperAdmin}
                               >
                                 <Edit className="mr-2 h-4 w-4" />
                                 Edit Role
@@ -483,6 +493,7 @@ export default function RolesPage() {
         role={selectedRole}
         permissions={permissions}
         onRoleUpdated={handleRoleUpdated}
+        isSuperAdmin={isSuperAdmin}
       />
 
       <RoleDetailsDialog

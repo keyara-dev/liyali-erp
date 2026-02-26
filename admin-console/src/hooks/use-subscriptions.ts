@@ -127,7 +127,7 @@ export function useCreateSubscriptionFeature() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (
-      data: Omit<SubscriptionFeature, "id" | "created_at">,
+      data: Omit<SubscriptionFeature, "id" | "createdAt">,
     ) => createSubscriptionFeature(data),
     onSuccess: () => {
       queryClient.invalidateQueries({
@@ -145,7 +145,7 @@ export function useUpdateSubscriptionFeature() {
       data,
     }: {
       featureId: string;
-      data: Partial<Omit<SubscriptionFeature, "id" | "created_at">>;
+      data: Partial<Omit<SubscriptionFeature, "id" | "createdAt">>;
     }) => updateSubscriptionFeature(featureId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({
@@ -175,7 +175,7 @@ export function useChangeOrganizationTier() {
       data,
     }: {
       organizationId: string;
-      data: { new_tier: string; reason: string; override_limits?: boolean };
+      data: { newTier: string; reason: string; overrideLimits?: boolean };
     }) => changeOrganizationTier(organizationId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["subscriptions"] });

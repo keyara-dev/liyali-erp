@@ -58,13 +58,7 @@ func (s *OrganizationService) CreateOrganization(name, description, logoURL, cre
 		return org, nil
 	}
 
-	// Initialize default system roles for the organization
-	roleService := NewRoleManagementService(s.db)
-	if err := roleService.InitializeDefaultRolesForOrganization(org.ID); err != nil {
-		// Log the error but don't fail organization creation
-		// The roles can be created later if needed
-		// TODO: Add proper logging here
-	}
+	// System roles are now global — no per-org initialization needed
 
 	// Add creator as admin
 	now := time.Now()

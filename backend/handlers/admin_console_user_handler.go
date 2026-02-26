@@ -323,6 +323,29 @@ func AdminCreateAdminUser(c *fiber.Ctx) error {
 		return utils.SendInternalError(c, "Failed to create admin user", err)
 	}
 
+	// Assign roles from role_ids
+	if len(request.RoleIDs) > 0 {
+		adminUserID := c.Locals("userID").(string)
+		for _, roleID := range request.RoleIDs {
+			// Check if role exists
+			var roleCount int64
+			db.Table("organization_roles").Where("id = ? AND active = ?", roleID, true).Count(&roleCount)
+			if roleCount == 0 {
+				continue
+			}
+
+			db.Table("user_organization_roles").Create(map[string]interface{}{
+				"id":              utils.GenerateID(),
+				"user_id":         userID,
+				"organization_id": nil,
+				"role_id":         roleID,
+				"assigned_by":     adminUserID,
+				"assigned_at":     now,
+				"active":          true,
+			})
+		}
+	}
+
 	// Audit log
 	db.Table("admin_audit_logs").Create(map[string]interface{}{
 		"id":            utils.GenerateID(),
@@ -406,6 +429,37 @@ func AdminUpdateAdminUser(c *fiber.Ctx) error {
 
 	if err := db.Table("users").Where("id = ?", userID).Updates(updates).Error; err != nil {
 		return utils.SendInternalError(c, "Failed to update admin user", err)
+	}
+
+	// Update role assignments if role_ids provided
+	if request.RoleIDs != nil {
+		now := time.Now()
+		adminUserID := c.Locals("userID").(string)
+
+		// Deactivate all existing role assignments
+		db.Table("user_organization_roles").Where("user_id = ? AND active = ?", userID, true).Updates(map[string]interface{}{
+			"active":     false,
+			"updated_at": now,
+		})
+
+		// Assign new roles
+		for _, roleID := range request.RoleIDs {
+			var roleCount int64
+			db.Table("organization_roles").Where("id = ? AND active = ?", roleID, true).Count(&roleCount)
+			if roleCount == 0 {
+				continue
+			}
+
+			db.Table("user_organization_roles").Create(map[string]interface{}{
+				"id":              utils.GenerateID(),
+				"user_id":         userID,
+				"organization_id": nil,
+				"role_id":         roleID,
+				"assigned_by":     adminUserID,
+				"assigned_at":     now,
+				"active":          true,
+			})
+		}
 	}
 
 	return utils.SendSimpleSuccess(c, map[string]interface{}{"id": userID}, "Admin user updated successfully")

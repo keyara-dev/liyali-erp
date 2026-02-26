@@ -55,22 +55,7 @@ func GetOrganizationRoles(c *fiber.Ctx) error {
 
 	log.Printf("GetOrganizationRoles: Found %d roles for organization %s", len(roles), organizationID)
 
-	// Auto-initialize default roles if none exist for this organization
-	if len(roles) == 0 {
-		log.Printf("GetOrganizationRoles: No roles found, initializing default roles for organization %s", organizationID)
-		if err := svc.InitializeDefaultRolesForOrganization(organizationID); err != nil {
-			log.Printf("Error initializing default roles: %v", err)
-			// Continue even if initialization fails, just return empty list
-		} else {
-			// Fetch roles again after initialization
-			roles, err = svc.GetOrganizationRoles(organizationID)
-			if err != nil {
-				log.Printf("Error fetching roles after initialization: %v", err)
-			} else {
-				log.Printf("GetOrganizationRoles: After initialization, found %d roles", len(roles))
-			}
-		}
-	}
+	// System roles are now global and always available via EnsureGlobalSystemRoles() at startup
 
 	responses := make([]RoleResponse, 0, len(roles))
 	for _, role := range roles {

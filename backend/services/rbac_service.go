@@ -151,6 +151,23 @@ var SystemPermissions = map[string]Permission{
 
 // System roles with predefined permissions
 var SystemRoles = map[string][]string{
+	"super_admin": {
+		"user.view", "user.create", "user.edit", "user.delete", "user.activate",
+		"role.view", "role.create", "role.edit", "role.delete", "role.assign",
+		"requisition.view", "requisition.create", "requisition.edit", "requisition.delete", "requisition.approve", "requisition.reject",
+		"budget.view", "budget.create", "budget.edit", "budget.delete", "budget.approve", "budget.reject",
+		"purchase_order.view", "purchase_order.create", "purchase_order.edit", "purchase_order.delete", "purchase_order.approve", "purchase_order.reject",
+		"payment_voucher.view", "payment_voucher.create", "payment_voucher.edit", "payment_voucher.delete", "payment_voucher.approve", "payment_voucher.reject",
+		"grn.view", "grn.create", "grn.edit", "grn.delete", "grn.approve", "grn.reject",
+		"vendor.view", "vendor.create", "vendor.edit", "vendor.delete",
+		"category.view", "category.create", "category.edit", "category.delete",
+		"approval.view", "approval.approve", "approval.reject", "approval.reassign", "approval.comment",
+		"workflow.view", "workflow.create", "workflow.edit", "workflow.delete", "workflow.manage",
+		"document.view", "document.create", "document.edit", "document.delete", "document.submit",
+		"analytics.view", "analytics.export", "analytics.advanced",
+		"audit.view", "audit.export",
+		"organization.view", "organization.edit", "organization.manage",
+	},
 	"admin": {
 		"user.view", "user.create", "user.edit", "user.delete", "user.activate",
 		"role.view", "role.create", "role.edit", "role.delete", "role.assign",
@@ -353,7 +370,11 @@ func (s *RBACService) UpdateCustomRole(ctx context.Context, roleID uuid.UUID, re
 		if role.ID.Valid {
 			roleIDStr = uuid.UUID(role.ID.Bytes).String()
 		}
-		s.auditService.LogEvent(ctx, updatedBy, existingRole.OrganizationID, "role_updated", "organization_role", roleIDStr, details, "", "")
+		orgID := ""
+		if existingRole.OrganizationID != nil {
+			orgID = *existingRole.OrganizationID
+		}
+		s.auditService.LogEvent(ctx, updatedBy, orgID, "role_updated", "organization_role", roleIDStr, details, "", "")
 	}
 
 	return role, nil
@@ -380,7 +401,11 @@ func (s *RBACService) DeleteCustomRole(ctx context.Context, roleID uuid.UUID, de
 	// Log audit event
 	if s.auditService != nil {
 		details := fmt.Sprintf("Deleted custom role '%s'", existingRole.Name)
-		s.auditService.LogEvent(ctx, deletedBy, existingRole.OrganizationID, "role_deleted", "organization_role", roleID.String(), details, "", "")
+		orgID := ""
+		if existingRole.OrganizationID != nil {
+			orgID = *existingRole.OrganizationID
+		}
+		s.auditService.LogEvent(ctx, deletedBy, orgID, "role_deleted", "organization_role", roleID.String(), details, "", "")
 	}
 
 	return nil
@@ -503,8 +528,8 @@ func (s *RBACService) GetUserPermissions(ctx context.Context, userID, organizati
 		// Check if user has a system role (admin, manager, approver, etc.)
 		if systemPermissions, exists := SystemRoles[member.Role]; exists {
 			for _, permission := range systemPermissions {
-				// System role permissions override denials (admins can't be denied)
-				if member.Role == "admin" || !deniedPermissions[permission] {
+				// System role permissions override denials (admins and super_admins can't be denied)
+				if member.Role == "admin" || member.Role == "super_admin" || !deniedPermissions[permission] {
 					permissionSet[permission] = true
 				}
 			}
@@ -637,12 +662,13 @@ func (s *RBACService) validatePermissions(permissionIDs []string) error {
 
 func (s *RBACService) getSystemRoleDescription(roleName string) string {
 	descriptions := map[string]string{
-		"admin":     "Full system administrator with all permissions",
-		"manager":   "Department manager with approval and oversight permissions",
-		"approver":  "Approval authority for workflow tasks",
-		"finance":   "Financial management and budget oversight",
-		"requester": "Can create and manage own requisitions",
-		"viewer":    "Read-only access to system information",
+		"super_admin": "Full platform access with all permissions",
+		"admin":       "Full system administrator with all permissions",
+		"manager":     "Department manager with approval and oversight permissions",
+		"approver":    "Approval authority for workflow tasks",
+		"finance":     "Financial management and budget oversight",
+		"requester":   "Can create and manage own requisitions",
+		"viewer":      "Read-only access to system information",
 	}
 
 	if desc, exists := descriptions[roleName]; exists {

@@ -69,7 +69,7 @@ export function OverrideLimitsDialog({
     try {
       const result = await getAllSubscriptionFeatures();
       if (result.success && result.data) {
-        setAvailableFeatures(result.data.filter((f) => f.is_active));
+        setAvailableFeatures(result.data.filter((f) => f.isActive));
       }
     } catch {
       toast.error("Failed to load features");
@@ -302,7 +302,7 @@ export function OverrideLimitsDialog({
                                   htmlFor={feature.id}
                                   className={`text-sm leading-none ${alreadyEnabled ? "text-muted-foreground" : ""}`}
                                 >
-                                  {feature.display_name || feature.name}
+                                  {feature.displayName || feature.name}
                                   {alreadyEnabled && (
                                     <span className="text-xs ml-1">
                                       (active)

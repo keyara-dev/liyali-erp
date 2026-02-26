@@ -80,12 +80,14 @@ func (r *OrganizationRoleRepository) GetByID(ctx context.Context, id uuid.UUID) 
 	return &role, nil
 }
 
-// GetByName retrieves an organization role by name
+// GetByName retrieves an organization role by name (checks both org-specific and global system roles)
 func (r *OrganizationRoleRepository) GetByName(ctx context.Context, organizationID, name string) (*sqlc.OrganizationRole, error) {
 	query := `
 		SELECT id, organization_id, name, description, is_system_role, permissions, active, created_by, created_at, updated_at
-		FROM organization_roles 
-		WHERE organization_id = $1 AND name = $2 AND active = true`
+		FROM organization_roles
+		WHERE ((organization_id = $1 AND name = $2) OR (organization_id IS NULL AND is_system_role = true AND name = $2))
+		AND active = true
+		LIMIT 1`
 
 	var role sqlc.OrganizationRole
 	err := r.db.QueryRow(ctx, query, organizationID, name).Scan(
@@ -153,12 +155,17 @@ func (r *OrganizationRoleRepository) Delete(ctx context.Context, id uuid.UUID) e
 	return err
 }
 
-// List retrieves organization roles with pagination
+// List retrieves organization roles with pagination (global system roles + org custom roles)
 func (r *OrganizationRoleRepository) List(ctx context.Context, organizationID string, limit, offset int) ([]*sqlc.OrganizationRole, error) {
 	query := `
 		SELECT id, organization_id, name, description, is_system_role, permissions, active, created_by, created_at, updated_at
-		FROM organization_roles 
-		WHERE organization_id = $1 AND active = true
+		FROM organization_roles
+		WHERE (
+			(organization_id = $1 AND active = true)
+			OR
+			(organization_id IS NULL AND is_system_role = true AND active = true)
+		)
+		AND name != 'super_admin'
 		ORDER BY is_system_role DESC, name ASC
 		LIMIT $2 OFFSET $3`
 
@@ -192,15 +199,15 @@ func (r *OrganizationRoleRepository) List(ctx context.Context, organizationID st
 	return roles, rows.Err()
 }
 
-// ListSystem retrieves system roles for an organization
-func (r *OrganizationRoleRepository) ListSystem(ctx context.Context, organizationID string) ([]*sqlc.OrganizationRole, error) {
+// ListSystem retrieves global system roles (organization_id IS NULL)
+func (r *OrganizationRoleRepository) ListSystem(ctx context.Context) ([]*sqlc.OrganizationRole, error) {
 	query := `
 		SELECT id, organization_id, name, description, is_system_role, permissions, active, created_by, created_at, updated_at
-		FROM organization_roles 
-		WHERE organization_id = $1 AND is_system_role = true AND active = true
+		FROM organization_roles
+		WHERE organization_id IS NULL AND is_system_role = true AND active = true
 		ORDER BY name ASC`
 
-	rows, err := r.db.Query(ctx, query, organizationID)
+	rows, err := r.db.Query(ctx, query)
 	if err != nil {
 		return nil, err
 	}
@@ -269,9 +276,9 @@ func (r *OrganizationRoleRepository) ListCustom(ctx context.Context, organizatio
 	return roles, rows.Err()
 }
 
-// Count counts total organization roles
+// Count counts total roles visible to an organization (global system + org custom)
 func (r *OrganizationRoleRepository) Count(ctx context.Context, organizationID string) (int64, error) {
-	query := `SELECT COUNT(*) FROM organization_roles WHERE organization_id = $1 AND active = true`
+	query := `SELECT COUNT(*) FROM organization_roles WHERE ((organization_id = $1 AND active = true) OR (organization_id IS NULL AND is_system_role = true AND active = true))`
 
 	var count int64
 	err := r.db.QueryRow(ctx, query, organizationID).Scan(&count)

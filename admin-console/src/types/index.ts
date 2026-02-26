@@ -86,49 +86,65 @@ export interface SubscriptionPlan {
 export interface SubscriptionTier {
   id: string;
   name: string;
-  display_name: string;
+  displayName: string;
   description: string;
-  price_monthly: number;
-  price_yearly: number;
-  max_workspaces: number;
-  max_team_members: number;
-  max_documents: number;
-  max_workflows: number;
-  max_custom_roles: number;
+  priceMonthly: number;
+  priceYearly: number;
+  maxWorkspaces: number;
+  maxTeamMembers: number;
+  maxDocuments: number;
+  maxWorkflows: number;
+  maxCustomRoles: number;
+  maxRequisitions: number;
+  maxBudgets: number;
+  maxPurchaseOrders: number;
+  maxPaymentVouchers: number;
+  maxGRNs: number;
+  maxDepartments: number;
+  maxVendors: number;
   features: string[];
-  is_active: boolean;
-  sort_order: number;
-  created_at: string;
-  updated_at: string;
+  isActive: boolean;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+  featureCount?: number;
+  organizationCount?: number;
 }
 
 export interface SubscriptionFeature {
   id: string;
   name: string;
-  display_name: string;
+  displayName: string;
   description: string;
   category: string;
-  is_active: boolean;
-  created_at: string;
+  isActive: boolean;
+  createdAt: string;
 }
 
 export interface CreateTierRequest {
   name: string;
-  display_name: string;
+  displayName: string;
   description: string;
-  price_monthly: number;
-  price_yearly: number;
-  max_workspaces: number;
-  max_team_members: number;
-  max_documents: number;
-  max_workflows: number;
-  max_custom_roles: number;
+  priceMonthly: number;
+  priceYearly: number;
+  maxWorkspaces: number;
+  maxTeamMembers: number;
+  maxDocuments: number;
+  maxWorkflows: number;
+  maxCustomRoles: number;
+  maxRequisitions: number;
+  maxBudgets: number;
+  maxPurchaseOrders: number;
+  maxPaymentVouchers: number;
+  maxGRNs: number;
+  maxDepartments: number;
+  maxVendors: number;
   features: string[];
-  is_active: boolean;
-  sort_order: number;
+  isActive: boolean;
+  sortOrder: number;
 }
 
-export interface UpdateTierRequest extends Partial<CreateTierRequest> {
+export interface UpdateTierRequest extends Partial<Omit<CreateTierRequest, "name">> {
   id: string;
 }
 

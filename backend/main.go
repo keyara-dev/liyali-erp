@@ -111,6 +111,13 @@ func main() {
 	)
 
 	rbacService := services.NewRBACService(roleRepo, auditService, config.DB)
+
+	// Bootstrap global system roles (super_admin, admin, approver, requester, finance, viewer)
+	roleManagementService := services.NewRoleManagementService(config.DB)
+	if err := roleManagementService.EnsureGlobalSystemRoles(); err != nil {
+		logging.WithError(err).Error("failed_to_ensure_global_system_roles")
+	}
+
 	workflowService := services.NewWorkflowService(workflowRepo, auditService, config.DB)
 
 	// Initialize notification service (placeholder for now)

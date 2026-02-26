@@ -65,7 +65,7 @@ export function ChangeTierDialog({
     try {
       const result = await getAllSubscriptionTiers();
       if (result.success && result.data) {
-        setTiers(result.data.filter((t) => t.is_active));
+        setTiers(result.data.filter((t) => t.isActive));
       }
     } catch {
       toast.error("Failed to load subscription tiers");
@@ -96,9 +96,9 @@ export function ChangeTierDialog({
     setIsLoading(true);
     try {
       const result = await changeOrganizationTier(organization.id, {
-        new_tier: selectedTier,
+        newTier: selectedTier,
         reason: reason.trim(),
-        override_limits: overrideLimits,
+        overrideLimits: overrideLimits,
       });
 
       if (result.success) {
@@ -174,10 +174,10 @@ export function ChangeTierDialog({
                       disabled={tier.name === organization.subscription_tier}
                     >
                       <div className="flex items-center gap-2">
-                        <span>{tier.display_name || tier.name}</span>
+                        <span>{tier.displayName || tier.name}</span>
                         <span className="text-xs text-muted-foreground">
-                          ${tier.price_monthly}/mo &middot;{" "}
-                          {tier.max_team_members} users
+                          ${tier.priceMonthly}/mo &middot;{" "}
+                          {tier.maxTeamMembers} users
                         </span>
                       </div>
                     </SelectItem>
@@ -190,15 +190,15 @@ export function ChangeTierDialog({
           {selectedTierDetails && (
             <div className="rounded-lg border p-3 bg-blue-50 dark:bg-blue-950/20 space-y-1">
               <p className="text-sm font-medium">
-                {selectedTierDetails.display_name || selectedTierDetails.name}
+                {selectedTierDetails.displayName || selectedTierDetails.name}
               </p>
               <p className="text-xs text-muted-foreground">
                 {selectedTierDetails.description}
               </p>
               <div className="flex gap-4 text-xs text-muted-foreground pt-1">
-                <span>${selectedTierDetails.price_monthly}/month</span>
-                <span>{selectedTierDetails.max_team_members} max users</span>
-                <span>{selectedTierDetails.max_documents} documents</span>
+                <span>${selectedTierDetails.priceMonthly}/month</span>
+                <span>{selectedTierDetails.maxTeamMembers} max users</span>
+                <span>{selectedTierDetails.maxDocuments} documents</span>
               </div>
             </div>
           )}

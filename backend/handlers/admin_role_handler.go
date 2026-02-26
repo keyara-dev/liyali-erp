@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"log"
+	"strings"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -68,6 +69,42 @@ var AllAdminPermissions = []AdminPermission{
 	{ID: "audit.view", Name: "audit.view", DisplayName: "View Audit Logs", Description: "View audit trail", Category: "Audit"},
 }
 
+// titleCase capitalizes the first letter of a string
+func titleCase(s string) string {
+	if s == "" {
+		return s
+	}
+	return strings.ToUpper(s[:1]) + s[1:]
+}
+
+// formatPermissionName formats a permission ID like "requisition:view" into "Requisition View"
+func formatPermissionName(pid string) string {
+	// Handle colon-separated (org-level: "requisition:view")
+	if parts := strings.SplitN(pid, ":", 2); len(parts) == 2 {
+		resource := strings.ReplaceAll(parts[0], "_", " ")
+		action := strings.ReplaceAll(parts[1], "_", " ")
+		return titleCase(resource) + " " + titleCase(action)
+	}
+	// Handle dot-separated (admin-level: "users.view")
+	if parts := strings.SplitN(pid, ".", 2); len(parts) == 2 {
+		resource := strings.ReplaceAll(parts[0], "_", " ")
+		action := strings.ReplaceAll(parts[1], "_", " ")
+		return titleCase(resource) + " " + titleCase(action)
+	}
+	return pid
+}
+
+// formatPermissionCategory extracts category from permission ID
+func formatPermissionCategory(pid string) string {
+	if parts := strings.SplitN(pid, ":", 2); len(parts) == 2 {
+		return titleCase(strings.ReplaceAll(parts[0], "_", " "))
+	}
+	if parts := strings.SplitN(pid, ".", 2); len(parts) == 2 {
+		return titleCase(strings.ReplaceAll(parts[0], "_", " "))
+	}
+	return "General"
+}
+
 // roleToFrontend transforms a raw DB role row into the Role shape the frontend expects
 func roleToFrontend(role map[string]interface{}) map[string]interface{} {
 	// Map 'active' -> 'is_active'
@@ -78,7 +115,7 @@ func roleToFrontend(role map[string]interface{}) map[string]interface{} {
 	// Add display_name from name if not present
 	if _, ok := role["display_name"]; !ok {
 		if name, ok := role["name"].(string); ok {
-			role["display_name"] = name
+			role["display_name"] = titleCase(name)
 		}
 	}
 
@@ -95,6 +132,8 @@ func roleToFrontend(role map[string]interface{}) map[string]interface{} {
 		// Convert permission IDs to full Permission objects
 		permissions := make([]map[string]interface{}, 0)
 		for _, pid := range permIDs {
+			// First try to match against admin-level permissions
+			found := false
 			for _, ap := range AllAdminPermissions {
 				if ap.ID == pid {
 					permissions = append(permissions, map[string]interface{}{
@@ -107,8 +146,23 @@ func roleToFrontend(role map[string]interface{}) map[string]interface{} {
 						"category":             ap.Category,
 						"is_system_permission": true,
 					})
+					found = true
 					break
 				}
+			}
+			// If not found in admin permissions, handle as org-level permission
+			if !found && pid != "" {
+				category := formatPermissionCategory(pid)
+				permissions = append(permissions, map[string]interface{}{
+					"id":                   pid,
+					"name":                 pid,
+					"display_name":         formatPermissionName(pid),
+					"description":          "",
+					"resource":             category,
+					"action":               pid,
+					"category":             category,
+					"is_system_permission": false,
+				})
 			}
 		}
 		role["permissions"] = permissions
@@ -119,7 +173,26 @@ func roleToFrontend(role map[string]interface{}) map[string]interface{} {
 	return role
 }
 
+// toInt64 safely converts an interface{} numeric value to int64
+func toInt64(v interface{}) int64 {
+	switch n := v.(type) {
+	case int64:
+		return n
+	case int:
+		return int64(n)
+	case int32:
+		return int64(n)
+	case float64:
+		return int64(n)
+	case float32:
+		return int64(n)
+	default:
+		return 0
+	}
+}
+
 // AdminGetAllRoles returns all roles with filters
+// System roles are global (organization_id IS NULL), custom roles are per-org
 func AdminGetAllRoles(c *fiber.Ctx) error {
 	db := config.DB
 
@@ -137,10 +210,11 @@ func AdminGetAllRoles(c *fiber.Ctx) error {
 		query = query.Where("LOWER(organization_roles.name) LIKE LOWER(?) OR LOWER(organization_roles.description) LIKE LOWER(?)", searchTerm, searchTerm)
 	}
 
-	if isActive == "true" {
-		query = query.Where("organization_roles.active = ?", true)
-	} else if isActive == "false" {
+	if isActive == "false" {
 		query = query.Where("organization_roles.active = ?", false)
+	} else {
+		// Default to active roles only (unless explicitly requesting inactive)
+		query = query.Where("organization_roles.active = ?", true)
 	}
 
 	if isSystemRole == "true" {
@@ -175,9 +249,9 @@ func AdminGetRoleStats(c *fiber.Ctx) error {
 
 	var totalRoles, activeRoles, systemRoles, customRoles, usersWithRoles int64
 
-	db.Table("organization_roles").Count(&totalRoles)
 	db.Table("organization_roles").Where("active = ?", true).Count(&activeRoles)
-	db.Table("organization_roles").Where("is_system_role = ?", true).Count(&systemRoles)
+	db.Table("organization_roles").Count(&totalRoles)
+	db.Table("organization_roles").Where("is_system_role = ? AND organization_id IS NULL", true).Count(&systemRoles)
 	db.Table("organization_roles").Where("is_system_role = ?", false).Count(&customRoles)
 	db.Table("user_organization_roles").Where("active = ?", true).Distinct("user_id").Count(&usersWithRoles)
 
@@ -187,17 +261,16 @@ func AdminGetRoleStats(c *fiber.Ctx) error {
 		Select(`organization_roles.id as role_id,
 			organization_roles.name as role_name,
 			(SELECT COUNT(*) FROM user_organization_roles WHERE user_organization_roles.role_id = organization_roles.id AND user_organization_roles.active = true) as user_count`).
+		Where("organization_roles.active = ?", true).
 		Find(&roleDistribution)
 
-	// Calculate total users for percentage
 	var totalAssignments int64
 	db.Table("user_organization_roles").Where("active = ?", true).Count(&totalAssignments)
 
 	for i := range roleDistribution {
 		if totalAssignments > 0 {
-			if count, ok := roleDistribution[i]["user_count"].(int64); ok {
-				roleDistribution[i]["percentage"] = float64(count) / float64(totalAssignments) * 100
-			}
+			count := toInt64(roleDistribution[i]["user_count"])
+			roleDistribution[i]["percentage"] = float64(count) / float64(totalAssignments) * 100
 		} else {
 			roleDistribution[i]["percentage"] = 0
 		}
@@ -263,7 +336,7 @@ func AdminCreateRole(c *fiber.Ctx) error {
 
 	role := map[string]interface{}{
 		"id":              uuid.New().String(),
-		"organization_id": "", // System-level role
+		"organization_id": nil, // Admin-created roles are global (no specific org)
 		"name":            request.Name,
 		"description":     request.Description,
 		"is_system_role":  false,
@@ -287,14 +360,18 @@ func AdminUpdateRole(c *fiber.Ctx) error {
 	db := config.DB
 	roleID := c.Params("id")
 
-	// Check if role exists and is not a system role
+	// Check if role exists
 	var existing map[string]interface{}
 	if err := db.Table("organization_roles").Where("id = ?", roleID).First(&existing).Error; err != nil {
 		return utils.SendNotFound(c, "Role not found")
 	}
 
+	// System roles can only be edited by super_admin
 	if isSystem, ok := existing["is_system_role"].(bool); ok && isSystem {
-		return utils.SendBadRequest(c, "Cannot modify system roles")
+		userRole, _ := c.Locals("userRole").(string)
+		if userRole != "super_admin" {
+			return utils.SendBadRequest(c, "Only super admins can modify system roles")
+		}
 	}
 
 	var request struct {
@@ -436,7 +513,7 @@ func AdminAssignRoleToUsers(c *fiber.Ctx) error {
 		assignment := map[string]interface{}{
 			"id":              uuid.New().String(),
 			"user_id":         userID,
-			"organization_id": "", // System level
+			"organization_id": nil, // System-level assignment (no specific org)
 			"role_id":         roleID,
 			"assigned_by":     adminUserID,
 			"assigned_at":     now,
@@ -502,7 +579,7 @@ func AdminCloneRole(c *fiber.Ctx) error {
 
 	cloned := map[string]interface{}{
 		"id":              uuid.New().String(),
-		"organization_id": original["organization_id"],
+		"organization_id": nil, // Cloned roles are global custom roles
 		"name":            request.Name,
 		"description":     original["description"],
 		"is_system_role":  false,
