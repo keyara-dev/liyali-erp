@@ -22,7 +22,7 @@ import type {
   Workflow,
   WorkflowFormData,
   WorkflowListFilter,
-} from "@/types/workflow-config";
+} from "@/app/_actions/workflows";
 
 // Re-export types for convenience
 export type { Workflow, WorkflowFormData, WorkflowListFilter };

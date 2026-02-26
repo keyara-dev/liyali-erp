@@ -13,20 +13,28 @@ export interface WorkflowStage {
   stageNumber: number;
   stageName: string;
   description?: string;
-  requiredRole: string;
-  requiredApprovals: number;
+  requiredRole?: string;
+  requiredApprovals?: number;
   timeoutHours?: number;
-  canReject: boolean;
-  canReassign: boolean;
+  canReject?: boolean;
+  canReassign?: boolean;
+  // Aliases for backward compatibility with workflow-config types
+  order?: number;
+  name?: string;
+  approverRole?: string;
+  canBeRejected?: boolean;
+  canBeReassigned?: boolean;
 }
 
 export interface WorkflowFormData {
   name: string;
   description: string;
   entityType: string; // Changed from documentType to match backend
+  documentType?: string; // Alias for entityType
+  isActive?: boolean;
+  isDefault?: boolean;
   stages: WorkflowStage[];
   conditions?: any;
-  isDefault: boolean;
 }
 
 export interface Workflow {

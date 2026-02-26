@@ -73,15 +73,20 @@ export interface Workflow {
   description: string;
   entityType: string;
   documentType?: string;       // Alias for entityType
+  version: number;
   isActive: boolean;
+  isDefault: boolean;
   status?: string;             // Workflow status (active, inactive, draft)
   stages: WorkflowStage[];
+  totalStages: number;
+  usageCount: number;
   conditions?: WorkflowConditions;
   applicableEntityTypes?: string[];
   organizationId?: string;
   createdBy: string;
   createdAt: Date | string;
   updatedAt: Date | string;
+  deletedAt?: string;
 
   // Extended fields for UI compatibility (should be added to backend)
   isTemplate?: boolean;        // Is this a template workflow
