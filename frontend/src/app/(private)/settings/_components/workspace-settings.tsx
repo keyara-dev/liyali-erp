@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { OrganizationLogoUpload } from "@/components/ui/organization-logo-upload";
+import { Separator } from "@/components/ui/separator";
 import {
   Card,
   CardContent,
@@ -29,7 +30,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Loader2, Trash2, Save, Building2 } from "lucide-react";
+import { Loader2, Trash2, Save, Building2, FileText } from "lucide-react";
 import { toast } from "sonner";
 
 export function WorkspaceSettings() {
@@ -43,6 +44,7 @@ export function WorkspaceSettings() {
     name: currentOrganization?.name || "",
     description: currentOrganization?.description || "",
     logoUrl: currentOrganization?.logoUrl || "",
+    tagline: currentOrganization?.tagline || "",
   });
 
   const [hasChanges, setHasChanges] = useState(false);
@@ -54,6 +56,7 @@ export function WorkspaceSettings() {
         name: currentOrganization.name || "",
         description: currentOrganization.description || "",
         logoUrl: currentOrganization.logoUrl || "",
+        tagline: currentOrganization.tagline || "",
       });
       setHasChanges(false);
     }
@@ -86,6 +89,7 @@ export function WorkspaceSettings() {
         name: formData.name.trim(),
         description: formData.description.trim(),
         logoUrl: formData.logoUrl,
+        tagline: formData.tagline.trim(),
       });
       setHasChanges(false);
     } catch (error) {
@@ -121,60 +125,119 @@ export function WorkspaceSettings() {
 
   return (
     <div className="space-y-6">
-      {/* Workspace Logo */}
+      {/* Workspace Settings — Logo, Document Header, Details */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Building2 className="h-5 w-5" />
-            Workspace Logo
+            Workspace Settings
           </CardTitle>
           <CardDescription>
-            Upload a logo to represent your workspace
+            Manage your workspace branding, document header, and details
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <OrganizationLogoUpload
-            currentLogoUrl={formData.logoUrl}
-            organizationName={formData.name || "Workspace"}
-            onLogoChange={handleLogoChange}
-            disabled={isUpdating}
-            size="lg"
-          />
-        </CardContent>
-      </Card>
+        <CardContent className="space-y-6">
+          {/* Responsive two-column layout on lg+ */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 lg:gap-8">
+            {/* Left — Logo */}
+            <div className="space-y-3">
+              <div>
+                <p className="text-sm font-medium">Workspace Logo</p>
+                <p className="text-sm text-muted-foreground">
+                  Upload a logo to represent your workspace
+                </p>
+              </div>
+              <OrganizationLogoUpload
+                currentLogoUrl={formData.logoUrl}
+                organizationName={formData.name || "Workspace"}
+                onLogoChange={handleLogoChange}
+                disabled={isUpdating}
+                size="lg"
+              />{" "}
+              {/* Header Preview */}
+              <div className="space-y-1.5 mt-8">
+                <Label className="text-sm font-medium">Preview</Label>
+                <div className="border rounded-md p-4 bg-card flex flex-row items-center gap-3">
+                  {formData.logoUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <div className="w-14 h-14 rounded-xl overflow-clip">
+                      <img
+                        src={formData.logoUrl}
+                        alt="Logo"
+                        className="w-full h-full object-contain shrink-0"
+                      />
+                    </div>
+                  ) : (
+                    <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center shrink-0">
+                      <Building2 className="h-5 w-5 text-muted-foreground" />
+                    </div>
+                  )}
+                  <div className="text-center">
+                    <p className="text-sm font-bold leading-tight">
+                      {formData.name || "Organization Name"}
+                    </p>
+                    {
+                      <p className="text-xs  text-left text-muted-foreground leading-tight mt-0.5">
+                        {formData.tagline || "[Organization Tagline]"}
+                      </p>
+                    }
+                  </div>
+                </div>
+              </div>
+            </div>
 
-      {/* Workspace Details */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Building2 className="h-5 w-5" />
-            Workspace Details
-          </CardTitle>
-          <CardDescription>
-            Update your workspace name and description
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <Input
-            label="Workspace Name"
-            id="workspace-name"
-            value={formData.name}
-            onChange={(e) => handleInputChange("name", e.target.value)}
-            placeholder="Enter workspace name"
-            disabled={isUpdating}
-          />
+            {/* Mobile separator between logo and fields */}
+            <Separator className="lg:hidden my-6" />
 
-          <Textarea
-            label="Description"
-            id="workspace-description"
-            value={formData.description}
-            onChange={(e) => handleInputChange("description", e.target.value)}
-            placeholder="Enter workspace description (optional)"
-            rows={3}
-            disabled={isUpdating}
-          />
+            {/* Right — Document Header + Description */}
+            <div className="space-y-6">
+              {/* Document Header */}
+              <div className="space-y-4">
+                <div>
+                  <p className="text-sm font-medium flex items-center gap-1.5">
+                    <FileText className="h-4 w-4" />
+                    Document Header
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    Appears on all generated PDFs (Requisition, PO, Payment
+                    Voucher, GRN)
+                  </p>
+                </div>
 
-          <div className="flex justify-end">
+                <Input
+                  label="Organisation Name"
+                  id="doc-header-name"
+                  value={formData.name}
+                  onChange={(e) => handleInputChange("name", e.target.value)}
+                  placeholder="Enter organisation name"
+                  disabled={isUpdating}
+                />
+                <Input
+                  label="Tagline"
+                  id="doc-header-tagline"
+                  value={formData.tagline}
+                  onChange={(e) => handleInputChange("tagline", e.target.value)}
+                  placeholder="e.g. Ministry of Finance — Procurement Division"
+                  disabled={isUpdating}
+                />
+              </div>
+
+              {/* Description */}
+              <Textarea
+                label="Description"
+                id="workspace-description"
+                value={formData.description}
+                onChange={(e) =>
+                  handleInputChange("description", e.target.value)
+                }
+                placeholder="Enter workspace description (optional)"
+                rows={3}
+                disabled={isUpdating}
+              />
+            </div>
+          </div>
+
+          <div className="flex justify-end pt-2">
             <Button
               onClick={handleUpdateWorkspace}
               disabled={!hasChanges || isUpdating || !formData.name.trim()}

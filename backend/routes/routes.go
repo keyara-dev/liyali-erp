@@ -41,6 +41,7 @@ func SetupRoutes(app *fiber.App, handlerRegistry *handlers.HandlerRegistry, rbac
 
 	// Auth routes (protected, no tenant required)
 	protected.Get("/auth/profile", handlerRegistry.Auth.GetProfile)
+	protected.Put("/auth/profile", handlerRegistry.Auth.UpdateProfile)
 	protected.Post("/auth/logout", handlerRegistry.Auth.Logout)
 	protected.Post("/auth/logout-all", handlerRegistry.Auth.LogoutAll)
 	protected.Post("/auth/change-password", handlerRegistry.Auth.ChangePassword)
@@ -326,9 +327,9 @@ func SetupRoutes(app *fiber.App, handlerRegistry *handlers.HandlerRegistry, rbac
 	workflows.Get("/:id/usage", middleware.RequirePermission(rbacService, "workflow", "view"), handlerRegistry.Workflow.GetWorkflowUsage)
 	workflows.Post("/validate", middleware.RequirePermission(rbacService, "workflow", "create"), handlerRegistry.Workflow.ValidateWorkflow)
 
-	// Analytics routes (tenant-scoped) - ENABLED - Accessible to all authenticated users
+	// Analytics routes (tenant-scoped) - ENABLED
 	analytics := tenant.Group("/analytics")
-	analytics.Get("/dashboard", middleware.RequireFeature("advanced_analytics"), handlers.GetDashboard)
+	analytics.Get("/dashboard", handlers.GetDashboard) // Basic dashboard stats available to all tiers
 	analytics.Get("/requisitions/metrics", middleware.RequireFeature("advanced_analytics"), handlers.GetRequisitionMetrics)
 	analytics.Get("/approvals/metrics", middleware.RequireFeature("advanced_analytics"), handlers.GetApprovalMetrics)
 

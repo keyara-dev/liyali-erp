@@ -5,14 +5,24 @@ import { pdfStyles } from "./pdf-styles";
 import { generateDocumentQRData } from "./qr-utils";
 import { capitalize } from "../utils";
 
+export interface DocumentHeader {
+  logoUrl?: string;
+  orgName?: string;
+  tagline?: string;
+}
+
 interface RequisitionPDFProps {
   requisition: Requisition;
   qrCodeUrl?: string;
   organizationLogoUrl?: string;
+  documentHeader?: DocumentHeader;
 }
 
 interface PDFHeaderProps {
   title?: string;
+  logoUrl?: string;
+  orgName?: string;
+  tagline?: string;
 }
 
 interface PDFFooterProps {
@@ -21,6 +31,9 @@ interface PDFFooterProps {
 
 export const PDFHeader = ({
   title = "PURCHASE REQUISITION",
+  logoUrl,
+  orgName,
+  tagline,
 }: PDFHeaderProps) => (
   <View
     style={{
@@ -35,19 +48,29 @@ export const PDFHeader = ({
   >
     {/* Logo */}
     <View style={{ width: 40, height: 40 }}>
-      <Image src="/images/coat-of-arms.png" style={{ width: 40, height: 40 }} />
+      <Image
+        src={logoUrl || "/images/coat-of-arms.png"}
+        style={{ width: 40, height: 40, objectFit: "contain" }}
+      />
     </View>
     {/* Text */}
     <View style={{ textAlign: "center" }}>
       <Text style={{ fontSize: 11, fontWeight: "bold", marginBottom: 3 }}>
-        REPUBLIC OF ZAMBIA
+        {orgName || "REPUBLIC OF ZAMBIA"}
       </Text>
+      {tagline && (
+        <Text style={{ fontSize: 9, color: "#555", marginBottom: 3 }}>
+          {tagline}
+        </Text>
+      )}
       <Text style={{ fontSize: 13, fontWeight: "bold" }}>{title}</Text>
     </View>
   </View>
 );
 
-export const PDFFooter = ({ organizationLogoUrl }: PDFFooterProps) => (
+export const PDFFooter = ({
+  organizationLogoUrl = "/images/logo/logo-full-light.png",
+}: PDFFooterProps) => (
   <View
     style={{
       display: "flex",
@@ -73,10 +96,7 @@ export const PDFFooter = ({ organizationLogoUrl }: PDFFooterProps) => (
       </Text>
     </View>
     <View style={{ marginBottom: 0, marginTop: "auto", paddingTop: 10 }}>
-      <Image
-        src={organizationLogoUrl || "/images/logo/logo-full-light.png"}
-        style={{ width: 80, height: 24 }}
-      />
+      <Image src={organizationLogoUrl} style={{ width: 80, height: 24 }} />
     </View>
   </View>
 );
@@ -102,6 +122,7 @@ const RequisitionPDF: React.FC<RequisitionPDFProps> = ({
   requisition,
   qrCodeUrl,
   organizationLogoUrl,
+  documentHeader,
 }) => {
   const documentNumber = requisition.documentNumber;
   const qrData = generateDocumentQRData(
@@ -114,8 +135,12 @@ const RequisitionPDF: React.FC<RequisitionPDFProps> = ({
   return (
     <Document>
       <Page size="A4" style={pdfStyles.page}>
-        {/* Header with Republic of Zambia and Logo */}
-        <PDFHeader />
+        {/* Header with Organization Name and Logo */}
+        <PDFHeader
+          logoUrl={documentHeader?.logoUrl}
+          orgName={documentHeader?.orgName}
+          tagline={documentHeader?.tagline}
+        />
 
         {/* Main Header Section */}
         <View
@@ -703,7 +728,7 @@ const RequisitionPDF: React.FC<RequisitionPDFProps> = ({
         </View>
 
         {/* Footer */}
-        <PDFFooter organizationLogoUrl={organizationLogoUrl} />
+        <PDFFooter />
       </Page>
     </Document>
   );

@@ -10,6 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { PageHeader } from "@/components/base/page-header";
 import { POItemsTable } from "./po-items-table";
 import { exportPurchaseOrderPDF } from "@/lib/pdf/pdf-export";
+import { useOrganizationContext } from "@/hooks/use-organization";
 
 interface PODetailClientProps {
   poId: string;
@@ -134,6 +135,7 @@ export function PODetailClient({
   userRole,
 }: PODetailClientProps) {
   const router = useRouter();
+  const { currentOrganization } = useOrganizationContext();
   const [po, setPO] = useState<PurchaseOrder | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isExporting, setIsExporting] = useState(false);
@@ -153,7 +155,11 @@ export function PODetailClient({
     try {
       setIsExporting(true);
       // Convert mock PO to PurchaseOrder type from types
-      await exportPurchaseOrderPDF(po as any);
+      await exportPurchaseOrderPDF(po as any, {
+        logoUrl: currentOrganization?.logoUrl,
+        orgName: currentOrganization?.name,
+        tagline: currentOrganization?.tagline,
+      });
       toast.success("Purchase Order exported as PDF");
     } catch (error) {
       console.error("PDF export error:", error);

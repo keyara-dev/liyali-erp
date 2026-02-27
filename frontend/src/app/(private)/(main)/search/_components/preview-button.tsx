@@ -20,6 +20,7 @@ import {
   downloadBlob,
 } from '@/lib/pdf/pdf-export'
 import type { GoodsReceivedNote } from '@/types/goods-received-note'
+import { useOrganizationContext } from '@/hooks/use-organization'
 
 // Dynamic import to avoid SSR issues with react-pdf
 const PDFPreviewDialog = dynamic(
@@ -34,10 +35,17 @@ interface PreviewButtonProps {
 }
 
 export function PreviewButton({ documentId, documentNumber, documentType }: PreviewButtonProps) {
+  const { currentOrganization } = useOrganizationContext()
   const [isLoading, setIsLoading] = useState(false)
   const [isPreviewOpen, setIsPreviewOpen] = useState(false)
   const [pdfBlob, setPdfBlob] = useState<Blob | null>(null)
   const [documentData, setDocumentData] = useState<any>(null)
+
+  const documentHeader = {
+    logoUrl: currentOrganization?.logoUrl,
+    orgName: currentOrganization?.name,
+    tagline: currentOrganization?.tagline,
+  }
 
   // Normalize document type to uppercase
   const normalizedType = documentType?.toUpperCase() || ''
@@ -55,7 +63,7 @@ export function PreviewButton({ documentId, documentNumber, documentType }: Prev
           const result = await getRequisitionById(documentId)
           if (result.success && result.data) {
             docData = result.data
-            blob = await getRequisitionPDFBlob(result.data)
+            blob = await getRequisitionPDFBlob(result.data, documentHeader)
           }
           break
         }
@@ -64,7 +72,7 @@ export function PreviewButton({ documentId, documentNumber, documentType }: Prev
           const result = await getPurchaseOrderById(documentId)
           if (result.success && result.data) {
             docData = result.data
-            blob = await getPurchaseOrderPDFBlob(result.data)
+            blob = await getPurchaseOrderPDFBlob(result.data, documentHeader)
           }
           break
         }
@@ -73,7 +81,7 @@ export function PreviewButton({ documentId, documentNumber, documentType }: Prev
           const result = await getPaymentVoucherById(documentId)
           if (result.success && result.data) {
             docData = result.data
-            blob = await getPaymentVoucherPDFBlob(result.data)
+            blob = await getPaymentVoucherPDFBlob(result.data, documentHeader)
           }
           break
         }
@@ -89,7 +97,7 @@ export function PreviewButton({ documentId, documentNumber, documentType }: Prev
               organizationId: (result.data as any).organizationId || '',
               ownerId: result.data.createdBy || '',
             } as unknown as GoodsReceivedNote
-            blob = await getGrnPDFBlob(grnData)
+            blob = await getGrnPDFBlob(grnData, documentHeader)
           }
           break
         }
@@ -130,15 +138,15 @@ export function PreviewButton({ documentId, documentNumber, documentType }: Prev
     try {
       switch (normalizedType) {
         case 'REQUISITION':
-          await exportRequisitionPDF(documentData)
+          await exportRequisitionPDF(documentData, documentHeader)
           break
         case 'PURCHASE_ORDER':
         case 'PO':
-          await exportPurchaseOrderPDF(documentData)
+          await exportPurchaseOrderPDF(documentData, documentHeader)
           break
         case 'PAYMENT_VOUCHER':
         case 'PV':
-          await exportPaymentVoucherPDF(documentData)
+          await exportPaymentVoucherPDF(documentData, documentHeader)
           break
         case 'GRN':
         case 'GOODS_RECEIVED_NOTE': {
@@ -148,7 +156,7 @@ export function PreviewButton({ documentId, documentNumber, documentType }: Prev
             organizationId: documentData.organizationId || '',
             ownerId: documentData.createdBy || '',
           } as unknown as GoodsReceivedNote
-          await exportGrnPDF(grnData)
+          await exportGrnPDF(grnData, documentHeader)
           break
         }
         default:

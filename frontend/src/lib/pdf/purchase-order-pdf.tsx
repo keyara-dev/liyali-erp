@@ -3,13 +3,14 @@ import { Document, Page, Text, View, Image } from "@react-pdf/renderer";
 import { PurchaseOrder } from "@/types/purchase-order";
 import { pdfStyles } from "./pdf-styles";
 import { generateDocumentQRData } from "./qr-utils";
-import { PDFHeader, PDFFooter } from "./requisition-pdf";
+import { PDFHeader, PDFFooter, DocumentHeader } from "./requisition-pdf";
 import { capitalize } from "../utils";
 
 interface PurchaseOrderPDFProps {
   purchaseOrder: PurchaseOrder;
   qrCodeUrl?: string;
   organizationLogoUrl?: string;
+  documentHeader?: DocumentHeader;
 }
 
 const getStatusColor = (status: string) => {
@@ -33,6 +34,7 @@ const PurchaseOrderPDF: React.FC<PurchaseOrderPDFProps> = ({
   purchaseOrder,
   qrCodeUrl,
   organizationLogoUrl,
+  documentHeader,
 }) => {
   const documentNumber = purchaseOrder.documentNumber;
   const qrData = generateDocumentQRData(
@@ -46,7 +48,12 @@ const PurchaseOrderPDF: React.FC<PurchaseOrderPDFProps> = ({
     <Document>
       <Page size="A4" style={pdfStyles.page}>
         {/* Header with Republic of Zambia and Logo */}
-        <PDFHeader title="PURCHASE ORDER" />
+        <PDFHeader
+          title="PURCHASE ORDER"
+          logoUrl={documentHeader?.logoUrl}
+          orgName={documentHeader?.orgName}
+          tagline={documentHeader?.tagline}
+        />
 
         {/* Main Header Section */}
         <View
@@ -600,7 +607,7 @@ const PurchaseOrderPDF: React.FC<PurchaseOrderPDFProps> = ({
         </View>
 
         {/* Footer */}
-        <PDFFooter organizationLogoUrl={organizationLogoUrl} />
+        <PDFFooter />
       </Page>
     </Document>
   );

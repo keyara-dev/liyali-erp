@@ -351,7 +351,7 @@ func (s *OrganizationService) GetOrganizationSettings(orgID string) (*models.Org
 }
 
 // UpdateOrganization updates organization details
-func (s *OrganizationService) UpdateOrganization(orgID string, name, description string, logoURL *string) error {
+func (s *OrganizationService) UpdateOrganization(orgID string, name, description string, logoURL *string, tagline *string) error {
 	if orgID == "" {
 		return errors.New("organization ID is required")
 	}
@@ -368,6 +368,9 @@ func (s *OrganizationService) UpdateOrganization(orgID string, name, description
 	}
 	if logoURL != nil {
 		updates["logo_url"] = *logoURL
+	}
+	if tagline != nil {
+		updates["tagline"] = *tagline
 	}
 
 	return s.db.Model(&models.Organization{}).

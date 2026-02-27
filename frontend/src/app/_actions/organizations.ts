@@ -12,6 +12,7 @@ export interface Organization {
   name: string;
   slug: string;
   logoUrl?: string;
+  tagline?: string;
   primaryColor?: string;
   tier: "free" | "pro" | "enterprise";
   active: boolean;
@@ -31,6 +32,7 @@ export interface UpdateOrganizationRequest {
   name?: string;
   description?: string;
   logoUrl?: string;
+  tagline?: string;
 }
 
 export interface OrganizationMember {
@@ -152,6 +154,7 @@ export async function updateOrganization(
         name: data.name,
         description: data.description,
         logoUrl: data.logoUrl,
+        tagline: data.tagline,
       },
     });
 

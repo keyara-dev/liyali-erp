@@ -15,6 +15,7 @@ type Organization struct {
 
 	// Branding
 	LogoURL      string `json:"logoUrl,omitempty"`
+	Tagline      string `json:"tagline,omitempty"`
 	PrimaryColor string `gorm:"default:#0066CC" json:"primaryColor"`
 
 	// Status

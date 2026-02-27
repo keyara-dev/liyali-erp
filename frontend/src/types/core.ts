@@ -156,7 +156,16 @@ export interface User {
 
   // Extended fields for UI compatibility
   permissions?: string[];
-  preferences?: any;
+  preferences?: {
+    avatar?: string;
+    department?: string;
+    language?: string;
+    theme?: string;
+    timezone?: string;
+    emailNotifications?: boolean;
+    pushNotifications?: boolean;
+    activityNotifications?: boolean;
+  };
   first_name?: string;
   last_name?: string;
   mfa_enabled?: boolean;
@@ -180,6 +189,7 @@ export interface Organization {
   slug: string;
   description?: string;
   logoUrl?: string;
+  tagline?: string;
   primaryColor?: string;
   active: boolean;
   tier: string;

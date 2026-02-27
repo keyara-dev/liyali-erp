@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
@@ -15,6 +16,7 @@ import (
 	"github.com/liyali/liyali-gateway/repository"
 	"github.com/liyali/liyali-gateway/types"
 	"github.com/liyali/liyali-gateway/utils"
+	"gorm.io/datatypes"
 	"gorm.io/gorm"
 )
 
@@ -707,4 +709,27 @@ func (s *AuthService) CleanupExpiredLockouts(ctx context.Context) error {
 func (s *AuthService) CleanupOldLoginAttempts(ctx context.Context, retentionDays int) error {
 	cutoff := time.Now().Add(-time.Duration(retentionDays) * 24 * time.Hour)
 	return s.loginAttemptRepo.DeleteOld(ctx, cutoff)
+}
+
+// GetProfileByID returns the full user record for the given user ID.
+func (s *AuthService) GetProfileByID(ctx context.Context, userID string) (*models.User, error) {
+	return s.userRepo.GetByID(ctx, userID)
+}
+
+// UpdateProfile updates the user's name, email, and preferences JSONB column.
+func (s *AuthService) UpdateProfile(ctx context.Context, userID, name, email string, preferences map[string]interface{}) (*models.User, error) {
+	user, err := s.userRepo.GetByID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	user.Name = name
+	user.Email = email
+	if preferences != nil {
+		prefsJSON, err := json.Marshal(preferences)
+		if err != nil {
+			return nil, err
+		}
+		user.Preferences = datatypes.JSON(prefsJSON)
+	}
+	return s.userRepo.Update(ctx, user)
 }

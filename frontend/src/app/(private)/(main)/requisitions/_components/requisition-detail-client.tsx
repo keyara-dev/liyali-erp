@@ -42,6 +42,7 @@ import {
   exportRequisitionPDF,
   getRequisitionPDFBlob,
 } from "@/lib/pdf/pdf-export";
+import { useOrganizationContext } from "@/hooks/use-organization";
 import { toast } from "sonner";
 import { PDFPreviewDialog } from "@/components/modals/pdf-preview-dialog";
 import { RequisitionSubmitDialog } from "./requisition-submit-dialog";
@@ -63,6 +64,7 @@ export function RequisitionDetailClient({
 }: RequisitionDetailClientProps) {
   const router = useRouter();
   const { saveToStorage } = useRequisitionStorage();
+  const { currentOrganization } = useOrganizationContext();
   const [isExporting, setIsExporting] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewBlob, setPreviewBlob] = useState<Blob | null>(null);
@@ -93,7 +95,11 @@ export function RequisitionDetailClient({
     if (!requisition) return;
     try {
       setIsExporting(true);
-      const blob = await getRequisitionPDFBlob(requisition);
+      const blob = await getRequisitionPDFBlob(requisition, {
+        logoUrl: currentOrganization?.logoUrl,
+        orgName: currentOrganization?.name,
+        tagline: currentOrganization?.tagline,
+      });
       setPreviewBlob(blob);
       setPreviewOpen(true);
     } catch (error) {
@@ -108,7 +114,11 @@ export function RequisitionDetailClient({
     if (!requisition) return;
     try {
       setIsExporting(true);
-      await exportRequisitionPDF(requisition);
+      await exportRequisitionPDF(requisition, {
+        logoUrl: currentOrganization?.logoUrl,
+        orgName: currentOrganization?.name,
+        tagline: currentOrganization?.tagline,
+      });
       toast.success("Requisition exported as PDF");
     } catch (error) {
       console.error("PDF export error:", error);

@@ -2,28 +2,21 @@
 
 import { getCurrentUser } from "@/lib/auth";
 import { APIResponse } from "@/types";
+import authenticatedApiClient from "./api-config";
 
 /**
- * Get current user profile
+ * Get current user profile (full, including preferences)
  */
 export async function getUserProfile(): Promise<APIResponse> {
   try {
-    const user = await getCurrentUser();
-
-    if (!user) {
-      return {
-        success: false,
-        message: "User not authenticated",
-        data: null,
-        status: 401,
-        statusText: "UNAUTHORIZED",
-      };
-    }
-
+    const response = await authenticatedApiClient({
+      url: "/api/v1/auth/profile",
+      method: "GET",
+    });
     return {
       success: true,
       message: "Profile retrieved successfully",
-      data: user,
+      data: response.data.data,
       status: 200,
       statusText: "OK",
     };
@@ -39,60 +32,42 @@ export async function getUserProfile(): Promise<APIResponse> {
 }
 
 /**
- * Update user profile
- *
- * NOTE: Currently, the backend User model does not have an 'avatar' field.
- * This function will need to be updated once the backend supports avatar storage.
- * For now, avatar changes are not persisted to the database.
+ * Update account settings — persists name, email, and all preferences to the DB.
+ * Calls: PUT /api/v1/auth/profile
  */
-export async function updateUserProfile(profileData: {
-  name?: string;
-  email?: string;
-  department?: string;
-  avatar?: string;
+export async function updateAccountSettings(data: {
+  name: string;
+  email: string;
+  preferences: {
+    avatar?: string;
+    department?: string;
+    language?: string;
+    theme?: string;
+    timezone?: string;
+    emailNotifications?: boolean;
+    pushNotifications?: boolean;
+    activityNotifications?: boolean;
+  };
 }): Promise<APIResponse> {
   try {
-    const user = await getCurrentUser();
-
-    if (!user) {
-      return {
-        success: false,
-        message: "User not authenticated",
-        data: null,
-        status: 401,
-        statusText: "UNAUTHORIZED",
-      };
-    }
-
-    // TODO: Call backend API to update user profile
-    // The backend needs to:
-    // 1. Add 'avatar' field to User model (backend/models/models.go)
-    // 2. Add 'department' field to User model if not exists
-    // 3. Create PUT /api/v1/users/:id endpoint
-    // 4. Implement UpdateUser handler in backend/handlers/
-
-    // For now, this is a mock implementation
-    // Avatar changes will not persist across sessions
-    const updatedUser = {
-      ...user,
-      ...profileData,
-      updatedAt: new Date().toISOString(),
-    };
-
+    const response = await authenticatedApiClient({
+      url: "/api/v1/auth/profile",
+      method: "PUT",
+      data,
+    });
     return {
       success: true,
-      message:
-        "Profile updated successfully (Note: Avatar not persisted - backend support needed)",
-      data: updatedUser,
+      message: "Settings saved successfully",
+      data: response.data.data,
       status: 200,
       statusText: "OK",
     };
   } catch (error: any) {
     return {
       success: false,
-      message: error.message || "Failed to update profile",
+      message: error.response?.data?.message || error.message || "Failed to save settings",
       data: null,
-      status: 500,
+      status: error.response?.status || 500,
       statusText: "ERROR",
     };
   }
@@ -119,7 +94,6 @@ export async function changePassword(
       };
     }
 
-    // Validate passwords
     if (newPassword !== confirmPassword) {
       return {
         success: false,
@@ -150,76 +124,25 @@ export async function changePassword(
       };
     }
 
-    // Mock implementation - in production, this would:
-    // 1. Verify current password against stored hash
-    // 2. Hash new password
-    // 3. Update in database
-    // 4. Invalidate all sessions
+    const response = await authenticatedApiClient({
+      url: "/api/v1/auth/change-password",
+      method: "POST",
+      data: { currentPassword, newPassword, confirmPassword },
+    });
 
     return {
       success: true,
       message: "Password changed successfully",
-      data: {
-        changedAt: new Date().toISOString(),
-        nextChangeDate: new Date(
-          Date.now() + 90 * 24 * 60 * 60 * 1000,
-        ).toISOString(),
-      },
+      data: response.data.data,
       status: 200,
       statusText: "OK",
     };
   } catch (error: any) {
     return {
       success: false,
-      message: error.message || "Failed to change password",
+      message: error.response?.data?.message || error.message || "Failed to change password",
       data: null,
-      status: 500,
-      statusText: "ERROR",
-    };
-  }
-}
-
-/**
- * Update general settings
- */
-export async function updateGeneralSettings(settings: {
-  language?: string;
-  theme?: "light" | "dark" | "system";
-  timezone?: string;
-  emailNotifications?: boolean;
-  pushNotifications?: boolean;
-  activityNotifications?: boolean;
-}): Promise<APIResponse> {
-  try {
-    const user = await getCurrentUser();
-
-    if (!user) {
-      return {
-        success: false,
-        message: "User not authenticated",
-        data: null,
-        status: 401,
-        statusText: "UNAUTHORIZED",
-      };
-    }
-
-    // Mock implementation - in production, this would update user preferences in database
-    return {
-      success: true,
-      message: "General settings updated successfully",
-      data: {
-        settings,
-        updatedAt: new Date().toISOString(),
-      },
-      status: 200,
-      statusText: "OK",
-    };
-  } catch (error: any) {
-    return {
-      success: false,
-      message: error.message || "Failed to update settings",
-      data: null,
-      status: 500,
+      status: error.response?.status || 500,
       statusText: "ERROR",
     };
   }
@@ -290,7 +213,6 @@ export async function revokeSession(sessionId: string): Promise<APIResponse> {
       };
     }
 
-    // Mock implementation - in production, this would delete session from database
     return {
       success: true,
       message: "Session revoked successfully",

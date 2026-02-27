@@ -272,6 +272,7 @@ func UpdateOrganization(c *fiber.Ctx) error {
 		Name        string  `json:"name" validate:"required"`
 		Description string  `json:"description"`
 		LogoURL     *string `json:"logoUrl"`
+		Tagline     *string `json:"tagline"`
 	}
 
 	if err := c.BodyParser(&req); err != nil {
@@ -289,7 +290,7 @@ func UpdateOrganization(c *fiber.Ctx) error {
 		return utils.SendForbiddenError(c, "You don't have permission to update this organization")
 	}
 
-	if err := orgService.UpdateOrganization(orgID, req.Name, req.Description, req.LogoURL); err != nil {
+	if err := orgService.UpdateOrganization(orgID, req.Name, req.Description, req.LogoURL, req.Tagline); err != nil {
 		return utils.SendInternalError(c, err.Error(), err)
 	}
 

@@ -20,6 +20,7 @@ import {
   exportPaymentVoucherPDF,
   getPaymentVoucherPDFBlob,
 } from "@/lib/pdf/pdf-export";
+import { useOrganizationContext } from "@/hooks/use-organization";
 
 interface PVDetailClientProps {
   pvId: string;
@@ -147,6 +148,7 @@ export function PVDetailClient({
   userRole,
 }: PVDetailClientProps) {
   const router = useRouter();
+  const { currentOrganization } = useOrganizationContext();
   const [pv, setPV] = useState<PaymentVoucher | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isExporting, setIsExporting] = useState(false);
@@ -168,7 +170,11 @@ export function PVDetailClient({
     try {
       setIsExporting(true);
       // Convert mock PV to PaymentVoucher type from types
-      await exportPaymentVoucherPDF(pv as any);
+      await exportPaymentVoucherPDF(pv as any, {
+        logoUrl: currentOrganization?.logoUrl,
+        orgName: currentOrganization?.name,
+        tagline: currentOrganization?.tagline,
+      });
       toast.success("Payment Voucher exported as PDF");
     } catch (error) {
       console.error("PDF export error:", error);
@@ -182,7 +188,11 @@ export function PVDetailClient({
     if (!pv) return;
     try {
       setIsExporting(true);
-      const blob = await getPaymentVoucherPDFBlob(pv as any);
+      const blob = await getPaymentVoucherPDFBlob(pv as any, {
+        logoUrl: currentOrganization?.logoUrl,
+        orgName: currentOrganization?.name,
+        tagline: currentOrganization?.tagline,
+      });
       setPreviewBlob(blob);
       setPreviewOpen(true);
     } catch (error) {

@@ -7,13 +7,14 @@ import {
 } from "@/types/goods-received-note";
 import { pdfStyles } from "../pdf/pdf-styles";
 import { generateDocumentQRData } from "../pdf/qr-utils";
-import { PDFHeader, PDFFooter } from "../pdf/requisition-pdf";
+import { PDFHeader, PDFFooter, DocumentHeader } from "../pdf/requisition-pdf";
 import { capitalize } from "../utils";
 
 interface GRNPDFProps {
   grn: GoodsReceivedNote;
   qrCodeUrl?: string;
   organizationLogoUrl?: string;
+  documentHeader?: DocumentHeader;
 }
 
 const getStatusColor = (status: string) => {
@@ -69,6 +70,7 @@ const GoodsReceivedNotePDF: React.FC<GRNPDFProps> = ({
   grn,
   qrCodeUrl,
   organizationLogoUrl,
+  documentHeader,
 }) => {
   const documentNumber = grn.documentNumber;
   const qrData = generateDocumentQRData(
@@ -82,7 +84,12 @@ const GoodsReceivedNotePDF: React.FC<GRNPDFProps> = ({
     <Document>
       <Page size="A4" style={pdfStyles.page}>
         {/* Header with Republic of Zambia and Logo */}
-        <PDFHeader title="GOODS RECEIVED NOTE" />
+        <PDFHeader
+          title="GOODS RECEIVED NOTE"
+          logoUrl={documentHeader?.logoUrl}
+          orgName={documentHeader?.orgName}
+          tagline={documentHeader?.tagline}
+        />
 
         {/* Main Header Section */}
         <View
@@ -647,7 +654,7 @@ const GoodsReceivedNotePDF: React.FC<GRNPDFProps> = ({
         </View>
 
         {/* Footer */}
-        <PDFFooter organizationLogoUrl={organizationLogoUrl} />
+        <PDFFooter />
       </Page>
     </Document>
   );

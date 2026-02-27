@@ -16,6 +16,7 @@ import { ApprovalConfirmationDialog } from "@/components/modals/approval-confirm
 import { ApprovalHistory } from "@/components/approval-history";
 import { DocumentLinks } from "@/components/document-links";
 import { exportGrnPDF } from "@/lib/pdf/pdf-export";
+import { useOrganizationContext } from "@/hooks/use-organization";
 import Link from "next/link";
 
 interface GrnDetailProps {
@@ -25,6 +26,7 @@ interface GrnDetailProps {
 }
 
 export function GrnDetail({ grnId, userId, userRole }: GrnDetailProps) {
+  const { currentOrganization } = useOrganizationContext();
   const [grn, setGrn] = useState<WorkflowDocument | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showApprovalDialog, setShowApprovalDialog] = useState(false);
@@ -89,7 +91,11 @@ export function GrnDetail({ grnId, userId, userRole }: GrnDetailProps) {
     try {
       if (grn) {
         // Call PDF generator with @react-pdf/renderer
-        await exportGrnPDF(grn as any);
+        await exportGrnPDF(grn as any, {
+          logoUrl: currentOrganization?.logoUrl,
+          orgName: currentOrganization?.name,
+          tagline: currentOrganization?.tagline,
+        });
       }
     } catch (error) {
       console.error("Error downloading PDF:", error);

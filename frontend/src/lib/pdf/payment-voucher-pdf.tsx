@@ -3,13 +3,14 @@ import { Document, Page, Text, View, Image } from "@react-pdf/renderer";
 import { PaymentVoucher } from "@/types/payment-voucher";
 import { pdfStyles } from "./pdf-styles";
 import { generateDocumentQRData } from "./qr-utils";
-import { PDFHeader, PDFFooter } from "./requisition-pdf";
+import { PDFHeader, PDFFooter, DocumentHeader } from "./requisition-pdf";
 import { capitalize } from "../utils";
 
 interface PaymentVoucherPDFProps {
   paymentVoucher: PaymentVoucher;
   qrCodeUrl?: string;
   organizationLogoUrl?: string;
+  documentHeader?: DocumentHeader;
 }
 
 const getStatusColor = (status: string) => {
@@ -39,6 +40,7 @@ const PaymentVoucherPDF: React.FC<PaymentVoucherPDFProps> = ({
   paymentVoucher,
   qrCodeUrl,
   organizationLogoUrl,
+  documentHeader,
 }) => {
   const documentNumber = paymentVoucher.documentNumber;
   const qrData = generateDocumentQRData(
@@ -52,7 +54,12 @@ const PaymentVoucherPDF: React.FC<PaymentVoucherPDFProps> = ({
     <Document>
       <Page size="A4" style={pdfStyles.page}>
         {/* Header with Republic of Zambia and Logo */}
-        <PDFHeader title="PAYMENT VOUCHER" />
+        <PDFHeader
+          title="PAYMENT VOUCHER"
+          logoUrl={documentHeader?.logoUrl}
+          orgName={documentHeader?.orgName}
+          tagline={documentHeader?.tagline}
+        />
 
         {/* Main Header Section */}
         <View
@@ -855,7 +862,7 @@ const PaymentVoucherPDF: React.FC<PaymentVoucherPDFProps> = ({
         </View>
 
         {/* Footer */}
-        <PDFFooter organizationLogoUrl={organizationLogoUrl} />
+        <PDFFooter />
       </Page>
     </Document>
   );

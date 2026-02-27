@@ -445,7 +445,7 @@ func (h *AuthHandler) VerifyToken(c *fiber.Ctx) error {
 	}, "Token is valid")
 }
 
-// GetProfile returns current user profile (requires auth)
+// GetProfile returns the current user's full profile (requires auth)
 func (h *AuthHandler) GetProfile(c *fiber.Ctx) error {
 	logger := logging.FromContext(c)
 	logger.Info("get_profile_attempt")
@@ -458,19 +458,56 @@ func (h *AuthHandler) GetProfile(c *fiber.Ctx) error {
 		return utils.SendUnauthorizedError(c, "User not authenticated")
 	}
 
-	// Add user context
 	logging.AddFieldsToRequest(c, map[string]interface{}{
 		"user_id":   userID,
 		"operation": "get_profile",
 	})
 
-	logger.Debug("retrieving_user_profile")
+	user, err := h.authService.GetProfileByID(c.Context(), userID)
+	if err != nil {
+		return utils.SendNotFoundError(c, "User not found")
+	}
 
-	// For now, return a simple response with the user ID
-	// TODO: Implement GetUserProfile method in the auth service
 	logger.Info("profile_retrieved_successfully")
-	
-	return utils.SendSimpleSuccess(c, map[string]interface{}{
-		"id": userID,
-	}, "Profile retrieved successfully")
+	return utils.SendSimpleSuccess(c, user, "Profile retrieved successfully")
+}
+
+// UpdateProfileRequest is the request body for PUT /auth/profile
+type UpdateProfileRequest struct {
+	Name        string                 `json:"name" validate:"required"`
+	Email       string                 `json:"email" validate:"required,email"`
+	Preferences map[string]interface{} `json:"preferences"`
+}
+
+// UpdateProfile updates the current user's name, email, and preferences
+func (h *AuthHandler) UpdateProfile(c *fiber.Ctx) error {
+	logger := logging.FromContext(c)
+	logger.Info("update_profile_attempt")
+
+	userID, ok := c.Locals("userID").(string)
+	if !ok {
+		return utils.SendUnauthorizedError(c, "User not authenticated")
+	}
+
+	var req UpdateProfileRequest
+	if err := c.BodyParser(&req); err != nil {
+		return utils.SendBadRequestError(c, "Failed to parse request body")
+	}
+	if err := h.validate.Struct(req); err != nil {
+		return utils.SendValidationError(c, err.Error())
+	}
+
+	logging.AddFieldsToRequest(c, map[string]interface{}{
+		"user_id":   userID,
+		"operation": "update_profile",
+	})
+
+	user, err := h.authService.UpdateProfile(c.Context(), userID, req.Name, req.Email, req.Preferences)
+	if err != nil {
+		logger.WithError(err).Error("update_profile_failed")
+		return utils.SendInternalError(c, "Failed to update profile", err)
+	}
+
+	logger.Info("profile_updated_successfully")
+	return utils.SendSimpleSuccess(c, user, "Profile updated successfully")
 }
