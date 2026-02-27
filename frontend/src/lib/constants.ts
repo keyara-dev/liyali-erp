@@ -1,9 +1,3 @@
-export const BASE_URL =
-  process.env.NEXT_PUBLIC_BASE_URL || process.env.BASE_URL;
-
-export const POCKET_BASE_URL =
-  process.env.POCKET_BASE_URL || process.env.NEXT_PUBLIC_POCKET_BASE_URL;
-
 export const AUTH_SESSION = "__com.liyali-portal.com__";
 export const USER_SESSION = "__com.liyali-user__";
 export const PERMISSIONS_SESSION = "__com.liyali-pem__";

@@ -1,6 +1,7 @@
 "use server";
 
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, updateAuthSession } from "@/lib/auth";
+import { revalidatePath } from "next/cache";
 import { APIResponse } from "@/types";
 import authenticatedApiClient from "./api-config";
 
@@ -55,10 +56,30 @@ export async function updateAccountSettings(data: {
       method: "PUT",
       data,
     });
+
+    const updatedUser = response.data.data;
+
+    // Sync the session cookie with the updated profile so page reloads
+    // reflect the new name, email, and preferences without requiring re-login.
+    const currentUser = await getCurrentUser();
+    if (currentUser && updatedUser) {
+      await updateAuthSession({
+        user: {
+          ...(currentUser as any),
+          name: updatedUser.name ?? currentUser.name,
+          email: updatedUser.email ?? currentUser.email,
+          preferences: updatedUser.preferences,
+          // UserMenu reads user.avatar directly — keep in sync with preferences.avatar
+          avatar: updatedUser.preferences?.avatar ?? (currentUser as any).avatar,
+        },
+      });
+      revalidatePath("/settings");
+    }
+
     return {
       success: true,
       message: "Settings saved successfully",
-      data: response.data.data,
+      data: updatedUser,
       status: 200,
       statusText: "OK",
     };

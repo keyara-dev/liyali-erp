@@ -3,7 +3,7 @@ import { AUTH_SESSION } from "@/lib/constants";
 import axiosClient, { AxiosRequestConfig, AxiosRequestHeaders } from "axios";
 
 export const axios = axiosClient.create({
-  baseURL: process.env.BASE_URL || "http://localhost:8080",
+  baseURL: process.env.BASE_URL,
 });
 
 // Reusable error handler following DRY principle
@@ -73,7 +73,7 @@ export type RequestType = AxiosRequestConfig & {
 
 const authenticatedApiClient = async (
   request: RequestType,
-  retryCount = 0
+  retryCount = 0,
 ): Promise<any> => {
   const maxRetries = 3;
   const retryDelay = 500; // 500ms delay between retries
@@ -117,7 +117,7 @@ const authenticatedApiClient = async (
     // If it's a session error and we haven't exhausted retries, try again
     if (error.message === "No valid session found" && retryCount < maxRetries) {
       await new Promise((resolve) =>
-        setTimeout(resolve, retryDelay * (retryCount + 1))
+        setTimeout(resolve, retryDelay * (retryCount + 1)),
       );
       return authenticatedApiClient(request, retryCount + 1);
     }

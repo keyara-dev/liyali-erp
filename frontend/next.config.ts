@@ -21,7 +21,23 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: "https",
+        hostname: "ik.imagekit.io",
+        pathname: "/**",
+      },
+      {
+        protocol: "https",
+        hostname: "imagekit.io",
+        pathname: "/**",
+      },
+      {
+        protocol: "https",
         hostname: "*.run.app", // Allow Cloud Run images
+        pathname: "/**",
+      },
+      {
+        protocol: "https",
+        hostname: "bundui-images.netlify.app",
+        pathname: "/**",
       },
     ],
   },
