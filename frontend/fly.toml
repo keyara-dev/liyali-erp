@@ -5,6 +5,12 @@ primary_region = "jnb" # Johannesburg - same region as backend for optimal perfo
 [build]
   dockerfile = "Dockerfile"
 
+  [build.args]
+    NEXT_PUBLIC_API_URL = "https://liyali-gateway-api.fly.dev"
+    NEXT_PUBLIC_APP_URL = "https://liyali-gateway-frontend.fly.dev"
+    NEXT_PUBLIC_IMAGEKIT_PUBLIC_KEY = "public_lpyell0B3Kh6vmDGa/oN/frlhTs="
+    NEXT_PUBLIC_IMAGEKIT_URL_ENDPOINT = "https://ik.imagekit.io/eb8aq3pja"
+
 [env]
   PORT = "3000"
   NODE_ENV = "production"
