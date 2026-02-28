@@ -131,6 +131,9 @@ export function CreateBudgetDialog({
           queryKey: [QUERY_KEYS.BUDGETS.BY_USER],
         });
         queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.BUDGETS.ALL] });
+        queryClient.invalidateQueries({
+          queryKey: [QUERY_KEYS.BUDGETS.BY_ID, result.data.id],
+        });
 
         // Show success toast
         toast.success(`Budget "${formData.name}" created successfully`);

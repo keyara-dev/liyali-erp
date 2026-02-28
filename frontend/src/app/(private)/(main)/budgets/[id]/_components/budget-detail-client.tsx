@@ -3,8 +3,6 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
-  Banknote,
-  User,
   Building2,
   Save,
   Send,
@@ -34,8 +32,6 @@ import {
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { QUERY_KEYS } from "@/lib/constants";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Separator } from "@/components/ui/separator";
 import CustomAlert from "@/components/ui/custom-alert";
 
 interface BudgetDetailClientEnhancedProps {
@@ -65,16 +61,6 @@ export function BudgetDetailClientEnhanced({
   // Initialize budget items when budget data loads
   useEffect(() => {
     if (budget?.items) {
-      console.log("Budget items from API:", budget.items);
-      console.log("Budget items type:", typeof budget.items);
-      console.log("Budget items is array:", Array.isArray(budget.items));
-      console.log("Budget action history:", budget.actionHistory);
-      console.log(
-        "Budget action history length:",
-        budget.actionHistory?.length,
-      );
-
-      // Ensure items have the correct structure
       const formattedItems = Array.isArray(budget.items)
         ? budget.items.map((item: any) => ({
             id: item.id || String(Date.now() + Math.random()),
@@ -84,7 +70,6 @@ export function BudgetDetailClientEnhanced({
           }))
         : [];
 
-      console.log("Formatted items:", formattedItems);
       setBudgetItems(formattedItems);
       setHasUnsavedChanges(false);
     }
@@ -200,10 +185,92 @@ export function BudgetDetailClientEnhanced({
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading budget details...</p>
+      <div className="space-y-6">
+        {/* Header skeleton */}
+        <div className="flex items-start justify-between gap-4">
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <div className="h-8 w-8 bg-muted rounded animate-pulse" />
+              <div className="h-7 w-64 bg-muted rounded-lg animate-pulse" />
+              <div className="h-6 w-20 bg-muted rounded-full animate-pulse" />
+            </div>
+            <div className="h-4 w-96 bg-muted rounded animate-pulse" />
+          </div>
+          <div className="flex gap-2 mt-2">
+            <div className="h-10 w-28 bg-muted rounded-md animate-pulse" />
+            <div className="h-10 w-20 bg-muted rounded-md animate-pulse" />
+          </div>
+        </div>
+
+        {/* Overview cards skeleton (4 cards) */}
+        <div className="grid gap-4 md:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="bg-card rounded-lg border p-6 space-y-3">
+              <div className="h-4 w-24 bg-muted rounded animate-pulse" />
+              <div className="h-8 w-32 bg-muted rounded animate-pulse" />
+              <div className="h-3 w-20 bg-muted rounded animate-pulse" />
+            </div>
+          ))}
+        </div>
+
+        {/* Info cards skeleton (2 cards) */}
+        <div className="grid gap-6 md:grid-cols-2">
+          {Array.from({ length: 2 }).map((_, i) => (
+            <div key={i} className="bg-card rounded-lg border p-6 space-y-4">
+              <div className="flex items-center gap-2">
+                <div className="h-5 w-5 bg-muted rounded animate-pulse" />
+                <div className="h-5 w-36 bg-muted rounded animate-pulse" />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                {Array.from({ length: 4 }).map((_, j) => (
+                  <div key={j} className="space-y-2">
+                    <div className="h-3 w-20 bg-muted rounded animate-pulse" />
+                    <div className="h-4 w-28 bg-muted rounded animate-pulse" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Budget items table skeleton */}
+        <div className="bg-card rounded-lg border p-6 space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="h-5 w-32 bg-muted rounded animate-pulse" />
+            <div className="h-9 w-24 bg-muted rounded-md animate-pulse" />
+          </div>
+          <div className="border rounded-md">
+            <div className="grid grid-cols-4 gap-4 p-4 border-b">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="h-4 bg-muted rounded animate-pulse" />
+              ))}
+            </div>
+            {Array.from({ length: 3 }).map((_, row) => (
+              <div key={row} className="grid grid-cols-4 gap-4 p-4 border-b last:border-b-0">
+                {Array.from({ length: 4 }).map((_, col) => (
+                  <div key={col} className="h-4 bg-muted rounded animate-pulse" />
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Approval panel skeleton */}
+        <div className="bg-card rounded-lg border p-6 space-y-4">
+          <div className="flex gap-2">
+            <div className="h-9 w-28 bg-muted rounded-md animate-pulse" />
+            <div className="h-9 w-32 bg-muted rounded-md animate-pulse" />
+          </div>
+          {Array.from({ length: 2 }).map((_, i) => (
+            <div key={i} className="p-4 rounded-lg border space-y-2">
+              <div className="flex items-center gap-3">
+                <div className="h-5 w-5 bg-muted rounded-full animate-pulse" />
+                <div className="h-4 w-40 bg-muted rounded animate-pulse" />
+                <div className="h-5 w-16 bg-muted rounded-full animate-pulse" />
+              </div>
+              <div className="h-3 w-48 bg-muted rounded animate-pulse ml-8" />
+            </div>
+          ))}
         </div>
       </div>
     );

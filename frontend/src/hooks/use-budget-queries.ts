@@ -27,16 +27,23 @@ export const useBudgets = (initialBudgets?: Budget[]) =>
   useQuery({
     queryKey: [QUERY_KEYS.BUDGETS.ALL],
     queryFn: async () => {
-      const response = await getBudgets({}, 1, 100); // Get all organization budgets
-      return response.success ? response.data : [];
+      const response = await getBudgets({}, 1, 100);
+      return response.success && Array.isArray(response.data)
+        ? response.data
+        : [];
     },
-    initialData: initialBudgets,
-    staleTime: 5 * 60 * 1000, // 5 minutes - allow refetching
+    // Only seed cache when server actually returned data.
+    // Passing [] as initialData would hide the loading state and
+    // prevent React Query from showing isLoading=true on first mount.
+    ...(initialBudgets?.length
+      ? { initialData: initialBudgets, initialDataUpdatedAt: Date.now() }
+      : {}),
+    staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
 /**
  * Fetch all budgets (for dropdowns and selection)
- * Static data - rarely changes
+ * Delegates to useBudgets to avoid duplicate queryFn for the same query key
  *
  * @param initialBudgets - Optional initial data from server component
  * @returns Query result with budgets array
@@ -45,21 +52,7 @@ export const useBudgets = (initialBudgets?: Budget[]) =>
  * const { data: budgets, isLoading } = useAllBudgets()
  */
 export const useAllBudgets = (initialBudgets?: Budget[]) =>
-  useQuery({
-    queryKey: [QUERY_KEYS.BUDGETS.ALL],
-    queryFn: async () => {
-      try {
-        const response = await getBudgets({}, 1, 100); // Get first 100 budgets
-        return response.success && Array.isArray(response.data)
-          ? response.data
-          : [];
-      } catch {
-        return [];
-      }
-    },
-    initialData: initialBudgets || [],
-    staleTime: 5 * 60 * 1000, // 5 minutes
-  });
+  useBudgets(initialBudgets || []);
 
 /**
  * Fetch a specific budget by ID

@@ -40,14 +40,12 @@ export function useSearchDocuments(
         throw new Error(result.message || 'Search failed')
       }
 
-      const paginationData = result.data?.pagination
-
       return {
-        documents: result.data?.data || [],
-        total: paginationData?.total || 0,
-        totalPages: paginationData?.totalPages || 0,
-        page: paginationData?.page || page,
-        pageSize: paginationData?.limit || pageSize,
+        documents: result.data || [],
+        total: result.pagination?.total || 0,
+        totalPages: result.pagination?.totalPages || 0,
+        page: result.pagination?.page || page,
+        pageSize: result.pagination?.limit || result.pagination?.pageSize || pageSize,
       }
     },
     enabled,

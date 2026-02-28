@@ -2,7 +2,6 @@
 
 import { useDashboardMetrics } from "@/hooks/use-dashboard-metrics";
 import { PageHeader } from "@/components/base/page-header";
-import { WorkflowStatusChart } from "./workflow-status-chart";
 import { RecentActivity } from "./recent-activity";
 import { GreetingCard } from "./greeting-card";
 import { LoadingDashboard } from "../loading";
@@ -70,17 +69,10 @@ export function DashboardClient({
       />
 
       {/* Greeting Card with Quick Actions and Analytics */}
-      <GreetingCard userName={userName} userRole={userRole} metrics={metrics} />
+      <GreetingCard userName={userName} userRole={userRole} userId={userId} metrics={metrics} />
 
-      {/* Charts and Actions Grid */}
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        <div className="md:col-span-1">
-          <WorkflowStatusChart metrics={metrics} />
-        </div>
-        <div className="md:col-span-2 grid">
-          <RecentActivity metrics={metrics} />
-        </div>
-      </div>
+      {/* Recent Activity */}
+      <RecentActivity metrics={metrics} />
     </div>
   );
 }

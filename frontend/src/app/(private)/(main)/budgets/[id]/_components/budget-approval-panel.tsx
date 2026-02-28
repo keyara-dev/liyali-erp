@@ -105,14 +105,6 @@ export function BudgetApprovalPanel({
       new Date(a.performedAt || a.timestamp || 0).getTime(),
   );
 
-  // Debug logging
-  console.log("BudgetApprovalPanel - actionHistory prop:", actionHistory);
-  console.log("BudgetApprovalPanel - sortedHistory:", sortedHistory);
-  console.log(
-    "BudgetApprovalPanel - sortedHistory length:",
-    sortedHistory.length,
-  );
-
   // Combine approval history from both sources
   const combinedApprovalHistory = [
     ...(approvalHistory || []),
@@ -255,11 +247,33 @@ export function BudgetApprovalPanel({
         {/* Approval Chain Tab - Enhanced Workflow Stage Tracker */}
         <TabsContent value="chain" className="space-y-4 mt-4">
           {isLoading ? (
-            <div className="text-center py-8">
-              <div className="inline-block h-6 w-6 rounded-full border-2 border-blue-200 border-t-blue-600 animate-spin"></div>
-              <p className="text-sm text-gray-500 mt-2">
-                Loading approval chain...
-              </p>
+            <div className="space-y-3 py-4">
+              {/* Workflow header skeleton */}
+              <div className="p-3 rounded-lg border space-y-2">
+                <div className="h-4 w-48 bg-muted rounded animate-pulse" />
+                <div className="h-3 w-72 bg-muted rounded animate-pulse" />
+                <div className="flex items-center gap-4 mt-2">
+                  <div className="h-4 w-24 bg-muted rounded animate-pulse" />
+                  <div className="h-5 w-16 bg-muted rounded-full animate-pulse" />
+                </div>
+              </div>
+              {/* Stage cards skeleton */}
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="p-4 rounded-lg border-2 space-y-3">
+                  <div className="flex items-start gap-3">
+                    <div className="h-10 w-10 bg-muted rounded-full animate-pulse shrink-0" />
+                    <div className="flex-1 space-y-2">
+                      <div className="flex items-center gap-2">
+                        <div className="h-5 w-28 bg-muted rounded animate-pulse" />
+                        <div className="h-5 w-20 bg-muted rounded-full animate-pulse" />
+                      </div>
+                      <div className="h-3 w-40 bg-muted rounded animate-pulse" />
+                      <div className="h-3 w-32 bg-muted rounded animate-pulse" />
+                    </div>
+                    <div className="h-6 w-6 bg-muted rounded-full animate-pulse shrink-0" />
+                  </div>
+                </div>
+              ))}
             </div>
           ) : (
             <>

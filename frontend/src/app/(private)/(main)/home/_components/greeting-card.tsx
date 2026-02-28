@@ -1,35 +1,49 @@
 "use client";
 
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   FileText,
   PlusCircle,
   Search,
+  ShieldCheck,
   ArrowRight,
-  HelpCircle,
   CheckCircle2,
   Clock,
   AlertCircle,
 } from "lucide-react";
 import Link from "next/link";
 import { DashboardMetrics } from "@/types";
+import { CreateRequisitionDialog } from "@/app/(private)/(main)/requisitions/_components/create-requisition-dialog";
+import { WorkflowStatusChart } from "./workflow-status-chart";
 
 interface GreetingCardProps {
   userName?: string;
   userRole?: string;
+  userId?: string;
   metrics?: DashboardMetrics;
 }
 
 export function GreetingCard({
   userName = "User",
   userRole = "REQUESTER",
+  userId = "",
   metrics,
 }: GreetingCardProps) {
+  const router = useRouter();
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+
   const getGreeting = () => {
     const hour = new Date().getHours();
     if (hour < 12) return "Good morning";
     if (hour < 18) return "Good afternoon";
     return "Good evening";
+  };
+
+  const handleRequisitionCreated = () => {
+    setIsCreateDialogOpen(false);
+    router.push("/requisitions");
   };
 
   const quickActions = [
@@ -41,14 +55,19 @@ export function GreetingCard({
     {
       icon: <PlusCircle className="h-5 w-5" />,
       label: "Create Requisition",
-      href: "/requisitions/create",
+      onClick: () => setIsCreateDialogOpen(true),
     },
     {
       icon: <Search className="h-5 w-5" />,
       label: "Search Documents",
       href: "/search",
     },
-  ];
+    {
+      icon: <ShieldCheck className="h-5 w-5" />,
+      label: "Verify Document",
+      href: "/verification",
+    },
+  ] as const;
 
   const metricItems = metrics
     ? [
@@ -105,8 +124,8 @@ export function GreetingCard({
                 </h3>
               </div>
               <div className="space-y-2 grid gap-1">
-                {quickActions.map((action) => (
-                  <Link key={action.label} href={action.href}>
+                {quickActions.map((action) => {
+                  const buttonContent = (
                     <button className="w-full flex items-center justify-between gap-3 py-2.5 px-3 bg-white/5 hover:bg-white/15 text-primary-foreground border border-white/20 rounded-md transition-all group text-sm">
                       <div className="flex items-center gap-2">
                         {action.icon}
@@ -114,8 +133,22 @@ export function GreetingCard({
                       </div>
                       <ArrowRight className="h-4 w-4 opacity-60 group-hover:opacity-100 transition-opacity" />
                     </button>
-                  </Link>
-                ))}
+                  );
+
+                  if ("onClick" in action) {
+                    return (
+                      <div key={action.label} onClick={action.onClick}>
+                        {buttonContent}
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <Link key={action.label} href={action.href}>
+                      {buttonContent}
+                    </Link>
+                  );
+                })}
               </div>
             </div>
 
@@ -147,21 +180,21 @@ export function GreetingCard({
               </div>
             )}
 
-            <div className="md:col-span-1 bg-white/10 border border-white/20 rounded-lg p-5">
-              <div className="flex items-start gap-3 mb-3">
-                <HelpCircle className="h-5 w-5 text-primary-foreground mt-1 shrink-0" />
-                <h3 className="text-lg font-semibold text-primary-foreground">
-                  Get help from us
-                </h3>
+            {metrics && (
+              <div className="md:col-span-1">
+                <WorkflowStatusChart metrics={metrics} variant="embedded" />
               </div>
-              <p className="text-primary-foreground/90 text-sm leading-relaxed">
-                Have any questions or need assistance with your workflows? Open
-                the chat, we'll be happy to help.
-              </p>
-            </div>
+            )}
           </div>
         </div>
       </CardContent>
+
+      <CreateRequisitionDialog
+        open={isCreateDialogOpen}
+        onOpenChange={setIsCreateDialogOpen}
+        onRequisitionCreated={handleRequisitionCreated}
+        userId={userId}
+      />
     </Card>
   );
 }

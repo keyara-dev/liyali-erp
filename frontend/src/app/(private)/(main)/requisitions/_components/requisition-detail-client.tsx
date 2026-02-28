@@ -636,11 +636,24 @@ export function RequisitionDetailClient({
               <h2 className="text-lg font-semibold">
                 Items ({requisition.items?.length || 0})
               </h2>
-              {requisition.isEstimate && (
-                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 border border-yellow-200">
-                  Estimated Costs
-                </span>
-              )}
+              <div className="flex items-center gap-2">
+                {requisition.isEstimate && (
+                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 border border-yellow-200">
+                    Estimated Costs
+                  </span>
+                )}
+                {canEdit && (
+                  <Button
+                    onClick={handleEditRequisition}
+                    variant="outline"
+                    size="sm"
+                    className="gap-2"
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                    {requisition.items?.length ? "Edit Items" : "Add Items"}
+                  </Button>
+                )}
+              </div>
             </div>
 
             {requisition.items && requisition.items.length > 0 ? (

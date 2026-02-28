@@ -28,6 +28,7 @@ import { DashboardMetrics } from "@/types";
 
 interface WorkflowStatusChartProps {
   metrics: DashboardMetrics;
+  variant?: "default" | "embedded";
 }
 
 const chartConfig = {
@@ -56,72 +57,110 @@ const chartConfig = {
   },
 } satisfies ChartConfig;
 
-export function WorkflowStatusChart({ metrics }: WorkflowStatusChartProps) {
+export function WorkflowStatusChart({
+  metrics,
+  variant = "default",
+}: WorkflowStatusChartProps) {
+  const isEmbedded = variant === "embedded";
   const id = "workflow-status-chart";
 
   // Transform metrics data into chart format
-  const workflowData = React.useMemo(() => [
-    {
-      status: "draft",
-      documents: metrics.draftDocuments || 0,
-      fill: "var(--color-draft)",
-    },
-    {
-      status: "submitted",
-      documents: metrics.submittedDocuments || 0,
-      fill: "var(--color-submitted)",
-    },
-    {
-      status: "inApproval",
-      documents: metrics.pendingApproval || 0,
-      fill: "var(--color-inApproval)",
-    },
-    {
-      status: "approved",
-      documents: metrics.approvedDocuments || 0,
-      fill: "var(--color-approved)",
-    },
-    {
-      status: "rejected",
-      documents: metrics.rejectedDocuments || 0,
-      fill: "var(--color-rejected)",
-    },
-  ].filter((item) => item.documents > 0), [metrics]);
+  const workflowData = React.useMemo(
+    () =>
+      [
+        {
+          status: "draft",
+          documents: metrics.draftDocuments || 0,
+          fill: "var(--color-draft)",
+        },
+        {
+          status: "submitted",
+          documents: metrics.submittedDocuments || 0,
+          fill: "var(--color-submitted)",
+        },
+        {
+          status: "inApproval",
+          documents: metrics.pendingApproval || 0,
+          fill: "var(--color-inApproval)",
+        },
+        {
+          status: "approved",
+          documents: metrics.approvedDocuments || 0,
+          fill: "var(--color-approved)",
+        },
+        {
+          status: "rejected",
+          documents: metrics.rejectedDocuments || 0,
+          fill: "var(--color-rejected)",
+        },
+      ].filter((item) => item.documents > 0),
+    [metrics],
+  );
 
   const [activeStatus, setActiveStatus] = React.useState(
-    workflowData.length > 0 ? workflowData[0].status : "draft"
+    workflowData.length > 0 ? workflowData[0].status : "draft",
   );
 
   const statuses = React.useMemo(
     () => workflowData.map((item) => item.status),
-    [workflowData]
+    [workflowData],
   );
 
   if (workflowData.length === 0) {
     return (
-      <Card data-chart={id} className="flex flex-col">
+      <Card
+        data-chart={id}
+        className={`flex flex-col ${isEmbedded ? "bg-white/10 border-white/20" : ""}`}
+      >
         <CardHeader>
-          <CardTitle className="text-base font-bold">Workflow Status</CardTitle>
-          <CardDescription>No documents found</CardDescription>
+          <CardTitle
+            className={`text-base font-bold ${isEmbedded ? "text-primary-foreground" : ""}`}
+          >
+            Workflow Status
+          </CardTitle>
+          <CardDescription
+            className={isEmbedded ? "text-primary-foreground/70" : ""}
+          >
+            No documents found
+          </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-1 items-center justify-center">
-          <p className="text-muted-foreground">No workflow data available</p>
+          <p
+            className={
+              isEmbedded
+                ? "text-primary-foreground/70"
+                : "text-muted-foreground"
+            }
+          >
+            No workflow data available
+          </p>
         </CardContent>
       </Card>
     );
   }
 
   return (
-    <Card data-chart={id} className="flex flex-col">
+    <Card
+      data-chart={id}
+      className={`flex flex-col ${isEmbedded ? "bg-white/10 border-white/20 shadow-none" : ""}`}
+    >
       <ChartStyle id={id} config={chartConfig} />
       <CardHeader className="flex-row items-start space-y-0 pb-0">
         <div className="grid gap-">
-          <CardTitle className="text-base font-bold">Workflow Tasks</CardTitle>
-          <CardDescription className="text-xs font-normal">Document distribution by status</CardDescription>
+          <CardTitle
+            className={`text-base font-bold ${isEmbedded ? "text-primary-foreground" : ""}`}
+          >
+            Workflow Tasks
+          </CardTitle>
+          <CardDescription
+            className={`text-xs font-normal ${isEmbedded ? "text-primary-foreground/70" : ""}`}
+          >
+            Document distribution by status
+          </CardDescription>
         </div>
         <Select value={activeStatus} onValueChange={setActiveStatus}>
           <SelectTrigger
-            className="ml-auto h-7 w-[130px] rounded-lg pl-2.5"
+            className={`ml-auto h-7 w-[130px] rounded-lg pl-2.5 ${isEmbedded ? "bg-white/10 border-white/30 text-primary-foreground" : ""}`}
             aria-label="Select a status"
           >
             <SelectValue placeholder="Select status" />
@@ -153,11 +192,11 @@ export function WorkflowStatusChart({ metrics }: WorkflowStatusChartProps) {
           </SelectContent>
         </Select>
       </CardHeader>
-      <CardContent className="flex flex-1 flex-col justify-center pb-6">
+      <CardContent className="flex flex-1 flex-col justify-center">
         <ChartContainer
           id={id}
           config={chartConfig}
-          className="mx-auto aspect-square w-full max-w-[300px]"
+          className="mx-auto aspect-square w-full max-w-55"
         >
           <PieChart>
             <ChartTooltip
@@ -187,10 +226,14 @@ export function WorkflowStatusChart({ metrics }: WorkflowStatusChartProps) {
               <Label
                 content={({ viewBox }) => {
                   if (viewBox && "cx" in viewBox && "cy" in viewBox) {
-                    const activeData = workflowData.find(item => item.status === activeStatus);
+                    const activeData = workflowData.find(
+                      (item) => item.status === activeStatus,
+                    );
                     const displayValue = activeData?.documents || 0;
-                    const displayLabel = chartConfig[activeStatus as keyof typeof chartConfig]?.label || "Documents";
-                    
+                    const displayLabel =
+                      chartConfig[activeStatus as keyof typeof chartConfig]
+                        ?.label || "Documents";
+
                     return (
                       <text
                         x={viewBox.cx}
@@ -201,14 +244,18 @@ export function WorkflowStatusChart({ metrics }: WorkflowStatusChartProps) {
                         <tspan
                           x={viewBox.cx}
                           y={viewBox.cy}
-                          className="fill-foreground text-3xl font-bold"
+                          className={`text-3xl font-bold ${isEmbedded ? "fill-primary-foreground" : "fill-foreground"}`}
                         >
                           {displayValue.toLocaleString()}
                         </tspan>
                         <tspan
                           x={viewBox.cx}
                           y={(viewBox.cy || 0) + 24}
-                          className="fill-muted-foreground"
+                          className={
+                            isEmbedded
+                              ? "fill-primary-foreground/70"
+                              : "fill-muted-foreground"
+                          }
                         >
                           {displayLabel}
                         </tspan>
@@ -220,24 +267,28 @@ export function WorkflowStatusChart({ metrics }: WorkflowStatusChartProps) {
             </Pie>
           </PieChart>
         </ChartContainer>
-        
+
         {/* Legend */}
-        <div className="mt-4 mb-2 grid grid-cols-2 gap-2 text-sm">
+        {/* <div className="mt-4 mb-2 grid grid-cols-2 gap-2 text-sm">
           {workflowData.map((item) => {
             const config = chartConfig[item.status as keyof typeof chartConfig];
             return (
               <div
                 key={item.status}
                 className={`flex items-center gap-2 rounded-lg p-2 transition-colors ${
-                  activeStatus === item.status 
-                    ? 'bg-muted/50 border border-border' 
-                    : 'hover:bg-muted/30'
+                  activeStatus === item.status
+                    ? isEmbedded
+                      ? "bg-white/15 border border-white/30"
+                      : "bg-muted/50 border border-border"
+                    : isEmbedded
+                      ? "hover:bg-white/10"
+                      : "hover:bg-muted/30"
                 }`}
                 onClick={() => setActiveStatus(item.status)}
                 role="button"
                 tabIndex={0}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
+                  if (e.key === "Enter" || e.key === " ") {
                     setActiveStatus(item.status);
                   }
                 }}
@@ -248,16 +299,20 @@ export function WorkflowStatusChart({ metrics }: WorkflowStatusChartProps) {
                     backgroundColor: `var(--color-${item.status})`,
                   }}
                 />
-                <span className="flex-1 font-medium">
+                <span
+                  className={`flex-1 font-medium ${isEmbedded ? "text-primary-foreground" : ""}`}
+                >
                   {config?.label}
                 </span>
-                <span className="font-bold text-foreground">
+                <span
+                  className={`font-bold ${isEmbedded ? "text-primary-foreground" : "text-foreground"}`}
+                >
                   {item.documents}
                 </span>
               </div>
             );
           })}
-        </div>
+        </div> */}
       </CardContent>
     </Card>
   );

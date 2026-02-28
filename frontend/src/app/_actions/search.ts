@@ -1,13 +1,14 @@
 'use server'
 
-import { verifySession } from '@/lib/auth'
 import {
   APIResponse,
   SearchFilters,
   WorkflowDocument,
-  PaginatedResponse,
 } from '@/types'
-import { unauthorizedResponse, handleError } from '@/app/_actions/api-config'
+import authenticatedApiClient, {
+  handleError,
+  successResponse,
+} from '@/app/_actions/api-config'
 
 /**
  * Server action to search documents from the backend API
@@ -17,65 +18,39 @@ export async function searchDocuments(
   filters: SearchFilters,
   page: number = 1,
   limit: number = 10
-): Promise<APIResponse<PaginatedResponse<WorkflowDocument>>> {
-  const { isAuthenticated, session } = await verifySession()
-
-  if (!isAuthenticated || !session?.access_token) {
-    return unauthorizedResponse()
-  }
+): Promise<APIResponse<WorkflowDocument[]>> {
+  const url = '/api/v1/documents/search'
 
   try {
-    const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'
-    const token = session.access_token
-
     // Build query parameters
-    const queryParams = new URLSearchParams()
+    const params: Record<string, string> = {
+      page: page.toString(),
+      pageSize: limit.toString(),
+    }
 
     if (filters.documentNumber) {
-      queryParams.append('documentNumber', filters.documentNumber)
+      params.documentNumber = filters.documentNumber
     }
     if (filters.documentType && filters.documentType !== 'ALL') {
-      queryParams.append('documentType', filters.documentType)
+      params.documentType = filters.documentType
     }
     if (filters.status && filters.status !== 'ALL') {
-      queryParams.append('status', filters.status)
+      params.status = filters.status
     }
     if (filters.startDate) {
-      queryParams.append('startDate', filters.startDate)
+      params.startDate = filters.startDate
     }
     if (filters.endDate) {
-      queryParams.append('endDate', filters.endDate)
+      params.endDate = filters.endDate
     }
 
-    queryParams.append('page', page.toString())
-    queryParams.append('pageSize', limit.toString())
+    const response = await authenticatedApiClient({
+      method: 'GET',
+      url,
+      params,
+    })
 
-    const response = await fetch(
-      `${backendUrl}/api/v1/documents/search?${queryParams.toString()}`,
-      {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        cache: 'no-store',
-      }
-    )
-
-    if (!response.ok) {
-      if (response.status === 401) {
-        return unauthorizedResponse()
-      }
-
-      const error = await response.json().catch(() => ({}))
-      return {
-        success: false,
-        message: error.message || `Search failed: ${response.statusText}`,
-        status: response.status,
-      } as any
-    }
-
-    const responseData = await response.json()
+    const responseData = response.data
 
     // Backend returns: { success, message, data: [...results], pagination: {...} }
     // Each result has { document: {...}, relevance, matches }
@@ -103,24 +78,16 @@ export async function searchDocuments(
       }
     })
 
-    return {
-      success: true,
-      message: 'Search completed',
-      data: {
-        data: documents,
-        pagination: {
-          page: pagination.page || page,
-          limit: pagination.pageSize || limit,
-          total: pagination.total || 0,
-          totalPages: pagination.totalPages || Math.ceil((pagination.total || 0) / limit),
-          hasNext: pagination.hasNext ?? false,
-          hasPrev: pagination.hasPrev ?? false,
-        },
-      },
-      status: 200,
-    }
-  } catch (error) {
-    return handleError(error, 'GET', '/documents/search') as any
+    return successResponse(documents, 'Search completed', {
+      page: pagination.page || page,
+      limit: pagination.pageSize || limit,
+      total: pagination.total || 0,
+      totalPages: pagination.totalPages || Math.ceil((pagination.total || 0) / limit),
+      hasNext: pagination.hasNext ?? false,
+      hasPrev: pagination.hasPrev ?? false,
+    })
+  } catch (error: any) {
+    return handleError(error, 'GET', url)
   }
 }
 
@@ -131,65 +98,20 @@ export async function searchDocuments(
 export async function downloadDocumentPDF(
   documentId: string
 ): Promise<APIResponse<{ downloadUrl: string }>> {
-  const { isAuthenticated, session } = await verifySession()
-
-  if (!isAuthenticated || !session?.access_token) {
-    return unauthorizedResponse() as any
-  }
+  const url = `/api/v1/documents/${documentId}/download`
 
   try {
-    const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'
-    const token = session.access_token
+    const response = await authenticatedApiClient({
+      url,
+      responseType: 'arraybuffer',
+    })
 
-    const response = await fetch(
-      `${backendUrl}/api/v1/documents/${documentId}/download`,
-      {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/pdf',
-        },
-        cache: 'no-store',
-      }
-    )
+    // Convert binary data to base64 data URL for client consumption
+    const base64 = Buffer.from(response.data).toString('base64')
+    const downloadUrl = `data:application/pdf;base64,${base64}`
 
-    if (!response.ok) {
-      if (response.status === 404) {
-        return {
-          success: false,
-          message: 'Document not found',
-          status: 404,
-        } as any
-      }
-
-      if (response.status === 403) {
-        return {
-          success: false,
-          message: 'You do not have permission to download this document',
-          status: 403,
-        } as any
-      }
-
-      return {
-        success: false,
-        message: `Failed to download document: ${response.statusText}`,
-        status: response.status,
-      } as any
-    }
-
-    // Create a blob URL for the PDF
-    const blob = await response.blob()
-    const downloadUrl = URL.createObjectURL(blob)
-
-    return {
-      success: true,
-      message: 'Download URL generated',
-      data: {
-        downloadUrl,
-      },
-      status: 200,
-    } as any
-  } catch (error) {
-    return handleError(error, 'GET', `/documents/${documentId}/download`) as any
+    return successResponse({ downloadUrl }, 'Download URL generated')
+  } catch (error: any) {
+    return handleError(error, 'GET', url)
   }
 }
