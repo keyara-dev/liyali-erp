@@ -45,6 +45,7 @@ interface RequisitionsTableProps {
   onEditRequisition: (requisition: Requisition) => void;
   onCreateRequisition: () => void;
   filters?: RequisitionFilters;
+  initialData?: Requisition[];
 }
 
 const columns: ColumnDef<Requisition>[] = [
@@ -187,43 +188,6 @@ const columns: ColumnDef<Requisition>[] = [
   //   ),
   // },
   {
-    accessorKey: "requiredByDate",
-    header: ({ column }) => (
-      <Button
-        variant="ghost"
-        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        className="-ml-3"
-      >
-        Required By
-        <ArrowUpDown className="ml-2 h-4 w-4" />
-      </Button>
-    ),
-    cell: ({ row }) => {
-      if (!row.original.requiredByDate)
-        return <div className="text-muted-foreground">-</div>;
-
-      const date = new Date(row.original.requiredByDate);
-      const now = new Date();
-      const isOverdue = date < now && row.original.status !== "completed";
-      const isUrgent = date.getTime() - now.getTime() < 7 * 24 * 60 * 60 * 1000; // Within 7 days
-
-      return (
-        <div
-          className={`text-sm ${
-            isOverdue
-              ? "text-red-600 font-medium"
-              : isUrgent
-                ? "text-orange-600"
-                : "text-muted-foreground"
-          }`}
-        >
-          {date.toLocaleDateString()}
-          {isOverdue && <span className="ml-1 text-xs">(Overdue)</span>}
-        </div>
-      );
-    },
-  },
-  {
     accessorKey: "status",
     header: "Status",
     cell: ({ row }) => (
@@ -238,15 +202,44 @@ const columns: ColumnDef<Requisition>[] = [
         onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         className="-ml-3"
       >
-        Date Created
+        Dates
         <ArrowUpDown className="ml-2 h-4 w-4" />
       </Button>
     ),
     cell: ({ row }) => {
-      const date = new Date(row.original.createdAt);
+      const createdDate = new Date(row.original.createdAt);
+
+      const requiredByDate = row.original.requiredByDate
+        ? new Date(row.original.requiredByDate)
+        : null;
+      const now = new Date();
+      const isOverdue =
+        requiredByDate &&
+        requiredByDate < now &&
+        row.original.status !== "completed";
+      const isUrgent =
+        requiredByDate &&
+        requiredByDate.getTime() - now.getTime() < 7 * 24 * 60 * 60 * 1000;
+
       return (
-        <div className="text-sm text-muted-foreground">
-          {date.toLocaleDateString()}
+        <div className="space-y-0.5">
+          <div className="text-sm text-muted-foreground">
+            {createdDate.toLocaleDateString()}
+          </div>
+          {requiredByDate && (
+            <div
+              className={`text-xs ${
+                isOverdue
+                  ? "text-red-600 font-medium"
+                  : isUrgent
+                    ? "text-orange-600"
+                    : "text-muted-foreground/70"
+              }`}
+            >
+              Due: {requiredByDate.toLocaleDateString()}
+              {isOverdue && <span className="ml-1">(Overdue)</span>}
+            </div>
+          )}
         </div>
       );
     },
@@ -406,14 +399,20 @@ export function RequisitionsTable({
   onEditRequisition,
   onCreateRequisition,
   filters = {},
+  initialData,
 }: RequisitionsTableProps) {
   const router = useRouter();
-  const { data: requisitions = [], refetch } = useRequisitions(
+  const {
+    data: requisitions = [],
+    isLoading,
+    refetch,
+  } = useRequisitions(
     1,
     100,
     filters.status
       ? { status: filters.status, department: filters.department }
       : undefined,
+    initialData,
   );
 
   // Refetch when refreshTrigger changes
@@ -466,8 +465,7 @@ export function RequisitionsTable({
     <DataTable
       columns={columns}
       data={filteredData}
-      // searchKey="title"
-      // searchPlaceholder="Search by title, document number, or requester..."
+      isLoading={isLoading}
       emptyState={{
         title: "No Requisitions Found",
         description:

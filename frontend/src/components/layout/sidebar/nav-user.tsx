@@ -48,6 +48,7 @@ const TIER_CONFIG = {
     label: "Starter",
     icon: Zap,
     color: "bg-blue-100 text-blue-700",
+    gradient: "from-blue-500 to-blue-600",
     description: "For growing teams",
     canUpgrade: true,
   },
@@ -55,6 +56,7 @@ const TIER_CONFIG = {
     label: "Pro",
     icon: Crown,
     color: "bg-purple-100 text-purple-700",
+    gradient: "from-purple-500 to-purple-600",
     description: "For established departments",
     canUpgrade: false,
   },
@@ -62,6 +64,7 @@ const TIER_CONFIG = {
     label: "Enterprise",
     icon: Building2,
     color: "bg-emerald-100 text-emerald-700",
+    gradient: "from-emerald-500 to-emerald-600",
     description: "For large organizations",
     canUpgrade: false,
   },
@@ -93,7 +96,7 @@ const isUuidRole = (role: string) => {
 };
 
 export function NavUser() {
-  const { isMobile } = useSidebar();
+  const { isMobile, state } = useSidebar();
   const { user } = useSession();
   const { logout, isPending } = useLogout();
   const { currentOrganization } = useOrganizationContext();
@@ -117,15 +120,23 @@ export function NavUser() {
   const canUpgrade = tier === "STARTER";
 
   return (
-    <div className="space-y-2 p-2">
-      <TierDisplay />
+    <div className="space-y-2 p-2 group-data-[collapsible=icon]:p-0">
+      {state === "collapsed" ? (
+        <div className="flex justify-center py-1">
+          <div className={`p-1.5 rounded-lg bg-linear-to-r ${tierConfig.gradient} shadow-lg`}>
+            <TierIcon className="h-4 w-4 text-white" />
+          </div>
+        </div>
+      ) : (
+        <TierDisplay />
+      )}
       {/* User Profile Section with Dropdown */}
       <SidebarMenu>
         <SidebarMenuItem>
           {!isClient || !user ? (
-            <div className="flex items-center gap-2 p-1.5 rounded-lg bg-sidebar-accent/5 border">
-              <Skeleton className="h-8 w-8 rounded-full" />
-              <div className="grid flex-1 text-left text-sm leading-tight">
+            <div className="flex items-center gap-2 p-1.5 rounded-lg bg-sidebar-accent/5 border group-data-[collapsible=icon]:p-0 group-data-[collapsible=icon]:border-0 group-data-[collapsible=icon]:bg-transparent group-data-[collapsible=icon]:justify-center">
+              <Skeleton className="h-8 w-8 rounded-full shrink-0" />
+              <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
                 <Skeleton className="h-4 w-24 mb-1"></Skeleton>
                 <Skeleton className="h-3 w-16 rounded"></Skeleton>
               </div>

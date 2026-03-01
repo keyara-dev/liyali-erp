@@ -37,34 +37,58 @@ export const PDFHeader = ({
 }: PDFHeaderProps) => (
   <View
     style={{
-      marginBottom: 15,
       textAlign: "center",
       display: "flex",
-      flexDirection: "row",
+      flexDirection: "column",
       justifyContent: "center",
       alignItems: "center",
-      gap: 10,
+      gap: 16,
     }}
   >
-    {/* Logo */}
-    <View style={{ width: 40, height: 40 }}>
-      <Image
-        src={logoUrl || "/images/coat-of-arms.png"}
-        style={{ width: 40, height: 40, objectFit: "contain" }}
-      />
-    </View>
-    {/* Text */}
-    <View style={{ textAlign: "center" }}>
-      <Text style={{ fontSize: 11, fontWeight: "bold", marginBottom: 3 }}>
-        {orgName || "REPUBLIC OF ZAMBIA"}
-      </Text>
-      {tagline && (
-        <Text style={{ fontSize: 9, color: "#555", marginBottom: 3 }}>
-          {tagline}
+    <View
+      style={{
+        textAlign: "center",
+        display: "flex",
+        flexDirection: "row",
+        justifyContent: "center",
+        alignItems: "center",
+        gap: 8,
+      }}
+    >
+      {/* Logo */}
+      <View style={{ width: 50, height: 50 }}>
+        <Image
+          src={"/images/coat-of-arms.png"}
+          style={{ width: 50, height: 50, objectFit: "contain" }}
+        />
+      </View>
+      {/* Text */}
+      <View style={{ textAlign: "center" }}>
+        <Text style={{ fontSize: 16, fontWeight: "bold", marginBottom: 3 }}>
+          {"REPUBLIC OF ZAMBIA"}
         </Text>
-      )}
-      <Text style={{ fontSize: 13, fontWeight: "bold" }}>{title}</Text>
+        {orgName && (
+          <Text style={{ fontSize: 16, fontWeight: "600", marginBottom: 4 }}>
+            {orgName}
+          </Text>
+        )}
+        {tagline && (
+          <Text style={{ fontSize: 12, color: "#555", marginBottom: 4 }}>
+            {tagline}
+          </Text>
+        )}
+      </View>
+      {/* Logo */}
+      <View style={{ width: 50, height: 50 }}>
+        <Image
+          src={logoUrl}
+          style={{ width: 50, height: 50, objectFit: "contain" }}
+        />
+      </View>
     </View>
+    <Text style={{ fontSize: 13, fontWeight: "bold", marginBottom: 20 }}>
+      {title}
+    </Text>
   </View>
 );
 
@@ -75,9 +99,14 @@ export const PDFFooter = ({
     style={{
       display: "flex",
       flexDirection: "row",
-      justifyContent: "space-between",
+      gap: 12,
+      // justifyContent: "space-between",
     }}
   >
+    {" "}
+    <View style={{ marginBottom: 0, marginTop: "auto", paddingTop: 10 }}>
+      <Image src={organizationLogoUrl} style={{ width: 80, height: 24 }} />
+    </View>
     <View
       style={{
         marginTop: "auto",
@@ -94,9 +123,6 @@ export const PDFFooter = ({
       <Text style={{ fontSize: 7, color: "#999", marginTop: 2 }}>
         Scan the QR code above to verify this document.
       </Text>
-    </View>
-    <View style={{ marginBottom: 0, marginTop: "auto", paddingTop: 10 }}>
-      <Image src={organizationLogoUrl} style={{ width: 80, height: 24 }} />
     </View>
   </View>
 );

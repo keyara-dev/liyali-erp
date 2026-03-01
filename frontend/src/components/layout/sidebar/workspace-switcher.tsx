@@ -79,8 +79,8 @@ export function WorkspaceSwitcher() {
             aria-expanded={open}
             aria-label="Select workspace"
             className={cn(
-              "w-full justify-between h-auto p-2",
-              !sidebarOpen && "px-2",
+              "w-full h-auto p-2 justify-between",
+              "group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:p-0! group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:mx-auto group-data-[collapsible=icon]:overflow-hidden",
             )}
           >
             <div className="flex items-center gap-2 min-w-0">
@@ -89,25 +89,23 @@ export function WorkspaceSwitcher() {
                 logoUrl={currentOrganization.logoUrl}
                 size="sm"
               />
-              {sidebarOpen && (
-                <div className="flex-1 text-left min-w-0">
-                  <div className="font-medium text-sm truncate">
-                    {currentOrganization.name}
-                  </div>
-                  {/* <div className="flex items-center gap-1">
-                    <Badge 
-                      variant="secondary" 
-                      className={cn("text-xs h-4 px-1.5", getTierColor(currentOrganization.tier))}
-                    >
-                      {currentOrganization.tier || "STARTER"}
-                    </Badge>
-                  </div> */}
+              <div
+                className={cn(
+                  "text-left min-w-0 overflow-hidden transition-[opacity,max-width] duration-200 ease-linear",
+                  sidebarOpen ? "opacity-100 max-w-xs" : "opacity-0 max-w-0",
+                )}
+              >
+                <div className="font-medium text-sm truncate">
+                  {currentOrganization.name}
                 </div>
-              )}
+              </div>
             </div>
-            {sidebarOpen && (
-              <ChevronsUpDown className="ml-auto h-4 w-4 shrink-0 opacity-50" />
-            )}
+            <ChevronsUpDown
+              className={cn(
+                "h-4 shrink-0 transition-[opacity,width] duration-200 ease-linear overflow-hidden",
+                sidebarOpen ? "opacity-50 w-4" : "opacity-0 w-0",
+              )}
+            />
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-[240px] p-0" align="start">

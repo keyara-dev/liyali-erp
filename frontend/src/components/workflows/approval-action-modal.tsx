@@ -96,23 +96,30 @@ export function ApprovalActionModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
+      <DialogContent className="sm:max-w-lg overflow-y-auto max-h-[90svh] p-0">
+        <DialogHeader className="p-4 pb-0">
+          <DialogTitle className="flex items-center gap-2 mb-2">
             <ActionIcon className={`h-5 w-5 text-${actionColor}-600`} />
             {actionText} Task
           </DialogTitle>
           <DialogDescription className="text-left space-y-3">
             <div
-              className={`bg-${actionColor}-50 p-3 rounded-lg border border-${actionColor}-200`}
+              className={`bg-${actionColor}-50 p-3 rounded-lg border border-${actionColor}-200 dark:bg-${actionColor}-950/30 dark:border-${actionColor}-800 `}
             >
-              <p className={`font-medium text-${actionColor}-900`}>
+              <p
+                className={`font-semibold uppercase text-${actionColor}-900 dark:text-${actionColor}-200`}
+              >
                 {taskDetails.entityType} #{taskDetails.entityId}
               </p>
-              <p className={`text-sm text-${actionColor}-700`}>
-                Stage: {taskDetails.stageName}
+              <p
+                className={`text-sm text-${actionColor}-700 dark:text-${actionColor}-300`}
+              >
+                Stage:{" "}
+                <span className="font-medium">{taskDetails.stageName}</span>
               </p>
-              <p className={`text-sm text-${actionColor}-700`}>
+              <p
+                className={`text-xs text-${actionColor}-700 dark:text-${actionColor}-400`}
+              >
                 Claimed by: {taskDetails.claimedBy} ({minutesRemaining} min
                 remaining)
               </p>
@@ -146,10 +153,13 @@ export function ApprovalActionModal({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className="space-y-4 px-4">
           {/* Comments Section */}
           <div className="space-y-2">
-            <Label htmlFor="comments" className="flex items-center gap-2">
+            <Label
+              htmlFor="comments"
+              className="flex text-sxs md:text-sm items-center gap-2"
+            >
               <MessageSquare className="h-4 w-4" />
               {isApprove ? "Approval Comments" : "Rejection Reason"} *
             </Label>
@@ -162,21 +172,20 @@ export function ApprovalActionModal({
               }
               value={comments}
               onChange={(e) => setComments(e.target.value)}
-              className={`min-h-[100px] ${errors.comments ? "border-red-500" : ""}`}
+              className={`${errors.comments ? "border-red-500" : ""}`}
               disabled={isLoading}
+              descriptionText="Comments are required. (Minimum 10 characters)"
+              maxLength={300}
+              isInvalid={!!errors.comments}
+              errorText={errors.comments}
+              showLimit
             />
-            {errors.comments && (
-              <p className="text-sm text-destructive">{errors.comments}</p>
-            )}
-            <p className="text-xs text-muted-foreground">
-              {comments.length}/500 characters (minimum 10 required)
-            </p>
           </div>
 
           {/* Digital Signature Section - Only for Approvals */}
           {isApprove && (
             <div className="space-y-2">
-              <Label className="flex items-center gap-2">
+              <Label className="flex items-center text-sxs md:text-sm gap-2">
                 <FileSignature className="h-4 w-4" />
                 Digital Signature *
               </Label>
@@ -188,15 +197,11 @@ export function ApprovalActionModal({
               {errors.signature && (
                 <p className="text-sm text-destructive">{errors.signature}</p>
               )}
-              <p className="text-xs text-muted-foreground">
-                Your digital signature confirms your identity and authorization
-                for this action.
-              </p>
             </div>
           )}
         </div>
 
-        <DialogFooter className="flex-col sm:flex-row gap-2">
+        <DialogFooter className="flex-col-reverse w-full sm:flex-row sticky bottom-0 bg-background/70 border-t border-border backdrop-blur-2xl gap-2 p-4">
           <Button
             variant="outline"
             onClick={handleClose}

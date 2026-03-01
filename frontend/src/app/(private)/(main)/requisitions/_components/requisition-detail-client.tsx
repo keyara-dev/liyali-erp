@@ -197,10 +197,110 @@ export function RequisitionDetailClient({
 
   if (isLoading && !requisition) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <div className="text-center">
-          <div className="h-8 w-8 rounded-full border-4 border-blue-200 border-t-blue-600 animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading requisition...</p>
+      <div className="space-y-6">
+        {/* Header skeleton */}
+        <div className="flex items-start justify-between gap-4">
+          <div className="space-y-2">
+            <div className="flex items-center gap-3">
+              <div className="h-9 w-9 bg-muted rounded-md animate-pulse" />
+              <div className="h-8 bg-muted rounded-lg w-48 animate-pulse" />
+              <div className="h-6 bg-muted rounded-full w-20 animate-pulse" />
+            </div>
+            <div className="h-4 bg-muted rounded w-96 animate-pulse ml-12" />
+          </div>
+          <div className="flex gap-2 mt-2">
+            <div className="h-11 bg-muted rounded-md w-28 animate-pulse" />
+            <div className="h-11 bg-muted rounded-md w-32 animate-pulse" />
+            <div className="h-11 bg-muted rounded-md w-36 animate-pulse" />
+            <div className="h-11 bg-muted rounded-md w-44 animate-pulse" />
+          </div>
+        </div>
+
+        {/* Requisition Details gradient card skeleton */}
+        <div className="gradient-primary border-0 overflow-hidden rounded-lg p-6">
+          <div className="h-6 bg-white/20 rounded w-44 mb-6 animate-pulse" />
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {Array.from({ length: 12 }).map((_, i) => (
+              <div key={i} className="space-y-2">
+                <div className="h-3 bg-white/15 rounded w-20 animate-pulse" />
+                <div className="h-5 bg-white/20 rounded w-32 animate-pulse" />
+              </div>
+            ))}
+          </div>
+          <div className="mt-6 pt-6 border-t border-white/20">
+            <div className="h-3 bg-white/15 rounded w-48 mb-3 animate-pulse" />
+            <div className="space-y-2">
+              <div className="h-4 bg-white/20 rounded w-full animate-pulse" />
+              <div className="h-4 bg-white/20 rounded w-3/4 animate-pulse" />
+            </div>
+          </div>
+        </div>
+
+        {/* Items card skeleton */}
+        <div className="bg-card rounded-lg border-0 shadow-sm p-6">
+          <div className="flex items-center justify-between mb-6">
+            <div className="h-6 bg-muted rounded w-24 animate-pulse" />
+            <div className="h-9 bg-muted rounded-md w-28 animate-pulse" />
+          </div>
+          <div className="space-y-3">
+            {[1, 2, 3].map((i) => (
+              <div
+                key={i}
+                className="flex items-start justify-between p-4 rounded-lg border border-slate-200/10"
+              >
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-6 h-6 bg-muted rounded-full animate-pulse" />
+                    <div className="h-5 bg-muted rounded w-48 animate-pulse" />
+                  </div>
+                  <div className="ml-8 flex items-center gap-4">
+                    <div className="h-4 bg-muted rounded w-28 animate-pulse" />
+                    <div className="h-4 bg-muted rounded w-36 animate-pulse" />
+                  </div>
+                </div>
+                <div className="text-right ml-4 space-y-1">
+                  <div className="h-6 bg-muted rounded w-28 animate-pulse ml-auto" />
+                  <div className="h-3 bg-muted rounded w-10 animate-pulse ml-auto" />
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="mt-6 pt-6 border-t bg-slate-50 dark:bg-slate-950 -mx-6 -mb-6 px-6 py-4 rounded-b-lg">
+            <div className="flex items-center justify-between mb-2">
+              <div className="h-4 bg-muted rounded w-24 animate-pulse" />
+              <div className="h-4 bg-muted rounded w-20 animate-pulse" />
+            </div>
+            <div className="flex items-center justify-between">
+              <div className="h-5 bg-muted rounded w-28 animate-pulse" />
+              <div className="h-8 bg-muted rounded w-36 animate-pulse" />
+            </div>
+          </div>
+        </div>
+
+        {/* Approval History skeleton */}
+        <div className="bg-card rounded-lg border p-6">
+          <div className="flex gap-2 mb-6">
+            <div className="h-9 bg-muted rounded-md w-32 animate-pulse" />
+            <div className="h-9 bg-muted rounded-md w-36 animate-pulse" />
+            <div className="h-9 bg-muted rounded-md w-28 animate-pulse" />
+          </div>
+          <div className="space-y-4">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="flex gap-4">
+                <div className="flex flex-col items-center">
+                  <div className="w-8 h-8 bg-muted rounded-full animate-pulse" />
+                  {i < 3 && (
+                    <div className="w-0.5 h-12 bg-muted animate-pulse mt-1" />
+                  )}
+                </div>
+                <div className="flex-1 space-y-2 pb-4">
+                  <div className="h-4 bg-muted rounded w-36 animate-pulse" />
+                  <div className="h-3 bg-muted rounded w-48 animate-pulse" />
+                  <div className="h-6 bg-muted rounded-full w-20 animate-pulse" />
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     );
@@ -738,7 +838,7 @@ export function RequisitionDetailClient({
                 </div>
 
                 {/* Summary */}
-                <div className="mt-6 pt-6 border-t bg-slate-50 dark:bg-slate-950 -mx-6 -mb-6 px-6 py-4 rounded-b-lg">
+                <div className="mt-6 pt-6 border-t bg-slate-50 dark:bg-slate-900 -mx-6 -mb-6 px-6 py-4 rounded-b-lg">
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-sm text-muted-foreground">
                       Total Items: {requisition.items.length}

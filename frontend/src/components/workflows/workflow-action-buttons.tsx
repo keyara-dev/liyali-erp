@@ -272,50 +272,103 @@ export const WorkflowActionButtons = memo(function WorkflowActionButtons({
     window.location.href = url;
   };
 
+  // Shared modals — must be included in every variant's return
+  const sharedModals = (
+    <>
+      {showReassignModal && (
+        <ReassignmentModal
+          task={task as any}
+          isOpen={showReassignModal}
+          onOpenChange={setShowReassignModal}
+          onReassign={handleReassignment}
+        />
+      )}
+      {showClaimModal && (
+        <ClaimTaskModal
+          isOpen={showClaimModal}
+          onClose={() => setShowClaimModal(false)}
+          onConfirm={handleClaimConfirm}
+          isLoading={isLoading === "claim"}
+          taskDetails={{
+            entityType: task.entityType || task.documentType || "Task",
+            entityId: task.entityId || task.documentId || task.id,
+            stageName: task.stageName || "Approval",
+            assignedRole: task.assignedRole || "Approver",
+          }}
+        />
+      )}
+      {showApprovalModal && (
+        <ApprovalActionModal
+          isOpen={showApprovalModal}
+          onClose={() => setShowApprovalModal(false)}
+          onConfirm={handleApprovalConfirm}
+          isLoading={isLoading === approvalAction}
+          action={approvalAction}
+          taskDetails={{
+            entityType: task.entityType || task.documentType || "Task",
+            entityId: task.entityId || task.documentId || task.id,
+            stageName: task.stageName || "Approval",
+            claimedBy: user?.name || "You",
+            claimExpiry:
+              task.claimExpiry ||
+              new Date(Date.now() + 30 * 60 * 1000).toISOString(),
+          }}
+        />
+      )}
+    </>
+  );
+
   if (variant === "compact") {
     return (
-      <div className="flex items-center gap-2">
-        {showStatus && <StatusBadge task={task} user={user} />}
-        {isPending && canClaim && (
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => handleAction("claim", onClaim)}
-            disabled={isLoading === "claim"}
-            className="h-7 px-2 text-xs"
-          >
-            <Users className="h-3 w-3 mr-1" />
-            Claim
-          </Button>
-        )}
-        {isTaskClaimed && canApproveReject && (
-          <div className="flex gap-1">
+      <>
+        <div className="flex items-center gap-2">
+          {showStatus && <StatusBadge task={task} user={user} />}
+          {isPending && canClaim && (
             <Button
               size="sm"
-              onClick={() => handleAction("approve", onApprove)}
-              disabled={isLoading === "approve"}
-              className="h-7 px-2 text-xs bg-green-600 hover:bg-green-700"
+              variant="outline"
+              onClick={() => handleAction("claim", onClaim)}
+              disabled={isLoading === "claim"}
+              title="Claim task"
+              className="h-7 px-2 text-xs gap-1"
             >
-              <CheckCircle2 className="h-3 w-3 mr-1" />
-              Approve
+              <Users className="h-3 w-3" />
+              Claim
             </Button>
-            <Button
-              size="sm"
-              onClick={() => handleAction("reject", onReject)}
-              disabled={isLoading === "reject"}
-              className="h-7 px-2 text-xs bg-red-600 hover:bg-red-700"
-            >
-              <XCircle className="h-3 w-3 mr-1" />
-              Reject
-            </Button>
-          </div>
-        )}
-      </div>
+          )}
+          {isTaskClaimed && canApproveReject && (
+            <div className="flex gap-1">
+              <Button
+                size="sm"
+                onClick={() => handleAction("approve", onApprove)}
+                disabled={isLoading === "approve"}
+                title="Approve"
+                className="h-7 w-7 sm:w-auto p-0 sm:px-2 sm:gap-1 bg-green-600 hover:bg-green-700"
+              >
+                <CheckCircle2 className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline text-xs">Approve</span>
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => handleAction("reject", onReject)}
+                disabled={isLoading === "reject"}
+                title="Reject"
+                className="h-7 w-7 sm:w-auto p-0 sm:px-2 sm:gap-1 bg-red-600 hover:bg-red-700"
+              >
+                <XCircle className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline text-xs">Reject</span>
+              </Button>
+            </div>
+          )}
+        </div>
+        {sharedModals}
+      </>
     );
   }
 
   if (variant === "inline") {
     return (
+      <>
       <div className="space-y-4">
         <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg border">
           <div className="flex items-center gap-3">
@@ -381,11 +434,14 @@ export const WorkflowActionButtons = memo(function WorkflowActionButtons({
           )}
         </div>
       </div>
+      {sharedModals}
+    </>
     );
   }
 
   if (variant === "dropdown") {
     return (
+      <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" className="h-8 w-8 p-0">
@@ -446,11 +502,14 @@ export const WorkflowActionButtons = memo(function WorkflowActionButtons({
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+      {sharedModals}
+      </>
     );
   }
 
   if (variant === "detail") {
     return (
+      <>
       <div className="flex flex-wrap gap-3">
         {isPending && (
           <>
@@ -523,6 +582,8 @@ export const WorkflowActionButtons = memo(function WorkflowActionButtons({
           </Button>
         )}
       </div>
+      {sharedModals}
+      </>
     );
   }
 
@@ -619,46 +680,7 @@ export const WorkflowActionButtons = memo(function WorkflowActionButtons({
           </DropdownMenuContent>
         </DropdownMenu>
       </>
-      {showReassignModal && (
-        <ReassignmentModal
-          task={task as any}
-          isOpen={showReassignModal}
-          onOpenChange={setShowReassignModal}
-          onReassign={handleReassignment}
-        />
-      )}
-      {showClaimModal && (
-        <ClaimTaskModal
-          isOpen={showClaimModal}
-          onClose={() => setShowClaimModal(false)}
-          onConfirm={handleClaimConfirm}
-          isLoading={isLoading === "claim"}
-          taskDetails={{
-            entityType: task.entityType || task.documentType || "Task",
-            entityId: task.entityId || task.documentId || task.id,
-            stageName: task.stageName || "Approval",
-            assignedRole: task.assignedRole || "Approver",
-          }}
-        />
-      )}
-      {showApprovalModal && (
-        <ApprovalActionModal
-          isOpen={showApprovalModal}
-          onClose={() => setShowApprovalModal(false)}
-          onConfirm={handleApprovalConfirm}
-          isLoading={isLoading === approvalAction}
-          action={approvalAction}
-          taskDetails={{
-            entityType: task.entityType || task.documentType || "Task",
-            entityId: task.entityId || task.documentId || task.id,
-            stageName: task.stageName || "Approval",
-            claimedBy: user?.name || "You",
-            claimExpiry:
-              task.claimExpiry ||
-              new Date(Date.now() + 30 * 60 * 1000).toISOString(),
-          }}
-        />
-      )}
+      {sharedModals}
     </div>
   );
 });

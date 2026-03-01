@@ -44,13 +44,22 @@ export const useRequisitions = (
     status?: string;
     department?: string;
   },
+  initialRequisitions?: Requisition[],
 ) =>
   useQuery({
     queryKey: [QUERY_KEYS.REQUISITIONS.ALL, page, limit, filters],
     queryFn: async () => {
       const response = await getRequisitions(page, limit, filters);
-      return response.success ? response.data : [];
+      return response.success && Array.isArray(response.data)
+        ? response.data
+        : [];
     },
+    ...(initialRequisitions?.length
+      ? {
+          initialData: initialRequisitions,
+          initialDataUpdatedAt: Date.now(),
+        }
+      : {}),
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 

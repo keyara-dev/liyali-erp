@@ -260,6 +260,7 @@ func (h *ApprovalHandler) GetApprovalTasks(c *fiber.Ctx) error {
 	documentType := c.Query("document_type", "")
 	priority := c.Query("priority", "")
 	assignedToMe := c.Query("assigned_to_me", "false") == "true"
+	viewAll := c.Query("view_all", "false") == "true"
 
 	if page < 1 {
 		page = 1
@@ -280,7 +281,10 @@ func (h *ApprovalHandler) GetApprovalTasks(c *fiber.Ctx) error {
 	query := db.Table("workflow_tasks").Where("organization_id = ?", organizationID)
 
 	// Build permission filter - same logic as approval permissions
-	if assignedToMe {
+	if viewAll {
+		// Dashboard/transparency mode: return all org tasks regardless of role.
+		// Action-level permissions are enforced when the user tries to claim/approve.
+	} else if assignedToMe {
 		// Only show tasks assigned specifically to this user or their role
 		query = query.Where("(assigned_user_id = ? OR LOWER(assigned_role) = LOWER(?))", userID, user.Role)
 	} else {

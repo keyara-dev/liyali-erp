@@ -35,8 +35,7 @@ export function TokenRefreshProvider({
     return () => clearTimeout(timer);
   }, []);
 
-  const { refreshError } =
-    useTokenRefresh(enabled && !isInitialLoad);
+  const { refreshError } = useTokenRefresh(enabled && !isInitialLoad);
 
   // Show toast notifications for critical refresh errors
   useEffect(() => {
@@ -56,7 +55,7 @@ export function TokenRefreshProvider({
       {children}
 
       {/* Debug component in development */}
-      {process.env.NODE_ENV === "development" && <SessionDebug />}
+      {/* {process.env.NODE_ENV === "development" && <SessionDebug />} */}
     </>
   );
 }

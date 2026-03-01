@@ -31,6 +31,7 @@ export async function getApprovalTasks(
     documentType?: string;
     priority?: string;
     assignedToMe?: boolean;
+    viewAll?: boolean;
   },
   page: number = 1,
   limit: number = 10
@@ -50,6 +51,9 @@ export async function getApprovalTasks(
   }
   if (filters?.assignedToMe) {
     params.set("assigned_to_me", "true");
+  }
+  if (filters?.viewAll) {
+    params.set("view_all", "true");
   }
 
   const url = `/api/v1/approvals?${params.toString()}`;

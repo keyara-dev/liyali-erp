@@ -45,7 +45,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               isIcon={!open && !isMobile}
               isFull={open || isMobile}
               href="/?landing=true"
-              className="my-4 mb-2"
+              className=" mb-2"
             />
           </SidebarMenuItem>
           <SidebarMenuItem>
@@ -54,9 +54,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
-        <ScrollArea className="h-full">
-          <NavMain />
-        </ScrollArea>
+        {/* <ScrollArea className="h-full">
+        </ScrollArea> */}
+        <NavMain />
       </SidebarContent>
       <SidebarFooter>
         <NavUser />

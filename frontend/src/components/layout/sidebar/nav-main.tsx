@@ -175,12 +175,12 @@ export function NavMain() {
   const isMobile = useIsMobile();
 
   return (
-    <>
+    <div className="h-full overflow-y-auto overflow-clip">
       {routes &&
         routes.map((nav: NavGroup) => (
-          <SidebarGroup key={nav.title}>
+          <SidebarGroup key={nav.title} className="w-full">
             <SidebarGroupLabel>{nav.title}</SidebarGroupLabel>
-            <SidebarGroupContent className="flex flex-col gap-2">
+            <SidebarGroupContent className="flex flex-col gap-2 max-w-full ">
               <SidebarMenu>
                 {nav.items.map((item) => (
                   <SidebarMenuItem key={item.title}>
@@ -292,6 +292,6 @@ export function NavMain() {
             </SidebarGroupContent>
           </SidebarGroup>
         ))}
-    </>
+    </div>
   );
 }

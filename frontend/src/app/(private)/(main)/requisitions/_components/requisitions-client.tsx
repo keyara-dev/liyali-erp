@@ -16,11 +16,13 @@ import { Requisition } from "@/types/requisition";
 interface RequisitionsClientProps {
   userId: string;
   userRole: string;
+  initialData?: Requisition[];
 }
 
 export function RequisitionsClient({
   userId,
   userRole,
+  initialData,
 }: RequisitionsClientProps) {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
@@ -84,6 +86,7 @@ export function RequisitionsClient({
         onEditRequisition={handleEditRequisition}
         onCreateRequisition={handleCreateNew}
         filters={filters}
+        initialData={initialData}
       />
 
       {/* Create/Edit Dialog */}

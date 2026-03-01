@@ -2,7 +2,7 @@
 
 import { useDashboardMetrics } from "@/hooks/use-dashboard-metrics";
 import { PageHeader } from "@/components/base/page-header";
-import { RecentActivity } from "./recent-activity";
+import { RecentTasks } from "./recent-tasks";
 import { GreetingCard } from "./greeting-card";
 import { LoadingDashboard } from "../loading";
 import CustomAlert from "@/components/ui/custom-alert";
@@ -71,8 +71,8 @@ export function DashboardClient({
       {/* Greeting Card with Quick Actions and Analytics */}
       <GreetingCard userName={userName} userRole={userRole} userId={userId} metrics={metrics} />
 
-      {/* Recent Activity */}
-      <RecentActivity metrics={metrics} />
+      {/* Recent Tasks - pending approvals for quick action */}
+      <RecentTasks userId={userId} userRole={userRole} />
     </div>
   );
 }

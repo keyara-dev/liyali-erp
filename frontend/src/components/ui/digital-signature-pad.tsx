@@ -2,7 +2,7 @@
 
 import React, { useRef, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { RotateCcw, Check, Upload, Pencil } from "lucide-react";
+import { RotateCcw, Check, Upload, Pencil, UploadCloud } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -19,7 +19,7 @@ export function DigitalSignaturePad({
   disabled = false,
   className,
   width = 400,
-  height = 200,
+  height = 100,
 }: DigitalSignaturePadProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -28,7 +28,7 @@ export function DigitalSignaturePad({
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"draw" | "upload">("draw");
   const [lastPoint, setLastPoint] = useState<{ x: number; y: number } | null>(
-    null
+    null,
   );
 
   useEffect(() => {
@@ -50,7 +50,9 @@ export function DigitalSignaturePad({
   }, []);
 
   const getEventPos = (
-    e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>
+    e:
+      | React.MouseEvent<HTMLCanvasElement>
+      | React.TouchEvent<HTMLCanvasElement>,
   ) => {
     const canvas = canvasRef.current;
     if (!canvas) return { x: 0, y: 0 };
@@ -76,7 +78,9 @@ export function DigitalSignaturePad({
   };
 
   const startDrawing = (
-    e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>
+    e:
+      | React.MouseEvent<HTMLCanvasElement>
+      | React.TouchEvent<HTMLCanvasElement>,
   ) => {
     if (disabled) return;
 
@@ -87,7 +91,9 @@ export function DigitalSignaturePad({
   };
 
   const draw = (
-    e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>
+    e:
+      | React.MouseEvent<HTMLCanvasElement>
+      | React.TouchEvent<HTMLCanvasElement>,
   ) => {
     if (!isDrawing || disabled || !lastPoint) return;
 
@@ -189,15 +195,15 @@ export function DigitalSignaturePad({
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="draw" className="mt-4">
+        <TabsContent value="draw" className="mt-2">
           <div className="relative border-2 border-dashed border-border rounded-lg p-2 bg-background">
             <canvas
               ref={canvasRef}
               width={width}
               height={height}
               className={cn(
-                "block mx-auto cursor-crosshair touch-none",
-                disabled && "cursor-not-allowed opacity-50"
+                "block w-full cursor-crosshair touch-none",
+                disabled && "cursor-not-allowed opacity-50",
               )}
               onMouseDown={startDrawing}
               onMouseMove={draw}
@@ -218,8 +224,8 @@ export function DigitalSignaturePad({
           </div>
         </TabsContent>
 
-        <TabsContent value="upload" className="mt-4">
-          <div className="relative border-2 border-dashed border-border rounded-lg p-4 bg-background">
+        <TabsContent value="upload" className="mt-2">
+          <div className="relative border-2 h-30 border-dashed border-border rounded-lg p-4 bg-background">
             <input
               ref={fileInputRef}
               type="file"
@@ -234,28 +240,23 @@ export function DigitalSignaturePad({
                 <img
                   src={uploadedImage}
                   alt="Uploaded signature"
-                  className="max-h-[200px] max-w-full object-contain"
+                  className="h-[200px] max-w-full object-contain"
                 />
               </div>
             ) : (
-              <div className="flex flex-col items-center justify-center py-8 gap-3">
-                <Upload className="h-12 w-12 text-muted-foreground" />
-                <p className="text-muted-foreground text-sm text-center">
-                  Upload your signature as an image
-                </p>
+              <div className="flex flex-col items-center justify-center  gap-2">
+                <Upload className="h-8 w-8 text-muted-foreground" />
                 <Button
                   type="button"
                   variant="outline"
+                  size={"sm"}
                   onClick={triggerFileUpload}
                   disabled={disabled}
                   className="mt-2"
                 >
                   <Upload className="h-4 w-4 mr-2" />
-                  Choose File
+                  Upload Signature
                 </Button>
-                <p className="text-xs text-muted-foreground text-center">
-                  PNG, JPG, or GIF (max 2MB)
-                </p>
               </div>
             )}
           </div>

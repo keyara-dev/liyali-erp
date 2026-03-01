@@ -38,6 +38,7 @@ export const useApprovalTasks = (
     documentType?: string;
     priority?: string;
     assignedToMe?: boolean;
+    viewAll?: boolean;
   },
   page: number = 1,
   limit: number = 10
