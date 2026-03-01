@@ -64,6 +64,22 @@ export function StageForm({ stage, onSave, onCancel, errors }: StageFormProps) {
     }
   });
 
+  // When roles load, normalize any legacy system role UUID → name in the form
+  useEffect(() => {
+    if (!roles.length) return;
+    const rawRole = formData.approverRole as string;
+    if (!rawRole) return;
+    // If the stored value is a system role's UUID, convert to its name
+    const matched = roles.find((r) => r.id === rawRole && r.isDefault);
+    if (matched) {
+      setFormData((prev) => ({
+        ...prev,
+        approverRole: matched.name as any,
+        requiredRole: matched.name,
+      }));
+    }
+  }, [roles]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Update form data when stage prop changes (important for editing)
   useEffect(() => {
     if (stage) {
@@ -149,7 +165,9 @@ export function StageForm({ stage, onSave, onCancel, errors }: StageFormProps) {
         isInvalid={!!errors.approverRole}
         errorText={errors.approverRole}
         options={roles.map((role) => ({
-          value: role.id,
+          // System roles (isDefault=true) are stored by name — stable across DB resets.
+          // Custom org roles are stored by UUID — stable per org.
+          value: role.isDefault ? role.name : role.id,
           label: role.name,
         }))}
       />

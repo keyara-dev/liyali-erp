@@ -1,11 +1,14 @@
-export default function LoadingD() {
+import { PageHeader } from "@/components/base/page-header";
+
+export default function LoadingDashboardPage() {
   return (
-    <div className="max-w-6xl mx-auto">
-      {/* Page Header Skeleton */}
-      <div className="mb-8">
-        <div className="h-10 bg-muted rounded-lg w-80 mb-2 animate-pulse"></div>
-        <div className="h-6 bg-muted rounded-lg w-64 animate-pulse"></div>
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        title="Dashboard"
+        subtitle="Loading dashboard metrics..."
+        showBackButton={false}
+      />
+      <LoadingDashboard />
     </div>
   );
 }

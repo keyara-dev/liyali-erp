@@ -70,6 +70,11 @@ func SetupRoutes(app *fiber.App, handlerRegistry *handlers.HandlerRegistry, rbac
 	// Tenant-scoped routes (authentication + tenant context required)
 	tenant := apiV1.Group("", middleware.AuthMiddleware(), middleware.TenantMiddleware())
 
+	// Current user's own permissions — no permission gate, just auth + tenant
+	tenant.Get("/me/permissions", func(c *fiber.Ctx) error {
+		return handlers.GetMyPermissions(c, rbacService)
+	})
+
 	// Organization management (within tenant context)
 	orgMgmt := tenant.Group("/organization")
 	orgMgmt.Get("/members",
@@ -150,7 +155,6 @@ func SetupRoutes(app *fiber.App, handlerRegistry *handlers.HandlerRegistry, rbac
 	// Organization role management (Phase 3.5) - ENABLED
 	orgRoles := tenant.Group("/organization/roles")
 	orgRoles.Get("/",
-		middleware.RequirePermission(rbacService, "organization", "manage"),
 		handlers.GetOrganizationRoles)
 	orgRoles.Post("/",
 		middleware.RequirePermission(rbacService, "organization", "manage"),
@@ -210,6 +214,8 @@ func SetupRoutes(app *fiber.App, handlerRegistry *handlers.HandlerRegistry, rbac
 	requisitions.Post("/:id/submit", middleware.RequirePermission(rbacService, "requisition", "edit"), handlers.SubmitRequisition)
 	requisitions.Post("/:id/withdraw", middleware.RequirePermission(rbacService, "requisition", "edit"), handlers.WithdrawRequisition)
 	requisitions.Post("/:id/reassign", middleware.RequirePermission(rbacService, "requisition", "approve"), handlers.ReassignRequisition)
+	requisitions.Get("/:id/chain", middleware.RequirePermission(rbacService, "requisition", "view"), handlers.GetRequisitionChain)
+	requisitions.Get("/:id/audit-trail", middleware.RequirePermission(rbacService, "requisition", "view"), handlers.GetRequisitionAuditTrail)
 
 	// Budget routes (tenant-scoped)
 	budgets := tenant.Group("/budgets", middleware.InjectWorkflowExecutionService(handlerRegistry.WorkflowExecutionService))
@@ -271,6 +277,7 @@ func SetupRoutes(app *fiber.App, handlerRegistry *handlers.HandlerRegistry, rbac
 
 	// Specific routes must come before parameterized routes
 	approvals.Get("/stats", handlerRegistry.Approval.GetTaskStats)
+	approvals.Get("/my-pending-count", handlerRegistry.Approval.GetMyPendingCount)
 	approvals.Get("/available-approvers", handlerRegistry.Approval.GetAvailableApprovers)
 	approvals.Get("/tasks/overdue", middleware.RequirePermission(rbacService, "approval", "view"), handlerRegistry.Approval.GetOverdueTasks)
 

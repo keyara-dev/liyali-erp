@@ -53,7 +53,8 @@ func (ns *NotificationService) HandleWorkflowEvent(event NotificationEvent) erro
 	}
 }
 
-// notifyApprovalRequired creates notifications for approvers
+// notifyApprovalRequired creates notifications for approvers.
+// When a task is assigned to a role (by UUID or plain name), all users with that role are notified.
 func (ns *NotificationService) notifyApprovalRequired(event NotificationEvent) error {
 	// Get workflow tasks for this document
 	var tasks []models.WorkflowTask
@@ -64,43 +65,84 @@ func (ns *NotificationService) notifyApprovalRequired(event NotificationEvent) e
 		return fmt.Errorf("failed to fetch workflow tasks: %v", err)
 	}
 
-	// Create notification for each approver
+	totalNotified := 0
+
 	for _, task := range tasks {
-		recipientID := ""
-		if task.AssignedUserID != nil {
-			recipientID = *task.AssignedUserID
+		// Collect recipient IDs for this task
+		var recipientIDs []string
+
+		if task.AssignedUserID != nil && *task.AssignedUserID != "" {
+			// Specific user assignment
+			recipientIDs = append(recipientIDs, *task.AssignedUserID)
+		} else if task.AssignedRole != nil && *task.AssignedRole != "" {
+			// Role-based assignment — notify all users with this role
+			assignedRole := *task.AssignedRole
+			if _, err := uuid.Parse(assignedRole); err == nil {
+				// It's a UUID — resolve the org role
+				var orgRole models.OrganizationRole
+				if ns.db.Where("id = ?", assignedRole).First(&orgRole).Error == nil {
+					if orgRole.IsSystemRole {
+						// Notify all users with this system role name in the org
+						var users []models.User
+						ns.db.Where("role = ? AND current_organization_id = ? AND active = ?",
+							orgRole.Name, task.OrganizationID, true).Find(&users)
+						for _, u := range users {
+							recipientIDs = append(recipientIDs, u.ID)
+						}
+					} else {
+						// Notify all users with this custom org role
+						var uors []models.UserOrganizationRole
+						ns.db.Where("role_id = ? AND organization_id = ? AND active = ?",
+							assignedRole, task.OrganizationID, true).Find(&uors)
+						for _, uor := range uors {
+							recipientIDs = append(recipientIDs, uor.UserID)
+						}
+					}
+				}
+			} else {
+				// Plain role name — notify all users with this system role in the org
+				var users []models.User
+				ns.db.Where("role = ? AND current_organization_id = ? AND active = ?",
+					assignedRole, task.OrganizationID, true).Find(&users)
+				for _, u := range users {
+					recipientIDs = append(recipientIDs, u.ID)
+				}
+			}
 		} else if task.ClaimedBy != nil {
-			recipientID = *task.ClaimedBy
+			recipientIDs = append(recipientIDs, *task.ClaimedBy)
 		}
 
-		if recipientID == "" {
-			continue // Skip tasks without assigned users
+		if len(recipientIDs) == 0 {
+			continue // no one to notify for this task
 		}
 
-		notification := models.Notification{
-			ID:           uuid.New().String(),
-			RecipientID:  recipientID,
-			Type:         "approval_required",
-			DocumentID:   event.DocumentID,
-			DocumentType: event.DocumentType,
-			Subject:      fmt.Sprintf("Action Required: %s Needs Approval (Stage %d)", event.DocumentType, task.StageNumber),
-			Body: fmt.Sprintf(
-				"A %s (ID: %s) requires your approval at stage %d: %s.\nPlease review and take action.",
-				event.DocumentType, event.DocumentID, task.StageNumber, task.StageName,
-			),
-			Sent:      false,
-			CreatedAt: time.Now(),
-			UpdatedAt: time.Now(),
-		}
+		for _, recipientID := range recipientIDs {
+			notification := models.Notification{
+				ID:           uuid.New().String(),
+				RecipientID:  recipientID,
+				Type:         "approval_required",
+				DocumentID:   event.DocumentID,
+				DocumentType: event.DocumentType,
+				Subject:      fmt.Sprintf("Action Required: %s Needs Approval (Stage %d)", event.DocumentType, task.StageNumber),
+				Body: fmt.Sprintf(
+					"A %s (ID: %s) requires your approval at stage %d: %s.\nPlease review and take action.",
+					event.DocumentType, event.DocumentID, task.StageNumber, task.StageName,
+				),
+				Sent:      false,
+				CreatedAt: time.Now(),
+				UpdatedAt: time.Now(),
+			}
 
-		if err := ns.db.Create(&notification).Error; err != nil {
-			logging.WithFields(map[string]interface{}{
-				"operation":     "create_approval_notification",
-				"recipient_id":  recipientID,
-				"document_id":   event.DocumentID,
-				"document_type": event.DocumentType,
-			}).WithError(err).Error("failed_to_create_approval_notification")
-			return err
+			if err := ns.db.Create(&notification).Error; err != nil {
+				logging.WithFields(map[string]interface{}{
+					"operation":     "create_approval_notification",
+					"recipient_id":  recipientID,
+					"document_id":   event.DocumentID,
+					"document_type": event.DocumentType,
+				}).WithError(err).Error("failed_to_create_approval_notification")
+				return err
+			}
+			totalNotified++
 		}
 	}
 
@@ -108,10 +150,11 @@ func (ns *NotificationService) notifyApprovalRequired(event NotificationEvent) e
 		"operation":        "create_approval_notifications",
 		"document_id":      event.DocumentID,
 		"document_type":    event.DocumentType,
-		"approvers_count":  len(tasks),
+		"approvers_count":  totalNotified,
 	}).Info("created_approval_notifications_for_approvers")
 	return nil
 }
+
 
 // notifyDocumentApproved creates notifications when document is approved
 func (ns *NotificationService) notifyDocumentApproved(event NotificationEvent) error {

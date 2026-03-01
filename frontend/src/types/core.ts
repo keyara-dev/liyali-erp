@@ -181,6 +181,7 @@ export interface User {
   last_login?: Date | string;
   expiresAt?: Date | string;
   token?: string; // For session compatibility
+  orgRoleIds?: string[]; // Active custom org role UUIDs for matching UUID-stored assigned_role values
 }
 
 export interface Organization {
@@ -257,7 +258,8 @@ export interface ApprovalTask {
   updatedAt: Date;
 
   // Assignment fields (from WorkflowTask)
-  assignedRole?: string; // Required role to claim/approve
+  assignedRole?: string; // Required role to claim/approve (may be UUID for custom roles, or name for system roles)
+  assignedRoleName?: string; // Human-readable resolved role name (populated by backend)
   assignedUserId?: string; // Specific user assigned (after reassignment)
 
   // Claiming fields (from WorkflowTask)

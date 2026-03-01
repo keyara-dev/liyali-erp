@@ -45,7 +45,10 @@ export function WorkspaceSelector({
     currentOrganization?.id ?? null,
   );
   const [retryCount, setRetryCount] = useState(0);
-  const [showSkeleton, setShowSkeleton] = useState(true);
+  // Only show skeleton if we genuinely have no data yet (SSR provides data instantly)
+  const [showSkeleton, setShowSkeleton] = useState(
+    userOrganizations.length === 0 && isLoading,
+  );
   const [debugInfo, setDebugInfo] = useState<any>(null);
   const [showDebug, setShowDebug] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
@@ -100,17 +103,15 @@ export function WorkspaceSelector({
     }
   }, [error, userOrganizations.length]);
 
-  // Show skeleton for minimum time to avoid flashing
+  // Show skeleton only during genuine initial load (no data at all)
+  // Never re-show skeleton while navigating — keep the org list visible
   useEffect(() => {
     if (!isLoading && userOrganizations.length > 0) {
-      const timer = setTimeout(() => {
-        setShowSkeleton(false);
-      }, 300); // Minimum 300ms skeleton display
-      return () => clearTimeout(timer);
-    } else if (isLoading && !userOrganizations.length) {
+      setShowSkeleton(false);
+    } else if (isLoading && userOrganizations.length === 0 && !isNavigating) {
       setShowSkeleton(true);
     }
-  }, [isLoading, userOrganizations.length]);
+  }, [isLoading, userOrganizations.length, isNavigating]);
 
   // Enhanced organization selection with validation
   const handleSelectOrganization = async (orgId: string) => {
@@ -184,8 +185,8 @@ export function WorkspaceSelector({
 
         {/* Workspaces Section */}
         <div className="space-y-4">
-          {error ? (
-            // Error state
+          {error && !isNavigating ? (
+            // Error state — only show when NOT navigating (cache clear can cause transient errors)
             <div className="text-center py-8 border border-destructive/20 bg-destructive/5 rounded-lg">
               <p className="text-destructive mb-4">Failed to load workspaces</p>
               <p className="text-sm text-muted-foreground mb-4">
@@ -229,8 +230,8 @@ export function WorkspaceSelector({
                 </div>
               )}
             </div>
-          ) : showSkeleton ? (
-            // Loading skeleton
+          ) : showSkeleton && !isNavigating ? (
+            // Loading skeleton — never show while navigating to dashboard
             <WorkspaceSkeleton />
           ) : userOrganizations.length === 0 ? (
             // No organizations state

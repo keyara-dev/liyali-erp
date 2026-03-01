@@ -6,6 +6,8 @@ import {
   UpdateRequisitionRequest,
   SubmitRequisitionRequest,
   RequisitionStats,
+  RequisitionChain,
+  AuditTrailEntry,
 } from "@/types/requisition";
 import { APIResponse, PurchaseOrder } from "@/types";
 import { handleError, successResponse, badRequestResponse } from "./api-config";
@@ -255,5 +257,53 @@ export async function deleteRequisition(
     return successResponse(null, "Requisition deleted successfully");
   } catch (error: any) {
     return handleError(error, "DELETE", url);
+  }
+}
+
+/**
+ * Get document chain for a requisition
+ * Calls: GET /api/v1/requisitions/{id}/chain
+ */
+export async function getRequisitionChain(
+  requisitionId: string,
+): Promise<APIResponse<RequisitionChain>> {
+  const url = `/api/v1/requisitions/${requisitionId}/chain`;
+
+  try {
+    const response = await authenticatedApiClient({
+      method: "GET",
+      url,
+    });
+
+    return successResponse(
+      response.data?.data,
+      "Requisition chain retrieved successfully",
+    );
+  } catch (error: any) {
+    return handleError(error, "GET", url);
+  }
+}
+
+/**
+ * Get cross-chain audit trail for a requisition (admin/manager/finance only)
+ * Calls: GET /api/v1/requisitions/{id}/audit-trail
+ */
+export async function getRequisitionAuditTrail(
+  requisitionId: string,
+): Promise<APIResponse<AuditTrailEntry[]>> {
+  const url = `/api/v1/requisitions/${requisitionId}/audit-trail`;
+
+  try {
+    const response = await authenticatedApiClient({
+      method: "GET",
+      url,
+    });
+
+    return successResponse(
+      response.data?.data || [],
+      "Audit trail retrieved successfully",
+    );
+  } catch (error: any) {
+    return handleError(error, "GET", url);
   }
 }

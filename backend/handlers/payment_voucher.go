@@ -55,8 +55,20 @@ func GetPaymentVouchers(c *fiber.Ctx) error {
 		"organization_id": tenant.OrganizationID,
 	})
 
+	// Determine document visibility scope for this user
+	scope := utils.GetDocumentScope(db, tenant.UserID, tenant.UserRole, tenant.OrganizationID)
+
 	// Start with organization filter - CRITICAL SECURITY FIX
 	query := db.Where("organization_id = ?", tenant.OrganizationID)
+
+	// Apply document scope
+	if scope.IsProcurement {
+		// Procurement users only see PVs generated from a PO (procurement chain)
+		query = query.Where("linked_po != ''")
+	} else {
+		query = scope.ApplyToQuery(query, "created_by", "payment_voucher", "")
+	}
+
 	if status != "" {
 		query = query.Where("status = ?", status)
 	}

@@ -37,10 +37,10 @@ export function StageItem({ stage, onEdit, onDelete }: StageItemProps) {
     opacity: isDragging ? 0.5 : 1,
   };
 
-  // Find role name by ID, fallback to the raw value if not found
+  // Use backend-resolved name first, then try client-side lookup, then raw ID
   const roleId = stage.approverRole || stage.requiredRole;
   const role = roles.find((r) => r.id === roleId);
-  const approverRoleLabel = role?.name || roleId || "Not Set";
+  const approverRoleLabel = stage.requiredRoleName || role?.name || roleId || "Not Set";
   const requiredApprovalsLabel =
     stage.requiredApprovals === 5 ? "All" : stage.requiredApprovals;
   const hasPermissions = stage.canReject || stage.canReassign;

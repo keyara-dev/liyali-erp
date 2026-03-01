@@ -42,17 +42,22 @@ function transformGRNToWorkflowDocument(grn: any): WorkflowDocument {
       amount: grn.metadata?.amount || 0,
       receivedBy: grn.receivedBy,
       receivedDate: grn.receivedDate,
+      createdBy: grn.createdBy,
     },
   };
 }
+
+const GRN_EDIT_ROLES = ["admin", "super_admin", "manager", "finance", "procurement"];
 
 // Options dropdown component
 function GrnOptionsMenu({
   grn,
   router,
+  canModify,
 }: {
   grn: WorkflowDocument;
   router: ReturnType<typeof useRouter>;
+  canModify: boolean;
 }) {
   return (
     <DropdownMenu>
@@ -84,7 +89,7 @@ function GrnOptionsMenu({
             </DropdownMenuItem>
           </>
         )}
-        {grn.status !== "approved" && (
+        {grn.status !== "approved" && canModify && (
           <DropdownMenuItem
             onClick={() => console.log("Delete GRN:", grn.id)}
             className="text-destructive"
@@ -159,8 +164,8 @@ const columns: ColumnDef<WorkflowDocument>[] = [
 ];
 
 export function GrnTable({
-  userId: _userId,
-  userRole: _userRole,
+  userId,
+  userRole,
   refreshTrigger,
   onRefresh: _onRefresh,
 }: GrnTableProps) {
@@ -182,6 +187,10 @@ export function GrnTable({
 
   const getActions = useCallback(
     (grn: WorkflowDocument): ActionButton[] => {
+      const canModify =
+        grn.metadata?.createdBy === userId ||
+        grn.metadata?.receivedBy === userId ||
+        GRN_EDIT_ROLES.includes(userRole);
       return [
         {
           icon: <Eye className="h-3.5 w-3.5" />,
@@ -189,7 +198,7 @@ export function GrnTable({
           tooltip: "View Details",
           onClick: () => router.push(`/grn/${grn.id}`),
         },
-        ...(grn.status !== "approved"
+        ...(grn.status !== "approved" && canModify
           ? [
               {
                 icon: <Pencil className="h-3.5 w-3.5" />,
@@ -201,7 +210,7 @@ export function GrnTable({
           : []),
       ];
     },
-    [router]
+    [router, userId, userRole]
   );
 
   return (
@@ -210,9 +219,15 @@ export function GrnTable({
       data={data}
       actions={getActions}
       hideSearchBar={false}
-      renderRowActions={(grn: WorkflowDocument) => (
-        <GrnOptionsMenu grn={grn} router={router} />
-      )}
+      renderRowActions={(grn: WorkflowDocument) => {
+        const canModify =
+          grn.metadata?.createdBy === userId ||
+          grn.metadata?.receivedBy === userId ||
+          GRN_EDIT_ROLES.includes(userRole);
+        return (
+          <GrnOptionsMenu grn={grn} router={router} canModify={canModify} />
+        );
+      }}
     />
   );
 }

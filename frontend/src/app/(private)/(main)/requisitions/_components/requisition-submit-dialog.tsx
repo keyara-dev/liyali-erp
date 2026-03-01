@@ -13,7 +13,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Requisition } from "@/types/requisition";
 import type { Workflow } from "@/types/workflow-config";
-import { Send, CheckCircle2, AlertCircle, Zap, ShoppingCart, Info } from "lucide-react";
+import {
+  Send,
+  CheckCircle2,
+  AlertCircle,
+  Zap,
+  ShoppingCart,
+  Info,
+} from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { WorkflowSelector } from "@/components/workflows/workflow-selector";
 import { WorkflowRequirementBanner } from "@/components/ui/workflow-requirement-banner";
@@ -29,7 +36,10 @@ interface RequisitionSubmitDialogProps {
 function getRoutingPreview(
   workflow: Workflow | null,
   requisition: Requisition,
-): { type: "auto" | "accounting-stages" | "procurement"; message: string } | null {
+): {
+  type: "auto" | "accounting-stages" | "procurement";
+  message: string;
+} | null {
   if (!workflow) return null;
 
   const conditions = workflow.conditions;
@@ -93,7 +103,9 @@ export function RequisitionSubmitDialog({
   const [comments, setComments] = useState("");
   const [workflowId, setWorkflowId] = useState("");
   const [workflowError, setWorkflowError] = useState<string | null>(null);
-  const [selectedWorkflow, setSelectedWorkflow] = useState<Workflow | null>(null);
+  const [selectedWorkflow, setSelectedWorkflow] = useState<Workflow | null>(
+    null,
+  );
 
   const hasItems = requisition.items && requisition.items.length > 0;
   const canSubmit = hasItems && workflowId;
@@ -131,15 +143,17 @@ export function RequisitionSubmitDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+      <DialogContent
+        className="max-w-lg max-h-[90vh] overflow-y-auto"
+        onInteractOutside={(e) => e.preventDefault()}
+      >
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Send className="h-5 w-5" />
             Submit Requisition for Approval
           </DialogTitle>
           <DialogDescription>
-            Select an approval workflow and review the requisition summary
-            before submitting.
+            Select an approval workflow before submitting.
           </DialogDescription>
         </DialogHeader>
 
@@ -165,18 +179,18 @@ export function RequisitionSubmitDialog({
               variant="default"
               className={
                 routingPreview.type === "auto"
-                  ? "border-amber-300 bg-amber-50 text-amber-900"
+                  ? "border-amber-500/30 bg-amber-500/10 text-amber-800 dark:text-amber-300"
                   : routingPreview.type === "accounting-stages"
-                    ? "border-amber-200 bg-amber-50/50 text-amber-800"
-                    : "border-blue-200 bg-blue-50/50 text-blue-800"
+                    ? "border-amber-500/20 bg-amber-500/5 text-amber-800 dark:text-amber-300"
+                    : "border-primary/20 bg-primary/5 text-foreground"
               }
             >
               {routingPreview.type === "auto" ? (
-                <Zap className="h-4 w-4 text-amber-600" />
+                <Zap className="h-4 w-4 text-amber-600 dark:text-amber-400" />
               ) : routingPreview.type === "accounting-stages" ? (
-                <Info className="h-4 w-4 text-amber-600" />
+                <Info className="h-4 w-4 text-amber-600 dark:text-amber-400" />
               ) : (
-                <ShoppingCart className="h-4 w-4 text-blue-600" />
+                <ShoppingCart className="h-4 w-4 text-primary" />
               )}
               <AlertDescription>{routingPreview.message}</AlertDescription>
             </Alert>
@@ -213,7 +227,7 @@ export function RequisitionSubmitDialog({
 
             <div className="flex justify-between items-center">
               <span className="text-sm font-medium">Total Amount:</span>
-              <span className="text-sm font-mono text-blue-600">
+              <span className="text-sm font-mono text-primary">
                 {requisition.currency}{" "}
                 {requisition.totalAmount?.toLocaleString("en-ZM", {
                   minimumFractionDigits: 2,

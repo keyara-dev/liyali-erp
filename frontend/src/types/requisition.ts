@@ -221,3 +221,33 @@ export type RequisitionStatus =
   | "completed"
   | "cancelled";
 export type RequisitionPriority = "low" | "medium" | "high" | "urgent";
+
+// ============================================================================
+// DOCUMENT CHAIN TYPES
+// ============================================================================
+
+export interface RequisitionChain {
+  requisitionId: string;
+  requisitionStatus: string;
+  poId?: string;
+  poDocumentNumber?: string;
+  poStatus?: string;
+  grnId?: string;
+  grnDocumentNumber?: string;
+  grnStatus?: string;
+  pvId?: string;
+  pvDocumentNumber?: string;
+  pvStatus?: string;
+  routingType?: "procurement" | "accounting";
+}
+
+export interface AuditTrailEntry {
+  id: string;
+  documentId: string;
+  documentType: string;
+  documentLabel?: string;
+  userId: string;
+  action: string;
+  changes?: Record<string, unknown>;
+  createdAt: string;
+}

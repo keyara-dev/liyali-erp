@@ -453,6 +453,118 @@ func (s *WorkflowExecutionService) GetPendingWorkflowTasks(ctx context.Context, 
 }
 
 // ApproveWorkflowTask approves a workflow task and progresses the workflow with optimistic locking
+// canUserActOnTask checks whether the given user is authorised to act on a workflow task.
+// It handles three cases for AssignedRole:
+//   - UUID for a system role  → compare role name against user.Role
+//   - UUID for a custom role  → check user_organization_roles membership
+//   - Plain name string       → compare directly against user.Role
+//
+// Fallbacks (in order): built-in approver role list, org role with approval permission.
+func (s *WorkflowExecutionService) canUserActOnTask(tx *gorm.DB, task *models.WorkflowTask, user *models.User) error {
+	approverRoles := []string{"admin", "approver", "finance", "manager", "supervisor", "department_head"}
+	approvalPermissions := []string{
+		"requisition.approve", "approval.approve", "budget.approve",
+		"purchase_order.approve", "payment_voucher.approve", "grn.approve",
+	}
+
+	// PRIORITY 1: specific user assignment
+	if task.AssignedUserID != nil && *task.AssignedUserID != "" {
+		if *task.AssignedUserID != user.ID {
+			return fmt.Errorf("insufficient permissions: this task has been assigned to a specific user and only they can act on it")
+		}
+		return nil
+	}
+
+	// PRIORITY 2: role-based assignment
+	if task.AssignedRole == nil || *task.AssignedRole == "" {
+		// No restriction — any built-in approver may act
+		for _, r := range approverRoles {
+			if strings.EqualFold(user.Role, r) {
+				return nil
+			}
+		}
+		return fmt.Errorf("insufficient permissions: no approver role")
+	}
+
+	assignedRole := *task.AssignedRole
+	hasPermission := false
+
+	if _, parseErr := uuid.Parse(assignedRole); parseErr == nil {
+		// It's a UUID — resolve the org role record
+		var orgRole models.OrganizationRole
+		if tx.Where("id = ?", assignedRole).First(&orgRole).Error == nil {
+			if orgRole.IsSystemRole {
+				// System role UUID: compare role name against user.Role (names are stable, UUIDs are not)
+				hasPermission = strings.EqualFold(user.Role, orgRole.Name)
+			} else {
+				// Custom org role UUID: check user_organization_roles membership
+				var uor models.UserOrganizationRole
+				hasPermission = tx.Where(
+					"user_id = ? AND organization_id = ? AND role_id = ? AND active = ?",
+					user.ID, task.OrganizationID, assignedRole, true,
+				).First(&uor).Error == nil
+			}
+		}
+		// Fallback: built-in approver role
+		if !hasPermission {
+			for _, r := range approverRoles {
+				if strings.EqualFold(user.Role, r) {
+					hasPermission = true
+					break
+				}
+			}
+		}
+	} else {
+		// Plain role name
+		hasPermission = strings.EqualFold(user.Role, assignedRole)
+		if !hasPermission {
+			for _, r := range approverRoles {
+				if strings.EqualFold(user.Role, r) {
+					hasPermission = true
+					break
+				}
+			}
+		}
+	}
+
+	// Final fallback: custom org role with any approval permission
+	if !hasPermission {
+		var userOrgRoles []models.UserOrganizationRole
+		if tx.Where("user_id = ? AND organization_id = ? AND active = ?",
+			user.ID, task.OrganizationID, true).Find(&userOrgRoles).Error == nil {
+			for _, uor := range userOrgRoles {
+				var orgRole models.OrganizationRole
+				if tx.Where("id = ? AND active = ?", uor.RoleID, true).First(&orgRole).Error != nil {
+					continue
+				}
+				var permissions []string
+				if json.Unmarshal(orgRole.Permissions, &permissions) != nil {
+					continue
+				}
+				for _, perm := range permissions {
+					for _, ap := range approvalPermissions {
+						if strings.EqualFold(perm, ap) {
+							hasPermission = true
+							break
+						}
+					}
+					if hasPermission {
+						break
+					}
+				}
+				if hasPermission {
+					break
+				}
+			}
+		}
+	}
+
+	if !hasPermission {
+		return fmt.Errorf("insufficient permissions: user does not have the required role '%s'", assignedRole)
+	}
+	return nil
+}
+
 func (s *WorkflowExecutionService) ApproveWorkflowTask(ctx context.Context, taskID, userID, signature, comments string) error {
 	return s.ApproveWorkflowTaskWithVersion(ctx, taskID, userID, signature, comments, 0)
 }
@@ -504,103 +616,12 @@ func (s *WorkflowExecutionService) ApproveWorkflowTaskWithVersion(ctx context.Co
 		return fmt.Errorf("user not found: %w", err)
 	}
 
-	// Built-in roles that have approval permissions
-	approverRoles := []string{"admin", "approver", "finance", "manager", "supervisor", "department_head"}
+	log.Printf("[DEBUG] Checking approval permission - User: %s, UserRole: %s, AssignedRole: %v",
+		userID, user.Role, task.AssignedRole)
 
-	// Approval-related permissions to check for in organization roles
-	approvalPermissions := []string{
-		"requisition.approve", "approval.approve", "budget.approve",
-		"purchase_order.approve", "payment_voucher.approve", "grn.approve",
-	}
-
-	// Helper function to check if user has any organization role with approval permissions
-	checkOrgRoleApprovalPermissions := func() bool {
-		var userOrgRoles []models.UserOrganizationRole
-		if err := tx.Where("user_id = ? AND organization_id = ? AND active = ?",
-			userID, task.OrganizationID, true).Find(&userOrgRoles).Error; err != nil || len(userOrgRoles) == 0 {
-			return false
-		}
-
-		for _, userOrgRole := range userOrgRoles {
-			var orgRole models.OrganizationRole
-			if err := tx.Where("id = ? AND active = ?", userOrgRole.RoleID, true).First(&orgRole).Error; err != nil {
-				continue
-			}
-
-			// Parse permissions from JSON
-			var permissions []string
-			if err := json.Unmarshal(orgRole.Permissions, &permissions); err != nil {
-				continue
-			}
-
-			// Check if any approval permission exists
-			for _, perm := range permissions {
-				for _, approvalPerm := range approvalPermissions {
-					if strings.EqualFold(perm, approvalPerm) {
-						return true
-					}
-				}
-			}
-		}
-		return false
-	}
-
-	// PRIORITY 1: If task is assigned to a specific user (after reassignment), ONLY that user can approve
-	if task.AssignedUserID != nil && *task.AssignedUserID != "" {
-		if *task.AssignedUserID != userID {
-			tx.Rollback()
-			return fmt.Errorf("insufficient permissions: this task has been assigned to a specific user and only they can approve it")
-		}
-		// User is the assigned user - permission granted, skip role checks
-		log.Printf("[DEBUG] User %s is the specifically assigned user for this task - permission granted", userID)
-	} else if task.AssignedRole != nil {
-		// PRIORITY 2: Check role-based permissions (when task is assigned to a role, not a specific user)
-		assignedRole := *task.AssignedRole
-		hasPermission := false
-
-		// Check if assignedRole is a UUID (custom organization role)
-		if _, parseErr := uuid.Parse(assignedRole); parseErr == nil {
-			// It's a UUID - check if user has this organization role
-			var userOrgRole models.UserOrganizationRole
-			if err := tx.Where("user_id = ? AND organization_id = ? AND role_id = ? AND active = ?",
-				userID, task.OrganizationID, assignedRole, true).First(&userOrgRole).Error; err == nil {
-				hasPermission = true
-			} else {
-				// Fallback 1: Check if user has a built-in approver role
-				for _, approverRole := range approverRoles {
-					if strings.EqualFold(user.Role, approverRole) {
-						hasPermission = true
-						break
-					}
-				}
-				// Fallback 2: Check if user has any organization role with approval permissions
-				if !hasPermission {
-					hasPermission = checkOrgRoleApprovalPermissions()
-				}
-			}
-		} else {
-			// It's a built-in role name - check user.Role directly (case-insensitive)
-			if strings.EqualFold(user.Role, assignedRole) {
-				hasPermission = true
-			} else {
-				// Fallback 1: Check if user has a built-in approver role
-				for _, approverRole := range approverRoles {
-					if strings.EqualFold(user.Role, approverRole) {
-						hasPermission = true
-						break
-					}
-				}
-				// Fallback 2: Check if user has any organization role with approval permissions
-				if !hasPermission {
-					hasPermission = checkOrgRoleApprovalPermissions()
-				}
-			}
-		}
-
-		if !hasPermission {
-			tx.Rollback()
-			return fmt.Errorf("insufficient permissions: user does not have the required role '%s'", assignedRole)
-		}
+	if err := s.canUserActOnTask(tx, &task, &user); err != nil {
+		tx.Rollback()
+		return err
 	}
 
 	// Get the workflow assignment
@@ -954,103 +975,12 @@ func (s *WorkflowExecutionService) RejectWorkflowTaskWithVersion(ctx context.Con
 		return fmt.Errorf("user not found: %w", err)
 	}
 
-	// Built-in roles that have approval/rejection permissions
-	approverRoles := []string{"admin", "approver", "finance", "manager", "supervisor", "department_head"}
+	log.Printf("[DEBUG] Checking rejection permission - User: %s, UserRole: %s, AssignedRole: %v",
+		userID, user.Role, task.AssignedRole)
 
-	// Approval-related permissions to check for in organization roles
-	approvalPermissions := []string{
-		"requisition.approve", "approval.approve", "budget.approve",
-		"purchase_order.approve", "payment_voucher.approve", "grn.approve",
-	}
-
-	// Helper function to check if user has any organization role with approval permissions
-	checkOrgRoleApprovalPermissions := func() bool {
-		var userOrgRoles []models.UserOrganizationRole
-		if err := tx.Where("user_id = ? AND organization_id = ? AND active = ?",
-			userID, task.OrganizationID, true).Find(&userOrgRoles).Error; err != nil || len(userOrgRoles) == 0 {
-			return false
-		}
-
-		for _, userOrgRole := range userOrgRoles {
-			var orgRole models.OrganizationRole
-			if err := tx.Where("id = ? AND active = ?", userOrgRole.RoleID, true).First(&orgRole).Error; err != nil {
-				continue
-			}
-
-			// Parse permissions from JSON
-			var permissions []string
-			if err := json.Unmarshal(orgRole.Permissions, &permissions); err != nil {
-				continue
-			}
-
-			// Check if any approval permission exists
-			for _, perm := range permissions {
-				for _, approvalPerm := range approvalPermissions {
-					if strings.EqualFold(perm, approvalPerm) {
-						return true
-					}
-				}
-			}
-		}
-		return false
-	}
-
-	// PRIORITY 1: If task is assigned to a specific user (after reassignment), ONLY that user can reject
-	if task.AssignedUserID != nil && *task.AssignedUserID != "" {
-		if *task.AssignedUserID != userID {
-			tx.Rollback()
-			return fmt.Errorf("insufficient permissions: this task has been assigned to a specific user and only they can reject it")
-		}
-		// User is the assigned user - permission granted, skip role checks
-		log.Printf("[DEBUG] User %s is the specifically assigned user for this task - permission granted for rejection", userID)
-	} else if task.AssignedRole != nil {
-		// PRIORITY 2: Check role-based permissions (when task is assigned to a role, not a specific user)
-		assignedRole := *task.AssignedRole
-		hasPermission := false
-
-		// Check if assignedRole is a UUID (custom organization role)
-		if _, parseErr := uuid.Parse(assignedRole); parseErr == nil {
-			// It's a UUID - check if user has this organization role
-			var userOrgRole models.UserOrganizationRole
-			if err := tx.Where("user_id = ? AND organization_id = ? AND role_id = ? AND active = ?",
-				userID, task.OrganizationID, assignedRole, true).First(&userOrgRole).Error; err == nil {
-				hasPermission = true
-			} else {
-				// Fallback 1: Check if user has a built-in approver role
-				for _, approverRole := range approverRoles {
-					if strings.EqualFold(user.Role, approverRole) {
-						hasPermission = true
-						break
-					}
-				}
-				// Fallback 2: Check if user has any organization role with approval permissions
-				if !hasPermission {
-					hasPermission = checkOrgRoleApprovalPermissions()
-				}
-			}
-		} else {
-			// It's a built-in role name - check user.Role directly (case-insensitive)
-			if strings.EqualFold(user.Role, assignedRole) {
-				hasPermission = true
-			} else {
-				// Fallback 1: Check if user has a built-in approver role
-				for _, approverRole := range approverRoles {
-					if strings.EqualFold(user.Role, approverRole) {
-						hasPermission = true
-						break
-					}
-				}
-				// Fallback 2: Check if user has any organization role with approval permissions
-				if !hasPermission {
-					hasPermission = checkOrgRoleApprovalPermissions()
-				}
-			}
-		}
-
-		if !hasPermission {
-			tx.Rollback()
-			return fmt.Errorf("insufficient permissions: user does not have the required role '%s'", assignedRole)
-		}
+	if err := s.canUserActOnTask(tx, &task, &user); err != nil {
+		tx.Rollback()
+		return err
 	}
 
 	// Get the workflow assignment
@@ -1328,13 +1258,40 @@ func (s *WorkflowExecutionService) GetAvailableApproversForWorkflow(ctx context.
 		return []ApproverInfo{}, nil
 	}
 
-	// Query users with the required role
+	// Query users with the required role — handles both plain names and UUIDs
 	var approvers []ApproverInfo
-	err = s.db.Table("users").
-		Select("users.id, users.name, users.email, users.role").
-		Where("users.current_organization_id = ? AND users.active = ? AND users.role = ?",
-			organizationID, true, *currentTask.AssignedRole).
-		Find(&approvers).Error
+	assignedRole := *currentTask.AssignedRole
+
+	if _, parseErr := uuid.Parse(assignedRole); parseErr == nil {
+		// UUID — look up the org role record
+		var orgRole models.OrganizationRole
+		if err = s.db.Where("id = ?", assignedRole).First(&orgRole).Error; err != nil {
+			return []ApproverInfo{}, nil // role not found, no approvers
+		}
+		if orgRole.IsSystemRole {
+			// System role UUID: find users whose role name matches
+			err = s.db.Table("users").
+				Select("users.id, users.name, users.email, users.role").
+				Where("users.current_organization_id = ? AND users.active = ? AND LOWER(users.role) = LOWER(?)",
+					organizationID, true, orgRole.Name).
+				Find(&approvers).Error
+		} else {
+			// Custom org role UUID: find via user_organization_roles
+			err = s.db.Table("users").
+				Select("users.id, users.name, users.email, users.role").
+				Joins("INNER JOIN user_organization_roles uor ON uor.user_id = users.id").
+				Where("users.current_organization_id = ? AND users.active = ? AND uor.role_id = ? AND uor.organization_id = ? AND uor.active = ?",
+					organizationID, true, assignedRole, organizationID, true).
+				Find(&approvers).Error
+		}
+	} else {
+		// Plain role name
+		err = s.db.Table("users").
+			Select("users.id, users.name, users.email, users.role").
+			Where("users.current_organization_id = ? AND users.active = ? AND LOWER(users.role) = LOWER(?)",
+				organizationID, true, assignedRole).
+			Find(&approvers).Error
+	}
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to get available approvers: %w", err)
@@ -1352,7 +1309,23 @@ func (s *WorkflowExecutionService) ClaimWorkflowTask(ctx context.Context, taskID
 		}
 	}()
 
+	// Read task and user first to perform role-based auth check
 	var task models.WorkflowTask
+	if err := tx.Where("id = ? AND status = ?", taskID, "pending").First(&task).Error; err != nil {
+		tx.Rollback()
+		return fmt.Errorf("task not found or not available: %w", err)
+	}
+
+	var user models.User
+	if err := tx.Where("id = ?", userID).First(&user).Error; err != nil {
+		tx.Rollback()
+		return fmt.Errorf("user not found: %w", err)
+	}
+
+	if err := s.canUserActOnTask(tx, &task, &user); err != nil {
+		tx.Rollback()
+		return err
+	}
 
 	// Atomic claim operation with optimistic locking
 	result := tx.Model(&task).

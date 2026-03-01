@@ -26,6 +26,7 @@ import { ApprovalTask } from "@/types";
 interface RecentTasksProps {
   userId: string;
   userRole: string;
+  initialTasks?: { data: ApprovalTask[]; pagination?: any };
 }
 
 const ENTITY_TYPE_LABELS: Record<string, string> = {
@@ -88,11 +89,11 @@ function PriorityBadge({
   return null;
 }
 
-export function RecentTasks({ userId: _userId, userRole: _userRole }: RecentTasksProps) {
+export function RecentTasks({ userId: _userId, userRole: _userRole, initialTasks }: RecentTasksProps) {
   const router = useRouter();
   // Fetch without status filter so claimed tasks (status="claimed") stay visible after
   // the user claims them. Filter client-side to hide completed/rejected tasks.
-  const { data, isLoading, refetch } = useApprovalTasks({ viewAll: true }, 1, 10);
+  const { data, isLoading, refetch } = useApprovalTasks({ viewAll: true }, 1, 10, initialTasks);
   const allTasks: ApprovalTask[] = data?.data || [];
   const tasks = allTasks
     .filter((t) => t.status === "pending" || t.status === "claimed")

@@ -1,7 +1,9 @@
 package handlers
 
 import (
+	"github.com/liyali/liyali-gateway/config"
 	"github.com/liyali/liyali-gateway/logging"
+	"github.com/liyali/liyali-gateway/models"
 	"github.com/liyali/liyali-gateway/services"
 	"github.com/liyali/liyali-gateway/types"
 	"github.com/liyali/liyali-gateway/utils"
@@ -466,6 +468,20 @@ func (h *AuthHandler) GetProfile(c *fiber.Ctx) error {
 	user, err := h.authService.GetProfileByID(c.Context(), userID)
 	if err != nil {
 		return utils.SendNotFoundError(c, "User not found")
+	}
+
+	// Populate user's custom org role UUIDs so the frontend can match UUID-stored assigned_role values
+	db := config.DB
+	orgID, _ := c.Locals("organizationID").(string)
+	if orgID != "" {
+		var userOrgRoles []models.UserOrganizationRole
+		if db.Where("user_id = ? AND organization_id = ? AND active = ?", userID, orgID, true).
+			Find(&userOrgRoles).Error == nil {
+			user.OrgRoleIds = make([]string, 0, len(userOrgRoles))
+			for _, uor := range userOrgRoles {
+				user.OrgRoleIds = append(user.OrgRoleIds, uor.RoleID.String())
+			}
+		}
 	}
 
 	logger.Info("profile_retrieved_successfully")

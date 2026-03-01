@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import { ApprovalTaskCard } from "@/components/workflows/approval-task-card";
 import { ApprovalTask } from "@/types";
+import { canUserActOnWorkflowTask } from "@/lib/workflow-utils";
 
 interface ApprovalsListProps {
   userId: string;
@@ -127,26 +128,8 @@ export function ApprovalsList({ userId, userRole }: ApprovalsListProps) {
   }, [tasks, priorityFilter, searchQuery, sortBy]);
 
   // Helper to check if user can access a task based on permissions
-  const canUserAccessTask = (task: ApprovalTask) => {
-    // If task is specifically assigned to this user, they can access it
-    if (task.assignedUserId === currentUser.id) {
-      return true;
-    }
-    // If task is assigned to a specific different user, only that user can access
-    if (task.assignedUserId && task.assignedUserId !== currentUser.id) {
-      return false;
-    }
-    // Check if user's role matches the assigned role (case-insensitive)
-    if (task.assignedRole &&
-        task.assignedRole.toLowerCase() === currentUser.role.toLowerCase()) {
-      return true;
-    }
-    // Built-in approvers can access any task (unless specifically assigned to someone else)
-    if (currentUser.isBuiltInApprover) {
-      return true;
-    }
-    return false;
-  };
+  const canUserAccessTask = (task: ApprovalTask) =>
+    canUserActOnWorkflowTask(currentUser, task);
 
   // Group tasks by status for better organization
   const groupedTasks = useMemo(
@@ -490,12 +473,12 @@ export function ApprovalsList({ userId, userRole }: ApprovalsListProps) {
             {[1, 2, 3].map((i) => (
               <div
                 key={i}
-                className="bg-white p-6 rounded-lg border shadow-sm animate-pulse"
+                className="bg-card p-6 rounded-lg border shadow-sm animate-pulse"
               >
                 <div className="space-y-4">
-                  <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-                  <div className="h-4 bg-gray-200 rounded w-1/2"></div>
-                  <div className="h-10 bg-gray-200 rounded w-1/4"></div>
+                  <div className="h-4 bg-muted rounded w-3/4"></div>
+                  <div className="h-4 bg-muted rounded w-1/2"></div>
+                  <div className="h-10 bg-muted rounded w-1/4"></div>
                 </div>
               </div>
             ))}

@@ -23,6 +23,10 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useSession } from "@/hooks/use-session";
+import {
+  canUserActOnWorkflowTask,
+  formatRoleForDisplay,
+} from "@/lib/workflow-utils";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import { ReassignmentModal } from "./reassignment-modal";
@@ -35,6 +39,7 @@ interface WorkflowTask {
   status: string;
   claimedBy?: string;
   assignedRole?: string;
+  assignedRoleName?: string;
   assignedUserId?: string;
   stageName?: string;
   claimExpiry?: string;
@@ -138,16 +143,10 @@ export const WorkflowActionButtons = memo(function WorkflowActionButtons({
 
   const isAdmin = user?.role === "admin";
 
-  const canUserClaimTask = useMemo(() => {
-    if (!user) return false;
-    if (user.role === "admin") return true;
-
-    const roleMatch =
-      task.assignedRole?.toLowerCase() === user.role?.toLowerCase();
-    const userMatch = task.assignedUserId === user.id;
-
-    return roleMatch || userMatch;
-  }, [user, task.assignedRole, task.assignedUserId]);
+  const canUserClaimTask = useMemo(
+    () => canUserActOnWorkflowTask(user, task),
+    [user, task]
+  );
 
   const isTaskClaimedByUser = useMemo(() => {
     if (!user) return false;
@@ -428,7 +427,7 @@ export const WorkflowActionButtons = memo(function WorkflowActionButtons({
             <div className="flex items-center gap-2 text-amber-600 bg-amber-50 px-3 py-2 rounded border border-amber-200">
               <AlertTriangle className="h-4 w-4" />
               <span className="text-sm">
-                Requires "{task.assignedRole}" role to approve
+                Requires &quot;{formatRoleForDisplay(task.assignedRole, task.assignedRoleName)}&quot; role to approve
               </span>
             </div>
           )}

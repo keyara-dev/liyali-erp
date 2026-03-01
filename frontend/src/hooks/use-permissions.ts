@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useSession } from "./use-session";
-import { getRolePermissions } from "@/app/_actions/roles-permissions";
+import { getMyPermissions } from "@/app/_actions/roles-permissions";
 import type { User } from "@/types";
 
 /**
@@ -106,24 +106,15 @@ export function usePermissions(): PermissionsData {
   // Check if user already has permissions in the session
   const hasUserPermissions = user?.permissions && user.permissions.length > 0;
 
-  // Fetch permissions from backend API only if not already in user object
+  // Fetch current user's permissions from /me/permissions — works for all roles
   const {
     data: permissionsResponse,
     isLoading: permissionsLoading,
     error: permissionsError,
   } = useQuery({
-    queryKey: ["user-permissions", user?.id, user?.role],
-    queryFn: async () => {
-      if (!user?.id || !user?.role) {
-        throw new Error("No user ID or role available");
-      }
-      
-      // Try to get permissions by role name/ID
-      // The backend API expects role ID, but we might have role name
-      // For now, try with the role value we have
-      return await getRolePermissions(user.role);
-    },
-    enabled: !!user?.id && !!user?.role && !hasUserPermissions,
+    queryKey: ["user-permissions", user?.id],
+    queryFn: () => getMyPermissions(),
+    enabled: !!user?.id && !hasUserPermissions,
     staleTime: 5 * 60 * 1000, // Cache for 5 minutes
     retry: 1,
   });

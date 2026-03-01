@@ -55,6 +55,29 @@ func NewWorkflowService(workflowRepo repository.WorkflowRepositoryInterface, aud
 	}
 }
 
+// normalizeStageRoles converts any system role UUID stored in RequiredRole back
+// to the role's name string. System role UUIDs are environment-specific (created
+// with uuid.New() on each fresh DB) so storing them is fragile. Custom org role
+// UUIDs are stable per org and should remain as UUIDs.
+func (s *WorkflowService) normalizeStageRoles(stages []models.WorkflowStage) {
+	for i, stage := range stages {
+		if stage.RequiredRole == "" {
+			continue
+		}
+		if _, err := uuid.Parse(stage.RequiredRole); err != nil {
+			continue // already a name string — nothing to do
+		}
+		var orgRole models.OrganizationRole
+		if err := s.db.Where("id = ?", stage.RequiredRole).First(&orgRole).Error; err != nil {
+			continue // role not found — leave as-is
+		}
+		if orgRole.IsSystemRole {
+			stages[i].RequiredRole = orgRole.Name // normalize UUID → stable name
+		}
+		// Custom org role UUID stays as UUID — correct
+	}
+}
+
 // CreateWorkflow creates a new workflow
 func (s *WorkflowService) CreateWorkflow(ctx context.Context, organizationID, userID string, req CreateWorkflowRequest) (*models.Workflow, error) {
 	// Validate request
@@ -111,6 +134,9 @@ func (s *WorkflowService) CreateWorkflow(ctx context.Context, organizationID, us
 		CreatedAt:      time.Now(),
 		UpdatedAt:      time.Now(),
 	}
+
+	// Normalize system role UUIDs → names before persisting
+	s.normalizeStageRoles(req.Stages)
 
 	// Set stages
 	if err := workflow.SetStages(req.Stages); err != nil {
@@ -224,6 +250,8 @@ func (s *WorkflowService) UpdateWorkflow(ctx context.Context, id uuid.UUID, orga
 		updates["description"] = *req.Description
 	}
 	if req.Stages != nil {
+		// Normalize system role UUIDs → names before persisting
+		s.normalizeStageRoles(req.Stages)
 		if err := existing.SetStages(req.Stages); err != nil {
 			tx.Rollback()
 			return nil, fmt.Errorf("failed to set stages: %w", err)
@@ -726,10 +754,46 @@ func (s *WorkflowService) updateDefaultWorkflow(tx *gorm.DB, organizationID stri
 }
 
 func (s *WorkflowService) loadComputedFields(workflow *models.Workflow) {
-	// Load total stages
+	// Load total stages and resolve role names
 	stages, err := workflow.GetStages()
 	if err == nil {
 		workflow.TotalStages = len(stages)
+
+		// Collect UUID roles that need resolving
+		uuidRoles := make(map[string]bool)
+		for _, stage := range stages {
+			if _, parseErr := uuid.Parse(stage.RequiredRole); parseErr == nil {
+				uuidRoles[stage.RequiredRole] = true
+			}
+		}
+
+		// Resolve UUID roles to names in a single query
+		if len(uuidRoles) > 0 {
+			roleIDs := make([]string, 0, len(uuidRoles))
+			for id := range uuidRoles {
+				roleIDs = append(roleIDs, id)
+			}
+
+			var orgRoles []models.OrganizationRole
+			s.db.Where("id IN ?", roleIDs).Find(&orgRoles)
+
+			roleNameMap := make(map[string]string)
+			for _, r := range orgRoles {
+				roleNameMap[r.ID.String()] = r.Name
+			}
+
+			// Set resolved names and re-serialize stages
+			changed := false
+			for i := range stages {
+				if name, ok := roleNameMap[stages[i].RequiredRole]; ok {
+					stages[i].RequiredRoleName = name
+					changed = true
+				}
+			}
+			if changed {
+				workflow.SetStages(stages)
+			}
+		}
 	}
 
 	// Load usage count

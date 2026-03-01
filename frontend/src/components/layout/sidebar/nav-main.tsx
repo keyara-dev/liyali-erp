@@ -50,17 +50,22 @@ import {
 } from "@/components/ui/collapsible";
 import { usePathname } from "next/navigation";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useSession } from "@/hooks/use-session";
+import { usePermissions } from "@/hooks/use-permissions";
 
 interface NavItem {
   title: string;
   href: string;
   icon?: LucideIcon;
   items?: NavItem[];
+  requiredRoles?: string[];
+  requiredPermissions?: string[];
 }
 
 interface NavGroup {
   title: string;
   items: NavItem[];
+  requiredRoles?: string[];
 }
 
 export const routes: NavGroup[] = [
@@ -81,6 +86,8 @@ export const routes: NavGroup[] = [
         title: "Budgeting",
         href: "/budgets",
         icon: DollarSign,
+        requiredRoles: ["finance", "manager", "admin", "super_admin"],
+        requiredPermissions: ["budget.view"],
       },
       {
         title: "Procurement",
@@ -91,23 +98,35 @@ export const routes: NavGroup[] = [
             title: "Requisitions",
             href: "/requisitions",
             icon: FileText,
+            // Always visible — backend scopes content per role
           },
           {
             title: "Purchase Orders",
             href: "/purchase-orders",
             icon: FileCheck,
+            requiredRoles: ["procurement", "finance", "manager", "admin", "super_admin"],
+            requiredPermissions: ["purchase_order.view"],
           },
           {
             title: "Payment Vouchers",
             href: "/payment-vouchers",
             icon: FileText,
+            requiredRoles: ["finance", "manager", "admin", "super_admin"],
+            requiredPermissions: ["payment_voucher.view"],
           },
           {
             title: "Goods Received Notes",
             href: "/grn",
             icon: FileCheck,
+            requiredRoles: ["procurement", "finance", "manager", "admin", "super_admin"],
+            requiredPermissions: ["grn.view"],
           },
         ],
+      },
+      {
+        title: "Document Verification",
+        href: "/verification",
+        icon: QrCode,
       },
     ],
   },
@@ -118,21 +137,21 @@ export const routes: NavGroup[] = [
         title: "Tasks",
         href: "/tasks",
         icon: CheckSquare,
-      },
-      {
-        title: "Document Verification",
-        href: "/verification",
-        icon: QrCode,
+        requiredRoles: ["manager", "finance", "approver", "department_manager", "procurement", "admin", "super_admin"],
+        requiredPermissions: ["requisition.approve", "purchase_order.approve", "payment_voucher.approve", "grn.approve", "budget.approve"],
       },
       {
         title: "Reports & Analytics",
         href: "/admin/reports",
         icon: BarChart3Icon,
+        requiredRoles: ["finance", "manager", "admin", "super_admin"],
+        requiredPermissions: ["analytics.view"],
       },
     ],
   },
   {
     title: "ADMIN",
+    requiredRoles: ["admin", "super_admin"],
     items: [
       {
         title: "User Management",
@@ -170,14 +189,50 @@ export const routes: NavGroup[] = [
   },
 ];
 
+function canShowItem(
+  item: NavItem,
+  userRole: string,
+  rawPermissions: string[]
+): boolean {
+  if (!item.requiredRoles && !item.requiredPermissions) return true;
+  if (item.requiredRoles?.includes(userRole)) return true;
+  if (item.requiredPermissions?.some((p) => rawPermissions.includes(p)))
+    return true;
+  return false;
+}
+
 export function NavMain() {
   const pathname = usePathname();
   const isMobile = useIsMobile();
+  const { user } = useSession();
+  const { rawPermissions } = usePermissions();
+
+  const userRole = (user?.role ?? "").toLowerCase();
+
+  const filteredRoutes = routes
+    .filter(
+      (group) =>
+        !group.requiredRoles ||
+        group.requiredRoles.includes(userRole)
+    )
+    .map((group) => ({
+      ...group,
+      items: group.items
+        .filter((item) => canShowItem(item, userRole, rawPermissions))
+        .map((item) => ({
+          ...item,
+          items: item.items?.filter((sub) =>
+            canShowItem(sub, userRole, rawPermissions)
+          ),
+        }))
+        // Hide parent if all sub-items were filtered out (but keep if no sub-items)
+        .filter((item) => !item.items || item.items.length > 0),
+    }))
+    .filter((group) => group.items.length > 0);
 
   return (
     <div className="h-full overflow-y-auto overflow-clip">
-      {routes &&
-        routes.map((nav: NavGroup) => (
+      {filteredRoutes.map((nav: NavGroup) => (
           <SidebarGroup key={nav.title} className="w-full">
             <SidebarGroupLabel>{nav.title}</SidebarGroupLabel>
             <SidebarGroupContent className="flex flex-col gap-2 max-w-full ">

@@ -22,6 +22,7 @@ export interface WorkflowStage {
   order?: number;
   name?: string;
   approverRole?: string;
+  requiredRoleName?: string; // Resolved role name from backend
   canBeRejected?: boolean;
   canBeReassigned?: boolean;
 }

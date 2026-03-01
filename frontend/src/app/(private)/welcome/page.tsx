@@ -1,38 +1,28 @@
-"use client";
+import { redirect } from "next/navigation";
+import { verifySession } from "@/lib/auth";
+import { fetchUserOrganizations } from "@/app/_actions/organizations";
+import { WelcomeClient } from "./_components/welcome-client";
 
-import { useState } from "react";
-import { AnimatePresence } from "framer-motion";
-import { useOrganizationContext } from "@/hooks/use-organization";
-import { CreateWorkspace } from "./_components/create-workspace";
-import { WorkspaceSelector } from "./_components/workpace-selector";
+export const metadata = {
+  title: "Select Workspace",
+  description: "Choose your workspace to continue",
+};
 
-export default function WelcomePage() {
-  const { refreshOrganizations } = useOrganizationContext();
-  const [showCreateForm, setShowCreateForm] = useState(false);
+export default async function WelcomePage() {
+  const { session, isAuthenticated } = await verifySession();
 
-  const handleCreateSuccess = (organization: any) => {
-    // Refresh organizations list to include the new one
-    refreshOrganizations();
-    // Go back to workspace selection
-    setShowCreateForm(false);
-  };
+  if (!session || !isAuthenticated) {
+    redirect("/login");
+  }
+
+  // SSR: prefetch organizations so the list renders immediately
+  const initialOrganizations = await fetchUserOrganizations().catch(() => []);
 
   return (
-    <AnimatePresence mode="wait">
-      {showCreateForm ? (
-        <CreateWorkspace
-          key="create-form"
-          onBack={() => setShowCreateForm(false)}
-          onSuccess={handleCreateSuccess}
-        />
-      ) : (
-        <WorkspaceSelector
-          key="workspace-selector"
-          onCreateWorkspace={() => setShowCreateForm(true)}
-          showLogo={true}
-          showSignOut={true}
-        />
-      )}
-    </AnimatePresence>
+    <WelcomeClient
+      initialOrganizations={
+        initialOrganizations.length > 0 ? initialOrganizations : undefined
+      }
+    />
   );
 }

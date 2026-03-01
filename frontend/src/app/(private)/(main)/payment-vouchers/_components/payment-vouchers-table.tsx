@@ -50,9 +50,12 @@ function transformPVToWorkflowDocument(pv: PaymentVoucher): WorkflowDocument {
       invoiceNumber: pv.invoiceNumber,
       paymentMethod: pv.paymentMethod,
       glCode: pv.glCode,
+      createdBy: pv.createdBy,
     },
   };
 }
+
+const FINANCE_EDIT_ROLES = ["admin", "super_admin", "manager", "finance"];
 
 // Stage indicator
 function StageIndicator({
@@ -201,8 +204,8 @@ function PvOptionsMenu({
 }
 
 export function PaymentVouchersTable({
-  userId: _userId,
-  userRole: _userRole,
+  userId,
+  userRole,
   refreshTrigger,
   onRefresh: _onRefresh,
 }: PaymentVouchersTableProps) {
@@ -224,6 +227,9 @@ export function PaymentVouchersTable({
 
   const getActions = useCallback(
     (pv: WorkflowDocument): ActionButton[] => {
+      const canEdit =
+        pv.metadata?.createdBy === userId ||
+        FINANCE_EDIT_ROLES.includes(userRole);
       return [
         {
           icon: <Eye className="h-3.5 w-3.5" />,
@@ -231,15 +237,20 @@ export function PaymentVouchersTable({
           tooltip: "View Details",
           onClick: () => router.push(`/payment-vouchers/${pv.id}`),
         },
-        {
-          icon: <Pencil className="h-3.5 w-3.5" />,
-          label: "Edit",
-          tooltip: "Edit Voucher",
-          onClick: () => router.push(`/payment-vouchers/${pv.id}/edit`),
-        },
+        ...(canEdit
+          ? [
+              {
+                icon: <Pencil className="h-3.5 w-3.5" />,
+                label: "Edit",
+                tooltip: "Edit Voucher",
+                onClick: () =>
+                  router.push(`/payment-vouchers/${pv.id}/edit`),
+              },
+            ]
+          : []),
       ];
     },
-    [router]
+    [router, userId, userRole]
   );
 
   return (

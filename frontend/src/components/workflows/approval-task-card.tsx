@@ -17,6 +17,10 @@ import {
 } from "lucide-react";
 import { formatDistanceToNow, isAfter } from "date-fns";
 import { useApprovalWorkflow } from "@/hooks/use-approval-workflow";
+import {
+  canUserActOnWorkflowTask,
+  formatRoleForDisplay,
+} from "@/lib/workflow-utils";
 import { ClaimTaskModal } from "./claim-task-modal";
 import { ApprovalActionModal } from "./approval-action-modal";
 import { toast } from "sonner";
@@ -97,19 +101,6 @@ export function ApprovalTaskCard({
     );
   }
 
-  // Built-in approver roles that can claim/approve any task
-  const APPROVER_ROLES = [
-    "admin",
-    "approver",
-    "finance",
-    "manager",
-    "supervisor",
-    "department_head",
-  ];
-  const isBuiltInApprover = APPROVER_ROLES.some(
-    (role) => role.toLowerCase() === currentUserRole.toLowerCase(),
-  );
-
   // Task state calculations
   const isPending = task.status === "pending";
   const isClaimedByMe =
@@ -118,25 +109,10 @@ export function ApprovalTaskCard({
     task.status === "claimed" && task.claimedBy !== currentUserId;
   const isCompleted = task.status === "completed";
 
-  // Permission check for claiming:
-  // 1. If task is assigned to specific user, only that user can claim
-  // 2. If task is role-based, user with that role OR built-in approvers can claim
-  const canUserClaim = (() => {
-    // If specifically assigned to this user
-    if (task.assignedUserId === currentUserId) return true;
-    // If specifically assigned to someone else, this user cannot claim
-    if (task.assignedUserId && task.assignedUserId !== currentUserId)
-      return false;
-    // Check role match (case-insensitive)
-    if (
-      task.assignedRole &&
-      task.assignedRole.toLowerCase() === currentUserRole.toLowerCase()
-    )
-      return true;
-    // Built-in approvers can claim any role-based task
-    if (isBuiltInApprover) return true;
-    return false;
-  })();
+  const canUserClaim = canUserActOnWorkflowTask(
+    { id: currentUserId, role: currentUserRole as any },
+    task
+  );
 
   const isClaimExpired =
     task.claimExpiry && isAfter(new Date(), new Date(task.claimExpiry));
@@ -257,7 +233,9 @@ export function ApprovalTaskCard({
             <div className="flex items-center gap-2">
               <Users className="h-4 w-4 text-muted-foreground" />
               <span className="text-muted-foreground">Required Role:</span>
-              <span className="font-medium">{task.assignedRole}</span>
+              <span className="font-medium">
+                {formatRoleForDisplay(task.assignedRole, task.assignedRoleName)}
+              </span>
             </div>
 
             <div className="flex items-center gap-2">
@@ -429,7 +407,7 @@ export function ApprovalTaskCard({
               <div className="text-sm text-muted-foreground bg-muted/50 p-2 rounded">
                 {task.assignedUserId
                   ? "This task has been assigned to a specific user."
-                  : `This task requires the "${task.assignedRole}" role or an admin/approver role to claim.`}
+                  : `This task requires the "${formatRoleForDisplay(task.assignedRole, task.assignedRoleName)}" role or an admin/approver role to claim.`}
               </div>
             )}
           </div>
@@ -446,7 +424,7 @@ export function ApprovalTaskCard({
           entityType: task.entityType,
           entityId: task.entityId,
           stageName: task.stageName,
-          assignedRole: task.assignedRole,
+          assignedRole: formatRoleForDisplay(task.assignedRole, task.assignedRoleName),
         }}
       />
 

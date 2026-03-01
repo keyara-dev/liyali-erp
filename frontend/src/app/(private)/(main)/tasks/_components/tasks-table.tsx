@@ -49,6 +49,7 @@ import {
   reassignApprovalTask,
 } from "@/app/_actions/workflow-approval-actions";
 import { Badge } from "@/components";
+import { Skeleton } from "@/components/ui/skeleton";
 
 // Define WorkflowTask interface locally to match backend response
 interface WorkflowTask {
@@ -401,12 +402,12 @@ export function TasksTable() {
   return (
     <div className="space-y-4">
       {/* Filters */}
-      <div className="flex flex-col gap-4 p-4 bg-gray-50 rounded-lg border">
+      <div className="flex flex-col gap-4 p-4 bg-muted/40 rounded-lg border">
         <div className="flex flex-col md:flex-row gap-4">
           {/* Search Input */}
           <div className="flex-1">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Search tasks..."
                 value={searchQuery}
@@ -469,7 +470,7 @@ export function TasksTable() {
           )}
         </div>
 
-        <div className="text-sm text-gray-600">
+        <div className="text-sm text-muted-foreground">
           Showing {filteredTasks.length} tasks
           {hasActiveFilters && " (filtered)"}
         </div>
@@ -494,7 +495,20 @@ export function TasksTable() {
             ))}
           </TableHeader>
           <TableBody>
-            {table.getRowModel().rows?.length ? (
+            {isLoading ? (
+              Array.from({ length: 5 }).map((_, i) => (
+                <TableRow key={i}>
+                  <TableCell><Skeleton className="h-4 w-40" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-28" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-10" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                  <TableCell><Skeleton className="h-5 w-16 rounded-full" /></TableCell>
+                  <TableCell><Skeleton className="h-5 w-20 rounded-full" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                  <TableCell><Skeleton className="h-8 w-20 rounded-md" /></TableCell>
+                </TableRow>
+              ))
+            ) : table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => (
                 <TableRow
                   key={row.original.id}
@@ -514,9 +528,9 @@ export function TasksTable() {
               <TableRow>
                 <TableCell
                   colSpan={columns.length}
-                  className="h-24 text-center"
+                  className="h-24 text-center text-muted-foreground"
                 >
-                  {isLoading ? "Loading tasks..." : "No tasks found."}
+                  No tasks found.
                 </TableCell>
               </TableRow>
             )}

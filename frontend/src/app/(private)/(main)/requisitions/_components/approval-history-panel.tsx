@@ -15,9 +15,12 @@ import {
 } from "lucide-react";
 import { ActionHistoryEntry, ApprovalRecord } from "@/types";
 import { WorkflowDocument } from "@/types/workflow";
+import { AuditTrailEntry } from "@/types/requisition";
 import { ApprovalActionPanel } from "./requisition-approval-panel";
 import { useApprovalPanelData } from "@/hooks/use-approval-history";
+import { useRequisitionAuditTrail } from "@/hooks/use-requisition-queries";
 import { StatusBadge } from "@/components/status-badge";
+import { formatRoleForDisplay } from "@/lib/workflow-utils";
 
 // ── Shared helpers ──────────────────────────────────────────────────────
 
@@ -370,8 +373,8 @@ export function ApprovalChainContent({
                     <div>
                       <p className="text-sm text-gray-700 dark:text-gray-300 mb-1">
                         <span className="font-medium">Required Role:</span>
-                        <span className="ml-1 px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded text-xs font-mono">
-                          {stage.requiredRole}
+                        <span className="ml-1 px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded text-xs">
+                          {formatRoleForDisplay(stage.requiredRole)}
                         </span>
                       </p>
                     </div>
@@ -385,7 +388,7 @@ export function ApprovalChainContent({
                           </span>
                           {stage.approverRole && (
                             <span className="text-gray-500 dark:text-gray-400 ml-1">
-                              ({stage.approverRole})
+                              ({formatRoleForDisplay(stage.approverRole)})
                             </span>
                           )}
                         </p>
@@ -421,7 +424,7 @@ export function ApprovalChainContent({
                         </span>
                         <span className="ml-1">
                           This stage requires approval from a user with the{" "}
-                          <strong>{stage.requiredRole}</strong> role.
+                          <strong>{formatRoleForDisplay(stage.requiredRole)}</strong> role.
                         </span>
                       </p>
                     </div>
@@ -452,12 +455,12 @@ export function ApprovalChainContent({
                   key={approval.approverId || index}
                   className={`p-4 rounded-lg border-2 ${
                     approval.status === "APPROVED"
-                      ? "border-green-200 bg-green-50"
+                      ? "border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-950/30"
                       : approval.status === "REJECTED"
-                        ? "border-red-200 bg-red-50"
+                        ? "border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-950/30"
                         : approval.status === "PENDING"
-                          ? "border-yellow-200 bg-yellow-50"
-                          : "border-gray-200 bg-gray-50"
+                          ? "border-yellow-300 dark:border-yellow-700 bg-yellow-50 dark:bg-yellow-950/30"
+                          : "border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/30"
                   }`}
                 >
                   <div className="flex items-start gap-3">
@@ -500,9 +503,9 @@ export function ApprovalChainContent({
                       </div>
 
                       {approval.assignedRole && (
-                        <p className="text-sm text-gray-700 mb-1">
+                        <p className="text-sm text-gray-700 dark:text-gray-300 mb-1">
                           <span className="font-medium">Required Role:</span>{" "}
-                          {approval.assignedRole}
+                          {formatRoleForDisplay(approval.assignedRole)}
                         </p>
                       )}
 
@@ -663,12 +666,12 @@ export function ApprovalActionContent({
     workflowStatus?.canApprove
   ) {
     return (
-      <div className="p-6 bg-blue-50 border border-blue-200 rounded-lg">
-        <h4 className="font-semibold text-lg text-blue-900 mb-2 flex items-center gap-2">
+      <div className="p-6 bg-primary/5 border border-primary/20 rounded-lg">
+        <h4 className="font-semibold text-lg text-foreground mb-2 flex items-center gap-2">
           <CheckCircle className="h-5 w-5" />
           Take Approval Action
         </h4>
-        <p className="text-sm text-blue-700 mb-4">
+        <p className="text-sm text-muted-foreground mb-4">
           You have permission to approve or reject this requisition at the
           current stage.
         </p>
@@ -794,6 +797,52 @@ interface ApprovalHistoryPanelProps {
   approvalChain?: ApprovalRecord[];
 }
 
+const AUDIT_ROLES = ["admin", "super_admin", "manager", "finance"];
+
+function AuditTrailContent({ entries }: { entries: AuditTrailEntry[] }) {
+  if (entries.length === 0) {
+    return (
+      <div className="text-center py-8 text-gray-500">
+        <Clock className="h-8 w-8 mx-auto mb-2 opacity-50" />
+        <p className="text-sm">No audit events recorded yet</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3 max-h-96 overflow-y-auto pr-1">
+      {entries.map((entry) => (
+        <div
+          key={entry.id}
+          className="flex gap-3 p-3 rounded-lg border bg-muted/30 text-sm"
+        >
+          <div className="mt-0.5">{getActionIcon(entry.action)}</div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              {entry.documentLabel && (
+                <Badge variant="outline" className="text-xs shrink-0">
+                  {entry.documentLabel}
+                </Badge>
+              )}
+              <span className="font-medium capitalize">
+                {entry.action.replace(/_/g, " ").toLowerCase()}
+              </span>
+            </div>
+            {entry.documentType && (
+              <p className="text-muted-foreground text-xs mt-0.5">
+                {entry.documentType}
+              </p>
+            )}
+            <p className="text-muted-foreground text-xs mt-1">
+              {new Date(entry.createdAt).toLocaleString()}
+            </p>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export function ApprovalHistoryPanel({
   requisitionId,
   requisition,
@@ -801,6 +850,8 @@ export function ApprovalHistoryPanel({
   actionHistory,
   approvalChain,
 }: ApprovalHistoryPanelProps) {
+  const isAdminUser = AUDIT_ROLES.includes((userRole || "").toLowerCase());
+
   const {
     approvalHistory,
     availableApprovers,
@@ -809,6 +860,11 @@ export function ApprovalHistoryPanel({
     hasError,
     refetchAll,
   } = useApprovalPanelData(requisitionId, "REQUISITION");
+
+  const { data: auditTrail = [] } = useRequisitionAuditTrail(
+    requisitionId,
+    isAdminUser,
+  );
 
   const handleApprovalComplete = () => {
     refetchAll();
@@ -834,10 +890,13 @@ export function ApprovalHistoryPanel({
   return (
     <Card className="p-6">
       <Tabs defaultValue="timeline" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className={`grid w-full ${isAdminUser ? "grid-cols-4" : "grid-cols-3"}`}>
           <TabsTrigger value="timeline">Timeline</TabsTrigger>
           <TabsTrigger value="chain">Approval Chain</TabsTrigger>
           <TabsTrigger value="approvers">Approval Actions</TabsTrigger>
+          {isAdminUser && (
+            <TabsTrigger value="audit-trail">Audit Trail</TabsTrigger>
+          )}
         </TabsList>
 
         <TabsContent value="timeline" className="space-y-4 mt-4">
@@ -864,6 +923,12 @@ export function ApprovalHistoryPanel({
             onApprovalComplete={handleApprovalComplete}
           />
         </TabsContent>
+
+        {isAdminUser && (
+          <TabsContent value="audit-trail" className="space-y-4 mt-4">
+            <AuditTrailContent entries={auditTrail} />
+          </TabsContent>
+        )}
       </Tabs>
 
       <WorkflowStatusSummary

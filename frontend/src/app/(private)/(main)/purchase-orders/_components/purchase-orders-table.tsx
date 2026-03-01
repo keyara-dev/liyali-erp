@@ -50,9 +50,12 @@ function transformPOToWorkflowDocument(po: PurchaseOrder): WorkflowDocument {
       deliveryDate: po.deliveryDate,
       department: po.department,
       linkedRequisition: po.linkedRequisition,
+      createdBy: po.createdBy,
     },
   };
 }
+
+const PROCUREMENT_EDIT_ROLES = ["admin", "super_admin", "manager", "finance", "procurement"];
 
 // Stage indicator
 function StageIndicator({
@@ -196,8 +199,8 @@ function PoOptionsMenu({
 }
 
 export function PurchaseOrdersTable({
-  userId: _userId,
-  userRole: _userRole,
+  userId,
+  userRole,
   refreshTrigger: _refreshTrigger,
   onRefresh: _onRefresh,
 }: PurchaseOrdersTableProps) {
@@ -219,6 +222,9 @@ export function PurchaseOrdersTable({
 
   const getActions = useCallback(
     (po: WorkflowDocument): ActionButton[] => {
+      const canEdit =
+        po.metadata?.createdBy === userId ||
+        PROCUREMENT_EDIT_ROLES.includes(userRole);
       return [
         {
           icon: <Eye className="h-3.5 w-3.5" />,
@@ -226,15 +232,19 @@ export function PurchaseOrdersTable({
           tooltip: "View Details",
           onClick: () => router.push(`/purchase-orders/${po.id}`),
         },
-        {
-          icon: <Pencil className="h-3.5 w-3.5" />,
-          label: "Edit",
-          tooltip: "Edit PO",
-          onClick: () => router.push(`/purchase-orders/${po.id}/edit`),
-        },
+        ...(canEdit
+          ? [
+              {
+                icon: <Pencil className="h-3.5 w-3.5" />,
+                label: "Edit",
+                tooltip: "Edit PO",
+                onClick: () => router.push(`/purchase-orders/${po.id}/edit`),
+              },
+            ]
+          : []),
       ];
     },
-    [router]
+    [router, userId, userRole]
   );
 
   return (

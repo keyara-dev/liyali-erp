@@ -445,6 +445,24 @@ export async function bulkUpdateRolePermissions({
   }
 }
 
+/**
+ * Get the current authenticated user's own permissions
+ * Calls: GET /api/v1/me/permissions — no specific permission required
+ */
+export async function getMyPermissions(): Promise<APIResponse<string[]>> {
+  const url = `/api/v1/me/permissions`;
+
+  try {
+    const response = await authenticatedApiClient({ url, method: "GET" });
+    return successResponse(
+      response.data?.data || [],
+      "Permissions retrieved successfully",
+    );
+  } catch (error: any) {
+    return handleError(error, "GET", url);
+  }
+}
+
 // For backward compatibility, alias the module permissions function
 export const getRolePermissions = getModuleRolePermissions;
 

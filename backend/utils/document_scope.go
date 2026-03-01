@@ -1,0 +1,137 @@
+package utils
+
+import (
+	"encoding/json"
+	"strings"
+
+	"github.com/liyali/liyali-gateway/models"
+	"gorm.io/gorm"
+)
+
+// DocumentScope represents what level of document access a user has.
+type DocumentScope struct {
+	CanViewAll    bool     // admin/super_admin/manager/finance/approver: no filtering
+	IsProcurement bool     // procurement role: sees only procurement-chain documents
+	UserID        string   // used for owner/involvement filter when neither flag is set
+	OrgID         string
+	UserRole      string
+	OrgRoleIDs    []string // custom org role UUIDs for the user (for UUID-stored assigned_role matching)
+}
+
+// privilegeRoles grant unrestricted document visibility (CanViewAll = true).
+var privilegeRoles = []string{
+	"admin", "super_admin", "manager", "department_manager", "finance", "approver",
+}
+
+// approvalPermissions — any of these on an org-role grants CanViewAll.
+var approvalPermissions = []string{
+	"requisition.approve", "approval.approve", "budget.approve",
+	"purchase_order.approve", "payment_voucher.approve", "grn.approve",
+}
+
+// GetDocumentScope determines the document access level for the given user.
+// It mirrors the permission-check logic from approval_handler.go.
+func GetDocumentScope(db *gorm.DB, userID, userRole, orgID string) DocumentScope {
+	scope := DocumentScope{
+		UserID:   userID,
+		OrgID:    orgID,
+		UserRole: userRole,
+	}
+
+	// 1. Built-in privileged role → unrestricted
+	lower := strings.ToLower(userRole)
+	for _, r := range privilegeRoles {
+		if lower == r {
+			scope.CanViewAll = true
+			return scope
+		}
+	}
+
+	// 2. Org-role with approval OR purchase_order.create permission
+	var userOrgRoles []models.UserOrganizationRole
+	if err := db.Where(
+		"user_id = ? AND organization_id = ? AND active = ?",
+		userID, orgID, true,
+	).Find(&userOrgRoles).Error; err == nil {
+		// Collect custom org role UUIDs for ApplyToQuery
+		for _, uor := range userOrgRoles {
+			scope.OrgRoleIDs = append(scope.OrgRoleIDs, uor.RoleID.String())
+		}
+
+		for _, uor := range userOrgRoles {
+			var orgRole models.OrganizationRole
+			if err := db.Where("id = ? AND active = ?", uor.RoleID, true).
+				First(&orgRole).Error; err != nil {
+				continue
+			}
+			var permissions []string
+			if err := json.Unmarshal(orgRole.Permissions, &permissions); err != nil {
+				continue
+			}
+			for _, perm := range permissions {
+				pLower := strings.ToLower(perm)
+				for _, ap := range approvalPermissions {
+					if pLower == ap {
+						scope.CanViewAll = true
+						return scope
+					}
+				}
+				if pLower == "purchase_order.create" {
+					scope.IsProcurement = true
+				}
+			}
+		}
+	}
+
+	// 3. Built-in procurement role
+	if lower == "procurement" {
+		scope.IsProcurement = true
+	}
+
+	return scope
+}
+
+// ApplyToQuery applies document scope filtering to a GORM query that already has
+// the organization_id filter applied.
+//
+//   - ownerField:      primary ownership column (e.g. "requester_id", "created_by")
+//   - entityType:      workflow entity_type string (e.g. "requisition", "purchase_order")
+//   - extraOwnerField: optional second owner column (e.g. "received_by" for GRNs; pass "" to skip)
+//
+// When CanViewAll is true the query is returned unchanged.
+// When IsProcurement is true the query is returned unchanged — the caller is
+// responsible for adding the procurement-specific subquery.
+// Otherwise the owner + workflow-involvement filter is appended.
+func (s DocumentScope) ApplyToQuery(query *gorm.DB, ownerField, entityType, extraOwnerField string) *gorm.DB {
+	if s.CanViewAll || s.IsProcurement {
+		return query
+	}
+
+	// Build the role-matching clause for the workflow_tasks subquery.
+	// Plain role name covers current data; UUID list covers custom org roles stored as UUIDs.
+	roleClause := "LOWER(assigned_role) = LOWER(?)"
+	roleArgs := []interface{}{s.UserRole}
+	if len(s.OrgRoleIDs) > 0 {
+		roleClause += " OR assigned_role IN (?)"
+		roleArgs = append(roleArgs, s.OrgRoleIDs)
+	}
+
+	involvedSQL := "id IN (SELECT entity_id FROM workflow_tasks" +
+		" WHERE organization_id = ? AND entity_type = ?" +
+		" AND (assigned_user_id = ? OR " + roleClause + " OR claimed_by = ?))"
+	involvedArgs := append([]interface{}{s.OrgID, entityType, s.UserID}, roleArgs...)
+	involvedArgs = append(involvedArgs, s.UserID)
+
+	if extraOwnerField != "" {
+		allArgs := append([]interface{}{s.UserID, s.UserID}, involvedArgs...)
+		return query.Where(
+			ownerField+" = ? OR "+extraOwnerField+" = ? OR "+involvedSQL,
+			allArgs...,
+		)
+	}
+	allArgs := append([]interface{}{s.UserID}, involvedArgs...)
+	return query.Where(
+		ownerField+" = ? OR "+involvedSQL,
+		allArgs...,
+	)
+}

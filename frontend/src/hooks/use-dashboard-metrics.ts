@@ -2,49 +2,54 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { getDashboardMetrics } from "@/app/_actions/dashboard";
-import { usePendingApprovalCount } from "./use-approval-workflow";
+import { getPendingApprovalCount } from "@/app/_actions/workflow-approval-actions";
 import type { DashboardMetrics } from "@/types";
 
 /**
- * Hook for fetching dashboard metrics with enhanced pending approval count
- * 
- * Combines dashboard metrics from the backend with real-time pending approval count
- * from the approval workflow system. Uses React Query for caching and error handling.
+ * Hook for fetching dashboard metrics with enhanced pending approval count.
  *
- * @returns {Object} Object with metrics data, loading state, and error
+ * Fetches both dashboard metrics and pending approval count in a single query
+ * to avoid nested useQuery calls that can break during SSR.
  *
- * @example
- * ```typescript
- * const { data: metrics, isLoading, error } = useDashboardMetrics();
- *
- * if (isLoading) return <div>Loading...</div>;
- * if (error) return <div>Error: {error}</div>;
- *
- * return <DashboardView metrics={metrics} />;
- * ```
+ * @param initialMetrics - Optional SSR-prefetched metrics
+ * @param initialPendingCount - Optional SSR-prefetched pending count
  */
-export function useDashboardMetrics() {
-  // Fetch pending approval count from approval workflow
-  const { data: pendingCount = 0 } = usePendingApprovalCount();
+export function useDashboardMetrics(
+  initialMetrics?: DashboardMetrics,
+  initialPendingCount?: number,
+) {
+  const computedInitialData = initialMetrics
+    ? { ...initialMetrics, pendingApproval: initialPendingCount ?? 0 }
+    : undefined;
 
   return useQuery({
-    queryKey: ['dashboard-metrics', pendingCount],
+    queryKey: ["dashboard-metrics"],
     queryFn: async (): Promise<DashboardMetrics> => {
-      const result = await getDashboardMetrics();
-      
-      if (!result.success || !result.data) {
-        throw new Error(result.message || "Failed to load dashboard metrics");
+      const [metricsResult, pendingResult] = await Promise.all([
+        getDashboardMetrics(),
+        getPendingApprovalCount(),
+      ]);
+
+      if (!metricsResult.success || !metricsResult.data) {
+        throw new Error(
+          metricsResult.message || "Failed to load dashboard metrics",
+        );
       }
 
-      // Enhance metrics with real pending approval count from backend
+      const pendingCount =
+        pendingResult.success ? (pendingResult.data?.count ?? 0) : 0;
+
       return {
-        ...result.data,
+        ...metricsResult.data,
         pendingApproval: pendingCount,
       };
     },
     staleTime: 2 * 60 * 1000, // 2 minutes
-    gcTime: 5 * 60 * 1000, // 5 minutes (formerly cacheTime)
+    gcTime: 5 * 60 * 1000, // 5 minutes
     retry: 2,
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000),
+    ...(computedInitialData
+      ? { initialData: computedInitialData, initialDataUpdatedAt: Date.now() }
+      : {}),
   });
 }

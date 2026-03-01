@@ -30,6 +30,7 @@ import { PageHeader } from "@/components/base/page-header";
 import {
   useRequisitionById,
   useSubmitRequisitionForApproval,
+  useRequisitionChain,
 } from "@/hooks/use-requisition-queries";
 import { useWithdrawRequisition } from "@/hooks/use-requisition-mutations";
 import { useRequisitionStorage } from "@/hooks/use-requisition-storage";
@@ -110,6 +111,9 @@ export function RequisitionDetailClient({
     isLoading,
     refetch,
   } = useRequisitionById(requisitionId, initialRequisition);
+
+  // Document chain (Req → PO → GRN → PV)
+  const { data: chain } = useRequisitionChain(requisitionId);
 
   // Approval panel data
   const {
@@ -725,11 +729,12 @@ export function RequisitionDetailClient({
         )}
       </div>
 
-      {/* Document Links */}
+      {/* Document Chain — only shown once requisition is approved */}
       {requisition.status === "approved" && (
         <DocumentLinks
           currentDocument={requisition as unknown as WorkflowDocument}
-          linkedDocuments={{}}
+          chain={chain}
+          showViewLinks={userRole.toLowerCase() !== "requester"}
         />
       )}
 

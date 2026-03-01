@@ -342,6 +342,9 @@ func (rms *RoleManagementService) EnsureGlobalSystemRoles() error {
 				"budget:view", "budget:approve", "budget:reject",
 				"purchase_order:view", "purchase_order:approve", "purchase_order:reject",
 				"payment_voucher:view", "payment_voucher:approve", "payment_voucher:reject",
+				"grn:view",
+				"vendor:view",
+				"category:view",
 			},
 		},
 		{
@@ -355,10 +358,14 @@ func (rms *RoleManagementService) EnsureGlobalSystemRoles() error {
 		},
 		{
 			name:        "finance",
-			description: "Finance team access",
+			description: "Finance team — manage and approve budgets, purchase orders, and payment vouchers",
 			permissions: []string{
-				"requisition:view", "budget:view", "budget:create", "budget:edit", "budget:approve",
-				"purchase_order:view", "payment_voucher:view", "payment_voucher:create", "payment_voucher:edit", "payment_voucher:approve",
+				"requisition:view",
+				"budget:view", "budget:create", "budget:edit", "budget:approve", "budget:reject",
+				"purchase_order:view", "purchase_order:create", "purchase_order:edit", "purchase_order:approve", "purchase_order:reject",
+				"payment_voucher:view", "payment_voucher:create", "payment_voucher:edit", "payment_voucher:approve", "payment_voucher:reject",
+				"vendor:view",
+				"category:view",
 				"analytics:view", "audit_log:view",
 			},
 		},
@@ -377,7 +384,10 @@ func (rms *RoleManagementService) EnsureGlobalSystemRoles() error {
 		var existingRole models.OrganizationRole
 		err := rms.db.Where("name = ? AND is_system_role = ? AND organization_id IS NULL", roleData.name, true).First(&existingRole).Error
 		if err == nil {
-			continue // Already exists
+			// Role exists — sync permissions to the current definition
+			permissionsJSON, _ := json.Marshal(roleData.permissions)
+			rms.db.Model(&existingRole).Update("permissions", datatypes.JSON(permissionsJSON))
+			continue
 		}
 
 		role := models.OrganizationRole{

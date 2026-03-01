@@ -1,8 +1,17 @@
 "use client";
 
-import { useEffect } from "react";
-import { useOrganizationStore } from "@/stores/organization-store";
-import type { Organization } from "@/app/_actions/organizations";
+import { useCallback } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useCurrentOrganization } from "./use-current-organization";
+import { USER_ORGS_QUERY_KEY } from "./use-user-organizations";
+import {
+  switchOrganization,
+  type Organization,
+} from "@/app/_actions/organizations";
+import {
+  clearOrganizationCache,
+  prefetchOrganizationData,
+} from "@/lib/cache-manager";
 
 export interface OrganizationContextType {
   currentOrganization: Organization | null;
@@ -15,43 +24,53 @@ export interface OrganizationContextType {
 }
 
 /**
- * Hook that provides the same interface as the original OrganizationContext
- * This allows for easy migration from React Context to Zustand
+ * Hook that provides organization context backed by React Query.
+ * Same interface as the original — zero changes needed in consumers.
  */
 export function useOrganizationContext(): OrganizationContextType {
+  const queryClient = useQueryClient();
   const {
     currentOrganization,
-    userOrganizations,
-    switchWorkspace,
+    organizations,
     isLoading,
     error,
-    refreshOrganizations,
-    retryFetch,
-    isInitialized,
-    initialize,
-  } = useOrganizationStore();
+    refetch,
+    setSelectedOrgId,
+  } = useCurrentOrganization();
 
-  // Initialize the store after the component has mounted
-  useEffect(() => {
-    if (!isInitialized) {
-      initialize();
-    }
-  }, [isInitialized, initialize]);
+  const switchWorkspace = useCallback(
+    async (orgId: string) => {
+      // Switch organization on backend (updates session cookie)
+      await switchOrganization(orgId);
+
+      // Update local selected org ID
+      setSelectedOrgId(orgId);
+
+      // Clear all organization-scoped cache data (client + server)
+      await clearOrganizationCache({
+        queryClient,
+        clearLocalStorage: true,
+        preserveKeys: [],
+        revalidateServerCache: true,
+      });
+
+      // Prefetch critical data for the new organization
+      await prefetchOrganizationData(orgId);
+    },
+    [queryClient, setSelectedOrgId],
+  );
 
   return {
     currentOrganization,
-    userOrganizations,
+    userOrganizations: organizations,
     switchWorkspace,
-    isLoading: isLoading || !isInitialized,
-    error,
-    refreshOrganizations: async () => {
-      await refreshOrganizations();
+    isLoading,
+    error: error?.message ?? null,
+    refreshOrganizations: () => {
+      queryClient.invalidateQueries({ queryKey: USER_ORGS_QUERY_KEY });
     },
-    retryFetch: async () => {
-      await retryFetch();
+    retryFetch: () => {
+      refetch();
     },
   };
 }
-
-// Export the store hook for direct access when needed
-export { useOrganizationStore };

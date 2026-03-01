@@ -159,9 +159,18 @@ func (h *ApprovalHandler) GetTaskStats(c *fiber.Ctx) error {
 		permissionCondition = "organization_id = ?"
 		permissionArgs = []interface{}{organizationID}
 	} else {
-		// User can only see tasks assigned to them or their role
-		permissionCondition = "organization_id = ? AND (assigned_user_id = ? OR LOWER(assigned_role) = LOWER(?))"
-		permissionArgs = []interface{}{organizationID, userID, user.Role}
+		// User can only see tasks assigned to them, their role name, or their custom org role UUIDs
+		orgRoleUUIDs := make([]string, 0, len(userOrgRoles))
+		for _, uor := range userOrgRoles {
+			orgRoleUUIDs = append(orgRoleUUIDs, uor.RoleID.String())
+		}
+		if len(orgRoleUUIDs) > 0 {
+			permissionCondition = "organization_id = ? AND (assigned_user_id = ? OR LOWER(assigned_role) = LOWER(?) OR assigned_role IN (?))"
+			permissionArgs = []interface{}{organizationID, userID, user.Role, orgRoleUUIDs}
+		} else {
+			permissionCondition = "organization_id = ? AND (assigned_user_id = ? OR LOWER(assigned_role) = LOWER(?))"
+			permissionArgs = []interface{}{organizationID, userID, user.Role}
+		}
 	}
 
 	// Count total tasks
@@ -247,6 +256,92 @@ func (h *ApprovalHandler) GetTaskStats(c *fiber.Ctx) error {
 	return utils.SendSimpleSuccess(c, stats, "Task statistics retrieved successfully")
 }
 
+// GetMyPendingCount returns the count of pending approval tasks for the current user
+// GET /api/v1/approvals/my-pending-count
+func (h *ApprovalHandler) GetMyPendingCount(c *fiber.Ctx) error {
+	db := config.DB
+	organizationID := c.Locals("organizationID").(string)
+	userID := c.Locals("userID").(string)
+
+	// Get user role for role-based filtering
+	var user models.User
+	if err := db.Where("id = ?", userID).First(&user).Error; err != nil {
+		return utils.SendSimpleSuccess(c, map[string]interface{}{"count": 0}, "Pending approval count retrieved successfully")
+	}
+
+	// Build permission filter — same logic as GetTaskStats
+	approverRoles := []string{"admin", "approver", "finance", "manager", "supervisor", "department_head"}
+	isBuiltInApprover := false
+	for _, role := range approverRoles {
+		if strings.EqualFold(user.Role, role) {
+			isBuiltInApprover = true
+			break
+		}
+	}
+
+	// Check for org role with approval permissions
+	hasOrgApprovalPermission := false
+	approvalPermissions := []string{"requisition.approve", "approval.approve", "budget.approve", "purchase_order.approve", "payment_voucher.approve", "grn.approve"}
+	var userOrgRoles []models.UserOrganizationRole
+	if err := db.Where("user_id = ? AND organization_id = ? AND active = ?", userID, organizationID, true).Find(&userOrgRoles).Error; err == nil && len(userOrgRoles) > 0 {
+		for _, userOrgRole := range userOrgRoles {
+			var orgRole models.OrganizationRole
+			if err := db.Where("id = ? AND active = ?", userOrgRole.RoleID, true).First(&orgRole).Error; err != nil {
+				continue
+			}
+			var permissions []string
+			if err := json.Unmarshal(orgRole.Permissions, &permissions); err != nil {
+				continue
+			}
+			for _, perm := range permissions {
+				for _, approvalPerm := range approvalPermissions {
+					if strings.EqualFold(perm, approvalPerm) {
+						hasOrgApprovalPermission = true
+						break
+					}
+				}
+				if hasOrgApprovalPermission {
+					break
+				}
+			}
+			if hasOrgApprovalPermission {
+				break
+			}
+		}
+	}
+
+	// Build the permission condition
+	var permissionCondition string
+	var permissionArgs []interface{}
+
+	if isBuiltInApprover || hasOrgApprovalPermission {
+		permissionCondition = "organization_id = ?"
+		permissionArgs = []interface{}{organizationID}
+	} else {
+		// Non-approvers can only see tasks assigned to them, their role name, or their custom org role UUIDs
+		orgRoleUUIDs := make([]string, 0, len(userOrgRoles))
+		for _, uor := range userOrgRoles {
+			orgRoleUUIDs = append(orgRoleUUIDs, uor.RoleID.String())
+		}
+		if len(orgRoleUUIDs) > 0 {
+			permissionCondition = "organization_id = ? AND (assigned_user_id = ? OR LOWER(assigned_role) = LOWER(?) OR assigned_role IN (?))"
+			permissionArgs = []interface{}{organizationID, userID, user.Role, orgRoleUUIDs}
+		} else {
+			permissionCondition = "organization_id = ? AND (assigned_user_id = ? OR LOWER(assigned_role) = LOWER(?))"
+			permissionArgs = []interface{}{organizationID, userID, user.Role}
+		}
+	}
+
+	// Count pending tasks
+	var pendingCount int64
+	db.Table("workflow_tasks").
+		Where(permissionCondition, permissionArgs...).
+		Where("LOWER(status) = LOWER(?)", "pending").
+		Count(&pendingCount)
+
+	return utils.SendSimpleSuccess(c, map[string]interface{}{"count": pendingCount}, "Pending approval count retrieved successfully")
+}
+
 // GetApprovalTasks retrieves workflow tasks with pagination and filtering
 func (h *ApprovalHandler) GetApprovalTasks(c *fiber.Ctx) error {
 	db := config.DB
@@ -285,8 +380,18 @@ func (h *ApprovalHandler) GetApprovalTasks(c *fiber.Ctx) error {
 		// Dashboard/transparency mode: return all org tasks regardless of role.
 		// Action-level permissions are enforced when the user tries to claim/approve.
 	} else if assignedToMe {
-		// Only show tasks assigned specifically to this user or their role
-		query = query.Where("(assigned_user_id = ? OR LOWER(assigned_role) = LOWER(?))", userID, user.Role)
+		// Only show tasks assigned specifically to this user, their role name, or their custom org role UUIDs
+		var assignedToMeOrgRoles []models.UserOrganizationRole
+		db.Where("user_id = ? AND organization_id = ? AND active = ?", userID, organizationID, true).Find(&assignedToMeOrgRoles)
+		orgRoleUUIDs := make([]string, 0, len(assignedToMeOrgRoles))
+		for _, uor := range assignedToMeOrgRoles {
+			orgRoleUUIDs = append(orgRoleUUIDs, uor.RoleID.String())
+		}
+		if len(orgRoleUUIDs) > 0 {
+			query = query.Where("(assigned_user_id = ? OR LOWER(assigned_role) = LOWER(?) OR assigned_role IN (?))", userID, user.Role, orgRoleUUIDs)
+		} else {
+			query = query.Where("(assigned_user_id = ? OR LOWER(assigned_role) = LOWER(?))", userID, user.Role)
+		}
 	} else {
 		// Show all tasks the user can approve based on permissions
 		// Users can see tasks if:
@@ -335,9 +440,17 @@ func (h *ApprovalHandler) GetApprovalTasks(c *fiber.Ctx) error {
 		}
 
 		// If user is NOT a built-in approver and doesn't have org approval permissions,
-		// they can only see tasks assigned to them or their role
+		// they can only see tasks assigned to them, their role name, or their custom org role UUIDs
 		if !isBuiltInApprover && !hasOrgApprovalPermission {
-			query = query.Where("(assigned_user_id = ? OR LOWER(assigned_role) = LOWER(?))", userID, user.Role)
+			orgRoleUUIDs := make([]string, 0, len(userOrgRoles))
+			for _, uor := range userOrgRoles {
+				orgRoleUUIDs = append(orgRoleUUIDs, uor.RoleID.String())
+			}
+			if len(orgRoleUUIDs) > 0 {
+				query = query.Where("(assigned_user_id = ? OR LOWER(assigned_role) = LOWER(?) OR assigned_role IN (?))", userID, user.Role, orgRoleUUIDs)
+			} else {
+				query = query.Where("(assigned_user_id = ? OR LOWER(assigned_role) = LOWER(?))", userID, user.Role)
+			}
 		}
 		// Otherwise, they can see all tasks in the organization (no additional filter needed)
 	}
@@ -509,6 +622,18 @@ func (h *ApprovalHandler) populateWorkflowTaskFields(db *gorm.DB, task *models.W
 		task.WorkflowName = "Standard Approval Workflow"
 	}
 
+	// Resolve AssignedRoleName: if AssignedRole is a UUID look it up; otherwise it's already a name.
+	if task.AssignedRole != nil && *task.AssignedRole != "" {
+		if _, parseErr := uuid.Parse(*task.AssignedRole); parseErr == nil {
+			var orgRole models.OrganizationRole
+			if db.Where("id = ?", *task.AssignedRole).First(&orgRole).Error == nil {
+				task.AssignedRoleName = orgRole.Name
+			}
+		} else {
+			task.AssignedRoleName = *task.AssignedRole // already a plain name
+		}
+	}
+
 	return nil
 }
 
@@ -530,8 +655,18 @@ func (h *ApprovalHandler) GetApprovalTask(c *fiber.Ctx) error {
 	var user models.User
 	if err := db.Where("id = ?", userID).First(&user).Error; err == nil {
 		if user.Role != "admin" {
-			// Non-admin users can only see tasks assigned to them or their role
-			query = query.Where("(assigned_user_id = ? OR assigned_role = ?)", userID, user.Role)
+			// Non-admin users can only see tasks assigned to them, their role name, or their custom org role UUIDs
+			var userTaskOrgRoles []models.UserOrganizationRole
+			db.Where("user_id = ? AND organization_id = ? AND active = ?", userID, organizationID, true).Find(&userTaskOrgRoles)
+			orgRoleUUIDs := make([]string, 0, len(userTaskOrgRoles))
+			for _, uor := range userTaskOrgRoles {
+				orgRoleUUIDs = append(orgRoleUUIDs, uor.RoleID.String())
+			}
+			if len(orgRoleUUIDs) > 0 {
+				query = query.Where("(assigned_user_id = ? OR LOWER(assigned_role) = LOWER(?) OR assigned_role IN (?))", userID, user.Role, orgRoleUUIDs)
+			} else {
+				query = query.Where("(assigned_user_id = ? OR LOWER(assigned_role) = LOWER(?))", userID, user.Role)
+			}
 		}
 	}
 

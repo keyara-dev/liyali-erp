@@ -94,9 +94,8 @@ const SelectField = React.forwardRef<HTMLSelectElement, SelectInputProps>(
         )}
 
         <Select
-          value={value}
+          {...(value !== undefined ? { value } : { defaultValue: String(defaultValue) })}
           onValueChange={onValueChange}
-          defaultValue={String(defaultValue)}
           disabled={isDisabled || props?.disabled}
         >
           <SelectTrigger

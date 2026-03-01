@@ -16,6 +16,7 @@ import {
 import { ActionHistoryEntry, ApprovalRecord } from "@/types";
 import { WorkflowDocument } from "@/types/workflow";
 import { useApprovalPanelData } from "@/hooks/use-approval-history";
+import { formatRoleForDisplay } from "@/lib/workflow-utils";
 
 interface BudgetApprovalPanelProps {
   budgetId: string;
@@ -418,7 +419,7 @@ export function BudgetApprovalPanel({
                                       Required Role:
                                     </span>
                                     <span className="ml-1 px-2 py-1 capitalize font-medium bg-gray-100 dark:bg-gray-800 rounded text-xs font-mono">
-                                      {stage.requiredRole}
+                                      {formatRoleForDisplay(stage.requiredRole, stage.requiredRoleName)}
                                     </span>
                                   </p>
                                 </div>
@@ -484,7 +485,7 @@ export function BudgetApprovalPanel({
                                       <span className="ml-1">
                                         This stage requires approval from a user
                                         with the{" "}
-                                        <strong>{stage.requiredRole}</strong>{" "}
+                                        <strong>{formatRoleForDisplay(stage.requiredRole, stage.requiredRoleName)}</strong>{" "}
                                         role.
                                       </span>
                                     </p>

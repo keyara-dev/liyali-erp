@@ -27,6 +27,9 @@ type User struct {
 	CreatedAt time.Time      `json:"createdAt"`
 	UpdatedAt time.Time      `json:"updatedAt"`
 	DeletedAt gorm.DeletedAt `json:"deletedAt" gorm:"index"` // Soft delete
+
+	// Computed fields (not stored in DB)
+	OrgRoleIds []string `gorm:"-" json:"orgRoleIds,omitempty"` // Active custom org role UUIDs for current org (populated at request time)
 }
 
 // Requisition workflow document

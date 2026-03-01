@@ -11,6 +11,8 @@ import {
   submitRequisitionForApproval,
   deleteRequisition,
   getRequisitionStats,
+  getRequisitionChain,
+  getRequisitionAuditTrail,
 } from "@/app/_actions/requisitions";
 import {
   Requisition,
@@ -18,6 +20,8 @@ import {
   CreateRequisitionRequest,
   UpdateRequisitionRequest,
   SubmitRequisitionRequest,
+  RequisitionChain,
+  AuditTrailEntry,
 } from "@/types/requisition";
 import { toast } from "sonner";
 import {
@@ -390,3 +394,40 @@ export const useDeleteRequisition = (
     },
   });
 };
+
+/**
+ * Fetch the document chain for a requisition (Req → PO → GRN → PV)
+ */
+export const useRequisitionChain = (
+  requisitionId: string,
+  initialData?: RequisitionChain,
+) =>
+  useQuery({
+    queryKey: [QUERY_KEYS.REQUISITIONS.BY_ID, requisitionId, "chain"],
+    queryFn: async () => {
+      const response = await getRequisitionChain(requisitionId);
+      if (!response.success) throw new Error(response.message);
+      return response.data as RequisitionChain;
+    },
+    initialData,
+    enabled: !!requisitionId,
+    staleTime: 30 * 1000, // 30 seconds
+  });
+
+/**
+ * Fetch the cross-chain audit trail for a requisition (admin/manager/finance only)
+ */
+export const useRequisitionAuditTrail = (
+  requisitionId: string,
+  enabled: boolean,
+) =>
+  useQuery({
+    queryKey: [QUERY_KEYS.REQUISITIONS.BY_ID, requisitionId, "audit-trail"],
+    queryFn: async () => {
+      const response = await getRequisitionAuditTrail(requisitionId);
+      if (!response.success) throw new Error(response.message);
+      return (response.data as AuditTrailEntry[]) ?? [];
+    },
+    enabled: !!requisitionId && enabled,
+    staleTime: 60 * 1000, // 1 minute
+  });

@@ -153,6 +153,9 @@ type WorkflowStage struct {
 	AssignmentStrategy    string   `json:"assignmentStrategy"`    // "role", "round_robin", "specific_user", "user_group"
 	AssignedUserIDs       []string `json:"assignedUserIds,omitempty"`
 	AssignedGroupID       *string  `json:"assignedGroupId,omitempty"`
+
+	// Computed: resolved role name for display (populated by loadComputedFields)
+	RequiredRoleName string `json:"requiredRoleName,omitempty"`
 }
 
 // Validate validates the workflow stage configuration
@@ -281,6 +284,7 @@ type WorkflowTask struct {
 	AssignedTo       string     `gorm:"-" json:"assignedTo,omitempty"`       // Maps to AssignedUserID or ClaimedBy
 	ApproverName     string     `gorm:"-" json:"approverName,omitempty"`     // Computed from AssignedUser.Name
 	ClaimerName      string     `gorm:"-" json:"claimerName,omitempty"`      // Computed from Claimer.Name
+	AssignedRoleName string     `gorm:"-" json:"assignedRoleName,omitempty"` // Human-readable name for AssignedRole (resolved from UUID or plain name)
 	TaskType         string     `gorm:"-" json:"taskType,omitempty"`         // Computed task type for UI display
 	Title            string     `gorm:"-" json:"title,omitempty"`            // Computed human-readable task title
 	WorkflowID       string     `gorm:"-" json:"workflowId,omitempty"`       // Computed workflow ID for the task

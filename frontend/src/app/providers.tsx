@@ -1,5 +1,5 @@
 "use client";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { isServer, QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 
 import { ThemeProvider as NextThemesProvider } from "next-themes";
@@ -9,35 +9,43 @@ import { useOfflineQueueProcessor } from "@/hooks/use-offline-queue-processor";
 import { TokenRefreshProvider } from "@/components/auth/token-refresh-provider";
 import { TooltipProvider } from "@/components";
 
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 5 * 60 * 1000, // 5 minutes - data considered fresh
-      gcTime: 10 * 60 * 1000, // 10 minutes - kept in memory
-      retry: 3, // Retry failed queries 3 times
-      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000), // Exponential backoff
-      refetchOnWindowFocus: false, // Don't auto-refetch on window focus
-      refetchOnReconnect: true, // Refetch when network reconnects
-      refetchOnMount: true, // Refetch on component mount if stale
-    },
-    mutations: {
-      retry: (failureCount, error: any) => {
-        // Don't retry if offline - let offline queue handle it
-        if (error?.type === "Network Error" || !navigator.onLine) {
-          return false;
-        }
-        return failureCount < 1; // Retry once for other errors
+function makeQueryClient() {
+  return new QueryClient({
+    defaultOptions: {
+      queries: {
+        staleTime: 5 * 60 * 1000, // 5 minutes - data considered fresh
+        gcTime: 10 * 60 * 1000, // 10 minutes - kept in memory
+        retry: 3, // Retry failed queries 3 times
+        retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000), // Exponential backoff
+        refetchOnWindowFocus: false, // Don't auto-refetch on window focus
+        refetchOnReconnect: true, // Refetch when network reconnects
+        refetchOnMount: true, // Refetch on component mount if stale
       },
-      onError: (error) => {
-        console.error("Mutation error:", error);
+      mutations: {
+        retry: (failureCount, error: any) => {
+          // Don't retry if offline - let offline queue handle it
+          if (error?.type === "Network Error" || !navigator.onLine) {
+            return false;
+          }
+          return failureCount < 1; // Retry once for other errors
+        },
+        onError: (error) => {
+          console.error("Mutation error:", error);
+        },
       },
     },
-  },
-});
+  });
+}
 
-// Make queryClient available globally for Zustand store
-if (typeof window !== "undefined") {
-  (window as any).queryClient = queryClient;
+let browserQueryClient: QueryClient | undefined = undefined;
+
+function getQueryClient() {
+  if (isServer) {
+    return makeQueryClient();
+  } else {
+    if (!browserQueryClient) browserQueryClient = makeQueryClient();
+    return browserQueryClient;
+  }
 }
 
 function StorageInitializer({ children }: { children: React.ReactNode }) {
@@ -46,6 +54,8 @@ function StorageInitializer({ children }: { children: React.ReactNode }) {
 }
 
 export function Providers({ children }: { children: React.ReactNode }) {
+  const queryClient = getQueryClient();
+
   return (
     <>
       <NextThemesProvider

@@ -5,6 +5,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useOrganizationContext } from "@/hooks/use-organization";
+import { USER_ORGS_QUERY_KEY } from "@/hooks/use-user-organizations";
 import { logoutAction } from "@/app/_actions/auth";
 import {
   switchOrganization,
@@ -109,7 +110,7 @@ export function useCreateOrganizationMutation() {
       } else {
         toast.success("Organization created successfully");
       }
-      queryClient.invalidateQueries({ queryKey: ["organizations"] });
+      queryClient.invalidateQueries({ queryKey: USER_ORGS_QUERY_KEY });
     },
     onError: (error) => {
       toast.error(error?.message || "Failed to create organization");
@@ -128,7 +129,6 @@ export function useCreateOrganizationMutation() {
  */
 export function useUpdateOrganizationMutation() {
   const queryClient = useQueryClient();
-  const { refreshOrganizations } = useOrganizationContext();
 
   const mutation = useMutation({
     mutationFn: async (data: UpdateOrganizationRequest) => {
@@ -157,13 +157,11 @@ export function useUpdateOrganizationMutation() {
       } else {
         toast.success("Organization updated successfully");
       }
-      // Invalidate queries
-      queryClient.invalidateQueries({ queryKey: ["organizations"] });
+      // Invalidate org queries so React Query refetches and updates currentOrganization
+      queryClient.invalidateQueries({ queryKey: USER_ORGS_QUERY_KEY });
       queryClient.invalidateQueries({
         queryKey: ["organization", variables.id],
       });
-      // Refresh organization store to update currentOrganization
-      await refreshOrganizations();
     },
     onError: () => {},
   });
@@ -290,7 +288,7 @@ export function useDeleteOrganizationMutation() {
       } else {
         toast.success("Organization deleted successfully");
       }
-      queryClient.invalidateQueries({ queryKey: ["organizations"] });
+      queryClient.invalidateQueries({ queryKey: USER_ORGS_QUERY_KEY });
 
       // Navigate back to welcome screen
       router.push("/welcome");

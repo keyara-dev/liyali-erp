@@ -2,6 +2,7 @@
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useOrganizationContext } from "@/hooks/use-organization";
+import { USER_ORGS_QUERY_KEY } from "@/hooks/use-user-organizations";
 import { toast } from "sonner";
 
 /**
@@ -47,7 +48,7 @@ export function useOrganizationTier() {
     },
     onSuccess: () => {
       // Invalidate and refetch organization data
-      queryClient.invalidateQueries({ queryKey: ["organizations"] });
+      queryClient.invalidateQueries({ queryKey: USER_ORGS_QUERY_KEY });
 
       toast.success("Successfully upgraded to Pro plan!", {
         description: "Your organization now has access to all Pro features.",

@@ -53,8 +53,14 @@ func GetPurchaseOrders(c *fiber.Ctx) error {
 		"organizationID": tenant.OrganizationID,
 	})
 
+	// Determine document visibility scope for this user
+	scope := utils.GetDocumentScope(db, tenant.UserID, tenant.UserRole, tenant.OrganizationID)
+
 	// SECURITY: Always filter by organization ID first
 	query := db.Where("organization_id = ?", tenant.OrganizationID)
+
+	// Apply document scope (procurement users see all POs; limited users see own + involved)
+	query = scope.ApplyToQuery(query, "created_by", "purchase_order", "")
 
 	if status != "" {
 		query = query.Where("status = ?", status)
@@ -247,6 +253,14 @@ func GetPurchaseOrder(c *fiber.Ctx) error {
 	logger := logging.FromContext(c)
 	logger.Info("get_purchase_order_request")
 
+	tenant, err := middleware.GetTenantContext(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"success": false,
+			"message": "Organization context required",
+		})
+	}
+
 	id := c.Params("id")
 	if id == "" {
 		logging.LogWarn(c, "purchase_order_id_missing")
@@ -264,7 +278,7 @@ func GetPurchaseOrder(c *fiber.Ctx) error {
 	var order models.PurchaseOrder
 	if err := config.DB.
 		Preload("Vendor").
-		Where("id = ?", id).
+		Where("id = ? AND organization_id = ?", id, tenant.OrganizationID).
 		First(&order).Error; err != nil {
 		logging.LogError(c, err, "purchase_order_not_found", map[string]interface{}{
 			"order_id":   id,

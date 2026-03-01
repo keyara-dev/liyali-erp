@@ -1,6 +1,6 @@
 "use client";
 
-import { Link as LinkIcon } from "lucide-react";
+import { Link as LinkIcon, CheckCircle2, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -10,36 +10,161 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { WorkflowDocument } from "@/types/workflow";
+import { RequisitionChain } from "@/types/requisition";
+import { StatusBadge } from "@/components/status-badge";
 import Link from "next/link";
 
 interface DocumentLinksProps {
   currentDocument: WorkflowDocument;
+  /** Legacy prop — kept for GRN detail page compatibility */
   linkedDocuments?: {
     requisition?: { id: string; documentNumber: string };
     purchaseOrder?: { id: string; documentNumber: string };
     grn?: { id: string; documentNumber: string };
     paymentVoucher?: { id: string; documentNumber: string };
   };
+  /** New prop — pass RequisitionChain from useRequisitionChain hook */
+  chain?: RequisitionChain;
+  /** Set false for requester role — they see status but cannot navigate to PO/GRN/PV pages */
+  showViewLinks?: boolean;
+}
+
+interface ChainStep {
+  label: string;
+  docNumber?: string;
+  href?: string;
+  status?: string;
+  exists: boolean;
+  placeholder: string;
+}
+
+function StepRow({ step }: { step: ChainStep }) {
+  if (!step.exists) {
+    return (
+      <div className="flex items-center justify-between bg-muted/40 p-3 rounded border border-dashed opacity-60">
+        <div>
+          <p className="text-sm text-muted-foreground">{step.label}</p>
+          <p className="text-sm text-muted-foreground italic">{step.placeholder}</p>
+        </div>
+        <Clock className="h-4 w-4 text-muted-foreground" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center justify-between bg-background p-3 rounded border">
+      <div className="flex items-center gap-3">
+        <div>
+          <p className="text-sm text-muted-foreground">{step.label}</p>
+          <p className="font-medium">{step.docNumber}</p>
+        </div>
+        {step.status && (
+          <StatusBadge status={step.status} type="document" />
+        )}
+      </div>
+      {step.href && (
+        <Link href={step.href}>
+          <Button variant="outline" size="sm">
+            View
+          </Button>
+        </Link>
+      )}
+    </div>
+  );
 }
 
 /**
- * Display linked documents in a workflow chain
- * Shows the path: Requisition → Purchase Order → GRN → Payment Voucher
+ * Display linked documents in a workflow chain.
+ * Accepts either a `chain` (from useRequisitionChain) or legacy `linkedDocuments` prop.
+ * Shows placeholder steps for documents not yet created.
  */
 export function DocumentLinks({
   currentDocument,
   linkedDocuments,
+  chain,
+  showViewLinks = true,
 }: DocumentLinksProps) {
-  if (!linkedDocuments) {
-    return null;
+  // --- Chain-based rendering (preferred) ---
+  if (chain) {
+    const isProcurement =
+      !chain.routingType || chain.routingType === "procurement";
+
+    const steps: ChainStep[] = isProcurement
+      ? [
+          {
+            label: "Purchase Order",
+            docNumber: chain.poDocumentNumber,
+            href: showViewLinks && chain.poId ? `/purchase-orders` : undefined,
+            status: chain.poStatus,
+            exists: !!chain.poId,
+            placeholder: "Not yet created",
+          },
+          {
+            label: "Goods Received Note",
+            docNumber: chain.grnDocumentNumber,
+            href: showViewLinks && chain.grnId ? `/grn/${chain.grnId}` : undefined,
+            status: chain.grnStatus,
+            exists: !!chain.grnId,
+            placeholder: "Pending goods receipt",
+          },
+          {
+            label: "Payment Voucher",
+            docNumber: chain.pvDocumentNumber,
+            href: showViewLinks && chain.pvId ? `/payment-vouchers` : undefined,
+            status: chain.pvStatus,
+            exists: !!chain.pvId,
+            placeholder: "Awaiting PO approval",
+          },
+        ]
+      : [
+          {
+            label: "Payment Voucher",
+            docNumber: chain.pvDocumentNumber,
+            href: showViewLinks && chain.pvId ? `/payment-vouchers` : undefined,
+            status: chain.pvStatus,
+            exists: !!chain.pvId,
+            placeholder: "Not yet created",
+          },
+        ];
+
+    return (
+      <Card className="border-blue-200 bg-blue-50 dark:bg-blue-950/20">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-blue-900 dark:text-blue-100">
+            <LinkIcon className="h-5 w-5" />
+            Procurement Chain
+          </CardTitle>
+          <CardDescription className="text-blue-800 dark:text-blue-200">
+            {isProcurement
+              ? "Track your requisition through Purchase Order → GRN → Payment Voucher"
+              : "Track your requisition through to Payment Voucher"}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-2">
+            {steps.map((step) => (
+              <StepRow key={step.label} step={step} />
+            ))}
+          </div>
+
+          <div className="mt-4 p-3 bg-blue-100 dark:bg-blue-900/30 rounded text-sm text-blue-900 dark:text-blue-100 flex items-start gap-2">
+            <CheckCircle2 className="h-4 w-4 mt-0.5 shrink-0" />
+            <span>
+              {isProcurement
+                ? "Procurement path: Requisition → Purchase Order → Goods Receipt → Payment"
+                : "Accounting path: Requisition → Payment Voucher (direct)"}
+            </span>
+          </div>
+        </CardContent>
+      </Card>
+    );
   }
+
+  // --- Legacy linkedDocuments fallback ---
+  if (!linkedDocuments) return null;
 
   const { requisition, purchaseOrder, grn, paymentVoucher } = linkedDocuments;
-
-  // Only show if there are linked documents
-  if (!requisition && !purchaseOrder && !grn && !paymentVoucher) {
-    return null;
-  }
+  if (!requisition && !purchaseOrder && !grn && !paymentVoucher) return null;
 
   return (
     <Card className="border-blue-200 bg-blue-50 dark:bg-blue-950/20">
@@ -54,70 +179,52 @@ export function DocumentLinks({
       </CardHeader>
       <CardContent>
         <div className="space-y-2">
-          {/* Requisition */}
           {requisition && (
             <div className="flex items-center justify-between bg-background p-3 rounded border">
               <div>
                 <p className="text-sm text-muted-foreground">Requisition</p>
                 <p className="font-medium">{requisition.documentNumber}</p>
               </div>
-              <Link href={`//requisitions/${requisition.id}`}>
-                <Button variant="outline" size="sm">
-                  View
-                </Button>
+              <Link href={`/requisitions/${requisition.id}`}>
+                <Button variant="outline" size="sm">View</Button>
               </Link>
             </div>
           )}
-
-          {/* Purchase Order */}
           {purchaseOrder && (
             <div className="flex items-center justify-between bg-background p-3 rounded border">
               <div>
                 <p className="text-sm text-muted-foreground">Purchase Order</p>
                 <p className="font-medium">{purchaseOrder.documentNumber}</p>
               </div>
-              <Link href={`//purchase-orders/${purchaseOrder.id}`}>
-                <Button variant="outline" size="sm">
-                  View
-                </Button>
+              <Link href={`/purchase-orders`}>
+                <Button variant="outline" size="sm">View</Button>
               </Link>
             </div>
           )}
-
-          {/* GRN */}
           {grn && (
             <div className="flex items-center justify-between bg-background p-3 rounded border">
               <div>
-                <p className="text-sm text-muted-foreground">
-                  Goods Received Note
-                </p>
+                <p className="text-sm text-muted-foreground">Goods Received Note</p>
                 <p className="font-medium">{grn.documentNumber}</p>
               </div>
-              <Link href={`//grn/${grn.id}`}>
-                <Button variant="outline" size="sm">
-                  View
-                </Button>
+              <Link href={`/grn/${grn.id}`}>
+                <Button variant="outline" size="sm">View</Button>
               </Link>
             </div>
           )}
-
-          {/* Payment Voucher */}
           {paymentVoucher && (
             <div className="flex items-center justify-between bg-background p-3 rounded border">
               <div>
                 <p className="text-sm text-muted-foreground">Payment Voucher</p>
                 <p className="font-medium">{paymentVoucher.documentNumber}</p>
               </div>
-              <Link href={`//payment-vouchers/${paymentVoucher.id}`}>
-                <Button variant="outline" size="sm">
-                  View
-                </Button>
+              <Link href={`/payment-vouchers`}>
+                <Button variant="outline" size="sm">View</Button>
               </Link>
             </div>
           )}
         </div>
 
-        {/* Legend */}
         <div className="mt-4 p-3 bg-blue-100 dark:bg-blue-900/30 rounded text-sm text-blue-900 dark:text-blue-100">
           <p className="font-medium mb-2">Workflow Process:</p>
           <p>Requisition → Purchase Order → Goods Receipt → Payment Voucher</p>

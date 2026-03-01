@@ -129,7 +129,7 @@ export function GRNApprovalActionPanel({
   }
 
   return (
-    <div className="space-y-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+    <div className="space-y-4 p-4 bg-primary/5 rounded-lg border border-primary/20">
       <div>
         <h3 className="font-semibold mb-2">
           {action === "approve"

@@ -59,8 +59,15 @@ func GetBudgets(c *fiber.Ctx) error {
 		"organization_id": tenant.OrganizationID,
 	})
 
+	// Determine document visibility scope for this user
+	scope := utils.GetDocumentScope(db, tenant.UserID, tenant.UserRole, tenant.OrganizationID)
+
 	// Start with organization filter - CRITICAL SECURITY FIX
 	query := db.Where("organization_id = ?", tenant.OrganizationID)
+
+	// Apply document scope (budgets follow same rules as documents)
+	query = scope.ApplyToQuery(query, "created_by", "budget", "")
+
 	if status != "" {
 		query = query.Where("status = ?", status)
 	}

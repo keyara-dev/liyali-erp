@@ -3,12 +3,14 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 	"github.com/liyali/liyali-gateway/config"
 	"github.com/liyali/liyali-gateway/logging"
+	"github.com/liyali/liyali-gateway/middleware"
 	"github.com/liyali/liyali-gateway/models"
 	"github.com/liyali/liyali-gateway/services"
 	"github.com/liyali/liyali-gateway/types"
@@ -34,8 +36,15 @@ func GetRequisitions(c *fiber.Ctx) error {
 	department := c.Query("department")
 	priority := c.Query("priority")
 
-	// Get organization ID from context (set by auth middleware)
-	organizationID := c.Locals("organizationID").(string)
+	// Get tenant context (organization + user identity)
+	tenant, err := middleware.GetTenantContext(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"success": false,
+			"message": "Organization context required",
+		})
+	}
+	organizationID := tenant.OrganizationID
 
 	// Add query parameters to context
 	logging.AddFieldsToRequest(c, map[string]interface{}{
@@ -48,8 +57,31 @@ func GetRequisitions(c *fiber.Ctx) error {
 		"organizationID": organizationID,
 	})
 
+	// Determine document visibility scope for this user
+	scope := utils.GetDocumentScope(db, tenant.UserID, tenant.UserRole, organizationID)
+
 	// Build query with organization filter
 	query := db.Where("organization_id = ?", organizationID)
+
+	// Apply document scope
+	if scope.IsProcurement {
+		// Procurement users only see requisitions assigned to a procurement workflow
+		query = query.Where(
+			`id IN (
+				SELECT wa.entity_id FROM workflow_assignments wa
+				JOIN workflows w ON w.id = wa.workflow_id
+				WHERE wa.entity_type = 'requisition' AND wa.organization_id = ?
+				AND (
+					w.conditions->>'routingType' IS NULL OR
+					w.conditions->>'routingType' = '' OR
+					w.conditions->>'routingType' = 'procurement'
+				)
+			)`,
+			organizationID,
+		)
+	} else {
+		query = scope.ApplyToQuery(query, "requester_id", "requisition", "")
+	}
 	if status != "" {
 		query = query.Where("status = ?", status)
 	}
@@ -975,5 +1007,213 @@ func SubmitRequisition(c *fiber.Ctx) error {
 	return c.JSON(types.DetailResponse{
 		Success: true,
 		Data:    responseData,
+	})
+}
+
+// GetRequisitionChain returns the full document chain for a requisition
+// GET /api/v1/:orgId/requisitions/:id/chain
+func GetRequisitionChain(c *fiber.Ctx) error {
+	id := c.Params("id")
+	if id == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"success": false,
+			"message": "Requisition ID is required",
+		})
+	}
+
+	tenant, err := middleware.GetTenantContext(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"success": false,
+			"message": "Organization context required",
+		})
+	}
+	orgID := tenant.OrganizationID
+
+	// Verify requisition exists and belongs to org
+	var req models.Requisition
+	if err := config.DB.Where("id = ? AND organization_id = ?", id, orgID).First(&req).Error; err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
+			"success": false,
+			"message": "Requisition not found",
+		})
+	}
+
+	// Build chain using document linking service
+	dls := services.NewDocumentLinkingService(config.DB)
+	rawChain, err := dls.GetDocumentRelationshipChain(id)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"success": false,
+			"message": "Failed to retrieve document chain",
+			"error":   err.Error(),
+		})
+	}
+
+	chain := fiber.Map{
+		"requisitionId":     id,
+		"requisitionStatus": req.Status,
+	}
+
+	// Fetch PO status if PO exists
+	if poID, ok := rawChain["poId"].(string); ok && poID != "" {
+		chain["poId"] = poID
+		chain["poDocumentNumber"] = rawChain["poDocumentNumber"]
+		var po models.PurchaseOrder
+		if err := config.DB.Where("id = ? AND organization_id = ?", poID, orgID).First(&po).Error; err == nil {
+			chain["poStatus"] = po.Status
+		}
+
+		// Look up PV linked to this PO's document number
+		if poDocNum, ok := rawChain["poDocumentNumber"].(string); ok && poDocNum != "" {
+			var pv models.PaymentVoucher
+			if err := config.DB.Where("linked_po = ? AND organization_id = ?", poDocNum, orgID).First(&pv).Error; err == nil {
+				chain["pvId"] = pv.ID
+				chain["pvDocumentNumber"] = pv.DocumentNumber
+				chain["pvStatus"] = pv.Status
+			}
+		}
+	}
+
+	// Fetch GRN status if GRN exists
+	if grnID, ok := rawChain["grnId"].(string); ok && grnID != "" {
+		chain["grnId"] = grnID
+		chain["grnDocumentNumber"] = rawChain["grnDocumentNumber"]
+		var grn models.GoodsReceivedNote
+		if err := config.DB.Where("id = ? AND organization_id = ?", grnID, orgID).First(&grn).Error; err == nil {
+			chain["grnStatus"] = grn.Status
+		}
+	}
+
+	// Detect routing type from workflow assignment
+	routingType := "procurement"
+	var wa models.WorkflowAssignment
+	if err := config.DB.Preload("Workflow").
+		Where("entity_id = ? AND entity_type = ? AND organization_id = ?", id, "requisition", orgID).
+		First(&wa).Error; err == nil && wa.Workflow != nil {
+		var wfConditions models.WorkflowConditions
+		if jsonErr := json.Unmarshal(wa.Workflow.Conditions, &wfConditions); jsonErr == nil {
+			if strings.EqualFold(wfConditions.RoutingType, "accounting") {
+				routingType = "accounting"
+			}
+		}
+	}
+	chain["routingType"] = routingType
+
+	return c.JSON(fiber.Map{
+		"success": true,
+		"data":    chain,
+	})
+}
+
+// GetRequisitionAuditTrail returns merged audit logs across all documents in the chain
+// GET /api/v1/:orgId/requisitions/:id/audit-trail
+// Access: admin, super_admin, manager, finance only
+func GetRequisitionAuditTrail(c *fiber.Ctx) error {
+	id := c.Params("id")
+	if id == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"success": false,
+			"message": "Requisition ID is required",
+		})
+	}
+
+	tenant, err := middleware.GetTenantContext(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"success": false,
+			"message": "Organization context required",
+		})
+	}
+	orgID := tenant.OrganizationID
+
+	// Enforce role restriction
+	allowedRoles := []string{"admin", "super_admin", "manager", "finance"}
+	callerRole := strings.ToLower(tenant.UserRole)
+	allowed := false
+	for _, r := range allowedRoles {
+		if callerRole == r {
+			allowed = true
+			break
+		}
+	}
+	if !allowed {
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
+			"success": false,
+			"message": "Access restricted to admin, manager, and finance roles",
+		})
+	}
+
+	// Verify requisition exists and belongs to org
+	var req models.Requisition
+	if err := config.DB.Where("id = ? AND organization_id = ?", id, orgID).First(&req).Error; err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
+			"success": false,
+			"message": "Requisition not found",
+		})
+	}
+
+	// Get document chain to collect all related doc IDs
+	dls := services.NewDocumentLinkingService(config.DB)
+	rawChain, err := dls.GetDocumentRelationshipChain(id)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"success": false,
+			"message": "Failed to retrieve document chain",
+			"error":   err.Error(),
+		})
+	}
+
+	docIDs := []string{id}
+	docLabels := map[string]string{id: "Requisition"}
+
+	if poID, ok := rawChain["poId"].(string); ok && poID != "" {
+		docIDs = append(docIDs, poID)
+		docLabels[poID] = "Purchase Order"
+
+		// Also look up PV
+		if poDocNum, ok := rawChain["poDocumentNumber"].(string); ok && poDocNum != "" {
+			var pv models.PaymentVoucher
+			if err := config.DB.Where("linked_po = ? AND organization_id = ?", poDocNum, orgID).First(&pv).Error; err == nil {
+				docIDs = append(docIDs, pv.ID)
+				docLabels[pv.ID] = "Payment Voucher"
+			}
+		}
+	}
+	if grnID, ok := rawChain["grnId"].(string); ok && grnID != "" {
+		docIDs = append(docIDs, grnID)
+		docLabels[grnID] = "Goods Received Note"
+	}
+
+	// Fetch all audit logs for the collected doc IDs
+	var auditLogs []models.AuditLog
+	if err := config.DB.
+		Where("document_id IN ?", docIDs).
+		Order("created_at ASC").
+		Find(&auditLogs).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"success": false,
+			"message": "Failed to fetch audit logs",
+			"error":   err.Error(),
+		})
+	}
+
+	responses := make([]map[string]interface{}, 0, len(auditLogs))
+	for _, al := range auditLogs {
+		responses = append(responses, map[string]interface{}{
+			"id":           al.ID,
+			"documentId":   al.DocumentID,
+			"documentType": al.DocumentType,
+			"documentLabel": docLabels[al.DocumentID],
+			"userId":       al.UserID,
+			"action":       al.Action,
+			"changes":      al.Changes,
+			"createdAt":    al.CreatedAt,
+		})
+	}
+
+	return c.JSON(fiber.Map{
+		"success": true,
+		"data":    responses,
 	})
 }

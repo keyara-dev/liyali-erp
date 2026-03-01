@@ -34,6 +34,7 @@ export interface WorkflowStage {
   id?: string;                 // Stage ID
   name?: string;               // Alias for stageName
   approverRole?: UserRole | string;     // Alias for requiredRole
+  requiredRoleName?: string;   // Resolved role name (populated by backend loadComputedFields)
   order?: number;              // Alias for stageNumber
   requiredApprovals?: number;  // Number of required approvals (default 1)
   canReject?: boolean;         // Alias for canBeRejected

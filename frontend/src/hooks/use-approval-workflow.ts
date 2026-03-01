@@ -41,7 +41,8 @@ export const useApprovalTasks = (
     viewAll?: boolean;
   },
   page: number = 1,
-  limit: number = 10
+  limit: number = 10,
+  initialData?: { data: ApprovalTask[]; pagination?: any },
 ) =>
   useQuery({
     queryKey: [QUERY_KEYS.APPROVALS.ALL, filters, page, limit],
@@ -54,6 +55,7 @@ export const useApprovalTasks = (
       };
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
+    ...(initialData ? { initialData, initialDataUpdatedAt: Date.now() } : {}),
   });
 
 /**
@@ -347,7 +349,7 @@ export const useApprovalHistory = (documentId: string) =>
  * @example
  * const { data: count } = usePendingApprovalCount()
  */
-export const usePendingApprovalCount = () =>
+export const usePendingApprovalCount = (initialCount?: number) =>
   useQuery({
     queryKey: [QUERY_KEYS.APPROVALS.PENDING_COUNT],
     queryFn: async () => {
@@ -364,6 +366,9 @@ export const usePendingApprovalCount = () =>
       );
     },
     staleTime: 2 * 60 * 1000, // 2 minutes
+    ...(initialCount !== undefined
+      ? { initialData: initialCount, initialDataUpdatedAt: Date.now() }
+      : {}),
   });
 
 /**

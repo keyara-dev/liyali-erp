@@ -4,7 +4,14 @@ import { useEffect, useState } from "react";
 import { SelectField } from "@/components/ui/select-field";
 import { useWorkflows, useDefaultWorkflow } from "@/hooks/use-workflow-queries";
 import type { Workflow, WorkflowConditions } from "@/types/workflow-config";
-import { Loader2, Info, AlertCircle, CheckCircle2, Zap, ShoppingCart } from "lucide-react";
+import {
+  Loader2,
+  Info,
+  AlertCircle,
+  CheckCircle2,
+  Zap,
+  ShoppingCart,
+} from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { cn } from "@/lib/utils";
 
@@ -56,21 +63,25 @@ export function WorkflowSelector({
 
     if (!value && defaultWorkflow) {
       onChange(defaultWorkflow.id);
+      onWorkflowSelect?.(defaultWorkflow);
       setHasAutoSelected(true);
     } else if (!value && workflows && workflows.length > 0) {
       // If no default, select the first workflow
       onChange(workflows[0].id);
+      onWorkflowSelect?.(workflows[0]);
       setHasAutoSelected(true);
     }
-  }, [defaultWorkflow, workflows, value, onChange, hasAutoSelected]);
+  }, [defaultWorkflow, workflows, value, onChange, onWorkflowSelect, hasAutoSelected]);
 
   // Find selected workflow for details
   const selectedWorkflow = workflows?.find((w) => w.id === value) ?? null;
 
-  // Notify parent of selected workflow changes
-  useEffect(() => {
-    onWorkflowSelect?.(selectedWorkflow);
-  }, [selectedWorkflow, onWorkflowSelect]);
+  // Handle user-driven workflow change — notify parent directly
+  const handleValueChange = (newValue: string) => {
+    onChange(newValue);
+    const workflow = workflows?.find((w) => w.id === newValue) ?? null;
+    onWorkflowSelect?.(workflow);
+  };
 
   // Render loading state
   if (isLoading) {
@@ -116,21 +127,17 @@ export function WorkflowSelector({
   // Prepare options for SelectField with routing type indicator
   const options = workflows.map((workflow) => {
     const routingType = workflow.conditions?.routingType;
-    const suffix = routingType === "accounting" ? " [Accounting]" : routingType === "procurement" ? " [Procurement]" : "";
+    const suffix =
+      routingType === "accounting"
+        ? " [Accounting]"
+        : routingType === "procurement"
+          ? " [Procurement]"
+          : "";
     return {
       value: workflow.id,
       label: `${workflow.name}${suffix}`,
     };
   });
-
-  // Handle select change - extract value from event or use directly
-  const handleChange = (valueOrEvent: any) => {
-    const newValue =
-      typeof valueOrEvent === "string"
-        ? valueOrEvent
-        : valueOrEvent?.target?.value || valueOrEvent;
-    onChange(newValue);
-  };
 
   return (
     <div className={cn("space-y-3", className)}>
@@ -138,12 +145,13 @@ export function WorkflowSelector({
         <SelectField
           label="Approval Workflow"
           value={value}
-          onChange={handleChange}
+          onValueChange={handleValueChange}
           options={options}
           placeholder="Select a workflow"
           disabled={disabled}
           required={required}
-          error={error}
+          isInvalid={!!error}
+          errorText={error}
         />
 
         {selectedWorkflow && (
@@ -165,6 +173,20 @@ interface WorkflowDetailsProps {
   workflow: any; // Using any to handle different workflow type structures
 }
 
+/** Format a built-in role name for display (e.g., "department_manager" → "Department Manager") */
+function formatRoleName(role: string): string {
+  return role.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+/** Resolve a role to a display name using backend-provided requiredRoleName */
+function getStageRoleDisplay(stage: any): string {
+  // Prefer backend-resolved name
+  if (stage.requiredRoleName) return stage.requiredRoleName;
+  // Fallback: format built-in role names (non-UUID strings)
+  if (stage.requiredRole) return formatRoleName(stage.requiredRole);
+  return "";
+}
+
 function WorkflowDetails({ workflow }: WorkflowDetailsProps) {
   const stagesCount = workflow.stages?.length || 0;
   const conditions: WorkflowConditions | undefined = workflow.conditions;
@@ -178,12 +200,12 @@ function WorkflowDetails({ workflow }: WorkflowDetailsProps) {
           <div className="flex items-center gap-2">
             <h4 className="text-sm font-medium">{workflow.name}</h4>
             {isAccounting ? (
-              <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-medium text-amber-800">
+              <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-medium text-amber-700 dark:text-amber-400">
                 <Zap className="h-3 w-3" />
                 Accounting
               </span>
             ) : (
-              <span className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-medium text-blue-800">
+              <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
                 <ShoppingCart className="h-3 w-3" />
                 Procurement
               </span>
@@ -206,7 +228,7 @@ function WorkflowDetails({ workflow }: WorkflowDetailsProps) {
           </span>
         </div>
         {isAccounting && conditions?.autoApprove && (
-          <div className="flex items-center gap-1 text-amber-600">
+          <div className="flex items-center gap-1 text-amber-700 dark:text-amber-400">
             <Zap className="h-3 w-3" />
             <span>
               Auto-approval
@@ -229,10 +251,14 @@ function WorkflowDetails({ workflow }: WorkflowDetailsProps) {
                 <span className="flex items-center justify-center w-5 h-5 rounded-full bg-primary/10 text-primary font-medium">
                   {stage.stageNumber || index + 1}
                 </span>
-                <span className="text-muted-foreground">
-                  {stage.stageName || stage.name}
-                  {stage.requiredRole && (
-                    <span className="text-xs ml-1">({stage.requiredRole})</span>
+                <span className="text-foreground/80 capitalize">
+                  {stage.stageName ||
+                    stage.name ||
+                    `Stage ${stage.stageNumber || index + 1}`}
+                  {(stage.requiredRoleName || stage.requiredRole) && (
+                    <span className="ml-1 text-muted-foreground">
+                      ({getStageRoleDisplay(stage)})
+                    </span>
                   )}
                 </span>
               </div>

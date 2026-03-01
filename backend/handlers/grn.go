@@ -41,8 +41,15 @@ func GetGRNs(c *fiber.Ctx) error {
 	status := c.Query("status")
 	poDocumentNumber := c.Query("poDocumentNumber")
 
+	// Determine document visibility scope for this user
+	scope := utils.GetDocumentScope(db, tenant.UserID, tenant.UserRole, tenant.OrganizationID)
+
 	// Start with organization filter - CRITICAL SECURITY FIX
 	query := db.Where("organization_id = ?", tenant.OrganizationID)
+
+	// Apply document scope (procurement users see all GRNs; limited users see own + involved)
+	query = scope.ApplyToQuery(query, "created_by", "grn", "received_by")
+
 	if status != "" {
 		query = query.Where("status = ?", status)
 	}

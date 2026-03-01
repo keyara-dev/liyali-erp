@@ -68,7 +68,10 @@ export function BudgetSubmitDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+      <DialogContent
+        className="max-w-lg max-h-[90vh] overflow-y-auto"
+        onInteractOutside={(e) => e.preventDefault()}
+      >
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Send className="h-5 w-5" />
@@ -120,7 +123,7 @@ export function BudgetSubmitDialog({
             </div>
             <div className="flex justify-between items-center">
               <span className="text-sm font-medium">Allocated:</span>
-              <span className="text-sm font-mono text-blue-600">
+              <span className="text-sm font-mono text-primary">
                 {budget.currency || "K"}
                 {budget.allocatedAmount.toLocaleString()}
               </span>

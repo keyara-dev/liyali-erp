@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -12,6 +12,12 @@ import {
   CheckCircle2,
   Clock,
   AlertCircle,
+  CheckSquare,
+  BarChart3,
+  FileCheck,
+  Users,
+  GitBranch,
+  Settings,
 } from "lucide-react";
 import Link from "next/link";
 import { DashboardMetrics } from "@/types";
@@ -46,28 +52,46 @@ export function GreetingCard({
     router.push("/requisitions");
   };
 
-  const quickActions = [
-    {
-      icon: <FileText className="h-5 w-5" />,
-      label: "View Requisitions",
-      href: "/requisitions",
-    },
-    {
-      icon: <PlusCircle className="h-5 w-5" />,
-      label: "Create Requisition",
-      onClick: () => setIsCreateDialogOpen(true),
-    },
-    {
-      icon: <Search className="h-5 w-5" />,
-      label: "Search Documents",
-      href: "/search",
-    },
-    {
-      icon: <ShieldCheck className="h-5 w-5" />,
-      label: "Verify Document",
-      href: "/verification",
-    },
-  ] as const;
+  const role = (userRole || "").toLowerCase();
+
+  const quickActions: Array<{
+    icon: React.ReactNode;
+    label: string;
+    href?: string;
+    onClick?: () => void;
+  }> = (() => {
+    if (role === "admin" || role === "super_admin") {
+      return [
+        { icon: <Users className="h-5 w-5" />, label: "User Management", href: "/admin/users" },
+        { icon: <GitBranch className="h-5 w-5" />, label: "Processes & Workflows", href: "/admin/workflows" },
+        { icon: <Settings className="h-5 w-5" />, label: "System Configurations", href: "/admin" },
+        { icon: <BarChart3 className="h-5 w-5" />, label: "Reports & Analytics", href: "/admin/reports" },
+      ];
+    }
+    if (["manager", "finance", "approver", "department_manager"].includes(role)) {
+      return [
+        { icon: <CheckSquare className="h-5 w-5" />, label: "View Tasks", href: "/tasks" },
+        { icon: <BarChart3 className="h-5 w-5" />, label: "Reports & Analytics", href: "/admin/reports" },
+        { icon: <Search className="h-5 w-5" />, label: "Search Documents", href: "/search" },
+        { icon: <ShieldCheck className="h-5 w-5" />, label: "Verify Document", href: "/verification" },
+      ];
+    }
+    if (role === "procurement") {
+      return [
+        { icon: <FileText className="h-5 w-5" />, label: "View Requisitions", href: "/requisitions" },
+        { icon: <FileCheck className="h-5 w-5" />, label: "Purchase Orders", href: "/purchase-orders" },
+        { icon: <FileCheck className="h-5 w-5" />, label: "Goods Received Notes", href: "/grn" },
+        { icon: <Search className="h-5 w-5" />, label: "Search Documents", href: "/search" },
+      ];
+    }
+    // Requester / default
+    return [
+      { icon: <FileText className="h-5 w-5" />, label: "View Requisitions", href: "/requisitions" },
+      { icon: <PlusCircle className="h-5 w-5" />, label: "Create Requisition", onClick: () => setIsCreateDialogOpen(true) },
+      { icon: <Search className="h-5 w-5" />, label: "Search Documents", href: "/search" },
+      { icon: <ShieldCheck className="h-5 w-5" />, label: "Verify Document", href: "/verification" },
+    ];
+  })();
 
   const metricItems = metrics
     ? [
@@ -135,7 +159,7 @@ export function GreetingCard({
                     </button>
                   );
 
-                  if ("onClick" in action) {
+                  if (action.onClick) {
                     return (
                       <div key={action.label} onClick={action.onClick}>
                         {buttonContent}
@@ -144,7 +168,7 @@ export function GreetingCard({
                   }
 
                   return (
-                    <Link key={action.label} href={action.href}>
+                    <Link key={action.label} href={action.href ?? "#"}>
                       {buttonContent}
                     </Link>
                   );

@@ -8,6 +8,28 @@ import (
 	"github.com/liyali/liyali-gateway/utils"
 )
 
+// GetMyPermissions returns the current authenticated user's permissions.
+// The rbacService must be properly initialized (with roleRepo).
+// GET /api/v1/me/permissions — no specific permission required, just authentication
+func GetMyPermissions(c *fiber.Ctx, rbacService *services.RBACService) error {
+	userID, ok := c.Locals("userID").(string)
+	if !ok || userID == "" {
+		return utils.SendUnauthorizedError(c, "Authentication required")
+	}
+
+	tenant, err := middleware.GetTenantContext(c)
+	if err != nil {
+		return utils.SendBadRequestError(c, "Organization context required")
+	}
+
+	permissions, err := rbacService.GetUserPermissions(c.Context(), userID, tenant.OrganizationID)
+	if err != nil {
+		return utils.SendInternalError(c, "Failed to get permissions", err)
+	}
+
+	return utils.SendSimpleSuccess(c, permissions, "Permissions retrieved successfully")
+}
+
 // GetUserPermissions returns all permissions for a user
 // GET /api/v1/users/:userId/permissions
 func GetUserPermissions(c *fiber.Ctx) error {
