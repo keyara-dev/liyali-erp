@@ -204,8 +204,11 @@ func CreateRequisition(c *fiber.Ctx) error {
 	// Create requisition
 	documentNumber := utils.GenerateDocumentNumber("REQ")
 
-	// Prepare metadata for additional fields
+	// Prepare metadata — start with any incoming metadata, then overlay known fields
 	metadataMap := map[string]interface{}{}
+	for k, v := range req.Metadata {
+		metadataMap[k] = v
+	}
 	if req.RequestedFor != "" {
 		metadataMap["requestedFor"] = req.RequestedFor
 	}
@@ -418,6 +421,19 @@ func UpdateRequisition(c *fiber.Ctx) error {
 		requisition.IsEstimate = *req.IsEstimate
 	}
 
+	// Merge incoming metadata with existing metadata
+	if req.Metadata != nil {
+		existingMeta := map[string]interface{}{}
+		if len(requisition.Metadata) > 0 {
+			json.Unmarshal(requisition.Metadata, &existingMeta)
+		}
+		for k, v := range req.Metadata {
+			existingMeta[k] = v
+		}
+		metadataBytes, _ := json.Marshal(existingMeta)
+		requisition.Metadata = datatypes.JSON(metadataBytes)
+	}
+
 	// Add action history entry for update
 	var actionHistory []types.ActionHistoryEntry
 	actionHistory = requisition.ActionHistory.Data()
@@ -596,13 +612,13 @@ func modelToRequisitionResponse(req models.Requisition) types.RequisitionRespons
 
 	// Extract metadata fields
 	var requestedFor, otherCategoryText string
+	var metadataMap map[string]interface{}
 	if len(req.Metadata) > 0 {
-		var metadata map[string]interface{}
-		if err := json.Unmarshal(req.Metadata, &metadata); err == nil {
-			if val, ok := metadata["requestedFor"].(string); ok {
+		if err := json.Unmarshal(req.Metadata, &metadataMap); err == nil {
+			if val, ok := metadataMap["requestedFor"].(string); ok {
 				requestedFor = val
 			}
-			if val, ok := metadata["otherCategoryText"].(string); ok {
+			if val, ok := metadataMap["otherCategoryText"].(string); ok {
 				otherCategoryText = val
 			}
 		}
@@ -640,6 +656,9 @@ func modelToRequisitionResponse(req models.Requisition) types.RequisitionRespons
 		RequiredByDate:    req.RequiredByDate,
 		RequestedFor:      requestedFor,
 		OtherCategoryText: otherCategoryText,
+
+		// Full metadata for frontend (e.g. attachments)
+		Metadata: metadataMap,
 
 		// Action history for frontend
 		ActionHistory: actionHistory,

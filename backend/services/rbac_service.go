@@ -225,6 +225,8 @@ var SystemRoles = map[string][]string{
 		"grn.view", "grn.approve", "grn.reject",
 		"approval.view", "approval.approve", "approval.reject", "approval.comment",
 		"analytics.view",
+		"organization.view",
+		"workflow.view",
 	},
 	"finance": {
 		"budget.view", "budget.create", "budget.edit", "budget.approve", "budget.reject",
@@ -233,6 +235,8 @@ var SystemRoles = map[string][]string{
 		"approval.view", "approval.approve", "approval.reject", "approval.comment",
 		"analytics.view", "analytics.export",
 		"audit.view",
+		"organization.view",
+		"workflow.view",
 	},
 	"requester": {
 		"requisition.view", "requisition.create", "requisition.edit",
@@ -242,6 +246,8 @@ var SystemRoles = map[string][]string{
 		"category.view",
 		"approval.view", "approval.comment",
 		"document.view", "document.create", "document.edit", "document.submit",
+		"organization.view",
+		"workflow.view",
 	},
 	"viewer": {
 		"requisition.view",
@@ -254,6 +260,8 @@ var SystemRoles = map[string][]string{
 		"approval.view",
 		"document.view",
 		"analytics.view",
+		"organization.view",
+		"workflow.view",
 	},
 }
 

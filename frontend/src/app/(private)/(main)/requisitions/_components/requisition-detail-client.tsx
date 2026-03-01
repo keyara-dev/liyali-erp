@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Send,
   AlertCircle,
@@ -18,6 +19,12 @@ import {
   Tag,
   FileText,
   Undo2,
+  Paperclip,
+  ImageIcon,
+  ShoppingCart,
+  CheckSquare,
+  GitBranch,
+  Activity,
 } from "lucide-react";
 import { PageHeader } from "@/components/base/page-header";
 import {
@@ -26,8 +33,13 @@ import {
 } from "@/hooks/use-requisition-queries";
 import { useWithdrawRequisition } from "@/hooks/use-requisition-mutations";
 import { useRequisitionStorage } from "@/hooks/use-requisition-storage";
-import { Requisition } from "@/types/requisition";
-import { ApprovalHistoryPanel } from "./approval-history-panel";
+import { Requisition, RequisitionAttachment } from "@/types/requisition";
+import {
+  ActivityLogContent,
+  ApprovalChainContent,
+  ApprovalActionContent,
+  WorkflowStatusSummary,
+} from "./approval-history-panel";
 import { CreateRequisitionDialog } from "./create-requisition-dialog";
 import { DocumentLinks } from "@/components/document-links";
 import { WorkflowDocument } from "@/types";
@@ -44,10 +56,27 @@ import {
 } from "@/lib/pdf/pdf-export";
 import { useOrganizationContext } from "@/hooks/use-organization";
 import { toast } from "sonner";
-import { PDFPreviewDialog } from "@/components/modals/pdf-preview-dialog";
+import dynamic from "next/dynamic";
+
+const PDFPreviewDialog = dynamic(
+  () =>
+    import("@/components/modals/pdf-preview-dialog").then(
+      (mod) => mod.PDFPreviewDialog,
+    ),
+  { ssr: false },
+);
+
+const AttachmentPreviewDialog = dynamic(
+  () =>
+    import("@/components/modals/attachment-preview-dialog").then(
+      (mod) => mod.AttachmentPreviewDialog,
+    ),
+  { ssr: false },
+);
 import { RequisitionSubmitDialog } from "./requisition-submit-dialog";
 import { ConfirmationModal } from "@/components/modals/confirmation-modal";
 import { Badge } from "@/components";
+import { useApprovalPanelData } from "@/hooks/use-approval-history";
 
 interface RequisitionDetailClientProps {
   requisitionId: string;
@@ -71,6 +100,9 @@ export function RequisitionDetailClient({
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [showSubmitDialog, setShowSubmitDialog] = useState(false);
   const [showWithdrawModal, setShowWithdrawModal] = useState(false);
+  const [attachmentPreviewOpen, setAttachmentPreviewOpen] = useState(false);
+  const [selectedAttachment, setSelectedAttachment] =
+    useState<RequisitionAttachment | null>(null);
 
   // Use the new hook with initialData from server component
   const {
@@ -79,15 +111,23 @@ export function RequisitionDetailClient({
     refetch,
   } = useRequisitionById(requisitionId, initialRequisition);
 
+  // Approval panel data
+  const {
+    approvalHistory,
+    availableApprovers,
+    workflowStatus,
+    isLoading: isApprovalLoading,
+    hasError: approvalHasError,
+    refetchAll,
+  } = useApprovalPanelData(requisitionId, "REQUISITION");
+
   // Submit mutation
   const submitMutation = useSubmitRequisitionForApproval(requisitionId, () => {
-    // After successful submission, refetch to get updated data
     refetch();
   });
 
   // Withdraw mutation
   const withdrawMutation = useWithdrawRequisition(() => {
-    // After successful withdrawal, refetch to get updated data
     refetch();
   });
 
@@ -151,13 +191,11 @@ export function RequisitionDetailClient({
       const autoCreatedPO = responseData?.autoCreatedPO;
 
       if (routingData?.autoApproved && autoCreatedPO?.id) {
-        // Auto-approved path: redirect to the auto-created PO
         setShowSubmitDialog(false);
         router.push(`/purchase-orders/${autoCreatedPO.id}`);
         return;
       }
 
-      // Also save to localStorage
       if (result?.data) {
         saveToStorage(result.data);
       }
@@ -173,7 +211,7 @@ export function RequisitionDetailClient({
 
   const handleRequisitionUpdated = () => {
     setIsEditDialogOpen(false);
-    refetch(); // Refresh the data
+    refetch();
   };
 
   const handleWithdraw = async () => {
@@ -184,6 +222,11 @@ export function RequisitionDetailClient({
     } catch (error) {
       console.error("Withdraw error:", error);
     }
+  };
+
+  const handleApprovalComplete = () => {
+    refetchAll();
+    refetch();
   };
 
   const isCreator =
@@ -227,20 +270,14 @@ export function RequisitionDetailClient({
               </div>
             ))}
           </div>
-          <div className="mt-6 pt-6 border-t border-white/20">
-            <div className="h-3 bg-white/15 rounded w-48 mb-3 animate-pulse" />
-            <div className="space-y-2">
-              <div className="h-4 bg-white/20 rounded w-full animate-pulse" />
-              <div className="h-4 bg-white/20 rounded w-3/4 animate-pulse" />
-            </div>
-          </div>
         </div>
 
-        {/* Items card skeleton */}
+        {/* Tabs skeleton */}
         <div className="bg-card rounded-lg border-0 shadow-sm p-6">
-          <div className="flex items-center justify-between mb-6">
-            <div className="h-6 bg-muted rounded w-24 animate-pulse" />
-            <div className="h-9 bg-muted rounded-md w-28 animate-pulse" />
+          <div className="flex gap-2 mb-6">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <div key={i} className="h-9 bg-muted rounded-md w-28 animate-pulse" />
+            ))}
           </div>
           <div className="space-y-3">
             {[1, 2, 3].map((i) => (
@@ -265,42 +302,6 @@ export function RequisitionDetailClient({
               </div>
             ))}
           </div>
-          <div className="mt-6 pt-6 border-t bg-slate-50 dark:bg-slate-950 -mx-6 -mb-6 px-6 py-4 rounded-b-lg">
-            <div className="flex items-center justify-between mb-2">
-              <div className="h-4 bg-muted rounded w-24 animate-pulse" />
-              <div className="h-4 bg-muted rounded w-20 animate-pulse" />
-            </div>
-            <div className="flex items-center justify-between">
-              <div className="h-5 bg-muted rounded w-28 animate-pulse" />
-              <div className="h-8 bg-muted rounded w-36 animate-pulse" />
-            </div>
-          </div>
-        </div>
-
-        {/* Approval History skeleton */}
-        <div className="bg-card rounded-lg border p-6">
-          <div className="flex gap-2 mb-6">
-            <div className="h-9 bg-muted rounded-md w-32 animate-pulse" />
-            <div className="h-9 bg-muted rounded-md w-36 animate-pulse" />
-            <div className="h-9 bg-muted rounded-md w-28 animate-pulse" />
-          </div>
-          <div className="space-y-4">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="flex gap-4">
-                <div className="flex flex-col items-center">
-                  <div className="w-8 h-8 bg-muted rounded-full animate-pulse" />
-                  {i < 3 && (
-                    <div className="w-0.5 h-12 bg-muted animate-pulse mt-1" />
-                  )}
-                </div>
-                <div className="flex-1 space-y-2 pb-4">
-                  <div className="h-4 bg-muted rounded w-36 animate-pulse" />
-                  <div className="h-3 bg-muted rounded w-48 animate-pulse" />
-                  <div className="h-6 bg-muted rounded-full w-20 animate-pulse" />
-                </div>
-              </div>
-            ))}
-          </div>
         </div>
       </div>
     );
@@ -313,7 +314,7 @@ export function RequisitionDetailClient({
           <AlertCircle className="h-12 w-12 text-gray-400 mx-auto mb-4" />
           <h3 className="font-semibold text-lg mb-2">Requisition Not Found</h3>
           <p className="text-gray-600 mb-6">
-            The requisition you're looking for doesn't exist.
+            The requisition you&apos;re looking for doesn&apos;t exist.
           </p>
           <Button variant="outline" onClick={() => router.back()}>
             Go Back
@@ -324,6 +325,19 @@ export function RequisitionDetailClient({
   }
 
   const totalEstimatedCost = requisition?.totalAmount || 0;
+
+  const attachments: RequisitionAttachment[] =
+    requisition.attachments ||
+    (requisition.metadata?.attachments as RequisitionAttachment[]) ||
+    [];
+
+  const formatBytes = (bytes: number) => {
+    if (bytes === 0) return "0 B";
+    const k = 1024;
+    const sizes = ["B", "KB", "MB"];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
+  };
 
   return (
     <div className="space-y-6">
@@ -394,344 +408,374 @@ export function RequisitionDetailClient({
         </div>
       </div>
 
-      <div className="grid grid-cols-1  gap-6">
-        {/* Main Content */}
-        <div className="  space-y-6">
-          {/* Requisition Details */}
-          <div className="gradient-primary border-0 overflow-hidden rounded-lg p-6">
-            <h2 className="text-lg font-semibold mb-6 text-primary-foreground">
-              Requisition Details
-            </h2>
+      {/* Requisition Details Card */}
+      <div className="gradient-primary border-0 overflow-hidden rounded-lg p-6">
+        <h2 className="text-lg font-semibold mb-6 text-primary-foreground">
+          Requisition Details
+        </h2>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {/* Basic Information */}
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-primary-foreground/80 uppercase tracking-wider flex items-center gap-1">
-                  <FileText className="h-3 w-3" />
-                  Title
-                </label>
-                <p className="text-base font-medium text-primary-foreground">
-                  {requisition.title || "—"}
-                </p>
-              </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="space-y-1">
+            <label className="text-xs font-semibold text-primary-foreground/80 uppercase tracking-wider flex items-center gap-1">
+              <FileText className="h-3 w-3" />
+              Title
+            </label>
+            <p className="text-base font-medium text-primary-foreground">
+              {requisition.title || "—"}
+            </p>
+          </div>
 
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-primary-foreground/80 uppercase tracking-wider flex items-center gap-1">
-                  <Building className="h-3 w-3" />
-                  Department
-                </label>
-                <p className="text-base font-medium text-primary-foreground">
-                  {requisition.department || "—"}
-                </p>
-              </div>
+          <div className="space-y-1">
+            <label className="text-xs font-semibold text-primary-foreground/80 uppercase tracking-wider flex items-center gap-1">
+              <Building className="h-3 w-3" />
+              Department
+            </label>
+            <p className="text-base font-medium text-primary-foreground">
+              {requisition.department || "—"}
+            </p>
+          </div>
 
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-primary-foreground/80 uppercase tracking-wider flex items-center gap-1">
-                  <AlertCircle className="h-3 w-3" />
-                  Priority
-                </label>
-                <div className="flex items-center">
-                  <Badge
-                    className={`inline-flex capitalize items-center px-2 py-1 rounded-full text-xs font-medium border ${
-                      requisition.priority?.toLowerCase() === "urgent"
-                        ? "bg-red-100 text-red-800 border-red-200"
-                        : requisition.priority?.toLowerCase() === "high"
-                          ? "bg-orange-100 text-orange-800 border-orange-200"
-                          : requisition.priority?.toLowerCase() === "medium"
-                            ? "bg-blue-100 text-blue-800 border-blue-200"
-                            : "bg-gray-100 text-gray-800 border-gray-200"
-                    }`}
-                  >
-                    {requisition.priority || "Medium"}
-                  </Badge>
-                </div>
-              </div>
-
-              {/* Requester Information */}
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-primary-foreground/80 uppercase tracking-wider flex items-center gap-1">
-                  <User className="h-3 w-3" />
-                  Requested By
-                </label>
-                <p className="text-base font-medium text-primary-foreground">
-                  {requisition.requesterName ||
-                    requisition.requestedByName ||
-                    "—"}
-                </p>
-                {requisition.requestedByRole && (
-                  <p className="text-xs text-primary-foreground/60">
-                    {requisition.requestedByRole}
-                  </p>
-                )}
-              </div>
-
-              {requisition.requestedFor && (
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-primary-foreground/80 uppercase tracking-wider flex items-center gap-1">
-                    <User className="h-3 w-3" />
-                    Requested For
-                  </label>
-                  <p className="text-base font-medium text-primary-foreground">
-                    {requisition.requestedFor}
-                  </p>
-                </div>
-              )}
-
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-primary-foreground/80 uppercase tracking-wider flex items-center gap-1">
-                  <DollarSign className="h-3 w-3" />
-                  Estimated Cost
-                </label>
-                <p className="text-base font-bold text-primary-foreground">
-                  {requisition.currency}{" "}
-                  {requisition.totalAmount?.toLocaleString("en-ZM", {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2,
-                  }) || "0.00"}
-                </p>
-              </div>
-
-              {/* Financial Information */}
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-primary-foreground/80 uppercase tracking-wider flex items-center gap-1">
-                  <Tag className="h-3 w-3" />
-                  Budget Code
-                </label>
-                <p className="text-sm font-medium font-mono bg-white/10 px-2 py-1 rounded text-primary-foreground">
-                  {requisition.budgetCode || "—"}
-                </p>
-              </div>
-
-              {requisition.costCenter && (
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-primary-foreground/80 uppercase tracking-wider flex items-center gap-1">
-                    <Building className="h-3 w-3" />
-                    Cost Center
-                  </label>
-                  <p className="text-sm font-medium font-mono bg-white/10 px-2 py-1 rounded text-primary-foreground">
-                    {requisition.costCenter}
-                  </p>
-                </div>
-              )}
-
-              {requisition.projectCode && (
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-primary-foreground/80 uppercase tracking-wider flex items-center gap-1">
-                    <FileText className="h-3 w-3" />
-                    Project Code
-                  </label>
-                  <p className="text-sm font-medium font-mono bg-white/10 px-2 py-1 rounded text-primary-foreground">
-                    {requisition.projectCode}
-                  </p>
-                </div>
-              )}
-
-              {/* Dates */}
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-primary-foreground/80 uppercase tracking-wider flex items-center gap-1">
-                  <Calendar className="h-3 w-3" />
-                  Created Date
-                </label>
-                <p className="text-sm font-medium text-primary-foreground">
-                  {new Date(requisition.createdAt).toLocaleDateString("en-ZM", {
-                    year: "numeric",
-                    month: "long",
-                    day: "numeric",
-                  })}
-                </p>
-              </div>
-
-              {requisition.updatedAt &&
-                new Date(requisition.updatedAt).getTime() !==
-                  new Date(requisition.createdAt).getTime() && (
-                  <div className="space-y-1">
-                    <label className="text-xs font-semibold text-primary-foreground/80 uppercase tracking-wider flex items-center gap-1">
-                      <Clock className="h-3 w-3" />
-                      Last Updated
-                    </label>
-                    <p className="text-sm font-medium text-primary-foreground">
-                      {new Date(requisition.updatedAt).toLocaleDateString(
-                        "en-ZM",
-                        {
-                          year: "numeric",
-                          month: "long",
-                          day: "numeric",
-                        },
-                      )}
-                    </p>
-                  </div>
-                )}
-
-              {requisition.requiredByDate && (
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-primary-foreground/80 uppercase tracking-wider flex items-center gap-1">
-                    <Calendar className="h-3 w-3" />
-                    Due Date
-                  </label>
-                  <p
-                    className={`text-sm font-medium ${
-                      new Date(requisition.requiredByDate) < new Date() &&
-                      requisition.status !== "completed"
-                        ? "text-red-200 font-bold"
-                        : "text-primary-foreground"
-                    }`}
-                  >
-                    {new Date(requisition.requiredByDate).toLocaleDateString(
-                      "en-ZM",
-                      {
-                        year: "numeric",
-                        month: "long",
-                        day: "numeric",
-                      },
-                    )}
-                    {new Date(requisition.requiredByDate) < new Date() &&
-                      requisition.status !== "completed" && (
-                        <span className="ml-2 text-xs">(Overdue)</span>
-                      )}
-                  </p>
-                </div>
-              )}
-
-              {/* Category Information */}
-              {(requisition.categoryName || requisition.otherCategoryText) && (
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-primary-foreground/80 uppercase tracking-wider">
-                    Category
-                  </label>
-                  <p className="text-sm font-medium text-primary-foreground">
-                    {requisition.categoryName ||
-                      requisition.otherCategoryText ||
-                      "—"}
-                    {requisition.otherCategoryText && (
-                      <span className="text-xs text-primary-foreground/60 ml-1">
-                        (Custom)
-                      </span>
-                    )}
-                  </p>
-                </div>
-              )}
-
-              {/* Approval Information */}
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-primary-foreground/80 uppercase tracking-wider">
-                  Approval Stage
-                </label>
-                <p className="text-sm font-medium font-mono bg-white/10 px-2 py-1 rounded text-primary-foreground">
-                  {requisition.currentApprovalStage &&
-                  requisition.totalApprovalStages
-                    ? `${requisition.currentApprovalStage}/${requisition.totalApprovalStages}`
-                    : `${requisition.approvalStage || 0}/1`}
-                </p>
-              </div>
-
-              {requisition.isEstimate && (
-                <div className="space-y-1">
-                  <p className="text-xs font-semibold text-primary-foreground/80 uppercase tracking-wider">
-                    Estimate
-                  </p>
-                  <div className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 border border-yellow-200">
-                    Estimated Costs
-                  </div>
-                </div>
-              )}
+          <div className="space-y-1">
+            <label className="text-xs font-semibold text-primary-foreground/80 uppercase tracking-wider flex items-center gap-1">
+              <AlertCircle className="h-3 w-3" />
+              Priority
+            </label>
+            <div className="flex items-center">
+              <Badge
+                className={`inline-flex capitalize items-center px-2 py-1 rounded-full text-xs font-medium border ${
+                  requisition.priority?.toLowerCase() === "urgent"
+                    ? "bg-red-100 text-red-800 border-red-200"
+                    : requisition.priority?.toLowerCase() === "high"
+                      ? "bg-orange-100 text-orange-800 border-orange-200"
+                      : requisition.priority?.toLowerCase() === "medium"
+                        ? "bg-blue-100 text-blue-800 border-blue-200"
+                        : "bg-gray-100 text-gray-800 border-gray-200"
+                }`}
+              >
+                {requisition.priority || "Medium"}
+              </Badge>
             </div>
+          </div>
 
-            {/* Description - Full Width */}
-            {requisition.description && (
-              <div className="mt-6 pt-6 border-t border-white/20">
-                <label className="text-xs font-semibold text-primary-foreground/80 uppercase tracking-wider block mb-2">
-                  Description / Justification
-                </label>
-                <p className="text-sm text-primary-foreground leading-relaxed">
-                  {requisition.description}
-                </p>
-              </div>
-            )}
-
-            {/* Additional Metadata - Full Width */}
-            {requisition.metadata &&
-              Object.keys(requisition.metadata).length > 0 && (
-                <div className="mt-6 pt-6 border-t border-white/20">
-                  <label className="text-xs font-semibold text-primary-foreground/80 uppercase tracking-wider block mb-3">
-                    Additional Information
-                  </label>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {Object.entries(requisition.metadata).map(
-                      ([key, value]) => (
-                        <div key={key} className="space-y-1">
-                          <label className="text-xs font-medium text-primary-foreground/70 capitalize">
-                            {key
-                              .replace(/([A-Z])/g, " $1")
-                              .replace(/^./, (str) => str.toUpperCase())}
-                          </label>
-                          <p className="text-sm text-primary-foreground">
-                            {typeof value === "object"
-                              ? JSON.stringify(value, null, 2)
-                              : String(value)}
-                          </p>
-                        </div>
-                      ),
-                    )}
-                  </div>
-                </div>
-              )}
-
-            {/* Auto-Created Purchase Order - Full Width */}
-            {requisition?.automationUsed && requisition?.autoCreatedPO && (
-              <div className="mt-6 pt-6 border-t border-white/20">
-                <label className="text-xs font-semibold text-primary-foreground/80 uppercase tracking-wider  mb-3 flex items-center gap-2">
-                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-200">
-                    ✓ Automated
-                  </span>
-                  Auto-Generated Purchase Order
-                </label>
-                <div className="bg-white/10 rounded-lg p-4 border border-white/20">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <p className="text-sm font-medium text-primary-foreground">
-                        PO Number:
-                        <span className="ml-2 font-mono bg-white/20 px-2 py-1 rounded text-xs">
-                          {(requisition.autoCreatedPO as any)?.documentNumber ||
-                            "Generated"}
-                        </span>
-                      </p>
-                      <p className="text-xs text-primary-foreground/80">
-                        This purchase order was automatically created when the
-                        requisition was approved.
-                      </p>
-                    </div>
-                    <div className="flex items-center justify-end">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          const poId = (requisition.autoCreatedPO as any)?.id;
-                          if (poId) {
-                            router.push(`/purchase-orders/${poId}`);
-                          }
-                        }}
-                        className="bg-white/10 border-white/30 text-primary-foreground hover:bg-white/20"
-                      >
-                        <Eye className="h-4 w-4 mr-2" />
-                        View Purchase Order
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              </div>
+          <div className="space-y-1">
+            <label className="text-xs font-semibold text-primary-foreground/80 uppercase tracking-wider flex items-center gap-1">
+              <User className="h-3 w-3" />
+              Requested By
+            </label>
+            <p className="text-base font-medium text-primary-foreground">
+              {requisition.requesterName ||
+                requisition.requestedByName ||
+                "—"}
+            </p>
+            {requisition.requestedByRole && (
+              <p className="text-xs text-primary-foreground/60">
+                {requisition.requestedByRole}
+              </p>
             )}
           </div>
 
-          {/* Document Links */}
-          {requisition.status === "approved" && (
-            <DocumentLinks
-              currentDocument={requisition as unknown as WorkflowDocument}
-              linkedDocuments={{}}
-            />
+          {requisition.requestedFor && (
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-primary-foreground/80 uppercase tracking-wider flex items-center gap-1">
+                <User className="h-3 w-3" />
+                Requested For
+              </label>
+              <p className="text-base font-medium text-primary-foreground">
+                {requisition.requestedFor}
+              </p>
+            </div>
           )}
 
-          {/* Items Section */}
-          <Card className="p-6 border-0 shadow-sm">
+          <div className="space-y-1">
+            <label className="text-xs font-semibold text-primary-foreground/80 uppercase tracking-wider flex items-center gap-1">
+              <DollarSign className="h-3 w-3" />
+              Estimated Cost
+            </label>
+            <p className="text-base font-bold text-primary-foreground">
+              {requisition.currency}{" "}
+              {requisition.totalAmount?.toLocaleString("en-ZM", {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              }) || "0.00"}
+            </p>
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-xs font-semibold text-primary-foreground/80 uppercase tracking-wider flex items-center gap-1">
+              <Tag className="h-3 w-3" />
+              Budget Code
+            </label>
+            <p className="text-sm font-medium font-mono bg-white/10 px-2 py-1 rounded text-primary-foreground">
+              {requisition.budgetCode || "—"}
+            </p>
+          </div>
+
+          {requisition.costCenter && (
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-primary-foreground/80 uppercase tracking-wider flex items-center gap-1">
+                <Building className="h-3 w-3" />
+                Cost Center
+              </label>
+              <p className="text-sm font-medium font-mono bg-white/10 px-2 py-1 rounded text-primary-foreground">
+                {requisition.costCenter}
+              </p>
+            </div>
+          )}
+
+          {requisition.projectCode && (
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-primary-foreground/80 uppercase tracking-wider flex items-center gap-1">
+                <FileText className="h-3 w-3" />
+                Project Code
+              </label>
+              <p className="text-sm font-medium font-mono bg-white/10 px-2 py-1 rounded text-primary-foreground">
+                {requisition.projectCode}
+              </p>
+            </div>
+          )}
+
+          <div className="space-y-1">
+            <label className="text-xs font-semibold text-primary-foreground/80 uppercase tracking-wider flex items-center gap-1">
+              <Calendar className="h-3 w-3" />
+              Created Date
+            </label>
+            <p className="text-sm font-medium text-primary-foreground">
+              {new Date(requisition.createdAt).toLocaleDateString("en-ZM", {
+                year: "numeric",
+                month: "long",
+                day: "numeric",
+              })}
+            </p>
+          </div>
+
+          {requisition.updatedAt &&
+            new Date(requisition.updatedAt).getTime() !==
+              new Date(requisition.createdAt).getTime() && (
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-primary-foreground/80 uppercase tracking-wider flex items-center gap-1">
+                  <Clock className="h-3 w-3" />
+                  Last Updated
+                </label>
+                <p className="text-sm font-medium text-primary-foreground">
+                  {new Date(requisition.updatedAt).toLocaleDateString(
+                    "en-ZM",
+                    {
+                      year: "numeric",
+                      month: "long",
+                      day: "numeric",
+                    },
+                  )}
+                </p>
+              </div>
+            )}
+
+          {requisition.requiredByDate && (
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-primary-foreground/80 uppercase tracking-wider flex items-center gap-1">
+                <Calendar className="h-3 w-3" />
+                Due Date
+              </label>
+              <p
+                className={`text-sm font-medium ${
+                  new Date(requisition.requiredByDate) < new Date() &&
+                  requisition.status !== "completed"
+                    ? "text-red-200 font-bold"
+                    : "text-primary-foreground"
+                }`}
+              >
+                {new Date(requisition.requiredByDate).toLocaleDateString(
+                  "en-ZM",
+                  {
+                    year: "numeric",
+                    month: "long",
+                    day: "numeric",
+                  },
+                )}
+                {new Date(requisition.requiredByDate) < new Date() &&
+                  requisition.status !== "completed" && (
+                    <span className="ml-2 text-xs">(Overdue)</span>
+                  )}
+              </p>
+            </div>
+          )}
+
+          {(requisition.categoryName || requisition.otherCategoryText) && (
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-primary-foreground/80 uppercase tracking-wider">
+                Category
+              </label>
+              <p className="text-sm font-medium text-primary-foreground">
+                {requisition.categoryName ||
+                  requisition.otherCategoryText ||
+                  "—"}
+                {requisition.otherCategoryText && (
+                  <span className="text-xs text-primary-foreground/60 ml-1">
+                    (Custom)
+                  </span>
+                )}
+              </p>
+            </div>
+          )}
+
+          <div className="space-y-1">
+            <label className="text-xs font-semibold text-primary-foreground/80 uppercase tracking-wider">
+              Approval Stage
+            </label>
+            <p className="text-sm font-medium font-mono bg-white/10 px-2 py-1 rounded text-primary-foreground">
+              {requisition.currentApprovalStage &&
+              requisition.totalApprovalStages
+                ? `${requisition.currentApprovalStage}/${requisition.totalApprovalStages}`
+                : `${requisition.approvalStage || 0}/1`}
+            </p>
+          </div>
+
+          {requisition.isEstimate && (
+            <div className="space-y-1">
+              <p className="text-xs font-semibold text-primary-foreground/80 uppercase tracking-wider">
+                Estimate
+              </p>
+              <div className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 border border-yellow-200">
+                Estimated Costs
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Description */}
+        {requisition.description && (
+          <div className="mt-6 pt-6 border-t border-white/20">
+            <label className="text-xs font-semibold text-primary-foreground/80 uppercase tracking-wider block mb-2">
+              Description / Justification
+            </label>
+            <p className="text-sm text-primary-foreground leading-relaxed">
+              {requisition.description}
+            </p>
+          </div>
+        )}
+
+        {/* Additional Metadata */}
+        {requisition.metadata &&
+          Object.entries(requisition.metadata).filter(([key]) => key !== "attachments").length > 0 && (
+            <div className="mt-6 pt-6 border-t border-white/20">
+              <label className="text-xs font-semibold text-primary-foreground/80 uppercase tracking-wider block mb-3">
+                Additional Information
+              </label>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {Object.entries(requisition.metadata).filter(([key]) => key !== "attachments").map(([key, value]) => (
+                  <div key={key} className="space-y-1">
+                    <label className="text-xs font-medium text-primary-foreground/70 capitalize">
+                      {key
+                        .replace(/([A-Z])/g, " $1")
+                        .replace(/^./, (str) => str.toUpperCase())}
+                    </label>
+                    <p className="text-sm text-primary-foreground">
+                      {typeof value === "object"
+                        ? JSON.stringify(value, null, 2)
+                        : String(value)}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+        {/* Auto-Created Purchase Order */}
+        {requisition?.automationUsed && requisition?.autoCreatedPO && (
+          <div className="mt-6 pt-6 border-t border-white/20">
+            <label className="text-xs font-semibold text-primary-foreground/80 uppercase tracking-wider  mb-3 flex items-center gap-2">
+              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-200">
+                Automated
+              </span>
+              Auto-Generated Purchase Order
+            </label>
+            <div className="bg-white/10 rounded-lg p-4 border border-white/20">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-primary-foreground">
+                    PO Number:
+                    <span className="ml-2 font-mono bg-white/20 px-2 py-1 rounded text-xs">
+                      {(requisition.autoCreatedPO as any)?.documentNumber ||
+                        "Generated"}
+                    </span>
+                  </p>
+                  <p className="text-xs text-primary-foreground/80">
+                    This purchase order was automatically created when the
+                    requisition was approved.
+                  </p>
+                </div>
+                <div className="flex items-center justify-end">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const poId = (requisition.autoCreatedPO as any)?.id;
+                      if (poId) {
+                        router.push(`/purchase-orders/${poId}`);
+                      }
+                    }}
+                    className="bg-white/10 border-white/30 text-primary-foreground hover:bg-white/20"
+                  >
+                    <Eye className="h-4 w-4 mr-2" />
+                    View Purchase Order
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Document Links */}
+      {requisition.status === "approved" && (
+        <DocumentLinks
+          currentDocument={requisition as unknown as WorkflowDocument}
+          linkedDocuments={{}}
+        />
+      )}
+
+      {/* ── Tabbed Content ──────────────────────────────────────────── */}
+      <Card className="p-6 border-0 shadow-sm">
+        <Tabs defaultValue="items" className="w-full">
+          <TabsList className="grid w-full grid-cols-5 h-auto">
+            <TabsTrigger value="items" className="gap-1.5 text-xs sm:text-sm px-2 py-2">
+              <ShoppingCart className="h-4 w-4 shrink-0" />
+              <span className="hidden sm:inline">Requisition</span> Items
+              {requisition.items?.length > 0 && (
+                <Badge variant="secondary" className="ml-1 text-xs h-5 min-w-5 px-1.5">
+                  {requisition.items.length}
+                </Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="documents" className="gap-1.5 text-xs sm:text-sm px-2 py-2">
+              <Paperclip className="h-4 w-4 shrink-0" />
+              <span className="hidden sm:inline">Supporting</span> Docs
+              {attachments.length > 0 && (
+                <Badge variant="secondary" className="ml-1 text-xs h-5 min-w-5 px-1.5">
+                  {attachments.length}
+                </Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="action" className="gap-1.5 text-xs sm:text-sm px-2 py-2">
+              <CheckSquare className="h-4 w-4 shrink-0" />
+              <span className="hidden sm:inline">Approval</span> Action
+            </TabsTrigger>
+            <TabsTrigger value="chain" className="gap-1.5 text-xs sm:text-sm px-2 py-2">
+              <GitBranch className="h-4 w-4 shrink-0" />
+              <span className="hidden sm:inline">Approval</span> Chain
+            </TabsTrigger>
+            <TabsTrigger value="activity" className="gap-1.5 text-xs sm:text-sm px-2 py-2">
+              <Activity className="h-4 w-4 shrink-0" />
+              <span className="hidden sm:inline">Activity</span> Log
+              {requisition.actionHistory && requisition.actionHistory.length > 0 && (
+                <Badge variant="secondary" className="ml-1 text-xs h-5 min-w-5 px-1.5">
+                  {requisition.actionHistory.length}
+                </Badge>
+              )}
+            </TabsTrigger>
+          </TabsList>
+
+          {/* ── Tab 1: Requisition Items ── */}
+          <TabsContent value="items" className="mt-6">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-lg font-semibold">
                 Items ({requisition.items?.length || 0})
@@ -871,23 +915,143 @@ export function RequisitionDetailClient({
                 </EmptyContent>
               </Empty>
             )}
-          </Card>
+          </TabsContent>
 
-          {/* Action History Panel */}
-          <ApprovalHistoryPanel
-            requisitionId={requisition?.id || requisitionId}
-            requisition={requisition as any}
-            userRole={userRole}
-            actionHistory={requisition?.actionHistory}
-            approvalChain={requisition?.approvalChain}
-          />
-        </div>
+          {/* ── Tab 2: Supporting Documents ── */}
+          <TabsContent value="documents" className="mt-6">
+            {attachments.length > 0 ? (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-lg font-semibold">
+                    Supporting Documents ({attachments.length})
+                  </h2>
+                  {canEdit && (
+                    <Button
+                      onClick={handleEditRequisition}
+                      variant="outline"
+                      size="sm"
+                      className="gap-2"
+                    >
+                      <Paperclip className="h-3.5 w-3.5" />
+                      Add Documents
+                    </Button>
+                  )}
+                </div>
+                {attachments.map((attachment) => (
+                  <button
+                    key={attachment.fileId}
+                    type="button"
+                    onClick={() => {
+                      setSelectedAttachment(attachment);
+                      setAttachmentPreviewOpen(true);
+                    }}
+                    className="flex items-center justify-between gap-3 p-3 rounded-lg border hover:bg-muted/50 transition group w-full text-left"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      {attachment.mimeType === "application/pdf" ? (
+                        <FileText className="h-5 w-5 text-red-500 shrink-0" />
+                      ) : (
+                        <ImageIcon className="h-5 w-5 text-blue-500 shrink-0" />
+                      )}
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium truncate">
+                          {attachment.fileName}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {formatBytes(attachment.fileSize)}
+                        </p>
+                      </div>
+                    </div>
+                    <Eye className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition shrink-0" />
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <Empty>
+                <EmptyMedia variant="icon">
+                  <Paperclip className="h-6 w-6" />
+                </EmptyMedia>
+                <EmptyContent>
+                  <EmptyDescription>
+                    No supporting documents attached
+                  </EmptyDescription>
+                  {canEdit && (
+                    <Button
+                      onClick={handleEditRequisition}
+                      variant="outline"
+                      size="sm"
+                      className="gap-2 mt-3"
+                    >
+                      <Paperclip className="h-3.5 w-3.5" />
+                      Add Documents
+                    </Button>
+                  )}
+                </EmptyContent>
+              </Empty>
+            )}
+          </TabsContent>
 
-        {/* Sidebar - Empty for now, could be used for other widgets */}
-        <div className="lg:col-span-1">
-          {/* Future: Quick actions, related documents, etc. */}
-        </div>
-      </div>
+          {/* ── Tab 3: Approval Action ── */}
+          <TabsContent value="action" className="space-y-4 mt-6">
+            {approvalHasError ? (
+              <div className="text-center py-8 text-red-500">
+                <AlertCircle className="h-8 w-8 mx-auto mb-2" />
+                <p className="text-sm">Failed to load approval data</p>
+                <button
+                  onClick={refetchAll}
+                  className="mt-2 text-xs text-blue-600 hover:underline"
+                >
+                  Try again
+                </button>
+              </div>
+            ) : (
+              <ApprovalActionContent
+                requisitionId={requisitionId}
+                requisition={requisition as any}
+                workflowStatus={workflowStatus}
+                isLoading={isApprovalLoading}
+                onApprovalComplete={handleApprovalComplete}
+              />
+            )}
+          </TabsContent>
+
+          {/* ── Tab 4: Approval Chain ── */}
+          <TabsContent value="chain" className="space-y-4 mt-6">
+            {approvalHasError ? (
+              <div className="text-center py-8 text-red-500">
+                <AlertCircle className="h-8 w-8 mx-auto mb-2" />
+                <p className="text-sm">Failed to load approval data</p>
+                <button
+                  onClick={refetchAll}
+                  className="mt-2 text-xs text-blue-600 hover:underline"
+                >
+                  Try again
+                </button>
+              </div>
+            ) : (
+              <>
+                <ApprovalChainContent
+                  requisition={requisition as any}
+                  approvalChain={requisition?.approvalChain}
+                  approvalHistory={approvalHistory}
+                  workflowStatus={workflowStatus}
+                  availableApprovers={availableApprovers}
+                  isLoading={isApprovalLoading}
+                />
+                <WorkflowStatusSummary
+                  requisition={requisition as any}
+                  workflowStatus={workflowStatus}
+                />
+              </>
+            )}
+          </TabsContent>
+
+          {/* ── Tab 5: Activity Log (Timeline) ── */}
+          <TabsContent value="activity" className="space-y-4 mt-6">
+            <ActivityLogContent actionHistory={requisition?.actionHistory} />
+          </TabsContent>
+        </Tabs>
+      </Card>
 
       {/* PDF Preview Dialog */}
       {previewBlob && (
@@ -928,6 +1092,14 @@ export function RequisitionDetailClient({
         title="Withdraw Requisition"
         description={`Are you sure you want to withdraw requisition ${requisition.documentNumber || requisition.id}? It will be reverted to draft status and you can edit and re-submit it later.`}
         isLoading={withdrawMutation.isPending}
+      />
+
+      {/* Attachment Preview Dialog */}
+      <AttachmentPreviewDialog
+        open={attachmentPreviewOpen}
+        onOpenChange={setAttachmentPreviewOpen}
+        attachment={selectedAttachment}
+        attachments={attachments}
       />
     </div>
   );

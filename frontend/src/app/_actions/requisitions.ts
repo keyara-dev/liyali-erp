@@ -42,6 +42,9 @@ export async function createRequisition(
         projectCode: data.projectCode,
         requestedFor: data.requestedFor,
         otherCategoryText: data.otherCategoryText,
+        metadata: {
+          ...(data.attachments?.length ? { attachments: data.attachments } : {}),
+        },
       },
     });
 
@@ -140,6 +143,9 @@ export async function updateRequisition(
         budgetCode: data.budgetCode,
         costCenter: data.costCenter,
         projectCode: data.projectCode,
+        metadata: {
+          ...(data.attachments?.length ? { attachments: data.attachments } : {}),
+        },
       },
     });
 

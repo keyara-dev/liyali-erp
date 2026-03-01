@@ -23,12 +23,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { SelectField } from "@/components/ui/select-field";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, FileText, ImageIcon, X, Loader2, Paperclip } from "lucide-react";
 import {
   RequisitionItem,
   RequisitionPriority,
+  RequisitionAttachment,
   Requisition,
 } from "@/types/requisition";
+import { uploadToImageKit } from "@/lib/imagekit";
 import {
   useCreateRequisition,
   useUpdateRequisition,
@@ -105,7 +107,9 @@ export function CreateRequisitionDialog({
     items: [] as RequisitionItem[],
     categoryId: "OTHER",
     otherCategoryText: "",
+    attachments: [] as RequisitionAttachment[],
   });
+  const [uploadingFile, setUploadingFile] = useState(false);
 
   const resetForm = () => {
     setFormData({
@@ -124,7 +128,9 @@ export function CreateRequisitionDialog({
       items: [],
       categoryId: "OTHER",
       otherCategoryText: "",
+      attachments: [],
     });
+    setUploadingFile(false);
   };
 
   // Populate form when editing
@@ -148,6 +154,10 @@ export function CreateRequisitionDialog({
         items: editingRequisition.items || [],
         categoryId: editingRequisition.categoryId || "OTHER",
         otherCategoryText: editingRequisition.otherCategoryText || "",
+        attachments:
+          editingRequisition.attachments ||
+          (editingRequisition.metadata?.attachments as RequisitionAttachment[]) ||
+          [],
       });
     } else if (!isEditing && open) {
       resetForm();
@@ -211,6 +221,71 @@ export function CreateRequisitionDialog({
         return item;
       }),
     }));
+  };
+
+  const MAX_ATTACHMENTS = 5;
+  const ACCEPTED_ATTACHMENT_TYPES = "application/pdf,image/jpeg,image/png,image/webp";
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate type
+    if (!ACCEPTED_ATTACHMENT_TYPES.includes(file.type)) {
+      toast.error("Only PDF and image files (JPG, PNG, WEBP) are allowed");
+      return;
+    }
+
+    // Validate size (5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("File size must be less than 5MB");
+      return;
+    }
+
+    if (formData.attachments.length >= MAX_ATTACHMENTS) {
+      toast.error(`Maximum ${MAX_ATTACHMENTS} attachments allowed`);
+      return;
+    }
+
+    setUploadingFile(true);
+    try {
+      const result = await uploadToImageKit(file, "requisitions/attachments");
+      const attachment: RequisitionAttachment = {
+        fileId: result.fileId,
+        fileName: result.name,
+        fileUrl: result.url,
+        fileSize: result.size,
+        mimeType: file.type,
+        uploadedAt: new Date().toISOString(),
+      };
+      setFormData((prev) => ({
+        ...prev,
+        attachments: [...prev.attachments, attachment],
+      }));
+      toast.success(`${file.name} uploaded successfully`);
+    } catch (error) {
+      console.error("Upload error:", error);
+      toast.error("Failed to upload file. Please try again.");
+    } finally {
+      setUploadingFile(false);
+      // Reset input so same file can be re-selected
+      e.target.value = "";
+    }
+  };
+
+  const handleRemoveAttachment = (fileId: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      attachments: prev.attachments.filter((a) => a.fileId !== fileId),
+    }));
+  };
+
+  const formatBytes = (bytes: number) => {
+    if (bytes === 0) return "0 B";
+    const k = 1024;
+    const sizes = ["B", "KB", "MB"];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
   };
 
   const handleSubmit = async () => {
@@ -282,6 +357,7 @@ export function CreateRequisitionDialog({
           formData.categoryId === "OTHER"
             ? formData.otherCategoryText
             : undefined,
+        attachments: formData.attachments.length > 0 ? formData.attachments : undefined,
       });
     } else {
       createMutation.mutate({
@@ -308,6 +384,7 @@ export function CreateRequisitionDialog({
           formData.categoryId === "OTHER"
             ? formData.otherCategoryText
             : undefined,
+        attachments: formData.attachments.length > 0 ? formData.attachments : undefined,
       });
     }
   };
@@ -539,6 +616,97 @@ export function CreateRequisitionDialog({
                       })
                     }
                   />
+                </div>
+
+                {/* Supporting Documents */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label className="text-sm font-semibold">
+                        Supporting Documents
+                      </Label>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        Attach invoices, quotes, or receipts (PDF, JPG, PNG). Max
+                        5 files, 5MB each.
+                      </p>
+                    </div>
+                    {formData.attachments.length < MAX_ATTACHMENTS && (
+                      <label className="cursor-pointer">
+                        <input
+                          type="file"
+                          className="hidden"
+                          accept=".pdf,.jpg,.jpeg,.png,.webp"
+                          onChange={handleFileUpload}
+                          disabled={uploadingFile}
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="gap-2 pointer-events-none"
+                          disabled={uploadingFile}
+                        >
+                          {uploadingFile ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Paperclip className="h-4 w-4" />
+                          )}
+                          {uploadingFile ? "Uploading..." : "Attach File"}
+                        </Button>
+                      </label>
+                    )}
+                  </div>
+
+                  {formData.attachments.length > 0 ? (
+                    <div className="space-y-2">
+                      {formData.attachments.map((attachment) => (
+                        <div
+                          key={attachment.fileId}
+                          className="flex items-center justify-between gap-3 p-3 rounded-lg border bg-foreground/[0.02]"
+                        >
+                          <div className="flex items-center gap-3 min-w-0">
+                            {attachment.mimeType === "application/pdf" ? (
+                              <FileText className="h-5 w-5 text-red-500 shrink-0" />
+                            ) : (
+                              <ImageIcon className="h-5 w-5 text-blue-500 shrink-0" />
+                            )}
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium truncate">
+                                {attachment.fileName}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                {formatBytes(attachment.fileSize)}
+                              </p>
+                            </div>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() =>
+                              handleRemoveAttachment(attachment.fileId)
+                            }
+                            className="text-muted-foreground hover:text-red-500 shrink-0"
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="border-2 border-dashed rounded-lg p-4 text-center">
+                      <Paperclip className="h-6 w-6 text-muted-foreground/50 mx-auto mb-1" />
+                      <p className="text-muted-foreground text-xs">
+                        No documents attached
+                      </p>
+                    </div>
+                  )}
+
+                  {formData.attachments.length >= MAX_ATTACHMENTS && (
+                    <p className="text-xs text-amber-600">
+                      Maximum number of attachments reached ({MAX_ATTACHMENTS})
+                    </p>
+                  )}
                 </div>
               </div>
 

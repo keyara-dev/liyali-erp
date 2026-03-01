@@ -1,6 +1,6 @@
 import React from "react";
 import { Document, Page, Text, View, Image } from "@react-pdf/renderer";
-import { Requisition } from "@/types/requisition";
+import { Requisition, RequisitionAttachment } from "@/types/requisition";
 import { pdfStyles } from "./pdf-styles";
 import { generateDocumentQRData } from "./qr-utils";
 import { capitalize } from "../utils";
@@ -707,6 +707,37 @@ const RequisitionPDF: React.FC<RequisitionPDFProps> = ({
             </View>
           </View>
         )}
+
+        {/* Attachments Section */}
+        {(() => {
+          const attachments: RequisitionAttachment[] =
+            requisition.attachments ||
+            (requisition.metadata?.attachments as RequisitionAttachment[]) ||
+            [];
+          if (attachments.length === 0) return null;
+          return (
+            <View style={{ marginBottom: 10 }}>
+              <Text
+                style={{
+                  fontSize: 9,
+                  fontWeight: "bold",
+                  marginBottom: 4,
+                  color: "#666",
+                }}
+              >
+                SUPPORTING DOCUMENTS ({attachments.length})
+              </Text>
+              {attachments.map((att, i) => (
+                <Text
+                  key={att.fileId}
+                  style={{ fontSize: 8, marginBottom: 2, color: "#1e40af" }}
+                >
+                  {i + 1}. {att.fileName}
+                </Text>
+              ))}
+            </View>
+          );
+        })()}
 
         {/* QR Code and Tracking Information */}
         <View

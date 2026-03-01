@@ -7,6 +7,15 @@
 // CORE REQUISITION TYPES
 // ============================================================================
 
+export interface RequisitionAttachment {
+  fileId: string;
+  fileName: string;
+  fileUrl: string;
+  fileSize: number;
+  mimeType: string;
+  uploadedAt: string;
+}
+
 export interface RequisitionItem {
   id?: string;
   description: string;
@@ -80,6 +89,7 @@ export interface Requisition {
   approvalChain?: any[]; // For PDF generation
   vendorId?: string; // For PO creation
   vendorName?: string; // For PO creation
+  attachments?: RequisitionAttachment[]; // Supporting documents
 }
 
 // ============================================================================
@@ -106,6 +116,7 @@ export interface CreateRequisitionRequest {
   projectCode: string;
   requestedFor?: string; // Who the requisition is for
   otherCategoryText?: string; // Custom category name when "OTHER" is selected
+  attachments?: RequisitionAttachment[]; // Supporting documents
 }
 
 export interface UpdateRequisitionRequest {
@@ -128,6 +139,7 @@ export interface UpdateRequisitionRequest {
   projectCode?: string;
   requestedFor?: string; // Who the requisition is for
   otherCategoryText?: string; // Custom category name when "OTHER" is selected
+  attachments?: RequisitionAttachment[]; // Supporting documents
 }
 
 export interface SubmitRequisitionRequest {

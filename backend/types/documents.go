@@ -24,26 +24,28 @@ type CreateRequisitionRequest struct {
 	IsEstimate        bool              `json:"isEstimate"`
 
 	// Business requirement fields
-	BudgetCode        string    `json:"budgetCode"`
-	CostCenter        string    `json:"costCenter"`
-	ProjectCode       string    `json:"projectCode"`
-	RequiredByDate    time.Time `json:"requiredByDate"`
-	RequestedFor      string    `json:"requestedFor"`      // Who the requisition is for
-	OtherCategoryText string    `json:"otherCategoryText"` // Custom category name when "OTHER" is selected
+	BudgetCode        string                 `json:"budgetCode"`
+	CostCenter        string                 `json:"costCenter"`
+	ProjectCode       string                 `json:"projectCode"`
+	RequiredByDate    time.Time              `json:"requiredByDate"`
+	RequestedFor      string                 `json:"requestedFor"`      // Who the requisition is for
+	OtherCategoryText string                 `json:"otherCategoryText"` // Custom category name when "OTHER" is selected
+	Metadata          map[string]interface{} `json:"metadata"`          // Additional metadata (e.g. attachments)
 }
 
 // UpdateRequisitionRequest represents a requisition update request
 type UpdateRequisitionRequest struct {
-	Title             string            `json:"title"`
-	Description       string            `json:"description"`
-	Department        string            `json:"department"`
-	Priority          string            `json:"priority"`
-	Items             []RequisitionItem `json:"items"`
-	TotalAmount       float64           `json:"totalAmount"`
-	Currency          string            `json:"currency"`
-	CategoryID        *string           `json:"categoryId" validate:"omitempty,uuid"`
-	PreferredVendorID *string           `json:"preferredVendorId" validate:"omitempty,uuid"`
-	IsEstimate        *bool             `json:"isEstimate"`
+	Title             string                 `json:"title"`
+	Description       string                 `json:"description"`
+	Department        string                 `json:"department"`
+	Priority          string                 `json:"priority"`
+	Items             []RequisitionItem      `json:"items"`
+	TotalAmount       float64                `json:"totalAmount"`
+	Currency          string                 `json:"currency"`
+	CategoryID        *string                `json:"categoryId" validate:"omitempty,uuid"`
+	PreferredVendorID *string                `json:"preferredVendorId" validate:"omitempty,uuid"`
+	IsEstimate        *bool                  `json:"isEstimate"`
+	Metadata          map[string]interface{} `json:"metadata"` // Additional metadata (e.g. attachments)
 }
 
 // RequisitionItem represents an item in a requisition
@@ -89,6 +91,9 @@ type RequisitionResponse struct {
 	RequiredByDate    time.Time `json:"requiredByDate,omitempty"`
 	RequestedFor      string    `json:"requestedFor,omitempty"`      // From metadata
 	OtherCategoryText string    `json:"otherCategoryText,omitempty"` // From metadata
+
+	// Additional metadata (e.g. attachments)
+	Metadata map[string]interface{} `json:"metadata,omitempty"`
 
 	// Action history for frontend
 	ActionHistory []ActionHistoryEntry `json:"actionHistory,omitempty"`
