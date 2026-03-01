@@ -341,6 +341,7 @@ export async function getApprovalWorkflowStatus(documentId: string): Promise<
       stageNumber: number;
       stageName: string;
       requiredRole: string;
+      requiredRoleName?: string;
       status: string;
       isCurrentStage: boolean;
       approverId?: string;
