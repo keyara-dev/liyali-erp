@@ -102,7 +102,7 @@ export function ApprovalActionModal({
             <ActionIcon className={`h-5 w-5 text-${actionColor}-600`} />
             {actionText} Task
           </DialogTitle>
-          <DialogDescription className="text-left space-y-3">
+          <DialogDescription asChild className="text-left space-y-3"><div>
             <div
               className={`bg-${actionColor}-50 p-3 rounded-lg border border-${actionColor}-200 dark:bg-${actionColor}-950/30 dark:border-${actionColor}-800 `}
             >
@@ -150,7 +150,7 @@ export function ApprovalActionModal({
                 </ul>
               </div>
             )}
-          </DialogDescription>
+          </div></DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 px-4">

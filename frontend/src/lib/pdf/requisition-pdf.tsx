@@ -62,8 +62,16 @@ export const PDFHeader = ({
           style={{ width: 50, height: 50, objectFit: "contain" }}
         />
       </View>
-      {/* Text */}
-      <View style={{ textAlign: "center" }}>
+      {/* ORG NAME AND TAGLINE */}
+      <View
+        style={{
+          textAlign: "center",
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "center",
+          alignItems: "center",
+        }}
+      >
         <Text style={{ fontSize: 16, fontWeight: "bold", marginBottom: 3 }}>
           {"REPUBLIC OF ZAMBIA"}
         </Text>
@@ -82,7 +90,7 @@ export const PDFHeader = ({
       <View style={{ width: 50, height: 50 }}>
         <Image
           src={logoUrl}
-          style={{ width: 50, height: 50, objectFit: "contain" }}
+          style={{ width: 50, height: 50, objectFit: "cover" }}
         />
       </View>
     </View>

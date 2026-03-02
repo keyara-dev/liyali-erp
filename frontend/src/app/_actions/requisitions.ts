@@ -142,6 +142,8 @@ export async function updateRequisition(
         requiredByDate: data.requiredByDate,
         priority: data.priority,
         items: data.items,
+        totalAmount: data.totalAmount,
+        currency: data.currency,
         budgetCode: data.budgetCode,
         costCenter: data.costCenter,
         projectCode: data.projectCode,
