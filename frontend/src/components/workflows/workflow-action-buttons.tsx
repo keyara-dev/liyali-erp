@@ -302,7 +302,7 @@ export const WorkflowActionButtons = memo(function WorkflowActionButtons({
             entityType: task.entityType || task.documentType || "Task",
             entityId: (task as any).entityNumber || (task as any).documentNumber || task.entityId || task.documentId || task.id,
             stageName: task.stageName || "Approval",
-            assignedRole: task.assignedRole || "Approver",
+            assignedRole: formatRoleForDisplay(task.assignedRole, task.assignedRoleName) || "Approver",
           }}
         />
       )}
