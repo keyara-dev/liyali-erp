@@ -104,9 +104,20 @@ export const useClaimTask = (taskId: string, onSuccess?: () => void) => {
     onSuccess: () => {
       toast.success("Task claimed successfully");
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.APPROVALS.ALL] });
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.APPROVALS.BY_ID, taskId],
-      });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.APPROVALS.BY_ID, taskId] });
+      // Refresh approval chain + workflow status on the document detail page
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.APPROVALS.HISTORY] });
+      queryClient.invalidateQueries({ queryKey: ["workflow-status"] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.REQUISITIONS.ALL] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.REQUISITIONS.BY_ID] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PURCHASE_ORDERS.ALL] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PURCHASE_ORDERS.BY_ID] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PAYMENT_VOUCHERS.ALL] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PAYMENT_VOUCHERS.BY_ID] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.BUDGETS.ALL] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.BUDGETS.BY_ID] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.GRN.ALL] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.GRN.BY_ID] });
       onSuccess?.();
     },
     onError: (error: Error) => {
@@ -147,9 +158,19 @@ export const useUnclaimTask = (taskId: string, onSuccess?: () => void) => {
     onSuccess: () => {
       toast.success("Task unclaimed successfully");
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.APPROVALS.ALL] });
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.APPROVALS.BY_ID, taskId],
-      });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.APPROVALS.BY_ID, taskId] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.APPROVALS.HISTORY] });
+      queryClient.invalidateQueries({ queryKey: ["workflow-status"] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.REQUISITIONS.ALL] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.REQUISITIONS.BY_ID] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PURCHASE_ORDERS.ALL] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PURCHASE_ORDERS.BY_ID] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PAYMENT_VOUCHERS.ALL] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PAYMENT_VOUCHERS.BY_ID] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.BUDGETS.ALL] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.BUDGETS.BY_ID] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.GRN.ALL] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.GRN.BY_ID] });
       onSuccess?.();
     },
     onError: (error: Error) => {
@@ -188,23 +209,22 @@ export const useApproveTask = (taskId: string, onSuccess?: () => void) => {
     onSuccess: (response) => {
       toast.success("Task approved successfully");
 
-      // Invalidate relevant queries
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.APPROVALS.ALL],
-      });
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.APPROVALS.BY_ID, taskId],
-      });
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.APPROVALS.PENDING_COUNT],
-      });
-
-      // Invalidate related document if available
-      if (response.data?.documentId) {
-        queryClient.invalidateQueries({
-          queryKey: [QUERY_KEYS.APPROVALS.HISTORY, response.data.documentId],
-        });
-      }
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.APPROVALS.ALL] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.APPROVALS.BY_ID, taskId] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.APPROVALS.PENDING_COUNT] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.APPROVALS.HISTORY] });
+      queryClient.invalidateQueries({ queryKey: ["workflow-status"] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.REQUISITIONS.ALL] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.REQUISITIONS.BY_ID] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PURCHASE_ORDERS.ALL] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PURCHASE_ORDERS.BY_ID] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PAYMENT_VOUCHERS.ALL] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PAYMENT_VOUCHERS.BY_ID] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.BUDGETS.ALL] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.BUDGETS.BY_ID] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.GRN.ALL] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.GRN.BY_ID] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.DASHBOARD.METRICS] });
 
       onSuccess?.();
     },
@@ -255,21 +275,22 @@ export const useRejectTask = (taskId: string, onSuccess?: () => void) => {
     onSuccess: (response) => {
       toast.success("Task rejected successfully");
 
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.APPROVALS.ALL],
-      });
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.APPROVALS.BY_ID, taskId],
-      });
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.APPROVALS.PENDING_COUNT],
-      });
-
-      if (response.data?.documentId) {
-        queryClient.invalidateQueries({
-          queryKey: [QUERY_KEYS.APPROVALS.HISTORY, response.data.documentId],
-        });
-      }
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.APPROVALS.ALL] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.APPROVALS.BY_ID, taskId] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.APPROVALS.PENDING_COUNT] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.APPROVALS.HISTORY] });
+      queryClient.invalidateQueries({ queryKey: ["workflow-status"] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.REQUISITIONS.ALL] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.REQUISITIONS.BY_ID] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PURCHASE_ORDERS.ALL] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PURCHASE_ORDERS.BY_ID] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PAYMENT_VOUCHERS.ALL] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PAYMENT_VOUCHERS.BY_ID] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.BUDGETS.ALL] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.BUDGETS.BY_ID] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.GRN.ALL] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.GRN.BY_ID] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.DASHBOARD.METRICS] });
 
       onSuccess?.();
     },
