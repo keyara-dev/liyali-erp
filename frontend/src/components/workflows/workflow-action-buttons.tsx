@@ -42,6 +42,7 @@ interface WorkflowTask {
   assignedRoleName?: string;
   assignedUserId?: string;
   stageName?: string;
+  stageNumber?: number;
   claimExpiry?: string;
   entityType?: string;
   entityId?: string;
@@ -58,7 +59,11 @@ interface WorkflowActionButtonsProps {
   ) => Promise<void>;
   onReject?: (
     taskId: string,
-    data?: { signature: string; comments: string }
+    data?: {
+      signature: string;
+      comments: string;
+      rejectionType?: "reject" | "return_to_draft";
+    }
   ) => Promise<void>;
   onReassign?: (
     taskId: string,
@@ -219,13 +224,18 @@ export const WorkflowActionButtons = memo(function WorkflowActionButtons({
   const handleApprovalConfirm = async (data: {
     comments: string;
     signature: string;
+    rejectionType?: "reject" | "return_to_draft";
   }) => {
     const handler = approvalAction === "approve" ? onApprove : onReject;
     if (!handler) return;
     setIsLoading(approvalAction);
     try {
       await handler(task.id, data);
-      toast.success(`Task ${approvalAction}d successfully`);
+      const successMsg =
+        data.rejectionType === "return_to_draft"
+          ? "Document returned to draft"
+          : `Task ${approvalAction}d successfully`;
+      toast.success(successMsg);
       setShowApprovalModal(false);
       if (onRefresh) await onRefresh();
       onActionComplete?.();
@@ -290,7 +300,7 @@ export const WorkflowActionButtons = memo(function WorkflowActionButtons({
           isLoading={isLoading === "claim"}
           taskDetails={{
             entityType: task.entityType || task.documentType || "Task",
-            entityId: task.entityId || task.documentId || task.id,
+            entityId: (task as any).entityNumber || (task as any).documentNumber || task.entityId || task.documentId || task.id,
             stageName: task.stageName || "Approval",
             assignedRole: task.assignedRole || "Approver",
           }}
@@ -305,8 +315,9 @@ export const WorkflowActionButtons = memo(function WorkflowActionButtons({
           action={approvalAction}
           taskDetails={{
             entityType: task.entityType || task.documentType || "Task",
-            entityId: task.entityId || task.documentId || task.id,
+            entityId: (task as any).entityNumber || (task as any).documentNumber || task.entityId || task.documentId || task.id,
             stageName: task.stageName || "Approval",
+            stageNumber: task.stageNumber,
             claimedBy: user?.name || "You",
             claimExpiry:
               task.claimExpiry ||
