@@ -102,6 +102,7 @@ interface RejectTaskInput {
   rejectorId: string;
   signature: string;
   remarks: string;
+  rejectionType?: "reject" | "return_to_draft" | "return_to_previous_stage";
 }
 
 /**
@@ -133,9 +134,8 @@ export const useRejectTaskMutation = () => {
       // Call server action
       return await rejectApprovalTask(input.taskId, {
         remarks: input.remarks,
-        comments: input.remarks,
         signature: input.signature,
-        returnTo: 'ORIGINAL_SUBMITTER',
+        rejectionType: input.rejectionType || "reject",
       });
     },
 

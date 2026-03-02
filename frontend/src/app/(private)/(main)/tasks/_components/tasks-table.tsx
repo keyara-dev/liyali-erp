@@ -59,6 +59,7 @@ interface WorkflowTask {
   assignedRole?: string;
   assignedUserId?: string;
   assignedTo?: string;
+  stageNumber?: number;
   stageName?: string;
   claimExpiry?: string;
   entityType?: string;
@@ -167,11 +168,18 @@ export function TasksTable() {
   );
 
   const handleRejectTask = React.useCallback(
-    async (taskId: string, data?: { signature: string; comments: string }) => {
+    async (
+      taskId: string,
+      data?: {
+        signature: string;
+        comments: string;
+        rejectionType?: "reject" | "return_to_draft" | "return_to_previous_stage";
+      }
+    ) => {
       const response = await rejectApprovalTask(taskId, {
         signature: data?.signature || "",
         remarks: data?.comments || "Rejected",
-        comments: data?.comments || "Rejected",
+        rejectionType: data?.rejectionType || "reject",
       });
       if (!response.success) throw new Error(response.message);
       await queryClient.invalidateQueries({

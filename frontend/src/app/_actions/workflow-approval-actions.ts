@@ -219,10 +219,9 @@ export async function rejectApprovalTask(
       method: "POST",
       url,
       data: {
-        remarks: data.remarks,
-        comments: data.comments,
+        reason: data.remarks,
         signature: data.signature,
-        returnTo: data.returnTo,
+        rejectionType: data.rejectionType || "reject",
       },
     });
 

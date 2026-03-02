@@ -61,6 +61,7 @@ export interface PaginatedResponse<T> {
 export type DocumentStatus =
   | "draft"
   | "pending"
+  | "revision"
   | "approved"
   | "rejected"
   | "completed"
@@ -72,6 +73,7 @@ export type DocumentStatus =
   | "DRAFT"
   | "SUBMITTED"
   | "IN_REVIEW"
+  | "REVISION"
   | "APPROVED"
   | "REJECTED"
   | "PENDING"
@@ -310,7 +312,7 @@ export interface RejectTaskRequest {
   remarks: string;
   comments?: string;
   signature?: string;
-  returnTo?: "original_submitter" | "previous_stage" | string;
+  rejectionType?: "reject" | "return_to_draft" | "return_to_previous_stage";
 }
 
 export interface ReassignTaskRequest {

@@ -32,6 +32,7 @@ const STATUSES = [
   { value: "SUBMITTED", name: "Submitted" },
   { value: "IN_REVIEW", name: "In Approval" },
   { value: "APPROVED", name: "Approved" },
+  { value: "REVISION", name: "Revision" },
   { value: "REJECTED", name: "Rejected" },
   { value: "REVERSED", name: "Reversed" },
 ];

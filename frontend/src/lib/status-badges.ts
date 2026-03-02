@@ -18,6 +18,7 @@ export type DocumentStatus =
   | "submitted"
   | "pending"
   | "in_review"
+  | "revision"
   | "approved"
   | "success"
   | "rejected"
@@ -106,6 +107,11 @@ export const DOCUMENT_STATUS_CONFIG: Record<
     variant: "success",
     label: "Success",
     description: "Document has been processed successfully",
+  },
+  revision: {
+    variant: "warning",
+    label: "Revision",
+    description: "Document returned for revision at a previous approval stage",
   },
   rejected: {
     variant: "destructive",

@@ -119,11 +119,16 @@ export function RecentTasks({ userId: _userId, userRole: _userRole, initialTasks
 
   const handleReject = async (
     taskId: string,
-    actionData?: { signature: string; comments: string }
+    actionData?: {
+      signature: string;
+      comments: string;
+      rejectionType?: "reject" | "return_to_draft" | "return_to_previous_stage";
+    }
   ) => {
     await rejectApprovalTask(taskId, {
       remarks: actionData?.comments || "Rejected",
       signature: actionData?.signature || "",
+      rejectionType: actionData?.rejectionType || "reject",
     });
     refetch();
   };

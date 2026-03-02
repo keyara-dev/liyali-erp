@@ -23,6 +23,8 @@ const getStatusColor = (status: string) => {
       return pdfStyles.statusInReview;
     case "APPROVED":
       return pdfStyles.statusApproved;
+    case "REVISION":
+      return pdfStyles.statusInReview;
     case "REJECTED":
       return pdfStyles.statusRejected;
     default:

@@ -46,9 +46,11 @@ type ApproveTaskRequest struct {
 }
 
 type RejectTaskRequest struct {
-	Signature       string `json:"signature" validate:"required"`
+	Signature       string `json:"signature"`
 	Reason          string `json:"reason" validate:"required"`
 	ExpectedVersion int    `json:"expectedVersion"`
+	RejectionType   string `json:"rejectionType"`  // "reject" (default), "return_to_draft", or "return_to_previous_stage"
+	ReturnToStage   int    `json:"returnToStage"`   // Unused — kept for API compatibility
 }
 
 type ReassignTaskRequest struct {
@@ -371,6 +373,17 @@ func (h *ApprovalHandler) GetApprovalTasks(c *fiber.Ctx) error {
 	if err := db.Where("id = ?", userID).First(&user).Error; err != nil {
 		return utils.SendUnauthorizedError(c, "User not found")
 	}
+
+	// Auto-expire stale claims — reset expired claimed tasks back to pending
+	db.Table("workflow_tasks").
+		Where("organization_id = ? AND status = ? AND claim_expiry < ?",
+			organizationID, "claimed", time.Now()).
+		Updates(map[string]interface{}{
+			"claimed_by":   nil,
+			"claimed_at":   nil,
+			"claim_expiry": nil,
+			"status":       "pending",
+		})
 
 	// Build query for workflow_tasks
 	query := db.Table("workflow_tasks").Where("organization_id = ?", organizationID)
@@ -826,9 +839,9 @@ func (h *ApprovalHandler) RejectTask(c *fiber.Ctx) error {
 	// Use workflow system to reject the task with version control
 	var err error
 	if req.ExpectedVersion > 0 {
-		err = workflowExecutionService.RejectWorkflowTaskWithVersion(c.Context(), taskID, userID, req.Signature, req.Reason, req.ExpectedVersion)
+		err = workflowExecutionService.RejectWorkflowTaskWithVersion(c.Context(), taskID, userID, req.Signature, req.Reason, req.ExpectedVersion, req.RejectionType, req.ReturnToStage)
 	} else {
-		err = workflowExecutionService.RejectWorkflowTask(c.Context(), taskID, userID, req.Signature, req.Reason)
+		err = workflowExecutionService.RejectWorkflowTask(c.Context(), taskID, userID, req.Signature, req.Reason, req.RejectionType, req.ReturnToStage)
 	}
 	
 	if err != nil {
@@ -1273,7 +1286,7 @@ func (h *ApprovalHandler) BulkReject(c *fiber.Ctx) error {
 
 	// Process each task through workflow system
 	for _, taskID := range req.TaskIDs {
-		err := workflowExecutionService.RejectWorkflowTask(c.Context(), taskID, userID, req.Signature, req.Reason)
+		err := workflowExecutionService.RejectWorkflowTask(c.Context(), taskID, userID, req.Signature, req.Reason, "reject", 0)
 		if err != nil {
 			errors = append(errors, "Task "+taskID+": "+err.Error())
 			continue

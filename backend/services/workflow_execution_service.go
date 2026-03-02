@@ -35,6 +35,35 @@ func NewWorkflowExecutionService(db *gorm.DB, workflowService *WorkflowService, 
 	}
 }
 
+// StartClaimExpiryWorker runs a background goroutine that periodically resets
+// expired claimed tasks back to pending status so other users can claim them.
+func (s *WorkflowExecutionService) StartClaimExpiryWorker(ctx context.Context) {
+	ticker := time.NewTicker(60 * time.Second)
+	defer ticker.Stop()
+	log.Println("[ClaimExpiry] Background claim expiry worker started (interval: 60s)")
+	for {
+		select {
+		case <-ctx.Done():
+			log.Println("[ClaimExpiry] Background claim expiry worker stopped")
+			return
+		case <-ticker.C:
+			result := s.db.Table("workflow_tasks").
+				Where("status = ? AND claim_expiry < ?", "claimed", time.Now()).
+				Updates(map[string]interface{}{
+					"claimed_by":   nil,
+					"claimed_at":   nil,
+					"claim_expiry": nil,
+					"status":       "pending",
+				})
+			if result.Error != nil {
+				log.Printf("[ClaimExpiry] Error expiring stale claims: %v", result.Error)
+			} else if result.RowsAffected > 0 {
+				log.Printf("[ClaimExpiry] Auto-expired %d stale claim(s)", result.RowsAffected)
+			}
+		}
+	}
+}
+
 // AssignWorkflowToDocument assigns a workflow to a document and creates initial tasks
 func (s *WorkflowExecutionService) AssignWorkflowToDocument(ctx context.Context, organizationID, entityID, entityType, userID string) (*models.WorkflowAssignment, error) {
 	// Get the default workflow for this entity type
@@ -924,12 +953,12 @@ func (s *WorkflowExecutionService) handlePartialApproval(ctx context.Context, as
 }
 
 // RejectWorkflowTask rejects a workflow task and marks the workflow as rejected
-func (s *WorkflowExecutionService) RejectWorkflowTask(ctx context.Context, taskID, userID, signature, reason string) error {
-	return s.RejectWorkflowTaskWithVersion(ctx, taskID, userID, signature, reason, 0)
+func (s *WorkflowExecutionService) RejectWorkflowTask(ctx context.Context, taskID, userID, signature, reason, rejectionType string, returnToStage int) error {
+	return s.RejectWorkflowTaskWithVersion(ctx, taskID, userID, signature, reason, 0, rejectionType, returnToStage)
 }
 
 // RejectWorkflowTaskWithVersion rejects a workflow task with version control for optimistic locking
-func (s *WorkflowExecutionService) RejectWorkflowTaskWithVersion(ctx context.Context, taskID, userID, signature, reason string, expectedVersion int) error {
+func (s *WorkflowExecutionService) RejectWorkflowTaskWithVersion(ctx context.Context, taskID, userID, signature, reason string, expectedVersion int, rejectionType string, returnToStage int) error {
 	tx := s.db.Begin()
 	defer func() {
 		if r := recover(); r != nil {
@@ -1011,7 +1040,17 @@ func (s *WorkflowExecutionService) RejectWorkflowTaskWithVersion(ctx context.Con
 		return fmt.Errorf("task was modified by another user, please refresh and try again")
 	}
 
-	// Record this rejection in stage approval records
+	// Determine action label for audit records
+	isReturnToDraft := rejectionType == "return_to_draft"
+	isReturnToPrevStage := rejectionType == "return_to_previous_stage"
+	actionLabel := "rejected"
+	if isReturnToDraft {
+		actionLabel = "returned_to_draft"
+	} else if isReturnToPrevStage {
+		actionLabel = "returned_for_revision"
+	}
+
+	// Record this rejection/return in stage approval records
 	approvalRecord := &models.StageApprovalRecord{
 		ID:             uuid.New().String(),
 		OrganizationID: assignment.OrganizationID,
@@ -1020,7 +1059,7 @@ func (s *WorkflowExecutionService) RejectWorkflowTaskWithVersion(ctx context.Con
 		ApproverID:     userID,
 		ApproverName:   user.Name,
 		ApproverRole:   user.Role,
-		Action:         "rejected",
+		Action:         actionLabel,
 		Comments:       reason,
 		Signature:      signature,
 		ApprovedAt:     now,
@@ -1039,7 +1078,7 @@ func (s *WorkflowExecutionService) RejectWorkflowTaskWithVersion(ctx context.Con
 		ApproverID:   userID,
 		ApproverName: user.Name,
 		ApproverRole: user.Role,
-		Action:       "rejected",
+		Action:       actionLabel,
 		Comments:     reason,
 		Signature:    signature,
 		ExecutedAt:   now,
@@ -1050,21 +1089,127 @@ func (s *WorkflowExecutionService) RejectWorkflowTaskWithVersion(ctx context.Con
 		return fmt.Errorf("failed to update stage history: %w", err)
 	}
 
-	// Mark workflow as rejected
-	assignment.Status = "rejected"
-	assignment.CompletedAt = &now
-	assignment.UpdatedAt = time.Now()
+	// Determine notification type
+	notificationType := "document_rejected"
+	notificationAction := "workflow_rejected"
 
-	// Update the actual document status to "rejected"
-	if err := s.updateDocumentStatus(tx, assignment.EntityType, assignment.EntityID, "rejected"); err != nil {
+	if isReturnToPrevStage && task.StageNumber <= 1 {
 		tx.Rollback()
-		return fmt.Errorf("failed to update document status: %w", err)
+		return fmt.Errorf("cannot return to previous stage: task is already at stage 1")
 	}
 
-	// Add action history entry to the document
-	if err := s.addActionHistoryEntry(tx, assignment.EntityType, assignment.EntityID, userID, "WORKFLOW_REJECTED", reason); err != nil {
-		// Log error but don't fail the rejection
-		fmt.Printf("Warning: failed to add action history entry: %v\n", err)
+	if isReturnToPrevStage {
+		// RETURN TO PREVIOUS STAGE: keep workflow active, create task at previous stage
+		prevStageNumber := task.StageNumber - 1
+
+		// Load the workflow to get stage definitions
+		var workflow models.Workflow
+		if err := tx.Where("id = ?", assignment.WorkflowID).First(&workflow).Error; err != nil {
+			tx.Rollback()
+			return fmt.Errorf("workflow not found: %w", err)
+		}
+		stages, err := workflow.GetStages()
+		if err != nil || prevStageNumber < 1 || prevStageNumber > len(stages) {
+			tx.Rollback()
+			return fmt.Errorf("failed to get previous stage definition")
+		}
+		prevStage := stages[prevStageNumber-1]
+
+		// Move assignment back to previous stage, keep workflow active
+		assignment.CurrentStage = prevStageNumber
+		assignment.Status = "in_progress"
+		assignment.UpdatedAt = time.Now()
+
+		// Update document status to "revision"
+		if err := s.updateDocumentStatus(tx, assignment.EntityType, assignment.EntityID, "revision"); err != nil {
+			tx.Rollback()
+			return fmt.Errorf("failed to update document status: %w", err)
+		}
+
+		// Create a new task at the previous stage
+		nextTaskPriority := s.getDocumentPriority(tx, assignment.EntityID, assignment.EntityType)
+		prevTask := &models.WorkflowTask{
+			ID:                   uuid.New().String(),
+			OrganizationID:       assignment.OrganizationID,
+			WorkflowAssignmentID: assignment.ID,
+			EntityID:             assignment.EntityID,
+			EntityType:           assignment.EntityType,
+			StageNumber:          prevStage.StageNumber,
+			StageName:            prevStage.StageName,
+			AssignmentType:       "role",
+			AssignedRole:         &prevStage.RequiredRole,
+			Status:               "pending",
+			Priority:             nextTaskPriority,
+			Version:              1,
+			CreatedAt:            time.Now(),
+		}
+
+		// Set due date
+		var prevCalculatedDueDate time.Time
+		if prevStage.TimeoutHours != nil && *prevStage.TimeoutHours > 0 {
+			prevCalculatedDueDate = time.Now().Add(time.Duration(*prevStage.TimeoutHours) * time.Hour)
+		} else {
+			prevCalculatedDueDate = time.Now().Add(7 * 24 * time.Hour)
+		}
+		prevDocDueDate := s.getDocumentDueDate(tx, assignment.EntityID, assignment.EntityType)
+		if prevDocDueDate != nil && prevDocDueDate.Before(prevCalculatedDueDate) {
+			prevTask.DueDate = prevDocDueDate
+		} else {
+			prevTask.DueDate = &prevCalculatedDueDate
+		}
+
+		if err := tx.Create(prevTask).Error; err != nil {
+			tx.Rollback()
+			return fmt.Errorf("failed to create task for previous stage: %w", err)
+		}
+
+		// Add action history
+		actionMessage := fmt.Sprintf("Returned to %s (Stage %d) for revision by %s: %s", prevStage.StageName, prevStageNumber, user.Name, reason)
+		if err := s.addActionHistoryEntry(tx, assignment.EntityType, assignment.EntityID, userID, "RETURNED_FOR_REVISION", actionMessage); err != nil {
+			fmt.Printf("Warning: failed to add action history entry: %v\n", err)
+		}
+
+		log.Printf("[Workflow] Task %s returned to stage %d (%s) by user %s: %s", taskID, prevStageNumber, prevStage.StageName, userID, reason)
+		notificationType = "document_returned_for_revision"
+		notificationAction = "workflow_returned_for_revision"
+	} else if isReturnToDraft {
+		// RETURN TO DRAFT: send document back to draft, cancel the workflow
+		// The requester can edit and resubmit, which will start a new workflow
+		assignment.Status = "returned"
+		assignment.CompletedAt = &now
+		assignment.UpdatedAt = time.Now()
+
+		// Update document status to "draft"
+		if err := s.updateDocumentStatus(tx, assignment.EntityType, assignment.EntityID, "draft"); err != nil {
+			tx.Rollback()
+			return fmt.Errorf("failed to update document status: %w", err)
+		}
+
+		// Add action history
+		actionMessage := fmt.Sprintf("Returned to draft by %s: %s", user.Name, reason)
+		if err := s.addActionHistoryEntry(tx, assignment.EntityType, assignment.EntityID, userID, "RETURNED_TO_DRAFT", actionMessage); err != nil {
+			fmt.Printf("Warning: failed to add action history entry: %v\n", err)
+		}
+
+		log.Printf("[Workflow] Task %s returned to draft by user %s: %s", taskID, userID, reason)
+		notificationType = "document_returned_to_draft"
+		notificationAction = "workflow_returned_to_draft"
+	} else {
+		// FULL REJECTION: terminate the workflow
+		assignment.Status = "rejected"
+		assignment.CompletedAt = &now
+		assignment.UpdatedAt = time.Now()
+
+		// Update the actual document status to "rejected"
+		if err := s.updateDocumentStatus(tx, assignment.EntityType, assignment.EntityID, "rejected"); err != nil {
+			tx.Rollback()
+			return fmt.Errorf("failed to update document status: %w", err)
+		}
+
+		// Add action history entry to the document
+		if err := s.addActionHistoryEntry(tx, assignment.EntityType, assignment.EntityID, userID, "WORKFLOW_REJECTED", reason); err != nil {
+			fmt.Printf("Warning: failed to add action history entry: %v\n", err)
+		}
 	}
 
 	if err := tx.Save(&assignment).Error; err != nil {
@@ -1077,19 +1222,18 @@ func (s *WorkflowExecutionService) RejectWorkflowTaskWithVersion(ctx context.Con
 		return fmt.Errorf("failed to commit workflow rejection: %w", err)
 	}
 
-	// Send rejection notification
+	// Send notification
 	if s.notificationService != nil {
 		notificationEvent := NotificationEvent{
-			Type:         "document_rejected",
+			Type:         notificationType,
 			DocumentID:   assignment.EntityID,
 			DocumentType: assignment.EntityType,
-			Action:       "workflow_rejected",
+			Action:       notificationAction,
 			ActorID:      userID,
 			Details:      reason,
 			Timestamp:    time.Now(),
 		}
 
-		// Send notification asynchronously with timeout context
 		go func(event NotificationEvent) {
 			notifyCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 			defer cancel()

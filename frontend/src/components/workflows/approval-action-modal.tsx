@@ -12,18 +12,27 @@ import {
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   CheckCircle,
   XCircle,
   FileSignature,
   MessageSquare,
+  RotateCcw,
+  Ban,
+  Loader2,
+  Undo2,
 } from "lucide-react";
 import { DigitalSignaturePad } from "@/components/ui/digital-signature-pad";
 
 interface ApprovalActionModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onConfirm: (data: { comments: string; signature: string }) => void;
+  onConfirm: (data: {
+    comments: string;
+    signature: string;
+    rejectionType?: "reject" | "return_to_draft" | "return_to_previous_stage";
+  }) => void;
   isLoading: boolean;
   action: "approve" | "reject";
   taskDetails: {
@@ -32,6 +41,7 @@ interface ApprovalActionModalProps {
     stageName: string;
     claimedBy: string;
     claimExpiry: string;
+    stageNumber?: number;
   };
 }
 
@@ -49,6 +59,9 @@ export function ApprovalActionModal({
     comments?: string;
     signature?: string;
   }>({});
+  const [rejectionType, setRejectionType] = useState<
+    "reject" | "return_to_draft" | "return_to_previous_stage"
+  >("return_to_draft");
 
   const isApprove = action === "approve";
   const actionText = isApprove ? "Approve" : "Reject";
@@ -78,6 +91,7 @@ export function ApprovalActionModal({
       onConfirm({
         comments: comments.trim(),
         signature: signature.trim(),
+        ...(isApprove ? {} : { rejectionType }),
       });
     }
   };
@@ -86,6 +100,7 @@ export function ApprovalActionModal({
     setComments("");
     setSignature("");
     setErrors({});
+    setRejectionType("return_to_draft");
     onClose();
   };
 
@@ -102,58 +117,155 @@ export function ApprovalActionModal({
             <ActionIcon className={`h-5 w-5 text-${actionColor}-600`} />
             {actionText} Task
           </DialogTitle>
-          <DialogDescription asChild className="text-left space-y-3"><div>
-            <div
-              className={`bg-${actionColor}-50 p-3 rounded-lg border border-${actionColor}-200 dark:bg-${actionColor}-950/30 dark:border-${actionColor}-800 `}
-            >
-              <p
-                className={`font-semibold uppercase text-${actionColor}-900 dark:text-${actionColor}-200`}
+          <DialogDescription asChild className="text-left space-y-3">
+            <div>
+              <div
+                className={`bg-${actionColor}-50 p-3 rounded-lg border border-${actionColor}-200 dark:bg-${actionColor}-950/30 dark:border-${actionColor}-800 `}
               >
-                {taskDetails.entityType} #{taskDetails.entityId}
-              </p>
-              <p
-                className={`text-sm text-${actionColor}-700 dark:text-${actionColor}-300`}
-              >
-                Stage:{" "}
-                <span className="font-medium">{taskDetails.stageName}</span>
-              </p>
-              <p
-                className={`text-xs text-${actionColor}-700 dark:text-${actionColor}-400`}
-              >
-                Claimed by: {taskDetails.claimedBy} ({minutesRemaining} min
-                remaining)
-              </p>
-            </div>
+                <p
+                  className={`font-semibold uppercase text-${actionColor}-900 dark:text-${actionColor}-200`}
+                >
+                  {taskDetails.entityType} #{taskDetails.entityId}
+                </p>
+                <p
+                  className={`text-sm text-${actionColor}-700 dark:text-${actionColor}-300`}
+                >
+                  Stage:{" "}
+                  <span className="font-medium">{taskDetails.stageName}</span>
+                </p>
+                <p
+                  className={`text-xs text-${actionColor}-700 dark:text-${actionColor}-400`}
+                >
+                  Claimed by: {taskDetails.claimedBy} ({minutesRemaining} min
+                  remaining)
+                </p>
+              </div>
 
-            {isApprove ? (
-              <div className="bg-green-50 dark:bg-green-950/30 p-3 rounded-lg border border-green-200 dark:border-green-800">
-                <p className="text-sm text-green-800 dark:text-green-200">
-                  <strong>Approving this task will:</strong>
-                </p>
-                <ul className="text-sm text-green-700 dark:text-green-300 mt-1 space-y-1">
-                  <li>• Move the document to the next approval stage</li>
-                  <li>• Send notifications to relevant stakeholders</li>
-                  <li>• Create a permanent audit record of your approval</li>
-                  <li>• Progress the workflow according to defined rules</li>
-                </ul>
-              </div>
-            ) : (
-              <div className="bg-red-50 dark:bg-red-950/30 p-3 rounded-lg border border-red-200 dark:border-red-800">
-                <p className="text-sm text-red-800 dark:text-red-200">
-                  <strong>Rejecting this task will:</strong>
-                </p>
-                <ul className="text-sm text-red-700 dark:text-red-300 mt-1 space-y-1">
-                  <li>• Return the document to the requester for revision</li>
-                  <li>• Stop the current workflow process</li>
-                  <li>• Send rejection notification with your comments</li>
-                  <li>• Create a permanent audit record of your rejection</li>
-                </ul>
-              </div>
-            )}
-          </div></DialogDescription>
+              {isApprove ? (
+                <div className="bg-green-50 dark:bg-green-950/30 p-3 rounded-lg border border-green-200 dark:border-green-800">
+                  <p className="text-sm text-green-800 dark:text-green-200">
+                    <strong>Approving this task will:</strong>
+                  </p>
+                  <ul className="text-sm text-green-700 dark:text-green-300 mt-1 space-y-1">
+                    <li>• Move the document to the next approval stage</li>
+                    <li>• Send notifications to relevant stakeholders</li>
+                    <li>• Create a permanent audit record of your approval</li>
+                    <li>• Progress the workflow according to defined rules</li>
+                  </ul>
+                </div>
+              ) : (
+                <div className="bg-red-50 dark:bg-red-950/30 p-3 rounded-lg border border-red-200 dark:border-red-800">
+                  <p className="text-sm text-red-800 dark:text-red-200">
+                    <strong>Choose a rejection action below.</strong>
+                  </p>
+                </div>
+              )}
+            </div>
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 px-4">
+          {/* Rejection Type Picker - Only for Rejections */}
+          {!isApprove && (
+            <div className="space-y-3">
+              <Label className="flex text-sxs md:text-sm items-center gap-2">
+                Rejection Action *
+              </Label>
+              <RadioGroup
+                value={rejectionType}
+                onValueChange={(v) =>
+                  setRejectionType(
+                    v as "reject" | "return_to_draft" | "return_to_previous_stage"
+                  )
+                }
+                className="space-y-2"
+              >
+                {/* Return to Previous Stage — only when at stage 2+ */}
+                {(taskDetails.stageNumber ?? 1) > 1 && (
+                  <label
+                    htmlFor="return_to_previous_stage"
+                    className={`flex items-start gap-3 rounded-lg border p-3 cursor-pointer transition-colors ${
+                      rejectionType === "return_to_previous_stage"
+                        ? "border-blue-500 bg-blue-50 dark:bg-blue-950/20"
+                        : "border-border hover:bg-muted/50"
+                    }`}
+                  >
+                    <RadioGroupItem
+                      value="return_to_previous_stage"
+                      id="return_to_previous_stage"
+                      className="mt-0.5"
+                    />
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <Undo2 className="h-4 w-4 text-blue-600" />
+                        <span className="font-medium text-sm">
+                          Return to Previous Stage
+                        </span>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Send back to the previous approval stage for revision.
+                        The workflow stays active.
+                      </p>
+                    </div>
+                  </label>
+                )}
+
+                <label
+                  htmlFor="return_to_draft"
+                  className={`flex items-start gap-3 rounded-lg border p-3 cursor-pointer transition-colors ${
+                    rejectionType === "return_to_draft"
+                      ? "border-amber-500 bg-amber-50 dark:bg-amber-950/20"
+                      : "border-border hover:bg-muted/50"
+                  }`}
+                >
+                  <RadioGroupItem
+                    value="return_to_draft"
+                    id="return_to_draft"
+                    className="mt-0.5"
+                  />
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <RotateCcw className="h-4 w-4 text-amber-600" />
+                      <span className="font-medium text-sm">
+                        Return to Draft
+                      </span>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Send the document back to the requester. They can edit and
+                      resubmit it.
+                    </p>
+                  </div>
+                </label>
+
+                <label
+                  htmlFor="reject"
+                  className={`flex items-start gap-3 rounded-lg border p-3 cursor-pointer transition-colors ${
+                    rejectionType === "reject"
+                      ? "border-red-500 bg-red-50 dark:bg-red-950/20"
+                      : "border-border hover:bg-muted/50"
+                  }`}
+                >
+                  <RadioGroupItem
+                    value="reject"
+                    id="reject"
+                    className="mt-0.5"
+                  />
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <Ban className="h-4 w-4 text-red-600" />
+                      <span className="font-medium text-sm">
+                        Reject (End Workflow)
+                      </span>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Permanently reject the document and terminate the process.
+                    </p>
+                  </div>
+                </label>
+              </RadioGroup>
+            </div>
+          )}
+
           {/* Comments Section */}
           <div className="space-y-2">
             <Label
@@ -161,14 +273,21 @@ export function ApprovalActionModal({
               className="flex text-sxs md:text-sm items-center gap-2"
             >
               <MessageSquare className="h-4 w-4" />
-              {isApprove ? "Approval Comments" : "Rejection Reason"} *
+              {isApprove
+                ? "Approval Comments"
+                : rejectionType === "reject"
+                  ? "Rejection Reason"
+                  : "Reason for Returning"}{" "}
+              *
             </Label>
             <Textarea
               id="comments"
               placeholder={
                 isApprove
                   ? "Explain why you're approving this request..."
-                  : "Explain what needs to be changed or why this is being rejected..."
+                  : rejectionType === "reject"
+                    ? "Explain why this is being rejected..."
+                    : "Explain what needs to be changed or revised..."
               }
               value={comments}
               onChange={(e) => setComments(e.target.value)}
@@ -218,20 +337,33 @@ export function ApprovalActionModal({
             className={`w-full sm:w-auto ${
               isApprove
                 ? "bg-green-600 hover:bg-green-700"
-                : "bg-red-600 hover:bg-red-700"
+                : rejectionType === "return_to_previous_stage"
+                  ? "bg-blue-600 hover:bg-blue-700"
+                  : rejectionType === "return_to_draft"
+                    ? "bg-amber-600 hover:bg-amber-700"
+                    : "bg-red-600 hover:bg-red-700"
             }`}
+            isLoading={isLoading}
+            loadingText={"Please wait..."}
           >
-            {isLoading ? (
-              <>
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
-                {actionText}ing...
-              </>
-            ) : (
-              <>
-                <ActionIcon className="h-4 w-4 mr-2" />
-                {actionText} Task
-              </>
-            )}
+            <>
+              {!isApprove && rejectionType === "return_to_previous_stage" ? (
+                <>
+                  <Undo2 className="h-4 w-4 mr-2" />
+                  Return to Previous Stage
+                </>
+              ) : !isApprove && rejectionType === "return_to_draft" ? (
+                <>
+                  <RotateCcw className="h-4 w-4 mr-2" />
+                  Return to Draft
+                </>
+              ) : (
+                <>
+                  <ActionIcon className="h-4 w-4 mr-2" />
+                  {actionText} Task
+                </>
+              )}
+            </>
           </Button>
         </DialogFooter>
       </DialogContent>

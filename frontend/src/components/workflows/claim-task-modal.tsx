@@ -61,7 +61,9 @@ export function ClaimTaskModal({
                 <div className="flex items-start gap-2">
                   <Clock className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
                   <div>
-                    <p className="font-medium text-foreground">Time Commitment</p>
+                    <p className="font-medium text-foreground">
+                      Time Commitment
+                    </p>
                     <p className="text-sm text-muted-foreground">
                       You will have <strong>{claimDuration} minutes</strong> to
                       review and take action on this task.
@@ -75,7 +77,9 @@ export function ClaimTaskModal({
                 <div className="flex items-start gap-2">
                   <AlertTriangle className="h-4 w-4 text-orange-600 mt-0.5 shrink-0" />
                   <div>
-                    <p className="font-medium text-foreground">Important Notes</p>
+                    <p className="font-medium text-foreground">
+                      Important Notes
+                    </p>
                     <ul className="text-sm text-muted-foreground space-y-1 mt-1">
                       <li>
                         • Only you will be able to approve or reject this task
@@ -85,10 +89,12 @@ export function ClaimTaskModal({
                         • Other users will see that you are reviewing this task
                       </li>
                       <li>
-                        • If you don't take action within {claimDuration} minutes,
-                        the claim will expire
+                        • If you don't take action within {claimDuration}{" "}
+                        minutes, the claim will expire
                       </li>
-                      <li>• You can unclaim the task if you need to step away</li>
+                      <li>
+                        • You can unclaim the task if you need to step away
+                      </li>
                     </ul>
                   </div>
                 </div>
@@ -96,9 +102,9 @@ export function ClaimTaskModal({
 
               <div className="bg-muted/50 p-3 rounded-lg border">
                 <p className="text-sm text-muted-foreground">
-                  <strong>Next Steps:</strong> After claiming, you'll see Approve
-                  and Reject buttons. Each action will require comments and your
-                  digital signature.
+                  <strong>Next Steps:</strong> After claiming, you'll see
+                  Approve and Reject buttons. Each action will require comments
+                  and your digital signature.
                 </p>
               </div>
             </div>
@@ -118,18 +124,13 @@ export function ClaimTaskModal({
             onClick={onConfirm}
             disabled={isLoading}
             className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700"
+            isLoading={isLoading}
+            loadingText="Claiming Task..."
           >
-            {isLoading ? (
-              <>
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
-                Claiming Task...
-              </>
-            ) : (
-              <>
-                <Users className="h-4 w-4 mr-2" />
-                Claim Task ({claimDuration} min)
-              </>
-            )}
+            <>
+              <Users className="h-4 w-4 mr-2" />
+              Claim Task ({claimDuration} min)
+            </>
           </Button>
         </DialogFooter>
       </DialogContent>

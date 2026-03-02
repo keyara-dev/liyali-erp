@@ -162,7 +162,7 @@ export interface RejectStageRequest {
   reason: string;
   comments?: string;
   signature: string;
-  returnToStage?: number;
+  rejectionType?: "reject" | "return_to_draft" | "return_to_previous_stage";
 }
 
 export interface ReassignStageRequest {

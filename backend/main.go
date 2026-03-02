@@ -129,6 +129,12 @@ func main() {
 
 	// Initialize workflow execution service with automation
 	workflowExecutionService := services.NewWorkflowExecutionService(config.DB, workflowService, auditService, automationService)
+
+	// Start background worker to auto-expire stale task claims
+	claimExpiryCtx, cancelClaimExpiry := context.WithCancel(context.Background())
+	defer cancelClaimExpiry()
+	go workflowExecutionService.StartClaimExpiryWorker(claimExpiryCtx)
+
 	documentService := services.NewDocumentService(documentRepo, auditService)
 
 	// Initialize subscription service

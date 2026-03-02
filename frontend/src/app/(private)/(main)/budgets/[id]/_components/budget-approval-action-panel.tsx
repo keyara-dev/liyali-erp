@@ -122,7 +122,7 @@ export function BudgetApprovalActionPanel({
       remarks,
       comments,
       signature: signature || "",
-      returnTo: "ORIGINAL_SUBMITTER",
+      rejectionType: "reject",
     });
   };
 

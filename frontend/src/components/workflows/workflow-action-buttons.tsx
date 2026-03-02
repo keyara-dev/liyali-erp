@@ -62,7 +62,7 @@ interface WorkflowActionButtonsProps {
     data?: {
       signature: string;
       comments: string;
-      rejectionType?: "reject" | "return_to_draft";
+      rejectionType?: "reject" | "return_to_draft" | "return_to_previous_stage";
     }
   ) => Promise<void>;
   onReassign?: (
@@ -224,7 +224,7 @@ export const WorkflowActionButtons = memo(function WorkflowActionButtons({
   const handleApprovalConfirm = async (data: {
     comments: string;
     signature: string;
-    rejectionType?: "reject" | "return_to_draft";
+    rejectionType?: "reject" | "return_to_draft" | "return_to_previous_stage";
   }) => {
     const handler = approvalAction === "approve" ? onApprove : onReject;
     if (!handler) return;
@@ -232,9 +232,11 @@ export const WorkflowActionButtons = memo(function WorkflowActionButtons({
     try {
       await handler(task.id, data);
       const successMsg =
-        data.rejectionType === "return_to_draft"
-          ? "Document returned to draft"
-          : `Task ${approvalAction}d successfully`;
+        data.rejectionType === "return_to_previous_stage"
+          ? "Document returned to previous stage"
+          : data.rejectionType === "return_to_draft"
+            ? "Document returned to draft"
+            : `Task ${approvalAction}d successfully`;
       toast.success(successMsg);
       setShowApprovalModal(false);
       if (onRefresh) await onRefresh();
