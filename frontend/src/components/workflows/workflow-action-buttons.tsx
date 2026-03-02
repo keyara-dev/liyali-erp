@@ -351,7 +351,7 @@ export const WorkflowActionButtons = memo(function WorkflowActionButtons({
               <Button
                 size="sm"
                 onClick={() => handleAction("approve", onApprove)}
-                disabled={isLoading === "approve"}
+                disabled={!!isLoading}
                 title="Approve"
                 className="h-7 w-7 sm:w-auto p-0 sm:px-2 sm:gap-1 bg-green-600 hover:bg-green-700"
               >
@@ -361,7 +361,7 @@ export const WorkflowActionButtons = memo(function WorkflowActionButtons({
               <Button
                 size="sm"
                 onClick={() => handleAction("reject", onReject)}
-                disabled={isLoading === "reject"}
+                disabled={!!isLoading}
                 title="Reject"
                 className="h-7 w-7 sm:w-auto p-0 sm:px-2 sm:gap-1 bg-red-600 hover:bg-red-700"
               >
@@ -631,6 +631,7 @@ export const WorkflowActionButtons = memo(function WorkflowActionButtons({
                   size="sm"
                   variant="default"
                   onClick={() => handleAction("approve", onApprove)}
+                  disabled={!!isLoading}
                   className="bg-green-600 hover:bg-green-700"
                 >
                   <CheckCircle2 className="h-4 w-4 mr-1" />
@@ -642,6 +643,7 @@ export const WorkflowActionButtons = memo(function WorkflowActionButtons({
                   size="sm"
                   variant="destructive"
                   onClick={() => handleAction("reject", onReject)}
+                  disabled={!!isLoading}
                 >
                   <X className="h-4 w-4 mr-1" />
                   {isLoading === "reject" ? "..." : "Reject"}
