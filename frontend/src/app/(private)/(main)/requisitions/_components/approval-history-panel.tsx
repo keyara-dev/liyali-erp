@@ -669,11 +669,11 @@ export function ApprovalActionContent({
       <div className="p-6 bg-primary/5 border border-primary/20 rounded-lg">
         <h4 className="font-semibold text-lg text-foreground mb-2 flex items-center gap-2">
           <CheckCircle className="h-5 w-5" />
-          Take Approval Action
+          Approval Action
         </h4>
         <p className="text-sm text-muted-foreground mb-4">
-          You have permission to approve or reject this requisition at the
-          current stage.
+          Claim this task to begin reviewing. Once claimed, you&apos;ll be able
+          to approve or reject the requisition.
         </p>
         <ApprovalActionPanel
           requisitionId={requisitionId}

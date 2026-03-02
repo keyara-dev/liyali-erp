@@ -1,22 +1,13 @@
 "use client";
 
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { SignatureCanvas } from "@/components/ui/signature-canvas";
-import { Upload, Send, XCircle } from "lucide-react";
 import {
   useApprovalTasks,
+  useClaimTask,
   useApproveTask,
   useRejectTask,
 } from "@/hooks/use-approval-workflow";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { WorkflowActionButtons } from "@/components/workflows/workflow-action-buttons";
+import { Loader2 } from "lucide-react";
 
 interface ApprovalActionPanelProps {
   requisitionId: string;
@@ -27,233 +18,70 @@ export function ApprovalActionPanel({
   requisitionId,
   onApprovalComplete,
 }: ApprovalActionPanelProps) {
-  const [action, setAction] = useState<"approve" | "reject" | null>(null);
-  const [comments, setComments] = useState("");
-  const [remarks, setRemarks] = useState("");
-  const [signature, setSignature] = useState("");
-  const [showAttachmentDialog, setShowAttachmentDialog] = useState(false);
-
-  // Fetch approval tasks for this requisition
-  const { data: approvalData } = useApprovalTasks(
-    { documentType: "REQUISITION", assignedToMe: true },
+  // Fetch all pending tasks assigned to the current user
+  const { data: approvalData, isLoading } = useApprovalTasks(
+    { documentType: "REQUISITION" },
     1,
     100
   );
 
   const approvalTasks = approvalData?.data || [];
 
-  // Find the approval task for this requisition
-  const task = approvalTasks?.find(
+  // Find the task for this specific requisition
+  const task = approvalTasks.find(
     (t) =>
       t.documentId === requisitionId ||
       t.entityId === requisitionId ||
       (t as any).requisitionId === requisitionId
   );
-  const taskId = task?.id || "";
 
-  const approveMutation = useApproveTask(taskId);
-  const rejectMutation = useRejectTask(taskId);
+  const taskId = task?.id ?? "";
 
-  const handleApprove = async () => {
-    if (!signature || !taskId) {
-      return;
-    }
+  const claimMutation = useClaimTask(taskId, onApprovalComplete);
+  const approveMutation = useApproveTask(taskId, onApprovalComplete);
+  const rejectMutation = useRejectTask(taskId, onApprovalComplete);
 
-    try {
-      await approveMutation.mutateAsync({
-        comments,
-        signature,
-        stageNumber: task?.stage || (task as any)?.stageIndex || 1,
-      });
-
-      // Reset form and call completion callback
-      setComments("");
-      setRemarks("");
-      setSignature("");
-      setAction(null);
-      onApprovalComplete();
-    } catch (error) {
-      // Error handled by hook's onError callback
-    }
-  };
-
-  const handleReject = async () => {
-    if (!remarks.trim() || !taskId) {
-      return;
-    }
-
-    try {
-      await rejectMutation.mutateAsync({
-        remarks,
-        comments: remarks,
-        signature,
-      });
-
-      // Reset form and call completion callback
-      setComments("");
-      setRemarks("");
-      setSignature("");
-      setAction(null);
-      onApprovalComplete();
-    } catch (error) {
-      // Error handled by hook's onError callback
-    }
-  };
-
-  const isLoading = approveMutation.isPending || rejectMutation.isPending;
-
-  if (action === null) {
+  if (isLoading) {
     return (
-      <div className="space-y-3">
-        <h3 className="font-semibold text-sm">Action Required</h3>
-        <div className="grid grid-cols-2 gap-2">
-          <Button
-            onClick={() => setAction("approve")}
-            disabled={isLoading || !task}
-            className="bg-green-600 hover:bg-green-700 gap-2"
-          >
-            <Send className="h-4 w-4" />
-            Approve
-          </Button>
-          <Button
-            onClick={() => setAction("reject")}
-            disabled={isLoading || !task}
-            variant="destructive"
-            className="gap-2"
-          >
-            <XCircle className="h-4 w-4" />
-            Reject
-          </Button>
-        </div>
-        {!task && (
-          <p className="text-xs text-gray-500 text-center">
-            No pending approval task found for this requisition
-          </p>
-        )}
+      <div className="flex items-center gap-2 text-muted-foreground py-4">
+        <Loader2 className="h-4 w-4 animate-spin" />
+        <span className="text-sm">Loading approval task...</span>
       </div>
     );
   }
 
+  if (!task) {
+    return (
+      <p className="text-xs text-muted-foreground text-center py-4">
+        No pending approval task found for this requisition.
+      </p>
+    );
+  }
+
   return (
-    <div className="space-y-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
-      <div>
-        <h3 className="font-semibold mb-2">
-          {action === "approve" ? "Approve Requisition" : "Reject Requisition"}
-        </h3>
-        <p className="text-sm text-gray-600 mb-4">
-          {action === "approve"
-            ? "Add a signature and optional comments to approve"
-            : "Provide remarks explaining the rejection reason"}
-        </p>
-      </div>
-
-      {action === "approve" ? (
-        <>
-          <Textarea
-            label="Comments (Optional)"
-            id="comments"
-            placeholder="Add any approval comments or recommendations..."
-            value={comments}
-            onChange={(e) => setComments(e.target.value)}
-            rows={3}
-            className="resize-none"
-            disabled={isLoading}
-          />
-
-          <SignatureCanvas
-            onSignatureChange={setSignature}
-            disabled={isLoading}
-          />
-        </>
-      ) : (
-        <Textarea
-          label="Remarks"
-          required
-          id="remarks"
-          placeholder="Required: Please explain why this requisition is being rejected..."
-          value={remarks}
-          onChange={(e) => setRemarks(e.target.value)}
-          rows={4}
-          className="resize-none"
-          disabled={isLoading}
-          descriptionText="Detailed remarks are required for rejection to help the requester understand the issues"
-        />
-      )}
-
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={() => setShowAttachmentDialog(true)}
-        className="gap-2 w-full text-gray-700"
-        disabled={isLoading}
-      >
-        <Upload className="h-4 w-4" />
-        Add Supporting Documents
-      </Button>
-
-      <div className="flex gap-2">
-        <Button
-          onClick={action === "approve" ? handleApprove : handleReject}
-          disabled={
-            isLoading ||
-            (action === "reject" && !remarks.trim()) ||
-            (action === "approve" && !signature)
-          }
-          className={
-            action === "approve"
-              ? "bg-green-600 hover:bg-green-700 flex-1"
-              : "bg-red-600 hover:bg-red-700 flex-1"
-          }
-          isLoading={isLoading}
-          loadingText="Processing..."
-        >
-          {action === "approve" ? "Confirm Approval" : "Confirm Rejection"}
-        </Button>
-        <Button
-          variant="outline"
-          onClick={() => {
-            setAction(null);
-            setComments("");
-            setRemarks("");
-            setSignature("");
-          }}
-          disabled={isLoading}
-        >
-          Cancel
-        </Button>
-      </div>
-
-      {/* Attachment Dialog */}
-      <Dialog
-        open={showAttachmentDialog}
-        onOpenChange={setShowAttachmentDialog}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Add Supporting Documents</DialogTitle>
-            <DialogDescription>
-              Upload documents to support your approval or rejection decision
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="border-2 border-dashed rounded-lg p-6 text-center">
-              <Upload className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-              <p className="text-sm text-gray-600">
-                Click or drag files here to upload
-              </p>
-              <p className="text-xs text-gray-500 mt-1">
-                PDF, DOC, XLS up to 10MB
-              </p>
-            </div>
-            <Button
-              onClick={() => setShowAttachmentDialog(false)}
-              className="w-full"
-            >
-              Continue
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-    </div>
+    <WorkflowActionButtons
+      task={task as any}
+      variant="inline"
+      showStatus={true}
+      showViewButton={false}
+      onClaim={async () => {
+        await claimMutation.mutateAsync();
+      }}
+      onApprove={async (_taskId, data) => {
+        await approveMutation.mutateAsync({
+          comments: data?.comments ?? "",
+          signature: data?.signature ?? "",
+          stageNumber: (task as any).stage ?? (task as any).stageIndex ?? 1,
+        });
+      }}
+      onReject={async (_taskId, data) => {
+        await rejectMutation.mutateAsync({
+          remarks: data?.comments ?? "",
+          comments: data?.comments ?? "",
+          signature: data?.signature,
+        });
+      }}
+      onActionComplete={onApprovalComplete}
+    />
   );
 }
