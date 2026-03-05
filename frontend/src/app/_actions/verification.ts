@@ -5,7 +5,12 @@ import { axios } from "./api-config";
 export interface VerificationDocument {
   verified: boolean;
   documentNumber: string;
-  documentType: "REQUISITION" | "PURCHASE_ORDER" | "PAYMENT_VOUCHER" | "GRN" | "BUDGET";
+  documentType:
+    | "REQUISITION"
+    | "PURCHASE_ORDER"
+    | "PAYMENT_VOUCHER"
+    | "GRN"
+    | "BUDGET";
   title: string;
   status: string;
   department?: string;
@@ -34,15 +39,23 @@ export interface VerificationResult {
  * This is a public endpoint that doesn't require authentication
  */
 export async function verifyDocument(
-  documentNumber: string
+  documentNumber: string,
 ): Promise<VerificationResult> {
   const verifiedAt = new Date().toISOString();
 
   try {
     // Try to find the document across different entity types
     // The backend should have a public verification endpoint
+    // Add cache-busting headers to ensure fresh data
     const response = await axios.get(
-      `/api/v1/public/verify/${encodeURIComponent(documentNumber)}`
+      `/api/v1/public/verify/${encodeURIComponent(documentNumber)}`,
+      {
+        headers: {
+          "Cache-Control": "no-cache, no-store, must-revalidate",
+          Pragma: "no-cache",
+          Expires: "0",
+        },
+      },
     );
 
     if (response.data?.data) {
@@ -99,11 +112,19 @@ export interface DocumentForPDFResponse {
  * This is a public endpoint that doesn't require authentication
  */
 export async function getDocumentForPDF(
-  documentNumber: string
+  documentNumber: string,
 ): Promise<DocumentForPDFResponse | null> {
   try {
+    // Add cache-busting headers to ensure fresh data
     const response = await axios.get(
-      `/api/v1/public/verify/${encodeURIComponent(documentNumber)}/document`
+      `/api/v1/public/verify/${encodeURIComponent(documentNumber)}/document`,
+      {
+        headers: {
+          "Cache-Control": "no-cache, no-store, must-revalidate",
+          Pragma: "no-cache",
+          Expires: "0",
+        },
+      },
     );
 
     if (response.data?.data) {

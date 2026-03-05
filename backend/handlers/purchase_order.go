@@ -250,6 +250,11 @@ func CreatePurchaseOrder(c *fiber.Ctx) error {
 
 // GetPurchaseOrder retrieves a single purchase order by ID
 func GetPurchaseOrder(c *fiber.Ctx) error {
+	// Set cache control headers to ensure fresh data for PDF generation
+	c.Set("Cache-Control", "no-cache, no-store, must-revalidate")
+	c.Set("Pragma", "no-cache")
+	c.Set("Expires", "0")
+
 	logger := logging.FromContext(c)
 	logger.Info("get_purchase_order_request")
 

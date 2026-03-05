@@ -3,6 +3,7 @@ import { verifyDocument } from "@/app/_actions/verification";
 import { VerificationResult } from "./verification-result";
 
 export const dynamic = "force-dynamic";
+export const revalidate = 0; // Disable caching completely
 
 export const metadata: Metadata = {
   title: "Document Verification | Liyali",
@@ -20,7 +21,7 @@ export default async function VerifyPage({ params }: VerifyPageProps) {
   const { documentNumber } = await params;
   const decodedDocumentNumber = decodeURIComponent(documentNumber);
 
-  // Fetch verification result on the server
+  // Fetch verification result on the server with fresh data
   const result = await verifyDocument(decodedDocumentNumber);
 
   return (

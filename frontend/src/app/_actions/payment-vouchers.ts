@@ -10,7 +10,12 @@ import {
 } from "@/types/payment-voucher";
 import { PurchaseOrder } from "@/types/purchase-order";
 import { APIResponse } from "@/types";
-import { handleError, successResponse, badRequestResponse } from "./api-config";
+import {
+  handleError,
+  successResponse,
+  badRequestResponse,
+  authenticatedApiClientNoCache,
+} from "./api-config";
 import authenticatedApiClient from "./api-config";
 
 /**
@@ -160,7 +165,8 @@ export async function getPaymentVoucherById(
   const url = `/api/v1/payment-vouchers/${pvId}`;
 
   try {
-    const response = await authenticatedApiClient({
+    // Use no-cache client to ensure fresh data for PDF generation
+    const response = await authenticatedApiClientNoCache({
       method: "GET",
       url,
     });

@@ -10,7 +10,12 @@ import {
   AuditTrailEntry,
 } from "@/types/requisition";
 import { APIResponse, PurchaseOrder } from "@/types";
-import { handleError, successResponse, badRequestResponse } from "./api-config";
+import {
+  handleError,
+  successResponse,
+  badRequestResponse,
+  authenticatedApiClientNoCache,
+} from "./api-config";
 import authenticatedApiClient from "./api-config";
 
 /**
@@ -45,7 +50,9 @@ export async function createRequisition(
         requestedFor: data.requestedFor,
         otherCategoryText: data.otherCategoryText,
         metadata: {
-          ...(data.attachments?.length ? { attachments: data.attachments } : {}),
+          ...(data.attachments?.length
+            ? { attachments: data.attachments }
+            : {}),
         },
       },
     });
@@ -109,7 +116,8 @@ export async function getRequisitionById(
   const url = `/api/v1/requisitions/${requisitionId}`;
 
   try {
-    const response = await authenticatedApiClient({
+    // Use no-cache client to ensure fresh data for PDF generation
+    const response = await authenticatedApiClientNoCache({
       method: "GET",
       url,
     });
@@ -148,7 +156,9 @@ export async function updateRequisition(
         costCenter: data.costCenter,
         projectCode: data.projectCode,
         metadata: {
-          ...(data.attachments?.length ? { attachments: data.attachments } : {}),
+          ...(data.attachments?.length
+            ? { attachments: data.attachments }
+            : {}),
         },
       },
     });

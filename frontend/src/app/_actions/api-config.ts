@@ -138,3 +138,33 @@ export {
   handleError,
   badRequestResponse,
 } from "@/lib/response-helpers";
+
+/**
+ * Cache-busting headers to ensure fresh data
+ * Use this for document retrieval endpoints that need to always fetch latest data
+ */
+export const NO_CACHE_HEADERS = {
+  "Cache-Control": "no-cache, no-store, must-revalidate",
+  Pragma: "no-cache",
+  Expires: "0",
+} as const;
+
+/**
+ * Helper function to create an authenticated API request with no-cache headers
+ * Use this for document endpoints that need fresh data (e.g., for PDF generation)
+ */
+export const authenticatedApiClientNoCache = async (
+  request: RequestType,
+  retryCount = 0,
+): Promise<any> => {
+  return authenticatedApiClient(
+    {
+      ...request,
+      headers: {
+        ...request.headers,
+        ...NO_CACHE_HEADERS,
+      },
+    },
+    retryCount,
+  );
+};

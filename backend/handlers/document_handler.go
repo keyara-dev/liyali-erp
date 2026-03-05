@@ -375,6 +375,11 @@ func (h *DocumentHandler) GetDocumentStats(c *fiber.Ctx) error {
 // VerifyDocumentPublic verifies a document by document number (public endpoint)
 // GET /api/v1/public/verify/:documentNumber
 func (h *DocumentHandler) VerifyDocumentPublic(c *fiber.Ctx) error {
+	// Set cache control headers to prevent caching of verification results
+	c.Set("Cache-Control", "no-cache, no-store, must-revalidate")
+	c.Set("Pragma", "no-cache")
+	c.Set("Expires", "0")
+
 	// Get document number from params
 	documentNumber := c.Params("documentNumber")
 	if documentNumber == "" {
@@ -394,6 +399,11 @@ func (h *DocumentHandler) VerifyDocumentPublic(c *fiber.Ctx) error {
 // GetDocumentForPDFPublic retrieves full document data for PDF generation (public endpoint)
 // GET /api/v1/public/verify/:documentNumber/document
 func (h *DocumentHandler) GetDocumentForPDFPublic(c *fiber.Ctx) error {
+	// Set cache control headers to prevent caching of document data
+	c.Set("Cache-Control", "no-cache, no-store, must-revalidate")
+	c.Set("Pragma", "no-cache")
+	c.Set("Expires", "0")
+
 	// Get document number from params
 	documentNumber := c.Params("documentNumber")
 	if documentNumber == "" {

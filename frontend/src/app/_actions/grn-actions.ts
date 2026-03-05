@@ -7,7 +7,12 @@
  */
 
 import { APIResponse } from "@/types";
-import { handleError, successResponse, badRequestResponse } from "./api-config";
+import {
+  handleError,
+  successResponse,
+  badRequestResponse,
+  authenticatedApiClientNoCache,
+} from "./api-config";
 import authenticatedApiClient from "./api-config";
 
 interface QualityIssue {
@@ -70,7 +75,8 @@ export async function getGRNAction(
   const url = `/api/v1/grns/${grnId}`;
 
   try {
-    const response = await authenticatedApiClient({
+    // Use no-cache client to ensure fresh data for PDF generation
+    const response = await authenticatedApiClientNoCache({
       method: "GET",
       url,
     });

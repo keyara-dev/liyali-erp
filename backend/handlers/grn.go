@@ -194,6 +194,11 @@ func CreateGRN(c *fiber.Ctx) error {
 
 // GetGRN retrieves a single GRN by ID
 func GetGRN(c *fiber.Ctx) error {
+	// Set cache control headers to ensure fresh data for PDF generation
+	c.Set("Cache-Control", "no-cache, no-store, must-revalidate")
+	c.Set("Pragma", "no-cache")
+	c.Set("Expires", "0")
+
 	// Get organization context from tenant middleware
 	tenant, err := middleware.GetTenantContext(c)
 	if err != nil {

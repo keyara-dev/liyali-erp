@@ -328,6 +328,11 @@ func CreateRequisition(c *fiber.Ctx) error {
 
 // GetRequisition retrieves a single requisition by ID
 func GetRequisition(c *fiber.Ctx) error {
+	// Set cache control headers to ensure fresh data for PDF generation
+	c.Set("Cache-Control", "no-cache, no-store, must-revalidate")
+	c.Set("Pragma", "no-cache")
+	c.Set("Expires", "0")
+
 	id := c.Params("id")
 	if id == "" {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
