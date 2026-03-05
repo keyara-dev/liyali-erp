@@ -4,6 +4,7 @@ import { Requisition, RequisitionAttachment } from "@/types/requisition";
 import { pdfStyles } from "./pdf-styles";
 import { generateDocumentQRData } from "./qr-utils";
 import { capitalize } from "../utils";
+import { ApprovalSignaturesSection } from "./components/approval-signatures-section";
 
 export interface DocumentHeader {
   logoUrl?: string;
@@ -793,6 +794,15 @@ const RequisitionPDF: React.FC<RequisitionPDFProps> = ({
             </Text>
           </View>
         </View>
+
+        {/* Approval Signatures Section */}
+        {requisition.approvalHistory &&
+          requisition.approvalHistory.length > 0 && (
+            <ApprovalSignaturesSection
+              approvalHistory={requisition.approvalHistory}
+              documentType="Requisition"
+            />
+          )}
 
         {/* Footer */}
         <PDFFooter />

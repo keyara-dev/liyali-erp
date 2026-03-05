@@ -8,6 +8,7 @@ import {
 import { pdfStyles } from "../pdf/pdf-styles";
 import { generateDocumentQRData } from "../pdf/qr-utils";
 import { PDFHeader, PDFFooter, DocumentHeader } from "../pdf/requisition-pdf";
+import { ApprovalSignaturesSection } from "../pdf/components/approval-signatures-section";
 import { capitalize } from "../utils";
 
 interface GRNPDFProps {
@@ -652,6 +653,14 @@ const GoodsReceivedNotePDF: React.FC<GRNPDFProps> = ({
             </Text>
           </View>
         </View>
+
+        {/* Approval Signatures Section */}
+        {grn.approvalHistory && grn.approvalHistory.length > 0 && (
+          <ApprovalSignaturesSection
+            approvalHistory={grn.approvalHistory}
+            documentType="Goods Received Note"
+          />
+        )}
 
         {/* Footer */}
         <PDFFooter />

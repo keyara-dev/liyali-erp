@@ -5,6 +5,7 @@ import { pdfStyles } from "./pdf-styles";
 import { generateDocumentQRData } from "./qr-utils";
 import { PDFHeader, PDFFooter, DocumentHeader } from "./requisition-pdf";
 import { capitalize } from "../utils";
+import { ApprovalSignaturesSection } from "./components/approval-signatures-section";
 
 interface PurchaseOrderPDFProps {
   purchaseOrder: PurchaseOrder;
@@ -607,6 +608,15 @@ const PurchaseOrderPDF: React.FC<PurchaseOrderPDFProps> = ({
             </Text>
           </View>
         </View>
+
+        {/* Approval Signatures Section */}
+        {purchaseOrder.approvalHistory &&
+          purchaseOrder.approvalHistory.length > 0 && (
+            <ApprovalSignaturesSection
+              approvalHistory={purchaseOrder.approvalHistory}
+              documentType="Purchase Order"
+            />
+          )}
 
         {/* Footer */}
         <PDFFooter />

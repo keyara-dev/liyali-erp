@@ -5,6 +5,7 @@ import { pdfStyles } from "./pdf-styles";
 import { generateDocumentQRData } from "./qr-utils";
 import { PDFHeader, PDFFooter, DocumentHeader } from "./requisition-pdf";
 import { capitalize } from "../utils";
+import { ApprovalSignaturesSection } from "./components/approval-signatures-section";
 
 interface PaymentVoucherPDFProps {
   paymentVoucher: PaymentVoucher;
@@ -862,6 +863,15 @@ const PaymentVoucherPDF: React.FC<PaymentVoucherPDFProps> = ({
             </Text>
           </View>
         </View>
+
+        {/* Approval Signatures Section */}
+        {paymentVoucher.approvalHistory &&
+          paymentVoucher.approvalHistory.length > 0 && (
+            <ApprovalSignaturesSection
+              approvalHistory={paymentVoucher.approvalHistory}
+              documentType="Payment Voucher"
+            />
+          )}
 
         {/* Footer */}
         <PDFFooter />
