@@ -321,7 +321,7 @@ const PaymentVoucherPDF: React.FC<PaymentVoucherPDFProps> = ({
                       >
                         ACCOUNT NUMBER
                       </Text>
-                      <Text style={{ fontSize: 9, fontFamily: "Courier" }}>
+                      <Text style={{ fontSize: 9 }}>
                         {paymentVoucher.bankDetails.accountNumber}
                       </Text>
                     </View>
@@ -601,7 +601,7 @@ const PaymentVoucherPDF: React.FC<PaymentVoucherPDFProps> = ({
                   >
                     BUDGET CODE
                   </Text>
-                  <Text style={{ fontSize: 9, fontFamily: "Courier" }}>
+                  <Text style={{ fontSize: 9 }}>
                     {paymentVoucher.budgetCode}
                   </Text>
                 </View>
@@ -618,7 +618,7 @@ const PaymentVoucherPDF: React.FC<PaymentVoucherPDFProps> = ({
                   >
                     COST CENTER
                   </Text>
-                  <Text style={{ fontSize: 9, fontFamily: "Courier" }}>
+                  <Text style={{ fontSize: 9 }}>
                     {paymentVoucher.costCenter}
                   </Text>
                 </View>
@@ -635,7 +635,7 @@ const PaymentVoucherPDF: React.FC<PaymentVoucherPDFProps> = ({
                   >
                     PROJECT CODE
                   </Text>
-                  <Text style={{ fontSize: 9, fontFamily: "Courier" }}>
+                  <Text style={{ fontSize: 9 }}>
                     {paymentVoucher.projectCode}
                   </Text>
                 </View>

@@ -192,7 +192,7 @@ const PurchaseOrderPDF: React.FC<PurchaseOrderPDFProps> = ({
               >
                 BUDGET CODE
               </Text>
-              <Text style={{ fontSize: 9, fontFamily: "Courier" }}>
+              <Text style={{ fontSize: 9 }}>
                 {purchaseOrder.budgetCode || "—"}
               </Text>
             </View>

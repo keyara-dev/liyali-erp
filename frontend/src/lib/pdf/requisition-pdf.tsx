@@ -326,7 +326,7 @@ const RequisitionPDF: React.FC<RequisitionPDFProps> = ({
               >
                 BUDGET CODE
               </Text>
-              <Text style={{ fontSize: 9, fontFamily: "Courier" }}>
+              <Text style={{ fontSize: 9 }}>
                 {requisition.budgetCode || "—"}
               </Text>
             </View>
