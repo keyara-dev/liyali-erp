@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Download, ChevronLeft, CheckCircle2, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -17,6 +17,7 @@ import { ApprovalHistory } from "@/components/approval-history";
 import { DocumentLinks } from "@/components/document-links";
 import { exportGrnPDF } from "@/lib/pdf/pdf-export";
 import { useOrganizationContext } from "@/hooks/use-organization";
+import { useGRNById } from "@/hooks/use-grn-queries";
 import Link from "next/link";
 
 interface GrnDetailProps {
@@ -27,71 +28,23 @@ interface GrnDetailProps {
 
 export function GrnDetail({ grnId, userId, userRole }: GrnDetailProps) {
   const { currentOrganization } = useOrganizationContext();
-  const [grn, setGrn] = useState<WorkflowDocument | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+
+  // Fetch real GRN data from backend
+  const { data: grn, isLoading, refetch } = useGRNById(grnId);
+
   const [showApprovalDialog, setShowApprovalDialog] = useState(false);
   const [isDownloadingPDF, setIsDownloadingPDF] = useState(false);
 
-  useEffect(() => {
-    loadGrn();
-  }, [grnId]);
-
-  const loadGrn = async () => {
-    setIsLoading(true);
-    try {
-      // Mock data - will be replaced with API call
-      const mockGRN: WorkflowDocument = {
-        id: grnId,
-        type: "GOODS_RECEIVED_NOTE",
-        documentNumber: "GRN-2024-001",
-        status: "IN_REVIEW",
-        currentStage: 1,
-        createdBy: "user-1",
-        createdAt: new Date("2024-11-27"),
-        updatedAt: new Date("2024-11-28"),
-        metadata: {
-          poId: "po-1",
-          poNumber: "PO-2024-001",
-          requisitionId: "req-1",
-          vendorName: "Broadway Ventures",
-          receivedQuantity: 5,
-          totalQuantity: 5,
-          amount: 7500.0,
-          receivedDate: "2024-11-27",
-          items: [
-            {
-              id: "item-1",
-              description: "Office Furniture",
-              poQuantity: 5,
-              receivedQuantity: 5,
-              unitCost: 1000.0,
-              totalCost: 5000.0,
-            },
-            {
-              id: "item-2",
-              description: "Installation Service",
-              poQuantity: 1,
-              receivedQuantity: 1,
-              unitCost: 2500.0,
-              totalCost: 2500.0,
-            },
-          ],
-        },
-      };
-      setGrn(mockGRN);
-    } catch (error) {
-      console.error("Error loading GRN:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const handleDownloadPDF = async () => {
+    if (!grn) return;
+
     setIsDownloadingPDF(true);
     try {
-      if (grn) {
-        // Call PDF generator with @react-pdf/renderer
-        await exportGrnPDF(grn as any, {
+      // Refetch latest data before export
+      const { data: freshGRN } = await refetch();
+
+      if (freshGRN) {
+        await exportGrnPDF(freshGRN as any, {
           logoUrl: currentOrganization?.logoUrl,
           orgName: currentOrganization?.name,
           tagline: currentOrganization?.tagline,
@@ -107,7 +60,7 @@ export function GrnDetail({ grnId, userId, userRole }: GrnDetailProps) {
   const handleApproveSubmit = async (data: any) => {
     try {
       console.log("Approving GRN with data:", data);
-      loadGrn();
+      await refetch();
       setShowApprovalDialog(false);
     } catch (error) {
       console.error("Error approving GRN:", error);
@@ -137,7 +90,7 @@ export function GrnDetail({ grnId, userId, userRole }: GrnDetailProps) {
       {/* Header with back button */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Link href="//grn">
+          <Link href="/grn">
             <Button variant="ghost" size="sm" className="gap-2">
               <ChevronLeft className="h-4 w-4" />
               Back to GRNs
@@ -146,7 +99,12 @@ export function GrnDetail({ grnId, userId, userRole }: GrnDetailProps) {
           <div>
             <h1 className="text-2xl font-bold">{grn.documentNumber}</h1>
             <p className="text-sm text-muted-foreground">
-              Received on {grn.createdAt ? new Date(grn.createdAt).toLocaleDateString() : 'Unknown'}
+              Received on{" "}
+              {grn.receivedDate
+                ? new Date(grn.receivedDate).toLocaleDateString()
+                : grn.createdAt
+                  ? new Date(grn.createdAt).toLocaleDateString()
+                  : "Unknown"}
             </p>
           </div>
         </div>
@@ -172,24 +130,28 @@ export function GrnDetail({ grnId, userId, userRole }: GrnDetailProps) {
         {/* Left column - GRN Details (2/3 width) */}
         <div className="lg:col-span-2 space-y-6">
           {/* Purchase Order Reference */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Purchase Order Reference</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between bg-blue-50 dark:bg-blue-950/20 p-4 rounded border border-blue-200">
-                <div>
-                  <p className="text-sm text-muted-foreground">PO Number</p>
-                  <p className="font-medium">{grn.metadata?.poNumber}</p>
+          {grn.poId && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Purchase Order Reference</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-between bg-blue-50 dark:bg-blue-950/20 p-4 rounded border border-blue-200">
+                  <div>
+                    <p className="text-sm text-muted-foreground">PO Number</p>
+                    <p className="font-medium">
+                      {grn.poDocumentNumber || "N/A"}
+                    </p>
+                  </div>
+                  <Link href={`/purchase-orders/${grn.poId}`}>
+                    <Button variant="outline" size="sm">
+                      View Purchase Order
+                    </Button>
+                  </Link>
                 </div>
-                <Link href={`//purchase-orders/${grn.metadata?.poId}`}>
-                  <Button variant="outline" size="sm">
-                    View Purchase Order
-                  </Button>
-                </Link>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Goods Received Details */}
           <Card>
@@ -199,122 +161,134 @@ export function GrnDetail({ grnId, userId, userRole }: GrnDetailProps) {
             <CardContent className="grid grid-cols-2 gap-6">
               <div>
                 <p className="text-sm text-muted-foreground">Vendor</p>
-                <p className="font-medium">{grn.metadata?.vendorName}</p>
+                <p className="font-medium">{grn.vendorName || "N/A"}</p>
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Received Date</p>
                 <p className="font-medium">
-                  {grn.metadata?.receivedDate 
-                    ? new Date(grn.metadata.receivedDate).toLocaleDateString()
-                    : grn.createdAt 
+                  {grn.receivedDate
+                    ? new Date(grn.receivedDate).toLocaleDateString()
+                    : grn.createdAt
                       ? new Date(grn.createdAt).toLocaleDateString()
-                      : 'Unknown'}
+                      : "Unknown"}
                 </p>
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">
-                  Total Quantity Received
+                  Warehouse Location
                 </p>
-                <p className="font-bold text-lg">
-                  {grn.metadata?.receivedQuantity}
-                </p>
+                <p className="font-medium">{grn.warehouseLocation || "N/A"}</p>
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Total Amount</p>
-                <p className="font-bold text-lg">
-                  K {(grn.metadata?.amount || 0).toLocaleString()}
-                </p>
+                <p className="text-sm text-muted-foreground">Received By</p>
+                <p className="font-medium">{grn.receivedBy || "N/A"}</p>
               </div>
             </CardContent>
           </Card>
-
-          {/* Document Links */}
-          <DocumentLinks
-            currentDocument={grn}
-            linkedDocuments={{
-              requisition: grn.metadata?.requisitionId
-                ? { id: grn.metadata.requisitionId, documentNumber: "REQ-2024-001" }
-                : undefined,
-              purchaseOrder: grn.metadata?.poId
-                ? { id: grn.metadata.poId, documentNumber: grn.metadata.poNumber }
-                : undefined,
-            }}
-          />
 
           {/* Items Table */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Items Received</CardTitle>
-              <CardDescription>
-                {(grn.metadata?.items || []).length} items received
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b">
-                      <th className="text-left py-2 px-2">Description</th>
-                      <th className="text-right py-2 px-2">PO Qty</th>
-                      <th className="text-right py-2 px-2">Received Qty</th>
-                      <th className="text-right py-2 px-2">Unit Cost</th>
-                      <th className="text-right py-2 px-2">Total</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(grn.metadata?.items || []).map((item: any) => (
-                      <tr key={item.id} className="border-b hover:bg-muted/50">
-                        <td className="py-3 px-2">{item.description}</td>
-                        <td className="text-right py-3 px-2">
-                          {item.poQuantity}
-                        </td>
-                        <td className="text-right py-3 px-2">
-                          <span
-                            className={
-                              item.receivedQuantity === item.poQuantity
-                                ? "text-green-600 font-medium"
-                                : "text-orange-600 font-medium"
-                            }
-                          >
-                            {item.receivedQuantity}
-                          </span>
-                        </td>
-                        <td className="text-right py-3 px-2">
-                          K {item.unitCost.toLocaleString()}
-                        </td>
-                        <td className="text-right py-3 px-2 font-medium">
-                          K {item.totalCost.toLocaleString()}
-                        </td>
+          {grn.items && grn.items.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Items Received</CardTitle>
+                <CardDescription>
+                  {grn.items.length} items received
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b">
+                        <th className="text-left py-2 px-2">Description</th>
+                        <th className="text-right py-2 px-2">PO Qty</th>
+                        <th className="text-right py-2 px-2">Received Qty</th>
+                        <th className="text-right py-2 px-2">Condition</th>
                       </tr>
-                    ))}
-                  </tbody>
-                  <tfoot>
-                    <tr className="font-bold bg-muted/50">
-                      <td colSpan={4} className="py-3 px-2 text-right">
-                        Total:
-                      </td>
-                      <td className="text-right py-3 px-2">
-                        K {(grn.metadata?.amount || 0).toLocaleString()}
-                      </td>
-                    </tr>
-                  </tfoot>
-                </table>
-              </div>
-            </CardContent>
-          </Card>
+                    </thead>
+                    <tbody>
+                      {grn.items.map((item: any) => (
+                        <tr
+                          key={item.id}
+                          className="border-b hover:bg-muted/50"
+                        >
+                          <td className="py-3 px-2">
+                            {item.description || item.itemDescription}
+                          </td>
+                          <td className="text-right py-3 px-2">
+                            {item.poQuantity || item.quantity}
+                          </td>
+                          <td className="text-right py-3 px-2">
+                            <span
+                              className={
+                                item.receivedQuantity ===
+                                (item.poQuantity || item.quantity)
+                                  ? "text-green-600 font-medium"
+                                  : "text-orange-600 font-medium"
+                              }
+                            >
+                              {item.receivedQuantity}
+                            </span>
+                          </td>
+                          <td className="text-right py-3 px-2">
+                            <Badge
+                              variant={
+                                item.condition === "GOOD"
+                                  ? "default"
+                                  : "destructive"
+                              }
+                            >
+                              {item.condition || "GOOD"}
+                            </Badge>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
-          {/* Approval History */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Approval History</CardTitle>
-              <CardDescription>
-                Stage {grn.currentStage} of {1} - Warehouse Manager
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ApprovalHistory state={{} as any} />
-            </CardContent>
-          </Card>
+          {/* Quality Issues */}
+          {grn.qualityIssues && grn.qualityIssues.length > 0 && (
+            <Card className="border-yellow-200 bg-yellow-50 dark:bg-yellow-950/20">
+              <CardHeader>
+                <CardTitle>Quality Issues</CardTitle>
+                <CardDescription>
+                  {grn.qualityIssues.length} issue(s) reported
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  {grn.qualityIssues.map((issue: any) => (
+                    <div
+                      key={issue.id}
+                      className="p-3 bg-white dark:bg-gray-900 rounded border"
+                    >
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <p className="font-medium">{issue.description}</p>
+                          <p className="text-sm text-muted-foreground">
+                            Item: {issue.itemId}
+                          </p>
+                        </div>
+                        <Badge
+                          variant={
+                            issue.severity === "HIGH"
+                              ? "destructive"
+                              : "secondary"
+                          }
+                        >
+                          {issue.severity}
+                        </Badge>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
 
         {/* Right column - Status & Actions (1/3 width) */}
@@ -325,18 +299,6 @@ export function GrnDetail({ grnId, userId, userRole }: GrnDetailProps) {
               <CardTitle>Status</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div>
-                <p className="text-sm text-muted-foreground mb-2">
-                  Current Stage
-                </p>
-                <div className="flex items-center justify-between bg-muted p-3 rounded">
-                  <span className="font-medium">
-                    Stage {grn.currentStage} of {1}
-                  </span>
-                  <span className="text-sm">Warehouse Manager</span>
-                </div>
-              </div>
-
               <div className="pt-4 border-t space-y-2">
                 <p className="text-sm text-muted-foreground">Document Status</p>
                 <Badge
@@ -390,7 +352,9 @@ export function GrnDetail({ grnId, userId, userRole }: GrnDetailProps) {
                   <div>
                     <p className="font-medium">Created</p>
                     <p className="text-xs text-muted-foreground">
-                      {grn.createdAt ? new Date(grn.createdAt).toLocaleString() : 'Unknown'}
+                      {grn.createdAt
+                        ? new Date(grn.createdAt).toLocaleString()
+                        : "Unknown"}
                     </p>
                   </div>
                 </div>
@@ -399,7 +363,9 @@ export function GrnDetail({ grnId, userId, userRole }: GrnDetailProps) {
                   <div>
                     <p className="font-medium">Last Updated</p>
                     <p className="text-xs text-muted-foreground">
-                      {grn.updatedAt ? new Date(grn.updatedAt).toLocaleString() : 'Unknown'}
+                      {grn.updatedAt
+                        ? new Date(grn.updatedAt).toLocaleString()
+                        : "Unknown"}
                     </p>
                   </div>
                 </div>
@@ -414,11 +380,11 @@ export function GrnDetail({ grnId, userId, userRole }: GrnDetailProps) {
         open={showApprovalDialog}
         documentId={grn.id}
         documentType="GRN"
-        documentNumber={grn.documentNumber || ''}
-        vendor={grn.metadata?.vendorName || ""}
-        amount={`K ${(grn.metadata?.amount || 0).toLocaleString()}`}
+        documentNumber={grn.documentNumber || ""}
+        vendor={grn.vendorName || ""}
+        amount={`K ${(grn.totalAmount || 0).toLocaleString()}`}
         stageNumber={grn.currentStage || 1}
-        totalStages={1 || 1}
+        totalStages={1}
         stageName="Warehouse Manager"
         onApprove={handleApproveSubmit}
         onCancel={() => setShowApprovalDialog(false)}

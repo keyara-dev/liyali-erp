@@ -23,7 +23,15 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { SelectField } from "@/components/ui/select-field";
-import { Plus, Trash2, FileText, ImageIcon, X, Loader2, Paperclip } from "lucide-react";
+import {
+  Plus,
+  Trash2,
+  FileText,
+  ImageIcon,
+  X,
+  Loader2,
+  Paperclip,
+} from "lucide-react";
 import {
   RequisitionItem,
   RequisitionPriority,
@@ -99,6 +107,7 @@ export function CreateRequisitionDialog({
     requestedFor: "",
     justification: "",
     budgetCode: "N/A",
+    sourceOfFunds: "",
     costCenter: "",
     projectCode: "",
     currency: "ZMW",
@@ -120,6 +129,7 @@ export function CreateRequisitionDialog({
       requestedFor: "",
       justification: "",
       budgetCode: "N/A",
+      sourceOfFunds: "",
       costCenter: "",
       projectCode: "",
       currency: "ZMW",
@@ -144,6 +154,7 @@ export function CreateRequisitionDialog({
         requestedFor: editingRequisition.requestedFor || "",
         justification: editingRequisition.description || "",
         budgetCode: editingRequisition.budgetCode || "N/A",
+        sourceOfFunds: editingRequisition.sourceOfFunds || "",
         costCenter: editingRequisition.costCenter || "",
         projectCode: editingRequisition.projectCode || "",
         currency: editingRequisition.currency || "ZMW",
@@ -156,7 +167,8 @@ export function CreateRequisitionDialog({
         otherCategoryText: editingRequisition.otherCategoryText || "",
         attachments:
           editingRequisition.attachments ||
-          (editingRequisition.metadata?.attachments as RequisitionAttachment[]) ||
+          (editingRequisition.metadata
+            ?.attachments as RequisitionAttachment[]) ||
           [],
       });
     } else if (!isEditing && open) {
@@ -224,7 +236,8 @@ export function CreateRequisitionDialog({
   };
 
   const MAX_ATTACHMENTS = 5;
-  const ACCEPTED_ATTACHMENT_TYPES = "application/pdf,image/jpeg,image/png,image/webp";
+  const ACCEPTED_ATTACHMENT_TYPES =
+    "application/pdf,image/jpeg,image/png,image/webp";
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -357,7 +370,8 @@ export function CreateRequisitionDialog({
           formData.categoryId === "OTHER"
             ? formData.otherCategoryText
             : undefined,
-        attachments: formData.attachments.length > 0 ? formData.attachments : undefined,
+        attachments:
+          formData.attachments.length > 0 ? formData.attachments : undefined,
       });
     } else {
       createMutation.mutate({
@@ -377,6 +391,7 @@ export function CreateRequisitionDialog({
         isEstimate: formData.isEstimate,
         requiredByDate: formData.requiredByDate,
         budgetCode: formData.budgetCode,
+        sourceOfFunds: formData.sourceOfFunds,
         costCenter: formData.costCenter || formData.budgetCode,
         projectCode: formData.projectCode || formData.budgetCode,
         requestedFor: formData.requestedFor,
@@ -384,7 +399,8 @@ export function CreateRequisitionDialog({
           formData.categoryId === "OTHER"
             ? formData.otherCategoryText
             : undefined,
-        attachments: formData.attachments.length > 0 ? formData.attachments : undefined,
+        attachments:
+          formData.attachments.length > 0 ? formData.attachments : undefined,
       });
     }
   };
@@ -601,6 +617,15 @@ export function CreateRequisitionDialog({
                   }
                 />
 
+                <Input
+                  label="Source of Funds"
+                  placeholder="e.g., Government Grant, Donor Funding, Internal Budget"
+                  value={formData.sourceOfFunds}
+                  onChange={(e) =>
+                    setFormData({ ...formData, sourceOfFunds: e.target.value })
+                  }
+                />
+
                 <div className="space-y-2">
                   <Textarea
                     id="justification"
@@ -626,8 +651,8 @@ export function CreateRequisitionDialog({
                         Supporting Documents
                       </Label>
                       <p className="text-xs text-muted-foreground mt-0.5">
-                        Attach invoices, quotes, or receipts (PDF, JPG, PNG). Max
-                        5 files, 5MB each.
+                        Attach invoices, quotes, or receipts (PDF, JPG, PNG).
+                        Max 5 files, 5MB each.
                       </p>
                     </div>
                     {formData.attachments.length < MAX_ATTACHMENTS && (

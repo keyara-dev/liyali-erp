@@ -237,10 +237,14 @@ func AdminUpdateUser(c *fiber.Ctx) error {
 	}
 
 	var request struct {
-		Name   *string `json:"name,omitempty"`
-		Email  *string `json:"email,omitempty"`
-		Role   *string `json:"role,omitempty"`
-		Status *string `json:"status,omitempty"`
+		Name      *string `json:"name,omitempty"`
+		Email     *string `json:"email,omitempty"`
+		Role      *string `json:"role,omitempty"`
+		Status    *string `json:"status,omitempty"`
+		Position  *string `json:"position,omitempty"`
+		ManNumber *string `json:"manNumber,omitempty"`
+		NrcNumber *string `json:"nrcNumber,omitempty"`
+		Contact   *string `json:"contact,omitempty"`
 	}
 
 	if err := c.BodyParser(&request); err != nil {
@@ -267,6 +271,18 @@ func AdminUpdateUser(c *fiber.Ctx) error {
 	}
 	if request.Status != nil {
 		updates["active"] = *request.Status == "active"
+	}
+	if request.Position != nil {
+		updates["position"] = *request.Position
+	}
+	if request.ManNumber != nil {
+		updates["man_number"] = *request.ManNumber
+	}
+	if request.NrcNumber != nil {
+		updates["nrc_number"] = *request.NrcNumber
+	}
+	if request.Contact != nil {
+		updates["contact"] = *request.Contact
 	}
 
 	if err := db.Table("users").Where("id = ?", userID).Updates(updates).Error; err != nil {

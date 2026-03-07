@@ -139,7 +139,12 @@ export function RequisitionDetailClient({
     if (!requisition) return;
     try {
       setIsExporting(true);
-      const blob = await getRequisitionPDFBlob(requisition, {
+
+      // Refetch latest data before generating PDF
+      const { data: latestRequisition } = await refetch();
+      const dataToUse = latestRequisition || requisition;
+
+      const blob = await getRequisitionPDFBlob(dataToUse, {
         logoUrl: currentOrganization?.logoUrl,
         orgName: currentOrganization?.name,
         tagline: currentOrganization?.tagline,
@@ -158,7 +163,12 @@ export function RequisitionDetailClient({
     if (!requisition) return;
     try {
       setIsExporting(true);
-      await exportRequisitionPDF(requisition, {
+
+      // Refetch latest data before exporting PDF
+      const { data: latestRequisition } = await refetch();
+      const dataToUse = latestRequisition || requisition;
+
+      await exportRequisitionPDF(dataToUse, {
         logoUrl: currentOrganization?.logoUrl,
         orgName: currentOrganization?.name,
         tagline: currentOrganization?.tagline,
@@ -280,7 +290,10 @@ export function RequisitionDetailClient({
         <div className="bg-card rounded-lg border-0 shadow-sm p-6">
           <div className="flex gap-2 mb-6">
             {[1, 2, 3, 4, 5].map((i) => (
-              <div key={i} className="h-9 bg-muted rounded-md w-28 animate-pulse" />
+              <div
+                key={i}
+                className="h-9 bg-muted rounded-md w-28 animate-pulse"
+              />
             ))}
           </div>
           <div className="space-y-3">
@@ -467,9 +480,7 @@ export function RequisitionDetailClient({
               Requested By
             </label>
             <p className="text-base font-medium text-primary-foreground">
-              {requisition.requesterName ||
-                requisition.requestedByName ||
-                "—"}
+              {requisition.requesterName || requisition.requestedByName || "—"}
             </p>
             {requisition.requestedByRole && (
               <p className="text-xs text-primary-foreground/60">
@@ -561,14 +572,11 @@ export function RequisitionDetailClient({
                   Last Updated
                 </label>
                 <p className="text-sm font-medium text-primary-foreground">
-                  {new Date(requisition.updatedAt).toLocaleDateString(
-                    "en-ZM",
-                    {
-                      year: "numeric",
-                      month: "long",
-                      day: "numeric",
-                    },
-                  )}
+                  {new Date(requisition.updatedAt).toLocaleDateString("en-ZM", {
+                    year: "numeric",
+                    month: "long",
+                    day: "numeric",
+                  })}
                 </p>
               </div>
             )}
@@ -659,26 +667,30 @@ export function RequisitionDetailClient({
 
         {/* Additional Metadata */}
         {requisition.metadata &&
-          Object.entries(requisition.metadata).filter(([key]) => key !== "attachments").length > 0 && (
+          Object.entries(requisition.metadata).filter(
+            ([key]) => key !== "attachments",
+          ).length > 0 && (
             <div className="mt-6 pt-6 border-t border-white/20">
               <label className="text-xs font-semibold text-primary-foreground/80 uppercase tracking-wider block mb-3">
                 Additional Information
               </label>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {Object.entries(requisition.metadata).filter(([key]) => key !== "attachments").map(([key, value]) => (
-                  <div key={key} className="space-y-1">
-                    <label className="text-xs font-medium text-primary-foreground/70 capitalize">
-                      {key
-                        .replace(/([A-Z])/g, " $1")
-                        .replace(/^./, (str) => str.toUpperCase())}
-                    </label>
-                    <p className="text-sm text-primary-foreground">
-                      {typeof value === "object"
-                        ? JSON.stringify(value, null, 2)
-                        : String(value)}
-                    </p>
-                  </div>
-                ))}
+                {Object.entries(requisition.metadata)
+                  .filter(([key]) => key !== "attachments")
+                  .map(([key, value]) => (
+                    <div key={key} className="space-y-1">
+                      <label className="text-xs font-medium text-primary-foreground/70 capitalize">
+                        {key
+                          .replace(/([A-Z])/g, " $1")
+                          .replace(/^./, (str) => str.toUpperCase())}
+                      </label>
+                      <p className="text-sm text-primary-foreground">
+                        {typeof value === "object"
+                          ? JSON.stringify(value, null, 2)
+                          : String(value)}
+                      </p>
+                    </div>
+                  ))}
               </div>
             </div>
           )}
@@ -742,40 +754,65 @@ export function RequisitionDetailClient({
       <Card className="p-6 border-0 shadow-sm">
         <Tabs defaultValue="items" className="w-full">
           <TabsList className="grid w-full grid-cols-5 h-auto">
-            <TabsTrigger value="items" className="gap-1.5 text-xs sm:text-sm px-2 py-2">
+            <TabsTrigger
+              value="items"
+              className="gap-1.5 text-xs sm:text-sm px-2 py-2"
+            >
               <ShoppingCart className="h-4 w-4 shrink-0" />
               <span className="hidden sm:inline">Requisition</span> Items
               {requisition.items?.length > 0 && (
-                <Badge variant="secondary" className="ml-1 text-xs h-5 min-w-5 px-1.5">
+                <Badge
+                  variant="secondary"
+                  className="ml-1 text-xs h-5 min-w-5 px-1.5"
+                >
                   {requisition.items.length}
                 </Badge>
               )}
             </TabsTrigger>
-            <TabsTrigger value="documents" className="gap-1.5 text-xs sm:text-sm px-2 py-2">
+            <TabsTrigger
+              value="documents"
+              className="gap-1.5 text-xs sm:text-sm px-2 py-2"
+            >
               <Paperclip className="h-4 w-4 shrink-0" />
               <span className="hidden sm:inline">Supporting</span> Docs
               {attachments.length > 0 && (
-                <Badge variant="secondary" className="ml-1 text-xs h-5 min-w-5 px-1.5">
+                <Badge
+                  variant="secondary"
+                  className="ml-1 text-xs h-5 min-w-5 px-1.5"
+                >
                   {attachments.length}
                 </Badge>
               )}
             </TabsTrigger>
-            <TabsTrigger value="action" className="gap-1.5 text-xs sm:text-sm px-2 py-2">
+            <TabsTrigger
+              value="action"
+              className="gap-1.5 text-xs sm:text-sm px-2 py-2"
+            >
               <CheckSquare className="h-4 w-4 shrink-0" />
               <span className="hidden sm:inline">Approval</span> Action
             </TabsTrigger>
-            <TabsTrigger value="chain" className="gap-1.5 text-xs sm:text-sm px-2 py-2">
+            <TabsTrigger
+              value="chain"
+              className="gap-1.5 text-xs sm:text-sm px-2 py-2"
+            >
               <GitBranch className="h-4 w-4 shrink-0" />
               <span className="hidden sm:inline">Approval</span> Chain
             </TabsTrigger>
-            <TabsTrigger value="activity" className="gap-1.5 text-xs sm:text-sm px-2 py-2">
+            <TabsTrigger
+              value="activity"
+              className="gap-1.5 text-xs sm:text-sm px-2 py-2"
+            >
               <Activity className="h-4 w-4 shrink-0" />
               <span className="hidden sm:inline">Activity</span> Log
-              {requisition.actionHistory && requisition.actionHistory.length > 0 && (
-                <Badge variant="secondary" className="ml-1 text-xs h-5 min-w-5 px-1.5">
-                  {requisition.actionHistory.length}
-                </Badge>
-              )}
+              {requisition.actionHistory &&
+                requisition.actionHistory.length > 0 && (
+                  <Badge
+                    variant="secondary"
+                    className="ml-1 text-xs h-5 min-w-5 px-1.5"
+                  >
+                    {requisition.actionHistory.length}
+                  </Badge>
+                )}
             </TabsTrigger>
           </TabsList>
 

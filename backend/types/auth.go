@@ -7,10 +7,14 @@ type LoginRequest struct {
 }
 
 type RegisterRequest struct {
-	Email    string `json:"email" validate:"required,email"`
-	Password string `json:"password" validate:"required,min=8"`
-	Name     string `json:"name" validate:"required"`
-	Role     string `json:"role" validate:"required"`
+	Email     string `json:"email" validate:"required,email"`
+	Password  string `json:"password" validate:"required,min=8"`
+	Name      string `json:"name" validate:"required"`
+	Role      string `json:"role" validate:"required"`
+	Position  string `json:"position,omitempty"`
+	ManNumber string `json:"manNumber,omitempty"`
+	NrcNumber string `json:"nrcNumber,omitempty"`
+	Contact   string `json:"contact,omitempty"`
 }
 
 type RefreshTokenRequest struct {

@@ -65,6 +65,7 @@ export interface Requisition {
 
   // Business requirement fields
   budgetCode: string;
+  sourceOfFunds?: string; // Source of funding for the requisition
   requestedByName: string; // Same as requesterName
   requestedByRole: string;
   requestedBy: string; // Same as requesterId
@@ -112,6 +113,7 @@ export interface CreateRequisitionRequest {
   // Business requirement fields
   requiredByDate: Date;
   budgetCode: string;
+  sourceOfFunds?: string; // Source of funding for the requisition
   costCenter: string;
   projectCode: string;
   requestedFor?: string; // Who the requisition is for
@@ -135,6 +137,7 @@ export interface UpdateRequisitionRequest {
   isEstimate?: boolean;
   requiredByDate?: Date;
   budgetCode?: string;
+  sourceOfFunds?: string; // Source of funding for the requisition
   costCenter?: string;
   projectCode?: string;
   requestedFor?: string; // Who the requisition is for

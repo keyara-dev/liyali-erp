@@ -18,6 +18,12 @@ type User struct {
 	Active    bool       `json:"active"`
 	LastLogin *time.Time `json:"lastLogin,omitempty"`
 
+	// Profile fields
+	Position  string `json:"position,omitempty"`
+	ManNumber string `json:"manNumber,omitempty"`
+	NrcNumber string `json:"nrcNumber,omitempty"`
+	Contact   string `json:"contact,omitempty"`
+
 	// Multi-tenancy fields
 	CurrentOrganizationID *string        `json:"currentOrganizationId,omitempty"`
 	CurrentOrganization   *Organization `gorm:"foreignKey:CurrentOrganizationID" json:"currentOrganization,omitempty"`
@@ -62,6 +68,7 @@ type Requisition struct {
 
 	// Business requirement fields
 	BudgetCode          string                                    `json:"budgetCode"`
+	SourceOfFunds       string                                    `json:"sourceOfFunds,omitempty"` // Source of funding for the requisition
 	RequestedByName     string                                    `gorm:"-" json:"requestedByName"`     // Computed from RequesterName
 	RequestedByRole     string                                    `gorm:"-" json:"requestedByRole"`     // Computed from Requester.Role
 	RequestedBy         string                                    `gorm:"-" json:"requestedBy"`         // Computed from RequesterId

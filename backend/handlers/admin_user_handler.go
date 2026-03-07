@@ -33,6 +33,10 @@ func CreateOrganizationUser(c *fiber.Ctx) error {
 		LastName    string `json:"last_name"`
 		Role        string `json:"role"`
 		DepartmentID string `json:"department_id"`
+		Position    string `json:"position"`
+		ManNumber   string `json:"manNumber"`
+		NrcNumber   string `json:"nrcNumber"`
+		Contact     string `json:"contact"`
 	}
 
 	if err := c.BodyParser(&req); err != nil {
@@ -115,6 +119,10 @@ func CreateOrganizationUser(c *fiber.Ctx) error {
 		Role:                  roleName, // Store role name, not role ID
 		Active:                true,
 		CurrentOrganizationID: &tenant.OrganizationID, // Set to admin's organization
+		Position:              req.Position,
+		ManNumber:             req.ManNumber,
+		NrcNumber:             req.NrcNumber,
+		Contact:               req.Contact,
 	}
 
 	// Create user in database

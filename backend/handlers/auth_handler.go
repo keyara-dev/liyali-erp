@@ -360,7 +360,7 @@ func (h *AuthHandler) Register(c *fiber.Ctx) error {
 	logger.Debug("attempting_user_registration")
 
 	// Register user
-	response, err := h.authService.Register(c.Context(), req.Email, req.Password, req.Name, req.Role)
+	response, err := h.authService.Register(c.Context(), req.Email, req.Password, req.Name, req.Role, req.Position, req.ManNumber, req.NrcNumber, req.Contact)
 	if err != nil {
 		logging.LogError(c, err, "user_registration_failed", map[string]interface{}{
 			"error_type": "registration_failure",
@@ -492,6 +492,10 @@ func (h *AuthHandler) GetProfile(c *fiber.Ctx) error {
 type UpdateProfileRequest struct {
 	Name        string                 `json:"name" validate:"required"`
 	Email       string                 `json:"email" validate:"required,email"`
+	Position    string                 `json:"position"`
+	ManNumber   string                 `json:"manNumber"`
+	NrcNumber   string                 `json:"nrcNumber"`
+	Contact     string                 `json:"contact"`
 	Preferences map[string]interface{} `json:"preferences"`
 }
 
@@ -518,7 +522,7 @@ func (h *AuthHandler) UpdateProfile(c *fiber.Ctx) error {
 		"operation": "update_profile",
 	})
 
-	user, err := h.authService.UpdateProfile(c.Context(), userID, req.Name, req.Email, req.Preferences)
+	user, err := h.authService.UpdateProfile(c.Context(), userID, req.Name, req.Email, req.Position, req.ManNumber, req.NrcNumber, req.Contact, req.Preferences)
 	if err != nil {
 		logger.WithError(err).Error("update_profile_failed")
 		return utils.SendInternalError(c, "Failed to update profile", err)

@@ -25,6 +25,7 @@ type CreateRequisitionRequest struct {
 
 	// Business requirement fields
 	BudgetCode        string                 `json:"budgetCode"`
+	SourceOfFunds     string                 `json:"sourceOfFunds,omitempty"` // Source of funding for the requisition
 	CostCenter        string                 `json:"costCenter"`
 	ProjectCode       string                 `json:"projectCode"`
 	RequiredByDate    time.Time              `json:"requiredByDate"`
@@ -45,6 +46,7 @@ type UpdateRequisitionRequest struct {
 	CategoryID        *string                `json:"categoryId" validate:"omitempty,uuid"`
 	PreferredVendorID *string                `json:"preferredVendorId" validate:"omitempty,uuid"`
 	IsEstimate        *bool                  `json:"isEstimate"`
+	SourceOfFunds     string                 `json:"sourceOfFunds,omitempty"` // Source of funding
 	Metadata          map[string]interface{} `json:"metadata"` // Additional metadata (e.g. attachments)
 }
 

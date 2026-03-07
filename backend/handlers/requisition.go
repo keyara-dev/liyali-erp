@@ -271,6 +271,7 @@ func CreateRequisition(c *fiber.Ctx) error {
 
 		// Business requirement fields
 		BudgetCode:      req.BudgetCode,
+		SourceOfFunds:   req.SourceOfFunds,
 		CostCenter:      req.CostCenter,
 		ProjectCode:     req.ProjectCode,
 		RequiredByDate:  req.RequiredByDate,
@@ -456,6 +457,9 @@ func UpdateRequisition(c *fiber.Ctx) error {
 	}
 	if req.IsEstimate != nil {
 		requisition.IsEstimate = *req.IsEstimate
+	}
+	if req.SourceOfFunds != "" {
+		requisition.SourceOfFunds = req.SourceOfFunds
 	}
 
 	// Merge incoming metadata with existing metadata

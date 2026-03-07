@@ -129,6 +129,10 @@ export function useSignupMutation() {
       name: string;
       password: string;
       role?: string;
+      position?: string;
+      manNumber?: string;
+      nrcNumber?: string;
+      contact?: string;
     }) => {
       return await createNewAccount(data);
     },

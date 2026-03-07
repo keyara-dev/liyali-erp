@@ -38,6 +38,10 @@ type FormData = {
   department?: string;
   is_active: boolean;
   password?: string;
+  position?: string;
+  manNumber?: string;
+  nrcNumber?: string;
+  contact?: string;
 };
 
 export default function CreateUserForm({
@@ -104,6 +108,10 @@ export default function CreateUserForm({
         department_id: user.department_id || "",
         is_active: user.is_active ?? true,
         password: "",
+        position: user.position || "",
+        manNumber: user.manNumber || "",
+        nrcNumber: user.nrcNumber || "",
+        contact: user.contact || "",
       };
     }
     return {
@@ -115,6 +123,10 @@ export default function CreateUserForm({
       department_id: "",
       is_active: true,
       password: generateRandomString(),
+      position: "",
+      manNumber: "",
+      nrcNumber: "",
+      contact: "",
     };
   }, [isEditMode, user?.id, role]);
 
@@ -155,6 +167,10 @@ export default function CreateUserForm({
         department: user.department || "",
         department_id: user.department_id || "",
         is_active: user.is_active ?? true,
+        position: user.position || "",
+        manNumber: user.manNumber || "",
+        nrcNumber: user.nrcNumber || "",
+        contact: user.contact || "",
       });
     } else if (!isEditMode && dialogOpen) {
       setFormData({
@@ -166,6 +182,10 @@ export default function CreateUserForm({
         department: "",
         department_id: "",
         is_active: true,
+        position: "",
+        manNumber: "",
+        nrcNumber: "",
+        contact: "",
       });
     }
   }, [user?.id, dialogOpen, isEditMode, role]);
@@ -273,6 +293,10 @@ export default function CreateUserForm({
           department_id: formData.department_id,
           is_active: formData.is_active,
           role: formData.role, // Use the selected role from form data
+          position: formData.position,
+          manNumber: formData.manNumber,
+          nrcNumber: formData.nrcNumber,
+          contact: formData.contact,
         };
         await updateUserMutation.mutateAsync({
           userId: user!.id,
@@ -288,6 +312,10 @@ export default function CreateUserForm({
           department_id: formData.department_id || "",
           username: String(formData.username || ""),
           role: formData.role, // Use the selected role from form data
+          position: formData.position,
+          manNumber: formData.manNumber,
+          nrcNumber: formData.nrcNumber,
+          contact: formData.contact,
         });
       }
     } catch (error) {
@@ -456,6 +484,62 @@ export default function CreateUserForm({
                 })),
               ]}
             />
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <Input
+                id="position"
+                label="Position"
+                placeholder="e.g., Procurement Officer"
+                value={formData.position}
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    position: e.target.value,
+                  }))
+                }
+                disabled={isSubmitting}
+              />
+              <Input
+                id="manNumber"
+                label="Man Number"
+                placeholder="e.g., MAN12345"
+                value={formData.manNumber}
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    manNumber: e.target.value,
+                  }))
+                }
+                disabled={isSubmitting}
+              />
+              <Input
+                id="nrcNumber"
+                label="NRC Number"
+                placeholder="e.g., 123456/78/9"
+                value={formData.nrcNumber}
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    nrcNumber: e.target.value,
+                  }))
+                }
+                disabled={isSubmitting}
+              />
+              <Input
+                id="contact"
+                label="Contact"
+                type="tel"
+                placeholder="e.g., +260 XXX XXX XXX"
+                value={formData.contact}
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    contact: e.target.value,
+                  }))
+                }
+                disabled={isSubmitting}
+              />
+            </div>
 
             {isEditMode && (
               <div className="flex flex-row items-center justify-between rounded-lg border p-4">

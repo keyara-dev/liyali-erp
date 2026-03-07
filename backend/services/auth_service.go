@@ -473,7 +473,7 @@ func (s *AuthService) ChangePassword(ctx context.Context, userID, currentPasswor
 }
 
 // Register creates a new user account with organization
-func (s *AuthService) Register(ctx context.Context, email, password, name, role string) (*LoginResponse, error) {
+func (s *AuthService) Register(ctx context.Context, email, password, name, role string, position, manNumber, nrcNumber, contact string) (*LoginResponse, error) {
 	// Check if user already exists
 	existingUser, err := s.userRepo.GetByEmail(ctx, email)
 	if err == nil && existingUser != nil {
@@ -493,12 +493,16 @@ func (s *AuthService) Register(ctx context.Context, email, password, name, role 
 
 	// Create user
 	user := &models.User{
-		ID:       uuid.New().String(),
-		Email:    email,
-		Name:     name,
-		Password: hashedPassword,
-		Role:     role,
-		Active:   true,
+		ID:        uuid.New().String(),
+		Email:     email,
+		Name:      name,
+		Password:  hashedPassword,
+		Role:      role,
+		Active:    true,
+		Position:  position,
+		ManNumber: manNumber,
+		NrcNumber: nrcNumber,
+		Contact:   contact,
 	}
 
 	createdUser, err := s.userRepo.Create(ctx, user)
@@ -716,14 +720,18 @@ func (s *AuthService) GetProfileByID(ctx context.Context, userID string) (*model
 	return s.userRepo.GetByID(ctx, userID)
 }
 
-// UpdateProfile updates the user's name, email, and preferences JSONB column.
-func (s *AuthService) UpdateProfile(ctx context.Context, userID, name, email string, preferences map[string]interface{}) (*models.User, error) {
+// UpdateProfile updates the user's name, email, profile fields, and preferences JSONB column.
+func (s *AuthService) UpdateProfile(ctx context.Context, userID, name, email, position, manNumber, nrcNumber, contact string, preferences map[string]interface{}) (*models.User, error) {
 	user, err := s.userRepo.GetByID(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
 	user.Name = name
 	user.Email = email
+	user.Position = position
+	user.ManNumber = manNumber
+	user.NrcNumber = nrcNumber
+	user.Contact = contact
 	if preferences != nil {
 		prefsJSON, err := json.Marshal(preferences)
 		if err != nil {

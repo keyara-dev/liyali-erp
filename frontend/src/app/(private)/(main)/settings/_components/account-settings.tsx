@@ -44,6 +44,10 @@ export function AccountSettings({
     // Profile
     name: user?.name || "",
     email: user?.email || "",
+    position: user?.position || "",
+    manNumber: user?.manNumber || "",
+    nrcNumber: user?.nrcNumber || "",
+    contact: user?.contact || "",
     // Preferences
     avatar: prefs?.avatar || "",
     department: prefs?.department || "",
@@ -61,6 +65,10 @@ export function AccountSettings({
       setFormData({
         name: user.name || "",
         email: user.email || "",
+        position: user.position || "",
+        manNumber: user.manNumber || "",
+        nrcNumber: user.nrcNumber || "",
+        contact: user.contact || "",
         avatar: p?.avatar || "",
         department: p?.department || "",
         language: p?.language || "en",
@@ -83,6 +91,10 @@ export function AccountSettings({
       const result = await updateAccountSettings({
         name: formData.name,
         email: formData.email,
+        position: formData.position,
+        manNumber: formData.manNumber,
+        nrcNumber: formData.nrcNumber,
+        contact: formData.contact,
         preferences: {
           avatar: formData.avatar,
           department: formData.department,
@@ -154,6 +166,39 @@ export function AccountSettings({
               onChange={(e) => set("email", e.target.value)}
               disabled={isLoading}
               descriptionText="Used for account notifications and password recovery"
+            />
+            <Input
+              label="Position"
+              id="position"
+              placeholder="e.g., Procurement Officer"
+              value={formData.position}
+              onChange={(e) => set("position", e.target.value)}
+              disabled={isLoading}
+            />
+            <Input
+              label="Man Number"
+              id="manNumber"
+              placeholder="e.g., MAN12345"
+              value={formData.manNumber}
+              onChange={(e) => set("manNumber", e.target.value)}
+              disabled={isLoading}
+            />
+            <Input
+              label="NRC Number"
+              id="nrcNumber"
+              placeholder="e.g., 123456/78/9"
+              value={formData.nrcNumber}
+              onChange={(e) => set("nrcNumber", e.target.value)}
+              disabled={isLoading}
+            />
+            <Input
+              label="Contact"
+              id="contact"
+              type="tel"
+              placeholder="e.g., +260 XXX XXX XXX"
+              value={formData.contact}
+              onChange={(e) => set("contact", e.target.value)}
+              disabled={isLoading}
             />
             <Input
               label="Department"
@@ -243,11 +288,19 @@ export function AccountSettings({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Africa/Lusaka">Africa/Lusaka (CAT)</SelectItem>
+                    <SelectItem value="Africa/Lusaka">
+                      Africa/Lusaka (CAT)
+                    </SelectItem>
                     <SelectItem value="UTC">UTC</SelectItem>
-                    <SelectItem value="Europe/London">Europe/London (GMT)</SelectItem>
-                    <SelectItem value="America/New_York">America/New_York (EST)</SelectItem>
-                    <SelectItem value="America/Los_Angeles">America/Los_Angeles (PST)</SelectItem>
+                    <SelectItem value="Europe/London">
+                      Europe/London (GMT)
+                    </SelectItem>
+                    <SelectItem value="America/New_York">
+                      America/New_York (EST)
+                    </SelectItem>
+                    <SelectItem value="America/Los_Angeles">
+                      America/Los_Angeles (PST)
+                    </SelectItem>
                     <SelectItem value="Asia/Tokyo">Asia/Tokyo (JST)</SelectItem>
                   </SelectContent>
                 </Select>

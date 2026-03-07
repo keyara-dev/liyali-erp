@@ -39,6 +39,10 @@ export async function getUserProfile(): Promise<APIResponse> {
 export async function updateAccountSettings(data: {
   name: string;
   email: string;
+  position?: string;
+  manNumber?: string;
+  nrcNumber?: string;
+  contact?: string;
   preferences: {
     avatar?: string;
     department?: string;
@@ -70,7 +74,8 @@ export async function updateAccountSettings(data: {
           email: updatedUser.email ?? currentUser.email,
           preferences: updatedUser.preferences,
           // UserMenu reads user.avatar directly — keep in sync with preferences.avatar
-          avatar: updatedUser.preferences?.avatar ?? (currentUser as any).avatar,
+          avatar:
+            updatedUser.preferences?.avatar ?? (currentUser as any).avatar,
         },
       });
       revalidatePath("/settings");
@@ -86,7 +91,10 @@ export async function updateAccountSettings(data: {
   } catch (error: any) {
     return {
       success: false,
-      message: error.response?.data?.message || error.message || "Failed to save settings",
+      message:
+        error.response?.data?.message ||
+        error.message ||
+        "Failed to save settings",
       data: null,
       status: error.response?.status || 500,
       statusText: "ERROR",
@@ -161,7 +169,10 @@ export async function changePassword(
   } catch (error: any) {
     return {
       success: false,
-      message: error.response?.data?.message || error.message || "Failed to change password",
+      message:
+        error.response?.data?.message ||
+        error.message ||
+        "Failed to change password",
       data: null,
       status: error.response?.status || 500,
       statusText: "ERROR",

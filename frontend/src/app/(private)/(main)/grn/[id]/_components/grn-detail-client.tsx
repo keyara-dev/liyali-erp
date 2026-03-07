@@ -20,53 +20,17 @@ import { QualityIssueReportDialog } from "./quality-issue-dialog";
 import { useAddQualityIssueMutation } from "@/hooks/use-quality-issue-mutations";
 import { useGRNById } from "@/hooks/use-grn-queries";
 import { Badge } from "@/components";
+import type {
+  GoodsReceivedNote,
+  GRNItem,
+  QualityIssue,
+} from "@/types/goods-received-note";
 
 interface GRNDetailClientProps {
   grnId: string;
   userId: string;
   userRole: string;
 }
-
-interface ReceivedItem {
-  id: string;
-  itemNumber: number;
-  description: string;
-  poQuantity: number;
-  receivedQuantity: number;
-  unit: string;
-  variance: number;
-  damage: number;
-  damageNotes?: string;
-  condition: "GOOD" | "DAMAGED" | "PARTIAL";
-}
-
-interface GoodsReceivedNote {
-  id: string;
-  documentNumber: string;
-  poDocumentNumber: string;
-  status: "DRAFT" | "SUBMITTED" | "CONFIRMED" | "REJECTED";
-  warehouseLocation: string;
-  receivedDate: string;
-  receivedBy: string;
-  approvedBy?: string;
-  items: ReceivedItem[];
-  qualityIssues: Array<{
-    id: string;
-    itemId: string;
-    description: string;
-    severity: "LOW" | "MEDIUM" | "HIGH";
-  }>;
-  notes?: string;
-  currentStage: number;
-  stageName: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-const STAGE_NAMES: Record<number, string> = {
-  1: "Warehouse Clerk Receipt",
-  2: "Department Manager Confirmation",
-};
 
 export function GRNDetailClient({
   grnId,
@@ -91,17 +55,7 @@ export function GRNDetailClient({
     router.back();
   };
 
-  const handleAddQualityIssue = async (
-    issue: Omit<
-      {
-        id: string;
-        itemId: string;
-        description: string;
-        severity: "LOW" | "MEDIUM" | "HIGH";
-      },
-      "id"
-    >
-  ) => {
+  const handleAddQualityIssue = async (issue: Omit<QualityIssue, "id">) => {
     try {
       // Call mutation to save quality issue via backend
       await addQualityIssueMutation.mutateAsync(issue);

@@ -19,6 +19,10 @@ export default function Signup() {
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [position, setPosition] = useState("");
+  const [manNumber, setManNumber] = useState("");
+  const [nrcNumber, setNrcNumber] = useState("");
+  const [contact, setContact] = useState("");
   const [showPassword, setShowPassword] = useState({
     password: false,
     confirmPassword: false,
@@ -69,6 +73,10 @@ export default function Signup() {
         name,
         password,
         role: "admin", // Default to admin since they get their own organization
+        position,
+        manNumber,
+        nrcNumber,
+        contact,
       });
 
       if (result.success && selectedPlan) {
@@ -105,10 +113,12 @@ export default function Signup() {
             </div>
             <div>
               <h3 className="font-semibold text-slate-900">
-                {planNames[selectedPlan as keyof typeof planNames]} Plan Selected
+                {planNames[selectedPlan as keyof typeof planNames]} Plan
+                Selected
               </h3>
               <p className="text-sm text-slate-600">
-                You'll be redirected to complete your subscription after registration
+                You'll be redirected to complete your subscription after
+                registration
               </p>
             </div>
           </div>
@@ -174,6 +184,54 @@ export default function Signup() {
           onChange={(e) => setEmail(e.target.value)}
           disabled={isPending}
           required
+        />
+
+        {/* Position Input */}
+        <Input
+          id="position"
+          type="text"
+          label="Position"
+          placeholder="e.g., Procurement Officer"
+          className="bg-muted"
+          value={position}
+          onChange={(e) => setPosition(e.target.value)}
+          disabled={isPending}
+        />
+
+        {/* Man Number Input */}
+        <Input
+          id="manNumber"
+          type="text"
+          label="Man Number"
+          placeholder="e.g., MAN12345"
+          className="bg-muted"
+          value={manNumber}
+          onChange={(e) => setManNumber(e.target.value)}
+          disabled={isPending}
+        />
+
+        {/* NRC Number Input */}
+        <Input
+          id="nrcNumber"
+          type="text"
+          label="NRC Number"
+          placeholder="e.g., 123456/78/9"
+          className="bg-muted"
+          value={nrcNumber}
+          onChange={(e) => setNrcNumber(e.target.value)}
+          disabled={isPending}
+        />
+
+        {/* Contact Input */}
+        <Input
+          id="contact"
+          type="tel"
+          label="Contact"
+          placeholder="e.g., +260 XXX XXX XXX"
+          className="bg-muted"
+          value={contact}
+          onChange={(e) => setContact(e.target.value)}
+          disabled={isPending}
         />
 
         {/* Password Input */}

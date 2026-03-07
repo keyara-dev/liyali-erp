@@ -156,6 +156,12 @@ export interface User {
   createdAt?: string | Date;
   updatedAt?: string | Date;
 
+  // Profile fields
+  position?: string;
+  manNumber?: string;
+  nrcNumber?: string;
+  contact?: string;
+
   // Extended fields for UI compatibility
   permissions?: string[];
   preferences?: {
