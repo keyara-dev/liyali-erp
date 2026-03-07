@@ -6,28 +6,12 @@ import {
   addQualityIssueToGRN,
   removeQualityIssueFromGRN,
   updateQualityIssueInGRN,
+  type GoodsReceivedNote,
 } from "@/app/_actions/grn-actions";
+import type { QualityIssue } from "@/types/goods-received-note";
 
 /**
- * Quality Issue Type for mutations
- */
-interface QualityIssue {
-  id: string;
-  itemId: string;
-  description: string;
-  severity: "LOW" | "MEDIUM" | "HIGH";
-}
-
-interface GoodsReceivedNote {
-  id: string;
-  documentNumber: string;
-  poDocumentNumber: string;
-  status: "DRAFT" | "SUBMITTED" | "CONFIRMED" | "REJECTED" | "APPROVED";
-  warehouseLocation: string;
-  receivedDate: string;
-  receivedBy: string;
-  approvedBy?: string;
-  items: Array<{
+ * Hook for adding a quality issue to a GRN
     id: string;
     itemNumber: number;
     description: string;
@@ -67,7 +51,7 @@ interface GoodsReceivedNote {
  */
 export function useAddQualityIssueMutation(
   grnId: string,
-  onSuccess?: (data: GoodsReceivedNote) => void
+  onSuccess?: (data: GoodsReceivedNote) => void,
 ) {
   const queryClient = useQueryClient();
 
@@ -118,7 +102,7 @@ export function useAddQualityIssueMutation(
  */
 export function useRemoveQualityIssueMutation(
   grnId: string,
-  onSuccess?: (data: GoodsReceivedNote) => void
+  onSuccess?: (data: GoodsReceivedNote) => void,
 ) {
   const queryClient = useQueryClient();
 
@@ -168,7 +152,7 @@ export function useRemoveQualityIssueMutation(
  */
 export function useUpdateQualityIssueMutation(
   grnId: string,
-  onSuccess?: (data: GoodsReceivedNote) => void
+  onSuccess?: (data: GoodsReceivedNote) => void,
 ) {
   const queryClient = useQueryClient();
 

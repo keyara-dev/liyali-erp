@@ -21,19 +21,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
-
-interface ReceivedItem {
-  id: string;
-  itemNumber: number;
-  description: string;
-  poQuantity: number;
-  receivedQuantity: number;
-  unit: string;
-  variance: number;
-  damage: number;
-  damageNotes?: string;
-  condition: "GOOD" | "DAMAGED" | "PARTIAL";
-}
+import type { GRNItem } from "@/types/goods-received-note";
 
 interface QualityIssue {
   itemDescription: string;
@@ -45,7 +33,7 @@ interface QualityIssue {
 interface QualityIssueReportDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  items: ReceivedItem[];
+  items: GRNItem[];
   onAddIssue: (issue: Omit<QualityIssue, "id">) => void;
 }
 
@@ -126,9 +114,12 @@ export function QualityIssueReportDialog({
                 <SelectValue placeholder="Select item with issue" />
               </SelectTrigger>
               <SelectContent>
-                {items.map((item) => (
-                  <SelectItem key={item.id} value={item.id}>
-                    {item.itemNumber}. {item.description}
+                {items.map((item, index) => (
+                  <SelectItem
+                    key={item.id || index}
+                    value={item.id || `item-${index}`}
+                  >
+                    {index + 1}. {item.description}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -145,13 +136,13 @@ export function QualityIssueReportDialog({
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Received Qty:</span>
                 <span className="font-medium">
-                  {selectedItem.receivedQuantity} {selectedItem.unit}
+                  {selectedItem.quantityReceived}
                 </span>
               </div>
-              {selectedItem.damageNotes && (
+              {selectedItem.notes && (
                 <div className="text-yellow-700 bg-yellow-50 p-2 rounded border border-yellow-200">
-                  <p className="text-xs font-medium mb-1">Noted Damage:</p>
-                  <p>{selectedItem.damageNotes}</p>
+                  <p className="text-xs font-medium mb-1">Notes:</p>
+                  <p>{selectedItem.notes}</p>
                 </div>
               )}
             </div>

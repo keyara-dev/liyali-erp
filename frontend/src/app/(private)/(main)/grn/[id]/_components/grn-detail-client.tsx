@@ -248,8 +248,7 @@ export function GRNDetailClient({
         <CardContent>
           {hasQualityIssues ? (
             <div className="space-y-3">
-              {grn.qualityIssues.map((issue) => {
-                const item = grn.items.find((i) => i.id === issue.itemId);
+              {grn.qualityIssues.map((issue, index) => {
                 const severityColors = {
                   LOW: "bg-yellow-100 text-yellow-800 border-yellow-200",
                   MEDIUM: "bg-orange-100 text-orange-800 border-orange-200",
@@ -257,12 +256,15 @@ export function GRNDetailClient({
                 };
                 return (
                   <div
-                    key={issue.id}
-                    className={`p-4 border rounded-lg ${severityColors[issue.severity]}`}
+                    key={issue.id || index}
+                    className={`p-4 border rounded-lg ${severityColors[issue.severity as keyof typeof severityColors]}`}
                   >
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
-                        <p className="font-semibold">{item?.description}</p>
+                        <p className="font-semibold">{issue.itemDescription}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {issue.issueType}
+                        </p>
                         <p className="text-sm mt-1">{issue.description}</p>
                       </div>
                       <Badge variant="outline" className="ml-2">
