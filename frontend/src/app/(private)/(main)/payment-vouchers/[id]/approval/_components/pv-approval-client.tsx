@@ -88,7 +88,9 @@ export function PVApprovalClient({ pvId }: PVApprovalClientProps) {
               )}
               {pv.invoiceNumber && (
                 <div>
-                  <p className="text-sm text-muted-foreground">Invoice Number</p>
+                  <p className="text-sm text-muted-foreground">
+                    Invoice Number
+                  </p>
                   <p className="font-semibold">{pv.invoiceNumber}</p>
                 </div>
               )}
@@ -106,19 +108,14 @@ export function PVApprovalClient({ pvId }: PVApprovalClientProps) {
               </div>
               {pv.paymentDueDate && (
                 <div>
-                  <p className="text-sm text-muted-foreground">Payment Due Date</p>
+                  <p className="text-sm text-muted-foreground">
+                    Payment Due Date
+                  </p>
                   <p className="font-semibold">
                     {new Date(pv.paymentDueDate).toLocaleDateString()}
                   </p>
                 </div>
               )}
-            </CardContent>
-              <div>
-                <p className="text-sm text-muted-foreground">Total Amount</p>
-                <p className="font-bold text-lg text-green-600">
-                  K{(pv.totalAmount || 0).toLocaleString("en-ZM")}
-                </p>
-              </div>
             </CardContent>
           </Card>
 

@@ -75,13 +75,13 @@ export function GrnDetail({ grnId, userId, userRole }: GrnDetailProps) {
     return <div className="text-center py-8 text-red-600">GRN not found</div>;
   }
 
-  const canApprove = grn.status === "IN_REVIEW";
+  const canApprove = grn.status === "SUBMITTED";
   const statusVariant =
     grn.status === "APPROVED"
       ? "default"
       : grn.status === "REJECTED"
         ? "destructive"
-        : grn.status === "IN_REVIEW"
+        : grn.status === "SUBMITTED"
           ? "secondary"
           : "outline";
 
@@ -130,7 +130,7 @@ export function GrnDetail({ grnId, userId, userRole }: GrnDetailProps) {
         {/* Left column - GRN Details (2/3 width) */}
         <div className="lg:col-span-2 space-y-6">
           {/* Purchase Order Reference */}
-          {grn.poId && (
+          {grn.poDocumentNumber && (
             <Card>
               <CardHeader>
                 <CardTitle>Purchase Order Reference</CardTitle>
@@ -139,15 +139,8 @@ export function GrnDetail({ grnId, userId, userRole }: GrnDetailProps) {
                 <div className="flex items-center justify-between bg-blue-50 dark:bg-blue-950/20 p-4 rounded border border-blue-200">
                   <div>
                     <p className="text-sm text-muted-foreground">PO Number</p>
-                    <p className="font-medium">
-                      {grn.poDocumentNumber || "N/A"}
-                    </p>
+                    <p className="font-medium">{grn.poDocumentNumber}</p>
                   </div>
-                  <Link href={`/purchase-orders/${grn.poId}`}>
-                    <Button variant="outline" size="sm">
-                      View Purchase Order
-                    </Button>
-                  </Link>
                 </div>
               </CardContent>
             </Card>
@@ -161,17 +154,16 @@ export function GrnDetail({ grnId, userId, userRole }: GrnDetailProps) {
             <CardContent className="grid grid-cols-2 gap-6">
               <div>
                 <p className="text-sm text-muted-foreground">Vendor</p>
-                <p className="font-medium">{grn.vendorName || "N/A"}</p>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Received Date</p>
-                <p className="font-medium">
-                  {grn.receivedDate
-                    ? new Date(grn.receivedDate).toLocaleDateString()
-                    : grn.createdAt
-                      ? new Date(grn.createdAt).toLocaleDateString()
-                      : "Unknown"}
-                </p>
+                <div>
+                  <p className="text-sm text-muted-foreground">Received Date</p>
+                  <p className="font-medium">
+                    {grn.receivedDate
+                      ? new Date(grn.receivedDate).toLocaleDateString()
+                      : grn.createdAt
+                        ? new Date(grn.createdAt).toLocaleDateString()
+                        : "Unknown"}
+                  </p>
+                </div>
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">
@@ -380,9 +372,9 @@ export function GrnDetail({ grnId, userId, userRole }: GrnDetailProps) {
         open={showApprovalDialog}
         documentId={grn.id}
         documentType="GRN"
-        documentNumber={grn.documentNumber || ""}
-        vendor={grn.vendorName || ""}
-        amount={`K ${(grn.totalAmount || 0).toLocaleString()}`}
+        documentNumber={grn.documentNumber}
+        vendor=""
+        amount=""
         stageNumber={grn.currentStage || 1}
         totalStages={1}
         stageName="Warehouse Manager"

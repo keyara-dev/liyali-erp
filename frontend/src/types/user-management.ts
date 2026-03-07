@@ -1,8 +1,8 @@
 export interface UserRoleAssignment {
-  userId: string
-  customRoleId: string
-  assignedAt: Date
-  assignedBy: string
+  userId: string;
+  customRoleId: string;
+  assignedAt: Date;
+  assignedBy: string;
 }
 
 export interface CreateUserRequest {
@@ -13,6 +13,11 @@ export interface CreateUserRequest {
   departmentId?: string;
   password?: string;
   active?: boolean;
+  // Profile fields
+  position?: string;
+  manNumber?: string;
+  nrcNumber?: string;
+  contact?: string;
 }
 
 export interface CreateOrganizationRequest {

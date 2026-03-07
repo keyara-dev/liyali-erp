@@ -18,6 +18,11 @@ export interface CreateUserRequest {
   last_name: string;
   department_id: string;
   role: UserType;
+  // Profile fields
+  position?: string;
+  manNumber?: string;
+  nrcNumber?: string;
+  contact?: string;
 }
 
 export interface UpdateUserRequest {

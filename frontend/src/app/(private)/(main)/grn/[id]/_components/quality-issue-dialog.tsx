@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { Button } from '@/components/ui/button';
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -9,18 +9,18 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
+} from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
-import { AlertTriangle } from 'lucide-react';
-import { toast } from 'sonner';
+} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { AlertTriangle } from "lucide-react";
+import { toast } from "sonner";
 
 interface ReceivedItem {
   id: string;
@@ -32,27 +32,27 @@ interface ReceivedItem {
   variance: number;
   damage: number;
   damageNotes?: string;
-  condition: 'GOOD' | 'DAMAGED' | 'PARTIAL';
+  condition: "GOOD" | "DAMAGED" | "PARTIAL";
 }
 
 interface QualityIssue {
-  id: string;
-  itemId: string;
+  itemDescription: string;
+  issueType: string;
   description: string;
-  severity: 'LOW' | 'MEDIUM' | 'HIGH';
+  severity: "LOW" | "MEDIUM" | "HIGH";
 }
 
 interface QualityIssueReportDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   items: ReceivedItem[];
-  onAddIssue: (issue: Omit<QualityIssue, 'id'>) => void;
+  onAddIssue: (issue: Omit<QualityIssue, "id">) => void;
 }
 
 const SEVERITY_OPTIONS = [
-  { value: 'LOW', label: 'Low', color: 'text-yellow-600' },
-  { value: 'MEDIUM', label: 'Medium', color: 'text-orange-600' },
-  { value: 'HIGH', label: 'High', color: 'text-red-600' },
+  { value: "LOW", label: "Low", color: "text-yellow-600" },
+  { value: "MEDIUM", label: "Medium", color: "text-orange-600" },
+  { value: "HIGH", label: "High", color: "text-red-600" },
 ] as const;
 
 export function QualityIssueReportDialog({
@@ -61,34 +61,35 @@ export function QualityIssueReportDialog({
   items,
   onAddIssue,
 }: QualityIssueReportDialogProps) {
-  const [selectedItemId, setSelectedItemId] = useState<string>('');
-  const [description, setDescription] = useState('');
-  const [severity, setSeverity] = useState<'LOW' | 'MEDIUM' | 'HIGH'>('MEDIUM');
+  const [selectedItemId, setSelectedItemId] = useState<string>("");
+  const [description, setDescription] = useState("");
+  const [severity, setSeverity] = useState<"LOW" | "MEDIUM" | "HIGH">("MEDIUM");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const selectedItem = items.find((item) => item.id === selectedItemId);
 
   const handleSubmit = async () => {
     if (!selectedItemId || !description.trim() || !severity) {
-      toast.error('Please fill in all required fields');
+      toast.error("Please fill in all required fields");
       return;
     }
 
     setIsSubmitting(true);
     try {
       onAddIssue({
-        itemId: selectedItemId,
+        itemDescription: selectedItem?.description || "",
+        issueType: "quality_issue",
         description: description.trim(),
         severity,
       });
 
-      toast.success('Quality issue reported successfully');
-      setSelectedItemId('');
-      setDescription('');
-      setSeverity('MEDIUM');
+      toast.success("Quality issue reported successfully");
+      setSelectedItemId("");
+      setDescription("");
+      setSeverity("MEDIUM");
       onOpenChange(false);
     } catch (error) {
-      toast.error('Failed to report quality issue');
+      toast.error("Failed to report quality issue");
     } finally {
       setIsSubmitting(false);
     }
@@ -96,9 +97,9 @@ export function QualityIssueReportDialog({
 
   const handleOpenChange = (newOpen: boolean) => {
     if (newOpen) {
-      setSelectedItemId('');
-      setDescription('');
-      setSeverity('MEDIUM');
+      setSelectedItemId("");
+      setDescription("");
+      setSeverity("MEDIUM");
     }
     onOpenChange(newOpen);
   };
@@ -162,7 +163,7 @@ export function QualityIssueReportDialog({
             <Select
               value={severity}
               onValueChange={(val) =>
-                setSeverity(val as 'LOW' | 'MEDIUM' | 'HIGH')
+                setSeverity(val as "LOW" | "MEDIUM" | "HIGH")
               }
             >
               <SelectTrigger id="severity-select">
@@ -172,7 +173,9 @@ export function QualityIssueReportDialog({
                 {SEVERITY_OPTIONS.map((option) => (
                   <SelectItem key={option.value} value={option.value}>
                     <div className="flex items-center gap-2">
-                      <div className={`h-2 w-2 rounded-full ${getSeverityBgColor(option.value)}`} />
+                      <div
+                        className={`h-2 w-2 rounded-full ${getSeverityBgColor(option.value)}`}
+                      />
                       {option.label}
                     </div>
                   </SelectItem>
@@ -217,7 +220,7 @@ export function QualityIssueReportDialog({
             }
             className="bg-yellow-600 hover:bg-yellow-700"
           >
-            {isSubmitting ? 'Reporting...' : 'Report Issue'}
+            {isSubmitting ? "Reporting..." : "Report Issue"}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -225,13 +228,13 @@ export function QualityIssueReportDialog({
   );
 }
 
-function getSeverityBgColor(severity: 'LOW' | 'MEDIUM' | 'HIGH'): string {
+function getSeverityBgColor(severity: "LOW" | "MEDIUM" | "HIGH"): string {
   switch (severity) {
-    case 'LOW':
-      return 'bg-yellow-400';
-    case 'MEDIUM':
-      return 'bg-orange-400';
-    case 'HIGH':
-      return 'bg-red-500';
+    case "LOW":
+      return "bg-yellow-400";
+    case "MEDIUM":
+      return "bg-orange-400";
+    case "HIGH":
+      return "bg-red-500";
   }
 }

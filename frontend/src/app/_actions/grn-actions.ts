@@ -14,26 +14,7 @@ import {
   authenticatedApiClientNoCache,
 } from "./api-config";
 import authenticatedApiClient from "./api-config";
-
-interface QualityIssue {
-  id: string;
-  itemId: string;
-  description: string;
-  severity: "LOW" | "MEDIUM" | "HIGH";
-}
-
-interface GRNItem {
-  id: string;
-  itemNumber: number;
-  description: string;
-  poQuantity: number;
-  receivedQuantity: number;
-  unit: string;
-  variance: number;
-  damage: number;
-  damageNotes?: string;
-  condition: "GOOD" | "DAMAGED" | "PARTIAL";
-}
+import type { QualityIssue, GRNItem } from "@/types/goods-received-note";
 
 export interface GoodsReceivedNote {
   id: string;
@@ -210,14 +191,8 @@ export async function addQualityIssueToGRN(
 
     const grn = currentResult.data;
 
-    // Create new issue with unique ID
-    const newIssue: QualityIssue = {
-      id: `issue-${Date.now()}`,
-      ...issue,
-    };
-
-    // Add issue to the existing quality issues
-    const updatedQualityIssues = [...(grn.qualityIssues || []), newIssue];
+    // Add issue to the existing quality issues (backend will generate ID)
+    const updatedQualityIssues = [...(grn.qualityIssues || []), issue];
 
     // Update the GRN with the new quality issues
     return await updateGRNAction(grnId, {
