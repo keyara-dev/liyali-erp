@@ -441,3 +441,100 @@ func (r *ReportsRepository) QueryBottleneck(
 
 	return &bottleneck, nil
 }
+
+// QueryBudgetUtilization calculates budget utilization percentage
+func (r *ReportsRepository) QueryBudgetUtilization(
+	ctx context.Context,
+	organizationID string,
+) (float64, error) {
+	query := `
+		SELECT
+			CASE
+				WHEN SUM(total_budget) = 0 THEN 0
+				ELSE (SUM(allocated_amount) / SUM(total_budget)) * 100
+			END as utilization_percentage
+		FROM budgets
+		WHERE organization_id = $1
+		  AND status NOT IN ('rejected', 'cancelled')
+	`
+
+	var utilization float64
+	err := r.db.QueryRow(ctx, query, organizationID).Scan(&utilization)
+	if err != nil {
+		return 0, fmt.Errorf("failed to query budget utilization: %w", err)
+	}
+
+	return utilization, nil
+}
+
+// QueryAverageProcessingTime calculates average time from document creation to completion
+func (r *ReportsRepository) QueryAverageProcessingTime(
+	ctx context.Context,
+	organizationID string,
+	startDate string,
+	endDate string,
+) (float64, error) {
+	// Convert empty strings to nil for SQL NULL handling
+	var startDateParam, endDateParam interface{}
+	if startDate == "" {
+		startDateParam = nil
+	} else {
+		startDateParam = startDate
+	}
+	if endDate == "" {
+		endDateParam = nil
+	} else {
+		endDateParam = endDate
+	}
+
+	query := `
+		WITH completed_documents AS (
+			SELECT 
+				created_at,
+				updated_at,
+				EXTRACT(EPOCH FROM (updated_at - created_at)) / 86400 as processing_days
+			FROM (
+				SELECT created_at, updated_at FROM requisitions 
+				WHERE organization_id = $1 
+				  AND status IN ('approved', 'rejected', 'completed')
+				  AND ($2::timestamp IS NULL OR created_at >= $2)
+				  AND ($3::timestamp IS NULL OR created_at <= $3)
+				UNION ALL
+				SELECT created_at, updated_at FROM purchase_orders 
+				WHERE organization_id = $1 
+				  AND status IN ('approved', 'rejected', 'completed')
+				  AND ($2::timestamp IS NULL OR created_at >= $2)
+				  AND ($3::timestamp IS NULL OR created_at <= $3)
+				UNION ALL
+				SELECT created_at, updated_at FROM payment_vouchers 
+				WHERE organization_id = $1 
+				  AND status IN ('approved', 'rejected', 'completed')
+				  AND ($2::timestamp IS NULL OR created_at >= $2)
+				  AND ($3::timestamp IS NULL OR created_at <= $3)
+				UNION ALL
+				SELECT created_at, updated_at FROM goods_received_notes 
+				WHERE organization_id = $1 
+				  AND status IN ('approved', 'rejected', 'completed')
+				  AND ($2::timestamp IS NULL OR created_at >= $2)
+				  AND ($3::timestamp IS NULL OR created_at <= $3)
+				UNION ALL
+				SELECT created_at, updated_at FROM budgets 
+				WHERE organization_id = $1 
+				  AND status IN ('approved', 'rejected')
+				  AND ($2::timestamp IS NULL OR created_at >= $2)
+				  AND ($3::timestamp IS NULL OR created_at <= $3)
+			) all_docs
+		)
+		SELECT COALESCE(AVG(processing_days), 0) as avg_processing_time
+		FROM completed_documents
+		WHERE processing_days > 0
+	`
+
+	var avgProcessingTime float64
+	err := r.db.QueryRow(ctx, query, organizationID, startDateParam, endDateParam).Scan(&avgProcessingTime)
+	if err != nil {
+		return 0, fmt.Errorf("failed to query average processing time: %w", err)
+	}
+
+	return avgProcessingTime, nil
+}

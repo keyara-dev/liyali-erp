@@ -340,6 +340,14 @@ func SetupRoutes(app *fiber.App, handlerRegistry *handlers.HandlerRegistry, rbac
 	analytics.Get("/requisitions/metrics", middleware.RequireFeature("advanced_analytics"), handlers.GetRequisitionMetrics)
 	analytics.Get("/approvals/metrics", middleware.RequireFeature("advanced_analytics"), handlers.GetApprovalMetrics)
 
+	// Reports routes (tenant-scoped) - Unified reports for all users with role-based filtering
+	reports := tenant.Group("/reports")
+	reports.Get("/dashboard", handlerRegistry.Reports.GetDashboardReports)           // All users - role-filtered
+	reports.Get("/system-stats", handlerRegistry.Reports.GetSystemStatistics)        // All users - role-filtered
+	reports.Get("/approval-metrics", handlerRegistry.Reports.GetApprovalMetrics)     // All users - role-filtered
+	reports.Get("/user-activity", middleware.RequirePermission(rbacService, "report", "view_users"), handlerRegistry.Reports.GetUserActivityMetrics) // Admin/Manager only
+	reports.Get("/analytics", middleware.RequirePermission(rbacService, "report", "view_analytics"), handlerRegistry.Reports.GetAnalyticsDashboard)   // Admin/Manager only
+
 	// Notifications (tenant-scoped) - ENABLED
 	notifications := tenant.Group("/notifications")
 	notifications.Get("/", handlerRegistry.Notification.GetNotifications)

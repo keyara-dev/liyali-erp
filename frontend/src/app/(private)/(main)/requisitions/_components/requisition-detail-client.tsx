@@ -1,7 +1,5 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -27,13 +25,6 @@ import {
   Activity,
 } from "lucide-react";
 import { PageHeader } from "@/components/base/page-header";
-import {
-  useRequisitionById,
-  useSubmitRequisitionForApproval,
-  useRequisitionChain,
-} from "@/hooks/use-requisition-queries";
-import { useWithdrawRequisition } from "@/hooks/use-requisition-mutations";
-import { useRequisitionStorage } from "@/hooks/use-requisition-storage";
 import { Requisition, RequisitionAttachment } from "@/types/requisition";
 import {
   ActivityLogContent,
@@ -51,12 +42,6 @@ import {
   EmptyMedia,
 } from "@/components/ui/empty";
 import { Package } from "lucide-react";
-import {
-  exportRequisitionPDF,
-  getRequisitionPDFBlob,
-} from "@/lib/pdf/pdf-export";
-import { useOrganizationContext } from "@/hooks/use-organization";
-import { toast } from "sonner";
 import dynamic from "next/dynamic";
 
 const PDFPreviewDialog = dynamic(
@@ -77,7 +62,10 @@ const AttachmentPreviewDialog = dynamic(
 import { RequisitionSubmitDialog } from "./requisition-submit-dialog";
 import { ConfirmationModal } from "@/components/modals/confirmation-modal";
 import { Badge } from "@/components";
-import { useApprovalPanelData } from "@/hooks/use-approval-history";
+import { DocumentLoadingPage } from "@/components/base/document-loading-page";
+import ErrorDisplay from "@/components/base/error-display";
+import { useRequisitionDetail } from "@/hooks/use-requisition-detail";
+import { useRouter } from "next/navigation";
 
 interface RequisitionDetailClientProps {
   requisitionId: string;
@@ -93,253 +81,54 @@ export function RequisitionDetailClient({
   initialRequisition,
 }: RequisitionDetailClientProps) {
   const router = useRouter();
-  const { saveToStorage } = useRequisitionStorage();
-  const { currentOrganization } = useOrganizationContext();
-  const [isExporting, setIsExporting] = useState(false);
-  const [previewOpen, setPreviewOpen] = useState(false);
-  const [previewBlob, setPreviewBlob] = useState<Blob | null>(null);
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [showSubmitDialog, setShowSubmitDialog] = useState(false);
-  const [showWithdrawModal, setShowWithdrawModal] = useState(false);
-  const [attachmentPreviewOpen, setAttachmentPreviewOpen] = useState(false);
-  const [selectedAttachment, setSelectedAttachment] =
-    useState<RequisitionAttachment | null>(null);
 
-  // Use the new hook with initialData from server component
+  // Use the new hook to manage all document detail logic
   const {
-    data: requisition,
+    document: requisition,
     isLoading,
-    refetch,
-  } = useRequisitionById(requisitionId, initialRequisition);
-
-  // Document chain (Req → PO → GRN → PV)
-  const { data: chain } = useRequisitionChain(requisitionId);
-
-  // Approval panel data
-  const {
-    approvalHistory,
-    availableApprovers,
-    workflowStatus,
-    isLoading: isApprovalLoading,
-    hasError: approvalHasError,
-    refetchAll,
-  } = useApprovalPanelData(requisitionId, "REQUISITION");
-
-  // Submit mutation
-  const submitMutation = useSubmitRequisitionForApproval(requisitionId, () => {
-    refetch();
+    chain,
+    approvalData,
+    isExporting,
+    previewOpen,
+    setPreviewOpen,
+    previewBlob,
+    isEditDialogOpen,
+    setIsEditDialogOpen,
+    showSubmitDialog,
+    setShowSubmitDialog,
+    showWithdrawModal,
+    setShowWithdrawModal,
+    attachmentPreviewOpen,
+    setAttachmentPreviewOpen,
+    selectedAttachment,
+    handlePreviewPDF,
+    handleExportPDF,
+    handleSubmitForApproval: handleSubmit,
+    handleEdit,
+    handleDocumentUpdated,
+    handleWithdraw,
+    handleApprovalComplete,
+    handleAttachmentPreview,
+    permissions,
+    submitMutation,
+    withdrawMutation,
+  } = useRequisitionDetail({
+    requisitionId,
+    userId,
+    userRole,
+    initialRequisition,
   });
 
-  // Withdraw mutation
-  const withdrawMutation = useWithdrawRequisition(() => {
-    refetch();
-  });
+  if (isLoading) return <DocumentLoadingPage />;
 
-  const handlePreviewPDF = async () => {
-    if (!requisition) return;
-    try {
-      setIsExporting(true);
-
-      // Refetch latest data before generating PDF
-      const { data: latestRequisition } = await refetch();
-      const dataToUse = latestRequisition || requisition;
-
-      const blob = await getRequisitionPDFBlob(dataToUse, {
-        logoUrl: currentOrganization?.logoUrl,
-        orgName: currentOrganization?.name,
-        tagline: currentOrganization?.tagline,
-      });
-      setPreviewBlob(blob);
-      setPreviewOpen(true);
-    } catch (error) {
-      console.error("PDF preview error:", error);
-      toast.error("Failed to generate PDF preview");
-    } finally {
-      setIsExporting(false);
-    }
-  };
-
-  const handleExportPDF = async () => {
-    if (!requisition) return;
-    try {
-      setIsExporting(true);
-
-      // Refetch latest data before exporting PDF
-      const { data: latestRequisition } = await refetch();
-      const dataToUse = latestRequisition || requisition;
-
-      await exportRequisitionPDF(dataToUse, {
-        logoUrl: currentOrganization?.logoUrl,
-        orgName: currentOrganization?.name,
-        tagline: currentOrganization?.tagline,
-      });
-      toast.success("Requisition exported as PDF");
-    } catch (error) {
-      console.error("PDF export error:", error);
-      toast.error("Failed to export PDF");
-    } finally {
-      setIsExporting(false);
-    }
-  };
-
-  const handleSubmitForApproval = async (
-    workflowId: string,
-    comments?: string,
-  ) => {
-    if (!requisition) return;
-
-    try {
-      const result = await submitMutation.mutateAsync({
-        workflowId,
-        submittedBy: userId,
-        submittedByName: requisition.requestedByName || "User",
-        submittedByRole: requisition.requestedByRole || userRole,
-        comments:
-          comments ||
-          `Submitted for approval on ${new Date().toLocaleDateString()}`,
-      });
-
-      // Check for auto-approval with auto-created PO
-      const responseData = result?.data;
-      const routingData = responseData?.routing;
-      const autoCreatedPO = responseData?.autoCreatedPO;
-
-      if (routingData?.autoApproved && autoCreatedPO?.id) {
-        setShowSubmitDialog(false);
-        router.push(`/purchase-orders/${autoCreatedPO.id}`);
-        return;
-      }
-
-      if (result?.data) {
-        saveToStorage(result.data);
-      }
-      setShowSubmitDialog(false);
-    } catch (error) {
-      console.error("Submit error:", error);
-    }
-  };
-
-  const handleEditRequisition = () => {
-    setIsEditDialogOpen(true);
-  };
-
-  const handleRequisitionUpdated = () => {
-    setIsEditDialogOpen(false);
-    refetch();
-  };
-
-  const handleWithdraw = async () => {
-    if (!requisition) return;
-    try {
-      await withdrawMutation.mutateAsync(requisition.id);
-      setShowWithdrawModal(false);
-    } catch (error) {
-      console.error("Withdraw error:", error);
-    }
-  };
-
-  const handleApprovalComplete = () => {
-    refetchAll();
-    refetch();
-  };
-
-  const isCreator =
-    requisition?.requestedBy === userId || requisition?.requesterId === userId;
-  const canEdit =
-    isCreator &&
-    (requisition?.status === "draft" || requisition?.status === "rejected");
-
-  const canSubmit = requisition?.status === "draft" && isCreator;
-  const canWithdraw = requisition?.status === "pending" && isCreator;
-
-  if (isLoading && !requisition) {
+  if (!requisition)
     return (
-      <div className="space-y-6">
-        {/* Header skeleton */}
-        <div className="flex items-start justify-between gap-4">
-          <div className="space-y-2">
-            <div className="flex items-center gap-3">
-              <div className="h-9 w-9 bg-muted rounded-md animate-pulse" />
-              <div className="h-8 bg-muted rounded-lg w-48 animate-pulse" />
-              <div className="h-6 bg-muted rounded-full w-20 animate-pulse" />
-            </div>
-            <div className="h-4 bg-muted rounded w-96 animate-pulse ml-12" />
-          </div>
-          <div className="flex gap-2 mt-2">
-            <div className="h-11 bg-muted rounded-md w-28 animate-pulse" />
-            <div className="h-11 bg-muted rounded-md w-32 animate-pulse" />
-            <div className="h-11 bg-muted rounded-md w-36 animate-pulse" />
-            <div className="h-11 bg-muted rounded-md w-44 animate-pulse" />
-          </div>
-        </div>
-
-        {/* Requisition Details gradient card skeleton */}
-        <div className="gradient-primary border-0 overflow-hidden rounded-lg p-6">
-          <div className="h-6 bg-white/20 rounded w-44 mb-6 animate-pulse" />
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {Array.from({ length: 12 }).map((_, i) => (
-              <div key={i} className="space-y-2">
-                <div className="h-3 bg-white/15 rounded w-20 animate-pulse" />
-                <div className="h-5 bg-white/20 rounded w-32 animate-pulse" />
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Tabs skeleton */}
-        <div className="bg-card rounded-lg border-0 shadow-sm p-6">
-          <div className="flex gap-2 mb-6">
-            {[1, 2, 3, 4, 5].map((i) => (
-              <div
-                key={i}
-                className="h-9 bg-muted rounded-md w-28 animate-pulse"
-              />
-            ))}
-          </div>
-          <div className="space-y-3">
-            {[1, 2, 3].map((i) => (
-              <div
-                key={i}
-                className="flex items-start justify-between p-4 rounded-lg border border-slate-200/10"
-              >
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-2">
-                    <div className="w-6 h-6 bg-muted rounded-full animate-pulse" />
-                    <div className="h-5 bg-muted rounded w-48 animate-pulse" />
-                  </div>
-                  <div className="ml-8 flex items-center gap-4">
-                    <div className="h-4 bg-muted rounded w-28 animate-pulse" />
-                    <div className="h-4 bg-muted rounded w-36 animate-pulse" />
-                  </div>
-                </div>
-                <div className="text-right ml-4 space-y-1">
-                  <div className="h-6 bg-muted rounded w-28 animate-pulse ml-auto" />
-                  <div className="h-3 bg-muted rounded w-10 animate-pulse ml-auto" />
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
+      <ErrorDisplay
+        title="Requisition Not Found"
+        message="The requisition you're looking for doesn't exist."
+        showBackButton
+      />
     );
-  }
-
-  if (!requisition) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <Card className="p-8 max-w-md text-center">
-          <AlertCircle className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-          <h3 className="font-semibold text-lg mb-2">Requisition Not Found</h3>
-          <p className="text-gray-600 mb-6">
-            The requisition you&apos;re looking for doesn&apos;t exist.
-          </p>
-          <Button variant="outline" onClick={() => router.back()}>
-            Go Back
-          </Button>
-        </Card>
-      </div>
-    );
-  }
 
   const totalEstimatedCost = requisition?.totalAmount || 0;
 
@@ -356,8 +145,20 @@ export function RequisitionDetailClient({
     return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
   };
 
+  // Custom submit handler to pass additional requisition data
+  const handleSubmitForApproval = async (
+    workflowId: string,
+    comments?: string,
+  ) => {
+    await handleSubmit(workflowId, comments, {
+      submittedBy: userId,
+      submittedByName: requisition.requestedByName || "User",
+      submittedByRole: requisition.requestedByRole || userRole,
+    });
+  };
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-24">
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <PageHeader
@@ -393,9 +194,9 @@ export function RequisitionDetailClient({
             <Download className="h-4 w-4" />
             Export PDF
           </Button>
-          {canEdit && (
+          {permissions.canEdit && (
             <Button
-              onClick={handleEditRequisition}
+              onClick={handleEdit}
               variant="outline"
               className="gap-2 h-11"
             >
@@ -403,7 +204,7 @@ export function RequisitionDetailClient({
               Edit Requisition
             </Button>
           )}
-          {canSubmit && (
+          {permissions.canSubmit && (
             <Button
               onClick={() => setShowSubmitDialog(true)}
               className="gap-2 h-11"
@@ -412,7 +213,7 @@ export function RequisitionDetailClient({
               Submit for Approval
             </Button>
           )}
-          {canWithdraw && (
+          {permissions.canWithdraw && (
             <Button
               onClick={() => setShowWithdrawModal(true)}
               variant="outline"
@@ -828,9 +629,9 @@ export function RequisitionDetailClient({
                     Estimated Costs
                   </span>
                 )}
-                {canEdit && (
+                {permissions.canEdit && (
                   <Button
-                    onClick={handleEditRequisition}
+                    onClick={handleEdit}
                     variant="outline"
                     size="sm"
                     className="gap-2"
@@ -967,9 +768,9 @@ export function RequisitionDetailClient({
                   <h2 className="text-lg font-semibold">
                     Supporting Documents ({attachments.length})
                   </h2>
-                  {canEdit && (
+                  {permissions.canEdit && (
                     <Button
-                      onClick={handleEditRequisition}
+                      onClick={handleEdit}
                       variant="outline"
                       size="sm"
                       className="gap-2"
@@ -983,10 +784,7 @@ export function RequisitionDetailClient({
                   <button
                     key={attachment.fileId}
                     type="button"
-                    onClick={() => {
-                      setSelectedAttachment(attachment);
-                      setAttachmentPreviewOpen(true);
-                    }}
+                    onClick={() => handleAttachmentPreview(attachment)}
                     className="flex items-center justify-between gap-3 p-3 rounded-lg border hover:bg-muted/50 transition group w-full text-left"
                   >
                     <div className="flex items-center gap-3 min-w-0">
@@ -1017,9 +815,9 @@ export function RequisitionDetailClient({
                   <EmptyDescription>
                     No supporting documents attached
                   </EmptyDescription>
-                  {canEdit && (
+                  {permissions.canEdit && (
                     <Button
-                      onClick={handleEditRequisition}
+                      onClick={handleEdit}
                       variant="outline"
                       size="sm"
                       className="gap-2 mt-3"
@@ -1035,12 +833,12 @@ export function RequisitionDetailClient({
 
           {/* ── Tab 3: Approval Action ── */}
           <TabsContent value="action" className="space-y-4 mt-6">
-            {approvalHasError ? (
+            {approvalData?.hasError ? (
               <div className="text-center py-8 text-red-500">
                 <AlertCircle className="h-8 w-8 mx-auto mb-2" />
                 <p className="text-sm">Failed to load approval data</p>
                 <button
-                  onClick={refetchAll}
+                  onClick={approvalData.refetchAll}
                   className="mt-2 text-xs text-blue-600 hover:underline"
                 >
                   Try again
@@ -1050,8 +848,8 @@ export function RequisitionDetailClient({
               <ApprovalActionContent
                 requisitionId={requisitionId}
                 requisition={requisition as any}
-                workflowStatus={workflowStatus}
-                isLoading={isApprovalLoading}
+                workflowStatus={approvalData?.workflowStatus}
+                isLoading={approvalData?.isLoading || false}
                 onApprovalComplete={handleApprovalComplete}
               />
             )}
@@ -1059,12 +857,12 @@ export function RequisitionDetailClient({
 
           {/* ── Tab 4: Approval Chain ── */}
           <TabsContent value="chain" className="space-y-4 mt-6">
-            {approvalHasError ? (
+            {approvalData?.hasError ? (
               <div className="text-center py-8 text-red-500">
                 <AlertCircle className="h-8 w-8 mx-auto mb-2" />
                 <p className="text-sm">Failed to load approval data</p>
                 <button
-                  onClick={refetchAll}
+                  onClick={approvalData.refetchAll}
                   className="mt-2 text-xs text-blue-600 hover:underline"
                 >
                   Try again
@@ -1075,14 +873,14 @@ export function RequisitionDetailClient({
                 <ApprovalChainContent
                   requisition={requisition as any}
                   approvalChain={requisition?.approvalChain}
-                  approvalHistory={approvalHistory}
-                  workflowStatus={workflowStatus}
-                  availableApprovers={availableApprovers}
-                  isLoading={isApprovalLoading}
+                  approvalHistory={approvalData?.approvalHistory || []}
+                  workflowStatus={approvalData?.workflowStatus}
+                  availableApprovers={approvalData?.availableApprovers || []}
+                  isLoading={approvalData?.isLoading || false}
                 />
                 <WorkflowStatusSummary
                   requisition={requisition as any}
-                  workflowStatus={workflowStatus}
+                  workflowStatus={approvalData?.workflowStatus}
                 />
               </>
             )}
@@ -1110,7 +908,7 @@ export function RequisitionDetailClient({
       <CreateRequisitionDialog
         open={isEditDialogOpen}
         onOpenChange={setIsEditDialogOpen}
-        onRequisitionCreated={handleRequisitionUpdated}
+        onRequisitionCreated={handleDocumentUpdated}
         userId={userId}
         editingRequisition={requisition}
         isEditing={true}
@@ -1133,7 +931,7 @@ export function RequisitionDetailClient({
         type="withdraw"
         title="Withdraw Requisition"
         description={`Are you sure you want to withdraw requisition ${requisition.documentNumber || requisition.id}? It will be reverted to draft status and you can edit and re-submit it later.`}
-        isLoading={withdrawMutation.isPending}
+        isLoading={withdrawMutation?.isPending || false}
       />
 
       {/* Attachment Preview Dialog */}

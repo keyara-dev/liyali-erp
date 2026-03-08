@@ -12,7 +12,7 @@ import authenticatedApiClient from "@/app/_actions/api-config";
 export async function getDashboardMetrics(): Promise<
   APIResponse<DashboardMetrics>
 > {
-  const url = "/api/v1/analytics/dashboard";
+  const url = "/api/v1/reports/dashboard"; // Updated to use unified reports endpoint
 
   try {
     const response = await authenticatedApiClient({
@@ -22,48 +22,63 @@ export async function getDashboardMetrics(): Promise<
 
     // Transform backend data to frontend DashboardMetrics format
     const backendData = response.data?.data;
-    if (!backendData?.requisitionMetrics) {
+    if (!backendData) {
       throw new Error("Invalid dashboard data received from backend");
     }
 
-    const reqMetrics = backendData.requisitionMetrics;
-    const statusCounts = reqMetrics.statusCounts || {};
-
-    // Map backend status counts to frontend format
+    // Map backend response to frontend format
     const metrics: DashboardMetrics = {
-      // Required properties
-      totalDocuments: reqMetrics.totalRequisitions || 0,
-      pendingApprovals: statusCounts.in_review || statusCounts.IN_REVIEW || statusCounts.pending || statusCounts.PENDING || 0,
-      completedThisMonth: statusCounts.approved || statusCounts.APPROVED || 0,
-      averageProcessingTime: 0, // TODO: Add to backend analytics
-      budgetUtilization: 0, // TODO: Add to backend analytics
-      recentActivity: [], // TODO: Add to backend analytics
+      // Core metrics from system statistics
+      totalDocuments: backendData.totalDocuments || 0,
+      pendingApprovals: backendData.pendingApproval || 0,
+      completedThisMonth: backendData.approvedDocuments || 0,
+      averageProcessingTime: backendData.averageProcessingTime || 0, // Now available from backend
+      budgetUtilization: backendData.budgetUtilization || 0, // Now available from backend
+      recentActivity: backendData.recentActivity || [],
+
+      // Approval metrics
       approvalsByStatus: {
-        pending: statusCounts.in_review || statusCounts.IN_REVIEW || statusCounts.pending || statusCounts.PENDING || 0,
-        approved: statusCounts.approved || statusCounts.APPROVED || 0,
-        rejected: statusCounts.rejected || statusCounts.REJECTED || 0,
+        pending: backendData.pendingApproval || 0,
+        approved: backendData.approvedDocuments || 0,
+        rejected: backendData.rejectedDocuments || 0,
       },
+
+      // Document type breakdown - now includes ALL document types
       documentsByType: {
-        requisitions: reqMetrics.totalRequisitions || 0,
-        purchaseOrders: 0, // TODO: Add to backend analytics
-        paymentVouchers: 0, // TODO: Add to backend analytics
-        budgets: 0, // TODO: Add to backend analytics
+        requisitions: backendData.documentTypeBreakdown?.requisitions || 0,
+        purchaseOrders: backendData.documentTypeBreakdown?.purchaseOrders || 0,
+        paymentVouchers:
+          backendData.documentTypeBreakdown?.paymentVouchers || 0,
+        budgets: backendData.documentTypeBreakdown?.budgets || 0,
       },
-      
+
       // Extended fields for UI compatibility
-      draftDocuments: statusCounts.draft || statusCounts.DRAFT || 0,
-      submittedDocuments: statusCounts.submitted || statusCounts.SUBMITTED || 0,
-      approvedDocuments: statusCounts.approved || statusCounts.APPROVED || 0,
-      rejectedDocuments: statusCounts.rejected || statusCounts.REJECTED || 0,
-      pendingApproval: statusCounts.in_review || statusCounts.IN_REVIEW || statusCounts.pending || statusCounts.PENDING || 0,
-      documentsNeedingAction: (statusCounts.submitted || statusCounts.SUBMITTED || 0) + (statusCounts.in_review || statusCounts.IN_REVIEW || statusCounts.pending || statusCounts.PENDING || 0),
-      averageApprovalTime: 0, // TODO: Add to backend analytics
-      statusBreakdown: statusCounts,
+      draftDocuments: backendData.draftDocuments || 0,
+      submittedDocuments: backendData.submittedDocuments || 0,
+      approvedDocuments: backendData.approvedDocuments || 0,
+      rejectedDocuments: backendData.rejectedDocuments || 0,
+      pendingApproval: backendData.pendingApproval || 0,
+      documentsNeedingAction:
+        (backendData.submittedDocuments || 0) +
+        (backendData.pendingApproval || 0),
+      averageApprovalTime: backendData.averageApprovalTime || 0,
+
+      // Status breakdown
+      statusBreakdown: backendData.statusBreakdown || {
+        draft: 0,
+        submitted: 0,
+        inReview: 0,
+        approved: 0,
+        rejected: 0,
+      },
+
+      // Document type breakdown (alternative format)
       documentTypeBreakdown: {
-        REQUISITION: reqMetrics.totalRequisitions || 0,
-        PURCHASE_ORDER: 0, // TODO: Add to backend analytics
-        PAYMENT_VOUCHER: 0, // TODO: Add to backend analytics
-        GOODS_RECEIVED_NOTE: 0, // TODO: Add to backend analytics
+        REQUISITION: backendData.documentTypeBreakdown?.requisitions || 0,
+        PURCHASE_ORDER: backendData.documentTypeBreakdown?.purchaseOrders || 0,
+        PAYMENT_VOUCHER:
+          backendData.documentTypeBreakdown?.paymentVouchers || 0,
+        GOODS_RECEIVED_NOTE: backendData.documentTypeBreakdown?.grn || 0,
       },
     };
 
@@ -120,7 +135,7 @@ export async function fetchSignupAnalytics(params?: {
 
 export async function toggleSignupSettings(
   keyOrEnabled: keyof SignupSettings | boolean,
-  value?: any
+  value?: any,
 ): Promise<APIResponse<SignupSettings | null>> {
   try {
     const settings: SignupSettings = {

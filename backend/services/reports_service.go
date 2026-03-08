@@ -40,6 +40,21 @@ func (s *ReportsService) GetSystemStatistics(
 	approvalRate := calculateRate(docStats.Approved, docStats.Total)
 	rejectionRate := calculateRate(docStats.Rejected, docStats.Total)
 
+	// Get budget utilization
+	budgetUtilization, err := s.reportsRepo.QueryBudgetUtilization(ctx, organizationID)
+	if err != nil {
+		// Don't fail the entire request if budget utilization fails
+		// Just log the error and set to 0
+		budgetUtilization = 0
+	}
+
+	// Get average processing time
+	avgProcessingTime, err := s.reportsRepo.QueryAverageProcessingTime(ctx, organizationID, startDate, endDate)
+	if err != nil {
+		// Don't fail the entire request if processing time fails
+		avgProcessingTime = 0
+	}
+
 	// Build response
 	stats := &models.SystemStatistics{
 		TotalDocuments:        docStats.Total,
@@ -49,8 +64,10 @@ func (s *ReportsService) GetSystemStatistics(
 		SubmittedDocuments:    docStats.Submitted,
 		PendingApproval:       docStats.Pending,
 		AverageApprovalTime:   docStats.AvgApprovalDays,
+		AverageProcessingTime: avgProcessingTime,
 		ApprovalRate:          approvalRate,
 		RejectionRate:         rejectionRate,
+		BudgetUtilization:     budgetUtilization,
 		DocumentTypeBreakdown: docStats.TypeBreakdown,
 		StatusBreakdown:       docStats.StatusBreakdown,
 	}

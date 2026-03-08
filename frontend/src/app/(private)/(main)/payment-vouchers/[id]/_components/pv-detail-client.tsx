@@ -1,20 +1,14 @@
 "use client";
 
-import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, FileText, DollarSign, Download, Eye } from "lucide-react";
-import { Skeleton } from "@/components/ui/skeleton";
+import { FileText, DollarSign, Download, Eye } from "lucide-react";
 import { PageHeader } from "@/components/base/page-header";
+import { DocumentLoadingPage } from "@/components/base/document-loading-page";
+import ErrorDisplay from "@/components/base/error-display";
 import { PDFPreviewDialog } from "@/components/modals/pdf-preview-dialog";
-import {
-  exportPaymentVoucherPDF,
-  getPaymentVoucherPDFBlob,
-} from "@/lib/pdf/pdf-export";
-import { useOrganizationContext } from "@/hooks/use-organization";
-import { usePaymentVoucherById } from "@/hooks/use-payment-voucher-queries";
+import { usePaymentVoucherDetail } from "@/hooks/use-payment-voucher-detail";
 
 interface PVDetailClientProps {
   pvId: string;
@@ -28,72 +22,31 @@ const PAYMENT_METHODS: Record<string, string> = {
   CASH: "Cash",
 };
 
-export function PVDetailClient({ pvId }: PVDetailClientProps) {
+export function PVDetailClient({
+  pvId,
+  userId,
+  userRole,
+}: PVDetailClientProps) {
   const router = useRouter();
-  const { currentOrganization } = useOrganizationContext();
 
-  // Fetch real data from backend
-  const { data: pv, isLoading, refetch } = usePaymentVoucherById(pvId);
-
-  const [isExporting, setIsExporting] = useState(false);
-  const [previewOpen, setPreviewOpen] = useState(false);
-  const [previewBlob, setPreviewBlob] = useState<Blob | null>(null);
-
-  const handleExportPDF = async () => {
-    if (!pv) return;
-    try {
-      setIsExporting(true);
-      // Refetch latest data before export
-      const { data: freshPV } = await refetch();
-
-      if (!freshPV) {
-        toast.error("Failed to fetch latest data");
-        return;
-      }
-
-      await exportPaymentVoucherPDF(freshPV, {
-        logoUrl: currentOrganization?.logoUrl,
-        orgName: currentOrganization?.name,
-        tagline: currentOrganization?.tagline,
-      });
-      toast.success("Payment Voucher exported as PDF");
-    } catch (error) {
-      console.error("PDF export error:", error);
-      toast.error("Failed to export PDF");
-    } finally {
-      setIsExporting(false);
-    }
-  };
-
-  const handlePreviewPDF = async () => {
-    if (!pv) return;
-    try {
-      setIsExporting(true);
-      // Refetch latest data before preview
-      const { data: freshPV } = await refetch();
-
-      if (!freshPV) {
-        toast.error("Failed to fetch latest data");
-        return;
-      }
-
-      const blob = await getPaymentVoucherPDFBlob(freshPV, {
-        logoUrl: currentOrganization?.logoUrl,
-        orgName: currentOrganization?.name,
-        tagline: currentOrganization?.tagline,
-      });
-      setPreviewBlob(blob);
-      setPreviewOpen(true);
-    } catch (error) {
-      console.error("PDF preview error:", error);
-      toast.error("Failed to generate PDF preview");
-    } finally {
-      setIsExporting(false);
-    }
-  };
+  // Use the hook to manage all document detail logic
+  const {
+    document: pv,
+    isLoading,
+    isExporting,
+    previewOpen,
+    setPreviewOpen,
+    previewBlob,
+    handlePreviewPDF,
+    handleExportPDF,
+    permissions,
+  } = usePaymentVoucherDetail({
+    pvId,
+    userId,
+    userRole,
+  });
 
   const handleApprove = () => {
-    toast.success("Navigating to approval...");
     router.push(`/payment-vouchers/${pvId}/approval`);
   };
 
@@ -101,21 +54,15 @@ export function PVDetailClient({ pvId }: PVDetailClientProps) {
     router.back();
   };
 
-  if (isLoading || !pv) {
+  if (isLoading) return <DocumentLoadingPage />;
+
+  if (!pv)
     return (
-      <div className="space-y-6">
-        <Button variant="ghost" size="sm" onClick={handleBack}>
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Back
-        </Button>
-        <div className="space-y-4">
-          <Skeleton className="h-12 w-48" />
-          <Skeleton className="h-96 w-full" />
-          <Skeleton className="h-96 w-full" />
-        </div>
-      </div>
+      <ErrorDisplay
+        title="Payment Voucher Not Found"
+        message="The payment voucher you're looking for doesn't exist."
+      />
     );
-  }
 
   return (
     <div className="space-y-6">

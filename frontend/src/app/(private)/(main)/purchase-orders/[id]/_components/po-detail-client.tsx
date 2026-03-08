@@ -1,21 +1,15 @@
 "use client";
 
-import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Building2, TrendingUp, Download, Eye } from "lucide-react";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Building2, TrendingUp, Download, Eye } from "lucide-react";
 import { PageHeader } from "@/components/base/page-header";
+import { DocumentLoadingPage } from "@/components/base/document-loading-page";
+import ErrorDisplay from "@/components/base/error-display";
 import { POItemsTable } from "./po-items-table";
 import { PDFPreviewDialog } from "@/components/modals/pdf-preview-dialog";
-import {
-  exportPurchaseOrderPDF,
-  getPurchaseOrderPDFBlob,
-} from "@/lib/pdf/pdf-export";
-import { useOrganizationContext } from "@/hooks/use-organization";
-import { usePurchaseOrderById } from "@/hooks/use-purchase-order-queries";
+import { usePurchaseOrderDetail } from "@/hooks/use-purchase-order-detail";
 
 interface PODetailClientProps {
   poId: string;
@@ -23,72 +17,31 @@ interface PODetailClientProps {
   userRole: string;
 }
 
-export function PODetailClient({ poId }: PODetailClientProps) {
+export function PODetailClient({
+  poId,
+  userId,
+  userRole,
+}: PODetailClientProps) {
   const router = useRouter();
-  const { currentOrganization } = useOrganizationContext();
 
-  // Fetch real data from backend
-  const { data: po, isLoading, refetch } = usePurchaseOrderById(poId);
-
-  const [isExporting, setIsExporting] = useState(false);
-  const [previewOpen, setPreviewOpen] = useState(false);
-  const [previewBlob, setPreviewBlob] = useState<Blob | null>(null);
-
-  const handleExportPDF = async () => {
-    if (!po) return;
-    try {
-      setIsExporting(true);
-      // Refetch latest data before export
-      const { data: freshPO } = await refetch();
-
-      if (!freshPO) {
-        toast.error("Failed to fetch latest data");
-        return;
-      }
-
-      await exportPurchaseOrderPDF(freshPO, {
-        logoUrl: currentOrganization?.logoUrl,
-        orgName: currentOrganization?.name,
-        tagline: currentOrganization?.tagline,
-      });
-      toast.success("Purchase Order exported as PDF");
-    } catch (error) {
-      console.error("PDF export error:", error);
-      toast.error("Failed to export PDF");
-    } finally {
-      setIsExporting(false);
-    }
-  };
-
-  const handlePreviewPDF = async () => {
-    if (!po) return;
-    try {
-      setIsExporting(true);
-      // Refetch latest data before preview
-      const { data: freshPO } = await refetch();
-
-      if (!freshPO) {
-        toast.error("Failed to fetch latest data");
-        return;
-      }
-
-      const blob = await getPurchaseOrderPDFBlob(freshPO, {
-        logoUrl: currentOrganization?.logoUrl,
-        orgName: currentOrganization?.name,
-        tagline: currentOrganization?.tagline,
-      });
-      setPreviewBlob(blob);
-      setPreviewOpen(true);
-    } catch (error) {
-      console.error("PDF preview error:", error);
-      toast.error("Failed to generate PDF preview");
-    } finally {
-      setIsExporting(false);
-    }
-  };
+  // Use the hook to manage all document detail logic
+  const {
+    document: po,
+    isLoading,
+    isExporting,
+    previewOpen,
+    setPreviewOpen,
+    previewBlob,
+    handlePreviewPDF,
+    handleExportPDF,
+    permissions,
+  } = usePurchaseOrderDetail({
+    poId,
+    userId,
+    userRole,
+  });
 
   const handleApprove = () => {
-    toast.success("Navigating to approval...");
     router.push(`/purchase-orders/${poId}/approval`);
   };
 
@@ -96,21 +49,15 @@ export function PODetailClient({ poId }: PODetailClientProps) {
     router.back();
   };
 
-  if (isLoading || !po) {
+  if (isLoading) return <DocumentLoadingPage />;
+
+  if (!po)
     return (
-      <div className="space-y-6">
-        <Button variant="ghost" size="sm" onClick={handleBack}>
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Back
-        </Button>
-        <div className="space-y-4">
-          <Skeleton className="h-12 w-48" />
-          <Skeleton className="h-96 w-full" />
-          <Skeleton className="h-96 w-full" />
-        </div>
-      </div>
+      <ErrorDisplay
+        title="Purchase Order Not Found"
+        message="The purchase order you're looking for doesn't exist."
+      />
     );
-  }
 
   return (
     <div className="space-y-6">

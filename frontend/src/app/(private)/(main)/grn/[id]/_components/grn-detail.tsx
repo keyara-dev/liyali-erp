@@ -11,13 +11,12 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { WorkflowDocument } from "@/types/workflow";
 import { ApprovalConfirmationDialog } from "@/components/modals/approval-confirmation-dialog";
-import { ApprovalHistory } from "@/components/approval-history";
-import { DocumentLinks } from "@/components/document-links";
 import { exportGrnPDF } from "@/lib/pdf/pdf-export";
 import { useOrganizationContext } from "@/hooks/use-organization";
 import { useGRNById } from "@/hooks/use-grn-queries";
+import { DocumentLoadingPage } from "@/components/base/document-loading-page";
+import ErrorDisplay from "@/components/base/error-display";
 import Link from "next/link";
 
 interface GrnDetailProps {
@@ -67,13 +66,15 @@ export function GrnDetail({ grnId, userId, userRole }: GrnDetailProps) {
     }
   };
 
-  if (isLoading) {
-    return <div className="text-center py-8">Loading...</div>;
-  }
+  if (isLoading) return <DocumentLoadingPage />;
 
-  if (!grn) {
-    return <div className="text-center py-8 text-red-600">GRN not found</div>;
-  }
+  if (!grn)
+    return (
+      <ErrorDisplay
+        title="GRN Not Found"
+        message="The goods received note you're looking for doesn't exist."
+      />
+    );
 
   const canApprove = grn.status === "SUBMITTED";
   const statusVariant =

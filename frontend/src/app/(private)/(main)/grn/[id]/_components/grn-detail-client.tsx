@@ -6,25 +6,21 @@ import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
-  ArrowLeft,
   Package,
   FileText,
   AlertTriangle,
   AlertCircle,
   Plus,
 } from "lucide-react";
-import { Skeleton } from "@/components/ui/skeleton";
 import { PageHeader } from "@/components/base/page-header";
+import { DocumentLoadingPage } from "@/components/base/document-loading-page";
+import ErrorDisplay from "@/components/base/error-display";
 import { GRNItemsMatchingTable } from "./grn-items-matching-table";
 import { QualityIssueReportDialog } from "./quality-issue-dialog";
 import { useAddQualityIssueMutation } from "@/hooks/use-quality-issue-mutations";
-import { useGRNById } from "@/hooks/use-grn-queries";
+import { useGRNDetail } from "@/hooks/use-grn-detail";
 import { Badge } from "@/components";
-import type {
-  GoodsReceivedNote,
-  GRNItem,
-  QualityIssue,
-} from "@/types/goods-received-note";
+import type { QualityIssue } from "@/types/goods-received-note";
 
 interface GRNDetailClientProps {
   grnId: string;
@@ -34,16 +30,24 @@ interface GRNDetailClientProps {
 
 export function GRNDetailClient({
   grnId,
-  userId: _userId,
-  userRole: _userRole,
+  userId,
+  userRole,
 }: GRNDetailClientProps) {
   const router = useRouter();
   const [isQualityDialogOpen, setIsQualityDialogOpen] = useState(false);
 
-  // Fetch GRN data from backend
-  const { data: grn, isLoading } = useGRNById(grnId);
+  // Use the hook to manage document detail logic
+  const {
+    document: grn,
+    isLoading,
+    permissions,
+  } = useGRNDetail({
+    grnId,
+    userId,
+    userRole,
+  });
 
-  // Mutation for adding quality issues
+  // Mutation for adding quality issues (GRN-specific)
   const addQualityIssueMutation = useAddQualityIssueMutation(grnId);
 
   const handleConfirm = () => {
@@ -57,9 +61,7 @@ export function GRNDetailClient({
 
   const handleAddQualityIssue = async (issue: Omit<QualityIssue, "id">) => {
     try {
-      // Call mutation to save quality issue via backend
       await addQualityIssueMutation.mutateAsync(issue);
-
       toast.success("Quality issue reported and saved");
     } catch (error) {
       console.error("Error saving quality issue:", error);
@@ -67,21 +69,15 @@ export function GRNDetailClient({
     }
   };
 
-  if (isLoading || !grn) {
+  if (isLoading) return <DocumentLoadingPage />;
+
+  if (!grn)
     return (
-      <div className="space-y-6">
-        <Button variant="ghost" size="sm" onClick={handleBack}>
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Back
-        </Button>
-        <div className="space-y-4">
-          <Skeleton className="h-12 w-48" />
-          <Skeleton className="h-96 w-full" />
-          <Skeleton className="h-96 w-full" />
-        </div>
-      </div>
+      <ErrorDisplay
+        title="GRN Not Found"
+        message="The goods received note you're looking for doesn't exist."
+      />
     );
-  }
 
   const hasQualityIssues = grn.qualityIssues.length > 0;
   const hasVariances = grn.items.some((item) => item.variance !== 0);

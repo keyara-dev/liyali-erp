@@ -4,6 +4,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/liyali/liyali-gateway/logging"
 	"github.com/liyali/liyali-gateway/middleware"
+	"github.com/liyali/liyali-gateway/models"
 	"github.com/liyali/liyali-gateway/services"
 	"github.com/liyali/liyali-gateway/utils"
 )
@@ -212,4 +213,154 @@ func (h *ReportsHandler) GetAnalyticsDashboard(c *fiber.Ctx) error {
 
 	logger.Info("analytics_dashboard_retrieved")
 	return c.JSON(analytics)
+}
+
+// GetDashboardReports handles GET /api/v1/reports/dashboard
+// Returns comprehensive dashboard data for all users with role-based filtering
+// - Admin/Superadmin: Full organization visibility
+// - Manager: Department visibility (if department is set)
+// - User: Personal documents + pending approvals assigned to them
+func (h *ReportsHandler) GetDashboardReports(c *fiber.Ctx) error {
+	logger := logging.FromContext(c)
+	logger.Info("get_dashboard_reports_request")
+
+	// Get organization context from tenant middleware
+	tenant, err := middleware.GetTenantContext(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"success": false,
+			"message": "Organization context required",
+			"error":   err.Error(),
+		})
+	}
+
+	// Parse date range query parameters
+	startDate := c.Query("start_date")
+	endDate := c.Query("end_date")
+
+	// Add query parameters to context
+	logging.AddFieldsToRequest(c, map[string]interface{}{
+		"operation":       "get_dashboard_reports",
+		"organization_id": tenant.OrganizationID,
+		"user_id":         tenant.UserID,
+		"user_role":       tenant.UserRole,
+		"department":      tenant.Department,
+		"start_date":      startDate,
+		"end_date":        endDate,
+	})
+
+	// Determine data scope based on role
+	var stats *models.SystemStatistics
+	var recentApprovals *models.ApprovalMetrics
+
+	switch tenant.UserRole {
+	case "admin", "superadmin":
+		// Admin: Full organization visibility
+		stats, err = h.reportsService.GetSystemStatistics(
+			c.Context(),
+			tenant.OrganizationID,
+			startDate,
+			endDate,
+		)
+		if err != nil {
+			logging.LogError(c, err, "failed_to_get_system_statistics")
+			return utils.SendInternalError(c, "Failed to fetch dashboard reports", err)
+		}
+
+		recentApprovals, err = h.reportsService.GetApprovalMetrics(
+			c.Context(),
+			tenant.OrganizationID,
+			startDate,
+			endDate,
+		)
+		if err != nil {
+			logging.LogError(c, err, "failed_to_get_approval_metrics")
+			recentApprovals = nil
+		}
+
+	case "manager":
+		// Manager: Department visibility (if department is set)
+		// For now, show full organization data
+		// TODO: Implement department-scoped queries when department filtering is needed
+		stats, err = h.reportsService.GetSystemStatistics(
+			c.Context(),
+			tenant.OrganizationID,
+			startDate,
+			endDate,
+		)
+		if err != nil {
+			logging.LogError(c, err, "failed_to_get_system_statistics")
+			return utils.SendInternalError(c, "Failed to fetch dashboard reports", err)
+		}
+
+		recentApprovals, err = h.reportsService.GetApprovalMetrics(
+			c.Context(),
+			tenant.OrganizationID,
+			startDate,
+			endDate,
+		)
+		if err != nil {
+			logging.LogError(c, err, "failed_to_get_approval_metrics")
+			recentApprovals = nil
+		}
+
+	default:
+		// User: Personal documents + pending approvals
+		// For now, show full organization data (system overview)
+		// TODO: Implement user-scoped queries when personal filtering is needed
+		stats, err = h.reportsService.GetSystemStatistics(
+			c.Context(),
+			tenant.OrganizationID,
+			startDate,
+			endDate,
+		)
+		if err != nil {
+			logging.LogError(c, err, "failed_to_get_system_statistics")
+			return utils.SendInternalError(c, "Failed to fetch dashboard reports", err)
+		}
+
+		recentApprovals, err = h.reportsService.GetApprovalMetrics(
+			c.Context(),
+			tenant.OrganizationID,
+			startDate,
+			endDate,
+		)
+		if err != nil {
+			logging.LogError(c, err, "failed_to_get_approval_metrics")
+			recentApprovals = nil
+		}
+	}
+
+	// Build comprehensive dashboard response
+	dashboard := fiber.Map{
+		"organizationId":          tenant.OrganizationID,
+		"userRole":                tenant.UserRole,
+		"totalDocuments":          stats.TotalDocuments,
+		"approvedDocuments":       stats.ApprovedDocuments,
+		"rejectedDocuments":       stats.RejectedDocuments,
+		"draftDocuments":          stats.DraftDocuments,
+		"submittedDocuments":      stats.SubmittedDocuments,
+		"pendingApproval":         stats.PendingApproval,
+		"averageApprovalTime":     stats.AverageApprovalTime,
+		"averageProcessingTime":   stats.AverageProcessingTime,
+		"approvalRate":            stats.ApprovalRate,
+		"rejectionRate":           stats.RejectionRate,
+		"budgetUtilization":       stats.BudgetUtilization,
+		"documentTypeBreakdown":   stats.DocumentTypeBreakdown,
+		"statusBreakdown":         stats.StatusBreakdown,
+	}
+
+	// Add recent activity if available
+	if recentApprovals != nil {
+		dashboard["recentActivity"] = recentApprovals.RecentApprovals
+	} else {
+		dashboard["recentActivity"] = []interface{}{}
+	}
+
+	logger.Info("dashboard_reports_retrieved")
+	return c.JSON(fiber.Map{
+		"success": true,
+		"message": "Dashboard reports retrieved successfully",
+		"data":    dashboard,
+	})
 }

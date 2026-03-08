@@ -4,17 +4,19 @@ import "time"
 
 // SystemStatistics represents overall system metrics
 type SystemStatistics struct {
-	TotalDocuments        int                   `json:"totalDocuments"`
-	ApprovedDocuments     int                   `json:"approvedDocuments"`
-	RejectedDocuments     int                   `json:"rejectedDocuments"`
-	DraftDocuments        int                   `json:"draftDocuments"`
-	SubmittedDocuments    int                   `json:"submittedDocuments"`
-	PendingApproval       int                   `json:"pendingApproval"`
-	AverageApprovalTime   float64               `json:"averageApprovalTime"`
-	ApprovalRate          float64               `json:"approvalRate"`
-	RejectionRate         float64               `json:"rejectionRate"`
-	DocumentTypeBreakdown DocumentTypeBreakdown `json:"documentTypeBreakdown"`
-	StatusBreakdown       StatusBreakdown       `json:"statusBreakdown"`
+	TotalDocuments         int                   `json:"totalDocuments"`
+	ApprovedDocuments      int                   `json:"approvedDocuments"`
+	RejectedDocuments      int                   `json:"rejectedDocuments"`
+	DraftDocuments         int                   `json:"draftDocuments"`
+	SubmittedDocuments     int                   `json:"submittedDocuments"`
+	PendingApproval        int                   `json:"pendingApproval"`
+	AverageApprovalTime    float64               `json:"averageApprovalTime"`
+	AverageProcessingTime  float64               `json:"averageProcessingTime"`
+	ApprovalRate           float64               `json:"approvalRate"`
+	RejectionRate          float64               `json:"rejectionRate"`
+	BudgetUtilization      float64               `json:"budgetUtilization"`
+	DocumentTypeBreakdown  DocumentTypeBreakdown `json:"documentTypeBreakdown"`
+	StatusBreakdown        StatusBreakdown       `json:"statusBreakdown"`
 }
 
 // DocumentTypeBreakdown represents counts by document type
