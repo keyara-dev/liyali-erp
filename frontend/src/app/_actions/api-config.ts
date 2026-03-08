@@ -82,6 +82,16 @@ const authenticatedApiClient = async (
     // Enhanced session verification
     const { isAuthenticated, session } = await verifySession();
 
+    // Debug logging (remove in production)
+    if (process.env.NODE_ENV === "development") {
+      console.log("[API Client] Session check:", {
+        isAuthenticated,
+        hasToken: !!session?.access_token,
+        url: request.url,
+        retryCount,
+      });
+    }
+
     if (!isAuthenticated || !session?.access_token) {
       // If no session and we haven't retried yet, wait a bit and try again
       if (retryCount < maxRetries) {
@@ -111,6 +121,17 @@ const authenticatedApiClient = async (
       withCredentials: true,
       ...request,
     };
+
+    // Debug logging for headers (remove in production)
+    if (process.env.NODE_ENV === "development") {
+      console.log("[API Client] Request config:", {
+        url: config.url,
+        method: config.method,
+        hasAuthHeader: !!config.headers?.Authorization,
+        authHeaderPreview:
+          config.headers?.Authorization?.substring(0, 20) + "...",
+      });
+    }
 
     return await axios(config);
   } catch (error: any) {
