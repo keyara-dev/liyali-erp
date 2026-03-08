@@ -65,11 +65,11 @@
   --ring: oklch(52.4% 0.21 265.5);
 
   /* Charts */
-  --chart-1: oklch(52.4% 0.21 265.5);
-  --chart-2: oklch(67.3% 0.157 155.8);
-  --chart-3: oklch(71.5% 0.167 73.5);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.65 0.18 142); /* Green for approved status */
+  --chart-1: oklch(0.551 0.027 264.364); /* Gray */
+  --chart-2: oklch(49.481% 0.20001 265.358); /* Blue */
+  --chart-3: oklch(71.5% 0.167 73.5); /* Amber */
+  --chart-4: oklch(86.677% 0.29437 142.431); /* Green */
+  --chart-5: oklch(49.736% 0.18457 27.23); /* Red for rejection status */
 
   /* Sidebar */
   --sidebar: oklch(0.985 0.002 247.839);
@@ -111,11 +111,6 @@
   --ring: oklch(64% 0.22 265.5);
 
   /* Charts - Updated with new color scheme */
-  --chart-1: oklch(64% 0.22 265.5);
-  --chart-2: oklch(75% 0.165 155.8);
-  --chart-3: oklch(78% 0.175 73.5);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.72 0.15 142); /* Green for approved status - lighter for dark mode */
 
   /* Sidebar */
   --sidebar: oklch(0.21 0.034 264.665);
@@ -258,11 +253,19 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
+
+  --color-draft: var(--chart-1);
+  --color-submitted: var(--chart-2);
+  --color-in-approval: var(--chart-3);
+  --color-approved: var(--chart-4);
+  --color-rejected: var(--chart-5);
+
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-primary: var(--sidebar-primary);
@@ -745,7 +748,8 @@ img {
 
 /* Floating animation for landing page elements */
 @keyframes float {
-  0%, 100% {
+  0%,
+  100% {
     transform: translateY(0px);
   }
   50% {
@@ -778,38 +782,94 @@ img {
 }
 
 /* Primary color utilities for landing page */
-.text-primary-50 { color: var(--primary-50); }
-.text-primary-100 { color: var(--primary-100); }
-.text-primary-200 { color: var(--primary-200); }
-.text-primary-300 { color: var(--primary-300); }
-.text-primary-400 { color: var(--primary-400); }
-.text-primary-500 { color: var(--primary-500); }
-.text-primary-600 { color: var(--primary-600); }
-.text-primary-700 { color: var(--primary-700); }
-.text-primary-800 { color: var(--primary-800); }
-.text-primary-900 { color: var(--primary-900); }
+.text-primary-50 {
+  color: var(--primary-50);
+}
+.text-primary-100 {
+  color: var(--primary-100);
+}
+.text-primary-200 {
+  color: var(--primary-200);
+}
+.text-primary-300 {
+  color: var(--primary-300);
+}
+.text-primary-400 {
+  color: var(--primary-400);
+}
+.text-primary-500 {
+  color: var(--primary-500);
+}
+.text-primary-600 {
+  color: var(--primary-600);
+}
+.text-primary-700 {
+  color: var(--primary-700);
+}
+.text-primary-800 {
+  color: var(--primary-800);
+}
+.text-primary-900 {
+  color: var(--primary-900);
+}
 
-.bg-primary-50 { background-color: var(--primary-50); }
-.bg-primary-100 { background-color: var(--primary-100); }
-.bg-primary-200 { background-color: var(--primary-200); }
-.bg-primary-300 { background-color: var(--primary-300); }
-.bg-primary-400 { background-color: var(--primary-400); }
-.bg-primary-500 { background-color: var(--primary-500); }
-.bg-primary-600 { background-color: var(--primary-600); }
-.bg-primary-700 { background-color: var(--primary-700); }
-.bg-primary-800 { background-color: var(--primary-800); }
-.bg-primary-900 { background-color: var(--primary-900); }
+.bg-primary-50 {
+  background-color: var(--primary-50);
+}
+.bg-primary-100 {
+  background-color: var(--primary-100);
+}
+.bg-primary-200 {
+  background-color: var(--primary-200);
+}
+.bg-primary-300 {
+  background-color: var(--primary-300);
+}
+.bg-primary-400 {
+  background-color: var(--primary-400);
+}
+.bg-primary-500 {
+  background-color: var(--primary-500);
+}
+.bg-primary-600 {
+  background-color: var(--primary-600);
+}
+.bg-primary-700 {
+  background-color: var(--primary-700);
+}
+.bg-primary-800 {
+  background-color: var(--primary-800);
+}
+.bg-primary-900 {
+  background-color: var(--primary-900);
+}
 
-.border-primary-100 { border-color: var(--primary-100); }
-.border-primary-200 { border-color: var(--primary-200); }
-.border-primary-500 { border-color: var(--primary-500); }
+.border-primary-100 {
+  border-color: var(--primary-100);
+}
+.border-primary-200 {
+  border-color: var(--primary-200);
+}
+.border-primary-500 {
+  border-color: var(--primary-500);
+}
 
 /* Shadow utilities for primary colors */
-.shadow-primary-500\/30 { box-shadow: 0 0 20px rgba(19, 108, 253, 0.3); }
-.shadow-primary-500\/40 { box-shadow: 0 0 20px rgba(19, 108, 253, 0.4); }
-.shadow-primary-500\/50 { box-shadow: 0 0 25px rgba(19, 108, 253, 0.5); }
-.shadow-blue-500\/20 { box-shadow: 0 0 20px rgba(59, 130, 246, 0.2); }
-.shadow-blue-500\/30 { box-shadow: 0 0 20px rgba(59, 130, 246, 0.3); }
+.shadow-primary-500\/30 {
+  box-shadow: 0 0 20px rgba(19, 108, 253, 0.3);
+}
+.shadow-primary-500\/40 {
+  box-shadow: 0 0 20px rgba(19, 108, 253, 0.4);
+}
+.shadow-primary-500\/50 {
+  box-shadow: 0 0 25px rgba(19, 108, 253, 0.5);
+}
+.shadow-blue-500\/20 {
+  box-shadow: 0 0 20px rgba(59, 130, 246, 0.2);
+}
+.shadow-blue-500\/30 {
+  box-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
+}
 
 /* Landing page specific responsive utilities */
 @media (max-width: 768px) {

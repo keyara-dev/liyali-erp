@@ -80,7 +80,9 @@ export function GRNDetailClient({
     );
 
   const hasQualityIssues = grn.qualityIssues.length > 0;
-  const hasVariances = grn.items.some((item) => item.variance !== 0);
+  const hasVariances = grn.items.some(
+    (item: { variance: number }) => item.variance !== 0,
+  );
 
   return (
     <div className="space-y-6">
@@ -129,8 +131,12 @@ export function GRNDetailClient({
           <CardContent>
             <div className="text-2xl font-bold">{grn.items.length}</div>
             <p className="text-xs text-muted-foreground mt-1">
-              {grn.items.filter((i) => i.condition === "GOOD").length} in good
-              condition
+              {
+                grn.items.filter(
+                  (i: { condition: string }) => i.condition === "GOOD",
+                ).length
+              }{" "}
+              in good condition
             </p>
           </CardContent>
         </Card>
@@ -244,32 +250,45 @@ export function GRNDetailClient({
         <CardContent>
           {hasQualityIssues ? (
             <div className="space-y-3">
-              {grn.qualityIssues.map((issue, index) => {
-                const severityColors = {
-                  LOW: "bg-yellow-100 text-yellow-800 border-yellow-200",
-                  MEDIUM: "bg-orange-100 text-orange-800 border-orange-200",
-                  HIGH: "bg-red-100 text-red-800 border-red-200",
-                };
-                return (
-                  <div
-                    key={issue.id || index}
-                    className={`p-4 border rounded-lg ${severityColors[issue.severity as keyof typeof severityColors]}`}
-                  >
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <p className="font-semibold">{issue.itemDescription}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {issue.issueType}
-                        </p>
-                        <p className="text-sm mt-1">{issue.description}</p>
+              {grn.qualityIssues.map(
+                (
+                  issue: {
+                    id?: string;
+                    itemDescription: string;
+                    issueType: string;
+                    description: string;
+                    severity: string;
+                  },
+                  index: number,
+                ) => {
+                  const severityColors = {
+                    LOW: "bg-yellow-100 text-yellow-800 border-yellow-200",
+                    MEDIUM: "bg-orange-100 text-orange-800 border-orange-200",
+                    HIGH: "bg-red-100 text-red-800 border-red-200",
+                  };
+                  return (
+                    <div
+                      key={issue.id || index}
+                      className={`p-4 border rounded-lg ${severityColors[issue.severity as keyof typeof severityColors]}`}
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <p className="font-semibold">
+                            {issue.itemDescription}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {issue.issueType}
+                          </p>
+                          <p className="text-sm mt-1">{issue.description}</p>
+                        </div>
+                        <Badge variant="outline" className="ml-2">
+                          {issue.severity}
+                        </Badge>
                       </div>
-                      <Badge variant="outline" className="ml-2">
-                        {issue.severity}
-                      </Badge>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                },
+              )}
             </div>
           ) : (
             <div className="text-center py-6">

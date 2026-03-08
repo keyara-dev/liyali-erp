@@ -37,23 +37,23 @@ const chartConfig = {
   },
   draft: {
     label: "Draft",
-    color: "var(--chart-1)",
+    color: "var(--chart-1)", // GRAY
   },
   submitted: {
     label: "Submitted",
-    color: "var(--chart-2)",
+    color: "var(--chart-2)", // BLUE
   },
   inApproval: {
     label: "In Approval",
-    color: "var(--chart-3)",
+    color: "var(--chart-3)", // AMBER
   },
   approved: {
     label: "Approved",
-    color: "var(--chart-5)", // Will be defined as green in CSS
+    color: "var(--chart-4)", // GREEN
   },
   rejected: {
     label: "Rejected",
-    color: "var(--chart-5)",
+    color: "var(--chart-5)", // RED
   },
 } satisfies ChartConfig;
 
