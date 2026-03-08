@@ -65,11 +65,13 @@
   --ring: oklch(52.4% 0.21 265.5);
 
   /* Charts */
-  --chart-1: rgba(150, 185, 255, 0.75); /* Gray */
-  --chart-2: oklch(57.261%, 0.23384, 265.298, 0.75); /* Blue */
-  --chart-3: oklch(81.833%, 0.15417, 75.994, 0.75); /* Amber */
-  --chart-4: oklch(87.687%, 0.26453, 142.555, 0.75); /* Green */
-  --chart-5: oklch(55.062%, 0.217, 28.725, 0.75); /* Red for rejection status */
+  --chart-1: rgba(0, 83, 248, 0.644); /* Gray */
+  --chart-2: oklch(89.872% 0.15893 184.356); /* Blue */
+  --chart-3: oklch(78.741% 0.17146 69.116); /* Amber */
+  --chart-4: oklch(84.866% 0.28824 142.435 / 0.863); /* Green */
+  --chart-5: oklch(
+    62.862% 0.25702 29.345 / 0.897
+  ); /* Red for rejection status */
 
   /* Sidebar */
   --sidebar: oklch(0.985 0.002 247.839);
@@ -262,7 +264,7 @@
 
   --color-draft: var(--chart-1);
   --color-submitted: var(--chart-2);
-  --color-in-approval: var(--chart-3);
+  --color-inApproval: var(--chart-3);
   --color-approved: var(--chart-4);
   --color-rejected: var(--chart-5);
 

@@ -54,7 +54,7 @@ type ApprovalActivity struct {
 	DocumentType   string     `json:"documentType"`
 	Action         string     `json:"action"`
 	ApproverName   string     `json:"approverName"`
-	ApproverRole   string     `json:"approverRole"`
+	ApproverRole   *string    `json:"approverRole"` // Can be NULL
 	Comments       *string    `json:"comments"`
 	CreatedAt      time.Time  `json:"createdAt"`
 }
