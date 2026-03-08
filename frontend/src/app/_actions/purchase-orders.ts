@@ -14,7 +14,7 @@ import {
   handleError,
   successResponse,
   badRequestResponse,
-  authenticatedApiClientNoCache,
+  NO_CACHE_HEADERS,
 } from "./api-config";
 import authenticatedApiClient from "./api-config";
 
@@ -160,10 +160,11 @@ export async function getPurchaseOrderById(
   const url = `/api/v1/purchase-orders/${poId}`;
 
   try {
-    // Use no-cache client to ensure fresh data for PDF generation
-    const response = await authenticatedApiClientNoCache({
+    // Use no-cache headers to ensure fresh data for PDF generation
+    const response = await authenticatedApiClient({
       method: "GET",
       url,
+      headers: NO_CACHE_HEADERS,
     });
 
     return successResponse(
