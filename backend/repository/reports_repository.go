@@ -133,7 +133,8 @@ func (r *ReportsRepository) QueryApprovalActivity(
 				po.document_number,
 				pv.document_number,
 				g.document_number,
-				b.budget_code
+				b.budget_code,
+				'UNKNOWN'
 			) as document_number
 		FROM stage_approval_records sar
 		INNER JOIN workflow_tasks wt ON sar.workflow_task_id = wt.id
