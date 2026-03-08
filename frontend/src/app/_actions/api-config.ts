@@ -117,9 +117,12 @@ const authenticatedApiClient = async (
 
     const config = {
       method: "GET",
-      headers,
       withCredentials: true,
       ...request,
+      headers: {
+        ...headers, // Our auth headers (Authorization, Cookie, etc.)
+        ...request.headers, // Merge with any headers from request (like NO_CACHE_HEADERS)
+      },
     };
 
     // Debug logging for headers (remove in production)
