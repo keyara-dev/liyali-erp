@@ -128,14 +128,14 @@ func (r *ReportsRepository) QueryApprovalActivity(
 			sar.approved_at as created_at,
 			sar.approver_name,
 			sar.approver_role,
-			COALESCE(
-				r.document_number,
-				po.document_number,
-				pv.document_number,
-				g.document_number,
-				b.budget_code,
-				'UNKNOWN'
-			) as document_number
+			CASE
+				WHEN wt.entity_type = 'REQUISITION' THEN COALESCE(r.document_number, 'REQ-' || wt.entity_id)
+				WHEN wt.entity_type = 'PURCHASE_ORDER' THEN COALESCE(po.document_number, 'PO-' || wt.entity_id)
+				WHEN wt.entity_type = 'PAYMENT_VOUCHER' THEN COALESCE(pv.document_number, 'PV-' || wt.entity_id)
+				WHEN wt.entity_type = 'GRN' THEN COALESCE(g.document_number, 'GRN-' || wt.entity_id)
+				WHEN wt.entity_type = 'BUDGET' THEN COALESCE(b.budget_code, 'BUD-' || wt.entity_id)
+				ELSE 'DOC-' || wt.entity_id
+			END as document_number
 		FROM stage_approval_records sar
 		INNER JOIN workflow_tasks wt ON sar.workflow_task_id = wt.id
 		LEFT JOIN requisitions r ON wt.entity_id = r.id AND wt.entity_type = 'REQUISITION'
