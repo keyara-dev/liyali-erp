@@ -40,20 +40,23 @@ export default function Search({
 
   return (
     <form
-      className={cn("group relative flex h-fit w-full gap-2", className, wrapper)}
-      onSubmit={resolveSearch}>
-      <SearchIcon
-        className={cn(
-          "group-focus-within:text-primary absolute top-2.5 left-3 h-4 w-4 transition-all",
-          icon
-        )}
-      />
+      className={cn(
+        "group relative flex h-fit w-full gap-2",
+        className,
+        wrapper,
+      )}
+      onSubmit={resolveSearch}
+    >
       <Input
-        className={cn(
-          "border-divider focus-within:border-primary/70 placeholder:text-muted-foreground w-full pl-10 text-base placeholder:font-normal focus-within:shadow-sm",
-          base,
-          input
-        )}
+        startContent={
+          <SearchIcon
+            className={cn(
+              "group-focus-within:text-primary absolute top-2.5 left-3 h-4 w-4 transition-all",
+              icon,
+            )}
+          />
+        }
+        className={cn(" ", base, input)}
         placeholder={placeholder || "Search..."}
         value={value}
         onChange={(e: any) => onChange?.(e.target.value)}

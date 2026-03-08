@@ -10,13 +10,13 @@ import { User, UserType } from "@/types";
 
 // Types for user operations
 export interface CreateUserRequest {
-  username: string;
   email: string;
   phone?: string;
   password: string;
   first_name: string;
   last_name: string;
-  department_id: string;
+  name?: string; // Computed full name
+  department_id?: string;
   role: UserType;
   // Profile fields
   position?: string;
@@ -44,17 +44,26 @@ export async function createNewUser(
   const url = `/api/v1/organization/users`;
 
   try {
+    // Compute full name if not provided
+    const fullName = data.name || `${data.first_name} ${data.last_name}`.trim();
+
     // Create the user directly in the current organization
     const response = await authenticatedApiClient({
       url: url,
       data: {
-        name: `${data.first_name} ${data.last_name}`,
+        name: fullName,
         first_name: data.first_name,
         last_name: data.last_name,
         email: data.email,
         password: data.password,
         role: data.role || "requester",
         department_id: data.department_id,
+        // Profile fields
+        phone: data.phone,
+        position: data.position,
+        manNumber: data.manNumber,
+        nrcNumber: data.nrcNumber,
+        contact: data.contact,
       },
       method: "POST",
     });

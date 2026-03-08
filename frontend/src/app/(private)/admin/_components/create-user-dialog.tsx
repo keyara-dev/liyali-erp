@@ -28,7 +28,6 @@ import { useActiveRoles } from "@/hooks/use-role-queries";
 import { usePermissions } from "@/hooks/use-permissions";
 
 type FormData = {
-  username?: string | number | readonly string[] | undefined;
   first_name: string;
   last_name: string;
   email: string;
@@ -222,8 +221,10 @@ export default function CreateUserForm({
     try {
       await navigator.clipboard.writeText(formData.password || "");
       setCopied(true);
-      toast.info("Password copied to clipboard.");
-      setTimeout(() => setCopied(false), 2000);
+      toast.success("Password copied to clipboard");
+      const timeoutId = setTimeout(() => setCopied(false), 2000);
+      // Cleanup function would be called on component unmount
+      return () => clearTimeout(timeoutId);
     } catch (err) {
       toast.error("Failed to copy password");
     }
@@ -274,7 +275,7 @@ export default function CreateUserForm({
     return true;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
     if (!validateForm()) {
@@ -284,15 +285,19 @@ export default function CreateUserForm({
     setIsSubmitting(true);
 
     try {
+      // Compute full name from first_name + last_name
+      const fullName = `${formData.first_name} ${formData.last_name}`.trim();
+
       if (isEditMode) {
         const updateData = {
+          name: fullName,
           email: formData.email,
           phone: formData.phone,
           first_name: formData.first_name,
           last_name: formData.last_name,
           department_id: formData.department_id,
           is_active: formData.is_active,
-          role: formData.role, // Use the selected role from form data
+          role: formData.role,
           position: formData.position,
           manNumber: formData.manNumber,
           nrcNumber: formData.nrcNumber,
@@ -304,14 +309,14 @@ export default function CreateUserForm({
         });
       } else {
         await createUserMutation.mutateAsync({
+          name: fullName,
           email: formData.email,
           phone: formData.phone || "",
           password: formData.password || generateRandomString(12),
           first_name: formData.first_name,
           last_name: formData.last_name,
           department_id: formData.department_id || "",
-          username: String(formData.username || ""),
-          role: formData.role, // Use the selected role from form data
+          role: formData.role,
           position: formData.position,
           manNumber: formData.manNumber,
           nrcNumber: formData.nrcNumber,
@@ -404,20 +409,7 @@ export default function CreateUserForm({
                 required
               />
             </div>
-            <Input
-              id="username"
-              placeholder="bmwale"
-              label="Username"
-              value={formData.username}
-              onChange={(e) =>
-                setFormData((prev) => ({
-                  ...prev,
-                  username: e.target.value,
-                }))
-              }
-              disabled={isSubmitting}
-              required
-            />
+
             <div className="flex gap-4 items-end">
               <Input
                 id="email"
@@ -436,6 +428,7 @@ export default function CreateUserForm({
               />
               <SelectField
                 label="Role"
+                required
                 value={formData.role}
                 onValueChange={(value) =>
                   setFormData((prev) => ({
@@ -452,14 +445,11 @@ export default function CreateUserForm({
                       ? "No roles available"
                       : "Select role"
                 }
-                options={[
-                  { id: "", name: "Select role", value: "" },
-                  ...allRoles.map((role) => ({
-                    id: role.id,
-                    name: role.name,
-                    value: role.name, // Send role name instead of role ID
-                  })),
-                ]}
+                options={allRoles.map((role) => ({
+                  id: role.id,
+                  name: role.name,
+                  value: role.name,
+                }))}
               />
             </div>
 
@@ -475,14 +465,11 @@ export default function CreateUserForm({
               isDisabled={isSubmitting || isDepartmentsLoading}
               isLoading={isDepartmentsLoading}
               placeholder="Select department"
-              options={[
-                { id: "", name: "Select department", value: "" },
-                ...departments.map((dept) => ({
-                  id: dept.id,
-                  name: dept.name,
-                  value: dept.id,
-                })),
-              ]}
+              options={departments.map((dept) => ({
+                id: dept.id,
+                name: dept.name,
+                value: dept.id,
+              }))}
             />
 
             <div className="grid gap-4 md:grid-cols-2">
@@ -495,6 +482,20 @@ export default function CreateUserForm({
                   setFormData((prev) => ({
                     ...prev,
                     position: e.target.value,
+                  }))
+                }
+                disabled={isSubmitting}
+              />
+              <Input
+                id="phone"
+                label="Phone"
+                type="tel"
+                placeholder="e.g., +260 XXX XXX XXX"
+                value={formData.phone}
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    phone: e.target.value,
                   }))
                 }
                 disabled={isSubmitting}
@@ -565,41 +566,39 @@ export default function CreateUserForm({
             )}
 
             {!isEditMode && (
-              <div>
-                <div className="flex w-full flex-col items-center gap-2 sm:flex-row">
-                  <div className="relative flex w-full items-center gap-2">
-                    <Input
-                      id="password"
-                      label="Password"
-                      required
-                      value={formData.password}
-                      readOnly
-                      className="cursor-default font-mono text-sm"
-                      disabled={isSubmitting}
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      onClick={handleCopyPassword}
-                      className="hover:bg-muted/5 absolute right-1 shrink-0"
-                      disabled={isSubmitting}
-                    >
-                      {copied ? (
-                        <Check className="h-4 w-4 text-green-600" />
-                      ) : (
-                        <Copy className="h-4 w-4" />
-                      )}
-                    </Button>
-                  </div>
+              <div className="flex w-full flex-col items-center gap-2 sm:flex-row">
+                <div className="relative flex w-full items-center gap-2">
+                  <Input
+                    id="password"
+                    label="Password"
+                    required
+                    value={formData.password}
+                    readOnly
+                    className="cursor-default font-mono text-sm pr-10"
+                    disabled={isSubmitting}
+                  />
                   <Button
                     type="button"
-                    onClick={handleGenerateNewPassword}
+                    variant="ghost"
+                    size="icon"
+                    onClick={handleCopyPassword}
+                    className="hover:bg-muted/5 absolute right-1 shrink-0"
                     disabled={isSubmitting}
                   >
-                    Generate new password
+                    {copied ? (
+                      <Check className="h-4 w-4 text-green-600" />
+                    ) : (
+                      <Copy className="h-4 w-4" />
+                    )}
                   </Button>
                 </div>
+                <Button
+                  type="button"
+                  onClick={handleGenerateNewPassword}
+                  disabled={isSubmitting}
+                >
+                  Generate new password
+                </Button>
               </div>
             )}
           </div>
