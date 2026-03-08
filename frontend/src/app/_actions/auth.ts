@@ -46,15 +46,22 @@ export async function loginAction(
       return unauthorizedResponse(response.message || "Login failed");
     }
 
+    // Extract avatar from preferences to top-level for easier component access
+    const user = response.data.user;
+    const avatarUrl = user.preferences?.avatar || null;
+
     // Create session with backend token and expiration
     await createAuthSession({
       access_token: response.data.accessToken,
       refresh_token: response.data.refreshToken,
-      role: response.data.user.role,
-      user_id: response.data.user.id,
+      role: user.role,
+      user_id: user.id,
       organization_id: response.data.organization?.id,
       expiresIn: response.data.expiresIn, // Use backend's expiration time
-      user: response.data.user, // Add the full user object
+      user: {
+        ...user,
+        avatar: avatarUrl, // Set avatar at top level for easy access
+      },
     });
 
     return successResponse(response.data.user, response.message);
@@ -364,15 +371,22 @@ export async function createNewAccount(data: {
       );
     }
 
+    // Extract avatar from preferences to top-level for easier component access
+    const user = responseData.data.user;
+    const avatarUrl = user.preferences?.avatar || null;
+
     // Create session with token AND org context
     await createAuthSession({
       access_token: responseData.data.accessToken,
       refresh_token: responseData.data.refreshToken,
-      role: responseData.data.user.role,
-      user_id: responseData.data.user.id,
+      role: user.role,
+      user_id: user.id,
       organization_id: responseData.data.organization?.id,
       expiresIn: responseData.data.expiresIn,
-      user: responseData.data.user,
+      user: {
+        ...user,
+        avatar: avatarUrl, // Set avatar at top level for easy access
+      },
     });
 
     return successResponse(

@@ -223,6 +223,14 @@ func (s *AuthService) Login(ctx context.Context, email, password, ipAddress, use
 		},
 	}
 
+	// Add preferences if available
+	if len(user.Preferences) > 0 {
+		var prefs map[string]interface{}
+		if err := json.Unmarshal(user.Preferences, &prefs); err == nil {
+			response.User.Preferences = prefs
+		}
+	}
+
 	// Add organization info if available
 	if user.CurrentOrganization != nil {
 		response.Organization = &types.OrganizationResponse{
@@ -584,6 +592,14 @@ func (s *AuthService) Register(ctx context.Context, email, password, name, role 
 			Active:    createdUser.Active,
 			CreatedAt: createdUser.CreatedAt.Format(time.RFC3339),
 		},
+	}
+
+	// Add preferences if available
+	if len(createdUser.Preferences) > 0 {
+		var prefs map[string]interface{}
+		if err := json.Unmarshal(createdUser.Preferences, &prefs); err == nil {
+			response.User.Preferences = prefs
+		}
 	}
 
 	// Add organization info if available

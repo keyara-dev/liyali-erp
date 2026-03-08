@@ -14,10 +14,18 @@ export async function getUserProfile(): Promise<APIResponse> {
       url: "/api/v1/auth/profile",
       method: "GET",
     });
+
+    const user = response.data.data;
+    // Extract avatar from preferences to top-level for consistency
+    const avatarUrl = user?.preferences?.avatar || null;
+
     return {
       success: true,
       message: "Profile retrieved successfully",
-      data: response.data.data,
+      data: {
+        ...user,
+        avatar: avatarUrl,
+      },
       status: 200,
       statusText: "OK",
     };
@@ -67,15 +75,22 @@ export async function updateAccountSettings(data: {
     // reflect the new name, email, and preferences without requiring re-login.
     const currentUser = await getCurrentUser();
     if (currentUser && updatedUser) {
+      // Extract avatar from preferences to top-level for easier access
+      const avatarUrl =
+        updatedUser.preferences?.avatar || (currentUser as any).avatar;
+
       await updateAuthSession({
         user: {
           ...(currentUser as any),
           name: updatedUser.name ?? currentUser.name,
           email: updatedUser.email ?? currentUser.email,
+          position: updatedUser.position,
+          manNumber: updatedUser.manNumber,
+          nrcNumber: updatedUser.nrcNumber,
+          contact: updatedUser.contact,
           preferences: updatedUser.preferences,
-          // UserMenu reads user.avatar directly — keep in sync with preferences.avatar
-          avatar:
-            updatedUser.preferences?.avatar ?? (currentUser as any).avatar,
+          // Set avatar at top level for components to access easily
+          avatar: avatarUrl,
         },
       });
       revalidatePath("/settings");

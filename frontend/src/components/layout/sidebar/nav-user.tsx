@@ -39,7 +39,7 @@ import { useSession } from "@/hooks/use-session";
 import { useLogout } from "@/hooks/use-organization-mutations";
 import { useOrganizationContext } from "@/hooks/use-organization";
 import { UpgradeModal } from "@/components/subscription/upgrade-modal";
-import { capitalize } from "@/lib/utils";
+import { capitalize, getAvatarSrc } from "@/lib/utils";
 import { TierDisplay } from "@/components/modals";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -123,7 +123,9 @@ export function NavUser() {
     <div className="space-y-2 p-2 group-data-[collapsible=icon]:p-0">
       {state === "collapsed" ? (
         <div className="flex justify-center py-1">
-          <div className={`p-1.5 rounded-lg bg-linear-to-r ${tierConfig.gradient} shadow-lg`}>
+          <div
+            className={`p-1.5 rounded-lg bg-linear-to-r ${tierConfig.gradient} shadow-lg`}
+          >
             <TierIcon className="h-4 w-4 text-white" />
           </div>
         </div>
@@ -150,13 +152,9 @@ export function NavUser() {
                 >
                   <Avatar className="h-8 w-8 rounded-full">
                     <AvatarImage
-                      src={
-                        user.avatar ||
-                        `https://bundui-images.netlify.app/avatars/01.png`
-                      }
+                      src={user.avatar || getAvatarSrc(user.name)}
                       alt={user.name}
                     />
-                    <AvatarFallback>{initials}</AvatarFallback>
                   </Avatar>
                   <div className="grid flex-1 text-left text-sm leading-tight">
                     <span className="truncate font-medium">{user.name}</span>
@@ -182,8 +180,10 @@ export function NavUser() {
                 <DropdownMenuLabel className="p-0 font-normal">
                   <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
                     <Avatar className="h-8 w-8 rounded-full">
-                      <AvatarImage src={user.avatar} alt={user.name} />
-                      <AvatarFallback>{initials}</AvatarFallback>
+                      <AvatarImage
+                        src={user.avatar || getAvatarSrc(user.name)}
+                        alt={user.name}
+                      />
                     </Avatar>
                     <div className="grid flex-1 text-left text-sm leading-tight">
                       <span className="truncate font-medium">{user.name}</span>

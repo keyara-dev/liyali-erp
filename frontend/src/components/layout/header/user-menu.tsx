@@ -15,6 +15,7 @@ import {
 import Link from "next/link";
 import { useSession } from "@/hooks/use-session";
 import { useLogout } from "@/hooks/use-organization-mutations";
+import { getAvatarSrc } from "@/lib/utils";
 
 const getInitials = (name: string) => {
   return name
@@ -38,8 +39,10 @@ export default function UserMenu() {
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Avatar className="rounded-full cursor-pointer">
-          <AvatarImage src={userAvatar} alt={userName} />
-          <AvatarFallback>{initials}</AvatarFallback>
+          <AvatarImage
+            src={user?.avatar || getAvatarSrc(user?.name || "User")}
+            alt={user?.name}
+          />
         </Avatar>
       </DropdownMenuTrigger>
       <DropdownMenuContent
@@ -49,8 +52,10 @@ export default function UserMenu() {
         <DropdownMenuLabel className="p-0">
           <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
             <Avatar className="rounded-full">
-              <AvatarImage src={userAvatar} alt={userName} />
-              <AvatarFallback>{initials}</AvatarFallback>
+              <AvatarImage
+                src={user?.avatar || getAvatarSrc(user?.name || "User")}
+                alt={user?.name}
+              />
             </Avatar>
             <div className="grid flex-1 text-left text-sm leading-tight">
               <span className="truncate font-semibold">{userName}</span>

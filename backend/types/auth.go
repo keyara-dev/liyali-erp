@@ -65,16 +65,17 @@ type TokenResponse struct {
 
 // User response type
 type UserResponse struct {
-	ID                    string    `json:"id"`
-	Email                 string    `json:"email"`
-	Name                  string    `json:"name"`
-	Role                  string    `json:"role"`
-	Active                bool      `json:"active"`
-	LastLogin             *string   `json:"lastLogin,omitempty"`
-	CurrentOrganizationID *string   `json:"currentOrganizationId,omitempty"`
-	IsSuperAdmin          bool      `json:"isSuperAdmin,omitempty"`
-	CreatedAt             string    `json:"createdAt"`
-	UpdatedAt             string    `json:"updatedAt,omitempty"`
+	ID                    string                 `json:"id"`
+	Email                 string                 `json:"email"`
+	Name                  string                 `json:"name"`
+	Role                  string                 `json:"role"`
+	Active                bool                   `json:"active"`
+	LastLogin             *string                `json:"lastLogin,omitempty"`
+	CurrentOrganizationID *string                `json:"currentOrganizationId,omitempty"`
+	IsSuperAdmin          bool                   `json:"isSuperAdmin,omitempty"`
+	Preferences           map[string]interface{} `json:"preferences,omitempty"`
+	CreatedAt             string                 `json:"createdAt"`
+	UpdatedAt             string                 `json:"updatedAt,omitempty"`
 }
 
 // Organization response type
