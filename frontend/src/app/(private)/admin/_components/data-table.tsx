@@ -104,11 +104,12 @@ const getColumns = (
     header: "Name",
     cell: ({ row }) => {
       const fullName = `${row.original.first_name} ${row.original.last_name}`;
+      const avatarSrc = (row.original as any).avatar || (row.original as any).preferences?.avatar || getAvatarSrc(fullName);
       return (
         <div className="flex items-center gap-3">
           <Avatar className="h-9 w-9">
             <AvatarImage
-              src={getAvatarSrc(fullName)}
+              src={avatarSrc}
               alt={`${fullName} - Image`}
             />
             <AvatarFallback className="text-xs font-medium">

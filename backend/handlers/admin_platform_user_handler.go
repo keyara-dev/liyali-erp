@@ -1,6 +1,10 @@
 package handlers
 
 import (
+	"bytes"
+	"encoding/csv"
+	"encoding/json"
+	"fmt"
 	"log"
 	"math"
 	"strings"
@@ -62,7 +66,15 @@ func AdminGetAllUsers(c *fiber.Ctx) error {
 	query := db.Table("users").
 		Select(`users.id, users.email, users.name, users.role,
 			CASE WHEN users.active = true THEN 'active' WHEN users.active = false AND users.last_login IS NULL THEN 'pending' ELSE 'suspended' END as status,
+			users.active as is_active,
 			users.created_at, users.updated_at, users.last_login,
+			COALESCE(users.position, '') as position,
+			COALESCE(users.man_number, '') as man_number,
+			COALESCE(users.nrc_number, '') as nrc_number,
+			COALESCE(users.contact, '') as contact,
+			COALESCE(users.contact, '') as phone,
+			COALESCE(users.mfa_enabled, false) as mfa_enabled,
+			users.preferences,
 			(SELECT COUNT(*) FROM organization_members WHERE organization_members.user_id = users.id AND organization_members.active = true) as organization_count`).
 		Where("users.deleted_at IS NULL")
 
@@ -191,11 +203,18 @@ func AdminGetUserById(c *fiber.Ctx) error {
 	err := db.Table("users").
 		Select(`id, email, name, role,
 			CASE WHEN active = true THEN 'active' ELSE 'suspended' END as status,
-			created_at, updated_at, last_login, is_super_admin`).
+			active as is_active,
+			created_at, updated_at, last_login, is_super_admin,
+			COALESCE(position, '') as position,
+			COALESCE(man_number, '') as man_number,
+			COALESCE(nrc_number, '') as nrc_number,
+			COALESCE(contact, '') as contact,
+			COALESCE(mfa_enabled, false) as mfa_enabled,
+			preferences`).
 		Where("id = ? AND deleted_at IS NULL", userID).
-		First(&user).Error
+		Limit(1).Scan(&user).Error
 
-	if err != nil {
+	if err != nil || len(user) == 0 {
 		return utils.SendNotFound(c, "User not found")
 	}
 
@@ -205,22 +224,38 @@ func AdminGetUserById(c *fiber.Ctx) error {
 			organizations.name as organization_name,
 			COALESCE(organizations.slug, '') as organization_domain,
 			organization_members.role,
+			COALESCE(organization_members.department, '') as department,
 			CASE WHEN organization_members.active = true THEN 'active' ELSE 'suspended' END as status,
 			organization_members.joined_at`).
 		Joins("LEFT JOIN organizations ON organizations.id = organization_members.organization_id").
 		Where("organization_members.user_id = ?", userID).
 		Find(&orgs)
 
+	// Pull department from primary org membership
+	department := ""
 	for i := range orgs {
 		orgs[i]["permissions"] = []string{}
 		orgs[i]["is_primary"] = i == 0
+		if i == 0 {
+			if d, ok := orgs[i]["department"].(string); ok {
+				department = d
+			}
+		}
 	}
 
 	user["organizations"] = orgs
+	user["department"] = department
+	// mfa_enabled is now queried directly from the users table (column added in migration 024)
+	// Set defaults only if not already populated by the SELECT
+	if _, ok := user["mfa_enabled"]; !ok {
+		user["mfa_enabled"] = false
+	}
 	user["email_verified"] = true
 	user["login_count"] = 0
-	user["phone"] = nil
-	user["profile"] = nil
+	// phone comes from contact field (same column)
+	if phone, ok := user["contact"].(string); ok {
+		user["phone"] = phone
+	}
 
 	return utils.SendSimpleSuccess(c, user, "User retrieved successfully")
 }
@@ -342,7 +377,7 @@ func AdminUpdateUserStatus(c *fiber.Ctx) error {
 	}, "User status updated successfully")
 }
 
-// AdminGetUserActivity returns activity logs for a user
+// AdminGetUserActivity returns activity logs for a user (merges user_activity_logs + admin_audit_logs)
 func AdminGetUserActivity(c *fiber.Ctx) error {
 	db := config.DB
 	userID := c.Params("id")
@@ -352,28 +387,115 @@ func AdminGetUserActivity(c *fiber.Ctx) error {
 	page, limit = utils.NormalizePaginationParams(page, limit)
 	offset := (page - 1) * limit
 
-	var total int64
-	db.Table("admin_audit_logs").Where("admin_user_id = ?", userID).Count(&total)
+	actionType := c.Query("action_type")
+	startDateStr := c.Query("start_date")
+	endDateStr := c.Query("end_date")
 
-	var activities []map[string]interface{}
-	db.Table("admin_audit_logs").
-		Where("admin_user_id = ?", userID).
-		Order("created_at DESC").
-		Offset(offset).Limit(limit).
-		Find(&activities)
-
-	for i := range activities {
-		activities[i]["timestamp"] = activities[i]["created_at"]
-		if _, ok := activities[i]["description"]; !ok {
-			activities[i]["description"] = activities[i]["action"]
+	// Build conditions for user_activity_logs
+	ualConds := "user_id = ?"
+	ualArgs := []interface{}{userID}
+	if actionType != "" {
+		ualConds += " AND action_type = ?"
+		ualArgs = append(ualArgs, actionType)
+	}
+	if startDateStr != "" {
+		if t, err := time.Parse("2006-01-02", startDateStr); err == nil {
+			ualConds += " AND created_at >= ?"
+			ualArgs = append(ualArgs, t)
+		}
+	}
+	if endDateStr != "" {
+		if t, err := time.Parse("2006-01-02", endDateStr); err == nil {
+			ualConds += " AND created_at <= ?"
+			ualArgs = append(ualArgs, t.Add(24*time.Hour))
 		}
 	}
 
+	// Count from user_activity_logs
+	var ualTotal int64
+	db.Table("user_activity_logs").Where(ualConds, ualArgs...).Count(&ualTotal)
+
+	// Fetch from user_activity_logs
+	type activityRow struct {
+		ID           string    `json:"id"`
+		ActionType   string    `json:"action_type"`
+		ResourceType string    `json:"resource_type"`
+		ResourceID   string    `json:"resource_id"`
+		IPAddress    string    `json:"ip_address"`
+		UserAgent    string    `json:"user_agent"`
+		CreatedAt    time.Time `json:"created_at"`
+		Source       string    `json:"source"`
+	}
+
+	var ualRows []activityRow
+	db.Table("user_activity_logs").
+		Select("id::text, action_type, COALESCE(resource_type,'') as resource_type, COALESCE(resource_id,'') as resource_id, COALESCE(ip_address,'') as ip_address, COALESCE(user_agent,'') as user_agent, created_at, 'activity' as source").
+		Where(ualConds, ualArgs...).
+		Order("created_at DESC").
+		Offset(offset).Limit(limit).
+		Scan(&ualRows)
+
+	// Also fetch admin_audit_logs for backward compat (only when no action_type filter or it could match)
+	var auditRows []map[string]interface{}
+	if actionType == "" {
+		auditQ := db.Table("admin_audit_logs").Where("admin_user_id = ?", userID)
+		if startDateStr != "" {
+			if t, err := time.Parse("2006-01-02", startDateStr); err == nil {
+				auditQ = auditQ.Where("created_at >= ?", t)
+			}
+		}
+		if endDateStr != "" {
+			if t, err := time.Parse("2006-01-02", endDateStr); err == nil {
+				auditQ = auditQ.Where("created_at <= ?", t.Add(24*time.Hour))
+			}
+		}
+		auditQ.Select("id::text, action, COALESCE(description,'') as description, created_at").
+			Order("created_at DESC").Limit(10).Scan(&auditRows)
+	}
+
+	// Normalize ualRows to maps
+	activities := make([]map[string]interface{}, 0, len(ualRows))
+	for _, r := range ualRows {
+		activities = append(activities, map[string]interface{}{
+			"id":            r.ID,
+			"action_type":   r.ActionType,
+			"resource_type": r.ResourceType,
+			"resource_id":   r.ResourceID,
+			"ip_address":    r.IPAddress,
+			"user_agent":    r.UserAgent,
+			"created_at":    r.CreatedAt,
+			"source":        "activity",
+		})
+	}
+
+	// Normalize audit rows
+	for _, r := range auditRows {
+		action, _ := r["action"].(string)
+		desc, _ := r["description"].(string)
+		if desc == "" {
+			desc = action
+		}
+		activities = append(activities, map[string]interface{}{
+			"id":            r["id"],
+			"action_type":   action,
+			"resource_type": "admin_action",
+			"description":   desc,
+			"created_at":    r["created_at"],
+			"source":        "admin_audit",
+		})
+	}
+
+	totalPages := int(math.Ceil(float64(ualTotal) / float64(limit)))
+
 	response := map[string]interface{}{
 		"activities": activities,
-		"total":      total,
-		"page":       page,
-		"limit":      limit,
+		"pagination": map[string]interface{}{
+			"total_records": ualTotal,
+			"total_pages":   totalPages,
+			"current_page":  page,
+			"has_next":      page < totalPages,
+			"has_prev":      page > 1,
+		},
 	}
 
 	return utils.SendSimpleSuccess(c, response, "User activity retrieved successfully")
@@ -387,9 +509,22 @@ func AdminGetUserSessions(c *fiber.Ctx) error {
 	var sessions []map[string]interface{}
 	db.Table("sessions").
 		Select("id, user_id, ip_address, user_agent, created_at, expires_at").
-		Where("user_id = ? AND expires_at > ?", userID, time.Now()).
+		Where("user_id = ?", userID).
 		Order("created_at DESC").
 		Find(&sessions)
+
+	now := time.Now()
+	for i := range sessions {
+		ua, _ := sessions[i]["user_agent"].(string)
+		sessions[i]["browser"] = parseBrowserHint(ua)
+		sessions[i]["os"] = parseOSHint(ua)
+		sessions[i]["device_type"] = parseDeviceHint(ua)
+		if expiresAt, ok := sessions[i]["expires_at"].(time.Time); ok {
+			sessions[i]["is_expired"] = expiresAt.Before(now)
+		} else {
+			sessions[i]["is_expired"] = false
+		}
+	}
 
 	return utils.SendSimpleSuccess(c, sessions, "User sessions retrieved successfully")
 }
@@ -511,6 +646,293 @@ func AdminImpersonateUser(c *fiber.Ctx) error {
 		},
 		"warning": "This is a short-lived token for impersonation purposes. All actions will be logged.",
 	}, "Impersonation token generated successfully")
+}
+
+// AdminGetUserWorkStats returns work statistics for a specific user (documents created, approvals, pending)
+func AdminGetUserWorkStats(c *fiber.Ctx) error {
+	db := config.DB
+	userID := c.Params("id")
+
+	// Documents created by type
+	docTypes := []struct {
+		table string
+		key   string
+	}{
+		{"requisitions", "requisitions"},
+		{"purchase_orders", "purchase_orders"},
+		{"payment_vouchers", "payment_vouchers"},
+		{"goods_received_notes", "grns"},
+		{"budgets", "budgets"},
+	}
+
+	docCounts := map[string]int64{}
+	var totalDocs int64
+	for _, dt := range docTypes {
+		var cnt int64
+		// Attempt query; silently skip if table doesn't exist
+		if err := db.Table(dt.table).Where("created_by = ? AND deleted_at IS NULL", userID).Count(&cnt).Error; err == nil {
+			docCounts[dt.key] = cnt
+			totalDocs += cnt
+		}
+	}
+
+	// Approvals made (workflow_assignments where user was approver)
+	var totalApprovals, approvedCount, rejectedCount int64
+	db.Table("workflow_assignments").
+		Where("approver_id = ? AND status IN ('approved','rejected')", userID).
+		Count(&totalApprovals)
+	db.Table("workflow_assignments").
+		Where("approver_id = ? AND status = 'approved'", userID).
+		Count(&approvedCount)
+	db.Table("workflow_assignments").
+		Where("approver_id = ? AND status = 'rejected'", userID).
+		Count(&rejectedCount)
+
+	// Pending tasks
+	var pendingTasks int64
+	db.Table("workflow_assignments").
+		Where("approver_id = ? AND status IN ('pending','claimed')", userID).
+		Count(&pendingTasks)
+
+	// Activity in last 30 days
+	var recentActivity int64
+	thirtyDaysAgo := time.Now().AddDate(0, 0, -30)
+	db.Table("user_activity_logs").
+		Where("user_id = ? AND created_at >= ?", userID, thirtyDaysAgo).
+		Count(&recentActivity)
+
+	stats := map[string]interface{}{
+		"documents_created": map[string]interface{}{
+			"total":           totalDocs,
+			"breakdown":       docCounts,
+		},
+		"approvals": map[string]interface{}{
+			"total":    totalApprovals,
+			"approved": approvedCount,
+			"rejected": rejectedCount,
+		},
+		"pending_tasks":          pendingTasks,
+		"activity_last_30_days":  recentActivity,
+	}
+
+	return utils.SendSimpleSuccess(c, stats, "User statistics retrieved successfully")
+}
+
+// AdminGetUserSecurityEvents returns security-relevant activity events for a user
+func AdminGetUserSecurityEvents(c *fiber.Ctx) error {
+	db := config.DB
+	userID := c.Params("id")
+
+	page := c.QueryInt("page", 1)
+	limit := c.QueryInt("limit", 20)
+	page, limit = utils.NormalizePaginationParams(page, limit)
+	offset := (page - 1) * limit
+
+	securityTypes := []string{
+		"login", "failed_login", "logout",
+		"password_change", "password_reset_request",
+		"session_terminate", "account_lockout",
+	}
+
+	var total int64
+	db.Table("user_activity_logs").
+		Where("user_id = ? AND action_type IN ?", userID, securityTypes).
+		Count(&total)
+
+	var events []map[string]interface{}
+	db.Table("user_activity_logs").
+		Select("id::text, action_type, COALESCE(ip_address,'') as ip_address, COALESCE(user_agent,'') as user_agent, metadata, created_at").
+		Where("user_id = ? AND action_type IN ?", userID, securityTypes).
+		Order("created_at DESC").
+		Offset(offset).Limit(limit).
+		Scan(&events)
+
+	totalPages := int(math.Ceil(float64(total) / float64(limit)))
+
+	return utils.SendSimpleSuccess(c, map[string]interface{}{
+		"events": events,
+		"pagination": map[string]interface{}{
+			"total_records": total,
+			"total_pages":   totalPages,
+			"current_page":  page,
+			"has_next":      page < totalPages,
+			"has_prev":      page > 1,
+		},
+	}, "Security events retrieved successfully")
+}
+
+// AdminGetUserLoginHistory returns login and failed login events for a user
+func AdminGetUserLoginHistory(c *fiber.Ctx) error {
+	db := config.DB
+	userID := c.Params("id")
+
+	page := c.QueryInt("page", 1)
+	limit := c.QueryInt("limit", 20)
+	page, limit = utils.NormalizePaginationParams(page, limit)
+	offset := (page - 1) * limit
+
+	var total int64
+	db.Table("user_activity_logs").
+		Where("user_id = ? AND action_type IN ('login','failed_login')", userID).
+		Count(&total)
+
+	var logins []map[string]interface{}
+	db.Table("user_activity_logs").
+		Select("id::text, action_type, COALESCE(ip_address,'') as ip_address, COALESCE(user_agent,'') as user_agent, metadata, created_at").
+		Where("user_id = ? AND action_type IN ('login','failed_login')", userID).
+		Order("created_at DESC").
+		Offset(offset).Limit(limit).
+		Scan(&logins)
+
+	// Annotate each with success flag and simple device info
+	for i := range logins {
+		logins[i]["success"] = logins[i]["action_type"] == "login"
+		ua, _ := logins[i]["user_agent"].(string)
+		logins[i]["device"] = parseDeviceHint(ua)
+		logins[i]["browser"] = parseBrowserHint(ua)
+	}
+
+	totalPages := int(math.Ceil(float64(total) / float64(limit)))
+
+	return utils.SendSimpleSuccess(c, map[string]interface{}{
+		"logins": logins,
+		"pagination": map[string]interface{}{
+			"total_records": total,
+			"total_pages":   totalPages,
+			"current_page":  page,
+			"has_next":      page < totalPages,
+			"has_prev":      page > 1,
+		},
+	}, "Login history retrieved successfully")
+}
+
+// parseDeviceHint returns a simple device label from the user-agent string
+func parseDeviceHint(ua string) string {
+	ua = strings.ToLower(ua)
+	if strings.Contains(ua, "mobile") || strings.Contains(ua, "android") || strings.Contains(ua, "iphone") {
+		return "Mobile"
+	}
+	if strings.Contains(ua, "tablet") || strings.Contains(ua, "ipad") {
+		return "Tablet"
+	}
+	return "Desktop"
+}
+
+// parseOSHint returns a simple OS label from the user-agent string
+func parseOSHint(ua string) string {
+	ual := strings.ToLower(ua)
+	switch {
+	case strings.Contains(ual, "windows"):
+		return "Windows"
+	case strings.Contains(ual, "mac os") || strings.Contains(ual, "macos") || strings.Contains(ual, "darwin"):
+		return "macOS"
+	case strings.Contains(ual, "android"):
+		return "Android"
+	case strings.Contains(ual, "iphone") || strings.Contains(ual, "ipad") || strings.Contains(ual, "ios"):
+		return "iOS"
+	case strings.Contains(ual, "linux"):
+		return "Linux"
+	default:
+		return ""
+	}
+}
+
+// parseBrowserHint returns a simple browser label from the user-agent string
+func parseBrowserHint(ua string) string {
+	ua = strings.ToLower(ua)
+	switch {
+	case strings.Contains(ua, "edg/"):
+		return "Edge"
+	case strings.Contains(ua, "chrome"):
+		return "Chrome"
+	case strings.Contains(ua, "firefox"):
+		return "Firefox"
+	case strings.Contains(ua, "safari"):
+		return "Safari"
+	case strings.Contains(ua, "opera") || strings.Contains(ua, "opr/"):
+		return "Opera"
+	case strings.Contains(ua, "axios") || strings.Contains(ua, "curl") || strings.Contains(ua, "python") || strings.Contains(ua, "go-http"):
+		return "API Client"
+	default:
+		return ""
+	}
+}
+
+// AdminExportUserActivity exports a user's activity log as CSV or JSON
+func AdminExportUserActivity(c *fiber.Ctx) error {
+	db := config.DB
+	userID := c.Params("id")
+	format := strings.ToLower(c.Query("format", "csv"))
+
+	actionType := c.Query("action_type")
+	startDateStr := c.Query("start_date")
+	endDateStr := c.Query("end_date")
+
+	query := db.Table("user_activity_logs").
+		Select("id::text, action_type, COALESCE(resource_type,'') as resource_type, COALESCE(resource_id,'') as resource_id, COALESCE(ip_address,'') as ip_address, COALESCE(user_agent,'') as user_agent, created_at").
+		Where("user_id = ?", userID).
+		Order("created_at DESC").
+		Limit(10000)
+
+	if actionType != "" {
+		query = query.Where("action_type = ?", actionType)
+	}
+	if startDateStr != "" {
+		if t, err := time.Parse("2006-01-02", startDateStr); err == nil {
+			query = query.Where("created_at >= ?", t)
+		}
+	}
+	if endDateStr != "" {
+		if t, err := time.Parse("2006-01-02", endDateStr); err == nil {
+			query = query.Where("created_at <= ?", t.Add(24*time.Hour))
+		}
+	}
+
+	type exportRow struct {
+		ID           string    `json:"id"`
+		ActionType   string    `json:"action_type"`
+		ResourceType string    `json:"resource_type"`
+		ResourceID   string    `json:"resource_id"`
+		IPAddress    string    `json:"ip_address"`
+		UserAgent    string    `json:"user_agent"`
+		CreatedAt    time.Time `json:"created_at"`
+	}
+
+	var rows []exportRow
+	query.Scan(&rows)
+
+	if format == "json" {
+		data, err := json.Marshal(rows)
+		if err != nil {
+			return utils.SendInternalError(c, "Failed to serialize activity data", err)
+		}
+		filename := fmt.Sprintf("activity_%s_%s.json", userID, time.Now().Format("20060102"))
+		c.Set("Content-Disposition", "attachment; filename="+filename)
+		c.Set("Content-Type", "application/json")
+		return c.Send(data)
+	}
+
+	// Default: CSV
+	var buf bytes.Buffer
+	w := csv.NewWriter(&buf)
+	_ = w.Write([]string{"id", "action_type", "resource_type", "resource_id", "ip_address", "user_agent", "created_at"})
+	for _, r := range rows {
+		_ = w.Write([]string{
+			r.ID,
+			r.ActionType,
+			r.ResourceType,
+			r.ResourceID,
+			r.IPAddress,
+			r.UserAgent,
+			r.CreatedAt.Format(time.RFC3339),
+		})
+	}
+	w.Flush()
+
+	filename := fmt.Sprintf("activity_%s_%s.csv", userID, time.Now().Format("20060102"))
+	c.Set("Content-Disposition", "attachment; filename="+filename)
+	c.Set("Content-Type", "text/csv")
+	return c.Send(buf.Bytes())
 }
 
 // AdminGetUserOrganizations returns organizations a user belongs to

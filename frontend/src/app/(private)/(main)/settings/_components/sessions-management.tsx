@@ -9,12 +9,53 @@ import { AlertCircle, CheckCircle, Loader2, Globe, Smartphone, LogOut } from 'lu
 
 interface Session {
   id: string
-  device: string
-  location: string
-  ipAddress: string
-  lastActive: string
-  createdAt: string
-  isCurrent: boolean
+  // Fields from SessionWithMetadata (new backend)
+  deviceType?: string
+  browser?: string
+  os?: string
+  ipAddress?: string
+  ip_address?: string
+  isCurrent?: boolean
+  is_current?: boolean
+  isExpired?: boolean
+  is_expired?: boolean
+  createdAt?: string
+  created_at?: string
+  expiresAt?: string
+  expires_at?: string
+  updatedAt?: string
+  updated_at?: string
+  // Legacy fallback fields
+  device?: string
+  location?: string
+  lastActive?: string
+}
+
+function normalizeSession(s: any): Session {
+  return {
+    ...s,
+    isCurrent: s.isCurrent ?? s.is_current ?? false,
+    isExpired: s.isExpired ?? s.is_expired ?? false,
+    ipAddress: s.ipAddress ?? s.ip_address ?? '',
+    createdAt: s.createdAt ?? s.created_at,
+    expiresAt: s.expiresAt ?? s.expires_at,
+    updatedAt: s.updatedAt ?? s.updated_at,
+  }
+}
+
+function getDeviceLabel(s: Session): string {
+  if (s.browser && s.os) return `${s.browser} on ${s.os}`
+  if (s.browser) return s.browser
+  if (s.os) return s.os
+  if (s.device) return s.device
+  if (s.deviceType) {
+    const type = s.deviceType.toLowerCase()
+    if (type === 'mobile') return 'Mobile Device'
+    if (type === 'tablet') return 'Tablet'
+    if (type === 'desktop') return 'Desktop'
+    return s.deviceType
+  }
+  return 'Unknown Device'
 }
 
 export function SessionsManagement() {
@@ -33,7 +74,8 @@ export function SessionsManagement() {
       setIsLoading(true)
       const result = await getUserSessions()
       if (result.success && result.data) {
-        setSessions(result.data)
+        const raw = Array.isArray(result.data) ? result.data : []
+        setSessions(raw.map(normalizeSession))
       } else {
         setError(result.message || 'Failed to load sessions')
       }
@@ -96,22 +138,29 @@ export function SessionsManagement() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Active Sessions</CardTitle>
-        <CardDescription>
-          View and manage your active login sessions. Revoke any sessions you don't recognize.
-        </CardDescription>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle>Active Sessions</CardTitle>
+            <CardDescription>
+              View and manage your active login sessions. Revoke any sessions you don't recognize.
+            </CardDescription>
+          </div>
+          <Button variant="outline" size="sm" onClick={loadSessions} disabled={isLoading}>
+            {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Refresh'}
+          </Button>
+        </div>
       </CardHeader>
       <CardContent className="space-y-4">
         {error && (
           <div className="flex items-center gap-2 p-3 rounded-lg bg-red-50 text-red-700 border border-red-200">
-            <AlertCircle className="h-4 w-4 flex-shrink-0" />
+            <AlertCircle className="h-4 w-4 shrink-0" />
             <p className="text-sm">{error}</p>
           </div>
         )}
 
         {success && (
           <div className="flex items-center gap-2 p-3 rounded-lg bg-green-50 text-green-700 border border-green-200">
-            <CheckCircle className="h-4 w-4 flex-shrink-0" />
+            <CheckCircle className="h-4 w-4 shrink-0" />
             <p className="text-sm">{success}</p>
           </div>
         )}
@@ -127,7 +176,7 @@ export function SessionsManagement() {
               >
                 <div className="flex items-start gap-3 flex-1">
                   <div className="mt-1">
-                    {session.device.toLowerCase().includes('mobile') ? (
+                    {(session.deviceType === 'mobile' || session.device?.toLowerCase().includes('mobile')) ? (
                       <Smartphone className="h-5 w-5 text-muted-foreground" />
                     ) : (
                       <Globe className="h-5 w-5 text-muted-foreground" />
@@ -135,25 +184,23 @@ export function SessionsManagement() {
                   </div>
                   <div className="space-y-1 flex-1">
                     <div className="flex items-center gap-2">
-                      <p className="font-medium text-sm">{session.device}</p>
+                      <p className="font-medium text-sm">{getDeviceLabel(session)}</p>
                       {session.isCurrent && (
                         <Badge variant="secondary" className="text-xs">
                           Current Session
                         </Badge>
                       )}
                     </div>
-                    <p className="text-xs text-muted-foreground">
-                      {session.location} • {session.ipAddress}
-                    </p>
+                    {session.ipAddress && (
+                      <p className="text-xs text-muted-foreground font-mono">{session.ipAddress}</p>
+                    )}
                     <div className="text-xs text-muted-foreground space-y-0.5">
-                      <p>
-                        Active since{' '}
-                        {formatDate(session.createdAt)}
-                      </p>
-                      <p>
-                        Last active{' '}
-                        {formatDate(session.lastActive)}
-                      </p>
+                      {session.createdAt && (
+                        <p>Active since {formatDate(session.createdAt)}</p>
+                      )}
+                      {(session.updatedAt || session.lastActive) && (
+                        <p>Last active {formatDate((session.updatedAt || session.lastActive)!)}</p>
+                      )}
                     </div>
                   </div>
                 </div>

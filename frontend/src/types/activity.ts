@@ -3,7 +3,58 @@
  * Types for logging, activity tracking, and audit trails
  */
 
-// ================== ACTIVITY LOG TYPES ==================
+// ================== USER ACTIVITY LOG TYPES (new system) ==================
+
+export interface UserActivityLog {
+  id: string;
+  actionType: string;
+  resourceType?: string;
+  resourceId?: string;
+  ipAddress?: string;
+  userAgent?: string;
+  metadata?: Record<string, unknown>;
+  createdAt: string;
+  source?: "activity" | "admin_audit";
+}
+
+export interface PaginationMetadata {
+  totalRecords: number;
+  totalPages: number;
+  currentPage: number;
+  hasNextPage: boolean;
+  hasPreviousPage: boolean;
+}
+
+export interface UserActivityResponse {
+  activities: UserActivityLog[];
+  pagination: PaginationMetadata;
+}
+
+export interface ActivityStatistics {
+  totalActions: number;
+  actionsByType: Record<string, number>;
+  actionsByDay: Record<string, number>;
+  mostCommonAction: string;
+  lastActivityTime?: string;
+  averagePerDay: number;
+}
+
+export interface AdminActivityResponse {
+  activities: UserActivityLog[];
+  statistics?: ActivityStatistics;
+  pagination: PaginationMetadata;
+}
+
+export interface UserActivityFilters {
+  page?: number;
+  limit?: number;
+  actionType?: string;
+  startDate?: string;
+  endDate?: string;
+  search?: string;
+}
+
+// ================== ACTIVITY LOG TYPES (legacy) ==================
 
 export interface ActivityLog {
   id: string;

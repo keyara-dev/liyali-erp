@@ -749,7 +749,17 @@ func (s *AuthService) UpdateProfile(ctx context.Context, userID, name, email, po
 	user.NrcNumber = nrcNumber
 	user.Contact = contact
 	if preferences != nil {
-		prefsJSON, err := json.Marshal(preferences)
+		// Merge with existing preferences so unrelated keys (e.g. device tokens) are preserved
+		merged := make(map[string]interface{})
+		if len(user.Preferences) > 0 {
+			if err := json.Unmarshal(user.Preferences, &merged); err != nil {
+				merged = make(map[string]interface{})
+			}
+		}
+		for k, v := range preferences {
+			merged[k] = v
+		}
+		prefsJSON, err := json.Marshal(merged)
 		if err != nil {
 			return nil, err
 		}

@@ -9,7 +9,7 @@ import (
 )
 
 // SetupRoutes configures all API routes
-func SetupRoutes(app *fiber.App, handlerRegistry *handlers.HandlerRegistry, rbacService *services.RBACService, db *gorm.DB) {
+func SetupRoutes(app *fiber.App, handlerRegistry *handlers.HandlerRegistry, rbacService *services.RBACService, db *gorm.DB, activityService ...*services.ActivityService) {
 	// Health check (no versioning)
 	app.Get("/health", handlers.HealthCheck)
 
@@ -36,8 +36,17 @@ func SetupRoutes(app *fiber.App, handlerRegistry *handlers.HandlerRegistry, rbac
 	// Public subscription plans (no authentication required)
 	public.Get("/subscriptions/plans", handlerRegistry.Subscription.GetSubscriptionPlans)
 
+	// Activity logging middleware (async, non-blocking — attaches after auth)
+	var activityMiddleware fiber.Handler
+	if len(activityService) > 0 && activityService[0] != nil {
+		activityMiddleware = middleware.NewActivityLoggerMiddleware(activityService[0]).LogActivity()
+	}
+
 	// Protected routes (authentication required)
 	protected := apiV1.Group("", middleware.AuthMiddleware())
+	if activityMiddleware != nil {
+		protected.Use(activityMiddleware)
+	}
 
 	// Auth routes (protected, no tenant required)
 	protected.Get("/auth/profile", handlerRegistry.Auth.GetProfile)
@@ -45,6 +54,11 @@ func SetupRoutes(app *fiber.App, handlerRegistry *handlers.HandlerRegistry, rbac
 	protected.Post("/auth/logout", handlerRegistry.Auth.Logout)
 	protected.Post("/auth/logout-all", handlerRegistry.Auth.LogoutAll)
 	protected.Post("/auth/change-password", handlerRegistry.Auth.ChangePassword)
+
+	// User activity and session management (self-service)
+	protected.Get("/auth/activity", handlerRegistry.Auth.GetUserActivity)
+	protected.Get("/auth/sessions", handlerRegistry.Auth.GetUserSessions)
+	protected.Delete("/auth/sessions/:id", handlerRegistry.Auth.TerminateSession)
 
 	// Organization routes (authentication required, no tenant middleware)
 	orgs := protected.Group("/organizations")
@@ -438,6 +452,10 @@ func SetupRoutes(app *fiber.App, handlerRegistry *handlers.HandlerRegistry, rbac
 	adminUsers.Put("/:id", handlers.AdminUpdateUser)
 	adminUsers.Put("/:id/status", handlers.AdminUpdateUserStatus)
 	adminUsers.Get("/:id/activity", handlers.AdminGetUserActivity)
+	adminUsers.Post("/:id/activity/export", handlers.AdminExportUserActivity)
+	adminUsers.Get("/:id/security-events", handlers.AdminGetUserSecurityEvents)
+	adminUsers.Get("/:id/login-history", handlers.AdminGetUserLoginHistory)
+	adminUsers.Get("/:id/work-stats", handlers.AdminGetUserWorkStats)
 	adminUsers.Get("/:id/sessions", handlers.AdminGetUserSessions)
 	adminUsers.Delete("/:id/sessions/:sessionId", handlers.AdminTerminateUserSession)
 	adminUsers.Delete("/:id/sessions", handlers.AdminTerminateAllUserSessions)

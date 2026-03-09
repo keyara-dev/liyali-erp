@@ -83,7 +83,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
             ref={ref}
             className={cn(
               // Base styles
-              "w-full px-4 py-1.25 text-base bg-foreground/5 border border-border rounded-lg transition-all duration-200 outline-none",
+              "w-full px-4 py-1.75 text-base bg-foreground/5 border border-border rounded-lg transition-all duration-200 outline-none",
               // Placeholder styles
               "placeholder:text-slate-400 dark:placeholder:text-foreground/30",
               // Focus styles with primary color
@@ -114,7 +114,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
             {...props}
           />
           {endContent ? (
-            <span className="absolute px-2 w-5 h-5 aspect-square grid items-center">
+            <span className="absolute right-0 px-2 w-5 h-5 aspect-square grid items-center">
               {endContent}
             </span>
           ) : null}

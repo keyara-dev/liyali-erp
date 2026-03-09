@@ -51,7 +51,7 @@ export default function Search({
         startContent={
           <SearchIcon
             className={cn(
-              "group-focus-within:text-primary absolute top-2.5 left-3 h-4 w-4 transition-all",
+              "group-focus-within:text-primary  h-4 w-4 transition-all",
               icon,
             )}
           />

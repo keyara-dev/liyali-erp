@@ -320,7 +320,7 @@ export default function CreateUserForm({
           position: formData.position,
           manNumber: formData.manNumber,
           nrcNumber: formData.nrcNumber,
-          contact: formData.contact,
+          contact: formData.phone,
         });
       }
     } catch (error) {
@@ -410,7 +410,7 @@ export default function CreateUserForm({
               />
             </div>
 
-            <div className="flex gap-4 items-end">
+            <div className="flex flex-col md:flex-row gap-4 items-end">
               <Input
                 id="email"
                 type="email"
@@ -425,6 +425,27 @@ export default function CreateUserForm({
                 }
                 disabled={isSubmitting}
                 required
+              />
+            </div>
+
+            <div className="flex flex-col md:flex-row gap-4 items-end">
+              <SelectField
+                label="Department"
+                value={formData.department_id}
+                onValueChange={(value) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    department_id: value,
+                  }))
+                }
+                isDisabled={isSubmitting || isDepartmentsLoading}
+                isLoading={isDepartmentsLoading}
+                placeholder="Select department"
+                options={departments.map((dept) => ({
+                  id: dept.id,
+                  name: dept.name,
+                  value: dept.id,
+                }))}
               />
               <SelectField
                 label="Role"
@@ -453,25 +474,6 @@ export default function CreateUserForm({
               />
             </div>
 
-            <SelectField
-              label="Department"
-              value={formData.department_id}
-              onValueChange={(value) =>
-                setFormData((prev) => ({
-                  ...prev,
-                  department_id: value,
-                }))
-              }
-              isDisabled={isSubmitting || isDepartmentsLoading}
-              isLoading={isDepartmentsLoading}
-              placeholder="Select department"
-              options={departments.map((dept) => ({
-                id: dept.id,
-                name: dept.name,
-                value: dept.id,
-              }))}
-            />
-
             <div className="grid gap-4 md:grid-cols-2">
               <Input
                 id="position"
@@ -496,6 +498,7 @@ export default function CreateUserForm({
                   setFormData((prev) => ({
                     ...prev,
                     phone: e.target.value,
+                    contact: e.target.value,
                   }))
                 }
                 disabled={isSubmitting}
@@ -522,20 +525,6 @@ export default function CreateUserForm({
                   setFormData((prev) => ({
                     ...prev,
                     nrcNumber: e.target.value,
-                  }))
-                }
-                disabled={isSubmitting}
-              />
-              <Input
-                id="contact"
-                label="Contact"
-                type="tel"
-                placeholder="e.g., +260 XXX XXX XXX"
-                value={formData.contact}
-                onChange={(e) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    contact: e.target.value,
                   }))
                 }
                 disabled={isSubmitting}
@@ -567,38 +556,41 @@ export default function CreateUserForm({
 
             {!isEditMode && (
               <div className="flex w-full flex-col items-center gap-2 sm:flex-row">
-                <div className="relative flex w-full items-center gap-2">
+                <div className="relative flex w-full items-end gap-2">
                   <Input
                     id="password"
                     label="Password"
+                    placeholder="************"
                     required
                     value={formData.password}
-                    readOnly
+                    // readOnly
                     className="cursor-default font-mono text-sm pr-10"
                     disabled={isSubmitting}
+                    endContent={
+                      <Button
+                        type="button"
+                        variant="link"
+                        size="icon"
+                        onClick={handleCopyPassword}
+                        className="hover:bg-muted/5 absolute right-1 shrink-0"
+                        disabled={isSubmitting}
+                      >
+                        {copied ? (
+                          <Check className="h-4 w-4 text-green-600" />
+                        ) : (
+                          <Copy className="h-4 w-4 text-muted-foreground/50" />
+                        )}
+                      </Button>
+                    }
                   />
                   <Button
                     type="button"
-                    variant="ghost"
-                    size="icon"
-                    onClick={handleCopyPassword}
-                    className="hover:bg-muted/5 absolute right-1 shrink-0"
+                    onClick={handleGenerateNewPassword}
                     disabled={isSubmitting}
                   >
-                    {copied ? (
-                      <Check className="h-4 w-4 text-green-600" />
-                    ) : (
-                      <Copy className="h-4 w-4" />
-                    )}
+                    Generate new password
                   </Button>
                 </div>
-                <Button
-                  type="button"
-                  onClick={handleGenerateNewPassword}
-                  disabled={isSubmitting}
-                >
-                  Generate new password
-                </Button>
               </div>
             )}
           </div>

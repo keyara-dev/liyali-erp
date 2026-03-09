@@ -269,6 +269,22 @@ func AuthMiddleware() fiber.Handler {
 			})
 		}
 
+		// Validate session still exists in DB (enables immediate session revocation)
+		if claims.SessionID != "" {
+			var sessionCount int64
+			dbErr := config.DB.Table("sessions").
+				Where("id = ? AND expires_at > ?", claims.SessionID, time.Now()).
+				Count(&sessionCount).Error
+			if dbErr != nil {
+				// DB unreachable — fail open to avoid locking out users on transient errors
+				log.Printf("[AuthMiddleware] session check DB error (fail-open): %v", dbErr)
+			} else if sessionCount == 0 {
+				return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+					"error": "Session has been terminated",
+				})
+			}
+		}
+
 		// Set user context in fiber locals
 		c.Locals("userID", claims.UserID)
 		c.Locals("userEmail", claims.Email)

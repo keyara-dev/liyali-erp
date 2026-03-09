@@ -1,0 +1,2 @@
+ALTER TABLE users DROP COLUMN IF EXISTS mfa_enabled;
+ALTER TABLE users DROP COLUMN IF EXISTS is_ldap_user;

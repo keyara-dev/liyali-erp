@@ -12,9 +12,11 @@ import (
 )
 
 type AuthHandler struct {
-	authService *services.AuthService
-	rbacService *services.RBACService
-	validate    *validator.Validate
+	authService     *services.AuthService
+	rbacService     *services.RBACService
+	activityService *services.ActivityService
+	sessionService  *services.SessionService
+	validate        *validator.Validate
 }
 
 func NewAuthHandler(authService *services.AuthService, rbacService *services.RBACService) *AuthHandler {
@@ -23,6 +25,16 @@ func NewAuthHandler(authService *services.AuthService, rbacService *services.RBA
 		rbacService: rbacService,
 		validate:    validator.New(),
 	}
+}
+
+// SetActivityService injects the activity service (called during app bootstrap)
+func (h *AuthHandler) SetActivityService(svc *services.ActivityService) {
+	h.activityService = svc
+}
+
+// SetSessionService injects the session service (called during app bootstrap)
+func (h *AuthHandler) SetSessionService(svc *services.SessionService) {
+	h.sessionService = svc
 }
 
 // GetAuthService returns the auth service instance
@@ -71,9 +83,30 @@ func (h *AuthHandler) Login(c *fiber.Ctx) error {
 		logging.LogError(c, err, "authentication_failed", map[string]interface{}{
 			"error_type": "authentication_failure",
 		})
-		
+		// Log failed login attempt to activity log (best-effort; no userID available)
+		if h.activityService != nil {
+			h.activityService.LogActivity(c.Context(), &models.UserActivityLog{
+				ActionType: models.ActionFailedLogin,
+				IPAddress:  ipAddress,
+				UserAgent:  userAgent,
+				// UserID unknown at this point — use email as resource_id for audit
+				ResourceType: "auth",
+				ResourceID:   req.Email,
+			})
+		}
 		// Return generic error for security
 		return utils.SendUnauthorizedError(c, "Invalid email or password")
+	}
+
+	// Log successful login
+	if h.activityService != nil {
+		h.activityService.LogActivity(c.Context(), &models.UserActivityLog{
+			UserID:       result.User.ID,
+			ActionType:   models.ActionLogin,
+			ResourceType: "auth",
+			IPAddress:    ipAddress,
+			UserAgent:    userAgent,
+		})
 	}
 
 	// Add successful login context
@@ -530,4 +563,102 @@ func (h *AuthHandler) UpdateProfile(c *fiber.Ctx) error {
 
 	logger.Info("profile_updated_successfully")
 	return utils.SendSimpleSuccess(c, user, "Profile updated successfully")
+}
+
+// GetUserActivity returns the authenticated user's own activity log.
+// GET /api/v1/auth/activity?page=1&limit=50&start_date=...&end_date=...&action_type=...
+func (h *AuthHandler) GetUserActivity(c *fiber.Ctx) error {
+	userID, ok := c.Locals("userID").(string)
+	if !ok || userID == "" {
+		return utils.SendUnauthorizedError(c, "Unauthorized")
+	}
+	if h.activityService == nil {
+		return utils.SendInternalError(c, "Activity service unavailable", nil)
+	}
+
+	var filters models.ActivityFilters
+	if err := c.QueryParser(&filters); err != nil {
+		return utils.SendBadRequestError(c, "Invalid query parameters")
+	}
+
+	resp, err := h.activityService.GetUserActivity(c.Context(), userID, filters)
+	if err != nil {
+		logging.LogError(c, err, "get_user_activity_failed")
+		return utils.SendInternalError(c, "Failed to retrieve activity logs", err)
+	}
+
+	return utils.SendSimpleSuccess(c, resp, "Activity logs retrieved successfully")
+}
+
+// GetUserSessions returns the authenticated user's active sessions.
+// GET /api/v1/auth/sessions
+func (h *AuthHandler) GetUserSessions(c *fiber.Ctx) error {
+	userID, ok := c.Locals("userID").(string)
+	if !ok || userID == "" {
+		return utils.SendUnauthorizedError(c, "Unauthorized")
+	}
+	if h.sessionService == nil {
+		return utils.SendInternalError(c, "Session service unavailable", nil)
+	}
+
+	// Pass the refresh token from cookie/header so we can mark isCurrent
+	refreshToken := c.Cookies("refresh_token")
+	if refreshToken == "" {
+		refreshToken = c.Get("X-Refresh-Token")
+	}
+
+	sessions, err := h.sessionService.GetUserSessions(c.Context(), userID, refreshToken)
+	if err != nil {
+		logging.LogError(c, err, "get_user_sessions_failed")
+		return utils.SendInternalError(c, "Failed to retrieve sessions", err)
+	}
+
+	return utils.SendSimpleSuccess(c, sessions, "Sessions retrieved successfully")
+}
+
+// TerminateSession deletes a specific session owned by the authenticated user.
+// DELETE /api/v1/auth/sessions/:id
+func (h *AuthHandler) TerminateSession(c *fiber.Ctx) error {
+	userID, ok := c.Locals("userID").(string)
+	if !ok || userID == "" {
+		return utils.SendUnauthorizedError(c, "Unauthorized")
+	}
+	if h.sessionService == nil {
+		return utils.SendInternalError(c, "Session service unavailable", nil)
+	}
+
+	sessionID := c.Params("id")
+	if sessionID == "" {
+		return utils.SendBadRequestError(c, "Session ID is required")
+	}
+
+	if err := h.sessionService.TerminateSession(c.Context(), sessionID, userID); err != nil {
+		if err.Error() == "session_service: session not owned by user" {
+			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
+				"error": "You do not have permission to terminate this session",
+			})
+		}
+		logging.LogError(c, err, "terminate_session_failed")
+		return utils.SendInternalError(c, "Failed to terminate session", err)
+	}
+
+	// Log session termination to activity logs
+	if h.activityService != nil {
+		orgID, _ := c.Locals("organizationID").(string)
+		var orgPtr *string
+		if orgID != "" {
+			orgPtr = &orgID
+		}
+		h.activityService.LogActivity(c.Context(), &models.UserActivityLog{
+			UserID:         userID,
+			OrganizationID: orgPtr,
+			ActionType:     models.ActionSessionTerminate,
+			ResourceType:   "session",
+			ResourceID:     sessionID,
+			IPAddress:      c.IP(),
+			UserAgent:      c.Get("User-Agent"),
+		})
+	}
+
+	return utils.SendSimpleSuccess(c, nil, "Session terminated successfully")
 }

@@ -1,5 +1,11 @@
 "use client";
-import { isServer, QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import {
+  isServer,
+  QueryClient,
+  QueryClientProvider,
+  QueryCache,
+  MutationCache,
+} from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 
 import { ThemeProvider as NextThemesProvider } from "next-themes";
@@ -8,29 +14,37 @@ import { Toaster } from "sonner";
 import { useOfflineQueueProcessor } from "@/hooks/use-offline-queue-processor";
 import { TokenRefreshProvider } from "@/components/auth/token-refresh-provider";
 import { TooltipProvider } from "@/components";
+import { SessionExpiredModal } from "@/components/auth/session-expired-modal";
+import { dispatchSessionExpired } from "@/lib/session-events";
+
+function handleGlobalError(error: any) {
+  if (error?.status === 401) {
+    dispatchSessionExpired();
+  }
+}
 
 function makeQueryClient() {
   return new QueryClient({
+    queryCache: new QueryCache({ onError: handleGlobalError }),
+    mutationCache: new MutationCache({ onError: handleGlobalError }),
     defaultOptions: {
       queries: {
         staleTime: 5 * 60 * 1000, // 5 minutes - data considered fresh
         gcTime: 10 * 60 * 1000, // 10 minutes - kept in memory
-        retry: 3, // Retry failed queries 3 times
-        retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000), // Exponential backoff
-        refetchOnWindowFocus: false, // Don't auto-refetch on window focus
-        refetchOnReconnect: true, // Refetch when network reconnects
-        refetchOnMount: true, // Refetch on component mount if stale
+        retry: (failureCount, error: any) => {
+          if (error?.status === 401) return false; // never retry on auth failure
+          return failureCount < 3;
+        },
+        retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+        refetchOnWindowFocus: false,
+        refetchOnReconnect: true,
+        refetchOnMount: true,
       },
       mutations: {
         retry: (failureCount, error: any) => {
-          // Don't retry if offline - let offline queue handle it
-          if (error?.type === "Network Error" || !navigator.onLine) {
-            return false;
-          }
-          return failureCount < 1; // Retry once for other errors
-        },
-        onError: (error) => {
-          console.error("Mutation error:", error);
+          if (error?.status === 401) return false;
+          if (error?.type === "Network Error" || !navigator.onLine) return false;
+          return failureCount < 1;
         },
       },
     },
@@ -69,6 +83,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
               <TokenRefreshProvider>{children}</TokenRefreshProvider>
             </StorageInitializer>
           </TooltipProvider>
+          <SessionExpiredModal />
           <Toaster
             position="top-right"
             expand

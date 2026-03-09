@@ -135,6 +135,18 @@ func main() {
 	defer cancelClaimExpiry()
 	go workflowExecutionService.StartClaimExpiryWorker(claimExpiryCtx)
 
+	// Initialize activity logging service
+	activityRepo := repository.NewActivityRepository(config.DB)
+	activityService := services.NewActivityService(activityRepo)
+
+	// Start retention cleanup worker (runs daily, cleans up old activity logs)
+	retentionCtx, cancelRetention := context.WithCancel(context.Background())
+	defer cancelRetention()
+	go activityService.StartRetentionCleanupWorker(retentionCtx)
+
+	// Initialize session service (enriches session data with device/browser info)
+	sessionService := services.NewSessionService(sessionRepo)
+
 	documentService := services.NewDocumentService(documentRepo, auditService)
 
 	// Initialize subscription service
@@ -156,6 +168,10 @@ func main() {
 		logger,
 	)
 
+	// Wire activity and session services into AuthHandler
+	handlerRegistry.Auth.SetActivityService(activityService)
+	handlerRegistry.Auth.SetSessionService(sessionService)
+
 	// Create Fiber app with global error handler
 	app := fiber.New(fiber.Config{
 		AppName:      "Liyali Gateway Backend API",
@@ -170,7 +186,7 @@ func main() {
 	app.Use(middleware.CORSMiddleware())
 
 	// Setup routes with handler registry
-	routes.SetupRoutes(app, handlerRegistry, rbacService, config.DB)
+	routes.SetupRoutes(app, handlerRegistry, rbacService, config.DB, activityService)
 
 	// Start server with graceful shutdown
 	go func() {

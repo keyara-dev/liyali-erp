@@ -3,7 +3,7 @@
 // =============================================================================
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
-import { getUserById } from "@/app/_actions/user-actions";
+import { getAdminUserById } from "@/app/_actions/user-actions";
 import { UserDetailsClient } from "../../_components/user-details-client";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -18,14 +18,14 @@ export default async function UserDetailsPage({
 }: UserDetailsPageProps) {
   const { id } = await params;
 
-  // Fetch user data
-  const userResponse = await getUserById(id);
+  // Fetch user data from admin endpoint
+  const userResponse = await getAdminUserById(id);
 
   if (!userResponse.success || !userResponse.data) {
     notFound();
   }
 
-  const user = userResponse.data?.data || {};
+  const user = userResponse.data;
 
   return (
     <Suspense fallback={<UserDetailsSkeleton />}>

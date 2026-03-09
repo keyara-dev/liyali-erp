@@ -24,8 +24,11 @@ import { UserAvatarUpload } from "@/components/ui/user-avatar-upload";
 import { ChangePasswordModal } from "./change-password";
 import { updateAccountSettings } from "@/app/_actions/settings";
 import { User } from "@/types/auth";
-import { AlertCircle, CheckCircle, Lock } from "lucide-react";
+import { AlertCircle, CheckCircle, Lock, Activity, Clock, LogIn, Key, Shield, ChevronDown, ChevronUp } from "lucide-react";
 import { toast } from "sonner";
+import { useUserActivityLogs } from "@/hooks/use-user-activity-logs";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface AccountSettingsProps {
   user: User | null;
@@ -126,6 +129,7 @@ export function AccountSettings({
   };
 
   return (
+    <>
     <Card>
       <CardHeader>
         <CardTitle>Account Information</CardTitle>
@@ -364,6 +368,119 @@ export function AccountSettings({
           </div>
         </form>
       </CardContent>
+    </Card>
+    <RecentActivitySection />
+    </>
+  );
+}
+
+function getActionIcon(actionType: string) {
+  if (actionType.includes("login")) return <LogIn className="h-4 w-4 text-blue-500" />;
+  if (actionType.includes("password") || actionType.includes("security")) return <Key className="h-4 w-4 text-amber-500" />;
+  if (actionType.includes("session")) return <Shield className="h-4 w-4 text-purple-500" />;
+  if (actionType.includes("profile") || actionType.includes("preferences")) return <CheckCircle className="h-4 w-4 text-green-500" />;
+  return <Activity className="h-4 w-4 text-muted-foreground" />;
+}
+
+function formatActionLabel(actionType: string): string {
+  return actionType
+    .split("_")
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
+}
+
+function formatRelative(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "Just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  return `${days}d ago`;
+}
+
+function RecentActivitySection() {
+  const [expanded, setExpanded] = useState(false);
+  const { data, isLoading, isError } = useUserActivityLogs({ limit: 10, page: 1 });
+
+  const activities: any[] = data?.activities ?? [];
+
+  return (
+    <Card className="mt-6">
+      <CardHeader
+        className="cursor-pointer select-none"
+        onClick={() => setExpanded((v) => !v)}
+      >
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Activity className="h-5 w-5 text-muted-foreground" />
+            <div>
+              <CardTitle className="text-base">Recent Activity</CardTitle>
+              <CardDescription>Your last 10 account actions</CardDescription>
+            </div>
+          </div>
+          {expanded ? (
+            <ChevronUp className="h-4 w-4 text-muted-foreground" />
+          ) : (
+            <ChevronDown className="h-4 w-4 text-muted-foreground" />
+          )}
+        </div>
+      </CardHeader>
+      {expanded && (
+        <CardContent className="pt-0">
+          {isLoading && (
+            <div className="space-y-3">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="flex items-center gap-3">
+                  <Skeleton className="h-8 w-8 rounded-full" />
+                  <div className="flex-1 space-y-1">
+                    <Skeleton className="h-4 w-40" />
+                    <Skeleton className="h-3 w-24" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          {isError && (
+            <p className="text-sm text-muted-foreground">
+              Unable to load activity. Activity logging will be available after first use.
+            </p>
+          )}
+          {!isLoading && !isError && activities.length === 0 && (
+            <p className="text-sm text-muted-foreground">No activity recorded yet.</p>
+          )}
+          {!isLoading && !isError && activities.length > 0 && (
+            <div className="space-y-3">
+              {activities.map((entry: any) => (
+                <div
+                  key={entry.id}
+                  className="flex items-start gap-3 p-2 rounded-md hover:bg-muted/50 transition-colors"
+                >
+                  <div className="mt-0.5 shrink-0 h-8 w-8 rounded-full bg-muted flex items-center justify-center">
+                    {getActionIcon(entry.action_type || entry.actionType || "")}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">
+                      {formatActionLabel(entry.action_type || entry.actionType || "Unknown")}
+                    </p>
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
+                      <Clock className="h-3 w-3" />
+                      <span>{formatRelative(entry.created_at || entry.createdAt)}</span>
+                      {(entry.ip_address || entry.ipAddress) && (
+                        <>
+                          <span>·</span>
+                          <span className="font-mono">{entry.ip_address || entry.ipAddress}</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      )}
     </Card>
   );
 }

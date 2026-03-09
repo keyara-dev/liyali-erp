@@ -130,6 +130,16 @@ export async function getUsers(params?: {
       const firstName = nameParts[0] || "";
       const lastName = nameParts.slice(1).join(" ") || "";
 
+      let preferences: Record<string, any> = {};
+      if (userData?.preferences) {
+        try {
+          preferences = typeof userData.preferences === "string"
+            ? JSON.parse(userData.preferences)
+            : userData.preferences;
+        } catch {}
+      }
+      const avatar = preferences?.avatar || userData?.avatar || "";
+
       return {
         id: userId,
         name: userName,
@@ -143,6 +153,8 @@ export async function getUsers(params?: {
         department_id: member.departmentId || member.department_id || "",
         active: member.active !== undefined ? member.active : true,
         is_active: member.active !== undefined ? member.active : true,
+        preferences,
+        avatar,
         // Include original member data for reference
         member_id: member.id,
         title: member.title || "",
@@ -417,4 +429,84 @@ export async function getUsersByRole(role: string): Promise<APIResponse> {
  */
 export async function searchUsers(query: string): Promise<APIResponse> {
   return getUsers({ search: query });
+}
+
+/**
+ * Get a single platform user by ID via the admin endpoint
+ * Calls: GET /api/v1/admin/users/:id
+ * Normalizes snake_case backend fields to camelCase expected by the User type.
+ */
+export async function getAdminUserById(id: string): Promise<APIResponse> {
+  try {
+    const response = await authenticatedApiClient({
+      url: `/api/v1/admin/users/${id}`,
+      method: "GET",
+    });
+    const raw = response.data.data ?? {};
+    // Parse preferences JSONB (returned as string by Go map scan)
+    let preferences: Record<string, any> = {};
+    if (raw.preferences) {
+      try {
+        preferences = typeof raw.preferences === "string"
+          ? JSON.parse(raw.preferences)
+          : raw.preferences;
+      } catch {}
+    }
+    // Normalize snake_case → camelCase for fields the component expects
+    const user = {
+      ...raw,
+      preferences,
+      avatar: preferences.avatar ?? "",
+      manNumber: raw.manNumber ?? raw.man_number ?? "",
+      nrcNumber: raw.nrcNumber ?? raw.nrc_number ?? "",
+      is_active: raw.is_active ?? raw.active ?? false,
+      mfa_enabled: raw.mfa_enabled ?? false,
+      department: raw.department ?? "",
+      position: raw.position ?? "",
+      contact: raw.contact ?? "",
+    };
+    return {
+      success: true,
+      message: "User fetched successfully",
+      data: user,
+      status: 200,
+      statusText: "OK",
+    };
+  } catch (error) {
+    return handleError(error, "GET", `/api/v1/admin/users/${id}`);
+  }
+}
+
+/**
+ * Admin: Update a user's status (active / suspended)
+ */
+export async function adminUpdateUserStatus(
+  id: string,
+  status: "active" | "suspended",
+): Promise<APIResponse> {
+  try {
+    const response = await authenticatedApiClient({
+      url: `/api/v1/admin/users/${id}/status`,
+      method: "PUT",
+      data: { status },
+    });
+    return successResponse(response.data.data, "User status updated");
+  } catch (error) {
+    return handleError(error, "PUT", `/api/v1/admin/users/${id}/status`);
+  }
+}
+
+/**
+ * Admin: Send password reset email to a user
+ */
+export async function adminResetUserPassword(id: string): Promise<APIResponse> {
+  try {
+    const response = await authenticatedApiClient({
+      url: `/api/v1/admin/users/${id}/reset-password`,
+      method: "POST",
+    });
+    return successResponse(response.data.data, "Password reset email sent");
+  } catch (error) {
+    return handleError(error, "POST", `/api/v1/admin/users/${id}/reset-password`);
+  }
 }

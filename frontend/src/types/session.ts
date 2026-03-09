@@ -92,3 +92,44 @@ export interface AccountLockout {
   unlockedAt?: Date;
   unlockedBy?: string;
 }
+
+// ================== SESSION WITH METADATA (activity logging system) ==================
+
+export interface SessionWithMetadata {
+  id: string;
+  userId: string;
+  ipAddress: string;
+  userAgent: string;
+  deviceType: string;
+  browser: string;
+  os: string;
+  isCurrent: boolean;
+  isExpired: boolean;
+  inactiveDays: number;
+  createdAt: string;
+  updatedAt: string;
+  expiresAt: string;
+  lastActiveAt?: string;
+}
+
+export interface SecurityEvent {
+  id: string;
+  userId: string;
+  actionType: string;
+  ipAddress?: string;
+  userAgent?: string;
+  metadata?: Record<string, unknown>;
+  createdAt: string;
+}
+
+export interface LoginHistoryEntry {
+  id: string;
+  actionType: string;
+  success: boolean;
+  ipAddress: string;
+  userAgent: string;
+  device: string;
+  browser: string;
+  metadata?: Record<string, unknown>;
+  createdAt: string;
+}
