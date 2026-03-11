@@ -3,7 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { User } from "@/types";
 import { LimitGate } from "@/components/subscription/limit-gate";
 import { PageHeader } from "@/components/base/page-header";
-import { getUsers } from "@/app/_actions/user-actions";
+import { getAdminUsers } from "@/app/_actions/user-actions";
 import { verifySession } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import CreateUserForm from "../_components/create-user-dialog";
@@ -46,17 +46,17 @@ export default async function UserManagementPage({ searchParams }: PageProps) {
     page_size = "10",
   } = await searchParams;
 
-  const response = await getUsers({
+  const response = await getAdminUsers({
     search: search || undefined,
-    isActive: status !== "all" ? status === "active" : undefined,
+    status: status !== "all" ? status : undefined,
     role: role !== "all" ? role : undefined,
     page: Number(page),
-    page_size: Number(page_size),
+    limit: Number(page_size),
   });
 
   const users = (response?.data || []) as User[];
 
-  const pagination = response?.data?.pagination ?? {
+  const pagination = response?.pagination ?? {
     total: 0,
     page: 1,
     page_size: 10,

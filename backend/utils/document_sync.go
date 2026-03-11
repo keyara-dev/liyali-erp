@@ -209,8 +209,8 @@ func syncBudget(db *gorm.DB, id string) error {
 		return err
 	}
 
-	if budget.DocumentNumber == "" {
-		return nil // Budgets without a document number cannot be indexed
+	if budget.BudgetCode == "" {
+		return nil // Budgets without a budget code cannot be indexed
 	}
 
 	data, _ := json.Marshal(map[string]interface{}{
@@ -228,7 +228,7 @@ func syncBudget(db *gorm.DB, id string) error {
 	doc := &models.Document{
 		OrganizationID: budget.OrganizationID,
 		DocumentType:   "BUDGET",
-		DocumentNumber: budget.DocumentNumber,
+		DocumentNumber: budget.BudgetCode,
 		Title:          title,
 		Status:         budget.Status,
 		Amount:         &budget.TotalBudget,

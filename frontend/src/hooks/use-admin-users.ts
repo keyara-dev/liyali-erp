@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { User } from "@/types";
 import {
-  getUsers as fetchAdminUsers,
+  getAdminUsers as fetchAdminUsers,
   getUserById as fetchAdminUserById,
   createNewUser as createAdminUser,
   updateUser as updateAdminUser,

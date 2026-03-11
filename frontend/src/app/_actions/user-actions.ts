@@ -180,6 +180,79 @@ export async function getUsers(params?: {
     return handleError(error, "GET", url);
   }
 }
+
+export async function getAdminUsers(params?: {
+  search?: string;
+  role?: string;
+  status?: string;
+  page?: number;
+  limit?: number;
+}): Promise<APIResponse> {
+  const queryParams = new URLSearchParams();
+  if (params?.search) queryParams.append("search", params.search);
+  if (params?.role) queryParams.append("role", params.role);
+  if (params?.status) queryParams.append("status", params.status);
+  if (params?.page) queryParams.append("page", String(params.page));
+  if (params?.limit) queryParams.append("limit", String(params.limit));
+
+  const url = `/api/v1/admin/users${queryParams.toString() ? `?${queryParams.toString()}` : ""}`;
+
+  try {
+    const response = await authenticatedApiClient({ url, method: "GET" });
+    const responseData = response.data?.data || response.data || {};
+    const rawUsers: any[] = responseData.users || [];
+
+    const users = rawUsers.map((u: any) => {
+      let preferences: Record<string, any> = {};
+      if (u.preferences) {
+        try {
+          preferences = typeof u.preferences === "string" ? JSON.parse(u.preferences) : u.preferences;
+        } catch {}
+      }
+      const nameParts = (u.name || "").split(" ");
+      return {
+        id: u.id,
+        name: u.name || "",
+        first_name: nameParts[0] || "",
+        last_name: nameParts.slice(1).join(" ") || "",
+        email: u.email || "",
+        role: u.role || "requester",
+        role_id: "",
+        role_name: u.role || "",
+        department: "",
+        active: u.is_active !== undefined ? u.is_active : true,
+        is_active: u.is_active !== undefined ? u.is_active : true,
+        preferences,
+        avatar: preferences?.avatar || "",
+        position: u.position || "",
+        manNumber: u.man_number || "",
+        nrcNumber: u.nrc_number || "",
+        contact: u.contact || "",
+        created_at: u.created_at,
+        updated_at: u.updated_at,
+        last_login: u.last_login,
+        organization_count: u.organization_count || 0,
+      };
+    });
+
+    const total = responseData.total || 0;
+    const page = responseData.page || 1;
+    const limit = responseData.limit || 10;
+    const totalPages = responseData.totalPages || 1;
+
+    return successResponse(users, "Users retrieved successfully", {
+      total,
+      page,
+      page_size: limit,
+      total_pages: totalPages,
+      has_next: page < totalPages,
+      has_prev: page > 1,
+    });
+  } catch (error) {
+    return handleError(error, "GET", url);
+  }
+}
+
 export async function getHeadsOfDepartments(params?: {
   department_id?: string;
   role_id?: string;

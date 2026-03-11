@@ -25,18 +25,20 @@ func (s *DepartmentService) GetAllDepartments(organizationID string, page, pageS
 	offset := (page - 1) * pageSize
 
 	// Count total departments
-	if err := s.db.Model(&models.OrganizationDepartment{}).
-		Where("organization_id = ?", organizationID).
-		Count(&total).Error; err != nil {
+	countQ := s.db.Model(&models.OrganizationDepartment{})
+	if organizationID != "" {
+		countQ = countQ.Where("organization_id = ?", organizationID)
+	}
+	if err := countQ.Count(&total).Error; err != nil {
 		return nil, 0, fmt.Errorf("failed to count departments: %w", err)
 	}
 
 	// Get departments with pagination
-	if err := s.db.Where("organization_id = ?", organizationID).
-		Order("name ASC").
-		Limit(pageSize).
-		Offset(offset).
-		Find(&departments).Error; err != nil {
+	listQ := s.db.Model(&models.OrganizationDepartment{})
+	if organizationID != "" {
+		listQ = listQ.Where("organization_id = ?", organizationID)
+	}
+	if err := listQ.Order("name ASC").Limit(pageSize).Offset(offset).Find(&departments).Error; err != nil {
 		return nil, 0, fmt.Errorf("failed to fetch departments: %w", err)
 	}
 
@@ -57,18 +59,20 @@ func (s *DepartmentService) GetActiveDepartments(organizationID string, page, pa
 	offset := (page - 1) * pageSize
 
 	// Count total active departments
-	if err := s.db.Model(&models.OrganizationDepartment{}).
-		Where("organization_id = ? AND is_active = ?", organizationID, true).
-		Count(&total).Error; err != nil {
+	countQ := s.db.Model(&models.OrganizationDepartment{}).Where("is_active = ?", true)
+	if organizationID != "" {
+		countQ = countQ.Where("organization_id = ?", organizationID)
+	}
+	if err := countQ.Count(&total).Error; err != nil {
 		return nil, 0, fmt.Errorf("failed to count active departments: %w", err)
 	}
 
 	// Get active departments with pagination
-	if err := s.db.Where("organization_id = ? AND is_active = ?", organizationID, true).
-		Order("name ASC").
-		Limit(pageSize).
-		Offset(offset).
-		Find(&departments).Error; err != nil {
+	listQ := s.db.Model(&models.OrganizationDepartment{}).Where("is_active = ?", true)
+	if organizationID != "" {
+		listQ = listQ.Where("organization_id = ?", organizationID)
+	}
+	if err := listQ.Order("name ASC").Limit(pageSize).Offset(offset).Find(&departments).Error; err != nil {
 		return nil, 0, fmt.Errorf("failed to fetch active departments: %w", err)
 	}
 
@@ -89,18 +93,20 @@ func (s *DepartmentService) GetInactiveDepartments(organizationID string, page, 
 	offset := (page - 1) * pageSize
 
 	// Count total inactive departments
-	if err := s.db.Model(&models.OrganizationDepartment{}).
-		Where("organization_id = ? AND is_active = ?", organizationID, false).
-		Count(&total).Error; err != nil {
+	countQ := s.db.Model(&models.OrganizationDepartment{}).Where("is_active = ?", false)
+	if organizationID != "" {
+		countQ = countQ.Where("organization_id = ?", organizationID)
+	}
+	if err := countQ.Count(&total).Error; err != nil {
 		return nil, 0, fmt.Errorf("failed to count inactive departments: %w", err)
 	}
 
 	// Get inactive departments with pagination
-	if err := s.db.Where("organization_id = ? AND is_active = ?", organizationID, false).
-		Order("name ASC").
-		Limit(pageSize).
-		Offset(offset).
-		Find(&departments).Error; err != nil {
+	listQ := s.db.Model(&models.OrganizationDepartment{}).Where("is_active = ?", false)
+	if organizationID != "" {
+		listQ = listQ.Where("organization_id = ?", organizationID)
+	}
+	if err := listQ.Order("name ASC").Limit(pageSize).Offset(offset).Find(&departments).Error; err != nil {
 		return nil, 0, fmt.Errorf("failed to fetch inactive departments: %w", err)
 	}
 

@@ -35,8 +35,11 @@ func GetCategories(c *fiber.Ctx) error {
 
 	active := c.Query("active")
 
-	// SECURITY: Always filter by organization ID first
-	query := db.Where("organization_id = ?", tenant.OrganizationID)
+	// Filter by organization ID (skipped for super_admin with no org context)
+	query := db.Model(&models.Category{})
+	if tenant.OrganizationID != "" {
+		query = query.Where("organization_id = ?", tenant.OrganizationID)
+	}
 
 	if active == "true" {
 		query = query.Where("active = ?", true)
@@ -45,7 +48,7 @@ func GetCategories(c *fiber.Ctx) error {
 	}
 
 	var total int64
-	if err := query.Model(&models.Category{}).Count(&total).Error; err != nil {
+	if err := query.Count(&total).Error; err != nil {
 		return utils.SendInternalError(c, "Failed to count categories", err)
 	}
 

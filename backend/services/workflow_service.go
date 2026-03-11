@@ -328,7 +328,10 @@ func (s *WorkflowService) ListWorkflows(ctx context.Context, organizationID stri
 	var workflows []*models.Workflow
 	var total int64
 
-	query := s.db.Model(&models.Workflow{}).Where("organization_id = ?", organizationID)
+	query := s.db.Model(&models.Workflow{})
+	if organizationID != "" {
+		query = query.Where("organization_id = ?", organizationID)
+	}
 
 	// Apply filters
 	if entityType != "" {
@@ -360,7 +363,10 @@ func (s *WorkflowService) ListWorkflows(ctx context.Context, organizationID stri
 func (s *WorkflowService) GetWorkflows(ctx context.Context, organizationID string, filter WorkflowListFilter) ([]models.Workflow, error) {
 	var workflows []models.Workflow
 
-	query := s.db.Model(&models.Workflow{}).Where("organization_id = ?", organizationID)
+	query := s.db.Model(&models.Workflow{})
+	if organizationID != "" {
+		query = query.Where("organization_id = ?", organizationID)
+	}
 
 	// Apply filters
 	if filter.EntityType != "" {
