@@ -55,7 +55,7 @@ function transformPOToWorkflowDocument(po: PurchaseOrder): WorkflowDocument {
   };
 }
 
-const PROCUREMENT_EDIT_ROLES = ["admin", "super_admin", "manager", "finance", "procurement"];
+const PROCUREMENT_EDIT_ROLES = ["admin", "finance"];
 
 // Stage indicator
 function StageIndicator({

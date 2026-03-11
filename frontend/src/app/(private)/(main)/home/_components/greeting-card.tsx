@@ -60,7 +60,7 @@ export function GreetingCard({
     href?: string;
     onClick?: () => void;
   }> = (() => {
-    if (role === "admin" || role === "super_admin") {
+    if (role === "admin") {
       return [
         { icon: <Users className="h-5 w-5" />, label: "User Management", href: "/admin/users" },
         { icon: <GitBranch className="h-5 w-5" />, label: "Processes & Workflows", href: "/admin/workflows" },
@@ -68,20 +68,12 @@ export function GreetingCard({
         { icon: <BarChart3 className="h-5 w-5" />, label: "Reports & Analytics", href: "/admin/reports" },
       ];
     }
-    if (["manager", "finance", "approver", "department_manager"].includes(role)) {
+    if (["finance", "approver"].includes(role)) {
       return [
         { icon: <CheckSquare className="h-5 w-5" />, label: "View Tasks", href: "/tasks" },
         { icon: <BarChart3 className="h-5 w-5" />, label: "Reports & Analytics", href: "/admin/reports" },
         { icon: <Search className="h-5 w-5" />, label: "Search Documents", href: "/search" },
         { icon: <ShieldCheck className="h-5 w-5" />, label: "Verify Document", href: "/verification" },
-      ];
-    }
-    if (role === "procurement") {
-      return [
-        { icon: <FileText className="h-5 w-5" />, label: "View Requisitions", href: "/requisitions" },
-        { icon: <FileCheck className="h-5 w-5" />, label: "Purchase Orders", href: "/purchase-orders" },
-        { icon: <FileCheck className="h-5 w-5" />, label: "Goods Received Notes", href: "/grn" },
-        { icon: <Search className="h-5 w-5" />, label: "Search Documents", href: "/search" },
       ];
     }
     // Requester / default

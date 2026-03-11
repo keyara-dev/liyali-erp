@@ -67,30 +67,12 @@ export function SiteHeader() {
     }
   };
 
-  const getRoleColor = (role: AdminRole) => {
-    switch (role) {
-      case "super_admin":
-        return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200";
-      case "admin":
-        return "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200";
-      case "compliance_officer":
-        return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200";
-      default:
-        return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200";
-    }
+  const getRoleColor = (_role: AdminRole) => {
+    return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200";
   };
 
-  const getRoleLabel = (role: AdminRole) => {
-    switch (role) {
-      case "super_admin":
-        return "Super Admin";
-      case "admin":
-        return "Admin";
-      case "compliance_officer":
-        return "Compliance Officer";
-      default:
-        return role;
-    }
+  const getRoleLabel = (_role: AdminRole) => {
+    return "Super Admin";
   };
 
   const getInitials = (name: string) => {

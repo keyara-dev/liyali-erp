@@ -8,9 +8,6 @@ const BUILT_IN_APPROVER_ROLES = [
   "admin",
   "approver",
   "finance",
-  "manager",
-  "supervisor",
-  "department_head",
 ];
 
 /**

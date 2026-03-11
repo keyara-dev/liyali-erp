@@ -13,11 +13,15 @@ export default async function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
-  // Verify authentication before rendering admin layout
-  const { isAuthenticated } = await verifyAdminSession();
+  // Only super_admin users are allowed in the admin console
+  const { isAuthenticated, isSuperAdmin } = await verifyAdminSession();
 
   if (!isAuthenticated) {
     redirect("/login");
+  }
+
+  if (!isSuperAdmin) {
+    redirect("/unauthorized");
   }
 
   return (

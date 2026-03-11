@@ -110,24 +110,12 @@ export type PaymentMethod =
   | "BANK_TRANSFER"
   | "CASH";
 
-// Unified User Role type (combining UserRole and UserType)
-export type UserRole =
-  | "admin"
-  | "approver"
-  | "requester"
-  | "finance"
-  | "viewer"
-  | "department_manager"
-  | "finance_manager"
-  | "finance_officer"
-  | "director"
-  | "cfo"
-  | "compliance_officer"
-  | "ceo"
-  | "superadmin"; // Add superadmin role
+/** The canonical set of system roles in the gateway app. */
+export type SystemRole = "admin" | "approver" | "finance" | "requester";
 
-// Alias for backward compatibility
-export type UserType = UserRole;
+// Alias kept for backward compatibility
+export type UserRole = SystemRole;
+export type UserType = SystemRole;
 
 export type ItemCondition = "good" | "damaged" | "missing";
 

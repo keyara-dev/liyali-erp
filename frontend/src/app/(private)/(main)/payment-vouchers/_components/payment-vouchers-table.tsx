@@ -55,7 +55,7 @@ function transformPVToWorkflowDocument(pv: PaymentVoucher): WorkflowDocument {
   };
 }
 
-const FINANCE_EDIT_ROLES = ["admin", "super_admin", "manager", "finance"];
+const FINANCE_EDIT_ROLES = ["admin", "finance"];
 
 // Stage indicator
 function StageIndicator({

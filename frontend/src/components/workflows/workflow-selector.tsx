@@ -173,7 +173,7 @@ interface WorkflowDetailsProps {
   workflow: any; // Using any to handle different workflow type structures
 }
 
-/** Format a built-in role name for display (e.g., "department_manager" → "Department Manager") */
+/** Format a built-in role name for display (e.g., "finance" → "Finance") */
 function formatRoleName(role: string): string {
   return role.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }

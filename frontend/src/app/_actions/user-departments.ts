@@ -183,7 +183,7 @@ export async function createUserWithDepartment(data: {
         email: data.email,
         name: data.name,
         password: data.password,
-        role: data.role || "viewer", // Default to viewer role
+        role: data.role || "requester",
         department_id: data.departmentId || null,
       }
     });

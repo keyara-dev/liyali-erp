@@ -49,7 +49,7 @@ export function ApprovalsList({ userId, userRole }: ApprovalsListProps) {
   const limit = 10;
 
   // Built-in approver roles that can approve any task
-  const APPROVER_ROLES = ["admin", "approver", "finance", "manager", "supervisor", "department_head"];
+  const APPROVER_ROLES = ["admin", "approver", "finance"];
 
   // Check if the user has a built-in approver role
   const isBuiltInApprover = APPROVER_ROLES.some(

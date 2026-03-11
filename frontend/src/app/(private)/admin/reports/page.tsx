@@ -19,7 +19,7 @@ export default async function AdminReportsPage() {
   }
 
   // Verify admin role
-  if (session.user.role !== "admin" && session.user.role !== "superadmin") {
+  if (session.user.role !== "admin") {
     redirect("/unauthorized");
   }
 

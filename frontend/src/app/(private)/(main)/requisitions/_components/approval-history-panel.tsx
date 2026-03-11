@@ -797,7 +797,7 @@ interface ApprovalHistoryPanelProps {
   approvalChain?: ApprovalRecord[];
 }
 
-const AUDIT_ROLES = ["admin", "super_admin", "manager", "finance"];
+const AUDIT_ROLES = ["admin", "finance"];
 
 function AuditTrailContent({ entries }: { entries: AuditTrailEntry[] }) {
   if (entries.length === 0) {

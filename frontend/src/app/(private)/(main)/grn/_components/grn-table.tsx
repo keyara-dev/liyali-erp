@@ -47,7 +47,7 @@ function transformGRNToWorkflowDocument(grn: any): WorkflowDocument {
   };
 }
 
-const GRN_EDIT_ROLES = ["admin", "super_admin", "manager", "finance", "procurement"];
+const GRN_EDIT_ROLES = ["admin", "finance"];
 
 // Options dropdown component
 function GrnOptionsMenu({

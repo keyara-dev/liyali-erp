@@ -160,7 +160,7 @@ export function AnyPermissionGuard({
  */
 interface RoleGuardProps {
   /** Role to check for */
-  role: "admin" | "approver" | "requester" | "finance" | "viewer";
+  role: "admin" | "approver" | "finance" | "requester";
   /** Content to render if user has the role */
   children: ReactNode;
   /** Content to render if user doesn't have the role (optional) */

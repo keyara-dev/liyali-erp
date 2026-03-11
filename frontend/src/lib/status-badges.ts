@@ -54,14 +54,7 @@ export type ApprovalStatus =
 export type ComplianceStatus = "compliant" | "non-compliant" | "pending";
 
 // User Role
-export type UserRole =
-  | "requester"
-  | "department_manager"
-  | "finance_officer"
-  | "director"
-  | "cfo"
-  | "compliance_officer"
-  | "admin";
+export type UserRole = "admin" | "approver" | "finance" | "requester";
 
 // Service/System Health Status
 export type HealthStatus = "healthy" | "issues" | "down";

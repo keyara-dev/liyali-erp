@@ -37,7 +37,7 @@ export interface AdminUser {
   id: string;
   email: string;
   name: string;
-  role: "super_admin" | "admin" | "compliance_officer";
+  role: "super_admin";
   permissions: string[];
   created_at: string;
   last_login?: string;

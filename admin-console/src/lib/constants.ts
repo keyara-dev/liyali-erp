@@ -81,11 +81,9 @@ export const ADMIN_QUERY_KEYS = {
   },
 };
 
-// Admin role types
+// Admin role — only super_admin is permitted to access the admin console
 export const ADMIN_ROLES = {
   SUPER_ADMIN: "super_admin",
-  ADMIN: "admin",
-  COMPLIANCE_OFFICER: "compliance_officer",
 } as const;
 
 export type AdminRole = (typeof ADMIN_ROLES)[keyof typeof ADMIN_ROLES];

@@ -76,6 +76,14 @@ export async function loginAdmin(data: LoginRequest): Promise<AuthResponse> {
       };
     }
 
+    // Only super_admin users are allowed to access the admin console
+    if (loginData.user.role !== "super_admin") {
+      return {
+        success: false,
+        message: "Access denied. Only super administrators can access the admin console.",
+      };
+    }
+
     // Create admin session with the response data
     await createAdminSession({
       access_token: loginData.accessToken,

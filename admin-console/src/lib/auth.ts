@@ -284,8 +284,11 @@ export async function verifyAdminSession(): Promise<{
         expiresAt: session.expiresAt,
       });
 
+    const isSuperAdmin = session.role === "super_admin";
+
     return {
       isAuthenticated: true,
+      isSuperAdmin,
       session: session,
       role: session.role,
       permissions: session.permissions,

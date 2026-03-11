@@ -13,20 +13,20 @@ export function getDashboardVariant(
   const r = role.toLowerCase();
 
   if (
-    ["admin", "super_admin"].includes(r) ||
+    r === "admin" ||
     permissions.includes("admin.view")
   ) {
     return "admin";
   }
 
   if (
-    ["manager", "finance", "approver", "department_manager"].includes(r) ||
+    ["finance", "approver"].includes(r) ||
     permissions.some((p) => p.endsWith(".approve"))
   ) {
     return "approver";
   }
 
-  if (r === "procurement" || permissions.includes("purchase_order.create")) {
+  if (permissions.includes("purchase_order.create")) {
     return "procurement";
   }
 
