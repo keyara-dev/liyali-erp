@@ -200,6 +200,8 @@ func CreatePaymentVoucher(c *fiber.Ctx) error {
 
 	config.DB.Preload("Vendor").First(&voucher)
 
+	go utils.SyncDocument(config.DB, "PAYMENT_VOUCHER", voucher.ID)
+
 	return c.Status(fiber.StatusCreated).JSON(types.DetailResponse{
 		Success: true,
 		Data:    modelToPaymentVoucherResponse(voucher),
@@ -327,6 +329,8 @@ func UpdatePaymentVoucher(c *fiber.Ctx) error {
 	}
 
 	config.DB.Preload("Vendor").First(&voucher)
+
+	go utils.SyncDocument(config.DB, "PAYMENT_VOUCHER", voucher.ID)
 
 	return c.JSON(types.DetailResponse{
 		Success: true,
@@ -510,6 +514,8 @@ func SubmitPaymentVoucher(c *fiber.Ctx) error {
 			"error":   err.Error(),
 		})
 	}
+
+	go utils.SyncDocument(config.DB, "PAYMENT_VOUCHER", voucher.ID)
 
 	return c.JSON(types.DetailResponse{
 		Success: true,

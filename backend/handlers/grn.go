@@ -186,6 +186,8 @@ func CreateGRN(c *fiber.Ctx) error {
 		})
 	}
 
+	go utils.SyncDocument(config.DB, "GRN", grn.ID)
+
 	return c.Status(fiber.StatusCreated).JSON(types.DetailResponse{
 		Success: true,
 		Data:    modelToGRNResponse(grn),
@@ -296,6 +298,8 @@ func UpdateGRN(c *fiber.Ctx) error {
 			"error":   err.Error(),
 		})
 	}
+
+	go utils.SyncDocument(config.DB, "GRN", grn.ID)
 
 	return c.JSON(types.DetailResponse{
 		Success: true,
@@ -477,6 +481,8 @@ func SubmitGRN(c *fiber.Ctx) error {
 
 	// Preload purchase order and vendor
 	config.DB.Preload("PurchaseOrder").Preload("Vendor").First(&grn)
+
+	go utils.SyncDocument(config.DB, "GRN", grn.ID)
 
 	return c.JSON(types.DetailResponse{
 		Success: true,

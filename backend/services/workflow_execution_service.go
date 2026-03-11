@@ -11,6 +11,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/liyali/liyali-gateway/models"
 	"github.com/liyali/liyali-gateway/types"
+	"github.com/liyali/liyali-gateway/utils"
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
 )
@@ -1604,20 +1605,27 @@ type ApproverInfo struct {
 
 // updateDocumentStatus updates the status of the actual document when workflow completes
 func (s *WorkflowExecutionService) updateDocumentStatus(tx *gorm.DB, entityType, entityID, newStatus string) error {
+	var err error
 	switch entityType {
 	case "REQUISITION", "requisition":
-		return tx.Model(&models.Requisition{}).Where("id = ?", entityID).Update("status", newStatus).Error
+		err = tx.Model(&models.Requisition{}).Where("id = ?", entityID).Update("status", newStatus).Error
 	case "BUDGET", "budget":
-		return tx.Model(&models.Budget{}).Where("id = ?", entityID).Update("status", newStatus).Error
+		err = tx.Model(&models.Budget{}).Where("id = ?", entityID).Update("status", newStatus).Error
 	case "PURCHASE_ORDER", "purchase_order":
-		return tx.Model(&models.PurchaseOrder{}).Where("id = ?", entityID).Update("status", newStatus).Error
+		err = tx.Model(&models.PurchaseOrder{}).Where("id = ?", entityID).Update("status", newStatus).Error
 	case "PAYMENT_VOUCHER", "payment_voucher":
-		return tx.Model(&models.PaymentVoucher{}).Where("id = ?", entityID).Update("status", newStatus).Error
+		err = tx.Model(&models.PaymentVoucher{}).Where("id = ?", entityID).Update("status", newStatus).Error
 	case "GRN", "grn":
-		return tx.Model(&models.GoodsReceivedNote{}).Where("id = ?", entityID).Update("status", newStatus).Error
+		err = tx.Model(&models.GoodsReceivedNote{}).Where("id = ?", entityID).Update("status", newStatus).Error
 	default:
 		return fmt.Errorf("unsupported entity type: %s", entityType)
 	}
+	if err != nil {
+		return err
+	}
+	// Keep the generic documents index in sync after every status change.
+	go utils.SyncDocument(s.db, entityType, entityID)
+	return nil
 }
 
 // addActionHistoryEntry adds an action history entry to the document

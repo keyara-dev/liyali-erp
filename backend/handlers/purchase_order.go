@@ -240,6 +240,8 @@ func CreatePurchaseOrder(c *fiber.Ctx) error {
 
 	config.DB.Preload("Vendor").First(&order)
 
+	go utils.SyncDocument(config.DB, "PURCHASE_ORDER", order.ID)
+
 	logger.Info("purchase_order_created_successfully")
 
 	return c.Status(fiber.StatusCreated).JSON(types.DetailResponse{
@@ -397,6 +399,8 @@ func UpdatePurchaseOrder(c *fiber.Ctx) error {
 	}
 
 	config.DB.Preload("Vendor").First(&order)
+
+	go utils.SyncDocument(config.DB, "PURCHASE_ORDER", order.ID)
 
 	logger.Info("purchase_order_updated_successfully")
 
@@ -618,6 +622,8 @@ func SubmitPurchaseOrder(c *fiber.Ctx) error {
 
 	// Preload vendor
 	config.DB.Preload("Vendor").First(&order)
+
+	go utils.SyncDocument(config.DB, "PURCHASE_ORDER", order.ID)
 
 	logging.AddFieldsToRequest(c, map[string]interface{}{
 		"order_id":      order.ID,

@@ -152,40 +152,12 @@ type PublicDocumentVerification struct {
 	CreatedAt      string   `json:"createdAt"`
 }
 
-// VerifyDocumentPublic verifies a document by document number for public access
-// Returns limited document information for verification purposes
+// VerifyDocumentPublic verifies a document by document number for public access.
+// Entity-specific tables (requisitions, purchase_orders, etc.) are always queried
+// first so the caller always sees the latest committed status. The generic documents
+// table is used only as a fallback for document types without a known prefix.
 func (s *DocumentService) VerifyDocumentPublic(ctx context.Context, documentNumber string) (*PublicDocumentVerification, error) {
-	// First, try to get from the generic documents table
-	document, err := s.documentRepo.GetByNumberOnly(ctx, documentNumber)
-	if err == nil && document != nil {
-		// Build verification response with limited information
-		verification := &PublicDocumentVerification{
-			Verified:       true,
-			DocumentNumber: document.DocumentNumber,
-			DocumentType:   document.DocumentType,
-			Title:          document.Title,
-			Status:         document.Status,
-			Department:     document.Department,
-			Amount:         document.Amount,
-			Currency:       document.Currency,
-			OrganizationID: document.OrganizationID,
-			CreatedAt:      document.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
-		}
-
-		// Add organization name if available
-		if document.Organization != nil {
-			verification.Organization = document.Organization.Name
-		}
-
-		// Add creator name if available
-		if document.Creator != nil {
-			verification.CreatedByName = document.Creator.Name
-		}
-
-		return verification, nil
-	}
-
-	// If not found in generic documents table, try entity-specific tables based on prefix
+	// Prefer entity-specific tables — they are always authoritative and up-to-date.
 	docType := getDocumentTypeFromNumber(documentNumber)
 
 	switch docType {
@@ -218,7 +190,31 @@ func (s *DocumentService) VerifyDocumentPublic(ctx context.Context, documentNumb
 		return buildVerificationFromGRN(grn), nil
 	}
 
-	return nil, fmt.Errorf("document not found")
+	// Unknown prefix — fall back to the generic documents table.
+	document, err := s.documentRepo.GetByNumberOnly(ctx, documentNumber)
+	if err != nil || document == nil {
+		return nil, fmt.Errorf("document not found")
+	}
+
+	verification := &PublicDocumentVerification{
+		Verified:       true,
+		DocumentNumber: document.DocumentNumber,
+		DocumentType:   document.DocumentType,
+		Title:          document.Title,
+		Status:         document.Status,
+		Department:     document.Department,
+		Amount:         document.Amount,
+		Currency:       document.Currency,
+		OrganizationID: document.OrganizationID,
+		CreatedAt:      document.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+	}
+	if document.Organization != nil {
+		verification.Organization = document.Organization.Name
+	}
+	if document.Creator != nil {
+		verification.CreatedByName = document.Creator.Name
+	}
+	return verification, nil
 }
 
 // getDocumentTypeFromNumber determines document type from document number prefix
@@ -256,19 +252,29 @@ func buildVerificationFromRequisition(req *models.Requisition) *PublicDocumentVe
 	if req.Currency != "" {
 		verification.Currency = &req.Currency
 	}
+	if req.Department != "" {
+		verification.Department = &req.Department
+	}
 	if req.Requester != nil {
 		verification.CreatedByName = req.Requester.Name
+	}
+	if req.Organization != nil {
+		verification.Organization = req.Organization.Name
 	}
 	return verification
 }
 
 // buildVerificationFromPurchaseOrder builds verification response from purchase order
 func buildVerificationFromPurchaseOrder(po *models.PurchaseOrder) *PublicDocumentVerification {
+	title := po.Title
+	if title == "" {
+		title = "Purchase Order " + po.DocumentNumber
+	}
 	verification := &PublicDocumentVerification{
 		Verified:       true,
 		DocumentNumber: po.DocumentNumber,
 		DocumentType:   "PURCHASE_ORDER",
-		Title:          po.Title,
+		Title:          title,
 		Status:         po.Status,
 		OrganizationID: po.OrganizationID,
 		CreatedAt:      po.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
@@ -279,16 +285,29 @@ func buildVerificationFromPurchaseOrder(po *models.PurchaseOrder) *PublicDocumen
 	if po.Currency != "" {
 		verification.Currency = &po.Currency
 	}
+	if po.Department != "" {
+		verification.Department = &po.Department
+	}
+	if po.Organization != nil {
+		verification.Organization = po.Organization.Name
+	}
+	if po.Vendor != nil {
+		verification.CreatedByName = po.Vendor.Name
+	}
 	return verification
 }
 
 // buildVerificationFromPaymentVoucher builds verification response from payment voucher
 func buildVerificationFromPaymentVoucher(pv *models.PaymentVoucher) *PublicDocumentVerification {
+	title := pv.Title
+	if title == "" {
+		title = "Payment Voucher " + pv.DocumentNumber
+	}
 	verification := &PublicDocumentVerification{
 		Verified:       true,
 		DocumentNumber: pv.DocumentNumber,
 		DocumentType:   "PAYMENT_VOUCHER",
-		Title:          pv.Title,
+		Title:          title,
 		Status:         pv.Status,
 		OrganizationID: pv.OrganizationID,
 		CreatedAt:      pv.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
@@ -299,12 +318,21 @@ func buildVerificationFromPaymentVoucher(pv *models.PaymentVoucher) *PublicDocum
 	if pv.Currency != "" {
 		verification.Currency = &pv.Currency
 	}
+	if pv.Department != "" {
+		verification.Department = &pv.Department
+	}
+	if pv.Organization != nil {
+		verification.Organization = pv.Organization.Name
+	}
+	if pv.RequestedByName != "" {
+		verification.CreatedByName = pv.RequestedByName
+	}
 	return verification
 }
 
 // buildVerificationFromGRN builds verification response from GRN
 func buildVerificationFromGRN(grn *models.GoodsReceivedNote) *PublicDocumentVerification {
-	title := "Goods Received Note - " + grn.DocumentNumber
+	title := "Goods Received Note " + grn.DocumentNumber
 	if grn.Notes != "" {
 		title = grn.Notes
 	}
@@ -316,6 +344,10 @@ func buildVerificationFromGRN(grn *models.GoodsReceivedNote) *PublicDocumentVeri
 		Status:         grn.Status,
 		OrganizationID: grn.OrganizationID,
 		CreatedAt:      grn.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+		CreatedByName:  grn.ReceivedBy,
+	}
+	if grn.Organization != nil {
+		verification.Organization = grn.Organization.Name
 	}
 	return verification
 }
@@ -449,7 +481,7 @@ func (s *DocumentService) SearchDocuments(ctx context.Context, organizationID, q
 		return nil, 0, fmt.Errorf("failed to search documents: %w", err)
 	}
 
-	total, err := s.documentRepo.Count(ctx, organizationID, filter)
+	total, err := s.documentRepo.CountSearch(ctx, organizationID, query, filter)
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to count search results: %w", err)
 	}
@@ -554,30 +586,3 @@ func (s *DocumentService) GetDocumentForPDFPublic(ctx context.Context, documentN
 	return result, nil
 }
 
-// SyncFromSpecificModel syncs a specific model to the generic document table
-func (s *DocumentService) SyncFromSpecificModel(ctx context.Context, modelType string, model interface{}) error {
-	switch modelType {
-	case "REQUISITION":
-		if req, ok := model.(*models.Requisition); ok {
-			return s.documentRepo.SyncFromRequisition(ctx, req)
-		}
-	case "BUDGET":
-		if budget, ok := model.(*models.Budget); ok {
-			return s.documentRepo.SyncFromBudget(ctx, budget)
-		}
-	case "PURCHASE_ORDER":
-		if po, ok := model.(*models.PurchaseOrder); ok {
-			return s.documentRepo.SyncFromPurchaseOrder(ctx, po)
-		}
-	case "PAYMENT_VOUCHER":
-		if pv, ok := model.(*models.PaymentVoucher); ok {
-			return s.documentRepo.SyncFromPaymentVoucher(ctx, pv)
-		}
-	case "GRN":
-		if grn, ok := model.(*models.GoodsReceivedNote); ok {
-			return s.documentRepo.SyncFromGRN(ctx, grn)
-		}
-	}
-	
-	return fmt.Errorf("unsupported model type: %s", modelType)
-}

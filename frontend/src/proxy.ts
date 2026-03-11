@@ -112,20 +112,25 @@ export default async function proxy(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // Admin route protection - verify role (requires JWT decode)
-  if (isAdminRoute && hasAuthCookie) {
+  // Role-based access control — decode JWT only when there is a session cookie
+  // and the request targets a protected or admin page.
+  if (hasAuthCookie && (isAdminRoute || !isAuthPage && !isPublicPage)) {
     try {
       const { isAuthenticated, role } = await verifySession();
 
-      if (!isAuthenticated || role !== "admin") {
-        console.log(
-          "[Proxy] Non-admin user attempting to access admin route, redirecting to /access-denied"
-        );
+      // super_admin belongs to the admin console only — block from frontend app
+      if (isAuthenticated && role === "super_admin") {
+        url.pathname = "/access-denied";
+        return NextResponse.redirect(url);
+      }
+
+      // Admin routes require the admin role
+      if (isAdminRoute && (!isAuthenticated || role !== "admin")) {
         url.pathname = "/access-denied";
         return NextResponse.redirect(url);
       }
     } catch (error) {
-      console.error("[Proxy] Admin route check failed:", error);
+      console.error("[Proxy] Session check failed:", error);
     }
   }
 

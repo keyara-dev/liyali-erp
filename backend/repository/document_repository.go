@@ -9,7 +9,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/liyali/liyali-gateway/models"
-	"gorm.io/datatypes"
 	"gorm.io/gorm"
 )
 
@@ -35,6 +34,7 @@ type DocumentRepositoryInterface interface {
 
 	// Count operations
 	Count(ctx context.Context, organizationID string, filter *models.DocumentFilter) (int64, error)
+	CountSearch(ctx context.Context, organizationID, query string, filter *models.DocumentFilter) (int64, error)
 	CountByType(ctx context.Context, organizationID, documentType string) (int64, error)
 	CountByStatus(ctx context.Context, organizationID, status string) (int64, error)
 	CountByUser(ctx context.Context, organizationID, userID string) (int64, error)
@@ -52,12 +52,6 @@ type DocumentRepositoryInterface interface {
 	GetPaymentVoucherByNumberPublic(ctx context.Context, documentNumber string) (*models.PaymentVoucher, error)
 	GetGRNByNumberPublic(ctx context.Context, documentNumber string) (*models.GoodsReceivedNote, error)
 
-	// Sync operations (to sync with existing specific models)
-	SyncFromRequisition(ctx context.Context, requisition *models.Requisition) error
-	SyncFromBudget(ctx context.Context, budget *models.Budget) error
-	SyncFromPurchaseOrder(ctx context.Context, po *models.PurchaseOrder) error
-	SyncFromPaymentVoucher(ctx context.Context, pv *models.PaymentVoucher) error
-	SyncFromGRN(ctx context.Context, grn *models.GoodsReceivedNote) error
 }
 
 // DocumentRepository implements DocumentRepositoryInterface
@@ -145,6 +139,7 @@ func (r *DocumentRepository) GetRequisitionByNumberPublic(ctx context.Context, d
 	err := r.db.WithContext(ctx).
 		Where("document_number = ?", documentNumber).
 		Preload("Requester").
+		Preload("Organization").
 		Preload("Category").
 		Preload("PreferredVendor").
 		First(&requisition).Error
@@ -162,6 +157,7 @@ func (r *DocumentRepository) GetPurchaseOrderByNumberPublic(ctx context.Context,
 	err := r.db.WithContext(ctx).
 		Where("document_number = ?", documentNumber).
 		Preload("Vendor").
+		Preload("Organization").
 		First(&po).Error
 
 	if err != nil {
@@ -177,6 +173,7 @@ func (r *DocumentRepository) GetPaymentVoucherByNumberPublic(ctx context.Context
 	err := r.db.WithContext(ctx).
 		Where("document_number = ?", documentNumber).
 		Preload("Vendor").
+		Preload("Organization").
 		First(&pv).Error
 
 	if err != nil {
@@ -191,6 +188,7 @@ func (r *DocumentRepository) GetGRNByNumberPublic(ctx context.Context, documentN
 	var grn models.GoodsReceivedNote
 	err := r.db.WithContext(ctx).
 		Where("document_number = ?", documentNumber).
+		Preload("Organization").
 		First(&grn).Error
 
 	if err != nil {
@@ -697,119 +695,132 @@ func (r *DocumentRepository) grnToDocument(grn *models.GoodsReceivedNote) *model
 	return doc
 }
 
-// Count counts documents with optional filtering
+// Count counts documents with optional filtering (no text search).
 func (r *DocumentRepository) Count(ctx context.Context, organizationID string, filter *models.DocumentFilter) (int64, error) {
+	return r.CountSearch(ctx, organizationID, "", filter)
+}
+
+// CountSearch counts documents matching both the text query and optional filter.
+func (r *DocumentRepository) CountSearch(ctx context.Context, organizationID, query string, filter *models.DocumentFilter) (int64, error) {
 	var totalCount int64
 
-	// Check if we need to filter by document type
 	searchTypes := []string{}
 	if filter != nil && len(filter.DocumentTypes) > 0 {
 		searchTypes = toUpperSlice(filter.DocumentTypes)
 	} else {
-		// Count all types if no filter specified
 		searchTypes = []string{"REQUISITION", "PURCHASE_ORDER", "PAYMENT_VOUCHER", "GRN"}
 	}
 
-	// Count requisitions
 	if containsType(searchTypes, "REQUISITION") {
-		count, _ := r.countRequisitions(ctx, organizationID, filter)
+		count, _ := r.countRequisitions(ctx, organizationID, query, filter)
 		totalCount += count
 	}
-
-	// Count purchase orders
 	if containsType(searchTypes, "PURCHASE_ORDER") || containsType(searchTypes, "PO") {
-		count, _ := r.countPurchaseOrders(ctx, organizationID, filter)
+		count, _ := r.countPurchaseOrders(ctx, organizationID, query, filter)
 		totalCount += count
 	}
-
-	// Count payment vouchers
 	if containsType(searchTypes, "PAYMENT_VOUCHER") || containsType(searchTypes, "PV") {
-		count, _ := r.countPaymentVouchers(ctx, organizationID, filter)
+		count, _ := r.countPaymentVouchers(ctx, organizationID, query, filter)
 		totalCount += count
 	}
-
-	// Count GRNs
 	if containsType(searchTypes, "GRN") || containsType(searchTypes, "GOODS_RECEIVED_NOTE") {
-		count, _ := r.countGRNs(ctx, organizationID, filter)
+		count, _ := r.countGRNs(ctx, organizationID, query, filter)
 		totalCount += count
 	}
 
 	return totalCount, nil
 }
 
-func (r *DocumentRepository) countRequisitions(ctx context.Context, organizationID string, filter *models.DocumentFilter) (int64, error) {
-	query := r.db.WithContext(ctx).Model(&models.Requisition{}).Where("organization_id = ?", organizationID)
+func applyTextSearch(q *gorm.DB, searchText string) *gorm.DB {
+	if searchText == "" {
+		return q
+	}
+	for _, term := range strings.Fields(searchText) {
+		q = q.Where(
+			"title ILIKE ? OR description ILIKE ? OR document_number ILIKE ? OR department ILIKE ?",
+			"%"+term+"%", "%"+term+"%", "%"+term+"%", "%"+term+"%",
+		)
+	}
+	return q
+}
+
+func (r *DocumentRepository) countRequisitions(ctx context.Context, organizationID, searchText string, filter *models.DocumentFilter) (int64, error) {
+	q := r.db.WithContext(ctx).Model(&models.Requisition{}).Where("organization_id = ?", organizationID)
+	q = applyTextSearch(q, searchText)
 	if filter != nil && filter.DocumentNumber != "" {
-		query = query.Where("document_number ILIKE ?", "%"+filter.DocumentNumber+"%")
+		q = q.Where("document_number ILIKE ?", "%"+filter.DocumentNumber+"%")
 	}
 	if filter != nil && len(filter.Statuses) > 0 {
-		query = query.Where("UPPER(status) IN ?", toUpperSlice(filter.Statuses))
+		q = q.Where("UPPER(status) IN ?", toUpperSlice(filter.Statuses))
 	}
 	if filter != nil && filter.DateFrom != nil {
-		query = query.Where("created_at >= ?", filter.DateFrom)
+		q = q.Where("created_at >= ?", filter.DateFrom)
 	}
 	if filter != nil && filter.DateTo != nil {
-		query = query.Where("created_at <= ?", filter.DateTo)
+		q = q.Where("created_at <= ?", filter.DateTo)
 	}
 	var count int64
-	err := query.Count(&count).Error
+	err := q.Count(&count).Error
 	return count, err
 }
 
-func (r *DocumentRepository) countPurchaseOrders(ctx context.Context, organizationID string, filter *models.DocumentFilter) (int64, error) {
-	query := r.db.WithContext(ctx).Model(&models.PurchaseOrder{}).Where("organization_id = ?", organizationID)
+func (r *DocumentRepository) countPurchaseOrders(ctx context.Context, organizationID, searchText string, filter *models.DocumentFilter) (int64, error) {
+	q := r.db.WithContext(ctx).Model(&models.PurchaseOrder{}).Where("organization_id = ?", organizationID)
+	q = applyTextSearch(q, searchText)
 	if filter != nil && filter.DocumentNumber != "" {
-		query = query.Where("document_number ILIKE ?", "%"+filter.DocumentNumber+"%")
+		q = q.Where("document_number ILIKE ?", "%"+filter.DocumentNumber+"%")
 	}
 	if filter != nil && len(filter.Statuses) > 0 {
-		query = query.Where("UPPER(status) IN ?", toUpperSlice(filter.Statuses))
+		q = q.Where("UPPER(status) IN ?", toUpperSlice(filter.Statuses))
 	}
 	if filter != nil && filter.DateFrom != nil {
-		query = query.Where("created_at >= ?", filter.DateFrom)
+		q = q.Where("created_at >= ?", filter.DateFrom)
 	}
 	if filter != nil && filter.DateTo != nil {
-		query = query.Where("created_at <= ?", filter.DateTo)
+		q = q.Where("created_at <= ?", filter.DateTo)
 	}
 	var count int64
-	err := query.Count(&count).Error
+	err := q.Count(&count).Error
 	return count, err
 }
 
-func (r *DocumentRepository) countPaymentVouchers(ctx context.Context, organizationID string, filter *models.DocumentFilter) (int64, error) {
-	query := r.db.WithContext(ctx).Model(&models.PaymentVoucher{}).Where("organization_id = ?", organizationID)
+func (r *DocumentRepository) countPaymentVouchers(ctx context.Context, organizationID, searchText string, filter *models.DocumentFilter) (int64, error) {
+	q := r.db.WithContext(ctx).Model(&models.PaymentVoucher{}).Where("organization_id = ?", organizationID)
+	q = applyTextSearch(q, searchText)
 	if filter != nil && filter.DocumentNumber != "" {
-		query = query.Where("document_number ILIKE ?", "%"+filter.DocumentNumber+"%")
+		q = q.Where("document_number ILIKE ?", "%"+filter.DocumentNumber+"%")
 	}
 	if filter != nil && len(filter.Statuses) > 0 {
-		query = query.Where("UPPER(status) IN ?", toUpperSlice(filter.Statuses))
+		q = q.Where("UPPER(status) IN ?", toUpperSlice(filter.Statuses))
 	}
 	if filter != nil && filter.DateFrom != nil {
-		query = query.Where("created_at >= ?", filter.DateFrom)
+		q = q.Where("created_at >= ?", filter.DateFrom)
 	}
 	if filter != nil && filter.DateTo != nil {
-		query = query.Where("created_at <= ?", filter.DateTo)
+		q = q.Where("created_at <= ?", filter.DateTo)
 	}
 	var count int64
-	err := query.Count(&count).Error
+	err := q.Count(&count).Error
 	return count, err
 }
 
-func (r *DocumentRepository) countGRNs(ctx context.Context, organizationID string, filter *models.DocumentFilter) (int64, error) {
-	query := r.db.WithContext(ctx).Model(&models.GoodsReceivedNote{}).Where("organization_id = ?", organizationID)
+func (r *DocumentRepository) countGRNs(ctx context.Context, organizationID, searchText string, filter *models.DocumentFilter) (int64, error) {
+	q := r.db.WithContext(ctx).Model(&models.GoodsReceivedNote{}).Where("organization_id = ?", organizationID)
+	q = applyTextSearch(q, searchText)
 	if filter != nil && filter.DocumentNumber != "" {
-		query = query.Where("document_number ILIKE ?", "%"+filter.DocumentNumber+"%")
+		q = q.Where("document_number ILIKE ?", "%"+filter.DocumentNumber+"%")
 	}
 	if filter != nil && len(filter.Statuses) > 0 {
-		query = query.Where("UPPER(status) IN ?", toUpperSlice(filter.Statuses))
+		q = q.Where("UPPER(status) IN ?", toUpperSlice(filter.Statuses))
 	}
 	if filter != nil && filter.DateFrom != nil {
-		query = query.Where("created_at >= ?", filter.DateFrom)
+		q = q.Where("created_at >= ?", filter.DateFrom)
 	}
 	if filter != nil && filter.DateTo != nil {
-		query = query.Where("created_at <= ?", filter.DateTo)
+		q = q.Where("created_at <= ?", filter.DateTo)
 	}
 	var count int64
-	err := query.Count(&count).Error
+	err := q.Count(&count).Error
 	return count, err
 }
 
@@ -1051,263 +1062,3 @@ func (r *DocumentRepository) findMatches(doc *models.Document, query string) []s
 	return matches
 }
 
-// Sync operations to keep generic documents in sync with specific models
-
-// SyncFromRequisition syncs a requisition to the generic document table
-func (r *DocumentRepository) SyncFromRequisition(ctx context.Context, requisition *models.Requisition) error {
-	// Check if document already exists
-	var existingDoc models.Document
-	err := r.db.WithContext(ctx).
-		Where("document_type = ? AND data->>'id' = ?", "REQUISITION", requisition.ID).
-		First(&existingDoc).Error
-	
-	// Prepare document data
-	dataMap := map[string]interface{}{
-		"id":          requisition.ID,
-		"documentNumber": requisition.DocumentNumber,
-		"items":       requisition.Items,
-		"priority":    requisition.Priority,
-		"categoryId":  requisition.CategoryID,
-		"preferredVendorId": requisition.PreferredVendorID,
-		"isEstimate":  requisition.IsEstimate,
-		"approvalStage": requisition.ApprovalStage,
-		"approvalHistory": requisition.ApprovalHistory,
-	}
-	
-	data, _ := json.Marshal(dataMap)
-	
-	doc := &models.Document{
-		OrganizationID: requisition.OrganizationID,
-		DocumentType:   "REQUISITION",
-		Title:          requisition.Title,
-		Status:         requisition.Status,
-		Amount:         &requisition.TotalAmount,
-		Currency:       &requisition.Currency,
-		Data:           datatypes.JSON(data),
-		CreatedAt:      requisition.CreatedAt,
-		UpdatedAt:      requisition.UpdatedAt,
-	}
-	
-	// Set optional fields
-	if requisition.Description != "" {
-		doc.Description = &requisition.Description
-	}
-	if requisition.Department != "" {
-		doc.Department = &requisition.Department
-	}
-	if requisition.RequesterId != "" {
-		doc.CreatedBy = requisition.RequesterId
-	}
-	
-	if err == gorm.ErrRecordNotFound {
-		// Create new document
-		doc.ID = uuid.New()
-		return r.db.WithContext(ctx).Create(doc).Error
-	} else if err != nil {
-		return err
-	} else {
-		// Update existing document
-		doc.ID = existingDoc.ID
-		return r.db.WithContext(ctx).Save(doc).Error
-	}
-}
-
-// SyncFromBudget syncs a budget to the generic document table
-func (r *DocumentRepository) SyncFromBudget(ctx context.Context, budget *models.Budget) error {
-	var existingDoc models.Document
-	err := r.db.WithContext(ctx).
-		Where("document_type = ? AND data->>'id' = ?", "BUDGET", budget.ID).
-		First(&existingDoc).Error
-	
-	dataMap := map[string]interface{}{
-		"id":           budget.ID,
-		"budgetCode":   budget.BudgetCode,
-		"fiscalYear":   budget.FiscalYear,
-		"totalBudget":  budget.TotalBudget,
-		"allocatedAmount": budget.AllocatedAmount,
-		"remainingAmount": budget.RemainingAmount,
-		"approvalStage": budget.ApprovalStage,
-		"approvalHistory": budget.ApprovalHistory,
-	}
-	
-	data, _ := json.Marshal(dataMap)
-	
-	doc := &models.Document{
-		OrganizationID: budget.OrganizationID,
-		DocumentType:   "BUDGET",
-		Title:          budget.BudgetCode + " - " + budget.FiscalYear,
-		Status:         budget.Status,
-		Amount:         &budget.TotalBudget,
-		Data:           datatypes.JSON(data),
-		CreatedAt:      budget.CreatedAt,
-		UpdatedAt:      budget.UpdatedAt,
-	}
-	
-	if budget.Department != "" {
-		doc.Department = &budget.Department
-	}
-	if budget.OwnerID != "" {
-		doc.CreatedBy = budget.OwnerID
-	}
-	
-	if err == gorm.ErrRecordNotFound {
-		doc.ID = uuid.New()
-		return r.db.WithContext(ctx).Create(doc).Error
-	} else if err != nil {
-		return err
-	} else {
-		doc.ID = existingDoc.ID
-		return r.db.WithContext(ctx).Save(doc).Error
-	}
-}
-
-// SyncFromPurchaseOrder syncs a purchase order to the generic document table
-func (r *DocumentRepository) SyncFromPurchaseOrder(ctx context.Context, po *models.PurchaseOrder) error {
-	var existingDoc models.Document
-	err := r.db.WithContext(ctx).
-		Where("document_type = ? AND data->>'id' = ?", "PURCHASE_ORDER", po.ID).
-		First(&existingDoc).Error
-	
-	dataMap := map[string]interface{}{
-		"id":           po.ID,
-		"documentNumber": po.DocumentNumber,
-		"vendorId":     po.VendorID,
-		"items":        po.Items,
-		"deliveryDate": po.DeliveryDate,
-		"linkedRequisition": po.LinkedRequisition,
-		"approvalStage": po.ApprovalStage,
-		"approvalHistory": po.ApprovalHistory,
-	}
-	
-	data, _ := json.Marshal(dataMap)
-	
-	doc := &models.Document{
-		OrganizationID: po.OrganizationID,
-		DocumentType:   "PURCHASE_ORDER",
-		Title:          "PO: " + po.DocumentNumber,
-		Status:         po.Status,
-		Amount:         &po.TotalAmount,
-		Currency:       &po.Currency,
-		Data:           datatypes.JSON(data),
-		CreatedAt:      po.CreatedAt,
-		UpdatedAt:      po.UpdatedAt,
-	}
-	
-	// PO doesn't have a direct creator field, so we'll leave it empty for now
-	doc.CreatedBy = "system" // Default value
-	
-	if err == gorm.ErrRecordNotFound {
-		doc.ID = uuid.New()
-		return r.db.WithContext(ctx).Create(doc).Error
-	} else if err != nil {
-		return err
-	} else {
-		doc.ID = existingDoc.ID
-		return r.db.WithContext(ctx).Save(doc).Error
-	}
-}
-
-// SyncFromPaymentVoucher syncs a payment voucher to the generic document table
-func (r *DocumentRepository) SyncFromPaymentVoucher(ctx context.Context, pv *models.PaymentVoucher) error {
-	var existingDoc models.Document
-	err := r.db.WithContext(ctx).
-		Where("document_type = ? AND data->>'id' = ?", "PAYMENT_VOUCHER", pv.ID).
-		First(&existingDoc).Error
-	
-	dataMap := map[string]interface{}{
-		"id":             pv.ID,
-		"documentNumber": pv.DocumentNumber,
-		"vendorId":       pv.VendorID,
-		"invoiceNumber":  pv.InvoiceNumber,
-		"paymentMethod":  pv.PaymentMethod,
-		"glCode":         pv.GLCode,
-		"linkedPO":       pv.LinkedPO,
-		"approvalStage":  pv.ApprovalStage,
-		"approvalHistory": pv.ApprovalHistory,
-	}
-	
-	data, _ := json.Marshal(dataMap)
-	
-	doc := &models.Document{
-		OrganizationID: pv.OrganizationID,
-		DocumentType:   "PAYMENT_VOUCHER",
-		Title:          "Payment Voucher: " + pv.DocumentNumber,
-		Status:         pv.Status,
-		Amount:         &pv.Amount,
-		Currency:       &pv.Currency,
-		Data:           datatypes.JSON(data),
-		CreatedAt:      pv.CreatedAt,
-		UpdatedAt:      pv.UpdatedAt,
-	}
-	
-	if pv.Description != "" {
-		doc.Description = &pv.Description
-	}
-	
-	// PV doesn't have a direct creator field, so we'll leave it empty for now
-	doc.CreatedBy = "system" // Default value
-	
-	if err == gorm.ErrRecordNotFound {
-		doc.ID = uuid.New()
-		return r.db.WithContext(ctx).Create(doc).Error
-	} else if err != nil {
-		return err
-	} else {
-		doc.ID = existingDoc.ID
-		return r.db.WithContext(ctx).Save(doc).Error
-	}
-}
-
-// SyncFromGRN syncs a GRN to the generic document table
-func (r *DocumentRepository) SyncFromGRN(ctx context.Context, grn *models.GoodsReceivedNote) error {
-	var existingDoc models.Document
-	err := r.db.WithContext(ctx).
-		Where("document_type = ? AND data->>'id' = ?", "GRN", grn.ID).
-		First(&existingDoc).Error
-	
-	dataMap := map[string]interface{}{
-		"id":             grn.ID,
-		"documentNumber": grn.DocumentNumber,
-		"poDocumentNumber": grn.PODocumentNumber,
-		"items":          grn.Items,
-		"receivedDate":   grn.ReceivedDate,
-		"receivedBy":     grn.ReceivedBy,
-		"qualityIssues":  grn.QualityIssues,
-		"approvalStage":  grn.ApprovalStage,
-		"approvalHistory": grn.ApprovalHistory,
-	}
-	
-	data, _ := json.Marshal(dataMap)
-	
-	// Calculate total amount from items (if available)
-	totalAmount := 0.0
-	// Note: We'd need to calculate this from the items if needed
-	
-	doc := &models.Document{
-		OrganizationID: grn.OrganizationID,
-		DocumentType:   "GRN",
-		Title:          "GRN: " + grn.DocumentNumber,
-		Status:         grn.Status,
-		Amount:         &totalAmount,
-		Currency:       func() *string { s := "USD"; return &s }(), // Default currency
-		Data:           datatypes.JSON(data),
-		CreatedAt:      grn.CreatedAt,
-		UpdatedAt:      grn.UpdatedAt,
-	}
-	
-	if grn.ReceivedBy != "" {
-		doc.CreatedBy = grn.ReceivedBy
-	} else {
-		doc.CreatedBy = "system" // Default value
-	}
-	
-	if err == gorm.ErrRecordNotFound {
-		doc.ID = uuid.New()
-		return r.db.WithContext(ctx).Create(doc).Error
-	} else if err != nil {
-		return err
-	} else {
-		doc.ID = existingDoc.ID
-		return r.db.WithContext(ctx).Save(doc).Error
-	}
-}

@@ -321,6 +321,8 @@ func CreateRequisition(c *fiber.Ctx) error {
 	// Preload requester, category, and vendor
 	config.DB.Preload("Requester").Preload("Category").Preload("PreferredVendor").First(&requisition)
 
+	go utils.SyncDocument(config.DB, "REQUISITION", requisition.ID)
+
 	return c.Status(fiber.StatusCreated).JSON(types.DetailResponse{
 		Success: true,
 		Data:    modelToRequisitionResponse(requisition),
@@ -511,6 +513,8 @@ func UpdateRequisition(c *fiber.Ctx) error {
 
 	// Preload requester, category, and vendor
 	config.DB.Preload("Requester").Preload("Category").Preload("PreferredVendor").First(&requisition)
+
+	go utils.SyncDocument(config.DB, "REQUISITION", requisition.ID)
 
 	return c.JSON(types.DetailResponse{
 		Success: true,
@@ -982,6 +986,8 @@ func SubmitRequisition(c *fiber.Ctx) error {
 
 	// Preload requester, category, and vendor
 	config.DB.Preload("Requester").Preload("Category").Preload("PreferredVendor").First(&requisition)
+
+	go utils.SyncDocument(config.DB, "REQUISITION", requisition.ID)
 
 	// Build response with routing information
 	responseData := fiber.Map{
