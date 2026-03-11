@@ -1,7 +1,6 @@
 import { PermissionsDebug } from "@/components/debug/permissions-debug";
 import { PageHeader } from "@/components/base/page-header";
-import { verifySession } from "@/lib/auth";
-import { redirect } from "next/navigation";
+import { requireAdminRole } from "@/lib/admin-guard";
 
 export const metadata = {
   title: "Permissions Debug",
@@ -9,21 +8,10 @@ export const metadata = {
 };
 
 export default async function PermissionsDebugPage() {
-  // Get authenticated user context
-  const { session, isAuthenticated } = await verifySession();
-
-  if (!isAuthenticated || !session?.user) {
-    redirect("/login");
-  }
-
-  // Verify admin role (only admins can access debug pages)
-  if (session.user.role !== "admin") {
-    redirect("/access-denied");
-  }
+  await requireAdminRole();
 
   return (
     <div>
-      {/* Header */}
       <div className="bg-card border-b">
         <div className="container mx-auto px-4 py-6">
           <PageHeader

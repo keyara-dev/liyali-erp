@@ -1,6 +1,8 @@
 import { getCategories } from "@/app/_actions/categories";
-import { PageHeader } from "@/components/base/page-header";
+import { requireAdminRole } from "@/lib/admin-guard";
 import { CategoriesClient } from "../_components/categories-client";
+
+export const dynamic = "force-dynamic";
 
 type PageProps = {
   params: Promise<{ [key: string]: string }>;
@@ -8,12 +10,13 @@ type PageProps = {
 };
 
 export default async function CategoriesPage({ searchParams }: PageProps) {
+  await requireAdminRole();
+
   const urlParams = await searchParams;
   const page = urlParams.page ? Number(urlParams.page) : 1;
   const limit = urlParams.limit ? Number(urlParams.limit) : 10;
   const activeOnly = urlParams.active !== "false";
 
-  // Fetch categories from the backend
   const categoriesResponse = await getCategories(page, limit, activeOnly);
   const categories =
     categoriesResponse.success &&
@@ -26,7 +29,6 @@ export default async function CategoriesPage({ searchParams }: PageProps) {
       ? categoriesResponse.data.pagination
       : null;
 
-  // Create pagination object from API response
   const pagination = {
     page: apiPagination?.page ?? page,
     page_size: apiPagination?.pageSize ?? limit,

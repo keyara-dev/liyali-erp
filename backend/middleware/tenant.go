@@ -10,11 +10,12 @@ import (
 	"github.com/liyali/liyali-gateway/utils"
 )
 
-// TenantMiddleware extracts and validates organization context
-// Must be used after AuthMiddleware
+// TenantMiddleware extracts and validates organization context.
+// Must be used after AuthMiddleware.
+// super_admin bypasses org membership — they have platform-wide access.
 func TenantMiddleware() fiber.Handler {
 	return func(c *fiber.Ctx) error {
-		// 1. Get user ID from auth middleware (must come after AuthMiddleware)
+		// 1. Get user ID from auth middleware
 		userIDRaw := c.Locals("userID")
 
 		if userIDRaw == nil {
@@ -39,7 +40,29 @@ func TenantMiddleware() fiber.Handler {
 		// 2. Get organization ID from header
 		orgID := c.Get("X-Organization-ID")
 
-		// 3. If no header, get user's current organization
+		// 3. super_admin bypasses org membership validation — platform-wide access
+		userRole, _ := c.Locals("userRole").(string)
+		if userRole == "super_admin" {
+			// Prefer org from header; fall back to user's current org if set
+			if orgID == "" {
+				var user models.User
+				if err := config.DB.Where("id = ?", userID).First(&user).Error; err == nil &&
+					user.CurrentOrganizationID != nil {
+					orgID = *user.CurrentOrganizationID
+				}
+			}
+			tenantCtx := &utils.TenantContext{
+				OrganizationID: orgID,
+				UserID:         userID,
+				UserRole:       "super_admin",
+				Department:     "",
+			}
+			c.Locals("tenant", tenantCtx)
+			c.Locals("organizationID", orgID)
+			return c.Next()
+		}
+
+		// 4. Non-super_admin: resolve org from header or user's current org
 		if orgID == "" {
 			var user models.User
 			if err := config.DB.Where("id = ?", userID).First(&user).Error; err != nil {
@@ -57,7 +80,7 @@ func TenantMiddleware() fiber.Handler {
 			orgID = *user.CurrentOrganizationID
 		}
 
-		// 4. Verify user is member of this organization
+		// 5. Verify user is an active member of this organization
 		var membership models.OrganizationMember
 		if err := config.DB.Where(
 			"organization_id = ? AND user_id = ? AND active = ?",
@@ -68,17 +91,15 @@ func TenantMiddleware() fiber.Handler {
 			})
 		}
 
-		// 5. Create tenant context with safe field access
+		// 6. Store tenant context
 		tenantCtx := &utils.TenantContext{
 			OrganizationID: orgID,
 			UserID:         userID,
 			UserRole:       membership.Role,
 			Department:     membership.Department,
 		}
-
-		// 6. Store in context
 		c.Locals("tenant", tenantCtx)
-		c.Locals("organizationID", orgID) // For easy access - match RequirePermission middleware
+		c.Locals("organizationID", orgID)
 
 		return c.Next()
 	}

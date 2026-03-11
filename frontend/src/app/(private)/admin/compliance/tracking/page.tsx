@@ -1,14 +1,15 @@
 import { ComplianceTrackingClient } from '../../_components/compliance-tracking-client'
+import { requireAdminRole } from '@/lib/admin-guard'
 
 export const metadata = {
   title: 'Compliance Tracking',
   description: 'Track regulatory compliance and audit requirements',
 }
 
-// Disable static generation for this page
 export const dynamic = 'force-dynamic'
 
-export default function ComplianceTrackingPage() {
-  // Use default values for client rendering
-  return <ComplianceTrackingClient userId="system" userRole="ADMIN" />
+export default async function ComplianceTrackingPage() {
+  const { userId, userRole } = await requireAdminRole()
+
+  return <ComplianceTrackingClient userId={userId} userRole={userRole} />
 }

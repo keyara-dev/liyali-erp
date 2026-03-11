@@ -1,14 +1,12 @@
 import { verifySession } from './auth'
 import { redirect } from 'next/navigation'
 
+/** Roles that may access the admin console. */
+export const ADMIN_ROLES = ['admin', 'super_admin', 'compliance_officer'] as const
+
 /**
  * Verify that the user has admin privileges before rendering admin pages.
- * This should be called in server components for admin routes.
- *
- * Redirects to /login if not authenticated
- * Redirects to /unauthorized if not an admin
- *
- * @returns {Promise<{ userId: string; userRole: string; userName?: string }>} User session data
+ * Redirects to /login if not authenticated, /access-denied if not an admin role.
  */
 export async function requireAdminRole() {
   const { session, isAuthenticated } = await verifySession()
@@ -17,13 +15,8 @@ export async function requireAdminRole() {
     redirect('/login')
   }
 
-  // Check for admin or superadmin role
-  const isAdmin = ['admin', 'compliance_officer'].includes(
-    session.user.role || ''
-  )
-
-  if (!isAdmin) {
-    redirect('/unauthorized')
+  if (!(ADMIN_ROLES as readonly string[]).includes(session.user.role || '')) {
+    redirect('/access-denied')
   }
 
   return {
@@ -34,11 +27,8 @@ export async function requireAdminRole() {
 }
 
 /**
- * Verify that the user has specific admin permission(s).
- * This is a stricter check than requireAdminRole.
- *
- * @param requiredPermission - Single permission string
- * @returns {Promise<void>} Throws redirect if not authorized
+ * Verify that the user has a specific admin permission.
+ * admin and super_admin bypass this check — they have full access.
  */
 export async function requireAdminPermission(requiredPermission: string) {
   const { session, isAuthenticated } = await verifySession()
@@ -47,24 +37,20 @@ export async function requireAdminPermission(requiredPermission: string) {
     redirect('/login')
   }
 
-  // Only super admins bypass permission checks
-  if (session.user.role === 'admin') {
+  // admin and super_admin have full access — no per-permission check needed
+  if (session.user.role === 'admin' || session.user.role === 'super_admin') {
     return
   }
 
-  // Check for the specific permission
   const hasPermission = session.user.permissions?.includes(requiredPermission)
 
   if (!hasPermission) {
-    redirect('/unauthorized')
+    redirect('/access-denied')
   }
 }
 
 /**
  * Verify that the user is authenticated (used for private routes).
- * Less strict than requireAdminRole - just checks authentication.
- *
- * @returns {Promise<{ userId: string; userRole: string }>} User session data
  */
 export async function requireAuthentication() {
   const { session, isAuthenticated } = await verifySession()

@@ -37,11 +37,6 @@ export default async function UserManagementPage({ searchParams }: PageProps) {
     redirect("/login");
   }
 
-  // Verify admin role
-  if (session.user.role !== "admin") {
-    redirect("/access-denied");
-  }
-
   const {
     search = "",
     status = "all",

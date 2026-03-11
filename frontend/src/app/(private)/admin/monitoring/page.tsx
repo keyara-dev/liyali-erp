@@ -1,33 +1,15 @@
 import { MonitoringClient } from '../_components/monitoring-client'
-import { verifySession } from '@/lib/auth'
-import { redirect } from 'next/navigation'
+import { requireAdminRole } from '@/lib/admin-guard'
 
 export const metadata = {
   title: 'System Monitoring',
   description: 'Real-time system performance and workflow monitoring',
 }
 
-// Disable static generation for this page
 export const dynamic = 'force-dynamic'
 
 export default async function MonitoringPage() {
-  // Get authenticated user context
-  const { session, isAuthenticated } = await verifySession()
+  const { userId, userRole } = await requireAdminRole()
 
-  if (!isAuthenticated || !session?.user) {
-    redirect('/login')
-  }
-
-  // Verify admin role
-  if (session.user.role !== 'admin') {
-    redirect('/unauthorized')
-  }
-
-  // Pass actual user context from session
-  return (
-    <MonitoringClient
-      userId={session.user.id}
-      userRole={session.user.role}
-    />
-  )
+  return <MonitoringClient userId={userId} userRole={userRole} />
 }
