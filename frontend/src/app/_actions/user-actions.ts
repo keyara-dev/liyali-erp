@@ -6,7 +6,7 @@ import authenticatedApiClient, {
   handleError,
   successResponse,
 } from "./api-config";
-import { User, UserType } from "@/types";
+import { UserType } from "@/types";
 
 // Types for user operations
 export interface CreateUserRequest {
@@ -26,15 +26,18 @@ export interface CreateUserRequest {
 }
 
 export interface UpdateUserRequest {
-  id: string;
-  username?: string;
+  name?: string;
   email?: string;
-  phone?: string;
+  role?: string;
+  is_active?: boolean;
+  department_id?: string;
+  position?: string;
+  manNumber?: string;
+  nrcNumber?: string;
+  contact?: string;
+  // first_name/last_name are joined into name before sending
   first_name?: string;
   last_name?: string;
-  department_id?: string;
-  role_id?: string;
-  is_active?: boolean;
 }
 
 export async function createNewUser(
@@ -155,6 +158,11 @@ export async function getUsers(params?: {
         is_active: member.active !== undefined ? member.active : true,
         preferences,
         avatar,
+        // Profile fields from the nested user object
+        position: userData?.position || "",
+        manNumber: userData?.manNumber || userData?.man_number || "",
+        nrcNumber: userData?.nrcNumber || userData?.nrc_number || "",
+        contact: userData?.contact || "",
         // Include original member data for reference
         member_id: member.id,
         title: member.title || "",
@@ -251,17 +259,59 @@ export async function getUserById(id: string): Promise<APIResponse> {
 
 export async function updateUser(
   id: string,
-  data: Partial<User>,
+  data: Partial<UpdateUserRequest>,
 ): Promise<APIResponse> {
-  // TODO: Backend needs to implement PUT /api/v1/organization/members/:id endpoint
-  // For now, this will return an error indicating the feature is not implemented
-  return {
-    success: false,
-    message:
-      "User update functionality requires backend implementation of organization member update endpoint",
-    data: null,
-    status: 501,
-  };
+  const url = `/api/v1/admin/users/${id}`;
+
+  try {
+    // Build the update payload, transforming field names to match the backend
+    const payload: Record<string, any> = {};
+
+    // Combine first_name + last_name into name if provided
+    if (data.first_name !== undefined || data.last_name !== undefined) {
+      payload.name = `${data.first_name || ""} ${data.last_name || ""}`.trim();
+    }
+    if (data.name !== undefined) payload.name = data.name;
+    if (data.email !== undefined) payload.email = data.email;
+    if (data.role !== undefined) payload.role = data.role;
+    if (data.is_active !== undefined) payload.status = data.is_active ? "active" : "suspended";
+    if (data.position !== undefined) payload.position = data.position;
+    if (data.manNumber !== undefined) payload.manNumber = data.manNumber;
+    if (data.nrcNumber !== undefined) payload.nrcNumber = data.nrcNumber;
+    if (data.contact !== undefined) payload.contact = data.contact;
+
+    const response = await authenticatedApiClient({
+      url,
+      method: "PUT",
+      data: payload,
+    });
+
+    if (!response.data?.success) {
+      return handleError(
+        new Error(response.data?.message || "Failed to update user"),
+        "PUT",
+        url,
+      );
+    }
+
+    // Handle department update separately if provided
+    if (data.department_id !== undefined && data.department_id !== "") {
+      try {
+        await authenticatedApiClient({
+          url: `/api/v1/users/${id}/department/${data.department_id}`,
+          method: "POST",
+        });
+      } catch {
+        // Department assignment failure is non-fatal — log but don't fail the whole update
+        console.warn("Department assignment failed for user", id);
+      }
+    }
+
+    revalidatePath("/admin/users");
+    return successResponse(response.data?.data, "User updated successfully");
+  } catch (error: Error | any) {
+    return handleError(error, "PUT", url);
+  }
 }
 
 export async function deleteUser(id: string): Promise<APIResponse> {
@@ -303,7 +353,6 @@ export async function toggleUserStatus(
 
     // Update with complete user data plus the status change
     return updateUser(id, {
-      username: user.username,
       email: user.email,
       first_name: user.first_name,
       last_name: user.last_name,
@@ -352,41 +401,16 @@ export async function activateUser(id: string): Promise<APIResponse> {
  * Toggle user MFA
  */
 export async function toggleUserMFA(
-  id: string,
-  enabled: boolean,
+  _id: string,
+  _enabled: boolean,
 ): Promise<APIResponse> {
-  try {
-    // Fetch current user data first
-    const userResponse = await getUserById(id);
-
-    if (!userResponse.success || !userResponse.data) {
-      return {
-        success: false,
-        message: "Failed to fetch user data",
-        data: null,
-        status: 400,
-      };
-    }
-
-    const user = userResponse.data;
-
-    // Update with complete user data plus the MFA change
-    return updateUser(id, {
-      username: user.username,
-      email: user.email,
-      first_name: user.first_name,
-      last_name: user.last_name,
-      department_id: user.department_id,
-      mfa_enabled: enabled,
-    });
-  } catch (error) {
-    return {
-      success: false,
-      message: "Failed to toggle user MFA",
-      data: null,
-      status: 500,
-    };
-  }
+  // MFA management for org users is not supported via this app.
+  return {
+    success: false,
+    message: "MFA management is not supported for organisation users.",
+    data: null,
+    status: 501,
+  };
 }
 
 /**

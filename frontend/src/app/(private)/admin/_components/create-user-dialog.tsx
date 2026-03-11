@@ -292,7 +292,6 @@ export default function CreateUserForm({
         const updateData = {
           name: fullName,
           email: formData.email,
-          phone: formData.phone,
           first_name: formData.first_name,
           last_name: formData.last_name,
           department_id: formData.department_id,
@@ -320,7 +319,7 @@ export default function CreateUserForm({
           position: formData.position,
           manNumber: formData.manNumber,
           nrcNumber: formData.nrcNumber,
-          contact: formData.phone,
+          contact: formData.contact,
         });
       }
     } catch (error) {
