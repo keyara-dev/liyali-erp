@@ -310,7 +310,7 @@ export async function resetOrganizationTrial(
   organizationId: string,
   request: TrialResetRequest,
 ): Promise<APIResponse<any>> {
-  const url = `/api/v1/organizations/${organizationId}/trial/reset`;
+  const url = `/api/v1/admin/organizations/${organizationId}/trial/reset`;
 
   try {
     const response = await authenticatedApiClient({
@@ -448,7 +448,7 @@ export async function extendOrganizationTrial(
     reason: string;
   },
 ): Promise<APIResponse<any>> {
-  const url = `/api/v1/organizations/${organizationId}/trial/extend`;
+  const url = `/api/v1/admin/organizations/${organizationId}/trial/extend`;
 
   try {
     const response = await authenticatedApiClient({

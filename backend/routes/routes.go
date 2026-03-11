@@ -21,6 +21,8 @@ func SetupRoutes(app *fiber.App, handlerRegistry *handlers.HandlerRegistry, rbac
 
 	// Auth routes with rate limiting
 	public.Post("/auth/login", middleware.AuthRateLimitMiddleware(), handlerRegistry.Auth.Login)
+	// Dedicated admin console login — enforces super_admin role server-side
+	public.Post("/admin/auth/login", middleware.AuthRateLimitMiddleware(), handlerRegistry.Auth.AdminLogin)
 	public.Post("/auth/register", middleware.AuthRateLimitMiddleware(), handlerRegistry.Auth.Register)
 	public.Post("/auth/verify", handlerRegistry.Auth.VerifyToken)
 	public.Post("/auth/refresh", middleware.AuthRateLimitMiddleware(), handlerRegistry.Auth.RefreshToken)
@@ -377,7 +379,7 @@ func SetupRoutes(app *fiber.App, handlerRegistry *handlers.HandlerRegistry, rbac
 	audit.Get("/document/:documentId", middleware.RequirePermission(rbacService, "audit_log", "view"), middleware.RequireFeature("audit_logs_90_days"), handlers.GetDocumentAuditLogs)
 
 	// Admin-only routes (system-wide access)
-	admin := apiV1.Group("/admin", middleware.AuthMiddleware(), middleware.AdminMiddleware())
+	admin := apiV1.Group("/admin", middleware.AuthMiddleware(), middleware.SuperAdminMiddleware())
 
 	// Admin dashboard and analytics
 	admin.Get("/dashboard", handlers.GetAdminDashboard)
@@ -478,6 +480,8 @@ func SetupRoutes(app *fiber.App, handlerRegistry *handlers.HandlerRegistry, rbac
 	adminOrgs.Get("/:id/activity", handlers.AdminGetOrganizationActivity)
 	adminOrgs.Get("/:id/trial/status", handlers.AdminGetOrgTrialStatus)
 	adminOrgs.Get("/:id/subscription", handlers.AdminGetOrgSubscription)
+	adminOrgs.Post("/:id/trial/reset", handlers.AdminResetOrganizationTrial)
+	adminOrgs.Post("/:id/trial/extend", handlers.AdminExtendOrganizationTrial)
 	// Note: /:id/change-tier, /:id/override-limits already registered above via subscription handlers
 
 	// ===== Admin Roles & Permissions =====
@@ -520,6 +524,8 @@ func SetupRoutes(app *fiber.App, handlerRegistry *handlers.HandlerRegistry, rbac
 	adminAdminUsers.Post("/:id/sessions/:sessionId/terminate", handlers.AdminTerminateAdminSession)
 	adminAdminUsers.Post("/:id/sessions/terminate-all", handlers.AdminTerminateAllAdminSessions)
 	adminAdminUsers.Post("/:id/impersonate", handlers.AdminImpersonateAdminUser)
+	adminAdminUsers.Post("/:id/promote", handlers.AdminPromoteToSuperAdmin)
+	adminAdminUsers.Post("/:id/demote", handlers.AdminDemoteFromSuperAdmin)
 
 	// ===== Admin Reports & Analytics =====
 	adminReports := admin.Group("/reports")
@@ -601,6 +607,15 @@ func SetupRoutes(app *fiber.App, handlerRegistry *handlers.HandlerRegistry, rbac
 	adminNotifications.Post("/bulk-delete", handlers.BulkDeleteAdminNotifications)
 	adminNotifications.Delete("/:id", handlers.DeleteAdminNotification)
 	adminNotifications.Post("/:id/read", handlers.MarkAdminNotificationRead)
+
+	// ===== Admin Support (platform-wide document & workflow visibility) =====
+	adminSupport := admin.Group("/support")
+	adminSupport.Get("/documents", handlers.AdminGetSupportDocuments)
+	adminSupport.Get("/documents/:id", handlers.AdminGetSupportDocument)
+	adminSupport.Get("/workflow-tasks", handlers.AdminGetSupportWorkflowTasks)
+	adminSupport.Get("/workflow-tasks/:id", handlers.AdminGetSupportWorkflowTask)
+	adminSupport.Post("/workflow-tasks/:id/reassign", handlers.AdminReassignWorkflowTask)
+	adminSupport.Post("/workflow-tasks/:id/reset", handlers.AdminResetWorkflowTask)
 
 	// Note: Development tools and test workflow tasks are now created via seed data migrations
 }

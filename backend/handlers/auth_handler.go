@@ -120,6 +120,44 @@ func (h *AuthHandler) Login(c *fiber.Ctx) error {
 	return utils.SendSimpleSuccess(c, result, "Login successful")
 }
 
+// AdminLogin handles login exclusively for the admin console.
+// Returns 403 if the authenticated user's role is not "super_admin".
+func (h *AuthHandler) AdminLogin(c *fiber.Ctx) error {
+	logger := logging.FromContext(c)
+	logger.Info("admin_login_attempt_started")
+
+	var req types.LoginRequest
+
+	if err := c.BodyParser(&req); err != nil {
+		return utils.SendBadRequestError(c, "Failed to parse login request")
+	}
+
+	if err := h.validate.Struct(req); err != nil {
+		return utils.SendValidationError(c, err.Error())
+	}
+
+	ipAddress := c.IP()
+	userAgent := c.Get("User-Agent")
+
+	result, err := h.authService.Login(c.Context(), req.Email, req.Password, ipAddress, userAgent)
+	if err != nil {
+		logger.Info("admin_login_failed")
+		return utils.SendUnauthorizedError(c, "Invalid email or password")
+	}
+
+	// CRITICAL: only super_admin may access the admin console
+	if result.User == nil || result.User.Role != "super_admin" {
+		logger.Info("admin_login_denied_not_super_admin")
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
+			"success": false,
+			"message": "Access denied. Super admin privileges required.",
+		})
+	}
+
+	logger.Info("admin_login_successful")
+	return utils.SendSimpleSuccess(c, result, "Login successful")
+}
+
 // RefreshToken handles token refresh with enhanced security
 func (h *AuthHandler) RefreshToken(c *fiber.Ctx) error {
 	logger := logging.FromContext(c)

@@ -281,6 +281,14 @@ func AdminCreateAdminUser(c *fiber.Ctx) error {
 		return utils.SendBadRequest(c, "Password must be at least 8 characters")
 	}
 
+	// Block direct super_admin role assignment — use the promote endpoint instead
+	if request.IsSuperAdmin {
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
+			"success": false,
+			"message": "Use the promote endpoint to assign super_admin role",
+		})
+	}
+
 	// Check email uniqueness
 	var emailCount int64
 	db.Table("users").Where("email = ? AND deleted_at IS NULL", request.Email).Count(&emailCount)
@@ -386,6 +394,14 @@ func AdminUpdateAdminUser(c *fiber.Ctx) error {
 
 	if err := c.BodyParser(&request); err != nil {
 		return utils.SendBadRequest(c, "Invalid request body")
+	}
+
+	// Block direct super_admin role assignment — use the promote endpoint instead
+	if request.IsSuperAdmin != nil && *request.IsSuperAdmin {
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
+			"success": false,
+			"message": "Use the promote endpoint to assign super_admin role",
+		})
 	}
 
 	updates := map[string]interface{}{
@@ -837,4 +853,80 @@ func AdminImpersonateAdminUser(c *fiber.Ctx) error {
 		},
 		"warning": "This is a short-lived token for impersonation purposes. All actions will be logged.",
 	}, "Admin impersonation token generated successfully")
+}
+
+// AdminPromoteToSuperAdmin promotes an admin user to super_admin role.
+// Cannot promote yourself.
+func AdminPromoteToSuperAdmin(c *fiber.Ctx) error {
+	db := config.DB
+	userID := c.Params("id")
+	callerID, _ := c.Locals("userID").(string)
+
+	if userID == callerID {
+		return utils.SendBadRequest(c, "Cannot promote your own account")
+	}
+
+	// Verify target user exists and is an admin-level user
+	var count int64
+	db.Table("users").Where("id = ? AND deleted_at IS NULL AND role IN ?", userID, adminRoles).Count(&count)
+	if count == 0 {
+		return utils.SendNotFound(c, "Admin user not found")
+	}
+
+	now := time.Now()
+	if err := db.Table("users").Where("id = ?", userID).Updates(map[string]interface{}{
+		"role":           "super_admin",
+		"is_super_admin": true,
+		"updated_at":     now,
+	}).Error; err != nil {
+		return utils.SendInternalError(c, "Failed to promote user", err)
+	}
+
+	db.Table("admin_audit_logs").Create(map[string]interface{}{
+		"id":            utils.GenerateID(),
+		"action":        "admin_user_promoted_to_super_admin",
+		"admin_user_id": callerID,
+		"new_value":     userID,
+		"created_at":    now,
+	})
+
+	return utils.SendSimpleSuccess(c, map[string]interface{}{"id": userID}, "User promoted to super_admin successfully")
+}
+
+// AdminDemoteFromSuperAdmin demotes a super_admin user back to admin role.
+// Cannot demote yourself.
+func AdminDemoteFromSuperAdmin(c *fiber.Ctx) error {
+	db := config.DB
+	userID := c.Params("id")
+	callerID, _ := c.Locals("userID").(string)
+
+	if userID == callerID {
+		return utils.SendBadRequest(c, "Cannot demote your own account")
+	}
+
+	// Verify target user is super_admin
+	var count int64
+	db.Table("users").Where("id = ? AND deleted_at IS NULL AND role = ?", userID, "super_admin").Count(&count)
+	if count == 0 {
+		return utils.SendNotFound(c, "Super admin user not found")
+	}
+
+	now := time.Now()
+	if err := db.Table("users").Where("id = ?", userID).Updates(map[string]interface{}{
+		"role":           "admin",
+		"is_super_admin": false,
+		"updated_at":     now,
+	}).Error; err != nil {
+		return utils.SendInternalError(c, "Failed to demote user", err)
+	}
+
+	db.Table("admin_audit_logs").Create(map[string]interface{}{
+		"id":            utils.GenerateID(),
+		"action":        "admin_user_demoted_from_super_admin",
+		"admin_user_id": callerID,
+		"new_value":     userID,
+		"created_at":    now,
+	})
+
+	return utils.SendSimpleSuccess(c, map[string]interface{}{"id": userID}, "User demoted from super_admin successfully")
 }

@@ -693,3 +693,104 @@ func AdminDeleteOrganization(c *fiber.Ctx) error {
 
 	return utils.SendSimpleSuccess(c, nil, "Organization deleted successfully")
 }
+
+// AdminResetOrganizationTrial resets the trial for an organization back to a fresh start.
+func AdminResetOrganizationTrial(c *fiber.Ctx) error {
+	db := config.DB
+	orgID := c.Params("id")
+
+	var req struct {
+		Reason string `json:"reason"`
+	}
+	_ = c.BodyParser(&req)
+
+	var existingCount int64
+	db.Table("organizations").Where("id = ?", orgID).Count(&existingCount)
+	if existingCount == 0 {
+		return utils.SendNotFound(c, "Organization not found")
+	}
+
+	now := time.Now()
+	trialEnd := now.AddDate(0, 0, 14) // reset to 14-day trial
+
+	if err := db.Table("organizations").Where("id = ?", orgID).Updates(map[string]interface{}{
+		"subscription_status": "trial",
+		"trial_start_date":    now,
+		"trial_end_date":      trialEnd,
+		"updated_at":          now,
+	}).Error; err != nil {
+		return utils.SendInternalError(c, "Failed to reset trial", err)
+	}
+
+	db.Table("admin_audit_logs").Create(map[string]interface{}{
+		"id":              utils.GenerateID(),
+		"action":          "organization_trial_reset",
+		"admin_user_id":   c.Locals("userID"),
+		"organization_id": orgID,
+		"description":     fmt.Sprintf("Trial reset. Reason: %s", req.Reason),
+		"created_at":      now,
+	})
+
+	return utils.SendSimpleSuccess(c, map[string]interface{}{
+		"organization_id": orgID,
+		"trial_start":     now,
+		"trial_end":       trialEnd,
+	}, "Trial reset successfully")
+}
+
+// AdminExtendOrganizationTrial extends the trial period for an organization.
+func AdminExtendOrganizationTrial(c *fiber.Ctx) error {
+	db := config.DB
+	orgID := c.Params("id")
+
+	var req struct {
+		DaysToAdd int    `json:"days_to_add"`
+		Reason    string `json:"reason"`
+	}
+	if err := c.BodyParser(&req); err != nil {
+		return utils.SendBadRequest(c, "Invalid request body")
+	}
+	if req.DaysToAdd <= 0 {
+		return utils.SendBadRequest(c, "days_to_add must be a positive number")
+	}
+
+	var org map[string]interface{}
+	if err := db.Table("organizations").Select("id, trial_end_date").Where("id = ?", orgID).First(&org).Error; err != nil {
+		return utils.SendNotFound(c, "Organization not found")
+	}
+
+	now := time.Now()
+	var newEnd time.Time
+	if endDate, ok := org["trial_end_date"]; ok && endDate != nil {
+		if t, ok := endDate.(time.Time); ok && t.After(now) {
+			newEnd = t.AddDate(0, 0, req.DaysToAdd)
+		} else {
+			newEnd = now.AddDate(0, 0, req.DaysToAdd)
+		}
+	} else {
+		newEnd = now.AddDate(0, 0, req.DaysToAdd)
+	}
+
+	if err := db.Table("organizations").Where("id = ?", orgID).Updates(map[string]interface{}{
+		"subscription_status": "trial",
+		"trial_end_date":      newEnd,
+		"updated_at":          now,
+	}).Error; err != nil {
+		return utils.SendInternalError(c, "Failed to extend trial", err)
+	}
+
+	db.Table("admin_audit_logs").Create(map[string]interface{}{
+		"id":              utils.GenerateID(),
+		"action":          "organization_trial_extended",
+		"admin_user_id":   c.Locals("userID"),
+		"organization_id": orgID,
+		"description":     fmt.Sprintf("Trial extended by %d days. Reason: %s", req.DaysToAdd, req.Reason),
+		"created_at":      now,
+	})
+
+	return utils.SendSimpleSuccess(c, map[string]interface{}{
+		"organization_id": orgID,
+		"new_trial_end":   newEnd,
+		"days_added":      req.DaysToAdd,
+	}, "Trial extended successfully")
+}

@@ -604,3 +604,49 @@ export async function impersonateAdminUser(
     return handleError(error);
   }
 }
+
+/**
+ * Promote an admin user to super_admin role
+ */
+export async function promoteToSuperAdmin(
+  userId: string,
+): Promise<APIResponse<{ id: string }>> {
+  const url = `/api/v1/admin/admin-users/${userId}/promote`;
+
+  try {
+    const response = await authenticatedApiClient({
+      url: url,
+      method: "POST",
+    });
+
+    return successResponse(
+      response?.data?.data || response?.data,
+      "User promoted to super_admin successfully",
+    );
+  } catch (error: Error | any) {
+    return handleError(error);
+  }
+}
+
+/**
+ * Demote a super_admin user back to admin role
+ */
+export async function demoteFromSuperAdmin(
+  userId: string,
+): Promise<APIResponse<{ id: string }>> {
+  const url = `/api/v1/admin/admin-users/${userId}/demote`;
+
+  try {
+    const response = await authenticatedApiClient({
+      url: url,
+      method: "POST",
+    });
+
+    return successResponse(
+      response?.data?.data || response?.data,
+      "User demoted from super_admin successfully",
+    );
+  } catch (error: Error | any) {
+    return handleError(error);
+  }
+}

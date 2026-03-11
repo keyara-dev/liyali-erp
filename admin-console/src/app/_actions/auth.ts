@@ -48,7 +48,7 @@ export async function loginAdmin(data: LoginRequest): Promise<AuthResponse> {
   try {
     const response = await unauthenticatedRequest({
       method: "POST",
-      url: "/api/v1/auth/login",
+      url: "/api/v1/admin/auth/login",
       data,
     });
 
