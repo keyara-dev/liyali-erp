@@ -63,7 +63,7 @@ export async function getAdminUserActivity(
     if (filters?.endDate) params.end_date = filters.endDate;
 
     const response = await authenticatedApiClient({
-      url: `/api/v1/admin/users/${userId}/activity`,
+      url: `/api/v1/organization/users/${userId}/activity`,
       method: "GET",
       params,
     });
@@ -92,7 +92,7 @@ export async function getAdminUserActivity(
 export async function getAdminUserSessions(userId: string): Promise<APIResponse> {
   try {
     const response = await authenticatedApiClient({
-      url: `/api/v1/admin/users/${userId}/sessions`,
+      url: `/api/v1/organization/users/${userId}/sessions`,
       method: "GET",
     });
 
@@ -123,7 +123,7 @@ export async function adminTerminateUserSession(
 ): Promise<APIResponse> {
   try {
     const response = await authenticatedApiClient({
-      url: `/api/v1/admin/users/${userId}/sessions/${sessionId}`,
+      url: `/api/v1/organization/users/${userId}/sessions/${sessionId}`,
       method: "DELETE",
     });
 
@@ -160,7 +160,7 @@ export async function adminTerminateUserSession(
 export async function adminTerminateAllSessions(userId: string): Promise<APIResponse> {
   try {
     const response = await authenticatedApiClient({
-      url: `/api/v1/admin/users/${userId}/sessions`,
+      url: `/api/v1/organization/users/${userId}/sessions`,
       method: "DELETE",
     });
 
@@ -204,7 +204,7 @@ export async function getAdminUserSecurityEvents(
     if (filters?.limit) params.limit = String(filters.limit);
 
     const response = await authenticatedApiClient({
-      url: `/api/v1/admin/users/${userId}/security-events`,
+      url: `/api/v1/organization/users/${userId}/security-events`,
       method: "GET",
       params,
     });
@@ -240,7 +240,7 @@ export async function getAdminUserLoginHistory(
     if (filters?.limit) params.limit = String(filters.limit);
 
     const response = await authenticatedApiClient({
-      url: `/api/v1/admin/users/${userId}/login-history`,
+      url: `/api/v1/organization/users/${userId}/login-history`,
       method: "GET",
       params,
     });
@@ -269,7 +269,7 @@ export async function getAdminUserLoginHistory(
 export async function getAdminUserWorkStats(userId: string): Promise<APIResponse> {
   try {
     const response = await authenticatedApiClient({
-      url: `/api/v1/admin/users/${userId}/work-stats`,
+      url: `/api/v1/organization/users/${userId}/work-stats`,
       method: "GET",
     });
 
@@ -307,7 +307,7 @@ export async function exportUserActivity(
     if (filters?.endDate) params.end_date = filters.endDate;
 
     const response = await authenticatedApiClient({
-      url: `/api/v1/admin/users/${userId}/activity/export`,
+      url: `/api/v1/organization/users/${userId}/activity/export`,
       method: "GET",
       params,
       responseType: "blob",
@@ -338,12 +338,13 @@ export async function exportUserActivity(
 }
 
 /**
- * Admin: Impersonate a user (returns short-lived token)
+ * Admin: Impersonate a user within the caller's organisation.
+ * Only org admins may impersonate; the action is audit-logged on the backend.
  */
 export async function impersonateUser(userId: string): Promise<APIResponse> {
   try {
     const response = await authenticatedApiClient({
-      url: `/api/v1/admin/users/${userId}/impersonate`,
+      url: `/api/v1/organization/users/${userId}/impersonate`,
       method: "POST",
     });
 
@@ -357,7 +358,10 @@ export async function impersonateUser(userId: string): Promise<APIResponse> {
   } catch (error: any) {
     return {
       success: false,
-      message: error.response?.data?.message || error.message || "Failed to impersonate user",
+      message:
+        error.response?.data?.message ||
+        error.message ||
+        "Failed to impersonate user",
       data: null,
       status: error.response?.status || 500,
       statusText: "ERROR",

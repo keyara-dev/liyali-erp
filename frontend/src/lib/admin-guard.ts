@@ -2,7 +2,7 @@ import { verifySession } from './auth'
 import { redirect } from 'next/navigation'
 
 /** Roles that may access the admin console. */
-export const ADMIN_ROLES = ['admin', 'super_admin', 'compliance_officer'] as const
+export const ADMIN_ROLES = ['admin'] as const
 
 /**
  * Verify that the user has admin privileges before rendering admin pages.
@@ -37,8 +37,8 @@ export async function requireAdminPermission(requiredPermission: string) {
     redirect('/login')
   }
 
-  // admin and super_admin have full access — no per-permission check needed
-  if (session.user.role === 'admin' || session.user.role === 'super_admin') {
+  // admin has full access — no per-permission check needed
+  if (session.user.role === 'admin') {
     return
   }
 

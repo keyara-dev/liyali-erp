@@ -261,33 +261,21 @@ export const USER_ROLE_CONFIG: Record<
     label: string;
   }
 > = {
-  requester: {
-    variant: "outline",
-    label: "Requester",
-  },
-  department_manager: {
-    variant: "secondary",
-    label: "Department Manager",
-  },
-  finance_officer: {
-    variant: "default",
-    label: "Finance Officer",
-  },
-  director: {
-    variant: "default",
-    label: "Director",
-  },
-  cfo: {
-    variant: "default",
-    label: "CFO",
-  },
-  compliance_officer: {
-    variant: "secondary",
-    label: "Compliance Officer",
-  },
   admin: {
     variant: "destructive",
     label: "Admin",
+  },
+  approver: {
+    variant: "default",
+    label: "Approver",
+  },
+  finance: {
+    variant: "default",
+    label: "Finance",
+  },
+  requester: {
+    variant: "outline",
+    label: "Requester",
   },
 };
 

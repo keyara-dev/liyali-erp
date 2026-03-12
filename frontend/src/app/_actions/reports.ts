@@ -21,7 +21,7 @@ export async function getSystemStatistics(
     if (dateRange?.startDate) params.append("start_date", dateRange.startDate);
     if (dateRange?.endDate) params.append("end_date", dateRange.endDate);
 
-    const url = `/api/v1/admin/reports/system-stats${params.toString() ? `?${params}` : ""}`;
+    const url = `/api/v1/reports/system-stats${params.toString() ? `?${params}` : ""}`;
 
     const response = await authenticatedApiClient({
       method: "GET",
@@ -30,7 +30,7 @@ export async function getSystemStatistics(
 
     return response.data;
   } catch (error: any) {
-    throw handleError(error, "GET", "/api/v1/admin/reports/system-stats");
+    throw handleError(error, "GET", "/api/v1/reports/system-stats");
   }
 }
 
@@ -45,7 +45,7 @@ export async function getApprovalMetrics(
     if (dateRange?.startDate) params.append("start_date", dateRange.startDate);
     if (dateRange?.endDate) params.append("end_date", dateRange.endDate);
 
-    const url = `/api/v1/admin/reports/approval-metrics${params.toString() ? `?${params}` : ""}`;
+    const url = `/api/v1/reports/approval-metrics${params.toString() ? `?${params}` : ""}`;
 
     const response = await authenticatedApiClient({
       method: "GET",
@@ -54,7 +54,7 @@ export async function getApprovalMetrics(
 
     return response.data;
   } catch (error: any) {
-    throw handleError(error, "GET", "/api/v1/admin/reports/approval-metrics");
+    throw handleError(error, "GET", "/api/v1/reports/approval-metrics");
   }
 }
 
@@ -69,7 +69,7 @@ export async function getUserActivityMetrics(
     if (dateRange?.startDate) params.append("start_date", dateRange.startDate);
     if (dateRange?.endDate) params.append("end_date", dateRange.endDate);
 
-    const url = `/api/v1/admin/reports/user-activity${params.toString() ? `?${params}` : ""}`;
+    const url = `/api/v1/reports/user-activity${params.toString() ? `?${params}` : ""}`;
 
     const response = await authenticatedApiClient({
       method: "GET",
@@ -78,7 +78,7 @@ export async function getUserActivityMetrics(
 
     return response.data;
   } catch (error: any) {
-    throw handleError(error, "GET", "/api/v1/admin/reports/user-activity");
+    throw handleError(error, "GET", "/api/v1/reports/user-activity");
   }
 }
 
@@ -93,7 +93,7 @@ export async function getAnalyticsDashboard(
     if (dateRange?.startDate) params.append("start_date", dateRange.startDate);
     if (dateRange?.endDate) params.append("end_date", dateRange.endDate);
 
-    const url = `/api/v1/admin/reports/analytics${params.toString() ? `?${params}` : ""}`;
+    const url = `/api/v1/reports/analytics${params.toString() ? `?${params}` : ""}`;
 
     const response = await authenticatedApiClient({
       method: "GET",
@@ -102,6 +102,6 @@ export async function getAnalyticsDashboard(
 
     return response.data;
   } catch (error: any) {
-    throw handleError(error, "GET", "/api/v1/admin/reports/analytics");
+    throw handleError(error, "GET", "/api/v1/reports/analytics");
   }
 }

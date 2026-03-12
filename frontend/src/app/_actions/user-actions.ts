@@ -337,7 +337,7 @@ export async function updateUser(
   id: string,
   data: Partial<UpdateUserRequest>,
 ): Promise<APIResponse> {
-  const url = `/api/v1/admin/users/${id}`;
+  const url = `/api/v1/organization/users/${id}`;
 
   try {
     // Build the update payload, transforming field names to match the backend
@@ -350,7 +350,8 @@ export async function updateUser(
     if (data.name !== undefined) payload.name = data.name;
     if (data.email !== undefined) payload.email = data.email;
     if (data.role !== undefined) payload.role = data.role;
-    if (data.is_active !== undefined) payload.status = data.is_active ? "active" : "suspended";
+    if (data.department_id !== undefined) payload.department_id = data.department_id;
+    if (data.is_active !== undefined) payload.status = data.is_active ? "active" : "inactive";
     if (data.position !== undefined) payload.position = data.position;
     if (data.manNumber !== undefined) payload.manNumber = data.manNumber;
     if (data.nrcNumber !== undefined) payload.nrcNumber = data.nrcNumber;
@@ -368,19 +369,6 @@ export async function updateUser(
         "PUT",
         url,
       );
-    }
-
-    // Handle department update separately if provided
-    if (data.department_id !== undefined && data.department_id !== "") {
-      try {
-        await authenticatedApiClient({
-          url: `/api/v1/users/${id}/department/${data.department_id}`,
-          method: "POST",
-        });
-      } catch {
-        // Department assignment failure is non-fatal — log but don't fail the whole update
-        console.warn("Department assignment failed for user", id);
-      }
     }
 
     revalidatePath("/admin/users");
@@ -532,14 +520,14 @@ export async function searchUsers(query: string): Promise<APIResponse> {
 }
 
 /**
- * Get a single platform user by ID via the admin endpoint
- * Calls: GET /api/v1/admin/users/:id
+ * Get a single user by ID, scoped to the caller's organisation.
+ * Calls: GET /api/v1/organization/users/:id
  * Normalizes snake_case backend fields to camelCase expected by the User type.
  */
 export async function getAdminUserById(id: string): Promise<APIResponse> {
   try {
     const response = await authenticatedApiClient({
-      url: `/api/v1/admin/users/${id}`,
+      url: `/api/v1/organization/users/${id}`,
       method: "GET",
     });
     const raw = response.data.data ?? {};
@@ -573,7 +561,7 @@ export async function getAdminUserById(id: string): Promise<APIResponse> {
       statusText: "OK",
     };
   } catch (error) {
-    return handleError(error, "GET", `/api/v1/admin/users/${id}`);
+    return handleError(error, "GET", `/api/v1/organization/users/${id}`);
   }
 }
 
@@ -586,13 +574,13 @@ export async function adminUpdateUserStatus(
 ): Promise<APIResponse> {
   try {
     const response = await authenticatedApiClient({
-      url: `/api/v1/admin/users/${id}/status`,
+      url: `/api/v1/organization/users/${id}/status`,
       method: "PUT",
       data: { status },
     });
     return successResponse(response.data.data, "User status updated");
   } catch (error) {
-    return handleError(error, "PUT", `/api/v1/admin/users/${id}/status`);
+    return handleError(error, "PUT", `/api/v1/organization/users/${id}/status`);
   }
 }
 
@@ -602,11 +590,11 @@ export async function adminUpdateUserStatus(
 export async function adminResetUserPassword(id: string): Promise<APIResponse> {
   try {
     const response = await authenticatedApiClient({
-      url: `/api/v1/admin/users/${id}/reset-password`,
+      url: `/api/v1/organization/users/${id}/reset-password`,
       method: "POST",
     });
     return successResponse(response.data.data, "Password reset email sent");
   } catch (error) {
-    return handleError(error, "POST", `/api/v1/admin/users/${id}/reset-password`);
+    return handleError(error, "POST", `/api/v1/organization/users/${id}/reset-password`);
   }
 }

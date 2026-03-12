@@ -316,30 +316,38 @@ export const verifyAdminRole = cache(async (): Promise<APIResponse> => {
 
 /**
  * Send password reset email
+ * Calls: POST /api/v1/auth/password-reset/request
  */
 export async function sendResetEmail(email: string): Promise<APIResponse> {
+  const url = "/api/v1/auth/password-reset/request";
   try {
-    // This is a stub implementation for password reset
-    // In a production system, this would send an actual email
-    return successResponse({ email }, "Password reset email sent successfully");
+    const response = await axios.post(url, { email });
+    return successResponse(
+      response.data?.data || { email },
+      response.data?.message || "Password reset email sent successfully",
+    );
   } catch (error: any) {
-    return handleError(error, "POST", "/api/v1/auth/reset-password/send");
+    return handleError(error, "POST", url);
   }
 }
 
 /**
  * Reset password with token
+ * Calls: POST /api/v1/auth/password-reset/confirm
  */
 export async function resetPassword(
   token: string,
   newPassword: string,
 ): Promise<APIResponse> {
+  const url = "/api/v1/auth/password-reset/confirm";
   try {
-    // This is a stub implementation for password reset
-    // In a production system, this would validate the token and update the password
-    return successResponse({ token }, "Password reset successfully");
+    const response = await axios.post(url, { token, newPassword });
+    return successResponse(
+      response.data?.data || {},
+      response.data?.message || "Password reset successfully",
+    );
   } catch (error: any) {
-    return handleError(error, "POST", "/api/v1/auth/reset-password");
+    return handleError(error, "POST", url);
   }
 }
 

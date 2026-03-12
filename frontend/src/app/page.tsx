@@ -78,12 +78,9 @@ export default async function HomePage({
     // Map roles to their respective pages (using lowercase to match backend)
     const roleRoutes: Record<string, string> = {
       admin: "/home",
-      finance_officer: "/home",
-      director: "/home",
-      cfo: "/home",
-      department_manager: "/home/requisitions",
+      approver: "/home",
+      finance: "/home",
       requester: "/requisitions",
-      compliance_officer: "/admin/compliance/tracking",
     };
 
     const redirectUrl = roleRoutes[userRole] ?? "/home";

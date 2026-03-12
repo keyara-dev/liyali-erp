@@ -193,3 +193,116 @@ func GetOrganizationUsers(c *fiber.Ctx) error {
 	// Delegate to the existing GetOrganizationMembers handler
 	return GetOrganizationMembers(c)
 }
+
+// UpdateOrganizationUser updates a user within the current organization
+// Only allows updating fields the org admin is permitted to change
+// PUT /api/v1/organization/users/:id
+func UpdateOrganizationUser(c *fiber.Ctx) error {
+	logger := logging.FromContext(c)
+
+	tenant, err := middleware.GetTenantContext(c)
+	if err != nil {
+		return utils.SendUnauthorizedError(c, "Organization context required")
+	}
+
+	userID := c.Params("id")
+	if userID == "" {
+		return utils.SendBadRequestError(c, "User ID is required")
+	}
+
+	var req struct {
+		Name         string `json:"name"`
+		Email        string `json:"email"`
+		Role         string `json:"role"`
+		DepartmentID string `json:"department_id"`
+		Position     string `json:"position"`
+		ManNumber    string `json:"manNumber"`
+		NrcNumber    string `json:"nrcNumber"`
+		Contact      string `json:"contact"`
+		Status       string `json:"status"` // "active" | "inactive"
+	}
+
+	if err := c.BodyParser(&req); err != nil {
+		return utils.SendBadRequestError(c, "Invalid request body")
+	}
+
+	// Verify the user belongs to this organisation
+	var memberCount int64
+	if err := config.DB.Table("organization_members").
+		Where("organization_id = ? AND user_id = ? AND active = true", tenant.OrganizationID, userID).
+		Count(&memberCount).Error; err != nil || memberCount == 0 {
+		return utils.SendNotFoundError(c, "User not found in this organization")
+	}
+
+	// Resolve role name from UUID if needed
+	roleName := req.Role
+	if roleName != "" {
+		if _, err := uuid.Parse(roleName); err == nil {
+			roleService := services.NewRoleManagementService(config.DB)
+			role, err := roleService.GetOrganizationRole(roleName)
+			if err != nil {
+				return utils.SendBadRequestError(c, "Invalid role ID")
+			}
+			roleName = role.Name
+		}
+	}
+
+	// Build user updates
+	userUpdates := map[string]interface{}{}
+	if req.Name != "" {
+		userUpdates["name"] = req.Name
+	}
+	if req.Email != "" {
+		userUpdates["email"] = req.Email
+	}
+	if roleName != "" {
+		userUpdates["role"] = roleName
+	}
+	if req.Position != "" {
+		userUpdates["position"] = req.Position
+	}
+	if req.ManNumber != "" {
+		userUpdates["man_number"] = req.ManNumber
+	}
+	if req.NrcNumber != "" {
+		userUpdates["nrc_number"] = req.NrcNumber
+	}
+	if req.Contact != "" {
+		userUpdates["contact"] = req.Contact
+	}
+	if req.Status == "active" {
+		userUpdates["active"] = true
+	} else if req.Status == "inactive" {
+		userUpdates["active"] = false
+	}
+
+	if len(userUpdates) > 0 {
+		if err := config.DB.Model(&models.User{}).Where("id = ?", userID).Updates(userUpdates).Error; err != nil {
+			logging.LogError(c, err, "org_user_update_failed", map[string]interface{}{"user_id": userID})
+			return utils.SendInternalError(c, "Failed to update user", err)
+		}
+	}
+
+	// Update department membership if provided
+	if req.DepartmentID != "" {
+		orgService := services.NewOrganizationService(config.DB)
+		deptPtr := &req.DepartmentID
+		if err := orgService.AddMemberWithDepartment(tenant.OrganizationID, userID, roleName, deptPtr); err != nil {
+			logging.LogError(c, err, "org_member_dept_update_failed", map[string]interface{}{"user_id": userID})
+			// Non-fatal — user fields already updated
+		}
+	} else if roleName != "" {
+		// Update role in org_members table too
+		config.DB.Table("organization_members").
+			Where("organization_id = ? AND user_id = ?", tenant.OrganizationID, userID).
+			Update("role", roleName)
+	}
+
+	logging.AddFieldsToRequest(c, map[string]interface{}{
+		"user_id":         userID,
+		"organization_id": tenant.OrganizationID,
+	})
+	logger.Info("org_user_update_successful")
+
+	return utils.SendSuccess(c, fiber.StatusOK, map[string]interface{}{"id": userID}, "User updated successfully", nil)
+}

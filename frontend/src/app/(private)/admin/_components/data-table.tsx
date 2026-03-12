@@ -143,9 +143,42 @@ const getColumns = (
     accessorFn: (row) => row.department || "N/A",
     header: "Department",
     cell: ({ row }) => (
-      <div className="text-foreground text-sm">
-        {row.original.department || (
-          <span className="text-muted-foreground italic">No department</span>
+      <div className="flex flex-col gap-0.5">
+        <span className="text-foreground text-sm">
+          {row.original.department || (
+            <span className="text-muted-foreground italic">No department</span>
+          )}
+        </span>
+        {row.original.position && (
+          <span className="text-muted-foreground text-xs">
+            {row.original.position}
+          </span>
+        )}
+      </div>
+    ),
+  },
+  {
+    id: "nrc",
+    header: "ID No.",
+    cell: ({ row }) => (
+      <div className="text-sm">
+        {row.original.nrcNumber ? (
+          <span className="font-mono text-xs">{row.original.nrcNumber}</span>
+        ) : (
+          <span className="text-muted-foreground italic text-xs">—</span>
+        )}
+      </div>
+    ),
+  },
+  {
+    id: "manNumber",
+    header: "Man No.",
+    cell: ({ row }) => (
+      <div className="text-sm">
+        {row.original.manNumber ? (
+          <span className="font-mono text-xs">{row.original.manNumber}</span>
+        ) : (
+          <span className="text-muted-foreground italic text-xs">—</span>
         )}
       </div>
     ),

@@ -341,22 +341,10 @@ export function clearPermissionCache(): void {
  */
 function isBuiltInRole(role: string): boolean {
   const builtInRoles = [
-    // Core roles from backend migrations
     'admin',
-    'requester', 
+    'requester',
     'approver',
     'finance',
-    'department_manager',
-    
-    // Additional roles from frontend types
-    'viewer',
-    'finance_manager',
-    'finance_officer',
-    'director',
-    'cfo',
-    'compliance_officer',
-    'ceo',
-    'superadmin'
   ];
   return builtInRoles.includes(role.toLowerCase());
 }

@@ -114,6 +114,45 @@ func SetupRoutes(app *fiber.App, handlerRegistry *handlers.HandlerRegistry, rbac
 	orgMgmt.Get("/users",
 		middleware.RequirePermission(rbacService, "organization", "view"),
 		handlers.GetOrganizationUsers)
+	orgMgmt.Put("/users/:id",
+		middleware.RequirePermission(rbacService, "organization", "manage"),
+		handlers.UpdateOrganizationUser)
+	orgMgmt.Get("/users/:id",
+		middleware.RequirePermission(rbacService, "organization", "manage"),
+		handlers.OrgGetUserById)
+	orgMgmt.Put("/users/:id/status",
+		middleware.RequirePermission(rbacService, "organization", "manage"),
+		handlers.OrgUpdateUserStatus)
+	orgMgmt.Post("/users/:id/reset-password",
+		middleware.RequirePermission(rbacService, "organization", "manage"),
+		handlers.OrgResetUserPassword)
+	orgMgmt.Get("/users/:id/activity",
+		middleware.RequirePermission(rbacService, "organization", "manage"),
+		handlers.OrgGetUserActivity)
+	orgMgmt.Get("/users/:id/activity/export",
+		middleware.RequirePermission(rbacService, "organization", "manage"),
+		handlers.OrgExportUserActivity)
+	orgMgmt.Get("/users/:id/security-events",
+		middleware.RequirePermission(rbacService, "organization", "manage"),
+		handlers.OrgGetUserSecurityEvents)
+	orgMgmt.Get("/users/:id/login-history",
+		middleware.RequirePermission(rbacService, "organization", "manage"),
+		handlers.OrgGetUserLoginHistory)
+	orgMgmt.Get("/users/:id/work-stats",
+		middleware.RequirePermission(rbacService, "organization", "manage"),
+		handlers.OrgGetUserWorkStats)
+	orgMgmt.Get("/users/:id/sessions",
+		middleware.RequirePermission(rbacService, "organization", "manage"),
+		handlers.OrgGetUserSessions)
+	orgMgmt.Delete("/users/:id/sessions/:sessionId",
+		middleware.RequirePermission(rbacService, "organization", "manage"),
+		handlers.OrgTerminateUserSession)
+	orgMgmt.Delete("/users/:id/sessions",
+		middleware.RequirePermission(rbacService, "organization", "manage"),
+		handlers.OrgTerminateAllUserSessions)
+	orgMgmt.Post("/users/:id/impersonate",
+		middleware.RequirePermission(rbacService, "organization", "manage"),
+		handlers.OrgImpersonateUser)
 
 	orgMgmt.Get("/usage", handlers.GetOrganizationUsage)
 
@@ -157,6 +196,10 @@ func SetupRoutes(app *fiber.App, handlerRegistry *handlers.HandlerRegistry, rbac
 	orgDepts.Get("/:departmentId/users",
 		middleware.RequirePermission(rbacService, "organization", "view"),
 		handlers.GetDepartmentUsers)
+
+	// User directory endpoints (tenant-scoped)
+	userDir := tenant.Group("/users")
+	userDir.Get("/department-heads/list", middleware.RequirePermission(rbacService, "organization", "view"), handlers.GetDepartmentHeadsList)
 
 	// User-Department Management (Phase 3.5) - NEW
 	userDepts := tenant.Group("/users")
@@ -225,6 +268,7 @@ func SetupRoutes(app *fiber.App, handlerRegistry *handlers.HandlerRegistry, rbac
 	// Requisition routes (tenant-scoped)
 	requisitions := tenant.Group("/requisitions", middleware.InjectWorkflowExecutionService(handlerRegistry.WorkflowExecutionService))
 	requisitions.Get("/", middleware.RequirePermission(rbacService, "requisition", "view"), handlers.GetRequisitions)
+	requisitions.Get("/stats", middleware.RequirePermission(rbacService, "requisition", "view"), handlers.GetRequisitionStats)
 	requisitions.Post("/", middleware.RequirePermission(rbacService, "requisition", "create"), middleware.CheckLimit("requisition"), handlers.CreateRequisition)
 	requisitions.Get("/:id", middleware.RequirePermission(rbacService, "requisition", "view"), handlers.GetRequisition)
 	requisitions.Put("/:id", middleware.RequirePermission(rbacService, "requisition", "edit"), handlers.UpdateRequisition)
@@ -247,6 +291,8 @@ func SetupRoutes(app *fiber.App, handlerRegistry *handlers.HandlerRegistry, rbac
 	// Purchase Order routes (tenant-scoped)
 	pos := tenant.Group("/purchase-orders", middleware.InjectWorkflowExecutionService(handlerRegistry.WorkflowExecutionService))
 	pos.Get("/", middleware.RequirePermission(rbacService, "purchase_order", "view"), handlers.GetPurchaseOrders)
+	pos.Get("/stats", middleware.RequirePermission(rbacService, "purchase_order", "view"), handlers.GetPurchaseOrderStats)
+	pos.Post("/from-requisition", middleware.RequirePermission(rbacService, "purchase_order", "create"), middleware.CheckLimit("purchase_order"), handlers.CreatePurchaseOrderFromRequisition)
 	pos.Post("/", middleware.RequirePermission(rbacService, "purchase_order", "create"), middleware.CheckLimit("purchase_order"), handlers.CreatePurchaseOrder)
 	pos.Get("/:id", middleware.RequirePermission(rbacService, "purchase_order", "view"), handlers.GetPurchaseOrder)
 	pos.Put("/:id", middleware.RequirePermission(rbacService, "purchase_order", "edit"), handlers.UpdatePurchaseOrder)
@@ -256,11 +302,14 @@ func SetupRoutes(app *fiber.App, handlerRegistry *handlers.HandlerRegistry, rbac
 	// Payment Voucher routes (tenant-scoped)
 	pvs := tenant.Group("/payment-vouchers", middleware.InjectWorkflowExecutionService(handlerRegistry.WorkflowExecutionService))
 	pvs.Get("/", middleware.RequirePermission(rbacService, "payment_voucher", "view"), handlers.GetPaymentVouchers)
+	pvs.Get("/stats", middleware.RequirePermission(rbacService, "payment_voucher", "view"), handlers.GetPaymentVoucherStats)
+	pvs.Post("/from-po", middleware.RequirePermission(rbacService, "payment_voucher", "create"), middleware.CheckLimit("payment_voucher"), handlers.CreatePaymentVoucherFromPO)
 	pvs.Post("/", middleware.RequirePermission(rbacService, "payment_voucher", "create"), middleware.CheckLimit("payment_voucher"), handlers.CreatePaymentVoucher)
 	pvs.Get("/:id", middleware.RequirePermission(rbacService, "payment_voucher", "view"), handlers.GetPaymentVoucher)
 	pvs.Put("/:id", middleware.RequirePermission(rbacService, "payment_voucher", "edit"), handlers.UpdatePaymentVoucher)
 	pvs.Delete("/:id", middleware.RequirePermission(rbacService, "payment_voucher", "delete"), handlers.DeletePaymentVoucher)
 	pvs.Post("/:id/submit", middleware.RequirePermission(rbacService, "payment_voucher", "edit"), handlers.SubmitPaymentVoucher)
+	pvs.Post("/:id/mark-paid", middleware.RequirePermission(rbacService, "payment_voucher", "edit"), handlers.MarkPaymentVoucherPaid)
 
 	// GRN routes (tenant-scoped)
 	grns := tenant.Group("/grns", middleware.InjectWorkflowExecutionService(handlerRegistry.WorkflowExecutionService))
@@ -270,6 +319,7 @@ func SetupRoutes(app *fiber.App, handlerRegistry *handlers.HandlerRegistry, rbac
 	grns.Put("/:id", middleware.RequirePermission(rbacService, "grn", "edit"), handlers.UpdateGRN)
 	grns.Delete("/:id", middleware.RequirePermission(rbacService, "grn", "delete"), handlers.DeleteGRN)
 	grns.Post("/:id/submit", middleware.RequirePermission(rbacService, "grn", "edit"), handlers.SubmitGRN)
+	grns.Post("/:id/confirm", middleware.RequirePermission(rbacService, "grn", "edit"), handlers.ConfirmGRN)
 
 	// Category routes (tenant-scoped)
 	categories := tenant.Group("/categories")
@@ -298,6 +348,8 @@ func SetupRoutes(app *fiber.App, handlerRegistry *handlers.HandlerRegistry, rbac
 	approvals.Get("/my-pending-count", handlerRegistry.Approval.GetMyPendingCount)
 	approvals.Get("/available-approvers", handlerRegistry.Approval.GetAvailableApprovers)
 	approvals.Get("/tasks/overdue", middleware.RequirePermission(rbacService, "approval", "view"), handlerRegistry.Approval.GetOverdueTasks)
+	approvals.Post("/validate-signature", handlers.ValidateSignature)
+	approvals.Get("/approver-workload/:approverId", handlers.GetApproverWorkload)
 
 	// Task claiming routes (NEW)
 	approvals.Post("/tasks/:id/claim", middleware.RequireWorkflowPermission("approve"), handlerRegistry.Approval.ClaimTask)
@@ -533,6 +585,13 @@ func SetupRoutes(app *fiber.App, handlerRegistry *handlers.HandlerRegistry, rbac
 	adminAdminUsers.Post("/:id/impersonate", handlers.AdminImpersonateAdminUser)
 	adminAdminUsers.Post("/:id/promote", handlers.AdminPromoteToSuperAdmin)
 	adminAdminUsers.Post("/:id/demote", handlers.AdminDemoteFromSuperAdmin)
+
+	// ===== Admin Impersonation Logs =====
+	adminImpersonation := admin.Group("/impersonation")
+	adminImpersonation.Get("/stats", handlers.GetImpersonationStats)
+	adminImpersonation.Get("/logs", handlers.GetImpersonationLogs)
+	adminImpersonation.Get("/logs/:id", handlers.GetImpersonationLog)
+	adminImpersonation.Post("/logs/:id/revoke", handlers.RevokeImpersonationLog)
 
 	// ===== Admin Reports & Analytics =====
 	adminReports := admin.Group("/reports")
