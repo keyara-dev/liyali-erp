@@ -11,12 +11,14 @@ import {
   getOrganizationActivity,
   getOrganizationTrialStatus,
   getOrganizationSubscription,
-  resetOrganizationTrial,
   type OrganizationFilters,
   type CreateOrganizationRequest,
   type UpdateOrganizationRequest,
-  type TrialResetRequest,
 } from "@/app/_actions/organizations";
+import {
+  resetOrganizationTrial,
+  type TrialResetRequest,
+} from "@/app/_actions/subscriptions";
 import { queryKeys } from "@/lib/query-keys";
 
 // --- Query Hooks ---

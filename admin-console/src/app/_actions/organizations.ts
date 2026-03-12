@@ -78,18 +78,10 @@ export interface OrganizationFilters {
 export interface CreateOrganizationRequest {
   name: string;
   domain: string;
-  admin_name: string;
-  admin_email: string;
-  subscription_tier?: "basic" | "professional" | "enterprise";
+  admin_user_id: string;
+  subscription_tier?: string;
   trial_days?: number;
-  settings?: {
-    max_users?: number;
-    features_enabled?: string[];
-  };
-  contact_info?: {
-    phone?: string;
-    address?: string;
-  };
+  max_users?: number;
 }
 
 export interface UpdateOrganizationRequest {
@@ -111,7 +103,7 @@ export interface UpdateOrganizationRequest {
 }
 
 export interface TrialResetRequest {
-  trialDays: number;
+  trial_days: number;
   reason: string;
 }
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
   Dialog,
   DialogContent,
@@ -12,7 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectContent,
@@ -20,6 +20,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import {
@@ -27,7 +40,18 @@ import {
   type CreateOrganizationRequest,
 } from "@/app/_actions/organizations";
 import { useSubscriptionTiers } from "@/hooks/use-subscriptions";
-import { Building2, Mail, User, Settings, Clock, Loader2 } from "lucide-react";
+import { useAdminUsers } from "@/hooks/use-admin-users";
+import {
+  Building2,
+  User,
+  Settings,
+  ChevronsUpDown,
+  Check,
+  X,
+  Loader2,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+import type { AdminUser } from "@/app/_actions/admin-users";
 
 interface OrganizationCreateDialogProps {
   open: boolean;
@@ -43,42 +67,42 @@ const TRIAL_DURATIONS = [
   { value: 90, label: "90 days" },
 ];
 
+const emptyForm = (): CreateOrganizationRequest => ({
+  name: "",
+  domain: "",
+  admin_user_id: "",
+  subscription_tier: "",
+  trial_days: 30,
+  max_users: 50,
+});
+
 export function OrganizationCreateDialog({
   open,
   onOpenChange,
   onOrganizationCreated,
 }: OrganizationCreateDialogProps) {
   const [isLoading, setIsLoading] = useState(false);
-
-  // Fetch tiers from API
-  const { data: tiers, isLoading: tiersLoading } = useSubscriptionTiers();
-
-  const [formData, setFormData] = useState<CreateOrganizationRequest>({
-    name: "",
-    domain: "",
-    admin_name: "",
-    admin_email: "",
-    subscription_tier: "basic",
-    trial_days: 30,
-    settings: {
-      max_users: 50,
-      features_enabled: [],
-    },
-    contact_info: {
-      phone: "",
-      address: "",
-    },
-  });
-
+  const [formData, setFormData] =
+    useState<CreateOrganizationRequest>(emptyForm());
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // User search-select state
+  const [userPickerOpen, setUserPickerOpen] = useState(false);
+  const [userSearch, setUserSearch] = useState("");
+  const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
+
+  const { data: tiers, isLoading: tiersLoading } = useSubscriptionTiers();
+  const { data: adminUsers, isLoading: usersLoading } = useAdminUsers(
+    userSearch ? { search: userSearch } : {},
+  );
+
+  const selectedTier = tiers?.find(
+    (t) => t.name === formData.subscription_tier,
+  );
 
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
-
-    if (!formData.name.trim()) {
-      newErrors.name = "Organization name is required";
-    }
-
+    if (!formData.name.trim()) newErrors.name = "Organization name is required";
     if (!formData.domain.trim()) {
       newErrors.domain = "Domain is required";
     } else if (
@@ -88,31 +112,17 @@ export function OrganizationCreateDialog({
     ) {
       newErrors.domain = "Please enter a valid domain (e.g., company.com)";
     }
-
-    if (!formData.admin_name.trim()) {
-      newErrors.admin_name = "Admin name is required";
-    }
-
-    if (!formData.admin_email.trim()) {
-      newErrors.admin_email = "Admin email is required";
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.admin_email)) {
-      newErrors.admin_email = "Please enter a valid email address";
-    }
-
-    if (!formData.subscription_tier) {
+    if (!formData.admin_user_id)
+      newErrors.admin_user_id = "Please select an admin user";
+    if (!formData.subscription_tier)
       newErrors.subscription_tier = "Subscription tier is required";
-    }
-
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (!validateForm()) {
-      return;
-    }
+    if (!validateForm()) return;
 
     setIsLoading(true);
     try {
@@ -125,7 +135,7 @@ export function OrganizationCreateDialog({
       } else {
         toast.error(result.message || "Failed to create organization");
       }
-    } catch (error) {
+    } catch {
       toast.error("Failed to create organization");
     } finally {
       setIsLoading(false);
@@ -133,82 +143,46 @@ export function OrganizationCreateDialog({
   };
 
   const resetForm = () => {
-    setFormData({
-      name: "",
-      domain: "",
-      admin_name: "",
-      admin_email: "",
-      subscription_tier: "basic",
-      trial_days: 30,
-      settings: {
-        max_users: 50,
-        features_enabled: [],
-      },
-      contact_info: {
-        phone: "",
-        address: "",
-      },
-    });
+    setFormData(emptyForm());
     setErrors({});
+    setSelectedUser(null);
+    setUserSearch("");
   };
 
-  const handleInputChange = (
-    field: keyof CreateOrganizationRequest,
-    value: any,
-  ) => {
-    setFormData((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
-
-    // Clear error when user starts typing
-    if (errors[field]) {
-      setErrors((prev) => ({
-        ...prev,
-        [field]: "",
-      }));
-    }
+  const handleField = (field: keyof CreateOrganizationRequest, value: any) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
+    if (errors[field]) setErrors((prev) => ({ ...prev, [field]: "" }));
   };
 
-  const handleSettingsChange = (field: string, value: any) => {
-    setFormData((prev) => ({
-      ...prev,
-      settings: {
-        ...prev.settings,
-        [field]: value,
-      },
-    }));
+  const handleSelectUser = (user: AdminUser) => {
+    setSelectedUser(user);
+    handleField("admin_user_id", user.id);
+    setUserPickerOpen(false);
+    setUserSearch("");
   };
 
-  const handleContactInfoChange = (field: string, value: string) => {
-    setFormData((prev) => ({
-      ...prev,
-      contact_info: {
-        ...prev.contact_info,
-        [field]: value,
-      },
-    }));
+  const handleClearUser = () => {
+    setSelectedUser(null);
+    handleField("admin_user_id", "");
   };
-
-  const selectedTier = tiers?.find(
-    (tier) => tier.name === formData.subscription_tier,
-  );
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl! max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Building2 className="h-5 w-5" />
             Create New Organization
           </DialogTitle>
-          <DialogDescription>
-            Set up a new organization with admin user and initial configuration
+          <DialogDescription asChild>
+            <div>
+              Set up a new organization and attach an existing admin user.
+            </div>
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Basic Information */}
+          {/* Organization Information */}
           <Card>
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
@@ -225,7 +199,7 @@ export function OrganizationCreateDialog({
                   <Input
                     id="name"
                     value={formData.name}
-                    onChange={(e) => handleInputChange("name", e.target.value)}
+                    onChange={(e) => handleField("name", e.target.value)}
                     placeholder="Enter organization name"
                     className={errors.name ? "border-red-500" : ""}
                   />
@@ -240,9 +214,7 @@ export function OrganizationCreateDialog({
                   <Input
                     id="domain"
                     value={formData.domain}
-                    onChange={(e) =>
-                      handleInputChange("domain", e.target.value)
-                    }
+                    onChange={(e) => handleField("domain", e.target.value)}
                     placeholder="company.com"
                     className={errors.domain ? "border-red-500" : ""}
                   />
@@ -259,47 +231,139 @@ export function OrganizationCreateDialog({
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
                 <User className="h-4 w-4" />
-                Admin User
+                Admin User <span className="text-red-500">*</span>
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="admin_name">
-                    Admin Name <span className="text-red-500">*</span>
-                  </Label>
-                  <Input
-                    id="admin_name"
-                    value={formData.admin_name}
-                    onChange={(e) =>
-                      handleInputChange("admin_name", e.target.value)
-                    }
-                    placeholder="Enter admin full name"
-                    className={errors.admin_name ? "border-red-500" : ""}
-                  />
-                  {errors.admin_name && (
-                    <p className="text-sm text-red-500">{errors.admin_name}</p>
+            <CardContent className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                Select an existing admin user to manage this organization.
+              </p>
+
+              {selectedUser ? (
+                /* Selected user pill */
+                <div className="flex items-center gap-3 p-3 rounded-lg border bg-muted/30">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary font-semibold text-sm shrink-0">
+                    {(selectedUser.full_name || selectedUser.email)
+                      .charAt(0)
+                      .toUpperCase()}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium text-sm truncate">
+                      {selectedUser.full_name ||
+                        `${selectedUser.first_name} ${selectedUser.last_name}`.trim() ||
+                        selectedUser.email}
+                    </div>
+                    <div className="text-xs text-muted-foreground truncate">
+                      {selectedUser.email}
+                    </div>
+                  </div>
+                  {selectedUser.is_super_admin && (
+                    <Badge variant="secondary" className="text-xs shrink-0">
+                      Super Admin
+                    </Badge>
                   )}
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 w-7 p-0 shrink-0"
+                    onClick={handleClearUser}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="admin_email">
-                    Admin Email <span className="text-red-500">*</span>
-                  </Label>
-                  <Input
-                    id="admin_email"
-                    type="email"
-                    value={formData.admin_email}
-                    onChange={(e) =>
-                      handleInputChange("admin_email", e.target.value)
-                    }
-                    placeholder="admin@company.com"
-                    className={errors.admin_email ? "border-red-500" : ""}
-                  />
-                  {errors.admin_email && (
-                    <p className="text-sm text-red-500">{errors.admin_email}</p>
-                  )}
-                </div>
-              </div>
+              ) : (
+                /* Search popover */
+                <Popover
+                  open={userPickerOpen}
+                  onOpenChange={setUserPickerOpen}
+                  modal={true}
+                >
+                  <PopoverTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      role="combobox"
+                      className={cn(
+                        "w-full justify-between font-normal",
+                        errors.admin_user_id && "border-red-500",
+                      )}
+                    >
+                      <span className="text-muted-foreground">
+                        Search and select an admin user...
+                      </span>
+                      <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent
+                    className="w-[--radix-popover-trigger-width] p-0"
+                    align="start"
+                  >
+                    <Command shouldFilter={false}>
+                      <CommandInput
+                        placeholder="Search by name or email..."
+                        value={userSearch}
+                        onValueChange={setUserSearch}
+                      />
+                      <CommandList>
+                        {usersLoading ? (
+                          <div className="flex items-center justify-center py-6 text-sm text-muted-foreground gap-2">
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            Searching...
+                          </div>
+                        ) : !adminUsers?.length ? (
+                          <CommandEmpty>No admin users found.</CommandEmpty>
+                        ) : (
+                          <CommandGroup>
+                            {adminUsers.map((user) => (
+                              <CommandItem
+                                key={user.id}
+                                value={user.id}
+                                onSelect={() => handleSelectUser(user)}
+                                className="flex items-center gap-3 py-2"
+                              >
+                                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary font-semibold text-xs shrink-0">
+                                  {(user.full_name || user.email)
+                                    .charAt(0)
+                                    .toUpperCase()}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <div className="text-sm font-medium truncate">
+                                    {user.full_name ||
+                                      `${user.first_name} ${user.last_name}`.trim() ||
+                                      user.email}
+                                  </div>
+                                  <div className="text-xs text-muted-foreground truncate">
+                                    {user.email}
+                                  </div>
+                                </div>
+                                {user.is_super_admin && (
+                                  <Badge
+                                    variant="secondary"
+                                    className="text-xs shrink-0"
+                                  >
+                                    Super Admin
+                                  </Badge>
+                                )}
+                                <Check
+                                  className={cn(
+                                    "h-4 w-4 shrink-0",
+                                    "opacity-0",
+                                  )}
+                                />
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        )}
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+              )}
+
+              {errors.admin_user_id && (
+                <p className="text-sm text-red-500">{errors.admin_user_id}</p>
+              )}
             </CardContent>
           </Card>
 
@@ -312,81 +376,70 @@ export function OrganizationCreateDialog({
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="subscription_tier">
-                    Subscription Tier <span className="text-red-500">*</span>
-                  </Label>
-                  <Select
-                    value={formData.subscription_tier}
-                    onValueChange={(value) =>
-                      handleInputChange("subscription_tier", value as any)
-                    }
-                    disabled={tiersLoading}
+              <div className="space-y-2">
+                <Label htmlFor="subscription_tier">
+                  Subscription Tier <span className="text-red-500">*</span>
+                </Label>
+                <Select
+                  value={formData.subscription_tier}
+                  onValueChange={(v) => handleField("subscription_tier", v)}
+                  disabled={tiersLoading}
+                >
+                  <SelectTrigger
+                    className={errors.subscription_tier ? "border-red-500" : ""}
                   >
-                    <SelectTrigger
-                      className={
-                        errors.subscription_tier ? "border-red-500" : ""
+                    <SelectValue
+                      placeholder={
+                        tiersLoading
+                          ? "Loading tiers..."
+                          : "Select subscription tier"
                       }
-                    >
-                      <SelectValue
-                        placeholder={
-                          tiersLoading
-                            ? "Loading tiers..."
-                            : "Select subscription tier"
-                        }
-                      />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {tiers?.map((tier) => (
-                        <SelectItem key={tier.id} value={tier.name}>
-                          <div className="flex flex-col">
-                            <span className="font-medium">
-                              {tier.displayName}
-                            </span>
-                            <span className="text-sm text-muted-foreground">
-                              ${tier.priceMonthly}/month
-                            </span>
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {errors.subscription_tier && (
-                    <p className="text-sm text-red-500">
-                      {errors.subscription_tier}
-                    </p>
-                  )}
-                  {selectedTier && (
-                    <p className="text-sm text-muted-foreground">
-                      {selectedTier.description}
-                    </p>
-                  )}
-                </div>
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {tiers?.map((tier) => (
+                      <SelectItem key={tier.id} value={tier.name}>
+                        <div className="flex items-center justify-between gap-4 w-full">
+                          <span className="font-medium">
+                            {tier.displayName}
+                          </span>
+                          <span className="text-sm text-muted-foreground">
+                            ${tier.priceMonthly}/month
+                          </span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {errors.subscription_tier && (
+                  <p className="text-sm text-red-500">
+                    {errors.subscription_tier}
+                  </p>
+                )}
+                {selectedTier && (
+                  <p className="text-sm text-muted-foreground">
+                    {selectedTier.description}
+                  </p>
+                )}
+              </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="trial_days">Trial Duration</Label>
-                  <Select
-                    value={formData.trial_days?.toString()}
-                    onValueChange={(value) =>
-                      handleInputChange("trial_days", parseInt(value))
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select trial duration" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {TRIAL_DURATIONS.map((duration) => (
-                        <SelectItem
-                          key={duration.value}
-                          value={duration.value.toString()}
-                        >
-                          {duration.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="trial_days">Trial Duration</Label>
+                <Select
+                  value={formData.trial_days?.toString()}
+                  onValueChange={(v) => handleField("trial_days", parseInt(v))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select duration" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {TRIAL_DURATIONS.map((d) => (
+                      <SelectItem key={d.value} value={d.value.toString()}>
+                        {d.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="space-y-2">
@@ -394,50 +447,12 @@ export function OrganizationCreateDialog({
                 <Input
                   id="max_users"
                   type="number"
-                  value={formData.settings?.max_users || ""}
-                  onChange={(e) =>
-                    handleSettingsChange(
-                      "max_users",
-                      parseInt(e.target.value) || 50,
-                    )
-                  }
+                  value={formData.max_users ?? ""}
+                  onChange={(e) => {
+                    const v = parseInt(e.target.value);
+                    if (!isNaN(v)) handleField("max_users", v);
+                  }}
                   placeholder="50"
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Contact Information */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Mail className="h-4 w-4" />
-                Contact Information (Optional)
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="phone">Phone Number</Label>
-                <Input
-                  id="phone"
-                  value={formData.contact_info?.phone || ""}
-                  onChange={(e) =>
-                    handleContactInfoChange("phone", e.target.value)
-                  }
-                  placeholder="Enter phone number"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="address">Address</Label>
-                <Textarea
-                  id="address"
-                  value={formData.contact_info?.address || ""}
-                  onChange={(e) =>
-                    handleContactInfoChange("address", e.target.value)
-                  }
-                  placeholder="Enter organization address"
-                  rows={3}
                 />
               </div>
             </CardContent>
@@ -455,7 +470,14 @@ export function OrganizationCreateDialog({
               Cancel
             </Button>
             <Button type="submit" disabled={isLoading}>
-              {isLoading ? "Creating..." : "Create Organization"}
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Creating...
+                </>
+              ) : (
+                "Create Organization"
+              )}
             </Button>
           </DialogFooter>
         </form>

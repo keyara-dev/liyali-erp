@@ -248,6 +248,7 @@ export default function AdminUsersPage() {
           selectedUsers={selectedUsers}
           onActionComplete={() => {
             setSelectedUsers([]);
+            refetchUsers();
           }}
           roles={roles}
         />

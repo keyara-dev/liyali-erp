@@ -282,7 +282,7 @@ export function TrialManagementTab() {
                         </span>
                         <span className="flex items-center">
                           <Calendar className="mr-1 h-3 w-3" />
-                          {org.trial_start_date} - {org.trial_end_date}
+                          {org.trial_start_date ? new Date(org.trial_start_date).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }) : "—"} – {org.trial_end_date ? new Date(org.trial_end_date).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }) : "—"}
                         </span>
                       </div>
                     </div>

@@ -61,7 +61,7 @@ export interface DashboardMetrics {
 
 // Trial management types
 export interface TrialResetRequest {
-  trialDays: number;
+  trial_days: number;
   reason: string;
 }
 

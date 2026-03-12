@@ -232,7 +232,7 @@ export function useExtendOrganizationTrial() {
       data,
     }: {
       organizationId: string;
-      data: { daysToAdd: number; reason: string };
+      data: { days_to_add: number; reason: string };
     }) => extendOrganizationTrial(organizationId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.subscriptions.trials() });

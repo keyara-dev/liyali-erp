@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { notify } from "@/lib/notify";
+import { toast } from "sonner";
 import {
   Flag,
   BarChart3,
@@ -65,10 +65,7 @@ export default function FeatureFlagsPage() {
 
   const refreshData = async () => {
     await Promise.all([refetchFlags(), refetchStats()]);
-    notify("Data refreshed successfully.", {
-      title: "Success",
-      variant: "success",
-    });
+    toast.success("Data refreshed successfully.");
   };
 
   const handleCreateFlag = async (
@@ -86,15 +83,9 @@ export default function FeatureFlagsPage() {
     try {
       await createFlagMutation.mutateAsync(flagData);
       setShowCreateDialog(false);
-      notify("Feature flag created successfully.", {
-        title: "Success",
-        variant: "success",
-      });
+      toast.success("Feature flag created successfully.");
     } catch (error) {
-      notify("Failed to create feature flag.", {
-        title: "Error",
-        variant: "destructive",
-      });
+      toast.error("Failed to create feature flag.");
     }
   };
 
@@ -118,60 +109,36 @@ export default function FeatureFlagsPage() {
         updates: flagData,
       });
       setEditingFlag(null);
-      notify("Feature flag updated successfully.", {
-        title: "Success",
-        variant: "success",
-      });
+      toast.success("Feature flag updated successfully.");
     } catch (error) {
-      notify("Failed to update feature flag.", {
-        title: "Error",
-        variant: "destructive",
-      });
+      toast.error("Failed to update feature flag.");
     }
   };
 
   const handleDeleteFlag = async (flagId: string) => {
     try {
       await deleteFlagMutation.mutateAsync(flagId);
-      notify("Feature flag deleted successfully.", {
-        title: "Success",
-        variant: "success",
-      });
+      toast.success("Feature flag deleted successfully.");
     } catch (error) {
-      notify("Failed to delete feature flag.", {
-        title: "Error",
-        variant: "destructive",
-      });
+      toast.error("Failed to delete feature flag.");
     }
   };
 
   const handleToggleFlag = async (flagId: string) => {
     try {
       await toggleFlagMutation.mutateAsync(flagId);
-      notify("Feature flag toggled successfully.", {
-        title: "Success",
-        variant: "success",
-      });
+      toast.success("Feature flag toggled successfully.");
     } catch (error) {
-      notify("Failed to toggle feature flag.", {
-        title: "Error",
-        variant: "destructive",
-      });
+      toast.error("Failed to toggle feature flag.");
     }
   };
 
   const handleArchiveFlag = async (flagId: string) => {
     try {
       await archiveFlagMutation.mutateAsync(flagId);
-      notify("Feature flag archived successfully.", {
-        title: "Success",
-        variant: "success",
-      });
+      toast.success("Feature flag archived successfully.");
     } catch (error) {
-      notify("Failed to archive feature flag.", {
-        title: "Error",
-        variant: "destructive",
-      });
+      toast.error("Failed to archive feature flag.");
     }
   };
 
@@ -196,24 +163,15 @@ export default function FeatureFlagsPage() {
   };
 
   const handleBulkOperation = async (_operation: BulkFlagOperation) => {
-    notify("Bulk operations are coming soon.", {
-      title: "Coming Soon",
-      variant: "default",
-    });
+    toast.info("Bulk operations are coming soon.");
   };
 
   const handleExport = async () => {
-    notify("Export functionality is coming soon.", {
-      title: "Coming Soon",
-      variant: "default",
-    });
+    toast.info("Export functionality is coming soon.");
   };
 
   const handleImport = () => {
-    notify("Import functionality is coming soon.", {
-      title: "Coming Soon",
-      variant: "default",
-    });
+    toast.info("Import functionality is coming soon.");
   };
 
   return (

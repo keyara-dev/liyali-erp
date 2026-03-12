@@ -43,6 +43,7 @@ import {
   Clock,
   AlertTriangle,
   RefreshCw,
+  Eye,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -54,6 +55,116 @@ import {
   type AdminUserActivity,
   type AdminUserSession,
 } from "@/app/_actions/admin-users";
+import {
+  useImpersonationLogs,
+  useRevokeImpersonationLog,
+} from "@/hooks/use-impersonation";
+
+function ImpersonationHistoryTab({ userId }: { userId: string }) {
+  const { data: logs = [], isLoading } = useImpersonationLogs({
+    impersonatorId: userId,
+  });
+  const revokeMutation = useRevokeImpersonationLog();
+
+  const handleRevoke = (id: string) => {
+    revokeMutation.mutate(id, {
+      onSuccess: (result) => {
+        if (result.success) {
+          toast.success("Impersonation log revoked");
+        } else {
+          toast.error(result.message || "Failed to revoke");
+        }
+      },
+    });
+  };
+
+  return (
+    <TabsContent
+      value="impersonation"
+      className="space-y-4 overflow-y-auto max-h-[60vh]"
+    >
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Impersonation History</CardTitle>
+          <CardDescription>
+            Sessions initiated by this admin user
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <div className="space-y-3">
+              {[...Array(3)].map((_, i) => (
+                <div key={i} className="h-12 bg-muted animate-pulse rounded" />
+              ))}
+            </div>
+          ) : logs.length === 0 ? (
+            <p className="text-muted-foreground text-center py-8">
+              No impersonation sessions found
+            </p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Target</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Expires</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {(logs as import("@/app/_actions/impersonation").ImpersonationLog[]).map((log) => {
+                  const isExpired = new Date(log.expires_at) < new Date();
+                  const isActive = !log.revoked && !isExpired;
+                  return (
+                    <TableRow key={log.id}>
+                      <TableCell className="font-medium">
+                        {log.target_email}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="text-xs capitalize">
+                          {log.impersonation_type.replace("_", " ")}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-sm">
+                        {new Date(log.created_at).toLocaleString()}
+                      </TableCell>
+                      <TableCell className="text-sm">
+                        {new Date(log.expires_at).toLocaleString()}
+                      </TableCell>
+                      <TableCell>
+                        {log.revoked ? (
+                          <Badge variant="destructive">Revoked</Badge>
+                        ) : isExpired ? (
+                          <Badge variant="secondary">Expired</Badge>
+                        ) : (
+                          <Badge variant="default">Active</Badge>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {isActive && (
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => handleRevoke(log.id)}
+                            disabled={revokeMutation.isPending}
+                          >
+                            Revoke
+                          </Button>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+    </TabsContent>
+  );
+}
 
 interface AdminUserDetailsDialogProps {
   open: boolean;
@@ -195,7 +306,7 @@ export function AdminUserDetailsDialog({
           onValueChange={setActiveTab}
           className="flex-1 overflow-hidden"
         >
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="overview" className="flex items-center gap-2">
               <User className="h-4 w-4" />
               Overview
@@ -211,6 +322,10 @@ export function AdminUserDetailsDialog({
             <TabsTrigger value="sessions" className="flex items-center gap-2">
               <Monitor className="h-4 w-4" />
               Sessions
+            </TabsTrigger>
+            <TabsTrigger value="impersonation" className="flex items-center gap-2">
+              <Eye className="h-4 w-4" />
+              Impersonation
             </TabsTrigger>
           </TabsList>
 
@@ -573,6 +688,8 @@ export function AdminUserDetailsDialog({
                 </CardContent>
               </Card>
             </TabsContent>
+
+            <ImpersonationHistoryTab userId={user.id} />
 
             <TabsContent
               value="sessions"

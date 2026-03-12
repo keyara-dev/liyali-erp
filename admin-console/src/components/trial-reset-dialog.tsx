@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Clock, RefreshCw, AlertTriangle } from "lucide-react";
-import { resetOrganizationTrial } from "@/app/_actions/organizations";
+import { resetOrganizationTrial } from "@/app/_actions/subscriptions";
 import { toast } from "sonner";
 
 interface TrialResetDialogProps {
@@ -55,7 +55,7 @@ export function TrialResetDialog({
 
     try {
       const result = await resetOrganizationTrial(organization.id, {
-        trialDays,
+        trial_days: trialDays,
         reason: reason.trim(),
       });
 
@@ -129,7 +129,10 @@ export function TrialResetDialog({
                 min="1"
                 max="90"
                 value={trialDays}
-                onChange={(e) => setTrialDays(parseInt(e.target.value) || 30)}
+                onChange={(e) => {
+                  const v = parseInt(e.target.value);
+                  if (!isNaN(v)) setTrialDays(v);
+                }}
                 className="mt-1"
               />
               <p className="text-xs text-muted-foreground mt-1">

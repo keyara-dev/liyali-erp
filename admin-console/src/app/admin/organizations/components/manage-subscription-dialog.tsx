@@ -335,7 +335,7 @@ function OverviewTab({
                 <span className="text-muted-foreground">End:</span>
                 <p className="font-medium">
                   {organization.trial_end_date
-                    ? new Date(organization.trial_end_date).toLocaleDateString()
+                    ? new Date(organization.trial_end_date).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })
                     : "N/A"}
                 </p>
               </div>
@@ -825,7 +825,7 @@ function TrialTab({
     setIsLoading(true);
     try {
       const result = await extendOrganizationTrial(organization.id, {
-        daysToAdd,
+        days_to_add: daysToAdd,
         reason: reason.trim(),
       });
 
@@ -860,7 +860,7 @@ function TrialTab({
     setIsLoading(true);
     try {
       const result = await resetOrganizationTrial(organization.id, {
-        trialDays,
+        trial_days: trialDays,
         reason: reason.trim(),
       });
 
@@ -894,7 +894,7 @@ function TrialTab({
             <span className="text-muted-foreground">End Date:</span>
             <p className="font-medium">
               {organization.trial_end_date
-                ? new Date(organization.trial_end_date).toLocaleDateString()
+                ? new Date(organization.trial_end_date).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })
                 : "N/A"}
             </p>
           </div>

@@ -167,6 +167,9 @@ func AdminGetAdminUserStats(c *fiber.Ctx) error {
 		Where("account_lockouts.active = ? AND ("+adminFilter+")", true, adminRoles, true).
 		Distinct("account_lockouts.user_id").Count(&lockedAccounts)
 
+	// Two-factor enabled
+	db.Table("users").Where(adminFilter+" AND two_factor = ?", adminRoles, true, true).Count(&twoFactorEnabled)
+
 	// Never logged in
 	db.Table("users").Where(adminFilter+" AND last_login IS NULL", adminRoles, true).Count(&neverLoggedIn)
 
@@ -744,9 +747,9 @@ func AdminExportAdminUsers(c *fiber.Ctx) error {
 		query = query.Where("name ILIKE ? OR email ILIKE ?", searchPattern, searchPattern)
 	}
 	if isActive := c.Query("is_active"); isActive == "true" {
-		query = query.Where("is_active = ?", true)
+		query = query.Where("active = ?", true)
 	} else if isActive == "false" {
-		query = query.Where("is_active = ?", false)
+		query = query.Where("active = ?", false)
 	}
 
 	var rawUsers []map[string]interface{}
@@ -854,25 +857,49 @@ func AdminImpersonateAdminUser(c *fiber.Ctx) error {
 	name, _ := user["name"].(string)
 	role, _ := user["role"].(string)
 
-	token, err := utils.GenerateToken(userID, email, name, role, nil)
+	const impersonationDuration = 15 * time.Minute
+	tokenInfo, err := utils.GenerateTokenWithInfo(userID, email, name, role, nil)
 	if err != nil {
 		log.Printf("Error generating admin impersonation token: %v", err)
 		return utils.SendInternalError(c, "Failed to generate impersonation token", err)
 	}
 
-	// Log in audit
+	now := time.Now()
+	expiresAt := now.Add(impersonationDuration)
+
+	// Lookup impersonator email for the log
+	var impersonatorEmail string
+	var impersonatorRow map[string]interface{}
+	if db.Table("users").Select("email").Where("id = ?", adminUserID).First(&impersonatorRow).Error == nil {
+		impersonatorEmail, _ = impersonatorRow["email"].(string)
+	}
+
+	// Write to impersonation_logs
+	db.Table("impersonation_logs").Create(map[string]interface{}{
+		"id":                 utils.GenerateID(),
+		"impersonator_id":    adminUserID,
+		"impersonator_email": impersonatorEmail,
+		"target_id":          userID,
+		"target_email":       email,
+		"impersonation_type": "admin_user",
+		"token_jti":          tokenInfo.JTI,
+		"expires_at":         expiresAt,
+		"created_at":         now,
+	})
+
+	// Also log in admin_audit_logs
 	db.Table("admin_audit_logs").Create(map[string]interface{}{
 		"id":            utils.GenerateID(),
 		"action":        "admin_impersonation",
 		"admin_user_id": adminUserID,
 		"new_value":     userID,
 		"description":   fmt.Sprintf("Admin impersonated admin user: %s", email),
-		"created_at":    time.Now(),
+		"created_at":    now,
 	})
 
 	return utils.SendSimpleSuccess(c, map[string]interface{}{
-		"token":            token,
-		"expires_in":       900,
+		"impersonation_token": tokenInfo.Token,
+		"expires_in":          int(impersonationDuration.Seconds()),
 		"impersonated_user": map[string]interface{}{
 			"id":    userID,
 			"email": email,

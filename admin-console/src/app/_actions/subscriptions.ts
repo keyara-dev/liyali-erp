@@ -72,7 +72,7 @@ export interface UpdateTierRequest extends Partial<Omit<CreateTierRequest, "name
 }
 
 export interface TrialResetRequest {
-  trialDays: number;
+  trial_days: number;
   reason: string;
 }
 
@@ -444,7 +444,7 @@ export async function overrideOrganizationLimits(
 export async function extendOrganizationTrial(
   organizationId: string,
   request: {
-    daysToAdd: number;
+    days_to_add: number;
     reason: string;
   },
 ): Promise<APIResponse<any>> {

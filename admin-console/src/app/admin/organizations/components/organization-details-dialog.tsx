@@ -205,14 +205,14 @@ export function OrganizationDetailsDialog({
                     <div className="flex items-center gap-2">
                       <Calendar className="h-4 w-4 text-muted-foreground" />
                       <span className="text-sm">
-                        Created {new Date(organization.created_at).toLocaleDateString()}
+                        Created {new Date(organization.created_at).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}
                       </span>
                     </div>
                     {organization.trial_end_date && (
                       <div className="flex items-center gap-2">
                         <Clock className="h-4 w-4 text-muted-foreground" />
                         <span className="text-sm">
-                          Trial ends {new Date(organization.trial_end_date).toLocaleDateString()}
+                          Trial ends {new Date(organization.trial_end_date).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}
                           {organization.days_remaining !== undefined && (
                             <span className="ml-1 text-muted-foreground">
                               ({organization.days_remaining} days remaining)

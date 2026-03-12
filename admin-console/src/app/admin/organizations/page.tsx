@@ -403,18 +403,14 @@ export default function OrganizationsPage() {
                         </span>
                         <span className="flex items-center">
                           <Calendar className="mr-1 h-3 w-3" />
-                          {new Date(
-                            organization.created_at,
-                          ).toLocaleDateString()}
+                          {new Date(organization.created_at).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}
                         </span>
                       </div>
                       {organization.trial_end_date && (
                         <div className="flex items-center gap-2 mt-1">
                           <span className="text-xs text-muted-foreground">
                             Trial ends:{" "}
-                            {new Date(
-                              organization.trial_end_date,
-                            ).toLocaleDateString()}
+                            {new Date(organization.trial_end_date).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}
                           </span>
                           {organization.days_remaining !== undefined && (
                             <Badge
@@ -473,7 +469,7 @@ export default function OrganizationsPage() {
                     <OrganizationActionsDropdown
                       organization={organization}
                       onStatusChange={handleStatusChange}
-                      onOrganizationUpdated={() => {}}
+                      onOrganizationUpdated={() => refetchOrganizations()}
                     />
                   </div>
                 </div>
@@ -518,7 +514,7 @@ export default function OrganizationsPage() {
           organization={selectedOrganization}
           open={showOrganizationDetails}
           onOpenChange={setShowOrganizationDetails}
-          onOrganizationUpdated={() => {}}
+          onOrganizationUpdated={() => refetchOrganizations()}
         />
       )}
 
@@ -526,7 +522,7 @@ export default function OrganizationsPage() {
       <OrganizationCreateDialog
         open={showCreateOrganization}
         onOpenChange={setShowCreateOrganization}
-        onOrganizationCreated={() => {}}
+        onOrganizationCreated={() => refetchOrganizations()}
       />
     </div>
   );

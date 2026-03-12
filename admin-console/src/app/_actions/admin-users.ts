@@ -502,7 +502,7 @@ export async function terminateAllAdminUserSessions(
 export async function exportAdminUsers(
   format: "csv" | "json" | "excel",
   filters?: AdminUserFilters,
-): Promise<APIResponse<{ download_url: string; expires_at: string }>> {
+): Promise<APIResponse<{ users: any[]; total_count: number; exported_at: string }>> {
   const params = new URLSearchParams();
 
   params.append("format", format);

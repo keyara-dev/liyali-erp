@@ -254,18 +254,23 @@ func AdminCreateOrganization(c *fiber.Ctx) error {
 	var request struct {
 		Name             string `json:"name"`
 		Domain           string `json:"domain"`
+		AdminUserID      string `json:"admin_user_id"`
 		AdminName        string `json:"admin_name"`
 		AdminEmail       string `json:"admin_email"`
 		SubscriptionTier string `json:"subscription_tier"`
 		TrialDays        int    `json:"trial_days"`
+		MaxUsers         int    `json:"max_users"`
 	}
 
 	if err := c.BodyParser(&request); err != nil {
 		return utils.SendBadRequest(c, "Invalid request body")
 	}
 
-	if request.Name == "" || request.AdminEmail == "" {
-		return utils.SendBadRequest(c, "Name and admin email are required")
+	if request.Name == "" {
+		return utils.SendBadRequest(c, "Organization name is required")
+	}
+	if request.AdminUserID == "" && request.AdminEmail == "" {
+		return utils.SendBadRequest(c, "Either admin_user_id or admin_email is required")
 	}
 
 	// Generate slug from name
@@ -292,7 +297,7 @@ func AdminCreateOrganization(c *fiber.Ctx) error {
 
 	trialDays := request.TrialDays
 	if trialDays == 0 {
-		trialDays = 14
+		trialDays = 30
 	}
 
 	now := time.Now()
@@ -319,19 +324,27 @@ func AdminCreateOrganization(c *fiber.Ctx) error {
 		return utils.SendInternalError(c, "Failed to create organization", err)
 	}
 
-	// Create admin user if email provided
-	if request.AdminEmail != "" {
+	// Resolve admin user — prefer admin_user_id, fall back to email lookup/create
+	var resolvedUserID string
+
+	if request.AdminUserID != "" {
+		// Verify the user exists
+		var userCount int64
+		db.Table("users").Where("id = ?", request.AdminUserID).Count(&userCount)
+		if userCount == 0 {
+			return utils.SendNotFound(c, "Admin user not found")
+		}
+		resolvedUserID = request.AdminUserID
+	} else {
+		// Email-based lookup or create
 		adminName := request.AdminName
 		if adminName == "" {
 			adminName = "Admin"
 		}
 
-		// Check if user already exists
-		var existingUserID string
-		db.Table("users").Where("email = ?", request.AdminEmail).Pluck("id", &existingUserID)
+		db.Table("users").Where("email = ?", request.AdminEmail).Pluck("id", &resolvedUserID)
 
-		if existingUserID == "" {
-			// Create new user with temp password
+		if resolvedUserID == "" {
 			tempPassword := utils.GenerateID()[:12]
 			hashedPassword, _ := bcrypt.GenerateFromPassword([]byte(tempPassword), bcrypt.DefaultCost)
 
@@ -348,28 +361,33 @@ func AdminCreateOrganization(c *fiber.Ctx) error {
 				"updated_at":              now,
 			}
 			db.Table("users").Create(user)
-			existingUserID = userID
+			resolvedUserID = userID
 		}
-
-		// Add user as org admin member
-		member := map[string]interface{}{
-			"id":              utils.GenerateID(),
-			"organization_id": orgID,
-			"user_id":         existingUserID,
-			"role":            "admin",
-			"active":          true,
-			"joined_at":       now,
-			"created_at":      now,
-			"updated_at":      now,
-		}
-		db.Table("organization_members").Create(member)
 	}
 
+	// Add user as org admin member
+	member := map[string]interface{}{
+		"id":              utils.GenerateID(),
+		"organization_id": orgID,
+		"user_id":         resolvedUserID,
+		"role":            "admin",
+		"active":          true,
+		"joined_at":       now,
+		"created_at":      now,
+		"updated_at":      now,
+	}
+	db.Table("organization_members").Create(member)
+
 	// Create default settings
+	maxUsers := request.MaxUsers
+	if maxUsers <= 0 {
+		maxUsers = 50
+	}
 	settings := map[string]interface{}{
 		"id":              utils.GenerateID(),
 		"organization_id": orgID,
 		"currency":        "USD",
+		"max_users":       maxUsers,
 		"created_at":      now,
 		"updated_at":      now,
 	}
