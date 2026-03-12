@@ -527,20 +527,13 @@ function ChangeTierTab({
 
       <Button
         type="submit"
-        disabled={isLoading || !selectedTier}
+        disabled={!selectedTier}
+        isLoading={isLoading}
+        loadingText="Changing Tier..."
         className="w-full"
       >
-        {isLoading ? (
-          <>
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            Changing Tier...
-          </>
-        ) : (
-          <>
-            <ArrowUpDown className="mr-2 h-4 w-4" />
-            Change Tier
-          </>
-        )}
+        <ArrowUpDown className="mr-2 h-4 w-4" />
+        Change Tier
       </Button>
     </form>
   );
@@ -776,18 +769,9 @@ function OverrideLimitsTab({
         </div>
       )}
 
-      <Button type="submit" disabled={isLoading} className="w-full">
-        {isLoading ? (
-          <>
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            Applying...
-          </>
-        ) : (
-          <>
-            <Shield className="mr-2 h-4 w-4" />
-            Apply Overrides
-          </>
-        )}
+      <Button type="submit" isLoading={isLoading} loadingText="Applying..." className="w-full">
+        <Shield className="mr-2 h-4 w-4" />
+        Apply Overrides
       </Button>
     </form>
   );
@@ -973,18 +957,9 @@ function TrialTab({
               {error}
             </div>
           )}
-          <Button type="submit" disabled={isLoading} className="w-full">
-            {isLoading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Extending...
-              </>
-            ) : (
-              <>
-                <Plus className="mr-2 h-4 w-4" />
-                Extend by {daysToAdd} Days
-              </>
-            )}
+          <Button type="submit" isLoading={isLoading} loadingText="Extending..." className="w-full">
+            <Plus className="mr-2 h-4 w-4" />
+            Extend by {daysToAdd} Days
           </Button>
         </form>
       ) : (
@@ -1023,18 +998,9 @@ function TrialTab({
               {error}
             </div>
           )}
-          <Button type="submit" disabled={isLoading} className="w-full">
-            {isLoading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Resetting...
-              </>
-            ) : (
-              <>
-                <RefreshCw className="mr-2 h-4 w-4" />
-                Reset Trial ({trialDays} days)
-              </>
-            )}
+          <Button type="submit" isLoading={isLoading} loadingText="Resetting..." className="w-full">
+            <RefreshCw className="mr-2 h-4 w-4" />
+            Reset Trial ({trialDays} days)
           </Button>
         </form>
       )}

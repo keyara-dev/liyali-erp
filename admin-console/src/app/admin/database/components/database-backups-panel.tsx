@@ -11,13 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { SelectField } from "@/components/ui/select-field";
 import { Input } from "@/components/ui/input";
 import {
   Table,
@@ -254,6 +248,11 @@ export function DatabaseBackupsPanel({
 
   const activeConnections = connections.filter((c) => c.status === "connected");
 
+  const connectionOptions = activeConnections.map((c) => ({
+    value: c.id,
+    label: `${c.name} (${c.type})`,
+  }));
+
   return (
     <div className="space-y-6">
       {/* Backup Actions */}
@@ -424,84 +423,58 @@ export function DatabaseBackupsPanel({
           </DialogHeader>
 
           <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="backup-connection">Database Connection</Label>
-              <Select
-                value={createForm.connection_id}
-                onValueChange={(value) =>
-                  setCreateForm((prev) => ({ ...prev, connection_id: value }))
-                }
-              >
-                <SelectTrigger id="backup-connection">
-                  <SelectValue placeholder="Select a connection" />
-                </SelectTrigger>
-                <SelectContent>
-                  {activeConnections.map((connection) => (
-                    <SelectItem key={connection.id} value={connection.id}>
-                      <div className="flex items-center gap-2">
-                        <Database className="h-4 w-4" />
-                        {connection.name} ({connection.type})
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            <SelectField
+              label="Database Connection"
+              required
+              placeholder="Select a connection"
+              options={connectionOptions}
+              value={createForm.connection_id}
+              onValueChange={(value) =>
+                setCreateForm((prev) => ({ ...prev, connection_id: value }))
+              }
+            />
 
-            <div className="space-y-2">
-              <Label htmlFor="backup-type">Backup Type</Label>
-              <Select
-                value={createForm.backup_type}
-                onValueChange={(
-                  value: "full" | "incremental" | "differential",
-                ) => setCreateForm((prev) => ({ ...prev, backup_type: value }))}
-              >
-                <SelectTrigger id="backup-type">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="full">Full Backup</SelectItem>
-                  <SelectItem value="incremental">
-                    Incremental Backup
-                  </SelectItem>
-                  <SelectItem value="differential">
-                    Differential Backup
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            <SelectField
+              label="Backup Type"
+              options={[
+                { value: "full", label: "Full Backup" },
+                { value: "incremental", label: "Incremental Backup" },
+                { value: "differential", label: "Differential Backup" },
+              ]}
+              value={createForm.backup_type}
+              onValueChange={(value: string) =>
+                setCreateForm((prev) => ({
+                  ...prev,
+                  backup_type: value as "full" | "incremental" | "differential",
+                }))
+              }
+            />
 
-            <div className="space-y-2">
-              <Label htmlFor="retention-days">Retention Days</Label>
-              <Input
-                id="retention-days"
-                type="number"
-                min="1"
-                max="365"
-                value={createForm.retention_days}
-                onChange={(e) =>
-                  setCreateForm((prev) => ({
-                    ...prev,
-                    retention_days: parseInt(e.target.value) || 30,
-                  }))
-                }
-              />
-            </div>
+            <Input
+              label="Retention Days"
+              type="number"
+              min="1"
+              max="365"
+              value={createForm.retention_days}
+              onChange={(e) =>
+                setCreateForm((prev) => ({
+                  ...prev,
+                  retention_days: parseInt(e.target.value) || 30,
+                }))
+              }
+            />
 
-            <div className="space-y-2">
-              <Label htmlFor="backup-description">Description (Optional)</Label>
-              <Input
-                id="backup-description"
-                placeholder="Backup description..."
-                value={createForm.description}
-                onChange={(e) =>
-                  setCreateForm((prev) => ({
-                    ...prev,
-                    description: e.target.value,
-                  }))
-                }
-              />
-            </div>
+            <Input
+              label="Description (Optional)"
+              placeholder="Backup description..."
+              value={createForm.description}
+              onChange={(e) =>
+                setCreateForm((prev) => ({
+                  ...prev,
+                  description: e.target.value,
+                }))
+              }
+            />
           </div>
 
           <DialogFooter>
@@ -514,9 +487,11 @@ export function DatabaseBackupsPanel({
             </Button>
             <Button
               onClick={handleCreateBackup}
-              disabled={isCreatingBackup || !createForm.connection_id}
+              isLoading={isCreatingBackup}
+              loadingText="Creating..."
+              disabled={!createForm.connection_id}
             >
-              {isCreatingBackup ? "Creating..." : "Create Backup"}
+              Create Backup
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -534,32 +509,18 @@ export function DatabaseBackupsPanel({
           </AlertDialogHeader>
 
           <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="target-connection">Target Connection</Label>
-              <Select
-                value={restoreForm.target_connection_id}
-                onValueChange={(value) =>
-                  setRestoreForm((prev) => ({
-                    ...prev,
-                    target_connection_id: value,
-                  }))
-                }
-              >
-                <SelectTrigger id="target-connection">
-                  <SelectValue placeholder="Select target connection" />
-                </SelectTrigger>
-                <SelectContent>
-                  {activeConnections.map((connection) => (
-                    <SelectItem key={connection.id} value={connection.id}>
-                      <div className="flex items-center gap-2">
-                        <Database className="h-4 w-4" />
-                        {connection.name} ({connection.type})
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            <SelectField
+              label="Target Connection"
+              placeholder="Select target connection"
+              options={connectionOptions}
+              value={restoreForm.target_connection_id}
+              onValueChange={(value) =>
+                setRestoreForm((prev) => ({
+                  ...prev,
+                  target_connection_id: value,
+                }))
+              }
+            />
 
             <div className="space-y-3">
               <Label>Restore Options</Label>

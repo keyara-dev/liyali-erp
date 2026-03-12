@@ -5,13 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { SelectField } from "@/components/ui/select-field";
 import {
   Dialog,
   DialogContent,
@@ -23,7 +17,6 @@ import {
 import {
   FileText,
   Search,
-  Filter,
   Download,
   Eye,
   Users,
@@ -166,19 +159,13 @@ export function ConfigurationTemplates({
           </div>
         </div>
 
-        <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-          <SelectTrigger className="w-[200px]">
-            <Filter className="h-4 w-4 mr-2" />
-            <SelectValue placeholder="All Categories" />
-          </SelectTrigger>
-          <SelectContent>
-            {categories.map((category) => (
-              <SelectItem key={category.value} value={category.value}>
-                {category.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <SelectField
+          placeholder="All Categories"
+          options={categories}
+          value={selectedCategory}
+          onValueChange={setSelectedCategory}
+          classNames={{ wrapper: "w-[200px]" }}
+        />
       </div>
 
       {/* Templates Grid */}

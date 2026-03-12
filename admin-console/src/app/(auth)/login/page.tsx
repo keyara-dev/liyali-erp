@@ -77,20 +77,18 @@ function LoginForm() {
               </Alert>
             )}
 
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                name="email"
-                type="email"
-                placeholder="admin@example.com"
-                value={formData.email}
-                onChange={handleInputChange}
-                required
-                disabled={isLoading}
-                autoComplete="email"
-              />
-            </div>
+            <Input
+              label="Email"
+              id="email"
+              name="email"
+              type="email"
+              placeholder="admin@example.com"
+              value={formData.email}
+              onChange={handleInputChange}
+              required
+              disabled={isLoading}
+              autoComplete="email"
+            />
 
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
@@ -127,16 +125,11 @@ function LoginForm() {
             <Button
               type="submit"
               className="w-full"
-              disabled={isLoading || !formData.email || !formData.password}
+              disabled={!formData.email || !formData.password}
+              isLoading={isLoading}
+              loadingText="Signing in..."
             >
-              {isLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Signing in...
-                </>
-              ) : (
-                "Sign In"
-              )}
+              Sign In
             </Button>
           </form>
 

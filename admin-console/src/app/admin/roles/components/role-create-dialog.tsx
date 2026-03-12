@@ -3,8 +3,8 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import {
   Dialog,
@@ -17,7 +17,6 @@ import {
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -91,7 +90,6 @@ export function RoleCreateDialog({
     const categoryPermissionIds = categoryPermissions.map((p) => p.id);
 
     if (checked) {
-      // Add all permissions from this category
       setFormData((prev) => ({
         ...prev,
         permission_ids: [
@@ -99,7 +97,6 @@ export function RoleCreateDialog({
         ],
       }));
     } else {
-      // Remove all permissions from this category
       setFormData((prev) => ({
         ...prev,
         permission_ids: prev.permission_ids.filter(
@@ -185,32 +182,26 @@ export function RoleCreateDialog({
           <div className="grid gap-6 md:grid-cols-2">
             {/* Basic Information */}
             <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="name">Role Name *</Label>
-                <Input
-                  id="name"
-                  value={formData.name}
-                  onChange={(e) => handleInputChange("name", e.target.value)}
-                  placeholder="e.g., content_manager"
-                  required
-                />
-                <p className="text-xs text-muted-foreground">
-                  Internal name (lowercase, underscores only)
-                </p>
-              </div>
+              <Input
+                name="name"
+                label="Role Name"
+                required
+                value={formData.name}
+                onChange={(e) => handleInputChange("name", e.target.value)}
+                placeholder="e.g., content_manager"
+                descriptionText="Internal name (lowercase, underscores only)"
+              />
 
-              <div className="space-y-2">
-                <Label htmlFor="display_name">Display Name *</Label>
-                <Input
-                  id="display_name"
-                  value={formData.display_name}
-                  onChange={(e) =>
-                    handleInputChange("display_name", e.target.value)
-                  }
-                  placeholder="e.g., Content Manager"
-                  required
-                />
-              </div>
+              <Input
+                name="display_name"
+                label="Display Name"
+                required
+                value={formData.display_name}
+                onChange={(e) =>
+                  handleInputChange("display_name", e.target.value)
+                }
+                placeholder="e.g., Content Manager"
+              />
 
               <div className="space-y-2">
                 <Label htmlFor="description">Description</Label>
@@ -328,8 +319,13 @@ export function RoleCreateDialog({
             <Button type="button" variant="outline" onClick={handleClose}>
               Cancel
             </Button>
-            <Button type="submit" disabled={isLoading}>
-              {isLoading ? "Creating..." : "Create Role"}
+            <Button
+              type="submit"
+              disabled={isLoading}
+              isLoading={isLoading}
+              loadingText="Creating..."
+            >
+              Create Role
             </Button>
           </DialogFooter>
         </form>

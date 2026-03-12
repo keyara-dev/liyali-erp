@@ -4,13 +4,7 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { SelectField } from "@/components/ui/select-field";
 import {
   AlertTriangle,
   CheckCircle,
@@ -167,31 +161,33 @@ export function SystemAlertsPanel({
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
             <Filter className="h-4 w-4 text-muted-foreground" />
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-32">
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="acknowledged">Acknowledged</SelectItem>
-                <SelectItem value="resolved">Resolved</SelectItem>
-              </SelectContent>
-            </Select>
+            <SelectField
+              placeholder="Status"
+              options={[
+                { value: "all", label: "All Status" },
+                { value: "active", label: "Active" },
+                { value: "acknowledged", label: "Acknowledged" },
+                { value: "resolved", label: "Resolved" },
+              ]}
+              value={statusFilter}
+              onValueChange={setStatusFilter}
+              classNames={{ wrapper: "w-32" }}
+            />
           </div>
 
-          <Select value={severityFilter} onValueChange={setSeverityFilter}>
-            <SelectTrigger className="w-32">
-              <SelectValue placeholder="Severity" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Severity</SelectItem>
-              <SelectItem value="critical">Critical</SelectItem>
-              <SelectItem value="high">High</SelectItem>
-              <SelectItem value="medium">Medium</SelectItem>
-              <SelectItem value="low">Low</SelectItem>
-            </SelectContent>
-          </Select>
+          <SelectField
+            placeholder="Severity"
+            options={[
+              { value: "all", label: "All Severity" },
+              { value: "critical", label: "Critical" },
+              { value: "high", label: "High" },
+              { value: "medium", label: "Medium" },
+              { value: "low", label: "Low" },
+            ]}
+            value={severityFilter}
+            onValueChange={setSeverityFilter}
+            classNames={{ wrapper: "w-32" }}
+          />
         </div>
       </CardHeader>
       <CardContent>

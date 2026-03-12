@@ -13,13 +13,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { SelectField } from "@/components/ui/select-field";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -87,12 +81,12 @@ export function SettingEditDialog({
   const isEditing = !!setting;
 
   const categories = [
-    { value: "general", label: "General", icon: Settings },
-    { value: "security", label: "Security", icon: Shield },
-    { value: "performance", label: "Performance", icon: Zap },
-    { value: "integration", label: "Integration", icon: Link },
-    { value: "notification", label: "Notification", icon: Bell },
-    { value: "ui", label: "User Interface", icon: Palette },
+    { value: "general", label: "General" },
+    { value: "security", label: "Security" },
+    { value: "performance", label: "Performance" },
+    { value: "integration", label: "Integration" },
+    { value: "notification", label: "Notification" },
+    { value: "ui", label: "User Interface" },
   ];
 
   const types = [
@@ -161,7 +155,6 @@ export function SettingEditDialog({
       [field]: value,
     }));
 
-    // Clear validation error when field is updated
     if (validationErrors[field]) {
       setValidationErrors((prev) => ({
         ...prev,
@@ -298,7 +291,6 @@ export function SettingEditDialog({
       },
     };
 
-    // Prepare validation object
     const hasValidation =
       settingData.validation.min ||
       settingData.validation.max ||
@@ -324,7 +316,17 @@ export function SettingEditDialog({
   const selectedCategory = categories.find(
     (cat) => cat.value === formData.category,
   );
-  const CategoryIcon = selectedCategory?.icon || Settings;
+
+  // Pick an icon for the dialog title based on category
+  const categoryIconMap: Record<string, React.ElementType> = {
+    general: Settings,
+    security: Shield,
+    performance: Zap,
+    integration: Link,
+    notification: Bell,
+    ui: Palette,
+  };
+  const CategoryIcon = categoryIconMap[formData.category] || Settings;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -345,39 +347,26 @@ export function SettingEditDialog({
           {/* Basic Information */}
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="key">Setting Key *</Label>
-                <Input
-                  id="key"
-                  value={formData.key}
-                  onChange={(e) => handleInputChange("key", e.target.value)}
-                  placeholder="e.g., app.session_timeout"
-                  disabled={isEditing}
-                  className={cn(validationErrors.key && "border-red-500")}
-                />
-                {validationErrors.key && (
-                  <p className="text-sm text-red-600">{validationErrors.key}</p>
-                )}
-              </div>
+              <Input
+                name="key"
+                label="Setting Key"
+                required
+                value={formData.key}
+                onChange={(e) => handleInputChange("key", e.target.value)}
+                placeholder="e.g., app.session_timeout"
+                disabled={isEditing}
+                isInvalid={!!validationErrors.key}
+                errorText={validationErrors.key}
+              />
 
-              <div className="space-y-2">
-                <Label htmlFor="type">Type *</Label>
-                <Select
-                  value={formData.type}
-                  onValueChange={(value) => handleInputChange("type", value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {types.map((type) => (
-                      <SelectItem key={type.value} value={type.value}>
-                        {type.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              <SelectField
+                label="Type"
+                required
+                value={formData.type}
+                onValueChange={(value) => handleInputChange("type", value)}
+                options={types}
+                classNames={{ wrapper: "max-w-full" }}
+              />
             </div>
 
             <div className="space-y-2">
@@ -406,6 +395,7 @@ export function SettingEditDialog({
             <h3 className="text-lg font-medium">Value Configuration</h3>
 
             <div className="grid grid-cols-2 gap-4">
+              {/* Current Value — label has a Reset button so we keep it separate */}
               <div className="space-y-2">
                 <Label htmlFor="value" className="flex items-center gap-2">
                   Current Value
@@ -460,7 +450,8 @@ export function SettingEditDialog({
                             ? "123"
                             : "Enter value..."
                       }
-                      className={cn(validationErrors.value && "border-red-500")}
+                      isInvalid={!!validationErrors.value}
+                      errorText={validationErrors.value}
                     />
                   )}
                   {formData.is_secret && (
@@ -479,13 +470,15 @@ export function SettingEditDialog({
                     </Button>
                   )}
                 </div>
-                {validationErrors.value && (
-                  <p className="text-sm text-red-600">
-                    {validationErrors.value}
-                  </p>
-                )}
+                {(formData.type === "json" || formData.type === "array") &&
+                  validationErrors.value && (
+                    <p className="text-sm text-red-600">
+                      {validationErrors.value}
+                    </p>
+                  )}
               </div>
 
+              {/* Default Value */}
               <div className="space-y-2">
                 <Label htmlFor="default_value">Default Value</Label>
                 {formData.type === "json" || formData.type === "array" ? (
@@ -519,16 +512,16 @@ export function SettingEditDialog({
                           ? "123"
                           : "Enter default value..."
                     }
-                    className={cn(
-                      validationErrors.default_value && "border-red-500",
-                    )}
+                    isInvalid={!!validationErrors.default_value}
+                    errorText={validationErrors.default_value}
                   />
                 )}
-                {validationErrors.default_value && (
-                  <p className="text-sm text-red-600">
-                    {validationErrors.default_value}
-                  </p>
-                )}
+                {(formData.type === "json" || formData.type === "array") &&
+                  validationErrors.default_value && (
+                    <p className="text-sm text-red-600">
+                      {validationErrors.default_value}
+                    </p>
+                  )}
               </div>
             </div>
           </div>
@@ -540,53 +533,25 @@ export function SettingEditDialog({
             <h3 className="text-lg font-medium">Configuration</h3>
 
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="category">Category</Label>
-                <Select
-                  value={formData.category}
-                  onValueChange={(value) =>
-                    handleInputChange("category", value)
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categories.map((category) => {
-                      const Icon = category.icon;
-                      return (
-                        <SelectItem key={category.value} value={category.value}>
-                          <div className="flex items-center gap-2">
-                            <Icon className="h-4 w-4" />
-                            {category.label}
-                          </div>
-                        </SelectItem>
-                      );
-                    })}
-                  </SelectContent>
-                </Select>
-              </div>
+              <SelectField
+                label="Category"
+                value={formData.category}
+                onValueChange={(value) =>
+                  handleInputChange("category", value)
+                }
+                options={categories}
+                classNames={{ wrapper: "max-w-full" }}
+              />
 
-              <div className="space-y-2">
-                <Label htmlFor="environment">Environment</Label>
-                <Select
-                  value={formData.environment}
-                  onValueChange={(value) =>
-                    handleInputChange("environment", value)
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {environments.map((env) => (
-                      <SelectItem key={env.value} value={env.value}>
-                        {env.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              <SelectField
+                label="Environment"
+                value={formData.environment}
+                onValueChange={(value) =>
+                  handleInputChange("environment", value)
+                }
+                options={environments}
+                classNames={{ wrapper: "max-w-full" }}
+              />
             </div>
 
             <div className="flex items-center space-x-6">
@@ -632,62 +597,52 @@ export function SettingEditDialog({
 
                 {formData.type === "number" && (
                   <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="min">Minimum Value</Label>
-                      <Input
-                        id="min"
-                        type="number"
-                        value={formData.validation.min || ""}
-                        onChange={(e) =>
-                          handleValidationChange(
-                            "min",
-                            e.target.value ? Number(e.target.value) : undefined,
-                          )
-                        }
-                        placeholder="No minimum"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="max">Maximum Value</Label>
-                      <Input
-                        id="max"
-                        type="number"
-                        value={formData.validation.max || ""}
-                        onChange={(e) =>
-                          handleValidationChange(
-                            "max",
-                            e.target.value ? Number(e.target.value) : undefined,
-                          )
-                        }
-                        placeholder="No maximum"
-                      />
-                    </div>
+                    <Input
+                      name="min"
+                      label="Minimum Value"
+                      type="number"
+                      value={formData.validation.min || ""}
+                      onChange={(e) =>
+                        handleValidationChange(
+                          "min",
+                          e.target.value ? Number(e.target.value) : undefined,
+                        )
+                      }
+                      placeholder="No minimum"
+                    />
+                    <Input
+                      name="max"
+                      label="Maximum Value"
+                      type="number"
+                      value={formData.validation.max || ""}
+                      onChange={(e) =>
+                        handleValidationChange(
+                          "max",
+                          e.target.value ? Number(e.target.value) : undefined,
+                        )
+                      }
+                      placeholder="No maximum"
+                    />
                   </div>
                 )}
 
                 {formData.type === "string" && (
                   <>
-                    <div className="space-y-2">
-                      <Label htmlFor="pattern">
-                        Validation Pattern (Regex)
-                      </Label>
-                      <Input
-                        id="pattern"
-                        value={formData.validation.pattern || ""}
-                        onChange={(e) =>
-                          handleValidationChange("pattern", e.target.value)
-                        }
-                        placeholder="e.g., ^[a-zA-Z0-9]+$"
-                        className="font-mono text-sm"
-                      />
-                    </div>
+                    <Input
+                      name="pattern"
+                      label="Validation Pattern (Regex)"
+                      value={formData.validation.pattern || ""}
+                      onChange={(e) =>
+                        handleValidationChange("pattern", e.target.value)
+                      }
+                      placeholder="e.g., ^[a-zA-Z0-9]+$"
+                      classNames={{ input: "font-mono text-sm" }}
+                    />
 
                     <div className="space-y-2">
-                      <Label htmlFor="options">
-                        Allowed Values (comma-separated)
-                      </Label>
                       <Input
-                        id="options"
+                        name="options"
+                        label="Allowed Values (comma-separated)"
                         value={optionsInput}
                         onChange={(e) => handleOptionsChange(e.target.value)}
                         placeholder="e.g., option1, option2, option3"
@@ -743,12 +698,13 @@ export function SettingEditDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button onClick={handleSave} disabled={isLoading}>
-            {isLoading
-              ? "Saving..."
-              : isEditing
-                ? "Update Setting"
-                : "Create Setting"}
+          <Button
+            onClick={handleSave}
+            disabled={isLoading}
+            isLoading={isLoading}
+            loadingText="Saving..."
+          >
+            {isEditing ? "Update Setting" : "Create Setting"}
           </Button>
         </DialogFooter>
       </DialogContent>

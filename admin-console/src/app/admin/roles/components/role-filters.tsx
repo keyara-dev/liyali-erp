@@ -3,14 +3,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { SelectField } from "@/components/ui/select-field";
 import {
   Popover,
   PopoverContent,
@@ -168,108 +161,55 @@ export function RoleFiltersComponent({
 
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             {/* Status Filter */}
-            <div className="space-y-2">
-              <Label htmlFor="status-filter">Status</Label>
-              <Select
-                value={
-                  filters.is_active === undefined
-                    ? ""
-                    : filters.is_active.toString()
-                }
-                onValueChange={(value) =>
-                  updateFilter(
-                    "is_active",
-                    value === "" ? undefined : value === "true",
-                  )
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="All statuses" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">All statuses</SelectItem>
-                  <SelectItem value="true">Active</SelectItem>
-                  <SelectItem value="false">Inactive</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            <SelectField
+              label="Status"
+              placeholder="All statuses"
+              options={[
+                { value: "", label: "All statuses" },
+                { value: "true", label: "Active" },
+                { value: "false", label: "Inactive" },
+              ]}
+              value={filters.is_active === undefined ? "" : filters.is_active.toString()}
+              onValueChange={(value) => updateFilter("is_active", value === "" ? undefined : value === "true")}
+            />
 
             {/* Role Type Filter */}
-            <div className="space-y-2">
-              <Label htmlFor="type-filter">Role Type</Label>
-              <Select
-                value={
-                  filters.is_system_role === undefined
-                    ? ""
-                    : filters.is_system_role.toString()
-                }
-                onValueChange={(value) =>
-                  updateFilter(
-                    "is_system_role",
-                    value === "" ? undefined : value === "true",
-                  )
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="All types" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">All types</SelectItem>
-                  <SelectItem value="false">Custom Roles</SelectItem>
-                  <SelectItem value="true">System Roles</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            <SelectField
+              label="Role Type"
+              placeholder="All types"
+              options={[
+                { value: "", label: "All types" },
+                { value: "false", label: "Custom Roles" },
+                { value: "true", label: "System Roles" },
+              ]}
+              value={filters.is_system_role === undefined ? "" : filters.is_system_role.toString()}
+              onValueChange={(value) => updateFilter("is_system_role", value === "" ? undefined : value === "true")}
+            />
 
             {/* Category Filter */}
-            <div className="space-y-2">
-              <Label htmlFor="category-filter">Category</Label>
-              <Select
-                value={filters.category || ""}
-                onValueChange={(value) =>
-                  updateFilter("category", value || undefined)
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="All categories" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">All categories</SelectItem>
-                  {CATEGORIES.map((category) => (
-                    <SelectItem key={category.value} value={category.value}>
-                      {category.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            <SelectField
+              label="Category"
+              placeholder="All categories"
+              options={[
+                { value: "", label: "All categories" },
+                ...CATEGORIES,
+              ]}
+              value={filters.category || ""}
+              onValueChange={(value) => updateFilter("category", value || undefined)}
+            />
 
             {/* Users Filter */}
-            <div className="space-y-2">
-              <Label htmlFor="users-filter">User Assignment</Label>
-              <Select
-                value={
-                  filters.has_users === undefined
-                    ? ""
-                    : filters.has_users.toString()
-                }
-                onValueChange={(value) =>
-                  updateFilter(
-                    "has_users",
-                    value === "" ? undefined : value === "true",
-                  )
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="All roles" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">All roles</SelectItem>
-                  <SelectItem value="true">With assigned users</SelectItem>
-                  <SelectItem value="false">Without users</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            <SelectField
+              label="User Assignment"
+              placeholder="All roles"
+              options={[
+                { value: "", label: "All roles" },
+                { value: "true", label: "With assigned users" },
+                { value: "false", label: "Without users" },
+              ]}
+              value={filters.has_users === undefined ? "" : filters.has_users.toString()}
+              onValueChange={(value) => updateFilter("has_users", value === "" ? undefined : value === "true")}
+            />
           </div>
         </div>
       )}

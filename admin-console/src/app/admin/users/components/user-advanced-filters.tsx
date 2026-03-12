@@ -4,13 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { SelectField } from "@/components/ui/select-field";
 import {
   Popover,
   PopoverContent,
@@ -183,74 +177,40 @@ export function UserAdvancedFilters({
 
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {/* Role Filter */}
-            <div className="space-y-2">
-              <Label htmlFor="role-filter">Role</Label>
-              <Select
-                value={filters.role || ""}
-                onValueChange={(value) =>
-                  updateFilter("role", value || undefined)
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="All roles" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">All roles</SelectItem>
-                  {USER_ROLES.map((role) => (
-                    <SelectItem key={role.value} value={role.value}>
-                      {role.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            <SelectField
+              label="Role"
+              placeholder="All roles"
+              options={[
+                { value: "", label: "All roles" },
+                ...USER_ROLES,
+              ]}
+              value={filters.role || ""}
+              onValueChange={(value) => updateFilter("role", value || undefined)}
+            />
 
             {/* Email Verified Filter */}
-            <div className="space-y-2">
-              <Label htmlFor="email-verified-filter">Email Status</Label>
-              <Select
-                value={
-                  filters.email_verified === undefined
-                    ? ""
-                    : filters.email_verified.toString()
-                }
-                onValueChange={(value) =>
-                  updateFilter(
-                    "email_verified",
-                    value === "" ? undefined : value === "true",
-                  )
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="All users" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">All users</SelectItem>
-                  <SelectItem value="true">Email verified</SelectItem>
-                  <SelectItem value="false">Email not verified</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            <SelectField
+              label="Email Status"
+              placeholder="All users"
+              options={[
+                { value: "", label: "All users" },
+                { value: "true", label: "Email verified" },
+                { value: "false", label: "Email not verified" },
+              ]}
+              value={filters.email_verified === undefined ? "" : filters.email_verified.toString()}
+              onValueChange={(value) => updateFilter("email_verified", value === "" ? undefined : value === "true")}
+            />
 
             {/* Sort By */}
             <div className="space-y-2">
               <Label htmlFor="sort-filter">Sort by</Label>
               <div className="flex gap-2">
-                <Select
+                <SelectField
+                  options={SORT_OPTIONS}
                   value={filters.sort_by || "created_at"}
                   onValueChange={(value) => updateFilter("sort_by", value)}
-                >
-                  <SelectTrigger className="flex-1">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {SORT_OPTIONS.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  classNames={{ wrapper: "flex-1" }}
+                />
                 <Button
                   variant="outline"
                   size="sm"
@@ -314,23 +274,18 @@ export function UserAdvancedFilters({
           </div>
 
           {/* Results per page */}
-          <div className="space-y-2">
-            <Label htmlFor="limit-filter">Results per page</Label>
-            <Select
-              value={filters.limit?.toString() || "20"}
-              onValueChange={(value) => updateFilter("limit", parseInt(value))}
-            >
-              <SelectTrigger className="w-32">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="10">10</SelectItem>
-                <SelectItem value="20">20</SelectItem>
-                <SelectItem value="50">50</SelectItem>
-                <SelectItem value="100">100</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          <SelectField
+            label="Results per page"
+            options={[
+              { value: "10", label: "10" },
+              { value: "20", label: "20" },
+              { value: "50", label: "50" },
+              { value: "100", label: "100" },
+            ]}
+            value={filters.limit?.toString() || "20"}
+            onValueChange={(value) => updateFilter("limit", parseInt(value))}
+            classNames={{ wrapper: "w-32" }}
+          />
         </div>
       )}
 

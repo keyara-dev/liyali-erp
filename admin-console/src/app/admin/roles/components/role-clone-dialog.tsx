@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Dialog,
   DialogContent,
@@ -79,37 +78,35 @@ export function RoleCloneDialog({
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="new_name">New Role Name *</Label>
-            <Input
-              id="new_name"
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-              placeholder="e.g., content_manager_copy"
-              required
-            />
-            <p className="text-xs text-muted-foreground">
-              Internal name (lowercase, underscores only)
-            </p>
-          </div>
+          <Input
+            name="new_name"
+            label="New Role Name"
+            required
+            value={newName}
+            onChange={(e) => setNewName(e.target.value)}
+            placeholder="e.g., content_manager_copy"
+            descriptionText="Internal name (lowercase, underscores only)"
+          />
 
-          <div className="space-y-2">
-            <Label htmlFor="new_display_name">New Display Name *</Label>
-            <Input
-              id="new_display_name"
-              value={newDisplayName}
-              onChange={(e) => setNewDisplayName(e.target.value)}
-              placeholder="e.g., Content Manager Copy"
-              required
-            />
-          </div>
+          <Input
+            name="new_display_name"
+            label="New Display Name"
+            required
+            value={newDisplayName}
+            onChange={(e) => setNewDisplayName(e.target.value)}
+            placeholder="e.g., Content Manager Copy"
+          />
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={handleClose}>
               Cancel
             </Button>
-            <Button type="submit" disabled={isLoading}>
-              {isLoading ? "Cloning..." : "Clone Role"}
+            <Button
+              type="submit"
+              isLoading={isLoading}
+              loadingText="Cloning..."
+            >
+              Clone Role
             </Button>
           </DialogFooter>
         </form>

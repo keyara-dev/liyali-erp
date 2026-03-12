@@ -4,13 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { SelectField } from "@/components/ui/select-field";
 import {
   Popover,
   PopoverContent,
@@ -177,73 +171,40 @@ export function OrganizationAdvancedFilters({
 
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             {/* Subscription Tier Filter */}
-            <div className="space-y-2">
-              <Label htmlFor="tier-filter">Subscription Tier</Label>
-              <Select
-                value={filters.subscription_tier || ""}
-                onValueChange={(value) =>
-                  updateFilter("subscription_tier", value || undefined)
-                }
-                disabled={tiersLoading}
-              >
-                <SelectTrigger>
-                  <SelectValue
-                    placeholder={tiersLoading ? "Loading..." : "All tiers"}
-                  />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">All tiers</SelectItem>
-                  {tiers?.map((tier) => (
-                    <SelectItem key={tier.id} value={tier.name}>
-                      {tier.displayName}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            <SelectField
+              label="Subscription Tier"
+              placeholder="All tiers"
+              options={[
+                { value: "", label: "All tiers" },
+                ...(tiers?.map((tier) => ({ value: tier.name, label: tier.displayName })) || []),
+              ]}
+              value={filters.subscription_tier || ""}
+              onValueChange={(value) => updateFilter("subscription_tier", value || undefined)}
+              isLoading={tiersLoading}
+            />
 
             {/* Trial Status Filter */}
-            <div className="space-y-2">
-              <Label htmlFor="trial-filter">Trial Status</Label>
-              <Select
-                value={filters.trial_status || ""}
-                onValueChange={(value) =>
-                  updateFilter("trial_status", value || undefined)
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="All statuses" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">All statuses</SelectItem>
-                  {TRIAL_STATUSES.map((status) => (
-                    <SelectItem key={status.value} value={status.value}>
-                      {status.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            <SelectField
+              label="Trial Status"
+              placeholder="All statuses"
+              options={[
+                { value: "", label: "All statuses" },
+                ...TRIAL_STATUSES,
+              ]}
+              value={filters.trial_status || ""}
+              onValueChange={(value) => updateFilter("trial_status", value || undefined)}
+            />
 
             {/* Sort By */}
             <div className="space-y-2">
               <Label htmlFor="sort-filter">Sort by</Label>
               <div className="flex gap-2">
-                <Select
+                <SelectField
+                  options={SORT_OPTIONS}
                   value={filters.sort_by || "created_at"}
                   onValueChange={(value) => updateFilter("sort_by", value)}
-                >
-                  <SelectTrigger className="flex-1">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {SORT_OPTIONS.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  classNames={{ wrapper: "flex-1" }}
+                />
                 <Button
                   variant="outline"
                   size="sm"
@@ -260,25 +221,17 @@ export function OrganizationAdvancedFilters({
             </div>
 
             {/* Results per page */}
-            <div className="space-y-2">
-              <Label htmlFor="limit-filter">Results per page</Label>
-              <Select
-                value={filters.limit?.toString() || "20"}
-                onValueChange={(value) =>
-                  updateFilter("limit", parseInt(value))
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="10">10</SelectItem>
-                  <SelectItem value="20">20</SelectItem>
-                  <SelectItem value="50">50</SelectItem>
-                  <SelectItem value="100">100</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            <SelectField
+              label="Results per page"
+              options={[
+                { value: "10", label: "10" },
+                { value: "20", label: "20" },
+                { value: "50", label: "50" },
+                { value: "100", label: "100" },
+              ]}
+              value={filters.limit?.toString() || "20"}
+              onValueChange={(value) => updateFilter("limit", parseInt(value))}
+            />
           </div>
 
           {/* Date Range Filters */}

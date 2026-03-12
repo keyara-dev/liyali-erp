@@ -11,7 +11,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Table,
   TableBody,
@@ -28,13 +27,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { SelectField } from "@/components/ui/select-field";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -48,7 +41,6 @@ import {
   MailOpen,
   Send,
   CheckCircle,
-  AlertTriangle,
   Megaphone,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -275,7 +267,13 @@ export default function NotificationsPage() {
                 />
               </div>
             </div>
-            <Select
+            <SelectField
+              placeholder="Status"
+              options={[
+                { value: "all", label: "All" },
+                { value: "unread", label: "Unread" },
+                { value: "read", label: "Read" },
+              ]}
               value={filters.status || "all"}
               onValueChange={(v) =>
                 setFilters((prev) => ({
@@ -283,17 +281,17 @@ export default function NotificationsPage() {
                   status: v === "all" ? undefined : v,
                 }))
               }
-            >
-              <SelectTrigger className="w-[150px]">
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All</SelectItem>
-                <SelectItem value="unread">Unread</SelectItem>
-                <SelectItem value="read">Read</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select
+              classNames={{ wrapper: "w-[150px]" }}
+            />
+            <SelectField
+              placeholder="Type"
+              options={[
+                { value: "all", label: "All Types" },
+                { value: "approval_required", label: "Approval" },
+                { value: "document_approved", label: "Approved" },
+                { value: "document_rejected", label: "Rejected" },
+                { value: "admin_announcement", label: "Announcement" },
+              ]}
               value={filters.type || "all"}
               onValueChange={(v) =>
                 setFilters((prev) => ({
@@ -301,18 +299,8 @@ export default function NotificationsPage() {
                   type: v === "all" ? undefined : v,
                 }))
               }
-            >
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Types</SelectItem>
-                <SelectItem value="approval_required">Approval</SelectItem>
-                <SelectItem value="document_approved">Approved</SelectItem>
-                <SelectItem value="document_rejected">Rejected</SelectItem>
-                <SelectItem value="admin_announcement">Announcement</SelectItem>
-              </SelectContent>
-            </Select>
+              classNames={{ wrapper: "w-[180px]" }}
+            />
           </div>
         </CardContent>
       </Card>
@@ -329,7 +317,8 @@ export default function NotificationsPage() {
                 variant="destructive"
                 size="sm"
                 onClick={handleBulkDelete}
-                disabled={bulkDeleteMutation.isPending}
+                isLoading={bulkDeleteMutation.isPending}
+                loadingText="Deleting..."
               >
                 <Trash2 className="mr-2 h-4 w-4" />
                 Delete Selected
@@ -410,7 +399,7 @@ export default function NotificationsPage() {
                         >
                           {notification.subject || "No subject"}
                         </div>
-                        <div className="text-sm text-muted-foreground truncate max-w-[300px]">
+                        <div className="text-sm text-muted-foreground truncate max-w-75">
                           {notification.body}
                         </div>
                       </div>
@@ -520,7 +509,7 @@ function CreateNotificationDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[525px]">
+      <DialogContent className="sm:max-w-131.25">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Megaphone className="h-5 w-5" />
@@ -531,15 +520,12 @@ function CreateNotificationDialog({
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
-          <div className="grid gap-2">
-            <Label htmlFor="subject">Subject</Label>
-            <Input
-              id="subject"
-              value={subject}
-              onChange={(e) => setSubject(e.target.value)}
-              placeholder="Notification subject..."
-            />
-          </div>
+          <Input
+            label="Subject"
+            value={subject}
+            onChange={(e) => setSubject(e.target.value)}
+            placeholder="Notification subject..."
+          />
           <div className="grid gap-2">
             <Label htmlFor="body">Message</Label>
             <Textarea
@@ -551,49 +537,36 @@ function CreateNotificationDialog({
             />
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <div className="grid gap-2">
-              <Label>Type</Label>
-              <Select value={type} onValueChange={setType}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="admin_announcement">
-                    Announcement
-                  </SelectItem>
-                  <SelectItem value="status_change">Status Change</SelectItem>
-                  <SelectItem value="approval_required">
-                    Approval Required
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid gap-2">
-              <Label>Importance</Label>
-              <Select value={importance} onValueChange={setImportance}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="LOW">Low</SelectItem>
-                  <SelectItem value="MEDIUM">Medium</SelectItem>
-                  <SelectItem value="HIGH">High</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            <SelectField
+              label="Type"
+              options={[
+                { value: "admin_announcement", label: "Announcement" },
+                { value: "status_change", label: "Status Change" },
+                { value: "approval_required", label: "Approval Required" },
+              ]}
+              value={type}
+              onValueChange={setType}
+            />
+            <SelectField
+              label="Importance"
+              options={[
+                { value: "LOW", label: "Low" },
+                { value: "MEDIUM", label: "Medium" },
+                { value: "HIGH", label: "High" },
+              ]}
+              value={importance}
+              onValueChange={setImportance}
+            />
           </div>
           <div className="grid gap-2">
-            <Label>Recipients</Label>
-            <Select value={targetType} onValueChange={setTargetType}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="broadcast">
-                  All Users (Broadcast)
-                </SelectItem>
-              </SelectContent>
-            </Select>
+            <SelectField
+              label="Recipients"
+              options={[
+                { value: "broadcast", label: "All Users (Broadcast)" },
+              ]}
+              value={targetType}
+              onValueChange={setTargetType}
+            />
             <p className="text-xs text-muted-foreground">
               Organization-specific and individual targeting will be available in
               a future update.
@@ -604,8 +577,12 @@ function CreateNotificationDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button onClick={handleSubmit} disabled={isPending}>
-            {isPending ? "Sending..." : "Send Notification"}
+          <Button
+            onClick={handleSubmit}
+            isLoading={isPending}
+            loadingText="Sending..."
+          >
+            Send Notification
           </Button>
         </DialogFooter>
       </DialogContent>

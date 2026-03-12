@@ -3,14 +3,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { SelectField } from "@/components/ui/select-field";
 import {
   Popover,
   PopoverContent,
@@ -161,24 +154,13 @@ export function AuditLogFiltersComponent({
         </div>
 
         <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            <Label htmlFor="date-range">Date Range:</Label>
-            <Select
-              value={filters.date_range}
-              onValueChange={handleDateRangeChange}
-            >
-              <SelectTrigger className="w-40">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {DATE_RANGES.map((range) => (
-                  <SelectItem key={range.value} value={range.value}>
-                    {range.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          <SelectField
+            label="Date Range"
+            options={DATE_RANGES}
+            value={filters.date_range}
+            onValueChange={handleDateRangeChange}
+            classNames={{ wrapper: "w-40" }}
+          />
 
           {filters.date_range === "custom" && (
             <div className="flex items-center gap-2">
@@ -303,109 +285,54 @@ export function AuditLogFiltersComponent({
           </div>
 
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            {/* Action Type Filter */}
-            <div className="space-y-2">
-              <Label htmlFor="action-type-filter">Action Type</Label>
-              <Select
-                value={filters.action_type || ""}
-                onValueChange={(value) =>
-                  updateFilter("action_type", value || undefined)
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="All actions" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">All actions</SelectItem>
-                  {ACTION_TYPES.map((type) => (
-                    <SelectItem key={type.value} value={type.value}>
-                      {type.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            <SelectField
+              label="Action Type"
+              placeholder="All actions"
+              options={ACTION_TYPES}
+              value={filters.action_type || ""}
+              onValueChange={(value) =>
+                updateFilter("action_type", value || undefined)
+              }
+            />
 
-            {/* Resource Type Filter */}
-            <div className="space-y-2">
-              <Label htmlFor="resource-type-filter">Resource Type</Label>
-              <Select
-                value={filters.resource_type || ""}
-                onValueChange={(value) =>
-                  updateFilter("resource_type", value || undefined)
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="All resources" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">All resources</SelectItem>
-                  {RESOURCE_TYPES.map((type) => (
-                    <SelectItem key={type.value} value={type.value}>
-                      {type.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            <SelectField
+              label="Resource Type"
+              placeholder="All resources"
+              options={RESOURCE_TYPES}
+              value={filters.resource_type || ""}
+              onValueChange={(value) =>
+                updateFilter("resource_type", value || undefined)
+              }
+            />
 
-            {/* Severity Filter */}
-            <div className="space-y-2">
-              <Label htmlFor="severity-filter">Severity</Label>
-              <Select
-                value={filters.severity || ""}
-                onValueChange={(value) =>
-                  updateFilter("severity", value || undefined)
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="All severities" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">All severities</SelectItem>
-                  {SEVERITIES.map((severity) => (
-                    <SelectItem key={severity.value} value={severity.value}>
-                      {severity.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            <SelectField
+              label="Severity"
+              placeholder="All severities"
+              options={SEVERITIES}
+              value={filters.severity || ""}
+              onValueChange={(value) =>
+                updateFilter("severity", value || undefined)
+              }
+            />
 
-            {/* Status Filter */}
-            <div className="space-y-2">
-              <Label htmlFor="status-filter">Status</Label>
-              <Select
-                value={filters.status || ""}
-                onValueChange={(value) =>
-                  updateFilter("status", value || undefined)
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="All statuses" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">All statuses</SelectItem>
-                  {STATUSES.map((status) => (
-                    <SelectItem key={status.value} value={status.value}>
-                      {status.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            <SelectField
+              label="Status"
+              placeholder="All statuses"
+              options={STATUSES}
+              value={filters.status || ""}
+              onValueChange={(value) =>
+                updateFilter("status", value || undefined)
+              }
+            />
 
-            {/* IP Address Filter */}
-            <div className="space-y-2">
-              <Label htmlFor="ip-filter">IP Address</Label>
-              <Input
-                placeholder="Filter by IP address"
-                value={filters.ip_address || ""}
-                onChange={(e) =>
-                  updateFilter("ip_address", e.target.value || undefined)
-                }
-              />
-            </div>
+            <Input
+              label="IP Address"
+              placeholder="Filter by IP address"
+              value={filters.ip_address || ""}
+              onChange={(e) =>
+                updateFilter("ip_address", e.target.value || undefined)
+              }
+            />
           </div>
         </div>
       )}

@@ -133,12 +133,10 @@ export function ChangeTierDialog({
         size="sm"
         onClick={() => setIsOpen(true)}
         disabled={tiersLoading}
+        isLoading={tiersLoading}
+        loadingText="Change Tier"
       >
-        {tiersLoading ? (
-          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-        ) : (
-          <CreditCard className="mr-2 h-4 w-4" />
-        )}
+        <CreditCard className="mr-2 h-4 w-4" />
         Change Tier
       </Button>
     );
@@ -400,19 +398,12 @@ export function ChangeTierDialog({
                   !reason.trim() ||
                   selectedTier === organization.subscription_tier
                 }
+                isLoading={isLoading}
+                loadingText="Changing Tier..."
                 className="flex-1"
               >
-                {isLoading ? (
-                  <>
-                    <CreditCard className="mr-2 h-4 w-4 animate-pulse" />
-                    Changing Tier...
-                  </>
-                ) : (
-                  <>
-                    <CreditCard className="mr-2 h-4 w-4" />
-                    Change Tier
-                  </>
-                )}
+                <CreditCard className="mr-2 h-4 w-4" />
+                Change Tier
               </Button>
             </div>
           </form>

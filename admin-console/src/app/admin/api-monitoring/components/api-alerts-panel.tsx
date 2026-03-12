@@ -571,8 +571,8 @@ export function APIAlertsPanel({
             >
               Cancel
             </Button>
-            <Button onClick={handleConfirmAcknowledge} disabled={isProcessing}>
-              {isProcessing ? "Acknowledging..." : "Acknowledge Alert"}
+            <Button onClick={handleConfirmAcknowledge} disabled={isProcessing} isLoading={isProcessing} loadingText="Acknowledging...">
+              Acknowledge Alert
             </Button>
           </div>
         </DialogContent>
@@ -609,8 +609,8 @@ export function APIAlertsPanel({
             >
               Cancel
             </Button>
-            <Button onClick={handleConfirmResolve} disabled={isProcessing}>
-              {isProcessing ? "Resolving..." : "Resolve Alert"}
+            <Button onClick={handleConfirmResolve} disabled={isProcessing} isLoading={isProcessing} loadingText="Resolving...">
+              Resolve Alert
             </Button>
           </div>
         </DialogContent>

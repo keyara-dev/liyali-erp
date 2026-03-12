@@ -12,16 +12,10 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { SelectField } from "@/components/ui/select-field";
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Eye,
   EyeOff,
@@ -40,6 +34,17 @@ interface AdminUserCreateDialogProps {
   onOpenChange: (open: boolean) => void;
   onUserCreated: () => void;
 }
+
+const USER_TYPE_OPTIONS = [
+  {
+    value: "admin",
+    label: "Platform Admin — frontend app access with personal organisation",
+  },
+  {
+    value: "super_admin",
+    label: "Super Admin — full platform + admin console access",
+  },
+];
 
 export function AdminUserCreateDialog({
   open,
@@ -160,67 +165,49 @@ export function AdminUserCreateDialog({
             <h3 className="text-sm font-medium">Basic Information</h3>
 
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="first_name">
-                  First Name <span className="text-red-500">*</span>
-                </Label>
-                <Input
-                  id="first_name"
-                  value={formData.first_name}
-                  onChange={(e) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      first_name: e.target.value,
-                    }))
-                  }
-                  className={errors.first_name ? "border-red-500" : ""}
-                />
-                {errors.first_name && (
-                  <p className="text-sm text-red-500">{errors.first_name}</p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="last_name">
-                  Last Name <span className="text-red-500">*</span>
-                </Label>
-                <Input
-                  id="last_name"
-                  value={formData.last_name}
-                  onChange={(e) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      last_name: e.target.value,
-                    }))
-                  }
-                  className={errors.last_name ? "border-red-500" : ""}
-                />
-                {errors.last_name && (
-                  <p className="text-sm text-red-500">{errors.last_name}</p>
-                )}
-              </div>
+              <Input
+                name="first_name"
+                label="First Name"
+                required
+                value={formData.first_name}
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    first_name: e.target.value,
+                  }))
+                }
+                isInvalid={!!errors.first_name}
+                errorText={errors.first_name}
+              />
+              <Input
+                name="last_name"
+                label="Last Name"
+                required
+                value={formData.last_name}
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    last_name: e.target.value,
+                  }))
+                }
+                isInvalid={!!errors.last_name}
+                errorText={errors.last_name}
+              />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="email">
-                Email Address <span className="text-red-500">*</span>
-              </Label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                <Input
-                  id="email"
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) =>
-                    setFormData((prev) => ({ ...prev, email: e.target.value }))
-                  }
-                  className={`pl-10 ${errors.email ? "border-red-500" : ""}`}
-                />
-              </div>
-              {errors.email && (
-                <p className="text-sm text-red-500">{errors.email}</p>
-              )}
-            </div>
+            <Input
+              name="email"
+              label="Email Address"
+              required
+              type="email"
+              value={formData.email}
+              onChange={(e) =>
+                setFormData((prev) => ({ ...prev, email: e.target.value }))
+              }
+              startContent={<Mail className="h-4 w-4 text-muted-foreground" />}
+              isInvalid={!!errors.email}
+              errorText={errors.email}
+            />
           </div>
 
           <Separator />
@@ -229,29 +216,27 @@ export function AdminUserCreateDialog({
           <div className="space-y-4">
             <h3 className="text-sm font-medium">Security & Password</h3>
 
-            <div className="space-y-2">
-              <Label htmlFor="password">
-                Password <span className="text-red-500">*</span>
-              </Label>
-              <div className="flex gap-2">
-                <div className="relative flex-1">
-                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                  <Input
-                    id="password"
-                    type={showPassword ? "text" : "password"}
-                    value={formData.password}
-                    onChange={(e) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        password: e.target.value,
-                      }))
-                    }
-                    className={`pl-10 pr-10 ${errors.password ? "border-red-500" : ""}`}
-                  />
+            <div className="flex gap-2 items-end">
+              <Input
+                name="password"
+                label="Password"
+                required
+                type={showPassword ? "text" : "password"}
+                value={formData.password}
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    password: e.target.value,
+                  }))
+                }
+                startContent={
+                  <Lock className="h-4 w-4 text-muted-foreground" />
+                }
+                endContent={
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    className="text-muted-foreground hover:text-foreground"
                   >
                     {showPassword ? (
                       <EyeOff className="h-4 w-4" />
@@ -259,18 +244,18 @@ export function AdminUserCreateDialog({
                       <Eye className="h-4 w-4" />
                     )}
                   </button>
-                </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={generatePassword}
-                >
-                  Generate
-                </Button>
-              </div>
-              {errors.password && (
-                <p className="text-sm text-red-500">{errors.password}</p>
-              )}
+                }
+                isInvalid={!!errors.password}
+                errorText={errors.password}
+                classNames={{ wrapper: "flex-1" }}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                onClick={generatePassword}
+              >
+                Generate
+              </Button>
             </div>
 
             <div className="flex items-center space-x-2">
@@ -298,31 +283,19 @@ export function AdminUserCreateDialog({
 
             <div className="space-y-4">
               {/* User Type — drives is_super_admin */}
-              <div className="space-y-2">
-                <Label htmlFor="user_type">User Type</Label>
-                <Select
-                  value={formData.is_super_admin ? "super_admin" : "admin"}
-                  onValueChange={(value) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      is_super_admin: value === "super_admin",
-                    }))
-                  }
-                >
-                  <SelectTrigger id="user_type">
-                    <SelectValue placeholder="Select user type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="admin">
-                      Platform Admin — frontend app access with personal
-                      organisation
-                    </SelectItem>
-                    <SelectItem value="super_admin">
-                      Super Admin — full platform + admin console access
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+              <SelectField
+                name="user_type"
+                label="User Type"
+                value={formData.is_super_admin ? "super_admin" : "admin"}
+                onValueChange={(value) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    is_super_admin: value === "super_admin",
+                  }))
+                }
+                options={USER_TYPE_OPTIONS}
+                classNames={{ wrapper: "max-w-full" }}
+              />
 
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
@@ -393,8 +366,13 @@ export function AdminUserCreateDialog({
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={createMutation.isPending}>
-              {createMutation.isPending ? "Creating..." : "Create Admin User"}
+            <Button
+              type="submit"
+              disabled={createMutation.isPending}
+              isLoading={createMutation.isPending}
+              loadingText="Creating..."
+            >
+              Create Admin User
             </Button>
           </DialogFooter>
         </form>

@@ -250,15 +250,8 @@ export function ChangeTierDialog({
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={isLoading || !selectedTier}>
-              {isLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Changing...
-                </>
-              ) : (
-                "Change Tier"
-              )}
+            <Button type="submit" disabled={!selectedTier} isLoading={isLoading} loadingText="Changing...">
+              Change Tier
             </Button>
           </DialogFooter>
         </form>

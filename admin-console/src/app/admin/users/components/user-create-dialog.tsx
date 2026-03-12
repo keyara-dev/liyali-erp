@@ -12,13 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { SelectField } from "@/components/ui/select-field";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
@@ -103,8 +97,6 @@ export function UserCreateDialog({
 
     setIsLoading(true);
     try {
-      // Here you would call your API to create the user
-      // For now, we'll simulate the API call
       await new Promise((resolve) => setTimeout(resolve, 1000));
 
       toast.success(
@@ -144,7 +136,6 @@ export function UserCreateDialog({
       [field]: value,
     }));
 
-    // Clear error when user starts typing
     if (errors[field]) {
       setErrors((prev) => ({
         ...prev,
@@ -189,48 +180,36 @@ export function UserCreateDialog({
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="name">
-                    Full Name <span className="text-red-500">*</span>
-                  </Label>
-                  <Input
-                    id="name"
-                    value={formData.name}
-                    onChange={(e) => handleInputChange("name", e.target.value)}
-                    placeholder="Enter full name"
-                    className={errors.name ? "border-red-500" : ""}
-                  />
-                  {errors.name && (
-                    <p className="text-sm text-red-500">{errors.name}</p>
-                  )}
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="email">
-                    Email Address <span className="text-red-500">*</span>
-                  </Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={formData.email}
-                    onChange={(e) => handleInputChange("email", e.target.value)}
-                    placeholder="Enter email address"
-                    className={errors.email ? "border-red-500" : ""}
-                  />
-                  {errors.email && (
-                    <p className="text-sm text-red-500">{errors.email}</p>
-                  )}
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="phone">Phone Number</Label>
                 <Input
-                  id="phone"
-                  value={formData.phone}
-                  onChange={(e) => handleInputChange("phone", e.target.value)}
-                  placeholder="Enter phone number (optional)"
+                  name="name"
+                  label="Full Name"
+                  required
+                  value={formData.name}
+                  onChange={(e) => handleInputChange("name", e.target.value)}
+                  placeholder="Enter full name"
+                  isInvalid={!!errors.name}
+                  errorText={errors.name}
+                />
+                <Input
+                  name="email"
+                  label="Email Address"
+                  required
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => handleInputChange("email", e.target.value)}
+                  placeholder="Enter email address"
+                  isInvalid={!!errors.email}
+                  errorText={errors.email}
                 />
               </div>
+
+              <Input
+                name="phone"
+                label="Phone Number"
+                value={formData.phone}
+                onChange={(e) => handleInputChange("phone", e.target.value)}
+                placeholder="Enter phone number (optional)"
+              />
             </CardContent>
           </Card>
 
@@ -243,41 +222,23 @@ export function UserCreateDialog({
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="role">
-                  User Role <span className="text-red-500">*</span>
-                </Label>
-                <Select
-                  value={formData.role}
-                  onValueChange={(value) => handleInputChange("role", value)}
-                >
-                  <SelectTrigger
-                    className={errors.role ? "border-red-500" : ""}
-                  >
-                    <SelectValue placeholder="Select user role" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {USER_ROLES.map((role) => (
-                      <SelectItem key={role.value} value={role.value}>
-                        <div className="flex flex-col">
-                          <span className="font-medium">{role.label}</span>
-                          <span className="text-sm text-muted-foreground">
-                            {role.description}
-                          </span>
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {errors.role && (
-                  <p className="text-sm text-red-500">{errors.role}</p>
-                )}
-                {selectedRole && (
-                  <p className="text-sm text-muted-foreground">
-                    {selectedRole.description}
-                  </p>
-                )}
-              </div>
+              <SelectField
+                name="role"
+                label="User Role"
+                required
+                value={formData.role}
+                onValueChange={(value) => handleInputChange("role", value)}
+                placeholder="Select user role"
+                options={USER_ROLES}
+                isInvalid={!!errors.role}
+                errorText={errors.role}
+                classNames={{ wrapper: "max-w-full" }}
+              />
+              {selectedRole && (
+                <p className="text-sm text-muted-foreground">
+                  {selectedRole.description}
+                </p>
+              )}
             </CardContent>
           </Card>
 
@@ -291,28 +252,24 @@ export function UserCreateDialog({
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="department">Department</Label>
-                  <Input
-                    id="department"
-                    value={formData.profile?.department || ""}
-                    onChange={(e) =>
-                      handleProfileChange("department", e.target.value)
-                    }
-                    placeholder="Enter department (optional)"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="job_title">Job Title</Label>
-                  <Input
-                    id="job_title"
-                    value={formData.profile?.job_title || ""}
-                    onChange={(e) =>
-                      handleProfileChange("job_title", e.target.value)
-                    }
-                    placeholder="Enter job title (optional)"
-                  />
-                </div>
+                <Input
+                  name="department"
+                  label="Department"
+                  value={formData.profile?.department || ""}
+                  onChange={(e) =>
+                    handleProfileChange("department", e.target.value)
+                  }
+                  placeholder="Enter department (optional)"
+                />
+                <Input
+                  name="job_title"
+                  label="Job Title"
+                  value={formData.profile?.job_title || ""}
+                  onChange={(e) =>
+                    handleProfileChange("job_title", e.target.value)
+                  }
+                  placeholder="Enter job title (optional)"
+                />
               </div>
             </CardContent>
           </Card>
@@ -355,8 +312,13 @@ export function UserCreateDialog({
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={isLoading}>
-              {isLoading ? "Creating..." : "Create User"}
+            <Button
+              type="submit"
+              disabled={isLoading}
+              isLoading={isLoading}
+              loadingText="Creating..."
+            >
+              Create User
             </Button>
           </DialogFooter>
         </form>

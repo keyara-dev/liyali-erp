@@ -4,13 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { SelectField } from "@/components/ui/select-field";
 import {
   Popover,
   PopoverContent,
@@ -27,7 +21,6 @@ import {
   X,
   Calendar as CalendarIcon,
   Flag,
-  Tags,
 } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -65,7 +58,6 @@ export function FeatureFlagsFilters({
   ];
 
   const environments = [
-    { value: "all", label: "All Environments" },
     { value: "production", label: "Production" },
     { value: "staging", label: "Staging" },
     { value: "development", label: "Development" },
@@ -146,25 +138,21 @@ export function FeatureFlagsFilters({
         </div>
 
         {/* Category Filter */}
-        <Select
+        <SelectField
+          placeholder="All Categories"
+          options={categories}
           value={filters.category || ""}
           onValueChange={(value) => handleFilterChange("category", value)}
-        >
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="All Categories" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="">All Categories</SelectItem>
-            {categories.map((category) => (
-              <SelectItem key={category.value} value={category.value}>
-                {category.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          classNames={{ wrapper: "w-[180px]" }}
+        />
 
         {/* Status Filter */}
-        <Select
+        <SelectField
+          placeholder="All Flags"
+          options={[
+            { value: "true", label: "Enabled" },
+            { value: "false", label: "Disabled" },
+          ]}
           value={filters.enabled?.toString() || ""}
           onValueChange={(value) =>
             handleFilterChange(
@@ -172,16 +160,8 @@ export function FeatureFlagsFilters({
               value === "" ? undefined : value === "true",
             )
           }
-        >
-          <SelectTrigger className="w-[140px]">
-            <SelectValue placeholder="All Flags" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="">All Flags</SelectItem>
-            <SelectItem value="true">Enabled</SelectItem>
-            <SelectItem value="false">Disabled</SelectItem>
-          </SelectContent>
-        </Select>
+          classNames={{ wrapper: "w-[140px]" }}
+        />
 
         {/* Actions */}
         <div className="flex gap-2">
@@ -251,94 +231,58 @@ export function FeatureFlagsFilters({
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {/* Environment Filter */}
-            <div className="space-y-2">
-              <Label htmlFor="environment-filter">Environment</Label>
-              <Select
-                value={filters.environment || ""}
-                onValueChange={(value) =>
-                  handleFilterChange("environment", value)
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="All Environments" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">All Environments</SelectItem>
-                  {environments.map((env) => (
-                    <SelectItem key={env.value} value={env.value}>
-                      {env.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            <SelectField
+              label="Environment"
+              placeholder="All Environments"
+              options={environments}
+              value={filters.environment || ""}
+              onValueChange={(value) =>
+                handleFilterChange("environment", value)
+              }
+            />
 
             {/* Type Filter */}
-            <div className="space-y-2">
-              <Label htmlFor="type-filter">Flag Type</Label>
-              <Select
-                value={filters.type || ""}
-                onValueChange={(value) => handleFilterChange("type", value)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="All Types" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">All Types</SelectItem>
-                  {types.map((type) => (
-                    <SelectItem key={type.value} value={type.value}>
-                      {type.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            <SelectField
+              label="Flag Type"
+              placeholder="All Types"
+              options={types}
+              value={filters.type || ""}
+              onValueChange={(value) => handleFilterChange("type", value)}
+            />
 
             {/* Archived Filter */}
-            <div className="space-y-2">
-              <Label htmlFor="archived-filter">Archive Status</Label>
-              <Select
-                value={filters.archived?.toString() || ""}
-                onValueChange={(value) =>
-                  handleFilterChange(
-                    "archived",
-                    value === "" ? undefined : value === "true",
-                  )
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="All Flags" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">All Flags</SelectItem>
-                  <SelectItem value="false">Active</SelectItem>
-                  <SelectItem value="true">Archived</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            <SelectField
+              label="Archive Status"
+              placeholder="All Flags"
+              options={[
+                { value: "false", label: "Active" },
+                { value: "true", label: "Archived" },
+              ]}
+              value={filters.archived?.toString() || ""}
+              onValueChange={(value) =>
+                handleFilterChange(
+                  "archived",
+                  value === "" ? undefined : value === "true",
+                )
+              }
+            />
 
             {/* Tags Filter */}
-            <div className="space-y-2">
-              <Label htmlFor="tags-filter" className="flex items-center gap-1">
-                <Tags className="h-3 w-3" />
-                Tags
-              </Label>
-              <Input
-                id="tags-filter"
-                value={tagInput}
-                onChange={(e) => handleTagsChange(e.target.value)}
-                placeholder="tag1, tag2, tag3"
-              />
-              {filters.tags && filters.tags.length > 0 && (
-                <div className="flex flex-wrap gap-1 mt-2">
-                  {filters.tags.map((tag, index) => (
-                    <Badge key={index} variant="secondary" className="text-xs">
-                      {tag}
-                    </Badge>
-                  ))}
-                </div>
-              )}
-            </div>
+            <Input
+              label="Tags"
+              value={tagInput}
+              onChange={(e) => handleTagsChange(e.target.value)}
+              placeholder="tag1, tag2, tag3"
+            />
+            {filters.tags && filters.tags.length > 0 && (
+              <div className="flex flex-wrap gap-1 mt-2">
+                {filters.tags.map((tag, index) => (
+                  <Badge key={index} variant="secondary" className="text-xs">
+                    {tag}
+                  </Badge>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

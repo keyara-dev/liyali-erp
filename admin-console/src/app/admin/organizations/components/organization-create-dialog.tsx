@@ -11,8 +11,8 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SelectField } from "@/components/ui/select-field";
 import { SearchSelectField } from "@/components/ui/search-select-field";
@@ -23,7 +23,7 @@ import {
 } from "@/app/_actions/organizations";
 import { useSubscriptionTiers } from "@/hooks/use-subscriptions";
 import { useAdminUsers } from "@/hooks/use-admin-users";
-import { Building2, User, Settings, Loader2, Check } from "lucide-react";
+import { Building2, User, Settings, Check } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import type { AdminUser } from "@/app/_actions/admin-users";
@@ -217,7 +217,7 @@ export function OrganizationCreateDialog({
               />
             </CardContent>
           </Card>
-          
+
           {/* Organization Information */}
           <Card>
             <CardHeader>
@@ -228,36 +228,26 @@ export function OrganizationCreateDialog({
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="name">
-                    Organization Name <span className="text-red-500">*</span>
-                  </Label>
-                  <Input
-                    id="name"
-                    value={formData.name}
-                    onChange={(e) => handleField("name", e.target.value)}
-                    placeholder="Enter organization name"
-                    className={errors.name ? "border-red-500" : ""}
-                  />
-                  {errors.name && (
-                    <p className="text-sm text-red-500">{errors.name}</p>
-                  )}
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="domain">
-                    Domain <span className="text-red-500">*</span>
-                  </Label>
-                  <Input
-                    id="domain"
-                    value={formData.domain}
-                    onChange={(e) => handleField("domain", e.target.value)}
-                    placeholder="company.com"
-                    className={errors.domain ? "border-red-500" : ""}
-                  />
-                  {errors.domain && (
-                    <p className="text-sm text-red-500">{errors.domain}</p>
-                  )}
-                </div>
+                <Input
+                  name="name"
+                  label="Organization Name"
+                  required
+                  value={formData.name}
+                  onChange={(e) => handleField("name", e.target.value)}
+                  placeholder="Enter organization name"
+                  isInvalid={!!errors.name}
+                  errorText={errors.name}
+                />
+                <Input
+                  name="domain"
+                  label="Domain"
+                  required
+                  value={formData.domain}
+                  onChange={(e) => handleField("domain", e.target.value)}
+                  placeholder="company.com"
+                  isInvalid={!!errors.domain}
+                  errorText={errors.domain}
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="description">Description</Label>
@@ -310,19 +300,17 @@ export function OrganizationCreateDialog({
                 classNames={{ wrapper: "max-w-full" }}
               />
 
-              <div className="space-y-2">
-                <Label htmlFor="max_users">Maximum Users</Label>
-                <Input
-                  id="max_users"
-                  type="number"
-                  value={formData.max_users ?? ""}
-                  onChange={(e) => {
-                    const v = parseInt(e.target.value);
-                    if (!isNaN(v)) handleField("max_users", v);
-                  }}
-                  placeholder="50"
-                />
-              </div>
+              <Input
+                name="max_users"
+                label="Maximum Users"
+                type="number"
+                value={formData.max_users ?? ""}
+                onChange={(e) => {
+                  const v = parseInt(e.target.value);
+                  if (!isNaN(v)) handleField("max_users", v);
+                }}
+                placeholder="50"
+              />
             </CardContent>
           </Card>
 
@@ -337,15 +325,13 @@ export function OrganizationCreateDialog({
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={isLoading}>
-              {isLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Creating...
-                </>
-              ) : (
-                "Create Organization"
-              )}
+            <Button
+              type="submit"
+              disabled={isLoading}
+              isLoading={isLoading}
+              loadingText="Creating..."
+            >
+              Create Organization
             </Button>
           </DialogFooter>
         </form>

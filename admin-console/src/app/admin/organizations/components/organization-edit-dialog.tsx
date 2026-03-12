@@ -13,15 +13,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { SelectField } from "@/components/ui/select-field";
 import { Switch } from "@/components/ui/switch";
-import { Separator } from "@/components/ui/separator";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
@@ -31,15 +24,7 @@ import {
   type UpdateOrganizationRequest,
 } from "@/app/_actions/organizations";
 import { useSubscriptionTiers } from "@/hooks/use-subscriptions";
-import {
-  Building2,
-  Mail,
-  Phone,
-  Globe,
-  Settings,
-  Users,
-  Loader2,
-} from "lucide-react";
+import { Building2, Mail, Settings, Users } from "lucide-react";
 
 interface OrganizationEditDialogProps {
   organization: Organization | null;
@@ -70,8 +55,13 @@ export function OrganizationEditDialog({
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState<UpdateOrganizationRequest>({});
 
-  // Fetch tiers from API
   const { data: tiers, isLoading: tiersLoading } = useSubscriptionTiers();
+
+  const tierOptions =
+    tiers?.map((t) => ({
+      value: t.name,
+      label: `${t.displayName} — $${t.priceMonthly}/mo`,
+    })) ?? [];
 
   useEffect(() => {
     if (organization && open) {
@@ -181,62 +171,35 @@ export function OrganizationEditDialog({
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Organization Name</Label>
-                  <Input
-                    id="name"
-                    value={formData.name || ""}
-                    onChange={(e) => handleInputChange("name", e.target.value)}
-                    placeholder="Enter organization name"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="domain">Domain</Label>
-                  <Input
-                    id="domain"
-                    value={formData.domain || ""}
-                    onChange={(e) =>
-                      handleInputChange("domain", e.target.value)
-                    }
-                    placeholder="Enter domain"
-                  />
-                </div>
+                <Input
+                  name="name"
+                  label="Organization Name"
+                  value={formData.name || ""}
+                  onChange={(e) => handleInputChange("name", e.target.value)}
+                  placeholder="Enter organization name"
+                />
+                <Input
+                  name="domain"
+                  label="Domain"
+                  value={formData.domain || ""}
+                  onChange={(e) => handleInputChange("domain", e.target.value)}
+                  placeholder="Enter domain"
+                />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="subscription_tier">Subscription Tier</Label>
-                <Select
-                  value={formData.subscription_tier}
-                  onValueChange={(value) =>
-                    handleInputChange("subscription_tier", value as any)
-                  }
-                  disabled={tiersLoading}
-                >
-                  <SelectTrigger>
-                    <SelectValue
-                      placeholder={
-                        tiersLoading
-                          ? "Loading tiers..."
-                          : "Select subscription tier"
-                      }
-                    />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {tiers?.map((tier) => (
-                      <SelectItem key={tier.id} value={tier.name}>
-                        <div className="flex flex-col">
-                          <span className="font-medium">
-                            {tier.displayName}
-                          </span>
-                          <span className="text-sm text-muted-foreground">
-                            ${tier.priceMonthly}/month
-                          </span>
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              <SelectField
+                label="Subscription Tier"
+                value={formData.subscription_tier}
+                onValueChange={(value) =>
+                  handleInputChange("subscription_tier", value as any)
+                }
+                isLoading={tiersLoading}
+                placeholder={
+                  tiersLoading ? "Loading tiers..." : "Select subscription tier"
+                }
+                options={tierOptions}
+                classNames={{ wrapper: "max-w-full" }}
+              />
             </CardContent>
           </Card>
 
@@ -249,21 +212,19 @@ export function OrganizationEditDialog({
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="max_users">Maximum Users</Label>
-                <Input
-                  id="max_users"
-                  type="number"
-                  value={formData.settings?.max_users || ""}
-                  onChange={(e) =>
-                    handleSettingsChange(
-                      "max_users",
-                      parseInt(e.target.value) || 0,
-                    )
-                  }
-                  placeholder="Enter maximum number of users"
-                />
-              </div>
+              <Input
+                name="max_users"
+                label="Maximum Users"
+                type="number"
+                value={formData.settings?.max_users || ""}
+                onChange={(e) =>
+                  handleSettingsChange(
+                    "max_users",
+                    parseInt(e.target.value) || 0,
+                  )
+                }
+                placeholder="Enter maximum number of users"
+              />
 
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
@@ -347,42 +308,36 @@ export function OrganizationEditDialog({
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="admin_name">Admin Name</Label>
-                  <Input
-                    id="admin_name"
-                    value={formData.contact_info?.admin_name || ""}
-                    onChange={(e) =>
-                      handleContactInfoChange("admin_name", e.target.value)
-                    }
-                    placeholder="Enter admin name"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="admin_email">Admin Email</Label>
-                  <Input
-                    id="admin_email"
-                    type="email"
-                    value={formData.contact_info?.admin_email || ""}
-                    onChange={(e) =>
-                      handleContactInfoChange("admin_email", e.target.value)
-                    }
-                    placeholder="Enter admin email"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="phone">Phone Number</Label>
                 <Input
-                  id="phone"
-                  value={formData.contact_info?.phone || ""}
+                  name="admin_name"
+                  label="Admin Name"
+                  value={formData.contact_info?.admin_name || ""}
                   onChange={(e) =>
-                    handleContactInfoChange("phone", e.target.value)
+                    handleContactInfoChange("admin_name", e.target.value)
                   }
-                  placeholder="Enter phone number"
+                  placeholder="Enter admin name"
+                />
+                <Input
+                  name="admin_email"
+                  label="Admin Email"
+                  type="email"
+                  value={formData.contact_info?.admin_email || ""}
+                  onChange={(e) =>
+                    handleContactInfoChange("admin_email", e.target.value)
+                  }
+                  placeholder="Enter admin email"
                 />
               </div>
+
+              <Input
+                name="phone"
+                label="Phone Number"
+                value={formData.contact_info?.phone || ""}
+                onChange={(e) =>
+                  handleContactInfoChange("phone", e.target.value)
+                }
+                placeholder="Enter phone number"
+              />
 
               <div className="space-y-2">
                 <Label htmlFor="address">Address</Label>
@@ -407,8 +362,13 @@ export function OrganizationEditDialog({
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={isLoading}>
-              {isLoading ? "Updating..." : "Update Organization"}
+            <Button
+              type="submit"
+              disabled={isLoading}
+              isLoading={isLoading}
+              loadingText="Updating..."
+            >
+              Update Organization
             </Button>
           </DialogFooter>
         </form>

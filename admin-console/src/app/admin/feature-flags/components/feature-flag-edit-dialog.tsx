@@ -13,13 +13,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { SelectField } from "@/components/ui/select-field";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -110,11 +104,11 @@ export function FeatureFlagEditDialog({
   const isEditing = !!flag;
 
   const categories = [
-    { value: "feature", label: "Feature Flag", icon: Flag },
-    { value: "experiment", label: "Experiment", icon: Beaker },
-    { value: "operational", label: "Operational", icon: Shield },
-    { value: "killswitch", label: "Kill Switch", icon: AlertTriangle },
-    { value: "permission", label: "Permission", icon: Users },
+    { value: "feature", label: "Feature Flag" },
+    { value: "experiment", label: "Experiment" },
+    { value: "operational", label: "Operational" },
+    { value: "killswitch", label: "Kill Switch" },
+    { value: "permission", label: "Permission" },
   ];
 
   const types = [
@@ -152,7 +146,6 @@ export function FeatureFlagEditDialog({
       setSegmentInput(flag.targeting.userSegments.join(", "));
       setExpiryDate(flag.expires_at ? new Date(flag.expires_at) : undefined);
     } else {
-      // Set default variations based on type
       const defaultVariations: Variation[] = [
         {
           id: "enabled",
@@ -205,7 +198,6 @@ export function FeatureFlagEditDialog({
       [field]: value,
     }));
 
-    // Clear validation error when field is updated
     if (validationErrors[field]) {
       setValidationErrors((prev) => ({
         ...prev,
@@ -340,10 +332,14 @@ export function FeatureFlagEditDialog({
     onSave(formData);
   };
 
-  const selectedCategory = categories.find(
-    (cat) => cat.value === formData.category,
-  );
-  const CategoryIcon = selectedCategory?.icon || Flag;
+  const categoryIconMap: Record<string, React.ElementType> = {
+    feature: Flag,
+    experiment: Beaker,
+    operational: Shield,
+    killswitch: AlertTriangle,
+    permission: Users,
+  };
+  const CategoryIcon = categoryIconMap[formData.category] || Flag;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -371,36 +367,27 @@ export function FeatureFlagEditDialog({
           {/* Basic Information */}
           <TabsContent value="basic" className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="key">Flag Key *</Label>
-                <Input
-                  id="key"
-                  value={formData.key}
-                  onChange={(e) => handleInputChange("key", e.target.value)}
-                  placeholder="e.g., new_checkout_flow"
-                  disabled={isEditing}
-                  className={cn(validationErrors.key && "border-red-500")}
-                />
-                {validationErrors.key && (
-                  <p className="text-sm text-red-600">{validationErrors.key}</p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="name">Display Name *</Label>
-                <Input
-                  id="name"
-                  value={formData.name}
-                  onChange={(e) => handleInputChange("name", e.target.value)}
-                  placeholder="e.g., New Checkout Flow"
-                  className={cn(validationErrors.name && "border-red-500")}
-                />
-                {validationErrors.name && (
-                  <p className="text-sm text-red-600">
-                    {validationErrors.name}
-                  </p>
-                )}
-              </div>
+              <Input
+                name="key"
+                label="Flag Key"
+                required
+                value={formData.key}
+                onChange={(e) => handleInputChange("key", e.target.value)}
+                placeholder="e.g., new_checkout_flow"
+                disabled={isEditing}
+                isInvalid={!!validationErrors.key}
+                errorText={validationErrors.key}
+              />
+              <Input
+                name="name"
+                label="Display Name"
+                required
+                value={formData.name}
+                onChange={(e) => handleInputChange("name", e.target.value)}
+                placeholder="e.g., New Checkout Flow"
+                isInvalid={!!validationErrors.name}
+                errorText={validationErrors.name}
+              />
             </div>
 
             <div className="space-y-2">
@@ -422,78 +409,37 @@ export function FeatureFlagEditDialog({
             </div>
 
             <div className="grid grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="type">Flag Type</Label>
-                <Select
-                  value={formData.type}
-                  onValueChange={(value) => handleInputChange("type", value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {types.map((type) => (
-                      <SelectItem key={type.value} value={type.value}>
-                        {type.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="category">Category</Label>
-                <Select
-                  value={formData.category}
-                  onValueChange={(value) =>
-                    handleInputChange("category", value)
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categories.map((category) => {
-                      const Icon = category.icon;
-                      return (
-                        <SelectItem key={category.value} value={category.value}>
-                          <div className="flex items-center gap-2">
-                            <Icon className="h-4 w-4" />
-                            {category.label}
-                          </div>
-                        </SelectItem>
-                      );
-                    })}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="environment">Environment</Label>
-                <Select
-                  value={formData.environment}
-                  onValueChange={(value) =>
-                    handleInputChange("environment", value)
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {environments.map((env) => (
-                      <SelectItem key={env.value} value={env.value}>
-                        {env.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              <SelectField
+                label="Flag Type"
+                value={formData.type}
+                onValueChange={(value) => handleInputChange("type", value)}
+                options={types}
+                classNames={{ wrapper: "max-w-full" }}
+              />
+              <SelectField
+                label="Category"
+                value={formData.category}
+                onValueChange={(value) =>
+                  handleInputChange("category", value)
+                }
+                options={categories}
+                classNames={{ wrapper: "max-w-full" }}
+              />
+              <SelectField
+                label="Environment"
+                value={formData.environment}
+                onValueChange={(value) =>
+                  handleInputChange("environment", value)
+                }
+                options={environments}
+                classNames={{ wrapper: "max-w-full" }}
+              />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="tags">Tags (comma-separated)</Label>
               <Input
-                id="tags"
+                name="tags"
+                label="Tags (comma-separated)"
                 value={tagInput}
                 onChange={(e) => handleTagsChange(e.target.value)}
                 placeholder="e.g., ui, checkout, experiment"
@@ -563,32 +509,27 @@ export function FeatureFlagEditDialog({
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>Name</Label>
-                      <Input
-                        value={variation.name}
-                        onChange={(e) =>
-                          updateVariation(index, { name: e.target.value })
-                        }
-                        placeholder="Variation name"
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label>Value</Label>
-                      <Input
-                        value={variation.value}
-                        onChange={(e) =>
-                          updateVariation(index, { value: e.target.value })
-                        }
-                        placeholder="Variation value"
-                      />
-                    </div>
+                    <Input
+                      label="Name"
+                      value={variation.name}
+                      onChange={(e) =>
+                        updateVariation(index, { name: e.target.value })
+                      }
+                      placeholder="Variation name"
+                    />
+                    <Input
+                      label="Value"
+                      value={variation.value}
+                      onChange={(e) =>
+                        updateVariation(index, { value: e.target.value })
+                      }
+                      placeholder="Variation value"
+                    />
                   </div>
 
-                  <div className="space-y-2 mt-4">
-                    <Label>Description</Label>
+                  <div className="mt-4">
                     <Input
+                      label="Description"
                       value={variation.description || ""}
                       onChange={(e) =>
                         updateVariation(index, { description: e.target.value })
@@ -598,22 +539,19 @@ export function FeatureFlagEditDialog({
                   </div>
 
                   <div className="flex items-center justify-between mt-4">
-                    <div className="space-y-2">
-                      <Label>Weight (%)</Label>
-                      <Input
-                        type="number"
-                        min="0"
-                        max="100"
-                        value={variation.weight}
-                        onChange={(e) =>
-                          updateVariation(index, {
-                            weight: Number(e.target.value),
-                          })
-                        }
-                        className="w-20"
-                      />
-                    </div>
-
+                    <Input
+                      label="Weight (%)"
+                      type="number"
+                      min="0"
+                      max="100"
+                      value={variation.weight}
+                      onChange={(e) =>
+                        updateVariation(index, {
+                          weight: Number(e.target.value),
+                        })
+                      }
+                      classNames={{ wrapper: "w-24" }}
+                    />
                     <div className="flex items-center space-x-2">
                       <Switch
                         checked={variation.isControl}
@@ -673,7 +611,7 @@ export function FeatureFlagEditDialog({
                           Number(e.target.value),
                         )
                       }
-                      className="w-24"
+                      classNames={{ wrapper: "w-24" }}
                     />
                     <span className="text-sm text-muted-foreground">
                       % of users will see the enabled variation
@@ -683,8 +621,8 @@ export function FeatureFlagEditDialog({
 
                 {/* User Segments */}
                 <div className="space-y-2">
-                  <Label>User Segments (comma-separated)</Label>
                   <Input
+                    label="User Segments (comma-separated)"
                     value={segmentInput}
                     onChange={(e) => handleSegmentsChange(e.target.value)}
                     placeholder="e.g., beta_users, premium_users"
@@ -716,10 +654,12 @@ export function FeatureFlagEditDialog({
                         <Input
                           value={rule.name}
                           onChange={(e) =>
-                            updateTargetingRule(index, { name: e.target.value })
+                            updateTargetingRule(index, {
+                              name: e.target.value,
+                            })
                           }
                           placeholder="Rule name"
-                          className="max-w-xs"
+                          classNames={{ wrapper: "max-w-xs" }}
                         />
                         <Button
                           variant="ghost"
@@ -731,31 +671,17 @@ export function FeatureFlagEditDialog({
                       </div>
 
                       <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label>Target Variation</Label>
-                          <Select
-                            value={rule.variation}
-                            onValueChange={(value) =>
-                              updateTargetingRule(index, { variation: value })
-                            }
-                          >
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {formData.variations.map((variation) => (
-                                <SelectItem
-                                  key={variation.id}
-                                  value={variation.id}
-                                >
-                                  {variation.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
+                        <SelectField
+                          label="Target Variation"
+                          value={rule.variation}
+                          onValueChange={(value) =>
+                            updateTargetingRule(index, { variation: value })
+                          }
+                          options={formData.variations}
+                          classNames={{ wrapper: "max-w-full" }}
+                        />
 
-                        <div className="flex items-center space-x-2">
+                        <div className="flex items-center space-x-2 pt-6">
                           <Switch
                             checked={rule.enabled}
                             onCheckedChange={(checked) =>
@@ -803,17 +729,15 @@ export function FeatureFlagEditDialog({
                 <Label>Archived</Label>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="default_value">Default Value</Label>
-                <Input
-                  id="default_value"
-                  value={formData.default_value}
-                  onChange={(e) =>
-                    handleInputChange("default_value", e.target.value)
-                  }
-                  placeholder="Default value when flag is disabled"
-                />
-              </div>
+              <Input
+                name="default_value"
+                label="Default Value"
+                value={formData.default_value}
+                onChange={(e) =>
+                  handleInputChange("default_value", e.target.value)
+                }
+                placeholder="Default value when flag is disabled"
+              />
             </div>
           </TabsContent>
         </Tabs>
@@ -822,12 +746,13 @@ export function FeatureFlagEditDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button onClick={handleSave} disabled={isLoading}>
-            {isLoading
-              ? "Saving..."
-              : isEditing
-                ? "Update Flag"
-                : "Create Flag"}
+          <Button
+            onClick={handleSave}
+            disabled={isLoading}
+            isLoading={isLoading}
+            loadingText="Saving..."
+          >
+            {isEditing ? "Update Flag" : "Create Flag"}
           </Button>
         </DialogFooter>
       </DialogContent>

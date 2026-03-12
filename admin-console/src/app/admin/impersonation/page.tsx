@@ -11,13 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { SelectField } from "@/components/ui/select-field";
 import {
   Table,
   TableBody,
@@ -163,52 +157,36 @@ export default function ImpersonationPage() {
               onChange={(e) => setTargetSearch(e.target.value)}
               className="w-52"
             />
-            <Select
+            <SelectField
+              options={[
+                { value: "all", label: "All types" },
+                { value: "platform_user", label: "Platform User" },
+                { value: "admin_user", label: "Admin User" },
+              ]}
               value={filters.impersonationType ?? "all"}
               onValueChange={(v) =>
                 setFilters((prev) => ({
                   ...prev,
-                  impersonationType:
-                    v === "all"
-                      ? undefined
-                      : (v as "platform_user" | "admin_user"),
+                  impersonationType: v === "all" ? undefined : (v as "platform_user" | "admin_user"),
                 }))
               }
-            >
-              <SelectTrigger className="w-44">
-                <SelectValue placeholder="Type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All types</SelectItem>
-                <SelectItem value="platform_user">Platform User</SelectItem>
-                <SelectItem value="admin_user">Admin User</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select
-              value={
-                filters.revoked === undefined
-                  ? "all"
-                  : filters.revoked
-                  ? "revoked"
-                  : "not_revoked"
-              }
+              classNames={{ wrapper: "w-44" }}
+            />
+            <SelectField
+              options={[
+                { value: "all", label: "All statuses" },
+                { value: "not_revoked", label: "Not revoked" },
+                { value: "revoked", label: "Revoked" },
+              ]}
+              value={filters.revoked === undefined ? "all" : filters.revoked ? "revoked" : "not_revoked"}
               onValueChange={(v) =>
                 setFilters((prev) => ({
                   ...prev,
-                  revoked:
-                    v === "all" ? undefined : v === "revoked" ? true : false,
+                  revoked: v === "all" ? undefined : v === "revoked" ? true : false,
                 }))
               }
-            >
-              <SelectTrigger className="w-36">
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All statuses</SelectItem>
-                <SelectItem value="not_revoked">Not revoked</SelectItem>
-                <SelectItem value="revoked">Revoked</SelectItem>
-              </SelectContent>
-            </Select>
+              classNames={{ wrapper: "w-36" }}
+            />
             <Button onClick={handleSearch} size="sm">
               Search
             </Button>

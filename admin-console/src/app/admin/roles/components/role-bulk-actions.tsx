@@ -3,13 +3,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { SelectField } from "@/components/ui/select-field";
 import {
   Card,
   CardContent,
@@ -86,28 +80,19 @@ export function RoleBulkActions({
             <Badge variant="secondary">{selectedRoles.length} selected</Badge>
           </div>
 
-          <Select value={action} onValueChange={setAction}>
-            <SelectTrigger className="w-48">
-              <SelectValue placeholder="Select action" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="activate">
-                <div className="flex items-center gap-2">
-                  <CheckCircle className="h-4 w-4 text-green-600" />
-                  Activate Roles
-                </div>
-              </SelectItem>
-              <SelectItem value="deactivate">
-                <div className="flex items-center gap-2">
-                  <XCircle className="h-4 w-4 text-red-600" />
-                  Deactivate Roles
-                </div>
-              </SelectItem>
-            </SelectContent>
-          </Select>
+          <SelectField
+            placeholder="Select action"
+            options={[
+              { value: "activate", label: "Activate Roles" },
+              { value: "deactivate", label: "Deactivate Roles" },
+            ]}
+            value={action}
+            onValueChange={setAction}
+            classNames={{ wrapper: "w-48" }}
+          />
 
-          <Button onClick={handleBulkAction} disabled={!action || isLoading}>
-            {isLoading ? "Processing..." : "Apply Action"}
+          <Button onClick={handleBulkAction} disabled={!action} isLoading={isLoading} loadingText="Processing...">
+            Apply Action
           </Button>
         </div>
       </CardContent>

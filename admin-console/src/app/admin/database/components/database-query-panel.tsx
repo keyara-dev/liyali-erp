@@ -12,13 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { SelectField } from "@/components/ui/select-field";
 import {
   Table,
   TableBody,
@@ -225,27 +219,13 @@ export function DatabaseQueryPanel({
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="connection-select">Database Connection</Label>
-              <Select
-                value={selectedConnectionId}
-                onValueChange={setSelectedConnectionId}
-              >
-                <SelectTrigger id="connection-select">
-                  <SelectValue placeholder="Select a connection" />
-                </SelectTrigger>
-                <SelectContent>
-                  {activeConnections.map((connection) => (
-                    <SelectItem key={connection.id} value={connection.id}>
-                      <div className="flex items-center gap-2">
-                        <Database className="h-4 w-4" />
-                        {connection.name} ({connection.type})
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            <SelectField
+              label="Database Connection"
+              placeholder="Select a connection"
+              options={activeConnections.map((c) => ({ value: c.id, label: `${c.name} (${c.type})` }))}
+              value={selectedConnectionId}
+              onValueChange={setSelectedConnectionId}
+            />
           </div>
 
           <div className="space-y-2">
@@ -263,12 +243,12 @@ export function DatabaseQueryPanel({
           <div className="flex items-center gap-2">
             <Button
               onClick={handleExecuteQuery}
-              disabled={
-                isExecuting || !selectedConnectionId || !queryText.trim()
-              }
+              disabled={!selectedConnectionId || !queryText.trim()}
+              isLoading={isExecuting}
+              loadingText="Executing..."
             >
               <Play className="mr-2 h-4 w-4" />
-              {isExecuting ? "Executing..." : "Execute Query"}
+              Execute Query
             </Button>
             {isExecuting && (
               <Button variant="outline" onClick={() => setIsExecuting(false)}>

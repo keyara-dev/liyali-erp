@@ -4,13 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { SelectField } from "@/components/ui/select-field";
 import {
   Popover,
   PopoverContent,
@@ -122,40 +116,28 @@ export function SettingsFilters({
         </div>
 
         {/* Category Filter */}
-        <Select
+        <SelectField
+          placeholder="All Categories"
+          options={[
+            { value: "", label: "All Categories" },
+            ...categories,
+          ]}
           value={filters.category || ""}
           onValueChange={(value) => handleFilterChange("category", value)}
-        >
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="All Categories" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="">All Categories</SelectItem>
-            {categories.map((category) => (
-              <SelectItem key={category.value} value={category.value}>
-                {category.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          classNames={{ wrapper: "w-[180px]" }}
+        />
 
         {/* Environment Filter */}
-        <Select
+        <SelectField
+          placeholder="Environment"
+          options={[
+            { value: "", label: "All Environments" },
+            ...environments,
+          ]}
           value={filters.environment || ""}
           onValueChange={(value) => handleFilterChange("environment", value)}
-        >
-          <SelectTrigger className="w-[160px]">
-            <SelectValue placeholder="Environment" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="">All Environments</SelectItem>
-            {environments.map((env) => (
-              <SelectItem key={env.value} value={env.value}>
-                {env.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          classNames={{ wrapper: "w-[160px]" }}
+        />
 
         {/* Actions */}
         <div className="flex gap-2">
@@ -225,71 +207,39 @@ export function SettingsFilters({
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {/* Type Filter */}
-            <div className="space-y-2">
-              <Label htmlFor="type-filter">Setting Type</Label>
-              <Select
-                value={filters.type || ""}
-                onValueChange={(value) => handleFilterChange("type", value)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="All Types" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">All Types</SelectItem>
-                  {types.map((type) => (
-                    <SelectItem key={type.value} value={type.value}>
-                      {type.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            <SelectField
+              label="Setting Type"
+              options={[
+                { value: "", label: "All Types" },
+                ...types,
+              ]}
+              value={filters.type || ""}
+              onValueChange={(value) => handleFilterChange("type", value)}
+            />
 
             {/* Secret Filter */}
-            <div className="space-y-2">
-              <Label htmlFor="secret-filter">Secret Settings</Label>
-              <Select
-                value={filters.isSecret?.toString() || ""}
-                onValueChange={(value) =>
-                  handleFilterChange(
-                    "isSecret",
-                    value === "" ? undefined : value === "true",
-                  )
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="All Settings" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">All Settings</SelectItem>
-                  <SelectItem value="true">Secret Only</SelectItem>
-                  <SelectItem value="false">Non-Secret Only</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            <SelectField
+              label="Secret Settings"
+              options={[
+                { value: "", label: "All Settings" },
+                { value: "true", label: "Secret Only" },
+                { value: "false", label: "Non-Secret Only" },
+              ]}
+              value={filters.isSecret?.toString() || ""}
+              onValueChange={(value) => handleFilterChange("isSecret", value === "" ? undefined : value === "true")}
+            />
 
             {/* Required Filter */}
-            <div className="space-y-2">
-              <Label htmlFor="required-filter">Required Settings</Label>
-              <Select
-                value={filters.isRequired?.toString() || ""}
-                onValueChange={(value) =>
-                  handleFilterChange(
-                    "isRequired",
-                    value === "" ? undefined : value === "true",
-                  )
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="All Settings" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">All Settings</SelectItem>
-                  <SelectItem value="true">Required Only</SelectItem>
-                  <SelectItem value="false">Optional Only</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            <SelectField
+              label="Required Settings"
+              options={[
+                { value: "", label: "All Settings" },
+                { value: "true", label: "Required Only" },
+                { value: "false", label: "Optional Only" },
+              ]}
+              value={filters.isRequired?.toString() || ""}
+              onValueChange={(value) => handleFilterChange("isRequired", value === "" ? undefined : value === "true")}
+            />
 
             {/* Date Range Filter */}
             <div className="space-y-2">

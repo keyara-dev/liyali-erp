@@ -106,7 +106,6 @@ export function RoleEditDialog({
     const categoryPermissionIds = categoryPermissions.map((p) => p.id);
 
     if (checked) {
-      // Add all permissions from this category
       setFormData((prev) => ({
         ...prev,
         permission_ids: [
@@ -117,7 +116,6 @@ export function RoleEditDialog({
         ],
       }));
     } else {
-      // Remove all permissions from this category
       setFormData((prev) => ({
         ...prev,
         permission_ids: (prev.permission_ids || []).filter(
@@ -197,34 +195,30 @@ export function RoleEditDialog({
           <div className="grid gap-6 md:grid-cols-2">
             {/* Basic Information */}
             <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="name">Role Name</Label>
-                <Input
-                  id="name"
-                  value={formData.name}
-                  onChange={(e) => handleInputChange("name", e.target.value)}
-                  disabled={role.is_system_role}
-                  placeholder="e.g., content_manager"
-                />
-                {role.is_system_role && (
-                  <p className="text-xs text-muted-foreground">
-                    System role names cannot be changed
-                  </p>
-                )}
-              </div>
+              <Input
+                name="name"
+                label="Role Name"
+                value={formData.name}
+                onChange={(e) => handleInputChange("name", e.target.value)}
+                disabled={role.is_system_role}
+                placeholder="e.g., content_manager"
+                descriptionText={
+                  role.is_system_role
+                    ? "System role names cannot be changed"
+                    : undefined
+                }
+              />
 
-              <div className="space-y-2">
-                <Label htmlFor="display_name">Display Name *</Label>
-                <Input
-                  id="display_name"
-                  value={formData.display_name}
-                  onChange={(e) =>
-                    handleInputChange("display_name", e.target.value)
-                  }
-                  placeholder="e.g., Content Manager"
-                  required
-                />
-              </div>
+              <Input
+                name="display_name"
+                label="Display Name"
+                required
+                value={formData.display_name}
+                onChange={(e) =>
+                  handleInputChange("display_name", e.target.value)
+                }
+                placeholder="e.g., Content Manager"
+              />
 
               <div className="space-y-2">
                 <Label htmlFor="description">Description</Label>
@@ -362,8 +356,13 @@ export function RoleEditDialog({
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={isLoading}>
-              {isLoading ? "Updating..." : "Update Role"}
+            <Button
+              type="submit"
+              disabled={isLoading}
+              isLoading={isLoading}
+              loadingText="Updating..."
+            >
+              Update Role
             </Button>
           </DialogFooter>
         </form>

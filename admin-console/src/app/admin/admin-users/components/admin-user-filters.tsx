@@ -4,13 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { SelectField } from "@/components/ui/select-field";
 import {
   Popover,
   PopoverContent,
@@ -167,188 +161,84 @@ export function AdminUserFiltersComponent({
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {/* Status Filter */}
-            <div className="space-y-2">
-              <Label htmlFor="status-filter">Status</Label>
-              <Select
-                value={
-                  filters.is_active === undefined
-                    ? "all"
-                    : filters.is_active
-                      ? "active"
-                      : "inactive"
-                }
-                onValueChange={(value) =>
-                  handleFilterChange(
-                    "is_active",
-                    value === "all"
-                      ? undefined
-                      : value === "active"
-                        ? true
-                        : false,
-                  )
-                }
-              >
-                <SelectTrigger id="status-filter">
-                  <SelectValue placeholder="All statuses" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Statuses</SelectItem>
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="inactive">Inactive</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            <SelectField
+              label="Status"
+              placeholder="All statuses"
+              options={[
+                { value: "all", label: "All Statuses" },
+                { value: "active", label: "Active" },
+                { value: "inactive", label: "Inactive" },
+              ]}
+              value={filters.is_active === undefined ? "all" : filters.is_active ? "active" : "inactive"}
+              onValueChange={(value) => handleFilterChange("is_active", value === "all" ? undefined : value === "active" ? true : false)}
+            />
 
             {/* Super Admin Filter */}
-            <div className="space-y-2">
-              <Label htmlFor="super-admin-filter">Admin Type</Label>
-              <Select
-                value={
-                  filters.is_super_admin === undefined
-                    ? "all"
-                    : filters.is_super_admin
-                      ? "super"
-                      : "regular"
-                }
-                onValueChange={(value) =>
-                  handleFilterChange(
-                    "is_super_admin",
-                    value === "all"
-                      ? undefined
-                      : value === "super"
-                        ? true
-                        : false,
-                  )
-                }
-              >
-                <SelectTrigger id="super-admin-filter">
-                  <SelectValue placeholder="All types" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Types</SelectItem>
-                  <SelectItem value="super">Super Admin</SelectItem>
-                  <SelectItem value="regular">Regular Admin</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            <SelectField
+              label="Admin Type"
+              placeholder="All types"
+              options={[
+                { value: "all", label: "All Types" },
+                { value: "super", label: "Super Admin" },
+                { value: "regular", label: "Regular Admin" },
+              ]}
+              value={filters.is_super_admin === undefined ? "all" : filters.is_super_admin ? "super" : "regular"}
+              onValueChange={(value) => handleFilterChange("is_super_admin", value === "all" ? undefined : value === "super" ? true : false)}
+            />
 
             {/* Account Status Filter */}
-            <div className="space-y-2">
-              <Label htmlFor="lock-filter">Account Status</Label>
-              <Select
-                value={
-                  filters.is_locked === undefined
-                    ? "all"
-                    : filters.is_locked
-                      ? "locked"
-                      : "unlocked"
-                }
-                onValueChange={(value) =>
-                  handleFilterChange(
-                    "is_locked",
-                    value === "all"
-                      ? undefined
-                      : value === "locked"
-                        ? true
-                        : false,
-                  )
-                }
-              >
-                <SelectTrigger id="lock-filter">
-                  <SelectValue placeholder="All accounts" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Accounts</SelectItem>
-                  <SelectItem value="unlocked">Unlocked</SelectItem>
-                  <SelectItem value="locked">Locked</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            <SelectField
+              label="Account Status"
+              placeholder="All accounts"
+              options={[
+                { value: "all", label: "All Accounts" },
+                { value: "unlocked", label: "Unlocked" },
+                { value: "locked", label: "Locked" },
+              ]}
+              value={filters.is_locked === undefined ? "all" : filters.is_locked ? "locked" : "unlocked"}
+              onValueChange={(value) => handleFilterChange("is_locked", value === "all" ? undefined : value === "locked" ? true : false)}
+            />
 
             {/* Two-Factor Filter */}
-            <div className="space-y-2">
-              <Label htmlFor="2fa-filter">Two-Factor Auth</Label>
-              <Select
-                value={
-                  filters.two_factor_enabled === undefined
-                    ? "all"
-                    : filters.two_factor_enabled
-                      ? "enabled"
-                      : "disabled"
-                }
-                onValueChange={(value) =>
-                  handleFilterChange(
-                    "two_factor_enabled",
-                    value === "all"
-                      ? undefined
-                      : value === "enabled"
-                        ? true
-                        : false,
-                  )
-                }
-              >
-                <SelectTrigger id="2fa-filter">
-                  <SelectValue placeholder="All users" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Users</SelectItem>
-                  <SelectItem value="enabled">2FA Enabled</SelectItem>
-                  <SelectItem value="disabled">2FA Disabled</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            <SelectField
+              label="Two-Factor Auth"
+              placeholder="All users"
+              options={[
+                { value: "all", label: "All Users" },
+                { value: "enabled", label: "2FA Enabled" },
+                { value: "disabled", label: "2FA Disabled" },
+              ]}
+              value={filters.two_factor_enabled === undefined ? "all" : filters.two_factor_enabled ? "enabled" : "disabled"}
+              onValueChange={(value) => handleFilterChange("two_factor_enabled", value === "all" ? undefined : value === "enabled" ? true : false)}
+            />
 
             {/* Role Filter */}
-            <div className="space-y-2">
-              <Label htmlFor="role-filter">Role</Label>
-              <Select
-                value={filters.role_id || "all"}
-                onValueChange={(value) =>
-                  handleFilterChange(
-                    "role_id",
-                    value === "all" ? undefined : value,
-                  )
-                }
-              >
-                <SelectTrigger id="role-filter">
-                  <SelectValue placeholder="All roles" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Roles</SelectItem>
-                  {roles.map((role) => (
-                    <SelectItem key={role.id} value={role.id}>
-                      {role.display_name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            <SelectField
+              label="Role"
+              placeholder="All roles"
+              options={[
+                { value: "all", label: "All Roles" },
+                ...roles.map((role) => ({ value: role.id, label: role.display_name })),
+              ]}
+              value={filters.role_id || "all"}
+              onValueChange={(value) => handleFilterChange("role_id", value === "all" ? undefined : value)}
+            />
 
             {/* Last Login Filter */}
-            <div className="space-y-2">
-              <Label htmlFor="login-filter">Last Login</Label>
-              <Select
-                value={filters.last_login_days?.toString() || "all"}
-                onValueChange={(value) =>
-                  handleFilterChange(
-                    "last_login_days",
-                    value === "all" ? undefined : parseInt(value),
-                  )
-                }
-              >
-                <SelectTrigger id="login-filter">
-                  <SelectValue placeholder="Any time" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Any Time</SelectItem>
-                  <SelectItem value="1">Last 24 hours</SelectItem>
-                  <SelectItem value="7">Last 7 days</SelectItem>
-                  <SelectItem value="30">Last 30 days</SelectItem>
-                  <SelectItem value="90">Last 90 days</SelectItem>
-                  <SelectItem value="365">Last year</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            <SelectField
+              label="Last Login"
+              placeholder="Any time"
+              options={[
+                { value: "all", label: "Any Time" },
+                { value: "1", label: "Last 24 hours" },
+                { value: "7", label: "Last 7 days" },
+                { value: "30", label: "Last 30 days" },
+                { value: "90", label: "Last 90 days" },
+                { value: "365", label: "Last year" },
+              ]}
+              value={filters.last_login_days?.toString() || "all"}
+              onValueChange={(value) => handleFilterChange("last_login_days", value === "all" ? undefined : parseInt(value))}
+            />
 
             {/* Created After Date */}
             <div className="space-y-2">

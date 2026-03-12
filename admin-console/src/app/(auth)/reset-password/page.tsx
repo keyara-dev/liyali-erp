@@ -223,21 +223,11 @@ function ResetPasswordForm() {
             <Button
               type="submit"
               className="w-full"
-              disabled={
-                isLoading ||
-                !token ||
-                !formData.password ||
-                !formData.confirmPassword
-              }
+              disabled={!token || !formData.password || !formData.confirmPassword}
+              isLoading={isLoading}
+              loadingText="Updating Password..."
             >
-              {isLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Updating Password...
-                </>
-              ) : (
-                "Update Password"
-              )}
+              Update Password
             </Button>
           </form>
 

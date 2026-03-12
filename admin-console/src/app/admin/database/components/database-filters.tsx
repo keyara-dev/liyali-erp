@@ -4,13 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { SelectField } from "@/components/ui/select-field";
 import {
   Popover,
   PopoverContent,
@@ -32,7 +26,6 @@ import {
   X,
   Download,
   Calendar as CalendarIcon,
-  Clock,
 } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -142,22 +135,12 @@ export function DatabaseFiltersComponent({
 
         <div className="flex items-center gap-2">
           {/* Time Range Quick Select */}
-          <Select
+          <SelectField
+            options={timeRanges}
             value={filters.time_range || "24h"}
             onValueChange={handleTimeRangeChange}
-          >
-            <SelectTrigger className="w-40">
-              <Clock className="mr-2 h-4 w-4" />
-              <SelectValue placeholder="Time range" />
-            </SelectTrigger>
-            <SelectContent>
-              {timeRanges.map((range) => (
-                <SelectItem key={range.value} value={range.value}>
-                  {range.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            classNames={{ wrapper: "w-40" }}
+          />
 
           <Button
             variant="outline"
@@ -239,82 +222,40 @@ export function DatabaseFiltersComponent({
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {/* Connection Filter */}
-            <div className="space-y-2">
-              <Label htmlFor="connection-filter">Connection</Label>
-              <Select
-                value={filters.connection_id || "all"}
-                onValueChange={(value) =>
-                  handleFilterChange(
-                    "connection_id",
-                    value === "all" ? undefined : value,
-                  )
-                }
-              >
-                <SelectTrigger id="connection-filter">
-                  <SelectValue placeholder="All connections" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Connections</SelectItem>
-                  {connections.map((connection) => (
-                    <SelectItem key={connection.id} value={connection.id}>
-                      {connection.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            <SelectField
+              label="Connection"
+              placeholder="All connections"
+              options={[
+                { value: "all", label: "All Connections" },
+                ...connections.map((c) => ({ value: c.id, label: c.name })),
+              ]}
+              value={filters.connection_id || "all"}
+              onValueChange={(value) => handleFilterChange("connection_id", value === "all" ? undefined : value)}
+            />
 
             {/* Database Type Filter */}
-            <div className="space-y-2">
-              <Label htmlFor="type-filter">Database Type</Label>
-              <Select
-                value={filters.type || "all"}
-                onValueChange={(value) =>
-                  handleFilterChange(
-                    "type",
-                    value === "all" ? undefined : value,
-                  )
-                }
-              >
-                <SelectTrigger id="type-filter">
-                  <SelectValue placeholder="All types" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Types</SelectItem>
-                  {databaseTypes.map((type) => (
-                    <SelectItem key={type} value={type}>
-                      {type.charAt(0).toUpperCase() + type.slice(1)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            <SelectField
+              label="Database Type"
+              placeholder="All types"
+              options={[
+                { value: "all", label: "All Types" },
+                ...databaseTypes.map((t) => ({ value: t, label: t.charAt(0).toUpperCase() + t.slice(1) })),
+              ]}
+              value={filters.type || "all"}
+              onValueChange={(value) => handleFilterChange("type", value === "all" ? undefined : value)}
+            />
 
             {/* Status Filter */}
-            <div className="space-y-2">
-              <Label htmlFor="status-filter">Status</Label>
-              <Select
-                value={filters.status || "all"}
-                onValueChange={(value) =>
-                  handleFilterChange(
-                    "status",
-                    value === "all" ? undefined : value,
-                  )
-                }
-              >
-                <SelectTrigger id="status-filter">
-                  <SelectValue placeholder="All statuses" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Statuses</SelectItem>
-                  {statusOptions.map((status) => (
-                    <SelectItem key={status} value={status}>
-                      {status.charAt(0).toUpperCase() + status.slice(1)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            <SelectField
+              label="Status"
+              placeholder="All statuses"
+              options={[
+                { value: "all", label: "All Statuses" },
+                ...statusOptions.map((s) => ({ value: s, label: s.charAt(0).toUpperCase() + s.slice(1) })),
+              ]}
+              value={filters.status || "all"}
+              onValueChange={(value) => handleFilterChange("status", value === "all" ? undefined : value)}
+            />
           </div>
 
           {/* Custom Date Range */}

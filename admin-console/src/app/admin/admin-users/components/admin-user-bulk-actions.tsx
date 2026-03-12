@@ -397,10 +397,10 @@ export function AdminUserBulkActions({
                   selectedRoles.length === 0)
               }
               variant={selectedAction_obj?.variant}
+              isLoading={progress.isRunning}
+              loadingText="Processing..."
             >
-              {progress.isRunning
-                ? "Processing..."
-                : `${selectedAction_obj?.label}`}
+              {selectedAction_obj?.label}
             </Button>
           </DialogFooter>
         </DialogContent>

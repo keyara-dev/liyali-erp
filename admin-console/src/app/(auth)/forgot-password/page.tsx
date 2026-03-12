@@ -4,7 +4,6 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Card,
   CardContent,
@@ -13,7 +12,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { ArrowLeft, Loader2, Mail, Shield } from "lucide-react";
+import { ArrowLeft, Mail, Shield } from "lucide-react";
 import { forgotPassword } from "@/app/_actions/auth";
 
 export default function ForgotPasswordPage() {
@@ -104,37 +103,30 @@ export default function ForgotPasswordPage() {
               </Alert>
             )}
 
-            <div className="space-y-2">
-              <Label htmlFor="email">Email Address</Label>
-              <Input
-                id="email"
-                name="email"
-                type="email"
-                placeholder="admin@example.com"
-                value={email}
-                onChange={(e) => {
-                  setEmail(e.target.value);
-                  if (error) setError("");
-                }}
-                required
-                disabled={isLoading}
-                autoComplete="email"
-              />
-            </div>
+            <Input
+              label="Email Address"
+              id="email"
+              name="email"
+              type="email"
+              placeholder="admin@example.com"
+              value={email}
+              onChange={(e) => {
+                setEmail(e.target.value);
+                if (error) setError("");
+              }}
+              required
+              disabled={isLoading}
+              autoComplete="email"
+            />
 
             <Button
               type="submit"
               className="w-full"
-              disabled={isLoading || !email}
+              disabled={!email}
+              isLoading={isLoading}
+              loadingText="Sending Reset Link..."
             >
-              {isLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Sending Reset Link...
-                </>
-              ) : (
-                "Send Reset Link"
-              )}
+              Send Reset Link
             </Button>
           </form>
 

@@ -4,13 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { SelectField } from "@/components/ui/select-field";
 import {
   Popover,
   PopoverContent,
@@ -32,7 +26,6 @@ import {
   X,
   Download,
   Calendar as CalendarIcon,
-  Clock,
 } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -153,22 +146,12 @@ export function APIMonitoringFiltersComponent({
 
         <div className="flex items-center gap-2">
           {/* Time Range Quick Select */}
-          <Select
+          <SelectField
+            options={timeRanges}
             value={filters.time_range || "24h"}
             onValueChange={handleTimeRangeChange}
-          >
-            <SelectTrigger className="w-40">
-              <Clock className="mr-2 h-4 w-4" />
-              <SelectValue placeholder="Time range" />
-            </SelectTrigger>
-            <SelectContent>
-              {timeRanges.map((range) => (
-                <SelectItem key={range.value} value={range.value}>
-                  {range.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            classNames={{ wrapper: "w-40" }}
+          />
 
           <Button
             variant="outline"
@@ -252,200 +235,90 @@ export function APIMonitoringFiltersComponent({
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {/* HTTP Method Filter */}
-            <div className="space-y-2">
-              <Label htmlFor="method-filter">HTTP Method</Label>
-              <Select
-                value={filters.method || "all"}
-                onValueChange={(value) =>
-                  handleFilterChange(
-                    "method",
-                    value === "all" ? undefined : value,
-                  )
-                }
-              >
-                <SelectTrigger id="method-filter">
-                  <SelectValue placeholder="All methods" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Methods</SelectItem>
-                  {httpMethods.map((method) => (
-                    <SelectItem key={method} value={method}>
-                      {method}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            <SelectField
+              label="HTTP Method"
+              placeholder="All methods"
+              options={[
+                { value: "all", label: "All Methods" },
+                ...httpMethods.map((method) => ({ value: method, label: method })),
+              ]}
+              value={filters.method || "all"}
+              onValueChange={(value) => handleFilterChange("method", value === "all" ? undefined : value)}
+            />
 
             {/* Category Filter */}
-            <div className="space-y-2">
-              <Label htmlFor="category-filter">Category</Label>
-              <Select
-                value={filters.category || "all"}
-                onValueChange={(value) =>
-                  handleFilterChange(
-                    "category",
-                    value === "all" ? undefined : value,
-                  )
-                }
-              >
-                <SelectTrigger id="category-filter">
-                  <SelectValue placeholder="All categories" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Categories</SelectItem>
-                  {categories.map((category) => (
-                    <SelectItem key={category} value={category}>
-                      {category}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            <SelectField
+              label="Category"
+              placeholder="All categories"
+              options={[
+                { value: "all", label: "All Categories" },
+                ...categories.map((category) => ({ value: category, label: category })),
+              ]}
+              value={filters.category || "all"}
+              onValueChange={(value) => handleFilterChange("category", value === "all" ? undefined : value)}
+            />
 
             {/* Public/Private Filter */}
-            <div className="space-y-2">
-              <Label htmlFor="visibility-filter">Visibility</Label>
-              <Select
-                value={
-                  filters.is_public === undefined
-                    ? "all"
-                    : filters.is_public
-                      ? "public"
-                      : "private"
-                }
-                onValueChange={(value) =>
-                  handleFilterChange(
-                    "is_public",
-                    value === "all"
-                      ? undefined
-                      : value === "public"
-                        ? true
-                        : false,
-                  )
-                }
-              >
-                <SelectTrigger id="visibility-filter">
-                  <SelectValue placeholder="All endpoints" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Endpoints</SelectItem>
-                  <SelectItem value="public">Public</SelectItem>
-                  <SelectItem value="private">Private</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            <SelectField
+              label="Visibility"
+              placeholder="All endpoints"
+              options={[
+                { value: "all", label: "All Endpoints" },
+                { value: "public", label: "Public" },
+                { value: "private", label: "Private" },
+              ]}
+              value={filters.is_public === undefined ? "all" : filters.is_public ? "public" : "private"}
+              onValueChange={(value) => handleFilterChange("is_public", value === "all" ? undefined : value === "public" ? true : false)}
+            />
 
             {/* Deprecated Filter */}
-            <div className="space-y-2">
-              <Label htmlFor="deprecated-filter">Status</Label>
-              <Select
-                value={
-                  filters.is_deprecated === undefined
-                    ? "all"
-                    : filters.is_deprecated
-                      ? "deprecated"
-                      : "active"
-                }
-                onValueChange={(value) =>
-                  handleFilterChange(
-                    "is_deprecated",
-                    value === "all"
-                      ? undefined
-                      : value === "deprecated"
-                        ? true
-                        : false,
-                  )
-                }
-              >
-                <SelectTrigger id="deprecated-filter">
-                  <SelectValue placeholder="All statuses" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Statuses</SelectItem>
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="deprecated">Deprecated</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            <SelectField
+              label="Status"
+              placeholder="All statuses"
+              options={[
+                { value: "all", label: "All Statuses" },
+                { value: "active", label: "Active" },
+                { value: "deprecated", label: "Deprecated" },
+              ]}
+              value={filters.is_deprecated === undefined ? "all" : filters.is_deprecated ? "deprecated" : "active"}
+              onValueChange={(value) => handleFilterChange("is_deprecated", value === "all" ? undefined : value === "deprecated" ? true : false)}
+            />
 
             {/* Status Code Filter */}
-            <div className="space-y-2">
-              <Label htmlFor="status-filter">Status Code</Label>
-              <Select
-                value={filters.status_code?.toString() || "all"}
-                onValueChange={(value) =>
-                  handleFilterChange(
-                    "status_code",
-                    value === "all" ? undefined : parseInt(value),
-                  )
-                }
-              >
-                <SelectTrigger id="status-filter">
-                  <SelectValue placeholder="All codes" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Status Codes</SelectItem>
-                  {statusCodes.map((code) => (
-                    <SelectItem key={code} value={code.toString()}>
-                      {code}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            <SelectField
+              label="Status Code"
+              placeholder="All codes"
+              options={[
+                { value: "all", label: "All Status Codes" },
+                ...statusCodes.map((code) => ({ value: code.toString(), label: code.toString() })),
+              ]}
+              value={filters.status_code?.toString() || "all"}
+              onValueChange={(value) => handleFilterChange("status_code", value === "all" ? undefined : parseInt(value))}
+            />
 
             {/* Error Type Filter */}
-            <div className="space-y-2">
-              <Label htmlFor="error-type-filter">Error Type</Label>
-              <Select
-                value={filters.error_type || "all"}
-                onValueChange={(value) =>
-                  handleFilterChange(
-                    "error_type",
-                    value === "all" ? undefined : value,
-                  )
-                }
-              >
-                <SelectTrigger id="error-type-filter">
-                  <SelectValue placeholder="All error types" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Error Types</SelectItem>
-                  {errorTypes.map((type) => (
-                    <SelectItem key={type} value={type}>
-                      {type.replace("_", " ").toUpperCase()}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            <SelectField
+              label="Error Type"
+              placeholder="All error types"
+              options={[
+                { value: "all", label: "All Error Types" },
+                ...errorTypes.map((type) => ({ value: type, label: type.replace("_", " ").toUpperCase() })),
+              ]}
+              value={filters.error_type || "all"}
+              onValueChange={(value) => handleFilterChange("error_type", value === "all" ? undefined : value)}
+            />
 
             {/* Severity Filter */}
-            <div className="space-y-2">
-              <Label htmlFor="severity-filter">Alert Severity</Label>
-              <Select
-                value={filters.severity || "all"}
-                onValueChange={(value) =>
-                  handleFilterChange(
-                    "severity",
-                    value === "all" ? undefined : value,
-                  )
-                }
-              >
-                <SelectTrigger id="severity-filter">
-                  <SelectValue placeholder="All severities" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Severities</SelectItem>
-                  {severityLevels.map((severity) => (
-                    <SelectItem key={severity} value={severity}>
-                      {severity.charAt(0).toUpperCase() + severity.slice(1)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            <SelectField
+              label="Alert Severity"
+              placeholder="All severities"
+              options={[
+                { value: "all", label: "All Severities" },
+                ...severityLevels.map((severity) => ({ value: severity, label: severity.charAt(0).toUpperCase() + severity.slice(1) })),
+              ]}
+              value={filters.severity || "all"}
+              onValueChange={(value) => handleFilterChange("severity", value === "all" ? undefined : value)}
+            />
           </div>
 
           {/* Custom Date Range */}

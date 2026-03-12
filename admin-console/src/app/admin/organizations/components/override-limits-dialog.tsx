@@ -205,54 +205,40 @@ export function OverrideLimitsDialog({
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">
-                    Max Users Override
-                  </label>
-                  <Input
-                    type="number"
-                    min="1"
-                    placeholder="Leave empty to keep default"
-                    value={maxUsers ?? ""}
-                    onChange={(e) =>
-                      setMaxUsers(
-                        e.target.value ? parseInt(e.target.value) : undefined,
-                      )
-                    }
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">
-                    Storage Limit (GB)
-                  </label>
-                  <Input
-                    type="number"
-                    min="1"
-                    placeholder="Leave empty to keep default"
-                    value={storageLimitGb ?? ""}
-                    onChange={(e) =>
-                      setStorageLimitGb(
-                        e.target.value ? parseInt(e.target.value) : undefined,
-                      )
-                    }
-                  />
-                </div>
+                <Input
+                  label="Max Users Override"
+                  type="number"
+                  min="1"
+                  placeholder="Leave empty to keep default"
+                  value={maxUsers ?? ""}
+                  onChange={(e) =>
+                    setMaxUsers(
+                      e.target.value ? parseInt(e.target.value) : undefined,
+                    )
+                  }
+                />
+                <Input
+                  label="Storage Limit (GB)"
+                  type="number"
+                  min="1"
+                  placeholder="Leave empty to keep default"
+                  value={storageLimitGb ?? ""}
+                  onChange={(e) =>
+                    setStorageLimitGb(
+                      e.target.value ? parseInt(e.target.value) : undefined,
+                    )
+                  }
+                />
               </div>
 
-              <div className="space-y-2">
-                <label className="text-sm font-medium">
-                  Override Expiration
-                </label>
-                <Input
-                  type="date"
-                  value={expiresAt}
-                  onChange={(e) => setExpiresAt(e.target.value)}
-                  min={new Date().toISOString().split("T")[0]}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Leave empty for a permanent override
-                </p>
-              </div>
+              <Input
+                label="Override Expiration"
+                type="date"
+                value={expiresAt}
+                onChange={(e) => setExpiresAt(e.target.value)}
+                min={new Date().toISOString().split("T")[0]}
+                descriptionText="Leave empty for a permanent override"
+              />
             </CardContent>
           </Card>
 
@@ -353,15 +339,8 @@ export function OverrideLimitsDialog({
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={isLoading}>
-              {isLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Applying...
-                </>
-              ) : (
-                "Apply Overrides"
-              )}
+            <Button type="submit" disabled={isLoading} isLoading={isLoading} loadingText="Applying...">
+              Apply Overrides
             </Button>
           </DialogFooter>
         </form>

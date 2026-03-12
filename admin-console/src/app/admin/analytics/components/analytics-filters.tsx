@@ -2,14 +2,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { SelectField } from "@/components/ui/select-field";
 import {
   Popover,
   PopoverContent,
@@ -122,24 +115,13 @@ export function AnalyticsFilters({
       {/* Basic Filters */}
       <div className="flex flex-col sm:flex-row gap-4">
         <div className="flex items-center gap-4 flex-1">
-          <div className="flex items-center gap-2">
-            <Label htmlFor="date-range">Date Range:</Label>
-            <Select
-              value={filters.date_range}
-              onValueChange={handleDateRangeChange}
-            >
-              <SelectTrigger className="w-40">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {DATE_RANGES.map((range) => (
-                  <SelectItem key={range.value} value={range.value}>
-                    {range.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          <SelectField
+            label="Date Range"
+            options={DATE_RANGES}
+            value={filters.date_range}
+            onValueChange={handleDateRangeChange}
+            classNames={{ wrapper: "w-40" }}
+          />
 
           {filters.date_range === "custom" && (
             <div className="flex items-center gap-2">
@@ -267,95 +249,50 @@ export function AnalyticsFilters({
 
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             {/* Subscription Tier Filter */}
-            <div className="space-y-2">
-              <Label htmlFor="tier-filter">Subscription Tier</Label>
-              <Select
-                value={filters.subscription_tier || ""}
-                onValueChange={(value) =>
-                  updateFilter("subscription_tier", value || undefined)
-                }
-                disabled={tiersLoading}
-              >
-                <SelectTrigger>
-                  <SelectValue
-                    placeholder={tiersLoading ? "Loading..." : "All tiers"}
-                  />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">All tiers</SelectItem>
-                  {tiers?.map((tier) => (
-                    <SelectItem key={tier.id} value={tier.name}>
-                      {tier.displayName}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            <SelectField
+              label="Subscription Tier"
+              placeholder="All tiers"
+              options={[
+                { value: "", label: "All tiers" },
+                ...(tiers?.map((tier) => ({ value: tier.name, label: tier.displayName })) || []),
+              ]}
+              value={filters.subscription_tier || ""}
+              onValueChange={(value) => updateFilter("subscription_tier", value || undefined)}
+              isLoading={tiersLoading}
+            />
 
             {/* User Role Filter */}
-            <div className="space-y-2">
-              <Label htmlFor="role-filter">User Role</Label>
-              <Select
-                value={filters.user_role || ""}
-                onValueChange={(value) =>
-                  updateFilter("user_role", value || undefined)
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="All roles" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">All roles</SelectItem>
-                  {USER_ROLES.map((role) => (
-                    <SelectItem key={role.value} value={role.value}>
-                      {role.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            <SelectField
+              label="User Role"
+              placeholder="All roles"
+              options={[
+                { value: "", label: "All roles" },
+                ...USER_ROLES,
+              ]}
+              value={filters.user_role || ""}
+              onValueChange={(value) => updateFilter("user_role", value || undefined)}
+            />
 
             {/* Status Filter */}
-            <div className="space-y-2">
-              <Label htmlFor="status-filter">Status</Label>
-              <Select
-                value={filters.status || ""}
-                onValueChange={(value) =>
-                  updateFilter("status", value || undefined)
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="All statuses" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">All statuses</SelectItem>
-                  {STATUSES.map((status) => (
-                    <SelectItem key={status.value} value={status.value}>
-                      {status.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            <SelectField
+              label="Status"
+              placeholder="All statuses"
+              options={[
+                { value: "", label: "All statuses" },
+                ...STATUSES,
+              ]}
+              value={filters.status || ""}
+              onValueChange={(value) => updateFilter("status", value || undefined)}
+            />
 
             {/* Organization Filter - This would be populated from API */}
-            <div className="space-y-2">
-              <Label htmlFor="org-filter">Organization</Label>
-              <Select
-                value={filters.organization_id || ""}
-                onValueChange={(value) =>
-                  updateFilter("organization_id", value || undefined)
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="All organizations" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">All organizations</SelectItem>
-                  {/* Organizations would be loaded from API */}
-                </SelectContent>
-              </Select>
-            </div>
+            <SelectField
+              label="Organization"
+              placeholder="All organizations"
+              options={[{ value: "", label: "All organizations" }]}
+              value={filters.organization_id || ""}
+              onValueChange={(value) => updateFilter("organization_id", value || undefined)}
+            />
           </div>
         </div>
       )}

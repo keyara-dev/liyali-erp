@@ -500,8 +500,8 @@ export function APIErrorsPanel({
             >
               Cancel
             </Button>
-            <Button onClick={handleConfirmResolve} disabled={isResolving}>
-              {isResolving ? "Resolving..." : "Mark Resolved"}
+            <Button onClick={handleConfirmResolve} disabled={isResolving} isLoading={isResolving} loadingText="Resolving...">
+              Mark Resolved
             </Button>
           </div>
         </DialogContent>

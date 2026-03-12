@@ -11,17 +11,8 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { SelectField } from "@/components/ui/select-field";
 import { Switch } from "@/components/ui/switch";
-import { Separator } from "@/components/ui/separator";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
@@ -30,7 +21,7 @@ import {
   type PlatformUser,
   type UpdateUserRequest,
 } from "@/app/_actions/users";
-import { User, Mail, Phone, Building2, Shield } from "lucide-react";
+import { User, Building2, Shield } from "lucide-react";
 
 interface UserEditDialogProps {
   user: PlatformUser | null;
@@ -143,39 +134,35 @@ export function UserEditDialog({
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Full Name</Label>
-                  <Input
-                    id="name"
-                    value={formData.name || ""}
-                    onChange={(e) => handleInputChange("name", e.target.value)}
-                    placeholder="Enter full name"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email Address</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={formData.email || ""}
-                    onChange={(e) => handleInputChange("email", e.target.value)}
-                    placeholder="Enter email address"
-                  />
-                </div>
+                <Input
+                  name="name"
+                  label="Full Name"
+                  value={formData.name || ""}
+                  onChange={(e) => handleInputChange("name", e.target.value)}
+                  placeholder="Enter full name"
+                />
+                <Input
+                  name="email"
+                  label="Email Address"
+                  type="email"
+                  value={formData.email || ""}
+                  onChange={(e) => handleInputChange("email", e.target.value)}
+                  placeholder="Enter email address"
+                />
               </div>
 
               <div className="grid gap-4 md:grid-cols-2">
+                <Input
+                  name="phone"
+                  label="Phone Number"
+                  value={formData.phone || ""}
+                  onChange={(e) => handleInputChange("phone", e.target.value)}
+                  placeholder="Enter phone number"
+                />
                 <div className="space-y-2">
-                  <Label htmlFor="phone">Phone Number</Label>
-                  <Input
-                    id="phone"
-                    value={formData.phone || ""}
-                    onChange={(e) => handleInputChange("phone", e.target.value)}
-                    placeholder="Enter phone number"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Email Verified</Label>
+                  <p className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-0.5 pl-1">
+                    Email Verified
+                  </p>
                   <div className="flex items-center gap-2">
                     <Badge
                       variant={user.email_verified ? "default" : "secondary"}
@@ -198,44 +185,26 @@ export function UserEditDialog({
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="role">Role</Label>
-                  <Select
-                    value={formData.role}
-                    onValueChange={(value) => handleInputChange("role", value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select role" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {USER_ROLES.map((role) => (
-                        <SelectItem key={role.value} value={role.value}>
-                          {role.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="status">Status</Label>
-                  <Select
-                    value={formData.status}
-                    onValueChange={(value) =>
-                      handleInputChange("status", value as any)
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {USER_STATUSES.map((status) => (
-                        <SelectItem key={status.value} value={status.value}>
-                          {status.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                <SelectField
+                  name="role"
+                  label="Role"
+                  value={formData.role}
+                  onValueChange={(value) => handleInputChange("role", value)}
+                  placeholder="Select role"
+                  options={USER_ROLES}
+                  classNames={{ wrapper: "max-w-full" }}
+                />
+                <SelectField
+                  name="status"
+                  label="Status"
+                  value={formData.status}
+                  onValueChange={(value) =>
+                    handleInputChange("status", value as any)
+                  }
+                  placeholder="Select status"
+                  options={USER_STATUSES}
+                  classNames={{ wrapper: "max-w-full" }}
+                />
               </div>
             </CardContent>
           </Card>
@@ -250,28 +219,24 @@ export function UserEditDialog({
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="department">Department</Label>
-                  <Input
-                    id="department"
-                    value={formData.profile?.department || ""}
-                    onChange={(e) =>
-                      handleProfileChange("department", e.target.value)
-                    }
-                    placeholder="Enter department"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="job_title">Job Title</Label>
-                  <Input
-                    id="job_title"
-                    value={formData.profile?.job_title || ""}
-                    onChange={(e) =>
-                      handleProfileChange("job_title", e.target.value)
-                    }
-                    placeholder="Enter job title"
-                  />
-                </div>
+                <Input
+                  name="department"
+                  label="Department"
+                  value={formData.profile?.department || ""}
+                  onChange={(e) =>
+                    handleProfileChange("department", e.target.value)
+                  }
+                  placeholder="Enter department"
+                />
+                <Input
+                  name="job_title"
+                  label="Job Title"
+                  value={formData.profile?.job_title || ""}
+                  onChange={(e) =>
+                    handleProfileChange("job_title", e.target.value)
+                  }
+                  placeholder="Enter job title"
+                />
               </div>
             </CardContent>
           </Card>
@@ -329,8 +294,13 @@ export function UserEditDialog({
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={isLoading}>
-              {isLoading ? "Updating..." : "Update User"}
+            <Button
+              type="submit"
+              disabled={isLoading}
+              isLoading={isLoading}
+              loadingText="Updating..."
+            >
+              Update User
             </Button>
           </DialogFooter>
         </form>

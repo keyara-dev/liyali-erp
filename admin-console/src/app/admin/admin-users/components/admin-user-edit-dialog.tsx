@@ -209,59 +209,39 @@ export function AdminUserEditDialog({
             <h3 className="text-sm font-medium">Basic Information</h3>
 
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="first_name">
-                  First Name <span className="text-red-500">*</span>
-                </Label>
-                <Input
-                  id="first_name"
-                  value={formData.first_name}
-                  onChange={(e) =>
-                    handleInputChange("first_name", e.target.value)
-                  }
-                  className={errors.first_name ? "border-red-500" : ""}
-                />
-                {errors.first_name && (
-                  <p className="text-sm text-red-500">{errors.first_name}</p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="last_name">
-                  Last Name <span className="text-red-500">*</span>
-                </Label>
-                <Input
-                  id="last_name"
-                  value={formData.last_name}
-                  onChange={(e) =>
-                    handleInputChange("last_name", e.target.value)
-                  }
-                  className={errors.last_name ? "border-red-500" : ""}
-                />
-                {errors.last_name && (
-                  <p className="text-sm text-red-500">{errors.last_name}</p>
-                )}
-              </div>
+              <Input
+                name="first_name"
+                label="First Name"
+                required
+                value={formData.first_name}
+                onChange={(e) =>
+                  handleInputChange("first_name", e.target.value)
+                }
+                isInvalid={!!errors.first_name}
+                errorText={errors.first_name}
+              />
+              <Input
+                name="last_name"
+                label="Last Name"
+                required
+                value={formData.last_name}
+                onChange={(e) => handleInputChange("last_name", e.target.value)}
+                isInvalid={!!errors.last_name}
+                errorText={errors.last_name}
+              />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="email">
-                Email Address <span className="text-red-500">*</span>
-              </Label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                <Input
-                  id="email"
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => handleInputChange("email", e.target.value)}
-                  className={`pl-10 ${errors.email ? "border-red-500" : ""}`}
-                />
-              </div>
-              {errors.email && (
-                <p className="text-sm text-red-500">{errors.email}</p>
-              )}
-            </div>
+            <Input
+              name="email"
+              label="Email Address"
+              required
+              type="email"
+              value={formData.email}
+              onChange={(e) => handleInputChange("email", e.target.value)}
+              startContent={<Mail className="h-4 w-4 text-muted-foreground" />}
+              isInvalid={!!errors.email}
+              errorText={errors.email}
+            />
           </div>
 
           <Separator />
@@ -410,8 +390,13 @@ export function AdminUserEditDialog({
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={isLoading || !hasChanges}>
-              {isLoading ? "Updating..." : "Update Admin User"}
+            <Button
+              type="submit"
+              disabled={isLoading || !hasChanges}
+              isLoading={isLoading}
+              loadingText="Updating..."
+            >
+              Update Admin User
             </Button>
           </DialogFooter>
         </form>

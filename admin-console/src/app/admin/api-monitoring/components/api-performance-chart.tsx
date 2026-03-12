@@ -9,13 +9,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { SelectField } from "@/components/ui/select-field";
 import {
   LineChart,
   Line,
@@ -290,31 +284,19 @@ export function APIPerformanceChart({
               <CardDescription>Performance trends over time</CardDescription>
             </div>
             <div className="flex items-center gap-2">
-              <Select value={selectedMetric} onValueChange={setSelectedMetric}>
-                <SelectTrigger className="w-40">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {metrics.map((metric) => (
-                    <SelectItem key={metric.value} value={metric.value}>
-                      {metric.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SelectField
+                options={metrics}
+                value={selectedMetric}
+                onValueChange={setSelectedMetric}
+                classNames={{ wrapper: "w-40" }}
+              />
 
-              <Select value={timeRange} onValueChange={handleTimeRangeChange}>
-                <SelectTrigger className="w-40">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {timeRanges.map((range) => (
-                    <SelectItem key={range.value} value={range.value}>
-                      {range.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SelectField
+                options={timeRanges}
+                value={timeRange}
+                onValueChange={handleTimeRangeChange}
+                classNames={{ wrapper: "w-40" }}
+              />
 
               <Button
                 variant="outline"
