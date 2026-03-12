@@ -58,8 +58,8 @@ export interface CreateAdminUserRequest {
   last_name: string;
   password: string;
   is_active: boolean;
+  /** true = super admin for admin console; false = platform admin for frontend app (personal org created) */
   is_super_admin: boolean;
-  role_ids: string[];
   send_welcome_email: boolean;
   require_password_change: boolean;
 }

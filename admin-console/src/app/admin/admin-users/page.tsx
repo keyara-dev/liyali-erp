@@ -394,7 +394,6 @@ export default function AdminUsersPage() {
       <AdminUserCreateDialog
         open={showCreateDialog}
         onOpenChange={setShowCreateDialog}
-        roles={roles}
         onUserCreated={handleUserUpdated}
       />
 

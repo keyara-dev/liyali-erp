@@ -12,37 +12,25 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { Eye, EyeOff, Shield, Mail, Lock } from "lucide-react";
+import { Eye, EyeOff, Shield, Mail, Lock, Building2, ShieldAlert } from "lucide-react";
 import { notify } from "@/lib/notify";
 import {
   createAdminUser,
   type CreateAdminUserRequest,
-  type AdminRole,
 } from "@/app/_actions/admin-users";
 
 interface AdminUserCreateDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  roles: AdminRole[];
   onUserCreated: () => void;
 }
 
 export function AdminUserCreateDialog({
   open,
   onOpenChange,
-  roles,
   onUserCreated,
 }: AdminUserCreateDialogProps) {
   const [isLoading, setIsLoading] = useState(false);
@@ -54,7 +42,6 @@ export function AdminUserCreateDialog({
     password: "",
     is_active: true,
     is_super_admin: false,
-    role_ids: [],
     send_welcome_email: true,
     require_password_change: true,
   });
@@ -84,10 +71,6 @@ export function AdminUserCreateDialog({
       newErrors.password = "Password must be at least 8 characters";
     }
 
-    if (formData.role_ids.length === 0) {
-      newErrors.roles = "At least one role must be selected";
-    }
-
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -105,9 +88,7 @@ export function AdminUserCreateDialog({
       const result = await createAdminUser(formData);
 
       if (result.success) {
-        notify("Admin user created successfully", {
-          variant: "success",
-        });
+        notify("Admin user created successfully", { variant: "success" });
         onUserCreated();
         handleClose();
       } else {
@@ -117,9 +98,7 @@ export function AdminUserCreateDialog({
       }
     } catch (error) {
       console.error("Error creating admin user:", error);
-      notify("Failed to create admin user", {
-        variant: "destructive",
-      });
+      notify("Failed to create admin user", { variant: "destructive" });
     } finally {
       setIsLoading(false);
     }
@@ -133,27 +112,12 @@ export function AdminUserCreateDialog({
       password: "",
       is_active: true,
       is_super_admin: false,
-      role_ids: [],
       send_welcome_email: true,
       require_password_change: true,
     });
     setErrors({});
     setShowPassword(false);
     onOpenChange(false);
-  };
-
-  const handleRoleToggle = (roleId: string, checked: boolean) => {
-    if (checked) {
-      setFormData((prev) => ({
-        ...prev,
-        role_ids: [...prev.role_ids, roleId],
-      }));
-    } else {
-      setFormData((prev) => ({
-        ...prev,
-        role_ids: prev.role_ids.filter((id) => id !== roleId),
-      }));
-    }
   };
 
   const generatePassword = () => {
@@ -166,10 +130,6 @@ export function AdminUserCreateDialog({
     setFormData((prev) => ({ ...prev, password }));
   };
 
-  const selectedRoles = roles.filter((role) =>
-    formData.role_ids.includes(role.id),
-  );
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -179,7 +139,8 @@ export function AdminUserCreateDialog({
             Create Admin User
           </DialogTitle>
           <DialogDescription>
-            Create a new admin user with specific roles and permissions.
+            Create a platform admin (frontend app) or a super admin (admin
+            console access).
           </DialogDescription>
         </DialogHeader>
 
@@ -321,9 +282,9 @@ export function AdminUserCreateDialog({
 
           <Separator />
 
-          {/* Admin Settings */}
+          {/* Account Settings */}
           <div className="space-y-4">
-            <h3 className="text-sm font-medium">Admin Settings</h3>
+            <h3 className="text-sm font-medium">Account Settings</h3>
 
             <div className="space-y-4">
               <div className="flex items-center justify-between">
@@ -345,7 +306,7 @@ export function AdminUserCreateDialog({
                 <div className="space-y-0.5">
                   <Label>Super Admin</Label>
                   <p className="text-sm text-muted-foreground">
-                    Full system access with all permissions
+                    Full platform access — can log into the admin console
                   </p>
                 </div>
                 <Switch
@@ -379,76 +340,30 @@ export function AdminUserCreateDialog({
             </div>
           </div>
 
-          <Separator />
-
-          {/* Role Assignment */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-medium">
-                Role Assignment <span className="text-red-500">*</span>
-              </h3>
-              {selectedRoles.length > 0 && (
-                <Badge variant="outline">{selectedRoles.length} selected</Badge>
-              )}
-            </div>
-
-            {errors.roles && (
-              <p className="text-sm text-red-500">{errors.roles}</p>
-            )}
-
-            <div className="grid gap-3 max-h-48 overflow-y-auto border rounded-lg p-3">
-              {roles.map((role) => (
-                <div
-                  key={role.id}
-                  className="flex items-center space-x-3 p-2 hover:bg-muted/50 rounded"
-                >
-                  <Checkbox
-                    id={`role-${role.id}`}
-                    checked={formData.role_ids.includes(role.id)}
-                    onCheckedChange={(checked) =>
-                      handleRoleToggle(role.id, checked as boolean)
-                    }
-                  />
-                  <div className="flex-1">
-                    <Label
-                      htmlFor={`role-${role.id}`}
-                      className="font-medium cursor-pointer"
-                    >
-                      {role.display_name}
-                    </Label>
-                    <p className="text-sm text-muted-foreground">
-                      {role.description}
-                    </p>
-                  </div>
-                  {role.is_system_role && (
-                    <Badge variant="destructive" className="text-xs">
-                      System
-                    </Badge>
-                  )}
-                </div>
-              ))}
-            </div>
-
-            {selectedRoles.length > 0 && (
-              <div className="space-y-2">
-                <Label className="text-sm">Selected Roles:</Label>
-                <div className="flex flex-wrap gap-2">
-                  {selectedRoles.map((role) => (
-                    <Badge key={role.id} variant="secondary">
-                      {role.display_name}
-                      <button
-                        type="button"
-                        onClick={() => handleRoleToggle(role.id, false)}
-                        className="ml-1 hover:text-destructive"
-                      >
-                        ×
-                      </button>
-                    </Badge>
-                  ))}
-                </div>
+          {/* Contextual hint */}
+          {formData.is_super_admin ? (
+            <div className="flex gap-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3">
+              <ShieldAlert className="h-4 w-4 mt-0.5 shrink-0 text-amber-500" />
+              <div className="text-sm text-amber-600 dark:text-amber-400">
+                <p className="font-medium">Admin console access</p>
+                <p className="text-muted-foreground">
+                  This user will have full platform access and can log into the
+                  admin console. No organisation will be created.
+                </p>
               </div>
-            )}
-          </div>
+            </div>
+          ) : (
+            <div className="flex gap-3 rounded-lg border border-blue-500/30 bg-blue-500/10 p-3">
+              <Building2 className="h-4 w-4 mt-0.5 shrink-0 text-blue-500" />
+              <div className="text-sm text-blue-600 dark:text-blue-400">
+                <p className="font-medium">Personal organisation</p>
+                <p className="text-muted-foreground">
+                  A personal organisation will automatically be created for this
+                  user so they can start using the platform immediately.
+                </p>
+              </div>
+            </div>
+          )}
 
           <DialogFooter>
             <Button

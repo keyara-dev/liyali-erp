@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"regexp"
 	"strings"
 	"time"
 
@@ -253,20 +254,23 @@ func AdminGetAdminUser(c *fiber.Ctx) error {
 	return utils.SendSimpleSuccess(c, adminUserToFrontend(user), "Admin user retrieved successfully")
 }
 
-// AdminCreateAdminUser creates a new admin user
+// AdminCreateAdminUser creates a new admin user.
+//
+// Two user types are supported:
+//  - is_super_admin=false: platform admin for the frontend app — gets role="admin" and a personal organisation
+//  - is_super_admin=true:  admin console super admin — gets role="super_admin", no organisation created
 func AdminCreateAdminUser(c *fiber.Ctx) error {
 	db := config.DB
 
 	var request struct {
-		Email                 string   `json:"email"`
-		FirstName             string   `json:"first_name"`
-		LastName              string   `json:"last_name"`
-		Password              string   `json:"password"`
-		IsActive              bool     `json:"is_active"`
-		IsSuperAdmin          bool     `json:"is_super_admin"`
-		RoleIDs               []string `json:"role_ids"`
-		SendWelcomeEmail      bool     `json:"send_welcome_email"`
-		RequirePasswordChange bool     `json:"require_password_change"`
+		Email                 string `json:"email"`
+		FirstName             string `json:"first_name"`
+		LastName              string `json:"last_name"`
+		Password              string `json:"password"`
+		IsActive              bool   `json:"is_active"`
+		IsSuperAdmin          bool   `json:"is_super_admin"`
+		SendWelcomeEmail      bool   `json:"send_welcome_email"`
+		RequirePasswordChange bool   `json:"require_password_change"`
 	}
 
 	if err := c.BodyParser(&request); err != nil {
@@ -279,14 +283,6 @@ func AdminCreateAdminUser(c *fiber.Ctx) error {
 
 	if len(request.Password) < 8 {
 		return utils.SendBadRequest(c, "Password must be at least 8 characters")
-	}
-
-	// Block direct super_admin role assignment — use the promote endpoint instead
-	if request.IsSuperAdmin {
-		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
-			"success": false,
-			"message": "Use the promote endpoint to assign super_admin role",
-		})
 	}
 
 	// Check email uniqueness
@@ -331,26 +327,58 @@ func AdminCreateAdminUser(c *fiber.Ctx) error {
 		return utils.SendInternalError(c, "Failed to create admin user", err)
 	}
 
-	// Assign roles from role_ids
-	if len(request.RoleIDs) > 0 {
-		adminUserID := c.Locals("userID").(string)
-		for _, roleID := range request.RoleIDs {
-			// Check if role exists
-			var roleCount int64
-			db.Table("organization_roles").Where("id = ? AND active = ?", roleID, true).Count(&roleCount)
-			if roleCount == 0 {
-				continue
-			}
+	// Platform admin users (non-super-admin) get a personal organisation so they
+	// can immediately use the frontend app.
+	if !request.IsSuperAdmin {
+		orgName := name + "'s Organization"
 
-			db.Table("user_organization_roles").Create(map[string]interface{}{
+		// Generate a unique slug
+		reg := regexp.MustCompile(`[^a-z0-9]+`)
+		slug := reg.ReplaceAllString(strings.ToLower(name), "-")
+		slug = strings.Trim(slug, "-")
+		var slugCount int64
+		db.Table("organizations").Where("slug = ?", slug).Count(&slugCount)
+		if slugCount > 0 {
+			slug = fmt.Sprintf("%s-%s", slug, utils.GenerateID()[:6])
+		}
+
+		orgID := utils.GenerateID()
+		org := map[string]interface{}{
+			"id":                  orgID,
+			"name":                orgName,
+			"slug":                slug,
+			"active":              true,
+			"subscription_tier":   "starter",
+			"subscription_status": "trial",
+			"trial_start_date":    now,
+			"trial_end_date":      now.AddDate(0, 0, 14),
+			"created_by":          userID,
+			"created_at":          now,
+			"updated_at":          now,
+		}
+
+		if err := db.Table("organizations").Create(org).Error; err != nil {
+			log.Printf("Error creating personal org for admin user %s: %v", userID, err)
+			// Non-fatal — user was created; org creation failure is logged
+		} else {
+			// Add user as admin member of their personal org
+			db.Table("organization_members").Create(map[string]interface{}{
 				"id":              utils.GenerateID(),
+				"organization_id": orgID,
 				"user_id":         userID,
-				"organization_id": nil,
-				"role_id":         roleID,
-				"assigned_by":     adminUserID,
-				"assigned_at":     now,
+				"role":            "admin",
 				"active":          true,
+				"joined_at":       now,
+				"created_at":      now,
+				"updated_at":      now,
 			})
+
+			// Set the new org as the user's current organisation
+			db.Table("users").Where("id = ?", userID).Updates(map[string]interface{}{
+				"current_organization_id": orgID,
+				"updated_at":              now,
+			})
+			user["current_organization_id"] = orgID
 		}
 	}
 
