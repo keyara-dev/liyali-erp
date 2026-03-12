@@ -92,7 +92,7 @@ export function AuditLogAnalyticsCharts({
         <CardContent>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={stats.top_actions.slice(0, 8)}>
+              <BarChart data={(stats.top_actions ?? []).slice(0, 8)}>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                 <XAxis
                   dataKey="action"
@@ -109,7 +109,7 @@ export function AuditLogAnalyticsCharts({
             </ResponsiveContainer>
           </div>
           <div className="mt-4 space-y-2">
-            {stats.top_actions.slice(0, 3).map((action, index) => (
+            {(stats.top_actions ?? []).slice(0, 3).map((action, index) => (
               <div
                 key={action.action}
                 className="flex items-center justify-between text-sm"
@@ -118,7 +118,7 @@ export function AuditLogAnalyticsCharts({
                 <div className="flex items-center gap-2">
                   <span className="font-medium">{action.count}</span>
                   <Badge variant="outline" className="text-xs">
-                    {action.percentage.toFixed(1)}%
+                    {(action.percentage ?? 0).toFixed(1)}%
                   </Badge>
                 </div>
               </div>
@@ -138,7 +138,7 @@ export function AuditLogAnalyticsCharts({
         <CardContent>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={analytics.user_activity.slice(0, 8)}>
+              <BarChart data={(analytics.user_activity ?? []).slice(0, 8)}>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                 <XAxis
                   dataKey="user_name"
@@ -155,7 +155,7 @@ export function AuditLogAnalyticsCharts({
             </ResponsiveContainer>
           </div>
           <div className="mt-4 space-y-2">
-            {analytics.user_activity.slice(0, 3).map((user, index) => (
+            {(analytics.user_activity ?? []).slice(0, 3).map((user, index) => (
               <div
                 key={user.user_id}
                 className="flex items-center justify-between text-sm"
@@ -195,7 +195,7 @@ export function AuditLogAnalyticsCharts({
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
-                  data={analytics.geographic_distribution.slice(0, 6)}
+                  data={(analytics.geographic_distribution ?? []).slice(0, 6)}
                   cx="50%"
                   cy="50%"
                   labelLine={false}
@@ -206,7 +206,7 @@ export function AuditLogAnalyticsCharts({
                   fill="#8884d8"
                   dataKey="count"
                 >
-                  {analytics.geographic_distribution
+                  {(analytics.geographic_distribution ?? [])
                     .slice(0, 6)
                     .map((entry, index) => (
                       <Cell
@@ -220,7 +220,7 @@ export function AuditLogAnalyticsCharts({
             </ResponsiveContainer>
           </div>
           <div className="mt-4 space-y-2">
-            {analytics.geographic_distribution
+            {(analytics.geographic_distribution ?? [])
               .slice(0, 5)
               .map((location, index) => (
                 <div
@@ -242,7 +242,7 @@ export function AuditLogAnalyticsCharts({
                   <div className="flex items-center gap-2">
                     <span className="font-medium">{location.count}</span>
                     <Badge variant="outline" className="text-xs">
-                      {location.percentage.toFixed(1)}%
+                      {(location.percentage ?? 0).toFixed(1)}%
                     </Badge>
                   </div>
                 </div>
@@ -264,7 +264,7 @@ export function AuditLogAnalyticsCharts({
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
-                  data={analytics.device_analytics}
+                  data={analytics.device_analytics ?? []}
                   cx="50%"
                   cy="50%"
                   labelLine={false}
@@ -275,7 +275,7 @@ export function AuditLogAnalyticsCharts({
                   fill="#8884d8"
                   dataKey="count"
                 >
-                  {analytics.device_analytics.map((entry, index) => (
+                  {(analytics.device_analytics ?? []).map((entry, index) => (
                     <Cell
                       key={`cell-${index}`}
                       fill={COLORS[index % COLORS.length]}
@@ -287,7 +287,7 @@ export function AuditLogAnalyticsCharts({
             </ResponsiveContainer>
           </div>
           <div className="mt-4 space-y-2">
-            {analytics.device_analytics.map((device, index) => (
+            {(analytics.device_analytics ?? []).map((device, index) => (
               <div
                 key={device.device_type}
                 className="flex items-center justify-between text-sm"
@@ -302,7 +302,7 @@ export function AuditLogAnalyticsCharts({
                 <div className="flex items-center gap-2">
                   <span className="font-medium">{device.count}</span>
                   <Badge variant="outline" className="text-xs">
-                    {device.percentage.toFixed(1)}%
+                    {(device.percentage ?? 0).toFixed(1)}%
                   </Badge>
                 </div>
               </div>
@@ -319,7 +319,7 @@ export function AuditLogAnalyticsCharts({
         <CardContent>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={analytics.resource_access.slice(0, 10)}>
+              <BarChart data={(analytics.resource_access ?? []).slice(0, 10)}>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                 <XAxis
                   dataKey="resource_type"
@@ -343,7 +343,7 @@ export function AuditLogAnalyticsCharts({
             </ResponsiveContainer>
           </div>
           <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4">
-            {analytics.resource_access.slice(0, 4).map((resource) => (
+            {(analytics.resource_access ?? []).slice(0, 4).map((resource) => (
               <div
                 key={resource.resource_type}
                 className="text-center p-3 rounded-lg bg-muted/20"
@@ -371,7 +371,7 @@ export function AuditLogAnalyticsCharts({
         <CardContent>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={stats.activity_by_hour}>
+              <LineChart data={stats.activity_by_hour ?? []}>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                 <XAxis
                   dataKey="hour"

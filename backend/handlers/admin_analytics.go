@@ -312,6 +312,9 @@ func GetAdminUserAnalytics(c *fiber.Ctx) error {
 
 	// Get active users (logged in within 30 days)
 	thirtyDaysAgo := time.Now().AddDate(0, 0, -30)
+	sevenDaysAgo := time.Now().AddDate(0, 0, -7)
+	yesterday := time.Now().AddDate(0, 0, -1)
+
 	var activeUsers int64
 	db.Table("users").Where("last_login > ?", thirtyDaysAgo).Count(&activeUsers)
 
@@ -319,58 +322,118 @@ func GetAdminUserAnalytics(c *fiber.Ctx) error {
 	var newUsers int64
 	db.Table("users").Where("created_at > ?", thirtyDaysAgo).Count(&newUsers)
 
-	// Get user growth trend (last 7 days)
-	var userGrowthTrend []struct {
-		Date       string `json:"date"`
-		TotalUsers int64  `json:"total_users"`
-		NewUsers   int64  `json:"new_users"`
-	}
-
-	for i := 6; i >= 0; i-- {
+	// Get user growth trend (last 30 days, sampled every 3 days)
+	var userGrowthTrend []map[string]interface{}
+	for i := 30; i >= 0; i -= 3 {
 		date := time.Now().AddDate(0, 0, -i)
 		dateStr := date.Format("2006-01-02")
-		
-		var totalOnDate, newOnDate int64
+
+		var totalOnDate, newOnDate, activeOnDate int64
 		db.Table("users").Where("created_at <= ?", date.Add(24*time.Hour)).Count(&totalOnDate)
 		db.Table("users").Where("DATE(created_at) = ?", dateStr).Count(&newOnDate)
-		
-		userGrowthTrend = append(userGrowthTrend, struct {
-			Date       string `json:"date"`
-			TotalUsers int64  `json:"total_users"`
-			NewUsers   int64  `json:"new_users"`
-		}{
-			Date:       dateStr,
-			TotalUsers: totalOnDate,
-			NewUsers:   newOnDate,
+		db.Table("users").Where("last_login >= ? AND last_login < ?", date, date.Add(24*time.Hour)).Count(&activeOnDate)
+
+		userGrowthTrend = append(userGrowthTrend, map[string]interface{}{
+			"date":         dateStr,
+			"total_users":  totalOnDate,
+			"new_users":    newOnDate,
+			"active_users": activeOnDate,
 		})
 	}
 
 	// Get user demographics by role
-	var usersByRole []struct {
+	type roleStat struct {
 		Role       string  `json:"role"`
 		Count      int64   `json:"count"`
 		Percentage float64 `json:"percentage"`
 	}
-	
-	db.Table("users").
-		Select("role, COUNT(*) as count").
-		Group("role").
-		Scan(&usersByRole)
-
-	// Calculate percentages
+	var usersByRole []roleStat
+	db.Table("users").Select("role, COUNT(*) as count").Group("role").Scan(&usersByRole)
 	for i := range usersByRole {
 		if totalUsers > 0 {
 			usersByRole[i].Percentage = float64(usersByRole[i].Count) / float64(totalUsers) * 100
 		}
 	}
 
+	// Get user demographics by status
+	type statusStat struct {
+		Status     string  `json:"status"`
+		Count      int64   `json:"count"`
+		Percentage float64 `json:"percentage"`
+	}
+	var usersByStatus []statusStat
+	db.Table("users").Select("COALESCE(status, 'active') as status, COUNT(*) as count").Group("status").Scan(&usersByStatus)
+	for i := range usersByStatus {
+		if totalUsers > 0 {
+			usersByStatus[i].Percentage = float64(usersByStatus[i].Count) / float64(totalUsers) * 100
+		}
+	}
+
+	// Get user demographics by organization size (users grouped by their org's user count bucket)
+	type sizeStat struct {
+		SizeRange  string  `json:"size_range"`
+		Count      int64   `json:"count"`
+		Percentage float64 `json:"percentage"`
+	}
+	var usersByOrgSize []sizeStat
+	db.Raw(`
+		SELECT size_range, COUNT(*) as count FROM (
+			SELECT u.id,
+				CASE
+					WHEN org_counts.cnt <= 5 THEN '1-5'
+					WHEN org_counts.cnt <= 20 THEN '6-20'
+					WHEN org_counts.cnt <= 100 THEN '21-100'
+					ELSE '100+'
+				END as size_range
+			FROM users u
+			LEFT JOIN (
+				SELECT organization_id, COUNT(*) as cnt FROM users GROUP BY organization_id
+			) org_counts ON org_counts.organization_id = u.organization_id
+		) t GROUP BY size_range
+	`).Scan(&usersByOrgSize)
+	for i := range usersByOrgSize {
+		if totalUsers > 0 {
+			usersByOrgSize[i].Percentage = float64(usersByOrgSize[i].Count) / float64(totalUsers) * 100
+		}
+	}
+
+	// Engagement metrics
+	var dau, wau, mau int64
+	db.Table("users").Where("last_login >= ?", yesterday).Count(&dau)
+	db.Table("users").Where("last_login >= ?", sevenDaysAgo).Count(&wau)
+	db.Table("users").Where("last_login >= ?", thirtyDaysAgo).Count(&mau)
+
+	// Avg session duration and sessions per user from api_request_logs (approximate)
+	var avgSessionDuration float64
+	db.Table("api_request_logs").
+		Where("created_at >= ?", thirtyDaysAgo).
+		Select("COALESCE(AVG(response_time_ms), 0)").
+		Scan(&avgSessionDuration)
+
+	sessionsPerUser := 0.0
+	if mau > 0 {
+		var totalSessions int64
+		db.Table("api_request_logs").Where("created_at >= ?", thirtyDaysAgo).Count(&totalSessions)
+		sessionsPerUser = float64(totalSessions) / float64(mau)
+	}
+
 	analytics := map[string]interface{}{
-		"total_users":        totalUsers,
-		"active_users":       activeUsers,
-		"new_users":          newUsers,
-		"user_growth_trend":  userGrowthTrend,
-		"users_by_role":      usersByRole,
-		"generated_at":       time.Now(),
+		"total_users":             totalUsers,
+		"active_users":            activeUsers,
+		"new_users_this_period":   newUsers,
+		"user_growth_trend":       userGrowthTrend,
+		"user_demographics": map[string]interface{}{
+			"by_role":              usersByRole,
+			"by_status":            usersByStatus,
+			"by_organization_size": usersByOrgSize,
+		},
+		"engagement_metrics": map[string]interface{}{
+			"daily_active_users":       dau,
+			"weekly_active_users":      wau,
+			"monthly_active_users":     mau,
+			"average_session_duration": avgSessionDuration,
+			"sessions_per_user":        sessionsPerUser,
+		},
 	}
 
 	return utils.SendSimpleSuccess(c, analytics, "User analytics retrieved successfully")
@@ -386,6 +449,7 @@ func GetAdminOrganizationAnalytics(c *fiber.Ctx) error {
 
 	// Get active organizations
 	thirtyDaysAgo := time.Now().AddDate(0, 0, -30)
+	sevenDaysAgo := time.Now().AddDate(0, 0, -7)
 	var activeOrgs int64
 	db.Table("organizations").Where("updated_at > ?", thirtyDaysAgo).Count(&activeOrgs)
 
@@ -393,58 +457,139 @@ func GetAdminOrganizationAnalytics(c *fiber.Ctx) error {
 	var newOrgs int64
 	db.Table("organizations").Where("created_at > ?", thirtyDaysAgo).Count(&newOrgs)
 
-	// Get organization growth trend
-	var orgGrowthTrend []struct {
-		Date              string `json:"date"`
-		TotalOrgs         int64  `json:"total_organizations"`
-		NewOrgs           int64  `json:"new_organizations"`
-	}
-
-	for i := 6; i >= 0; i-- {
+	// Get organization growth trend (last 30 days, sampled every 3 days)
+	var orgGrowthTrend []map[string]interface{}
+	for i := 30; i >= 0; i -= 3 {
 		date := time.Now().AddDate(0, 0, -i)
 		dateStr := date.Format("2006-01-02")
-		
-		var totalOnDate, newOnDate int64
+
+		var totalOnDate, newOnDate, activeOnDate int64
 		db.Table("organizations").Where("created_at <= ?", date.Add(24*time.Hour)).Count(&totalOnDate)
 		db.Table("organizations").Where("DATE(created_at) = ?", dateStr).Count(&newOnDate)
-		
-		orgGrowthTrend = append(orgGrowthTrend, struct {
-			Date              string `json:"date"`
-			TotalOrgs         int64  `json:"total_organizations"`
-			NewOrgs           int64  `json:"new_organizations"`
-		}{
-			Date:      dateStr,
-			TotalOrgs: totalOnDate,
-			NewOrgs:   newOnDate,
+		db.Table("organizations").Where("updated_at >= ? AND updated_at < ?", date, date.Add(24*time.Hour)).Count(&activeOnDate)
+
+		orgGrowthTrend = append(orgGrowthTrend, map[string]interface{}{
+			"date":                dateStr,
+			"total_organizations": totalOnDate,
+			"new_organizations":   newOnDate,
+			"active_organizations": activeOnDate,
 		})
 	}
 
-	// Get organizations by subscription tier
-	var orgsByTier []struct {
+	// Organization distribution by subscription tier
+	type tierStat struct {
 		Tier       string  `json:"tier"`
 		Count      int64   `json:"count"`
 		Percentage float64 `json:"percentage"`
 	}
-	
-	db.Table("organizations o").
-		Select("COALESCE(o.subscription_status, 'trial') as tier, COUNT(*) as count").
+	var orgsByTier []tierStat
+	db.Table("organizations").
+		Select("COALESCE(subscription_tier, subscription_status, 'trial') as tier, COUNT(*) as count").
 		Group("tier").
 		Scan(&orgsByTier)
-
-	// Calculate percentages
 	for i := range orgsByTier {
 		if totalOrgs > 0 {
 			orgsByTier[i].Percentage = float64(orgsByTier[i].Count) / float64(totalOrgs) * 100
 		}
 	}
 
+	// Organization distribution by status
+	type statusStat struct {
+		Status     string  `json:"status"`
+		Count      int64   `json:"count"`
+		Percentage float64 `json:"percentage"`
+	}
+	var orgsByStatus []statusStat
+	db.Table("organizations").
+		Select("COALESCE(subscription_status, 'unknown') as status, COUNT(*) as count").
+		Group("subscription_status").
+		Scan(&orgsByStatus)
+	for i := range orgsByStatus {
+		if totalOrgs > 0 {
+			orgsByStatus[i].Percentage = float64(orgsByStatus[i].Count) / float64(totalOrgs) * 100
+		}
+	}
+
+	// Organization distribution by user count bucket
+	type userCountStat struct {
+		Range      string  `json:"range"`
+		Count      int64   `json:"count"`
+		Percentage float64 `json:"percentage"`
+	}
+	var orgsByUserCount []userCountStat
+	db.Raw(`
+		SELECT bucket as range, COUNT(*) as count FROM (
+			SELECT o.id,
+				CASE
+					WHEN uc.cnt <= 5 THEN '1-5'
+					WHEN uc.cnt <= 25 THEN '6-25'
+					WHEN uc.cnt <= 100 THEN '26-100'
+					ELSE '100+'
+				END as bucket
+			FROM organizations o
+			LEFT JOIN (
+				SELECT organization_id, COUNT(*) as cnt FROM users GROUP BY organization_id
+			) uc ON uc.organization_id = o.id
+		) t GROUP BY bucket ORDER BY MIN(CASE bucket WHEN '1-5' THEN 1 WHEN '6-25' THEN 2 WHEN '26-100' THEN 3 ELSE 4 END)
+	`).Scan(&orgsByUserCount)
+	for i := range orgsByUserCount {
+		if totalOrgs > 0 {
+			orgsByUserCount[i].Percentage = float64(orgsByUserCount[i].Count) / float64(totalOrgs) * 100
+		}
+	}
+
+	// Trial metrics
+	var trialOrgs int64
+	db.Table("organizations").Where("subscription_status = ?", "trial").Count(&trialOrgs)
+
+	// Trials expiring in next 7 days
+	var trialsExpiringSoon int64
+	db.Table("organizations").
+		Where("subscription_status = ? AND trial_ends_at >= ? AND trial_ends_at <= ?",
+			"trial", time.Now(), time.Now().Add(7*24*time.Hour)).
+		Count(&trialsExpiringSoon)
+
+	// Average trial duration (days) for converted orgs
+	var avgTrialDuration float64
+	db.Table("organizations").
+		Where("subscription_status != ? AND trial_ends_at IS NOT NULL AND created_at IS NOT NULL", "trial").
+		Select("COALESCE(AVG(EXTRACT(EPOCH FROM (trial_ends_at - created_at)) / 86400), 14)").
+		Scan(&avgTrialDuration)
+	if avgTrialDuration == 0 {
+		avgTrialDuration = 14 // default 14-day trial
+	}
+
+	// Trial conversion rate: orgs that left trial / total that started trial
+	var convertedFromTrial int64
+	db.Table("organizations").
+		Where("subscription_status IN (?) AND trial_ends_at IS NOT NULL", []string{"active", "cancelled"}).
+		Count(&convertedFromTrial)
+	trialConversionRate := 0.0
+	totalTrialEver := trialOrgs + convertedFromTrial
+	if totalTrialEver > 0 {
+		trialConversionRate = float64(convertedFromTrial) / float64(totalTrialEver) * 100
+	}
+
+	// New org trend metric: orgs created in past 7 days
+	var newOrgsThisWeek int64
+	db.Table("organizations").Where("created_at > ?", sevenDaysAgo).Count(&newOrgsThisWeek)
+
 	analytics := map[string]interface{}{
-		"total_organizations":     totalOrgs,
-		"active_organizations":    activeOrgs,
-		"new_organizations":       newOrgs,
-		"organization_growth_trend": orgGrowthTrend,
-		"organizations_by_tier":   orgsByTier,
-		"generated_at":           time.Now(),
+		"total_organizations":          totalOrgs,
+		"active_organizations":         activeOrgs,
+		"new_organizations_this_period": newOrgs,
+		"organization_growth_trend":    orgGrowthTrend,
+		"organization_distribution": map[string]interface{}{
+			"by_subscription_tier": orgsByTier,
+			"by_status":            orgsByStatus,
+			"by_user_count":        orgsByUserCount,
+		},
+		"trial_metrics": map[string]interface{}{
+			"trial_organizations":    trialOrgs,
+			"trial_conversion_rate":  trialConversionRate,
+			"average_trial_duration": avgTrialDuration,
+			"trials_expiring_soon":   trialsExpiringSoon,
+		},
 	}
 
 	return utils.SendSimpleSuccess(c, analytics, "Organization analytics retrieved successfully")
@@ -548,19 +693,50 @@ func GetAdminRevenueAnalytics(c *fiber.Ctx) error {
 		ltv = arpu * 12 // Assume 12 month lifetime if no churn
 	}
 	
+	// Build revenue trend (last 30 days, sampled every 3 days)
+	var revenueTrend []map[string]interface{}
+	for i := 30; i >= 0; i -= 3 {
+		date := time.Now().AddDate(0, 0, -i)
+		dateStr := date.Format("2006-01-02")
+		dayStart := date.Truncate(24 * time.Hour)
+		dayEnd := dayStart.Add(24 * time.Hour)
+
+		var dayRevenue, dayNew, dayChurn float64
+		db.Table("payments").
+			Where("payment_status = ? AND paid_at >= ? AND paid_at < ?", "completed", dayStart, dayEnd).
+			Select("COALESCE(SUM(amount), 0)").
+			Scan(&dayRevenue)
+		db.Table("payments").
+			Where("payment_status = ? AND payment_type = ? AND paid_at >= ? AND paid_at < ?", "completed", "new", dayStart, dayEnd).
+			Select("COALESCE(SUM(amount), 0)").
+			Scan(&dayNew)
+		db.Table("payments").
+			Where("payment_status = ? AND payment_type = ? AND paid_at >= ? AND paid_at < ?", "completed", "refund", dayStart, dayEnd).
+			Select("COALESCE(SUM(amount), 0)").
+			Scan(&dayChurn)
+
+		revenueTrend = append(revenueTrend, map[string]interface{}{
+			"date":          dateStr,
+			"revenue":       dayRevenue,
+			"mrr":           mrr / 30,
+			"new_revenue":   dayNew,
+			"churn_revenue": dayChurn,
+		})
+	}
+
 	analytics := map[string]interface{}{
 		"total_revenue":             totalRevenue,
 		"monthly_recurring_revenue": mrr,
 		"annual_recurring_revenue":  arr,
 		"revenue_growth_rate":       revenueGrowthRate,
+		"revenue_trend":             revenueTrend,
 		"revenue_by_tier":           revenueByTierWithPercentage,
 		"financial_metrics": map[string]interface{}{
 			"average_revenue_per_user": arpu,
 			"customer_lifetime_value":  ltv,
 			"churn_rate":              churnRate,
-			"net_revenue_retention":   100 + revenueGrowthRate, // Simplified calculation
+			"net_revenue_retention":   100 + revenueGrowthRate,
 		},
-		"generated_at": time.Now(),
 	}
 
 	return utils.SendSimpleSuccess(c, analytics, "Revenue analytics retrieved successfully")

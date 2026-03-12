@@ -81,16 +81,16 @@ export function RevenueAnalyticsChart({
     }).format(amount);
   };
 
-  const revenueChartData = analytics.revenue_trend.map((point) => ({
+  const revenueChartData = (analytics.revenue_trend ?? []).map((point) => ({
     date: new Date(point.date).toLocaleDateString([], {
       month: "short",
       day: "numeric",
     }),
-    revenue: point.revenue,
-    mrr: point.mrr,
-    newRevenue: point.new_revenue,
-    churnRevenue: point.churn_revenue,
-    netRevenue: point.new_revenue - point.churn_revenue,
+    revenue: point.revenue ?? 0,
+    mrr: point.mrr ?? 0,
+    newRevenue: point.new_revenue ?? 0,
+    churnRevenue: point.churn_revenue ?? 0,
+    netRevenue: (point.new_revenue ?? 0) - (point.churn_revenue ?? 0),
   }));
 
   const CustomTooltip = ({ active, payload, label }: any) => {
@@ -120,13 +120,13 @@ export function RevenueAnalyticsChart({
           </CardTitle>
           <div className="flex items-center gap-2">
             <Badge variant="outline" className="text-xs">
-              Total: {formatCurrency(analytics.total_revenue)}
+              Total: {formatCurrency(analytics.total_revenue ?? 0)}
             </Badge>
             <Badge variant="outline" className="text-xs">
-              MRR: {formatCurrency(analytics.monthly_recurring_revenue)}
+              MRR: {formatCurrency(analytics.monthly_recurring_revenue ?? 0)}
             </Badge>
             <Badge variant="outline" className="text-xs">
-              ARR: {formatCurrency(analytics.annual_recurring_revenue)}
+              ARR: {formatCurrency(analytics.annual_recurring_revenue ?? 0)}
             </Badge>
           </div>
         </CardHeader>
@@ -192,16 +192,16 @@ export function RevenueAnalyticsChart({
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
-                  data={analytics.revenue_by_tier}
+                  data={analytics.revenue_by_tier ?? []}
                   cx="50%"
                   cy="50%"
                   labelLine={false}
-                  label={({ tier, percentage }) => `${tier}: ${percentage}%`}
+                  label={({ tier, percentage }) => `${tier}: ${percentage ?? 0}%`}
                   outerRadius={80}
                   fill="#8884d8"
                   dataKey="revenue"
                 >
-                  {analytics.revenue_by_tier.map((entry, index) => (
+                  {(analytics.revenue_by_tier ?? []).map((entry, index) => (
                     <Cell
                       key={`cell-${index}`}
                       fill={COLORS[index % COLORS.length]}
@@ -213,7 +213,7 @@ export function RevenueAnalyticsChart({
             </ResponsiveContainer>
           </div>
           <div className="space-y-2 mt-4">
-            {analytics.revenue_by_tier.map((tier, index) => (
+            {(analytics.revenue_by_tier ?? []).map((tier, index) => (
               <div
                 key={tier.tier}
                 className="flex items-center justify-between text-sm"
@@ -227,10 +227,10 @@ export function RevenueAnalyticsChart({
                 </div>
                 <div className="text-right">
                   <div className="font-medium">
-                    {formatCurrency(tier.revenue)}
+                    {formatCurrency(tier.revenue ?? 0)}
                   </div>
                   <div className="text-xs text-muted-foreground">
-                    {tier.subscriber_count} subscribers
+                    {tier.subscriber_count ?? 0} subscribers
                   </div>
                 </div>
               </div>
@@ -253,7 +253,7 @@ export function RevenueAnalyticsChart({
               <span className="text-sm text-muted-foreground">ARPU</span>
               <span className="font-medium">
                 {formatCurrencyDetailed(
-                  analytics.financial_metrics.average_revenue_per_user,
+                  analytics.financial_metrics?.average_revenue_per_user ?? 0,
                 )}
               </span>
             </div>
@@ -263,7 +263,7 @@ export function RevenueAnalyticsChart({
               </span>
               <span className="font-medium">
                 {formatCurrency(
-                  analytics.financial_metrics.customer_lifetime_value,
+                  analytics.financial_metrics?.customer_lifetime_value ?? 0,
                 )}
               </span>
             </div>
@@ -271,20 +271,20 @@ export function RevenueAnalyticsChart({
               <span className="text-sm text-muted-foreground">Churn Rate</span>
               <div className="text-right">
                 <span
-                  className={`font-medium ${analytics.financial_metrics.churn_rate <= 5 ? "text-green-600" : "text-red-600"}`}
+                  className={`font-medium ${(analytics.financial_metrics?.churn_rate ?? 0) <= 5 ? "text-green-600" : "text-red-600"}`}
                 >
-                  {analytics.financial_metrics.churn_rate.toFixed(1)}%
+                  {(analytics.financial_metrics?.churn_rate ?? 0).toFixed(1)}%
                 </span>
                 <div className="text-xs text-muted-foreground">
                   <Badge
                     variant={
-                      analytics.financial_metrics.churn_rate <= 5
+                      (analytics.financial_metrics?.churn_rate ?? 0) <= 5
                         ? "default"
                         : "destructive"
                     }
                     className="text-xs"
                   >
-                    {analytics.financial_metrics.churn_rate <= 5
+                    {(analytics.financial_metrics?.churn_rate ?? 0) <= 5
                       ? "Healthy"
                       : "High"}
                   </Badge>
@@ -297,21 +297,21 @@ export function RevenueAnalyticsChart({
               </span>
               <div className="text-right">
                 <span
-                  className={`font-medium ${analytics.financial_metrics.net_revenue_retention >= 100 ? "text-green-600" : "text-red-600"}`}
+                  className={`font-medium ${(analytics.financial_metrics?.net_revenue_retention ?? 0) >= 100 ? "text-green-600" : "text-red-600"}`}
                 >
-                  {analytics.financial_metrics.net_revenue_retention.toFixed(1)}
+                  {(analytics.financial_metrics?.net_revenue_retention ?? 0).toFixed(1)}
                   %
                 </span>
                 <div className="text-xs text-muted-foreground">
                   <Badge
                     variant={
-                      analytics.financial_metrics.net_revenue_retention >= 100
+                      (analytics.financial_metrics?.net_revenue_retention ?? 0) >= 100
                         ? "default"
                         : "destructive"
                     }
                     className="text-xs"
                   >
-                    {analytics.financial_metrics.net_revenue_retention >= 100
+                    {(analytics.financial_metrics?.net_revenue_retention ?? 0) >= 100
                       ? "Growing"
                       : "Declining"}
                   </Badge>
@@ -334,14 +334,14 @@ export function RevenueAnalyticsChart({
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
             <div className="text-center">
               <div className="text-2xl font-bold text-blue-600">
-                {formatCurrency(analytics.total_revenue)}
+                {formatCurrency(analytics.total_revenue ?? 0)}
               </div>
               <div className="text-sm text-muted-foreground">Total Revenue</div>
             </div>
 
             <div className="text-center">
               <div className="text-2xl font-bold text-green-600">
-                {formatCurrency(analytics.monthly_recurring_revenue)}
+                {formatCurrency(analytics.monthly_recurring_revenue ?? 0)}
               </div>
               <div className="text-sm text-muted-foreground">
                 Monthly Recurring Revenue
@@ -350,7 +350,7 @@ export function RevenueAnalyticsChart({
 
             <div className="text-center">
               <div className="text-2xl font-bold text-purple-600">
-                {formatCurrency(analytics.annual_recurring_revenue)}
+                {formatCurrency(analytics.annual_recurring_revenue ?? 0)}
               </div>
               <div className="text-sm text-muted-foreground">
                 Annual Recurring Revenue
@@ -359,10 +359,10 @@ export function RevenueAnalyticsChart({
 
             <div className="text-center">
               <div
-                className={`text-2xl font-bold ${analytics.revenue_growth_rate >= 0 ? "text-green-600" : "text-red-600"}`}
+                className={`text-2xl font-bold ${(analytics.revenue_growth_rate ?? 0) >= 0 ? "text-green-600" : "text-red-600"}`}
               >
-                {analytics.revenue_growth_rate >= 0 ? "+" : ""}
-                {analytics.revenue_growth_rate.toFixed(1)}%
+                {(analytics.revenue_growth_rate ?? 0) >= 0 ? "+" : ""}
+                {(analytics.revenue_growth_rate ?? 0).toFixed(1)}%
               </div>
               <div className="text-sm text-muted-foreground">Growth Rate</div>
             </div>
@@ -402,21 +402,21 @@ export function RevenueAnalyticsChart({
                 Revenue Health
               </div>
               <Progress
-                value={Math.min(analytics.revenue_growth_rate + 50, 100)}
+                value={Math.min((analytics.revenue_growth_rate ?? 0) + 50, 100)}
                 className="w-full h-2 mb-2"
               />
               <Badge
                 variant={
-                  analytics.revenue_growth_rate > 10
+                  (analytics.revenue_growth_rate ?? 0) > 10
                     ? "default"
-                    : analytics.revenue_growth_rate > 0
+                    : (analytics.revenue_growth_rate ?? 0) > 0
                       ? "secondary"
                       : "destructive"
                 }
               >
-                {analytics.revenue_growth_rate > 10
+                {(analytics.revenue_growth_rate ?? 0) > 10
                   ? "Excellent"
-                  : analytics.revenue_growth_rate > 0
+                  : (analytics.revenue_growth_rate ?? 0) > 0
                     ? "Good"
                     : "Needs Attention"}
               </Badge>
@@ -427,21 +427,21 @@ export function RevenueAnalyticsChart({
                 Retention Health
               </div>
               <Progress
-                value={analytics.financial_metrics.net_revenue_retention}
+                value={analytics.financial_metrics?.net_revenue_retention ?? 0}
                 className="w-full h-2 mb-2"
               />
               <Badge
                 variant={
-                  analytics.financial_metrics.net_revenue_retention >= 110
+                  (analytics.financial_metrics?.net_revenue_retention ?? 0) >= 110
                     ? "default"
-                    : analytics.financial_metrics.net_revenue_retention >= 100
+                    : (analytics.financial_metrics?.net_revenue_retention ?? 0) >= 100
                       ? "secondary"
                       : "destructive"
                 }
               >
-                {analytics.financial_metrics.net_revenue_retention >= 110
+                {(analytics.financial_metrics?.net_revenue_retention ?? 0) >= 110
                   ? "Excellent"
-                  : analytics.financial_metrics.net_revenue_retention >= 100
+                  : (analytics.financial_metrics?.net_revenue_retention ?? 0) >= 100
                     ? "Good"
                     : "At Risk"}
               </Badge>
@@ -453,23 +453,23 @@ export function RevenueAnalyticsChart({
               </div>
               <Progress
                 value={Math.max(
-                  100 - analytics.financial_metrics.churn_rate * 10,
+                  100 - (analytics.financial_metrics?.churn_rate ?? 0) * 10,
                   0,
                 )}
                 className="w-full h-2 mb-2"
               />
               <Badge
                 variant={
-                  analytics.financial_metrics.churn_rate <= 3
+                  (analytics.financial_metrics?.churn_rate ?? 0) <= 3
                     ? "default"
-                    : analytics.financial_metrics.churn_rate <= 7
+                    : (analytics.financial_metrics?.churn_rate ?? 0) <= 7
                       ? "secondary"
                       : "destructive"
                 }
               >
-                {analytics.financial_metrics.churn_rate <= 3
+                {(analytics.financial_metrics?.churn_rate ?? 0) <= 3
                   ? "Excellent"
-                  : analytics.financial_metrics.churn_rate <= 7
+                  : (analytics.financial_metrics?.churn_rate ?? 0) <= 7
                     ? "Good"
                     : "High"}
               </Badge>

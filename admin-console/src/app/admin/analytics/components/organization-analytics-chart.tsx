@@ -63,7 +63,7 @@ export function OrganizationAnalyticsChart({
     );
   }
 
-  const growthChartData = analytics.organization_growth_trend.map((point) => ({
+  const growthChartData = (analytics.organization_growth_trend ?? []).map((point) => ({
     date: new Date(point.date).toLocaleDateString([], {
       month: "short",
       day: "numeric",
@@ -100,11 +100,11 @@ export function OrganizationAnalyticsChart({
           </CardTitle>
           <div className="flex items-center gap-2">
             <Badge variant="outline" className="text-xs">
-              Total: {analytics.total_organizations.toLocaleString()}
+              Total: {(analytics.total_organizations ?? 0).toLocaleString()}
             </Badge>
             <Badge variant="outline" className="text-xs">
               New this period:{" "}
-              {analytics.new_organizations_this_period.toLocaleString()}
+              {(analytics.new_organizations_this_period ?? 0).toLocaleString()}
             </Badge>
           </div>
         </CardHeader>
@@ -167,7 +167,7 @@ export function OrganizationAnalyticsChart({
               <PieChart>
                 <Pie
                   data={
-                    analytics.organization_distribution.by_subscription_tier
+                    analytics.organization_distribution?.by_subscription_tier ?? []
                   }
                   cx="50%"
                   cy="50%"
@@ -177,7 +177,7 @@ export function OrganizationAnalyticsChart({
                   fill="#8884d8"
                   dataKey="count"
                 >
-                  {analytics.organization_distribution.by_subscription_tier.map(
+                  {(analytics.organization_distribution?.by_subscription_tier ?? []).map(
                     (entry, index) => (
                       <Cell
                         key={`cell-${index}`}
@@ -191,7 +191,7 @@ export function OrganizationAnalyticsChart({
             </ResponsiveContainer>
           </div>
           <div className="space-y-2 mt-4">
-            {analytics.organization_distribution.by_subscription_tier.map(
+            {(analytics.organization_distribution?.by_subscription_tier ?? []).map(
               (tier, index) => (
                 <div
                   key={tier.tier}
@@ -226,7 +226,7 @@ export function OrganizationAnalyticsChart({
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
-                data={analytics.organization_distribution.by_user_count}
+                data={analytics.organization_distribution?.by_user_count ?? []}
               >
                 <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                 <XAxis
@@ -241,7 +241,7 @@ export function OrganizationAnalyticsChart({
             </ResponsiveContainer>
           </div>
           <div className="grid grid-cols-1 gap-2 mt-4 text-sm">
-            {analytics.organization_distribution.by_user_count.map((size) => (
+            {(analytics.organization_distribution?.by_user_count ?? []).map((size) => (
               <div
                 key={size.range}
                 className="flex items-center justify-between"
@@ -271,24 +271,26 @@ export function OrganizationAnalyticsChart({
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="text-center">
               <div className="text-2xl font-bold text-blue-600">
-                {analytics.trial_metrics.trial_organizations.toLocaleString()}
+                {(analytics.trial_metrics?.trial_organizations ?? 0).toLocaleString()}
               </div>
               <div className="text-sm text-muted-foreground">
                 Organizations on Trial
               </div>
               <div className="text-xs text-muted-foreground mt-1">
-                {(
-                  (analytics.trial_metrics.trial_organizations /
-                    analytics.total_organizations) *
-                  100
-                ).toFixed(1)}
+                {analytics.total_organizations
+                  ? (
+                      ((analytics.trial_metrics?.trial_organizations ?? 0) /
+                        analytics.total_organizations) *
+                      100
+                    ).toFixed(1)
+                  : "0.0"}
                 % of total
               </div>
             </div>
 
             <div className="text-center">
               <div className="text-2xl font-bold text-green-600">
-                {analytics.trial_metrics.trial_conversion_rate.toFixed(1)}%
+                {(analytics.trial_metrics?.trial_conversion_rate ?? 0).toFixed(1)}%
               </div>
               <div className="text-sm text-muted-foreground">
                 Trial Conversion Rate
@@ -296,12 +298,12 @@ export function OrganizationAnalyticsChart({
               <div className="text-xs text-muted-foreground mt-1">
                 <Badge
                   variant={
-                    analytics.trial_metrics.trial_conversion_rate > 20
+                    (analytics.trial_metrics?.trial_conversion_rate ?? 0) > 20
                       ? "default"
                       : "secondary"
                   }
                 >
-                  {analytics.trial_metrics.trial_conversion_rate > 20
+                  {(analytics.trial_metrics?.trial_conversion_rate ?? 0) > 20
                     ? "Good"
                     : "Needs Improvement"}
                 </Badge>
@@ -310,7 +312,7 @@ export function OrganizationAnalyticsChart({
 
             <div className="text-center">
               <div className="text-2xl font-bold text-purple-600">
-                {analytics.trial_metrics.average_trial_duration.toFixed(0)} days
+                {(analytics.trial_metrics?.average_trial_duration ?? 0).toFixed(0)} days
               </div>
               <div className="text-sm text-muted-foreground">
                 Avg Trial Duration
@@ -322,18 +324,18 @@ export function OrganizationAnalyticsChart({
 
             <div className="text-center">
               <div className="text-2xl font-bold text-orange-600">
-                {analytics.trial_metrics.trials_expiring_soon.toLocaleString()}
+                {(analytics.trial_metrics?.trials_expiring_soon ?? 0).toLocaleString()}
               </div>
               <div className="text-sm text-muted-foreground">Expiring Soon</div>
               <div className="text-xs text-muted-foreground mt-1">
                 <Badge
                   variant={
-                    analytics.trial_metrics.trials_expiring_soon > 0
+                    (analytics.trial_metrics?.trials_expiring_soon ?? 0) > 0
                       ? "destructive"
                       : "default"
                   }
                 >
-                  {analytics.trial_metrics.trials_expiring_soon > 0
+                  {(analytics.trial_metrics?.trials_expiring_soon ?? 0) > 0
                     ? "Action Needed"
                     : "All Good"}
                 </Badge>
@@ -352,7 +354,7 @@ export function OrganizationAnalyticsChart({
                 <div className="flex items-center gap-2">
                   <Progress value={100} className="w-32 h-2" />
                   <span className="text-sm font-medium w-16 text-right">
-                    {analytics.trial_metrics.trial_organizations}
+                    {(analytics.trial_metrics?.trial_organizations ?? 0)}
                   </span>
                 </div>
               </div>
@@ -363,7 +365,7 @@ export function OrganizationAnalyticsChart({
                   <Progress value={85} className="w-32 h-2" />
                   <span className="text-sm font-medium w-16 text-right">
                     {Math.round(
-                      analytics.trial_metrics.trial_organizations * 0.85,
+                      (analytics.trial_metrics?.trial_organizations ?? 0) * 0.85,
                     )}
                   </span>
                 </div>
@@ -373,13 +375,13 @@ export function OrganizationAnalyticsChart({
                 <span className="text-sm">Converted to Paid</span>
                 <div className="flex items-center gap-2">
                   <Progress
-                    value={analytics.trial_metrics.trial_conversion_rate}
+                    value={(analytics.trial_metrics?.trial_conversion_rate ?? 0)}
                     className="w-32 h-2"
                   />
                   <span className="text-sm font-medium w-16 text-right">
                     {Math.round(
-                      analytics.trial_metrics.trial_organizations *
-                        (analytics.trial_metrics.trial_conversion_rate / 100),
+                      (analytics.trial_metrics?.trial_organizations ?? 0) *
+                        ((analytics.trial_metrics?.trial_conversion_rate ?? 0) / 100),
                     )}
                   </span>
                 </div>

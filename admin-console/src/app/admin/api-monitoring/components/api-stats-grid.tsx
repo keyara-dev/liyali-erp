@@ -75,26 +75,26 @@ export function APIStatsGrid({ stats, isLoading }: APIStatsGridProps) {
     );
   }
 
-  const categoryData = stats.endpoints_by_category.map((item) => ({
+  const categoryData = (stats.endpoints_by_category ?? []).map((item) => ({
     name: item.category,
-    value: item.count,
-    percentage: item.percentage,
+    value: item.count ?? 0,
+    percentage: item.percentage ?? 0,
   }));
 
-  const methodData = stats.requests_by_method.map((item) => ({
+  const methodData = (stats.requests_by_method ?? []).map((item) => ({
     name: item.method,
-    value: item.count,
-    percentage: item.percentage,
+    value: item.count ?? 0,
+    percentage: item.percentage ?? 0,
   }));
 
-  const errorData = stats.error_distribution.map((item) => ({
-    name: item.status_code.toString(),
-    value: item.count,
-    percentage: item.percentage,
+  const errorData = (stats.error_distribution ?? []).map((item) => ({
+    name: (item.status_code ?? 0).toString(),
+    value: item.count ?? 0,
+    percentage: item.percentage ?? 0,
   }));
 
-  const topEndpointsData = stats.top_endpoints.slice(0, 5);
-  const slowestEndpointsData = stats.slowest_endpoints.slice(0, 5);
+  const topEndpointsData = (stats.top_endpoints ?? []).slice(0, 5);
+  const slowestEndpointsData = (stats.slowest_endpoints ?? []).slice(0, 5);
 
   return (
     <div className="space-y-6">
@@ -125,14 +125,17 @@ export function APIStatsGrid({ stats, isLoading }: APIStatsGridProps) {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {stats.total_requests_today.toLocaleString()}
+              {(stats.total_requests_today ?? 0).toLocaleString()}
             </div>
             <p className="text-xs text-muted-foreground">
-              {stats.total_errors_today} errors (
-              {(
-                (stats.total_errors_today / stats.total_requests_today) *
-                100
-              ).toFixed(2)}
+              {stats.total_errors_today ?? 0} errors (
+              {stats.total_requests_today
+                ? (
+                    ((stats.total_errors_today ?? 0) /
+                      stats.total_requests_today) *
+                    100
+                  ).toFixed(2)
+                : "0.00"}
               %)
             </p>
           </CardContent>
@@ -147,7 +150,7 @@ export function APIStatsGrid({ stats, isLoading }: APIStatsGridProps) {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {stats.avg_response_time_today.toFixed(0)}ms
+              {(stats.avg_response_time_today ?? 0).toFixed(0)}ms
             </div>
             <p className="text-xs text-muted-foreground">Today's average</p>
           </CardContent>
@@ -160,7 +163,7 @@ export function APIStatsGrid({ stats, isLoading }: APIStatsGridProps) {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">
-              {stats.uptime_percentage.toFixed(2)}%
+              {(stats.uptime_percentage ?? 0).toFixed(2)}%
             </div>
             <p className="text-xs text-muted-foreground">Last 30 days</p>
           </CardContent>
@@ -173,7 +176,7 @@ export function APIStatsGrid({ stats, isLoading }: APIStatsGridProps) {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-red-600">
-              {stats.error_rate_today.toFixed(2)}%
+              {(stats.error_rate_today ?? 0).toFixed(2)}%
             </div>
             <p className="text-xs text-muted-foreground">Today's error rate</p>
           </CardContent>
@@ -204,9 +207,13 @@ export function APIStatsGrid({ stats, isLoading }: APIStatsGridProps) {
           <CardContent>
             <div className="text-2xl font-bold">{stats.public_endpoints}</div>
             <p className="text-xs text-muted-foreground">
-              {((stats.public_endpoints / stats.total_endpoints) * 100).toFixed(
-                1,
-              )}
+              {stats.total_endpoints
+                ? (
+                    ((stats.public_endpoints ?? 0) /
+                      stats.total_endpoints) *
+                    100
+                  ).toFixed(1)
+                : "0.0"}
               % of total
             </p>
           </CardContent>
@@ -222,10 +229,13 @@ export function APIStatsGrid({ stats, isLoading }: APIStatsGridProps) {
           <CardContent>
             <div className="text-2xl font-bold">{stats.private_endpoints}</div>
             <p className="text-xs text-muted-foreground">
-              {(
-                (stats.private_endpoints / stats.total_endpoints) *
-                100
-              ).toFixed(1)}
+              {stats.total_endpoints
+                ? (
+                    ((stats.private_endpoints ?? 0) /
+                      stats.total_endpoints) *
+                    100
+                  ).toFixed(1)
+                : "0.0"}
               % of total
             </p>
           </CardContent>
@@ -252,7 +262,7 @@ export function APIStatsGrid({ stats, isLoading }: APIStatsGridProps) {
                     cy="50%"
                     labelLine={false}
                     label={({ name, percentage }) =>
-                      `${name} (${percentage.toFixed(1)}%)`
+                      `${name} (${(percentage ?? 0).toFixed(1)}%)`
                     }
                     outerRadius={80}
                     fill="#8884d8"
@@ -341,13 +351,13 @@ export function APIStatsGrid({ stats, isLoading }: APIStatsGridProps) {
                     </div>
                     <div className="flex items-center gap-4 mt-1 text-xs text-muted-foreground">
                       <span>
-                        {endpoint.request_count.toLocaleString()} requests
+                        {(endpoint.request_count ?? 0).toLocaleString()} requests
                       </span>
-                      <span>{endpoint.avg_response_time.toFixed(0)}ms avg</span>
+                      <span>{(endpoint.avg_response_time ?? 0).toFixed(0)}ms avg</span>
                       <span
                         className={`${endpoint.error_rate > 5 ? "text-red-600" : "text-green-600"}`}
                       >
-                        {endpoint.error_rate.toFixed(1)}% errors
+                        {(endpoint.error_rate ?? 0).toFixed(1)}% errors
                       </span>
                     </div>
                   </div>
@@ -383,13 +393,13 @@ export function APIStatsGrid({ stats, isLoading }: APIStatsGridProps) {
                       <span className="font-mono text-sm">{endpoint.path}</span>
                     </div>
                     <div className="flex items-center gap-4 mt-1 text-xs text-muted-foreground">
-                      <span>{endpoint.avg_response_time.toFixed(0)}ms avg</span>
-                      <span>{endpoint.p95_response_time.toFixed(0)}ms p95</span>
+                      <span>{(endpoint.avg_response_time ?? 0).toFixed(0)}ms avg</span>
+                      <span>{(endpoint.p95_response_time ?? 0).toFixed(0)}ms p95</span>
                     </div>
                   </div>
                   <div className="text-right">
                     <div className="text-lg font-bold text-orange-600">
-                      {endpoint.avg_response_time.toFixed(0)}ms
+                      {(endpoint.avg_response_time ?? 0).toFixed(0)}ms
                     </div>
                   </div>
                 </div>

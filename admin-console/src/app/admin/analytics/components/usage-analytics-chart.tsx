@@ -68,8 +68,8 @@ export function UsageAnalyticsChart({
     return num.toString();
   };
 
-  const usageChartData = analytics.usage_trends.map((point) => ({
-    date: new Date(point.date).toLocaleDateString([], {
+  const usageChartData = analytics?.usage_trends?.map((point) => ({
+    date: new Date(point.date)?.toLocaleDateString([], {
       month: "short",
       day: "numeric",
     }),

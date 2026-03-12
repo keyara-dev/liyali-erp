@@ -48,9 +48,15 @@ export interface DashboardMetrics {
   total_organizations: number;
   active_organizations: number;
   trial_organizations: number;
-  expired_trials: number;
+  expiring_trials: number;
   total_users: number;
   active_users: number;
+  recent_organizations: Array<{
+    id: string;
+    name: string;
+    created_at: string;
+    status: string;
+  }>;
   system_health: {
     uptime: string;
     cpu_usage: number;

@@ -62,7 +62,7 @@ export function UserAnalyticsChart({
     );
   }
 
-  const growthChartData = analytics.user_growth_trend.map((point) => ({
+  const growthChartData = (analytics.user_growth_trend ?? [])?.map((point) => ({
     date: new Date(point.date).toLocaleDateString([], {
       month: "short",
       day: "numeric",
@@ -99,11 +99,11 @@ export function UserAnalyticsChart({
           </CardTitle>
           <div className="flex items-center gap-2">
             <Badge variant="outline" className="text-xs">
-              Total: {analytics.total_users.toLocaleString()}
+              Total: {(analytics.total_users ?? 0).toLocaleString()}
             </Badge>
             <Badge variant="outline" className="text-xs">
               New this period:{" "}
-              {analytics.new_users_this_period.toLocaleString()}
+              {(analytics.new_users_this_period ?? 0).toLocaleString()}
             </Badge>
           </div>
         </CardHeader>
@@ -165,38 +165,45 @@ export function UserAnalyticsChart({
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
-                  data={analytics.user_demographics.by_role}
+                  data={analytics.user_demographics?.by_role ?? []}
                   cx="50%"
                   cy="50%"
                   labelLine={false}
-                  label={({ name, percentage }) => `${name}: ${percentage}%`}
+                  label={({ role, percentage }) => `${role}: ${percentage}%`}
                   outerRadius={80}
                   fill="#8884d8"
                   dataKey="count"
                 >
-                  {analytics.user_demographics.by_role.map((entry, index) => (
-                    <Cell
-                      key={`cell-${index}`}
-                      fill={COLORS[index % COLORS.length]}
-                    />
-                  ))}
+                  {(analytics.user_demographics?.by_role ?? []).map(
+                    (entry, index) => (
+                      <Cell
+                        key={`cell-${index}`}
+                        fill={COLORS[index % COLORS.length]}
+                      />
+                    ),
+                  )}
                 </Pie>
                 <Tooltip />
               </PieChart>
             </ResponsiveContainer>
           </div>
           <div className="grid grid-cols-2 gap-2 mt-4">
-            {analytics.user_demographics.by_role.map((role, index) => (
-              <div key={role.role} className="flex items-center gap-2 text-sm">
+            {(analytics.user_demographics?.by_role ?? [])?.map(
+              (role, index) => (
                 <div
-                  className="w-3 h-3 rounded-full"
-                  style={{ backgroundColor: COLORS[index % COLORS.length] }}
-                />
-                <span className="capitalize">
-                  {role.role}: {role.count}
-                </span>
-              </div>
-            ))}
+                  key={role.role}
+                  className="flex items-center gap-2 text-sm"
+                >
+                  <div
+                    className="w-3 h-3 rounded-full"
+                    style={{ backgroundColor: COLORS[index % COLORS.length] }}
+                  />
+                  <span className="capitalize">
+                    {role.role}: {role.count}
+                  </span>
+                </div>
+              ),
+            )}
           </div>
         </CardContent>
       </Card>
@@ -212,7 +219,7 @@ export function UserAnalyticsChart({
         <CardContent>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={analytics.user_demographics.by_status}>
+              <BarChart data={analytics.user_demographics?.by_status ?? []}>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                 <XAxis
                   dataKey="status"
@@ -226,7 +233,7 @@ export function UserAnalyticsChart({
             </ResponsiveContainer>
           </div>
           <div className="grid grid-cols-2 gap-4 mt-4 text-sm">
-            {analytics.user_demographics.by_status.map((status) => (
+            {(analytics.user_demographics?.by_status ?? [])?.map((status) => (
               <div key={status.status} className="text-center">
                 <div className="font-medium capitalize">{status.status}</div>
                 <div className="text-muted-foreground">
@@ -250,7 +257,9 @@ export function UserAnalyticsChart({
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
             <div className="text-center">
               <div className="text-2xl font-bold text-blue-600">
-                {analytics.engagement_metrics.daily_active_users.toLocaleString()}
+                {(
+                  analytics.engagement_metrics?.daily_active_users ?? 0
+                )?.toLocaleString()}
               </div>
               <div className="text-sm text-muted-foreground">
                 Daily Active Users
@@ -258,7 +267,9 @@ export function UserAnalyticsChart({
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-green-600">
-                {analytics.engagement_metrics.weekly_active_users.toLocaleString()}
+                {(
+                  analytics.engagement_metrics?.weekly_active_users ?? 0
+                )?.toLocaleString()}
               </div>
               <div className="text-sm text-muted-foreground">
                 Weekly Active Users
@@ -266,7 +277,9 @@ export function UserAnalyticsChart({
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-purple-600">
-                {analytics.engagement_metrics.monthly_active_users.toLocaleString()}
+                {(
+                  analytics.engagement_metrics?.monthly_active_users ?? 0
+                )?.toLocaleString()}
               </div>
               <div className="text-sm text-muted-foreground">
                 Monthly Active Users
@@ -275,7 +288,8 @@ export function UserAnalyticsChart({
             <div className="text-center">
               <div className="text-2xl font-bold text-orange-600">
                 {Math.round(
-                  analytics.engagement_metrics.average_session_duration / 60,
+                  (analytics.engagement_metrics?.average_session_duration ??
+                    0) / 60,
                 )}
                 m
               </div>
@@ -285,7 +299,9 @@ export function UserAnalyticsChart({
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-red-600">
-                {analytics.engagement_metrics.sessions_per_user.toFixed(1)}
+                {(analytics.engagement_metrics?.sessions_per_user ?? 0).toFixed(
+                  1,
+                )}
               </div>
               <div className="text-sm text-muted-foreground">
                 Sessions per User
@@ -298,22 +314,26 @@ export function UserAnalyticsChart({
             <div className="text-center">
               <div className="text-sm text-muted-foreground">DAU/MAU Ratio</div>
               <div className="text-lg font-semibold">
-                {(
-                  (analytics.engagement_metrics.daily_active_users /
-                    analytics.engagement_metrics.monthly_active_users) *
-                  100
-                ).toFixed(1)}
+                {analytics.engagement_metrics?.monthly_active_users
+                  ? (
+                      ((analytics.engagement_metrics.daily_active_users ?? 0) /
+                        analytics.engagement_metrics.monthly_active_users) *
+                      100
+                    )?.toFixed(1)
+                  : "0.0"}
                 %
               </div>
             </div>
             <div className="text-center">
               <div className="text-sm text-muted-foreground">WAU/MAU Ratio</div>
               <div className="text-lg font-semibold">
-                {(
-                  (analytics.engagement_metrics.weekly_active_users /
-                    analytics.engagement_metrics.monthly_active_users) *
-                  100
-                ).toFixed(1)}
+                {analytics.engagement_metrics?.monthly_active_users
+                  ? (
+                      ((analytics.engagement_metrics.weekly_active_users ?? 0) /
+                        analytics.engagement_metrics.monthly_active_users) *
+                      100
+                    ).toFixed(1)
+                  : "0.0"}
                 %
               </div>
             </div>
@@ -322,10 +342,12 @@ export function UserAnalyticsChart({
                 User Activation
               </div>
               <div className="text-lg font-semibold">
-                {(
-                  (analytics.active_users / analytics.total_users) *
-                  100
-                ).toFixed(1)}
+                {analytics.total_users
+                  ? (
+                      ((analytics.active_users ?? 0) / analytics.total_users) *
+                      100
+                    ).toFixed(1)
+                  : "0.0"}
                 %
               </div>
             </div>
