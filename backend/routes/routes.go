@@ -486,6 +486,7 @@ func SetupRoutes(app *fiber.App, handlerRegistry *handlers.HandlerRegistry, rbac
 	adminOrgs.Get("/:id/activity", handlers.AdminGetOrganizationActivity)
 	adminOrgs.Get("/:id/trial/status", handlers.AdminGetOrgTrialStatus)
 	adminOrgs.Get("/:id/subscription", handlers.AdminGetOrgSubscription)
+	adminOrgs.Get("/:id/subscription/history", handlers.GetOrganizationSubscriptionHistory)
 	adminOrgs.Post("/:id/trial/reset", handlers.AdminResetOrganizationTrial)
 	adminOrgs.Post("/:id/trial/extend", handlers.AdminExtendOrganizationTrial)
 	// Note: /:id/change-tier, /:id/override-limits already registered above via subscription handlers

@@ -507,3 +507,56 @@ func GetSubscriptionAnalytics(c *fiber.Ctx) error {
 	return utils.SendSimpleSuccess(c, analytics, "Subscription analytics retrieved successfully")
 }
 
+// GetOrganizationSubscriptionHistory returns paginated subscription audit history for an organization.
+// GET /api/v1/admin/organizations/:id/subscription/history
+func GetOrganizationSubscriptionHistory(c *fiber.Ctx) error {
+	db := config.DB
+	orgID := c.Params("id")
+
+	// Verify org exists
+	var orgCount int64
+	db.Table("organizations").Where("id = ?", orgID).Count(&orgCount)
+	if orgCount == 0 {
+		return utils.SendNotFound(c, "Organization not found")
+	}
+
+	page := c.QueryInt("page", 1)
+	limit := c.QueryInt("limit", 20)
+	if limit > 100 {
+		limit = 100
+	}
+	offset := (page - 1) * limit
+
+	var total int64
+	db.Model(&models.SubscriptionAuditLog{}).Where("organization_id = ?", orgID).Count(&total)
+
+	var logs []models.SubscriptionAuditLog
+	if err := db.Where("organization_id = ?", orgID).
+		Order("performed_at DESC").
+		Offset(offset).
+		Limit(limit).
+		Find(&logs).Error; err != nil {
+		log.Printf("Error fetching subscription history: %v", err)
+		return utils.SendInternalError(c, "Failed to fetch subscription history", err)
+	}
+
+	totalPages := int(total) / limit
+	if int(total)%limit != 0 {
+		totalPages++
+	}
+
+	return c.JSON(fiber.Map{
+		"success": true,
+		"message": "Subscription history retrieved successfully",
+		"data":    logs,
+		"pagination": fiber.Map{
+			"total":       total,
+			"page":        page,
+			"page_size":   limit,
+			"total_pages": totalPages,
+			"has_next":    page < totalPages,
+			"has_prev":    page > 1,
+		},
+	})
+}
+

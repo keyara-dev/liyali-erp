@@ -695,14 +695,19 @@ func AdminDeleteOrganization(c *fiber.Ctx) error {
 }
 
 // AdminResetOrganizationTrial resets the trial for an organization back to a fresh start.
+// Accepts optional trial_days (defaults to 14). Clears grace_period_ends_at.
 func AdminResetOrganizationTrial(c *fiber.Ctx) error {
 	db := config.DB
 	orgID := c.Params("id")
 
 	var req struct {
-		Reason string `json:"reason"`
+		TrialDays int    `json:"trial_days"`
+		Reason    string `json:"reason"`
 	}
 	_ = c.BodyParser(&req)
+	if req.TrialDays <= 0 {
+		req.TrialDays = 14
+	}
 
 	var existingCount int64
 	db.Table("organizations").Where("id = ?", orgID).Count(&existingCount)
@@ -711,30 +716,45 @@ func AdminResetOrganizationTrial(c *fiber.Ctx) error {
 	}
 
 	now := time.Now()
-	trialEnd := now.AddDate(0, 0, 14) // reset to 14-day trial
+	trialEnd := now.AddDate(0, 0, req.TrialDays)
+	performedBy, _ := c.Locals("userID").(string)
 
 	if err := db.Table("organizations").Where("id = ?", orgID).Updates(map[string]interface{}{
-		"subscription_status": "trial",
-		"trial_start_date":    now,
-		"trial_end_date":      trialEnd,
-		"updated_at":          now,
+		"subscription_status":  "trial",
+		"trial_start_date":     now,
+		"trial_end_date":       trialEnd,
+		"grace_period_ends_at": nil,
+		"updated_at":           now,
 	}).Error; err != nil {
 		return utils.SendInternalError(c, "Failed to reset trial", err)
 	}
 
+	// Write to generic audit log
 	db.Table("admin_audit_logs").Create(map[string]interface{}{
 		"id":              utils.GenerateID(),
 		"action":          "organization_trial_reset",
-		"admin_user_id":   c.Locals("userID"),
+		"admin_user_id":   performedBy,
 		"organization_id": orgID,
-		"description":     fmt.Sprintf("Trial reset. Reason: %s", req.Reason),
+		"description":     fmt.Sprintf("Trial reset to %d days. Reason: %s", req.TrialDays, req.Reason),
 		"created_at":      now,
+	})
+
+	// Write to subscription audit log for history tracking
+	newStatus := "trial"
+	db.Table("subscription_audit_logs").Create(map[string]interface{}{
+		"organization_id": orgID,
+		"action":          "trial_reset",
+		"new_status":      &newStatus,
+		"metadata":        map[string]interface{}{"trial_days": req.TrialDays, "reason": req.Reason, "new_trial_start": now.Format(time.RFC3339), "new_trial_end": trialEnd.Format(time.RFC3339)},
+		"performed_by":    &performedBy,
+		"performed_at":    now,
 	})
 
 	return utils.SendSimpleSuccess(c, map[string]interface{}{
 		"organization_id": orgID,
 		"trial_start":     now,
 		"trial_end":       trialEnd,
+		"trial_days":      req.TrialDays,
 	}, "Trial reset successfully")
 }
 
@@ -779,13 +799,26 @@ func AdminExtendOrganizationTrial(c *fiber.Ctx) error {
 		return utils.SendInternalError(c, "Failed to extend trial", err)
 	}
 
+	performedBy, _ := c.Locals("userID").(string)
+
 	db.Table("admin_audit_logs").Create(map[string]interface{}{
 		"id":              utils.GenerateID(),
 		"action":          "organization_trial_extended",
-		"admin_user_id":   c.Locals("userID"),
+		"admin_user_id":   performedBy,
 		"organization_id": orgID,
 		"description":     fmt.Sprintf("Trial extended by %d days. Reason: %s", req.DaysToAdd, req.Reason),
 		"created_at":      now,
+	})
+
+	// Write to subscription audit log for history tracking
+	newStatus := "trial"
+	db.Table("subscription_audit_logs").Create(map[string]interface{}{
+		"organization_id": orgID,
+		"action":          "trial_extended",
+		"new_status":      &newStatus,
+		"metadata":        map[string]interface{}{"days_added": req.DaysToAdd, "reason": req.Reason, "new_trial_end": newEnd.Format(time.RFC3339)},
+		"performed_by":    &performedBy,
+		"performed_at":    now,
 	})
 
 	return utils.SendSimpleSuccess(c, map[string]interface{}{

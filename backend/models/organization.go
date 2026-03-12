@@ -22,6 +22,12 @@ type Organization struct {
 	Active bool   `gorm:"default:true" json:"active"`
 	Tier   string `gorm:"column:subscription_tier;default:starter" json:"tier"` // starter, pro, custom
 
+	// Subscription & Trial (columns exist in DB; must be declared here to avoid GORM silent drops)
+	SubscriptionStatus string     `gorm:"column:subscription_status;default:trial" json:"subscriptionStatus"`
+	TrialStartDate     *time.Time `gorm:"column:trial_start_date" json:"trialStartDate,omitempty"`
+	TrialEndDate       *time.Time `gorm:"column:trial_end_date" json:"trialEndDate,omitempty"`
+	GracePeriodEndsAt  *time.Time `gorm:"column:grace_period_ends_at" json:"gracePeriodEndsAt,omitempty"`
+
 	// Relationships
 	CreatedBy string `json:"createdBy"`
 	Creator   *User  `gorm:"foreignKey:CreatedBy" json:"creator,omitempty"`

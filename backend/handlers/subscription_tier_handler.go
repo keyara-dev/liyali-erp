@@ -274,6 +274,18 @@ func ChangeOrganizationTier(c *fiber.Ctx) error {
 	}
 	db.Table("admin_audit_logs").Create(auditLog)
 
+	// Also write to subscription audit log for history tracking
+	adminUserIDStr, _ := adminUserID.(string)
+	db.Table("subscription_audit_logs").Create(map[string]interface{}{
+		"organization_id": orgID,
+		"action":          "tier_changed",
+		"old_status":      &oldTier,
+		"new_status":      &request.NewTier,
+		"metadata":        map[string]interface{}{"reason": request.Reason, "changed_by": adminUserIDStr},
+		"performed_by":    &adminUserIDStr,
+		"performed_at":    time.Now(),
+	})
+
 	// Clear caches for this organization
 	cache.GetCache().ClearPrefix(fmt.Sprintf("feature:%s:", orgID))
 	cache.GetCache().ClearPrefix(fmt.Sprintf("limits:%s", orgID))

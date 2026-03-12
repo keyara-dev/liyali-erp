@@ -490,3 +490,28 @@ export async function getOrganizationAuditLogs(
     return handleError(error);
   }
 }
+
+/**
+ * Get subscription change history for an organization
+ */
+export async function getOrganizationSubscriptionHistory(
+  organizationId: string,
+  params?: { page?: number; limit?: number },
+): Promise<APIResponse<any[]>> {
+  const searchParams = new URLSearchParams();
+  if (params?.page) searchParams.set("page", String(params.page));
+  if (params?.limit) searchParams.set("limit", String(params.limit));
+  const query = searchParams.toString();
+  const url = `/api/v1/admin/organizations/${organizationId}/subscription/history${query ? `?${query}` : ""}`;
+
+  try {
+    const response = await authenticatedApiClient({ url, method: "GET" });
+    return successResponse(
+      response?.data?.data || response?.data,
+      "Subscription history retrieved successfully",
+      response?.data?.pagination,
+    );
+  } catch (error: Error | any) {
+    return handleError(error);
+  }
+}
