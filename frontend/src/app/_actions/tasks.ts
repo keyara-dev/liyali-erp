@@ -3,6 +3,7 @@
 import { APIResponse } from "@/types";
 import {
   Task,
+  TaskType,
   TaskStatus,
   TaskStats,
 } from "@/types/tasks";
@@ -30,7 +31,14 @@ export async function getTasksForUser(
     const items: Task[] = (response.data?.data?.items || response.data?.data || []).map(
       (item: any): Task => ({
         id: item.id,
-        taskType: item.documentType?.toUpperCase() + "_APPROVAL" || "APPROVAL",
+        taskType: (() => {
+          const docType = (item.documentType || "").toLowerCase();
+          if (docType === "purchase_order" || docType === "po") return "PURCHASE_ORDER_APPROVAL";
+          if (docType === "payment_voucher" || docType === "pv") return "PAYMENT_VOUCHER_APPROVAL";
+          if (docType === "goods_received_note" || docType === "grn") return "GOODS_RECEIVED_NOTE_CONFIRMATION";
+          if (docType === "budget") return "BUDGET_APPROVAL";
+          return "REQUISITION_APPROVAL";
+        })() as TaskType,
         title: item.title || item.documentNumber || item.id,
         description: item.description || "",
         assignedTo: item.assignedTo || _userId,
@@ -41,7 +49,7 @@ export async function getTasksForUser(
         documentId: item.documentId || item.entityId || "",
         documentNumber: item.documentNumber || "",
         createdAt: item.createdAt ? new Date(item.createdAt) : new Date(),
-        dueDate: item.dueDate ? new Date(item.dueDate) : undefined,
+        dueDate: item.dueDate ? new Date(item.dueDate) : new Date(),
         completedAt: item.completedAt ? new Date(item.completedAt) : undefined,
         completedBy: item.completedBy,
         metadata: {
@@ -125,7 +133,14 @@ export async function getTaskById(taskId: string): Promise<APIResponse<Task>> {
 
     const task: Task = {
       id: item.id,
-      taskType: item.documentType?.toUpperCase() + "_APPROVAL" || "APPROVAL",
+      taskType: (() => {
+        const docType = (item.documentType || "").toLowerCase();
+        if (docType === "purchase_order" || docType === "po") return "PURCHASE_ORDER_APPROVAL";
+        if (docType === "payment_voucher" || docType === "pv") return "PAYMENT_VOUCHER_APPROVAL";
+        if (docType === "goods_received_note" || docType === "grn") return "GOODS_RECEIVED_NOTE_CONFIRMATION";
+        if (docType === "budget") return "BUDGET_APPROVAL";
+        return "REQUISITION_APPROVAL";
+      })() as TaskType,
       title: item.title || item.documentNumber || item.id,
       description: item.description || "",
       assignedTo: item.assignedTo || "",
@@ -136,7 +151,7 @@ export async function getTaskById(taskId: string): Promise<APIResponse<Task>> {
       documentId: item.documentId || item.entityId || "",
       documentNumber: item.documentNumber || "",
       createdAt: item.createdAt ? new Date(item.createdAt) : new Date(),
-      dueDate: item.dueDate ? new Date(item.dueDate) : undefined,
+      dueDate: item.dueDate ? new Date(item.dueDate) : new Date(),
       completedAt: item.completedAt ? new Date(item.completedAt) : undefined,
       completedBy: item.completedBy,
       metadata: {

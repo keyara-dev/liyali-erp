@@ -56,13 +56,14 @@ export default async function UserManagementPage({ searchParams }: PageProps) {
 
   const users = (response?.data || []) as User[];
 
-  const pagination = response?.pagination ?? {
-    total: 0,
-    page: 1,
-    page_size: 10,
-    total_pages: 0,
-    has_next: false,
-    has_prev: false,
+  const rawPagination = response?.pagination;
+  const pagination = {
+    total: rawPagination?.total ?? 0,
+    page: rawPagination?.page ?? 1,
+    page_size: rawPagination?.page_size ?? 10,
+    total_pages: rawPagination?.total_pages ?? 0,
+    has_next: rawPagination?.has_next ?? false,
+    has_prev: rawPagination?.has_prev ?? false,
   };
 
   return (
