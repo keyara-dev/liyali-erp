@@ -321,6 +321,14 @@ func SetupRoutes(app *fiber.App, handlerRegistry *handlers.HandlerRegistry, rbac
 	grns.Post("/:id/submit", middleware.RequirePermission(rbacService, "grn", "edit"), handlers.SubmitGRN)
 	grns.Post("/:id/confirm", middleware.RequirePermission(rbacService, "grn", "edit"), handlers.ConfirmGRN)
 
+	// Branch routes (tenant-scoped)
+	branches := tenant.Group("/branches")
+	branches.Get("/", middleware.RequirePermission(rbacService, "organization", "view"), handlers.GetBranches)
+	branches.Post("/", middleware.RequirePermission(rbacService, "organization", "manage"), handlers.CreateBranch)
+	branches.Get("/:id", middleware.RequirePermission(rbacService, "organization", "view"), handlers.GetBranch)
+	branches.Put("/:id", middleware.RequirePermission(rbacService, "organization", "manage"), handlers.UpdateBranch)
+	branches.Delete("/:id", middleware.RequirePermission(rbacService, "organization", "manage"), handlers.DeleteBranch)
+
 	// Category routes (tenant-scoped)
 	categories := tenant.Group("/categories")
 	categories.Get("/", middleware.RequirePermission(rbacService, "category", "view"), handlers.GetCategories)

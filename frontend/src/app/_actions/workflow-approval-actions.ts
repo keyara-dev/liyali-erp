@@ -378,7 +378,7 @@ export async function getApprovalWorkflowStatus(documentId: string): Promise<
 
 /**
  * Bulk approve multiple tasks
- * Calls: POST /api/v1/approvals/bulk-approve
+ * Calls: POST /api/v1/approvals/bulk/approve
  */
 export async function bulkApproveApprovalTasks(
   taskIds: string[],
@@ -394,7 +394,7 @@ export async function bulkApproveApprovalTasks(
     return badRequestResponse("Task IDs are required");
   }
 
-  const url = `/api/v1/approvals/bulk-approve`;
+  const url = `/api/v1/approvals/bulk/approve`;
 
   try {
     const response = await authenticatedApiClient({
@@ -415,7 +415,7 @@ export async function bulkApproveApprovalTasks(
 
 /**
  * Bulk reject multiple tasks
- * Calls: POST /api/v1/approvals/bulk-reject
+ * Calls: POST /api/v1/approvals/bulk/reject
  */
 export async function bulkRejectApprovalTasks(
   taskIds: string[],
@@ -434,7 +434,7 @@ export async function bulkRejectApprovalTasks(
     return badRequestResponse("Rejection reason is required");
   }
 
-  const url = `/api/v1/approvals/bulk-reject`;
+  const url = `/api/v1/approvals/bulk/reject`;
 
   try {
     const response = await authenticatedApiClient({

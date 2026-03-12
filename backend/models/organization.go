@@ -120,5 +120,24 @@ func (OrganizationDepartment) TableName() string {
 	return "organization_departments"
 }
 
-// Note: OrganizationRole, OrganizationPermission, and PermissionAssignment 
+// OrganizationBranch represents a physical branch/office location of an organization
+type OrganizationBranch struct {
+	ID             string    `gorm:"primaryKey" json:"id"`
+	OrganizationID string    `gorm:"index;not null" json:"organizationId"`
+	Name           string    `gorm:"not null" json:"name"`
+	Code           string    `json:"code"`
+	ProvinceID     string    `json:"provinceId,omitempty"`
+	TownID         string    `json:"townId,omitempty"`
+	Address        string    `json:"address,omitempty"`
+	ManagerID      *string   `json:"managerId,omitempty"`
+	IsActive       bool      `gorm:"column:is_active;default:true" json:"isActive"`
+	CreatedAt      time.Time `json:"createdAt"`
+	UpdatedAt      time.Time `json:"updatedAt"`
+}
+
+func (OrganizationBranch) TableName() string {
+	return "organization_branches"
+}
+
+// Note: OrganizationRole, OrganizationPermission, and PermissionAssignment
 // have been moved to enhanced_auth.go for the new RBAC system

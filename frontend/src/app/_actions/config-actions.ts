@@ -196,7 +196,7 @@ export async function deleteBranch(id: string): Promise<APIResponse> {
 
 /**
  * Get all departments with optional filtering
- * Endpoint: GET /api/v1/departments
+ * Endpoint: GET /api/v1/organization/departments
  * Status: ✅ Documented in API
  * Query Parameters: parent_id, is_active, limit, offset
  */
@@ -214,7 +214,7 @@ export async function getDepartments(
   if (params?.is_active !== undefined)
     queryParams.append("is_active", String(params.is_active));
 
-  const url = `/api/v1/departments${queryParams.toString() ? `?${queryParams.toString()}` : ""}`;
+  const url = `/api/v1/organization/departments${queryParams.toString() ? `?${queryParams.toString()}` : ""}`;
 
   try {
     const response = await authenticatedApiClient({ url });
@@ -229,11 +229,11 @@ export async function getDepartments(
 
 /**
  * Get single department by ID
- * Endpoint: GET /api/v1/departments/{id}
+ * Endpoint: GET /api/v1/organization/departments/{id}
  * Status: ✅ Documented in API
  */
 export async function getDepartmentById(id: string): Promise<APIResponse> {
-  const url = `/api/v1/departments/${id}`;
+  const url = `/api/v1/organization/departments/${id}`;
 
   try {
     const response = await authenticatedApiClient({ url });
@@ -245,7 +245,7 @@ export async function getDepartmentById(id: string): Promise<APIResponse> {
 export async function getDepartmentRiskCategories(
   id: string,
 ): Promise<APIResponse> {
-  const url = `/api/v1/departments/${id}/risk-categories`;
+  const url = `/api/v1/organization/departments/${id}/risk-categories`;
   try {
     const response = await authenticatedApiClient({ url });
     return successResponse(response?.data.data);
@@ -256,13 +256,13 @@ export async function getDepartmentRiskCategories(
 
 /**
  * Create new department
- * Endpoint: POST /api/v1/departments
+ * Endpoint: POST /api/v1/organization/departments
  * Status: ✅ Documented in API
  *
  * NOTE: Supports hierarchical departments via parent_id
  */
 export async function createDepartment(data: Department): Promise<APIResponse> {
-  const url = `/api/v1/departments`;
+  const url = `/api/v1/organization/departments`;
 
   if (!data?.name) {
     return badRequestResponse("Name and code are required");
@@ -283,14 +283,14 @@ export async function createDepartment(data: Department): Promise<APIResponse> {
 
 /**
  * Update existing department
- * Endpoint: PUT /api/v1/departments/{id}
+ * Endpoint: PUT /api/v1/organization/departments/{id}
  * Status: ✅ Documented in API
  */
 export async function updateDepartment(data: Department): Promise<APIResponse> {
   if (!data?.id) {
     return badRequestResponse("Department ID is required");
   }
-  const url = `/api/v1/departments/${data?.id}`;
+  const url = `/api/v1/organization/departments/${data?.id}`;
 
   try {
     const response = await authenticatedApiClient({ url, method: "PUT", data });
@@ -303,11 +303,11 @@ export async function updateDepartment(data: Department): Promise<APIResponse> {
 
 /**
  * Delete department
- * Endpoint: DELETE /api/v1/departments/{id}
+ * Endpoint: DELETE /api/v1/organization/departments/{id}
  * Status: ✅ Documented in API
  */
 export async function deleteDepartment(id: string): Promise<APIResponse> {
-  const url = `/api/v1/departments/${id}`;
+  const url = `/api/v1/organization/departments/${id}`;
 
   if (!id) {
     return badRequestResponse("Department ID is required");
@@ -327,13 +327,13 @@ export async function deleteDepartment(id: string): Promise<APIResponse> {
 
 /**
  * Get modules assigned to a department
- * Endpoint: GET /api/v1/departments/{id}/modules
+ * Endpoint: GET /api/v1/organization/departments/{id}/modules
  * Status: ✅ Documented in API
  */
 export async function getDepartmentModules(
   departmentId: string,
 ): Promise<APIResponse> {
-  const url = `/api/v1/departments/${departmentId}/modules`;
+  const url = `/api/v1/organization/departments/${departmentId}/modules`;
 
   if (!departmentId) {
     return badRequestResponse("Department ID is required");
