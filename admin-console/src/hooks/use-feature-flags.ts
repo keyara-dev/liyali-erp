@@ -19,14 +19,22 @@ import { queryKeys } from "@/lib/query-keys";
 export function useFeatureFlags(filters?: FeatureFlagFilters) {
   return useQuery({
     queryKey: queryKeys.featureFlags.list(filters),
-    queryFn: () => getFeatureFlags(filters),
+    queryFn: async () => {
+      const result = await getFeatureFlags(filters);
+      if (!result.success) throw new Error(result.message);
+      return result.data ?? [];
+    },
   });
 }
 
 export function useFeatureFlag(id: string) {
   return useQuery({
     queryKey: queryKeys.featureFlags.detail(id),
-    queryFn: () => getFeatureFlag(id),
+    queryFn: async () => {
+      const result = await getFeatureFlag(id);
+      if (!result.success) throw new Error(result.message);
+      return result.data;
+    },
     enabled: !!id,
   });
 }
@@ -34,14 +42,22 @@ export function useFeatureFlag(id: string) {
 export function useFeatureFlagStats() {
   return useQuery({
     queryKey: queryKeys.featureFlags.stats(),
-    queryFn: () => getFeatureFlagStats(),
+    queryFn: async () => {
+      const result = await getFeatureFlagStats();
+      if (!result.success) throw new Error(result.message);
+      return result.data;
+    },
   });
 }
 
 export function useFeatureFlagAnalytics(flagKey: string) {
   return useQuery({
     queryKey: queryKeys.featureFlags.analytics(flagKey),
-    queryFn: () => getFeatureFlagAnalytics(flagKey),
+    queryFn: async () => {
+      const result = await getFeatureFlagAnalytics(flagKey);
+      if (!result.success) throw new Error(result.message);
+      return result.data;
+    },
     enabled: !!flagKey,
   });
 }

@@ -39,6 +39,7 @@ import {
   type AdminUserFilters,
   type AdminRole,
 } from "@/app/_actions/admin-users";
+import { getAdminSessionStatus } from "@/app/_actions/auth";
 import {
   useAdminUsers,
   useAdminUserStats,
@@ -53,6 +54,7 @@ import { AdminUserActionsDropdown } from "./components/admin-user-actions-dropdo
 import { AdminUserBulkActions } from "./components/admin-user-bulk-actions";
 
 export default function AdminUsersPage() {
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
 
   // Dialog states
@@ -64,6 +66,13 @@ export default function AdminUsersPage() {
   // Filters
   const [filters, setFilters] = useState<AdminUserFilters>({});
   const [searchTerm, setSearchTerm] = useState("");
+
+  // Fetch current user ID from session
+  useEffect(() => {
+    getAdminSessionStatus().then((status) => {
+      if (status.user?.id) setCurrentUserId(status.user.id);
+    });
+  }, []);
 
   // Debounced search
   useEffect(() => {
@@ -379,7 +388,7 @@ export default function AdminUsersPage() {
                         user={user}
                         onAction={handleUserAction}
                         onUserUpdated={handleUserUpdated}
-                        currentUserId="current-user-id"
+                        currentUserId={currentUserId ?? undefined}
                       />
                     </TableCell>
                   </TableRow>

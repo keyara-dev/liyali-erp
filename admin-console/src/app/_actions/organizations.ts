@@ -346,31 +346,6 @@ export async function getOrganizationTrialStatus(
 }
 
 /**
- * Reset organization trial period (Admin only)
- */
-export async function resetOrganizationTrial(
-  organizationId: string,
-  request: TrialResetRequest,
-): Promise<APIResponse<any>> {
-  const url = `/api/v1/admin/organizations/${organizationId}/trial/reset`;
-
-  try {
-    const response = await authenticatedApiClient({
-      url: url,
-      method: "POST",
-      data: request,
-    });
-
-    return successResponse(
-      response?.data?.data || response?.data,
-      "Trial reset successfully",
-    );
-  } catch (error: Error | any) {
-    return handleError(error);
-  }
-}
-
-/**
  * Get organization subscription details
  */
 export async function getOrganizationSubscription(
@@ -449,33 +424,3 @@ export async function getOrganizationStatistics(): Promise<
   }
 }
 
-/**
- * Change organization subscription tier (Admin only)
- */
-export async function changeOrganizationTier(
-  organizationId: string,
-  request: {
-    tier: string;
-    reason: string;
-  },
-): Promise<APIResponse<any>> {
-  const url = `/api/v1/admin/organizations/${organizationId}/change-tier`;
-
-  try {
-    const response = await authenticatedApiClient({
-      url: url,
-      method: "POST",
-      data: {
-        newTier: request.tier,
-        reason: request.reason,
-      },
-    });
-
-    return successResponse(
-      response?.data?.data || response?.data,
-      "Subscription tier changed successfully",
-    );
-  } catch (error: Error | any) {
-    return handleError(error);
-  }
-}

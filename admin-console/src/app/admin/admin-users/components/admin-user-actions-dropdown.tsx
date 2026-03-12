@@ -216,8 +216,8 @@ export function AdminUserActionsDropdown({
         toast.success(
           `Impersonation token generated. Token expires in ${data?.expires_in || 900} seconds.`,
         );
-        if (data?.token) {
-          await navigator.clipboard.writeText(data.token);
+        if (data?.impersonation_token) {
+          await navigator.clipboard.writeText(data.impersonation_token);
           toast.info("Impersonation token copied to clipboard");
         }
       } else {

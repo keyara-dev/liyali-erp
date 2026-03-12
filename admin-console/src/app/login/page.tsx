@@ -39,7 +39,6 @@ function LoginForm() {
 
       if (result.success) {
         router.push(redirectUrl);
-        router.refresh();
       } else {
         setError(result.message || "Login failed. Please try again.");
       }

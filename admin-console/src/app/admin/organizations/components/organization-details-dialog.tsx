@@ -35,12 +35,12 @@ import {
   getOrganizationUsers,
   getOrganizationActivity,
   getOrganizationSubscription,
-  resetOrganizationTrial,
   type Organization,
   type OrganizationUser,
   type OrganizationActivity,
   type TrialResetRequest,
 } from "@/app/_actions/organizations";
+import { resetOrganizationTrial } from "@/app/_actions/subscriptions";
 import { ChangeTierDialog } from "./change-tier-dialog";
 import { OverrideLimitsDialog } from "./override-limits-dialog";
 

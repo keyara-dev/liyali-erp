@@ -1,6 +1,7 @@
 "use server";
 
-import authenticatedApiClient from "./api-config";
+import type { APIResponse } from "@/types";
+import authenticatedApiClient, { handleError, successResponse } from "./api-config";
 
 // Feature Flags API Actions
 // Comprehensive feature toggle management system
@@ -169,42 +170,45 @@ export interface FlagAuditLog {
 // Feature Flag Management
 export async function getFeatureFlags(
   filters?: FeatureFlagFilters,
-): Promise<FeatureFlag[]> {
+): Promise<APIResponse<FeatureFlag[]>> {
+  const params = new URLSearchParams();
+  if (filters?.search) params.append("search", filters.search);
+  if (filters?.category) params.append("category", filters.category);
+  if (filters?.environment) params.append("environment", filters.environment);
+  if (filters?.type) params.append("type", filters.type);
+  if (filters?.enabled !== undefined)
+    params.append("enabled", filters.enabled.toString());
+  if (filters?.archived !== undefined)
+    params.append("archived", filters.archived.toString());
+
   try {
-    const params = new URLSearchParams();
-
-    if (filters?.search) params.append("search", filters.search);
-    if (filters?.category) params.append("category", filters.category);
-    if (filters?.environment) params.append("environment", filters.environment);
-    if (filters?.type) params.append("type", filters.type);
-    if (filters?.enabled !== undefined)
-      params.append("enabled", filters.enabled.toString());
-    if (filters?.archived !== undefined)
-      params.append("archived", filters.archived.toString());
-
     const response = await authenticatedApiClient({
       url: `/api/v1/admin/feature-flags?${params.toString()}`,
       method: "GET",
     });
-
-    return response.data.data || [];
-  } catch (error) {
-    console.error("Error fetching feature flags:", error);
-    throw error;
+    return successResponse(
+      response?.data?.data || response?.data || [],
+      "Feature flags retrieved successfully",
+    );
+  } catch (error: Error | any) {
+    return handleError(error);
   }
 }
 
-export async function getFeatureFlag(id: string): Promise<FeatureFlag | null> {
+export async function getFeatureFlag(
+  id: string,
+): Promise<APIResponse<FeatureFlag>> {
   try {
     const response = await authenticatedApiClient({
       url: `/api/v1/admin/feature-flags/${id}`,
       method: "GET",
     });
-
-    return response.data.data || null;
-  } catch (error) {
-    console.error("Error fetching feature flag:", error);
-    return null;
+    return successResponse(
+      response?.data?.data || response?.data,
+      "Feature flag retrieved successfully",
+    );
+  } catch (error: Error | any) {
+    return handleError(error);
   }
 }
 
@@ -218,85 +222,97 @@ export async function createFeatureFlag(
     | "updated_by"
     | "evaluation_count"
   >,
-): Promise<FeatureFlag> {
+): Promise<APIResponse<FeatureFlag>> {
   try {
     const response = await authenticatedApiClient({
       url: `/api/v1/admin/feature-flags`,
       method: "POST",
       data: flag,
     });
-
-    return response.data.data;
-  } catch (error) {
-    console.error("Error creating feature flag:", error);
-    throw error;
+    return successResponse(
+      response?.data?.data || response?.data,
+      "Feature flag created successfully",
+    );
+  } catch (error: Error | any) {
+    return handleError(error);
   }
 }
 
 export async function updateFeatureFlag(
   id: string,
   updates: Partial<FeatureFlag>,
-): Promise<FeatureFlag> {
+): Promise<APIResponse<FeatureFlag>> {
   try {
     const response = await authenticatedApiClient({
       url: `/api/v1/admin/feature-flags/${id}`,
       method: "PUT",
       data: updates,
     });
-
-    return response.data.data;
-  } catch (error) {
-    console.error("Error updating feature flag:", error);
-    throw error;
+    return successResponse(
+      response?.data?.data || response?.data,
+      "Feature flag updated successfully",
+    );
+  } catch (error: Error | any) {
+    return handleError(error);
   }
 }
 
-export async function deleteFeatureFlag(id: string): Promise<void> {
+export async function deleteFeatureFlag(
+  id: string,
+): Promise<APIResponse<null>> {
   try {
     await authenticatedApiClient({
       url: `/api/v1/admin/feature-flags/${id}`,
       method: "DELETE",
     });
-  } catch (error) {
-    console.error("Error deleting feature flag:", error);
-    throw error;
+    return successResponse(null, "Feature flag deleted successfully");
+  } catch (error: Error | any) {
+    return handleError(error);
   }
 }
 
-export async function toggleFeatureFlag(id: string): Promise<FeatureFlag> {
+export async function toggleFeatureFlag(
+  id: string,
+): Promise<APIResponse<FeatureFlag>> {
   try {
     const response = await authenticatedApiClient({
       url: `/api/v1/admin/feature-flags/${id}/toggle`,
       method: "POST",
     });
-
-    return response.data.data;
-  } catch (error) {
-    console.error("Error toggling feature flag:", error);
-    throw error;
+    return successResponse(
+      response?.data?.data || response?.data,
+      "Feature flag toggled successfully",
+    );
+  } catch (error: Error | any) {
+    return handleError(error);
   }
 }
 
-export async function archiveFeatureFlag(id: string): Promise<FeatureFlag> {
+export async function archiveFeatureFlag(
+  id: string,
+): Promise<APIResponse<FeatureFlag>> {
   try {
     const response = await authenticatedApiClient({
       url: `/api/v1/admin/feature-flags/${id}/archive`,
       method: "POST",
     });
-
-    return response.data.data;
-  } catch (error) {
-    console.error("Error archiving feature flag:", error);
-    throw error;
+    return successResponse(
+      response?.data?.data || response?.data,
+      "Feature flag archived successfully",
+    );
+  } catch (error: Error | any) {
+    return handleError(error);
   }
 }
 
 export async function bulkUpdateFlags(
   _operation: BulkFlagOperation,
-): Promise<void> {
-  // Bulk flag operations require a dedicated backend endpoint
-  // For now, handle individual flags through toggleFeatureFlag/archiveFeatureFlag
-  console.warn("Bulk flag operations not yet implemented");
+): Promise<APIResponse<null>> {
+  return {
+    success: false,
+    data: null,
+    message: "Bulk flag operations not yet implemented",
+  };
 }
 
 // Feature Flag Evaluation
@@ -304,72 +320,72 @@ export async function evaluateFeatureFlag(
   flagKey: string,
   userId?: string,
   userAttributes?: Record<string, any>,
-): Promise<FeatureFlagEvaluation> {
+): Promise<APIResponse<FeatureFlagEvaluation>> {
   try {
     const response = await authenticatedApiClient({
       url: `/api/v1/admin/feature-flags/${flagKey}/evaluate`,
       method: "POST",
-      data: {
-        user_id: userId,
-        user_attributes: userAttributes,
-      },
+      data: { user_id: userId, user_attributes: userAttributes },
     });
-
-    return response.data.data;
-  } catch (error) {
-    console.error("Error evaluating feature flag:", error);
-    throw error;
+    return successResponse(
+      response?.data?.data || response?.data,
+      "Feature flag evaluated successfully",
+    );
+  } catch (error: Error | any) {
+    return handleError(error);
   }
 }
 
 export async function getFeatureFlagEvaluations(
-  flagKey: string,
-  filters?: {
+  _flagKey: string,
+  _filters?: {
     startDate?: string;
     endDate?: string;
     userId?: string;
     variation?: string;
   },
-): Promise<FeatureFlagEvaluation[]> {
-  // This would be implemented with proper evaluation logging
-  return [];
+): Promise<APIResponse<FeatureFlagEvaluation[]>> {
+  return { success: false, data: [], message: "Evaluation history not yet implemented" };
 }
 
 // Analytics and Statistics
-export async function getFeatureFlagStats(): Promise<FeatureFlagStats> {
+export async function getFeatureFlagStats(): Promise<
+  APIResponse<FeatureFlagStats>
+> {
   try {
     const response = await authenticatedApiClient({
       url: `/api/v1/admin/feature-flags/stats`,
       method: "GET",
     });
-
-    return response.data.data;
-  } catch (error) {
-    console.error("Error fetching feature flag stats:", error);
-    throw error;
+    return successResponse(
+      response?.data?.data || response?.data,
+      "Feature flag stats retrieved successfully",
+    );
+  } catch (error: Error | any) {
+    return handleError(error);
   }
 }
 
 export async function getFeatureFlagAnalytics(
   flagKey: string,
-): Promise<FeatureFlagAnalytics> {
+): Promise<APIResponse<FeatureFlagAnalytics>> {
   try {
     const response = await authenticatedApiClient({
       url: `/api/v1/admin/feature-flags/${flagKey}/analytics`,
       method: "GET",
     });
-
-    return response.data.data;
-  } catch (error) {
-    console.error("Error fetching feature flag analytics:", error);
-    throw error;
+    return successResponse(
+      response?.data?.data || response?.data,
+      "Feature flag analytics retrieved successfully",
+    );
+  } catch (error: Error | any) {
+    return handleError(error);
   }
 }
 
 // Templates
-export async function getFlagTemplates(): Promise<FlagTemplate[]> {
-  // This would be a more complex feature - for now return empty array
-  return [];
+export async function getFlagTemplates(): Promise<APIResponse<FlagTemplate[]>> {
+  return { success: false, data: [], message: "Flag templates not yet implemented" };
 }
 
 // Audit Trail
@@ -379,49 +395,31 @@ export async function getFeatureFlagAudit(filters?: {
   action?: string;
   startDate?: string;
   endDate?: string;
-}): Promise<FlagAuditLog[]> {
-  // This would be implemented with a proper audit log system
-  return [];
+}): Promise<APIResponse<FlagAuditLog[]>> {
+  return { success: false, data: [], message: "Flag audit trail not yet implemented" };
 }
 
 // Import/Export
-export async function exportFeatureFlags(flagIds?: string[]): Promise<{
-  flags: FeatureFlag[];
-  metadata: {
-    exportedAt: string;
-    exportedBy: string;
-    version: string;
-  };
-}> {
-  const flags = await getFeatureFlags();
-  const filteredFlags = flagIds
-    ? flags.filter((f) => flagIds.includes(f.id))
-    : flags;
-
-  return {
-    flags: filteredFlags,
-    metadata: {
-      exportedAt: new Date().toISOString(),
-      exportedBy: "current-user@example.com",
-      version: "1.0.0",
-    },
-  };
+export async function exportFeatureFlags(
+  flagIds?: string[],
+): Promise<APIResponse<{ flags: FeatureFlag[]; metadata: { exportedAt: string; version: string } }>> {
+  try {
+    const listResult = await getFeatureFlags();
+    if (!listResult.success) return handleError(new Error(listResult.message));
+    const flags = listResult.data ?? [];
+    const filteredFlags = flagIds ? flags.filter((f) => flagIds.includes(f.id)) : flags;
+    return successResponse(
+      { flags: filteredFlags, metadata: { exportedAt: new Date().toISOString(), version: "1.0.0" } },
+      "Feature flags exported successfully",
+    );
+  } catch (error: Error | any) {
+    return handleError(error);
+  }
 }
 
-export async function importFeatureFlags(data: {
+export async function importFeatureFlags(_data: {
   flags: Partial<FeatureFlag>[];
   overwriteExisting: boolean;
-}): Promise<{
-  success: boolean;
-  imported: number;
-  skipped: number;
-  errors: string[];
-}> {
-  // This would be implemented in the backend
-  return {
-    success: false,
-    imported: 0,
-    skipped: 0,
-    errors: ["Import functionality not yet implemented"],
-  };
+}): Promise<APIResponse<{ imported: number; skipped: number }>> {
+  return { success: false, data: null as any, message: "Import functionality not yet implemented" };
 }
