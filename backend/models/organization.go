@@ -70,6 +70,7 @@ type OrganizationMember struct {
 	RoleName     string  `gorm:"-" json:"roleName,omitempty"` // Computed field for role name
 	Department   string  `json:"department,omitempty"`
 	DepartmentID *string `gorm:"index" json:"departmentId,omitempty"` // Foreign key to OrganizationDepartment
+	BranchID     *string `gorm:"index" json:"branchId,omitempty"`     // Foreign key to OrganizationBranch
 	Title        string  `json:"title,omitempty"`
 
 	// Status

@@ -620,25 +620,49 @@ func AdminImpersonateUser(c *fiber.Ctx) error {
 	}
 
 	// Generate a short-lived token (15 minutes) for impersonation
-	token, err := utils.GenerateToken(userID, email, name, role, nil)
+	const impersonationDuration = 15 * time.Minute
+	tokenInfo, err := utils.GenerateTokenWithInfo(userID, email, name, role, nil)
 	if err != nil {
 		log.Printf("Error generating impersonation token: %v", err)
 		return utils.SendInternalError(c, "Failed to generate impersonation token", err)
 	}
 
-	// Log the impersonation in audit log
+	now := time.Now()
+	expiresAt := now.Add(impersonationDuration)
+
+	// Lookup impersonator email for the log
+	var impersonatorEmail string
+	var impersonatorRow map[string]interface{}
+	if db.Table("users").Select("email").Where("id = ?", adminUserID).First(&impersonatorRow).Error == nil {
+		impersonatorEmail, _ = impersonatorRow["email"].(string)
+	}
+
+	// Write to impersonation_logs
+	db.Table("impersonation_logs").Create(map[string]interface{}{
+		"id":                 utils.GenerateID(),
+		"impersonator_id":    adminUserID,
+		"impersonator_email": impersonatorEmail,
+		"target_id":          userID,
+		"target_email":       email,
+		"impersonation_type": "platform_user",
+		"token_jti":          tokenInfo.JTI,
+		"expires_at":         expiresAt,
+		"created_at":         now,
+	})
+
+	// Also log in admin_audit_logs
 	db.Table("admin_audit_logs").Create(map[string]interface{}{
 		"id":            utils.GenerateID(),
 		"action":        "user_impersonation",
 		"admin_user_id": adminUserID,
 		"new_value":     userID,
 		"description":   "Admin impersonated platform user: " + email,
-		"created_at":    time.Now(),
+		"created_at":    now,
 	})
 
 	return utils.SendSimpleSuccess(c, map[string]interface{}{
-		"token":            token,
-		"expires_in":       900, // 15 minutes in seconds
+		"impersonation_token": tokenInfo.Token,
+		"expires_in":          int(impersonationDuration.Seconds()),
 		"impersonated_user": map[string]interface{}{
 			"id":    userID,
 			"email": email,

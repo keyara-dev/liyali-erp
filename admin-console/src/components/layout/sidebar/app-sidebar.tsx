@@ -19,6 +19,7 @@ import {
   Settings,
   Flag,
   Bell,
+  Eye,
 } from "lucide-react";
 
 import {
@@ -52,6 +53,7 @@ const iconMap = {
   Settings,
   Flag,
   Bell,
+  Eye,
 };
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {

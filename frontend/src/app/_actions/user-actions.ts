@@ -17,6 +17,7 @@ export interface CreateUserRequest {
   last_name: string;
   name?: string; // Computed full name
   department_id?: string;
+  branch_id?: string;
   role: UserType;
   // Profile fields
   position?: string;
@@ -31,6 +32,7 @@ export interface UpdateUserRequest {
   role?: string;
   is_active?: boolean;
   department_id?: string;
+  branch_id?: string | null;
   position?: string;
   manNumber?: string;
   nrcNumber?: string;
@@ -61,6 +63,7 @@ export async function createNewUser(
         password: data.password,
         role: data.role || "requester",
         department_id: data.department_id,
+        branch_id: data.branch_id,
         // Profile fields
         phone: data.phone,
         position: data.position,
@@ -154,6 +157,7 @@ export async function getUsers(params?: {
         role_name: member.roleName || member.role_name || member.role || "",
         department: member.department || "",
         department_id: member.departmentId || member.department_id || "",
+        branch_id: member.branchId || member.branch_id || "",
         active: member.active !== undefined ? member.active : true,
         is_active: member.active !== undefined ? member.active : true,
         preferences,
@@ -351,6 +355,7 @@ export async function updateUser(
     if (data.email !== undefined) payload.email = data.email;
     if (data.role !== undefined) payload.role = data.role;
     if (data.department_id !== undefined) payload.department_id = data.department_id;
+    if (data.branch_id !== undefined) payload.branch_id = data.branch_id;
     if (data.is_active !== undefined) payload.status = data.is_active ? "active" : "inactive";
     if (data.position !== undefined) payload.position = data.position;
     if (data.manNumber !== undefined) payload.manNumber = data.manNumber;

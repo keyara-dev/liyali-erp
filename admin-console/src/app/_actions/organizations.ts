@@ -78,6 +78,7 @@ export interface OrganizationFilters {
 export interface CreateOrganizationRequest {
   name: string;
   domain: string;
+  description?: string;
   admin_user_id: string;
   subscription_tier?: string;
   trial_days?: number;

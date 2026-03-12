@@ -26,17 +26,18 @@ func CreateOrganizationUser(c *fiber.Ctx) error {
 
 	// Parse request
 	var req struct {
-		Email       string `json:"email" validate:"required,email"`
-		Password    string `json:"password" validate:"required,min=8"`
-		Name        string `json:"name" validate:"required"`
-		FirstName   string `json:"first_name"`
-		LastName    string `json:"last_name"`
-		Role        string `json:"role"`
-		DepartmentID string `json:"department_id"`
-		Position    string `json:"position"`
-		ManNumber   string `json:"manNumber"`
-		NrcNumber   string `json:"nrcNumber"`
-		Contact     string `json:"contact"`
+		Email        string  `json:"email" validate:"required,email"`
+		Password     string  `json:"password" validate:"required,min=8"`
+		Name         string  `json:"name" validate:"required"`
+		FirstName    string  `json:"first_name"`
+		LastName     string  `json:"last_name"`
+		Role         string  `json:"role"`
+		DepartmentID string  `json:"department_id"`
+		BranchID     *string `json:"branch_id"`
+		Position     string  `json:"position"`
+		ManNumber    string  `json:"manNumber"`
+		NrcNumber    string  `json:"nrcNumber"`
+		Contact      string  `json:"contact"`
 	}
 
 	if err := c.BodyParser(&req); err != nil {
@@ -152,7 +153,13 @@ func CreateOrganizationUser(c *fiber.Ctx) error {
 		return utils.SendInternalError(c, "Failed to add user to organization", err)
 	}
 
-	// Remove the separate department assignment since it's now handled above
+	// Set branch if provided
+	if req.BranchID != nil && *req.BranchID != "" {
+		tx.Table("organization_members").
+			Where("organization_id = ? AND user_id = ?", tenant.OrganizationID, user.ID).
+			Update("branch_id", req.BranchID)
+	}
+
 	// The AddMemberWithDepartment method handles both role and department assignment
 
 	// System roles are now global — no per-org initialization needed
@@ -211,15 +218,16 @@ func UpdateOrganizationUser(c *fiber.Ctx) error {
 	}
 
 	var req struct {
-		Name         string `json:"name"`
-		Email        string `json:"email"`
-		Role         string `json:"role"`
-		DepartmentID string `json:"department_id"`
-		Position     string `json:"position"`
-		ManNumber    string `json:"manNumber"`
-		NrcNumber    string `json:"nrcNumber"`
-		Contact      string `json:"contact"`
-		Status       string `json:"status"` // "active" | "inactive"
+		Name         string  `json:"name"`
+		Email        string  `json:"email"`
+		Role         string  `json:"role"`
+		DepartmentID string  `json:"department_id"`
+		BranchID     *string `json:"branch_id"`
+		Position     string  `json:"position"`
+		ManNumber    string  `json:"manNumber"`
+		NrcNumber    string  `json:"nrcNumber"`
+		Contact      string  `json:"contact"`
+		Status       string  `json:"status"` // "active" | "inactive"
 	}
 
 	if err := c.BodyParser(&req); err != nil {
@@ -296,6 +304,13 @@ func UpdateOrganizationUser(c *fiber.Ctx) error {
 		config.DB.Table("organization_members").
 			Where("organization_id = ? AND user_id = ?", tenant.OrganizationID, userID).
 			Update("role", roleName)
+	}
+
+	// Update branch assignment if provided (nil = keep current; non-nil = set or clear)
+	if req.BranchID != nil {
+		config.DB.Table("organization_members").
+			Where("organization_id = ? AND user_id = ?", tenant.OrganizationID, userID).
+			Update("branch_id", req.BranchID)
 	}
 
 	logging.AddFieldsToRequest(c, map[string]interface{}{

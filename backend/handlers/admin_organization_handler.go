@@ -254,6 +254,7 @@ func AdminCreateOrganization(c *fiber.Ctx) error {
 	var request struct {
 		Name             string `json:"name"`
 		Domain           string `json:"domain"`
+		Description      string `json:"description"`
 		AdminUserID      string `json:"admin_user_id"`
 		AdminName        string `json:"admin_name"`
 		AdminEmail       string `json:"admin_email"`
@@ -308,6 +309,7 @@ func AdminCreateOrganization(c *fiber.Ctx) error {
 		"id":                  orgID,
 		"name":                request.Name,
 		"slug":                slug,
+		"description":         request.Description,
 		"active":              true,
 		"tier":                tier,
 		"subscription_tier":   tier,

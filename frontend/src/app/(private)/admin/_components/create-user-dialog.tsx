@@ -25,6 +25,7 @@ import { generateRandomString } from "@/lib/utils";
 import { useCreateUser, useUpdateUser } from "@/hooks/use-users-mutations";
 import { useActiveDepartments } from "@/hooks/use-department-queries";
 import { useActiveRoles } from "@/hooks/use-role-queries";
+import { useActiveBranches } from "@/hooks/use-branch-queries";
 import { usePermissions } from "@/hooks/use-permissions";
 
 type FormData = {
@@ -35,6 +36,7 @@ type FormData = {
   role: UserType;
   department_id?: string;
   department?: string;
+  branch_id?: string;
   is_active: boolean;
   password?: string;
   position?: string;
@@ -86,9 +88,11 @@ export default function CreateUserForm({
     router.refresh();
   });
 
-  // Fetch departments and roles
+  // Fetch departments, branches, and roles
   const { data: departmentsData = [], isLoading: isDepartmentsLoading } =
     useActiveDepartments();
+  const { data: branchesData = [], isLoading: isBranchesLoading } =
+    useActiveBranches();
   const {
     data: rolesData = [],
     isLoading: isRolesLoading,
@@ -105,6 +109,7 @@ export default function CreateUserForm({
         phone: (user as any).phone || "",
         role: user.role || role,
         department_id: user.department_id || "",
+        branch_id: (user as any).branch_id || "",
         is_active: user.is_active ?? true,
         password: "",
         position: user.position || "",
@@ -120,6 +125,7 @@ export default function CreateUserForm({
       phone: "",
       role: role,
       department_id: "",
+      branch_id: "",
       is_active: true,
       password: generateRandomString(),
       position: "",
@@ -165,6 +171,7 @@ export default function CreateUserForm({
         role: user.role || role,
         department: user.department || "",
         department_id: user.department_id || "",
+        branch_id: (user as any).branch_id || "",
         is_active: user.is_active ?? true,
         password: "",
         position: user.position || "",
@@ -181,6 +188,7 @@ export default function CreateUserForm({
         role: role,
         department: "",
         department_id: "",
+        branch_id: "",
         is_active: true,
         password: generateRandomString(),
         position: "",
@@ -297,6 +305,7 @@ export default function CreateUserForm({
           first_name: formData.first_name,
           last_name: formData.last_name,
           department_id: formData.department_id,
+          branch_id: formData.branch_id || null,
           is_active: formData.is_active,
           role: formData.role,
           position: formData.position,
@@ -317,6 +326,7 @@ export default function CreateUserForm({
           first_name: formData.first_name,
           last_name: formData.last_name,
           department_id: formData.department_id || "",
+          branch_id: formData.branch_id || undefined,
           role: formData.role,
           position: formData.position,
           manNumber: formData.manNumber,
@@ -449,31 +459,49 @@ export default function CreateUserForm({
                 }))}
               />
               <SelectField
-                label="Role"
-                required
-                value={formData.role}
+                label="Branch"
+                value={formData.branch_id}
                 onValueChange={(value) =>
                   setFormData((prev) => ({
                     ...prev,
-                    role: value as UserType,
+                    branch_id: value,
                   }))
                 }
-                isDisabled={isSubmitting || isRolesLoading}
-                isLoading={isRolesLoading}
-                placeholder={
-                  rolesError
-                    ? "Error loading roles"
-                    : allRoles.length === 0
-                      ? "No roles available"
-                      : "Select role"
-                }
-                options={allRoles.map((role) => ({
-                  id: role.id,
-                  name: role.name,
-                  value: role.name,
+                isDisabled={isSubmitting || isBranchesLoading}
+                isLoading={isBranchesLoading}
+                placeholder="Select branch"
+                options={branchesData.map((branch) => ({
+                  id: branch.id,
+                  name: branch.name,
+                  value: branch.id,
                 }))}
               />
             </div>
+            <SelectField
+              label="Role"
+              required
+              value={formData.role}
+              onValueChange={(value) =>
+                setFormData((prev) => ({
+                  ...prev,
+                  role: value as UserType,
+                }))
+              }
+              isDisabled={isSubmitting || isRolesLoading}
+              isLoading={isRolesLoading}
+              placeholder={
+                rolesError
+                  ? "Error loading roles"
+                  : allRoles.length === 0
+                    ? "No roles available"
+                    : "Select role"
+              }
+              options={allRoles.map((role) => ({
+                id: role.id,
+                name: role.name,
+                value: role.name,
+              }))}
+            />
 
             <div className="grid gap-4 md:grid-cols-2">
               <Input

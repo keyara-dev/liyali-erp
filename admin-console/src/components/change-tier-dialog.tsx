@@ -25,7 +25,7 @@ import {
   Check,
   Loader2,
 } from "lucide-react";
-import { changeOrganizationTier } from "@/app/_actions/organizations";
+import { changeOrganizationTier } from "@/app/_actions/subscriptions";
 import { toast } from "sonner";
 import {
   useSubscriptionTiers,
@@ -100,7 +100,7 @@ export function ChangeTierDialog({
 
     try {
       const result = await changeOrganizationTier(organization.id, {
-        tier: selectedTier,
+        newTier: selectedTier,
         reason: reason.trim(),
       });
 

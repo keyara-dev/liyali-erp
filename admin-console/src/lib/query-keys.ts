@@ -185,6 +185,14 @@ export const queryKeys = {
     config: () => ["system-health", "config"] as const,
   },
 
+  // ── Impersonation Logs ─────────────────────────────────────────────────────
+  impersonation: {
+    all: ["impersonation"] as const,
+    logs: (filters?: unknown) => ["impersonation", "logs", filters] as const,
+    log: (id: string) => ["impersonation", "logs", id] as const,
+    stats: () => ["impersonation", "stats"] as const,
+  },
+
   // ── Users (platform users, not admin users) ────────────────────────────────
   users: {
     all: ["users"] as const,

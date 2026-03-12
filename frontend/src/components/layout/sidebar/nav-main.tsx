@@ -35,6 +35,7 @@ import {
   CheckSquare,
   DollarSign,
   GitBranch,
+  MapPin,
   QrCode,
   type LucideIcon,
   ChevronRight,
@@ -172,6 +173,11 @@ export const routes: NavGroup[] = [
             title: "Categories",
             href: "/admin/categories",
             icon: Blocks,
+          },
+          {
+            title: "Branches",
+            href: "/admin/branches",
+            icon: MapPin,
           },
           {
             title: "System Monitoring",

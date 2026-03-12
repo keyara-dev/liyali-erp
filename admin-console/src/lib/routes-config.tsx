@@ -81,6 +81,16 @@ export const admin_routes: AdminRoutesType[] = [
     ],
   },
   {
+    title: "Security",
+    items: [
+      {
+        title: "Impersonation Logs",
+        href: "/admin/impersonation",
+        icon: "Eye",
+      },
+    ],
+  },
+  {
     title: "Configuration",
     items: [
       {

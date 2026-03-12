@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -12,28 +12,10 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { SelectField } from "@/components/ui/select-field";
+import { SearchSelectField } from "@/components/ui/search-select-field";
 import { toast } from "sonner";
 import {
   createOrganization,
@@ -41,15 +23,8 @@ import {
 } from "@/app/_actions/organizations";
 import { useSubscriptionTiers } from "@/hooks/use-subscriptions";
 import { useAdminUsers } from "@/hooks/use-admin-users";
-import {
-  Building2,
-  User,
-  Settings,
-  ChevronsUpDown,
-  Check,
-  X,
-  Loader2,
-} from "lucide-react";
+import { Building2, User, Settings, Loader2, Check } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import type { AdminUser } from "@/app/_actions/admin-users";
 
@@ -60,16 +35,17 @@ interface OrganizationCreateDialogProps {
 }
 
 const TRIAL_DURATIONS = [
-  { value: 7, label: "7 days" },
-  { value: 14, label: "14 days" },
-  { value: 30, label: "30 days" },
-  { value: 60, label: "60 days" },
-  { value: 90, label: "90 days" },
+  { value: "7", label: "7 days" },
+  { value: "14", label: "14 days" },
+  { value: "30", label: "30 days" },
+  { value: "60", label: "60 days" },
+  { value: "90", label: "90 days" },
 ];
 
 const emptyForm = (): CreateOrganizationRequest => ({
   name: "",
   domain: "",
+  description: "",
   admin_user_id: "",
   subscription_tier: "",
   trial_days: 30,
@@ -86,19 +62,65 @@ export function OrganizationCreateDialog({
     useState<CreateOrganizationRequest>(emptyForm());
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  // User search-select state
-  const [userPickerOpen, setUserPickerOpen] = useState(false);
-  const [userSearch, setUserSearch] = useState("");
-  const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
-
   const { data: tiers, isLoading: tiersLoading } = useSubscriptionTiers();
-  const { data: adminUsers, isLoading: usersLoading } = useAdminUsers(
-    userSearch ? { search: userSearch } : {},
-  );
+  const { data: adminUsers, isLoading: usersLoading } = useAdminUsers({});
 
   const selectedTier = tiers?.find(
     (t) => t.name === formData.subscription_tier,
   );
+
+  const userOptions =
+    adminUsers?.map((u) => ({
+      id: u.id,
+      name: u.full_name || `${u.first_name} ${u.last_name}`.trim() || u.email,
+      email: u.email,
+      is_super_admin: u.is_super_admin,
+    })) ?? [];
+
+  const renderUserOption = (item: any, isSelected: boolean) => (
+    <div className="flex items-center gap-3 py-1 w-full">
+      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary font-semibold text-xs shrink-0">
+        {(item.name || item.email || "?").charAt(0).toUpperCase()}
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="text-sm font-medium truncate">{item.name}</div>
+        <div className="text-xs text-muted-foreground truncate">
+          {item.email}
+        </div>
+      </div>
+      {item.is_super_admin && (
+        <Badge variant="secondary" className="text-xs shrink-0">
+          Super Admin
+        </Badge>
+      )}
+      <Check
+        className={cn(
+          "h-4 w-4 shrink-0 ml-1",
+          isSelected ? "opacity-100" : "opacity-0",
+        )}
+      />
+    </div>
+  );
+
+  const renderUserSelected = (item: any) => (
+    <div className="flex items-center gap-2">
+      <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary font-semibold text-xs shrink-0">
+        {(item.name || item.email || "?").charAt(0).toUpperCase()}
+      </div>
+      <span className="truncate">{item.name}</span>
+      {item.email && (
+        <span className="text-xs text-muted-foreground truncate hidden sm:inline">
+          · {item.email}
+        </span>
+      )}
+    </div>
+  );
+
+  const tierOptions =
+    tiers?.map((t) => ({
+      value: t.name,
+      label: `${t.displayName} — $${t.priceMonthly}/mo`,
+    })) ?? [];
 
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
@@ -145,25 +167,11 @@ export function OrganizationCreateDialog({
   const resetForm = () => {
     setFormData(emptyForm());
     setErrors({});
-    setSelectedUser(null);
-    setUserSearch("");
   };
 
   const handleField = (field: keyof CreateOrganizationRequest, value: any) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     if (errors[field]) setErrors((prev) => ({ ...prev, [field]: "" }));
-  };
-
-  const handleSelectUser = (user: AdminUser) => {
-    setSelectedUser(user);
-    handleField("admin_user_id", user.id);
-    setUserPickerOpen(false);
-    setUserSearch("");
-  };
-
-  const handleClearUser = () => {
-    setSelectedUser(null);
-    handleField("admin_user_id", "");
   };
 
   return (
@@ -175,13 +183,41 @@ export function OrganizationCreateDialog({
             Create New Organization
           </DialogTitle>
           <DialogDescription asChild>
-            <div>
-              Set up a new organization and attach an existing admin user.
-            </div>
+            <p>Set up a new organization and attach an existing admin user.</p>
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Admin User */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <User className="h-4 w-4" />
+                Admin User <span className="text-red-500">*</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                Select an existing admin user to manage this organization.
+              </p>
+              <SearchSelectField
+                label=""
+                name="admin_user_id"
+                placeholder="Search and select an admin user..."
+                value={formData.admin_user_id}
+                onValueChange={(v) => handleField("admin_user_id", v)}
+                options={userOptions}
+                isLoading={usersLoading}
+                isInvalid={!!errors.admin_user_id}
+                errorText={errors.admin_user_id}
+                onModal
+                renderOption={renderUserOption}
+                renderSelected={renderUserSelected}
+                classNames={{ wrapper: "max-w-full" }}
+              />
+            </CardContent>
+          </Card>
+          
           {/* Organization Information */}
           <Card>
             <CardHeader>
@@ -223,147 +259,16 @@ export function OrganizationCreateDialog({
                   )}
                 </div>
               </div>
-            </CardContent>
-          </Card>
-
-          {/* Admin User */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <User className="h-4 w-4" />
-                Admin User <span className="text-red-500">*</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <p className="text-sm text-muted-foreground">
-                Select an existing admin user to manage this organization.
-              </p>
-
-              {selectedUser ? (
-                /* Selected user pill */
-                <div className="flex items-center gap-3 p-3 rounded-lg border bg-muted/30">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary font-semibold text-sm shrink-0">
-                    {(selectedUser.full_name || selectedUser.email)
-                      .charAt(0)
-                      .toUpperCase()}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="font-medium text-sm truncate">
-                      {selectedUser.full_name ||
-                        `${selectedUser.first_name} ${selectedUser.last_name}`.trim() ||
-                        selectedUser.email}
-                    </div>
-                    <div className="text-xs text-muted-foreground truncate">
-                      {selectedUser.email}
-                    </div>
-                  </div>
-                  {selectedUser.is_super_admin && (
-                    <Badge variant="secondary" className="text-xs shrink-0">
-                      Super Admin
-                    </Badge>
-                  )}
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 w-7 p-0 shrink-0"
-                    onClick={handleClearUser}
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-              ) : (
-                /* Search popover */
-                <Popover
-                  open={userPickerOpen}
-                  onOpenChange={setUserPickerOpen}
-                  modal={true}
-                >
-                  <PopoverTrigger asChild>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      role="combobox"
-                      className={cn(
-                        "w-full justify-between font-normal",
-                        errors.admin_user_id && "border-red-500",
-                      )}
-                    >
-                      <span className="text-muted-foreground">
-                        Search and select an admin user...
-                      </span>
-                      <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50" />
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent
-                    className="w-[--radix-popover-trigger-width] p-0"
-                    align="start"
-                  >
-                    <Command shouldFilter={false}>
-                      <CommandInput
-                        placeholder="Search by name or email..."
-                        value={userSearch}
-                        onValueChange={setUserSearch}
-                      />
-                      <CommandList>
-                        {usersLoading ? (
-                          <div className="flex items-center justify-center py-6 text-sm text-muted-foreground gap-2">
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                            Searching...
-                          </div>
-                        ) : !adminUsers?.length ? (
-                          <CommandEmpty>No admin users found.</CommandEmpty>
-                        ) : (
-                          <CommandGroup>
-                            {adminUsers.map((user) => (
-                              <CommandItem
-                                key={user.id}
-                                value={user.id}
-                                onSelect={() => handleSelectUser(user)}
-                                className="flex items-center gap-3 py-2"
-                              >
-                                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary font-semibold text-xs shrink-0">
-                                  {(user.full_name || user.email)
-                                    .charAt(0)
-                                    .toUpperCase()}
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <div className="text-sm font-medium truncate">
-                                    {user.full_name ||
-                                      `${user.first_name} ${user.last_name}`.trim() ||
-                                      user.email}
-                                  </div>
-                                  <div className="text-xs text-muted-foreground truncate">
-                                    {user.email}
-                                  </div>
-                                </div>
-                                {user.is_super_admin && (
-                                  <Badge
-                                    variant="secondary"
-                                    className="text-xs shrink-0"
-                                  >
-                                    Super Admin
-                                  </Badge>
-                                )}
-                                <Check
-                                  className={cn(
-                                    "h-4 w-4 shrink-0",
-                                    "opacity-0",
-                                  )}
-                                />
-                              </CommandItem>
-                            ))}
-                          </CommandGroup>
-                        )}
-                      </CommandList>
-                    </Command>
-                  </PopoverContent>
-                </Popover>
-              )}
-
-              {errors.admin_user_id && (
-                <p className="text-sm text-red-500">{errors.admin_user_id}</p>
-              )}
+              <div className="space-y-2">
+                <Label htmlFor="description">Description</Label>
+                <Textarea
+                  id="description"
+                  value={formData.description ?? ""}
+                  onChange={(e) => handleField("description", e.target.value)}
+                  placeholder="Brief description of this organization..."
+                  rows={2}
+                />
+              </div>
             </CardContent>
           </Card>
 
@@ -376,71 +281,34 @@ export function OrganizationCreateDialog({
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="subscription_tier">
-                  Subscription Tier <span className="text-red-500">*</span>
-                </Label>
-                <Select
-                  value={formData.subscription_tier}
-                  onValueChange={(v) => handleField("subscription_tier", v)}
-                  disabled={tiersLoading}
-                >
-                  <SelectTrigger
-                    className={errors.subscription_tier ? "border-red-500" : ""}
-                  >
-                    <SelectValue
-                      placeholder={
-                        tiersLoading
-                          ? "Loading tiers..."
-                          : "Select subscription tier"
-                      }
-                    />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {tiers?.map((tier) => (
-                      <SelectItem key={tier.id} value={tier.name}>
-                        <div className="flex items-center justify-between gap-4 w-full">
-                          <span className="font-medium">
-                            {tier.displayName}
-                          </span>
-                          <span className="text-sm text-muted-foreground">
-                            ${tier.priceMonthly}/month
-                          </span>
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {errors.subscription_tier && (
-                  <p className="text-sm text-red-500">
-                    {errors.subscription_tier}
-                  </p>
-                )}
-                {selectedTier && (
-                  <p className="text-sm text-muted-foreground">
-                    {selectedTier.description}
-                  </p>
-                )}
-              </div>
+              <SelectField
+                label="Subscription Tier"
+                required
+                placeholder={
+                  tiersLoading ? "Loading tiers..." : "Select subscription tier"
+                }
+                value={formData.subscription_tier}
+                onValueChange={(v) => handleField("subscription_tier", v)}
+                isLoading={tiersLoading}
+                isInvalid={!!errors.subscription_tier}
+                errorText={errors.subscription_tier}
+                options={tierOptions}
+                classNames={{ wrapper: "max-w-full" }}
+              />
+              {selectedTier && (
+                <p className="text-sm text-muted-foreground">
+                  {selectedTier.description}
+                </p>
+              )}
 
-              <div className="space-y-2">
-                <Label htmlFor="trial_days">Trial Duration</Label>
-                <Select
-                  value={formData.trial_days?.toString()}
-                  onValueChange={(v) => handleField("trial_days", parseInt(v))}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select duration" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {TRIAL_DURATIONS.map((d) => (
-                      <SelectItem key={d.value} value={d.value.toString()}>
-                        {d.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              <SelectField
+                label="Trial Duration"
+                value={formData.trial_days?.toString()}
+                onValueChange={(v) => handleField("trial_days", parseInt(v))}
+                options={TRIAL_DURATIONS}
+                placeholder="Select duration"
+                classNames={{ wrapper: "max-w-full" }}
+              />
 
               <div className="space-y-2">
                 <Label htmlFor="max_users">Maximum Users</Label>
