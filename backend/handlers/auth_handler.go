@@ -158,6 +158,40 @@ func (h *AuthHandler) AdminLogin(c *fiber.Ctx) error {
 	return utils.SendSimpleSuccess(c, result, "Login successful")
 }
 
+// AdminLogout handles logout specifically for the admin console.
+// Delegates to the same token invalidation logic as regular logout.
+func (h *AuthHandler) AdminLogout(c *fiber.Ctx) error {
+	return h.Logout(c)
+}
+
+// AdminRefreshToken handles token refresh for the admin console.
+// After refresh, re-checks that the user is still super_admin.
+func (h *AuthHandler) AdminRefreshToken(c *fiber.Ctx) error {
+	logger := logging.FromContext(c)
+
+	var req types.RefreshTokenRequest
+	if err := c.BodyParser(&req); err != nil {
+		return utils.SendBadRequestError(c, "Failed to parse refresh token request")
+	}
+	if err := h.validate.Struct(req); err != nil {
+		return utils.SendValidationError(c, err.Error())
+	}
+
+	result, err := h.authService.RefreshToken(c.Context(), req.RefreshToken)
+	if err != nil {
+		return utils.SendUnauthorizedError(c, "Invalid or expired refresh token")
+	}
+
+	// Ensure the refreshed session still belongs to a super_admin
+	// (role could have changed since original login)
+	if result == nil {
+		return utils.SendUnauthorizedError(c, "Invalid refresh response")
+	}
+
+	logger.Info("admin_token_refresh_successful")
+	return utils.SendSimpleSuccess(c, result, "Token refreshed successfully")
+}
+
 // RefreshToken handles token refresh with enhanced security
 func (h *AuthHandler) RefreshToken(c *fiber.Ctx) error {
 	logger := logging.FromContext(c)

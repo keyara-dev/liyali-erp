@@ -119,7 +119,7 @@ export async function logoutAdmin(): Promise<AuthResponse> {
       try {
         await unauthenticatedRequest({
           method: "POST",
-          url: "/api/v1/auth/logout",
+          url: "/api/v1/admin/auth/logout",
           data: {
             refreshToken: session.refresh_token, // Use refresh token for logout
           },
@@ -216,7 +216,7 @@ export async function refreshAdminSession(): Promise<AuthResponse> {
 
     const response = await unauthenticatedRequest({
       method: "POST",
-      url: "/api/v1/auth/refresh",
+      url: "/api/v1/admin/auth/refresh",
       data: {
         refreshToken: session.refresh_token,
       },

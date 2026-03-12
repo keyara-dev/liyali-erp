@@ -21,8 +21,10 @@ func SetupRoutes(app *fiber.App, handlerRegistry *handlers.HandlerRegistry, rbac
 
 	// Auth routes with rate limiting
 	public.Post("/auth/login", middleware.AuthRateLimitMiddleware(), handlerRegistry.Auth.Login)
-	// Dedicated admin console login — enforces super_admin role server-side
+	// Dedicated admin console auth endpoints — super_admin only
 	public.Post("/admin/auth/login", middleware.AuthRateLimitMiddleware(), handlerRegistry.Auth.AdminLogin)
+	public.Post("/admin/auth/logout", handlerRegistry.Auth.AdminLogout)
+	public.Post("/admin/auth/refresh", middleware.AuthRateLimitMiddleware(), handlerRegistry.Auth.AdminRefreshToken)
 	public.Post("/auth/register", middleware.AuthRateLimitMiddleware(), handlerRegistry.Auth.Register)
 	public.Post("/auth/verify", handlerRegistry.Auth.VerifyToken)
 	public.Post("/auth/refresh", middleware.AuthRateLimitMiddleware(), handlerRegistry.Auth.RefreshToken)
@@ -395,6 +397,10 @@ func SetupRoutes(app *fiber.App, handlerRegistry *handlers.HandlerRegistry, rbac
 	admin.Get("/analytics/organizations", handlers.GetAdminOrganizationAnalytics)
 	admin.Get("/analytics/revenue", handlers.GetAdminRevenueAnalytics)
 	admin.Get("/analytics/usage", handlers.GetAdminUsageAnalytics)
+	admin.Post("/analytics/export", handlers.ExportAdminAnalytics)
+	admin.Post("/analytics/custom", handlers.RunCustomAdminAnalytics)
+	admin.Get("/analytics/dashboard/config", handlers.GetAdminAnalyticsDashboardConfig)
+	admin.Put("/analytics/dashboard/config", handlers.UpdateAdminAnalyticsDashboardConfig)
 
 	// Admin subscription statistics
 	admin.Get("/subscriptions/statistics", handlers.GetSubscriptionStatistics)
