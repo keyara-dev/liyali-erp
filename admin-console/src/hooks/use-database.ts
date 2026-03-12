@@ -15,12 +15,13 @@ import {
   getDatabasePerformanceMetrics,
   type DatabaseFilters,
 } from "@/app/_actions/database";
+import { queryKeys } from "@/lib/query-keys";
 
 // --- Query Hooks ---
 
 export function useDatabaseConnections(filters?: DatabaseFilters) {
   return useQuery({
-    queryKey: ["database", "connections", filters],
+    queryKey: queryKeys.database.connections(filters),
     queryFn: async () => {
       const result = await getDatabaseConnections(filters);
       if (!result.success) throw new Error(result.message);
@@ -31,7 +32,7 @@ export function useDatabaseConnections(filters?: DatabaseFilters) {
 
 export function useDatabaseConnection(connectionId: string) {
   return useQuery({
-    queryKey: ["database", "connections", connectionId],
+    queryKey: queryKeys.database.connection(connectionId),
     queryFn: async () => {
       const result = await getDatabaseConnection(connectionId);
       if (!result.success) throw new Error(result.message);
@@ -43,7 +44,7 @@ export function useDatabaseConnection(connectionId: string) {
 
 export function useDatabaseMetrics(filters?: DatabaseFilters) {
   return useQuery({
-    queryKey: ["database", "metrics", filters],
+    queryKey: queryKeys.database.metrics(filters),
     queryFn: async () => {
       const result = await getDatabaseMetrics(filters);
       if (!result.success) throw new Error(result.message);
@@ -57,7 +58,7 @@ export function useDatabaseTables(
   filters?: { search?: string; schema?: string },
 ) {
   return useQuery({
-    queryKey: ["database", "connections", connectionId, "tables", filters],
+    queryKey: queryKeys.database.tables(connectionId, filters),
     queryFn: async () => {
       const result = await getDatabaseTables(connectionId, filters);
       if (!result.success) throw new Error(result.message);
@@ -69,7 +70,7 @@ export function useDatabaseTables(
 
 export function useDatabaseQueries(filters?: DatabaseFilters) {
   return useQuery({
-    queryKey: ["database", "queries", filters],
+    queryKey: queryKeys.database.queries(filters),
     queryFn: async () => {
       const result = await getDatabaseQueries(filters);
       if (!result.success) throw new Error(result.message);
@@ -80,7 +81,7 @@ export function useDatabaseQueries(filters?: DatabaseFilters) {
 
 export function useDatabaseBackups(filters?: DatabaseFilters) {
   return useQuery({
-    queryKey: ["database", "backups", filters],
+    queryKey: queryKeys.database.backups(filters),
     queryFn: async () => {
       const result = await getDatabaseBackups(filters);
       if (!result.success) throw new Error(result.message);
@@ -91,7 +92,7 @@ export function useDatabaseBackups(filters?: DatabaseFilters) {
 
 export function useDatabaseMigrations(connectionId: string) {
   return useQuery({
-    queryKey: ["database", "connections", connectionId, "migrations"],
+    queryKey: queryKeys.database.migrations(connectionId),
     queryFn: async () => {
       const result = await getDatabaseMigrations(connectionId);
       if (!result.success) throw new Error(result.message);
@@ -103,7 +104,7 @@ export function useDatabaseMigrations(connectionId: string) {
 
 export function useDatabaseStats() {
   return useQuery({
-    queryKey: ["database", "stats"],
+    queryKey: queryKeys.database.stats(),
     queryFn: async () => {
       const result = await getDatabaseStats();
       if (!result.success) throw new Error(result.message);
@@ -114,7 +115,7 @@ export function useDatabaseStats() {
 
 export function useDatabaseSchemas(connectionId: string) {
   return useQuery({
-    queryKey: ["database", "connections", connectionId, "schemas"],
+    queryKey: queryKeys.database.schemas(connectionId),
     queryFn: async () => {
       const result = await getDatabaseSchemas(connectionId);
       if (!result.success) throw new Error(result.message);
@@ -129,13 +130,7 @@ export function useDatabasePerformanceMetrics(
   timeRange: string = "24h",
 ) {
   return useQuery({
-    queryKey: [
-      "database",
-      "connections",
-      connectionId,
-      "performance",
-      timeRange,
-    ],
+    queryKey: queryKeys.database.performance(connectionId, timeRange),
     queryFn: async () => {
       const result = await getDatabasePerformanceMetrics(
         connectionId,
@@ -172,7 +167,7 @@ export function useCreateDatabaseBackup() {
       };
     }) => createDatabaseBackup(connectionId, options),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["database", "backups"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.database.backups() });
     },
   });
 }
@@ -192,7 +187,7 @@ export function useRestoreDatabaseBackup() {
       };
     }) => restoreDatabaseBackup(backupId, options),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["database"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.database.all });
     },
   });
 }

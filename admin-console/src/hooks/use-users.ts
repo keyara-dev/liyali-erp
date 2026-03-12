@@ -16,12 +16,13 @@ import {
   type UserFilters,
   type UpdateUserRequest,
 } from "@/app/_actions/users";
+import { queryKeys } from "@/lib/query-keys";
 
 // --- Query Hooks ---
 
 export function useUsers(filters?: UserFilters) {
   return useQuery({
-    queryKey: ["users", filters],
+    queryKey: queryKeys.users.list(filters),
     queryFn: async () => {
       const result = await getAllUsers(filters);
       if (!result.success) throw new Error(result.message);
@@ -32,7 +33,7 @@ export function useUsers(filters?: UserFilters) {
 
 export function useUser(id: string) {
   return useQuery({
-    queryKey: ["users", id],
+    queryKey: queryKeys.users.detail(id),
     queryFn: async () => {
       const result = await getUserById(id);
       if (!result.success) throw new Error(result.message);
@@ -44,7 +45,7 @@ export function useUser(id: string) {
 
 export function useUserStats() {
   return useQuery({
-    queryKey: ["users", "statistics"],
+    queryKey: queryKeys.users.stats(),
     queryFn: async () => {
       const result = await getUserStatistics();
       if (!result.success) throw new Error(result.message);
@@ -55,7 +56,7 @@ export function useUserStats() {
 
 export function useUserActivity(userId: string, page = 1, limit = 50) {
   return useQuery({
-    queryKey: ["users", userId, "activity", { page, limit }],
+    queryKey: queryKeys.users.activity(userId, page, limit),
     queryFn: async () => {
       const result = await getUserActivity(userId, page, limit);
       if (!result.success) throw new Error(result.message);
@@ -67,7 +68,7 @@ export function useUserActivity(userId: string, page = 1, limit = 50) {
 
 export function useUserSessions(userId: string) {
   return useQuery({
-    queryKey: ["users", userId, "sessions"],
+    queryKey: queryKeys.users.sessions(userId),
     queryFn: async () => {
       const result = await getUserSessions(userId);
       if (!result.success) throw new Error(result.message);
@@ -79,7 +80,7 @@ export function useUserSessions(userId: string) {
 
 export function useUserOrganizations(userId: string) {
   return useQuery({
-    queryKey: ["users", userId, "organizations"],
+    queryKey: queryKeys.users.organizations(userId),
     queryFn: async () => {
       const result = await getUserOrganizations(userId);
       if (!result.success) throw new Error(result.message);
@@ -97,7 +98,7 @@ export function useUpdateUser() {
     mutationFn: ({ id, data }: { id: string; data: UpdateUserRequest }) =>
       updateUser(id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["users"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.users.all });
     },
   });
 }
@@ -115,7 +116,7 @@ export function useUpdateUserStatus() {
       reason?: string;
     }) => updateUserStatus(id, status, reason),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["users"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.users.all });
     },
   });
 }
@@ -131,7 +132,7 @@ export function useResetUserPassword() {
       sendEmail?: boolean;
     }) => resetUserPassword(id, sendEmail),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["users"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.users.all });
     },
   });
 }
@@ -148,7 +149,7 @@ export function useTerminateUserSession() {
     }) => terminateUserSession(userId, sessionId),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({
-        queryKey: ["users", variables.userId, "sessions"],
+        queryKey: queryKeys.users.sessions(variables.userId),
       });
     },
   });
@@ -160,7 +161,7 @@ export function useTerminateAllUserSessions() {
     mutationFn: (userId: string) => terminateAllUserSessions(userId),
     onSuccess: (_data, userId) => {
       queryClient.invalidateQueries({
-        queryKey: ["users", userId, "sessions"],
+        queryKey: queryKeys.users.sessions(userId),
       });
     },
   });
@@ -182,9 +183,9 @@ export function useUpdateUserOrgRole() {
     }) => updateUserOrganizationRole(userId, organizationId, role, status),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({
-        queryKey: ["users", variables.userId, "organizations"],
+        queryKey: queryKeys.users.organizations(variables.userId),
       });
-      queryClient.invalidateQueries({ queryKey: ["users"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.users.all });
     },
   });
 }
@@ -201,9 +202,9 @@ export function useRemoveUserFromOrg() {
     }) => removeUserFromOrganization(userId, organizationId),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({
-        queryKey: ["users", variables.userId, "organizations"],
+        queryKey: queryKeys.users.organizations(variables.userId),
       });
-      queryClient.invalidateQueries({ queryKey: ["users"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.users.all });
     },
   });
 }

@@ -19,12 +19,13 @@ import {
   getRealTimeMetrics,
   type APIFilters,
 } from "@/app/_actions/api-monitoring";
+import { queryKeys } from "@/lib/query-keys";
 
 // --- Query Hooks ---
 
 export function useAPIEndpoints(filters?: APIFilters) {
   return useQuery({
-    queryKey: ["api-monitoring", "endpoints", filters],
+    queryKey: queryKeys.apiMonitoring.endpoints(filters),
     queryFn: async () => {
       const result = await getAPIEndpoints(filters);
       if (!result.success) throw new Error(result.message);
@@ -35,7 +36,7 @@ export function useAPIEndpoints(filters?: APIFilters) {
 
 export function useAPIEndpoint(endpointId: string) {
   return useQuery({
-    queryKey: ["api-monitoring", "endpoints", endpointId],
+    queryKey: queryKeys.apiMonitoring.endpoint(endpointId),
     queryFn: async () => {
       const result = await getAPIEndpoint(endpointId);
       if (!result.success) throw new Error(result.message);
@@ -47,7 +48,7 @@ export function useAPIEndpoint(endpointId: string) {
 
 export function useAPIMetrics(filters?: APIFilters) {
   return useQuery({
-    queryKey: ["api-monitoring", "metrics", filters],
+    queryKey: queryKeys.apiMonitoring.metrics(filters),
     queryFn: async () => {
       const result = await getAPIMetrics(filters);
       if (!result.success) throw new Error(result.message);
@@ -61,7 +62,7 @@ export function useEndpointMetrics(
   timeRange: string = "24h",
 ) {
   return useQuery({
-    queryKey: ["api-monitoring", "endpoints", endpointId, "metrics", timeRange],
+    queryKey: queryKeys.apiMonitoring.endpointMetrics(endpointId, timeRange),
     queryFn: async () => {
       const result = await getEndpointMetrics(endpointId, timeRange);
       if (!result.success) throw new Error(result.message);
@@ -73,7 +74,7 @@ export function useEndpointMetrics(
 
 export function useAPIErrors(filters?: APIFilters) {
   return useQuery({
-    queryKey: ["api-monitoring", "errors", filters],
+    queryKey: queryKeys.apiMonitoring.errors(filters),
     queryFn: async () => {
       const result = await getAPIErrors(filters);
       if (!result.success) throw new Error(result.message);
@@ -84,7 +85,7 @@ export function useAPIErrors(filters?: APIFilters) {
 
 export function useAPIError(errorId: string) {
   return useQuery({
-    queryKey: ["api-monitoring", "errors", errorId],
+    queryKey: queryKeys.apiMonitoring.error(errorId),
     queryFn: async () => {
       const result = await getAPIError(errorId);
       if (!result.success) throw new Error(result.message);
@@ -96,7 +97,7 @@ export function useAPIError(errorId: string) {
 
 export function useAPIAlerts(filters?: APIFilters) {
   return useQuery({
-    queryKey: ["api-monitoring", "alerts", filters],
+    queryKey: queryKeys.apiMonitoring.alerts(filters),
     queryFn: async () => {
       const result = await getAPIAlerts(filters);
       if (!result.success) throw new Error(result.message);
@@ -107,7 +108,7 @@ export function useAPIAlerts(filters?: APIFilters) {
 
 export function useAPIStats() {
   return useQuery({
-    queryKey: ["api-monitoring", "stats"],
+    queryKey: queryKeys.apiMonitoring.stats(),
     queryFn: async () => {
       const result = await getAPIStats();
       if (!result.success) throw new Error(result.message);
@@ -121,7 +122,7 @@ export function useAPIPerformanceData(
   interval: string = "5m",
 ) {
   return useQuery({
-    queryKey: ["api-monitoring", "performance", timeRange, interval],
+    queryKey: queryKeys.apiMonitoring.performance(timeRange, interval),
     queryFn: async () => {
       const result = await getAPIPerformanceData(timeRange, interval);
       if (!result.success) throw new Error(result.message);
@@ -132,7 +133,7 @@ export function useAPIPerformanceData(
 
 export function useAPICategories() {
   return useQuery({
-    queryKey: ["api-monitoring", "categories"],
+    queryKey: queryKeys.apiMonitoring.categories(),
     queryFn: async () => {
       const result = await getAPICategories();
       if (!result.success) throw new Error(result.message);
@@ -143,7 +144,7 @@ export function useAPICategories() {
 
 export function useRealTimeMetrics() {
   return useQuery({
-    queryKey: ["api-monitoring", "realtime"],
+    queryKey: queryKeys.apiMonitoring.realtime(),
     queryFn: async () => {
       const result = await getRealTimeMetrics();
       if (!result.success) throw new Error(result.message);
@@ -167,7 +168,7 @@ export function useResolveAPIError() {
     }) => resolveAPIError(errorId, notes),
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: ["api-monitoring", "errors"],
+        queryKey: queryKeys.apiMonitoring.all,
       });
     },
   });
@@ -180,7 +181,7 @@ export function useAcknowledgeAPIAlert() {
       acknowledgeAPIAlert(alertId, notes),
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: ["api-monitoring", "alerts"],
+        queryKey: queryKeys.apiMonitoring.alerts(),
       });
     },
   });
@@ -198,7 +199,7 @@ export function useResolveAPIAlert() {
     }) => resolveAPIAlert(alertId, notes),
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: ["api-monitoring", "alerts"],
+        queryKey: queryKeys.apiMonitoring.alerts(),
       });
     },
   });
@@ -233,7 +234,7 @@ export function useUpdateEndpointConfig() {
     }) => updateEndpointConfig(endpointId, config),
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: ["api-monitoring", "endpoints"],
+        queryKey: queryKeys.apiMonitoring.endpoints(),
       });
     },
   });

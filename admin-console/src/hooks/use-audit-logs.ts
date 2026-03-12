@@ -11,6 +11,7 @@ import {
   updateAuditLogRetentionSettings,
   type AuditLogFilters,
 } from "@/app/_actions/audit-logs";
+import { queryKeys } from "@/lib/query-keys";
 
 export function useAuditLogs(
   filters?: AuditLogFilters,
@@ -18,7 +19,7 @@ export function useAuditLogs(
   limit: number = 50,
 ) {
   return useQuery({
-    queryKey: ["audit-logs", filters, page, limit],
+    queryKey: queryKeys.auditLogs.list(filters, page, limit),
     queryFn: async () => {
       const result = await getAuditLogs(filters, page, limit);
       if (!result.success) throw new Error(result.message);
@@ -29,7 +30,7 @@ export function useAuditLogs(
 
 export function useAuditLogStats(filters?: AuditLogFilters) {
   return useQuery({
-    queryKey: ["audit-logs", "stats", filters],
+    queryKey: queryKeys.auditLogs.stats(filters),
     queryFn: async () => {
       const result = await getAuditLogStats(filters);
       if (!result.success) throw new Error(result.message);
@@ -40,7 +41,7 @@ export function useAuditLogStats(filters?: AuditLogFilters) {
 
 export function useAuditLogAnalytics(filters?: AuditLogFilters) {
   return useQuery({
-    queryKey: ["audit-logs", "analytics", filters],
+    queryKey: queryKeys.auditLogs.analytics(filters),
     queryFn: async () => {
       const result = await getAuditLogAnalytics(filters);
       if (!result.success) throw new Error(result.message);
@@ -51,7 +52,7 @@ export function useAuditLogAnalytics(filters?: AuditLogFilters) {
 
 export function useAuditLogDetails(logId: string) {
   return useQuery({
-    queryKey: ["audit-logs", logId],
+    queryKey: queryKeys.auditLogs.detail(logId),
     queryFn: async () => {
       const result = await getAuditLogDetails(logId);
       if (!result.success) throw new Error(result.message);
@@ -63,7 +64,7 @@ export function useAuditLogDetails(logId: string) {
 
 export function useSecurityEvents(filters?: AuditLogFilters) {
   return useQuery({
-    queryKey: ["audit-logs", "security-events", filters],
+    queryKey: queryKeys.auditLogs.securityEvents(filters),
     queryFn: async () => {
       const result = await getSecurityEvents(filters);
       if (!result.success) throw new Error(result.message);
@@ -74,7 +75,7 @@ export function useSecurityEvents(filters?: AuditLogFilters) {
 
 export function useAuditLogRetentionSettings() {
   return useQuery({
-    queryKey: ["audit-logs", "retention-settings"],
+    queryKey: queryKeys.auditLogs.retentionSettings(),
     queryFn: async () => {
       const result = await getAuditLogRetentionSettings();
       if (!result.success) throw new Error(result.message);
@@ -107,7 +108,7 @@ export function useCreateAuditLog() {
       severity?: string;
     }) => createAuditLog(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["audit-logs"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.auditLogs.all });
     },
   });
 }
@@ -123,7 +124,7 @@ export function useUpdateAuditLogRetentionSettings() {
     }) => updateAuditLogRetentionSettings(settings),
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: ["audit-logs", "retention-settings"],
+        queryKey: queryKeys.auditLogs.retentionSettings(),
       });
     },
   });

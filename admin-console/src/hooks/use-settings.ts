@@ -11,19 +11,20 @@ import {
   type SystemSetting,
   type SettingsFilters,
 } from "@/app/_actions/settings";
+import { queryKeys } from "@/lib/query-keys";
 
 // --- Query Hooks ---
 
 export function useSystemSettings(filters?: SettingsFilters) {
   return useQuery({
-    queryKey: ["settings", filters],
+    queryKey: queryKeys.settings.list(filters),
     queryFn: () => getSystemSettings(filters),
   });
 }
 
 export function useSystemSetting(id: string) {
   return useQuery({
-    queryKey: ["settings", id],
+    queryKey: queryKeys.settings.detail(id),
     queryFn: () => getSystemSetting(id),
     enabled: !!id,
   });
@@ -31,21 +32,21 @@ export function useSystemSetting(id: string) {
 
 export function useSettingsStats() {
   return useQuery({
-    queryKey: ["settings", "stats"],
+    queryKey: queryKeys.settings.stats(),
     queryFn: () => getSettingsStats(),
   });
 }
 
 export function useSettingsHealth() {
   return useQuery({
-    queryKey: ["settings", "health"],
+    queryKey: queryKeys.settings.health(),
     queryFn: () => getSystemHealth(),
   });
 }
 
 export function useEnvironmentVariables(environment?: string) {
   return useQuery({
-    queryKey: ["settings", "env-variables", environment],
+    queryKey: queryKeys.settings.envVariables(environment),
     queryFn: () => getEnvironmentVariables(environment),
   });
 }
@@ -62,7 +63,7 @@ export function useCreateSystemSetting() {
       >,
     ) => createSystemSetting(setting),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["settings"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.settings.all });
     },
   });
 }
@@ -78,7 +79,7 @@ export function useUpdateSystemSetting() {
       updates: Partial<SystemSetting>;
     }) => updateSystemSetting(id, updates),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["settings"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.settings.all });
     },
   });
 }
@@ -88,7 +89,7 @@ export function useDeleteSystemSetting() {
   return useMutation({
     mutationFn: (id: string) => deleteSystemSetting(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["settings"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.settings.all });
     },
   });
 }

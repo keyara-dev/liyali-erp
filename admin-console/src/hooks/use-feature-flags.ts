@@ -12,19 +12,20 @@ import {
   type FeatureFlag,
   type FeatureFlagFilters,
 } from "@/app/_actions/feature-flags";
+import { queryKeys } from "@/lib/query-keys";
 
 // --- Query Hooks ---
 
 export function useFeatureFlags(filters?: FeatureFlagFilters) {
   return useQuery({
-    queryKey: ["feature-flags", filters],
+    queryKey: queryKeys.featureFlags.list(filters),
     queryFn: () => getFeatureFlags(filters),
   });
 }
 
 export function useFeatureFlag(id: string) {
   return useQuery({
-    queryKey: ["feature-flags", id],
+    queryKey: queryKeys.featureFlags.detail(id),
     queryFn: () => getFeatureFlag(id),
     enabled: !!id,
   });
@@ -32,14 +33,14 @@ export function useFeatureFlag(id: string) {
 
 export function useFeatureFlagStats() {
   return useQuery({
-    queryKey: ["feature-flags", "stats"],
+    queryKey: queryKeys.featureFlags.stats(),
     queryFn: () => getFeatureFlagStats(),
   });
 }
 
 export function useFeatureFlagAnalytics(flagKey: string) {
   return useQuery({
-    queryKey: ["feature-flags", flagKey, "analytics"],
+    queryKey: queryKeys.featureFlags.analytics(flagKey),
     queryFn: () => getFeatureFlagAnalytics(flagKey),
     enabled: !!flagKey,
   });
@@ -62,7 +63,7 @@ export function useCreateFeatureFlag() {
       >,
     ) => createFeatureFlag(flag),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["feature-flags"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.featureFlags.all });
     },
   });
 }
@@ -78,7 +79,7 @@ export function useUpdateFeatureFlag() {
       updates: Partial<FeatureFlag>;
     }) => updateFeatureFlag(id, updates),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["feature-flags"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.featureFlags.all });
     },
   });
 }
@@ -88,7 +89,7 @@ export function useDeleteFeatureFlag() {
   return useMutation({
     mutationFn: (id: string) => deleteFeatureFlag(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["feature-flags"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.featureFlags.all });
     },
   });
 }
@@ -98,7 +99,7 @@ export function useToggleFeatureFlag() {
   return useMutation({
     mutationFn: (id: string) => toggleFeatureFlag(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["feature-flags"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.featureFlags.all });
     },
   });
 }
@@ -108,7 +109,7 @@ export function useArchiveFeatureFlag() {
   return useMutation({
     mutationFn: (id: string) => archiveFeatureFlag(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["feature-flags"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.featureFlags.all });
     },
   });
 }

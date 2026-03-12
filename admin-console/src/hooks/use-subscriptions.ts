@@ -21,12 +21,13 @@ import {
   type SubscriptionFeature,
   type TrialResetRequest,
 } from "@/app/_actions/subscriptions";
+import { queryKeys } from "@/lib/query-keys";
 
 // --- Query Hooks ---
 
 export function useSubscriptionTiers() {
   return useQuery({
-    queryKey: ["subscriptions", "tiers"],
+    queryKey: queryKeys.subscriptions.tiers(),
     queryFn: async () => {
       const result = await getAllSubscriptionTiers();
       if (!result.success) throw new Error(result.message);
@@ -37,7 +38,7 @@ export function useSubscriptionTiers() {
 
 export function useSubscriptionTier(tierId: string) {
   return useQuery({
-    queryKey: ["subscriptions", "tiers", tierId],
+    queryKey: queryKeys.subscriptions.tier(tierId),
     queryFn: async () => {
       const result = await getSubscriptionTierById(tierId);
       if (!result.success) throw new Error(result.message);
@@ -49,7 +50,7 @@ export function useSubscriptionTier(tierId: string) {
 
 export function useSubscriptionFeatures() {
   return useQuery({
-    queryKey: ["subscriptions", "features"],
+    queryKey: queryKeys.subscriptions.features(),
     queryFn: async () => {
       const result = await getAllSubscriptionFeatures();
       if (!result.success) throw new Error(result.message);
@@ -60,7 +61,7 @@ export function useSubscriptionFeatures() {
 
 export function useTrialOrganizations() {
   return useQuery({
-    queryKey: ["subscriptions", "trials"],
+    queryKey: queryKeys.subscriptions.trials(),
     queryFn: async () => {
       const result = await getTrialOrganizations();
       if (!result.success) throw new Error(result.message);
@@ -71,7 +72,7 @@ export function useTrialOrganizations() {
 
 export function useSubscriptionAnalytics() {
   return useQuery({
-    queryKey: ["subscriptions", "analytics"],
+    queryKey: queryKeys.subscriptions.analytics(),
     queryFn: async () => {
       const result = await getSubscriptionAnalytics();
       if (!result.success) throw new Error(result.message);
@@ -82,7 +83,7 @@ export function useSubscriptionAnalytics() {
 
 export function useSubscriptionStatistics() {
   return useQuery({
-    queryKey: ["subscriptions", "statistics"],
+    queryKey: queryKeys.subscriptions.statistics(),
     queryFn: async () => {
       const result = await getSubscriptionStatistics();
       if (!result.success) throw new Error(result.message);
@@ -98,7 +99,7 @@ export function useCreateSubscriptionTier() {
   return useMutation({
     mutationFn: (data: CreateTierRequest) => createSubscriptionTier(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["subscriptions", "tiers"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.subscriptions.tiers() });
     },
   });
 }
@@ -108,7 +109,7 @@ export function useUpdateSubscriptionTier() {
   return useMutation({
     mutationFn: (data: UpdateTierRequest) => updateSubscriptionTier(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["subscriptions", "tiers"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.subscriptions.tiers() });
     },
   });
 }
@@ -118,7 +119,7 @@ export function useDeleteSubscriptionTier() {
   return useMutation({
     mutationFn: (tierId: string) => deleteSubscriptionTier(tierId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["subscriptions", "tiers"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.subscriptions.tiers() });
     },
   });
 }
@@ -131,7 +132,7 @@ export function useCreateSubscriptionFeature() {
     ) => createSubscriptionFeature(data),
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: ["subscriptions", "features"],
+        queryKey: queryKeys.subscriptions.features(),
       });
     },
   });
@@ -149,7 +150,7 @@ export function useUpdateSubscriptionFeature() {
     }) => updateSubscriptionFeature(featureId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: ["subscriptions", "features"],
+        queryKey: queryKeys.subscriptions.features(),
       });
     },
   });
@@ -161,7 +162,7 @@ export function useDeleteSubscriptionFeature() {
     mutationFn: (featureId: string) => deleteSubscriptionFeature(featureId),
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: ["subscriptions", "features"],
+        queryKey: queryKeys.subscriptions.features(),
       });
     },
   });
@@ -178,8 +179,8 @@ export function useChangeOrganizationTier() {
       data: { newTier: string; reason: string; overrideLimits?: boolean };
     }) => changeOrganizationTier(organizationId, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["subscriptions"] });
-      queryClient.invalidateQueries({ queryKey: ["organizations"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.subscriptions.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.organizations.all });
     },
   });
 }
@@ -201,7 +202,7 @@ export function useOverrideOrganizationLimits() {
       };
     }) => overrideOrganizationLimits(organizationId, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["organizations"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.organizations.all });
     },
   });
 }
@@ -217,8 +218,8 @@ export function useResetOrganizationTrial() {
       data: TrialResetRequest;
     }) => resetOrganizationTrial(organizationId, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["subscriptions", "trials"] });
-      queryClient.invalidateQueries({ queryKey: ["organizations"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.subscriptions.trials() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.organizations.all });
     },
   });
 }
@@ -234,8 +235,8 @@ export function useExtendOrganizationTrial() {
       data: { daysToAdd: number; reason: string };
     }) => extendOrganizationTrial(organizationId, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["subscriptions", "trials"] });
-      queryClient.invalidateQueries({ queryKey: ["organizations"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.subscriptions.trials() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.organizations.all });
     },
   });
 }

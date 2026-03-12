@@ -13,12 +13,13 @@ import {
   restartService,
   clearSystemCache,
 } from "@/app/_actions/system-health";
+import { queryKeys } from "@/lib/query-keys";
 
 // --- Query Hooks ---
 
 export function useSystemHealth() {
   return useQuery({
-    queryKey: ["system-health"],
+    queryKey: queryKeys.systemHealth.overview(),
     queryFn: async () => {
       const result = await getSystemHealth();
       if (!result.success) throw new Error(result.message);
@@ -30,7 +31,7 @@ export function useSystemHealth() {
 
 export function useSystemMetrics() {
   return useQuery({
-    queryKey: ["system-health", "metrics"],
+    queryKey: queryKeys.systemHealth.metrics(),
     queryFn: async () => {
       const result = await getSystemMetrics();
       if (!result.success) throw new Error(result.message);
@@ -45,7 +46,7 @@ export function useSystemAlerts(
   severity?: "low" | "medium" | "high" | "critical",
 ) {
   return useQuery({
-    queryKey: ["system-health", "alerts", status, severity],
+    queryKey: queryKeys.systemHealth.alerts(status, severity),
     queryFn: async () => {
       const result = await getSystemAlerts(status, severity);
       if (!result.success) throw new Error(result.message);
@@ -61,7 +62,7 @@ export function useSystemLogs(
   limit: number = 100,
 ) {
   return useQuery({
-    queryKey: ["system-health", "logs", level, component, page, limit],
+    queryKey: queryKeys.systemHealth.logs(level, component, page, limit),
     queryFn: async () => {
       const result = await getSystemLogs(level, component, page, limit);
       if (!result.success) throw new Error(result.message);
@@ -72,7 +73,7 @@ export function useSystemLogs(
 
 export function usePerformanceMetrics() {
   return useQuery({
-    queryKey: ["system-health", "performance"],
+    queryKey: queryKeys.systemHealth.performance(),
     queryFn: async () => {
       const result = await getPerformanceMetrics();
       if (!result.success) throw new Error(result.message);
@@ -84,7 +85,7 @@ export function usePerformanceMetrics() {
 
 export function useSystemConfiguration() {
   return useQuery({
-    queryKey: ["system-health", "config"],
+    queryKey: queryKeys.systemHealth.config(),
     queryFn: async () => {
       const result = await getSystemConfiguration();
       if (!result.success) throw new Error(result.message);
@@ -101,7 +102,7 @@ export function useAcknowledgeAlert() {
     mutationFn: (alertId: string) => acknowledgeAlert(alertId),
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: ["system-health", "alerts"],
+        queryKey: queryKeys.systemHealth.alerts(),
       });
     },
   });
@@ -113,7 +114,7 @@ export function useResolveAlert() {
     mutationFn: (alertId: string) => resolveAlert(alertId),
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: ["system-health", "alerts"],
+        queryKey: queryKeys.systemHealth.alerts(),
       });
     },
   });
@@ -124,7 +125,7 @@ export function useRunHealthCheck() {
   return useMutation({
     mutationFn: () => runHealthCheck(),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["system-health"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.systemHealth.all });
     },
   });
 }
@@ -136,7 +137,7 @@ export function useUpdateSystemConfiguration() {
       updateSystemConfiguration(config),
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: ["system-health", "config"],
+        queryKey: queryKeys.systemHealth.config(),
       });
     },
   });

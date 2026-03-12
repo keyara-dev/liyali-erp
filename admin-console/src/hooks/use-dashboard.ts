@@ -3,10 +3,11 @@ import {
   getAdminDashboardMetrics,
   getSystemHealth,
 } from "@/app/_actions/dashboard";
+import { queryKeys } from "@/lib/query-keys";
 
 export function useDashboardMetrics() {
   return useQuery({
-    queryKey: ["dashboard", "metrics"],
+    queryKey: queryKeys.dashboard.metrics(),
     queryFn: async () => {
       const result = await getAdminDashboardMetrics();
       if (!result.success) throw new Error(result.message);
@@ -17,7 +18,7 @@ export function useDashboardMetrics() {
 
 export function useDashboardSystemHealth() {
   return useQuery({
-    queryKey: ["dashboard", "system-health"],
+    queryKey: queryKeys.dashboard.systemHealth(),
     queryFn: async () => {
       const result = await getSystemHealth();
       if (!result.success) throw new Error(result.message);

@@ -17,12 +17,13 @@ import {
   type UpdateOrganizationRequest,
   type TrialResetRequest,
 } from "@/app/_actions/organizations";
+import { queryKeys } from "@/lib/query-keys";
 
 // --- Query Hooks ---
 
 export function useOrganizations(filters?: OrganizationFilters) {
   return useQuery({
-    queryKey: ["organizations", filters],
+    queryKey: queryKeys.organizations.list(filters),
     queryFn: async () => {
       const result = await getAllOrganizations(filters);
       if (!result.success) throw new Error(result.message);
@@ -33,7 +34,7 @@ export function useOrganizations(filters?: OrganizationFilters) {
 
 export function useOrganization(id: string) {
   return useQuery({
-    queryKey: ["organizations", id],
+    queryKey: queryKeys.organizations.detail(id),
     queryFn: async () => {
       const result = await getOrganizationById(id);
       if (!result.success) throw new Error(result.message);
@@ -45,7 +46,7 @@ export function useOrganization(id: string) {
 
 export function useOrganizationStats() {
   return useQuery({
-    queryKey: ["organizations", "statistics"],
+    queryKey: queryKeys.organizations.stats(),
     queryFn: async () => {
       const result = await getOrganizationStatistics();
       if (!result.success) throw new Error(result.message);
@@ -60,7 +61,7 @@ export function useOrganizationUsers(
   limit: number = 50,
 ) {
   return useQuery({
-    queryKey: ["organizations", organizationId, "users", { page, limit }],
+    queryKey: queryKeys.organizations.users(organizationId, page, limit),
     queryFn: async () => {
       const result = await getOrganizationUsers(organizationId, page, limit);
       if (!result.success) throw new Error(result.message);
@@ -76,7 +77,7 @@ export function useOrganizationActivity(
   limit: number = 50,
 ) {
   return useQuery({
-    queryKey: ["organizations", organizationId, "activity", { page, limit }],
+    queryKey: queryKeys.organizations.activity(organizationId, page, limit),
     queryFn: async () => {
       const result = await getOrganizationActivity(
         organizationId,
@@ -92,7 +93,7 @@ export function useOrganizationActivity(
 
 export function useOrganizationTrialStatus(organizationId: string) {
   return useQuery({
-    queryKey: ["organizations", organizationId, "trial"],
+    queryKey: queryKeys.organizations.trial(organizationId),
     queryFn: async () => {
       const result = await getOrganizationTrialStatus(organizationId);
       if (!result.success) throw new Error(result.message);
@@ -104,7 +105,7 @@ export function useOrganizationTrialStatus(organizationId: string) {
 
 export function useOrganizationSubscription(organizationId: string) {
   return useQuery({
-    queryKey: ["organizations", organizationId, "subscription"],
+    queryKey: queryKeys.organizations.subscription(organizationId),
     queryFn: async () => {
       const result = await getOrganizationSubscription(organizationId);
       if (!result.success) throw new Error(result.message);
@@ -121,7 +122,7 @@ export function useCreateOrganization() {
   return useMutation({
     mutationFn: (data: CreateOrganizationRequest) => createOrganization(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["organizations"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.organizations.all });
     },
   });
 }
@@ -137,7 +138,7 @@ export function useUpdateOrganization() {
       data: UpdateOrganizationRequest;
     }) => updateOrganization(id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["organizations"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.organizations.all });
     },
   });
 }
@@ -155,7 +156,7 @@ export function useUpdateOrganizationStatus() {
       reason?: string;
     }) => updateOrganizationStatus(id, status, reason),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["organizations"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.organizations.all });
     },
   });
 }
@@ -165,7 +166,7 @@ export function useDeleteOrganization() {
   return useMutation({
     mutationFn: (id: string) => deleteOrganization(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["organizations"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.organizations.all });
     },
   });
 }
@@ -176,7 +177,7 @@ export function useResetOrganizationTrial() {
     mutationFn: ({ id, data }: { id: string; data: TrialResetRequest }) =>
       resetOrganizationTrial(id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["organizations"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.organizations.all });
     },
   });
 }

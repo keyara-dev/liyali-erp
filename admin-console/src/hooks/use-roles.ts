@@ -17,12 +17,13 @@ import {
   type CreateRoleRequest,
   type UpdateRoleRequest,
 } from "@/app/_actions/roles";
+import { queryKeys } from "@/lib/query-keys";
 
 // --- Query Hooks ---
 
 export function useRoles(filters?: RoleFilters) {
   return useQuery({
-    queryKey: ["roles", filters],
+    queryKey: queryKeys.roles.list(filters),
     queryFn: async () => {
       const result = await getRoles(filters);
       if (!result.success) throw new Error(result.message);
@@ -33,7 +34,7 @@ export function useRoles(filters?: RoleFilters) {
 
 export function useRole(id: string) {
   return useQuery({
-    queryKey: ["roles", id],
+    queryKey: queryKeys.roles.detail(id),
     queryFn: async () => {
       const result = await getRole(id);
       if (!result.success) throw new Error(result.message);
@@ -45,7 +46,7 @@ export function useRole(id: string) {
 
 export function useRoleStats() {
   return useQuery({
-    queryKey: ["roles", "stats"],
+    queryKey: queryKeys.roles.stats(),
     queryFn: async () => {
       const result = await getRoleStats();
       if (!result.success) throw new Error(result.message);
@@ -56,7 +57,7 @@ export function useRoleStats() {
 
 export function usePermissions() {
   return useQuery({
-    queryKey: ["permissions"],
+    queryKey: queryKeys.roles.permissions(),
     queryFn: async () => {
       const result = await getPermissions();
       if (!result.success) throw new Error(result.message);
@@ -68,7 +69,7 @@ export function usePermissions() {
 
 export function usePermissionsByCategory() {
   return useQuery({
-    queryKey: ["permissions", "by-category"],
+    queryKey: queryKeys.roles.permissionsByCategory(),
     queryFn: async () => {
       const result = await getPermissionsByCategory();
       if (!result.success) throw new Error(result.message);
@@ -80,7 +81,7 @@ export function usePermissionsByCategory() {
 
 export function useRoleUsers(roleId: string) {
   return useQuery({
-    queryKey: ["roles", roleId, "users"],
+    queryKey: queryKeys.roles.roleUsers(roleId),
     queryFn: async () => {
       const result = await getRoleUsers(roleId);
       if (!result.success) throw new Error(result.message);
@@ -92,7 +93,7 @@ export function useRoleUsers(roleId: string) {
 
 export function useRoleAuditHistory(roleId: string) {
   return useQuery({
-    queryKey: ["roles", roleId, "audit"],
+    queryKey: queryKeys.roles.roleAudit(roleId),
     queryFn: async () => {
       const result = await getRoleAuditHistory(roleId);
       if (!result.success) throw new Error(result.message);
@@ -109,7 +110,7 @@ export function useCreateRole() {
   return useMutation({
     mutationFn: (data: CreateRoleRequest) => createRole(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["roles"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.roles.all });
     },
   });
 }
@@ -119,7 +120,7 @@ export function useUpdateRole() {
   return useMutation({
     mutationFn: (data: UpdateRoleRequest) => updateRole(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["roles"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.roles.all });
     },
   });
 }
@@ -129,7 +130,7 @@ export function useDeleteRole() {
   return useMutation({
     mutationFn: (id: string) => deleteRole(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["roles"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.roles.all });
     },
   });
 }
@@ -146,9 +147,9 @@ export function useAssignRoleToUsers() {
     }) => assignRoleToUsers(roleId, userIds),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({
-        queryKey: ["roles", variables.roleId, "users"],
+        queryKey: queryKeys.roles.roleUsers(variables.roleId),
       });
-      queryClient.invalidateQueries({ queryKey: ["roles"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.roles.all });
     },
   });
 }
@@ -165,9 +166,9 @@ export function useRemoveRoleFromUsers() {
     }) => removeRoleFromUsers(roleId, userIds),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({
-        queryKey: ["roles", variables.roleId, "users"],
+        queryKey: queryKeys.roles.roleUsers(variables.roleId),
       });
-      queryClient.invalidateQueries({ queryKey: ["roles"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.roles.all });
     },
   });
 }
@@ -185,7 +186,7 @@ export function useCloneRole() {
       newDisplayName: string;
     }) => cloneRole(roleId, newName, newDisplayName),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["roles"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.roles.all });
     },
   });
 }

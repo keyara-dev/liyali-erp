@@ -9,10 +9,11 @@ import {
   type NotificationFilters,
   type CreateNotificationRequest,
 } from "@/app/_actions/notifications";
+import { queryKeys } from "@/lib/query-keys";
 
 export function useAdminNotifications(filters?: NotificationFilters) {
   return useQuery({
-    queryKey: ["admin-notifications", filters],
+    queryKey: queryKeys.notifications.list(filters),
     queryFn: async () => {
       const result = await getAdminNotifications(filters);
       if (!result.success) throw new Error(result.message);
@@ -25,7 +26,7 @@ export function useAdminNotifications(filters?: NotificationFilters) {
 
 export function useAdminNotificationStats() {
   return useQuery({
-    queryKey: ["admin-notification-stats"],
+    queryKey: queryKeys.notifications.stats(),
     queryFn: async () => {
       const result = await getAdminNotificationStats();
       if (!result.success) throw new Error(result.message);
@@ -53,9 +54,9 @@ export function useCreateAdminNotification() {
       return (result as any).data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin-notifications"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.notifications.all });
       queryClient.invalidateQueries({
-        queryKey: ["admin-notification-stats"],
+        queryKey: queryKeys.notifications.stats(),
       });
     },
   });
@@ -70,9 +71,9 @@ export function useDeleteAdminNotification() {
       return (result as any).data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin-notifications"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.notifications.all });
       queryClient.invalidateQueries({
-        queryKey: ["admin-notification-stats"],
+        queryKey: queryKeys.notifications.stats(),
       });
     },
   });
@@ -87,9 +88,9 @@ export function useBulkDeleteAdminNotifications() {
       return (result as any).data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin-notifications"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.notifications.all });
       queryClient.invalidateQueries({
-        queryKey: ["admin-notification-stats"],
+        queryKey: queryKeys.notifications.stats(),
       });
     },
   });
@@ -104,9 +105,9 @@ export function useMarkAdminNotificationRead() {
       return (result as any).data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin-notifications"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.notifications.all });
       queryClient.invalidateQueries({
-        queryKey: ["admin-notification-stats"],
+        queryKey: queryKeys.notifications.stats(),
       });
     },
   });

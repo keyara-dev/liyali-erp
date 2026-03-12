@@ -20,12 +20,13 @@ import {
   type CreateAdminUserRequest,
   type UpdateAdminUserRequest,
 } from "@/app/_actions/admin-users";
+import { queryKeys } from "@/lib/query-keys";
 
 // --- Query Hooks ---
 
 export function useAdminUsers(filters?: AdminUserFilters) {
   return useQuery({
-    queryKey: ["admin-users", filters],
+    queryKey: queryKeys.adminUsers.list(filters),
     queryFn: async () => {
       const result = await getAdminUsers(filters);
       if (!result.success) throw new Error(result.message);
@@ -36,7 +37,7 @@ export function useAdminUsers(filters?: AdminUserFilters) {
 
 export function useAdminUser(id: string) {
   return useQuery({
-    queryKey: ["admin-users", id],
+    queryKey: queryKeys.adminUsers.detail(id),
     queryFn: async () => {
       const result = await getAdminUser(id);
       if (!result.success) throw new Error(result.message);
@@ -48,7 +49,7 @@ export function useAdminUser(id: string) {
 
 export function useAdminUserStats() {
   return useQuery({
-    queryKey: ["admin-users", "stats"],
+    queryKey: queryKeys.adminUsers.stats(),
     queryFn: async () => {
       const result = await getAdminUserStats();
       if (!result.success) throw new Error(result.message);
@@ -59,7 +60,7 @@ export function useAdminUserStats() {
 
 export function useAdminUserActivity(userId: string, limit = 50) {
   return useQuery({
-    queryKey: ["admin-users", userId, "activity", { limit }],
+    queryKey: queryKeys.adminUsers.activity(userId, limit),
     queryFn: async () => {
       const result = await getAdminUserActivity(userId, limit);
       if (!result.success) throw new Error(result.message);
@@ -71,7 +72,7 @@ export function useAdminUserActivity(userId: string, limit = 50) {
 
 export function useAdminUserSessions(userId: string) {
   return useQuery({
-    queryKey: ["admin-users", userId, "sessions"],
+    queryKey: queryKeys.adminUsers.sessions(userId),
     queryFn: async () => {
       const result = await getAdminUserSessions(userId);
       if (!result.success) throw new Error(result.message);
@@ -83,7 +84,7 @@ export function useAdminUserSessions(userId: string) {
 
 export function useAdminRoles() {
   return useQuery({
-    queryKey: ["admin-users", "roles"],
+    queryKey: queryKeys.adminUsers.roles(),
     queryFn: async () => {
       const result = await getAdminRoles();
       if (!result.success) throw new Error(result.message);
@@ -100,7 +101,7 @@ export function useCreateAdminUser() {
   return useMutation({
     mutationFn: (data: CreateAdminUserRequest) => createAdminUser(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.adminUsers.all });
     },
   });
 }
@@ -110,7 +111,7 @@ export function useUpdateAdminUser() {
   return useMutation({
     mutationFn: (data: UpdateAdminUserRequest) => updateAdminUser(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.adminUsers.all });
     },
   });
 }
@@ -120,7 +121,7 @@ export function useDeleteAdminUser() {
   return useMutation({
     mutationFn: (id: string) => deleteAdminUser(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.adminUsers.all });
     },
   });
 }
@@ -130,7 +131,7 @@ export function useActivateAdminUser() {
   return useMutation({
     mutationFn: (id: string) => activateAdminUser(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.adminUsers.all });
     },
   });
 }
@@ -140,7 +141,7 @@ export function useDeactivateAdminUser() {
   return useMutation({
     mutationFn: (id: string) => deactivateAdminUser(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.adminUsers.all });
     },
   });
 }
@@ -150,7 +151,7 @@ export function useUnlockAdminUser() {
   return useMutation({
     mutationFn: (id: string) => unlockAdminUser(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.adminUsers.all });
     },
   });
 }
@@ -166,7 +167,7 @@ export function useResetAdminUserPassword() {
       sendEmail?: boolean;
     }) => resetAdminUserPassword(id, sendEmail),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.adminUsers.all });
     },
   });
 }
@@ -177,7 +178,7 @@ export function useToggleTwoFactor() {
     mutationFn: ({ id, enabled }: { id: string; enabled: boolean }) =>
       toggleTwoFactor(id, enabled),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.adminUsers.all });
     },
   });
 }
@@ -194,7 +195,7 @@ export function useTerminateAdminSession() {
     }) => terminateAdminUserSession(userId, sessionId),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({
-        queryKey: ["admin-users", variables.userId, "sessions"],
+        queryKey: queryKeys.adminUsers.sessions(variables.userId),
       });
     },
   });
@@ -206,7 +207,7 @@ export function useTerminateAllAdminSessions() {
     mutationFn: (userId: string) => terminateAllAdminUserSessions(userId),
     onSuccess: (_data, userId) => {
       queryClient.invalidateQueries({
-        queryKey: ["admin-users", userId, "sessions"],
+        queryKey: queryKeys.adminUsers.sessions(userId),
       });
     },
   });

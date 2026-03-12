@@ -34,53 +34,6 @@ export const MONTHS = [
   "December",
 ];
 
-// ADMIN QUERY KEYS - Single source of truth for all React Query keys
-export const ADMIN_QUERY_KEYS = {
-  // Organizations
-  ORGANIZATIONS: {
-    ALL: "admin-organizations-all",
-    BY_ID: "admin-organization-by-id",
-    STATS: "admin-organizations-stats",
-    TRIAL_STATUS: "admin-organization-trial-status",
-  },
-
-  // Users
-  USERS: {
-    ALL: "admin-users-all",
-    BY_ID: "admin-user-by-id",
-    ADMIN_USERS: "admin-admin-users",
-    STATS: "admin-users-stats",
-  },
-
-  // Subscriptions
-  SUBSCRIPTIONS: {
-    ALL: "admin-subscriptions-all",
-    PLANS: "admin-subscription-plans",
-    BY_ORG: "admin-subscription-by-org",
-  },
-
-  // Analytics
-  ANALYTICS: {
-    DASHBOARD: "admin-analytics-dashboard",
-    SYSTEM_HEALTH: "admin-system-health",
-    API_MONITORING: "admin-api-monitoring",
-  },
-
-  // Audit Logs
-  AUDIT_LOGS: {
-    ALL: "admin-audit-logs-all",
-    BY_USER: "admin-audit-logs-by-user",
-    BY_ACTION: "admin-audit-logs-by-action",
-  },
-
-  // System
-  SYSTEM: {
-    SETTINGS: "admin-system-settings",
-    FEATURE_FLAGS: "admin-feature-flags",
-    NOTIFICATIONS: "admin-notifications",
-  },
-};
-
 // Admin role — only super_admin is permitted to access the admin console
 export const ADMIN_ROLES = {
   SUPER_ADMIN: "super_admin",

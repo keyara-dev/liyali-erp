@@ -8,10 +8,11 @@ import {
   exportAnalyticsReport,
   type AnalyticsFilters,
 } from "@/app/_actions/analytics";
+import { queryKeys } from "@/lib/query-keys";
 
 export function useAnalyticsOverview(filters?: AnalyticsFilters) {
   return useQuery({
-    queryKey: ["analytics", "overview", filters],
+    queryKey: queryKeys.analytics.overview(filters),
     queryFn: async () => {
       const result = await getAnalyticsOverview(filters);
       if (!result.success) throw new Error(result.message);
@@ -45,7 +46,7 @@ export function useAnalyticsOverview(filters?: AnalyticsFilters) {
 
 export function useUserAnalytics(filters?: AnalyticsFilters) {
   return useQuery({
-    queryKey: ["analytics", "users", filters],
+    queryKey: queryKeys.analytics.users(filters),
     queryFn: async () => {
       const result = await getUserAnalytics(filters);
       if (!result.success) throw new Error(result.message);
@@ -79,7 +80,7 @@ export function useUserAnalytics(filters?: AnalyticsFilters) {
 
 export function useOrganizationAnalytics(filters?: AnalyticsFilters) {
   return useQuery({
-    queryKey: ["analytics", "organizations", filters],
+    queryKey: queryKeys.analytics.organizations(filters),
     queryFn: async () => {
       const result = await getOrganizationAnalytics(filters);
       if (!result.success) throw new Error(result.message);
@@ -112,7 +113,7 @@ export function useOrganizationAnalytics(filters?: AnalyticsFilters) {
 
 export function useRevenueAnalytics(filters?: AnalyticsFilters) {
   return useQuery({
-    queryKey: ["analytics", "revenue", filters],
+    queryKey: queryKeys.analytics.revenue(filters),
     queryFn: async () => {
       const result = await getRevenueAnalytics(filters);
       if (!result.success) throw new Error(result.message);
@@ -142,7 +143,7 @@ export function useRevenueAnalytics(filters?: AnalyticsFilters) {
 
 export function useUsageAnalytics(filters?: AnalyticsFilters) {
   return useQuery({
-    queryKey: ["analytics", "usage", filters],
+    queryKey: queryKeys.analytics.usage(filters),
     queryFn: async () => {
       const result = await getUsageAnalytics(filters);
       if (!result.success) throw new Error(result.message);
