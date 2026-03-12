@@ -68,7 +68,7 @@ export function FeatureFlagAnalyticsDialog({
     setIsLoading(true);
     try {
       const data = await getFeatureFlagAnalytics(flag.key);
-      setAnalytics(data);
+      if (data.success && data.data) setAnalytics(data.data);
     } catch (error) {
       console.error("Failed to load analytics:", error);
     } finally {

@@ -536,7 +536,7 @@ export function FlagEditDialog({
               <SelectField
                 label="Type"
                 value={formData.type}
-                onValueChange={handleTypeChange}
+                onValueChange={(v) => handleTypeChange(v as FeatureFlag["type"])}
                 options={types}
                 classNames={{ wrapper: "max-w-full" }}
               />
