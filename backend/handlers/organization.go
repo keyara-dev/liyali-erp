@@ -127,6 +127,7 @@ func SwitchOrganization(c *fiber.Ctx) error {
 }
 
 // GetOrganizationMembers returns all members of an organization
+// Supports optional query params: search, role, active, page, page_size
 // GET /api/v1/organization/members
 func GetOrganizationMembers(c *fiber.Ctx) error {
 	tenant, err := middleware.GetTenantContext(c)
@@ -134,18 +135,97 @@ func GetOrganizationMembers(c *fiber.Ctx) error {
 		return utils.SendUnauthorizedError(c, "Organization context required")
 	}
 
-	orgService := services.NewOrganizationService(config.DB)
-	members, err := orgService.GetOrganizationMembers(tenant.OrganizationID)
+	db := config.DB
 
-	if err != nil {
+	search := c.Query("search")
+	role := c.Query("role")
+	activeStr := c.Query("active")
+	page := c.QueryInt("page", 0)
+	pageSize := c.QueryInt("page_size", 0)
+
+	// If no pagination/filter params, fall back to existing service (preserves behavior for other callers)
+	if page == 0 && pageSize == 0 && search == "" && role == "" && activeStr == "" {
+		orgService := services.NewOrganizationService(db)
+		members, err := orgService.GetOrganizationMembers(tenant.OrganizationID)
+		if err != nil {
+			return utils.SendInternalError(c, "Failed to fetch organization members", err)
+		}
+		if len(members) == 0 {
+			members = []models.OrganizationMember{}
+		}
+		return utils.SendSimpleSuccess(c, members, "Members retrieved successfully")
+	}
+
+	// Paginated + filtered query
+	page, pageSize = utils.NormalizePaginationParams(page, pageSize)
+	offset := (page - 1) * pageSize
+
+	query := db.Table("organization_members").
+		Select(`organization_members.id,
+			organization_members.user_id,
+			organization_members.organization_id,
+			organization_members.role,
+			organization_members.department,
+			organization_members.department_id,
+			organization_members.active,
+			organization_members.joined_at,
+			organization_members.created_at,
+			organization_members.updated_at,
+			users.name,
+			users.email,
+			users.last_login,
+			COALESCE(users.position, '') as position,
+			COALESCE(users.man_number, '') as man_number,
+			COALESCE(users.nrc_number, '') as nrc_number,
+			COALESCE(users.contact, '') as contact,
+			users.preferences`).
+		Joins("INNER JOIN users ON users.id = organization_members.user_id").
+		Where("organization_members.organization_id = ? AND users.deleted_at IS NULL", tenant.OrganizationID)
+
+	countQuery := db.Table("organization_members").
+		Joins("INNER JOIN users ON users.id = organization_members.user_id").
+		Where("organization_members.organization_id = ? AND users.deleted_at IS NULL", tenant.OrganizationID)
+
+	if search != "" {
+		pattern := "%" + search + "%"
+		query = query.Where("LOWER(users.name) LIKE LOWER(?) OR LOWER(users.email) LIKE LOWER(?)", pattern, pattern)
+		countQuery = countQuery.Where("LOWER(users.name) LIKE LOWER(?) OR LOWER(users.email) LIKE LOWER(?)", pattern, pattern)
+	}
+	if role != "" {
+		query = query.Where("organization_members.role = ?", role)
+		countQuery = countQuery.Where("organization_members.role = ?", role)
+	}
+	if activeStr != "" {
+		isActive := activeStr == "true" || activeStr == "1"
+		query = query.Where("organization_members.active = ?", isActive)
+		countQuery = countQuery.Where("organization_members.active = ?", isActive)
+	}
+
+	var total int64
+	countQuery.Count(&total)
+
+	var rows []map[string]interface{}
+	if err := query.Order("organization_members.created_at DESC").
+		Offset(offset).Limit(pageSize).Find(&rows).Error; err != nil {
 		return utils.SendInternalError(c, "Failed to fetch organization members", err)
 	}
 
-	if len(members) == 0 {
-		members = []models.OrganizationMember{}
+	totalPages := int64(1)
+	if pageSize > 0 {
+		totalPages = (total + int64(pageSize) - 1) / int64(pageSize)
 	}
 
-	return utils.SendSimpleSuccess(c, members, "Members retrieved successfully")
+	return c.Status(fiber.StatusOK).JSON(map[string]interface{}{
+		"success": true,
+		"message": "Members retrieved successfully",
+		"data": map[string]interface{}{
+			"members":     rows,
+			"total":       total,
+			"page":        page,
+			"page_size":   pageSize,
+			"total_pages": totalPages,
+		},
+	})
 }
 
 // AddOrganizationMember adds a user to an organization

@@ -188,62 +188,65 @@ export async function getAdminUsers(params?: {
   page?: number;
   limit?: number;
 }): Promise<APIResponse> {
+  // Use the org-scoped members endpoint — accessible to org admins (not just super_admin)
   const queryParams = new URLSearchParams();
   if (params?.search) queryParams.append("search", params.search);
   if (params?.role) queryParams.append("role", params.role);
-  if (params?.status) queryParams.append("status", params.status);
-  if (params?.page) queryParams.append("page", String(params.page));
-  if (params?.limit) queryParams.append("limit", String(params.limit));
+  // Map status → active boolean param
+  if (params?.status === "active") queryParams.append("active", "true");
+  else if (params?.status === "inactive" || params?.status === "suspended") queryParams.append("active", "false");
+  queryParams.append("page", String(params?.page ?? 1));
+  queryParams.append("page_size", String(params?.limit ?? 10));
 
-  const url = `/api/v1/admin/users${queryParams.toString() ? `?${queryParams.toString()}` : ""}`;
+  const url = `/api/v1/organization/members?${queryParams.toString()}`;
 
   try {
     const response = await authenticatedApiClient({ url, method: "GET" });
     const responseData = response.data?.data || response.data || {};
-    const rawUsers: any[] = responseData.users || [];
+    const rawMembers: any[] = responseData.members || [];
 
-    const users = rawUsers.map((u: any) => {
+    const users = rawMembers.map((m: any) => {
       let preferences: Record<string, any> = {};
-      if (u.preferences) {
+      if (m.preferences) {
         try {
-          preferences = typeof u.preferences === "string" ? JSON.parse(u.preferences) : u.preferences;
+          preferences = typeof m.preferences === "string" ? JSON.parse(m.preferences) : m.preferences;
         } catch {}
       }
-      const nameParts = (u.name || "").split(" ");
+      const nameParts = (m.name || "").split(" ");
       return {
-        id: u.id,
-        name: u.name || "",
+        id: m.user_id || m.id,
+        name: m.name || "",
         first_name: nameParts[0] || "",
         last_name: nameParts.slice(1).join(" ") || "",
-        email: u.email || "",
-        role: u.role || "requester",
+        email: m.email || "",
+        role: m.role || "requester",
         role_id: "",
-        role_name: u.role || "",
-        department: "",
-        active: u.is_active !== undefined ? u.is_active : true,
-        is_active: u.is_active !== undefined ? u.is_active : true,
+        role_name: m.role || "",
+        department: m.department || "",
+        department_id: m.department_id || "",
+        active: m.active !== undefined ? m.active : true,
+        is_active: m.active !== undefined ? m.active : true,
         preferences,
         avatar: preferences?.avatar || "",
-        position: u.position || "",
-        manNumber: u.man_number || "",
-        nrcNumber: u.nrc_number || "",
-        contact: u.contact || "",
-        created_at: u.created_at,
-        updated_at: u.updated_at,
-        last_login: u.last_login,
-        organization_count: u.organization_count || 0,
+        position: m.position || "",
+        manNumber: m.man_number || "",
+        nrcNumber: m.nrc_number || "",
+        contact: m.contact || "",
+        last_login: m.last_login,
+        created_at: m.created_at,
+        updated_at: m.updated_at,
       };
     });
 
     const total = responseData.total || 0;
     const page = responseData.page || 1;
-    const limit = responseData.limit || 10;
-    const totalPages = responseData.totalPages || 1;
+    const pageSize = responseData.page_size || 10;
+    const totalPages = responseData.total_pages || 1;
 
     return successResponse(users, "Users retrieved successfully", {
       total,
       page,
-      page_size: limit,
+      page_size: pageSize,
       total_pages: totalPages,
       has_next: page < totalPages,
       has_prev: page > 1,
