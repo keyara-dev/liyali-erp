@@ -15,6 +15,13 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Eye, EyeOff, Shield, Mail, Lock, Building2, ShieldAlert } from "lucide-react";
 import { notify } from "@/lib/notify";
 import {
@@ -287,6 +294,33 @@ export function AdminUserCreateDialog({
             <h3 className="text-sm font-medium">Account Settings</h3>
 
             <div className="space-y-4">
+              {/* User Type — drives is_super_admin */}
+              <div className="space-y-2">
+                <Label htmlFor="user_type">User Type</Label>
+                <Select
+                  value={formData.is_super_admin ? "super_admin" : "admin"}
+                  onValueChange={(value) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      is_super_admin: value === "super_admin",
+                    }))
+                  }
+                >
+                  <SelectTrigger id="user_type">
+                    <SelectValue placeholder="Select user type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="admin">
+                      Platform Admin — frontend app access with personal
+                      organisation
+                    </SelectItem>
+                    <SelectItem value="super_admin">
+                      Super Admin — full platform + admin console access
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
                   <Label>Active Status</Label>
@@ -298,24 +332,6 @@ export function AdminUserCreateDialog({
                   checked={formData.is_active}
                   onCheckedChange={(checked) =>
                     setFormData((prev) => ({ ...prev, is_active: checked }))
-                  }
-                />
-              </div>
-
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label>Super Admin</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Full platform access — can log into the admin console
-                  </p>
-                </div>
-                <Switch
-                  checked={formData.is_super_admin}
-                  onCheckedChange={(checked) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      is_super_admin: checked,
-                    }))
                   }
                 />
               </div>
