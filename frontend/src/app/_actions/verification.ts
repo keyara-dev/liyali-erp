@@ -4,6 +4,7 @@ import { axios } from "./api-config";
 
 export interface VerificationDocument {
   verified: boolean;
+  documentId: string;
   documentNumber: string;
   documentType:
     | "REQUISITION"

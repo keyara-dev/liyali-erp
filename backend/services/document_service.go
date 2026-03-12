@@ -139,6 +139,7 @@ func (s *DocumentService) GetDocumentByNumber(ctx context.Context, documentNumbe
 // PublicDocumentVerification represents the public verification response
 type PublicDocumentVerification struct {
 	Verified       bool     `json:"verified"`
+	DocumentID     string   `json:"documentId"`
 	DocumentNumber string   `json:"documentNumber"`
 	DocumentType   string   `json:"documentType"`
 	Title          string   `json:"title"`
@@ -239,6 +240,7 @@ func getDocumentTypeFromNumber(documentNumber string) string {
 func buildVerificationFromRequisition(req *models.Requisition) *PublicDocumentVerification {
 	verification := &PublicDocumentVerification{
 		Verified:       true,
+		DocumentID:     req.ID,
 		DocumentNumber: req.DocumentNumber,
 		DocumentType:   "REQUISITION",
 		Title:          req.Title,
@@ -272,6 +274,7 @@ func buildVerificationFromPurchaseOrder(po *models.PurchaseOrder) *PublicDocumen
 	}
 	verification := &PublicDocumentVerification{
 		Verified:       true,
+		DocumentID:     po.ID,
 		DocumentNumber: po.DocumentNumber,
 		DocumentType:   "PURCHASE_ORDER",
 		Title:          title,
@@ -305,6 +308,7 @@ func buildVerificationFromPaymentVoucher(pv *models.PaymentVoucher) *PublicDocum
 	}
 	verification := &PublicDocumentVerification{
 		Verified:       true,
+		DocumentID:     pv.ID,
 		DocumentNumber: pv.DocumentNumber,
 		DocumentType:   "PAYMENT_VOUCHER",
 		Title:          title,
@@ -338,6 +342,7 @@ func buildVerificationFromGRN(grn *models.GoodsReceivedNote) *PublicDocumentVeri
 	}
 	verification := &PublicDocumentVerification{
 		Verified:       true,
+		DocumentID:     grn.ID,
 		DocumentNumber: grn.DocumentNumber,
 		DocumentType:   "GRN",
 		Title:          title,

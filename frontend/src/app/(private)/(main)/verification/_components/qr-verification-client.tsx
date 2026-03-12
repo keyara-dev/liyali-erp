@@ -12,6 +12,7 @@ import {
   QrCode,
   Loader2,
   ExternalLink,
+  FileText,
 } from "lucide-react";
 import { PageHeader } from "@/components/base/page-header";
 import { verifyDocument, type VerificationResult } from "@/app/_actions/verification";
@@ -19,6 +20,18 @@ import { verifyDocument, type VerificationResult } from "@/app/_actions/verifica
 interface QRVerificationClientProps {
   userId: string;
   userRole: string;
+}
+
+function getDocumentRoute(documentType: string, documentId: string): string | null {
+  if (!documentId) return null;
+  switch (documentType) {
+    case "REQUISITION": return `/requisitions/${documentId}`;
+    case "PURCHASE_ORDER": return `/purchase-orders/${documentId}`;
+    case "PAYMENT_VOUCHER": return `/payment-vouchers/${documentId}`;
+    case "GRN": return `/grn/${documentId}`;
+    case "BUDGET": return `/budgets/${documentId}`;
+    default: return null;
+  }
 }
 
 function statusColor(status: string) {
@@ -148,16 +161,29 @@ export function QRVerificationClient({ userId, userRole }: QRVerificationClientP
                     </div>
                   </div>
 
-                  <Button
-                    variant="outline"
-                    className="w-full gap-2"
-                    onClick={() =>
-                      router.push(`/verify/${encodeURIComponent(result.document!.documentNumber)}`)
-                    }
-                  >
-                    <ExternalLink className="h-4 w-4" />
-                    View Full Verification Page
-                  </Button>
+                  <div className="flex flex-col gap-2">
+                    {getDocumentRoute(result.document.documentType, result.document.documentId) && (
+                      <Button
+                        className="w-full gap-2"
+                        onClick={() =>
+                          router.push(getDocumentRoute(result.document!.documentType, result.document!.documentId)!)
+                        }
+                      >
+                        <FileText className="h-4 w-4" />
+                        View Document Details
+                      </Button>
+                    )}
+                    <Button
+                      variant="outline"
+                      className="w-full gap-2"
+                      onClick={() =>
+                        router.push(`/verify/${encodeURIComponent(result.document!.documentNumber)}`)
+                      }
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                      View Full Verification Page
+                    </Button>
+                  </div>
                 </div>
               ) : (
                 <div className="flex items-start gap-3">
