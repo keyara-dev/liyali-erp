@@ -22,12 +22,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Eye, EyeOff, Shield, Mail, Lock, Building2, ShieldAlert } from "lucide-react";
-import { notify } from "@/lib/notify";
 import {
-  createAdminUser,
-  type CreateAdminUserRequest,
-} from "@/app/_actions/admin-users";
+  Eye,
+  EyeOff,
+  Shield,
+  Mail,
+  Lock,
+  Building2,
+  ShieldAlert,
+} from "lucide-react";
+import { notify } from "@/lib/notify";
+import { type CreateAdminUserRequest } from "@/app/_actions/admin-users";
+import { useCreateAdminUser } from "@/hooks/use-admin-users";
 
 interface AdminUserCreateDialogProps {
   open: boolean;
@@ -40,7 +46,7 @@ export function AdminUserCreateDialog({
   onOpenChange,
   onUserCreated,
 }: AdminUserCreateDialogProps) {
-  const [isLoading, setIsLoading] = useState(false);
+  const createMutation = useCreateAdminUser();
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState<CreateAdminUserRequest>({
     email: "",
@@ -89,26 +95,23 @@ export function AdminUserCreateDialog({
       return;
     }
 
-    setIsLoading(true);
-
-    try {
-      const result = await createAdminUser(formData);
-
-      if (result.success) {
-        notify("Admin user created successfully", { variant: "success" });
-        onUserCreated();
-        handleClose();
-      } else {
-        notify(result.message || "Failed to create admin user", {
-          variant: "destructive",
-        });
-      }
-    } catch (error) {
-      console.error("Error creating admin user:", error);
-      notify("Failed to create admin user", { variant: "destructive" });
-    } finally {
-      setIsLoading(false);
-    }
+    createMutation.mutate(formData, {
+      onSuccess: (result) => {
+        if (result.success) {
+          notify("Admin user created successfully", { variant: "success" });
+          onUserCreated();
+          handleClose();
+        } else {
+          notify(result.message || "Failed to create admin user", {
+            variant: "destructive",
+          });
+        }
+      },
+      onError: (error) => {
+        console.error("Error creating admin user:", error);
+        notify("Failed to create admin user", { variant: "destructive" });
+      },
+    });
   };
 
   const handleClose = () => {
@@ -224,7 +227,7 @@ export function AdminUserCreateDialog({
 
           {/* Password */}
           <div className="space-y-4">
-            <h3 className="text-sm font-medium">Password</h3>
+            <h3 className="text-sm font-medium">Security & Password</h3>
 
             <div className="space-y-2">
               <Label htmlFor="password">
@@ -386,12 +389,12 @@ export function AdminUserCreateDialog({
               type="button"
               variant="outline"
               onClick={handleClose}
-              disabled={isLoading}
+              disabled={createMutation.isPending}
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={isLoading}>
-              {isLoading ? "Creating..." : "Create Admin User"}
+            <Button type="submit" disabled={createMutation.isPending}>
+              {createMutation.isPending ? "Creating..." : "Create Admin User"}
             </Button>
           </DialogFooter>
         </form>

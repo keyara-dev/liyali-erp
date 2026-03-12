@@ -1,5 +1,6 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import type { APIResponse } from "@/types";
 import authenticatedApiClient, {
   handleError,
@@ -202,6 +203,7 @@ export async function createAdminUser(
       data: data,
     });
 
+    revalidatePath("/admin/admin-users");
     return successResponse(
       response?.data?.data || response?.data,
       "Admin user created successfully",
