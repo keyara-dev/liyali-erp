@@ -154,10 +154,10 @@ export function OverviewTab() {
         <KPICard
           title="Trial Orgs"
           value={dashboardData?.trial_organizations ?? 0}
-          subtitle={`${dashboardData?.expiring_trials ?? 0} expiring soon`}
+          subtitle={`${dashboardData?.expired_trials ?? 0} expired`}
           icon={<Clock className="h-4 w-4" />}
           accent={
-            (dashboardData?.expiring_trials ?? 0) > 0 ? "warning" : "default"
+            (dashboardData?.expired_trials ?? 0) > 0 ? "warning" : "default"
           }
           isLoading={dashboardLoading}
         />
@@ -166,8 +166,8 @@ export function OverviewTab() {
       {/* Recent Activity */}
       <Card>
         <CardHeader>
-          <CardTitle>Recent Organizations</CardTitle>
-          <CardDescription>Latest organizations added to the platform</CardDescription>
+          <CardTitle>Recent Activity</CardTitle>
+          <CardDescription>Latest platform events</CardDescription>
         </CardHeader>
         <CardContent>
           {dashboardLoading ? (
@@ -182,25 +182,25 @@ export function OverviewTab() {
                 </div>
               ))}
             </div>
-          ) : dashboardData?.recent_organizations &&
-            dashboardData.recent_organizations.length > 0 ? (
+          ) : dashboardData?.recent_activities &&
+            dashboardData.recent_activities.length > 0 ? (
             <div className="space-y-3">
-              {dashboardData.recent_organizations.slice(0, 10).map((org, i) => (
+              {dashboardData.recent_activities.slice(0, 10).map((activity, i) => (
                 <div
-                  key={org.id ?? i}
+                  key={activity.id ?? i}
                   className="flex items-start gap-3 py-1 border-b last:border-0"
                 >
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate">
-                      {org.name ?? "Unknown organization"}
+                      {activity.action ?? "Unknown action"}
                     </p>
                     <div className="flex items-center gap-2 mt-0.5">
-                      <p className="text-xs text-muted-foreground capitalize">
-                        {org.status ?? "unknown"}
+                      <p className="text-xs text-muted-foreground truncate">
+                        {activity.user ?? "System"}
                       </p>
                       <span className="text-xs text-muted-foreground">·</span>
                       <p className="text-xs text-muted-foreground shrink-0">
-                        {formatTimeAgo(org.created_at)}
+                        {formatTimeAgo(activity.timestamp)}
                       </p>
                     </div>
                   </div>
@@ -209,7 +209,7 @@ export function OverviewTab() {
             </div>
           ) : (
             <p className="text-sm text-muted-foreground text-center py-6">
-              No organizations yet
+              No recent activity
             </p>
           )}
         </CardContent>
