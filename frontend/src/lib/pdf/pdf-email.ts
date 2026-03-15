@@ -4,12 +4,10 @@
  */
 
 import {
-  exportRequisitionPDF,
-  exportPurchaseOrderPDF,
-  exportPaymentVoucherPDF,
   getRequisitionPDFBlob,
   getPurchaseOrderPDFBlob,
   getPaymentVoucherPDFBlob,
+  type DocumentHeader,
 } from "./pdf-export";
 import { Requisition } from "@/types/requisition";
 import { PurchaseOrder } from "@/types/purchase-order";
@@ -33,10 +31,11 @@ export interface EmailOptions {
  */
 export async function sendRequisitionPDFEmail(
   requisition: Requisition,
-  options: EmailOptions
+  options: EmailOptions,
+  documentHeader?: DocumentHeader,
 ): Promise<{ success: boolean; message: string }> {
   try {
-    const blob = await getRequisitionPDFBlob(requisition);
+    const blob = await getRequisitionPDFBlob(requisition, documentHeader);
     return await sendPDFEmail(
       blob,
       `REQ-${requisition.documentNumber}.pdf`,
@@ -56,10 +55,11 @@ export async function sendRequisitionPDFEmail(
  */
 export async function sendPurchaseOrderPDFEmail(
   purchaseOrder: PurchaseOrder,
-  options: EmailOptions
+  options: EmailOptions,
+  documentHeader?: DocumentHeader,
 ): Promise<{ success: boolean; message: string }> {
   try {
-    const blob = await getPurchaseOrderPDFBlob(purchaseOrder);
+    const blob = await getPurchaseOrderPDFBlob(purchaseOrder, documentHeader);
     return await sendPDFEmail(
       blob,
       `PO-${purchaseOrder.documentNumber}.pdf`,
@@ -79,10 +79,11 @@ export async function sendPurchaseOrderPDFEmail(
  */
 export async function sendPaymentVoucherPDFEmail(
   paymentVoucher: PaymentVoucher,
-  options: EmailOptions
+  options: EmailOptions,
+  documentHeader?: DocumentHeader,
 ): Promise<{ success: boolean; message: string }> {
   try {
-    const blob = await getPaymentVoucherPDFBlob(paymentVoucher);
+    const blob = await getPaymentVoucherPDFBlob(paymentVoucher, documentHeader);
     return await sendPDFEmail(
       blob,
       `PV-${paymentVoucher.documentNumber}.pdf`,

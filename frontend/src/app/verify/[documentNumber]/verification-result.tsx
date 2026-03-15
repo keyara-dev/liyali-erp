@@ -24,12 +24,12 @@ import {
   getDocumentForPDF,
 } from "@/app/_actions/verification";
 import {
-  exportRequisitionPDF,
-  exportPurchaseOrderPDF,
-  exportPaymentVoucherPDF,
   getRequisitionPDFBlob,
   getPurchaseOrderPDFBlob,
   getPaymentVoucherPDFBlob,
+  getGrnPDFBlob,
+  downloadBlob,
+  type DocumentHeader,
 } from "@/lib/pdf/pdf-export";
 import Logo from "@/components/base/logo";
 
@@ -98,18 +98,21 @@ export function VerificationResult({
         return null;
       }
 
-      let blob: Blob | null = null;
+      const documentHeader: DocumentHeader = {
+        orgName: docData.organization?.name,
+        logoUrl: docData.organization?.logoUrl,
+        tagline: docData.organization?.tagline,
+      };
 
       switch (docData.documentType) {
         case "REQUISITION":
-          blob = await getRequisitionPDFBlob(docData.document);
-          break;
+          return getRequisitionPDFBlob(docData.document, documentHeader);
         case "PURCHASE_ORDER":
-          blob = await getPurchaseOrderPDFBlob(docData.document);
-          break;
+          return getPurchaseOrderPDFBlob(docData.document, documentHeader);
         case "PAYMENT_VOUCHER":
-          blob = await getPaymentVoucherPDFBlob(docData.document);
-          break;
+          return getPaymentVoucherPDFBlob(docData.document, documentHeader);
+        case "GRN":
+          return getGrnPDFBlob(docData.document, documentHeader);
         default:
           console.error(
             "Unsupported document type for PDF:",
@@ -117,8 +120,6 @@ export function VerificationResult({
           );
           return null;
       }
-
-      return blob;
     } catch (error) {
       console.error("Error generating PDF:", error);
       return null;
@@ -140,30 +141,13 @@ export function VerificationResult({
     }
   };
 
+  // Reuse the already-generated blob if available; otherwise regenerate
   const handleDownload = async () => {
     setIsDownloading(true);
     try {
-      const docData = await getDocumentForPDF(documentNumber);
-      if (!docData) {
-        console.error("Failed to fetch document data");
-        return;
-      }
-
-      switch (docData.documentType) {
-        case "REQUISITION":
-          await exportRequisitionPDF(docData.document);
-          break;
-        case "PURCHASE_ORDER":
-          await exportPurchaseOrderPDF(docData.document);
-          break;
-        case "PAYMENT_VOUCHER":
-          await exportPaymentVoucherPDF(docData.document);
-          break;
-        default:
-          console.error(
-            "Unsupported document type for PDF:",
-            docData.documentType,
-          );
+      const blob = pdfBlob ?? (await fetchDocumentAndGeneratePDF());
+      if (blob) {
+        downloadBlob(blob, `${documentNumber}.pdf`);
       }
     } catch (error) {
       console.error("Error downloading PDF:", error);
@@ -382,6 +366,7 @@ export function VerificationResult({
                     "REQUISITION",
                     "PURCHASE_ORDER",
                     "PAYMENT_VOUCHER",
+                    "GRN",
                   ].includes(result.document.documentType) && (
                     <div className="flex gap-3 justify-center">
                       <Button

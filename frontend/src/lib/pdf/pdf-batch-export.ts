@@ -7,6 +7,7 @@ import {
   getRequisitionPDFBlob,
   getPurchaseOrderPDFBlob,
   getPaymentVoucherPDFBlob,
+  type DocumentHeader,
 } from "./pdf-export";
 import { Requisition } from "@/types/requisition";
 import { PurchaseOrder } from "@/types/purchase-order";
@@ -31,7 +32,8 @@ export interface BatchExportResult {
  */
 export async function batchExportRequisitions(
   requisitions: Requisition[],
-  onProgress?: (progress: BatchExportProgress) => void
+  onProgress?: (progress: BatchExportProgress) => void,
+  documentHeader?: DocumentHeader,
 ): Promise<{ success: boolean; message: string; zip?: Blob }> {
   try {
     const JSZip = (await import("jszip")).default;
@@ -54,7 +56,7 @@ export async function batchExportRequisitions(
       });
 
       try {
-        const blob = await getRequisitionPDFBlob(requisition);
+        const blob = await getRequisitionPDFBlob(requisition, documentHeader);
         const fileName = `REQ-${requisition.documentNumber}.pdf`;
         zip.file(fileName, blob);
       } catch (error) {
@@ -97,7 +99,8 @@ export async function batchExportRequisitions(
  */
 export async function batchExportPurchaseOrders(
   purchaseOrders: PurchaseOrder[],
-  onProgress?: (progress: BatchExportProgress) => void
+  onProgress?: (progress: BatchExportProgress) => void,
+  documentHeader?: DocumentHeader,
 ): Promise<{ success: boolean; message: string; zip?: Blob }> {
   try {
     const JSZip = (await import("jszip")).default;
@@ -120,7 +123,7 @@ export async function batchExportPurchaseOrders(
       });
 
       try {
-        const blob = await getPurchaseOrderPDFBlob(po);
+        const blob = await getPurchaseOrderPDFBlob(po, documentHeader);
         const fileName = `PO-${po.documentNumber}.pdf`;
         zip.file(fileName, blob);
       } catch (error) {
@@ -163,7 +166,8 @@ export async function batchExportPurchaseOrders(
  */
 export async function batchExportPaymentVouchers(
   paymentVouchers: PaymentVoucher[],
-  onProgress?: (progress: BatchExportProgress) => void
+  onProgress?: (progress: BatchExportProgress) => void,
+  documentHeader?: DocumentHeader,
 ): Promise<{ success: boolean; message: string; zip?: Blob }> {
   try {
     const JSZip = (await import("jszip")).default;
@@ -186,7 +190,7 @@ export async function batchExportPaymentVouchers(
       });
 
       try {
-        const blob = await getPaymentVoucherPDFBlob(pv);
+        const blob = await getPaymentVoucherPDFBlob(pv, documentHeader);
         const fileName = `PV-${pv.documentNumber}.pdf`;
         zip.file(fileName, blob);
       } catch (error) {

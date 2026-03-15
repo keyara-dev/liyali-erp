@@ -532,10 +532,18 @@ func (s *DocumentService) GetDocumentStats(ctx context.Context, organizationID s
 	return s.documentRepo.GetStats(ctx, organizationID)
 }
 
+// OrganizationBranding contains minimal org details needed for PDF headers
+type OrganizationBranding struct {
+	Name    string `json:"name"`
+	LogoURL string `json:"logoUrl,omitempty"`
+	Tagline string `json:"tagline,omitempty"`
+}
+
 // PublicDocumentForPDF represents a document response for PDF generation
 type PublicDocumentForPDF struct {
-	DocumentType string      `json:"documentType"`
-	Document     interface{} `json:"document"`
+	DocumentType string                `json:"documentType"`
+	Document     interface{}           `json:"document"`
+	Organization *OrganizationBranding `json:"organization,omitempty"`
 }
 
 // GetDocumentForPDFPublic retrieves full document data for PDF generation (public endpoint)
@@ -554,7 +562,8 @@ func (s *DocumentService) GetDocumentForPDFPublic(ctx context.Context, documentN
 		}
 	}
 
-	// Fetch the full document based on type
+	// Fetch the full document based on type and capture the org ID
+	var orgID string
 	switch result.DocumentType {
 	case "REQUISITION":
 		requisition, err := s.documentRepo.GetRequisitionByNumberPublic(ctx, documentNumber)
@@ -562,6 +571,7 @@ func (s *DocumentService) GetDocumentForPDFPublic(ctx context.Context, documentN
 			return nil, fmt.Errorf("requisition not found: %w", err)
 		}
 		result.Document = requisition
+		orgID = requisition.OrganizationID
 
 	case "PURCHASE_ORDER":
 		po, err := s.documentRepo.GetPurchaseOrderByNumberPublic(ctx, documentNumber)
@@ -569,6 +579,7 @@ func (s *DocumentService) GetDocumentForPDFPublic(ctx context.Context, documentN
 			return nil, fmt.Errorf("purchase order not found: %w", err)
 		}
 		result.Document = po
+		orgID = po.OrganizationID
 
 	case "PAYMENT_VOUCHER":
 		pv, err := s.documentRepo.GetPaymentVoucherByNumberPublic(ctx, documentNumber)
@@ -576,6 +587,7 @@ func (s *DocumentService) GetDocumentForPDFPublic(ctx context.Context, documentN
 			return nil, fmt.Errorf("payment voucher not found: %w", err)
 		}
 		result.Document = pv
+		orgID = pv.OrganizationID
 
 	case "GRN":
 		grn, err := s.documentRepo.GetGRNByNumberPublic(ctx, documentNumber)
@@ -583,9 +595,21 @@ func (s *DocumentService) GetDocumentForPDFPublic(ctx context.Context, documentN
 			return nil, fmt.Errorf("GRN not found: %w", err)
 		}
 		result.Document = grn
+		orgID = grn.OrganizationID
 
 	default:
 		return nil, fmt.Errorf("unsupported document type for PDF: %s", result.DocumentType)
+	}
+
+	// Attach minimal org branding so public PDF previews show org name/logo
+	if orgID != "" {
+		if org, err := s.documentRepo.GetOrganizationBranding(ctx, orgID); err == nil {
+			result.Organization = &OrganizationBranding{
+				Name:    org.Name,
+				LogoURL: org.LogoURL,
+				Tagline: org.Tagline,
+			}
+		}
 	}
 
 	return result, nil

@@ -51,6 +51,8 @@ type DocumentRepositoryInterface interface {
 	GetPaymentVoucherByNumberPublic(ctx context.Context, documentNumber string) (*models.PaymentVoucher, error)
 	GetGRNByNumberPublic(ctx context.Context, documentNumber string) (*models.GoodsReceivedNote, error)
 
+	// GetOrganizationBranding fetches minimal branding fields for an org (no auth required)
+	GetOrganizationBranding(ctx context.Context, organizationID string) (*models.Organization, error)
 }
 
 // DocumentRepository implements DocumentRepositoryInterface
@@ -1059,5 +1061,19 @@ func (r *DocumentRepository) findMatches(doc *models.Document, query string) []s
 	}
 	
 	return matches
+}
+
+// GetOrganizationBranding fetches minimal branding fields for a given organization.
+// This is intentionally read-only and used by public PDF generation endpoints.
+func (r *DocumentRepository) GetOrganizationBranding(ctx context.Context, organizationID string) (*models.Organization, error) {
+	var org models.Organization
+	err := r.db.WithContext(ctx).
+		Select("id, name, logo_url, tagline").
+		Where("id = ?", organizationID).
+		First(&org).Error
+	if err != nil {
+		return nil, err
+	}
+	return &org, nil
 }
 

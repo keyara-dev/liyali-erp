@@ -106,6 +106,11 @@ export async function verifyDocument(
 export interface DocumentForPDFResponse {
   documentType: "REQUISITION" | "PURCHASE_ORDER" | "PAYMENT_VOUCHER" | "GRN";
   document: any; // The full document data varies by type
+  organization?: {
+    name?: string;
+    logoUrl?: string;
+    tagline?: string;
+  };
 }
 
 /**
