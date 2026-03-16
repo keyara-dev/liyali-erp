@@ -211,7 +211,8 @@ func CreateRequisition(c *fiber.Ctx) error {
 		})
 	}
 
-	// Validate CategoryID if provided
+	// Validate CategoryID if provided — capture category name for denormalized storage
+	resolvedCategoryName := ""
 	if req.CategoryID != nil && *req.CategoryID != "" {
 		var category models.Category
 		if err := config.DB.Where("id = ? AND organization_id = ?", *req.CategoryID, organizationID).First(&category).Error; err != nil {
@@ -220,6 +221,7 @@ func CreateRequisition(c *fiber.Ctx) error {
 				"message": "Category not found in your organization",
 			})
 		}
+		resolvedCategoryName = category.Name
 	}
 
 	// Validate PreferredVendorID if provided
@@ -247,6 +249,11 @@ func CreateRequisition(c *fiber.Ctx) error {
 	if req.OtherCategoryText != "" {
 		metadataMap["otherCategoryText"] = req.OtherCategoryText
 	}
+	// Store the resolved category name so the PDF can display it even if the
+	// category record is later deleted or the preload fails.
+	if resolvedCategoryName != "" {
+		metadataMap["categoryName"] = resolvedCategoryName
+	}
 
 	metadataBytes, _ := json.Marshal(metadataMap)
 	metadata := datatypes.JSON(metadataBytes)
@@ -256,6 +263,7 @@ func CreateRequisition(c *fiber.Ctx) error {
 		OrganizationID:    organizationID, // Add organization ID
 		DocumentNumber:    documentNumber,
 		RequesterId:       userID,
+		RequesterName:     user.Name, // Stored in created_by_name — fallback for when Requester preload fails
 		Title:             req.Title,
 		Description:       req.Description,
 		Department:        req.Department,
@@ -640,11 +648,15 @@ func modelToRequisitionResponse(req models.Requisition) types.RequisitionRespons
 	var approvalHistory []types.ApprovalRecord
 	approvalHistory = req.ApprovalHistory.Data()
 
-	requesterName := ""
-	if req.Requester != nil {
+	// Use preloaded name when available; fall back to the denormalized DB column
+	// (created_by_name) which is set at creation time and survives user deletion.
+	requesterName := req.RequesterName
+	if req.Requester != nil && req.Requester.Name != "" {
 		requesterName = req.Requester.Name
 	}
 
+	// Use preloaded category name; fall back to the name stored in metadata at
+	// creation time (survives category deletion).
 	categoryName := ""
 	if req.Category != nil {
 		categoryName = req.Category.Name
@@ -665,6 +677,13 @@ func modelToRequisitionResponse(req models.Requisition) types.RequisitionRespons
 			}
 			if val, ok := metadataMap["otherCategoryText"].(string); ok {
 				otherCategoryText = val
+			}
+			// Fall back to the category name stored at creation time when the
+			// Category record can no longer be preloaded (e.g. category deleted).
+			if categoryName == "" {
+				if val, ok := metadataMap["categoryName"].(string); ok {
+					categoryName = val
+				}
 			}
 		}
 	}

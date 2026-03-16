@@ -38,10 +38,10 @@ type FormData = {
   branch_id?: string;
   is_active: boolean;
   password?: string;
-  position?: string;
-  manNumber?: string;
-  nrcNumber?: string;
-  contact?: string;
+  position: string;
+  manNumber: string;
+  nrcNumber: string;
+  contact: string;
 };
 
 export default function CreateUserForm({
@@ -277,6 +277,22 @@ export default function CreateUserForm({
       toast.error("Password is required");
       return false;
     }
+    if (!formData.position?.trim()) {
+      toast.error("Position is required");
+      return false;
+    }
+    if (!formData.manNumber?.trim()) {
+      toast.error("Man Number is required");
+      return false;
+    }
+    if (!formData.nrcNumber?.trim()) {
+      toast.error("NRC Number is required");
+      return false;
+    }
+    if (!formData.contact?.trim()) {
+      toast.error("Contact is required");
+      return false;
+    }
     return true;
   };
 
@@ -510,6 +526,7 @@ export default function CreateUserForm({
                   }))
                 }
                 disabled={isSubmitting}
+                required
               />
               <Input
                 id="manNumber"
@@ -523,6 +540,7 @@ export default function CreateUserForm({
                   }))
                 }
                 disabled={isSubmitting}
+                required
               />
               <Input
                 id="nrcNumber"
@@ -536,6 +554,21 @@ export default function CreateUserForm({
                   }))
                 }
                 disabled={isSubmitting}
+                required
+              />
+              <Input
+                id="contact"
+                label="Contact"
+                placeholder="e.g., +260 97 1234567"
+                value={formData.contact}
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    contact: e.target.value,
+                  }))
+                }
+                disabled={isSubmitting}
+                required
               />
             </div>
 

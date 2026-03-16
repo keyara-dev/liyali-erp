@@ -57,6 +57,18 @@ func CreateOrganizationUser(c *fiber.Ctx) error {
 	if req.Name == "" && req.FirstName == "" {
 		return utils.SendBadRequestError(c, "Name or first name is required")
 	}
+	if req.Position == "" {
+		return utils.SendBadRequestError(c, "Position is required")
+	}
+	if req.ManNumber == "" {
+		return utils.SendBadRequestError(c, "Man Number is required")
+	}
+	if req.NrcNumber == "" {
+		return utils.SendBadRequestError(c, "NRC Number is required")
+	}
+	if req.Contact == "" {
+		return utils.SendBadRequestError(c, "Contact is required")
+	}
 
 	// Set default role if not provided
 	if req.Role == "" {
@@ -88,6 +100,14 @@ func CreateOrganizationUser(c *fiber.Ctx) error {
 		}
 	}
 
+	// Check if user already exists — run against config.DB before opening TX
+	// to avoid aborting the PostgreSQL transaction on a failed SELECT
+	preCheckService := services.NewUserService(config.DB)
+	existingUser, err := preCheckService.GetUserByEmail(tenant.OrganizationID, req.Email)
+	if err == nil && existingUser != nil {
+		return utils.SendConflictError(c, "User with this email already exists")
+	}
+
 	// Start transaction for atomic user creation
 	tx := config.DB.Begin()
 	defer func() {
@@ -95,14 +115,6 @@ func CreateOrganizationUser(c *fiber.Ctx) error {
 			tx.Rollback()
 		}
 	}()
-
-	// Check if user already exists
-	userService := services.NewUserService(tx)
-	existingUser, err := userService.GetUserByEmail(tenant.OrganizationID, req.Email)
-	if err == nil && existingUser != nil {
-		tx.Rollback()
-		return utils.SendConflictError(c, "User with this email already exists")
-	}
 
 	// Validate password strength
 	if err := utils.ValidatePasswordStrength(req.Password); err != nil {
