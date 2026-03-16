@@ -16,7 +16,7 @@ type SubscriptionTier struct {
 	PriceMonthly   float64        `gorm:"column:price_monthly;type:numeric(10,2);not null;default:0" json:"priceMonthly"`
 	PriceYearly    float64        `gorm:"column:price_yearly;type:numeric(10,2);not null;default:0" json:"priceYearly"`
 	MaxWorkspaces  int            `gorm:"column:max_workspaces;type:integer;not null;default:1" json:"maxWorkspaces"`
-	MaxTeamMembers int            `gorm:"column:max_users;type:integer;not null;default:1" json:"maxTeamMembers"`
+	MaxTeamMembers int            `gorm:"column:max_team_members;type:integer;not null;default:1" json:"maxTeamMembers"`
 	MaxDocuments   int            `gorm:"column:max_documents;type:integer;not null;default:100" json:"maxDocuments"`
 	MaxWorkflows   int            `gorm:"column:max_workflows;type:integer;not null;default:1" json:"maxWorkflows"`
 	MaxCustomRoles    int            `gorm:"column:max_custom_roles;type:integer;not null;default:0" json:"maxCustomRoles"`
