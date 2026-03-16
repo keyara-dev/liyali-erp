@@ -11,7 +11,6 @@ import { UserType } from "@/types";
 // Types for user operations
 export interface CreateUserRequest {
   email: string;
-  phone?: string;
   password: string;
   first_name: string;
   last_name: string;
@@ -64,8 +63,6 @@ export async function createNewUser(
         role: data.role || "requester",
         department_id: data.department_id,
         branch_id: data.branch_id,
-        // Profile fields
-        phone: data.phone,
         position: data.position,
         manNumber: data.manNumber,
         nrcNumber: data.nrcNumber,

@@ -16,7 +16,7 @@ import CustomAlert from "../ui/custom-alert";
 import { cn, notify } from "@/lib/utils";
 import { Input } from "../ui/input";
 import { Button } from "../ui/button";
-import { changePassword } from "@/app/_actions/auth";
+import { changePassword, clearChangePasswordFlag } from "@/app/_actions/auth";
 import { Eye, EyeOff, LockIcon } from "lucide-react";
 
 export default function FirstLogin({ open }: { open?: boolean }) {
@@ -78,9 +78,9 @@ export default function FirstLogin({ open }: { open?: boolean }) {
       formData.newPassword
     );
 
-    // If password change success - invalidate query caches - close modals
+    // If password change success - clear the must-change-password flag, invalidate caches
     if (res.success) {
-      // onClose(); // Dialog is controlled by parent, so no internal onClose needed
+      await clearChangePasswordFlag();
       notify({
         type: "success",
         description: "Password Changed Successfully",

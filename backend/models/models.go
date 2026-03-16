@@ -28,6 +28,7 @@ type User struct {
 	CurrentOrganizationID *string        `json:"currentOrganizationId,omitempty"`
 	CurrentOrganization   *Organization `gorm:"foreignKey:CurrentOrganizationID" json:"currentOrganization,omitempty"`
 	IsSuperAdmin          bool           `gorm:"default:false" json:"isSuperAdmin"`
+	MustChangePassword    bool           `gorm:"default:false" json:"mustChangePassword"`
 	Preferences           datatypes.JSON `gorm:"type:jsonb" json:"preferences,omitempty"`
 
 	CreatedAt time.Time      `json:"createdAt"`

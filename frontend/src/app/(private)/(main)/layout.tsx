@@ -3,6 +3,7 @@ import { SessionTimeoutContainer } from "@/components/session/session-timeout-wa
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { verifySession } from "@/lib/auth";
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
+import FirstLogin from "@/components/base/first-login";
 
 export const dynamic = "force-dynamic";
 
@@ -11,9 +12,12 @@ export default async function DashboardLayoutProvider({
 }: PropsWithChildren) {
   const { session, isAuthenticated } = await verifySession();
 
+  const mustChangePassword = session?.change_password === true;
+
   return (
     <>
       <SessionTimeoutContainer session={session} />
+      {mustChangePassword && <FirstLogin open={true} />}
       <SidebarProvider
         style={
           {

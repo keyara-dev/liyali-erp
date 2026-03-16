@@ -24,6 +24,9 @@ func CreateOrganizationUser(c *fiber.Ctx) error {
 		return utils.SendUnauthorizedError(c, "Organization context required")
 	}
 
+	// Get creator's user ID for audit log
+	creatorID, _ := c.Locals("userID").(string)
+
 	// Parse request
 	var req struct {
 		Email        string  `json:"email" validate:"required,email"`
@@ -44,7 +47,7 @@ func CreateOrganizationUser(c *fiber.Ctx) error {
 		return utils.SendBadRequestError(c, "Invalid request body")
 	}
 
-	// Validate request manually
+	// Validate required fields
 	if req.Email == "" {
 		return utils.SendBadRequestError(c, "Email is required")
 	}
@@ -63,6 +66,26 @@ func CreateOrganizationUser(c *fiber.Ctx) error {
 	// Use name if first/last names not provided
 	if req.FirstName == "" && req.LastName == "" {
 		req.FirstName = req.Name
+	}
+
+	// Validate department belongs to this organisation (if provided)
+	if req.DepartmentID != "" {
+		var deptCount int64
+		if err := config.DB.Table("organization_departments").
+			Where("id = ? AND organization_id = ? AND is_active = true", req.DepartmentID, tenant.OrganizationID).
+			Count(&deptCount).Error; err != nil || deptCount == 0 {
+			return utils.SendBadRequestError(c, "Department not found in this organization")
+		}
+	}
+
+	// Validate branch belongs to this organisation (if provided)
+	if req.BranchID != nil && *req.BranchID != "" {
+		var branchCount int64
+		if err := config.DB.Table("organization_branches").
+			Where("id = ? AND organization_id = ? AND is_active = true", *req.BranchID, tenant.OrganizationID).
+			Count(&branchCount).Error; err != nil || branchCount == 0 {
+			return utils.SendBadRequestError(c, "Branch not found in this organization")
+		}
 	}
 
 	// Start transaction for atomic user creation
@@ -95,10 +118,11 @@ func CreateOrganizationUser(c *fiber.Ctx) error {
 		return utils.SendInternalError(c, "Failed to process password", err)
 	}
 
-	// Resolve role name from role ID if it's a UUID
+	// Resolve role — if it's a UUID look up the name; also capture the role ID for response
 	roleName := req.Role
+	roleID := ""
 	if _, err := uuid.Parse(req.Role); err == nil {
-		// It's a UUID, look up the role name
+		roleID = req.Role
 		roleService := services.NewRoleManagementService(tx)
 		role, err := roleService.GetOrganizationRole(req.Role)
 		if err != nil {
@@ -111,22 +135,22 @@ func CreateOrganizationUser(c *fiber.Ctx) error {
 		roleName = role.Name
 	}
 
-	// Create user without personal organization
+	// Create user — MustChangePassword forces a password reset on first login
 	user := &models.User{
 		ID:                    uuid.New().String(),
 		Email:                 req.Email,
 		Name:                  req.Name,
 		Password:              hashedPassword,
-		Role:                  roleName, // Store role name, not role ID
+		Role:                  roleName,
 		Active:                true,
-		CurrentOrganizationID: &tenant.OrganizationID, // Set to admin's organization
+		MustChangePassword:    true,
+		CurrentOrganizationID: &tenant.OrganizationID,
 		Position:              req.Position,
 		ManNumber:             req.ManNumber,
 		NrcNumber:             req.NrcNumber,
 		Contact:               req.Contact,
 	}
 
-	// Create user in database
 	if err := tx.Create(user).Error; err != nil {
 		tx.Rollback()
 		logging.LogError(c, err, "user_creation_failed", map[string]interface{}{
@@ -135,20 +159,17 @@ func CreateOrganizationUser(c *fiber.Ctx) error {
 		return utils.SendInternalError(c, "Failed to create user", err)
 	}
 
-	// Add user to the admin's organization with department assignment
+	// Add user to the organisation with department assignment
 	orgService := services.NewOrganizationService(tx)
 	var departmentPtr *string
 	if req.DepartmentID != "" {
 		departmentPtr = &req.DepartmentID
 	}
-	
 	if err := orgService.AddMemberWithDepartment(tenant.OrganizationID, user.ID, roleName, departmentPtr); err != nil {
 		tx.Rollback()
 		logging.LogError(c, err, "organization_member_addition_failed", map[string]interface{}{
 			"user_id":         user.ID,
 			"organization_id": tenant.OrganizationID,
-			"role":           roleName,
-			"department_id":  req.DepartmentID,
 		})
 		return utils.SendInternalError(c, "Failed to add user to organization", err)
 	}
@@ -160,34 +181,32 @@ func CreateOrganizationUser(c *fiber.Ctx) error {
 			Update("branch_id", req.BranchID)
 	}
 
-	// The AddMemberWithDepartment method handles both role and department assignment
-
-	// System roles are now global — no per-org initialization needed
-
 	// Commit transaction
 	if err := tx.Commit().Error; err != nil {
 		logging.LogError(c, err, "transaction_commit_failed", nil)
 		return utils.SendInternalError(c, "Failed to complete user creation", err)
 	}
 
-	// Log successful creation
+	// Audit log — record who created this user
 	logging.AddFieldsToRequest(c, map[string]interface{}{
-		"user_id":         user.ID,
-		"organization_id": tenant.OrganizationID,
-		"role":           roleName,
+		"created_user_id":  user.ID,
+		"created_by":       creatorID,
+		"organization_id":  tenant.OrganizationID,
+		"role":             roleName,
 		"creation_success": true,
 	})
-
 	logger.Info("admin_user_creation_successful")
 
 	// Return user response (without sensitive data)
 	userResponse := map[string]interface{}{
-		"id":        user.ID,
-		"email":     user.Email,
-		"name":      user.Name,
-		"role":      roleName,
-		"active":    user.Active,
-		"createdAt": user.CreatedAt,
+		"id":                 user.ID,
+		"email":              user.Email,
+		"name":               user.Name,
+		"role":               roleName,
+		"roleId":             roleID,
+		"active":             user.Active,
+		"mustChangePassword": user.MustChangePassword,
+		"createdAt":          user.CreatedAt,
 	}
 
 	return utils.SendCreatedSuccess(c, userResponse, "User created successfully")

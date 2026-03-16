@@ -58,6 +58,7 @@ export async function loginAction(
       user_id: user.id,
       organization_id: response.data.organization?.id,
       expiresIn: response.data.expiresIn, // Use backend's expiration time
+      change_password: user.mustChangePassword === true,
       user: {
         ...user,
         avatar: avatarUrl, // Set avatar at top level for easy access
@@ -277,6 +278,14 @@ export async function changePassword(
   } catch (error: any) {
     return handleError(error, "POST", url);
   }
+}
+
+/**
+ * Clear the must-change-password flag from the session cookie after a
+ * successful first-login password change.
+ */
+export async function clearChangePasswordFlag(): Promise<void> {
+  await updateAuthSession({ change_password: false });
 }
 
 /**

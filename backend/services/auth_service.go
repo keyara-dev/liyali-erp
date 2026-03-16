@@ -214,12 +214,13 @@ func (s *AuthService) Login(ctx context.Context, email, password, ipAddress, use
 		RefreshToken: refreshToken,
 		ExpiresIn:    int64(AccessTokenDuration.Seconds()),
 		User: &types.UserResponse{
-			ID:        user.ID,
-			Email:     user.Email,
-			Name:      user.Name,
-			Role:      user.Role,
-			Active:    user.Active,
-			CreatedAt: user.CreatedAt.Format(time.RFC3339),
+			ID:                 user.ID,
+			Email:              user.Email,
+			Name:               user.Name,
+			Role:               user.Role,
+			Active:             user.Active,
+			MustChangePassword: user.MustChangePassword,
+			CreatedAt:          user.CreatedAt.Format(time.RFC3339),
 		},
 	}
 
@@ -470,6 +471,14 @@ func (s *AuthService) ChangePassword(ctx context.Context, userID, currentPasswor
 	// Update password
 	if err := s.userRepo.UpdatePassword(ctx, userID, hashedPassword); err != nil {
 		return fmt.Errorf("failed to update password: %w", err)
+	}
+
+	// Clear the must-change-password flag now that the user has set their own password
+	if err := s.db.Model(&models.User{}).Where("id = ?", userID).Update("must_change_password", false).Error; err != nil {
+		// Non-fatal: log but don't fail the request
+		logging.WithFields(map[string]interface{}{
+			"user_id": userID,
+		}).WithError(err).Warn("failed_to_clear_must_change_password_flag")
 	}
 
 	// Log audit event

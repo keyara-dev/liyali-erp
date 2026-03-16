@@ -32,7 +32,6 @@ type FormData = {
   first_name: string;
   last_name: string;
   email: string;
-  phone?: string;
   role: UserType;
   department_id?: string;
   department?: string;
@@ -106,7 +105,6 @@ export default function CreateUserForm({
         first_name: user.first_name || "",
         last_name: user.last_name || "",
         email: user.email || "",
-        phone: (user as any).phone || "",
         role: user.role || role,
         department_id: user.department_id || "",
         branch_id: (user as any).branch_id || "",
@@ -122,7 +120,6 @@ export default function CreateUserForm({
       first_name: "",
       last_name: "",
       email: "",
-      phone: "",
       role: role,
       department_id: "",
       branch_id: "",
@@ -167,7 +164,6 @@ export default function CreateUserForm({
         first_name: user.first_name || "",
         last_name: user.last_name || "",
         email: user.email || "",
-        phone: (user as any).phone || "",
         role: user.role || role,
         department: user.department || "",
         department_id: user.department_id || "",
@@ -184,7 +180,6 @@ export default function CreateUserForm({
         first_name: "",
         last_name: "",
         email: "",
-        phone: "",
         role: role,
         department: "",
         department_id: "",
@@ -321,7 +316,6 @@ export default function CreateUserForm({
         await createUserMutation.mutateAsync({
           name: fullName,
           email: formData.email,
-          phone: formData.phone || "",
           password: formData.password || generateRandomString(12),
           first_name: formData.first_name,
           last_name: formData.last_name,
@@ -513,21 +507,6 @@ export default function CreateUserForm({
                   setFormData((prev) => ({
                     ...prev,
                     position: e.target.value,
-                  }))
-                }
-                disabled={isSubmitting}
-              />
-              <Input
-                id="phone"
-                label="Phone"
-                type="tel"
-                placeholder="e.g., +260 XXX XXX XXX"
-                value={formData.phone}
-                onChange={(e) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    phone: e.target.value,
-                    contact: e.target.value,
                   }))
                 }
                 disabled={isSubmitting}

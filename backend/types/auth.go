@@ -73,6 +73,7 @@ type UserResponse struct {
 	LastLogin             *string                `json:"lastLogin,omitempty"`
 	CurrentOrganizationID *string                `json:"currentOrganizationId,omitempty"`
 	IsSuperAdmin          bool                   `json:"isSuperAdmin,omitempty"`
+	MustChangePassword    bool                   `json:"mustChangePassword,omitempty"`
 	Preferences           map[string]interface{} `json:"preferences,omitempty"`
 	CreatedAt             string                 `json:"createdAt"`
 	UpdatedAt             string                 `json:"updatedAt,omitempty"`
