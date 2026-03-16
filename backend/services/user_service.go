@@ -30,31 +30,18 @@ func (s *UserService) UserExistsInOrganization(organizationID, userID string) (b
 	return count > 0, nil
 }
 
-// GetUserByEmail gets a user by email (for checking if user already exists)
+// GetUserByEmail gets a user by email (for checking if user already exists).
+// Returns the user if the email is taken globally — the UNIQUE constraint on
+// users.email makes cross-org re-use impossible, so any match is a conflict.
 func (s *UserService) GetUserByEmail(organizationID, email string) (*models.User, error) {
 	var user models.User
-	
-	// First check if user exists globally
 	if err := s.db.Where("email = ?", email).First(&user).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
-			return nil, nil // User doesn't exist, which is fine for creation
+			return nil, nil // email is free
 		}
 		return nil, fmt.Errorf("failed to check user by email: %w", err)
 	}
-
-	// If user exists, check if they're already a member of this organization
-	var count int64
-	if err := s.db.Table("organization_members").
-		Where("organization_id = ? AND user_id = ? AND active = ?", organizationID, user.ID, true).
-		Count(&count).Error; err != nil {
-		return nil, fmt.Errorf("failed to check organization membership: %w", err)
-	}
-
-	if count > 0 {
-		return &user, nil // User exists and is already a member
-	}
-
-	return nil, nil // User exists but not in this organization
+	return &user, nil // email already taken — caller should return 409
 }
 
 // AssignUserToDepartment assigns a user to a department

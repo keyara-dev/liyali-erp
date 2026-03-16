@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"strings"
+
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 	"github.com/liyali/liyali-gateway/config"
@@ -47,12 +49,20 @@ func CreateOrganizationUser(c *fiber.Ctx) error {
 		return utils.SendBadRequestError(c, "Invalid request body")
 	}
 
+	// Trim whitespace from name fields before validation
+	req.Name = strings.TrimSpace(req.Name)
+	req.FirstName = strings.TrimSpace(req.FirstName)
+	req.LastName = strings.TrimSpace(req.LastName)
+
 	// Validate required fields
 	if req.Email == "" {
 		return utils.SendBadRequestError(c, "Email is required")
 	}
-	if req.Password == "" || len(req.Password) < 8 {
-		return utils.SendBadRequestError(c, "Password is required and must be at least 8 characters")
+	if req.Password == "" {
+		return utils.SendBadRequestError(c, "Password is required")
+	}
+	if err := utils.ValidatePasswordStrength(req.Password); err != nil {
+		return utils.SendBadRequestError(c, "Password validation failed: "+err.Error())
 	}
 	if req.Name == "" && req.FirstName == "" {
 		return utils.SendBadRequestError(c, "Name or first name is required")
@@ -115,12 +125,6 @@ func CreateOrganizationUser(c *fiber.Ctx) error {
 			tx.Rollback()
 		}
 	}()
-
-	// Validate password strength
-	if err := utils.ValidatePasswordStrength(req.Password); err != nil {
-		tx.Rollback()
-		return utils.SendBadRequestError(c, "Password validation failed: "+err.Error())
-	}
 
 	// Hash password
 	hashedPassword, err := utils.HashPassword(req.Password)
