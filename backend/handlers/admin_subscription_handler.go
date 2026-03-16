@@ -275,18 +275,18 @@ func GetTrialOrganizations(c *fiber.Ctx) error {
 		SubscriptionStatus string    `json:"subscription_status"`
 	}
 
-	// Get organizations with trial information (PostgreSQL syntax)
+	// Get organizations with trial information — exclude paid tiers (pro/custom)
 	query := `
-		SELECT 
+		SELECT
 			o.id,
 			o.name,
 			o.trial_start_date,
 			o.trial_end_date,
-			CASE 
+			CASE
 				WHEN o.trial_end_date IS NULL THEN 0
 				ELSE CAST(EXTRACT(DAY FROM (o.trial_end_date - CURRENT_TIMESTAMP)) AS INTEGER)
 			END as days_remaining,
-			CASE 
+			CASE
 				WHEN o.trial_end_date IS NULL THEN 'no_trial'
 				WHEN o.trial_end_date < CURRENT_TIMESTAMP THEN 'expired'
 				ELSE 'active'
@@ -294,8 +294,10 @@ func GetTrialOrganizations(c *fiber.Ctx) error {
 			COALESCE(o.subscription_tier, 'starter') as subscription_tier,
 			COALESCE(o.subscription_status, 'trial') as subscription_status
 		FROM organizations o
-		ORDER BY 
-			CASE 
+		WHERE o.subscription_status != 'active'
+		  AND COALESCE(o.subscription_tier, 'starter') NOT IN ('pro', 'custom')
+		ORDER BY
+			CASE
 				WHEN o.trial_end_date IS NULL THEN 3
 				WHEN o.trial_end_date < CURRENT_TIMESTAMP THEN 1
 				ELSE 2
