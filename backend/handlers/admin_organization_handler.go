@@ -38,8 +38,17 @@ func AdminGetAllOrganizations(c *fiber.Ctx) error {
 			organizations.created_at, organizations.updated_at,
 			CASE WHEN organizations.active = true THEN 'active' ELSE 'suspended' END as status,
 			COALESCE(organizations.subscription_tier, organizations.tier, 'basic') as subscription_tier,
-			COALESCE(organizations.subscription_status, 'trial') as trial_status,
-			organizations.trial_start_date, organizations.trial_end_date,
+			CASE
+				WHEN COALESCE(organizations.subscription_tier, organizations.tier, 'starter') IN ('pro', 'custom') THEN 'subscribed'
+				WHEN COALESCE(organizations.subscription_status, 'trial') = 'active' THEN 'subscribed'
+				WHEN organizations.trial_end_date IS NOT NULL AND organizations.trial_end_date < CURRENT_TIMESTAMP THEN 'expired'
+				ELSE COALESCE(organizations.subscription_status, 'trial')
+			END as trial_status,
+			organizations.trial_start_date,
+			CASE
+				WHEN COALESCE(organizations.subscription_tier, organizations.tier, 'starter') IN ('pro', 'custom') THEN NULL
+				ELSE organizations.trial_end_date
+			END as trial_end_date,
 			(SELECT COUNT(*) FROM organization_members WHERE organization_members.organization_id = organizations.id AND organization_members.active = true) as user_count`)
 
 	// Apply filters
