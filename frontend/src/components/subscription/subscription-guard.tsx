@@ -48,11 +48,12 @@ export function SubscriptionGuard({
   const [showModal, setShowModal] = useState(false);
 
   useEffect(() => {
-    // Auto-show upgrade modal if trial is expired and we're blocking access
-    if (trialStatus?.isExpired && blockAccess && showUpgradeModal) {
+    const isPaid =
+      currentOrganization?.tier === "pro" || currentOrganization?.tier === "custom";
+    if (!isPaid && trialStatus?.isExpired && blockAccess && showUpgradeModal) {
       setShowModal(true);
     }
-  }, [trialStatus?.isExpired, blockAccess, showUpgradeModal]);
+  }, [currentOrganization?.tier, trialStatus?.isExpired, blockAccess, showUpgradeModal]);
 
   if (isLoading) {
     return (
@@ -65,9 +66,15 @@ export function SubscriptionGuard({
     );
   }
 
+  // Paid tiers are never trial-gated
+  const isPaidTier =
+    currentOrganization?.tier === "pro" || currentOrganization?.tier === "custom";
+
   // Check if organization is in trial and expired
   const isTrialExpired =
-    trialStatus?.isExpired && trialStatus?.subscriptionStatus === "trial";
+    !isPaidTier &&
+    trialStatus?.isExpired &&
+    trialStatus?.subscriptionStatus === "trial";
   const inGracePeriod = trialStatus?.inGracePeriod;
 
   // Check feature access if specified

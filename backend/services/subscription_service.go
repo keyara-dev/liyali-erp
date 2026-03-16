@@ -96,7 +96,7 @@ func (s *SubscriptionService) GetAllSubscriptionPlans() ([]SubscriptionPlan, err
 			price_monthly,
 			price_yearly,
 			max_workspaces,
-			max_users,
+			max_team_members,
 			max_documents,
 			max_workflows,
 			max_custom_roles,
@@ -267,6 +267,22 @@ func (s *SubscriptionService) GetOrganizationTrialStatus(organizationID string) 
 		status.GracePeriodEndsAt = &gracePeriodEnd.Time
 	}
 
+	// Check the subscription_tier — pro/custom overrides trial state entirely
+	var orgTier string
+	tierQuery := `SELECT COALESCE(subscription_tier, 'starter') FROM organizations WHERE id = $1`
+	_ = s.db.QueryRow(context.Background(), tierQuery, organizationID).Scan(&orgTier)
+
+	if orgTier == "pro" || orgTier == "custom" {
+		status.IsExpired = false
+		status.InGracePeriod = false
+		status.IsActive = true
+		if status.SubscriptionStatus != "active" {
+			status.SubscriptionStatus = "active"
+		}
+		logger.Info("Retrieved organization trial status")
+		return &status, nil
+	}
+
 	// Determine if trial is active
 	now := time.Now()
 	if status.SubscriptionStatus == "trial" && status.TrialEndDate != nil {
@@ -306,25 +322,56 @@ func (s *SubscriptionService) CheckFeatureAccess(organizationID, featureName str
 	return result, nil
 }
 
-// UpgradeOrganization handles organization upgrade requests
+// UpgradeOrganization upgrades an organization to a paid tier and clears the trial
 func (s *SubscriptionService) UpgradeOrganization(organizationID string, request map[string]interface{}) (map[string]interface{}, error) {
 	logger := &logging.Logger{}
-	
+
 	logger.Info("Processing organization upgrade")
 
-	// For now, return a mock response
-	// TODO: Implement actual upgrade logic with payment processing
-	response := map[string]interface{}{
-		"message":        "Upgrade request received. This is a demo - no actual payment processing.",
-		"organizationId": organizationID,
-		"targetPlan":     request["targetPlanSlug"],
-		"status":         "pending",
-		"timestamp":      time.Now(),
+	targetPlanSlug, _ := request["targetPlanSlug"].(string)
+
+	// Map plan slug to subscription_tier value
+	tierMap := map[string]string{
+		"PRO_PLAN":    "pro",
+		"ENTERPRISE":  "custom",
+		"STARTER_PLAN": "starter",
+	}
+	newTier, ok := tierMap[targetPlanSlug]
+	if !ok {
+		newTier = targetPlanSlug
 	}
 
-	logger.Info("Organization upgrade processed")
+	// Upgrade the org: set tier + clear trial for paid plans
+	updates := `UPDATE organizations SET subscription_tier = $2, updated_at = CURRENT_TIMESTAMP`
+	if newTier == "pro" || newTier == "custom" {
+		updates += `, subscription_status = 'active', trial_end_date = NULL, grace_period_ends_at = NULL`
+	}
+	updates += ` WHERE id = $1`
 
-	return response, nil
+	_, err := s.db.Exec(context.Background(), updates, organizationID, newTier)
+	if err != nil {
+		logger.Error("Failed to upgrade organization: " + err.Error())
+		return nil, fmt.Errorf("failed to upgrade organization: %w", err)
+	}
+
+	// Audit log
+	metadata, _ := json.Marshal(map[string]interface{}{
+		"target_plan_slug": targetPlanSlug,
+		"new_tier":         newTier,
+	})
+	_, _ = s.db.Exec(context.Background(),
+		`INSERT INTO subscription_audit_logs (organization_id, action, metadata) VALUES ($1, $2, $3)`,
+		organizationID, "upgraded", metadata,
+	)
+
+	logger.Info("Organization upgraded successfully")
+
+	return map[string]interface{}{
+		"organizationId": organizationID,
+		"newTier":        newTier,
+		"status":         "active",
+		"timestamp":      time.Now(),
+	}, nil
 }
 
 // ExtendOrganizationTrial extends the trial period for an organization (admin only)

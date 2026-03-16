@@ -135,7 +135,8 @@ func main() {
 		fmt.Printf("Found %d migration files to run\n", len(migrationFiles))
 	}
 
-	// Create migrations tracking table (but handle reset mode differently)
+	// In normal mode, create tracking table upfront.
+	// In reset mode, we create it after the cleanup migration runs (schema is fresh then).
 	if !resetMode {
 		createMigrationsTable(db)
 	}
@@ -143,13 +144,12 @@ func main() {
 	// Run each migration
 	migrationsTableCreated := !resetMode
 	for _, filename := range migrationFiles {
-		// In reset mode, create migrations table after schema is created
-		if resetMode && !migrationsTableCreated && strings.Contains(filename, "schema") {
-			// Wait until after schema migration to create tracking table
-		} else if resetMode && !migrationsTableCreated && strings.Contains(filename, "seed") {
-			// Create tracking table before seed data
-			createMigrationsTable(db)
-			migrationsTableCreated = true
+		filePath := filepath.Join(migrationsDir, filename)
+
+		// Read migration file
+		content, err := ioutil.ReadFile(filePath)
+		if err != nil {
+			log.Fatalf("Failed to read migration file %s: %v", filename, err)
 		}
 
 		// Check if migration has been applied (only if tracking table exists)
@@ -158,28 +158,21 @@ func main() {
 			continue
 		}
 
-		filePath := filepath.Join(migrationsDir, filename)
-		
-		// Read migration file
-		content, err := ioutil.ReadFile(filePath)
-		if err != nil {
-			log.Fatalf("Failed to read migration file %s: %v", filename, err)
-		}
-
 		// Execute migration
 		fmt.Printf("🔄 Running migration: %s\n", filename)
-		
+
 		if _, err := db.Exec(string(content)); err != nil {
 			log.Fatalf("Migration %s failed: %v", filename, err)
 		}
 
-		// Create tracking table after schema migration in reset mode
-		if resetMode && !migrationsTableCreated && strings.Contains(filename, "schema") {
+		// In reset mode, create tracking table right after the cleanup migration
+		// (schema is guaranteed fresh at this point)
+		if resetMode && !migrationsTableCreated && strings.HasPrefix(filename, "000_") {
 			createMigrationsTable(db)
 			migrationsTableCreated = true
 		}
 
-		// Mark as applied (only if tracking table exists)
+		// Mark as applied
 		if migrationsTableCreated {
 			markAsApplied(db, filename)
 		}

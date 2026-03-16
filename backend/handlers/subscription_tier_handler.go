@@ -247,11 +247,18 @@ func ChangeOrganizationTier(c *fiber.Ctx) error {
 
 	oldTier := org.Tier
 
-	// Update tier
-	if err := db.Model(&org).Updates(map[string]interface{}{
+	// Build update fields — paid tiers clear the trial immediately
+	updates := map[string]interface{}{
 		"subscription_tier": request.NewTier,
 		"updated_at":        time.Now(),
-	}).Error; err != nil {
+	}
+	if request.NewTier == "pro" || request.NewTier == "custom" {
+		updates["subscription_status"] = "active"
+		updates["trial_end_date"] = nil
+		updates["grace_period_ends_at"] = nil
+	}
+
+	if err := db.Model(&org).Updates(updates).Error; err != nil {
 		log.Printf("Error updating organization tier: %v", err)
 		return utils.SendInternalError(c, "Failed to update tier", err)
 	}

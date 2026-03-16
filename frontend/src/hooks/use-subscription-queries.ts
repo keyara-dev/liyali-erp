@@ -347,6 +347,9 @@ export function useTrialCountdown(organizationId: string) {
   const getTrialInfo = () => {
     if (!trialStatus) return null;
 
+    // Active subscription (paid tier) — no trial countdown needed
+    if (trialStatus.subscriptionStatus === "active") return null;
+
     const isTrialActive = trialStatus.isActive && !trialStatus.isExpired;
     const daysRemaining = Math.max(0, trialStatus.daysRemaining);
     const isExpiringSoon = daysRemaining <= 3 && isTrialActive;
