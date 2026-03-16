@@ -1,7 +1,7 @@
 # Liyali Gateway - TODO & Future Enhancements
 
-> Last updated: 2026-03-08
-> Status: Post Phase 1-8 audit + Document Hooks Refactor. All P0-P3 gaps from the original plan are closed.
+> Last updated: 2026-03-16
+> Status: Post system-wide audit (2026-03-16). New sections added: Database/Migrations, Security Hardening, Frontend Type Safety.
 > This document captures every remaining stub, placeholder, and enhancement opportunity.
 
 ---
@@ -316,7 +316,41 @@ Items are grouped by area and sorted by priority within each group.
 
 ---
 
-## 5. Backend Data Issues
+## 5. Database & Migrations
+
+| #   | Item                                     | File                                                                        | Priority | Notes                                                                                                                              |
+| --- | ---------------------------------------- | --------------------------------------------------------------------------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| [ ] | Fix duplicate migration 027              | `backend/database/migrations/`                                              | High     | Two files share number 027: `027_fix_pro_tier_clears_trial.up.sql` and `027_organization_branches.up.sql`. Rename second to 032+. |
+| [ ] | Commit migration 031                     | `backend/database/migrations/031_seed_global_system_roles.up.sql`          | High     | File exists locally but is untracked (`??` in git status). Commit or remove.                                                      |
+| [ ] | Write DOWN migration for 031             | `backend/database/migrations/031_seed_global_system_roles.down.sql`        | Medium   | No rollback script exists for the global system roles seed.                                                                       |
+| [ ] | Add missing DOWN migrations              | `backend/database/migrations/`                                              | Low      | Only 13 of 31 UP migrations have a corresponding DOWN file. Add rollbacks for: user profile (021), activity logs (023), MFA/LDAP (024), impersonation logs (025), org branches (030), etc. |
+| [ ] | Verify IsSuperAdmin column nullable      | `backend/models/models.go` + migration 017                                  | Medium   | Model uses `*bool` (nullable pointer). Confirm DB column matches — if NOT NULL default false, change to `bool` in model.           |
+
+---
+
+## 6. Security Hardening
+
+| #   | Item                                         | File                                               | Priority | Notes                                                                                                               |
+| --- | -------------------------------------------- | -------------------------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------- |
+| [ ] | Remove JWT_SECRET insecure fallback          | `backend/main.go`                                  | High     | Falls back to `"temp-production-secret-change-me"` when `JWT_SECRET` env var is missing. Should hard-fail instead. |
+| [ ] | Add startup env var validation               | `backend/bootstrap/` or `backend/main.go`          | High     | No validation that required env vars (DB_PASSWORD, JWT_SECRET, etc.) are set before the server starts.             |
+| [ ] | Fix rate limiter for proxied/load-balanced   | `backend/middleware/middleware.go`                  | Medium   | Rate limiting keys off raw IP only. Behind a load balancer, all requests share one IP. Add `X-Forwarded-For` / `X-Real-IP` header parsing. |
+| [ ] | Remove debug log.Printf from approval flow   | `backend/handlers/approval_handler.go` (line ~649) | Low      | Several `log.Printf` debug statements left in production code path.                                                 |
+| [ ] | Verify document scope filters are exhaustive | `backend/handlers/`                                | Medium   | `GetDocumentScope` + `ApplyToQuery` applied to Req, PO, PV, GRN, Budget — re-confirm no handler bypasses the scope filter on list endpoints. |
+
+---
+
+## 7. Frontend Type Safety
+
+| #   | Item                                         | File                                               | Priority | Notes                                                                                                                        |
+| --- | -------------------------------------------- | -------------------------------------------------- | -------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| [ ] | Add `role` to NextAuth session user type     | `frontend/src/types/` or `next-auth.d.ts`          | Medium   | Session type from `@auth/core` does not include `role`. Every component works around this with `session.user as any`.       |
+| [ ] | Eliminate `session.user as any` casts        | Multiple components (24+ occurrences)              | Medium   | Once the session type is extended, replace all unsafe casts with typed access.                                               |
+| [ ] | Reduce broad `any` typings in hooks          | `frontend/src/hooks/`                              | Low      | ~734 implicit `any` occurrences across hooks and components. Tighten incrementally, starting with the most-used hooks.      |
+
+---
+
+## 8. Backend Data Issues
 
 | #   | Item                               | File                                              | Line  | Priority | Notes                                                                              |
 | --- | ---------------------------------- | ------------------------------------------------- | ----- | -------- | ---------------------------------------------------------------------------------- |

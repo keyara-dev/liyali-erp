@@ -10,11 +10,7 @@ import {
   sendResetEmail,
   resetPassword,
 } from "@/app/_actions/auth";
-import {
-  startLoginTimer,
-  endLoginTimer,
-  trackSessionError,
-} from "@/lib/auth-monitoring";
+import { startLoginTimer } from "@/lib/auth-monitoring";
 
 /**
  * Hook for handling user login
@@ -47,7 +43,6 @@ export function useLoginMutation() {
       email: string;
       password: string;
     }) => {
-      // Start timing the login process
       startLoginTimer();
       return await loginAction(email, password);
     },
@@ -55,24 +50,20 @@ export function useLoginMutation() {
       if (data.success) {
         setIsRedirecting(true);
 
-        // Wait for session to be properly set and verify it's readable
+        // Wait for session cookie to be readable before navigating
         let sessionReady = false;
         let attempts = 0;
         const maxAttempts = 10;
 
         while (!sessionReady && attempts < maxAttempts) {
           await new Promise((resolve) => setTimeout(resolve, 200));
-
           try {
             const { verifySession } = await import("@/lib/auth");
             const { isAuthenticated } = await verifySession();
-            if (isAuthenticated) {
-              sessionReady = true;
-            }
+            if (isAuthenticated) sessionReady = true;
           } catch {
-            // Session not yet available, will retry
+            // not yet available, will retry
           }
-
           attempts++;
         }
 

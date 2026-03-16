@@ -58,9 +58,14 @@ export default function CreateUserForm({
   setIsOpenModal?: Dispatch<SetStateAction<boolean>>;
 }) {
   const router = useRouter();
+  const [mounted, setMounted] = useState(false);
   const [copied, setCopied] = useState(false);
   const [internalOpen, setInternalOpen] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const isEditMode = !!user;
 
@@ -195,9 +200,11 @@ export default function CreateUserForm({
   }, [user?.id, dialogOpen, isEditMode, role]);
 
   // PERMISSION CHECKS - After all hooks are called
-  // Show loading while checking permissions
-  if (permissionsLoading) {
-    return null; // Or you could return a loading spinner
+  // Use mounted guard so server and client render the same thing on first pass,
+  // preventing the React hydration mismatch caused by the React Query session cache
+  // being pre-populated on the client but empty on the server (staleTime: 0).
+  if (!mounted || permissionsLoading) {
+    return null;
   }
 
   // Show error if roles failed to load
