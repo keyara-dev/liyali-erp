@@ -142,7 +142,7 @@ func (s *DepartmentService) CreateDepartment(organizationID, name, code string, 
 		Name:           name,
 		Code:           code,
 		ParentID:       parentID,
-		Active:         true,
+		IsActive:       true,
 		CreatedAt:      time.Now(),
 		UpdatedAt:      time.Now(),
 	}

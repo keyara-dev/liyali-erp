@@ -137,14 +137,18 @@ func (c *CacheService) InvalidateUserCache(userID string) {
 func (c *CacheService) InvalidateOrganizationCache(orgID string) {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
-	
-	// Remove all analytics cache for this org
+
+	// Remove all analytics cache for this org + the org members key,
+	// all under the single lock to avoid a recursive-lock deadlock.
+	membersKey := c.OrganizationMembersKey(orgID)
 	for key := range c.cache {
-		if len(key) > 10 && key[:10] == "analytics:" && 
-		   len(key) > len(orgID)+11 && key[10:10+len(orgID)] == orgID {
+		if key == membersKey {
+			delete(c.cache, key)
+			continue
+		}
+		if len(key) > 10 && key[:10] == "analytics:" &&
+			len(key) > len(orgID)+11 && key[10:10+len(orgID)] == orgID {
 			delete(c.cache, key)
 		}
 	}
-	
-	c.Delete(c.OrganizationMembersKey(orgID))
 }

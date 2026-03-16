@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"fmt"
+	"log"
 	"strings"
 
 	"github.com/gofiber/fiber/v2"
@@ -123,6 +125,7 @@ func CreateOrganizationUser(c *fiber.Ctx) error {
 	defer func() {
 		if r := recover(); r != nil {
 			tx.Rollback()
+			_ = utils.SendInternalError(c, "Unexpected error during user creation", fmt.Errorf("%v", r))
 		}
 	}()
 
@@ -167,6 +170,7 @@ func CreateOrganizationUser(c *fiber.Ctx) error {
 		Contact:               req.Contact,
 	}
 
+	log.Printf("[CreateUser] creating user email=%s org=%s", req.Email, tenant.OrganizationID)
 	if err := tx.Create(user).Error; err != nil {
 		tx.Rollback()
 		logging.LogError(c, err, "user_creation_failed", map[string]interface{}{
@@ -189,12 +193,18 @@ func CreateOrganizationUser(c *fiber.Ctx) error {
 		})
 		return utils.SendInternalError(c, "Failed to add user to organization", err)
 	}
-
 	// Set branch if provided
 	if req.BranchID != nil && *req.BranchID != "" {
-		tx.Table("organization_members").
+		if err := tx.Table("organization_members").
 			Where("organization_id = ? AND user_id = ?", tenant.OrganizationID, user.ID).
-			Update("branch_id", req.BranchID)
+			Update("branch_id", req.BranchID).Error; err != nil {
+			tx.Rollback()
+			logging.LogError(c, err, "org_member_branch_set_failed", map[string]interface{}{
+				"user_id":   user.ID,
+				"branch_id": *req.BranchID,
+			})
+			return utils.SendInternalError(c, "Failed to set branch assignment", err)
+		}
 	}
 
 	// Commit transaction
@@ -202,6 +212,7 @@ func CreateOrganizationUser(c *fiber.Ctx) error {
 		logging.LogError(c, err, "transaction_commit_failed", nil)
 		return utils.SendInternalError(c, "Failed to complete user creation", err)
 	}
+	log.Printf("[CreateUser] committed user=%s email=%s org=%s", user.ID, user.Email, tenant.OrganizationID)
 
 	// Audit log — record who created this user
 	logging.AddFieldsToRequest(c, map[string]interface{}{
@@ -220,7 +231,7 @@ func CreateOrganizationUser(c *fiber.Ctx) error {
 		"name":               user.Name,
 		"role":               roleName,
 		"roleId":             roleID,
-		"active":             user.Active,
+		"is_active":          user.Active,
 		"mustChangePassword": user.MustChangePassword,
 		"createdAt":          user.CreatedAt,
 	}

@@ -98,8 +98,7 @@ type OrganizationDepartment struct {
 	ManagerName string  `json:"manager_name,omitempty"`
 	ParentID    *string `json:"parentId,omitempty"`
 
-	Active    bool      `gorm:"column:is_active;default:true" json:"active"`
-	IsActive  bool      `gorm:"column:is_active;default:true" json:"is_active"`
+	IsActive bool `gorm:"column:is_active;default:true" json:"is_active"`
 	CreatedAt time.Time `json:"createdAt"`
 	UpdatedAt time.Time `json:"updatedAt"`
 }

@@ -167,7 +167,7 @@ func GetOrganizationMembers(c *fiber.Ctx) error {
 			organization_members.role,
 			organization_members.department,
 			organization_members.department_id,
-			organization_members.active,
+			organization_members.active as is_active,
 			organization_members.joined_at,
 			organization_members.created_at,
 			organization_members.updated_at,

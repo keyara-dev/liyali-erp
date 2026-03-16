@@ -66,11 +66,7 @@ export async function getDepartments(
       method: "GET",
     });
 
-    // Transform departments data to match expected format
-    const departments = (response.data.data || []).map((dept: any) => ({
-      ...dept,
-      is_active: dept.active !== undefined ? dept.active : dept.is_active,
-    }));
+    const departments = response.data.data || [];
 
     return successResponse(departments, "Departments retrieved successfully");
   } catch (error: any) {
@@ -97,18 +93,7 @@ export async function getDepartmentById(
       method: "GET",
     });
 
-    // Transform department data to match expected format
-    const department = response.data.data
-      ? {
-          ...response.data.data,
-          is_active:
-            response.data.data.active !== undefined
-              ? response.data.data.active
-              : response.data.data.is_active,
-        }
-      : null;
-
-    return successResponse(department, "Department retrieved successfully");
+    return successResponse(response.data.data ?? null, "Department retrieved successfully");
   } catch (error: any) {
     return handleError(error, "GET", url);
   }
@@ -140,18 +125,7 @@ export async function createDepartment(
       },
     });
 
-    // Transform department data to match expected format
-    const department = response.data.data
-      ? {
-          ...response.data.data,
-          is_active:
-            response.data.data.active !== undefined
-              ? response.data.data.active
-              : response.data.data.is_active,
-        }
-      : null;
-
-    return successResponse(department, "Department created successfully");
+    return successResponse(response.data.data ?? null, "Department created successfully");
   } catch (error: any) {
     return handleError(error, "POST", url);
   }
@@ -184,18 +158,7 @@ export async function updateDepartment(
       },
     });
 
-    // Transform department data to match expected format
-    const department = response.data.data
-      ? {
-          ...response.data.data,
-          is_active:
-            response.data.data.active !== undefined
-              ? response.data.data.active
-              : response.data.data.is_active,
-        }
-      : null;
-
-    return successResponse(department, "Department updated successfully");
+    return successResponse(response.data.data ?? null, "Department updated successfully");
   } catch (error: any) {
     return handleError(error, "PUT", url);
   }
@@ -243,18 +206,7 @@ export async function restoreDepartment(
       method: "POST",
     });
 
-    // Transform department data to match expected format
-    const department = response.data.data
-      ? {
-          ...response.data.data,
-          is_active:
-            response.data.data.active !== undefined
-              ? response.data.data.active
-              : response.data.data.is_active,
-        }
-      : null;
-
-    return successResponse(department, "Department restored successfully");
+    return successResponse(response.data.data ?? null, "Department restored successfully");
   } catch (error: any) {
     return handleError(error, "POST", url);
   }
