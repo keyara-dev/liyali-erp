@@ -299,7 +299,7 @@ func getCurrentUsage(orgID, resourceType string) (int, error) {
 
 	case "department":
 		err := db.Table("organization_departments").
-			Where("organization_id = ? AND active = ?", orgID, true).
+			Where("organization_id = ? AND is_active = ?", orgID, true).
 			Count(&count).Error
 		if err != nil {
 			return 0, fmt.Errorf("failed to count departments: %w", err)
