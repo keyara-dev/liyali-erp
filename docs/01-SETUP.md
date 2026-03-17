@@ -1,141 +1,71 @@
-# Setup Guide
+# Setup
 
 ## Prerequisites
 
 - Go 1.21+
 - Node.js 18+
 - PostgreSQL 14+
-- Docker (optional)
+- pnpm (`npm i -g pnpm`)
 
-## Quick Setup
-
-### 1. Clone Repository
-
-```bash
-git clone <repository-url>
-cd liyali-gateway
-```
-
-### 2. Backend Setup
+## 1. Backend
 
 ```bash
 cd backend
-cp .env.example .env
-# Edit .env with your database credentials
+cp .env.example .env      # fill in DATABASE_URL, JWT_SECRET, CORS_ALLOWED_ORIGINS
 go mod download
-make migrate
-make seed
-make dev
+make db-reset             # runs migrations + seeds
+make dev                  # starts at http://localhost:8080
 ```
 
-Backend runs at: http://localhost:8080
+Key env vars:
 
-### 3. Frontend Setup
+| Variable | Description |
+|---|---|
+| `DATABASE_URL` | `postgresql://user:pass@localhost:5432/liyali_gateway` |
+| `JWT_SECRET` | Min 32 chars |
+| `PORT` | Default `8080` |
+| `APP_ENV` | `development` / `production` |
+| `CORS_ALLOWED_ORIGINS` | Comma-separated allowed origins |
+
+## 2. Frontend
 
 ```bash
 cd frontend
 cp .env.example .env.local
-# Edit .env.local
-npm install
-npm run dev
+pnpm install
+pnpm dev                  # starts at http://localhost:3000
 ```
 
-Frontend runs at: http://localhost:3000
+Key env vars:
 
-### 4. Admin Console Setup
+| Variable | Description |
+|---|---|
+| `NEXT_PUBLIC_API_URL` | Backend URL (baked at build time) |
+| `BASE_URL` | Backend URL for server actions (runtime) |
+| `AUTH_SECRET` | Session encryption secret |
+
+## 3. Admin Console
 
 ```bash
 cd admin-console
 cp .env.example .env.local
-# Edit .env.local
-npm install
-npm run dev
+pnpm install
+pnpm dev                  # starts at http://localhost:3001
 ```
 
-Admin console runs at: http://localhost:3001
-
-## Environment Variables
-
-### Backend (.env)
-
-```env
-DATABASE_URL=postgresql://user:pass@localhost:5432/liyali_gateway
-JWT_SECRET=your-secret-key
-PORT=8080
-ENVIRONMENT=development
-```
-
-### Frontend (.env.local)
-
-```env
-NEXT_PUBLIC_API_URL=http://localhost:8080
-NEXT_PUBLIC_APP_URL=http://localhost:3000
-```
-
-### Admin Console (.env.local)
-
-```env
-NEXT_PUBLIC_API_URL=http://localhost:8080
-```
-
-## Database Setup
-
-### Create Database
-
-```bash
-createdb liyali_gateway
-```
-
-### Run Migrations
+## Database Commands
 
 ```bash
 cd backend
-make migrate
+make db-reset      # DROP CASCADE + re-run all migrations (000-004)
+make migrate       # run pending migrations only
+make db-down       # rollback last migration
 ```
 
-### Seed Data
+Migrations run lexicographically. `000_cleanup.up.sql` only runs with `--reset`.
 
-```bash
-make seed
-```
+## Verify
 
-### Default Credentials
-
-- Email: `admin@example.com`
-- Password: `password`
-
-## Docker Setup (Optional)
-
-```bash
-docker-compose up -d
-```
-
-## Verification
-
-1. Backend: http://localhost:8080/health
-2. Frontend: http://localhost:3000
-3. Admin: http://localhost:3001
-
-## Troubleshooting
-
-### Database Connection Failed
-
-- Check PostgreSQL is running
-- Verify DATABASE_URL is correct
-- Ensure database exists
-
-### Port Already in Use
-
-- Change PORT in .env files
-- Kill process using the port
-
-### Module Not Found
-
-- Run `go mod download` (backend)
-- Run `npm install` (frontend/admin)
-
-## Next Steps
-
-- [Development Guide](./02-DEVELOPMENT.md)
-- [API Documentation](./03-API.md)
-- [Deployment Guide](./04-DEPLOYMENT.md)
+- Backend health: `GET http://localhost:8080/health`
+- Frontend: `http://localhost:3000`
+- Admin console: `http://localhost:3001`

@@ -1,246 +1,62 @@
-# Development Guide
+# Development
 
 ## Project Structure
 
 ```
 liyali-gateway/
-├── backend/          # Go API
-├── frontend/         # User app
-├── admin-console/    # Admin portal
-├── docs/            # Documentation
-└── scripts/         # Utilities
+├── backend/           # Go (Fiber + GORM + PostgreSQL)
+├── frontend/          # Next.js App Router — user app
+├── admin-console/     # Next.js App Router — super-admin portal
+└── docs/              # Project-wide docs
 ```
 
-## Development Workflow
+## Dev Commands
 
-### Backend Development
+### Backend
 
 ```bash
-cd backend
-
-# Run with hot reload
-make dev
-
-# Run tests
-make test
-
-# Format code
-make fmt
-
-# Lint
-make lint
+make dev        # hot reload (uses air)
+make test       # go test ./...
+make fmt        # gofmt
+make lint       # golangci-lint
 ```
 
-### Frontend Development
+### Frontend / Admin Console
 
 ```bash
-cd frontend
-
-# Development server
-npm run dev
-
-# Type check
-npm run type-check
-
-# Lint
-npm run lint
-
-# Build
-npm run build
+pnpm dev        # dev server
+pnpm build      # production build
+pnpm lint       # ESLint
+pnpm type-check # tsc --noEmit
 ```
 
-### Admin Console Development
+## Adding a Backend Endpoint
 
-```bash
-cd admin-console
-
-# Development server
-npm run dev
-
-# Type check
-npx tsc --noEmit
-
-# Build
-npm run build
-```
-
-## Code Standards
-
-### Backend (Go)
-
-- Follow Go conventions
-- Use `gofmt` for formatting
-- Write tests for new features
-- Document exported functions
-- Use SQLC for database queries
-
-### Frontend (TypeScript)
-
-- Use TypeScript strictly
-- Follow ESLint rules
-- Use Prettier for formatting
-- Component naming: PascalCase
-- File naming: kebab-case
-
-## Git Workflow
-
-### Branches
-
-- `main` - Production
-- `develop` - Development
-- `feature/*` - New features
-- `fix/*` - Bug fixes
-
-### Commit Messages
-
-```
-feat: add user management
-fix: resolve login issue
-docs: update API documentation
-refactor: improve auth service
-test: add workflow tests
-```
-
-## Testing
-
-### Backend Tests
-
-```bash
-# All tests
-go test ./...
-
-# Specific package
-go test ./services/...
-
-# With coverage
-go test ./... -cover
-```
-
-### Frontend Tests
-
-```bash
-# Run tests
-npm test
-
-# Watch mode
-npm test -- --watch
-
-# Coverage
-npm test -- --coverage
-```
-
-## Database Changes
-
-### Create Migration
-
-```bash
-cd backend
-migrate create -ext sql -dir database/migrations -seq migration_name
-```
-
-### Run Migrations
-
-```bash
-make migrate
-```
-
-### Rollback
-
-```bash
-make migrate-down
-```
-
-### Update SQLC
-
-```bash
-sqlc generate
-```
-
-## API Development
-
-### Adding New Endpoint
-
-1. Define route in `backend/routes/`
+1. Define route in `backend/routes/routes.go`
 2. Create handler in `backend/handlers/`
-3. Add service logic in `backend/services/`
-4. Create repository in `backend/repository/`
-5. Write SQLC queries in `backend/database/queries/`
-6. Add tests
-7. Update API documentation
+3. Add business logic in `backend/services/`
+4. Update types in `backend/types/` if needed
+5. Write migration if schema changes: `backend/database/migrations/`
 
-### Testing Endpoints
+## Adding a Frontend Page
 
-Use `backend/scripts/test_requests.http` with REST Client extension.
-
-## Frontend Development
-
-### Adding New Page
-
-1. Create page in `frontend/src/app/`
+1. Create `page.tsx` under `frontend/src/app/(private)/`
 2. Add server actions in `frontend/src/app/_actions/`
 3. Create components in `frontend/src/components/`
-4. Add types in `frontend/src/types/`
-5. Update navigation
+4. Add to nav in `frontend/src/components/layout/sidebar/nav-main.tsx`
 
-### State Management
+## Code Conventions
 
-- Use Zustand for global state
-- Use React Query for server state
-- Use React Hook Form for forms
+**Go:** standard `gofmt`, errors returned not panicked, GORM for ORM queries, raw pgx for subscription/high-performance reads.
 
-## Debugging
+**TypeScript:** strict mode, PascalCase components, kebab-case files, server actions marked `"use server"`, React Query for all server state.
 
-### Backend
+## Git
 
-```bash
-# Enable debug logging
-export LOG_LEVEL=debug
-
-# Use delve debugger
-dlv debug
+```
+main       — production
+feature/*  — new features
+fix/*      — bug fixes
 ```
 
-### Frontend
-
-- Use React DevTools
-- Use browser DevTools
-- Check Network tab for API calls
-
-## Performance
-
-### Backend
-
-- Use database indexes
-- Implement caching
-- Optimize queries
-- Use connection pooling
-
-### Frontend
-
-- Use Next.js Image component
-- Implement code splitting
-- Lazy load components
-- Optimize bundle size
-
-## Security
-
-- Never commit secrets
-- Use environment variables
-- Validate all inputs
-- Sanitize user data
-- Use parameterized queries
-- Implement rate limiting
-
-## Documentation
-
-- Update docs with code changes
-- Add code comments
-- Write clear commit messages
-- Document breaking changes
-
-## Resources
-
-- [Backend Docs](../backend/docs/)
-- [Frontend Docs](../frontend/docs/)
-- [API Reference](./03-API.md)
-- [Deployment](./04-DEPLOYMENT.md)
+Commit format: `feat:`, `fix:`, `refactor:`, `docs:`, `test:`
