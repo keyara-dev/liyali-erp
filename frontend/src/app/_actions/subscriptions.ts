@@ -4,13 +4,6 @@ import { APIResponse } from "@/types";
 import { axios, handleError, successResponse } from "./api-config";
 import authenticatedApiClient from "./api-config";
 
-// Try multiple environment variable names and fallback to localhost
-const BACKEND_URL =
-  process.env.BASE_URL ||
-  process.env.NEXT_PUBLIC_API_URL ||
-  process.env.API_URL ||
-  "http://localhost:8080";
-
 export interface FeatureDetail {
   id: string;
   name: string;

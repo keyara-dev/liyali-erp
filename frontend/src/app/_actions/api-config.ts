@@ -3,7 +3,7 @@ import { AUTH_SESSION } from "@/lib/constants";
 import axiosClient, { AxiosRequestConfig, AxiosRequestHeaders } from "axios";
 
 export const axios = axiosClient.create({
-  baseURL: process.env.BASE_URL,
+  baseURL: process.env.BASE_URL || "http://localhost:8080",
 });
 
 // Reusable error handler following DRY principle

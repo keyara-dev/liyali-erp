@@ -649,6 +649,7 @@ export default function CreateUserForm({
                     placeholder="************"
                     required
                     value={formData.password}
+                    readOnly
                     className="cursor-default font-mono text-sm pr-10"
                     disabled={isSubmitting}
                     endContent={
