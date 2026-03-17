@@ -2,19 +2,16 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Clock, RefreshCw, AlertTriangle } from "lucide-react";
-import { resetOrganizationTrial } from "@/app/_actions/subscriptions";
-import { toast } from "sonner";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Clock, RefreshCw } from "lucide-react";
+import { TrialResetForm } from "@/app/admin/organizations/components/trial-reset-form";
 
 interface TrialResetDialogProps {
   organization: {
@@ -32,73 +29,27 @@ export function TrialResetDialog({
   onSuccess,
 }: TrialResetDialogProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [trialDays, setTrialDays] = useState(30);
-  const [reason, setReason] = useState("");
-  const [error, setError] = useState("");
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
-
-    if (!reason.trim() || reason.length < 5) {
-      setError("Reason must be at least 5 characters long");
-      return;
-    }
-
-    if (trialDays < 1 || trialDays > 90) {
-      setError("Trial days must be between 1 and 90");
-      return;
-    }
-
-    setIsLoading(true);
-
-    try {
-      const result = await resetOrganizationTrial(organization.id, {
-        trial_days: trialDays,
-        reason: reason.trim(),
-      });
-
-      if (result.success) {
-        toast.success("Trial reset successfully");
-        setIsOpen(false);
-        setReason("");
-        setTrialDays(30);
-        onSuccess();
-      } else {
-        setError(result.message || "Failed to reset trial");
-      }
-    } catch (error) {
-      setError(
-        error instanceof Error ? error.message : "Failed to reset trial",
-      );
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  if (!isOpen) {
-    return (
+  return (
+    <>
       <Button variant="outline" size="sm" onClick={() => setIsOpen(true)}>
         <Clock className="mr-2 h-4 w-4" />
         Reset Trial
       </Button>
-    );
-  }
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <Card className="w-full max-w-md mx-4">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <RefreshCw className="h-5 w-5" />
-            Reset Trial Period
-          </CardTitle>
-          <CardDescription>
-            Reset the trial period for {organization.name}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
+      <Dialog open={isOpen} onOpenChange={setIsOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <RefreshCw className="h-5 w-5" />
+              Reset Trial Period
+            </DialogTitle>
+            <DialogDescription>
+              Reset the trial period for{" "}
+              <strong>{organization.name}</strong>
+            </DialogDescription>
+          </DialogHeader>
+
           {/* Organization Info */}
           <div className="rounded-lg border p-3 bg-muted/50">
             <div className="flex items-center justify-between">
@@ -118,88 +69,15 @@ export function TrialResetDialog({
             </p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label htmlFor="trialDays" className="text-sm font-medium">
-                New Trial Duration (days)
-              </label>
-              <Input
-                id="trialDays"
-                type="number"
-                min="1"
-                max="90"
-                value={trialDays}
-                onChange={(e) => {
-                  const v = parseInt(e.target.value);
-                  if (!isNaN(v)) setTrialDays(v);
-                }}
-                className="mt-1"
-              />
-              <p className="text-xs text-muted-foreground mt-1">
-                Between 1 and 90 days
-              </p>
-            </div>
-
-            <div>
-              <label htmlFor="reason" className="text-sm font-medium">
-                Reason for Reset *
-              </label>
-              <Textarea
-                id="reason"
-                value={reason}
-                onChange={(e) => setReason(e.target.value)}
-                placeholder="Explain why you're resetting this trial period..."
-                className="mt-1"
-                rows={3}
-              />
-              <p className="text-xs text-muted-foreground mt-1">
-                Minimum 5 characters required
-              </p>
-            </div>
-
-            {error && (
-              <div className="flex items-center gap-2 text-sm text-red-600 bg-red-50 p-2 rounded">
-                <AlertTriangle className="h-4 w-4" />
-                {error}
-              </div>
-            )}
-
-            <div className="flex gap-2 pt-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => {
-                  setIsOpen(false);
-                  setError("");
-                  setReason("");
-                  setTrialDays(30);
-                }}
-                disabled={isLoading}
-                className="flex-1"
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                disabled={isLoading || !reason.trim()}
-                className="flex-1"
-              >
-                {isLoading ? (
-                  <>
-                    <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                    Resetting...
-                  </>
-                ) : (
-                  <>
-                    <Clock className="mr-2 h-4 w-4" />
-                    Reset Trial
-                  </>
-                )}
-              </Button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
-    </div>
+          <TrialResetForm
+            organizationId={organization.id}
+            onSuccess={() => {
+              setIsOpen(false);
+              onSuccess();
+            }}
+          />
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

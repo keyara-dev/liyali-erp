@@ -28,7 +28,7 @@ import {
   CheckCircle,
   XCircle,
 } from "lucide-react";
-import { toast } from "sonner";
+import { notify } from "@/lib/utils";
 import {
   getUserActivity,
   getUserSessions,
@@ -97,13 +97,13 @@ export function UserDetailsDialog({
     try {
       const result = await terminateUserSession(user.id, sessionId);
       if (result.success) {
-        toast.success("Session terminated successfully");
+        notify({ title: "Session terminated successfully", type: "success" });
         loadUserDetails();
       } else {
-        toast.error("Failed to terminate session");
+        notify({ title: "Failed to terminate session", type: "error" });
       }
     } catch (error) {
-      toast.error("Failed to terminate session");
+      notify({ title: "Failed to terminate session", type: "error" });
     }
   };
 
@@ -111,13 +111,13 @@ export function UserDetailsDialog({
     try {
       const result = await terminateAllUserSessions(user.id);
       if (result.success) {
-        toast.success("All sessions terminated successfully");
+        notify({ title: "All sessions terminated successfully", type: "success" });
         loadUserDetails();
       } else {
-        toast.error("Failed to terminate all sessions");
+        notify({ title: "Failed to terminate all sessions", type: "error" });
       }
     } catch (error) {
-      toast.error("Failed to terminate all sessions");
+      notify({ title: "Failed to terminate all sessions", type: "error" });
     }
   };
 

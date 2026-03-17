@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { notify } from "@/lib/notify";
+import { notify } from "@/lib/utils";
 import {
   Settings,
   Activity,
@@ -72,15 +72,9 @@ export default function SettingsPage() {
   const refreshData = async () => {
     try {
       await Promise.all([refetchSettings(), refetchStats(), refetchHealth()]);
-      notify("Data refreshed successfully.", {
-        title: "Success",
-        variant: "success",
-      });
+      notify({ title: "Success", description: "Data refreshed successfully.", type: "success" });
     } catch (error) {
-      notify("Failed to refresh data.", {
-        title: "Error",
-        variant: "destructive",
-      });
+      notify({ title: "Error", description: "Failed to refresh data.", type: "error" });
     }
   };
 
@@ -93,15 +87,9 @@ export default function SettingsPage() {
     try {
       await createSettingMutation.mutateAsync(settingData);
       setShowCreateDialog(false);
-      notify("Setting created successfully.", {
-        title: "Success",
-        variant: "success",
-      });
+      notify({ title: "Success", description: "Setting created successfully.", type: "success" });
     } catch (error) {
-      notify("Failed to create setting.", {
-        title: "Error",
-        variant: "destructive",
-      });
+      notify({ title: "Error", description: "Failed to create setting.", type: "error" });
     }
   };
 
@@ -119,59 +107,35 @@ export default function SettingsPage() {
         updates: settingData,
       });
       setEditingSetting(null);
-      notify("Setting updated successfully.", {
-        title: "Success",
-        variant: "success",
-      });
+      notify({ title: "Success", description: "Setting updated successfully.", type: "success" });
     } catch (error) {
-      notify("Failed to update setting.", {
-        title: "Error",
-        variant: "destructive",
-      });
+      notify({ title: "Error", description: "Failed to update setting.", type: "error" });
     }
   };
 
   const handleDeleteSetting = async (settingId: string) => {
     try {
       await deleteSettingMutation.mutateAsync(settingId);
-      notify("Setting deleted successfully.", {
-        title: "Success",
-        variant: "success",
-      });
+      notify({ title: "Success", description: "Setting deleted successfully.", type: "success" });
     } catch (error) {
-      notify("Failed to delete setting.", {
-        title: "Error",
-        variant: "destructive",
-      });
+      notify({ title: "Error", description: "Failed to delete setting.", type: "error" });
     }
   };
 
   const handleBulkOperation = async (_operation: BulkSettingsOperation) => {
-    notify("Bulk operations are coming soon.", {
-      title: "Coming Soon",
-      variant: "default",
-    });
+    notify({ title: "Coming Soon", description: "Bulk operations are coming soon." });
   };
 
   const handleExport = async () => {
-    notify("Export functionality is coming soon.", {
-      title: "Coming Soon",
-      variant: "default",
-    });
+    notify({ title: "Coming Soon", description: "Export functionality is coming soon." });
   };
 
   const handleImport = () => {
-    notify("Import functionality is coming soon.", {
-      title: "Coming Soon",
-      variant: "default",
-    });
+    notify({ title: "Coming Soon", description: "Import functionality is coming soon." });
   };
 
   const handleResetToDefaults = async (_settingIds: string[]) => {
-    notify("Reset to defaults is coming soon.", {
-      title: "Coming Soon",
-      variant: "default",
-    });
+    notify({ title: "Coming Soon", description: "Reset to defaults is coming soon." });
   };
 
   const handleApplyTemplate = async (templateId: string) => {
@@ -179,15 +143,9 @@ export default function SettingsPage() {
       await refetchSettings();
       await refetchStats();
 
-      notify("Template applied successfully.", {
-        title: "Success",
-        variant: "success",
-      });
+      notify({ title: "Success", description: "Template applied successfully.", type: "success" });
     } catch (error) {
-      notify("Failed to apply template.", {
-        title: "Error",
-        variant: "destructive",
-      });
+      notify({ title: "Error", description: "Failed to apply template.", type: "error" });
     }
   };
 
@@ -257,9 +215,7 @@ export default function SettingsPage() {
             onEdit={setEditingSetting}
             onDelete={handleDeleteSetting}
             onToggleSecret={(settingId) => {
-              notify("Secret status toggle not implemented yet.", {
-                title: "Info",
-              });
+              notify({ title: "Info", description: "Secret status toggle not implemented yet." });
             }}
             onResetToDefault={(settingId) => handleResetToDefaults([settingId])}
             onDuplicate={(setting) => {
@@ -328,10 +284,7 @@ export default function SettingsPage() {
                 try {
                   await refetchHealth();
                 } catch (error) {
-                  notify("Failed to refresh health data.", {
-                    title: "Error",
-                    variant: "destructive",
-                  });
+                  notify({ title: "Error", description: "Failed to refresh health data.", type: "error" });
                 }
               }}
               isLoading={isLoading}
@@ -345,9 +298,7 @@ export default function SettingsPage() {
             templates={templates}
             onApplyTemplate={handleApplyTemplate}
             onCreateTemplate={() => {
-              notify("Template creation not implemented yet.", {
-                title: "Info",
-              });
+              notify({ title: "Info", description: "Template creation not implemented yet." });
             }}
             isLoading={isLoading}
           />

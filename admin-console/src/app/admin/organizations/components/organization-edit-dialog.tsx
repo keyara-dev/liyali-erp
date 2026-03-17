@@ -17,13 +17,16 @@ import { SelectField } from "@/components/ui/select-field";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { toast } from "sonner";
+import { notify } from "@/lib/utils";
 import {
   updateOrganization,
   type Organization,
   type UpdateOrganizationRequest,
 } from "@/app/_actions/organizations";
-import { useSubscriptionTiers } from "@/hooks/use-subscriptions";
+import {
+  useSubscriptionTiers,
+  useSubscriptionFeatures,
+} from "@/hooks/use-subscriptions";
 import { Building2, Mail, Settings, Users } from "lucide-react";
 
 interface OrganizationEditDialogProps {
@@ -32,19 +35,6 @@ interface OrganizationEditDialogProps {
   onOpenChange: (open: boolean) => void;
   onOrganizationUpdated: () => void;
 }
-
-const AVAILABLE_FEATURES = [
-  "advanced_analytics",
-  "custom_workflows",
-  "api_access",
-  "sso_integration",
-  "advanced_reporting",
-  "custom_branding",
-  "priority_support",
-  "audit_logs",
-  "data_export",
-  "webhook_integration",
-];
 
 export function OrganizationEditDialog({
   organization,
@@ -56,6 +46,7 @@ export function OrganizationEditDialog({
   const [formData, setFormData] = useState<UpdateOrganizationRequest>({});
 
   const { data: tiers, isLoading: tiersLoading } = useSubscriptionTiers();
+  const { data: features } = useSubscriptionFeatures();
 
   const tierOptions =
     tiers?.map((t) => ({
@@ -93,14 +84,14 @@ export function OrganizationEditDialog({
     try {
       const result = await updateOrganization(organization.id, formData);
       if (result.success) {
-        toast.success("Organization updated successfully");
+        notify({ title: "Organization updated successfully", type: "success" });
         onOrganizationUpdated();
         onOpenChange(false);
       } else {
-        toast.error(result.message || "Failed to update organization");
+        notify({ title: result.message || "Failed to update organization", type: "error" });
       }
     } catch (error) {
-      toast.error("Failed to update organization");
+      notify({ title: "Failed to update organization", type: "error" });
     } finally {
       setIsLoading(false);
     }
@@ -269,26 +260,24 @@ export function OrganizationEditDialog({
             </CardHeader>
             <CardContent>
               <div className="grid gap-3 md:grid-cols-2">
-                {AVAILABLE_FEATURES.map((feature) => {
+                {(features ?? []).map((feature) => {
                   const isEnabled =
-                    formData.settings?.features_enabled?.includes(feature) ||
+                    formData.settings?.features_enabled?.includes(feature.name) ||
                     false;
                   return (
                     <div
-                      key={feature}
+                      key={feature.id}
                       className="flex items-center justify-between"
                     >
                       <div className="space-y-0.5">
                         <Label className="text-sm font-medium">
-                          {feature
-                            .replace(/_/g, " ")
-                            .replace(/\b\w/g, (l) => l.toUpperCase())}
+                          {feature.displayName}
                         </Label>
                       </div>
                       <Switch
                         checked={isEnabled}
                         onCheckedChange={(checked) =>
-                          handleFeatureToggle(feature, checked)
+                          handleFeatureToggle(feature.name, checked)
                         }
                       />
                     </div>

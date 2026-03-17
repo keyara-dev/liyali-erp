@@ -15,8 +15,12 @@ import { Label } from "@/components/ui/label";
 import { SelectField } from "@/components/ui/select-field";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { toast } from "sonner";
+import { notify } from "@/lib/utils";
 import { UserPlus, Mail, User, Shield, Building2 } from "lucide-react";
+const ADMIN_ROLES = [
+  { value: "admin", label: "Admin", description: "Full platform administration access" },
+  { value: "super_admin", label: "Super Admin", description: "Unrestricted access to all platform features" },
+];
 
 interface UserCreateDialogProps {
   open: boolean;
@@ -36,17 +40,6 @@ interface CreateUserRequest {
   };
 }
 
-const USER_ROLES = [
-  { value: "admin", label: "Admin", description: "Full system access" },
-  {
-    value: "manager",
-    label: "Manager",
-    description: "Organization management",
-  },
-  { value: "user", label: "User", description: "Standard user access" },
-  { value: "viewer", label: "Viewer", description: "Read-only access" },
-];
-
 export function UserCreateDialog({
   open,
   onOpenChange,
@@ -56,7 +49,7 @@ export function UserCreateDialog({
   const [formData, setFormData] = useState<CreateUserRequest>({
     name: "",
     email: "",
-    role: "user",
+    role: "admin",
     send_invitation: true,
     phone: "",
     profile: {
@@ -99,17 +92,18 @@ export function UserCreateDialog({
     try {
       await new Promise((resolve) => setTimeout(resolve, 1000));
 
-      toast.success(
-        formData.send_invitation
+      notify({
+        title: formData.send_invitation
           ? "User created and invitation sent successfully"
           : "User created successfully",
-      );
+        type: "success",
+      });
 
       onUserCreated();
       onOpenChange(false);
       resetForm();
     } catch (error) {
-      toast.error("Failed to create user");
+      notify({ title: "Failed to create user", type: "error" });
     } finally {
       setIsLoading(false);
     }
@@ -119,7 +113,7 @@ export function UserCreateDialog({
     setFormData({
       name: "",
       email: "",
-      role: "user",
+      role: "admin",
       send_invitation: true,
       phone: "",
       profile: {
@@ -154,7 +148,7 @@ export function UserCreateDialog({
     }));
   };
 
-  const selectedRole = USER_ROLES.find((role) => role.value === formData.role);
+  const selectedRole = ADMIN_ROLES.find((role) => role.value === formData.role);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -229,7 +223,7 @@ export function UserCreateDialog({
                 value={formData.role}
                 onValueChange={(value) => handleInputChange("role", value)}
                 placeholder="Select user role"
-                options={USER_ROLES}
+                options={ADMIN_ROLES}
                 isInvalid={!!errors.role}
                 errorText={errors.role}
                 classNames={{ wrapper: "max-w-full" }}

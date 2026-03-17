@@ -14,21 +14,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
 import {
   createRole,
   type Permission,
   type CreateRoleRequest,
 } from "@/app/_actions/roles";
+import { RolePermissionsPanel } from "./role-permissions-panel";
 
 interface RoleCreateDialogProps {
   open: boolean;
@@ -52,58 +45,11 @@ export function RoleCreateDialog({
     is_active: true,
   });
 
-  // Group permissions by category
-  const permissionsByCategory = permissions.reduce(
-    (acc, permission) => {
-      if (!acc[permission.category]) {
-        acc[permission.category] = [];
-      }
-      acc[permission.category].push(permission);
-      return acc;
-    },
-    {} as Record<string, Permission[]>,
-  );
-
   const handleInputChange = (field: keyof CreateRoleRequest, value: any) => {
     setFormData((prev) => ({
       ...prev,
       [field]: value,
     }));
-  };
-
-  const handlePermissionToggle = (permissionId: string, checked: boolean) => {
-    if (checked) {
-      setFormData((prev) => ({
-        ...prev,
-        permission_ids: [...prev.permission_ids, permissionId],
-      }));
-    } else {
-      setFormData((prev) => ({
-        ...prev,
-        permission_ids: prev.permission_ids.filter((id) => id !== permissionId),
-      }));
-    }
-  };
-
-  const handleCategoryToggle = (category: string, checked: boolean) => {
-    const categoryPermissions = permissionsByCategory[category] || [];
-    const categoryPermissionIds = categoryPermissions.map((p) => p.id);
-
-    if (checked) {
-      setFormData((prev) => ({
-        ...prev,
-        permission_ids: [
-          ...new Set([...prev.permission_ids, ...categoryPermissionIds]),
-        ],
-      }));
-    } else {
-      setFormData((prev) => ({
-        ...prev,
-        permission_ids: prev.permission_ids.filter(
-          (id) => !categoryPermissionIds.includes(id),
-        ),
-      }));
-    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -148,24 +94,6 @@ export function RoleCreateDialog({
       is_active: true,
     });
     onOpenChange(false);
-  };
-
-  const getCategoryPermissionCount = (category: string) => {
-    const categoryPermissions = permissionsByCategory[category] || [];
-    const selectedCount = categoryPermissions.filter((p) =>
-      formData.permission_ids.includes(p.id),
-    ).length;
-    return { selected: selectedCount, total: categoryPermissions.length };
-  };
-
-  const isCategoryFullySelected = (category: string) => {
-    const { selected, total } = getCategoryPermissionCount(category);
-    return selected === total && total > 0;
-  };
-
-  const isCategoryPartiallySelected = (category: string) => {
-    const { selected, total } = getCategoryPermissionCount(category);
-    return selected > 0 && selected < total;
   };
 
   return (
@@ -229,88 +157,11 @@ export function RoleCreateDialog({
             </div>
 
             {/* Permissions Selection */}
-            <div className="space-y-4">
-              <div>
-                <Label>Permissions *</Label>
-                <p className="text-xs text-muted-foreground">
-                  Select permissions for this role (
-                  {formData.permission_ids.length} selected)
-                </p>
-              </div>
-
-              <ScrollArea className="h-96 border rounded-lg">
-                <div className="p-4 space-y-4">
-                  {Object.entries(permissionsByCategory).map(
-                    ([category, categoryPermissions]) => (
-                      <Card key={category}>
-                        <CardHeader className="pb-3">
-                          <div className="flex items-center justify-between">
-                            <CardTitle className="text-sm capitalize">
-                              {category.replace(/_/g, " ")}
-                            </CardTitle>
-                            <div className="flex items-center gap-2">
-                              <Badge variant="outline" className="text-xs">
-                                {getCategoryPermissionCount(category).selected}/
-                                {getCategoryPermissionCount(category).total}
-                              </Badge>
-                              <input
-                                type="checkbox"
-                                checked={isCategoryFullySelected(category)}
-                                ref={(el) => {
-                                  if (el) {
-                                    el.indeterminate =
-                                      isCategoryPartiallySelected(category);
-                                  }
-                                }}
-                                onChange={(e) =>
-                                  handleCategoryToggle(
-                                    category,
-                                    e.target.checked,
-                                  )
-                                }
-                                className="rounded border-gray-300"
-                              />
-                            </div>
-                          </div>
-                        </CardHeader>
-                        <CardContent className="pt-0">
-                          <div className="space-y-2">
-                            {categoryPermissions.map((permission) => (
-                              <div
-                                key={permission.id}
-                                className="flex items-center justify-between p-2 rounded-lg hover:bg-muted/50"
-                              >
-                                <div className="flex-1">
-                                  <div className="font-medium text-sm">
-                                    {permission.display_name}
-                                  </div>
-                                  <div className="text-xs text-muted-foreground">
-                                    {permission.description}
-                                  </div>
-                                </div>
-                                <input
-                                  type="checkbox"
-                                  checked={formData.permission_ids.includes(
-                                    permission.id,
-                                  )}
-                                  onChange={(e) =>
-                                    handlePermissionToggle(
-                                      permission.id,
-                                      e.target.checked,
-                                    )
-                                  }
-                                  className="rounded border-gray-300"
-                                />
-                              </div>
-                            ))}
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ),
-                  )}
-                </div>
-              </ScrollArea>
-            </div>
+            <RolePermissionsPanel
+              permissions={permissions}
+              selectedIds={formData.permission_ids}
+              onChange={(ids) => handleInputChange("permission_ids", ids)}
+            />
           </div>
 
           <Separator />

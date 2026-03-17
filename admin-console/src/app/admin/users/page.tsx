@@ -28,7 +28,7 @@ import {
   Shield,
   AlertTriangle,
 } from "lucide-react";
-import { toast } from "sonner";
+import { notify } from "@/lib/utils";
 import {
   type PlatformUser,
   type UserFilters,
@@ -84,7 +84,7 @@ export default function UsersPage() {
   };
 
   useEffect(() => {
-    if (userError) toast.error("Failed to load users");
+    if (userError) notify({ title: "Failed to load users", type: "error" });
   }, [userError]);
 
   const handleStatusChange = async (
@@ -96,12 +96,12 @@ export default function UsersPage() {
       {
         onSuccess: (result) => {
           if (result.success) {
-            toast.success(`User ${status} successfully`);
+            notify({ title: `User ${status} successfully`, type: "success" });
           } else {
-            toast.error(result.message || "Failed to update user status");
+            notify({ title: result.message || "Failed to update user status", type: "error" });
           }
         },
-        onError: () => toast.error("Failed to update user status"),
+        onError: () => notify({ title: "Failed to update user status", type: "error" }),
       },
     );
   };

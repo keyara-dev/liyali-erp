@@ -47,12 +47,15 @@ import {
   changeOrganizationTier,
   overrideOrganizationLimits,
   extendOrganizationTrial,
-  resetOrganizationTrial,
   getOrganizationAuditLogs,
   type SubscriptionTier,
   type SubscriptionFeature,
 } from "@/app/_actions/subscriptions";
 import { type Organization } from "@/app/_actions/organizations";
+import { getTierBadge, getTrialStatusBadge } from "@/lib/tier-utils";
+import { OverrideLimitsForm } from "./override-limits-form";
+import { TrialResetForm } from "./trial-reset-form";
+import { ChangeTierForm } from "./change-tier-form";
 
 interface ManageSubscriptionDialogProps {
   organization: Organization;
@@ -114,38 +117,6 @@ export function ManageSubscriptionDialog({
     loadData();
   };
 
-  const getTierBadge = (tier: string) => {
-    switch (tier) {
-      case "enterprise":
-        return <Badge variant="default">Enterprise</Badge>;
-      case "professional":
-        return (
-          <Badge className="bg-blue-100 text-blue-800">Professional</Badge>
-        );
-      case "basic":
-        return <Badge variant="secondary">Basic</Badge>;
-      default:
-        return <Badge variant="outline">{tier}</Badge>;
-    }
-  };
-
-  const getTrialStatusBadge = (status: string) => {
-    switch (status) {
-      case "trial":
-        return (
-          <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
-            Trial
-          </Badge>
-        );
-      case "subscribed":
-        return <Badge variant="default">Subscribed</Badge>;
-      case "expired":
-        return <Badge variant="destructive">Expired</Badge>;
-      default:
-        return <Badge variant="outline">{status}</Badge>;
-    }
-  };
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
@@ -173,8 +144,6 @@ export function ManageSubscriptionDialog({
             <OverviewTab
               organization={organization}
               tiers={tiers}
-              getTierBadge={getTierBadge}
-              getTrialStatusBadge={getTrialStatusBadge}
             />
           </TabsContent>
 
@@ -184,7 +153,6 @@ export function ManageSubscriptionDialog({
               organization={organization}
               tiers={tiers}
               isLoadingTiers={isLoadingData}
-              getTierBadge={getTierBadge}
               onSuccess={handleSuccess}
             />
           </TabsContent>
@@ -219,13 +187,9 @@ export function ManageSubscriptionDialog({
 function OverviewTab({
   organization,
   tiers,
-  getTierBadge,
-  getTrialStatusBadge,
 }: {
   organization: Organization;
   tiers: SubscriptionTier[];
-  getTierBadge: (tier: string) => React.ReactNode;
-  getTrialStatusBadge: (status: string) => React.ReactNode;
 }) {
   const currentTier = tiers.find(
     (t) => t.name === organization.subscription_tier,
@@ -379,163 +343,23 @@ function ChangeTierTab({
   organization,
   tiers,
   isLoadingTiers,
-  getTierBadge,
   onSuccess,
 }: {
   organization: Organization;
   tiers: SubscriptionTier[];
   isLoadingTiers: boolean;
-  getTierBadge: (tier: string) => React.ReactNode;
   onSuccess: () => void;
 }) {
-  const [selectedTier, setSelectedTier] = useState("");
-  const [reason, setReason] = useState("");
-  const [overrideLimits, setOverrideLimits] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState("");
-
-  const selectedTierDetails = tiers.find((t) => t.name === selectedTier);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
-
-    if (!selectedTier) {
-      setError("Please select a tier");
-      return;
-    }
-    if (selectedTier === organization.subscription_tier) {
-      setError("Please select a different tier");
-      return;
-    }
-    if (reason.trim().length < 10) {
-      setError("Reason must be at least 10 characters");
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      const result = await changeOrganizationTier(organization.id, {
-        newTier: selectedTier,
-        reason: reason.trim(),
-        overrideLimits: overrideLimits,
-      });
-
-      if (result.success) {
-        toast.success("Tier changed successfully");
-        setSelectedTier("");
-        setReason("");
-        setOverrideLimits(false);
-        onSuccess();
-      } else {
-        setError(result.message || "Failed to change tier");
-      }
-    } catch {
-      setError("Failed to change tier");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="rounded-lg border p-3 bg-muted/50">
-        <div className="flex items-center justify-between">
-          <span className="text-sm font-medium">Current Tier:</span>
-          {getTierBadge(organization.subscription_tier)}
-        </div>
-      </div>
-
-      <div className="space-y-2">
-        <label className="text-sm font-medium">New Tier</label>
-        {isLoadingTiers ? (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            Loading tiers...
-          </div>
-        ) : (
-          <Select value={selectedTier} onValueChange={setSelectedTier}>
-            <SelectTrigger>
-              <SelectValue placeholder="Select a tier" />
-            </SelectTrigger>
-            <SelectContent>
-              {tiers.map((tier) => (
-                <SelectItem
-                  key={tier.id}
-                  value={tier.name}
-                  disabled={tier.name === organization.subscription_tier}
-                >
-                  <div className="flex items-center gap-2">
-                    <span>{tier.displayName || tier.name}</span>
-                    <span className="text-xs text-muted-foreground">
-                      ${tier.priceMonthly}/mo &middot; {tier.maxTeamMembers}{" "}
-                      users
-                    </span>
-                  </div>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        )}
-      </div>
-
-      {selectedTierDetails && (
-        <div className="rounded-lg border p-3 bg-blue-50 dark:bg-blue-950/20 space-y-1">
-          <p className="text-sm font-medium">
-            {selectedTierDetails.displayName || selectedTierDetails.name}
-          </p>
-          <p className="text-xs text-muted-foreground">
-            {selectedTierDetails.description}
-          </p>
-          <div className="flex gap-4 text-xs text-muted-foreground pt-1">
-            <span>${selectedTierDetails.priceMonthly}/month</span>
-            <span>{selectedTierDetails.maxTeamMembers} max users</span>
-            <span>{selectedTierDetails.maxDocuments} documents</span>
-          </div>
-        </div>
-      )}
-
-      <div className="space-y-2">
-        <label className="text-sm font-medium">
-          Reason <span className="text-red-500">*</span>
-        </label>
-        <Textarea
-          value={reason}
-          onChange={(e) => setReason(e.target.value)}
-          placeholder="Why is this tier change needed? (min 10 characters)"
-          rows={3}
-        />
-      </div>
-
-      <div className="flex items-center space-x-2">
-        <Checkbox
-          id="overrideLimitsTier"
-          checked={overrideLimits}
-          onCheckedChange={(checked) => setOverrideLimits(checked as boolean)}
-        />
-        <label htmlFor="overrideLimitsTier" className="text-sm leading-none">
-          Override existing limits with new tier defaults
-        </label>
-      </div>
-
-      {error && (
-        <div className="flex items-center gap-2 text-sm text-red-600 bg-red-50 dark:bg-red-950/20 p-2 rounded">
-          <AlertTriangle className="h-4 w-4 flex-shrink-0" />
-          {error}
-        </div>
-      )}
-
-      <Button
-        type="submit"
-        disabled={!selectedTier}
-        isLoading={isLoading}
-        loadingText="Changing Tier..."
-        className="w-full"
-      >
-        <ArrowUpDown className="mr-2 h-4 w-4" />
-        Change Tier
-      </Button>
-    </form>
+    <ChangeTierForm
+      organizationId={organization.id}
+      currentTier={organization.subscription_tier}
+      tiers={tiers}
+      isLoadingTiers={isLoadingTiers}
+      showOverrideLimits
+      onSuccess={onSuccess}
+      fullWidthSubmit
+    />
   );
 }
 
@@ -552,228 +376,19 @@ function OverrideLimitsTab({
   isLoadingFeatures: boolean;
   onSuccess: () => void;
 }) {
-  const [maxUsers, setMaxUsers] = useState<number | undefined>(undefined);
-  const [storageLimitGb, setStorageLimitGb] = useState<number | undefined>(
-    undefined,
-  );
-  const [selectedFeatures, setSelectedFeatures] = useState<string[]>([]);
-  const [reason, setReason] = useState("");
-  const [expiresAt, setExpiresAt] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState("");
-
-  const currentFeatures = organization.settings?.features_enabled || [];
-
-  const toggleFeature = (featureName: string) => {
-    setSelectedFeatures((prev) =>
-      prev.includes(featureName)
-        ? prev.filter((f) => f !== featureName)
-        : [...prev, featureName],
-    );
-  };
-
-  const featuresByCategory = features.reduce(
-    (acc, feature) => {
-      const cat = feature.category || "Other";
-      if (!acc[cat]) acc[cat] = [];
-      acc[cat].push(feature);
-      return acc;
-    },
-    {} as Record<string, SubscriptionFeature[]>,
-  );
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
-
-    if (reason.trim().length < 10) {
-      setError("Reason must be at least 10 characters");
-      return;
-    }
-    if (
-      maxUsers === undefined &&
-      storageLimitGb === undefined &&
-      selectedFeatures.length === 0
-    ) {
-      setError("Specify at least one override");
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      const request: {
-        max_users?: number;
-        storage_limit_gb?: number;
-        features?: string[];
-        reason: string;
-        expires_at?: string;
-      } = { reason: reason.trim() };
-
-      if (maxUsers !== undefined) request.max_users = maxUsers;
-      if (storageLimitGb !== undefined)
-        request.storage_limit_gb = storageLimitGb;
-      if (selectedFeatures.length > 0) request.features = selectedFeatures;
-      if (expiresAt) request.expires_at = new Date(expiresAt).toISOString();
-
-      const result = await overrideOrganizationLimits(organization.id, request);
-
-      if (result.success) {
-        toast.success("Limits overridden successfully");
-        setMaxUsers(undefined);
-        setStorageLimitGb(undefined);
-        setSelectedFeatures([]);
-        setReason("");
-        setExpiresAt("");
-        onSuccess();
-      } else {
-        setError(result.message || "Failed to override limits");
-      }
-    } catch {
-      setError("Failed to override limits");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="rounded-lg border p-3 bg-muted/50 text-sm">
-        <p className="font-medium mb-1">Current Settings</p>
-        <div className="grid grid-cols-2 gap-1 text-muted-foreground">
-          <span>
-            Max Users: {organization.settings?.max_users || "Default"}
-          </span>
-          <span>Features: {currentFeatures.length} enabled</span>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <label className="text-sm font-medium flex items-center gap-1">
-            <Users className="h-3 w-3" />
-            Max Users
-          </label>
-          <Input
-            type="number"
-            min="1"
-            placeholder="Keep default"
-            value={maxUsers ?? ""}
-            onChange={(e) =>
-              setMaxUsers(e.target.value ? parseInt(e.target.value) : undefined)
-            }
-          />
-        </div>
-        <div className="space-y-2">
-          <label className="text-sm font-medium flex items-center gap-1">
-            <HardDrive className="h-3 w-3" />
-            Storage (GB)
-          </label>
-          <Input
-            type="number"
-            min="1"
-            placeholder="Keep default"
-            value={storageLimitGb ?? ""}
-            onChange={(e) =>
-              setStorageLimitGb(
-                e.target.value ? parseInt(e.target.value) : undefined,
-              )
-            }
-          />
-        </div>
-      </div>
-
-      <div className="space-y-2">
-        <label className="text-sm font-medium flex items-center gap-1">
-          <Calendar className="h-3 w-3" />
-          Expiration Date
-        </label>
-        <Input
-          type="date"
-          value={expiresAt}
-          onChange={(e) => setExpiresAt(e.target.value)}
-          min={new Date().toISOString().split("T")[0]}
-        />
-        <p className="text-xs text-muted-foreground">
-          Leave empty for permanent override
-        </p>
-      </div>
-
-      <Separator />
-
-      <div className="space-y-2">
-        <label className="text-sm font-medium">Additional Features</label>
-        {isLoadingFeatures ? (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            Loading...
-          </div>
-        ) : (
-          <div className="space-y-3 max-h-48 overflow-y-auto">
-            {Object.entries(featuresByCategory).map(([category, feats]) => (
-              <div key={category}>
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">
-                  {category}
-                </p>
-                <div className="grid grid-cols-2 gap-1">
-                  {feats.map((feature) => {
-                    const alreadyEnabled = currentFeatures.includes(
-                      feature.name,
-                    );
-                    return (
-                      <div
-                        key={feature.id}
-                        className="flex items-center space-x-2"
-                      >
-                        <Checkbox
-                          id={`override-${feature.id}`}
-                          checked={
-                            alreadyEnabled ||
-                            selectedFeatures.includes(feature.name)
-                          }
-                          disabled={alreadyEnabled}
-                          onCheckedChange={() => toggleFeature(feature.name)}
-                        />
-                        <label
-                          htmlFor={`override-${feature.id}`}
-                          className={`text-xs leading-none ${alreadyEnabled ? "text-muted-foreground" : ""}`}
-                        >
-                          {feature.displayName || feature.name}
-                          {alreadyEnabled && " (active)"}
-                        </label>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      <div className="space-y-2">
-        <label className="text-sm font-medium">
-          Reason <span className="text-red-500">*</span>
-        </label>
-        <Textarea
-          value={reason}
-          onChange={(e) => setReason(e.target.value)}
-          placeholder="Why are these overrides needed? (min 10 characters)"
-          rows={2}
-        />
-      </div>
-
-      {error && (
-        <div className="flex items-center gap-2 text-sm text-red-600 bg-red-50 dark:bg-red-950/20 p-2 rounded">
-          <AlertTriangle className="h-4 w-4 flex-shrink-0" />
-          {error}
-        </div>
-      )}
-
-      <Button type="submit" isLoading={isLoading} loadingText="Applying..." className="w-full">
-        <Shield className="mr-2 h-4 w-4" />
-        Apply Overrides
-      </Button>
-    </form>
+    <OverrideLimitsForm
+      organizationId={organization.id}
+      currentSettings={{
+        max_users: organization.settings?.max_users,
+        features_enabled: organization.settings?.features_enabled,
+        subscription_tier: organization.subscription_tier,
+      }}
+      availableFeatures={features}
+      isLoadingFeatures={isLoadingFeatures}
+      onSuccess={onSuccess}
+      fullWidthSubmit
+    />
   );
 }
 
@@ -788,7 +403,6 @@ function TrialTab({
 }) {
   const [mode, setMode] = useState<"extend" | "reset">("extend");
   const [daysToAdd, setDaysToAdd] = useState(7);
-  const [trialDays, setTrialDays] = useState(30);
   const [reason, setReason] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
@@ -823,41 +437,6 @@ function TrialTab({
       }
     } catch {
       setError("Failed to extend trial");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleReset = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
-
-    if (reason.trim().length < 5) {
-      setError("Reason must be at least 5 characters");
-      return;
-    }
-    if (trialDays < 1 || trialDays > 90) {
-      setError("Trial days must be between 1 and 90");
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      const result = await resetOrganizationTrial(organization.id, {
-        trial_days: trialDays,
-        reason: reason.trim(),
-      });
-
-      if (result.success) {
-        toast.success("Trial reset successfully");
-        setReason("");
-        setTrialDays(30);
-        onSuccess();
-      } else {
-        setError(result.message || "Failed to reset trial");
-      }
-    } catch {
-      setError("Failed to reset trial");
     } finally {
       setIsLoading(false);
     }
@@ -963,46 +542,17 @@ function TrialTab({
           </Button>
         </form>
       ) : (
-        <form onSubmit={handleReset} className="space-y-4">
-          <p className="text-sm text-muted-foreground">
+        <div>
+          <p className="text-sm text-muted-foreground mb-4">
             Reset the trial completely with a new start date and duration. This
             clears any grace period.
           </p>
-          <div className="space-y-2">
-            <label className="text-sm font-medium">
-              New Trial Duration (days)
-            </label>
-            <Input
-              type="number"
-              min="1"
-              max="90"
-              value={trialDays}
-              onChange={(e) => setTrialDays(parseInt(e.target.value) || 30)}
-            />
-            <p className="text-xs text-muted-foreground">Between 1 and 90</p>
-          </div>
-          <div className="space-y-2">
-            <label className="text-sm font-medium">
-              Reason <span className="text-red-500">*</span>
-            </label>
-            <Textarea
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              placeholder="Why reset? (min 5 characters)"
-              rows={2}
-            />
-          </div>
-          {error && (
-            <div className="flex items-center gap-2 text-sm text-red-600 bg-red-50 dark:bg-red-950/20 p-2 rounded">
-              <AlertTriangle className="h-4 w-4 flex-shrink-0" />
-              {error}
-            </div>
-          )}
-          <Button type="submit" isLoading={isLoading} loadingText="Resetting..." className="w-full">
-            <RefreshCw className="mr-2 h-4 w-4" />
-            Reset Trial ({trialDays} days)
-          </Button>
-        </form>
+          <TrialResetForm
+            organizationId={organization.id}
+            onSuccess={onSuccess}
+            fullWidthSubmit
+          />
+        </div>
       )}
     </div>
   );

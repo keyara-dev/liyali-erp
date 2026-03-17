@@ -17,7 +17,7 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import { AlertTriangle, Shield, Mail, Users } from "lucide-react";
-import { notify } from "@/lib/notify";
+import { notify } from "@/lib/utils";
 import {
   updateAdminUser,
   type UpdateAdminUserRequest,
@@ -108,21 +108,15 @@ export function AdminUserEditDialog({
       const result = await updateAdminUser(formData);
 
       if (result.success) {
-        notify("Admin user updated successfully", {
-          variant: "success",
-        });
+        notify({ title: "Admin user updated successfully", type: "success" });
         onUserUpdated();
         handleClose();
       } else {
-        notify(result.message || "Failed to update admin user", {
-          variant: "destructive",
-        });
+        notify({ title: result.message || "Failed to update admin user", type: "error" });
       }
     } catch (error) {
       console.error("Error updating admin user:", error);
-      notify("Failed to update admin user", {
-        variant: "destructive",
-      });
+      notify({ title: "Failed to update admin user", type: "error" });
     } finally {
       setIsLoading(false);
     }

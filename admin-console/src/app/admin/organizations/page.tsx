@@ -40,6 +40,7 @@ import { OrganizationCreateDialog } from "./components/organization-create-dialo
 import { OrganizationAdvancedFilters } from "./components/organization-advanced-filters";
 import { OrganizationBulkActions } from "./components/organization-bulk-actions";
 import { ChangeTierDialog } from "@/components/change-tier-dialog";
+import { getTierBadge, getTrialStatusBadge } from "@/lib/tier-utils";
 
 export default function OrganizationsPage() {
   const [selectedOrganization, setSelectedOrganization] =
@@ -160,40 +161,6 @@ export default function OrganizationsPage() {
     }
   };
 
-  const getTrialStatusBadge = (trialStatus: string) => {
-    switch (trialStatus) {
-      case "trial":
-        return <Badge variant="secondary">Trial</Badge>;
-      case "subscribed":
-        return <Badge variant="default">Subscribed</Badge>;
-      case "expired":
-        return <Badge variant="destructive">Expired</Badge>;
-      default:
-        return <Badge variant="outline">{trialStatus}</Badge>;
-    }
-  };
-
-  const getTierBadge = (tier: string) => {
-    switch (tier) {
-      case "custom":
-        return <Badge variant="default">Custom</Badge>;
-      case "pro":
-        return <Badge className="bg-blue-100 text-blue-800">Pro</Badge>;
-      case "starter":
-        return <Badge variant="secondary">Starter</Badge>;
-      // Legacy tier names (for backward compatibility)
-      case "enterprise":
-        return <Badge variant="default">Enterprise</Badge>;
-      case "professional":
-        return (
-          <Badge className="bg-blue-100 text-blue-800">Professional</Badge>
-        );
-      case "basic":
-        return <Badge variant="secondary">Basic</Badge>;
-      default:
-        return <Badge variant="outline">{tier}</Badge>;
-    }
-  };
 
   const getTierInfo = (tierName: string) => {
     const tier = tiers?.find((t) => t.name === tierName);

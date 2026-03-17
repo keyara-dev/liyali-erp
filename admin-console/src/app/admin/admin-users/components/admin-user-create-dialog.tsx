@@ -25,7 +25,7 @@ import {
   Building2,
   ShieldAlert,
 } from "lucide-react";
-import { notify } from "@/lib/notify";
+import { notify } from "@/lib/utils";
 import { type CreateAdminUserRequest } from "@/app/_actions/admin-users";
 import { useCreateAdminUser } from "@/hooks/use-admin-users";
 
@@ -103,18 +103,16 @@ export function AdminUserCreateDialog({
     createMutation.mutate(formData, {
       onSuccess: (result) => {
         if (result.success) {
-          notify("Admin user created successfully", { variant: "success" });
+          notify({ title: "Admin user created successfully", type: "success" });
           onUserCreated();
           handleClose();
         } else {
-          notify(result.message || "Failed to create admin user", {
-            variant: "destructive",
-          });
+          notify({ title: result.message || "Failed to create admin user", type: "error" });
         }
       },
       onError: (error) => {
         console.error("Error creating admin user:", error);
-        notify("Failed to create admin user", { variant: "destructive" });
+        notify({ title: "Failed to create admin user", type: "error" });
       },
     });
   };

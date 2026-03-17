@@ -32,7 +32,7 @@ import {
   Trash2,
   AlertTriangle,
 } from "lucide-react";
-import { toast } from "sonner";
+import { notify } from "@/lib/utils";
 import {
   resetUserPassword,
   impersonateUser,
@@ -66,7 +66,7 @@ export function UserActionsDropdown({
       await onStatusChange(user.id, "suspended");
       setShowSuspendDialog(false);
     } catch (error) {
-      toast.error("Failed to suspend user");
+      notify({ title: "Failed to suspend user", type: "error" });
     } finally {
       setIsLoading(false);
     }
@@ -78,7 +78,7 @@ export function UserActionsDropdown({
       await onStatusChange(user.id, "active");
       setShowActivateDialog(false);
     } catch (error) {
-      toast.error("Failed to activate user");
+      notify({ title: "Failed to activate user", type: "error" });
     } finally {
       setIsLoading(false);
     }
@@ -89,14 +89,14 @@ export function UserActionsDropdown({
     try {
       const result = await resetUserPassword(user.id, true);
       if (result.success) {
-        toast.success("Password reset email sent to user");
+        notify({ title: "Password reset email sent to user", type: "success" });
         setShowResetPasswordDialog(false);
         onUserUpdated();
       } else {
-        toast.error(result.message || "Failed to reset password");
+        notify({ title: result.message || "Failed to reset password", type: "error" });
       }
     } catch (error) {
-      toast.error("Failed to reset password");
+      notify({ title: "Failed to reset password", type: "error" });
     } finally {
       setIsLoading(false);
     }
@@ -108,19 +108,17 @@ export function UserActionsDropdown({
       const result = await impersonateUser(user.id);
       if (result.success) {
         const data = (result as any).data;
-        toast.success(
-          `Impersonation token generated. Token expires in ${data?.expires_in || 900} seconds.`,
-        );
+        notify({ title: `Impersonation token generated. Token expires in ${data?.expires_in || 900} seconds.`, type: "success" });
         // Copy token to clipboard for use
         if (data?.token) {
           await navigator.clipboard.writeText(data.token);
-          toast.info("Impersonation token copied to clipboard");
+          notify({ title: "Impersonation token copied to clipboard" });
         }
       } else {
-        toast.error(result.message || "Failed to impersonate user");
+        notify({ title: result.message || "Failed to impersonate user", type: "error" });
       }
     } catch (error) {
-      toast.error("Failed to impersonate user");
+      notify({ title: "Failed to impersonate user", type: "error" });
     } finally {
       setIsLoading(false);
     }

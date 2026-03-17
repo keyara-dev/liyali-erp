@@ -15,13 +15,17 @@ import { SelectField } from "@/components/ui/select-field";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { toast } from "sonner";
+import { notify } from "@/lib/utils";
 import {
   updateUser,
   type PlatformUser,
   type UpdateUserRequest,
 } from "@/app/_actions/users";
 import { User, Building2, Shield } from "lucide-react";
+const ADMIN_ROLES = [
+  { value: "admin", label: "Admin" },
+  { value: "super_admin", label: "Super Admin" },
+];
 
 interface UserEditDialogProps {
   user: PlatformUser | null;
@@ -29,13 +33,6 @@ interface UserEditDialogProps {
   onOpenChange: (open: boolean) => void;
   onUserUpdated: () => void;
 }
-
-const USER_ROLES = [
-  { value: "admin", label: "Admin" },
-  { value: "manager", label: "Manager" },
-  { value: "user", label: "User" },
-  { value: "viewer", label: "Viewer" },
-];
 
 const USER_STATUSES = [
   { value: "active", label: "Active" },
@@ -78,14 +75,14 @@ export function UserEditDialog({
     try {
       const result = await updateUser(user.id, formData);
       if (result.success) {
-        toast.success("User updated successfully");
+        notify({ title: "User updated successfully", type: "success" });
         onUserUpdated();
         onOpenChange(false);
       } else {
-        toast.error(result.message || "Failed to update user");
+        notify({ title: result.message || "Failed to update user", type: "error" });
       }
     } catch (error) {
-      toast.error("Failed to update user");
+      notify({ title: "Failed to update user", type: "error" });
     } finally {
       setIsLoading(false);
     }
@@ -191,7 +188,7 @@ export function UserEditDialog({
                   value={formData.role}
                   onValueChange={(value) => handleInputChange("role", value)}
                   placeholder="Select role"
-                  options={USER_ROLES}
+                  options={ADMIN_ROLES}
                   classNames={{ wrapper: "max-w-full" }}
                 />
                 <SelectField

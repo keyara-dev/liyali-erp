@@ -43,6 +43,7 @@ import {
 import { resetOrganizationTrial } from "@/app/_actions/subscriptions";
 import { ChangeTierDialog } from "./change-tier-dialog";
 import { OverrideLimitsDialog } from "./override-limits-dialog";
+import { getTierBadge, getTrialStatusBadge } from "@/lib/tier-utils";
 
 interface OrganizationDetailsDialogProps {
   organization: Organization;
@@ -121,32 +122,6 @@ export function OrganizationDetailsDialog({
       return <Badge variant="secondary">Pending</Badge>;
     }
     return <Badge variant="default">Active</Badge>;
-  };
-
-  const getTrialStatusBadge = (trialStatus: string) => {
-    switch (trialStatus) {
-      case "trial":
-        return <Badge variant="secondary">Trial</Badge>;
-      case "subscribed":
-        return <Badge variant="default">Subscribed</Badge>;
-      case "expired":
-        return <Badge variant="destructive">Expired</Badge>;
-      default:
-        return <Badge variant="outline">{trialStatus}</Badge>;
-    }
-  };
-
-  const getTierBadge = (tier: string) => {
-    switch (tier) {
-      case "enterprise":
-        return <Badge variant="default">Enterprise</Badge>;
-      case "professional":
-        return <Badge className="bg-blue-100 text-blue-800">Professional</Badge>;
-      case "basic":
-        return <Badge variant="secondary">Basic</Badge>;
-      default:
-        return <Badge variant="outline">{tier}</Badge>;
-    }
   };
 
   return (

@@ -31,7 +31,7 @@ import {
   Upload,
   AlertTriangle,
 } from "lucide-react";
-import { toast } from "sonner";
+import { notify } from "@/lib/utils";
 import { updateUserStatus, type PlatformUser } from "@/app/_actions/users";
 
 interface UserBulkActionsProps {
@@ -75,17 +75,17 @@ export function UserBulkActions({
       const failed = results.filter((r) => r.status === "rejected").length;
 
       if (successful > 0) {
-        toast.success(`Successfully suspended ${successful} user(s)`);
+        notify({ title: `Successfully suspended ${successful} user(s)`, type: "success" });
       }
       if (failed > 0) {
-        toast.error(`Failed to suspend ${failed} user(s)`);
+        notify({ title: `Failed to suspend ${failed} user(s)`, type: "error" });
       }
 
       onUsersUpdated();
       onSelectionChange([]);
       setShowBulkSuspendDialog(false);
     } catch (error) {
-      toast.error("Failed to perform bulk suspension");
+      notify({ title: "Failed to perform bulk suspension", type: "error" });
     } finally {
       setIsLoading(false);
     }
@@ -103,17 +103,17 @@ export function UserBulkActions({
       const failed = results.filter((r) => r.status === "rejected").length;
 
       if (successful > 0) {
-        toast.success(`Successfully activated ${successful} user(s)`);
+        notify({ title: `Successfully activated ${successful} user(s)`, type: "success" });
       }
       if (failed > 0) {
-        toast.error(`Failed to activate ${failed} user(s)`);
+        notify({ title: `Failed to activate ${failed} user(s)`, type: "error" });
       }
 
       onUsersUpdated();
       onSelectionChange([]);
       setShowBulkActivateDialog(false);
     } catch (error) {
-      toast.error("Failed to perform bulk activation");
+      notify({ title: "Failed to perform bulk activation", type: "error" });
     } finally {
       setIsLoading(false);
     }
@@ -149,7 +149,7 @@ export function UserBulkActions({
     document.body.removeChild(a);
     window.URL.revokeObjectURL(url);
 
-    toast.success(`Exported ${selectedUsers.length} user(s) to CSV`);
+    notify({ title: `Exported ${selectedUsers.length} user(s) to CSV`, type: "success" });
   };
 
   const isAllSelected =

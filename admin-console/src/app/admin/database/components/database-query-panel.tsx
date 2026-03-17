@@ -49,7 +49,7 @@ import {
   Database,
   Activity,
 } from "lucide-react";
-import { notify } from "@/lib/notify";
+import { notify } from "@/lib/utils";
 import {
   executeDatabaseQuery,
   cancelDatabaseQuery,
@@ -91,9 +91,7 @@ export function DatabaseQueryPanel({
 
   const handleExecuteQuery = async () => {
     if (!selectedConnectionId || !queryText.trim()) {
-      notify("Please select a connection and enter a query", {
-        variant: "destructive",
-      });
+      notify({ title: "Please select a connection and enter a query", type: "error" });
       return;
     }
 
@@ -113,25 +111,16 @@ export function DatabaseQueryPanel({
 
       if (result.success && result.data) {
         setQueryResult(result.data);
-        notify(
-          `Query executed successfully in ${result.data.execution_time.toFixed(0)}ms`,
-          {
-            variant: "success",
-          },
-        );
+        notify({ title: `Query executed successfully in ${result.data.execution_time.toFixed(0)}ms`, type: "success" });
         onQueryUpdated();
       } else {
         setQueryError(result.message || "Query execution failed");
-        notify("Query execution failed", {
-          variant: "destructive",
-        });
+        notify({ title: "Query execution failed", type: "error" });
       }
     } catch (error) {
       console.error("Error executing query:", error);
       setQueryError("Failed to execute query");
-      notify("Failed to execute query", {
-        variant: "destructive",
-      });
+      notify({ title: "Failed to execute query", type: "error" });
     } finally {
       setIsExecuting(false);
     }
@@ -141,20 +130,14 @@ export function DatabaseQueryPanel({
     try {
       const result = await cancelDatabaseQuery(queryId);
       if (result.success) {
-        notify("Query cancelled successfully", {
-          variant: "success",
-        });
+        notify({ title: "Query cancelled successfully", type: "success" });
         onQueryUpdated();
       } else {
-        notify("Failed to cancel query", {
-          variant: "destructive",
-        });
+        notify({ title: "Failed to cancel query", type: "error" });
       }
     } catch (error) {
       console.error("Error cancelling query:", error);
-      notify("Failed to cancel query", {
-        variant: "destructive",
-      });
+      notify({ title: "Failed to cancel query", type: "error" });
     }
   };
 

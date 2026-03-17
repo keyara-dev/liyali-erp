@@ -22,19 +22,16 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { type UserFilters } from "@/app/_actions/users";
+const ADMIN_ROLES = [
+  { value: "admin", label: "Admin" },
+  { value: "super_admin", label: "Super Admin" },
+];
 
 interface UserAdvancedFiltersProps {
   filters: UserFilters;
   onFiltersChange: (filters: UserFilters) => void;
   onReset: () => void;
 }
-
-const USER_ROLES = [
-  { value: "admin", label: "Admin" },
-  { value: "manager", label: "Manager" },
-  { value: "user", label: "User" },
-  { value: "viewer", label: "Viewer" },
-];
 
 const SORT_OPTIONS = [
   { value: "name", label: "Name" },
@@ -182,7 +179,7 @@ export function UserAdvancedFilters({
               placeholder="All roles"
               options={[
                 { value: "", label: "All roles" },
-                ...USER_ROLES,
+                ...ADMIN_ROLES,
               ]}
               value={filters.role || ""}
               onValueChange={(value) => updateFilter("role", value || undefined)}
