@@ -64,6 +64,12 @@ func SetupRoutes(app *fiber.App, handlerRegistry *handlers.HandlerRegistry, rbac
 	protected.Get("/auth/sessions", handlerRegistry.Auth.GetUserSessions)
 	protected.Delete("/auth/sessions/:id", handlerRegistry.Auth.TerminateSession)
 
+	// Invitee-facing invitation routes (auth only, no tenant required)
+	myInvites := protected.Group("/invitations")
+	myInvites.Get("/pending", handlers.GetMyPendingInvitations)
+	myInvites.Post("/:token/accept", handlers.AcceptInvitation)
+	myInvites.Post("/:token/decline", handlers.DeclineInvitation)
+
 	// Organization routes (authentication required, no tenant middleware)
 	orgs := protected.Group("/organizations")
 	orgs.Get("/", handlers.GetUserOrganizations)
@@ -105,6 +111,11 @@ func SetupRoutes(app *fiber.App, handlerRegistry *handlers.HandlerRegistry, rbac
 	orgMgmt.Delete("/members/:userId",
 		middleware.RequirePermission(rbacService, "organization", "manage"),
 		handlers.RemoveOrganizationMember)
+
+	// Email lookup — must be registered before /users/:id to avoid param conflict
+	orgMgmt.Get("/users/lookup",
+		middleware.RequirePermission(rbacService, "organization", "view"),
+		handlers.LookupUserByEmail)
 
 	// Admin user creation endpoint (creates users directly in organization without personal org)
 	orgMgmt.Post("/users",
@@ -155,6 +166,21 @@ func SetupRoutes(app *fiber.App, handlerRegistry *handlers.HandlerRegistry, rbac
 		handlers.OrgImpersonateUser)
 
 	orgMgmt.Get("/usage", handlers.GetOrganizationUsage)
+
+	// Invitation management (admin side)
+	orgMgmt.Post("/invitations",
+		middleware.RequirePermission(rbacService, "organization", "manage"),
+		middleware.CheckLimit("team_member"),
+		handlers.SendInvitation)
+	orgMgmt.Get("/invitations",
+		middleware.RequirePermission(rbacService, "organization", "view"),
+		handlers.ListOrgInvitations)
+	orgMgmt.Delete("/invitations/:id",
+		middleware.RequirePermission(rbacService, "organization", "manage"),
+		handlers.CancelInvitation)
+	orgMgmt.Post("/invitations/:id/resend",
+		middleware.RequirePermission(rbacService, "organization", "manage"),
+		handlers.ResendInvitation)
 
 	orgMgmt.Get("/settings",
 		middleware.RequirePermission(rbacService, "organization", "view"),

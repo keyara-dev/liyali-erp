@@ -165,7 +165,7 @@ func GetOrganizationMembers(c *fiber.Ctx) error {
 			organization_members.user_id,
 			organization_members.organization_id,
 			organization_members.role,
-			organization_members.department,
+			COALESCE(organization_departments.name, organization_members.department, '') as department,
 			organization_members.department_id,
 			organization_members.active as is_active,
 			organization_members.joined_at,
@@ -180,6 +180,7 @@ func GetOrganizationMembers(c *fiber.Ctx) error {
 			COALESCE(users.contact, '') as contact,
 			users.preferences`).
 		Joins("INNER JOIN users ON users.id = organization_members.user_id").
+		Joins("LEFT JOIN organization_departments ON organization_departments.id = organization_members.department_id").
 		Where("organization_members.organization_id = ? AND users.deleted_at IS NULL", tenant.OrganizationID)
 
 	countQuery := db.Table("organization_members").

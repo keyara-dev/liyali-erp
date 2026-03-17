@@ -393,11 +393,11 @@ BEGIN
     END IF;
 
     -- PRO/custom tier: bypass trial checks entirely
-    IF org_tier IN ('pro', 'custom') THEN
+    IF org_tier IN ('pro', 'enterprise') THEN
         IF org_plan_slug IS NULL THEN
             org_plan_slug := CASE org_tier
                 WHEN 'pro'    THEN 'PRO_PLAN'
-                WHEN 'custom' THEN 'ENTERPRISE'
+                WHEN 'enterprise' THEN 'ENTERPRISE'
                 ELSE org_tier
             END;
         END IF;
@@ -615,22 +615,12 @@ INSERT INTO subscription_tiers (
     true, 2
 ),
 (
-    'tier-custom', 'custom', 'Custom', 'Enterprise solution with configurable limits',
+    'tier-enterprise', 'enterprise', 'Enterprise', 'Enterprise solution with unlimited configurable limits',
     499, 4990,
     -1, -1, -1, -1, -1,
     -1, -1, -1, -1, -1, -1, -1,
     '["document_management","basic_workflows","in_app_notifications","standard_reports","user_management","department_management","vendor_management","budget_tracking","mobile_web_access","email_support","advanced_workflows","email_notifications","custom_roles","advanced_analytics","data_export","priority_support","audit_logs_90_days","multi_currency","advanced_reporting","workflow_templates","webhooks","custom_fields","bulk_operations","api_access","dedicated_support_manager","sla_guarantees","audit_logs_unlimited","custom_development","professional_services","dedicated_support","custom_training"]'::jsonb,
     true, 3
-),
--- 'enterprise' is a legacy alias for 'custom' — keeps CheckLimit working for orgs
--- that were created before the tier was renamed.
-(
-    'tier-enterprise', 'enterprise', 'Enterprise', 'Enterprise solution with configurable limits',
-    499, 4990,
-    -1, -1, -1, -1, -1,
-    -1, -1, -1, -1, -1, -1, -1,
-    '["document_management","basic_workflows","in_app_notifications","standard_reports","user_management","department_management","vendor_management","budget_tracking","mobile_web_access","email_support","advanced_workflows","email_notifications","custom_roles","advanced_analytics","data_export","priority_support","audit_logs_90_days","multi_currency","advanced_reporting","workflow_templates","webhooks","custom_fields","bulk_operations","api_access","dedicated_support_manager","sla_guarantees","audit_logs_unlimited","custom_development","professional_services","dedicated_support","custom_training"]'::jsonb,
-    true, 4
 )
 ON CONFLICT (id) DO UPDATE SET
     name                 = EXCLUDED.name,

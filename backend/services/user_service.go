@@ -44,6 +44,36 @@ func (s *UserService) GetUserByEmail(organizationID, email string) (*models.User
 	return &user, nil // email already taken — caller should return 409
 }
 
+// EmailLookupResult holds the result of a per-org email lookup.
+type EmailLookupResult struct {
+	User     *models.User // nil if no global account exists
+	IsMember bool         // true if the user is already an active member of orgID
+}
+
+// LookupUserByEmailForOrg checks whether an email address belongs to an existing
+// platform user, and whether that user is already a member of the given org.
+// All three cases are distinguishable from the returned result:
+//
+//	result.User == nil                → email free, safe to create
+//	result.User != nil && IsMember   → already a member, block creation
+//	result.User != nil && !IsMember  → has a global account, offer invite flow
+func (s *UserService) LookupUserByEmailForOrg(orgID, email string) (*EmailLookupResult, error) {
+	var user models.User
+	if err := s.db.Where("email = ? AND deleted_at IS NULL", email).First(&user).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return &EmailLookupResult{}, nil
+		}
+		return nil, fmt.Errorf("failed to look up user by email: %w", err)
+	}
+
+	var memberCount int64
+	s.db.Table("organization_members").
+		Where("organization_id = ? AND user_id = ? AND active = true", orgID, user.ID).
+		Count(&memberCount)
+
+	return &EmailLookupResult{User: &user, IsMember: memberCount > 0}, nil
+}
+
 // AssignUserToDepartment assigns a user to a department
 func (s *UserService) AssignUserToDepartment(organizationID, userID, departmentID string) error {
 	// For now, we'll use the organization_members table to store department assignment

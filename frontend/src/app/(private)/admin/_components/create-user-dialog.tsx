@@ -1,7 +1,18 @@
 "use client";
 
-import { PencilLine, Plus, Check, Copy, UserCog } from "lucide-react";
-import { Dispatch, SetStateAction, useEffect, useMemo, useState } from "react";
+import {
+  PencilLine,
+  Plus,
+  Check,
+  Copy,
+  UserCog,
+  Mail,
+  UserPlus,
+  Loader2,
+  AlertTriangle,
+  Info,
+} from "lucide-react";
+import { Dispatch, SetStateAction, useEffect, useMemo, useState, useCallback } from "react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 
@@ -27,6 +38,10 @@ import { useActiveDepartments } from "@/hooks/use-department-queries";
 import { useActiveRoles } from "@/hooks/use-role-queries";
 import { useActiveBranches } from "@/hooks/use-branch-queries";
 import { usePermissions } from "@/hooks/use-permissions";
+import { useSendInvitation } from "@/hooks/use-invitation-mutations";
+import { lookupUserByEmail, type EmailLookupResult } from "@/app/_actions/invitation-actions";
+
+type DialogMode = "create" | "invite";
 
 type FormData = {
   first_name: string;
@@ -63,36 +78,37 @@ export default function CreateUserForm({
   const [internalOpen, setInternalOpen] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Email lookup state
+  const [dialogMode, setDialogMode] = useState<DialogMode>("create");
+  const [emailLookup, setEmailLookup] = useState<EmailLookupResult | null>(null);
+  const [isLookingUp, setIsLookingUp] = useState(false);
+  const [lastCheckedEmail, setLastCheckedEmail] = useState("");
+
   useEffect(() => {
     setMounted(true);
   }, []);
 
   const isEditMode = !!user;
 
-  // Use internal state for trigger mode, external state for controlled mode
   const dialogOpen = showTrigger ? internalOpen : isOpenModal;
   const setDialogOpen = showTrigger ? setInternalOpen : setIsOpenModal;
 
   // ALL HOOKS MUST BE CALLED BEFORE ANY CONDITIONAL LOGIC
-  // Check admin permissions
   const { isAdmin, isLoading: permissionsLoading } = usePermissions();
 
-  // TanStack Query mutations
   const createUserMutation = useCreateUser((data) => {
-    console.log("Create user success callback called with:", data);
     handleCloseModal();
-    // Add a small delay to ensure server-side data is updated
-    setTimeout(() => {
-      console.log("Refreshing router...");
-      router.refresh();
-    }, 500);
+    setTimeout(() => router.refresh(), 500);
   });
   const updateUserMutation = useUpdateUser(() => {
     handleCloseModal();
     router.refresh();
   });
+  const sendInvitationMutation = useSendInvitation(() => {
+    handleCloseModal();
+    router.refresh();
+  });
 
-  // Fetch departments, branches, and roles
   const { data: departmentsData = [], isLoading: isDepartmentsLoading } =
     useActiveDepartments();
   const { data: branchesData = [], isLoading: isBranchesLoading } =
@@ -103,7 +119,6 @@ export default function CreateUserForm({
     error: rolesError,
   } = useActiveRoles();
 
-  // Initialize form state
   const initialFormState: FormData = useMemo(() => {
     if (isEditMode && user) {
       return {
@@ -137,32 +152,20 @@ export default function CreateUserForm({
     };
   }, [isEditMode, user?.id, role]);
 
-  const [formData, setFormData] = useState<FormData>(
-    initialFormState as FormData,
-  );
+  const [formData, setFormData] = useState<FormData>(initialFormState as FormData);
 
-  // Get departments from API
-  const departments = useMemo(() => {
-    return departmentsData.filter((d) => d.is_active);
-  }, [departmentsData]);
+  const departments = useMemo(() => departmentsData.filter((d) => d.is_active), [departmentsData]);
 
-  // Get all roles from API (both system and custom roles)
   const allRoles = useMemo(() => {
-    // All roles come from the API - no hardcoded roles needed
-    // The backend stores both system roles (is_system_role = true) and custom roles (is_system_role = false)
-    if (!rolesData || !Array.isArray(rolesData)) {
-      return [];
-    }
-
+    if (!rolesData || !Array.isArray(rolesData)) return [];
     return rolesData.map((role: any) => ({
       id: role.id,
       name: role.name,
-      type: role.isDefault ? "system" : "custom", // Backend sends isDefault for system roles
+      type: role.isDefault ? "system" : "custom",
       description: role.description,
     }));
   }, [rolesData]);
 
-  // Reset form when user changes or dialog opens/closes
   useEffect(() => {
     if (isEditMode && user) {
       setFormData({
@@ -196,38 +199,64 @@ export default function CreateUserForm({
         nrcNumber: "",
         contact: "",
       });
+      setEmailLookup(null);
+      setLastCheckedEmail("");
+      setDialogMode("create");
     }
   }, [user?.id, dialogOpen, isEditMode, role]);
 
-  // PERMISSION CHECKS - After all hooks are called
-  // Use mounted guard so server and client render the same thing on first pass,
-  // preventing the React hydration mismatch caused by the React Query session cache
-  // being pre-populated on the client but empty on the server (staleTime: 0).
-  if (!mounted || permissionsLoading) {
-    return null;
-  }
+  if (!mounted || permissionsLoading) return null;
+  if (rolesError) console.error("Roles loading error:", rolesError);
 
-  // Show error if roles failed to load
-  if (rolesError) {
-    console.error("Roles loading error:", rolesError);
-  }
-
-  // Early return if not admin - show unauthorized message
   if (!isAdmin()) {
     if (showTrigger) {
       return (
-        <Button
-          size="sm"
-          disabled
-          onClick={() => toast.error("Only administrators can manage users")}
-        >
+        <Button size="sm" disabled onClick={() => toast.error("Only administrators can manage users")}>
           <UserCog className="mr-2 h-4 w-4" />
           {user ? "Update User" : "Create New User"} (Admin Only)
         </Button>
       );
     }
-    return null; // For modal mode, don't render anything
+    return null;
   }
+
+  // ─── Email lookup ───────────────────────────────────────────────────────────
+
+  const handleEmailBlur = async () => {
+    const email = formData.email.trim();
+    if (!email || email === lastCheckedEmail || isEditMode) return;
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return;
+
+    setIsLookingUp(true);
+    setLastCheckedEmail(email);
+    try {
+      const res = await lookupUserByEmail(email);
+      if (res.success && res.data) {
+        setEmailLookup(res.data);
+        // Auto-switch to invite mode if the user already has an account
+        if (res.data.exists && !res.data.isOrgMember) {
+          setDialogMode("invite");
+        } else {
+          setDialogMode("create");
+        }
+      }
+    } catch {
+      // silently ignore lookup failures
+    } finally {
+      setIsLookingUp(false);
+    }
+  };
+
+  const handleEmailChange = (value: string) => {
+    setFormData((prev) => ({ ...prev, email: value }));
+    // Reset lookup when email changes
+    if (value !== lastCheckedEmail) {
+      setEmailLookup(null);
+      setDialogMode("create");
+    }
+  };
+
+  // ─── Handlers ───────────────────────────────────────────────────────────────
 
   const handleCopyPassword = async () => {
     try {
@@ -235,24 +264,23 @@ export default function CreateUserForm({
       setCopied(true);
       toast.success("Password copied to clipboard");
       const timeoutId = setTimeout(() => setCopied(false), 2000);
-      // Cleanup function would be called on component unmount
       return () => clearTimeout(timeoutId);
-    } catch (err) {
+    } catch {
       toast.error("Failed to copy password");
     }
   };
 
   const handleGenerateNewPassword = () => {
-    setFormData((prev) => ({
-      ...prev,
-      password: generateRandomString(),
-    }));
+    setFormData((prev) => ({ ...prev, password: generateRandomString() }));
     setCopied(false);
   };
 
   const resetForm = () => {
     setFormData(initialFormState);
     setCopied(false);
+    setEmailLookup(null);
+    setLastCheckedEmail("");
+    setDialogMode("create");
   };
 
   const handleCloseModal = () => {
@@ -260,80 +288,68 @@ export default function CreateUserForm({
     setDialogOpen?.(false);
   };
 
-  const validateForm = (): boolean => {
-    if (!formData.first_name.trim()) {
-      toast.error("First name is required");
-      return false;
-    }
-    if (!formData.last_name.trim()) {
-      toast.error("Last name is required");
-      return false;
-    }
+  const validateCreateForm = (): boolean => {
+    if (!formData.first_name.trim()) { toast.error("First name is required"); return false; }
+    if (!formData.last_name.trim()) { toast.error("Last name is required"); return false; }
+    if (!formData.email.trim()) { toast.error("Email is required"); return false; }
+    if (!formData.role) { toast.error("Role is required"); return false; }
+    if (!isEditMode && !formData.password?.trim()) { toast.error("Password is required"); return false; }
+    if (!formData.position?.trim()) { toast.error("Position is required"); return false; }
+    if (!formData.manNumber?.trim()) { toast.error("Man Number is required"); return false; }
+    if (!formData.nrcNumber?.trim()) { toast.error("NRC Number is required"); return false; }
+    if (!formData.contact?.trim()) { toast.error("Contact is required"); return false; }
+    return true;
+  };
 
-    if (!formData.email.trim()) {
-      toast.error("Email is required");
-      return false;
-    }
-
-    if (!formData.role) {
-      toast.error("Role is required");
-      return false;
-    }
-
-    if (!isEditMode && !formData.password?.trim()) {
-      toast.error("Password is required");
-      return false;
-    }
-    if (!formData.position?.trim()) {
-      toast.error("Position is required");
-      return false;
-    }
-    if (!formData.manNumber?.trim()) {
-      toast.error("Man Number is required");
-      return false;
-    }
-    if (!formData.nrcNumber?.trim()) {
-      toast.error("NRC Number is required");
-      return false;
-    }
-    if (!formData.contact?.trim()) {
-      toast.error("Contact is required");
-      return false;
-    }
+  const validateInviteForm = (): boolean => {
+    if (!formData.email.trim()) { toast.error("Email is required"); return false; }
+    if (!formData.role) { toast.error("Role is required"); return false; }
     return true;
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    if (!validateForm()) {
+    if (dialogMode === "invite") {
+      if (!validateInviteForm()) return;
+      setIsSubmitting(true);
+      try {
+        await sendInvitationMutation.mutateAsync({
+          email: formData.email,
+          role: formData.role,
+          department_id: formData.department_id || undefined,
+          branch_id: formData.branch_id || undefined,
+        });
+      } catch {
+        // handled by mutation
+      } finally {
+        setIsSubmitting(false);
+      }
       return;
     }
 
+    // Create mode
+    if (!validateCreateForm()) return;
     setIsSubmitting(true);
-
     try {
-      // Compute full name from first_name + last_name
       const fullName = `${formData.first_name} ${formData.last_name}`.trim();
-
       if (isEditMode) {
-        const updateData = {
-          name: fullName,
-          email: formData.email,
-          first_name: formData.first_name,
-          last_name: formData.last_name,
-          department_id: formData.department_id,
-          branch_id: formData.branch_id || null,
-          is_active: formData.is_active,
-          role: formData.role,
-          position: formData.position,
-          manNumber: formData.manNumber,
-          nrcNumber: formData.nrcNumber,
-          contact: formData.contact,
-        };
         await updateUserMutation.mutateAsync({
           userId: user!.id,
-          data: updateData,
+          data: {
+            name: fullName,
+            email: formData.email,
+            first_name: formData.first_name,
+            last_name: formData.last_name,
+            department_id: formData.department_id,
+            branch_id: formData.branch_id || null,
+            is_active: formData.is_active,
+            role: formData.role,
+            position: formData.position,
+            manNumber: formData.manNumber,
+            nrcNumber: formData.nrcNumber,
+            contact: formData.contact,
+          },
         });
       } else {
         await createUserMutation.mutateAsync({
@@ -352,27 +368,83 @@ export default function CreateUserForm({
         });
       }
     } catch (error) {
-      // Error handling is done by the mutation hooks
       console.error("Form submission error:", error);
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  // ─── Email status banner ────────────────────────────────────────────────────
+
+  const renderEmailBanner = () => {
+    if (isEditMode || !emailLookup) return null;
+
+    if (emailLookup.isOrgMember) {
+      return (
+        <div className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+          <span>This user is already a member of your organization.</span>
+        </div>
+      );
+    }
+
+    if (emailLookup.exists && !emailLookup.isOrgMember) {
+      return (
+        <div className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-3 text-sm dark:border-amber-700 dark:bg-amber-950/30">
+          <div className="flex items-start gap-2 text-amber-800 dark:text-amber-300">
+            <Info className="mt-0.5 h-4 w-4 shrink-0" />
+            <div className="space-y-2">
+              <p>
+                <strong>{emailLookup.name || emailLookup.email}</strong> already has a Liyali
+                account.{" "}
+                {emailLookup.hasPendingInvitation && (
+                  <span className="font-medium">A pending invitation already exists — sending again will replace it.</span>
+                )}
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={dialogMode === "invite" ? "default" : "outline"}
+                  onClick={() => setDialogMode("invite")}
+                  className="h-7 gap-1.5 text-xs"
+                >
+                  <Mail className="h-3.5 w-3.5" />
+                  Send Invitation
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={dialogMode === "create" ? "default" : "outline"}
+                  onClick={() => setDialogMode("create")}
+                  className="h-7 gap-1.5 text-xs"
+                >
+                  <UserPlus className="h-3.5 w-3.5" />
+                  Create New Account Anyway
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    return null;
+  };
+
+  // ─── Render ─────────────────────────────────────────────────────────────────
+
+  const isInviteMode = dialogMode === "invite" && !isEditMode;
+
   return (
     <Dialog
       open={dialogOpen}
       onOpenChange={(open) => {
         if (showTrigger) {
-          if (open) {
-            setInternalOpen(true);
-          } else {
-            handleCloseModal();
-          }
+          if (open) setInternalOpen(true);
+          else handleCloseModal();
         } else {
-          if (!open) {
-            handleCloseModal();
-          }
+          if (!open) handleCloseModal();
         }
       }}
     >
@@ -380,14 +452,9 @@ export default function CreateUserForm({
         <DialogTrigger asChild>
           <Button size="sm">
             {user ? (
-              <>
-                <PencilLine className="mr-2 h-4 w-4" /> Update User
-              </>
+              <><PencilLine className="mr-2 h-4 w-4" /> Update User</>
             ) : (
-              <>
-                <Plus className="mr-2 h-4 w-4" />
-                Create New User
-              </>
+              <><Plus className="mr-2 h-4 w-4" />Create New User</>
             )}
           </Button>
         </DialogTrigger>
@@ -397,212 +464,183 @@ export default function CreateUserForm({
         <DialogHeader className="border-b px-6 py-4">
           <div className="flex items-center gap-3">
             <div className="bg-primary/5 text-primary hover:bg-primary/10 flex h-7 w-7 items-center justify-center rounded-full">
-              <UserCog className="h-4 w-4" />
+              {isInviteMode ? <Mail className="h-4 w-4" /> : <UserCog className="h-4 w-4" />}
             </div>
             <DialogTitle>
-              {isEditMode ? "Edit User" : "Create New User"}
+              {isEditMode ? "Edit User" : isInviteMode ? "Invite User to Organization" : "Create New User"}
             </DialogTitle>
           </div>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="">
+        <form onSubmit={handleSubmit}>
           <div className="overflow-y-auto grid gap-4 px-6 py-6">
-            <div className="flex gap-4">
-              <Input
-                id="first_name"
-                placeholder="Bob"
-                label="First Name"
-                value={formData.first_name}
-                onChange={(e) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    first_name: e.target.value,
-                  }))
-                }
-                disabled={isSubmitting}
-                required
-              />
-              <Input
-                id="last_name"
-                label="Last Name"
-                placeholder="Mwale"
-                value={formData.last_name}
-                onChange={(e) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    last_name: e.target.value,
-                  }))
-                }
-                disabled={isSubmitting}
-                required
-              />
-            </div>
 
-            <div className="flex flex-col md:flex-row gap-4 items-end">
+            {/* Email field — always shown first in create mode */}
+            {!isEditMode && (
+              <div className="flex flex-col gap-2">
+                <div className="relative">
+                  <Input
+                    id="email"
+                    type="email"
+                    label="Email Address"
+                    placeholder="mail@company.com"
+                    value={formData.email}
+                    onChange={(e) => handleEmailChange(e.target.value)}
+                    onBlur={handleEmailBlur}
+                    disabled={isSubmitting}
+                    required
+                    endContent={
+                      isLookingUp ? (
+                        <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground" />
+                      ) : undefined
+                    }
+                  />
+                </div>
+                {renderEmailBanner()}
+              </div>
+            )}
+
+            {/* Full name fields — only for create mode, not invite */}
+            {!isInviteMode && (
+              <div className="flex gap-4">
+                <Input
+                  id="first_name"
+                  placeholder="Bob"
+                  label="First Name"
+                  value={formData.first_name}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, first_name: e.target.value }))}
+                  disabled={isSubmitting}
+                  required
+                />
+                <Input
+                  id="last_name"
+                  label="Last Name"
+                  placeholder="Mwale"
+                  value={formData.last_name}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, last_name: e.target.value }))}
+                  disabled={isSubmitting}
+                  required
+                />
+              </div>
+            )}
+
+            {/* Email in edit mode */}
+            {isEditMode && (
               <Input
                 id="email"
                 type="email"
                 label="Email Address"
                 placeholder="mail@company.com"
                 value={formData.email}
-                onChange={(e) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    email: e.target.value,
-                  }))
-                }
+                onChange={(e) => setFormData((prev) => ({ ...prev, email: e.target.value }))}
                 disabled={isSubmitting}
                 required
               />
-            </div>
+            )}
 
+            {/* Dept / Branch / Role — always shown */}
             <div className="flex flex-col md:flex-row gap-4 items-end">
               <SelectField
                 label="Department"
                 value={formData.department_id}
-                onValueChange={(value) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    department_id: value,
-                  }))
-                }
+                onValueChange={(value) => setFormData((prev) => ({ ...prev, department_id: value }))}
                 isDisabled={isSubmitting || isDepartmentsLoading}
                 isLoading={isDepartmentsLoading}
                 placeholder="Select department"
-                options={departments.map((dept) => ({
-                  id: dept.id,
-                  name: dept.name,
-                  value: dept.id,
-                }))}
+                options={departments.map((dept) => ({ id: dept.id, name: dept.name, value: dept.id }))}
               />
               <SelectField
                 label="Branch"
                 value={formData.branch_id}
-                onValueChange={(value) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    branch_id: value,
-                  }))
-                }
+                onValueChange={(value) => setFormData((prev) => ({ ...prev, branch_id: value }))}
                 isDisabled={isSubmitting || isBranchesLoading}
                 isLoading={isBranchesLoading}
                 placeholder="Select branch"
-                options={branchesData.map((branch) => ({
-                  id: branch.id,
-                  name: branch.name,
-                  value: branch.id,
-                }))}
+                options={branchesData.map((branch) => ({ id: branch.id, name: branch.name, value: branch.id }))}
               />
             </div>
+
             <SelectField
               label="Role"
               required
               value={formData.role}
-              onValueChange={(value) =>
-                setFormData((prev) => ({
-                  ...prev,
-                  role: value as UserType,
-                }))
-              }
+              onValueChange={(value) => setFormData((prev) => ({ ...prev, role: value as UserType }))}
               isDisabled={isSubmitting || isRolesLoading}
               isLoading={isRolesLoading}
               placeholder={
-                rolesError
-                  ? "Error loading roles"
-                  : allRoles.length === 0
-                    ? "No roles available"
-                    : "Select role"
+                rolesError ? "Error loading roles" : allRoles.length === 0 ? "No roles available" : "Select role"
               }
-              options={allRoles.map((role) => ({
-                id: role.id,
-                name: role.name,
-                value: role.name,
-              }))}
+              options={allRoles.map((role) => ({ id: role.id, name: role.name, value: role.name }))}
             />
 
-            <div className="grid gap-4 md:grid-cols-2">
-              <Input
-                id="position"
-                label="Position"
-                placeholder="e.g., Procurement Officer"
-                value={formData.position}
-                onChange={(e) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    position: e.target.value,
-                  }))
-                }
-                disabled={isSubmitting}
-                required
-              />
-              <Input
-                id="manNumber"
-                label="Man Number"
-                placeholder="e.g., MAN12345"
-                value={formData.manNumber}
-                onChange={(e) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    manNumber: e.target.value,
-                  }))
-                }
-                disabled={isSubmitting}
-                required
-              />
-              <Input
-                id="nrcNumber"
-                label="NRC Number"
-                placeholder="e.g., 123456/78/9"
-                value={formData.nrcNumber}
-                onChange={(e) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    nrcNumber: e.target.value,
-                  }))
-                }
-                disabled={isSubmitting}
-                required
-              />
-              <Input
-                id="contact"
-                label="Contact"
-                placeholder="e.g., +260 97 1234567"
-                value={formData.contact}
-                onChange={(e) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    contact: e.target.value,
-                  }))
-                }
-                disabled={isSubmitting}
-                required
-              />
-            </div>
+            {/* Profile fields — only for create/edit, not invite */}
+            {!isInviteMode && (
+              <div className="grid gap-4 md:grid-cols-2">
+                <Input
+                  id="position"
+                  label="Position"
+                  placeholder="e.g., Procurement Officer"
+                  value={formData.position}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, position: e.target.value }))}
+                  disabled={isSubmitting}
+                  required
+                />
+                <Input
+                  id="manNumber"
+                  label="Man Number"
+                  placeholder="e.g., MAN12345"
+                  value={formData.manNumber}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, manNumber: e.target.value }))}
+                  disabled={isSubmitting}
+                  required
+                />
+                <Input
+                  id="nrcNumber"
+                  label="NRC Number"
+                  placeholder="e.g., 123456/78/9"
+                  value={formData.nrcNumber}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, nrcNumber: e.target.value }))}
+                  disabled={isSubmitting}
+                  required
+                />
+                <Input
+                  id="contact"
+                  label="Contact"
+                  placeholder="e.g., +260 97 1234567"
+                  value={formData.contact}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, contact: e.target.value }))}
+                  disabled={isSubmitting}
+                  required
+                />
+              </div>
+            )}
+
+            {/* Invite mode info note */}
+            {isInviteMode && (
+              <p className="text-xs text-muted-foreground rounded-md border bg-muted/40 px-3 py-2">
+                An invitation will be sent to <strong>{formData.email}</strong>. They will join the
+                organization with the selected role once they accept.
+              </p>
+            )}
 
             {isEditMode && (
               <div className="flex flex-row items-center justify-between rounded-lg border p-4">
                 <div className="space-y-0.5">
                   <Label className="text-base">Account Status</Label>
                   <p className="text-sm text-muted-foreground">
-                    {formData.is_active
-                      ? "Account is active"
-                      : "Account is deactivated"}
+                    {formData.is_active ? "Account is active" : "Account is deactivated"}
                   </p>
                 </div>
                 <Switch
                   checked={formData.is_active}
-                  onCheckedChange={(checked) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      is_active: checked,
-                    }))
-                  }
+                  onCheckedChange={(checked) => setFormData((prev) => ({ ...prev, is_active: checked }))}
                   disabled={isSubmitting}
                 />
               </div>
             )}
 
-            {!isEditMode && (
+            {/* Password field — only for new user creation */}
+            {!isEditMode && !isInviteMode && (
               <div className="flex w-full flex-col items-center gap-2 sm:flex-row">
                 <div className="relative flex w-full items-end gap-2">
                   <Input
@@ -611,7 +649,6 @@ export default function CreateUserForm({
                     placeholder="************"
                     required
                     value={formData.password}
-                    // readOnly
                     className="cursor-default font-mono text-sm pr-10"
                     disabled={isSubmitting}
                     endContent={
@@ -631,11 +668,7 @@ export default function CreateUserForm({
                       </Button>
                     }
                   />
-                  <Button
-                    type="button"
-                    onClick={handleGenerateNewPassword}
-                    disabled={isSubmitting}
-                  >
+                  <Button type="button" onClick={handleGenerateNewPassword} disabled={isSubmitting}>
                     Generate new password
                   </Button>
                 </div>
@@ -646,22 +679,23 @@ export default function CreateUserForm({
           <DialogFooter className="flex justify-end gap-3 border-t p-4">
             <div className="flex w-full items-center justify-end gap-3">
               <DialogClose asChild>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleCloseModal}
-                  disabled={isSubmitting}
-                >
+                <Button type="button" variant="outline" onClick={handleCloseModal} disabled={isSubmitting}>
                   Cancel
                 </Button>
               </DialogClose>
               <Button
                 type="submit"
-                disabled={isSubmitting}
+                disabled={isSubmitting || (emailLookup?.isOrgMember === true)}
                 isLoading={isSubmitting}
-                loadingText={isEditMode ? "Updating..." : "Creating..."}
+                loadingText={isInviteMode ? "Sending Invite..." : isEditMode ? "Updating..." : "Creating..."}
               >
-                {isEditMode ? "Update User" : "Create User"}
+                {isInviteMode ? (
+                  <><Mail className="mr-2 h-4 w-4" />Send Invitation</>
+                ) : isEditMode ? (
+                  "Update User"
+                ) : (
+                  "Create User"
+                )}
               </Button>
             </div>
           </DialogFooter>
@@ -671,28 +705,16 @@ export default function CreateUserForm({
   );
 }
 
-// Convenience wrapper component for just showing the button trigger
 export function CreateUserButton({ role }: { role: UserType }) {
   const { isAdmin, isLoading: permissionsLoading } = usePermissions();
-
-  // Show loading while checking permissions
-  if (permissionsLoading) {
-    return null; // Or you could return a loading spinner
-  }
-
-  // Show disabled button if not admin
+  if (permissionsLoading) return null;
   if (!isAdmin()) {
     return (
-      <Button
-        size="sm"
-        disabled
-        onClick={() => toast.error("Only administrators can manage users")}
-      >
+      <Button size="sm" disabled onClick={() => toast.error("Only administrators can manage users")}>
         <Plus className="mr-2 h-4 w-4" />
         Create New User (Admin Only)
       </Button>
     );
   }
-
   return <CreateUserForm showTrigger={true} role={role} user={null} />;
 }

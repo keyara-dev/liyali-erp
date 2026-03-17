@@ -139,5 +139,39 @@ func (OrganizationBranch) TableName() string {
 	return "organization_branches"
 }
 
+// OrganizationInvitation represents a pending invitation for an existing platform
+// user to join an organization.  The token field is intentionally hidden from
+// list responses (json:"-") and only returned at creation time.
+type OrganizationInvitation struct {
+	ID             string     `gorm:"primaryKey" json:"id"`
+	OrganizationID string     `gorm:"index;not null" json:"organizationId"`
+	Organization   *Organization `gorm:"foreignKey:OrganizationID" json:"organization,omitempty"`
+
+	// InvitedUserID is nil only when the invitee has no platform account yet.
+	InvitedUserID  *string    `gorm:"index" json:"invitedUserId,omitempty"`
+	InvitedUser    *User      `gorm:"foreignKey:InvitedUserID" json:"invitedUser,omitempty"`
+
+	InvitedEmail   string     `gorm:"not null" json:"invitedEmail"`
+	InvitedBy      string     `gorm:"not null" json:"invitedBy"`
+	InvitedByUser  *User      `gorm:"foreignKey:InvitedBy" json:"invitedByUser,omitempty"`
+
+	Role           string     `gorm:"not null;default:requester" json:"role"`
+	DepartmentID   *string    `json:"departmentId,omitempty"`
+	BranchID       *string    `json:"branchId,omitempty"`
+
+	Status         string     `gorm:"not null;default:pending" json:"status"`
+	Token          *string    `gorm:"uniqueIndex" json:"-"` // returned only at creation
+	ExpiresAt      time.Time  `json:"expiresAt"`
+	AcceptedAt     *time.Time `json:"acceptedAt,omitempty"`
+	DeclinedAt     *time.Time `json:"declinedAt,omitempty"`
+
+	CreatedAt      time.Time  `json:"createdAt"`
+	UpdatedAt      time.Time  `json:"updatedAt"`
+}
+
+func (OrganizationInvitation) TableName() string {
+	return "organization_invitations"
+}
+
 // Note: OrganizationRole, OrganizationPermission, and PermissionAssignment
 // have been moved to enhanced_auth.go for the new RBAC system

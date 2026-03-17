@@ -295,7 +295,7 @@ func GetTrialOrganizations(c *fiber.Ctx) error {
 			COALESCE(o.subscription_status, 'trial') as subscription_status
 		FROM organizations o
 		WHERE o.subscription_status != 'active'
-		  AND COALESCE(o.subscription_tier, 'starter') NOT IN ('pro', 'custom')
+		  AND COALESCE(o.subscription_tier, 'starter') NOT IN ('pro', 'enterprise')
 		ORDER BY
 			CASE
 				WHEN o.trial_end_date IS NULL THEN 3

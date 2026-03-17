@@ -43,7 +43,7 @@ func GetAdminDashboard(c *fiber.Ctx) error {
 	var expiringTrials int64
 	sevenDaysFromNow := time.Now().AddDate(0, 0, 7)
 	if err := db.Table("organizations").
-		Where("trial_end_date <= ? AND trial_end_date > ? AND subscription_status != 'active' AND COALESCE(subscription_tier, 'starter') NOT IN ('pro', 'custom')",
+		Where("trial_end_date <= ? AND trial_end_date > ? AND subscription_status != 'active' AND COALESCE(subscription_tier, 'starter') NOT IN ('pro', 'enterprise')",
 			sevenDaysFromNow, time.Now()).
 		Count(&expiringTrials).Error; err != nil {
 		log.Printf("Error getting expiring trials: %v", err)

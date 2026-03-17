@@ -131,14 +131,14 @@ func (t *SubscriptionTier) GetLimit(limitType string) int {
 const (
 	TierStarter = "starter"
 	TierPro     = "pro"
-	TierCustom  = "custom"
+	TierCustom  = "enterprise"
 )
 
 // Tier ID constants
 const (
 	TierIDStarter = "tier-starter"
 	TierIDPro     = "tier-pro"
-	TierIDCustom  = "tier-custom"
+	TierIDCustom  = "tier-enterprise"
 )
 
 // Unlimited constant
@@ -197,7 +197,7 @@ type UpdateTierRequest struct {
 
 // ChangeTierRequest represents a request to change an organization's tier
 type ChangeTierRequest struct {
-	NewTier string `json:"newTier" validate:"required,oneof=starter pro custom"`
+	NewTier string `json:"newTier" validate:"required,oneof=starter pro enterprise"`
 	Reason  string `json:"reason" validate:"required,min=10"`
 }
 

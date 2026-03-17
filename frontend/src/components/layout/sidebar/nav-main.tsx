@@ -33,6 +33,7 @@ import {
   Zap,
   FileCheck,
   CheckSquare,
+  MailOpen,
   DollarSign,
   GitBranch,
   MapPin,
@@ -158,6 +159,11 @@ export const routes: NavGroup[] = [
         title: "User Management",
         href: "/admin/users",
         icon: UsersIcon,
+      },
+      {
+        title: "Invitations",
+        href: "/admin/invitations",
+        icon: MailOpen,
       },
       {
         title: "Processes & Workflows",

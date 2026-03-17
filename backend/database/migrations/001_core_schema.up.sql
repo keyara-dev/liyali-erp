@@ -65,7 +65,7 @@ CREATE TABLE IF NOT EXISTS organizations (
     CONSTRAINT fk_organizations_creator
         FOREIGN KEY (created_by) REFERENCES users(id),
     CONSTRAINT check_organization_tier
-        CHECK (tier IN ('starter', 'pro', 'custom', 'enterprise')),
+        CHECK (tier IN ('starter', 'pro', 'enterprise')),
     CONSTRAINT check_organization_subscription_status
         CHECK (subscription_status IN ('trial','active','past_due','canceled','expired'))
 );

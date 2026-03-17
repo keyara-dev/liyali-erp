@@ -112,12 +112,55 @@ func CreateOrganizationUser(c *fiber.Ctx) error {
 		}
 	}
 
-	// Check if user already exists — run against config.DB before opening TX
-	// to avoid aborting the PostgreSQL transaction on a failed SELECT
+	// Email lookup — run against config.DB before opening TX to avoid aborting
+	// the PostgreSQL transaction on a failed SELECT.
+	// Three distinct cases are surfaced to the frontend:
+	//   1. No global account  → proceed to creation
+	//   2. Global account, already a member → hard block
+	//   3. Global account, not yet a member → invite flow (code: "email_has_global_account")
 	preCheckService := services.NewUserService(config.DB)
-	existingUser, err := preCheckService.GetUserByEmail(tenant.OrganizationID, req.Email)
-	if err == nil && existingUser != nil {
-		return utils.SendConflictError(c, "User with this email already exists")
+	emailLookup, err := preCheckService.LookupUserByEmailForOrg(tenant.OrganizationID, req.Email)
+	if err != nil {
+		logging.LogError(c, err, "email_lookup_failed", nil)
+		return utils.SendInternalError(c, "Failed to validate email", err)
+	}
+	if emailLookup.User != nil {
+		if emailLookup.IsMember {
+			return utils.SendConflictError(c, "This user is already a member of your organization")
+		}
+		// User has a platform account but belongs to a different org — prompt invite flow
+		return c.Status(fiber.StatusConflict).JSON(fiber.Map{
+			"success": false,
+			"message": "This email belongs to an existing Liyali user",
+			"code":    "email_has_global_account",
+			"data": fiber.Map{
+				"userId": emailLookup.User.ID,
+				"name":   emailLookup.User.Name,
+				"email":  emailLookup.User.Email,
+			},
+		})
+	}
+
+	// Man Number uniqueness within this organisation
+	var manCount int64
+	config.DB.Table("users").
+		Joins("JOIN organization_members ON organization_members.user_id = users.id").
+		Where("organization_members.organization_id = ? AND organization_members.active = true AND users.man_number = ? AND users.deleted_at IS NULL",
+			tenant.OrganizationID, req.ManNumber).
+		Count(&manCount)
+	if manCount > 0 {
+		return utils.SendConflictError(c, "A user with this Man Number already exists in this organization")
+	}
+
+	// NRC Number uniqueness within this organisation
+	var nrcCount int64
+	config.DB.Table("users").
+		Joins("JOIN organization_members ON organization_members.user_id = users.id").
+		Where("organization_members.organization_id = ? AND organization_members.active = true AND users.nrc_number = ? AND users.deleted_at IS NULL",
+			tenant.OrganizationID, req.NrcNumber).
+		Count(&nrcCount)
+	if nrcCount > 0 {
+		return utils.SendConflictError(c, "A user with this NRC Number already exists in this organization")
 	}
 
 	// Start transaction for atomic user creation
@@ -286,6 +329,46 @@ func UpdateOrganizationUser(c *fiber.Ctx) error {
 		Where("organization_id = ? AND user_id = ? AND active = true", tenant.OrganizationID, userID).
 		Count(&memberCount).Error; err != nil || memberCount == 0 {
 		return utils.SendNotFoundError(c, "User not found in this organization")
+	}
+
+	// Man Number uniqueness check (only when the field is being changed)
+	if req.ManNumber != "" {
+		var manCount int64
+		config.DB.Table("users").
+			Joins("JOIN organization_members ON organization_members.user_id = users.id").
+			Where("organization_members.organization_id = ? AND organization_members.active = true AND users.man_number = ? AND users.id != ? AND users.deleted_at IS NULL",
+				tenant.OrganizationID, req.ManNumber, userID).
+			Count(&manCount)
+		if manCount > 0 {
+			return utils.SendConflictError(c, "A user with this Man Number already exists in this organization")
+		}
+	}
+
+	// NRC Number uniqueness check (only when the field is being changed)
+	if req.NrcNumber != "" {
+		var nrcCount int64
+		config.DB.Table("users").
+			Joins("JOIN organization_members ON organization_members.user_id = users.id").
+			Where("organization_members.organization_id = ? AND organization_members.active = true AND users.nrc_number = ? AND users.id != ? AND users.deleted_at IS NULL",
+				tenant.OrganizationID, req.NrcNumber, userID).
+			Count(&nrcCount)
+		if nrcCount > 0 {
+			return utils.SendConflictError(c, "A user with this NRC Number already exists in this organization")
+		}
+	}
+
+	// Email uniqueness check (only when the email is being changed)
+	if req.Email != "" {
+		emailLookup, err := services.NewUserService(config.DB).LookupUserByEmailForOrg(tenant.OrganizationID, req.Email)
+		if err != nil {
+			return utils.SendInternalError(c, "Failed to validate email", err)
+		}
+		if emailLookup.User != nil && emailLookup.User.ID != userID {
+			if emailLookup.IsMember {
+				return utils.SendConflictError(c, "This email belongs to another member of your organization")
+			}
+			return utils.SendConflictError(c, "This email is already registered on the platform")
+		}
 	}
 
 	// Resolve role name from UUID if needed

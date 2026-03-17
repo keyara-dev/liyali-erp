@@ -45,7 +45,7 @@ SELECT
     'enterprise-corp',
     'Large enterprise organization for testing enterprise features',
     true,
-    'enterprise', 'custom', 'active',
+    'enterprise', 'enterprise', 'active',
     id,
     CURRENT_TIMESTAMP,             -- non-NULL: bypasses auto_start_trial trigger
     NULL, -1,

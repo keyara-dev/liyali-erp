@@ -14,7 +14,7 @@ export interface Organization {
   logoUrl?: string;
   tagline?: string;
   primaryColor?: string;
-  tier: "free" | "pro" | "enterprise";
+  tier: "starter" | "pro" | "enterprise";
   active: boolean;
   description?: string;
   createdAt: string;

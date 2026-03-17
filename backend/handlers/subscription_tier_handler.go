@@ -252,7 +252,7 @@ func ChangeOrganizationTier(c *fiber.Ctx) error {
 		"subscription_tier": request.NewTier,
 		"updated_at":        time.Now(),
 	}
-	if request.NewTier == "pro" || request.NewTier == "custom" {
+	if request.NewTier == "pro" || request.NewTier == "enterprise" {
 		updates["subscription_status"] = "active"
 		updates["trial_end_date"] = nil
 		updates["grace_period_ends_at"] = nil

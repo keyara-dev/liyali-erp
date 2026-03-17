@@ -2,10 +2,12 @@ package main
 
 import (
 	"context"
+	"log"
 	"os"
 	"os/signal"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/joho/godotenv"
@@ -134,6 +136,25 @@ func main() {
 	claimExpiryCtx, cancelClaimExpiry := context.WithCancel(context.Background())
 	defer cancelClaimExpiry()
 	go workflowExecutionService.StartClaimExpiryWorker(claimExpiryCtx)
+
+	// Start background worker to expire stale organization invitations (hourly)
+	invExpiryCtx, cancelInvExpiry := context.WithCancel(context.Background())
+	defer cancelInvExpiry()
+	go func() {
+		invSvc := services.NewInvitationService(config.DB)
+		ticker := time.NewTicker(time.Hour)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ticker.C:
+				if err := invSvc.ExpireStaleInvitations(); err != nil {
+					log.Printf("[InvitationExpiry] error: %v", err)
+				}
+			case <-invExpiryCtx.Done():
+				return
+			}
+		}
+	}()
 
 	// Initialize activity logging service
 	activityRepo := repository.NewActivityRepository(config.DB)

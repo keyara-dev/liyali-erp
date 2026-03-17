@@ -186,7 +186,7 @@ func (s *SubscriptionService) GetAllSubscriptionPlans() ([]SubscriptionPlan, err
 			plan.Slug = "STARTER_PLAN"
 		case "pro":
 			plan.Slug = "PRO_PLAN"
-		case "custom":
+		case "enterprise":
 			plan.Slug = "ENTERPRISE"
 		default:
 			plan.Slug = plan.Name
@@ -272,7 +272,7 @@ func (s *SubscriptionService) GetOrganizationTrialStatus(organizationID string) 
 	tierQuery := `SELECT COALESCE(subscription_tier, 'starter') FROM organizations WHERE id = $1`
 	_ = s.db.QueryRow(context.Background(), tierQuery, organizationID).Scan(&orgTier)
 
-	if orgTier == "pro" || orgTier == "custom" {
+	if orgTier == "pro" || orgTier == "enterprise" {
 		status.IsExpired = false
 		status.InGracePeriod = false
 		status.IsActive = true
@@ -333,7 +333,7 @@ func (s *SubscriptionService) UpgradeOrganization(organizationID string, request
 	// Map plan slug to subscription_tier value
 	tierMap := map[string]string{
 		"PRO_PLAN":    "pro",
-		"ENTERPRISE":  "custom",
+		"ENTERPRISE":  "enterprise",
 		"STARTER_PLAN": "starter",
 	}
 	newTier, ok := tierMap[targetPlanSlug]
@@ -343,7 +343,7 @@ func (s *SubscriptionService) UpgradeOrganization(organizationID string, request
 
 	// Upgrade the org: set tier + clear trial for paid plans
 	updates := `UPDATE organizations SET subscription_tier = $2, updated_at = CURRENT_TIMESTAMP`
-	if newTier == "pro" || newTier == "custom" {
+	if newTier == "pro" || newTier == "enterprise" {
 		updates += `, subscription_status = 'active', trial_end_date = NULL, grace_period_ends_at = NULL`
 	}
 	updates += ` WHERE id = $1`
