@@ -19,7 +19,7 @@ export function TrialExpiryBanner({ className }: TrialExpiryBannerProps) {
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [isDismissed, setIsDismissed] = useState(false);
 
-  const isPaidTier = currentOrganization?.tier === "pro" || currentOrganization?.tier === "custom";
+  const isPaidTier = currentOrganization?.tier === "pro" || currentOrganization?.tier === "enterprise";
 
   if (!trialInfo || isDismissed || isPaidTier) {
     return null;

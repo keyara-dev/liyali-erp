@@ -49,7 +49,7 @@ export function SubscriptionGuard({
 
   useEffect(() => {
     const isPaid =
-      currentOrganization?.tier === "pro" || currentOrganization?.tier === "custom";
+      currentOrganization?.tier === "pro" || currentOrganization?.tier === "enterprise";
     if (!isPaid && trialStatus?.isExpired && blockAccess && showUpgradeModal) {
       setShowModal(true);
     }
@@ -68,7 +68,7 @@ export function SubscriptionGuard({
 
   // Paid tiers are never trial-gated
   const isPaidTier =
-    currentOrganization?.tier === "pro" || currentOrganization?.tier === "custom";
+    currentOrganization?.tier === "pro" || currentOrganization?.tier === "enterprise";
 
   // Check if organization is in trial and expired
   const isTrialExpired =

@@ -18,7 +18,7 @@ export function TrialBottomBanner({ className }: TrialBottomBannerProps) {
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [isDismissed, setIsDismissed] = useState(false);
 
-  const isPaidTier = currentOrganization?.tier === "pro" || currentOrganization?.tier === "custom";
+  const isPaidTier = currentOrganization?.tier === "pro" || currentOrganization?.tier === "enterprise";
 
   if (!trialInfo || isDismissed || !currentOrganization || isPaidTier) {
     return null;
