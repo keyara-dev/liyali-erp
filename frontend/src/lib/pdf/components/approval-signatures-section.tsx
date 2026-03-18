@@ -57,15 +57,6 @@ export const ApprovalSignaturesSection: React.FC<
 
   const getDate = (r: ApprovalRecord) => r.approvedAt || r.actionTakenAt;
 
-  const getStageLabel = (r: ApprovalRecord, idx: number): string => {
-    if (r.stageName) {
-      return r.stageNumber != null
-        ? `${r.stageName} (Stage ${r.stageNumber})`
-        : r.stageName;
-    }
-    return r.stageNumber != null ? `Stage ${r.stageNumber}` : `Stage ${idx + 1}`;
-  };
-
   return (
     <View
       style={{
@@ -109,46 +100,6 @@ export const ApprovalSignaturesSection: React.FC<
               backgroundColor: "#f9fafb",
             }}
           >
-            {/* Stage label */}
-            <Text
-              style={{
-                fontSize: 6.5,
-                fontWeight: "bold",
-                color: "#1e40af",
-                marginBottom: 4,
-                textTransform: "uppercase",
-                letterSpacing: 0.3,
-              }}
-            >
-              {getStageLabel(r, idx)}
-            </Text>
-
-            {/* Approver name */}
-            <Text
-              style={{
-                fontSize: 9,
-                fontWeight: "bold",
-                color: "#111827",
-                marginBottom: 2,
-              }}
-            >
-              {getName(r)}
-            </Text>
-
-            {/* Position / role */}
-            {getRole(r) && (
-              <Text
-                style={{
-                  fontSize: 7,
-                  color: "#6b7280",
-                  fontStyle: "italic",
-                  marginBottom: 6,
-                }}
-              >
-                {getRole(r)}
-              </Text>
-            )}
-
             {/* Signature area */}
             <View
               style={{
@@ -173,9 +124,34 @@ export const ApprovalSignaturesSection: React.FC<
               )}
             </View>
 
+            {/* Approver name */}
+            <Text
+              style={{
+                fontSize: 9,
+                fontWeight: "bold",
+                color: "#111827",
+                marginBottom: 2,
+              }}
+            >
+              {getName(r)}
+            </Text>
+
+            {/* Position / role */}
+            {getRole(r) && (
+              <Text
+                style={{
+                  fontSize: 7,
+                  color: "#6b7280",
+                  fontStyle: "italic",
+                  marginBottom: 4,
+                }}
+              >
+                {getRole(r)}
+              </Text>
+            )}
+
             {/* Approval date */}
             <Text style={{ fontSize: 6.5, color: "#6b7280" }}>
-              <Text style={{ fontWeight: "bold" }}>Approved: </Text>
               {formatDate(getDate(r))}
             </Text>
           </View>
