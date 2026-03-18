@@ -151,12 +151,13 @@ func GetDocumentApprovalHistory(db *gorm.DB, entityID, entityType string) []type
 	for _, r := range records {
 		stageNum := r.StageNumber
 		role := r.ApproverRole
-		approvedAt := r.ApprovedAt
 		result = append(result, types.ApprovalRecord{
+			ApproverID:   r.ApproverID,
 			ApproverName: r.ApproverName,
 			Status:       r.Action,
+			Comments:     r.Comments,
 			Signature:    r.Signature,
-			ApprovedAt:   approvedAt,
+			ApprovedAt:   r.ApprovedAt,
 			StageNumber:  &stageNum,
 			AssignedRole: &role,
 		})

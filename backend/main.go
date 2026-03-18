@@ -168,7 +168,7 @@ func main() {
 	// Initialize session service (enriches session data with device/browser info)
 	sessionService := services.NewSessionService(sessionRepo)
 
-	documentService := services.NewDocumentService(documentRepo, auditService)
+	documentService := services.NewDocumentService(documentRepo, auditService, config.DB)
 
 	// Initialize subscription service
 	subscriptionService := services.NewSubscriptionService(config.PgxDB, logger)

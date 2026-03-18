@@ -9,13 +9,16 @@ import (
 	"github.com/google/uuid"
 	"github.com/liyali/liyali-gateway/models"
 	"github.com/liyali/liyali-gateway/repository"
+	"github.com/liyali/liyali-gateway/utils"
 	"gorm.io/datatypes"
+	"gorm.io/gorm"
 )
 
 // DocumentService handles generic document business logic
 type DocumentService struct {
 	documentRepo repository.DocumentRepositoryInterface
 	auditService *AuditService
+	db           *gorm.DB
 }
 
 // CreateDocumentRequest represents a document creation request
@@ -43,10 +46,11 @@ type UpdateDocumentRequest struct {
 }
 
 // NewDocumentService creates a new document service
-func NewDocumentService(documentRepo repository.DocumentRepositoryInterface, auditService *AuditService) *DocumentService {
+func NewDocumentService(documentRepo repository.DocumentRepositoryInterface, auditService *AuditService, db *gorm.DB) *DocumentService {
 	return &DocumentService{
 		documentRepo: documentRepo,
 		auditService: auditService,
+		db:           db,
 	}
 }
 
@@ -570,6 +574,11 @@ func (s *DocumentService) GetDocumentForPDFPublic(ctx context.Context, documentN
 		if err != nil {
 			return nil, fmt.Errorf("requisition not found: %w", err)
 		}
+		if s.db != nil {
+			if liveHistory := utils.GetDocumentApprovalHistory(s.db, requisition.ID, "requisition"); len(liveHistory) > 0 {
+				requisition.ApprovalHistory = datatypes.NewJSONType(liveHistory)
+			}
+		}
 		result.Document = requisition
 		orgID = requisition.OrganizationID
 
@@ -577,6 +586,11 @@ func (s *DocumentService) GetDocumentForPDFPublic(ctx context.Context, documentN
 		po, err := s.documentRepo.GetPurchaseOrderByNumberPublic(ctx, documentNumber)
 		if err != nil {
 			return nil, fmt.Errorf("purchase order not found: %w", err)
+		}
+		if s.db != nil {
+			if liveHistory := utils.GetDocumentApprovalHistory(s.db, po.ID, "purchase_order"); len(liveHistory) > 0 {
+				po.ApprovalHistory = datatypes.NewJSONType(liveHistory)
+			}
 		}
 		result.Document = po
 		orgID = po.OrganizationID
@@ -586,6 +600,11 @@ func (s *DocumentService) GetDocumentForPDFPublic(ctx context.Context, documentN
 		if err != nil {
 			return nil, fmt.Errorf("payment voucher not found: %w", err)
 		}
+		if s.db != nil {
+			if liveHistory := utils.GetDocumentApprovalHistory(s.db, pv.ID, "payment_voucher"); len(liveHistory) > 0 {
+				pv.ApprovalHistory = datatypes.NewJSONType(liveHistory)
+			}
+		}
 		result.Document = pv
 		orgID = pv.OrganizationID
 
@@ -593,6 +612,11 @@ func (s *DocumentService) GetDocumentForPDFPublic(ctx context.Context, documentN
 		grn, err := s.documentRepo.GetGRNByNumberPublic(ctx, documentNumber)
 		if err != nil {
 			return nil, fmt.Errorf("GRN not found: %w", err)
+		}
+		if s.db != nil {
+			if liveHistory := utils.GetDocumentApprovalHistory(s.db, grn.ID, "grn"); len(liveHistory) > 0 {
+				grn.ApprovalHistory = datatypes.NewJSONType(liveHistory)
+			}
 		}
 		result.Document = grn
 		orgID = grn.OrganizationID
