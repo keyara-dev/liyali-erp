@@ -228,9 +228,13 @@ func GetGRN(c *fiber.Ctx) error {
 		})
 	}
 
+	response := modelToGRNResponse(grn)
+	if liveHistory := utils.GetDocumentApprovalHistory(config.DB, grn.ID, "grn"); len(liveHistory) > 0 {
+		response.ApprovalHistory = liveHistory
+	}
 	return c.JSON(types.DetailResponse{
 		Success: true,
-		Data:    modelToGRNResponse(grn),
+		Data:    response,
 	})
 }
 

@@ -372,9 +372,13 @@ func GetRequisition(c *fiber.Ctx) error {
 		})
 	}
 
+	response := modelToRequisitionResponse(requisition)
+	if liveHistory := utils.GetDocumentApprovalHistory(config.DB, requisition.ID, "requisition"); len(liveHistory) > 0 {
+		response.ApprovalHistory = liveHistory
+	}
 	return c.JSON(types.DetailResponse{
 		Success: true,
-		Data:    modelToRequisitionResponse(requisition),
+		Data:    response,
 	})
 }
 

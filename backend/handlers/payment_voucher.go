@@ -245,9 +245,13 @@ func GetPaymentVoucher(c *fiber.Ctx) error {
 		})
 	}
 
+	response := modelToPaymentVoucherResponse(voucher)
+	if liveHistory := utils.GetDocumentApprovalHistory(config.DB, voucher.ID, "payment_voucher"); len(liveHistory) > 0 {
+		response.ApprovalHistory = liveHistory
+	}
 	return c.JSON(types.DetailResponse{
 		Success: true,
-		Data:    modelToPaymentVoucherResponse(voucher),
+		Data:    response,
 	})
 }
 

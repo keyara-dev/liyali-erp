@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/liyali/liyali-gateway/models"
+	"github.com/liyali/liyali-gateway/types"
 	"gorm.io/gorm"
 )
 
@@ -134,4 +135,31 @@ func (s DocumentScope) ApplyToQuery(query *gorm.DB, ownerField, entityType, extr
 		ownerField+" = ? OR "+involvedSQL,
 		allArgs...,
 	)
+}
+
+// GetDocumentApprovalHistory fetches live approval history for a document by querying
+// stage_approval_records joined through workflow_tasks (entity_id + entity_type).
+// This is needed because documents' ApprovalHistory JSONB field is never updated after creation.
+func GetDocumentApprovalHistory(db *gorm.DB, entityID, entityType string) []types.ApprovalRecord {
+	var records []models.StageApprovalRecord
+	db.Joins("JOIN workflow_tasks ON workflow_tasks.id = stage_approval_records.workflow_task_id").
+		Where("workflow_tasks.entity_id = ? AND workflow_tasks.entity_type = ?", entityID, entityType).
+		Order("stage_approval_records.stage_number ASC, stage_approval_records.approved_at ASC").
+		Find(&records)
+
+	result := make([]types.ApprovalRecord, 0, len(records))
+	for _, r := range records {
+		stageNum := r.StageNumber
+		role := r.ApproverRole
+		approvedAt := r.ApprovedAt
+		result = append(result, types.ApprovalRecord{
+			ApproverName: r.ApproverName,
+			Status:       r.Action,
+			Signature:    r.Signature,
+			ApprovedAt:   approvedAt,
+			StageNumber:  &stageNum,
+			AssignedRole: &role,
+		})
+	}
+	return result
 }

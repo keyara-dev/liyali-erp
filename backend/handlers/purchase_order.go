@@ -299,9 +299,13 @@ func GetPurchaseOrder(c *fiber.Ctx) error {
 
 	logger.Info("purchase_order_retrieved_successfully")
 
+	response := modelToPurchaseOrderResponse(order)
+	if liveHistory := utils.GetDocumentApprovalHistory(config.DB, order.ID, "purchase_order"); len(liveHistory) > 0 {
+		response.ApprovalHistory = liveHistory
+	}
 	return c.JSON(types.DetailResponse{
 		Success: true,
-		Data:    modelToPurchaseOrderResponse(order),
+		Data:    response,
 	})
 }
 
