@@ -562,7 +562,7 @@ export function ApprovalChainContent({
       )}
 
       {/* Available Approvers Section */}
-      {availableApprovers.length > 0 && (
+      {availableApprovers.length > 0 && workflowStatus?.status !== "completed" && (
         <div className="border-t pt-4">
           <h4 className="font-semibold text-sm text-gray-700 mb-3 flex items-center gap-2">
             <User className="h-4 w-4" />
