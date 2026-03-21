@@ -137,28 +137,62 @@ func (s DocumentScope) ApplyToQuery(query *gorm.DB, ownerField, entityType, extr
 	)
 }
 
-// GetDocumentApprovalHistory fetches live approval history for a document by querying
-// stage_approval_records joined through workflow_tasks (entity_id + entity_type).
-// This is needed because documents' ApprovalHistory JSONB field is never updated after creation.
+// GetDocumentApprovalHistory fetches live approval history for a document.
+// Primary source: stage_approval_records joined through workflow_tasks.
+// Fallback source: WorkflowAssignment.StageHistory (used when stage_approval_records is empty,
+// e.g. on the public verify endpoint which has no auth context).
 func GetDocumentApprovalHistory(db *gorm.DB, entityID, entityType string) []types.ApprovalRecord {
+	// PRIMARY: stage_approval_records
 	var records []models.StageApprovalRecord
 	db.Joins("JOIN workflow_tasks ON workflow_tasks.id = stage_approval_records.workflow_task_id").
 		Where("workflow_tasks.entity_id = ? AND workflow_tasks.entity_type = ?", entityID, entityType).
 		Order("stage_approval_records.stage_number ASC, stage_approval_records.approved_at ASC").
 		Find(&records)
 
-	result := make([]types.ApprovalRecord, 0, len(records))
-	for _, r := range records {
-		stageNum := r.StageNumber
-		role := r.ApproverRole
+	if len(records) > 0 {
+		result := make([]types.ApprovalRecord, 0, len(records))
+		for _, r := range records {
+			stageNum := r.StageNumber
+			role := r.ApproverRole
+			result = append(result, types.ApprovalRecord{
+				ApproverID:   r.ApproverID,
+				ApproverName: r.ApproverName,
+				Status:       r.Action,
+				Comments:     r.Comments,
+				Signature:    r.Signature,
+				ApprovedAt:   r.ApprovedAt,
+				StageNumber:  &stageNum,
+				AssignedRole: &role,
+			})
+		}
+		return result
+	}
+
+	// FALLBACK: WorkflowAssignment.StageHistory (most recent assignment for this document)
+	var assignment models.WorkflowAssignment
+	if err := db.Where("entity_id = ? AND LOWER(entity_type) = LOWER(?)", entityID, entityType).
+		Order("created_at DESC").
+		First(&assignment).Error; err != nil {
+		return nil
+	}
+	stageHistory, err := assignment.GetStageHistory()
+	if err != nil || len(stageHistory) == 0 {
+		return nil
+	}
+	result := make([]types.ApprovalRecord, 0, len(stageHistory))
+	for _, e := range stageHistory {
+		stageNum := e.StageNumber
+		stageName := e.StageName
+		role := e.ApproverRole
 		result = append(result, types.ApprovalRecord{
-			ApproverID:   r.ApproverID,
-			ApproverName: r.ApproverName,
-			Status:       r.Action,
-			Comments:     r.Comments,
-			Signature:    r.Signature,
-			ApprovedAt:   r.ApprovedAt,
+			ApproverID:   e.ApproverID,
+			ApproverName: e.ApproverName,
+			Status:       e.Action,
+			Comments:     e.Comments,
+			Signature:    e.Signature,
+			ApprovedAt:   e.ExecutedAt,
 			StageNumber:  &stageNum,
+			StageName:    &stageName,
 			AssignedRole: &role,
 		})
 	}

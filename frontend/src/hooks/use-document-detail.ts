@@ -119,15 +119,39 @@ export function useDocumentDetail<
   const storage = config.useStorage?.();
 
   // Handlers
+  // Enriches a document with approvalHistory from workflowStatus.stageProgress when
+  // the document's own approvalHistory field is empty (the JSONB field is never updated after creation).
+  const buildPdfData = (dataToUse: TDocument): TDocument => {
+    if ((dataToUse as any).approvalHistory?.length) return dataToUse;
+    const stageProgress = approvalData?.workflowStatus?.stageProgress as any[] | undefined;
+    const approvedStages =
+      stageProgress?.filter(
+        (s: any) => (s.status === "approved" || s.status === "APPROVED") && s.approverName,
+      ) ?? [];
+    if (approvedStages.length === 0) return dataToUse;
+    return {
+      ...dataToUse,
+      approvalHistory: approvedStages.map((s: any) => ({
+        approverName: s.approverName,
+        assignedRole: s.approverRole || s.requiredRole,
+        status: "approved",
+        approvedAt: s.completedAt,
+        comments: s.comments || "",
+        stageNumber: s.stageNumber,
+        stageName: s.stageName,
+      })),
+    };
+  };
+
   const handlePreviewPDF = async () => {
     if (!document) return;
     try {
       setIsExporting(true);
 
       const { data: latestDocument } = await refetch();
-      const dataToUse = latestDocument || document;
+      const pdfData = buildPdfData(latestDocument || document);
 
-      const blob = await config.getPDFBlob(dataToUse, {
+      const blob = await config.getPDFBlob(pdfData, {
         logoUrl: currentOrganization?.logoUrl,
         orgName: currentOrganization?.name,
         tagline: currentOrganization?.tagline,
@@ -148,9 +172,9 @@ export function useDocumentDetail<
       setIsExporting(true);
 
       const { data: latestDocument } = await refetch();
-      const dataToUse = latestDocument || document;
+      const pdfData = buildPdfData(latestDocument || document);
 
-      await config.exportPDF(dataToUse, {
+      await config.exportPDF(pdfData, {
         logoUrl: currentOrganization?.logoUrl,
         orgName: currentOrganization?.name,
         tagline: currentOrganization?.tagline,
