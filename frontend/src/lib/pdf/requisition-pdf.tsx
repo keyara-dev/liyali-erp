@@ -636,36 +636,14 @@ const RequisitionPDF: React.FC<RequisitionPDFProps> = ({
           </View>
         )}
 
-        {/* Attachments Section */}
-        {(() => {
-          const attachments: RequisitionAttachment[] =
-            requisition.attachments ||
-            (requisition.metadata?.attachments as RequisitionAttachment[]) ||
-            [];
-          if (attachments.length === 0) return null;
-          return (
-            <View style={{ marginBottom: 10 }}>
-              <Text
-                style={{
-                  fontSize: 9,
-                  fontWeight: "bold",
-                  marginBottom: 4,
-                  color: "#666",
-                }}
-              >
-                SUPPORTING DOCUMENTS ({attachments.length})
-              </Text>
-              {attachments.map((att, i) => (
-                <Text
-                  key={att.fileId}
-                  style={{ fontSize: 8, marginBottom: 2, color: "#1e40af" }}
-                >
-                  {i + 1}. {att.fileName}
-                </Text>
-              ))}
-            </View>
-          );
-        })()}
+        {/* Approval Signatures Section */}
+        {requisition.approvalHistory &&
+          requisition.approvalHistory.length > 0 && (
+            <ApprovalSignaturesSection
+              approvalHistory={requisition.approvalHistory}
+              documentType="Requisition"
+            />
+          )}
 
         {/* QR Code and Tracking Information */}
         <View
@@ -711,15 +689,6 @@ const RequisitionPDF: React.FC<RequisitionPDFProps> = ({
             </Text>
           </View>
         </View>
-
-        {/* Approval Signatures Section */}
-        {requisition.approvalHistory &&
-          requisition.approvalHistory.length > 0 && (
-            <ApprovalSignaturesSection
-              approvalHistory={requisition.approvalHistory}
-              documentType="Requisition"
-            />
-          )}
 
         {/* Footer */}
         <PDFFooter />

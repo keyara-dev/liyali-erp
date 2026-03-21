@@ -480,88 +480,12 @@ const PurchaseOrderPDF: React.FC<PurchaseOrderPDFProps> = ({
         )}
 
         {/* APPROVAL CHAIN */}
-        {purchaseOrder.approvalChain &&
-          purchaseOrder.approvalChain.length > 0 && (
-            <View
-              style={{
-                marginBottom: 20,
-                borderWidth: 1,
-                borderColor: "#1e40af",
-                padding: 10,
-              }}
-            >
-              <Text
-                style={{
-                  fontSize: 11,
-                  fontWeight: "bold",
-                  backgroundColor: "#dbeafe",
-                  padding: 5,
-                  marginBottom: 10,
-                }}
-              >
-                APPROVAL CHAIN
-              </Text>
-
-              <View
-                style={{
-                  display: "flex",
-                  flexDirection: "row",
-                  gap: 10,
-                  flexWrap: "wrap",
-                }}
-              >
-                {purchaseOrder.approvalChain.map(
-                  (stage: any, index: number) => (
-                    <View
-                      key={index}
-                      style={{
-                        flex: index % 2 === 0 ? 1 : 1,
-                        minWidth: "45%",
-                        borderWidth: 1,
-                        borderColor: "#ddd",
-                        padding: 8,
-                        marginBottom: 8,
-                      }}
-                    >
-                      <Text
-                        style={{
-                          fontSize: 8,
-                          fontWeight: "bold",
-                          marginBottom: 3,
-                          color: "#1e40af",
-                        }}
-                      >
-                        {stage.stageName || `Stage ${stage.stageNumber}`}
-                      </Text>
-                      <Text style={{ fontSize: 8, marginBottom: 2 }}>
-                        Assigned to: {stage.assignedTo}
-                      </Text>
-                      <Text style={{ fontSize: 8, marginBottom: 4 }}>
-                        Status: {stage.status}
-                      </Text>
-                      {stage.actionTakenAt && (
-                        <Text style={{ fontSize: 7, color: "#666" }}>
-                          Approved:{" "}
-                          {new Date(stage.actionTakenAt).toLocaleDateString()}
-                        </Text>
-                      )}
-                      {stage.signature && (
-                        <Text
-                          style={{
-                            fontSize: 7,
-                            fontStyle: "italic",
-                            color: "#999",
-                            marginTop: 3,
-                          }}
-                        >
-                          Signature: {stage.signature}
-                        </Text>
-                      )}
-                    </View>
-                  ),
-                )}
-              </View>
-            </View>
+        {purchaseOrder.approvalHistory &&
+          purchaseOrder.approvalHistory.length > 0 && (
+            <ApprovalSignaturesSection
+              approvalHistory={purchaseOrder.approvalHistory}
+              documentType="Purchase Order"
+            />
           )}
 
         {/* QR Code and Tracking Information */}
@@ -608,15 +532,6 @@ const PurchaseOrderPDF: React.FC<PurchaseOrderPDFProps> = ({
             </Text>
           </View>
         </View>
-
-        {/* Approval Signatures Section */}
-        {purchaseOrder.approvalHistory &&
-          purchaseOrder.approvalHistory.length > 0 && (
-            <ApprovalSignaturesSection
-              approvalHistory={purchaseOrder.approvalHistory}
-              documentType="Purchase Order"
-            />
-          )}
 
         {/* Footer */}
         <PDFFooter />

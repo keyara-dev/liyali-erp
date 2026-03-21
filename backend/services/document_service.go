@@ -579,6 +579,35 @@ func (s *DocumentService) GetDocumentForPDFPublic(ctx context.Context, documentN
 				requisition.ApprovalHistory = datatypes.NewJSONType(liveHistory)
 			}
 		}
+		// Populate virtual fields from preloaded relations so PDF rendering works correctly.
+		if requisition.Category != nil {
+			requisition.CategoryName = requisition.Category.Name
+		} else if len(requisition.Metadata) > 0 {
+			// Fall back to category name stored in metadata at creation time
+			var metaMap map[string]interface{}
+			if json.Unmarshal(requisition.Metadata, &metaMap) == nil {
+				if val, ok := metaMap["categoryName"].(string); ok {
+					requisition.CategoryName = val
+				}
+			}
+		}
+		if requisition.PreferredVendor != nil {
+			requisition.PreferredVendorName = requisition.PreferredVendor.Name
+		}
+		// RequesterName is a real DB column (created_by_name) — use it for computed aliases.
+		requisition.RequestedByName = requisition.RequesterName
+		requisition.CreatedByName = requisition.RequesterName
+		requisition.RequestedBy = requisition.RequesterId
+		requisition.CreatedBy = requisition.RequesterId
+		requisition.RequestedDate = requisition.CreatedAt
+		if requisition.Requester != nil {
+			if requisition.Requester.Name != "" {
+				requisition.RequestedByName = requisition.Requester.Name
+				requisition.CreatedByName = requisition.Requester.Name
+			}
+			requisition.RequestedByRole = requisition.Requester.Role
+			requisition.CreatedByRole = requisition.Requester.Role
+		}
 		result.Document = requisition
 		orgID = requisition.OrganizationID
 
@@ -592,6 +621,10 @@ func (s *DocumentService) GetDocumentForPDFPublic(ctx context.Context, documentN
 				po.ApprovalHistory = datatypes.NewJSONType(liveHistory)
 			}
 		}
+		// Populate virtual VendorName from preloaded Vendor relation.
+		if po.Vendor != nil {
+			po.VendorName = po.Vendor.Name
+		}
 		result.Document = po
 		orgID = po.OrganizationID
 
@@ -604,6 +637,10 @@ func (s *DocumentService) GetDocumentForPDFPublic(ctx context.Context, documentN
 			if liveHistory := utils.GetDocumentApprovalHistory(s.db, pv.ID, "payment_voucher"); len(liveHistory) > 0 {
 				pv.ApprovalHistory = datatypes.NewJSONType(liveHistory)
 			}
+		}
+		// VendorName may be empty if the column was never written; fall back to preloaded Vendor.
+		if pv.VendorName == "" && pv.Vendor != nil {
+			pv.VendorName = pv.Vendor.Name
 		}
 		result.Document = pv
 		orgID = pv.OrganizationID
