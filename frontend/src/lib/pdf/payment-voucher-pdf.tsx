@@ -1,5 +1,5 @@
 import React from "react";
-import { Document, Page, Text, View, Image } from "@react-pdf/renderer";
+import { Document, Page, Text, View } from "@react-pdf/renderer";
 import { PaymentVoucher } from "@/types/payment-voucher";
 import { pdfStyles } from "./pdf-styles";
 import { generateDocumentQRData } from "./qr-utils";
@@ -42,7 +42,6 @@ const getStatusColor = (status: string) => {
 const PaymentVoucherPDF: React.FC<PaymentVoucherPDFProps> = ({
   paymentVoucher,
   qrCodeUrl,
-  organizationLogoUrl,
   documentHeader,
 }) => {
   const documentNumber = paymentVoucher.documentNumber;
@@ -69,6 +68,8 @@ const PaymentVoucherPDF: React.FC<PaymentVoucherPDFProps> = ({
           style={[
             pdfStyles.header,
             {
+              marginBottom: 16,
+              paddingBottom: 10,
               flexDirection: "row",
               justifyContent: "space-between",
             },
@@ -83,7 +84,7 @@ const PaymentVoucherPDF: React.FC<PaymentVoucherPDFProps> = ({
             </Text>
           </View>
 
-          {/* STATUS AND PRIORITY BADGES */}
+          {/* STATUS BADGE */}
           <View style={{ textAlign: "right" }}>
             <Text style={{ fontSize: 7, fontWeight: "bold", marginBottom: 1 }}>
               STATUS
@@ -106,14 +107,14 @@ const PaymentVoucherPDF: React.FC<PaymentVoucherPDFProps> = ({
         {/* Payment Instruction Box */}
         <View
           style={{
-            marginBottom: 15,
-            padding: 8,
+            marginBottom: 10,
+            padding: 6,
             backgroundColor: "#fef3c7",
             borderWidth: 1,
             borderColor: "#fcd34d",
           }}
         >
-          <Text style={{ fontSize: 8, fontWeight: "bold", marginBottom: 3 }}>
+          <Text style={{ fontSize: 7.5, fontWeight: "bold", marginBottom: 2 }}>
             PAYMENT INSTRUCTIONS:
           </Text>
           <Text style={{ fontSize: 7, lineHeight: 1.4 }}>
@@ -126,19 +127,19 @@ const PaymentVoucherPDF: React.FC<PaymentVoucherPDFProps> = ({
         {/* SECTION 1: PAYEE & PAYMENT INFORMATION */}
         <View
           style={{
-            marginBottom: 20,
+            marginBottom: 12,
             borderWidth: 1,
             borderColor: "#1e40af",
-            padding: 10,
+            padding: 7,
           }}
         >
           <Text
             style={{
-              fontSize: 11,
+              fontSize: 9,
               fontWeight: "bold",
               backgroundColor: "#dbeafe",
-              padding: 5,
-              marginBottom: 10,
+              padding: 3,
+              marginBottom: 6,
             }}
           >
             SECTION 1: PAYEE & PAYMENT INFORMATION
@@ -148,52 +149,52 @@ const PaymentVoucherPDF: React.FC<PaymentVoucherPDFProps> = ({
             style={{
               display: "flex",
               flexDirection: "row",
-              gap: 20,
-              marginBottom: 12,
+              gap: 12,
+              marginBottom: 7,
             }}
           >
             <View style={{ flex: 1 }}>
               <Text
                 style={{
-                  fontSize: 8,
+                  fontSize: 7,
                   fontWeight: "bold",
-                  marginBottom: 2,
+                  marginBottom: 1,
                   color: "#666",
                 }}
               >
                 PAYEE NAME
               </Text>
-              <Text style={{ fontSize: 10 }}>
+              <Text style={{ fontSize: 9 }}>
                 {paymentVoucher.vendorName || "—"}
               </Text>
             </View>
             <View style={{ flex: 1 }}>
               <Text
                 style={{
-                  fontSize: 8,
+                  fontSize: 7,
                   fontWeight: "bold",
-                  marginBottom: 2,
+                  marginBottom: 1,
                   color: "#666",
                 }}
               >
                 PAYMENT METHOD
               </Text>
-              <Text style={{ fontSize: 10 }}>
+              <Text style={{ fontSize: 9 }}>
                 {paymentVoucher.paymentMethod || "—"}
               </Text>
             </View>
             <View style={{ flex: 1 }}>
               <Text
                 style={{
-                  fontSize: 8,
+                  fontSize: 7,
                   fontWeight: "bold",
-                  marginBottom: 2,
+                  marginBottom: 1,
                   color: "#666",
                 }}
               >
                 PAYMENT DUE DATE
               </Text>
-              <Text style={{ fontSize: 10 }}>
+              <Text style={{ fontSize: 9 }}>
                 {paymentVoucher.paymentDueDate
                   ? new Date(paymentVoucher.paymentDueDate).toLocaleDateString()
                   : "—"}
@@ -202,12 +203,12 @@ const PaymentVoucherPDF: React.FC<PaymentVoucherPDFProps> = ({
           </View>
 
           {/* Description */}
-          <View style={{ marginBottom: 12 }}>
+          <View style={{ marginBottom: 7 }}>
             <Text
               style={{
-                fontSize: 8,
+                fontSize: 7,
                 fontWeight: "bold",
-                marginBottom: 2,
+                marginBottom: 1,
                 color: "#666",
               }}
             >
@@ -219,49 +220,49 @@ const PaymentVoucherPDF: React.FC<PaymentVoucherPDFProps> = ({
           </View>
 
           {/* Source and Amount Row */}
-          <View style={{ display: "flex", flexDirection: "row", gap: 20 }}>
+          <View style={{ display: "flex", flexDirection: "row", gap: 12 }}>
             <View style={{ flex: 1 }}>
               <Text
                 style={{
-                  fontSize: 8,
+                  fontSize: 7,
                   fontWeight: "bold",
-                  marginBottom: 2,
+                  marginBottom: 1,
                   color: "#666",
                 }}
               >
                 SOURCE PO
               </Text>
-              <Text style={{ fontSize: 10 }}>
+              <Text style={{ fontSize: 9 }}>
                 {paymentVoucher.linkedPO || "—"}
               </Text>
             </View>
             <View style={{ flex: 1 }}>
               <Text
                 style={{
-                  fontSize: 8,
+                  fontSize: 7,
                   fontWeight: "bold",
-                  marginBottom: 2,
+                  marginBottom: 1,
                   color: "#666",
                 }}
               >
                 VENDOR ID
               </Text>
-              <Text style={{ fontSize: 10 }}>
+              <Text style={{ fontSize: 9 }}>
                 {paymentVoucher.vendorId || "—"}
               </Text>
             </View>
             <View style={{ flex: 1 }}>
               <Text
                 style={{
-                  fontSize: 8,
+                  fontSize: 7,
                   fontWeight: "bold",
-                  marginBottom: 2,
+                  marginBottom: 1,
                   color: "#666",
                 }}
               >
                 REQUEST DATE
               </Text>
-              <Text style={{ fontSize: 10 }}>
+              <Text style={{ fontSize: 9 }}>
                 {paymentVoucher.requestedDate
                   ? new Date(paymentVoucher.requestedDate).toLocaleDateString()
                   : "—"}
@@ -274,32 +275,32 @@ const PaymentVoucherPDF: React.FC<PaymentVoucherPDFProps> = ({
             paymentVoucher.bankDetails && (
               <View
                 style={{
-                  marginTop: 12,
-                  paddingTop: 10,
+                  marginTop: 8,
+                  paddingTop: 6,
                   borderTopWidth: 1,
                   borderTopColor: "#ddd",
                 }}
               >
                 <Text
                   style={{
-                    fontSize: 8,
+                    fontSize: 7.5,
                     fontWeight: "bold",
-                    marginBottom: 4,
+                    marginBottom: 3,
                     color: "#1e40af",
                   }}
                 >
                   BANK TRANSFER DETAILS:
                 </Text>
                 <View
-                  style={{ display: "flex", flexDirection: "row", gap: 20 }}
+                  style={{ display: "flex", flexDirection: "row", gap: 12 }}
                 >
                   {paymentVoucher.bankDetails.bankName && (
                     <View style={{ flex: 1 }}>
                       <Text
                         style={{
-                          fontSize: 8,
+                          fontSize: 7,
                           fontWeight: "bold",
-                          marginBottom: 2,
+                          marginBottom: 1,
                           color: "#666",
                         }}
                       >
@@ -314,9 +315,9 @@ const PaymentVoucherPDF: React.FC<PaymentVoucherPDFProps> = ({
                     <View style={{ flex: 1 }}>
                       <Text
                         style={{
-                          fontSize: 8,
+                          fontSize: 7,
                           fontWeight: "bold",
-                          marginBottom: 2,
+                          marginBottom: 1,
                           color: "#666",
                         }}
                       >
@@ -331,9 +332,9 @@ const PaymentVoucherPDF: React.FC<PaymentVoucherPDFProps> = ({
                     <View style={{ flex: 1 }}>
                       <Text
                         style={{
-                          fontSize: 8,
+                          fontSize: 7,
                           fontWeight: "bold",
-                          marginBottom: 2,
+                          marginBottom: 1,
                           color: "#666",
                         }}
                       >
@@ -351,8 +352,8 @@ const PaymentVoucherPDF: React.FC<PaymentVoucherPDFProps> = ({
 
         {/* Line Items Table (if applicable) */}
         {paymentVoucher.items && paymentVoucher.items.length > 0 && (
-          <View style={{ marginBottom: 20 }}>
-            <Text style={{ fontSize: 10, fontWeight: "bold", marginBottom: 8 }}>
+          <View style={{ marginBottom: 10 }}>
+            <Text style={{ fontSize: 9, fontWeight: "bold", marginBottom: 4 }}>
               PAYMENT BREAKDOWN:
             </Text>
 
@@ -376,8 +377,9 @@ const PaymentVoucherPDF: React.FC<PaymentVoucherPDFProps> = ({
                 <Text
                   style={{
                     flex: 0.5,
-                    padding: 5,
-                    fontSize: 8,
+                    paddingVertical: 3,
+                    paddingHorizontal: 4,
+                    fontSize: 7.5,
                     fontWeight: "bold",
                     color: "#1e40af",
                     textAlign: "center",
@@ -388,8 +390,9 @@ const PaymentVoucherPDF: React.FC<PaymentVoucherPDFProps> = ({
                 <Text
                   style={{
                     flex: 2,
-                    padding: 5,
-                    fontSize: 8,
+                    paddingVertical: 3,
+                    paddingHorizontal: 4,
+                    fontSize: 7.5,
                     fontWeight: "bold",
                     color: "#1e40af",
                     borderLeftWidth: 1,
@@ -401,8 +404,9 @@ const PaymentVoucherPDF: React.FC<PaymentVoucherPDFProps> = ({
                 <Text
                   style={{
                     flex: 1,
-                    padding: 5,
-                    fontSize: 8,
+                    paddingVertical: 3,
+                    paddingHorizontal: 4,
+                    fontSize: 7.5,
                     fontWeight: "bold",
                     color: "#1e40af",
                     textAlign: "center",
@@ -415,8 +419,9 @@ const PaymentVoucherPDF: React.FC<PaymentVoucherPDFProps> = ({
                 <Text
                   style={{
                     flex: 1,
-                    padding: 5,
-                    fontSize: 8,
+                    paddingVertical: 3,
+                    paddingHorizontal: 4,
+                    fontSize: 7.5,
                     fontWeight: "bold",
                     color: "#1e40af",
                     textAlign: "right",
@@ -429,8 +434,9 @@ const PaymentVoucherPDF: React.FC<PaymentVoucherPDFProps> = ({
                 <Text
                   style={{
                     flex: 1,
-                    padding: 5,
-                    fontSize: 8,
+                    paddingVertical: 3,
+                    paddingHorizontal: 4,
+                    fontSize: 7.5,
                     fontWeight: "bold",
                     color: "#1e40af",
                     textAlign: "right",
@@ -456,8 +462,9 @@ const PaymentVoucherPDF: React.FC<PaymentVoucherPDFProps> = ({
                   <Text
                     style={{
                       flex: 0.5,
-                      padding: 5,
-                      fontSize: 8,
+                      paddingVertical: 2,
+                      paddingHorizontal: 4,
+                      fontSize: 7.5,
                       color: "#1f2937",
                       textAlign: "center",
                     }}
@@ -467,8 +474,9 @@ const PaymentVoucherPDF: React.FC<PaymentVoucherPDFProps> = ({
                   <Text
                     style={{
                       flex: 2,
-                      padding: 5,
-                      fontSize: 8,
+                      paddingVertical: 2,
+                      paddingHorizontal: 4,
+                      fontSize: 7.5,
                       color: "#1f2937",
                       borderLeftWidth: 1,
                       borderLeftColor: "#e5e7eb",
@@ -479,8 +487,9 @@ const PaymentVoucherPDF: React.FC<PaymentVoucherPDFProps> = ({
                   <Text
                     style={{
                       flex: 1,
-                      padding: 5,
-                      fontSize: 8,
+                      paddingVertical: 2,
+                      paddingHorizontal: 4,
+                      fontSize: 7.5,
                       color: "#1f2937",
                       textAlign: "center",
                       borderLeftWidth: 1,
@@ -492,8 +501,9 @@ const PaymentVoucherPDF: React.FC<PaymentVoucherPDFProps> = ({
                   <Text
                     style={{
                       flex: 1,
-                      padding: 5,
-                      fontSize: 8,
+                      paddingVertical: 2,
+                      paddingHorizontal: 4,
+                      fontSize: 7.5,
                       color: "#1f2937",
                       textAlign: "right",
                       borderLeftWidth: 1,
@@ -506,8 +516,9 @@ const PaymentVoucherPDF: React.FC<PaymentVoucherPDFProps> = ({
                   <Text
                     style={{
                       flex: 1,
-                      padding: 5,
-                      fontSize: 8,
+                      paddingVertical: 2,
+                      paddingHorizontal: 4,
+                      fontSize: 7.5,
                       color: "#1f2937",
                       textAlign: "right",
                       borderLeftWidth: 1,
@@ -527,8 +538,8 @@ const PaymentVoucherPDF: React.FC<PaymentVoucherPDFProps> = ({
                 display: "flex",
                 flexDirection: "row",
                 justifyContent: "flex-end",
-                marginTop: 15,
-                paddingTop: 10,
+                marginTop: 6,
+                paddingTop: 4,
               }}
             >
               <View style={{ width: "35%" }}>
@@ -537,14 +548,14 @@ const PaymentVoucherPDF: React.FC<PaymentVoucherPDFProps> = ({
                     display: "flex",
                     flexDirection: "row",
                     justifyContent: "space-between",
-                    paddingBottom: 5,
+                    paddingBottom: 4,
                     borderBottomWidth: 2,
                     borderBottomColor: "#1e40af",
                   }}
                 >
                   <Text
                     style={{
-                      fontSize: 9,
+                      fontSize: 8,
                       fontWeight: "bold",
                       color: "#1f2937",
                     }}
@@ -553,7 +564,7 @@ const PaymentVoucherPDF: React.FC<PaymentVoucherPDFProps> = ({
                   </Text>
                   <Text
                     style={{
-                      fontSize: 11,
+                      fontSize: 10,
                       fontWeight: "bold",
                       color: "#166534",
                     }}
@@ -571,32 +582,32 @@ const PaymentVoucherPDF: React.FC<PaymentVoucherPDFProps> = ({
         {(paymentVoucher.budgetCode || paymentVoucher.costCenter) && (
           <View
             style={{
-              marginBottom: 20,
+              marginBottom: 12,
               borderWidth: 1,
               borderColor: "#1e40af",
-              padding: 10,
+              padding: 7,
             }}
           >
             <Text
               style={{
-                fontSize: 11,
+                fontSize: 9,
                 fontWeight: "bold",
                 backgroundColor: "#dbeafe",
-                padding: 5,
-                marginBottom: 10,
+                padding: 3,
+                marginBottom: 6,
               }}
             >
               BUDGET ALLOCATION DETAILS
             </Text>
 
-            <View style={{ display: "flex", flexDirection: "row", gap: 20 }}>
+            <View style={{ display: "flex", flexDirection: "row", gap: 12 }}>
               {paymentVoucher.budgetCode && (
                 <View style={{ flex: 1 }}>
                   <Text
                     style={{
-                      fontSize: 8,
+                      fontSize: 7,
                       fontWeight: "bold",
-                      marginBottom: 2,
+                      marginBottom: 1,
                       color: "#666",
                     }}
                   >
@@ -611,9 +622,9 @@ const PaymentVoucherPDF: React.FC<PaymentVoucherPDFProps> = ({
                 <View style={{ flex: 1 }}>
                   <Text
                     style={{
-                      fontSize: 8,
+                      fontSize: 7,
                       fontWeight: "bold",
-                      marginBottom: 2,
+                      marginBottom: 1,
                       color: "#666",
                     }}
                   >
@@ -628,9 +639,9 @@ const PaymentVoucherPDF: React.FC<PaymentVoucherPDFProps> = ({
                 <View style={{ flex: 1 }}>
                   <Text
                     style={{
-                      fontSize: 8,
+                      fontSize: 7,
                       fontWeight: "bold",
-                      marginBottom: 2,
+                      marginBottom: 1,
                       color: "#666",
                     }}
                   >
@@ -648,22 +659,22 @@ const PaymentVoucherPDF: React.FC<PaymentVoucherPDFProps> = ({
               paymentVoucher.withholdingTaxAmount) && (
               <View
                 style={{
-                  marginTop: 10,
-                  paddingTop: 10,
+                  marginTop: 6,
+                  paddingTop: 6,
                   borderTopWidth: 1,
                   borderTopColor: "#ddd",
                   display: "flex",
                   flexDirection: "row",
-                  gap: 20,
+                  gap: 12,
                 }}
               >
                 {paymentVoucher.taxAmount && (
                   <View style={{ flex: 1 }}>
                     <Text
                       style={{
-                        fontSize: 8,
+                        fontSize: 7,
                         fontWeight: "bold",
-                        marginBottom: 2,
+                        marginBottom: 1,
                         color: "#666",
                       }}
                     >
@@ -679,9 +690,9 @@ const PaymentVoucherPDF: React.FC<PaymentVoucherPDFProps> = ({
                   <View style={{ flex: 1 }}>
                     <Text
                       style={{
-                        fontSize: 8,
+                        fontSize: 7,
                         fontWeight: "bold",
-                        marginBottom: 2,
+                        marginBottom: 1,
                         color: "#666",
                       }}
                     >
@@ -702,8 +713,8 @@ const PaymentVoucherPDF: React.FC<PaymentVoucherPDFProps> = ({
         {paymentVoucher.status === "paid" && (
           <View
             style={{
-              marginBottom: 20,
-              padding: 10,
+              marginBottom: 12,
+              padding: 7,
               backgroundColor: "#dcfce7",
               borderLeftWidth: 4,
               borderLeftColor: "#16a34a",
@@ -711,9 +722,9 @@ const PaymentVoucherPDF: React.FC<PaymentVoucherPDFProps> = ({
           >
             <Text
               style={{
-                fontSize: 8,
+                fontSize: 7.5,
                 fontWeight: "bold",
-                marginBottom: 4,
+                marginBottom: 3,
                 color: "#166534",
               }}
             >
@@ -743,53 +754,12 @@ const PaymentVoucherPDF: React.FC<PaymentVoucherPDFProps> = ({
             />
           )}
 
-        {/* QR Code and Tracking Information */}
-        <View
-          style={{
-            marginTop: 20,
-            paddingTop: 10,
-            borderTopWidth: 1,
-            borderTopColor: "#ddd",
-            display: "flex",
-            flexDirection: "row",
-            gap: 15,
-            alignItems: "flex-start",
-          }}
-        >
-          {/* QR Code Section */}
-          {qrCodeUrl && (
-            <View style={{ width: 80, height: 80 }}>
-              <Image source={qrCodeUrl} style={{ width: 80, height: 80 }} />
-            </View>
-          )}
-
-          {/* Tracking Information */}
-          <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 8, fontWeight: "bold", marginBottom: 4 }}>
-              DOCUMENT TRACKING
-            </Text>
-            <Text style={{ fontSize: 7, marginBottom: 2 }}>
-              Tracking Code: {documentNumber}
-            </Text>
-            <Text style={{ fontSize: 7, marginBottom: 2 }}>
-              Document ID: {paymentVoucher.id}
-            </Text>
-            <Text style={{ fontSize: 7, marginBottom: 2 }}>
-              Status: {capitalize(paymentVoucher.status)}
-            </Text>
-            <Text style={{ fontSize: 7, marginBottom: 2 }}>
-              Created: {new Date(paymentVoucher.createdAt).toLocaleDateString()}{" "}
-              {new Date(paymentVoucher.createdAt).toLocaleTimeString()}
-            </Text>
-            <Text style={{ fontSize: 7 }}>
-              Generated: {new Date().toLocaleDateString()}{" "}
-              {new Date().toLocaleTimeString()}
-            </Text>
-          </View>
-        </View>
-
-        {/* Footer */}
-        <PDFFooter />
+        {/* Footer: QR Code, Tracking, and Branding */}
+        <PDFFooter
+          documentNumber={documentNumber}
+          document={paymentVoucher}
+          qrCodeUrl={qrCodeUrl ?? ""}
+        />
       </Page>
     </Document>
   );

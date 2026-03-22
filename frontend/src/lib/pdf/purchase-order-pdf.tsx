@@ -1,5 +1,5 @@
 import React from "react";
-import { Document, Page, Text, View, Image } from "@react-pdf/renderer";
+import { Document, Page, Text, View } from "@react-pdf/renderer";
 import { PurchaseOrder } from "@/types/purchase-order";
 import { pdfStyles } from "./pdf-styles";
 import { generateDocumentQRData } from "./qr-utils";
@@ -36,7 +36,6 @@ const getStatusColor = (status: string) => {
 const PurchaseOrderPDF: React.FC<PurchaseOrderPDFProps> = ({
   purchaseOrder,
   qrCodeUrl,
-  organizationLogoUrl,
   documentHeader,
 }) => {
   const documentNumber = purchaseOrder.documentNumber;
@@ -63,6 +62,8 @@ const PurchaseOrderPDF: React.FC<PurchaseOrderPDFProps> = ({
           style={[
             pdfStyles.header,
             {
+              marginBottom: 16,
+              paddingBottom: 10,
               flexDirection: "row",
               justifyContent: "space-between",
             },
@@ -125,19 +126,19 @@ const PurchaseOrderPDF: React.FC<PurchaseOrderPDFProps> = ({
         {/* SECTION 1: PURCHASE ORDER DETAILS */}
         <View
           style={{
-            marginBottom: 20,
+            marginBottom: 12,
             borderWidth: 1,
             borderColor: "#1e40af",
-            padding: 10,
+            padding: 7,
           }}
         >
           <Text
             style={{
-              fontSize: 11,
+              fontSize: 9,
               fontWeight: "bold",
               backgroundColor: "#dbeafe",
-              padding: 5,
-              marginBottom: 10,
+              padding: 3,
+              marginBottom: 6,
             }}
           >
             SECTION 1: PURCHASE ORDER DETAILS
@@ -146,88 +147,88 @@ const PurchaseOrderPDF: React.FC<PurchaseOrderPDFProps> = ({
           {/* Vendor Info */}
           <View
             style={{
-              marginBottom: 12,
+              marginBottom: 7,
               display: "flex",
               flexDirection: "row",
-              gap: 20,
+              gap: 12,
             }}
           >
             <View style={{ flex: 2 }}>
               <Text
                 style={{
-                  fontSize: 8,
+                  fontSize: 7,
                   fontWeight: "bold",
-                  marginBottom: 2,
+                  marginBottom: 1,
                   color: "#666",
                 }}
               >
                 VENDOR/SUPPLIER
               </Text>
-              <Text style={{ fontSize: 10, fontWeight: "bold" }}>
+              <Text style={{ fontSize: 9, fontWeight: "bold" }}>
                 {purchaseOrder.vendorName || "—"}
               </Text>
             </View>
             <View style={{ flex: 1 }}>
               <Text
                 style={{
-                  fontSize: 8,
+                  fontSize: 7,
                   fontWeight: "bold",
-                  marginBottom: 2,
+                  marginBottom: 1,
                   color: "#666",
                 }}
               >
                 DEPARTMENT
               </Text>
-              <Text style={{ fontSize: 10 }}>
+              <Text style={{ fontSize: 9 }}>
                 {purchaseOrder.department || "—"}
               </Text>
             </View>
             <View style={{ flex: 1 }}>
               <Text
                 style={{
-                  fontSize: 8,
+                  fontSize: 7,
                   fontWeight: "bold",
-                  marginBottom: 2,
+                  marginBottom: 1,
                   color: "#666",
                 }}
               >
                 BUDGET CODE
               </Text>
-              <Text style={{ fontSize: 9 }}>
+              <Text style={{ fontSize: 8 }}>
                 {purchaseOrder.budgetCode || "—"}
               </Text>
             </View>
           </View>
 
           {/* Order Details Row */}
-          <View style={{ display: "flex", flexDirection: "row", gap: 20 }}>
+          <View style={{ display: "flex", flexDirection: "row", gap: 12 }}>
             <View style={{ flex: 1 }}>
               <Text
                 style={{
-                  fontSize: 8,
+                  fontSize: 7,
                   fontWeight: "bold",
-                  marginBottom: 2,
+                  marginBottom: 1,
                   color: "#666",
                 }}
               >
                 ORDER DATE
               </Text>
-              <Text style={{ fontSize: 10 }}>
+              <Text style={{ fontSize: 9 }}>
                 {new Date(purchaseOrder.createdAt).toLocaleDateString()}
               </Text>
             </View>
             <View style={{ flex: 1 }}>
               <Text
                 style={{
-                  fontSize: 8,
+                  fontSize: 7,
                   fontWeight: "bold",
-                  marginBottom: 2,
+                  marginBottom: 1,
                   color: "#666",
                 }}
               >
                 REQUIRED BY DATE
               </Text>
-              <Text style={{ fontSize: 10 }}>
+              <Text style={{ fontSize: 9 }}>
                 {purchaseOrder.requiredByDate
                   ? new Date(purchaseOrder.requiredByDate).toLocaleDateString()
                   : "—"}
@@ -237,15 +238,15 @@ const PurchaseOrderPDF: React.FC<PurchaseOrderPDFProps> = ({
               <View style={{ flex: 1 }}>
                 <Text
                   style={{
-                    fontSize: 8,
+                    fontSize: 7,
                     fontWeight: "bold",
-                    marginBottom: 2,
+                    marginBottom: 1,
                     color: "#666",
                   }}
                 >
                   SOURCE REQUISITION
                 </Text>
-                <Text style={{ fontSize: 10 }}>
+                <Text style={{ fontSize: 9 }}>
                   {purchaseOrder.linkedRequisition}
                 </Text>
               </View>
@@ -255,8 +256,8 @@ const PurchaseOrderPDF: React.FC<PurchaseOrderPDFProps> = ({
 
         {/* Line Items Table */}
         {purchaseOrder.items && purchaseOrder.items.length > 0 && (
-          <View style={{ marginBottom: 20 }}>
-            <Text style={{ fontSize: 10, fontWeight: "bold", marginBottom: 8 }}>
+          <View style={{ marginBottom: 10 }}>
+            <Text style={{ fontSize: 9, fontWeight: "bold", marginBottom: 4 }}>
               ORDER ITEMS:
             </Text>
 
@@ -280,8 +281,9 @@ const PurchaseOrderPDF: React.FC<PurchaseOrderPDFProps> = ({
                 <Text
                   style={{
                     flex: 0.5,
-                    padding: 5,
-                    fontSize: 8,
+                    paddingVertical: 3,
+                    paddingHorizontal: 4,
+                    fontSize: 7.5,
                     fontWeight: "bold",
                     color: "#1e40af",
                     textAlign: "center",
@@ -292,8 +294,9 @@ const PurchaseOrderPDF: React.FC<PurchaseOrderPDFProps> = ({
                 <Text
                   style={{
                     flex: 2,
-                    padding: 5,
-                    fontSize: 8,
+                    paddingVertical: 3,
+                    paddingHorizontal: 4,
+                    fontSize: 7.5,
                     fontWeight: "bold",
                     color: "#1e40af",
                     borderLeftWidth: 1,
@@ -305,8 +308,9 @@ const PurchaseOrderPDF: React.FC<PurchaseOrderPDFProps> = ({
                 <Text
                   style={{
                     flex: 1,
-                    padding: 5,
-                    fontSize: 8,
+                    paddingVertical: 3,
+                    paddingHorizontal: 4,
+                    fontSize: 7.5,
                     fontWeight: "bold",
                     color: "#1e40af",
                     textAlign: "center",
@@ -319,8 +323,9 @@ const PurchaseOrderPDF: React.FC<PurchaseOrderPDFProps> = ({
                 <Text
                   style={{
                     flex: 1,
-                    padding: 5,
-                    fontSize: 8,
+                    paddingVertical: 3,
+                    paddingHorizontal: 4,
+                    fontSize: 7.5,
                     fontWeight: "bold",
                     color: "#1e40af",
                     textAlign: "right",
@@ -333,8 +338,9 @@ const PurchaseOrderPDF: React.FC<PurchaseOrderPDFProps> = ({
                 <Text
                   style={{
                     flex: 1,
-                    padding: 5,
-                    fontSize: 8,
+                    paddingVertical: 3,
+                    paddingHorizontal: 4,
+                    fontSize: 7.5,
                     fontWeight: "bold",
                     color: "#1e40af",
                     textAlign: "right",
@@ -367,8 +373,9 @@ const PurchaseOrderPDF: React.FC<PurchaseOrderPDFProps> = ({
                     <Text
                       style={{
                         flex: 0.5,
-                        padding: 5,
-                        fontSize: 8,
+                        paddingVertical: 2,
+                        paddingHorizontal: 4,
+                        fontSize: 7.5,
                         color: "#1f2937",
                         textAlign: "center",
                       }}
@@ -378,8 +385,9 @@ const PurchaseOrderPDF: React.FC<PurchaseOrderPDFProps> = ({
                     <Text
                       style={{
                         flex: 2,
-                        padding: 5,
-                        fontSize: 8,
+                        paddingVertical: 2,
+                        paddingHorizontal: 4,
+                        fontSize: 7.5,
                         color: "#1f2937",
                         borderLeftWidth: 1,
                         borderLeftColor: "#e5e7eb",
@@ -390,8 +398,9 @@ const PurchaseOrderPDF: React.FC<PurchaseOrderPDFProps> = ({
                     <Text
                       style={{
                         flex: 1,
-                        padding: 5,
-                        fontSize: 8,
+                        paddingVertical: 2,
+                        paddingHorizontal: 4,
+                        fontSize: 7.5,
                         color: "#1f2937",
                         textAlign: "center",
                         borderLeftWidth: 1,
@@ -403,8 +412,9 @@ const PurchaseOrderPDF: React.FC<PurchaseOrderPDFProps> = ({
                     <Text
                       style={{
                         flex: 1,
-                        padding: 5,
-                        fontSize: 8,
+                        paddingVertical: 2,
+                        paddingHorizontal: 4,
+                        fontSize: 7.5,
                         color: "#1f2937",
                         textAlign: "right",
                         borderLeftWidth: 1,
@@ -417,8 +427,9 @@ const PurchaseOrderPDF: React.FC<PurchaseOrderPDFProps> = ({
                     <Text
                       style={{
                         flex: 1,
-                        padding: 5,
-                        fontSize: 8,
+                        paddingVertical: 2,
+                        paddingHorizontal: 4,
+                        fontSize: 7.5,
                         color: "#1f2937",
                         textAlign: "right",
                         borderLeftWidth: 1,
@@ -439,8 +450,8 @@ const PurchaseOrderPDF: React.FC<PurchaseOrderPDFProps> = ({
                 display: "flex",
                 flexDirection: "row",
                 justifyContent: "flex-end",
-                marginTop: 15,
-                paddingTop: 10,
+                marginTop: 6,
+                paddingTop: 4,
               }}
             >
               <View style={{ width: "35%" }}>
@@ -449,14 +460,14 @@ const PurchaseOrderPDF: React.FC<PurchaseOrderPDFProps> = ({
                     display: "flex",
                     flexDirection: "row",
                     justifyContent: "space-between",
-                    paddingBottom: 5,
+                    paddingBottom: 4,
                     borderBottomWidth: 2,
                     borderBottomColor: "#1e40af",
                   }}
                 >
                   <Text
                     style={{
-                      fontSize: 9,
+                      fontSize: 8,
                       fontWeight: "bold",
                       color: "#1f2937",
                     }}
@@ -465,7 +476,7 @@ const PurchaseOrderPDF: React.FC<PurchaseOrderPDFProps> = ({
                   </Text>
                   <Text
                     style={{
-                      fontSize: 11,
+                      fontSize: 10,
                       fontWeight: "bold",
                       color: "#166534",
                     }}
@@ -488,53 +499,12 @@ const PurchaseOrderPDF: React.FC<PurchaseOrderPDFProps> = ({
             />
           )}
 
-        {/* QR Code and Tracking Information */}
-        <View
-          style={{
-            marginTop: 20,
-            paddingTop: 10,
-            borderTopWidth: 1,
-            borderTopColor: "#ddd",
-            display: "flex",
-            flexDirection: "row",
-            gap: 15,
-            alignItems: "flex-start",
-          }}
-        >
-          {/* QR Code Section */}
-          {qrCodeUrl && (
-            <View style={{ width: 80, height: 80 }}>
-              <Image source={qrCodeUrl} style={{ width: 80, height: 80 }} />
-            </View>
-          )}
-
-          {/* Tracking Information */}
-          <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 8, fontWeight: "bold", marginBottom: 4 }}>
-              DOCUMENT TRACKING
-            </Text>
-            <Text style={{ fontSize: 7, marginBottom: 2 }}>
-              Tracking Code: {documentNumber}
-            </Text>
-            <Text style={{ fontSize: 7, marginBottom: 2 }}>
-              Document ID: {purchaseOrder.id}
-            </Text>
-            <Text style={{ fontSize: 7, marginBottom: 2 }}>
-              Status: {capitalize(purchaseOrder.status)}
-            </Text>
-            <Text style={{ fontSize: 7, marginBottom: 2 }}>
-              Created: {new Date(purchaseOrder.createdAt).toLocaleDateString()}{" "}
-              {new Date(purchaseOrder.createdAt).toLocaleTimeString()}
-            </Text>
-            <Text style={{ fontSize: 7 }}>
-              Generated: {new Date().toLocaleDateString()}{" "}
-              {new Date().toLocaleTimeString()}
-            </Text>
-          </View>
-        </View>
-
-        {/* Footer */}
-        <PDFFooter />
+        {/* Footer: QR Code, Tracking, and Branding */}
+        <PDFFooter
+          documentNumber={documentNumber}
+          document={purchaseOrder}
+          qrCodeUrl={qrCodeUrl ?? ""}
+        />
       </Page>
     </Document>
   );

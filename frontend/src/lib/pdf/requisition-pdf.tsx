@@ -27,7 +27,9 @@ interface PDFHeaderProps {
 }
 
 interface PDFFooterProps {
-  organizationLogoUrl?: string;
+  qrCodeUrl: string;
+  documentNumber: string;
+  document: Requisition | any;
 }
 
 export const PDFHeader = ({
@@ -43,7 +45,7 @@ export const PDFHeader = ({
       flexDirection: "column",
       justifyContent: "center",
       alignItems: "center",
-      gap: 16,
+      gap: 8,
     }}
   >
     <View
@@ -57,10 +59,10 @@ export const PDFHeader = ({
       }}
     >
       {/* Logo */}
-      <View style={{ width: 50, height: 50 }}>
+      <View style={{ width: 36, height: 36 }}>
         <Image
           src={"/images/coat-of-arms.png"}
-          style={{ width: 50, height: 50, objectFit: "contain" }}
+          style={{ width: 36, height: 36, objectFit: "contain" }}
         />
       </View>
       {/* ORG NAME AND TAGLINE */}
@@ -73,67 +75,127 @@ export const PDFHeader = ({
           alignItems: "center",
         }}
       >
-        <Text style={{ fontSize: 16, fontWeight: "bold", marginBottom: 3 }}>
+        <Text style={{ fontSize: 13, fontWeight: "bold", marginBottom: 2 }}>
           {"REPUBLIC OF ZAMBIA"}
         </Text>
         {orgName && (
-          <Text style={{ fontSize: 16, fontWeight: "600", marginBottom: 4 }}>
+          <Text style={{ fontSize: 13, fontWeight: "600", marginBottom: 2 }}>
             {orgName}
           </Text>
         )}
         {tagline && (
-          <Text style={{ fontSize: 12, color: "#555", marginBottom: 4 }}>
+          <Text style={{ fontSize: 10, color: "#555", marginBottom: 2 }}>
             {tagline}
           </Text>
         )}
       </View>
       {/* Logo */}
-      <View style={{ width: 50, height: 50 }}>
+      <View style={{ width: 36, height: 36 }}>
         <Image
           src={logoUrl}
-          style={{ width: 50, height: 50, objectFit: "cover" }}
+          style={{ width: 36, height: 36, objectFit: "cover" }}
         />
       </View>
     </View>
-    <Text style={{ fontSize: 13, fontWeight: "bold", marginBottom: 20 }}>
+    <Text style={{ fontSize: 11, fontWeight: "bold", marginBottom: 8 }}>
       {title}
     </Text>
   </View>
 );
 
 export const PDFFooter = ({
-  organizationLogoUrl = "/images/logo/logo-full-light.png",
+  qrCodeUrl,
+  documentNumber,
+  document,
 }: PDFFooterProps) => (
-  <View
-    style={{
-      display: "flex",
-      flexDirection: "row",
-      gap: 12,
-      // justifyContent: "space-between",
-    }}
-  >
-    {" "}
-    <View style={{ marginBottom: 0, marginTop: "auto", paddingTop: 10 }}>
-      <Image src={organizationLogoUrl} style={{ width: 80, height: 24 }} />
-    </View>
+  <>
     <View
       style={{
-        marginTop: "auto",
-        paddingTop: 10,
+        paddingTop: 6,
         borderTopWidth: 1,
         borderTopColor: "#ddd",
-        textAlign: "center",
+        display: "flex",
+        flexDirection: "row",
+        alignItems: "flex-end",
+        justifyContent: "space-between",
       }}
     >
-      <Text style={{ fontSize: 7, color: "#999" }}>
-        This is a Liyali system-generated document. Digital signatures and QR
-        codes verify authenticity.
-      </Text>
-      <Text style={{ fontSize: 7, color: "#999", marginTop: 2 }}>
-        Scan the QR code above to verify this document.
-      </Text>
+      <View
+        style={{
+          display: "flex",
+          flexBasis: "60%",
+          flexDirection: "row",
+          gap: 12,
+          alignItems: "flex-start",
+          justifyContent: "space-between",
+        }}
+      >
+        {/* QR Code Section */}
+        {qrCodeUrl && (
+          <View style={{ width: 60, height: 60 }}>
+            <Image source={qrCodeUrl} style={{ width: 60, height: 60 }} />
+          </View>
+        )}
+
+        {/* Tracking Information */}
+        <View style={{ flex: 1 }}>
+          <Text style={{ fontSize: 7, fontWeight: "bold", marginBottom: 3 }}>
+            DOCUMENT TRACKING
+          </Text>
+          <Text style={{ fontSize: 6.5, marginBottom: 2 }}>
+            Tracking Code: {documentNumber}
+          </Text>
+          <Text style={{ fontSize: 6.5, marginBottom: 2 }}>
+            Document ID: {document.id}
+          </Text>
+          <Text style={{ fontSize: 6.5, marginBottom: 2 }}>
+            Status: {capitalize(document.status)}
+          </Text>
+          <Text style={{ fontSize: 6.5, marginBottom: 2 }}>
+            Created: {new Date(document.createdAt).toLocaleDateString()}{" "}
+            {new Date(document.createdAt).toLocaleTimeString()}
+          </Text>
+          <Text style={{ fontSize: 6.5 }}>
+            Generated: {new Date().toLocaleDateString()}{" "}
+            {new Date().toLocaleTimeString()}
+          </Text>
+        </View>
+      </View>
+
+      {/* Liyali Logo */}
+      <View
+        style={{
+          display: "flex",
+          flexBasis: "40%",
+          flexDirection: "column",
+          alignItems: "center",
+          gap: 4,
+        }}
+      >
+        {" "}
+        <View style={{ marginBottom: 0, marginTop: "auto", paddingTop: 10 }}>
+          <Image
+            src={"/images/logo/logo-full-light.png"}
+            style={{ width: 80, height: 24 }}
+          />
+        </View>
+        <View
+          style={{
+            marginTop: "auto",
+            paddingTop: 8,
+            borderTopWidth: 1,
+            borderTopColor: "#ddd",
+            textAlign: "center",
+          }}
+        >
+          <Text style={{ fontSize: 7, color: "#999" }}>
+            This is a Liyali system-generated document. Digital signatures and
+            QR codes verify authenticity.
+          </Text>
+        </View>
+      </View>
     </View>
-  </View>
+  </>
 );
 
 const getStatusColor = (status: string) => {
@@ -184,7 +246,8 @@ const RequisitionPDF: React.FC<RequisitionPDFProps> = ({
           style={[
             pdfStyles.header,
             {
-              // marginBottom: 8,
+              marginBottom: 16,
+              paddingBottom: 10,
               flexDirection: "row",
               justifyContent: "space-between",
             },
@@ -259,19 +322,19 @@ const RequisitionPDF: React.FC<RequisitionPDFProps> = ({
         {/* SECTION 1:  OFFICIAL USE ONLY */}
         <View
           style={{
-            marginBottom: 20,
+            marginBottom: 12,
             borderWidth: 1,
             borderColor: "#1e40af",
-            padding: 10,
+            padding: 7,
           }}
         >
           <Text
             style={{
-              fontSize: 11,
+              fontSize: 9,
               fontWeight: "bold",
               backgroundColor: "#dbeafe",
-              padding: 5,
-              marginBottom: 10,
+              padding: 3,
+              marginBottom: 6,
             }}
           >
             SECTION 1: REQUISITION DETAILS
@@ -280,69 +343,67 @@ const RequisitionPDF: React.FC<RequisitionPDFProps> = ({
           {/* Requisition Info */}
           <View
             style={{
-              marginBottom: 12,
+              marginBottom: 7,
               display: "flex",
               flexDirection: "row",
-              gap: 20,
+              gap: 12,
             }}
           >
             <View style={{ flex: 1 }}>
               <Text
                 style={{
-                  fontSize: 8,
+                  fontSize: 7,
                   fontWeight: "bold",
-                  marginBottom: 2,
+                  marginBottom: 1,
                   color: "#666",
                 }}
               >
                 DEPARTMENT
               </Text>
-              <Text style={{ fontSize: 10 }}>
+              <Text style={{ fontSize: 9 }}>
                 {requisition.department || "—"}
               </Text>
             </View>
             <View style={{ flex: 1 }}>
               <Text
                 style={{
-                  fontSize: 8,
+                  fontSize: 7,
                   fontWeight: "bold",
-                  marginBottom: 2,
+                  marginBottom: 1,
                   color: "#666",
                 }}
               >
                 PRIORITY
               </Text>
-              <Text style={{ fontSize: 10 }}>
-                {requisition.priority || "—"}
-              </Text>
+              <Text style={{ fontSize: 9 }}>{requisition.priority || "—"}</Text>
             </View>
             <View style={{ flex: 1 }}>
               <Text
                 style={{
-                  fontSize: 8,
+                  fontSize: 7,
                   fontWeight: "bold",
-                  marginBottom: 2,
+                  marginBottom: 1,
                   color: "#666",
                 }}
               >
                 BUDGET CODE
               </Text>
-              <Text style={{ fontSize: 9 }}>
+              <Text style={{ fontSize: 8 }}>
                 {requisition.budgetCode || "—"}
               </Text>
             </View>
             <View style={{ flex: 1 }}>
               <Text
                 style={{
-                  fontSize: 8,
+                  fontSize: 7,
                   fontWeight: "bold",
-                  marginBottom: 2,
+                  marginBottom: 1,
                   color: "#666",
                 }}
               >
                 CATEGORY
               </Text>
-              <Text style={{ fontSize: 10 }}>
+              <Text style={{ fontSize: 9 }}>
                 {requisition.categoryName ||
                   requisition.otherCategoryText ||
                   "—"}
@@ -351,12 +412,12 @@ const RequisitionPDF: React.FC<RequisitionPDFProps> = ({
           </View>
 
           {/* Description */}
-          <View style={{ marginBottom: 12 }}>
+          <View style={{ marginBottom: 7 }}>
             <Text
               style={{
-                fontSize: 8,
+                fontSize: 7,
                 fontWeight: "bold",
-                marginBottom: 2,
+                marginBottom: 1,
                 color: "#666",
               }}
             >
@@ -368,25 +429,25 @@ const RequisitionPDF: React.FC<RequisitionPDFProps> = ({
           </View>
 
           {/* Requester Info */}
-          <View style={{ display: "flex", flexDirection: "row", gap: 20 }}>
+          <View style={{ display: "flex", flexDirection: "row", gap: 12 }}>
             <View style={{ flex: 1 }}>
               <Text
                 style={{
-                  fontSize: 8,
+                  fontSize: 7,
                   fontWeight: "bold",
-                  marginBottom: 2,
+                  marginBottom: 1,
                   color: "#666",
                 }}
               >
                 REQUESTED BY
               </Text>
-              <Text style={{ fontSize: 10 }}>
+              <Text style={{ fontSize: 9 }}>
                 {requisition.requesterName ||
                   requisition.requestedByName ||
                   "—"}
               </Text>
               {requisition.requestedByRole && (
-                <Text style={{ fontSize: 8, color: "#999" }}>
+                <Text style={{ fontSize: 7, color: "#999" }}>
                   {requisition.requestedByRole}
                 </Text>
               )}
@@ -394,15 +455,15 @@ const RequisitionPDF: React.FC<RequisitionPDFProps> = ({
             <View style={{ flex: 1 }}>
               <Text
                 style={{
-                  fontSize: 8,
+                  fontSize: 7,
                   fontWeight: "bold",
-                  marginBottom: 2,
+                  marginBottom: 1,
                   color: "#666",
                 }}
               >
                 DATE REQUESTED
               </Text>
-              <Text style={{ fontSize: 10 }}>
+              <Text style={{ fontSize: 9 }}>
                 {new Date(requisition.createdAt).toLocaleDateString()}
               </Text>
             </View>
@@ -411,8 +472,8 @@ const RequisitionPDF: React.FC<RequisitionPDFProps> = ({
 
         {/* Line Items Table */}
         {requisition.items && requisition.items.length > 0 && (
-          <View style={{ marginBottom: 20 }}>
-            <Text style={{ fontSize: 10, fontWeight: "bold", marginBottom: 8 }}>
+          <View style={{ marginBottom: 10 }}>
+            <Text style={{ fontSize: 9, fontWeight: "bold", marginBottom: 4 }}>
               PLEASE PURCHASE THE FOLLOWING GOODS/SERVICES:
             </Text>
 
@@ -436,8 +497,9 @@ const RequisitionPDF: React.FC<RequisitionPDFProps> = ({
                 <Text
                   style={{
                     flex: 0.5,
-                    padding: 5,
-                    fontSize: 8,
+                    paddingVertical: 3,
+                    paddingHorizontal: 4,
+                    fontSize: 7.5,
                     fontWeight: "bold",
                     color: "#1e40af",
                     textAlign: "center",
@@ -448,8 +510,9 @@ const RequisitionPDF: React.FC<RequisitionPDFProps> = ({
                 <Text
                   style={{
                     flex: 2,
-                    padding: 5,
-                    fontSize: 8,
+                    paddingVertical: 3,
+                    paddingHorizontal: 4,
+                    fontSize: 7.5,
                     fontWeight: "bold",
                     color: "#1e40af",
                     borderLeftWidth: 1,
@@ -461,8 +524,9 @@ const RequisitionPDF: React.FC<RequisitionPDFProps> = ({
                 <Text
                   style={{
                     flex: 1,
-                    padding: 5,
-                    fontSize: 8,
+                    paddingVertical: 3,
+                    paddingHorizontal: 4,
+                    fontSize: 7.5,
                     fontWeight: "bold",
                     color: "#1e40af",
                     textAlign: "center",
@@ -475,8 +539,9 @@ const RequisitionPDF: React.FC<RequisitionPDFProps> = ({
                 <Text
                   style={{
                     flex: 1,
-                    padding: 5,
-                    fontSize: 8,
+                    paddingVertical: 3,
+                    paddingHorizontal: 4,
+                    fontSize: 7.5,
                     fontWeight: "bold",
                     color: "#1e40af",
                     textAlign: "right",
@@ -489,8 +554,9 @@ const RequisitionPDF: React.FC<RequisitionPDFProps> = ({
                 <Text
                   style={{
                     flex: 1,
-                    padding: 5,
-                    fontSize: 8,
+                    paddingVertical: 3,
+                    paddingHorizontal: 4,
+                    fontSize: 7.5,
                     fontWeight: "bold",
                     color: "#1e40af",
                     textAlign: "right",
@@ -524,8 +590,9 @@ const RequisitionPDF: React.FC<RequisitionPDFProps> = ({
                     <Text
                       style={{
                         flex: 0.5,
-                        padding: 5,
-                        fontSize: 8,
+                        paddingVertical: 2,
+                        paddingHorizontal: 4,
+                        fontSize: 7.5,
                         color: "#1f2937",
                         textAlign: "center",
                       }}
@@ -535,8 +602,9 @@ const RequisitionPDF: React.FC<RequisitionPDFProps> = ({
                     <Text
                       style={{
                         flex: 2,
-                        padding: 5,
-                        fontSize: 8,
+                        paddingVertical: 2,
+                        paddingHorizontal: 4,
+                        fontSize: 7.5,
                         color: "#1f2937",
                         borderLeftWidth: 1,
                         borderLeftColor: "#e5e7eb",
@@ -547,8 +615,9 @@ const RequisitionPDF: React.FC<RequisitionPDFProps> = ({
                     <Text
                       style={{
                         flex: 1,
-                        padding: 5,
-                        fontSize: 8,
+                        paddingVertical: 2,
+                        paddingHorizontal: 4,
+                        fontSize: 7.5,
                         color: "#1f2937",
                         textAlign: "center",
                         borderLeftWidth: 1,
@@ -560,8 +629,9 @@ const RequisitionPDF: React.FC<RequisitionPDFProps> = ({
                     <Text
                       style={{
                         flex: 1,
-                        padding: 5,
-                        fontSize: 8,
+                        paddingVertical: 2,
+                        paddingHorizontal: 4,
+                        fontSize: 7.5,
                         color: "#1f2937",
                         textAlign: "right",
                         borderLeftWidth: 1,
@@ -574,8 +644,9 @@ const RequisitionPDF: React.FC<RequisitionPDFProps> = ({
                     <Text
                       style={{
                         flex: 1,
-                        padding: 5,
-                        fontSize: 8,
+                        paddingVertical: 2,
+                        paddingHorizontal: 4,
+                        fontSize: 7.5,
                         color: "#1f2937",
                         textAlign: "right",
                         borderLeftWidth: 1,
@@ -596,8 +667,8 @@ const RequisitionPDF: React.FC<RequisitionPDFProps> = ({
                 display: "flex",
                 flexDirection: "row",
                 justifyContent: "flex-end",
-                marginTop: 15,
-                paddingTop: 10,
+                marginTop: 6,
+                paddingTop: 4,
               }}
             >
               <View style={{ width: "35%" }}>
@@ -606,14 +677,14 @@ const RequisitionPDF: React.FC<RequisitionPDFProps> = ({
                     display: "flex",
                     flexDirection: "row",
                     justifyContent: "space-between",
-                    paddingBottom: 5,
+                    paddingBottom: 4,
                     borderBottomWidth: 2,
                     borderBottomColor: "#1e40af",
                   }}
                 >
                   <Text
                     style={{
-                      fontSize: 9,
+                      fontSize: 8,
                       fontWeight: "bold",
                       color: "#1f2937",
                     }}
@@ -622,7 +693,7 @@ const RequisitionPDF: React.FC<RequisitionPDFProps> = ({
                   </Text>
                   <Text
                     style={{
-                      fontSize: 11,
+                      fontSize: 10,
                       fontWeight: "bold",
                       color: "#166534",
                     }}
@@ -645,53 +716,12 @@ const RequisitionPDF: React.FC<RequisitionPDFProps> = ({
             />
           )}
 
-        {/* QR Code and Tracking Information */}
-        <View
-          style={{
-            marginTop: 20,
-            paddingTop: 10,
-            borderTopWidth: 1,
-            borderTopColor: "#ddd",
-            display: "flex",
-            flexDirection: "row",
-            gap: 15,
-            alignItems: "flex-start",
-          }}
-        >
-          {/* QR Code Section */}
-          {qrCodeUrl && (
-            <View style={{ width: 80, height: 80 }}>
-              <Image source={qrCodeUrl} style={{ width: 80, height: 80 }} />
-            </View>
-          )}
-
-          {/* Tracking Information */}
-          <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 8, fontWeight: "bold", marginBottom: 4 }}>
-              DOCUMENT TRACKING
-            </Text>
-            <Text style={{ fontSize: 7, marginBottom: 2 }}>
-              Tracking Code: {documentNumber}
-            </Text>
-            <Text style={{ fontSize: 7, marginBottom: 2 }}>
-              Document ID: {requisition.id}
-            </Text>
-            <Text style={{ fontSize: 7, marginBottom: 2 }}>
-              Status: {capitalize(requisition.status)}
-            </Text>
-            <Text style={{ fontSize: 7, marginBottom: 2 }}>
-              Created: {new Date(requisition.createdAt).toLocaleDateString()}{" "}
-              {new Date(requisition.createdAt).toLocaleTimeString()}
-            </Text>
-            <Text style={{ fontSize: 7 }}>
-              Generated: {new Date().toLocaleDateString()}{" "}
-              {new Date().toLocaleTimeString()}
-            </Text>
-          </View>
-        </View>
-
-        {/* Footer */}
-        <PDFFooter />
+        {/* Footer: QR Code and Tracking Information */}
+        <PDFFooter
+          documentNumber={documentNumber}
+          document={requisition}
+          qrCodeUrl={qrCodeUrl ?? ""}
+        />
       </Page>
     </Document>
   );

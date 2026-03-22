@@ -60,17 +60,17 @@ export const ApprovalSignaturesSection: React.FC<
   return (
     <View
       style={{
-        marginTop: 20,
-        paddingTop: 14,
+        marginTop: 10,
+        paddingTop: 8,
         borderTop: "1.5px solid #ddd",
       }}
     >
       {/* Section heading */}
       <Text
         style={{
-          fontSize: 9,
+          fontSize: 8,
           fontWeight: "bold",
-          marginBottom: 10,
+          marginBottom: 5,
           color: "#1e3a8a",
           textAlign: "center",
           letterSpacing: 0.8,
@@ -85,7 +85,7 @@ export const ApprovalSignaturesSection: React.FC<
         style={{
           flexDirection: "row",
           flexWrap: "wrap",
-          gap: 8,
+          gap: 5,
           justifyContent: count === 1 ? "center" : "flex-start",
         }}
       >
@@ -96,16 +96,16 @@ export const ApprovalSignaturesSection: React.FC<
               width: cardWidth,
               border: "1px solid #d1d5db",
               borderRadius: 3,
-              padding: 8,
+              padding: 5,
               backgroundColor: "#f9fafb",
             }}
           >
             {/* Signature area */}
             <View
               style={{
-                minHeight: 30,
+                minHeight: 22,
                 borderBottom: "1px solid #d1d5db",
-                marginBottom: 5,
+                marginBottom: 4,
                 alignItems: "center",
                 justifyContent: "center",
               }}
@@ -113,11 +113,11 @@ export const ApprovalSignaturesSection: React.FC<
               {r.signature ? (
                 <Image
                   src={r.signature}
-                  style={{ maxHeight: 28, maxWidth: "100%", objectFit: "contain" }}
+                  style={{ maxHeight: 22, maxWidth: "100%", objectFit: "contain" }}
                 />
               ) : (
                 <Text
-                  style={{ fontSize: 6.5, color: "#9ca3af", fontStyle: "italic" }}
+                  style={{ fontSize: 6, color: "#9ca3af", fontStyle: "italic" }}
                 >
                   [Electronically Approved]
                 </Text>
@@ -127,7 +127,7 @@ export const ApprovalSignaturesSection: React.FC<
             {/* Approver name */}
             <Text
               style={{
-                fontSize: 9,
+                fontSize: 8,
                 fontWeight: "bold",
                 color: "#111827",
                 marginBottom: 2,
@@ -140,10 +140,10 @@ export const ApprovalSignaturesSection: React.FC<
             {getRole(r) && (
               <Text
                 style={{
-                  fontSize: 7,
+                  fontSize: 6,
                   color: "#6b7280",
                   fontStyle: "italic",
-                  marginBottom: 4,
+                  marginBottom: 3,
                 }}
               >
                 {getRole(r)}
@@ -151,7 +151,7 @@ export const ApprovalSignaturesSection: React.FC<
             )}
 
             {/* Approval date */}
-            <Text style={{ fontSize: 6.5, color: "#6b7280" }}>
+            <Text style={{ fontSize: 6, color: "#6b7280" }}>
               {formatDate(getDate(r))}
             </Text>
           </View>
@@ -161,9 +161,9 @@ export const ApprovalSignaturesSection: React.FC<
       {/* Footer note */}
       <Text
         style={{
-          fontSize: 6.5,
+          fontSize: 6,
           color: "#9ca3af",
-          marginTop: 10,
+          marginTop: 5,
           textAlign: "center",
           fontStyle: "italic",
         }}
