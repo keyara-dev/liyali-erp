@@ -1,6 +1,22 @@
 import { APIResponse } from "@/types";
 
 // Response helpers - these are pure utility functions, not server actions
+
+/**
+ * Normalises an axios response from the backend into a standard APIResponse.
+ * Replaces the `successResponse(response?.data?.data, ...)` pattern so that
+ * the backend's own success/failure flag is preserved correctly.
+ */
+export function fromBackend(axiosResponse: any, message?: string): APIResponse {
+  const body = axiosResponse?.data;
+  return {
+    success: body?.success ?? false,
+    message: message || body?.message || "",
+    data: body?.data ?? null,
+    pagination: body?.pagination,
+  };
+}
+
 export function successResponse(
   data: any | null,
   message: string = "Action completed successfully",

@@ -2,10 +2,11 @@
 
 import { useState, ReactNode } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Users, Building2, Shield, Logs } from "lucide-react";
+import { Users, Building2, Shield, Logs, GitBranch } from "lucide-react";
 import DepartmentsConfig from "./departments-config";
 import UserRolesConfig from "./user-roles-config";
 import { ActivityLogsClient } from "./activity-logs-client";
+import BranchesClient from "./branches-client";
 import { FeatureGate } from "@/components/subscription/feature-gate";
 import AccessDeniedPage from "@/app/(private)/access-denied/page";
 
@@ -20,7 +21,7 @@ export function UserManagementClient({
   userRole,
   usersTabContent,
 }: UserManagementClientProps) {
-  const [activeTab, setActiveTab] = useState<"users" | "departments" | "roles">(
+  const [activeTab, setActiveTab] = useState<"users" | "departments" | "roles" | "branches" | "logs">(
     "users",
   );
 
@@ -31,7 +32,7 @@ export function UserManagementClient({
         onValueChange={(value) => setActiveTab(value as any)}
         className="w-full"
       >
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="users" className="gap-2">
             <Users className="h-4 w-4" />
             <span className="hidden sm:inline">Users</span>
@@ -39,6 +40,10 @@ export function UserManagementClient({
           <TabsTrigger value="departments" className="gap-2">
             <Building2 className="h-4 w-4" />
             <span className="hidden sm:inline">Departments</span>
+          </TabsTrigger>
+          <TabsTrigger value="branches" className="gap-2">
+            <GitBranch className="h-4 w-4" />
+            <span className="hidden sm:inline">Branches</span>
           </TabsTrigger>
           <TabsTrigger value="roles" className="gap-2">
             <Shield className="h-4 w-4" />
@@ -67,6 +72,11 @@ export function UserManagementClient({
         {/* Departments Tab */}
         <TabsContent value="departments" className="space-y-4">
           <DepartmentsConfig />
+        </TabsContent>
+
+        {/* Branches Tab */}
+        <TabsContent value="branches" className="space-y-4">
+          <BranchesClient />
         </TabsContent>
 
         {/* Manage Roles Tab */}

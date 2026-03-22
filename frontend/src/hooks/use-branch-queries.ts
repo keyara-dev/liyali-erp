@@ -16,12 +16,11 @@ export interface Branch {
 
 export const useActiveBranches = () =>
   useQuery({
-    queryKey: queryKeys.config.branches(),
+    queryKey: queryKeys.config.activeBranches(),
     queryFn: async () => {
       const response = await getBranches({ isActive: true, page_size: 100 });
-      return response.success && Array.isArray(response.data)
-        ? (response.data as Branch[]).filter((b) => b.is_active)
-        : [];
+      const data = response.success ? response.data : null;
+      return (Array.isArray(data) ? data : []) as Branch[];
     },
     staleTime: 5 * 60 * 1000,
   });

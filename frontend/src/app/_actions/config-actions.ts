@@ -2,6 +2,7 @@
 
 import authenticatedApiClient, {
   badRequestResponse,
+  fromBackend,
   handleError,
   successResponse,
 } from "./api-config";
@@ -43,10 +44,7 @@ export async function getBranches(params?: {
       url: url,
       method: "GET",
     });
-    return successResponse(
-      response?.data?.data,
-      "Branches fetched successfully",
-    );
+    return fromBackend(response);
   } catch (error: Error | any) {
     return handleError(error, "GET", url);
   }

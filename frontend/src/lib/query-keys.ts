@@ -116,6 +116,7 @@ export const queryKeys = {
     currencies: () => [...queryKeys.config.all(), 'currencies'] as const,
     roles: () => [...queryKeys.config.all(), 'roles'] as const,
     branches: () => [...queryKeys.config.all(), 'branches'] as const,
+    activeBranches: () => [...queryKeys.config.all(), 'branches', 'active'] as const,
   },
 
   /**

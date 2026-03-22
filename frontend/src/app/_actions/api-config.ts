@@ -135,6 +135,7 @@ export default authenticatedApiClient;
 // Note: This file does NOT have 'use server' because it only exports utility functions
 export {
   successResponse,
+  fromBackend,
   unauthorizedResponse,
   notFoundResponse,
   methodNotAllowedResponse,
