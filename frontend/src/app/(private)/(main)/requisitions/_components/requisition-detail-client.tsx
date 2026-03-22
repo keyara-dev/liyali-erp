@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -82,6 +83,7 @@ export function RequisitionDetailClient({
   initialRequisition,
 }: RequisitionDetailClientProps) {
   const router = useRouter();
+  const [editInitialStep, setEditInitialStep] = useState<"details" | "items">("details");
 
   // Use the new hook to manage all document detail logic
   const {
@@ -195,7 +197,7 @@ export function RequisitionDetailClient({
           </Button>
           {permissions.canEdit && (
             <Button
-              onClick={handleEdit}
+              onClick={() => { setEditInitialStep("details"); handleEdit(); }}
               variant="outline"
               className="gap-2 h-11"
             >
@@ -668,7 +670,7 @@ export function RequisitionDetailClient({
                 )}
                 {permissions.canEdit && (
                   <Button
-                    onClick={handleEdit}
+                    onClick={() => { setEditInitialStep("items"); handleEdit(); }}
                     variant="outline"
                     size="sm"
                     className="gap-2"
@@ -850,6 +852,7 @@ export function RequisitionDetailClient({
         userId={userId}
         editingRequisition={requisition}
         isEditing={true}
+        initialStep={editInitialStep}
       />
 
       {/* Submit Dialog */}

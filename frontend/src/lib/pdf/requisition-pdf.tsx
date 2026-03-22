@@ -139,23 +139,23 @@ export const PDFFooter = ({
 
         {/* Tracking Information */}
         <View style={{ flex: 1 }}>
-          <Text style={{ fontSize: 7, fontWeight: "bold", marginBottom: 3 }}>
+          <Text style={{ fontSize: 9, fontWeight: "bold", marginBottom: 3 }}>
             DOCUMENT TRACKING
           </Text>
-          <Text style={{ fontSize: 6.5, marginBottom: 2 }}>
+          <Text style={{ fontSize: 8, marginBottom: 2 }}>
             Tracking Code: {documentNumber}
           </Text>
-          <Text style={{ fontSize: 6.5, marginBottom: 2 }}>
-            Document ID: {document.id}
-          </Text>
-          <Text style={{ fontSize: 6.5, marginBottom: 2 }}>
+          <Text style={{ fontSize: 8, marginBottom: 2 }}>
             Status: {capitalize(document.status)}
           </Text>
-          <Text style={{ fontSize: 6.5, marginBottom: 2 }}>
+          <Text style={{ fontSize: 7, marginBottom: 2 }}>
+            Document ID: {document.id}
+          </Text>
+          <Text style={{ fontSize: 7, marginBottom: 2 }}>
             Created: {new Date(document.createdAt).toLocaleDateString()}{" "}
             {new Date(document.createdAt).toLocaleTimeString()}
           </Text>
-          <Text style={{ fontSize: 6.5 }}>
+          <Text style={{ fontSize: 7 }}>
             Generated: {new Date().toLocaleDateString()}{" "}
             {new Date().toLocaleTimeString()}
           </Text>
@@ -264,20 +264,17 @@ const RequisitionPDF: React.FC<RequisitionPDFProps> = ({
 
           {/* STATUS AND PRIORITY BADGES */}
           <View style={{ textAlign: "right" }}>
-            <Text style={{ fontSize: 7, fontWeight: "bold", marginBottom: 1 }}>
-              STATUS & PRIORITY
-            </Text>
-            <View
-              style={
-                {
-                  // borderWidth: 1,
-                  // borderColor: "#ddd",
-                  // padding: 4,
-                  // textAlign: "center",
-                  // marginLeft: "auto",
-                }
-              }
+            <Text
+              style={{
+                fontSize: 7,
+                fontWeight: "bold",
+                marginBottom: 2,
+                marginLeft: 2,
+              }}
             >
+              Status & PRIORITY
+            </Text>
+            <View>
               <View style={{ marginBottom: 0, flexDirection: "row", gap: 4 }}>
                 <View
                   style={[

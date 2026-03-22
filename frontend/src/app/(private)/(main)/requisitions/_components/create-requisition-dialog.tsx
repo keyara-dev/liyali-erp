@@ -57,8 +57,9 @@ interface CreateRequisitionDialogProps {
   onOpenChange: (open: boolean) => void;
   onRequisitionCreated: () => void;
   userId: string;
-  editingRequisition?: Requisition | null; // Add editing support
-  isEditing?: boolean; // Add editing mode flag
+  editingRequisition?: Requisition | null;
+  isEditing?: boolean;
+  initialStep?: "details" | "items";
 }
 
 export function CreateRequisitionDialog({
@@ -68,6 +69,7 @@ export function CreateRequisitionDialog({
   userId,
   editingRequisition = null,
   isEditing = false,
+  initialStep = "details",
 }: CreateRequisitionDialogProps) {
   const createMutation = useCreateRequisition(() => {
     // Reset form on success
@@ -202,10 +204,11 @@ export function CreateRequisitionDialog({
             ?.attachments as RequisitionAttachment[]) ||
           [],
       });
+      setStep(initialStep);
     } else if (!isEditing && open) {
       resetForm();
     }
-  }, [isEditing, editingRequisition, open]);
+  }, [isEditing, editingRequisition, open, initialStep]);
 
   const totalAmount = formData.items.reduce(
     (sum, item) =>
@@ -438,7 +441,7 @@ export function CreateRequisitionDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl! p-0 overflow-y-auto max-h-[90vh]">
+      <DialogContent className="max-w-3xl! p-0 overflow-y-auto h-[90svh] max-h-[90vh]">
         <DialogHeader className="p-4 pb-0">
           <DialogTitle className="font-bold">
             {isEditing ? "Edit Requisition" : "Create New Requisition"}
@@ -455,21 +458,34 @@ export function CreateRequisitionDialog({
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              <span className={`inline-flex items-center justify-center w-4 h-4 rounded-full text-[10px] font-bold ${step === "details" ? "bg-primary-foreground/20" : "bg-muted"}`}>1</span>
+              <span
+                className={`inline-flex items-center justify-center w-4 h-4 rounded-full text-[10px] font-bold ${step === "details" ? "bg-primary-foreground/20" : "bg-muted"}`}
+              >
+                1
+              </span>
               Details
             </button>
             <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50" />
             <button
               type="button"
-              onClick={() => { if (validateDetails()) setStep("items"); }}
+              onClick={() => {
+                if (validateDetails()) setStep("items");
+              }}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
                 step === "items"
                   ? "bg-primary text-primary-foreground"
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              <span className={`inline-flex items-center justify-center w-4 h-4 rounded-full text-[10px] font-bold ${step === "items" ? "bg-primary-foreground/20" : "bg-muted"}`}>2</span>
-              Items {formData.items.length > 0 && <span className="opacity-70">({formData.items.length})</span>}
+              <span
+                className={`inline-flex items-center justify-center w-4 h-4 rounded-full text-[10px] font-bold ${step === "items" ? "bg-primary-foreground/20" : "bg-muted"}`}
+              >
+                2
+              </span>
+              Items{" "}
+              {formData.items.length > 0 && (
+                <span className="opacity-70">({formData.items.length})</span>
+              )}
             </button>
           </div>
         </DialogHeader>
@@ -496,11 +512,10 @@ export function CreateRequisitionDialog({
           )}
 
           {/* ── Step 1: Details ── */}
-          {step === "details" && <>
+          {step === "details" && (
+            <>
               {/* Basic Information */}
               <div className="space-y-4">
-                <h3 className="font-semibold text-lg">Basic Information</h3>
-
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <Input
                     label="Title"
@@ -788,10 +803,12 @@ export function CreateRequisitionDialog({
                   )}
                 </div>
               </div>
-          </>}
+            </>
+          )}
 
           {/* ── Step 2: Items ── */}
-          {step === "items" && <>
+          {step === "items" && (
+            <>
               {/* Items Section */}
               <div className="space-y-3">
                 <h3 className="font-semibold text-base">Items</h3>
@@ -799,11 +816,21 @@ export function CreateRequisitionDialog({
                 <div className="rounded-lg border border-border overflow-hidden">
                   {/* Column headers */}
                   <div className="grid grid-cols-[1.75rem_1fr_3.5rem_8rem_6.5rem_1.75rem] gap-x-3 px-3 py-2 bg-muted/60 border-b border-border">
-                    <span className="text-xs font-medium text-muted-foreground">#</span>
-                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Description</span>
-                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider text-center">Qty</span>
-                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider text-right">Unit Cost ({formData.currency})</span>
-                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider text-right">Total</span>
+                    <span className="text-xs font-medium text-muted-foreground">
+                      #
+                    </span>
+                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                      Description
+                    </span>
+                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider text-center">
+                      Qty
+                    </span>
+                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider text-right">
+                      Unit Cost ({formData.currency})
+                    </span>
+                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider text-right">
+                      Total
+                    </span>
                     <span />
                   </div>
 
@@ -933,7 +960,8 @@ export function CreateRequisitionDialog({
                   </div>
                 </div>
               )}
-          </>}
+            </>
+          )}
         </div>
 
         {/* Dialog Footer */}
@@ -948,7 +976,9 @@ export function CreateRequisitionDialog({
                 Cancel
               </Button>
               <Button
-                onClick={() => { if (validateDetails()) setStep("items"); }}
+                onClick={() => {
+                  if (validateDetails()) setStep("items");
+                }}
                 className="gap-2 min-w-32"
               >
                 Next
