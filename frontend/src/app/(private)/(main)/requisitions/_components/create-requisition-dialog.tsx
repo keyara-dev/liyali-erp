@@ -839,6 +839,17 @@ export function CreateRequisitionDialog({
                         </div>
                       </div>
                     ))}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={budgetsLoading || categoriesLoading}
+                      onClick={handleAddItem}
+                      className="w-full gap-2 border-dashed"
+                    >
+                      <Plus className="h-4 w-4" />
+                      Add Item
+                    </Button>
                   </div>
                 ) : (
                   <div className="border-2 border-dashed rounded-lg p-6 text-center">

@@ -25,6 +25,7 @@ import {
   Activity,
 } from "lucide-react";
 import { PageHeader } from "@/components/base/page-header";
+import { RequisitionItemsList } from "./requisition-items-list";
 import { Requisition, RequisitionAttachment } from "@/types/requisition";
 import {
   ActivityLogContent,
@@ -129,8 +130,6 @@ export function RequisitionDetailClient({
         showBackButton
       />
     );
-
-  const totalEstimatedCost = requisition?.totalAmount || 0;
 
   const attachments: RequisitionAttachment[] =
     requisition.attachments ||
@@ -466,10 +465,28 @@ export function RequisitionDetailClient({
           </div>
         )}
 
-        {/* Additional Metadata */}
+        {/* Additional Metadata — exclude keys already shown as dedicated fields */}
         {requisition.metadata &&
           Object.entries(requisition.metadata).filter(
-            ([key]) => key !== "attachments",
+            ([key]) =>
+              ![
+                "attachments",
+                "categoryName",
+                "otherCategoryText",
+                "requestedFor",
+                "requestedByName",
+                "requestedByRole",
+                "title",
+                "department",
+                "departmentId",
+                "priority",
+                "budgetCode",
+                "costCenter",
+                "projectCode",
+                "description",
+                "isEstimate",
+                "requiredByDate",
+              ].includes(key),
           ).length > 0 && (
             <div className="mt-6 pt-6 border-t border-white/20">
               <label className="text-xs font-semibold text-primary-foreground/80 uppercase tracking-wider block mb-3">
@@ -477,7 +494,27 @@ export function RequisitionDetailClient({
               </label>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {Object.entries(requisition.metadata)
-                  .filter(([key]) => key !== "attachments")
+                  .filter(
+                    ([key]) =>
+                      ![
+                        "attachments",
+                        "categoryName",
+                        "otherCategoryText",
+                        "requestedFor",
+                        "requestedByName",
+                        "requestedByRole",
+                        "title",
+                        "department",
+                        "departmentId",
+                        "priority",
+                        "budgetCode",
+                        "costCenter",
+                        "projectCode",
+                        "description",
+                        "isEstimate",
+                        "requiredByDate",
+                      ].includes(key),
+                  )
                   .map(([key, value]) => (
                     <div key={key} className="space-y-1">
                       <label className="text-xs font-medium text-primary-foreground/70 capitalize">
@@ -644,110 +681,11 @@ export function RequisitionDetailClient({
             </div>
 
             {requisition.items && requisition.items.length > 0 ? (
-              <>
-                <div className="space-y-3">
-                  {requisition.items.map((item: any, index: number) => (
-                    <div
-                      key={item.id || index}
-                      className="flex items-start justify-between p-4 rounded-lg border border-slate-200/10 hover:border-slate-300/20 hover:bg-slate-50/20 transition"
-                    >
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-2">
-                          <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-slate-100 dark:bg-slate-600/10 text-xs font-semibold">
-                            {index + 1}
-                          </span>
-                          <p className="font-medium text-foreground">
-                            {item.description ||
-                              item.itemDescription ||
-                              "No description"}
-                          </p>
-                        </div>
-
-                        <div className="ml-8 space-y-1">
-                          <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                            <span>
-                              <strong>Quantity:</strong> {item.quantity || 0}
-                              {item.unit && (
-                                <span className="ml-1">({item.unit})</span>
-                              )}
-                            </span>
-                            <span>
-                              <strong>Unit Price:</strong>{" "}
-                              {requisition.currency}{" "}
-                              {(
-                                item.unitPrice ||
-                                item.estimatedCost ||
-                                0
-                              ).toLocaleString("en-ZM", {
-                                minimumFractionDigits: 2,
-                                maximumFractionDigits: 2,
-                              })}
-                            </span>
-                          </div>
-
-                          {item.category && (
-                            <div className="text-xs text-muted-foreground">
-                              <strong>Category:</strong> {item.category}
-                            </div>
-                          )}
-
-                          {item.notes && (
-                            <div className="text-xs text-muted-foreground">
-                              <strong>Notes:</strong> {item.notes}
-                            </div>
-                          )}
-
-                          {item.id && (
-                            <div className="text-xs text-muted-foreground">
-                              <strong>Item ID:</strong> {item.id}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="text-right ml-4">
-                        <p className="font-semibold text-lg">
-                          {requisition.currency}{" "}
-                          {(
-                            item.amount ||
-                            item.totalPrice ||
-                            item.quantity *
-                              (item.unitPrice || item.estimatedCost || 0)
-                          ).toLocaleString("en-ZM", {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2,
-                          })}
-                        </p>
-                        <p className="text-xs text-muted-foreground">Total</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Summary */}
-                <div className="mt-6 pt-6 border-t bg-slate-50 dark:bg-slate-900 -mx-6 -mb-6 px-6 py-4 rounded-b-lg">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm text-muted-foreground">
-                      Total Items: {requisition.items.length}
-                    </span>
-                    <span className="text-sm text-muted-foreground">
-                      Currency: {requisition.currency}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="font-semibold text-foreground">
-                      Estimated Cost
-                    </span>
-                    <span className="text-2xl font-bold text-emerald-700 dark:text-emerald-400">
-                      {requisition.currency}{" "}
-                      {totalEstimatedCost.toLocaleString("en-ZM", {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2,
-                      })}
-                    </span>
-                  </div>
-                </div>
-              </>
+              <RequisitionItemsList
+                items={requisition.items}
+                currency={requisition.currency}
+                isEstimate={requisition.isEstimate}
+              />
             ) : (
               <Empty>
                 <EmptyMedia variant="icon">
