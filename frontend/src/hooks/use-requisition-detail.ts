@@ -54,11 +54,11 @@ export function useRequisitionDetail({
       const isCreator =
         requisition.requestedBy === userId ||
         requisition.requesterId === userId;
+      const reqStatus = requisition.status?.toUpperCase();
       const canEdit =
-        isCreator &&
-        (requisition.status === "draft" || requisition.status === "rejected");
-      const canSubmit = requisition.status === "draft" && isCreator;
-      const canWithdraw = requisition.status === "pending" && isCreator;
+        isCreator && (reqStatus === "DRAFT" || reqStatus === "REJECTED");
+      const canSubmit = reqStatus === "DRAFT" && isCreator;
+      const canWithdraw = reqStatus === "PENDING" && isCreator;
 
       return {
         isCreator,

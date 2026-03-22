@@ -11,6 +11,9 @@ import {
   Send,
   ArrowRight,
   Signature,
+  Package,
+  CreditCard,
+  Link,
 } from 'lucide-react'
 import { PVActionHistoryEntry, PVApprovalRecord } from '@/types'
 
@@ -56,8 +59,30 @@ export function PVActionHistoryPanel({
         return <ArrowRight className="h-4 w-4 text-gray-600" />
       case 'MARK_PAID':
         return <CheckCircle2 className="h-4 w-4 text-green-600" />
+      case 'PO_CREATED':
+        return <FileText className="h-4 w-4 text-blue-600" />
+      case 'GRN_CREATED':
+      case 'GRN_CREATED_CONFIRMING':
+        return <Package className="h-4 w-4 text-teal-600" />
+      case 'PV_CREATED':
+        return <CreditCard className="h-4 w-4 text-violet-600" />
+      case 'CREATED_FROM_REQUISITION':
+      case 'CREATED_FROM_PO':
+      case 'CREATED_FROM_GRN':
+      case 'CREATED_FROM_PV':
+        return <Link className="h-4 w-4 text-sky-600" />
       default:
         return <Clock className="h-4 w-4 text-gray-600" />
+    }
+  }
+
+  const getLinkedDocPath = (docType: string, docNumber: string) => {
+    switch (docType) {
+      case 'purchase_order': return `/purchase-orders?search=${docNumber}`
+      case 'grn': return `/grn?search=${docNumber}`
+      case 'payment_voucher': return `/payment-vouchers?search=${docNumber}`
+      case 'requisition': return `/requisitions?search=${docNumber}`
+      default: return null
     }
   }
 
@@ -111,6 +136,28 @@ export function PVActionHistoryPanel({
                           <span className="font-medium">{action.performedByName || 'Unknown User'}</span>
                           {action.performedByRole && ` (${action.performedByRole})`}
                         </p>
+                        {action.metadata?.linkedDocNumber && (
+                          <div className="text-xs mb-2 text-sky-700 flex items-center gap-1">
+                            <Link className="h-3 w-3 shrink-0" />
+                            <span>Linked:</span>
+                            {(() => {
+                              const path = getLinkedDocPath(
+                                action.metadata.linkedDocType,
+                                action.metadata.linkedDocNumber
+                              )
+                              return path ? (
+                                <a href={path} className="font-mono underline hover:text-sky-900">
+                                  {action.metadata.linkedDocNumber}
+                                </a>
+                              ) : (
+                                <span className="font-mono">{action.metadata.linkedDocNumber}</span>
+                              )
+                            })()}
+                            {action.metadata?.flow && (
+                              <span className="ml-1 text-muted-foreground">({action.metadata.flow.replace('_', '-')})</span>
+                            )}
+                          </div>
+                        )}
                         {action.comments && (
                           <p className="text-sm text-gray-700 mb-2 p-2 bg-gray-50 rounded">
                             {action.comments}
@@ -176,7 +223,7 @@ export function PVActionHistoryPanel({
                       </div>
                     </div>
 
-                    {stage.status === 'approved' || stage.status === 'rejected' ? (
+                    {stage.status?.toUpperCase() === 'APPROVED' || stage.status?.toUpperCase() === 'REJECTED' ? (
                       <div className="p-4 space-y-3">
                         <div>
                           <p className="text-sm font-semibold text-gray-700 mb-1">

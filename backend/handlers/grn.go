@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -51,7 +52,7 @@ func GetGRNs(c *fiber.Ctx) error {
 	query = scope.ApplyToQuery(query, "created_by", "grn", "received_by")
 
 	if status != "" {
-		query = query.Where("status = ?", status)
+		query = query.Where("UPPER(status) = UPPER(?)", status)
 	}
 	if poDocumentNumber != "" {
 		query = query.Where("po_document_number = ?", poDocumentNumber)
@@ -145,7 +146,7 @@ func CreateGRN(c *fiber.Ctx) error {
 		})
 	}
 
-	// Verify PO exists and belongs to organization - SECURITY FIX
+	// Verify PO exists and belongs to organization
 	var po models.PurchaseOrder
 	if err := config.DB.Where("document_number = ? AND organization_id = ?", req.PODocumentNumber, tenant.OrganizationID).First(&po).Error; err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
@@ -154,20 +155,99 @@ func CreateGRN(c *fiber.Ctx) error {
 		})
 	}
 
+	// Resolve effective procurement flow: PO override → org default → "goods_first"
+	effectiveFlow := po.ProcurementFlow
+	if effectiveFlow == "" {
+		orgSvc := services.NewOrganizationService(config.DB)
+		orgSettings, _ := orgSvc.GetOrganizationSettings(tenant.OrganizationID)
+		if orgSettings != nil && orgSettings.ProcurementFlow != "" {
+			effectiveFlow = orgSettings.ProcurementFlow
+		} else {
+			effectiveFlow = "goods_first"
+		}
+	}
+
+	// Payment-first enforcement: require an approved PV before goods can be received
+	var linkedPVDoc *models.PaymentVoucher
+	if effectiveFlow == "payment_first" {
+		if req.LinkedPV == "" {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"success": false,
+				"message": "A linked payment voucher document number is required for payment-first procurement flow",
+			})
+		}
+		var pv models.PaymentVoucher
+		if err := config.DB.Where("document_number = ? AND organization_id = ?", req.LinkedPV, tenant.OrganizationID).First(&pv).Error; err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"success": false,
+				"message": "Linked payment voucher not found",
+			})
+		}
+		if strings.ToUpper(pv.Status) != "APPROVED" && strings.ToUpper(pv.Status) != "PAID" {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"success": false,
+				"message": "Linked payment voucher must be approved or paid before receiving goods (payment-first flow)",
+			})
+		}
+		if pv.LinkedPO != po.DocumentNumber {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"success": false,
+				"message": "Linked payment voucher does not belong to the selected purchase order",
+			})
+		}
+		linkedPVDoc = &pv
+	}
+
 	// Generate GRN number
 	documentNumber := utils.GenerateDocumentNumber("GRN")
 
+	linkedPVDocNum := ""
+	if linkedPVDoc != nil {
+		linkedPVDocNum = linkedPVDoc.DocumentNumber
+	}
+
+	// Build initial action history — chain origin
+	var grnInitialHistory []types.ActionHistoryEntry
+	if linkedPVDoc != nil {
+		grnInitialHistory = append(grnInitialHistory, types.ActionHistoryEntry{
+			ID:          uuid.New().String(),
+			Action:      "CREATED_FROM_PV",
+			PerformedBy: tenant.UserID,
+			Timestamp:   time.Now(),
+			Metadata: map[string]interface{}{
+				"linkedDocNumber": linkedPVDoc.DocumentNumber,
+				"linkedDocType":   "payment_voucher",
+				"flow":            "payment_first",
+			},
+		})
+	} else {
+		grnInitialHistory = append(grnInitialHistory, types.ActionHistoryEntry{
+			ID:          uuid.New().String(),
+			Action:      "CREATED_FROM_PO",
+			PerformedBy: tenant.UserID,
+			Timestamp:   time.Now(),
+			Metadata: map[string]interface{}{
+				"linkedDocNumber": po.DocumentNumber,
+				"linkedDocType":   "purchase_order",
+				"flow":            "goods_first",
+			},
+		})
+	}
+
 	grn := models.GoodsReceivedNote{
-		ID:               uuid.New().String(),
-		OrganizationID:   tenant.OrganizationID, // SECURITY FIX: Set organization ID
-		DocumentNumber:   documentNumber,
-		PODocumentNumber: req.PODocumentNumber,
-		Status:           "draft",
-		ReceivedDate:     time.Now(),
-		ReceivedBy:       req.ReceivedBy,
-		ApprovalStage:    0,
-		CreatedAt:        time.Now(),
-		UpdatedAt:        time.Now(),
+		ID:                uuid.New().String(),
+		OrganizationID:    tenant.OrganizationID,
+		DocumentNumber:    documentNumber,
+		PODocumentNumber:  req.PODocumentNumber,
+		Status: "DRAFT",
+		ReceivedDate:      time.Now(),
+		ReceivedBy:        req.ReceivedBy,
+		ApprovalStage:     0,
+		LinkedPV:          linkedPVDocNum,
+		WarehouseLocation: req.WarehouseLocation,
+		Notes:             req.Notes,
+		CreatedAt:         time.Now(),
+		UpdatedAt:         time.Now(),
 	}
 
 	grn.Items = datatypes.NewJSONType(req.Items)
@@ -177,6 +257,7 @@ func CreateGRN(c *fiber.Ctx) error {
 
 	emptyHistory := []types.ApprovalRecord{}
 	grn.ApprovalHistory = datatypes.NewJSONType(emptyHistory)
+	grn.ActionHistory = datatypes.NewJSONType(grnInitialHistory)
 
 	if err := config.DB.Create(&grn).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
@@ -184,6 +265,30 @@ func CreateGRN(c *fiber.Ctx) error {
 			"message": "Failed to create GRN",
 			"error":   err.Error(),
 		})
+	}
+
+	// Record GRN_CREATED on the parent document for chain traceability
+	grnCreatedEntry := types.ActionHistoryEntry{
+		ID:          uuid.New().String(),
+		Action:      "GRN_CREATED",
+		PerformedBy: tenant.UserID,
+		Timestamp:   time.Now(),
+		Metadata: map[string]interface{}{
+			"linkedDocNumber": grn.DocumentNumber,
+			"linkedDocType":   "grn",
+			"flow":            effectiveFlow,
+		},
+	}
+	if linkedPVDoc != nil {
+		pvHistory := linkedPVDoc.ActionHistory.Data()
+		pvHistory = append(pvHistory, grnCreatedEntry)
+		linkedPVDoc.ActionHistory = datatypes.NewJSONType(pvHistory)
+		config.DB.Save(linkedPVDoc)
+	} else {
+		poHistory := po.ActionHistory.Data()
+		poHistory = append(poHistory, grnCreatedEntry)
+		po.ActionHistory = datatypes.NewJSONType(poHistory)
+		config.DB.Save(&po)
 	}
 
 	go utils.SyncDocument(config.DB, "GRN", grn.ID)
@@ -276,7 +381,7 @@ func UpdateGRN(c *fiber.Ctx) error {
 		})
 	}
 
-	if grn.Status != "draft" && grn.Status != "pending" {
+	if strings.ToUpper(grn.Status) != "DRAFT" && strings.ToUpper(grn.Status) != "PENDING" {
 		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
 			"success": false,
 			"message": fmt.Sprintf("Cannot update GRN in %s status", grn.Status),
@@ -340,7 +445,7 @@ func DeleteGRN(c *fiber.Ctx) error {
 		})
 	}
 
-	if grn.Status != "draft" {
+	if strings.ToUpper(grn.Status) != "DRAFT" {
 		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
 			"success": false,
 			"message": "Only draft GRNs can be deleted",
@@ -372,6 +477,9 @@ func modelToGRNResponse(grn models.GoodsReceivedNote) types.GRNResponse {
 	var approvalHistory []types.ApprovalRecord
 	approvalHistory = grn.ApprovalHistory.Data()
 
+	var actionHistory []types.ActionHistoryEntry
+	actionHistory = grn.ActionHistory.Data()
+
 	return types.GRNResponse{
 		ID:               grn.ID,
 		DocumentNumber:   grn.DocumentNumber,
@@ -383,6 +491,8 @@ func modelToGRNResponse(grn models.GoodsReceivedNote) types.GRNResponse {
 		QualityIssues:    qualityIssues,
 		ApprovalStage:    grn.ApprovalStage,
 		ApprovalHistory:  approvalHistory,
+		ActionHistory:    actionHistory,
+		LinkedPV:         grn.LinkedPV,
 		CreatedAt:        grn.CreatedAt,
 		UpdatedAt:        grn.UpdatedAt,
 	}
@@ -426,7 +536,7 @@ func SubmitGRN(c *fiber.Ctx) error {
 	}
 
 	// Check if GRN is in draft status
-	if grn.Status != "draft" {
+	if strings.ToUpper(grn.Status) != "DRAFT" {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"success": false,
 			"message": fmt.Sprintf("Cannot submit GRN in %s status", grn.Status),
@@ -449,7 +559,7 @@ func SubmitGRN(c *fiber.Ctx) error {
 	}
 
 	// Update GRN status to pending
-	grn.Status = "pending"
+	grn.Status = "PENDING"
 	grn.UpdatedAt = time.Now()
 
 	// Add action history entry for submission
@@ -468,8 +578,8 @@ func SubmitGRN(c *fiber.Ctx) error {
 			Timestamp:       time.Now(),
 			Comments:        "GRN submitted for approval",
 			ActionType:      "SUBMIT",
-			PreviousStatus:  "draft",
-			NewStatus:       "pending",
+			PreviousStatus:  "DRAFT",
+			NewStatus:       "PENDING",
 		})
 		grn.ActionHistory = datatypes.NewJSONType(actionHistory)
 	}

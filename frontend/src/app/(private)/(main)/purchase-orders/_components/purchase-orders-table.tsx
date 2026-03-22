@@ -39,7 +39,7 @@ function transformPOToWorkflowDocument(po: PurchaseOrder): WorkflowDocument {
     id: po.id,
     type: "purchase_order",
     documentNumber: po.documentNumber,
-    status: po.status?.toLowerCase() as any, // Convert to lowercase for compatibility
+    status: po.status?.toUpperCase() as any,
     currentStage: po.approvalStage,
     createdAt: po.createdAt,
     updatedAt: po.updatedAt,

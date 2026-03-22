@@ -91,7 +91,7 @@ func (s *DocumentService) CreateDocument(ctx context.Context, organizationID, us
 		OrganizationID: organizationID,
 		DocumentType:   req.DocumentType,
 		Title:          req.Title,
-		Status:         "draft",
+		Status: "DRAFT",
 		CreatedBy:      userID,
 		WorkflowID:     req.WorkflowID,
 		Data:           datatypes.JSON(dataJSON),

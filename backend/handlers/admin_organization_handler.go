@@ -491,11 +491,12 @@ func AdminUpdateOrganizationStatus(c *fiber.Ctx) error {
 		return utils.SendBadRequest(c, "Invalid request body")
 	}
 
-	if request.Status != "active" && request.Status != "suspended" && request.Status != "pending" {
+	reqStatus := strings.ToUpper(request.Status)
+	if reqStatus != "ACTIVE" && reqStatus != "SUSPENDED" && reqStatus != "PENDING" {
 		return utils.SendBadRequest(c, "Invalid status. Must be 'active', 'suspended', or 'pending'")
 	}
 
-	active := request.Status == "active"
+	active := reqStatus == "ACTIVE"
 
 	if err := db.Table("organizations").Where("id = ?", orgID).Updates(map[string]interface{}{
 		"active":     active,

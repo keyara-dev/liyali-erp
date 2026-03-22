@@ -135,20 +135,20 @@ export function ApprovalsList({ userId, userRole }: ApprovalsListProps) {
   const groupedTasks = useMemo(
     () => ({
       claimedByMe: filteredTasks.filter((task) => {
-        const status = task.status?.toLowerCase();
-        return status === "claimed" && task.claimedBy === currentUser.id;
+        const status = task.status?.toUpperCase();
+        return status === "CLAIMED" && task.claimedBy === currentUser.id;
       }),
       available: filteredTasks.filter((task) => {
-        const status = task.status?.toLowerCase();
-        return status === "pending" && canUserAccessTask(task);
+        const status = task.status?.toUpperCase();
+        return status === "PENDING" && canUserAccessTask(task);
       }),
       claimedByOthers: filteredTasks.filter((task) => {
-        const status = task.status?.toLowerCase();
-        return status === "claimed" && task.claimedBy !== currentUser.id;
+        const status = task.status?.toUpperCase();
+        return status === "CLAIMED" && task.claimedBy !== currentUser.id;
       }),
       completed: filteredTasks.filter((task) => {
-        const status = task.status?.toLowerCase();
-        return status === "approved" || status === "rejected" || status === "completed";
+        const status = task.status?.toUpperCase();
+        return status === "APPROVED" || status === "REJECTED" || status === "COMPLETED";
       }),
     }),
     [filteredTasks, currentUser.id, currentUser.role, currentUser.isBuiltInApprover]

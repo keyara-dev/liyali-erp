@@ -220,7 +220,7 @@ type WorkflowAssignment struct {
 	Workflow          *Workflow      `gorm:"foreignKey:WorkflowID" json:"workflow,omitempty"`
 	WorkflowVersion   int            `gorm:"not null" json:"workflowVersion"`
 	CurrentStage      int            `gorm:"default:0" json:"currentStage"`
-	Status            string         `gorm:"default:'in_progress'" json:"status"` // "in_progress", "completed", "rejected", "cancelled"
+	Status            string         `gorm:"default:'IN_PROGRESS'" json:"status"` // "IN_PROGRESS", "COMPLETED", "REJECTED", "CANCELLED"
 	StageHistory      datatypes.JSON `gorm:"type:jsonb" json:"stageHistory"`
 	AssignedAt        time.Time      `json:"assignedAt"`
 	AssignedBy        string         `gorm:"not null" json:"assignedBy"`
@@ -262,8 +262,8 @@ type WorkflowTask struct {
 	AssignedUser   *User   `gorm:"foreignKey:AssignedUserID" json:"assignedUser,omitempty"`
 	
 	// Task lifecycle
-	Status      string     `gorm:"default:'pending'" json:"status"` // "pending", "claimed", "completed", "expired"
-	Priority    string     `gorm:"default:'medium'" json:"priority"` // "low", "medium", "high", "urgent"
+	Status      string     `gorm:"default:'PENDING'" json:"status"` // "PENDING", "CLAIMED", "COMPLETED", "EXPIRED"
+	Priority    string     `gorm:"default:'MEDIUM'" json:"priority"` // "LOW", "MEDIUM", "HIGH", "URGENT"
 	CreatedAt   time.Time  `json:"createdAt"`
 	ClaimedAt   *time.Time `json:"claimedAt,omitempty"`
 	ClaimedBy   *string    `json:"claimedBy,omitempty"`
@@ -603,28 +603,28 @@ func (wa *WorkflowAssignment) AddStageExecution(execution StageExecution) error 
 }
 
 func (wa *WorkflowAssignment) IsCompleted() bool {
-	return wa.Status == "completed"
+	return strings.ToUpper(wa.Status) == "COMPLETED"
 }
 
 func (wa *WorkflowAssignment) IsInProgress() bool {
-	return wa.Status == "in_progress"
+	return strings.ToUpper(wa.Status) == "IN_PROGRESS"
 }
 
 func (wa *WorkflowAssignment) IsRejected() bool {
-	return wa.Status == "rejected"
+	return strings.ToUpper(wa.Status) == "REJECTED"
 }
 
 // Helper methods for WorkflowTask
 func (wt *WorkflowTask) IsPending() bool {
-	return wt.Status == "pending"
+	return strings.ToUpper(wt.Status) == "PENDING"
 }
 
 func (wt *WorkflowTask) IsClaimed() bool {
-	return wt.Status == "claimed"
+	return strings.ToUpper(wt.Status) == "CLAIMED"
 }
 
 func (wt *WorkflowTask) IsCompleted() bool {
-	return wt.Status == "completed"
+	return strings.ToUpper(wt.Status) == "COMPLETED"
 }
 
 func (wt *WorkflowTask) IsOverdue() bool {

@@ -297,7 +297,7 @@ func (bvs *BudgetValidationService) getVendorPOTotal(
 	var total float64
 	if err := bvs.db.Model(&models.PurchaseOrder{}).
 		Where("vendor_id = ?", vendorID).
-		Where("status IN ?", []string{"approved", "fulfilled", "completed"}).
+		Where("UPPER(status) IN ?", []string{"APPROVED", "FULFILLED", "COMPLETED"}).
 		Select("SUM(total_amount)").
 		Row().
 		Scan(&total); err != nil {

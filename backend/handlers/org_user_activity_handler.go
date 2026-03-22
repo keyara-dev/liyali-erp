@@ -553,18 +553,18 @@ func OrgGetUserWorkStats(c *fiber.Ctx) error {
 
 	var totalApprovals, approvedCount, rejectedCount int64
 	db.Table("workflow_assignments").
-		Where("approver_id = ? AND status IN ('approved','rejected')", userID).
+		Where("approver_id = ? AND UPPER(status) IN ('APPROVED','REJECTED')", userID).
 		Count(&totalApprovals)
 	db.Table("workflow_assignments").
-		Where("approver_id = ? AND status = 'approved'", userID).
+		Where("approver_id = ? AND UPPER(status) = 'APPROVED'", userID).
 		Count(&approvedCount)
 	db.Table("workflow_assignments").
-		Where("approver_id = ? AND status = 'rejected'", userID).
+		Where("approver_id = ? AND UPPER(status) = 'REJECTED'", userID).
 		Count(&rejectedCount)
 
 	var pendingTasks int64
 	db.Table("workflow_assignments").
-		Where("approver_id = ? AND status IN ('pending','claimed')", userID).
+		Where("approver_id = ? AND UPPER(status) IN ('PENDING','CLAIMED')", userID).
 		Count(&pendingTasks)
 
 	var recentActivity int64

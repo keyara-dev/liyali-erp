@@ -30,6 +30,7 @@ export async function createPurchaseOrderFromRequisition(
   workflowId?: string,
   vendorIdOverride?: string,
   vendorNameOverride?: string,
+  procurementFlow?: "" | "goods_first" | "payment_first",
 ): Promise<APIResponse<PurchaseOrder>> {
   const url = `/api/v1/purchase-orders/from-requisition`;
 
@@ -58,6 +59,7 @@ export async function createPurchaseOrderFromRequisition(
         requestedByName: requisition.requestedByName,
         requestedByRole: requisition.requestedByRole,
         workflowId, // Store for later use when submitting
+        procurementFlow: procurementFlow ?? "", // "" = inherit from org default
       },
     });
 

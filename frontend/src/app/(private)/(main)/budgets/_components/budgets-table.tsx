@@ -181,11 +181,11 @@ export function BudgetsTable({
 
         return (
           <div className="text-sm">
-            {status === "draft"
+            {status?.toUpperCase() === "DRAFT"
               ? "Not submitted"
-              : status === "approved"
+              : status?.toUpperCase() === "APPROVED"
                 ? "Completed"
-                : status === "rejected"
+                : status?.toUpperCase() === "REJECTED"
                   ? "Rejected"
                   : stage > 0
                     ? `Stage ${stage}`

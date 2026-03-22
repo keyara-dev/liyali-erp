@@ -81,12 +81,13 @@ export function WorkflowStatusCard({
     );
   }
 
-  const isPending = task.status === "pending";
+  const taskStatus = task.status?.toUpperCase();
+  const isPending = taskStatus === "PENDING";
   const isClaimedByMe =
-    task.status === "claimed" && task.claimedBy === currentUserId;
+    taskStatus === "CLAIMED" && task.claimedBy === currentUserId;
   const isClaimedByOther =
-    task.status === "claimed" && task.claimedBy !== currentUserId;
-  const isCompleted = task.status === "completed";
+    taskStatus === "CLAIMED" && task.claimedBy !== currentUserId;
+  const isCompleted = taskStatus === "COMPLETED";
 
   const getStatusIcon = () => {
     if (isPending) return <Clock className="h-4 w-4 text-amber-500" />;

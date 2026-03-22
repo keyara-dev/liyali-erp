@@ -62,6 +62,7 @@ export interface OrganizationSettings {
     sms: boolean;
     push: boolean;
   };
+  procurementFlow?: "goods_first" | "payment_first";
 }
 
 /**
@@ -333,6 +334,7 @@ export async function updateOrganizationSettings(
         fiscalYearStart: data.fiscalYearStart,
         workflowEnabled: data.workflowEnabled,
         notifications: data.notifications,
+        procurementFlow: data.procurementFlow,
       },
     });
 

@@ -49,12 +49,12 @@ func (s *WorkflowExecutionService) StartClaimExpiryWorker(ctx context.Context) {
 			return
 		case <-ticker.C:
 			result := s.db.Table("workflow_tasks").
-				Where("status = ? AND claim_expiry < ?", "claimed", time.Now()).
+				Where("UPPER(status) = ? AND claim_expiry < ?", "CLAIMED", time.Now()).
 				Updates(map[string]interface{}{
 					"claimed_by":   nil,
 					"claimed_at":   nil,
 					"claim_expiry": nil,
-					"status":       "pending",
+					"status":       "PENDING",
 				})
 			if result.Error != nil {
 				log.Printf("[ClaimExpiry] Error expiring stale claims: %v", result.Error)
@@ -211,7 +211,7 @@ func (s *WorkflowExecutionService) autoApproveAndGeneratePO(
 		WorkflowID:      workflow.ID,
 		WorkflowVersion: workflow.Version,
 		CurrentStage:    0,
-		Status:          "completed",
+		Status: "COMPLETED",
 		StageHistory:    datatypes.JSON{},
 		AssignedAt:      now,
 		AssignedBy:      userID,
@@ -241,7 +241,7 @@ func (s *WorkflowExecutionService) autoApproveAndGeneratePO(
 	}
 
 	// 2. Update requisition status to "approved"
-	if err := s.updateDocumentStatus(tx, "requisition", entityID, "approved"); err != nil {
+	if err := s.updateDocumentStatus(tx, "requisition", entityID, "APPROVED"); err != nil {
 		tx.Rollback()
 		return nil, fmt.Errorf("failed to update requisition status: %w", err)
 	}
@@ -266,11 +266,11 @@ func (s *WorkflowExecutionService) autoApproveAndGeneratePO(
 	// 4. Auto-generate PO if configured
 	if conditions.AutoGeneratePO && s.automationService != nil {
 		// Refresh requisition status for the automation service check
-		requisition.Status = "approved"
+		requisition.Status = "APPROVED"
 
-		targetStatus := "draft"
+		targetStatus := "DRAFT"
 		if conditions.AutoApprovePO {
-			targetStatus = "approved"
+			targetStatus = "APPROVED"
 		}
 
 		poResult, err := s.automationService.CreatePurchaseOrderFromRequisitionWithStatus(
@@ -358,7 +358,7 @@ func (s *WorkflowExecutionService) assignWorkflow(
 		WorkflowID:      workflow.ID,
 		WorkflowVersion: workflow.Version,
 		CurrentStage:    1,
-		Status:          "in_progress",
+		Status:          "IN_PROGRESS",
 		StageHistory:    datatypes.JSON{},
 		AssignedAt:      time.Now(),
 		AssignedBy:      userID,
@@ -387,7 +387,7 @@ func (s *WorkflowExecutionService) assignWorkflow(
 		StageName:            firstStage.StageName,
 		AssignmentType:       "role",
 		AssignedRole:         &firstStage.RequiredRole,
-		Status:               "pending",
+		Status: "PENDING",
 		Priority:             documentPriority,
 		CreatedAt:            time.Now(),
 	}
@@ -473,7 +473,7 @@ func (s *WorkflowExecutionService) GetWorkflowAssignment(ctx context.Context, or
 // GetPendingWorkflowTasks retrieves pending workflow tasks for an entity
 func (s *WorkflowExecutionService) GetPendingWorkflowTasks(ctx context.Context, organizationID, entityID string) ([]models.WorkflowTask, error) {
 	var tasks []models.WorkflowTask
-	err := s.db.Where("organization_id = ? AND entity_id = ? AND status = ?", organizationID, entityID, "pending").
+	err := s.db.Where("organization_id = ? AND entity_id = ? AND UPPER(status) = ?", organizationID, entityID, "PENDING").
 		Order("stage_number ASC").
 		Find(&tasks).Error
 
@@ -624,7 +624,7 @@ func (s *WorkflowExecutionService) ApproveWorkflowTaskWithVersion(ctx context.Co
 	}
 
 	// Check task status
-	if task.Status != "pending" && task.Status != "claimed" {
+	if strings.ToUpper(task.Status) != "PENDING" && strings.ToUpper(task.Status) != "CLAIMED" {
 		tx.Rollback()
 		return fmt.Errorf("task is not in pending or claimed status (current: %s)", task.Status)
 	}
@@ -706,7 +706,7 @@ func (s *WorkflowExecutionService) ApproveWorkflowTaskWithVersion(ctx context.Co
 		result := tx.Model(&task).
 			Where("id = ? AND version = ?", taskID, task.Version).
 			Updates(map[string]interface{}{
-				"status":       "completed",
+				"status": "COMPLETED",
 				"completed_at": now,
 				"updated_by":   userID,
 				"version":      task.Version + 1,
@@ -752,12 +752,12 @@ func (s *WorkflowExecutionService) ApproveWorkflowTaskWithVersion(ctx context.Co
 
 		if workflowCompleted {
 			// Workflow completed
-			assignment.Status = "completed"
+			assignment.Status = "COMPLETED"
 			assignment.CompletedAt = &now
 			assignment.CurrentStage = len(stages)
 
 			// Update the actual document status to "approved"
-			if err := s.updateDocumentStatus(tx, assignment.EntityType, assignment.EntityID, "approved"); err != nil {
+			if err := s.updateDocumentStatus(tx, assignment.EntityType, assignment.EntityID, "APPROVED"); err != nil {
 				tx.Rollback()
 				return fmt.Errorf("failed to update document status: %w", err)
 			}
@@ -788,7 +788,7 @@ func (s *WorkflowExecutionService) ApproveWorkflowTaskWithVersion(ctx context.Co
 				StageName:            nextStage.StageName,
 				AssignmentType:       "role",
 				AssignedRole:         &nextStage.RequiredRole,
-				Status:               "pending",
+				Status: "PENDING",
 				Priority:             nextTaskPriority,
 				Version:              1,
 				CreatedAt:            time.Now(),
@@ -986,7 +986,7 @@ func (s *WorkflowExecutionService) RejectWorkflowTaskWithVersion(ctx context.Con
 	}
 
 	// Check task status
-	if task.Status != "pending" && task.Status != "claimed" {
+	if strings.ToUpper(task.Status) != "PENDING" && strings.ToUpper(task.Status) != "CLAIMED" {
 		tx.Rollback()
 		return fmt.Errorf("task is not in pending or claimed status (current: %s)", task.Status)
 	}
@@ -1030,7 +1030,7 @@ func (s *WorkflowExecutionService) RejectWorkflowTaskWithVersion(ctx context.Con
 	result := tx.Model(&task).
 		Where("id = ? AND version = ?", taskID, task.Version).
 		Updates(map[string]interface{}{
-			"status":       "completed",
+			"status": "COMPLETED",
 			"completed_at": now,
 			"updated_by":   userID,
 			"version":      task.Version + 1,
@@ -1123,11 +1123,11 @@ func (s *WorkflowExecutionService) RejectWorkflowTaskWithVersion(ctx context.Con
 
 		// Move assignment back to previous stage, keep workflow active
 		assignment.CurrentStage = prevStageNumber
-		assignment.Status = "in_progress"
+		assignment.Status = "IN_PROGRESS"
 		assignment.UpdatedAt = time.Now()
 
 		// Update document status to "revision"
-		if err := s.updateDocumentStatus(tx, assignment.EntityType, assignment.EntityID, "revision"); err != nil {
+		if err := s.updateDocumentStatus(tx, assignment.EntityType, assignment.EntityID, "REVISION"); err != nil {
 			tx.Rollback()
 			return fmt.Errorf("failed to update document status: %w", err)
 		}
@@ -1144,7 +1144,7 @@ func (s *WorkflowExecutionService) RejectWorkflowTaskWithVersion(ctx context.Con
 			StageName:            prevStage.StageName,
 			AssignmentType:       "role",
 			AssignedRole:         &prevStage.RequiredRole,
-			Status:               "pending",
+			Status: "PENDING",
 			Priority:             nextTaskPriority,
 			Version:              1,
 			CreatedAt:            time.Now(),
@@ -1181,12 +1181,12 @@ func (s *WorkflowExecutionService) RejectWorkflowTaskWithVersion(ctx context.Con
 	} else if isReturnToDraft {
 		// RETURN TO DRAFT: send document back to draft, cancel the workflow
 		// The requester can edit and resubmit, which will start a new workflow
-		assignment.Status = "returned"
+		assignment.Status = "RETURNED"
 		assignment.CompletedAt = &now
 		assignment.UpdatedAt = time.Now()
 
 		// Update document status to "draft"
-		if err := s.updateDocumentStatus(tx, assignment.EntityType, assignment.EntityID, "draft"); err != nil {
+		if err := s.updateDocumentStatus(tx, assignment.EntityType, assignment.EntityID, "DRAFT"); err != nil {
 			tx.Rollback()
 			return fmt.Errorf("failed to update document status: %w", err)
 		}
@@ -1202,12 +1202,12 @@ func (s *WorkflowExecutionService) RejectWorkflowTaskWithVersion(ctx context.Con
 		notificationAction = "workflow_returned_to_draft"
 	} else {
 		// FULL REJECTION: terminate the workflow
-		assignment.Status = "rejected"
+		assignment.Status = "REJECTED"
 		assignment.CompletedAt = &now
 		assignment.UpdatedAt = time.Now()
 
 		// Update the actual document status to "rejected"
-		if err := s.updateDocumentStatus(tx, assignment.EntityType, assignment.EntityID, "rejected"); err != nil {
+		if err := s.updateDocumentStatus(tx, assignment.EntityType, assignment.EntityID, "REJECTED"); err != nil {
 			tx.Rollback()
 			return fmt.Errorf("failed to update document status: %w", err)
 		}
@@ -1317,7 +1317,7 @@ func (s *WorkflowExecutionService) GetWorkflowStatus(ctx context.Context, organi
 			StageNumber:    stage.StageNumber,
 			StageName:      stage.StageName,
 			RequiredRole:   requiredRoleDisplay,
-			Status:         "pending",
+			Status: "PENDING",
 			IsCurrentStage: stage.StageNumber == assignment.CurrentStage,
 		}
 
@@ -1335,8 +1335,8 @@ func (s *WorkflowExecutionService) GetWorkflowStatus(ctx context.Context, organi
 		}
 
 		// Mark stages before current as completed if not found in history
-		if stage.StageNumber < assignment.CurrentStage && stageInfo.Status == "pending" {
-			stageInfo.Status = "completed"
+		if stage.StageNumber < assignment.CurrentStage && strings.ToUpper(stageInfo.Status) == "PENDING" {
+			stageInfo.Status = "COMPLETED"
 		}
 
 		response.StageProgress[i] = stageInfo
@@ -1462,7 +1462,7 @@ func (s *WorkflowExecutionService) ClaimWorkflowTask(ctx context.Context, taskID
 
 	// Read task and user first to perform role-based auth check
 	var task models.WorkflowTask
-	if err := tx.Where("id = ? AND status = ?", taskID, "pending").First(&task).Error; err != nil {
+	if err := tx.Where("id = ? AND UPPER(status) = ?", taskID, "PENDING").First(&task).Error; err != nil {
 		tx.Rollback()
 		return fmt.Errorf("task not found or not available: %w", err)
 	}
@@ -1480,13 +1480,13 @@ func (s *WorkflowExecutionService) ClaimWorkflowTask(ctx context.Context, taskID
 
 	// Atomic claim operation with optimistic locking
 	result := tx.Model(&task).
-		Where("id = ? AND status = ? AND (claimed_by IS NULL OR claim_expiry < ?)",
-			taskID, "pending", time.Now()).
+		Where("id = ? AND UPPER(status) = ? AND (claimed_by IS NULL OR claim_expiry < ?)",
+			taskID, "PENDING", time.Now()).
 		Updates(map[string]interface{}{
 			"claimed_by":   userID,
 			"claimed_at":   time.Now(),
 			"claim_expiry": time.Now().Add(30 * time.Minute), // 30-minute claim
-			"status":       "claimed",
+			"status": "CLAIMED",
 			"version":      gorm.Expr("version + 1"),
 		})
 
@@ -1531,7 +1531,7 @@ func (s *WorkflowExecutionService) UnclaimWorkflowTask(ctx context.Context, task
 			"claimed_by":   nil,
 			"claimed_at":   nil,
 			"claim_expiry": nil,
-			"status":       "pending",
+			"status": "PENDING",
 			"version":      gorm.Expr("version + 1"),
 		})
 
@@ -1645,7 +1645,7 @@ func (s *WorkflowExecutionService) addActionHistoryEntry(tx *gorm.DB, entityType
 		PerformedAt:     time.Now(),
 		Comments:        comments,
 		PreviousStatus:  "", // Could be enhanced to track status transitions
-		NewStatus:       "approved",
+		NewStatus: "APPROVED",
 	}
 
 	switch entityType {
@@ -1753,9 +1753,9 @@ func (s *WorkflowExecutionService) triggerPostApprovalAutomation(ctx context.Con
 					return fmt.Errorf("failed to get requisition for auto-PO: %w", err)
 				}
 
-				targetStatus := "draft"
+				targetStatus := "DRAFT"
 				if conditions.AutoApprovePO {
-					targetStatus = "approved"
+					targetStatus = "APPROVED"
 				}
 
 				result, err := s.automationService.CreatePurchaseOrderFromRequisitionWithStatus(

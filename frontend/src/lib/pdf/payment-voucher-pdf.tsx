@@ -710,7 +710,7 @@ const PaymentVoucherPDF: React.FC<PaymentVoucherPDFProps> = ({
         )}
 
         {/* Payment Confirmation (if PAID) */}
-        {paymentVoucher.status === "paid" && (
+        {paymentVoucher.status?.toUpperCase() === "PAID" && (
           <View
             style={{
               marginBottom: 12,

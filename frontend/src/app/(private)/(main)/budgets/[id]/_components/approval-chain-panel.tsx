@@ -12,12 +12,12 @@ interface ApprovalChainPanelProps {
 
 export function ApprovalChainPanel({ approvalChain }: ApprovalChainPanelProps) {
   const getStatusIcon = (status: string) => {
-    switch (status) {
-      case "approved":
+    switch (status?.toUpperCase()) {
+      case "APPROVED":
         return <CheckCircle2 className="h-5 w-5 text-green-600" />;
-      case "rejected":
+      case "REJECTED":
         return <XCircle className="h-5 w-5 text-red-600" />;
-      case "pending":
+      case "PENDING":
         return <Clock className="h-5 w-5 text-yellow-600" />;
       default:
         return <Clock className="h-5 w-5 text-gray-400" />;
@@ -25,12 +25,12 @@ export function ApprovalChainPanel({ approvalChain }: ApprovalChainPanelProps) {
   };
 
   const getStatusColor = (status: string) => {
-    switch (status) {
-      case "approved":
+    switch (status?.toUpperCase()) {
+      case "APPROVED":
         return "bg-green-50";
-      case "rejected":
+      case "REJECTED":
         return "bg-red-50";
-      case "pending":
+      case "PENDING":
         return "bg-yellow-50";
       default:
         return "bg-gray-50";
@@ -112,9 +112,9 @@ export function ApprovalChainPanel({ approvalChain }: ApprovalChainPanelProps) {
                     <h4 className="font-semibold">Stage {index + 1}</h4>
                     <span
                       className={`px-2 py-1 rounded text-xs font-medium ${
-                        record.status === "approved"
+                        record.status?.toUpperCase() === "APPROVED"
                           ? "bg-green-200 text-green-800"
-                          : record.status === "rejected"
+                          : record.status?.toUpperCase() === "REJECTED"
                             ? "bg-red-200 text-red-800"
                             : "bg-yellow-200 text-yellow-800"
                       }`}

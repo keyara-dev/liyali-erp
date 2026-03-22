@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -67,8 +68,8 @@ func (s *InvitationService) SendInvitation(
 	// Cancel any existing pending invitation for the same org+email so there is
 	// never more than one active invite at a time.
 	s.db.Model(&models.OrganizationInvitation{}).
-		Where("organization_id = ? AND invited_email = ? AND status = 'pending'", orgID, invitedEmail).
-		Update("status", "cancelled")
+		Where("organization_id = ? AND invited_email = ? AND UPPER(status) = 'PENDING'", orgID, invitedEmail).
+		Update("status", "CANCELLED")
 
 	token, err := generateToken()
 	if err != nil {
@@ -84,7 +85,7 @@ func (s *InvitationService) SendInvitation(
 		Role:           role,
 		DepartmentID:   departmentID,
 		BranchID:       branchID,
-		Status:         "pending",
+		Status:         "PENDING",
 		Token:          &token,
 		ExpiresAt:      time.Now().Add(72 * time.Hour),
 	}
@@ -130,7 +131,7 @@ func (s *InvitationService) AcceptInvitation(token, acceptingUserID string) erro
 
 	now := time.Now()
 	return s.db.Model(inv).Updates(map[string]interface{}{
-		"status":      "accepted",
+		"status":      "ACCEPTED",
 		"accepted_at": now,
 	}).Error
 }
@@ -148,7 +149,7 @@ func (s *InvitationService) DeclineInvitation(token, decliningUserID string) err
 
 	now := time.Now()
 	return s.db.Model(inv).Updates(map[string]interface{}{
-		"status":      "declined",
+		"status":      "DECLINED",
 		"declined_at": now,
 	}).Error
 }
@@ -163,10 +164,10 @@ func (s *InvitationService) CancelInvitation(invitationID, adminUserID, orgID st
 		}
 		return fmt.Errorf("failed to load invitation: %w", err)
 	}
-	if inv.Status != "pending" {
+	if strings.ToUpper(inv.Status) != "PENDING" {
 		return fmt.Errorf("invitation cannot be cancelled (current status: %s)", inv.Status)
 	}
-	return s.db.Model(&inv).Update("status", "cancelled").Error
+	return s.db.Model(&inv).Update("status", "CANCELLED").Error
 }
 
 // ListOrgInvitations returns all invitations for the given organisation, newest first.
@@ -190,7 +191,7 @@ func (s *InvitationService) ListPendingInvitationsForUser(userID string) ([]mode
 	err := s.db.
 		Preload("Organization").
 		Preload("InvitedByUser").
-		Where("invited_user_id = ? AND status = 'pending'", userID).
+		Where("invited_user_id = ? AND UPPER(status) = 'PENDING'", userID).
 		Order("created_at DESC").
 		Find(&invs).Error
 	return invs, err
@@ -200,8 +201,8 @@ func (s *InvitationService) ListPendingInvitationsForUser(userID string) ([]mode
 // Called from a background goroutine in main.go.
 func (s *InvitationService) ExpireStaleInvitations() error {
 	result := s.db.Model(&models.OrganizationInvitation{}).
-		Where("status = 'pending' AND expires_at < ?", time.Now()).
-		Update("status", "expired")
+		Where("UPPER(status) = 'PENDING' AND expires_at < ?", time.Now()).
+		Update("status", "EXPIRED")
 	if result.Error != nil {
 		return result.Error
 	}
@@ -226,14 +227,14 @@ func (s *InvitationService) loadPendingByToken(token string) (*models.Organizati
 		}
 		return nil, fmt.Errorf("failed to load invitation: %w", err)
 	}
-	if inv.Status == "expired" || time.Now().After(inv.ExpiresAt) {
+	if strings.ToUpper(inv.Status) == "EXPIRED" || time.Now().After(inv.ExpiresAt) {
 		// Mark expired if not already.
-		if inv.Status == "pending" {
-			s.db.Model(&inv).Update("status", "expired")
+		if strings.ToUpper(inv.Status) == "PENDING" {
+			s.db.Model(&inv).Update("status", "EXPIRED")
 		}
 		return nil, errors.New("this invitation has expired — ask the admin to send a new one")
 	}
-	if inv.Status != "pending" {
+	if strings.ToUpper(inv.Status) != "PENDING" {
 		return nil, fmt.Errorf("invitation is no longer valid (status: %s)", inv.Status)
 	}
 	return &inv, nil
@@ -243,8 +244,8 @@ func (s *InvitationService) loadPendingByToken(token string) (*models.Organizati
 // listing, so the invitee never sees expired items as pending.
 func (s *InvitationService) expireForUser(userID string) {
 	s.db.Model(&models.OrganizationInvitation{}).
-		Where("invited_user_id = ? AND status = 'pending' AND expires_at < ?", userID, time.Now()).
-		Update("status", "expired")
+		Where("invited_user_id = ? AND UPPER(status) = 'PENDING' AND expires_at < ?", userID, time.Now()).
+		Update("status", "EXPIRED")
 }
 
 // createInvitationNotification inserts an in-app notification for the invitee.

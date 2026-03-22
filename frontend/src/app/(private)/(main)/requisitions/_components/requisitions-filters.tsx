@@ -98,12 +98,12 @@ export function RequisitionsFilters({
             placeholder="All Statuses"
             options={[
               { value: "all", label: "All Statuses" },
-              { value: "draft", label: "Draft" },
-              { value: "pending", label: "Pending" },
-              { value: "approved", label: "Approved" },
-              { value: "rejected", label: "Rejected" },
-              { value: "completed", label: "Completed" },
-              { value: "cancelled", label: "Cancelled" },
+              { value: "DRAFT", label: "Draft" },
+              { value: "PENDING", label: "Pending" },
+              { value: "APPROVED", label: "Approved" },
+              { value: "REJECTED", label: "Rejected" },
+              { value: "COMPLETED", label: "Completed" },
+              { value: "CANCELLED", label: "Cancelled" },
             ]}
             classNames={{
               wrapper: "space-y-2",

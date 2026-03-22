@@ -31,7 +31,7 @@ function transformGRNToWorkflowDocument(grn: any): WorkflowDocument {
     id: grn.id,
     type: "goods_received_note",
     documentNumber: grn.documentNumber,
-    status: grn.status?.toLowerCase() as any, // Convert to lowercase for compatibility
+    status: grn.status?.toUpperCase() as any,
     currentStage: grn.currentStage || grn.approvalStage || 0,
     createdAt: grn.createdAt ? new Date(grn.createdAt) : new Date(),
     updatedAt: grn.updatedAt ? new Date(grn.updatedAt) : new Date(),
@@ -73,7 +73,7 @@ function GrnOptionsMenu({
           <Download className="mr-2 h-4 w-4" />
           Download
         </DropdownMenuItem>
-        {grn.status === "pending" && (
+        {grn.status?.toUpperCase() === "PENDING" && (
           <>
             <DropdownMenuItem
               onClick={() => console.log("Approve GRN:", grn.id)}
@@ -89,7 +89,7 @@ function GrnOptionsMenu({
             </DropdownMenuItem>
           </>
         )}
-        {grn.status !== "approved" && canModify && (
+        {grn.status?.toUpperCase() !== "APPROVED" && canModify && (
           <DropdownMenuItem
             onClick={() => console.log("Delete GRN:", grn.id)}
             className="text-destructive"
@@ -147,7 +147,7 @@ const columns: ColumnDef<WorkflowDocument>[] = [
     accessorKey: "status",
     header: "Status",
     cell: ({ row }) => (
-      <StatusBadge status={row.original.status || "draft"} type="document" />
+      <StatusBadge status={row.original.status || "DRAFT"} type="document" />
     ),
   },
   {
@@ -198,7 +198,7 @@ export function GrnTable({
           tooltip: "View Details",
           onClick: () => router.push(`/grn/${grn.id}`),
         },
-        ...(grn.status !== "approved" && canModify
+        ...(grn.status?.toUpperCase() !== "APPROVED" && canModify
           ? [
               {
                 icon: <Pencil className="h-3.5 w-3.5" />,

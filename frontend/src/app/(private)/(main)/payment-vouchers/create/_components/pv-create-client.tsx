@@ -58,7 +58,7 @@ export function PVCreateClient({
 
   // Filter to show only APPROVED purchase orders
   const approvedPOs =
-    purchaseOrders?.filter((po) => po.status === "approved") || [];
+    purchaseOrders?.filter((po) => po.status?.toUpperCase() === "APPROVED") || [];
 
   const handleSelectPO = (poId: string) => {
     const po = approvedPOs.find((p) => p.id === poId);

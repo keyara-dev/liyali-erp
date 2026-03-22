@@ -19,7 +19,7 @@ export async function getTasksForUser(
   status?: TaskStatus,
 ): Promise<APIResponse<Task[]>> {
   const params: Record<string, string> = {};
-  if (status) params.status = status.toLowerCase();
+  if (status) params.status = status;
 
   try {
     const response = await authenticatedApiClient({

@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -63,7 +64,7 @@ func (s *DocumentAutomationService) CreatePurchaseOrderFromRequisition(
 		}, nil
 	}
 
-	if requisition.Status != "approved" {
+	if strings.ToUpper(requisition.Status) != "APPROVED" {
 		return &AutomationResult{
 			Success: false,
 			Error:   fmt.Errorf("requisition must be approved to create PO"),
@@ -116,7 +117,7 @@ func (s *DocumentAutomationService) CreatePurchaseOrderFromRequisition(
 		ID:                uuid.New().String(),
 		DocumentNumber:    documentNumber,
 		VendorID:          vendorID, // Now can be the placeholder vendor ID
-		Status:            "draft",  // Start as draft for review
+		Status: "DRAFT",  // Start as draft for review
 		TotalAmount:       requisition.TotalAmount,
 		Currency:          requisition.Currency,
 		DeliveryDate:      time.Now().AddDate(0, 1, 0), // Default 1 month delivery
@@ -192,7 +193,7 @@ func (s *DocumentAutomationService) CreatePurchaseOrderFromRequisitionWithStatus
 	requisition *models.Requisition,
 	targetStatus string,
 ) (*AutomationResult, error) {
-	if requisition.Status != "approved" {
+	if strings.ToUpper(requisition.Status) != "APPROVED" {
 		return &AutomationResult{
 			Success: false,
 			Error:   fmt.Errorf("requisition must be approved to create PO"),
@@ -213,7 +214,7 @@ func (s *DocumentAutomationService) CreatePurchaseOrderFromRequisitionWithStatus
 	}
 
 	// If the target status differs from "draft", update the auto-created PO
-	if targetStatus != "draft" && result.DocumentID != "" {
+	if targetStatus != "DRAFT" && result.DocumentID != "" {
 		if err := s.db.Model(&models.PurchaseOrder{}).
 			Where("id = ?", result.DocumentID).
 			Updates(map[string]interface{}{
@@ -247,7 +248,7 @@ func (s *DocumentAutomationService) CreateGRNFromPurchaseOrder(
 		}, nil
 	}
 
-	if purchaseOrder.Status != "approved" {
+	if strings.ToUpper(purchaseOrder.Status) != "APPROVED" {
 		return &AutomationResult{
 			Success: false,
 			Error:   fmt.Errorf("purchase order must be approved to create GRN"),
@@ -279,7 +280,7 @@ func (s *DocumentAutomationService) CreateGRNFromPurchaseOrder(
 		ID:               uuid.New().String(),
 		DocumentNumber:   documentNumber,
 		PODocumentNumber: purchaseOrder.DocumentNumber,
-		Status:           "draft", // Start as draft for warehouse team
+		Status: "DRAFT", // Start as draft for warehouse team
 		ReceivedDate:     time.Now(),
 		ReceivedBy:       "", // To be filled by warehouse team
 		ApprovalStage:    0,
@@ -346,7 +347,7 @@ func (s *DocumentAutomationService) CreatePaymentVoucherFromGRN(
 		}, nil
 	}
 
-	if grn.Status != "approved" {
+	if strings.ToUpper(grn.Status) != "APPROVED" {
 		return &AutomationResult{
 			Success: false,
 			Error:   fmt.Errorf("GRN must be approved to create payment voucher"),
@@ -371,7 +372,7 @@ func (s *DocumentAutomationService) CreatePaymentVoucherFromGRN(
 		DocumentNumber: documentNumber,
 		VendorID:       purchaseOrder.VendorID,
 		InvoiceNumber:  "",      // To be filled when invoice is received
-		Status:         "draft", // Start as draft for finance team
+		Status: "DRAFT", // Start as draft for finance team
 		Amount:         purchaseOrder.TotalAmount,
 		Currency:       purchaseOrder.Currency,
 		PaymentMethod:  "bank_transfer", // Default payment method
@@ -447,7 +448,7 @@ func (s *DocumentAutomationService) ValidateAutomationPrerequisites(
 		if !ok {
 			return fmt.Errorf("invalid requisition document")
 		}
-		if req.Status != "approved" {
+		if strings.ToUpper(req.Status) != "APPROVED" {
 			return fmt.Errorf("requisition must be approved")
 		}
 		// Removed vendor requirement - PO can be created without vendor
@@ -456,7 +457,7 @@ func (s *DocumentAutomationService) ValidateAutomationPrerequisites(
 		if !ok {
 			return fmt.Errorf("invalid purchase order document")
 		}
-		if po.Status != "approved" {
+		if strings.ToUpper(po.Status) != "APPROVED" {
 			return fmt.Errorf("purchase order must be approved")
 		}
 	case "grn":
@@ -464,7 +465,7 @@ func (s *DocumentAutomationService) ValidateAutomationPrerequisites(
 		if !ok {
 			return fmt.Errorf("invalid GRN document")
 		}
-		if grn.Status != "approved" {
+		if strings.ToUpper(grn.Status) != "APPROVED" {
 			return fmt.Errorf("GRN must be approved")
 		}
 	default:

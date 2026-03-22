@@ -53,7 +53,7 @@ export function ApprovedPurchaseOrdersTable({
     queryKey: [QUERY_KEYS.PURCHASE_ORDERS.ALL, page, limit, "approved"],
     queryFn: async () => {
       const response = await getPurchaseOrders(page, limit, {
-        status: "approved",
+        status: "APPROVED",
       });
       return response.success ? response.data || [] : [];
     },
@@ -65,7 +65,7 @@ export function ApprovedPurchaseOrdersTable({
     setIsCreateDialogOpen(true);
   };
 
-  const handleConfirmCreate = async (workflowId: string, vendorId?: string, vendorName?: string) => {
+  const handleConfirmCreate = async (workflowId: string, vendorId?: string, vendorName?: string, linkedGRNDocumentNumber?: string) => {
     if (!selectedPO) return;
 
     setIsCreating(true);
@@ -75,6 +75,7 @@ export function ApprovedPurchaseOrdersTable({
         workflowId,
         vendorId,
         vendorName,
+        linkedGRNDocumentNumber,
       );
 
       if (response.success && response.data) {

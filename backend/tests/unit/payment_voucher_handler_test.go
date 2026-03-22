@@ -422,7 +422,7 @@ func TestPaymentVoucherUpdateValidation(t *testing.T) {
 	}{
 		{
 			name:          "Update draft voucher",
-			currentStatus: "draft",
+			currentStatus: "DRAFT",
 			updateBody: map[string]interface{}{
 				"amount": 60000,
 			},
@@ -430,7 +430,7 @@ func TestPaymentVoucherUpdateValidation(t *testing.T) {
 		},
 		{
 			name:          "Update pending voucher",
-			currentStatus: "pending",
+			currentStatus: "PENDING",
 			updateBody: map[string]interface{}{
 				"amount": 60000,
 			},
@@ -438,7 +438,7 @@ func TestPaymentVoucherUpdateValidation(t *testing.T) {
 		},
 		{
 			name:          "Cannot update approved voucher",
-			currentStatus: "approved",
+			currentStatus: "APPROVED",
 			updateBody: map[string]interface{}{
 				"amount": 60000,
 			},
@@ -446,7 +446,7 @@ func TestPaymentVoucherUpdateValidation(t *testing.T) {
 		},
 		{
 			name:          "Cannot update paid voucher",
-			currentStatus: "paid",
+			currentStatus: "PAID",
 			updateBody: map[string]interface{}{
 				"amount": 60000,
 			},
@@ -457,7 +457,7 @@ func TestPaymentVoucherUpdateValidation(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Only draft and pending vouchers can be updated
-			canUpdate := tt.currentStatus == "draft" || tt.currentStatus == "pending"
+			canUpdate := tt.currentStatus == "DRAFT" || tt.currentStatus == "PENDING"
 
 			if canUpdate != tt.shouldAllow {
 				t.Errorf("Expected %v, got %v", tt.shouldAllow, canUpdate)
@@ -483,7 +483,7 @@ func TestPaymentVoucherApprovalHistory(t *testing.T) {
 			t.Error("Should have approval records")
 		}
 
-		if approvalHistory[0].Status != "approved" {
+		if approvalHistory[0].Status != "APPROVED" {
 			t.Error("Status should be approved")
 		}
 	})

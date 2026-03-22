@@ -83,7 +83,7 @@ func GetRequisitions(c *fiber.Ctx) error {
 		query = scope.ApplyToQuery(query, "requester_id", "requisition", "")
 	}
 	if status != "" {
-		query = query.Where("status = ?", status)
+		query = query.Where("UPPER(status) = UPPER(?)", status)
 	}
 	if department != "" {
 		query = query.Where("department = ?", department)
@@ -268,7 +268,7 @@ func CreateRequisition(c *fiber.Ctx) error {
 		Description:       req.Description,
 		Department:        req.Department,
 		DepartmentId:      req.DepartmentId,
-		Status:            "draft",
+		Status: "DRAFT",
 		Priority:          req.Priority,
 		TotalAmount:       req.TotalAmount,
 		Currency:          req.Currency,
@@ -312,7 +312,7 @@ func CreateRequisition(c *fiber.Ctx) error {
 			Timestamp:       time.Now(),
 			Comments:        "Requisition created",
 			ActionType:      "CREATE",
-			NewStatus:       "draft",
+			NewStatus: "DRAFT",
 		},
 	}
 	requisition.ActionHistory = datatypes.NewJSONType(actionHistory)
@@ -414,7 +414,7 @@ func UpdateRequisition(c *fiber.Ctx) error {
 	}
 
 	// Check if requisition is in a state that allows editing (draft or pending)
-	if requisition.Status != "draft" && requisition.Status != "pending" {
+	if strings.ToUpper(requisition.Status) != "DRAFT" && strings.ToUpper(requisition.Status) != "PENDING" {
 		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
 			"success": false,
 			"message": fmt.Sprintf("Cannot update requisition in %s status", requisition.Status),
@@ -556,7 +556,7 @@ func DeleteRequisition(c *fiber.Ctx) error {
 	}
 
 	// Only allow deletion of draft requisitions
-	if requisition.Status != "draft" {
+	if strings.ToUpper(requisition.Status) != "DRAFT" {
 		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
 			"success": false,
 			"message": "Only draft requisitions can be deleted",
@@ -769,7 +769,7 @@ func WithdrawRequisition(c *fiber.Ctx) error {
 	}
 
 	// Check if requisition is in a state that can be withdrawn (pending)
-	if requisition.Status != "pending" {
+	if strings.ToUpper(requisition.Status) != "PENDING" {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"success": false,
 			"message": fmt.Sprintf("Cannot withdraw requisition in %s status. Only pending requisitions can be withdrawn.", requisition.Status),
@@ -778,12 +778,12 @@ func WithdrawRequisition(c *fiber.Ctx) error {
 
 	// Check if there is an active workflow task that is claimed
 	var workflowTask models.WorkflowTask
-	err := config.DB.Where("entity_id = ? AND entity_type = ? AND status IN (?, ?)",
-		id, "requisition", "pending", "claimed").First(&workflowTask).Error
+	err := config.DB.Where("entity_id = ? AND entity_type = ? AND UPPER(status) IN (?, ?)",
+		id, "requisition", "PENDING", "CLAIMED").First(&workflowTask).Error
 
 	if err == nil {
 		// Task exists - check if it's claimed
-		if workflowTask.Status == "claimed" && workflowTask.ClaimedBy != nil {
+		if strings.ToUpper(workflowTask.Status) == "CLAIMED" && workflowTask.ClaimedBy != nil {
 			return c.Status(fiber.StatusConflict).JSON(fiber.Map{
 				"success": false,
 				"message": "Cannot withdraw requisition. It is currently being reviewed by an approver.",
@@ -825,7 +825,7 @@ func WithdrawRequisition(c *fiber.Ctx) error {
 
 	// Update requisition status back to draft and reset approval fields
 	previousStatus := requisition.Status
-	requisition.Status = "draft"
+	requisition.Status = "DRAFT"
 	requisition.ApprovalStage = 0
 	requisition.UpdatedAt = time.Now()
 
@@ -858,7 +858,7 @@ func WithdrawRequisition(c *fiber.Ctx) error {
 		Comments:        "Requisition withdrawn by requester",
 		ActionType:      "WITHDRAW",
 		PreviousStatus:  previousStatus,
-		NewStatus:       "draft",
+		NewStatus:       "DRAFT",
 	})
 	requisition.ActionHistory = datatypes.NewJSONType(actionHistory)
 
@@ -929,7 +929,7 @@ func SubmitRequisition(c *fiber.Ctx) error {
 	}
 
 	// Check if requisition is in draft status
-	if requisition.Status != "draft" {
+	if strings.ToUpper(requisition.Status) != "DRAFT" {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"success": false,
 			"message": fmt.Sprintf("Cannot submit requisition in %s status", requisition.Status),
@@ -955,7 +955,7 @@ func SubmitRequisition(c *fiber.Ctx) error {
 	// If auto-approved, the requisition status was already updated by the routing service.
 	// Otherwise, update to "pending" and add action history.
 	if !routingResult.AutoApproved {
-		requisition.Status = "pending"
+		requisition.Status = "PENDING"
 		requisition.UpdatedAt = time.Now()
 
 		// Add action history entry for submission
@@ -983,8 +983,8 @@ func SubmitRequisition(c *fiber.Ctx) error {
 			Timestamp:       time.Now(),
 			Comments:        "Requisition submitted for approval",
 			ActionType:      "SUBMIT",
-			PreviousStatus:  "draft",
-			NewStatus:       "pending",
+			PreviousStatus:  "DRAFT",
+			NewStatus:       "PENDING",
 		})
 		requisition.ActionHistory = datatypes.NewJSONType(actionHistory)
 

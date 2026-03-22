@@ -16,13 +16,13 @@ func TestWorkflowStateConstants(t *testing.T) {
 		state WorkflowState
 		value string
 	}{
-		{"Draft state", StateDraft, "draft"},
-		{"Pending state", StatePending, "pending"},
-		{"Approved state", StateApproved, "approved"},
-		{"Rejected state", StateRejected, "rejected"},
-		{"Fulfilled state", StateFulfilled, "fulfilled"},
-		{"Paid state", StatePaid, "paid"},
-		{"Completed state", StateCompleted, "completed"},
+		{"Draft state", StateDraft, "DRAFT"},
+		{"Pending state", StatePending, "PENDING"},
+		{"Approved state", StateApproved, "APPROVED"},
+		{"Rejected state", StateRejected, "REJECTED"},
+		{"Fulfilled state", StateFulfilled, "FULFILLED"},
+		{"Paid state", StatePaid, "PAID"},
+		{"Completed state", StateCompleted, "COMPLETED"},
 	}
 
 	for _, tt := range tests {
@@ -50,40 +50,40 @@ func TestCanTransitionValidation(t *testing.T) {
 		{
 			name:        "Requisition: Draft to Pending",
 			docType:     "requisition",
-			fromState:   "draft",
-			toState:     "pending",
+			fromState: "DRAFT",
+			toState: "PENDING",
 			userRole:    "",
 			shouldAllow: true,
 		},
 		{
 			name:        "Requisition: Pending to Approved (approver)",
 			docType:     "requisition",
-			fromState:   "pending",
-			toState:     "approved",
+			fromState: "PENDING",
+			toState: "APPROVED",
 			userRole:    "approver",
 			shouldAllow: true,
 		},
 		{
 			name:        "Requisition: Pending to Approved (requester)",
 			docType:     "requisition",
-			fromState:   "pending",
-			toState:     "approved",
+			fromState: "PENDING",
+			toState: "APPROVED",
 			userRole:    "requester",
 			shouldAllow: false,
 		},
 		{
 			name:        "Requisition: Pending to Rejected (approver)",
 			docType:     "requisition",
-			fromState:   "pending",
-			toState:     "rejected",
+			fromState: "PENDING",
+			toState: "REJECTED",
 			userRole:    "approver",
 			shouldAllow: true,
 		},
 		{
 			name:        "Requisition: Rejected to Draft",
 			docType:     "requisition",
-			fromState:   "rejected",
-			toState:     "draft",
+			fromState: "REJECTED",
+			toState: "DRAFT",
 			userRole:    "",
 			shouldAllow: true,
 		},
@@ -91,16 +91,16 @@ func TestCanTransitionValidation(t *testing.T) {
 		{
 			name:        "Budget: Draft to Pending",
 			docType:     "budget",
-			fromState:   "draft",
-			toState:     "pending",
+			fromState: "DRAFT",
+			toState: "PENDING",
 			userRole:    "",
 			shouldAllow: true,
 		},
 		{
 			name:        "Budget: Pending to Approved (finance)",
 			docType:     "budget",
-			fromState:   "pending",
-			toState:     "approved",
+			fromState: "PENDING",
+			toState: "APPROVED",
 			userRole:    "finance",
 			shouldAllow: true,
 		},
@@ -108,24 +108,24 @@ func TestCanTransitionValidation(t *testing.T) {
 		{
 			name:        "PO: Draft to Pending",
 			docType:     "po",
-			fromState:   "draft",
-			toState:     "pending",
+			fromState: "DRAFT",
+			toState: "PENDING",
 			userRole:    "",
 			shouldAllow: true,
 		},
 		{
 			name:        "PO: Approved to Fulfilled",
 			docType:     "po",
-			fromState:   "approved",
-			toState:     "fulfilled",
+			fromState: "APPROVED",
+			toState: "FULFILLED",
 			userRole:    "",
 			shouldAllow: true,
 		},
 		{
 			name:        "PO: Fulfilled to Completed",
 			docType:     "po",
-			fromState:   "fulfilled",
-			toState:     "completed",
+			fromState: "FULFILLED",
+			toState: "COMPLETED",
 			userRole:    "",
 			shouldAllow: true,
 		},
@@ -133,16 +133,16 @@ func TestCanTransitionValidation(t *testing.T) {
 		{
 			name:        "GRN: Draft to Pending",
 			docType:     "grn",
-			fromState:   "draft",
-			toState:     "pending",
+			fromState: "DRAFT",
+			toState: "PENDING",
 			userRole:    "",
 			shouldAllow: true,
 		},
 		{
 			name:        "GRN: Pending to Approved (approver)",
 			docType:     "grn",
-			fromState:   "pending",
-			toState:     "approved",
+			fromState: "PENDING",
+			toState: "APPROVED",
 			userRole:    "approver",
 			shouldAllow: true,
 		},
@@ -150,16 +150,16 @@ func TestCanTransitionValidation(t *testing.T) {
 		{
 			name:        "Requisition: Approved to Draft (invalid)",
 			docType:     "requisition",
-			fromState:   "approved",
-			toState:     "draft",
+			fromState: "APPROVED",
+			toState: "DRAFT",
 			userRole:    "",
 			shouldAllow: false,
 		},
 		{
 			name:        "Unknown document type",
 			docType:     "unknown",
-			fromState:   "draft",
-			toState:     "pending",
+			fromState: "DRAFT",
+			toState: "PENDING",
 			userRole:    "",
 			shouldAllow: false,
 		},
@@ -189,37 +189,37 @@ func TestValidNextStates(t *testing.T) {
 		{
 			name:           "Requisition draft states",
 			docType:        "requisition",
-			currentState:   "draft",
+			currentState: "DRAFT",
 			userRole:       "requester",
-			expectedStates: []string{"pending"},
+			expectedStates: []string{"PENDING"},
 		},
 		{
 			name:           "Requisition pending as approver",
 			docType:        "requisition",
-			currentState:   "pending",
+			currentState: "PENDING",
 			userRole:       "approver",
-			expectedStates: []string{"approved", "rejected"},
+			expectedStates: []string{"APPROVED", "REJECTED"},
 		},
 		{
 			name:           "Requisition pending as requester",
 			docType:        "requisition",
-			currentState:   "pending",
+			currentState: "PENDING",
 			userRole:       "requester",
 			expectedStates: []string{},
 		},
 		{
 			name:           "Budget draft states",
 			docType:        "budget",
-			currentState:   "draft",
+			currentState: "DRAFT",
 			userRole:       "",
-			expectedStates: []string{"pending"},
+			expectedStates: []string{"PENDING"},
 		},
 		{
 			name:           "PO approved states",
 			docType:        "po",
-			currentState:   "approved",
+			currentState: "APPROVED",
 			userRole:       "",
-			expectedStates: []string{"fulfilled"},
+			expectedStates: []string{"FULFILLED"},
 		},
 	}
 
@@ -261,8 +261,8 @@ func TestTransitionDocumentStructure(t *testing.T) {
 			"documentType":  "requisition",
 			"userId":        userID,
 			"action":        "approve",
-			"fromState":     "pending",
-			"toState":       "approved",
+			"fromState": "PENDING",
+			"toState": "APPROVED",
 			"timestamp":     "2025-12-22T12:00:00Z",
 		}
 
@@ -289,12 +289,12 @@ func TestStateTransitionDocumentation(t *testing.T) {
 			role     string
 			allowed  bool
 		}{
-			{"draft", "pending", "", true},
-			{"pending", "approved", "approver", true},
-			{"pending", "rejected", "approver", true},
-			{"rejected", "draft", "", true},
-			{"approved", "pending", "", false},
-			{"approved", "rejected", "", false},
+			{"DRAFT", "PENDING", "", true},
+			{"PENDING", "APPROVED", "approver", true},
+			{"PENDING", "REJECTED", "approver", true},
+			{"REJECTED", "DRAFT", "", true},
+			{"APPROVED", "PENDING", "", false},
+			{"APPROVED", "REJECTED", "", false},
 		}
 
 		for _, trans := range validTransitions {
@@ -316,11 +316,11 @@ func TestStateTransitionDocumentation(t *testing.T) {
 			to      string
 			allowed bool
 		}{
-			{"draft", "pending", true},
-			{"pending", "approved", true},
-			{"pending", "rejected", true},
-			{"approved", "fulfilled", true},
-			{"fulfilled", "completed", true},
+			{"DRAFT", "PENDING", true},
+			{"PENDING", "APPROVED", true},
+			{"PENDING", "REJECTED", true},
+			{"APPROVED", "FULFILLED", true},
+			{"FULFILLED", "COMPLETED", true},
 		}
 
 		for _, trans := range validTransitions {
@@ -344,12 +344,12 @@ func TestRoleBasedPermissions(t *testing.T) {
 		role         string
 		shouldAllow  bool
 	}{
-		{"Admin can approve", "requisition", "pending", "approved", "admin", true},
-		{"Approver can approve", "requisition", "pending", "approved", "approver", true},
-		{"Requester cannot approve", "requisition", "pending", "approved", "requester", false},
-		{"Viewer cannot approve", "requisition", "pending", "approved", "viewer", false},
-		{"Finance can approve budget", "budget", "pending", "approved", "finance", true},
-		{"Approver cannot approve budget", "budget", "pending", "approved", "approver", false},
+		{"Admin can approve", "requisition", "PENDING", "APPROVED", "admin", true},
+		{"Approver can approve", "requisition", "PENDING", "APPROVED", "approver", true},
+		{"Requester cannot approve", "requisition", "PENDING", "APPROVED", "requester", false},
+		{"Viewer cannot approve", "requisition", "PENDING", "APPROVED", "viewer", false},
+		{"Finance can approve budget", "budget", "PENDING", "APPROVED", "finance", true},
+		{"Approver cannot approve budget", "budget", "PENDING", "APPROVED", "approver", false},
 	}
 
 	for _, tt := range tests {
@@ -368,7 +368,7 @@ func BenchmarkCanTransition(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_ = wsm.CanTransition("requisition", "draft", "pending", "")
+		_ = wsm.CanTransition("requisition", "DRAFT", "PENDING", "")
 	}
 }
 
@@ -378,7 +378,7 @@ func BenchmarkGetValidNextStates(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_ = wsm.GetValidNextStates("requisition", "draft", "requester")
+		_ = wsm.GetValidNextStates("requisition", "DRAFT", "requester")
 	}
 }
 */

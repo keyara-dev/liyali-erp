@@ -119,6 +119,7 @@ export async function createGRNAction(
   receivedBy: string,
   warehouseLocation?: string,
   notes?: string,
+  linkedPV?: string,
 ): Promise<APIResponse<GoodsReceivedNote>> {
   const url = `/api/v1/grns`;
 
@@ -129,6 +130,7 @@ export async function createGRNAction(
       receivedBy,
       warehouseLocation: warehouseLocation || "",
       notes: notes || "",
+      linkedPV: linkedPV || "",
     };
 
     const response = await authenticatedApiClient({

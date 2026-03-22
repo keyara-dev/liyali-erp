@@ -294,8 +294,8 @@ func TestApprovalTaskCreation(t *testing.T) {
 		if task.EntityID == "" {
 			t.Error("Task EntityID should not be empty")
 		}
-		if task.Status != "pending" {
-			t.Errorf("Task Status should be 'pending', got %s", task.Status)
+		if task.Status != "PENDING" {
+			t.Errorf("Task Status should be 'PENDING', got %s", task.Status)
 		}
 		if task.StageNumber < 1 {
 			t.Error("Task StageNumber should be >= 1")

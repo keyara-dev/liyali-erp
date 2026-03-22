@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"strings"
+
 	"github.com/gofiber/fiber/v2"
 	"github.com/liyali/liyali-gateway/config"
 	"github.com/liyali/liyali-gateway/logging"
@@ -50,7 +52,7 @@ func LookupUserByEmail(c *fiber.Ctx) error {
 			invSvc := services.NewInvitationService(config.DB)
 			pending, _ := invSvc.ListOrgInvitations(tenant.OrganizationID)
 			for _, inv := range pending {
-				if inv.InvitedEmail == email && inv.Status == "pending" {
+				if inv.InvitedEmail == email && strings.ToUpper(inv.Status) == "PENDING" {
 					payload["hasPendingInvitation"] = true
 					break
 				}

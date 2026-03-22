@@ -100,15 +100,15 @@ const PurchaseOrderPDF: React.FC<PurchaseOrderPDFProps> = ({
                     pdfStyles.statusBadge,
                     {
                       backgroundColor:
-                        purchaseOrder.priority === "urgent"
+                        purchaseOrder.priority?.toUpperCase() === "URGENT"
                           ? "#fee2e2"
-                          : purchaseOrder.priority === "high"
+                          : purchaseOrder.priority?.toUpperCase() === "HIGH"
                             ? "#fed7aa"
                             : "#dbeafe",
                       color:
-                        purchaseOrder.priority === "urgent"
+                        purchaseOrder.priority?.toUpperCase() === "URGENT"
                           ? "#991b1b"
-                          : purchaseOrder.priority === "high"
+                          : purchaseOrder.priority?.toUpperCase() === "HIGH"
                             ? "#92400e"
                             : "#1e40af",
                     },

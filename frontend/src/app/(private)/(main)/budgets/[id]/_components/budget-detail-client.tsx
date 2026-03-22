@@ -428,11 +428,11 @@ export function BudgetDetailClientEnhanced({
                   Approval Stage
                 </p>
                 <Badge className="text-sm mt-1">
-                  {budget.status === "draft"
+                  {budget.status?.toUpperCase() === "DRAFT"
                     ? "Not submitted"
-                    : budget.status === "approved"
+                    : budget.status?.toUpperCase() === "APPROVED"
                       ? "Completed"
-                      : budget.status === "rejected"
+                      : budget.status?.toUpperCase() === "REJECTED"
                         ? "Rejected"
                         : budget.approvalStage > 0
                           ? `Stage ${budget.approvalStage}`

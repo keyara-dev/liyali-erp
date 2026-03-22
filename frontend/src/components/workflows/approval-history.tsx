@@ -48,12 +48,10 @@ export function ApprovalHistory({
   }, [historyData]);
 
   const getActionIcon = (status: string) => {
-    switch (status) {
+    switch (status?.toUpperCase()) {
       case "APPROVED":
-      case "approved":
         return <CheckCircle2 className="h-5 w-5 text-green-600" />;
       case "REJECTED":
-      case "rejected":
         return <XCircle className="h-5 w-5 text-red-600" />;
       default:
         return <Clock className="h-5 w-5 text-muted-foreground" />;
@@ -61,16 +59,14 @@ export function ApprovalHistory({
   };
 
   const getActionBadge = (status: string) => {
-    switch (status) {
+    switch (status?.toUpperCase()) {
       case "APPROVED":
-      case "approved":
         return (
           <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
             Approved
           </Badge>
         );
       case "REJECTED":
-      case "rejected":
         return (
           <Badge className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
             Rejected
@@ -244,7 +240,7 @@ export function ApprovalHistory({
               Approvals
             </h4>
             <p className="text-lg font-bold text-green-600">
-              {sortedHistory.filter((h: any) => h.status === "APPROVED" || h.status === "approved").length}
+              {sortedHistory.filter((h: any) => h.status?.toUpperCase() === "APPROVED").length}
             </p>
           </div>
           <div>
@@ -252,7 +248,7 @@ export function ApprovalHistory({
               Rejections
             </h4>
             <p className="text-lg font-bold text-red-600">
-              {sortedHistory.filter((h: any) => h.status === "REJECTED" || h.status === "rejected").length}
+              {sortedHistory.filter((h: any) => h.status?.toUpperCase() === "REJECTED").length}
             </p>
           </div>
         </div>

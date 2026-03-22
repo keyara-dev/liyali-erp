@@ -39,7 +39,7 @@ function transformPVToWorkflowDocument(pv: PaymentVoucher): WorkflowDocument {
     id: pv.id,
     type: "payment_voucher",
     documentNumber: pv.documentNumber,
-    status: pv.status?.toLowerCase() as any, // Convert to lowercase for compatibility
+    status: pv.status?.toUpperCase() as any,
     currentStage: pv.approvalStage,
     createdAt: pv.createdAt,
     updatedAt: pv.updatedAt,

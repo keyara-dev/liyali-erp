@@ -261,7 +261,7 @@ func SeedDatabase(db *gorm.DB) error {
 func SeedTestWorkflowTasks(db *gorm.DB) error {
 	// Check if there's a submitted requisition that needs a workflow task
 	var submittedReq models.Requisition
-	if err := db.Where("status = ? AND document_number = ?", "submitted", "REQ-260111-003").First(&submittedReq).Error; err != nil {
+	if err := db.Where("UPPER(status) = ? AND document_number = ?", "SUBMITTED", "REQ-260111-003").First(&submittedReq).Error; err != nil {
 		log.Printf("No submitted requisition found for workflow task creation")
 		return nil // Not an error, just no data to work with
 	}
@@ -276,7 +276,7 @@ func SeedTestWorkflowTasks(db *gorm.DB) error {
 		EntityType:      "requisition",
 		WorkflowVersion: 1,
 		CurrentStage:    1,
-		Status:          "in_progress",
+		Status:          "IN_PROGRESS",
 		AssignedBy:      "user-admin-001",
 	}
 
@@ -301,8 +301,8 @@ func SeedTestWorkflowTasks(db *gorm.DB) error {
 		StageName:            "Manager Approval",
 		AssignmentType:       "role",
 		AssignedRole:         stringPtr("approver"),
-		Status:               "pending",
-		Priority:             "medium",
+		Status: "PENDING",
+		Priority: "MEDIUM",
 		Version:              1,
 	}
 

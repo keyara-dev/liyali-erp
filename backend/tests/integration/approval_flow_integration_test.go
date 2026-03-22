@@ -20,7 +20,7 @@ func TestMultiStageApprovalFlow(t *testing.T) {
 		}{
 			ID:            uuid.New().String(),
 			DocumentType:  "requisition",
-			Status:        "draft",
+			Status: "DRAFT",
 			ApprovalStage: 0,
 			Amount:        75000,
 		}
@@ -45,16 +45,16 @@ func TestMultiStageApprovalFlow(t *testing.T) {
 		for i, approval := range approvals {
 			if approval.Decision == "approved" {
 				document.ApprovalStage = i + 1
-				document.Status = "pending"
+				document.Status = "PENDING"
 			}
 		}
 
 		// Final approval
 		if document.ApprovalStage == len(approvals) {
-			document.Status = "approved"
+			document.Status = "APPROVED"
 		}
 
-		if document.Status != "approved" {
+		if document.Status != "APPROVED" {
 			t.Error("Document should be fully approved")
 		}
 
@@ -71,7 +71,7 @@ func TestApprovalRejectionAndResubmission(t *testing.T) {
 		requisition := types.RequisitionResponse{
 			ID:          uuid.New().String(),
 			DocumentNumber: "REQ-20251223-001",
-			Status:      "pending",
+			Status: "PENDING",
 			TotalAmount: 50000,
 		}
 
@@ -79,38 +79,38 @@ func TestApprovalRejectionAndResubmission(t *testing.T) {
 			{
 				ApproverID:   uuid.New().String(),
 				ApproverName: "Manager",
-				Status:       "rejected",
+				Status: "REJECTED",
 				Comments:     "Amount too high, please reduce",
 				ApprovedAt:   time.Now(),
 			},
 		}
 
 		// Move back to draft for modification
-		requisition.Status = "draft"
+		requisition.Status = "DRAFT"
 
 		// Modify requisition
 		requisition.TotalAmount = 30000 // Reduce amount
 
 		// Resubmit
-		requisition.Status = "pending"
+		requisition.Status = "PENDING"
 
 		// Second approval round
 		approvalHistory = append(approvalHistory, types.ApprovalRecord{
 			ApproverID:   uuid.New().String(),
 			ApproverName: "Manager",
-			Status:       "approved",
+			Status: "APPROVED",
 			Comments:     "Amount acceptable now",
 			ApprovedAt:   time.Now().Add(1 * time.Hour),
 		})
 
 		// Final approval
-		requisition.Status = "approved"
+		requisition.Status = "APPROVED"
 
 		if len(approvalHistory) != 2 {
 			t.Error("Should have 2 approval records")
 		}
 
-		if requisition.Status != "approved" {
+		if requisition.Status != "APPROVED" {
 			t.Error("Requisition should be approved on resubmission")
 		}
 	})
@@ -125,7 +125,7 @@ func TestApprovalWithComments(t *testing.T) {
 		approval := types.ApprovalRecord{
 			ApproverID:   approverID,
 			ApproverName: approverName,
-			Status:       "approved",
+			Status: "APPROVED",
 			Comments:     "Budget allocation verified. GL Code confirmed.",
 			Signature:    "FM-" + uuid.New().String()[:8],
 			ApprovedAt:   time.Now(),
@@ -160,7 +160,7 @@ func TestApprovalNotifications(t *testing.T) {
 
 		document := types.RequisitionResponse{
 			ID:      uuid.New().String(),
-			Status:  "pending",
+			Status: "PENDING",
 		}
 
 		notifications := []struct {
@@ -244,7 +244,7 @@ func TestParallelApprovals(t *testing.T) {
 	t.Run("Document requiring approvals from multiple departments", func(t *testing.T) {
 		document := types.PurchaseOrderResponse{
 			ID:            uuid.New().String(),
-			Status:        "pending",
+			Status: "PENDING",
 			ApprovalStage: 0,
 		}
 
@@ -270,10 +270,10 @@ func TestParallelApprovals(t *testing.T) {
 		}
 
 		if allApproved {
-			document.Status = "approved"
+			document.Status = "APPROVED"
 		}
 
-		if document.Status != "approved" {
+		if document.Status != "APPROVED" {
 			t.Error("Document should be approved when all paths approved")
 		}
 	})
@@ -334,7 +334,7 @@ func TestApprovalHistory(t *testing.T) {
 		approvalHistory = append(approvalHistory, types.ApprovalRecord{
 			ApproverID:   uuid.New().String(),
 			ApproverName: "Manager",
-			Status:       "approved",
+			Status: "APPROVED",
 			Comments:     "Initial review approved",
 			ApprovedAt:   time.Now(),
 		})
@@ -343,7 +343,7 @@ func TestApprovalHistory(t *testing.T) {
 		approvalHistory = append(approvalHistory, types.ApprovalRecord{
 			ApproverID:   uuid.New().String(),
 			ApproverName: "Finance",
-			Status:       "approved",
+			Status: "APPROVED",
 			Comments:     "Budget verified",
 			ApprovedAt:   time.Now().Add(1 * time.Hour),
 		})
@@ -352,7 +352,7 @@ func TestApprovalHistory(t *testing.T) {
 		approvalHistory = append(approvalHistory, types.ApprovalRecord{
 			ApproverID:   uuid.New().String(),
 			ApproverName: "Executive",
-			Status:       "approved",
+			Status: "APPROVED",
 			Comments:     "Final approval granted",
 			ApprovedAt:   time.Now().Add(2 * time.Hour),
 		})
@@ -376,17 +376,17 @@ func TestApprovalStatusQuery(t *testing.T) {
 		documents := []types.RequisitionResponse{
 			{
 				ID:     uuid.New().String(),
-				Status: "pending",
+				Status: "PENDING",
 				ApprovalStage: 1,
 			},
 			{
 				ID:     uuid.New().String(),
-				Status: "approved",
+				Status: "APPROVED",
 				ApprovalStage: 2,
 			},
 			{
 				ID:     uuid.New().String(),
-				Status: "pending",
+				Status: "PENDING",
 				ApprovalStage: 1,
 			},
 		}
@@ -394,7 +394,7 @@ func TestApprovalStatusQuery(t *testing.T) {
 		// Count pending documents
 		pendingCount := 0
 		for _, doc := range documents {
-			if doc.Status == "pending" {
+			if doc.Status == "PENDING" {
 				pendingCount++
 			}
 		}
@@ -410,7 +410,7 @@ func TestApprovalEscalation(t *testing.T) {
 	t.Run("Escalate document if approval overdue", func(t *testing.T) {
 		document := types.BudgetResponse{
 			ID:            uuid.New().String(),
-			Status:        "pending",
+			Status: "PENDING",
 			ApprovalStage: 1,
 		}
 
@@ -441,7 +441,7 @@ func TestDelegatedApprovals(t *testing.T) {
 		approval := types.ApprovalRecord{
 			ApproverID:       uuid.New().String(),
 			ApproverName:     delegatedApprover,
-			Status:           "approved",
+			Status: "APPROVED",
 			Comments:         "Approved on behalf of manager",
 			ApprovedAt:       time.Now(),
 		}
@@ -496,7 +496,7 @@ func BenchmarkApprovalHistoryTracking(b *testing.B) {
 		history = append(history, types.ApprovalRecord{
 			ApproverID:   uuid.New().String(),
 			ApproverName: "Approver",
-			Status:       "approved",
+			Status: "APPROVED",
 			ApprovedAt:   time.Now(),
 		})
 	}

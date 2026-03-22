@@ -12,7 +12,7 @@ export type TaskType =
 
 export type TaskPriority = "LOW" | "MEDIUM" | "HIGH" | "URGENT";
 
-export type TaskStatus = "pending" | "in_progress" | "completed" | "overdue" | "PENDING" | "IN_PROGRESS" | "COMPLETED" | "OVERDUE";
+export type TaskStatus = "PENDING" | "IN_PROGRESS" | "COMPLETED" | "OVERDUE" | "CLAIMED";
 
 export interface Task {
   id: string;
@@ -78,7 +78,7 @@ export interface ApprovalTask {
   entityId: string;
   entityType: "REQUISITION" | "BUDGET" | "PURCHASE_ORDER" | "PAYMENT_VOUCHER";
   entityNumber: string;
-  status: "pending" | "approved" | "rejected";
+  status: "PENDING" | "APPROVED" | "REJECTED";
   stageName: string;
   stageIndex: number;
   importance: "HIGH" | "MEDIUM" | "LOW";

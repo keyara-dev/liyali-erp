@@ -492,7 +492,7 @@ func TestGRNUpdateValidation(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Only draft and pending GRNs can be updated
-			canUpdate := tt.currentStatus == "draft" || tt.currentStatus == "pending"
+			canUpdate := tt.currentStatus == "DRAFT" || tt.currentStatus == "PENDING"
 
 			if canUpdate != tt.shouldAllow {
 				t.Errorf("Expected %v, got %v", tt.shouldAllow, canUpdate)

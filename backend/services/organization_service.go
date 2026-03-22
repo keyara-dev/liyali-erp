@@ -322,6 +322,7 @@ func (s *OrganizationService) UpdateOrganizationSettings(orgID string, settings 
 			"fiscal_year_start":          settings.FiscalYearStart,
 			"enable_budget_validation":   settings.EnableBudgetValidation,
 			"budget_variance_threshold":  settings.BudgetVarianceThreshold,
+			"procurement_flow":           settings.ProcurementFlow,
 		}).Error
 }
 

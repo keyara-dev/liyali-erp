@@ -216,14 +216,14 @@ export interface RequisitionStats {
 // ============================================================================
 
 export type RequisitionStatus =
-  | "draft"
-  | "pending"
-  | "submitted"
-  | "approved"
-  | "rejected"
-  | "completed"
-  | "cancelled";
-export type RequisitionPriority = "low" | "medium" | "high" | "urgent";
+  | "DRAFT"
+  | "PENDING"
+  | "SUBMITTED"
+  | "APPROVED"
+  | "REJECTED"
+  | "COMPLETED"
+  | "CANCELLED";
+export type RequisitionPriority = "LOW" | "MEDIUM" | "HIGH" | "URGENT";
 
 // ============================================================================
 // DOCUMENT CHAIN TYPES

@@ -74,16 +74,16 @@ export default function BudgetApprovalPage() {
           </div>
           <Badge
             variant={
-              task.status === "pending"
+              task.status?.toUpperCase() === "PENDING"
                 ? "default"
-                : task.status === "approved"
+                : task.status?.toUpperCase() === "APPROVED"
                   ? "secondary"
                   : "destructive"
             }
           >
-            {task.status === "pending"
+            {task.status?.toUpperCase() === "PENDING"
               ? "Pending Approval"
-              : task.status === "approved"
+              : task.status?.toUpperCase() === "APPROVED"
                 ? "Approved"
                 : "Rejected"}
           </Badge>
@@ -213,7 +213,7 @@ export default function BudgetApprovalPage() {
           )}
 
           {/* Approval Actions */}
-          {task.status === "pending" && (
+          {task.status?.toUpperCase() === "PENDING" && (
             <ApprovalActionPanel
               task={task}
               onApprovalComplete={() => {
@@ -223,25 +223,25 @@ export default function BudgetApprovalPage() {
           )}
 
           {/* Completed Approval Alert */}
-          {task.status !== "pending" && (
+          {task.status?.toUpperCase() !== "PENDING" && (
             <Alert
               className={
-                task.status === "approved"
+                task.status?.toUpperCase() === "APPROVED"
                   ? "bg-green-50 border-green-200 dark:bg-green-900/20"
                   : "bg-red-50 border-red-200 dark:bg-red-900/20"
               }
             >
               <CheckCircle2
-                className={`h-4 w-4 ${task.status === "approved" ? "text-green-600" : "text-red-600"}`}
+                className={`h-4 w-4 ${task.status?.toUpperCase() === "APPROVED" ? "text-green-600" : "text-red-600"}`}
               />
               <AlertDescription
                 className={
-                  task.status === "approved"
+                  task.status?.toUpperCase() === "APPROVED"
                     ? "text-green-700 dark:text-green-200"
                     : "text-red-700 dark:text-red-200"
                 }
               >
-                {task.status === "approved"
+                {task.status?.toUpperCase() === "APPROVED"
                   ? "This budget has been approved and is proceeding to the next stage."
                   : "This budget has been rejected. Contact the requester for more information."}
               </AlertDescription>

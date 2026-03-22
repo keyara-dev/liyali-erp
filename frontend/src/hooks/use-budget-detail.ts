@@ -42,9 +42,9 @@ export function useBudgetDetail({
     // Permissions
     getPermissions: (budget, userId, userRole) => {
       const isCreator = budget.ownerId === userId;
-      const canEdit = budget.status === "draft" && isCreator;
-      const canSubmit = budget.status === "draft" && isCreator;
-      const canWithdraw = budget.status === "pending" && isCreator;
+      const canEdit = budget.status?.toUpperCase() === "DRAFT" && isCreator;
+      const canSubmit = budget.status?.toUpperCase() === "DRAFT" && isCreator;
+      const canWithdraw = budget.status?.toUpperCase() === "PENDING" && isCreator;
 
       return {
         isCreator,

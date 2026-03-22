@@ -14,15 +14,19 @@ type BadgeVariant =
 
 // Document Workflow Status
 export type DocumentStatus =
-  | "draft"
-  | "submitted"
-  | "pending"
-  | "in_review"
-  | "revision"
-  | "approved"
-  | "success"
-  | "rejected"
-  | "reversed";
+  | "DRAFT"
+  | "SUBMITTED"
+  | "PENDING"
+  | "IN_REVIEW"
+  | "REVISION"
+  | "APPROVED"
+  | "SUCCESS"
+  | "REJECTED"
+  | "REVERSED"
+  | "COMPLETED"
+  | "CANCELLED"
+  | "PAID"
+  | "FULFILLED";
 
 // Activity/Action Status
 export type ActivityAction =
@@ -36,19 +40,19 @@ export type ActivityAction =
 
 // Activity Execution Status
 export type ExecutionStatus =
-  | "success"
-  | "failed"
-  | "pending"
-  | "claimed"
-  | "completed"
-  | "in_progress";
+  | "SUCCESS"
+  | "FAILED"
+  | "PENDING"
+  | "CLAIMED"
+  | "COMPLETED"
+  | "IN_PROGRESS";
 
 // Approval Status
 export type ApprovalStatus =
-  | "approved"
-  | "rejected"
-  | "pending"
-  | "in_progress";
+  | "APPROVED"
+  | "REJECTED"
+  | "PENDING"
+  | "IN_PROGRESS";
 
 // Compliance Status
 export type ComplianceStatus = "compliant" | "non-compliant" | "pending";
@@ -71,50 +75,70 @@ export const DOCUMENT_STATUS_CONFIG: Record<
     description?: string;
   }
 > = {
-  draft: {
+  DRAFT: {
     variant: "outline",
     label: "Draft",
     description: "Document is in draft status and can be edited",
   },
-  submitted: {
+  SUBMITTED: {
     variant: "info",
     label: "Submitted",
     description: "Document has been submitted for review",
   },
-  in_review: {
+  IN_REVIEW: {
     variant: "warning",
     label: "In Review",
     description: "Document is pending approval",
   },
-  pending: {
+  PENDING: {
     variant: "warning",
     label: "In Review",
     description: "Document is pending approval",
   },
-  approved: {
+  APPROVED: {
     variant: "success",
     label: "Approved",
     description: "Document has been approved",
   },
-  success: {
+  SUCCESS: {
     variant: "success",
     label: "Success",
     description: "Document has been processed successfully",
   },
-  revision: {
+  REVISION: {
     variant: "warning",
     label: "Revision",
     description: "Document returned for revision at a previous approval stage",
   },
-  rejected: {
+  REJECTED: {
     variant: "destructive",
     label: "Rejected",
     description: "Document has been rejected",
   },
-  reversed: {
+  REVERSED: {
     variant: "secondary",
     label: "Reversed",
     description: "Document has been reversed",
+  },
+  COMPLETED: {
+    variant: "success",
+    label: "Completed",
+    description: "Document has been completed",
+  },
+  CANCELLED: {
+    variant: "secondary",
+    label: "Cancelled",
+    description: "Document has been cancelled",
+  },
+  PAID: {
+    variant: "success",
+    label: "Paid",
+    description: "Payment has been made",
+  },
+  FULFILLED: {
+    variant: "success",
+    label: "Fulfilled",
+    description: "Purchase order has been fulfilled",
   },
 };
 
@@ -170,27 +194,27 @@ export const EXECUTION_STATUS_CONFIG: Record<
     label: string;
   }
 > = {
-  success: {
+  SUCCESS: {
     variant: "success",
     label: "Success",
   },
-  failed: {
+  FAILED: {
     variant: "destructive",
     label: "Failed",
   },
-  pending: {
+  PENDING: {
     variant: "info",
     label: "Pending",
   },
-  claimed: {
+  CLAIMED: {
     variant: "warning",
     label: "Claimed",
   },
-  completed: {
+  COMPLETED: {
     variant: "success",
     label: "Completed",
   },
-  in_progress: {
+  IN_PROGRESS: {
     variant: "warning",
     label: "In Progress",
   },
@@ -207,19 +231,19 @@ export const APPROVAL_STATUS_CONFIG: Record<
     label: string;
   }
 > = {
-  approved: {
+  APPROVED: {
     variant: "success",
     label: "Approved",
   },
-  rejected: {
+  REJECTED: {
     variant: "destructive",
     label: "Rejected",
   },
-  pending: {
+  PENDING: {
     variant: "warning",
     label: "Pending",
   },
-  in_progress: {
+  IN_PROGRESS: {
     variant: "warning",
     label: "In Progress",
   },
@@ -308,7 +332,7 @@ export const HEALTH_STATUS_CONFIG: Record<
  * Helper function to get document status variant
  */
 export function getDocumentStatusVariant(status: string): BadgeVariant {
-  const config = DOCUMENT_STATUS_CONFIG[status as DocumentStatus];
+  const config = DOCUMENT_STATUS_CONFIG[status.toUpperCase() as DocumentStatus];
   return config?.variant || "outline";
 }
 
@@ -316,7 +340,7 @@ export function getDocumentStatusVariant(status: string): BadgeVariant {
  * Helper function to get document status label
  */
 export function getDocumentStatusLabel(status: string): string {
-  const config = DOCUMENT_STATUS_CONFIG[status as DocumentStatus];
+  const config = DOCUMENT_STATUS_CONFIG[status.toUpperCase() as DocumentStatus];
   return config?.label || status;
 }
 
@@ -340,7 +364,7 @@ export function getActivityActionLabel(action: string): string {
  * Helper function to get execution status variant
  */
 export function getExecutionStatusVariant(status: string): BadgeVariant {
-  const config = EXECUTION_STATUS_CONFIG[status as ExecutionStatus];
+  const config = EXECUTION_STATUS_CONFIG[status.toUpperCase() as ExecutionStatus];
   return config?.variant || "outline";
 }
 
@@ -348,7 +372,7 @@ export function getExecutionStatusVariant(status: string): BadgeVariant {
  * Helper function to get approval status variant
  */
 export function getApprovalStatusVariant(status: string): BadgeVariant {
-  const config = APPROVAL_STATUS_CONFIG[status as ApprovalStatus];
+  const config = APPROVAL_STATUS_CONFIG[status.toUpperCase() as ApprovalStatus];
   return config?.variant || "outline";
 }
 

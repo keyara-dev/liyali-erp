@@ -268,7 +268,7 @@ function convertToWorkflowDocuments(documents: any[]): WorkflowDocument[] {
       id: doc.id,
       type: docType,
       documentNumber: doc.documentNumber || doc.id,
-      status: doc.status || "draft",
+      status: doc.status || "DRAFT",
       currentStage: doc.currentStage || doc.approvalStage || 0,
       createdBy: doc.createdBy,
       createdByUser: doc.createdBy

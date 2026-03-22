@@ -141,9 +141,9 @@ export interface BudgetStats {
 // ============================================================================
 
 export type BudgetStatus =
-  | "draft"
-  | "pending"
-  | "approved"
-  | "rejected"
-  | "completed"
-  | "cancelled";
+  | "DRAFT"
+  | "PENDING"
+  | "APPROVED"
+  | "REJECTED"
+  | "COMPLETED"
+  | "CANCELLED";

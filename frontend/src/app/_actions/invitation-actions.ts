@@ -8,11 +8,11 @@ import authenticatedApiClient, {
 } from "./api-config";
 
 export type InvitationStatus =
-  | "pending"
-  | "accepted"
-  | "declined"
-  | "expired"
-  | "cancelled";
+  | "PENDING"
+  | "ACCEPTED"
+  | "DECLINED"
+  | "EXPIRED"
+  | "CANCELLED";
 
 export interface OrganizationInvitation {
   id: string;

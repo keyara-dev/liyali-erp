@@ -11,6 +11,7 @@ import (
 	"github.com/liyali/liyali-gateway/logging"
 	"github.com/liyali/liyali-gateway/middleware"
 	"github.com/liyali/liyali-gateway/models"
+	"github.com/liyali/liyali-gateway/services"
 	"github.com/liyali/liyali-gateway/types"
 	"github.com/liyali/liyali-gateway/utils"
 	"gorm.io/datatypes"
@@ -49,6 +50,8 @@ func CreatePurchaseOrderFromRequisition(c *fiber.Ctx) error {
 		CostCenter                string        `json:"costCenter"`
 		ProjectCode               string        `json:"projectCode"`
 		WorkflowID                string        `json:"workflowId"`
+		// "" = inherit from org, "goods_first" or "payment_first" to override per-PO
+		ProcurementFlow           string        `json:"procurementFlow"`
 	}
 
 	if err := c.BodyParser(&req); err != nil {
@@ -89,7 +92,7 @@ func CreatePurchaseOrderFromRequisition(c *fiber.Ctx) error {
 		OrganizationID:    tenant.OrganizationID,
 		DocumentNumber:    documentNumber,
 		VendorID:          vendorIDPtr,
-		Status:            "draft",
+		Status: "DRAFT",
 		TotalAmount:       req.TotalAmount,
 		Currency:          req.Currency,
 		ApprovalStage:     0,
@@ -102,6 +105,7 @@ func CreatePurchaseOrderFromRequisition(c *fiber.Ctx) error {
 		BudgetCode:        req.BudgetCode,
 		CostCenter:        req.CostCenter,
 		ProjectCode:       req.ProjectCode,
+		ProcurementFlow:   req.ProcurementFlow,
 		CreatedAt:         time.Now(),
 		UpdatedAt:         time.Now(),
 	}
@@ -116,8 +120,23 @@ func CreatePurchaseOrderFromRequisition(c *fiber.Ctx) error {
 	order.Items = datatypes.NewJSONType(req.Items)
 	order.ApprovalHistory = datatypes.NewJSONType([]types.ApprovalRecord{})
 
-	// Build initial action history — log vendor change if different from requisition's preferred vendor
+	// Build initial action history — log vendor change + chain link
 	var initialHistory []types.ActionHistoryEntry
+
+	// Always record the chain origin
+	if requisition.DocumentNumber != "" {
+		initialHistory = append(initialHistory, types.ActionHistoryEntry{
+			ID:          uuid.New().String(),
+			Action:      "CREATED_FROM_REQUISITION",
+			PerformedBy: tenant.UserID,
+			Timestamp:   time.Now(),
+			Metadata: map[string]interface{}{
+				"linkedDocNumber": requisition.DocumentNumber,
+				"linkedDocType":   "requisition",
+			},
+		})
+	}
+
 	reqPreferredVendorID := ""
 	if requisition.PreferredVendorID != nil {
 		reqPreferredVendorID = *requisition.PreferredVendorID
@@ -145,6 +164,23 @@ func CreatePurchaseOrderFromRequisition(c *fiber.Ctx) error {
 	if err := config.DB.Create(&order).Error; err != nil {
 		logging.LogError(c, err, "create_po_from_requisition_failed", nil)
 		return utils.SendInternalError(c, "Failed to create purchase order", err)
+	}
+
+	// Record PO_CREATED on the source requisition for full chain traceability
+	if req.RequisitionID != "" {
+		reqHistory := requisition.ActionHistory.Data()
+		reqHistory = append(reqHistory, types.ActionHistoryEntry{
+			ID:          uuid.New().String(),
+			Action:      "PO_CREATED",
+			PerformedBy: tenant.UserID,
+			Timestamp:   time.Now(),
+			Metadata: map[string]interface{}{
+				"linkedDocNumber": order.DocumentNumber,
+				"linkedDocType":   "purchase_order",
+			},
+		})
+		requisition.ActionHistory = datatypes.NewJSONType(reqHistory)
+		config.DB.Save(&requisition)
 	}
 
 	config.DB.Preload("Vendor").First(&order)
@@ -186,6 +222,8 @@ func CreatePaymentVoucherFromPO(c *fiber.Ctx) error {
 		ProjectCode                 string              `json:"projectCode"`
 		SourceRequisitionID         string              `json:"sourceRequisitionId"`
 		WorkflowID                  string              `json:"workflowId"`
+		// Goods-first flow: required GRN document number (e.g. "GRN-20240101-001")
+		LinkedGRNDocumentNumber     string              `json:"linkedGRNDocumentNumber"`
 	}
 
 	if err := c.BodyParser(&req); err != nil {
@@ -207,6 +245,37 @@ func CreatePaymentVoucherFromPO(c *fiber.Ctx) error {
 		return utils.SendBadRequestError(c, "Purchase order not found")
 	}
 
+	// Resolve effective procurement flow: PO override → org default → "goods_first"
+	effectiveFlow := po.ProcurementFlow
+	if effectiveFlow == "" {
+		orgSvc := services.NewOrganizationService(config.DB)
+		orgSettings, _ := orgSvc.GetOrganizationSettings(tenant.OrganizationID)
+		if orgSettings != nil && orgSettings.ProcurementFlow != "" {
+			effectiveFlow = orgSettings.ProcurementFlow
+		} else {
+			effectiveFlow = "goods_first"
+		}
+	}
+
+	// Goods-first enforcement: require an approved GRN before creating PV
+	var linkedGRN *models.GoodsReceivedNote
+	if effectiveFlow == "goods_first" {
+		if req.LinkedGRNDocumentNumber == "" {
+			return utils.SendBadRequestError(c, "A linked GRN document number is required for goods-first procurement flow")
+		}
+		var grn models.GoodsReceivedNote
+		if err := config.DB.Where("document_number = ? AND organization_id = ?", req.LinkedGRNDocumentNumber, tenant.OrganizationID).First(&grn).Error; err != nil {
+			return utils.SendBadRequestError(c, "Linked GRN not found")
+		}
+		if strings.ToUpper(grn.Status) != "APPROVED" {
+			return utils.SendBadRequestError(c, "Linked GRN must be approved before creating a payment voucher (goods-first flow)")
+		}
+		if grn.PODocumentNumber != po.DocumentNumber {
+			return utils.SendBadRequestError(c, "Linked GRN does not belong to the selected purchase order")
+		}
+		linkedGRN = &grn
+	}
+
 	// Verify vendor belongs to this org if provided
 	var vendorIDPtr *string
 	if req.VendorID != "" {
@@ -220,19 +289,25 @@ func CreatePaymentVoucherFromPO(c *fiber.Ctx) error {
 	documentNumber := utils.GenerateDocumentNumber("PV")
 	invoiceRef := "INV-" + po.DocumentNumber
 
+	linkedGRNDocNum := ""
+	if linkedGRN != nil {
+		linkedGRNDocNum = linkedGRN.DocumentNumber
+	}
+
 	voucher := models.PaymentVoucher{
 		ID:             uuid.New().String(),
 		OrganizationID: tenant.OrganizationID,
 		DocumentNumber: documentNumber,
 		VendorID:       vendorIDPtr,
 		InvoiceNumber:  invoiceRef,
-		Status:         "draft",
+		Status: "DRAFT",
 		Amount:         req.TotalAmount,
 		Currency:       req.Currency,
 		PaymentMethod:  "bank_transfer",
 		Description:    req.Description,
 		ApprovalStage:  0,
 		LinkedPO:       req.PurchaseOrderDocumentNumber,
+		LinkedGRN:      linkedGRNDocNum,
 		Title:          req.Title,
 		Department:     req.Department,
 		DepartmentID:   req.DepartmentID,
@@ -248,8 +323,36 @@ func CreatePaymentVoucherFromPO(c *fiber.Ctx) error {
 	}
 	voucher.ApprovalHistory = datatypes.NewJSONType([]types.ApprovalRecord{})
 
-	// Build initial action history — log vendor change if different from PO's vendor
+	// Build initial action history — chain origin + vendor change if applicable
 	var pvInitialHistory []types.ActionHistoryEntry
+
+	// Record which document this PV was created from
+	if linkedGRN != nil {
+		pvInitialHistory = append(pvInitialHistory, types.ActionHistoryEntry{
+			ID:          uuid.New().String(),
+			Action:      "CREATED_FROM_GRN",
+			PerformedBy: tenant.UserID,
+			Timestamp:   time.Now(),
+			Metadata: map[string]interface{}{
+				"linkedDocNumber": linkedGRN.DocumentNumber,
+				"linkedDocType":   "grn",
+				"flow":            "goods_first",
+			},
+		})
+	} else {
+		pvInitialHistory = append(pvInitialHistory, types.ActionHistoryEntry{
+			ID:          uuid.New().String(),
+			Action:      "CREATED_FROM_PO",
+			PerformedBy: tenant.UserID,
+			Timestamp:   time.Now(),
+			Metadata: map[string]interface{}{
+				"linkedDocNumber": po.DocumentNumber,
+				"linkedDocType":   "purchase_order",
+				"flow":            "payment_first",
+			},
+		})
+	}
+
 	poVendorID := ""
 	if po.VendorID != nil {
 		poVendorID = *po.VendorID
@@ -277,6 +380,30 @@ func CreatePaymentVoucherFromPO(c *fiber.Ctx) error {
 	if err := config.DB.Create(&voucher).Error; err != nil {
 		logging.LogError(c, err, "create_pv_from_po_failed", nil)
 		return utils.SendInternalError(c, "Failed to create payment voucher", err)
+	}
+
+	// Record PV_CREATED on the parent document (GRN for goods_first, PO for payment_first)
+	pvCreatedEntry := types.ActionHistoryEntry{
+		ID:          uuid.New().String(),
+		Action:      "PV_CREATED",
+		PerformedBy: tenant.UserID,
+		Timestamp:   time.Now(),
+		Metadata: map[string]interface{}{
+			"linkedDocNumber": voucher.DocumentNumber,
+			"linkedDocType":   "payment_voucher",
+			"flow":            effectiveFlow,
+		},
+	}
+	if linkedGRN != nil {
+		grnHistory := linkedGRN.ActionHistory.Data()
+		grnHistory = append(grnHistory, pvCreatedEntry)
+		linkedGRN.ActionHistory = datatypes.NewJSONType(grnHistory)
+		config.DB.Save(linkedGRN)
+	} else {
+		poHistory := po.ActionHistory.Data()
+		poHistory = append(poHistory, pvCreatedEntry)
+		po.ActionHistory = datatypes.NewJSONType(poHistory)
+		config.DB.Save(&po)
 	}
 
 	config.DB.Preload("Vendor").First(&voucher)
@@ -325,7 +452,7 @@ func MarkPaymentVoucherPaid(c *fiber.Ctx) error {
 		return utils.SendNotFoundError(c, "Payment voucher not found")
 	}
 
-	if voucher.Status != "approved" {
+	if strings.ToUpper(voucher.Status) != "APPROVED" {
 		return utils.SendBadRequestError(c, "Only approved payment vouchers can be marked as paid")
 	}
 
@@ -335,7 +462,7 @@ func MarkPaymentVoucherPaid(c *fiber.Ctx) error {
 		paidDate = req.PaidDate
 	}
 
-	voucher.Status = "paid"
+	voucher.Status = "PAID"
 	voucher.PaidAmount = &req.PaidAmount
 	voucher.PaidDate = paidDate
 	voucher.UpdatedAt = now
@@ -354,8 +481,8 @@ func MarkPaymentVoucherPaid(c *fiber.Ctx) error {
 		Timestamp:       now,
 		Comments:        req.Comments,
 		ActionType:      "MARK_PAID",
-		PreviousStatus:  "approved",
-		NewStatus:       "paid",
+		PreviousStatus:  "APPROVED",
+		NewStatus:       "PAID",
 	})
 	voucher.ActionHistory = datatypes.NewJSONType(actionHistory)
 
@@ -390,7 +517,7 @@ func GetRequisitionStats(c *fiber.Ctx) error {
 	stats := fiber.Map{}
 	for _, status := range []string{"draft", "pending", "approved", "rejected", "completed", "cancelled"} {
 		var count int64
-		base.Where("status = ?", status).Count(&count)
+		base.Where("UPPER(status) = ?", strings.ToUpper(status)).Count(&count)
 		stats[status] = count
 	}
 
@@ -417,7 +544,7 @@ func GetPurchaseOrderStats(c *fiber.Ctx) error {
 	stats := fiber.Map{}
 	for _, status := range []string{"draft", "pending", "approved", "rejected", "fulfilled", "completed", "cancelled"} {
 		var count int64
-		base.Where("status = ?", status).Count(&count)
+		base.Where("UPPER(status) = ?", strings.ToUpper(status)).Count(&count)
 		stats[status] = count
 	}
 
@@ -444,7 +571,7 @@ func GetPaymentVoucherStats(c *fiber.Ctx) error {
 	stats := fiber.Map{}
 	for _, status := range []string{"draft", "pending", "approved", "rejected", "paid", "completed", "cancelled"} {
 		var count int64
-		base.Where("status = ?", status).Count(&count)
+		base.Where("UPPER(status) = ?", strings.ToUpper(status)).Count(&count)
 		stats[status] = count
 	}
 
@@ -595,7 +722,7 @@ func GetApproverWorkload(c *fiber.Ctx) error {
 	var pendingCount int64
 	db.Table("workflow_tasks wt").
 		Joins("JOIN workflow_assignments wa ON wa.id = wt.workflow_assignment_id").
-		Where("wt.assigned_to = ? AND wt.status = 'pending' AND wa.organization_id = ?", approverID, tenant.OrganizationID).
+		Where("wt.assigned_to = ? AND UPPER(wt.status) = 'PENDING' AND wa.organization_id = ?", approverID, tenant.OrganizationID).
 		Count(&pendingCount)
 
 	// Count tasks completed this month
@@ -604,15 +731,15 @@ func GetApproverWorkload(c *fiber.Ctx) error {
 	var completedThisMonth int64
 	db.Table("workflow_tasks wt").
 		Joins("JOIN workflow_assignments wa ON wa.id = wt.workflow_assignment_id").
-		Where("wt.assigned_to = ? AND wt.status IN ? AND wt.updated_at >= ? AND wa.organization_id = ?",
-			approverID, []string{"approved", "rejected"}, startOfMonth, tenant.OrganizationID).
+		Where("wt.assigned_to = ? AND UPPER(wt.status) IN ? AND wt.updated_at >= ? AND wa.organization_id = ?",
+			approverID, []string{"APPROVED", "REJECTED"}, startOfMonth, tenant.OrganizationID).
 		Count(&completedThisMonth)
 
 	// Count overdue tasks (past due_date and still pending)
 	var overdueTasks int64
 	db.Table("workflow_tasks wt").
 		Joins("JOIN workflow_assignments wa ON wa.id = wt.workflow_assignment_id").
-		Where("wt.assigned_to = ? AND wt.status = 'pending' AND wt.due_date < ? AND wa.organization_id = ?",
+		Where("wt.assigned_to = ? AND UPPER(wt.status) = 'PENDING' AND wt.due_date < ? AND wa.organization_id = ?",
 			approverID, now, tenant.OrganizationID).
 		Count(&overdueTasks)
 
@@ -654,7 +781,7 @@ func ConfirmGRN(c *fiber.Ctx) error {
 		return utils.SendNotFoundError(c, "GRN not found")
 	}
 
-	if grn.Status != "approved" {
+	if strings.ToUpper(grn.Status) != "APPROVED" {
 		return utils.SendBadRequestError(c, "Only approved GRNs can be confirmed")
 	}
 
@@ -663,7 +790,7 @@ func ConfirmGRN(c *fiber.Ctx) error {
 	config.DB.Where("id = ?", userID).First(&user)
 
 	now := time.Now()
-	grn.Status = "completed"
+	grn.Status = "COMPLETED"
 	grn.UpdatedAt = now
 
 	actionHistory := grn.ActionHistory.Data()
@@ -676,8 +803,8 @@ func ConfirmGRN(c *fiber.Ctx) error {
 		Timestamp:       now,
 		Comments:        req.Comments,
 		ActionType:      "CONFIRM",
-		PreviousStatus:  "approved",
-		NewStatus:       "completed",
+		PreviousStatus:  "APPROVED",
+		NewStatus:       "COMPLETED",
 	})
 	grn.ActionHistory = datatypes.NewJSONType(actionHistory)
 

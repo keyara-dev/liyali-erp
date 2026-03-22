@@ -73,7 +73,7 @@ func TestConcurrentApprovalIssues(t *testing.T) {
 		
 		// First claim succeeds
 		claimResults[0] = true
-		scenario.Task.Status = "claimed"
+		scenario.Task.Status = "CLAIMED"
 		scenario.Task.ClaimedBy = helpers.StringPtr(scenario.Users.Manager.ID)
 		
 		// Other claims fail

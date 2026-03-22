@@ -216,7 +216,7 @@ const columns: ColumnDef<Requisition>[] = [
       const isOverdue =
         requiredByDate &&
         requiredByDate < now &&
-        row.original.status !== "completed";
+        row.original.status?.toUpperCase() !== "COMPLETED";
       const isUrgent =
         requiredByDate &&
         requiredByDate.getTime() - now.getTime() < 7 * 24 * 60 * 60 * 1000;
@@ -276,11 +276,12 @@ function ReqOptionsMenu({
     }
   };
 
-  const canSubmit = req.status === "draft" && req.requesterId === userId;
-  const canWithdraw = req.status === "pending" && req.requesterId === userId;
-  const canEdit = req.status === "draft" && req.requesterId === userId;
-  const canApprove = workflowStatus?.canApprove && req.status === "pending";
-  const canReject = workflowStatus?.canReject && req.status === "pending";
+  const reqStatus = req.status?.toUpperCase();
+  const canSubmit = reqStatus === "DRAFT" && req.requesterId === userId;
+  const canWithdraw = reqStatus === "PENDING" && req.requesterId === userId;
+  const canEdit = reqStatus === "DRAFT" && req.requesterId === userId;
+  const canApprove = workflowStatus?.canApprove && reqStatus === "PENDING";
+  const canReject = workflowStatus?.canReject && reqStatus === "PENDING";
 
   return (
     <>
@@ -346,7 +347,7 @@ function ReqOptionsMenu({
             </DropdownMenuItem>
           )}
 
-          {req.status === "draft" && req.requesterId === userId && (
+          {reqStatus === "DRAFT" && req.requesterId === userId && (
             <DropdownMenuItem
               onClick={() => console.log("Delete requisition:", req.id)}
               className="text-red-600 focus:text-red-600"

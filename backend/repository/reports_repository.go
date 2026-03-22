@@ -67,11 +67,11 @@ func (r *ReportsRepository) QueryDocumentStats(
 		)
 		SELECT
 			COUNT(*) as total,
-			COUNT(*) FILTER (WHERE status = 'approved') as approved,
-			COUNT(*) FILTER (WHERE status = 'rejected') as rejected,
-			COUNT(*) FILTER (WHERE status = 'draft') as draft,
-			COUNT(*) FILTER (WHERE status = 'submitted') as submitted,
-			COUNT(*) FILTER (WHERE status IN ('in_review', 'pending')) as pending,
+			COUNT(*) FILTER (WHERE UPPER(status) = 'APPROVED') as approved,
+			COUNT(*) FILTER (WHERE UPPER(status) = 'REJECTED') as rejected,
+			COUNT(*) FILTER (WHERE UPPER(status) = 'DRAFT') as draft,
+			COUNT(*) FILTER (WHERE UPPER(status) = 'SUBMITTED') as submitted,
+			COUNT(*) FILTER (WHERE UPPER(status) IN ('IN_REVIEW', 'PENDING')) as pending,
 			COALESCE(AVG(at.days), 0) as avg_approval_days,
 			COUNT(*) FILTER (WHERE doc_type = 'requisition') as requisitions,
 			COUNT(*) FILTER (WHERE doc_type = 'purchase_order') as purchase_orders,
@@ -209,13 +209,13 @@ func (r *ReportsRepository) QueryUserActivity(
 				created_by,
 				COUNT(*) as active_count
 			FROM (
-				SELECT created_by FROM requisitions WHERE organization_id = $1 AND status IN ('draft', 'submitted', 'in_review')
+				SELECT created_by FROM requisitions WHERE organization_id = $1 AND UPPER(status) IN ('DRAFT', 'SUBMITTED', 'IN_REVIEW')
 				UNION ALL
-				SELECT created_by FROM purchase_orders WHERE organization_id = $1 AND status IN ('draft', 'submitted', 'in_review')
+				SELECT created_by FROM purchase_orders WHERE organization_id = $1 AND UPPER(status) IN ('DRAFT', 'SUBMITTED', 'IN_REVIEW')
 				UNION ALL
-				SELECT created_by FROM payment_vouchers WHERE organization_id = $1 AND status IN ('draft', 'submitted', 'in_review')
+				SELECT created_by FROM payment_vouchers WHERE organization_id = $1 AND UPPER(status) IN ('DRAFT', 'SUBMITTED', 'IN_REVIEW')
 				UNION ALL
-				SELECT created_by FROM budgets WHERE organization_id = $1 AND status IN ('draft', 'submitted', 'in_review')
+				SELECT created_by FROM budgets WHERE organization_id = $1 AND UPPER(status) IN ('DRAFT', 'SUBMITTED', 'IN_REVIEW')
 			) docs
 			GROUP BY created_by
 		)
@@ -294,13 +294,13 @@ func (r *ReportsRepository) QueryApprovalTrends(
 				COUNT(*) as pending
 			FROM date_series ds
 			CROSS JOIN (
-				SELECT id FROM requisitions WHERE organization_id = $1 AND status IN ('in_review', 'pending')
+				SELECT id FROM requisitions WHERE organization_id = $1 AND UPPER(status) IN ('IN_REVIEW', 'PENDING')
 				UNION ALL
-				SELECT id FROM purchase_orders WHERE organization_id = $1 AND status IN ('in_review', 'pending')
+				SELECT id FROM purchase_orders WHERE organization_id = $1 AND UPPER(status) IN ('IN_REVIEW', 'PENDING')
 				UNION ALL
-				SELECT id FROM payment_vouchers WHERE organization_id = $1 AND status IN ('in_review', 'pending')
+				SELECT id FROM payment_vouchers WHERE organization_id = $1 AND UPPER(status) IN ('IN_REVIEW', 'PENDING')
 				UNION ALL
-				SELECT id FROM budgets WHERE organization_id = $1 AND status IN ('in_review', 'pending')
+				SELECT id FROM budgets WHERE organization_id = $1 AND UPPER(status) IN ('IN_REVIEW', 'PENDING')
 			) docs
 			GROUP BY ds.date
 		)
@@ -497,31 +497,31 @@ func (r *ReportsRepository) QueryAverageProcessingTime(
 			FROM (
 				SELECT created_at, updated_at FROM requisitions 
 				WHERE organization_id = $1 
-				  AND status IN ('approved', 'rejected', 'completed')
+				  AND UPPER(status) IN ('APPROVED', 'REJECTED', 'COMPLETED')
 				  AND ($2::timestamp IS NULL OR created_at >= $2)
 				  AND ($3::timestamp IS NULL OR created_at <= $3)
 				UNION ALL
 				SELECT created_at, updated_at FROM purchase_orders 
 				WHERE organization_id = $1 
-				  AND status IN ('approved', 'rejected', 'completed')
+				  AND UPPER(status) IN ('APPROVED', 'REJECTED', 'COMPLETED')
 				  AND ($2::timestamp IS NULL OR created_at >= $2)
 				  AND ($3::timestamp IS NULL OR created_at <= $3)
 				UNION ALL
 				SELECT created_at, updated_at FROM payment_vouchers 
 				WHERE organization_id = $1 
-				  AND status IN ('approved', 'rejected', 'completed')
+				  AND UPPER(status) IN ('APPROVED', 'REJECTED', 'COMPLETED')
 				  AND ($2::timestamp IS NULL OR created_at >= $2)
 				  AND ($3::timestamp IS NULL OR created_at <= $3)
 				UNION ALL
 				SELECT created_at, updated_at FROM goods_received_notes 
 				WHERE organization_id = $1 
-				  AND status IN ('approved', 'rejected', 'completed')
+				  AND UPPER(status) IN ('APPROVED', 'REJECTED', 'COMPLETED')
 				  AND ($2::timestamp IS NULL OR created_at >= $2)
 				  AND ($3::timestamp IS NULL OR created_at <= $3)
 				UNION ALL
 				SELECT created_at, updated_at FROM budgets 
 				WHERE organization_id = $1 
-				  AND status IN ('approved', 'rejected')
+				  AND UPPER(status) IN ('APPROVED', 'REJECTED')
 				  AND ($2::timestamp IS NULL OR created_at >= $2)
 				  AND ($3::timestamp IS NULL OR created_at <= $3)
 			) all_docs

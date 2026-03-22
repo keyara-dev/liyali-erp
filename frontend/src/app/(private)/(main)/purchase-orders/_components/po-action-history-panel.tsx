@@ -3,7 +3,7 @@
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Clock, CheckCircle, XCircle, Edit, Plus, Send } from 'lucide-react'
+import { Clock, CheckCircle, XCircle, Edit, Plus, Send, Link, Package, CreditCard, FileText } from 'lucide-react'
 import { POActionHistoryEntry, POApprovalRecord } from '@/types'
 
 interface POActionHistoryPanelProps {
@@ -27,6 +27,18 @@ export function POActionHistoryPanel({
         return <Edit className="h-5 w-5 text-amber-600" />
       case 'SUBMIT':
         return <Send className="h-5 w-5 text-purple-600" />
+      case 'PO_CREATED':
+        return <FileText className="h-5 w-5 text-blue-600" />
+      case 'GRN_CREATED':
+      case 'GRN_CREATED_CONFIRMING':
+        return <Package className="h-5 w-5 text-teal-600" />
+      case 'PV_CREATED':
+        return <CreditCard className="h-5 w-5 text-violet-600" />
+      case 'CREATED_FROM_REQUISITION':
+      case 'CREATED_FROM_PO':
+      case 'CREATED_FROM_GRN':
+      case 'CREATED_FROM_PV':
+        return <Link className="h-5 w-5 text-sky-600" />
       default:
         return <Clock className="h-5 w-5 text-gray-600" />
     }
@@ -44,6 +56,18 @@ export function POActionHistoryPanel({
         return 'bg-amber-50 border-amber-200'
       case 'SUBMIT':
         return 'bg-purple-50 border-purple-200'
+      case 'PO_CREATED':
+        return 'bg-blue-50 border-blue-200'
+      case 'GRN_CREATED':
+      case 'GRN_CREATED_CONFIRMING':
+        return 'bg-teal-50 border-teal-200'
+      case 'PV_CREATED':
+        return 'bg-violet-50 border-violet-200'
+      case 'CREATED_FROM_REQUISITION':
+      case 'CREATED_FROM_PO':
+      case 'CREATED_FROM_GRN':
+      case 'CREATED_FROM_PV':
+        return 'bg-sky-50 border-sky-200'
       default:
         return 'bg-gray-50 border-gray-200'
     }
@@ -67,8 +91,34 @@ export function POActionHistoryPanel({
         return 'Deleted'
       case 'REVERT_TO_DRAFT':
         return 'Reverted to Draft'
+      case 'PO_CREATED':
+        return 'Purchase Order Created'
+      case 'GRN_CREATED':
+        return 'GRN Created'
+      case 'GRN_CREATED_CONFIRMING':
+        return 'GRN Created (Delivery Confirmed)'
+      case 'PV_CREATED':
+        return 'Payment Voucher Created'
+      case 'CREATED_FROM_REQUISITION':
+        return 'Created from Requisition'
+      case 'CREATED_FROM_PO':
+        return 'Created from Purchase Order'
+      case 'CREATED_FROM_GRN':
+        return 'Created from GRN'
+      case 'CREATED_FROM_PV':
+        return 'Created from Payment Voucher'
       default:
         return actionType
+    }
+  }
+
+  const getLinkedDocPath = (docType: string, docNumber: string) => {
+    switch (docType) {
+      case 'purchase_order': return `/purchase-orders?search=${docNumber}`
+      case 'grn': return `/grn?search=${docNumber}`
+      case 'payment_voucher': return `/payment-vouchers?search=${docNumber}`
+      case 'requisition': return `/requisitions?search=${docNumber}`
+      default: return null
     }
   }
 
@@ -141,6 +191,30 @@ export function POActionHistoryPanel({
                         </div>
                       )}
 
+                      {/* Linked document (procurement chain entries) */}
+                      {action.metadata?.linkedDocNumber && (
+                        <div className="text-xs mt-2 text-sky-700 flex items-center gap-1">
+                          <Link className="h-3 w-3" />
+                          <span>Linked:</span>
+                          {(() => {
+                            const path = getLinkedDocPath(
+                              action.metadata.linkedDocType,
+                              action.metadata.linkedDocNumber
+                            )
+                            return path ? (
+                              <a href={path} className="font-mono underline hover:text-sky-900">
+                                {action.metadata.linkedDocNumber}
+                              </a>
+                            ) : (
+                              <span className="font-mono">{action.metadata.linkedDocNumber}</span>
+                            )
+                          })()}
+                          {action.metadata?.flow && (
+                            <span className="ml-1 text-muted-foreground">({action.metadata.flow.replace('_', '-')})</span>
+                          )}
+                        </div>
+                      )}
+
                       {/* Comments */}
                       {action.comments && (
                         <p className="text-sm mt-2 text-gray-700 italic">
@@ -178,10 +252,10 @@ export function POActionHistoryPanel({
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex items-start gap-3 flex-1">
-                      {approval.status === 'approved' && (
+                      {approval.status?.toUpperCase() === 'APPROVED' && (
                         <CheckCircle className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
                       )}
-                      {approval.status === 'rejected' && (
+                      {approval.status?.toUpperCase() === 'REJECTED' && (
                         <XCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
                       )}
 
@@ -192,9 +266,9 @@ export function POActionHistoryPanel({
                           </span>
                           <Badge
                             variant={
-                              approval.status === 'approved'
+                              approval.status?.toUpperCase() === 'APPROVED'
                                 ? 'default'
-                                : approval.status === 'rejected'
+                                : approval.status?.toUpperCase() === 'REJECTED'
                                   ? 'destructive'
                                   : 'secondary'
                             }

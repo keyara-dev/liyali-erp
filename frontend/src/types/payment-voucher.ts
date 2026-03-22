@@ -35,6 +35,8 @@ export interface PaymentVoucher {
   approvalStage: number;
   approvalHistory: any[];
   linkedPO: string;
+  /** Goods-first flow: GRN document number that was approved before this PV */
+  linkedGRN?: string;
   createdAt: Date;
   updatedAt: Date;
 
@@ -85,6 +87,8 @@ export interface CreatePaymentVoucherRequest {
   glCode: string;
   description: string;
   linkedPO: string;
+  /** Goods-first flow: GRN document number approved before this PV */
+  linkedGRNDocumentNumber?: string;
 
   // Business requirement fields
   title: string;
@@ -196,12 +200,12 @@ export interface PaymentVoucherStats {
 // ============================================================================
 
 export type PaymentVoucherStatus =
-  | "draft"
-  | "pending"
-  | "approved"
-  | "rejected"
-  | "paid"
-  | "completed"
-  | "cancelled";
+  | "DRAFT"
+  | "PENDING"
+  | "APPROVED"
+  | "REJECTED"
+  | "PAID"
+  | "COMPLETED"
+  | "CANCELLED";
 // Re-export PaymentMethod from core
 export type { PaymentMethod } from "./core";

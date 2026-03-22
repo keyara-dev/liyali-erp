@@ -69,7 +69,7 @@ func GetBudgets(c *fiber.Ctx) error {
 	query = scope.ApplyToQuery(query, "created_by", "budget", "")
 
 	if status != "" {
-		query = query.Where("status = ?", status)
+		query = query.Where("UPPER(status) = UPPER(?)", status)
 	}
 	if department != "" {
 		query = query.Where("department = ?", department)
@@ -201,7 +201,7 @@ func CreateBudget(c *fiber.Ctx) error {
 		Description:     req.Description, // Add description field
 		Department:      req.Department,
 		DepartmentID:    req.DepartmentID, // Add department ID field
-		Status:          "draft",
+		Status: "DRAFT",
 		FiscalYear:      req.FiscalYear,
 		TotalBudget:     req.TotalBudget,
 		AllocatedAmount: req.AllocatedAmount,
@@ -345,7 +345,7 @@ func UpdateBudget(c *fiber.Ctx) error {
 	// Add current budget status to context
 	logging.AddFieldToRequest(c, "current_status", budget.Status)
 
-	if budget.Status != "draft" && budget.Status != "pending" {
+	if strings.ToUpper(budget.Status) != "DRAFT" && strings.ToUpper(budget.Status) != "PENDING" {
 		logging.LogWarn(c, "budget_update_not_allowed", map[string]interface{}{
 			"current_status": budget.Status,
 		})
@@ -511,7 +511,7 @@ func DeleteBudget(c *fiber.Ctx) error {
 	// Add budget status to context
 	logging.AddFieldToRequest(c, "budget_status", budget.Status)
 
-	if budget.Status != "draft" {
+	if strings.ToUpper(budget.Status) != "DRAFT" {
 		logging.LogWarn(c, "budget_deletion_not_allowed", map[string]interface{}{
 			"current_status": budget.Status,
 		})
@@ -569,7 +569,7 @@ func SubmitBudget(c *fiber.Ctx) error {
 	// Add budget status to context
 	logging.AddFieldToRequest(c, "current_status", budget.Status)
 
-	if budget.Status != "draft" {
+	if strings.ToUpper(budget.Status) != "DRAFT" {
 		logging.LogWarn(c, "budget_submission_not_allowed", map[string]interface{}{
 			"current_status": budget.Status,
 		})
@@ -608,7 +608,7 @@ func SubmitBudget(c *fiber.Ctx) error {
 	}
 
 	// Update budget status to pending
-	budget.Status = "pending"
+	budget.Status = "PENDING"
 	budget.UpdatedAt = time.Now()
 
 	// Add action to history

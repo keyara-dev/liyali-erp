@@ -80,11 +80,11 @@ interface WorkflowActionButtonsProps {
 
 const StatusBadge = memo(
   ({ task, user }: { task: WorkflowTask; user: any }) => {
-    const isPending = task.status === "pending" || task.status === "CLAIMED";
+    const taskStatus = task.status?.toUpperCase();
+    const isPending = taskStatus === "PENDING" || taskStatus === "CLAIMED";
     const isClaimedByUser = task.claimedBy === user?.id;
     const isClaimedByOther = task.claimedBy && task.claimedBy !== user?.id;
-    const isCompleted =
-      task.status === "completed" || task.status === "approved";
+    const isCompleted = taskStatus === "COMPLETED" || taskStatus === "APPROVED";
 
     if (isPending && !task.claimedBy) {
       return (
@@ -171,7 +171,7 @@ export const WorkflowActionButtons = memo(function WorkflowActionButtons({
     return isTaskClaimedByUser;
   }, [user, isTaskClaimedByUser]);
 
-  const isPending = task.status === "pending" || task.status === "claimed";
+  const isPending = task.status?.toUpperCase() === "PENDING" || task.status?.toUpperCase() === "CLAIMED";
   const canClaim = canUserClaimTask && !isTaskClaimed;
   const canApproveReject = canUserApproveReject;
 
@@ -573,7 +573,7 @@ export const WorkflowActionButtons = memo(function WorkflowActionButtons({
             )}
           </>
         )}
-        {!isPending && task.status === "approved" && showStatus && (
+        {!isPending && task.status?.toUpperCase() === "APPROVED" && showStatus && (
           <Button
             size="default"
             variant="outline"
@@ -584,7 +584,7 @@ export const WorkflowActionButtons = memo(function WorkflowActionButtons({
             Approved
           </Button>
         )}
-        {!isPending && task.status === "rejected" && showStatus && (
+        {!isPending && task.status?.toUpperCase() === "REJECTED" && showStatus && (
           <Button
             size="default"
             variant="outline"

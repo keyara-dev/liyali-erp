@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -70,7 +71,7 @@ func GetPaymentVouchers(c *fiber.Ctx) error {
 	}
 
 	if status != "" {
-		query = query.Where("status = ?", status)
+		query = query.Where("UPPER(status) = UPPER(?)", status)
 	}
 	if vendorID != "" {
 		query = query.Where("vendor_id = ?", vendorID)
@@ -174,7 +175,7 @@ func CreatePaymentVoucher(c *fiber.Ctx) error {
 		DocumentNumber: documentNumber,
 		VendorID:       vendorIDPtr,
 		InvoiceNumber:  req.InvoiceNumber,
-		Status:         "draft",
+		Status: "DRAFT",
 		Amount:         req.Amount,
 		Currency:       req.Currency,
 		PaymentMethod:  req.PaymentMethod,
@@ -291,7 +292,7 @@ func UpdatePaymentVoucher(c *fiber.Ctx) error {
 		})
 	}
 
-	if voucher.Status != "draft" && voucher.Status != "pending" {
+	if strings.ToUpper(voucher.Status) != "DRAFT" && strings.ToUpper(voucher.Status) != "PENDING" {
 		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
 			"success": false,
 			"message": fmt.Sprintf("Cannot update payment voucher in %s status", voucher.Status),
@@ -369,7 +370,7 @@ func DeletePaymentVoucher(c *fiber.Ctx) error {
 		})
 	}
 
-	if voucher.Status != "draft" {
+	if strings.ToUpper(voucher.Status) != "DRAFT" {
 		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
 			"success": false,
 			"message": "Only draft payment vouchers can be deleted",
@@ -424,6 +425,7 @@ func modelToPaymentVoucherResponse(voucher models.PaymentVoucher) types.PaymentV
 		ApprovalHistory: approvalHistory,
 		ActionHistory:   actionHistory,
 		LinkedPO:        voucher.LinkedPO,
+		LinkedGRN:       voucher.LinkedGRN,
 		CreatedAt:       voucher.CreatedAt,
 		UpdatedAt:       voucher.UpdatedAt,
 	}
@@ -467,7 +469,7 @@ func SubmitPaymentVoucher(c *fiber.Ctx) error {
 	}
 
 	// Check if payment voucher is in draft status
-	if voucher.Status != "draft" {
+	if strings.ToUpper(voucher.Status) != "DRAFT" {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"success": false,
 			"message": fmt.Sprintf("Cannot submit payment voucher in %s status", voucher.Status),
@@ -490,7 +492,7 @@ func SubmitPaymentVoucher(c *fiber.Ctx) error {
 	}
 
 	// Update payment voucher status to pending
-	voucher.Status = "pending"
+	voucher.Status = "PENDING"
 	voucher.UpdatedAt = time.Now()
 
 	// Add action history entry for submission
@@ -509,8 +511,8 @@ func SubmitPaymentVoucher(c *fiber.Ctx) error {
 			Timestamp:       time.Now(),
 			Comments:        "Payment voucher submitted for approval",
 			ActionType:      "SUBMIT",
-			PreviousStatus:  "draft",
-			NewStatus:       "pending",
+			PreviousStatus:  "DRAFT",
+			NewStatus:       "PENDING",
 		})
 		voucher.ActionHistory = datatypes.NewJSONType(actionHistory)
 	}

@@ -43,7 +43,7 @@ export function usePurchaseOrderDetail({
     getPermissions: (po, userId, userRole) => {
       const isCreator = po.createdBy === userId;
       const canEdit =
-        po.status === "pending" && (isCreator || userRole === "admin");
+        po.status?.toUpperCase() === "PENDING" && (isCreator || userRole === "admin");
       const canSubmit = false; // POs are typically created from approved requisitions
       const canWithdraw = false;
 

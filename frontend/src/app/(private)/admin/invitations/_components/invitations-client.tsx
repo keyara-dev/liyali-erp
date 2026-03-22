@@ -36,31 +36,31 @@ import {
 import { type OrganizationInvitation } from "@/app/_actions/invitation-actions";
 
 const STATUS_CONFIG = {
-  pending: {
+  PENDING: {
     label: "Pending",
     icon: Clock,
     variant: "secondary" as const,
     className: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300",
   },
-  accepted: {
+  ACCEPTED: {
     label: "Accepted",
     icon: CheckCircle2,
     variant: "secondary" as const,
     className: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300",
   },
-  declined: {
+  DECLINED: {
     label: "Declined",
     icon: MinusCircle,
     variant: "secondary" as const,
     className: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300",
   },
-  expired: {
+  EXPIRED: {
     label: "Expired",
     icon: Clock,
     variant: "secondary" as const,
     className: "bg-muted text-muted-foreground",
   },
-  cancelled: {
+  CANCELLED: {
     label: "Cancelled",
     icon: Ban,
     variant: "secondary" as const,
@@ -69,7 +69,7 @@ const STATUS_CONFIG = {
 } as const;
 
 function StatusBadge({ status }: { status: OrganizationInvitation["status"] }) {
-  const config = STATUS_CONFIG[status] ?? STATUS_CONFIG.pending;
+  const config = STATUS_CONFIG[status.toUpperCase() as keyof typeof STATUS_CONFIG] ?? STATUS_CONFIG.PENDING;
   const Icon = config.icon;
   return (
     <Badge variant="secondary" className={`gap-1 ${config.className}`}>
@@ -82,10 +82,11 @@ function StatusBadge({ status }: { status: OrganizationInvitation["status"] }) {
 function InvitationRow({ inv }: { inv: OrganizationInvitation }) {
   const cancelMutation = useCancelInvitation();
   const resendMutation = useResendInvitation();
-  const isExpired = inv.status === "pending" && isPast(new Date(inv.expiresAt));
-  const effectiveStatus = isExpired ? "expired" : inv.status;
-  const canCancel = inv.status === "pending" && !isExpired;
-  const canResend = inv.status === "declined" || inv.status === "expired" || isExpired;
+  const s = inv.status?.toUpperCase();
+  const isExpired = s === "PENDING" && isPast(new Date(inv.expiresAt));
+  const effectiveStatus = isExpired ? "EXPIRED" : inv.status;
+  const canCancel = s === "PENDING" && !isExpired;
+  const canResend = s === "DECLINED" || s === "EXPIRED" || isExpired;
 
   return (
     <TableRow>
@@ -111,7 +112,7 @@ function InvitationRow({ inv }: { inv: OrganizationInvitation }) {
       <TableCell className="text-sm text-muted-foreground">
         {isExpired ? (
           <span className="text-destructive text-xs">Expired</span>
-        ) : inv.status === "pending" ? (
+        ) : s === "PENDING" ? (
           <span className="text-xs">
             Expires {formatDistanceToNow(new Date(inv.expiresAt), { addSuffix: true })}
           </span>
@@ -184,7 +185,7 @@ export function InvitationsClient() {
     <div className="space-y-4">
       {/* Filter tabs */}
       <div className="flex flex-wrap gap-2">
-        {(["all", "pending", "accepted", "declined", "expired", "cancelled"] as const).map(
+        {(["all", "PENDING", "ACCEPTED", "DECLINED", "EXPIRED", "CANCELLED"] as const).map(
           (s) => (
             <Button
               key={s}
@@ -193,7 +194,7 @@ export function InvitationsClient() {
               onClick={() => setFilter(s)}
               className="h-7 capitalize text-xs"
             >
-              {s === "all" ? `All (${invitations.length})` : s}
+              {s === "all" ? `All (${invitations.length})` : STATUS_CONFIG[s].label}
             </Button>
           )
         )}

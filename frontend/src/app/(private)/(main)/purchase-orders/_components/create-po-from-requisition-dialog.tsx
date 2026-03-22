@@ -20,18 +20,19 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Requisition } from "@/types/requisition";
-import { FileText, CheckCircle2, AlertCircle } from "lucide-react";
+import { FileText, CheckCircle2, AlertCircle, ArrowDownUp } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { WorkflowSelector } from "@/components/workflows/workflow-selector";
 import { useConfigurationStatus } from "@/hooks/use-configuration-status";
 import { ConfigurationChecklistBanner } from "@/components/ui/configuration-checklist-banner";
 import { useVendors } from "@/hooks/use-vendor-queries";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 interface CreatePOFromRequisitionDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   requisition: Requisition;
-  onConfirm: (workflowId: string, vendorId?: string, vendorName?: string) => Promise<void>;
+  onConfirm: (workflowId: string, vendorId?: string, vendorName?: string, procurementFlow?: "" | "goods_first" | "payment_first") => Promise<void>;
   isCreating: boolean;
 }
 
@@ -50,6 +51,7 @@ export function CreatePOFromRequisitionDialog({
   const [selectedVendorName, setSelectedVendorName] = useState(
     requisition.vendorName ?? ""
   );
+  const [procurementFlow, setProcurementFlow] = useState<"" | "goods_first" | "payment_first">("");
 
   const { data: vendors = [] } = useVendors();
 
@@ -61,7 +63,7 @@ export function CreatePOFromRequisitionDialog({
 
   const canCreate =
     workflowId &&
-    requisition.status === "approved" &&
+    requisition.status?.toUpperCase() === "APPROVED" &&
     configStatus.allConfigured;
 
   const handleConfirm = async () => {
@@ -78,10 +80,12 @@ export function CreatePOFromRequisitionDialog({
       workflowId,
       selectedVendorId || undefined,
       selectedVendorName || undefined,
+      procurementFlow,
     );
     setWorkflowId("");
     setSelectedVendorId(requisition.vendorId ?? "");
     setSelectedVendorName(requisition.vendorName ?? "");
+    setProcurementFlow("");
   };
 
   const handleClose = () => {
@@ -90,6 +94,7 @@ export function CreatePOFromRequisitionDialog({
       setWorkflowError(null);
       setSelectedVendorId(requisition.vendorId ?? "");
       setSelectedVendorName(requisition.vendorName ?? "");
+      setProcurementFlow("");
       onOpenChange(false);
     }
   };
@@ -166,6 +171,45 @@ export function CreatePOFromRequisitionDialog({
             </Select>
           </div>
 
+          {/* Procurement Flow Override */}
+          <div className="space-y-2">
+            <Label className="flex items-center gap-1.5 text-sm font-medium">
+              <ArrowDownUp className="h-4 w-4" />
+              Procurement Flow
+            </Label>
+            <p className="text-xs text-muted-foreground">
+              Override the organisation default for this purchase order only.
+            </p>
+            <RadioGroup
+              value={procurementFlow}
+              onValueChange={(v) => setProcurementFlow(v as "" | "goods_first" | "payment_first")}
+              disabled={isCreating}
+              className="space-y-2"
+            >
+              <div className="flex items-start gap-2.5 rounded-md border p-3 cursor-pointer hover:bg-muted/50 transition-colors">
+                <RadioGroupItem value="" id="po-flow-default" className="mt-0.5" />
+                <Label htmlFor="po-flow-default" className="cursor-pointer">
+                  <span className="font-medium text-sm">Use organisation default</span>
+                  <p className="text-xs text-muted-foreground font-normal">Follow the workspace-level procurement flow setting</p>
+                </Label>
+              </div>
+              <div className="flex items-start gap-2.5 rounded-md border p-3 cursor-pointer hover:bg-muted/50 transition-colors">
+                <RadioGroupItem value="goods_first" id="po-flow-goods" className="mt-0.5" />
+                <Label htmlFor="po-flow-goods" className="cursor-pointer">
+                  <span className="font-medium text-sm">Goods-First</span>
+                  <p className="text-xs text-muted-foreground font-normal">GRN must be approved before payment can be processed</p>
+                </Label>
+              </div>
+              <div className="flex items-start gap-2.5 rounded-md border p-3 cursor-pointer hover:bg-muted/50 transition-colors">
+                <RadioGroupItem value="payment_first" id="po-flow-payment" className="mt-0.5" />
+                <Label htmlFor="po-flow-payment" className="cursor-pointer">
+                  <span className="font-medium text-sm">Payment-First</span>
+                  <p className="text-xs text-muted-foreground font-normal">Payment is processed upfront; GRN confirms delivery later</p>
+                </Label>
+              </div>
+            </RadioGroup>
+          </div>
+
           <Separator />
 
           {/* Requisition Summary */}
@@ -233,7 +277,7 @@ export function CreatePOFromRequisitionDialog({
             </Alert>
           )}
 
-          {requisition.status !== "approved" && (
+          {requisition.status?.toUpperCase() !== "APPROVED" && (
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>

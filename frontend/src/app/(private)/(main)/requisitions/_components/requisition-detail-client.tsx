@@ -262,11 +262,11 @@ export function RequisitionDetailClient({
             <div className="flex items-center">
               <Badge
                 className={`inline-flex capitalize items-center px-2 py-1 rounded-full text-xs font-medium border ${
-                  requisition.priority?.toLowerCase() === "urgent"
+                  requisition.priority?.toUpperCase() === "URGENT"
                     ? "bg-red-100 text-red-800 border-red-200"
-                    : requisition.priority?.toLowerCase() === "high"
+                    : requisition.priority?.toUpperCase() === "HIGH"
                       ? "bg-orange-100 text-orange-800 border-orange-200"
-                      : requisition.priority?.toLowerCase() === "medium"
+                      : requisition.priority?.toUpperCase() === "MEDIUM"
                         ? "bg-blue-100 text-blue-800 border-blue-200"
                         : "bg-gray-100 text-gray-800 border-gray-200"
                 }`}
@@ -392,7 +392,7 @@ export function RequisitionDetailClient({
               <p
                 className={`text-sm font-medium ${
                   new Date(requisition.requiredByDate) < new Date() &&
-                  requisition.status !== "completed"
+                  requisition.status?.toUpperCase() !== "COMPLETED"
                     ? "text-red-200 font-bold"
                     : "text-primary-foreground"
                 }`}
@@ -406,7 +406,7 @@ export function RequisitionDetailClient({
                   },
                 )}
                 {new Date(requisition.requiredByDate) < new Date() &&
-                  requisition.status !== "completed" && (
+                  requisition.status?.toUpperCase() !== "COMPLETED" && (
                     <span className="ml-2 text-xs">(Overdue)</span>
                   )}
               </p>
@@ -582,7 +582,7 @@ export function RequisitionDetailClient({
       </div>
 
       {/* Document Chain — only shown once requisition is approved */}
-      {requisition.status === "approved" && (
+      {requisition.status?.toUpperCase() === "APPROVED" && (
         <DocumentLinks
           currentDocument={requisition as unknown as WorkflowDocument}
           chain={chain}

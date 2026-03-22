@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -63,7 +64,7 @@ func GetPurchaseOrders(c *fiber.Ctx) error {
 	query = scope.ApplyToQuery(query, "created_by", "purchase_order", "")
 
 	if status != "" {
-		query = query.Where("status = ?", status)
+		query = query.Where("UPPER(status) = UPPER(?)", status)
 	}
 	if vendorID != "" {
 		query = query.Where("vendor_id = ?", vendorID)
@@ -210,7 +211,7 @@ func CreatePurchaseOrder(c *fiber.Ctx) error {
 		OrganizationID:    tenant.OrganizationID, // SECURITY FIX: Set organization ID
 		DocumentNumber:    documentNumber,
 		VendorID:          vendorIDPtr,
-		Status:            "draft",
+		Status: "DRAFT",
 		TotalAmount:       req.TotalAmount,
 		Currency:          req.Currency,
 		DeliveryDate:      req.DeliveryDate.Time,
@@ -349,7 +350,7 @@ func UpdatePurchaseOrder(c *fiber.Ctx) error {
 		})
 	}
 
-	if order.Status != "draft" && order.Status != "pending" {
+	if strings.ToUpper(order.Status) != "DRAFT" && strings.ToUpper(order.Status) != "PENDING" {
 		logging.LogWarn(c, "invalid_status_for_update", map[string]interface{}{
 			"current_status":  order.Status,
 			"document_number": order.DocumentNumber,
@@ -446,7 +447,7 @@ func DeletePurchaseOrder(c *fiber.Ctx) error {
 		})
 	}
 
-	if order.Status != "draft" {
+	if strings.ToUpper(order.Status) != "DRAFT" {
 		logging.LogWarn(c, "invalid_status_for_deletion", map[string]interface{}{
 			"current_status":  order.Status,
 			"document_number": order.DocumentNumber,
@@ -511,6 +512,7 @@ func modelToPurchaseOrderResponse(order models.PurchaseOrder) types.PurchaseOrde
 		ApprovalHistory:   approvalHistory,
 		ActionHistory:     actionHistory,
 		LinkedRequisition: order.LinkedRequisition,
+		ProcurementFlow:   order.ProcurementFlow,
 		CreatedAt:         order.CreatedAt,
 		UpdatedAt:         order.UpdatedAt,
 	}
@@ -566,7 +568,7 @@ func SubmitPurchaseOrder(c *fiber.Ctx) error {
 	}
 
 	// Check if purchase order is in draft status
-	if order.Status != "draft" {
+	if strings.ToUpper(order.Status) != "DRAFT" {
 		logging.LogWarn(c, "invalid_purchase_order_status_for_submission", map[string]interface{}{
 			"current_status": order.Status,
 		})
@@ -595,7 +597,7 @@ func SubmitPurchaseOrder(c *fiber.Ctx) error {
 	}
 
 	// Update purchase order status to pending
-	order.Status = "pending"
+	order.Status = "PENDING"
 	order.UpdatedAt = time.Now()
 
 	// Add action history entry for submission
@@ -614,8 +616,8 @@ func SubmitPurchaseOrder(c *fiber.Ctx) error {
 			Timestamp:       time.Now(),
 			Comments:        "Purchase order submitted for approval",
 			ActionType:      "SUBMIT",
-			PreviousStatus:  "draft",
-			NewStatus:       "pending",
+			PreviousStatus:  "DRAFT",
+			NewStatus:       "PENDING",
 		})
 		order.ActionHistory = datatypes.NewJSONType(actionHistory)
 	}

@@ -283,9 +283,9 @@ export function TasksTable() {
         cell: ({ row }) => (
           <Badge
             variant={
-              row.original.priority?.toLowerCase() == "high"
+              row.original.priority?.toUpperCase() == "HIGH"
                 ? "destructive"
-                : row.original.priority?.toLowerCase() == "medium"
+                : row.original.priority?.toUpperCase() == "MEDIUM"
                   ? "warning"
                   : "info"
             }
@@ -321,7 +321,7 @@ export function TasksTable() {
           const dueDateObj = new Date(dueDate);
           const now = new Date();
           const isOverdue =
-            dueDateObj < now && row.original.status !== "approved";
+            dueDateObj < now && row.original.status?.toUpperCase() !== "APPROVED";
           return (
             <div className={isOverdue ? "text-red-600 font-semibold" : ""}>
               {dueDateObj.toLocaleDateString()}

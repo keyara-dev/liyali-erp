@@ -31,6 +31,7 @@ export async function createPaymentVoucherFromPurchaseOrder(
   workflowId?: string,
   vendorIdOverride?: string,
   vendorNameOverride?: string,
+  linkedGRNDocumentNumber?: string,
 ): Promise<APIResponse<PaymentVoucher>> {
   const url = `/api/v1/payment-vouchers/from-po`;
 
@@ -58,6 +59,7 @@ export async function createPaymentVoucherFromPurchaseOrder(
         projectCode: po.projectCode,
         sourceRequisitionId: po.sourceRequisitionId,
         workflowId, // Store for later use when submitting
+        linkedGRNDocumentNumber, // goods_first flow: approved GRN that must precede payment
       },
     });
 

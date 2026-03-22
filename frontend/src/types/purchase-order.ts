@@ -37,6 +37,8 @@ export interface PurchaseOrder {
   approvalStage: number;
   approvalHistory: any[];
   linkedRequisition: string;
+  /** "" = inherit from org, "goods_first" or "payment_first" to override per-PO */
+  procurementFlow?: "" | "goods_first" | "payment_first";
   createdAt: Date;
   updatedAt: Date;
 
@@ -100,6 +102,8 @@ export interface CreatePurchaseOrderRequest {
   createdByName?: string;
   createdByRole?: string;
   sourceRequisitionId?: string;
+  /** "" = use org default, "goods_first" or "payment_first" to override for this PO */
+  procurementFlow?: "" | "goods_first" | "payment_first";
 }
 
 export interface UpdatePurchaseOrderRequest {
@@ -172,10 +176,10 @@ export interface PurchaseOrderStats {
 // ============================================================================
 
 export type PurchaseOrderStatus =
-  | "draft"
-  | "pending"
-  | "approved"
-  | "rejected"
-  | "fulfilled"
-  | "completed"
-  | "cancelled";
+  | "DRAFT"
+  | "PENDING"
+  | "APPROVED"
+  | "REJECTED"
+  | "FULFILLED"
+  | "COMPLETED"
+  | "CANCELLED";

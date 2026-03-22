@@ -39,8 +39,8 @@ export function useGRNDetail({
     // Permissions
     getPermissions: (grn, userId, userRole) => {
       const isCreator = grn.receivedBy === userId || grn.createdBy === userId;
-      const canEdit = grn.status === "DRAFT" && isCreator;
-      const canSubmit = grn.status === "SUBMITTED" && userRole === "admin";
+      const canEdit = grn.status?.toUpperCase() === "DRAFT" && isCreator;
+      const canSubmit = grn.status?.toUpperCase() === "SUBMITTED" && userRole === "admin";
       const canWithdraw = false;
 
       return {

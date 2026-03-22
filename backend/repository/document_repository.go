@@ -867,8 +867,8 @@ func (r *DocumentRepository) UpdateStatus(ctx context.Context, id uuid.UUID, org
 func (r *DocumentRepository) Submit(ctx context.Context, id uuid.UUID, organizationID string) error {
 	return r.db.WithContext(ctx).
 		Model(&models.Document{}).
-		Where("id = ? AND organization_id = ? AND status IN ('draft', 'rejected')", id, organizationID).
-		Update("status", "submitted").Error
+		Where("id = ? AND organization_id = ? AND UPPER(status) IN ('DRAFT', 'REJECTED')", id, organizationID).
+		Update("status", "SUBMITTED").Error
 }
 
 // GetStats retrieves document statistics

@@ -247,7 +247,7 @@ export function PODetailClient({
         <Button variant="outline" onClick={handleBack}>
           Cancel
         </Button>
-        {po.status === "pending" && (
+        {po.status?.toUpperCase() === "PENDING" && (
           <Button
             onClick={handleApprove}
             className="bg-blue-600 hover:bg-blue-700"

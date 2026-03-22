@@ -1,6 +1,7 @@
 package models
 
 import (
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -82,17 +83,19 @@ func (d *Document) getDocumentPrefix() string {
 
 // IsEditable checks if the document can be edited based on its status
 func (d *Document) IsEditable() bool {
-	return d.Status == "draft" || d.Status == "rejected"
+	s := strings.ToUpper(d.Status)
+	return s == "DRAFT" || s == "REJECTED"
 }
 
 // CanBeSubmitted checks if the document can be submitted for approval
 func (d *Document) CanBeSubmitted() bool {
-	return d.Status == "draft" || d.Status == "rejected"
+	s := strings.ToUpper(d.Status)
+	return s == "DRAFT" || s == "REJECTED"
 }
 
 // CanBeApproved checks if the document can be approved
 func (d *Document) CanBeApproved() bool {
-	return d.Status == "submitted"
+	return strings.ToUpper(d.Status) == "SUBMITTED"
 }
 
 // DocumentSearchResult represents a document search result with highlighting

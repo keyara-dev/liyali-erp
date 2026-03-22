@@ -312,6 +312,7 @@ func UpdateOrganizationSettings(c *fiber.Ctx) error {
 		FiscalYearStart          int     `json:"fiscalYearStart"`
 		EnableBudgetValidation   bool    `json:"enableBudgetValidation"`
 		BudgetVarianceThreshold  float64 `json:"budgetVarianceThreshold"`
+		ProcurementFlow          string  `json:"procurementFlow"`
 	}
 
 	if err := c.BodyParser(&settings); err != nil {
@@ -327,6 +328,7 @@ func UpdateOrganizationSettings(c *fiber.Ctx) error {
 		FiscalYearStart:          settings.FiscalYearStart,
 		EnableBudgetValidation:   settings.EnableBudgetValidation,
 		BudgetVarianceThreshold:  settings.BudgetVarianceThreshold,
+		ProcurementFlow:          settings.ProcurementFlow,
 	}
 
 	if err := orgService.UpdateOrganizationSettings(tenant.OrganizationID, orgSettings); err != nil {

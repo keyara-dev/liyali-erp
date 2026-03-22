@@ -16,7 +16,7 @@ export const ApprovalSignaturesSection: React.FC<
   ApprovalSignaturesSectionProps
 > = ({ approvalHistory }) => {
   const approvedRecords = approvalHistory.filter(
-    (r) => r.status === "approved" || r.status === "APPROVED",
+    (r) => r.status?.toUpperCase() === "APPROVED",
   );
 
   if (!approvedRecords || approvedRecords.length === 0) return null;

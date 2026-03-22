@@ -279,7 +279,7 @@ export function BudgetApprovalPanel({
           ) : (
             <>
               {/* Check if document is in draft status */}
-              {budget.status === "draft" || budget.status === "rejected" ? (
+              {budget.status?.toUpperCase() === "DRAFT" || budget.status?.toUpperCase() === "REJECTED" ? (
                 <div className="text-center py-12 text-gray-500">
                   <AlertCircle className="h-12 w-12 mx-auto mb-4 text-gray-400" />
                   <h4 className="font-semibold text-lg mb-2">
@@ -325,7 +325,7 @@ export function BudgetApprovalPanel({
                         </span>
                         <Badge
                           variant={
-                            workflowStatus.status === "completed"
+                            workflowStatus.status?.toUpperCase() === "COMPLETED"
                               ? "default"
                               : "secondary"
                           }
@@ -345,9 +345,9 @@ export function BudgetApprovalPanel({
                         <div
                           key={stage.stageNumber || index}
                           className={`p-4 rounded-lg border-2 transition-all ${
-                            stage.status === "approved"
+                            stage.status?.toUpperCase() === "APPROVED"
                               ? "border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-950/30 shadow-sm"
-                              : stage.status === "rejected"
+                              : stage.status?.toUpperCase() === "REJECTED"
                                 ? "border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-950/30 shadow-sm"
                                 : stage.isCurrentStage
                                   ? "border-blue-400 dark:border-blue-600 bg-blue-50 dark:bg-blue-950/30 shadow-md ring-2 ring-blue-200 dark:ring-blue-800"
@@ -359,9 +359,9 @@ export function BudgetApprovalPanel({
                             <div className="shrink-0">
                               <div
                                 className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold ${
-                                  stage.status === "approved"
+                                  stage.status?.toUpperCase() === "APPROVED"
                                     ? "bg-green-600 text-white"
-                                    : stage.status === "rejected"
+                                    : stage.status?.toUpperCase() === "REJECTED"
                                       ? "bg-red-600 text-white"
                                       : stage.isCurrentStage
                                         ? "bg-blue-600 text-white ring-2 ring-blue-300"
@@ -381,9 +381,9 @@ export function BudgetApprovalPanel({
                                 </span>
                                 <Badge
                                   variant={
-                                    stage.status === "approved"
+                                    stage.status?.toUpperCase() === "APPROVED"
                                       ? "default"
-                                      : stage.status === "rejected"
+                                      : stage.status?.toUpperCase() === "REJECTED"
                                         ? "destructive"
                                         : stage.isCurrentStage
                                           ? "secondary"
@@ -391,17 +391,17 @@ export function BudgetApprovalPanel({
                                   }
                                   className="text-xs"
                                 >
-                                  {stage.status === "approved"
+                                  {stage.status?.toUpperCase() === "APPROVED"
                                     ? "APPROVED"
-                                    : stage.status === "rejected"
+                                    : stage.status?.toUpperCase() === "REJECTED"
                                       ? "REJECTED"
                                       : stage.isCurrentStage
                                         ? "CURRENT STAGE"
                                         : "PENDING"}
                                 </Badge>
                                 {stage.isCurrentStage &&
-                                  stage.status !== "approved" &&
-                                  stage.status !== "rejected" && (
+                                  stage.status?.toUpperCase() !== "APPROVED" &&
+                                  stage.status?.toUpperCase() !== "REJECTED" && (
                                     <Badge
                                       variant="outline"
                                       className="text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300"
@@ -474,9 +474,9 @@ export function BudgetApprovalPanel({
 
                               {/* Current Stage Instructions */}
                               {stage.isCurrentStage &&
-                                stage.status !== "approved" &&
-                                stage.status !== "rejected" &&
-                                stage.status === "pending" && (
+                                stage.status?.toUpperCase() !== "APPROVED" &&
+                                stage.status?.toUpperCase() !== "REJECTED" &&
+                                stage.status?.toUpperCase() === "PENDING" && (
                                   <div className="mt-3 p-3 bg-blue-100 dark:bg-blue-900/30 rounded border border-blue-200 dark:border-blue-700">
                                     <p className="text-sm text-blue-800 dark:text-blue-300">
                                       <span className="font-medium">
@@ -495,9 +495,9 @@ export function BudgetApprovalPanel({
 
                             {/* Status Icon */}
                             <div className="shrink-0">
-                              {stage.status === "approved" ? (
+                              {stage.status?.toUpperCase() === "APPROVED" ? (
                                 <CheckCircle className="h-6 w-6 text-green-600 dark:text-green-400" />
-                              ) : stage.status === "rejected" ? (
+                              ) : stage.status?.toUpperCase() === "REJECTED" ? (
                                 <XCircle className="h-6 w-6 text-red-600 dark:text-red-400" />
                               ) : stage.isCurrentStage ? (
                                 <Clock className="h-6 w-6 text-blue-600 dark:text-blue-400 animate-pulse" />

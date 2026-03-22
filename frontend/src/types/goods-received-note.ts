@@ -38,7 +38,7 @@ export interface GoodsReceivedNote {
   organizationId: string;
   documentNumber: string;
   poDocumentNumber: string;
-  status: "DRAFT" | "SUBMITTED" | "CONFIRMED" | "REJECTED" | "APPROVED"; // Backend returns uppercase
+  status: "DRAFT" | "PENDING" | "CONFIRMED" | "REJECTED" | "APPROVED" | "COMPLETED" | "CANCELLED"; // Stored as UPPERCASE
   receivedDate: Date;
   receivedBy: string;
   items: GRNItem[];
@@ -63,6 +63,8 @@ export interface GoodsReceivedNote {
   approvedBy: string;
   automationUsed?: boolean; // For automation tracking
   autoCreatedPV?: any; // Auto-created payment voucher
+  /** Payment-first flow: PV document number that was approved/paid before goods were received */
+  linkedPV?: string;
 
   // UI compatibility fields
   actionHistory?: any[];
@@ -82,6 +84,8 @@ export interface CreateGRNRequest {
   warehouseLocation: string;
   notes: string;
   createdBy: string;
+  /** Payment-first flow: PV document number that was approved/paid before goods were received */
+  linkedPV?: string;
 }
 
 export interface UpdateGRNRequest {
@@ -138,13 +142,13 @@ export interface GRNStats {
 // ============================================================================
 
 export type GRNStatus =
-  | "draft"
-  | "pending"
-  | "approved"
-  | "rejected"
-  | "paid"
-  | "completed"
-  | "cancelled";
+  | "DRAFT"
+  | "PENDING"
+  | "APPROVED"
+  | "REJECTED"
+  | "PAID"
+  | "COMPLETED"
+  | "CANCELLED";
 // Re-export shared types from core
 export type {
   ItemCondition,

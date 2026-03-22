@@ -102,12 +102,13 @@ export function ApprovalTaskCard({
   }
 
   // Task state calculations
-  const isPending = task.status === "pending";
+  const taskStatus = task.status?.toUpperCase();
+  const isPending = taskStatus === "PENDING";
   const isClaimedByMe =
-    task.status === "claimed" && task.claimedBy === currentUserId;
+    taskStatus === "CLAIMED" && task.claimedBy === currentUserId;
   const isClaimedByOther =
-    task.status === "claimed" && task.claimedBy !== currentUserId;
-  const isCompleted = task.status === "completed";
+    taskStatus === "CLAIMED" && task.claimedBy !== currentUserId;
+  const isCompleted = taskStatus === "COMPLETED";
 
   const canUserClaim = canUserActOnWorkflowTask(
     { id: currentUserId, role: currentUserRole as any },

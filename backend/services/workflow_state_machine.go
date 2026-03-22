@@ -15,13 +15,13 @@ import (
 type WorkflowState string
 
 const (
-	StateDraft    WorkflowState = "draft"
-	StatePending  WorkflowState = "pending"
-	StateApproved WorkflowState = "approved"
-	StateRejected WorkflowState = "rejected"
-	StateFulfilled WorkflowState = "fulfilled" // For PO
-	StatePaid      WorkflowState = "paid"      // For PV
-	StateCompleted WorkflowState = "completed" // For GRN
+	StateDraft    WorkflowState = "DRAFT"
+	StatePending  WorkflowState = "PENDING"
+	StateApproved WorkflowState = "APPROVED"
+	StateRejected WorkflowState = "REJECTED"
+	StateFulfilled WorkflowState = "FULFILLED" // For PO
+	StatePaid      WorkflowState = "PAID"      // For PV
+	StateCompleted WorkflowState = "COMPLETED" // For GRN
 )
 
 // WorkflowTransition defines valid state transitions

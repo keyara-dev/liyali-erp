@@ -15,11 +15,11 @@ func TestWorkflowAPI_ClaimTask(t *testing.T) {
 	
 	// Mock task claiming
 	claimedTask := scenario.Task
-	claimedTask.Status = "claimed"
+	claimedTask.Status = "CLAIMED"
 	claimedTask.ClaimedBy = helpers.StringPtr(scenario.Users.Manager.ID)
 	
 	// Verify task is claimed
-	assert.Equal(t, "claimed", claimedTask.Status)
+	assert.Equal(t, "CLAIMED", claimedTask.Status)
 	assert.NotNil(t, claimedTask.ClaimedBy)
 	assert.Equal(t, scenario.Users.Manager.ID, *claimedTask.ClaimedBy)
 }
@@ -29,15 +29,15 @@ func TestWorkflowAPI_UnclaimTask(t *testing.T) {
 	scenario := helpers.CreateMockCompleteWorkflowScenario(t, "requisition")
 	
 	// Mock task claiming first
-	scenario.Task.Status = "claimed"
+	scenario.Task.Status = "CLAIMED"
 	scenario.Task.ClaimedBy = helpers.StringPtr(scenario.Users.Manager.ID)
 	
 	// Mock task unclaiming
-	scenario.Task.Status = "pending"
+	scenario.Task.Status = "PENDING"
 	scenario.Task.ClaimedBy = nil
 	
 	// Verify task is unclaimed
-	assert.Equal(t, "pending", scenario.Task.Status)
+	assert.Equal(t, "PENDING", scenario.Task.Status)
 	assert.Nil(t, scenario.Task.ClaimedBy)
 }
 
@@ -46,7 +46,7 @@ func TestWorkflowAPI_ApproveTask(t *testing.T) {
 	scenario := helpers.CreateMockCompleteWorkflowScenario(t, "requisition")
 	
 	// Mock task claiming
-	scenario.Task.Status = "claimed"
+	scenario.Task.Status = "CLAIMED"
 	scenario.Task.ClaimedBy = helpers.StringPtr(scenario.Users.Manager.ID)
 	
 	// Mock task approval
@@ -59,10 +59,10 @@ func TestWorkflowAPI_ApproveTask(t *testing.T) {
 		ApprovedAt:     scenario.Task.CreatedAt,
 	}
 	
-	scenario.Task.Status = "completed"
+	scenario.Task.Status = "COMPLETED"
 	
 	// Verify approval
-	assert.Equal(t, "completed", scenario.Task.Status)
+	assert.Equal(t, "COMPLETED", scenario.Task.Status)
 	assert.Equal(t, "approved", mockApproval.Action)
 	assert.Equal(t, scenario.Users.Manager.ID, mockApproval.ApproverID)
 }
@@ -72,7 +72,7 @@ func TestWorkflowAPI_RejectTask(t *testing.T) {
 	scenario := helpers.CreateMockCompleteWorkflowScenario(t, "requisition")
 	
 	// Mock task claiming
-	scenario.Task.Status = "claimed"
+	scenario.Task.Status = "CLAIMED"
 	scenario.Task.ClaimedBy = helpers.StringPtr(scenario.Users.Manager.ID)
 	
 	// Mock task rejection
@@ -85,10 +85,10 @@ func TestWorkflowAPI_RejectTask(t *testing.T) {
 		ApprovedAt:     scenario.Task.CreatedAt,
 	}
 	
-	scenario.Task.Status = "completed"
+	scenario.Task.Status = "COMPLETED"
 	
 	// Verify rejection
-	assert.Equal(t, "completed", scenario.Task.Status)
+	assert.Equal(t, "COMPLETED", scenario.Task.Status)
 	assert.Equal(t, "rejected", mockRejection.Action)
 	assert.Equal(t, scenario.Users.Manager.ID, mockRejection.ApproverID)
 }
@@ -98,7 +98,7 @@ func TestWorkflowAPI_GetWorkflowStatus(t *testing.T) {
 	scenario := helpers.CreateMockCompleteWorkflowScenario(t, "requisition")
 	
 	// Verify workflow assignment status
-	assert.Equal(t, "in_progress", scenario.Assignment.Status)
+	assert.Equal(t, "IN_PROGRESS", scenario.Assignment.Status)
 	assert.Equal(t, 1, scenario.Assignment.CurrentStage)
 	assert.NotNil(t, scenario.Assignment.AssignedAt)
 }
@@ -128,7 +128,7 @@ func TestWorkflowAPI_ConcurrentClaims(t *testing.T) {
 	
 	// First claim succeeds
 	claimResults[0] = true
-	scenario.Task.Status = "claimed"
+	scenario.Task.Status = "CLAIMED"
 	scenario.Task.ClaimedBy = helpers.StringPtr(scenario.Users.Manager.ID)
 	
 	// Other claims fail
@@ -144,7 +144,7 @@ func TestWorkflowAPI_ConcurrentClaims(t *testing.T) {
 	}
 	
 	assert.Equal(t, 1, successCount)
-	assert.Equal(t, "claimed", scenario.Task.Status)
+	assert.Equal(t, "CLAIMED", scenario.Task.Status)
 }
 
 // TestWorkflowAPI_OptimisticLocking tests optimistic locking using mocks

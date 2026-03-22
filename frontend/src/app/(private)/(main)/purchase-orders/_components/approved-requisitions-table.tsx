@@ -54,7 +54,7 @@ export function ApprovedRequisitionsTable({
     queryKey: [QUERY_KEYS.REQUISITIONS.ALL, page, limit, "approved"],
     queryFn: async () => {
       const response = await getRequisitions(page, limit, {
-        status: "approved",
+        status: "APPROVED",
       });
       return response.success ? response.data || [] : [];
     },
@@ -66,7 +66,7 @@ export function ApprovedRequisitionsTable({
     setIsCreateDialogOpen(true);
   };
 
-  const handleConfirmCreate = async (workflowId: string, vendorId?: string, vendorName?: string) => {
+  const handleConfirmCreate = async (workflowId: string, vendorId?: string, vendorName?: string, procurementFlow?: "" | "goods_first" | "payment_first") => {
     if (!selectedRequisition) return;
 
     setIsCreating(true);
@@ -76,6 +76,7 @@ export function ApprovedRequisitionsTable({
         workflowId,
         vendorId,
         vendorName,
+        procurementFlow,
       );
 
       if (response.success && response.data) {

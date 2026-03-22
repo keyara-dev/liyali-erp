@@ -183,21 +183,21 @@ func (h *ApprovalHandler) GetTaskStats(c *fiber.Ctx) error {
 	var pendingTasks int64
 	db.Table("workflow_tasks").
 		Where(permissionCondition, permissionArgs...).
-		Where("LOWER(status) = LOWER(?)", "pending").
+		Where("UPPER(status) = ?", "PENDING").
 		Count(&pendingTasks)
 
 	// Count completed tasks
 	var completedTasks int64
 	db.Table("workflow_tasks").
 		Where(permissionCondition, permissionArgs...).
-		Where("LOWER(status) IN (LOWER(?), LOWER(?))", "completed", "approved").
+		Where("UPPER(status) IN (?, ?)", "COMPLETED", "APPROVED").
 		Count(&completedTasks)
 
 	// Count overdue tasks (pending tasks past due date)
 	var overdueTasks int64
 	db.Table("workflow_tasks").
 		Where(permissionCondition, permissionArgs...).
-		Where("LOWER(status) = LOWER(?)", "pending").
+		Where("UPPER(status) = ?", "PENDING").
 		Where("due_date IS NOT NULL AND due_date < ?", time.Now()).
 		Count(&overdueTasks)
 
@@ -205,8 +205,8 @@ func (h *ApprovalHandler) GetTaskStats(c *fiber.Ctx) error {
 	var highPriorityTasks int64
 	db.Table("workflow_tasks").
 		Where(permissionCondition, permissionArgs...).
-		Where("LOWER(priority) IN (LOWER(?), LOWER(?))", "high", "urgent").
-		Where("LOWER(status) = LOWER(?)", "pending").
+		Where("UPPER(priority) IN (?, ?)", "HIGH", "URGENT").
+		Where("UPPER(status) = ?", "PENDING").
 		Count(&highPriorityTasks)
 
 	// Count by entity type
@@ -218,7 +218,7 @@ func (h *ApprovalHandler) GetTaskStats(c *fiber.Ctx) error {
 	db.Table("workflow_tasks").
 		Select("entity_type, COUNT(*) as count").
 		Where(permissionCondition, permissionArgs...).
-		Where("LOWER(status) = LOWER(?)", "pending").
+		Where("UPPER(status) = ?", "PENDING").
 		Group("entity_type").
 		Scan(&byType)
 
@@ -236,7 +236,7 @@ func (h *ApprovalHandler) GetTaskStats(c *fiber.Ctx) error {
 	db.Table("workflow_tasks").
 		Select("priority, COUNT(*) as count").
 		Where(permissionCondition, permissionArgs...).
-		Where("LOWER(status) = LOWER(?)", "pending").
+		Where("UPPER(status) = ?", "PENDING").
 		Group("priority").
 		Scan(&byPriority)
 
@@ -338,7 +338,7 @@ func (h *ApprovalHandler) GetMyPendingCount(c *fiber.Ctx) error {
 	var pendingCount int64
 	db.Table("workflow_tasks").
 		Where(permissionCondition, permissionArgs...).
-		Where("LOWER(status) = LOWER(?)", "pending").
+		Where("UPPER(status) = ?", "PENDING").
 		Count(&pendingCount)
 
 	return utils.SendSimpleSuccess(c, map[string]interface{}{"count": pendingCount}, "Pending approval count retrieved successfully")
@@ -376,13 +376,13 @@ func (h *ApprovalHandler) GetApprovalTasks(c *fiber.Ctx) error {
 
 	// Auto-expire stale claims — reset expired claimed tasks back to pending
 	db.Table("workflow_tasks").
-		Where("organization_id = ? AND status = ? AND claim_expiry < ?",
-			organizationID, "claimed", time.Now()).
+		Where("organization_id = ? AND UPPER(status) = ? AND claim_expiry < ?",
+			organizationID, "CLAIMED", time.Now()).
 		Updates(map[string]interface{}{
 			"claimed_by":   nil,
 			"claimed_at":   nil,
 			"claim_expiry": nil,
-			"status":       "pending",
+			"status":       "PENDING",
 		})
 
 	// Build query for workflow_tasks
@@ -469,13 +469,13 @@ func (h *ApprovalHandler) GetApprovalTasks(c *fiber.Ctx) error {
 	}
 
 	if status != "" {
-		query = query.Where("LOWER(status) = LOWER(?)", status)
+		query = query.Where("UPPER(status) = UPPER(?)", status)
 	}
 	if documentType != "" {
-		query = query.Where("LOWER(entity_type) = LOWER(?)", documentType)
+		query = query.Where("UPPER(entity_type) = UPPER(?)", documentType)
 	}
 	if priority != "" {
-		query = query.Where("LOWER(priority) = LOWER(?)", priority)
+		query = query.Where("UPPER(priority) = UPPER(?)", priority)
 	}
 
 	// Get total count
@@ -908,7 +908,7 @@ func (h *ApprovalHandler) ReassignTask(c *fiber.Ctx) error {
 	}
 
 	// Check if task is in pending status
-	if task.Status != "pending" && task.Status != "claimed" {
+	if strings.ToUpper(task.Status) != "PENDING" && strings.ToUpper(task.Status) != "CLAIMED" {
 		return c.Status(fiber.StatusBadRequest).JSON(types.ErrorResponse{
 			Error:   "Invalid task status",
 			Message: "Task is not in pending or claimed status",
@@ -1332,7 +1332,7 @@ func (h *ApprovalHandler) BulkReassign(c *fiber.Ctx) error {
 		}
 
 		// Check if task is in pending status
-		if task.Status != "pending" {
+		if strings.ToUpper(task.Status) != "PENDING" {
 			errors = append(errors, "Task "+taskID+": not in pending status")
 			continue
 		}
@@ -1379,8 +1379,8 @@ func (h *ApprovalHandler) GetOverdueTasks(c *fiber.Ctx) error {
 
 	// Get overdue workflow tasks (tasks with due_date in the past and still pending)
 	var tasks []models.WorkflowTask
-	if err := db.Where("organization_id = ? AND status = ? AND created_at < ?", 
-		organizationID, "pending", time.Now()).
+	if err := db.Where("organization_id = ? AND UPPER(status) = ? AND created_at < ?",
+		organizationID, "PENDING", time.Now()).
 		Offset(offset).Limit(limit).Order("created_at ASC").Find(&tasks).Error; err != nil {
 		log.Printf("Error fetching overdue tasks: %v", err)
 		return utils.SendInternalError(c, "Failed to retrieve overdue tasks", err)
@@ -1388,8 +1388,8 @@ func (h *ApprovalHandler) GetOverdueTasks(c *fiber.Ctx) error {
 
 	// Get total count
 	var total int64
-	db.Model(&models.WorkflowTask{}).Where("organization_id = ? AND status = ? AND due_date < ?", 
-		organizationID, "pending", time.Now()).Count(&total)
+	db.Model(&models.WorkflowTask{}).Where("organization_id = ? AND UPPER(status) = ? AND due_date < ?",
+		organizationID, "PENDING", time.Now()).Count(&total)
 
 	return utils.SendPaginatedSuccess(c, tasks, "Overdue tasks retrieved successfully", page, limit, total)
 }

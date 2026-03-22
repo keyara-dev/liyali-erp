@@ -157,6 +157,9 @@ type PurchaseOrder struct {
 	CostCenter    string     `json:"costCenter,omitempty"`    // Cost center - ADDED
 	ProjectCode   string     `json:"projectCode,omitempty"`   // Project code - ADDED
 	
+	// Procurement flow override: "goods_first", "payment_first", or "" (inherit from org)
+	ProcurementFlow string `gorm:"column:procurement_flow;default:''" json:"procurementFlow"`
+
 	// Automation fields
 	AutomationUsed    bool           `json:"automationUsed,omitempty"`    // Whether automation was used
 	AutoCreatedGRN    datatypes.JSON `gorm:"type:jsonb" json:"autoCreatedGRN,omitempty"` // Auto-created GRN
@@ -189,6 +192,7 @@ type PaymentVoucher struct {
 	ApprovalStage   int             `json:"approvalStage"`
 	ApprovalHistory datatypes.JSONType[[]types.ApprovalRecord] `gorm:"type:jsonb" json:"approvalHistory"`
 	LinkedPO        string          `json:"linkedPO"`
+	LinkedGRN       string          `gorm:"column:linked_grn;default:''" json:"linkedGRN"` // Goods-first flow: GRN approved before this PV
 
 	// Frontend compatibility fields - CRITICAL: These must match frontend exactly
 	VendorName              string                                    `json:"vendorName,omitempty"`              // Computed from Vendor.Name
@@ -245,6 +249,9 @@ type GoodsReceivedNote struct {
 	CurrentStage      int                                       `json:"currentStage,omitempty"`      // Maps to ApprovalStage
 	StageName         string                                    `json:"stageName,omitempty"`         // Current stage name
 	ApprovedBy        string                                    `json:"approvedBy,omitempty"`        // Who approved the GRN
+	// Payment-First flow: references the PV that was paid before goods were received
+	LinkedPV          string                                    `gorm:"column:linked_pv;default:''" json:"linkedPV"`
+
 	AutomationUsed    bool                                      `json:"automationUsed,omitempty"`    // Whether automation was used
 	AutoCreatedPV     datatypes.JSON                           `gorm:"type:jsonb" json:"autoCreatedPV,omitempty"` // Auto-created Payment Voucher
 	ActionHistory     datatypes.JSONType[[]types.ActionHistoryEntry] `gorm:"type:jsonb" json:"actionHistory,omitempty"` // Action history for UI

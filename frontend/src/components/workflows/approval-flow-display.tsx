@@ -29,7 +29,7 @@ export function ApprovalFlowDisplay({
     stage: index + 1,
     approverName: entry.approverName,
     approverId: entry.approverId,
-    status: entry.status?.toLowerCase(),
+    status: entry.status?.toUpperCase(),
     approvedAt: entry.approvedAt || entry.actionTakenAt,
     comments: entry.comments || entry.remarks,
   })) || [];
@@ -158,10 +158,10 @@ export function ApprovalFlowDisplay({
                             </h4>
                             <div className="flex items-center justify-between bg-background px-2 py-2 rounded text-xs">
                               <div className="flex items-center gap-2">
-                                {stageData.status === "approved" && (
+                                {stageData.status === "APPROVED" && (
                                   <CheckCircle2 className="h-3 w-3 text-green-600" />
                                 )}
-                                {stageData.status === "rejected" && (
+                                {stageData.status === "REJECTED" && (
                                   <AlertCircle className="h-3 w-3 text-red-600" />
                                 )}
                                 <span className="font-medium">

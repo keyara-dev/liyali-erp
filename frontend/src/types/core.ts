@@ -59,48 +59,29 @@ export interface PaginatedResponse<T> {
 // ================== CORE ENUMS ==================
 
 export type DocumentStatus =
-  | "draft"
-  | "pending"
-  | "revision"
-  | "approved"
-  | "rejected"
-  | "completed"
-  | "cancelled"
-  | "submitted"
-  | "paid" // For Payment Vouchers
-  | "fulfilled" // For Purchase Orders
-  // Legacy compatibility
   | "DRAFT"
-  | "SUBMITTED"
-  | "IN_REVIEW"
+  | "PENDING"
   | "REVISION"
   | "APPROVED"
   | "REJECTED"
-  | "PENDING"
   | "COMPLETED"
-  | "CANCELLED";
+  | "CANCELLED"
+  | "SUBMITTED"
+  | "PAID" // For Payment Vouchers
+  | "FULFILLED" // For Purchase Orders
+  | "IN_REVIEW";
 
 export type Priority =
-  | "low"
-  | "medium"
-  | "high"
-  | "urgent"
-  // Legacy compatibility
-  | "URGENT"
-  | "HIGH"
   | "LOW"
-  | "MEDIUM";
+  | "MEDIUM"
+  | "HIGH"
+  | "URGENT";
 
 export type ApprovalStatus =
-  | "pending"
-  | "approved"
-  | "rejected"
-  | "cancelled"
-  | "reversed"
-  // Legacy compatibility
   | "PENDING"
   | "APPROVED"
   | "REJECTED"
+  | "CANCELLED"
   | "REVERSED";
 
 export type PaymentMethod =
@@ -180,6 +161,17 @@ export interface User {
   orgRoleIds?: string[]; // Active custom org role UUIDs for matching UUID-stored assigned_role values
 }
 
+export interface OrganizationSettings {
+  requireDigitalSignatures: boolean;
+  defaultApprovalChain?: string;
+  currency: string;
+  fiscalYearStart: number;
+  enableBudgetValidation: boolean;
+  budgetVarianceThreshold: number;
+  /** "goods_first" (default) or "payment_first" */
+  procurementFlow: "goods_first" | "payment_first";
+}
+
 export interface Organization {
   id: string;
   name: string;
@@ -193,6 +185,8 @@ export interface Organization {
   createdBy?: string;
   createdAt: string | Date;
   updatedAt?: string | Date;
+  /** Nested settings when fetched with settings endpoint */
+  settings?: OrganizationSettings;
 }
 
 export interface Permission {
@@ -233,7 +227,7 @@ export interface ApprovalTask {
   approverId: string;
   approverName?: string;
   assignedTo?: string;
-  status: ApprovalStatus | "pending" | "claimed" | "completed" | "expired";
+  status: ApprovalStatus | "PENDING" | "CLAIMED" | "COMPLETED" | "EXPIRED";
   stage: number;
   comments?: string;
   signature?: string;
@@ -292,6 +286,7 @@ export interface ActionHistoryEntry {
   stageNumber?: number;
   stageName?: string;
   changedFields?: string[];
+  metadata?: Record<string, any>; // Additional metadata (e.g. linkedDocNumber, linkedDocType, flow)
 }
 
 // ================== CORE REQUEST TYPES ==================

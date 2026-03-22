@@ -163,7 +163,7 @@ func (s *AnalyticsService) calculateRejectionRate(query *gorm.DB) (float64, erro
 	if err := query.Model(&models.Requisition{}).
 		Select(`
 			COUNT(*) as total_count,
-			COUNT(CASE WHEN status = 'rejected' THEN 1 END) as rejected_count
+			COUNT(CASE WHEN UPPER(status) = 'REJECTED' THEN 1 END) as rejected_count
 		`).
 		Scan(&result).Error; err != nil {
 		return 0, err
@@ -213,7 +213,7 @@ func (s *AnalyticsService) getRejectionsOverTime(query *gorm.DB, period string) 
 		}
 
 		timeGroupMap[dateStr].Total++
-		if req.Status == "rejected" {
+		if strings.ToUpper(req.Status) == "REJECTED" {
 			timeGroupMap[dateStr].Rejections++
 		}
 	}
@@ -235,7 +235,7 @@ func (s *AnalyticsService) getRejectionReasons(query *gorm.DB) ([]types.Rejectio
 	var requisitions []models.Requisition
 
 	// Use the partial index for rejected requisitions
-	if err := query.Where("status = ?", "rejected").
+	if err := query.Where("UPPER(status) = ?", "REJECTED").
 		Select("approval_history").
 		Find(&requisitions).Error; err != nil {
 		return nil, err
@@ -257,7 +257,7 @@ func (s *AnalyticsService) getRejectionReasons(query *gorm.DB) ([]types.Rejectio
 		}
 
 		for _, record := range approvalRecords {
-			if record.Status == "rejected" {
+			if strings.ToUpper(record.Status) == "REJECTED" {
 				reason := strings.TrimSpace(record.Comments)
 				if reason == "" {
 					reason = "No reason provided"
@@ -322,9 +322,9 @@ func (s *AnalyticsService) getTopRejectingApprovers(query *gorm.DB) ([]types.App
 				}
 			}
 
-			if record.Status == "rejected" {
+			if strings.ToUpper(record.Status) == "REJECTED" {
 				approverStatsMap[approverID].Rejections++
-			} else if record.Status == "approved" {
+			} else if strings.ToUpper(record.Status) == "APPROVED" {
 				approverStatsMap[approverID].Approvals++
 			}
 		}

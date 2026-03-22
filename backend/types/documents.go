@@ -200,6 +200,8 @@ type CreatePurchaseOrderRequest struct {
 	Currency          string       `json:"currency" validate:"required"`
 	DeliveryDate      FlexibleDate `json:"deliveryDate" validate:"required"`
 	LinkedRequisition string       `json:"linkedRequisition"`
+	// "" = inherit from org, "goods_first" or "payment_first" to override
+	ProcurementFlow   string       `json:"procurementFlow"`
 }
 
 // UpdatePurchaseOrderRequest represents a PO update request
@@ -243,6 +245,7 @@ type PurchaseOrderResponse struct {
 	ApprovalHistory   []ApprovalRecord     `json:"approvalHistory"`
 	ActionHistory     []ActionHistoryEntry `json:"actionHistory,omitempty"`
 	LinkedRequisition string               `json:"linkedRequisition"`
+	ProcurementFlow   string               `json:"procurementFlow"` // "" | "goods_first" | "payment_first"
 	CreatedAt         time.Time            `json:"createdAt"`
 	UpdatedAt         time.Time            `json:"updatedAt"`
 }
@@ -259,6 +262,8 @@ type CreatePaymentVoucherRequest struct {
 	GLCode        string  `json:"glCode" validate:"required"`
 	Description   string  `json:"description" validate:"required,min=10"`
 	LinkedPO      string  `json:"linkedPO"`
+	// Goods-first flow: GRN document number that was approved before this PV
+	LinkedGRN     string  `json:"linkedGRN"`
 }
 
 // UpdatePaymentVoucherRequest represents a payment voucher update request
@@ -289,6 +294,7 @@ type PaymentVoucherResponse struct {
 	ApprovalHistory []ApprovalRecord     `json:"approvalHistory"`
 	ActionHistory   []ActionHistoryEntry `json:"actionHistory,omitempty"`
 	LinkedPO        string               `json:"linkedPO"`
+	LinkedGRN       string               `json:"linkedGRN"` // Goods-first: GRN approved before this PV
 	CreatedAt       time.Time            `json:"createdAt"`
 	UpdatedAt       time.Time            `json:"updatedAt"`
 }
@@ -297,9 +303,13 @@ type PaymentVoucherResponse struct {
 
 // CreateGRNRequest represents a GRN creation request
 type CreateGRNRequest struct {
-	PODocumentNumber string    `json:"poDocumentNumber" validate:"required"`
-	Items            []GRNItem `json:"items" validate:"required,min=1"`
-	ReceivedBy       string    `json:"receivedBy" validate:"required"`
+	PODocumentNumber  string    `json:"poDocumentNumber" validate:"required"`
+	Items             []GRNItem `json:"items" validate:"required,min=1"`
+	ReceivedBy        string    `json:"receivedBy" validate:"required"`
+	WarehouseLocation string    `json:"warehouseLocation"`
+	Notes             string    `json:"notes"`
+	// Payment-first flow: PV document number that was approved before goods were received
+	LinkedPV          string    `json:"linkedPV"`
 }
 
 // UpdateGRNRequest represents a GRN update request
@@ -329,18 +339,20 @@ type QualityIssue struct {
 
 // GRNResponse represents a GRN in responses
 type GRNResponse struct {
-	ID               string           `json:"id"`
-	DocumentNumber   string           `json:"documentNumber"`
-	PODocumentNumber string           `json:"poDocumentNumber"`
-	Status           string           `json:"status"`
-	ReceivedDate     time.Time        `json:"receivedDate"`
-	ReceivedBy       string           `json:"receivedBy"`
-	Items            []GRNItem        `json:"items"`
-	QualityIssues    []QualityIssue   `json:"qualityIssues"`
-	ApprovalStage    int              `json:"approvalStage"`
-	ApprovalHistory  []ApprovalRecord `json:"approvalHistory"`
-	CreatedAt        time.Time        `json:"createdAt"`
-	UpdatedAt        time.Time        `json:"updatedAt"`
+	ID               string               `json:"id"`
+	DocumentNumber   string               `json:"documentNumber"`
+	PODocumentNumber string               `json:"poDocumentNumber"`
+	Status           string               `json:"status"`
+	ReceivedDate     time.Time            `json:"receivedDate"`
+	ReceivedBy       string               `json:"receivedBy"`
+	Items            []GRNItem            `json:"items"`
+	QualityIssues    []QualityIssue       `json:"qualityIssues"`
+	ApprovalStage    int                  `json:"approvalStage"`
+	ApprovalHistory  []ApprovalRecord     `json:"approvalHistory"`
+	ActionHistory    []ActionHistoryEntry `json:"actionHistory,omitempty"`
+	LinkedPV         string               `json:"linkedPV"` // Payment-first: PV approved before this GRN
+	CreatedAt        time.Time            `json:"createdAt"`
+	UpdatedAt        time.Time            `json:"updatedAt"`
 }
 
 // ================== VENDOR TYPES ==================

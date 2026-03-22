@@ -134,7 +134,7 @@ func TestWorkflowsIntegration(t *testing.T) {
 		// Mock workflow assignment after rejection
 		mockRejectedAssignment := &models.WorkflowAssignment{
 			ID:     uuid.New().String(),
-			Status: "rejected",
+			Status: "REJECTED",
 		}
 
 		// Mock document status after rejection

@@ -230,8 +230,8 @@ export function ApprovalChainContent({
   }
 
   if (
-    requisition.status === "draft" ||
-    requisition.status === "rejected"
+    requisition.status?.toUpperCase() === "DRAFT" ||
+    requisition.status?.toUpperCase() === "REJECTED"
   ) {
     return (
       <div className="text-center py-12 text-gray-500">
@@ -285,7 +285,7 @@ export function ApprovalChainContent({
             </span>
             <Badge
               variant={
-                workflowStatus.status === "completed"
+                workflowStatus.status?.toUpperCase() === "COMPLETED"
                   ? "default"
                   : "secondary"
               }
@@ -305,9 +305,9 @@ export function ApprovalChainContent({
             <div
               key={stage.stageNumber || index}
               className={`p-4 rounded-lg border-2 transition-all ${
-                stage.status === "approved"
+                stage.status?.toUpperCase() === "APPROVED"
                   ? "border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-950/30 shadow-sm"
-                  : stage.status === "rejected"
+                  : stage.status?.toUpperCase() === "REJECTED"
                     ? "border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-950/30 shadow-sm"
                     : stage.isCurrentStage
                       ? "border-blue-400 dark:border-blue-600 bg-blue-50 dark:bg-blue-950/30 shadow-md ring-2 ring-blue-200 dark:ring-blue-800"
@@ -318,9 +318,9 @@ export function ApprovalChainContent({
                 <div className="shrink-0">
                   <div
                     className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold ${
-                      stage.status === "approved"
+                      stage.status?.toUpperCase() === "APPROVED"
                         ? "bg-green-600 text-white"
-                        : stage.status === "rejected"
+                        : stage.status?.toUpperCase() === "REJECTED"
                           ? "bg-red-600 text-white"
                           : stage.isCurrentStage
                             ? "bg-blue-600 text-white ring-2 ring-blue-300"
@@ -339,9 +339,9 @@ export function ApprovalChainContent({
                     </span>
                     <Badge
                       variant={
-                        stage.status === "approved"
+                        stage.status?.toUpperCase() === "APPROVED"
                           ? "default"
-                          : stage.status === "rejected"
+                          : stage.status?.toUpperCase() === "REJECTED"
                             ? "destructive"
                             : stage.isCurrentStage
                               ? "secondary"
@@ -349,13 +349,13 @@ export function ApprovalChainContent({
                       }
                       className="text-xs"
                     >
-                      {stage.status === "approved"
+                      {stage.status?.toUpperCase() === "APPROVED"
                         ? "APPROVED"
-                        : stage.status === "rejected"
+                        : stage.status?.toUpperCase() === "REJECTED"
                           ? "REJECTED"
                           : stage.isCurrentStage
                             ? "CURRENT STAGE"
-                            : stage.status === "completed"
+                            : stage.status?.toUpperCase() === "COMPLETED"
                               ? "COMPLETED"
                               : "PENDING"}
                     </Badge>
@@ -416,7 +416,7 @@ export function ApprovalChainContent({
                     </div>
                   )}
 
-                  {stage.isCurrentStage && stage.status === "pending" && (
+                  {stage.isCurrentStage && stage.status?.toUpperCase() === "PENDING" && (
                     <div className="mt-3 p-3 bg-blue-100 dark:bg-blue-900/30 rounded border border-blue-200 dark:border-blue-700">
                       <p className="text-sm text-blue-800 dark:text-blue-300">
                         <span className="font-medium">
@@ -432,9 +432,9 @@ export function ApprovalChainContent({
                 </div>
 
                 <div className="flex-shrink-0">
-                  {stage.status === "approved" ? (
+                  {stage.status?.toUpperCase() === "APPROVED" ? (
                     <CheckCircle className="h-6 w-6 text-green-600 dark:text-green-400" />
-                  ) : stage.status === "rejected" ? (
+                  ) : stage.status?.toUpperCase() === "REJECTED" ? (
                     <XCircle className="h-6 w-6 text-red-600 dark:text-red-400" />
                   ) : stage.isCurrentStage ? (
                     <Clock className="h-6 w-6 text-blue-600 dark:text-blue-400 animate-pulse" />
@@ -562,7 +562,7 @@ export function ApprovalChainContent({
       )}
 
       {/* Available Approvers Section */}
-      {availableApprovers.length > 0 && workflowStatus?.status !== "completed" && (
+      {availableApprovers.length > 0 && workflowStatus?.status?.toUpperCase() !== "COMPLETED" && (
         <div className="border-t pt-4">
           <h4 className="font-semibold text-sm text-gray-700 mb-3 flex items-center gap-2">
             <User className="h-4 w-4" />
@@ -641,8 +641,8 @@ export function ApprovalActionContent({
   }
 
   if (
-    requisition.status === "draft" ||
-    requisition.status === "rejected"
+    requisition.status?.toUpperCase() === "DRAFT" ||
+    requisition.status?.toUpperCase() === "REJECTED"
   ) {
     return (
       <div className="text-center py-12 text-gray-500">
@@ -660,8 +660,8 @@ export function ApprovalActionContent({
   }
 
   if (
-    (requisition.status?.toLowerCase() === "pending" ||
-      requisition.status?.toLowerCase() === "in_review" ||
+    (requisition.status?.toUpperCase() === "PENDING" ||
+      requisition.status?.toUpperCase() === "IN_REVIEW" ||
       workflowStatus?.status === "in_progress") &&
     workflowStatus?.canApprove
   ) {
@@ -718,9 +718,9 @@ export function WorkflowStatusSummary({
             <div className="flex-1 bg-gray-200 rounded-full h-2">
               <div
                 className={`h-2 rounded-full transition-all duration-300 ${
-                  workflowStatus.status === "completed"
+                  workflowStatus.status?.toUpperCase() === "COMPLETED"
                     ? "bg-green-500"
-                    : workflowStatus.status === "rejected"
+                    : workflowStatus.status?.toUpperCase() === "REJECTED"
                       ? "bg-red-500"
                       : "bg-blue-500"
                 }`}
@@ -744,8 +744,8 @@ export function WorkflowStatusSummary({
 
           <div className="flex items-center justify-end">
             {workflowStatus.nextApprover &&
-              workflowStatus.status !== "completed" &&
-              workflowStatus.status !== "rejected" && (
+              workflowStatus.status?.toUpperCase() !== "COMPLETED" &&
+              workflowStatus.status?.toUpperCase() !== "REJECTED" && (
                 <div className="text-right">
                   <p className="text-xs text-gray-500">Next approver:</p>
                   <p className="font-medium text-gray-700 truncate capitalize">
@@ -753,13 +753,13 @@ export function WorkflowStatusSummary({
                   </p>
                 </div>
               )}
-            {workflowStatus.status === "completed" && (
+            {workflowStatus.status?.toUpperCase() === "COMPLETED" && (
               <div className="text-right text-green-600">
                 <CheckCircle className="h-4 w-4 inline mr-1" />
                 <span className="text-xs font-medium">Fully Approved</span>
               </div>
             )}
-            {workflowStatus.status === "rejected" && (
+            {workflowStatus.status?.toUpperCase() === "REJECTED" && (
               <div className="text-right text-red-600">
                 <XCircle className="h-4 w-4 inline mr-1" />
                 <span className="text-xs font-medium">Rejected</span>
@@ -772,8 +772,8 @@ export function WorkflowStatusSummary({
   }
 
   if (
-    requisition.status === "draft" ||
-    requisition.status === "rejected"
+    requisition.status?.toUpperCase() === "DRAFT" ||
+    requisition.status?.toUpperCase() === "REJECTED"
   ) {
     return (
       <div className="mt-6 pt-6 border-t">

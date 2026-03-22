@@ -392,7 +392,7 @@ func TestBudgetUpdateValidation(t *testing.T) {
 	}{
 		{
 			name:          "Update draft budget",
-			currentStatus: "draft",
+			currentStatus: "DRAFT",
 			updateBody: map[string]interface{}{
 				"totalBudget": 600000,
 			},
@@ -400,7 +400,7 @@ func TestBudgetUpdateValidation(t *testing.T) {
 		},
 		{
 			name:          "Cannot update approved budget",
-			currentStatus: "approved",
+			currentStatus: "APPROVED",
 			updateBody: map[string]interface{}{
 				"totalBudget": 600000,
 			},
@@ -408,7 +408,7 @@ func TestBudgetUpdateValidation(t *testing.T) {
 		},
 		{
 			name:          "Cannot update rejected budget",
-			currentStatus: "rejected",
+			currentStatus: "REJECTED",
 			updateBody: map[string]interface{}{
 				"totalBudget": 600000,
 			},
@@ -419,7 +419,7 @@ func TestBudgetUpdateValidation(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Only draft budgets can be updated
-			canUpdate := tt.currentStatus == "draft"
+			canUpdate := tt.currentStatus == "DRAFT"
 
 			if canUpdate != tt.shouldAllow {
 				t.Errorf("Expected %v, got %v", tt.shouldAllow, canUpdate)

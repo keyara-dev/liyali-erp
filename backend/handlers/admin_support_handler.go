@@ -118,7 +118,7 @@ func AdminGetSupportWorkflowTasks(c *fiber.Ctx) error {
 
 	// stalled = claimed tasks where claim_expiry has passed
 	if c.Query("stalled") == "true" {
-		query = query.Where("status = 'claimed' AND claimed_at < ?", time.Now().Add(-30*time.Minute))
+		query = query.Where("UPPER(status) = 'CLAIMED' AND claimed_at < ?", time.Now().Add(-30*time.Minute))
 	}
 
 	var total int64
@@ -215,7 +215,7 @@ func AdminReassignWorkflowTask(c *fiber.Ctx) error {
 	if err := db.Table("workflow_tasks").Where("id = ?", taskID).Updates(map[string]interface{}{
 		"assignment_type":  "specific_user",
 		"assigned_user_id": req.NewAssigneeID,
-		"status":           "pending",
+		"status": "PENDING",
 		"claimed_by":       nil,
 		"claimed_at":       nil,
 		"updated_at":       now,
@@ -254,7 +254,7 @@ func AdminResetWorkflowTask(c *fiber.Ctx) error {
 
 	now := time.Now()
 	if err := db.Table("workflow_tasks").Where("id = ?", taskID).Updates(map[string]interface{}{
-		"status":     "pending",
+		"status": "PENDING",
 		"claimed_by": nil,
 		"claimed_at": nil,
 		"updated_at": now,

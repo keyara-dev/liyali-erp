@@ -53,10 +53,10 @@ function getDocumentRoute(
 }
 
 function statusColor(status: string) {
-  const s = status.toLowerCase();
-  if (s === "approved" || s === "completed")
+  const s = status?.toUpperCase();
+  if (s === "APPROVED" || s === "COMPLETED")
     return "bg-secondary/10 border-secondary/30";
-  if (s === "rejected" || s === "cancelled")
+  if (s === "REJECTED" || s === "CANCELLED")
     return "bg-destructive/10 border-destructive/30";
   return "bg-muted/10 border-muted/30";
 }

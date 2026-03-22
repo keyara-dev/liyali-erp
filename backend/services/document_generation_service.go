@@ -71,7 +71,7 @@ func (s *DocumentGenerationService) GenerateFromSource(
 		if err := s.db.Where("id = ? AND organization_id = ?", sourceID, organizationID).First(&req).Error; err != nil {
 			return nil, fmt.Errorf("requisition not found")
 		}
-		if req.Status != "approved" {
+		if strings.ToUpper(req.Status) != "APPROVED" {
 			return nil, fmt.Errorf("requisition must be approved")
 		}
 
@@ -108,7 +108,7 @@ func (s *DocumentGenerationService) GenerateFromSource(
 		if err := s.db.Where("id = ? AND organization_id = ?", sourceID, organizationID).First(&po).Error; err != nil {
 			return nil, fmt.Errorf("purchase order not found")
 		}
-		if po.Status != "approved" {
+		if strings.ToUpper(po.Status) != "APPROVED" {
 			return nil, fmt.Errorf("purchase order must be approved")
 		}
 
@@ -145,7 +145,7 @@ func (s *DocumentGenerationService) GenerateFromSource(
 		if err := s.db.Where("id = ? AND organization_id = ?", sourceID, organizationID).First(&grn).Error; err != nil {
 			return nil, fmt.Errorf("GRN not found")
 		}
-		if grn.Status != "approved" {
+		if strings.ToUpper(grn.Status) != "APPROVED" {
 			return nil, fmt.Errorf("GRN must be approved")
 		}
 

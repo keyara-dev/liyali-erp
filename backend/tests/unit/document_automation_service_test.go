@@ -16,14 +16,14 @@ func TestDocumentAutomationService(t *testing.T) {
 	t.Run("Create purchase order from requisition", func(t *testing.T) {
 		// Create mock requisition
 		mockRequisition := builder.CreateMockRequisition(t)
-		mockRequisition.Status = "approved"
+		mockRequisition.Status = "APPROVED"
 		
 		// Create mock purchase order
 		mockPO := &models.PurchaseOrder{
 			ID:                uuid.New().String(),
 			OrganizationID:    builder.GetOrganizationID(),
 			DocumentNumber:    "PO-" + uuid.New().String()[:8],
-			Status:            "draft",
+			Status: "DRAFT",
 			LinkedRequisition: mockRequisition.ID,
 		}
 		
@@ -39,7 +39,7 @@ func TestDocumentAutomationService(t *testing.T) {
 			ID:             uuid.New().String(),
 			OrganizationID: builder.GetOrganizationID(),
 			DocumentNumber: "PO-" + uuid.New().String()[:8],
-			Status:         "approved",
+			Status: "APPROVED",
 		}
 		
 		// Create mock GRN
@@ -48,7 +48,7 @@ func TestDocumentAutomationService(t *testing.T) {
 			OrganizationID:   builder.GetOrganizationID(),
 			DocumentNumber:   "GRN-" + uuid.New().String()[:8],
 			PODocumentNumber: mockPO.DocumentNumber,
-			Status:           "draft",
+			Status: "DRAFT",
 		}
 		
 		// Verify GRN creation
@@ -63,7 +63,7 @@ func TestDocumentAutomationService(t *testing.T) {
 			ID:             uuid.New().String(),
 			OrganizationID: builder.GetOrganizationID(),
 			DocumentNumber: "GRN-" + uuid.New().String()[:8],
-			Status:         "approved",
+			Status: "APPROVED",
 		}
 		
 		// Create mock payment voucher
@@ -71,7 +71,7 @@ func TestDocumentAutomationService(t *testing.T) {
 			ID:             uuid.New().String(),
 			OrganizationID: builder.GetOrganizationID(),
 			DocumentNumber: "PV-" + uuid.New().String()[:8],
-			Status:         "draft",
+			Status: "DRAFT",
 			LinkedPO:       mockGRN.DocumentNumber,
 		}
 		
@@ -84,14 +84,14 @@ func TestDocumentAutomationService(t *testing.T) {
 	t.Run("Automation chain: Requisition -> PO -> GRN -> PV", func(t *testing.T) {
 		// Create mock requisition
 		mockRequisition := builder.CreateMockRequisition(t)
-		mockRequisition.Status = "approved"
+		mockRequisition.Status = "APPROVED"
 		
 		// Create mock PO
 		mockPO := &models.PurchaseOrder{
 			ID:                uuid.New().String(),
 			OrganizationID:    builder.GetOrganizationID(),
 			DocumentNumber:    "PO-" + uuid.New().String()[:8],
-			Status:            "approved",
+			Status: "APPROVED",
 			LinkedRequisition: mockRequisition.ID,
 		}
 		
@@ -101,7 +101,7 @@ func TestDocumentAutomationService(t *testing.T) {
 			OrganizationID:   builder.GetOrganizationID(),
 			DocumentNumber:   "GRN-" + uuid.New().String()[:8],
 			PODocumentNumber: mockPO.DocumentNumber,
-			Status:           "approved",
+			Status: "APPROVED",
 		}
 		
 		// Create mock PV
@@ -109,7 +109,7 @@ func TestDocumentAutomationService(t *testing.T) {
 			ID:             uuid.New().String(),
 			OrganizationID: builder.GetOrganizationID(),
 			DocumentNumber: "PV-" + uuid.New().String()[:8],
-			Status:         "draft",
+			Status: "DRAFT",
 			LinkedPO:       mockGRN.DocumentNumber,
 		}
 		
@@ -122,7 +122,7 @@ func TestDocumentAutomationService(t *testing.T) {
 	t.Run("Prevent automation for non-approved documents", func(t *testing.T) {
 		// Create mock draft requisition
 		mockRequisition := builder.CreateMockRequisition(t)
-		mockRequisition.Status = "draft"
+		mockRequisition.Status = "DRAFT"
 		
 		// Verify automation should not occur
 		assert.NotEqual(t, "approved", mockRequisition.Status)
@@ -133,14 +133,14 @@ func TestDocumentAutomationService(t *testing.T) {
 		
 		// Create mock requisition in org1
 		mockReq1 := builder.CreateMockRequisition(t)
-		mockReq1.Status = "approved"
+		mockReq1.Status = "APPROVED"
 		
 		// Create mock PO in org2
 		mockPO2 := &models.PurchaseOrder{
 			ID:                uuid.New().String(),
 			OrganizationID:    builder2.GetOrganizationID(),
 			DocumentNumber:    "PO-" + uuid.New().String()[:8],
-			Status:            "draft",
+			Status: "DRAFT",
 			LinkedRequisition: mockReq1.ID,
 		}
 		

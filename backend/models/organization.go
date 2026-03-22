@@ -52,6 +52,9 @@ type OrganizationSettings struct {
 	EnableBudgetValidation   bool    `gorm:"default:true" json:"enableBudgetValidation"`
 	BudgetVarianceThreshold  float64 `gorm:"default:5.00" json:"budgetVarianceThreshold"`
 
+	// Procurement Flow: "goods_first" (receive goods before payment) or "payment_first" (pay before receiving goods)
+	ProcurementFlow string `gorm:"default:goods_first" json:"procurementFlow"`
+
 	CreatedAt time.Time `json:"createdAt"`
 	UpdatedAt time.Time `json:"updatedAt"`
 }

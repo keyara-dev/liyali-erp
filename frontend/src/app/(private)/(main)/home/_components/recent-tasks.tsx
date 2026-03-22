@@ -96,7 +96,7 @@ export function RecentTasks({ userId: _userId, userRole: _userRole, initialTasks
   const { data, isLoading, refetch } = useApprovalTasks({ viewAll: true }, 1, 10, initialTasks);
   const allTasks: ApprovalTask[] = data?.data || [];
   const tasks = allTasks
-    .filter((t) => t.status === "pending" || t.status === "claimed")
+    .filter((t) => t.status?.toUpperCase() === "PENDING" || t.status?.toUpperCase() === "CLAIMED")
     .slice(0, 5);
   const total = tasks.length;
 
@@ -198,7 +198,7 @@ export function RecentTasks({ userId: _userId, userRole: _userRole, initialTasks
               const isOverdue =
                 task.dueAt &&
                 new Date(task.dueAt) < new Date() &&
-                task.status === "pending";
+                task.status?.toUpperCase() === "PENDING";
 
               return (
                 <div

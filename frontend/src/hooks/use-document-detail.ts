@@ -126,7 +126,7 @@ export function useDocumentDetail<
     const stageProgress = approvalData?.workflowStatus?.stageProgress as any[] | undefined;
     const approvedStages =
       stageProgress?.filter(
-        (s: any) => (s.status === "approved" || s.status === "APPROVED") && s.approverName,
+        (s: any) => s.status?.toUpperCase() === "APPROVED" && s.approverName,
       ) ?? [];
     if (approvedStages.length === 0) return dataToUse;
     return {
@@ -134,7 +134,7 @@ export function useDocumentDetail<
       approvalHistory: approvedStages.map((s: any) => ({
         approverName: s.approverName,
         assignedRole: s.approverRole || s.requiredRole,
-        status: "approved",
+        status: "APPROVED",
         approvedAt: s.completedAt,
         comments: s.comments || "",
         stageNumber: s.stageNumber,

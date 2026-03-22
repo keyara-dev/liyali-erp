@@ -256,6 +256,80 @@ func (dls *DocumentLinkingService) LinkPurchaseOrderToGRN(
 	return nil
 }
 
+// LinkGRNToPaymentVoucher links a GRN to a PV (goods-first: GRN approved before PV)
+func (dls *DocumentLinkingService) LinkGRNToPaymentVoucher(grnID, pvID string) error {
+	var grn models.GoodsReceivedNote
+	if err := dls.db.First(&grn, "id = ?", grnID).Error; err != nil {
+		return fmt.Errorf("GRN not found: %v", err)
+	}
+
+	var pv models.PaymentVoucher
+	if err := dls.db.First(&pv, "id = ?", pvID).Error; err != nil {
+		return fmt.Errorf("payment voucher not found: %v", err)
+	}
+
+	link := DocumentLink{
+		ID:            uuid.New().String(),
+		SourceDocID:   grnID,
+		SourceDocType: "grn",
+		TargetDocID:   pvID,
+		TargetDocType: "payment_voucher",
+		LinkType:      "funded_by",
+		Amount:        pv.Amount,
+		Status:        "active",
+		CreatedAt:     time.Now(),
+		UpdatedAt:     time.Now(),
+	}
+
+	if err := dls.db.Create(&link).Error; err != nil {
+		return fmt.Errorf("failed to link GRN to payment voucher: %v", err)
+	}
+
+	logging.WithFields(map[string]interface{}{
+		"operation": "link_grn_to_payment_voucher",
+		"grn_id":    grnID,
+		"pv_id":     pvID,
+	}).Info("linked_grn_to_payment_voucher")
+	return nil
+}
+
+// LinkPaymentVoucherToGRN links a PV to a GRN (payment-first: PV paid before goods received)
+func (dls *DocumentLinkingService) LinkPaymentVoucherToGRN(pvID, grnID string) error {
+	var pv models.PaymentVoucher
+	if err := dls.db.First(&pv, "id = ?", pvID).Error; err != nil {
+		return fmt.Errorf("payment voucher not found: %v", err)
+	}
+
+	var grn models.GoodsReceivedNote
+	if err := dls.db.First(&grn, "id = ?", grnID).Error; err != nil {
+		return fmt.Errorf("GRN not found: %v", err)
+	}
+
+	link := DocumentLink{
+		ID:            uuid.New().String(),
+		SourceDocID:   pvID,
+		SourceDocType: "payment_voucher",
+		TargetDocID:   grnID,
+		TargetDocType: "grn",
+		LinkType:      "confirmed_by",
+		Amount:        pv.Amount,
+		Status:        "active",
+		CreatedAt:     time.Now(),
+		UpdatedAt:     time.Now(),
+	}
+
+	if err := dls.db.Create(&link).Error; err != nil {
+		return fmt.Errorf("failed to link payment voucher to GRN: %v", err)
+	}
+
+	logging.WithFields(map[string]interface{}{
+		"operation": "link_payment_voucher_to_grn",
+		"pv_id":     pvID,
+		"grn_id":    grnID,
+	}).Info("linked_payment_voucher_to_grn")
+	return nil
+}
+
 // GetLinkedDocuments returns all linked documents for a given document
 func (dls *DocumentLinkingService) GetLinkedDocuments(
 	documentID, docType string,

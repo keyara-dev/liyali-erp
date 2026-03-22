@@ -292,15 +292,15 @@ const RequisitionPDF: React.FC<RequisitionPDFProps> = ({
                       pdfStyles.statusBadge,
                       {
                         backgroundColor:
-                          requisition.priority === "urgent"
+                          requisition.priority?.toUpperCase() === "URGENT"
                             ? "#fee2e2"
-                            : requisition.priority === "high"
+                            : requisition.priority?.toUpperCase() === "HIGH"
                               ? "#fed7aa"
                               : "#dbeafe",
                         color:
-                          requisition.priority === "urgent"
+                          requisition.priority?.toUpperCase() === "URGENT"
                             ? "#991b1b"
-                            : requisition.priority === "high"
+                            : requisition.priority?.toUpperCase() === "HIGH"
                               ? "#92400e"
                               : "#1e40af",
                       },

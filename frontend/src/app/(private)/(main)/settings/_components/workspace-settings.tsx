@@ -5,7 +5,9 @@ import { useOrganizationContext } from "@/hooks/use-organization";
 import {
   useUpdateOrganizationMutation,
   useDeleteOrganizationMutation,
+  useUpdateSettingsMutation,
 } from "@/hooks/use-organization-mutations";
+import { useOrganizationSettingsQuery } from "@/hooks/use-organization-queries";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -30,7 +32,8 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Loader2, Trash2, Save, Building2, FileText } from "lucide-react";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Loader2, Trash2, Save, Building2, FileText, ArrowDownUp } from "lucide-react";
 import { toast } from "sonner";
 
 export function WorkspaceSettings() {
@@ -39,6 +42,9 @@ export function WorkspaceSettings() {
     useUpdateOrganizationMutation();
   const { deleteOrganization, isPending: isDeleting } =
     useDeleteOrganizationMutation();
+  const { updateSettings, isPending: isSavingSettings } =
+    useUpdateSettingsMutation();
+  const { data: settingsData } = useOrganizationSettingsQuery();
 
   const [formData, setFormData] = useState({
     name: currentOrganization?.name || "",
@@ -48,6 +54,10 @@ export function WorkspaceSettings() {
   });
 
   const [hasChanges, setHasChanges] = useState(false);
+
+  const [procurementFlow, setProcurementFlow] = useState<
+    "goods_first" | "payment_first"
+  >("goods_first");
 
   // Sync form data when currentOrganization changes
   useEffect(() => {
@@ -61,6 +71,13 @@ export function WorkspaceSettings() {
       setHasChanges(false);
     }
   }, [currentOrganization]);
+
+  // Sync procurement flow when settings load
+  useEffect(() => {
+    if (settingsData?.procurementFlow) {
+      setProcurementFlow(settingsData.procurementFlow);
+    }
+  }, [settingsData]);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -107,6 +124,15 @@ export function WorkspaceSettings() {
       await deleteOrganization(currentOrganization.id);
     } catch (error) {
       console.error("Failed to delete workspace:", error);
+    }
+  };
+
+  const handleSaveProcurementFlow = async () => {
+    if (!settingsData) return;
+    try {
+      await updateSettings({ ...settingsData, procurementFlow });
+    } catch (error) {
+      console.error("Failed to update procurement flow:", error);
     }
   };
 
@@ -293,6 +319,67 @@ export function WorkspaceSettings() {
                 {new Date(currentOrganization.createdAt).toLocaleDateString()}
               </p>
             </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Procurement Flow */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <ArrowDownUp className="h-5 w-5" />
+            Procurement Flow
+          </CardTitle>
+          <CardDescription>
+            Set the default document ordering for all purchase orders in this
+            workspace. Individual POs can override this setting at creation
+            time.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <RadioGroup
+            value={procurementFlow}
+            onValueChange={(v) =>
+              setProcurementFlow(v as "goods_first" | "payment_first")
+            }
+            className="space-y-3"
+          >
+            <div className="flex items-start gap-3 rounded-lg border p-4 cursor-pointer hover:bg-muted/50 transition-colors">
+              <RadioGroupItem value="goods_first" id="flow-goods-first" className="mt-0.5" />
+              <Label htmlFor="flow-goods-first" className="cursor-pointer space-y-1">
+                <span className="font-medium">Goods-First (Recommended for government)</span>
+                <p className="text-sm text-muted-foreground font-normal">
+                  Goods must be received and the GRN approved before a payment
+                  voucher can be created. Flow: REQ → PO → GRN → PV → Payment
+                </p>
+              </Label>
+            </div>
+            <div className="flex items-start gap-3 rounded-lg border p-4 cursor-pointer hover:bg-muted/50 transition-colors">
+              <RadioGroupItem value="payment_first" id="flow-payment-first" className="mt-0.5" />
+              <Label htmlFor="flow-payment-first" className="cursor-pointer space-y-1">
+                <span className="font-medium">Payment-First (Commercial / upfront payment)</span>
+                <p className="text-sm text-muted-foreground font-normal">
+                  Payment is processed before goods are delivered. A GRN is
+                  created after delivery to confirm receipt. Flow: REQ → PO →
+                  PV → Payment → GRN
+                </p>
+              </Label>
+            </div>
+          </RadioGroup>
+          <div className="flex justify-end pt-2">
+            <Button
+              onClick={handleSaveProcurementFlow}
+              disabled={
+                isSavingSettings ||
+                !settingsData ||
+                procurementFlow === settingsData.procurementFlow
+              }
+              isLoading={isSavingSettings}
+              loadingText="Saving..."
+            >
+              <Save className="h-4 w-4" />
+              Save Flow Setting
+            </Button>
           </div>
         </CardContent>
       </Card>

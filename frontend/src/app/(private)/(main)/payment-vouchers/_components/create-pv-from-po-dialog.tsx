@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
   Dialog,
   DialogContent,
@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -20,18 +21,20 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { PurchaseOrder } from "@/types/purchase-order";
-import { FileText, CheckCircle2, AlertCircle } from "lucide-react";
+import { FileText, CheckCircle2, AlertCircle, Package } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { WorkflowSelector } from "@/components/workflows/workflow-selector";
 import { useConfigurationStatus } from "@/hooks/use-configuration-status";
 import { ConfigurationChecklistBanner } from "@/components/ui/configuration-checklist-banner";
 import { useVendors } from "@/hooks/use-vendor-queries";
+import { useGRNs } from "@/hooks/use-grn-queries";
+import { useOrganizationSettingsQuery } from "@/hooks/use-organization-queries";
 
 interface CreatePVFromPODialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   purchaseOrder: PurchaseOrder;
-  onConfirm: (workflowId: string, vendorId?: string, vendorName?: string) => Promise<void>;
+  onConfirm: (workflowId: string, vendorId?: string, vendorName?: string, linkedGRNDocumentNumber?: string) => Promise<void>;
   isCreating: boolean;
 }
 
@@ -50,8 +53,26 @@ export function CreatePVFromPODialog({
   const [selectedVendorName, setSelectedVendorName] = useState(
     purchaseOrder.vendorName ?? ""
   );
+  const [selectedGRNDocNumber, setSelectedGRNDocNumber] = useState("");
 
   const { data: vendors = [] } = useVendors();
+  const { data: orgSettings } = useOrganizationSettingsQuery();
+
+  // Resolve effective procurement flow: PO override → org default → "goods_first"
+  const effectiveFlow = useMemo(() => {
+    if (purchaseOrder.procurementFlow) {
+      return purchaseOrder.procurementFlow;
+    }
+    return orgSettings?.procurementFlow ?? "goods_first";
+  }, [purchaseOrder.procurementFlow, orgSettings?.procurementFlow]);
+
+  const isGoodsFirst = effectiveFlow === "goods_first";
+
+  // Fetch approved GRNs for this PO (only needed for goods_first)
+  const { data: grns = [] } = useGRNs(1, 50, {
+    status: "APPROVED",
+    poDocumentNumber: purchaseOrder.documentNumber,
+  });
 
   // Check configuration status
   const configStatus = useConfigurationStatus({
@@ -61,14 +82,18 @@ export function CreatePVFromPODialog({
 
   const canCreate =
     workflowId &&
-    purchaseOrder.status === "approved" &&
-    configStatus.allConfigured;
+    purchaseOrder.status?.toUpperCase() === "APPROVED" &&
+    configStatus.allConfigured &&
+    (!isGoodsFirst || selectedGRNDocNumber !== "");
 
   const handleConfirm = async () => {
-    // Validate workflow selection
     if (!workflowId) {
       setWorkflowError("Please select a workflow");
       return;
+    }
+
+    if (isGoodsFirst && !selectedGRNDocNumber) {
+      return; // GRN selection is enforced by canCreate
     }
 
     if (!canCreate) return;
@@ -78,10 +103,12 @@ export function CreatePVFromPODialog({
       workflowId,
       selectedVendorId || undefined,
       selectedVendorName || undefined,
+      isGoodsFirst ? selectedGRNDocNumber : undefined,
     );
     setWorkflowId("");
     setSelectedVendorId(purchaseOrder.vendorId ?? "");
     setSelectedVendorName(purchaseOrder.vendorName ?? "");
+    setSelectedGRNDocNumber("");
   };
 
   const handleClose = () => {
@@ -90,6 +117,7 @@ export function CreatePVFromPODialog({
       setWorkflowError(null);
       setSelectedVendorId(purchaseOrder.vendorId ?? "");
       setSelectedVendorName(purchaseOrder.vendorName ?? "");
+      setSelectedGRNDocNumber("");
       onOpenChange(false);
     }
   };
@@ -103,6 +131,8 @@ export function CreatePVFromPODialog({
       setSelectedVendorName(vendor?.name ?? "");
     }
   };
+
+  const selectedGRN = grns.find((g) => g.documentNumber === selectedGRNDocNumber);
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
@@ -130,6 +160,17 @@ export function CreatePVFromPODialog({
               description="Complete the following configurations before creating a payment voucher:"
             />
           )}
+
+          {/* Flow indicator */}
+          <div className="flex items-center gap-2 text-sm">
+            <span className="text-muted-foreground">Procurement flow:</span>
+            <Badge variant={isGoodsFirst ? "default" : "secondary"}>
+              {isGoodsFirst ? "Goods-First" : "Payment-First"}
+            </Badge>
+            {purchaseOrder.procurementFlow && (
+              <span className="text-xs text-muted-foreground">(PO override)</span>
+            )}
+          </div>
 
           {/* Workflow Selector */}
           <WorkflowSelector
@@ -165,6 +206,63 @@ export function CreatePVFromPODialog({
               </SelectContent>
             </Select>
           </div>
+
+          {/* GRN Selector — required for goods_first flow */}
+          {isGoodsFirst && (
+            <div className="space-y-1.5">
+              <Label htmlFor="grn-select" className="flex items-center gap-1.5">
+                <Package className="h-4 w-4" />
+                Linked GRN <span className="text-destructive">*</span>
+              </Label>
+              <p className="text-xs text-muted-foreground">
+                Goods-first flow requires an approved GRN for this PO before payment can be processed.
+              </p>
+              {grns.length === 0 ? (
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    No approved GRNs found for PO {purchaseOrder.documentNumber}.
+                    Goods must be received and the GRN approved before creating a payment voucher.
+                  </AlertDescription>
+                </Alert>
+              ) : (
+                <Select
+                  value={selectedGRNDocNumber}
+                  onValueChange={setSelectedGRNDocNumber}
+                  disabled={isCreating}
+                >
+                  <SelectTrigger id="grn-select">
+                    <SelectValue placeholder="Select approved GRN" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {grns.map((grn) => (
+                      <SelectItem key={grn.id} value={grn.documentNumber}>
+                        {grn.documentNumber} — received {new Date(grn.receivedDate).toLocaleDateString("en-ZM")}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+              {selectedGRN && (
+                <div className="rounded-md border bg-muted/50 p-3 text-sm space-y-1">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Received by:</span>
+                    <span>{selectedGRN.receivedBy}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Items:</span>
+                    <span>{selectedGRN.items?.length ?? 0}</span>
+                  </div>
+                  {selectedGRN.warehouseLocation && (
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Location:</span>
+                      <span>{selectedGRN.warehouseLocation}</span>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
 
           <Separator />
 
@@ -244,7 +342,7 @@ export function CreatePVFromPODialog({
             </Alert>
           )}
 
-          {purchaseOrder.status !== "approved" && (
+          {purchaseOrder.status?.toUpperCase() !== "APPROVED" && (
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>
