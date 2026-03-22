@@ -245,7 +245,7 @@ func TestBudgetResponseFormat(t *testing.T) {
 			OwnerID:          uuid.New().String(),
 			BudgetCode:       "IT-2025-Q1",
 			Department:       "IT",
-			Status:           "draft",
+			Status: "DRAFT",
 			FiscalYear:       "2025",
 			TotalBudget:      500000,
 			AllocatedAmount:  0,
@@ -321,13 +321,13 @@ func TestBudgetDepartmentConstraint(t *testing.T) {
 		budget1 := types.BudgetResponse{
 			Department: "IT",
 			FiscalYear: "2025",
-			Status:     "approved",
+			Status: "APPROVED",
 		}
 
 		budget2 := types.BudgetResponse{
 			Department: "IT",
 			FiscalYear: "2025",
-			Status:     "draft",
+			Status: "DRAFT",
 		}
 
 		// Should not allow duplicate

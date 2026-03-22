@@ -306,7 +306,7 @@ func TestPaymentVoucherResponseFormat(t *testing.T) {
 			DocumentNumber:  "PV-1640000000-abc12345",
 			VendorID:        uuid.New().String(),
 			InvoiceNumber:   "INV-2025-001",
-			Status:          "draft",
+			Status: "DRAFT",
 			Amount:          50000,
 			Currency:        "USD",
 			PaymentMethod:   "bank_transfer",
@@ -473,7 +473,7 @@ func TestPaymentVoucherApprovalHistory(t *testing.T) {
 			{
 				ApproverID:   uuid.New().String(),
 				ApproverName: "Finance Manager",
-				Status:       "approved",
+				Status: "APPROVED",
 				Comments:     "Approved for payment",
 				ApprovedAt:   time.Now(),
 			},

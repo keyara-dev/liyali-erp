@@ -335,7 +335,7 @@ func TestGRNResponseFormat(t *testing.T) {
 			ID:                uuid.New().String(),
 			DocumentNumber:    "GRN-1640000000-abc12345",
 			PODocumentNumber:  "PO-20251223-abc12345",
-			Status:            "draft",
+			Status: "DRAFT",
 			ReceivedBy: "John Doe",
 			Items: []types.GRNItem{
 				{

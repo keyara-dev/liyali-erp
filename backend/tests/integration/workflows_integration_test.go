@@ -30,7 +30,7 @@ func TestWorkflowsIntegration(t *testing.T) {
 			WorkflowID:      mockWorkflow.ID,
 			WorkflowVersion: mockWorkflow.Version,
 			CurrentStage:    1,
-			Status:          "in_progress",
+			Status: "IN_PROGRESS",
 			AssignedBy:      builder.GetUserID(),
 			AssignedAt:      time.Now(),
 		}
@@ -55,7 +55,7 @@ func TestWorkflowsIntegration(t *testing.T) {
 			StageName:            "Manager Approval",
 			AssignmentType:       "role",
 			AssignedRole:         helpers.StringPtr("manager"),
-			Status:               "pending",
+			Status: "PENDING",
 			Priority:             "medium",
 			Version:              1,
 			CreatedAt:            time.Now(),
@@ -86,7 +86,7 @@ func TestWorkflowsIntegration(t *testing.T) {
 		// Mock task status update after approval
 		mockUpdatedTask := &models.WorkflowTask{
 			ID:        mockApproval.WorkflowTaskID,
-			Status:    "completed",
+			Status: "COMPLETED",
 			CreatedAt: time.Now(),
 		}
 
@@ -101,7 +101,7 @@ func TestWorkflowsIntegration(t *testing.T) {
 		// Mock completed workflow assignment
 		mockCompletedAssignment := &models.WorkflowAssignment{
 			ID:          uuid.New().String(),
-			Status:      "completed",
+			Status: "COMPLETED",
 			CurrentStage: 1,
 			CompletedAt: &time.Time{},
 		}
@@ -109,7 +109,7 @@ func TestWorkflowsIntegration(t *testing.T) {
 		// Mock final document status update
 		mockCompletedRequisition := &models.Requisition{
 			ID:        uuid.New().String(),
-			Status:    "approved",
+			Status: "APPROVED",
 			UpdatedAt: time.Now(),
 		}
 
@@ -140,7 +140,7 @@ func TestWorkflowsIntegration(t *testing.T) {
 		// Mock document status after rejection
 		mockRejectedRequisition := &models.Requisition{
 			ID:        uuid.New().String(),
-			Status:    "rejected",
+			Status: "REJECTED",
 			UpdatedAt: time.Now(),
 		}
 

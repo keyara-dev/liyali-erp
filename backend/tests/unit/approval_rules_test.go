@@ -282,7 +282,7 @@ func TestApprovalTaskCreation(t *testing.T) {
 			ID:           uuid.New().String(),
 			EntityID:     "req-123",
 			EntityType:   "requisition",
-			Status:       "pending",
+			Status: "PENDING",
 			StageNumber:  1,
 			CreatedAt:    now,
 		}

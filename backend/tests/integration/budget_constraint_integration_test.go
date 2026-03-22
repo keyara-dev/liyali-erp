@@ -239,7 +239,7 @@ func TestDepartmentBudgetConstraint(t *testing.T) {
 			ID:         uuid.New().String(),
 			Department: department,
 			FiscalYear: fiscalYear,
-			Status:     "approved",
+			Status: "APPROVED",
 		}
 
 		newBudget := types.CreateBudgetRequest{
@@ -253,7 +253,7 @@ func TestDepartmentBudgetConstraint(t *testing.T) {
 			existingBudget.FiscalYear == newBudget.FiscalYear)
 
 		if isDuplicate {
-			if existingBudget.Status == "approved" {
+			if existingBudget.Status == "APPROVED" {
 				t.Logf("Cannot create new budget: existing approved budget for %s/%s", department, fiscalYear)
 			}
 		}

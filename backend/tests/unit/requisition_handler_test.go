@@ -348,7 +348,7 @@ func TestRequisitionResponseFormat(t *testing.T) {
 			Title:          "Test Requisition",
 			Description:    "Test Description",
 			Department:     "IT",
-			Status:         "draft",
+			Status: "DRAFT",
 			Priority:       "high",
 			TotalAmount:    50000,
 			Currency:       "USD",
@@ -428,7 +428,7 @@ func TestRequisitionApprovalLogic(t *testing.T) {
 	t.Run("Approval task creation", func(t *testing.T) {
 		requisition := &models.Requisition{
 			ID:          uuid.New().String(),
-			Status:      "pending",
+			Status: "PENDING",
 			TotalAmount: 50000,
 			Department:  "IT",
 			Priority:    "high",
@@ -566,7 +566,7 @@ func BenchmarkRequisitionSerialization(b *testing.B) {
 		Title:          "Test Requisition",
 		Description:    "Test Description",
 		Department:     "IT",
-		Status:         "draft",
+		Status: "DRAFT",
 		Priority:       "high",
 		TotalAmount:    50000,
 		Currency:       "USD",

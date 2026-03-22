@@ -59,7 +59,7 @@ func TestMultiTenantIsolationIntegration(t *testing.T) {
 			DocumentNumber: "REQ-001",
 			Title:          "Org1 Requisition",
 			RequesterId:    user1.ID,
-			Status:         "draft",
+			Status: "DRAFT",
 		}
 		
 		req2 := &models.Requisition{
@@ -68,7 +68,7 @@ func TestMultiTenantIsolationIntegration(t *testing.T) {
 			DocumentNumber: "REQ-001", // Same number, different org
 			Title:          "Org2 Requisition",
 			RequesterId:    user2.ID,
-			Status:         "draft",
+			Status: "DRAFT",
 		}
 
 		// Verify users can only access their organization's data
@@ -118,7 +118,7 @@ func TestMultiTenantIsolationIntegration(t *testing.T) {
 			FiscalYear:      "2024",
 			TotalBudget:     100000.00,
 			AllocatedAmount: 25000.00,
-			Status:          "approved",
+			Status: "APPROVED",
 		}
 		
 		budget2 := &models.Budget{
@@ -129,7 +129,7 @@ func TestMultiTenantIsolationIntegration(t *testing.T) {
 			FiscalYear:      "2024",
 			TotalBudget:     150000.00,
 			AllocatedAmount: 30000.00,
-			Status:          "approved",
+			Status: "APPROVED",
 		}
 
 		// Verify budget isolation

@@ -16,7 +16,7 @@ func TestStageProgressInfo(t *testing.T) {
 		StageNumber:    1,
 		StageName:      "Manager Approval",
 		RequiredRole:   "manager",
-		Status:         "approved",
+		Status: "APPROVED",
 		IsCurrentStage: false,
 		ApproverID:     "user-123",
 		ApproverName:   "John Manager",
@@ -44,14 +44,14 @@ func TestWorkflowStatusResponse(t *testing.T) {
 			StageNumber:    1,
 			StageName:      "Manager Approval",
 			RequiredRole:   "manager",
-			Status:         "approved",
+			Status: "APPROVED",
 			IsCurrentStage: false,
 		},
 		{
 			StageNumber:    2,
 			StageName:      "Finance Approval",
 			RequiredRole:   "finance",
-			Status:         "pending",
+			Status: "PENDING",
 			IsCurrentStage: true,
 		},
 	}
@@ -59,7 +59,7 @@ func TestWorkflowStatusResponse(t *testing.T) {
 	response := services.WorkflowStatusResponse{
 		CurrentStage:  2,
 		TotalStages:   3,
-		Status:        "in_progress",
+		Status: "IN_PROGRESS",
 		NextApprover:  "Finance Team",
 		CanApprove:    true,
 		CanReject:     true,
@@ -105,7 +105,7 @@ func TestWorkflowStatusResponseJSON(t *testing.T) {
 	response := services.WorkflowStatusResponse{
 		CurrentStage: 1,
 		TotalStages:  2,
-		Status:       "completed",
+		Status: "COMPLETED",
 		CanApprove:   false,
 		CanReject:    false,
 		StageProgress: []services.StageProgressInfo{
@@ -113,7 +113,7 @@ func TestWorkflowStatusResponseJSON(t *testing.T) {
 				StageNumber:  1,
 				StageName:    "Test Stage",
 				RequiredRole: "admin",
-				Status:       "approved",
+				Status: "APPROVED",
 			},
 		},
 	}

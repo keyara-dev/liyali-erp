@@ -263,7 +263,7 @@ func TestPOResponseFormat(t *testing.T) {
 			ID:             uuid.New().String(),
 			DocumentNumber: "PO-20251223-abc12345",
 			VendorID:       uuid.New().String(),
-			Status:         "draft",
+			Status: "DRAFT",
 			TotalAmount:    50000,
 			Currency:       "USD",
 			DeliveryDate:   time.Now().AddDate(0, 1, 0),

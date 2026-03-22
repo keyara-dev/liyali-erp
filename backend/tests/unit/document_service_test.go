@@ -215,7 +215,7 @@ func TestDocumentService_ListDocuments(t *testing.T) {
 		// Filter by status
 		pendingDocs := make([]*models.Document, 0)
 		for _, doc := range mockDocs {
-			if doc.Status == "pending" {
+			if doc.Status == "PENDING" {
 				pendingDocs = append(pendingDocs, doc)
 			}
 		}
@@ -247,7 +247,7 @@ func TestDocumentService_DeleteDocument(t *testing.T) {
 		
 		// Simulate deletion (only draft documents can be deleted)
 		var deletedDoc *models.Document
-		if mockDoc.Status == "draft" {
+		if mockDoc.Status == "DRAFT" {
 			deletedDoc = nil
 		} else {
 			deletedDoc = mockDoc
@@ -273,7 +273,7 @@ func TestDocumentService_DeleteDocument(t *testing.T) {
 		assert.Equal(t, "pending", mockDoc.Status)
 		
 		// Try to delete (should fail for non-draft)
-		canDelete := mockDoc.Status == "draft"
+		canDelete := mockDoc.Status == "DRAFT"
 		assert.False(t, canDelete)
 	})
 }
