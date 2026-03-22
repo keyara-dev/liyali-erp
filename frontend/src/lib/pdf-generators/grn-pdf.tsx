@@ -581,7 +581,11 @@ const GoodsReceivedNotePDF: React.FC<GRNPDFProps> = ({
         )}
 
         {/* Footer */}
-        <PDFFooter />
+        <PDFFooter
+          qrCodeUrl={qrCodeUrl || ""}
+          documentNumber={grn.documentNumber}
+          document={grn}
+        />
       </Page>
     </Document>
   );
