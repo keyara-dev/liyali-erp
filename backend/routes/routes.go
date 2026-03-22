@@ -40,6 +40,10 @@ func SetupRoutes(app *fiber.App, handlerRegistry *handlers.HandlerRegistry, rbac
 	// Public subscription plans (no authentication required)
 	public.Get("/subscriptions/plans", handlerRegistry.Subscription.GetSubscriptionPlans)
 
+	// Reference data — public, no auth required
+	public.Get("/provinces", handlers.GetProvinces)
+	public.Get("/towns", handlers.GetTowns)
+
 	// Activity logging middleware (async, non-blocking — attaches after auth)
 	var activityMiddleware fiber.Handler
 	if len(activityService) > 0 && activityService[0] != nil {
@@ -81,10 +85,6 @@ func SetupRoutes(app *fiber.App, handlerRegistry *handlers.HandlerRegistry, rbac
 
 	// Subscription routes (authentication required, no tenant middleware)
 	// subscriptions := protected.Group("/subscriptions")
-
-	// Reference data — global location data (Zambian provinces and towns)
-	protected.Get("/provinces", handlers.GetProvinces)
-	protected.Get("/towns", handlers.GetTowns)
 
 	// Organization-specific subscription routes
 	orgSubs := protected.Group("/organizations/:id")

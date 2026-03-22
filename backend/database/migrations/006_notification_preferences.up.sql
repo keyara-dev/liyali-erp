@@ -49,9 +49,10 @@ CREATE TRIGGER notification_preferences_updated_at_trigger
 
 -- Insert default preferences for existing users
 INSERT INTO notification_preferences (user_id, organization_id)
-SELECT 
+SELECT
     u.id as user_id,
-    COALESCE(u.current_organization_id, 'default') as organization_id
+    u.current_organization_id as organization_id
 FROM users u
 WHERE u.active = true
+  AND u.current_organization_id IS NOT NULL
 ON CONFLICT (user_id) DO NOTHING;
