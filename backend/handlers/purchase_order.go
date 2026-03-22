@@ -149,13 +149,6 @@ func CreatePurchaseOrder(c *fiber.Ctx) error {
 		"organization_id": tenant.OrganizationID,
 	})
 
-	if req.VendorID == "" {
-		logging.LogWarn(c, "vendor_id_missing")
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"success": false,
-			"message": "Vendor ID is required",
-		})
-	}
 	if len(req.Items) == 0 {
 		logging.LogWarn(c, "no_items_provided")
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
@@ -187,18 +180,22 @@ func CreatePurchaseOrder(c *fiber.Ctx) error {
 		})
 	}
 
-	// Verify vendor exists and belongs to the same organization
-	var vendor models.Vendor
-	if err := config.DB.Where("id = ? AND organization_id = ?", req.VendorID, tenant.OrganizationID).First(&vendor).Error; err != nil {
-		logging.LogError(c, err, "vendor_not_found", map[string]interface{}{
-			"vendor_id":       req.VendorID,
-			"organization_id": tenant.OrganizationID,
-			"error_type":      "validation_error",
-		})
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"success": false,
-			"message": "Vendor not found",
-		})
+	// Verify vendor exists if provided
+	var vendorIDPtr *string
+	if req.VendorID != "" {
+		var vendor models.Vendor
+		if err := config.DB.Where("id = ? AND organization_id = ?", req.VendorID, tenant.OrganizationID).First(&vendor).Error; err != nil {
+			logging.LogError(c, err, "vendor_not_found", map[string]interface{}{
+				"vendor_id":       req.VendorID,
+				"organization_id": tenant.OrganizationID,
+				"error_type":      "validation_error",
+			})
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"success": false,
+				"message": "Vendor not found",
+			})
+		}
+		vendorIDPtr = &req.VendorID
 	}
 
 	// Generate PO number
@@ -212,7 +209,7 @@ func CreatePurchaseOrder(c *fiber.Ctx) error {
 		ID:                orderID,
 		OrganizationID:    tenant.OrganizationID, // SECURITY FIX: Set organization ID
 		DocumentNumber:    documentNumber,
-		VendorID:          req.VendorID,
+		VendorID:          vendorIDPtr,
 		Status:            "draft",
 		TotalAmount:       req.TotalAmount,
 		Currency:          req.Currency,
@@ -367,8 +364,12 @@ func UpdatePurchaseOrder(c *fiber.Ctx) error {
 	changes := make(map[string]interface{})
 
 	if req.VendorID != "" {
-		changes["vendor_id"] = map[string]string{"from": order.VendorID, "to": req.VendorID}
-		order.VendorID = req.VendorID
+		fromVendorID := ""
+		if order.VendorID != nil {
+			fromVendorID = *order.VendorID
+		}
+		changes["vendor_id"] = map[string]string{"from": fromVendorID, "to": req.VendorID}
+		order.VendorID = &req.VendorID
 	}
 	if len(req.Items) > 0 {
 		changes["items_count"] = len(req.Items)
@@ -485,15 +486,21 @@ func modelToPurchaseOrderResponse(order models.PurchaseOrder) types.PurchaseOrde
 
 	var approvalHistory []types.ApprovalRecord
 
+	vendorID := ""
+	if order.VendorID != nil {
+		vendorID = *order.VendorID
+	}
 	vendorName := ""
 	if order.Vendor != nil {
 		vendorName = order.Vendor.Name
 	}
 
+	actionHistory := order.ActionHistory.Data()
+
 	return types.PurchaseOrderResponse{
 		ID:                order.ID,
 		DocumentNumber:    order.DocumentNumber,
-		VendorID:          order.VendorID,
+		VendorID:          vendorID,
 		VendorName:        vendorName,
 		Status:            order.Status,
 		Items:             items,
@@ -502,6 +509,7 @@ func modelToPurchaseOrderResponse(order models.PurchaseOrder) types.PurchaseOrde
 		DeliveryDate:      order.DeliveryDate,
 		ApprovalStage:     order.ApprovalStage,
 		ApprovalHistory:   approvalHistory,
+		ActionHistory:     actionHistory,
 		LinkedRequisition: order.LinkedRequisition,
 		CreatedAt:         order.CreatedAt,
 		UpdatedAt:         order.UpdatedAt,

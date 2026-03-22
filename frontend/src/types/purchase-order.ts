@@ -75,7 +75,7 @@ export interface PurchaseOrder {
 // ============================================================================
 
 export interface CreatePurchaseOrderRequest {
-  vendorId: string;
+  vendorId?: string;
   vendorName?: string;
   items: POItem[];
   totalAmount: number;

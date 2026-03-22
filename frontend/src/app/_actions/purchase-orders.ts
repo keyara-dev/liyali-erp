@@ -28,6 +28,8 @@ import authenticatedApiClient from "./api-config";
 export async function createPurchaseOrderFromRequisition(
   requisition: Requisition,
   workflowId?: string,
+  vendorIdOverride?: string,
+  vendorNameOverride?: string,
 ): Promise<APIResponse<PurchaseOrder>> {
   const url = `/api/v1/purchase-orders/from-requisition`;
 
@@ -40,8 +42,8 @@ export async function createPurchaseOrderFromRequisition(
         requisitionDocumentNumber: requisition.documentNumber,
         title: requisition.title,
         description: requisition.description,
-        vendorId: requisition.vendorId,
-        vendorName: requisition.vendorName,
+        vendorId: vendorIdOverride ?? requisition.vendorId,
+        vendorName: vendorNameOverride ?? requisition.vendorName,
         department: requisition.department,
         departmentId: requisition.departmentId,
         requiredByDate: requisition.requiredByDate,

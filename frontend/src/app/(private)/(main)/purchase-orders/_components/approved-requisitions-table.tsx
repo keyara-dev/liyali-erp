@@ -66,7 +66,7 @@ export function ApprovedRequisitionsTable({
     setIsCreateDialogOpen(true);
   };
 
-  const handleConfirmCreate = async (workflowId: string) => {
+  const handleConfirmCreate = async (workflowId: string, vendorId?: string, vendorName?: string) => {
     if (!selectedRequisition) return;
 
     setIsCreating(true);
@@ -74,6 +74,8 @@ export function ApprovedRequisitionsTable({
       const response = await createPurchaseOrderFromRequisition(
         selectedRequisition,
         workflowId,
+        vendorId,
+        vendorName,
       );
 
       if (response.success && response.data) {

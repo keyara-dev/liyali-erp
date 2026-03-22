@@ -131,7 +131,7 @@ type PurchaseOrder struct {
 	OrganizationID    string          `gorm:"index;not null" json:"organizationId"`
 	Organization      *Organization   `gorm:"foreignKey:OrganizationID" json:"organization,omitempty"`
 	DocumentNumber    string          `gorm:"uniqueIndex" json:"documentNumber"`
-	VendorID          string          `json:"vendorId"`
+	VendorID          *string         `json:"vendorId"`
 	Vendor            *Vendor         `json:"vendor,omitempty"`
 	Status            string          `json:"status"` // draft, pending, approved, rejected, fulfilled, completed, cancelled
 	Items             datatypes.JSONType[[]types.POItem] `gorm:"type:jsonb" json:"items"`
@@ -177,7 +177,7 @@ type PaymentVoucher struct {
 	OrganizationID  string          `gorm:"index;not null" json:"organizationId"`
 	Organization    *Organization   `gorm:"foreignKey:OrganizationID" json:"organization,omitempty"`
 	DocumentNumber  string          `gorm:"uniqueIndex" json:"documentNumber"`
-	VendorID        string          `json:"vendorId"`
+	VendorID        *string         `json:"vendorId"`
 	Vendor          *Vendor         `json:"vendor,omitempty"`
 	InvoiceNumber   string          `json:"invoiceNumber"`
 	Status          string          `json:"status"` // draft, pending, approved, rejected, paid, completed, cancelled

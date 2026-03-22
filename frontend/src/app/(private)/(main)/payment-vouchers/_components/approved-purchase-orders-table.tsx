@@ -65,7 +65,7 @@ export function ApprovedPurchaseOrdersTable({
     setIsCreateDialogOpen(true);
   };
 
-  const handleConfirmCreate = async (workflowId: string) => {
+  const handleConfirmCreate = async (workflowId: string, vendorId?: string, vendorName?: string) => {
     if (!selectedPO) return;
 
     setIsCreating(true);
@@ -73,6 +73,8 @@ export function ApprovedPurchaseOrdersTable({
       const response = await createPaymentVoucherFromPurchaseOrder(
         selectedPO,
         workflowId,
+        vendorId,
+        vendorName,
       );
 
       if (response.success && response.data) {

@@ -57,9 +57,6 @@ func CreatePurchaseOrderFromRequisition(c *fiber.Ctx) error {
 	if req.RequisitionID == "" {
 		return utils.SendBadRequestError(c, "requisitionId is required")
 	}
-	if req.VendorID == "" {
-		return utils.SendBadRequestError(c, "vendorId is required")
-	}
 	if len(req.Items) == 0 {
 		return utils.SendBadRequestError(c, "At least one item is required")
 	}
@@ -70,10 +67,18 @@ func CreatePurchaseOrderFromRequisition(c *fiber.Ctx) error {
 		req.Currency = "ZMW"
 	}
 
-	// Verify vendor belongs to this org
-	var vendor models.Vendor
-	if err := config.DB.Where("id = ? AND organization_id = ?", req.VendorID, tenant.OrganizationID).First(&vendor).Error; err != nil {
-		return utils.SendBadRequestError(c, "Vendor not found")
+	// Load requisition (with preferred vendor) to compare for audit trail
+	var requisition models.Requisition
+	config.DB.Preload("PreferredVendor").Where("id = ? AND organization_id = ?", req.RequisitionID, tenant.OrganizationID).First(&requisition)
+
+	// Verify vendor belongs to this org if provided
+	var vendorIDPtr *string
+	if req.VendorID != "" {
+		var vendor models.Vendor
+		if err := config.DB.Where("id = ? AND organization_id = ?", req.VendorID, tenant.OrganizationID).First(&vendor).Error; err != nil {
+			return utils.SendBadRequestError(c, "Vendor not found")
+		}
+		vendorIDPtr = &req.VendorID
 	}
 
 	documentNumber := utils.GenerateDocumentNumber("PO")
@@ -83,7 +88,7 @@ func CreatePurchaseOrderFromRequisition(c *fiber.Ctx) error {
 		ID:                orderID,
 		OrganizationID:    tenant.OrganizationID,
 		DocumentNumber:    documentNumber,
-		VendorID:          req.VendorID,
+		VendorID:          vendorIDPtr,
 		Status:            "draft",
 		TotalAmount:       req.TotalAmount,
 		Currency:          req.Currency,
@@ -110,7 +115,32 @@ func CreatePurchaseOrderFromRequisition(c *fiber.Ctx) error {
 
 	order.Items = datatypes.NewJSONType(req.Items)
 	order.ApprovalHistory = datatypes.NewJSONType([]types.ApprovalRecord{})
-	order.ActionHistory = datatypes.NewJSONType([]types.ActionHistoryEntry{})
+
+	// Build initial action history — log vendor change if different from requisition's preferred vendor
+	var initialHistory []types.ActionHistoryEntry
+	reqPreferredVendorID := ""
+	if requisition.PreferredVendorID != nil {
+		reqPreferredVendorID = *requisition.PreferredVendorID
+	}
+	if req.VendorID != reqPreferredVendorID && reqPreferredVendorID != "" {
+		oldVendorName := ""
+		if requisition.PreferredVendor != nil {
+			oldVendorName = requisition.PreferredVendor.Name
+		}
+		initialHistory = append(initialHistory, types.ActionHistoryEntry{
+			ID:          uuid.New().String(),
+			Action:      "VENDOR_CHANGED",
+			PerformedBy: tenant.UserID,
+			Timestamp:   time.Now(),
+			ChangedFields: map[string]interface{}{
+				"vendor": map[string]interface{}{
+					"from": oldVendorName,
+					"to":   req.VendorName,
+				},
+			},
+		})
+	}
+	order.ActionHistory = datatypes.NewJSONType(initialHistory)
 
 	if err := config.DB.Create(&order).Error; err != nil {
 		logging.LogError(c, err, "create_po_from_requisition_failed", nil)
@@ -164,9 +194,6 @@ func CreatePaymentVoucherFromPO(c *fiber.Ctx) error {
 	if req.PurchaseOrderID == "" {
 		return utils.SendBadRequestError(c, "purchaseOrderId is required")
 	}
-	if req.VendorID == "" {
-		return utils.SendBadRequestError(c, "vendorId is required")
-	}
 	if req.TotalAmount <= 0 {
 		return utils.SendBadRequestError(c, "totalAmount must be greater than 0")
 	}
@@ -174,16 +201,20 @@ func CreatePaymentVoucherFromPO(c *fiber.Ctx) error {
 		req.Currency = "ZMW"
 	}
 
-	// Verify the PO exists and belongs to this org
+	// Load the PO with Vendor preload (needed for audit trail comparison)
 	var po models.PurchaseOrder
-	if err := config.DB.Where("id = ? AND organization_id = ?", req.PurchaseOrderID, tenant.OrganizationID).First(&po).Error; err != nil {
+	if err := config.DB.Preload("Vendor").Where("id = ? AND organization_id = ?", req.PurchaseOrderID, tenant.OrganizationID).First(&po).Error; err != nil {
 		return utils.SendBadRequestError(c, "Purchase order not found")
 	}
 
-	// Verify vendor belongs to this org
-	var vendor models.Vendor
-	if err := config.DB.Where("id = ? AND organization_id = ?", req.VendorID, tenant.OrganizationID).First(&vendor).Error; err != nil {
-		return utils.SendBadRequestError(c, "Vendor not found")
+	// Verify vendor belongs to this org if provided
+	var vendorIDPtr *string
+	if req.VendorID != "" {
+		var vendor models.Vendor
+		if err := config.DB.Where("id = ? AND organization_id = ?", req.VendorID, tenant.OrganizationID).First(&vendor).Error; err != nil {
+			return utils.SendBadRequestError(c, "Vendor not found")
+		}
+		vendorIDPtr = &req.VendorID
 	}
 
 	documentNumber := utils.GenerateDocumentNumber("PV")
@@ -193,7 +224,7 @@ func CreatePaymentVoucherFromPO(c *fiber.Ctx) error {
 		ID:             uuid.New().String(),
 		OrganizationID: tenant.OrganizationID,
 		DocumentNumber: documentNumber,
-		VendorID:       req.VendorID,
+		VendorID:       vendorIDPtr,
 		InvoiceNumber:  invoiceRef,
 		Status:         "draft",
 		Amount:         req.TotalAmount,
@@ -216,7 +247,32 @@ func CreatePaymentVoucherFromPO(c *fiber.Ctx) error {
 		voucher.Items = datatypes.NewJSONType(req.Items)
 	}
 	voucher.ApprovalHistory = datatypes.NewJSONType([]types.ApprovalRecord{})
-	voucher.ActionHistory = datatypes.NewJSONType([]types.ActionHistoryEntry{})
+
+	// Build initial action history — log vendor change if different from PO's vendor
+	var pvInitialHistory []types.ActionHistoryEntry
+	poVendorID := ""
+	if po.VendorID != nil {
+		poVendorID = *po.VendorID
+	}
+	if req.VendorID != poVendorID && poVendorID != "" {
+		oldVendorName := ""
+		if po.Vendor != nil {
+			oldVendorName = po.Vendor.Name
+		}
+		pvInitialHistory = append(pvInitialHistory, types.ActionHistoryEntry{
+			ID:          uuid.New().String(),
+			Action:      "VENDOR_CHANGED",
+			PerformedBy: tenant.UserID,
+			Timestamp:   time.Now(),
+			ChangedFields: map[string]interface{}{
+				"vendor": map[string]interface{}{
+					"from": oldVendorName,
+					"to":   req.VendorName,
+				},
+			},
+		})
+	}
+	voucher.ActionHistory = datatypes.NewJSONType(pvInitialHistory)
 
 	if err := config.DB.Create(&voucher).Error; err != nil {
 		logging.LogError(c, err, "create_pv_from_po_failed", nil)

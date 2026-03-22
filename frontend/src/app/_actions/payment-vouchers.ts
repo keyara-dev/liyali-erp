@@ -29,6 +29,8 @@ import authenticatedApiClient from "./api-config";
 export async function createPaymentVoucherFromPurchaseOrder(
   po: PurchaseOrder,
   workflowId?: string,
+  vendorIdOverride?: string,
+  vendorNameOverride?: string,
 ): Promise<APIResponse<PaymentVoucher>> {
   const url = `/api/v1/payment-vouchers/from-po`;
 
@@ -41,8 +43,8 @@ export async function createPaymentVoucherFromPurchaseOrder(
         purchaseOrderDocumentNumber: po.documentNumber,
         title: `Payment for ${po.documentNumber}`,
         description: po.description,
-        vendorId: po.vendorId,
-        vendorName: po.vendorName,
+        vendorId: vendorIdOverride ?? po.vendorId,
+        vendorName: vendorIdOverride !== undefined ? vendorNameOverride : po.vendorName,
         department: po.department,
         departmentId: po.departmentId,
         requestedBy: po.requestedBy,

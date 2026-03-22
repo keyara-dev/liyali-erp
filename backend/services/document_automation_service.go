@@ -71,23 +71,24 @@ func (s *DocumentAutomationService) CreatePurchaseOrderFromRequisition(
 	}
 
 	// Handle vendor - create PO with or without vendor
-	var vendorID string
+	var vendorID *string
 	var vendorName string = "To Be Determined"
 
+	placeholder := "vendor-placeholder-001"
 	if requisition.PreferredVendorID != nil && *requisition.PreferredVendorID != "" {
 		// Verify vendor exists if provided
 		var vendor models.Vendor
 		if err := s.db.Where("id = ?", *requisition.PreferredVendorID).First(&vendor).Error; err != nil {
 			// If vendor not found, use placeholder vendor
-			vendorID = "vendor-placeholder-001"
+			vendorID = &placeholder
 			vendorName = "To Be Determined (Invalid Vendor)"
 		} else {
-			vendorID = vendor.ID
+			vendorID = &vendor.ID
 			vendorName = vendor.Name
 		}
 	} else {
 		// No vendor specified - use placeholder vendor
-		vendorID = "vendor-placeholder-001"
+		vendorID = &placeholder
 		vendorName = "To Be Determined"
 	}
 

@@ -11,18 +11,27 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { PurchaseOrder } from "@/types/purchase-order";
 import { FileText, CheckCircle2, AlertCircle } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { WorkflowSelector } from "@/components/workflows/workflow-selector";
 import { useConfigurationStatus } from "@/hooks/use-configuration-status";
 import { ConfigurationChecklistBanner } from "@/components/ui/configuration-checklist-banner";
+import { useVendors } from "@/hooks/use-vendor-queries";
 
 interface CreatePVFromPODialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   purchaseOrder: PurchaseOrder;
-  onConfirm: (workflowId: string) => Promise<void>;
+  onConfirm: (workflowId: string, vendorId?: string, vendorName?: string) => Promise<void>;
   isCreating: boolean;
 }
 
@@ -35,6 +44,14 @@ export function CreatePVFromPODialog({
 }: CreatePVFromPODialogProps) {
   const [workflowId, setWorkflowId] = useState("");
   const [workflowError, setWorkflowError] = useState<string | null>(null);
+  const [selectedVendorId, setSelectedVendorId] = useState(
+    purchaseOrder.vendorId ?? ""
+  );
+  const [selectedVendorName, setSelectedVendorName] = useState(
+    purchaseOrder.vendorName ?? ""
+  );
+
+  const { data: vendors = [] } = useVendors();
 
   // Check configuration status
   const configStatus = useConfigurationStatus({
@@ -57,15 +74,33 @@ export function CreatePVFromPODialog({
     if (!canCreate) return;
 
     setWorkflowError(null);
-    await onConfirm(workflowId);
+    await onConfirm(
+      workflowId,
+      selectedVendorId || undefined,
+      selectedVendorName || undefined,
+    );
     setWorkflowId("");
+    setSelectedVendorId(purchaseOrder.vendorId ?? "");
+    setSelectedVendorName(purchaseOrder.vendorName ?? "");
   };
 
   const handleClose = () => {
     if (!isCreating) {
       setWorkflowId("");
       setWorkflowError(null);
+      setSelectedVendorId(purchaseOrder.vendorId ?? "");
+      setSelectedVendorName(purchaseOrder.vendorName ?? "");
       onOpenChange(false);
+    }
+  };
+
+  const handleVendorChange = (value: string) => {
+    setSelectedVendorId(value);
+    if (value === "") {
+      setSelectedVendorName("");
+    } else {
+      const vendor = vendors.find((v) => v.id === value);
+      setSelectedVendorName(vendor?.name ?? "");
     }
   };
 
@@ -107,6 +142,30 @@ export function CreatePVFromPODialog({
             showDetails={true}
           />
 
+          {/* Vendor Selector (optional) */}
+          <div className="space-y-1.5">
+            <Label htmlFor="vendor-select">Vendor</Label>
+            <Select
+              value={selectedVendorId}
+              onValueChange={handleVendorChange}
+              disabled={isCreating}
+            >
+              <SelectTrigger id="vendor-select">
+                <SelectValue placeholder="No vendor (optional)" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">No vendor</SelectItem>
+                {vendors
+                  .filter((v) => v.active)
+                  .map((v) => (
+                    <SelectItem key={v.id} value={v.id}>
+                      {v.name}
+                    </SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
+          </div>
+
           <Separator />
 
           {/* Purchase Order Summary */}
@@ -124,10 +183,12 @@ export function CreatePVFromPODialog({
                 {purchaseOrder.documentNumber}
               </span>
             </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm font-medium">Vendor:</span>
-              <span className="text-sm">{purchaseOrder.vendorName}</span>
-            </div>
+            {purchaseOrder.vendorName && (
+              <div className="flex justify-between items-center">
+                <span className="text-sm font-medium">PO Vendor:</span>
+                <span className="text-sm">{purchaseOrder.vendorName}</span>
+              </div>
+            )}
             <div className="flex justify-between items-center">
               <span className="text-sm font-medium">Department:</span>
               <span className="text-sm">{purchaseOrder.department}</span>

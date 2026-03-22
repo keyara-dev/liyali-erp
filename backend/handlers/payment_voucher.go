@@ -133,12 +133,6 @@ func CreatePaymentVoucher(c *fiber.Ctx) error {
 		})
 	}
 
-	if req.VendorID == "" {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"success": false,
-			"message": "Vendor ID is required",
-		})
-	}
 	if req.InvoiceNumber == "" {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"success": false,
@@ -158,13 +152,17 @@ func CreatePaymentVoucher(c *fiber.Ctx) error {
 		})
 	}
 
-	// Verify vendor exists and belongs to organization - SECURITY FIX
-	var vendor models.Vendor
-	if err := config.DB.Where("id = ? AND organization_id = ?", req.VendorID, tenant.OrganizationID).First(&vendor).Error; err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"success": false,
-			"message": "Vendor not found",
-		})
+	// Verify vendor exists if provided
+	var vendorIDPtr *string
+	if req.VendorID != "" {
+		var vendor models.Vendor
+		if err := config.DB.Where("id = ? AND organization_id = ?", req.VendorID, tenant.OrganizationID).First(&vendor).Error; err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"success": false,
+				"message": "Vendor not found",
+			})
+		}
+		vendorIDPtr = &req.VendorID
 	}
 
 	// Generate voucher number
@@ -174,7 +172,7 @@ func CreatePaymentVoucher(c *fiber.Ctx) error {
 		ID:             uuid.New().String(),
 		OrganizationID: tenant.OrganizationID, // SECURITY FIX: Set organization ID
 		DocumentNumber: documentNumber,
-		VendorID:       req.VendorID,
+		VendorID:       vendorIDPtr,
 		InvoiceNumber:  req.InvoiceNumber,
 		Status:         "draft",
 		Amount:         req.Amount,
@@ -301,7 +299,7 @@ func UpdatePaymentVoucher(c *fiber.Ctx) error {
 	}
 
 	if req.VendorID != "" {
-		voucher.VendorID = req.VendorID
+		voucher.VendorID = &req.VendorID
 	}
 	if req.InvoiceNumber != "" {
 		voucher.InvoiceNumber = req.InvoiceNumber
@@ -399,15 +397,21 @@ func modelToPaymentVoucherResponse(voucher models.PaymentVoucher) types.PaymentV
 		approvalHistory = voucher.ApprovalHistory.Data()
 	}
 
+	vendorID := ""
+	if voucher.VendorID != nil {
+		vendorID = *voucher.VendorID
+	}
 	vendorName := ""
 	if voucher.Vendor != nil {
 		vendorName = voucher.Vendor.Name
 	}
 
+	actionHistory := voucher.ActionHistory.Data()
+
 	return types.PaymentVoucherResponse{
 		ID:              voucher.ID,
 		DocumentNumber:  voucher.DocumentNumber,
-		VendorID:        voucher.VendorID,
+		VendorID:        vendorID,
 		VendorName:      vendorName,
 		InvoiceNumber:   voucher.InvoiceNumber,
 		Status:          voucher.Status,
@@ -418,6 +422,7 @@ func modelToPaymentVoucherResponse(voucher models.PaymentVoucher) types.PaymentV
 		Description:     voucher.Description,
 		ApprovalStage:   voucher.ApprovalStage,
 		ApprovalHistory: approvalHistory,
+		ActionHistory:   actionHistory,
 		LinkedPO:        voucher.LinkedPO,
 		CreatedAt:       voucher.CreatedAt,
 		UpdatedAt:       voucher.UpdatedAt,

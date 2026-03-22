@@ -194,7 +194,7 @@ func (fd FlexibleDate) MarshalJSON() ([]byte, error) {
 
 // CreatePurchaseOrderRequest represents a PO creation request
 type CreatePurchaseOrderRequest struct {
-	VendorID          string       `json:"vendorId" validate:"required"`
+	VendorID          string       `json:"vendorId"`
 	Items             []POItem     `json:"items" validate:"required,min=1"`
 	TotalAmount       float64      `json:"totalAmount" validate:"required,gt=0"`
 	Currency          string       `json:"currency" validate:"required"`
@@ -230,27 +230,28 @@ type POItem struct {
 
 // PurchaseOrderResponse represents a PO in responses
 type PurchaseOrderResponse struct {
-	ID                string           `json:"id"`
-	DocumentNumber    string           `json:"documentNumber"`
-	VendorID          string           `json:"vendorId"`
-	VendorName        string           `json:"vendorName"`
-	Status            string           `json:"status"`
-	Items             []POItem         `json:"items"`
-	TotalAmount       float64          `json:"totalAmount"`
-	Currency          string           `json:"currency"`
-	DeliveryDate      time.Time        `json:"deliveryDate"`
-	ApprovalStage     int              `json:"approvalStage"`
-	ApprovalHistory   []ApprovalRecord `json:"approvalHistory"`
-	LinkedRequisition string           `json:"linkedRequisition"`
-	CreatedAt         time.Time        `json:"createdAt"`
-	UpdatedAt         time.Time        `json:"updatedAt"`
+	ID                string               `json:"id"`
+	DocumentNumber    string               `json:"documentNumber"`
+	VendorID          string               `json:"vendorId"`
+	VendorName        string               `json:"vendorName"`
+	Status            string               `json:"status"`
+	Items             []POItem             `json:"items"`
+	TotalAmount       float64              `json:"totalAmount"`
+	Currency          string               `json:"currency"`
+	DeliveryDate      time.Time            `json:"deliveryDate"`
+	ApprovalStage     int                  `json:"approvalStage"`
+	ApprovalHistory   []ApprovalRecord     `json:"approvalHistory"`
+	ActionHistory     []ActionHistoryEntry `json:"actionHistory,omitempty"`
+	LinkedRequisition string               `json:"linkedRequisition"`
+	CreatedAt         time.Time            `json:"createdAt"`
+	UpdatedAt         time.Time            `json:"updatedAt"`
 }
 
 // ================== PAYMENT VOUCHER TYPES ==================
 
 // CreatePaymentVoucherRequest represents a payment voucher creation request
 type CreatePaymentVoucherRequest struct {
-	VendorID      string  `json:"vendorId" validate:"required"`
+	VendorID      string  `json:"vendorId"`
 	InvoiceNumber string  `json:"invoiceNumber" validate:"required"`
 	Amount        float64 `json:"amount" validate:"required,gt=0"`
 	Currency      string  `json:"currency" validate:"required"`
@@ -273,22 +274,23 @@ type UpdatePaymentVoucherRequest struct {
 
 // PaymentVoucherResponse represents a payment voucher in responses
 type PaymentVoucherResponse struct {
-	ID              string           `json:"id"`
-	DocumentNumber  string           `json:"documentNumber"`
-	VendorID        string           `json:"vendorId"`
-	VendorName      string           `json:"vendorName"`
-	InvoiceNumber   string           `json:"invoiceNumber"`
-	Status          string           `json:"status"`
-	Amount          float64          `json:"amount"`
-	Currency        string           `json:"currency"`
-	PaymentMethod   string           `json:"paymentMethod"`
-	GLCode          string           `json:"glCode"`
-	Description     string           `json:"description"`
-	ApprovalStage   int              `json:"approvalStage"`
-	ApprovalHistory []ApprovalRecord `json:"approvalHistory"`
-	LinkedPO        string           `json:"linkedPO"`
-	CreatedAt       time.Time        `json:"createdAt"`
-	UpdatedAt       time.Time        `json:"updatedAt"`
+	ID              string               `json:"id"`
+	DocumentNumber  string               `json:"documentNumber"`
+	VendorID        string               `json:"vendorId"`
+	VendorName      string               `json:"vendorName"`
+	InvoiceNumber   string               `json:"invoiceNumber"`
+	Status          string               `json:"status"`
+	Amount          float64              `json:"amount"`
+	Currency        string               `json:"currency"`
+	PaymentMethod   string               `json:"paymentMethod"`
+	GLCode          string               `json:"glCode"`
+	Description     string               `json:"description"`
+	ApprovalStage   int                  `json:"approvalStage"`
+	ApprovalHistory []ApprovalRecord     `json:"approvalHistory"`
+	ActionHistory   []ActionHistoryEntry `json:"actionHistory,omitempty"`
+	LinkedPO        string               `json:"linkedPO"`
+	CreatedAt       time.Time            `json:"createdAt"`
+	UpdatedAt       time.Time            `json:"updatedAt"`
 }
 
 // ================== GRN TYPES ==================
