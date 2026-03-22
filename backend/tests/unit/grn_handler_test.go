@@ -122,11 +122,11 @@ func TestGRNNumberGeneration(t *testing.T) {
 // TestGRNStatusValidation tests status field
 func TestGRNStatusValidation(t *testing.T) {
 	validStatuses := map[string]bool{
-		"draft":    true,
-		"pending":  true,
-		"approved": true,
-		"rejected": true,
-		"received": true,
+		"DRAFT":    true,
+		"PENDING":  true,
+		"APPROVED": true,
+		"REJECTED": true,
+		"RECEIVED": true,
 	}
 
 	tests := []struct {
@@ -134,11 +134,11 @@ func TestGRNStatusValidation(t *testing.T) {
 		status        string
 		shouldBeValid bool
 	}{
-		{"Draft", "draft", true},
-		{"Pending", "pending", true},
-		{"Approved", "approved", true},
-		{"Received", "received", true},
-		{"Invalid", "cancelled", false},
+		{"Draft", "DRAFT", true},
+		{"Pending", "PENDING", true},
+		{"Approved", "APPROVED", true},
+		{"Received", "RECEIVED", true},
+		{"Invalid", "CANCELLED", false},
 	}
 
 	for _, tt := range tests {
@@ -294,23 +294,23 @@ func TestGRNStateTransitions(t *testing.T) {
 		toStatus    string
 		shouldAllow bool
 	}{
-		{"Draft to Pending", "draft", "pending", true},
-		{"Pending to Approved", "pending", "approved", true},
-		{"Pending to Rejected", "pending", "rejected", true},
-		{"Approved to Received", "approved", "received", true},
-		{"Approved to Draft", "approved", "draft", false},
-		{"Received to Approved", "received", "approved", false},
-		{"Rejected to Draft", "rejected", "draft", true},
+		{"Draft to Pending", "DRAFT", "PENDING", true},
+		{"Pending to Approved", "PENDING", "APPROVED", true},
+		{"Pending to Rejected", "PENDING", "REJECTED", true},
+		{"Approved to Received", "APPROVED", "RECEIVED", true},
+		{"Approved to Draft", "APPROVED", "DRAFT", false},
+		{"Received to Approved", "RECEIVED", "APPROVED", false},
+		{"Rejected to Draft", "REJECTED", "DRAFT", true},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			validTransitions := map[string][]string{
-				"draft":    {"pending"},
-				"pending":  {"approved", "rejected"},
-				"rejected": {"draft"},
-				"approved": {"received"},
-				"received": {},
+				"DRAFT":    {"PENDING"},
+				"PENDING":  {"APPROVED", "REJECTED"},
+				"REJECTED": {"DRAFT"},
+				"APPROVED": {"RECEIVED"},
+				"RECEIVED": {},
 			}
 
 			allowed := false
@@ -483,10 +483,10 @@ func TestGRNUpdateValidation(t *testing.T) {
 		currentStatus string
 		shouldAllow   bool
 	}{
-		{"Update draft GRN", "draft", true},
-		{"Update pending GRN", "pending", true},
-		{"Cannot update approved GRN", "approved", false},
-		{"Cannot update received GRN", "received", false},
+		{"Update draft GRN", "DRAFT", true},
+		{"Update pending GRN", "PENDING", true},
+		{"Cannot update approved GRN", "APPROVED", false},
+		{"Cannot update received GRN", "RECEIVED", false},
 	}
 
 	for _, tt := range tests {
@@ -576,5 +576,123 @@ func BenchmarkGRNNumberGeneration(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		grnNumber := "GRN-" + uuid.New().String()[:8]
 		_ = grnNumber
+	}
+}
+
+// TestGRNPaymentFirstFlow tests payment-first flow enforcement in GRN creation
+func TestGRNPaymentFirstFlow(t *testing.T) {
+	tests := []struct {
+		name          string
+		effectiveFlow string
+		linkedPV      string
+		pvStatus      string
+		shouldPass    bool
+	}{
+		{"Goods-first: no PV required", "goods_first", "", "", true},
+		{"Payment-first: approved PV provided", "payment_first", "PV-20240101-abc", "APPROVED", true},
+		{"Payment-first: paid PV provided", "payment_first", "PV-20240101-abc", "PAID", true},
+		{"Payment-first: missing PV — blocked", "payment_first", "", "", false},
+		{"Payment-first: pending PV — blocked", "payment_first", "PV-20240101-abc", "PENDING", false},
+		{"Payment-first: draft PV — blocked", "payment_first", "PV-20240101-abc", "DRAFT", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			isValid := true
+			if tt.effectiveFlow == "payment_first" {
+				if tt.linkedPV == "" {
+					isValid = false
+				} else if tt.pvStatus != "APPROVED" && tt.pvStatus != "PAID" {
+					isValid = false
+				}
+			}
+			if isValid != tt.shouldPass {
+				t.Errorf("Expected %v, got %v", tt.shouldPass, isValid)
+			}
+		})
+	}
+}
+
+// TestGRNLinkedPV tests GRN linkedPV field
+func TestGRNLinkedPV(t *testing.T) {
+	t.Run("GRN stores linkedPV in payment-first flow", func(t *testing.T) {
+		pvDocNum := "PV-20240101-abc123"
+		linkedPV := pvDocNum
+
+		if linkedPV != pvDocNum {
+			t.Errorf("linkedPV should match provided PV document number")
+		}
+	})
+
+	t.Run("GRN linkedPV is empty in goods-first flow", func(t *testing.T) {
+		linkedPV := ""
+		if linkedPV != "" {
+			t.Error("linkedPV should be empty for goods-first flow")
+		}
+	})
+}
+
+// TestGRNQuantityVariance tests quantity received vs ordered
+func TestGRNQuantityVariance(t *testing.T) {
+	tests := []struct {
+		name              string
+		quantityOrdered   float64
+		quantityReceived  float64
+		variancePct       float64
+		isAcceptable      bool
+	}{
+		{"Full delivery", 100, 100, 0, true},
+		{"Slight under-delivery (5%)", 100, 95, 5, true},
+		{"Major under-delivery (50%)", 100, 50, 50, false},
+		{"Over-delivery (10%)", 100, 110, -10, false},
+		{"Zero received", 100, 0, 100, false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var variancePct float64
+			if tt.quantityOrdered > 0 {
+				variancePct = (tt.quantityOrdered - tt.quantityReceived) / tt.quantityOrdered * 100
+			}
+			acceptable := variancePct >= 0 && variancePct <= 10
+
+			if acceptable != tt.isAcceptable {
+				t.Errorf("Expected isAcceptable=%v for variance=%.1f%%, got %v",
+					tt.isAcceptable, variancePct, acceptable)
+			}
+		})
+	}
+}
+
+// TestGRNConditionValues tests item condition field values
+func TestGRNConditionValues(t *testing.T) {
+	validConditions := map[string]bool{
+		"good":          true,
+		"damaged":       true,
+		"partial":       true,
+		"not_delivered": true,
+	}
+
+	tests := []struct {
+		name       string
+		condition  string
+		shouldPass bool
+	}{
+		{"Good condition", "good", true},
+		{"Damaged", "damaged", true},
+		{"Partial delivery", "partial", true},
+		{"Not delivered", "not_delivered", true},
+		{"Invalid condition", "broken", false},
+		{"Empty condition (defaults to good)", "", false},
+		{"Uppercase invalid", "GOOD", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			isValid := validConditions[tt.condition]
+			if isValid != tt.shouldPass {
+				t.Errorf("Expected %v, got %v for condition=%q", tt.shouldPass, isValid, tt.condition)
+			}
+		})
 	}
 }

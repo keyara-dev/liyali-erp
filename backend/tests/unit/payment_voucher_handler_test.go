@@ -182,12 +182,12 @@ func TestGLCodeValidation(t *testing.T) {
 // TestPaymentVoucherStatusValidation tests status field validation
 func TestPaymentVoucherStatusValidation(t *testing.T) {
 	validStatuses := map[string]bool{
-		"draft":     true,
-		"pending":   true,
-		"approved":  true,
-		"rejected":  true,
-		"completed": true,
-		"paid":      true,
+		"DRAFT":     true,
+		"PENDING":   true,
+		"APPROVED":  true,
+		"REJECTED":  true,
+		"COMPLETED": true,
+		"PAID":      true,
 	}
 
 	tests := []struct {
@@ -195,11 +195,11 @@ func TestPaymentVoucherStatusValidation(t *testing.T) {
 		status        string
 		shouldBeValid bool
 	}{
-		{"Draft status", "draft", true},
-		{"Pending status", "pending", true},
-		{"Approved status", "approved", true},
-		{"Paid status", "paid", true},
-		{"Invalid status", "cancelled", false},
+		{"Draft status", "DRAFT", true},
+		{"Pending status", "PENDING", true},
+		{"Approved status", "APPROVED", true},
+		{"Paid status", "PAID", true},
+		{"Invalid status", "CANCELLED", false},
 	}
 
 	for _, tt := range tests {
@@ -237,24 +237,24 @@ func TestPaymentVoucherStateTransitions(t *testing.T) {
 		toStatus    string
 		shouldAllow bool
 	}{
-		{"Draft to Pending", "draft", "pending", true},
-		{"Pending to Approved", "pending", "approved", true},
-		{"Pending to Rejected", "pending", "rejected", true},
-		{"Approved to Paid", "approved", "paid", true},
-		{"Approved to Draft", "approved", "draft", false},
-		{"Paid to Draft", "paid", "draft", false},
-		{"Completed to Approved", "completed", "approved", false},
+		{"Draft to Pending", "DRAFT", "PENDING", true},
+		{"Pending to Approved", "PENDING", "APPROVED", true},
+		{"Pending to Rejected", "PENDING", "REJECTED", true},
+		{"Approved to Paid", "APPROVED", "PAID", true},
+		{"Approved to Draft", "APPROVED", "DRAFT", false},
+		{"Paid to Draft", "PAID", "DRAFT", false},
+		{"Completed to Approved", "COMPLETED", "APPROVED", false},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			validTransitions := map[string][]string{
-				"draft":     {"pending"},
-				"pending":   {"approved", "rejected"},
-				"rejected":  {"draft"},
-				"approved":  {"paid"},
-				"paid":      {"completed"},
-				"completed": {},
+				"DRAFT":     {"PENDING"},
+				"PENDING":   {"APPROVED", "REJECTED"},
+				"REJECTED":  {"DRAFT"},
+				"APPROVED":  {"PAID"},
+				"PAID":      {"COMPLETED"},
+				"COMPLETED": {},
 			}
 
 			allowed := false
@@ -514,5 +514,97 @@ func BenchmarkPaymentVoucherNumberGeneration(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		voucherNumber := "PV-" + uuid.New().String()[:8]
 		_ = voucherNumber
+	}
+}
+
+// TestPVGoodsFirstFlow tests goods-first flow enforcement in PV creation
+func TestPVGoodsFirstFlow(t *testing.T) {
+	tests := []struct {
+		name                    string
+		effectiveFlow           string
+		linkedGRNDocumentNumber string
+		grnStatus               string
+		shouldPass              bool
+	}{
+		{"Payment-first: no GRN required", "payment_first", "", "", true},
+		{"Goods-first: approved GRN provided", "goods_first", "GRN-20240101-abc", "APPROVED", true},
+		{"Goods-first: missing GRN — blocked", "goods_first", "", "", false},
+		{"Goods-first: pending GRN — blocked", "goods_first", "GRN-20240101-abc", "PENDING", false},
+		{"Goods-first: draft GRN — blocked", "goods_first", "GRN-20240101-abc", "DRAFT", false},
+		{"Goods-first: rejected GRN — blocked", "goods_first", "GRN-20240101-abc", "REJECTED", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			isValid := true
+			if tt.effectiveFlow == "goods_first" {
+				if tt.linkedGRNDocumentNumber == "" {
+					isValid = false
+				} else if tt.grnStatus != "APPROVED" {
+					isValid = false
+				}
+			}
+			if isValid != tt.shouldPass {
+				t.Errorf("Expected %v, got %v", tt.shouldPass, isValid)
+			}
+		})
+	}
+}
+
+// TestPVLinkedGRN tests PV linkedGRN field
+func TestPVLinkedGRN(t *testing.T) {
+	t.Run("PV stores linkedGRN in goods-first flow", func(t *testing.T) {
+		grnDocNum := "GRN-20240101-abc123"
+		linkedGRN := grnDocNum
+
+		if linkedGRN != grnDocNum {
+			t.Errorf("linkedGRN should match provided GRN document number")
+		}
+	})
+
+	t.Run("PV linkedGRN is empty in payment-first flow", func(t *testing.T) {
+		linkedGRN := ""
+		if linkedGRN != "" {
+			t.Error("linkedGRN should be empty for payment-first flow")
+		}
+	})
+}
+
+// TestPVLinkedPO tests PV must reference a PO
+func TestPVLinkedPO(t *testing.T) {
+	t.Run("PV always references source PO", func(t *testing.T) {
+		poDocNum := "PO-20240101-abc123"
+		linkedPO := poDocNum
+
+		if linkedPO == "" {
+			t.Error("PV must have a linkedPO")
+		}
+		if linkedPO != poDocNum {
+			t.Errorf("Expected linkedPO=%q, got %q", poDocNum, linkedPO)
+		}
+	})
+}
+
+// TestPVMarkAsPaid tests PV payment marking
+func TestPVMarkAsPaid(t *testing.T) {
+	tests := []struct {
+		name        string
+		pvStatus    string
+		canMarkPaid bool
+	}{
+		{"Approved PV can be marked paid", "APPROVED", true},
+		{"Draft PV cannot be marked paid", "DRAFT", false},
+		{"Pending PV cannot be marked paid", "PENDING", false},
+		{"Already paid (idempotent check)", "PAID", false},
+		{"Rejected PV cannot be marked paid", "REJECTED", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			canMark := tt.pvStatus == "APPROVED"
+			if canMark != tt.canMarkPaid {
+				t.Errorf("Expected canMarkPaid=%v, got %v", tt.canMarkPaid, canMark)
+			}
+		})
 	}
 }

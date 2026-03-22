@@ -113,12 +113,12 @@ func TestPONumberGeneration(t *testing.T) {
 // TestPOStatusValidation tests PO status field
 func TestPOStatusValidation(t *testing.T) {
 	validStatuses := map[string]bool{
-		"draft":     true,
-		"pending":   true,
-		"approved":  true,
-		"rejected":  true,
-		"fulfilled": true,
-		"completed": true,
+		"DRAFT":     true,
+		"PENDING":   true,
+		"APPROVED":  true,
+		"REJECTED":  true,
+		"FULFILLED": true,
+		"COMPLETED": true,
 	}
 
 	tests := []struct {
@@ -126,11 +126,11 @@ func TestPOStatusValidation(t *testing.T) {
 		status        string
 		shouldBeValid bool
 	}{
-		{"Draft", "draft", true},
-		{"Pending", "pending", true},
-		{"Approved", "approved", true},
-		{"Fulfilled", "fulfilled", true},
-		{"Invalid", "cancelled", false},
+		{"Draft", "DRAFT", true},
+		{"Pending", "PENDING", true},
+		{"Approved", "APPROVED", true},
+		{"Fulfilled", "FULFILLED", true},
+		{"Invalid", "CANCELLED", false},
 	}
 
 	for _, tt := range tests {
@@ -195,24 +195,24 @@ func TestPOStateTransitions(t *testing.T) {
 		toStatus    string
 		shouldAllow bool
 	}{
-		{"Draft to Pending", "draft", "pending", true},
-		{"Pending to Approved", "pending", "approved", true},
-		{"Pending to Rejected", "pending", "rejected", true},
-		{"Approved to Fulfilled", "approved", "fulfilled", true},
-		{"Fulfilled to Completed", "fulfilled", "completed", true},
-		{"Approved to Draft", "approved", "draft", false},
-		{"Completed to Fulfilled", "completed", "fulfilled", false},
+		{"Draft to Pending", "DRAFT", "PENDING", true},
+		{"Pending to Approved", "PENDING", "APPROVED", true},
+		{"Pending to Rejected", "PENDING", "REJECTED", true},
+		{"Approved to Fulfilled", "APPROVED", "FULFILLED", true},
+		{"Fulfilled to Completed", "FULFILLED", "COMPLETED", true},
+		{"Approved to Draft", "APPROVED", "DRAFT", false},
+		{"Completed to Fulfilled", "COMPLETED", "FULFILLED", false},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			validTransitions := map[string][]string{
-				"draft":     {"pending"},
-				"pending":   {"approved", "rejected"},
-				"rejected":  {"draft"},
-				"approved":  {"fulfilled"},
-				"fulfilled": {"completed"},
-				"completed": {},
+				"DRAFT":     {"PENDING"},
+				"PENDING":   {"APPROVED", "REJECTED"},
+				"REJECTED":  {"DRAFT"},
+				"APPROVED":  {"FULFILLED"},
+				"FULFILLED": {"COMPLETED"},
+				"COMPLETED": {},
 			}
 
 			allowed := false
@@ -387,5 +387,61 @@ func BenchmarkPOValidation(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_ = req.VendorID != "" && req.TotalAmount > 0
+	}
+}
+
+// TestPOProcurementFlow tests per-PO procurement flow override
+func TestPOProcurementFlow(t *testing.T) {
+	tests := []struct {
+		name            string
+		procurementFlow string
+		shouldPass      bool
+	}{
+		{"Empty string (inherit from org)", "", true},
+		{"Goods-first explicit override", "goods_first", true},
+		{"Payment-first explicit override", "payment_first", true},
+		{"Invalid flow value", "express", false},
+		{"Uppercase invalid", "GOODS_FIRST", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			isValid := tt.procurementFlow == "" ||
+				tt.procurementFlow == "goods_first" ||
+				tt.procurementFlow == "payment_first"
+			if isValid != tt.shouldPass {
+				t.Errorf("Expected %v, got %v for flow=%q", tt.shouldPass, isValid, tt.procurementFlow)
+			}
+		})
+	}
+}
+
+// TestPOFlowResolution tests effective flow resolution priority
+func TestPOFlowResolution(t *testing.T) {
+	tests := []struct {
+		name         string
+		poFlow       string
+		orgFlow      string
+		expectedFlow string
+	}{
+		{"PO override beats org setting", "payment_first", "goods_first", "payment_first"},
+		{"Empty PO inherits org setting", "", "payment_first", "payment_first"},
+		{"Both empty defaults to goods_first", "", "", "goods_first"},
+		{"PO goods_first beats org payment_first", "goods_first", "payment_first", "goods_first"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			effective := tt.poFlow
+			if effective == "" {
+				effective = tt.orgFlow
+				if effective == "" {
+					effective = "goods_first"
+				}
+			}
+			if effective != tt.expectedFlow {
+				t.Errorf("Expected %q, got %q", tt.expectedFlow, effective)
+			}
+		})
 	}
 }

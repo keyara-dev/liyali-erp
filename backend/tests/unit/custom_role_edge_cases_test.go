@@ -17,7 +17,7 @@ func TestCustomRoleEdgeCases(t *testing.T) {
 		// Create mock organization role
 		mockRole := &models.OrganizationRole{
 			ID:             uuid.New(),
-			OrganizationID: builder.GetOrganizationID(),
+			OrganizationID: helpers.StringPtr(builder.GetOrganizationID()),
 			Name:           "Custom Approver",
 			Description:    "Custom approval role",
 			IsSystemRole:   false,
@@ -35,7 +35,7 @@ func TestCustomRoleEdgeCases(t *testing.T) {
 		// Create mock deactivated role
 		mockRole := &models.OrganizationRole{
 			ID:             uuid.New(),
-			OrganizationID: builder.GetOrganizationID(),
+			OrganizationID: helpers.StringPtr(builder.GetOrganizationID()),
 			Name:           "Deactivated Role",
 			Description:    "This role is deactivated",
 			IsSystemRole:   false,
@@ -50,7 +50,7 @@ func TestCustomRoleEdgeCases(t *testing.T) {
 		// Create mock role with special characters
 		mockRole := &models.OrganizationRole{
 			ID:             uuid.New(),
-			OrganizationID: builder.GetOrganizationID(),
+			OrganizationID: helpers.StringPtr(builder.GetOrganizationID()),
 			Name:           "Role-With_Special.Chars",
 			Description:    "Role with special characters in name",
 			IsSystemRole:   false,
@@ -105,7 +105,7 @@ func TestCustomRoleEdgeCases(t *testing.T) {
 		// Create mock role with permissions
 		mockRole := &models.OrganizationRole{
 			ID:             uuid.New(),
-			OrganizationID: builder.GetOrganizationID(),
+			OrganizationID: helpers.StringPtr(builder.GetOrganizationID()),
 			Name:           "Approver Role",
 			Description:    "Role with approval permissions",
 			IsSystemRole:   false,
@@ -124,7 +124,7 @@ func TestCustomRoleEdgeCases(t *testing.T) {
 		// Create mock role
 		mockRole := &models.OrganizationRole{
 			ID:             uuid.New(),
-			OrganizationID: builder.GetOrganizationID(),
+			OrganizationID: helpers.StringPtr(builder.GetOrganizationID()),
 			Name:           "Custom Approver",
 			IsSystemRole:   false,
 			Active:         true,
@@ -149,7 +149,7 @@ func TestCustomRoleEdgeCases(t *testing.T) {
 		// Create mock parent role
 		parentRole := &models.OrganizationRole{
 			ID:             uuid.New(),
-			OrganizationID: builder.GetOrganizationID(),
+			OrganizationID: helpers.StringPtr(builder.GetOrganizationID()),
 			Name:           "Parent Role",
 			IsSystemRole:   false,
 			Active:         true,
@@ -158,7 +158,7 @@ func TestCustomRoleEdgeCases(t *testing.T) {
 		// Create mock child role
 		childRole := &models.OrganizationRole{
 			ID:             uuid.New(),
-			OrganizationID: builder.GetOrganizationID(),
+			OrganizationID: helpers.StringPtr(builder.GetOrganizationID()),
 			Name:           "Child Role",
 			IsSystemRole:   false,
 			Active:         true,
@@ -174,7 +174,7 @@ func TestCustomRoleEdgeCases(t *testing.T) {
 		// Create mock role with no permissions
 		mockRole := &models.OrganizationRole{
 			ID:             uuid.New(),
-			OrganizationID: builder.GetOrganizationID(),
+			OrganizationID: helpers.StringPtr(builder.GetOrganizationID()),
 			Name:           "Empty Role",
 			IsSystemRole:   false,
 			Active:         true,

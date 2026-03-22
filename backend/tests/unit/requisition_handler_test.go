@@ -150,10 +150,10 @@ func TestCreateRequisitionValidation(t *testing.T) {
 // TestRequisitionStatusValidation tests status field validation
 func TestRequisitionStatusValidation(t *testing.T) {
 	validStatuses := map[string]bool{
-		"draft":    true,
-		"pending":  true,
-		"approved": true,
-		"rejected": true,
+		"DRAFT":    true,
+		"PENDING":  true,
+		"APPROVED": true,
+		"REJECTED": true,
 	}
 
 	tests := []struct {
@@ -161,11 +161,11 @@ func TestRequisitionStatusValidation(t *testing.T) {
 		status        string
 		shouldBeValid bool
 	}{
-		{"Draft status", "draft", true},
-		{"Pending status", "pending", true},
-		{"Approved status", "approved", true},
-		{"Rejected status", "rejected", true},
-		{"Invalid status", "completed", false},
+		{"Draft status", "DRAFT", true},
+		{"Pending status", "PENDING", true},
+		{"Approved status", "APPROVED", true},
+		{"Rejected status", "REJECTED", true},
+		{"Invalid status", "COMPLETED", false},
 		{"Empty status", "", false},
 		{"Unknown status", "archived", false},
 	}
@@ -387,23 +387,23 @@ func TestRequisitionStateTransitions(t *testing.T) {
 		toStatus    string
 		shouldAllow bool
 	}{
-		{"Draft to Pending", "draft", "pending", true},
-		{"Pending to Approved", "pending", "approved", true},
-		{"Pending to Rejected", "pending", "rejected", true},
-		{"Rejected to Draft", "rejected", "draft", true},
-		{"Approved to Draft", "approved", "draft", false},
-		{"Approved to Pending", "approved", "pending", false},
-		{"Approved to Rejected", "approved", "rejected", false},
+		{"Draft to Pending", "DRAFT", "PENDING", true},
+		{"Pending to Approved", "PENDING", "APPROVED", true},
+		{"Pending to Rejected", "PENDING", "REJECTED", true},
+		{"Rejected to Draft", "REJECTED", "DRAFT", true},
+		{"Approved to Draft", "APPROVED", "DRAFT", false},
+		{"Approved to Pending", "APPROVED", "PENDING", false},
+		{"Approved to Rejected", "APPROVED", "REJECTED", false},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Simulate state transition validation
 			validTransitions := map[string][]string{
-				"draft":    {"pending"},
-				"pending":  {"approved", "rejected"},
-				"rejected": {"draft"},
-				"approved": {},
+				"DRAFT":    {"PENDING"},
+				"PENDING":  {"APPROVED", "REJECTED"},
+				"REJECTED": {"DRAFT"},
+				"APPROVED": {},
 			}
 
 			allowedNextStates := validTransitions[tt.fromStatus]
