@@ -5,7 +5,6 @@ import { toast } from "sonner";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -31,6 +30,8 @@ import {
   X,
   Loader2,
   Paperclip,
+  ChevronRight,
+  ChevronLeft,
 } from "lucide-react";
 import {
   RequisitionItem,
@@ -119,6 +120,7 @@ export function CreateRequisitionDialog({
     attachments: [] as RequisitionAttachment[],
   });
   const [uploadingFile, setUploadingFile] = useState(false);
+  const [step, setStep] = useState<"details" | "items">("details");
 
   const resetForm = () => {
     setFormData({
@@ -141,6 +143,35 @@ export function CreateRequisitionDialog({
       attachments: [],
     });
     setUploadingFile(false);
+    setStep("details");
+  };
+
+  const validateDetails = (): boolean => {
+    if (!formData.title.trim()) {
+      toast.error("Please enter a title for the requisition");
+      return false;
+    }
+    if (!formData.department.trim()) {
+      toast.error("Please select a department");
+      return false;
+    }
+    if (!formData.requestedFor.trim()) {
+      toast.error("Please enter who this is requested for");
+      return false;
+    }
+    if (!formData.justification.trim()) {
+      toast.error("Please provide justification");
+      return false;
+    }
+    if (!formData.budgetCode.trim() || formData.budgetCode === "") {
+      toast.error("Please select a budget code");
+      return false;
+    }
+    if (formData.categoryId === "OTHER" && !formData.otherCategoryText.trim()) {
+      toast.error("Please specify the custom category name");
+      return false;
+    }
+    return true;
   };
 
   // Populate form when editing
@@ -412,14 +443,38 @@ export function CreateRequisitionDialog({
           <DialogTitle className="font-bold">
             {isEditing ? "Edit Requisition" : "Create New Requisition"}
           </DialogTitle>
-          <DialogDescription>
-            {isEditing
-              ? "Update the requisition details and items"
-              : "Fill in the requisition details and add items you need"}
-          </DialogDescription>
+
+          {/* Step indicator */}
+          <div className="flex items-center gap-1 pt-3">
+            <button
+              type="button"
+              onClick={() => setStep("details")}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                step === "details"
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <span className={`inline-flex items-center justify-center w-4 h-4 rounded-full text-[10px] font-bold ${step === "details" ? "bg-primary-foreground/20" : "bg-muted"}`}>1</span>
+              Details
+            </button>
+            <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50" />
+            <button
+              type="button"
+              onClick={() => { if (validateDetails()) setStep("items"); }}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                step === "items"
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <span className={`inline-flex items-center justify-center w-4 h-4 rounded-full text-[10px] font-bold ${step === "items" ? "bg-primary-foreground/20" : "bg-muted"}`}>2</span>
+              Items {formData.items.length > 0 && <span className="opacity-70">({formData.items.length})</span>}
+            </button>
+          </div>
         </DialogHeader>
 
-        <div className="space-y-6 p-4  ">
+        <div className="space-y-6 p-4">
           {/* Configuration Checklist Banner - Show if any required configs are missing */}
           {!configStatus.allConfigured && !configStatus.isLoading && (
             <ConfigurationChecklistBanner
@@ -440,9 +495,8 @@ export function CreateRequisitionDialog({
             </div>
           )}
 
-          {/* Form Content */}
-          {
-            <>
+          {/* ── Step 1: Details ── */}
+          {step === "details" && <>
               {/* Basic Information */}
               <div className="space-y-4">
                 <h3 className="font-semibold text-lg">Basic Information</h3>
@@ -734,7 +788,10 @@ export function CreateRequisitionDialog({
                   )}
                 </div>
               </div>
+          </>}
 
+          {/* ── Step 2: Items ── */}
+          {step === "items" && <>
               {/* Items Section */}
               <div className="space-y-3">
                 <h3 className="font-semibold text-base">Items</h3>
@@ -876,35 +933,54 @@ export function CreateRequisitionDialog({
                   </div>
                 </div>
               )}
-            </>
-          }
+          </>}
         </div>
 
         {/* Dialog Footer */}
-        <div
-          className="bg-card/5 backdrop-blur-xs sticky bottom-0 flex flex-col-reverse justify-end gap-3 p-4 rounded-b-lg border-t py-6 sm:flex-row sm:py-6"
-          // className="flex items-center justify-end gap-3 pt-6 border-t"
-        >
-          <Button
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-            disabled={createMutation.isPending || updateMutation.isPending}
-          >
-            Cancel
-          </Button>
-          <Button
-            onClick={handleSubmit}
-            isLoading={createMutation.isPending || updateMutation.isPending}
-            loadingText={isEditing ? "Updating..." : "Creating..."}
-            className="min-w-32"
-            disabled={
-              createMutation.isPending ||
-              updateMutation.isPending ||
-              !configStatus.allConfigured
-            }
-          >
-            {isEditing ? "Update Requisition" : "Create Requisition"}
-          </Button>
+        <div className="bg-card/5 backdrop-blur-xs sticky bottom-0 flex flex-col-reverse justify-end gap-3 p-4 rounded-b-lg border-t py-6 sm:flex-row sm:py-6">
+          {step === "details" ? (
+            <>
+              <Button
+                variant="outline"
+                onClick={() => onOpenChange(false)}
+                disabled={createMutation.isPending || updateMutation.isPending}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={() => { if (validateDetails()) setStep("items"); }}
+                className="gap-2 min-w-32"
+              >
+                Next
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button
+                variant="outline"
+                onClick={() => setStep("details")}
+                className="gap-2"
+                disabled={createMutation.isPending || updateMutation.isPending}
+              >
+                <ChevronLeft className="h-4 w-4" />
+                Back
+              </Button>
+              <Button
+                onClick={handleSubmit}
+                isLoading={createMutation.isPending || updateMutation.isPending}
+                loadingText={isEditing ? "Updating..." : "Creating..."}
+                className="min-w-32"
+                disabled={
+                  createMutation.isPending ||
+                  updateMutation.isPending ||
+                  !configStatus.allConfigured
+                }
+              >
+                {isEditing ? "Update Requisition" : "Create Requisition"}
+              </Button>
+            </>
+          )}
         </div>
       </DialogContent>
     </Dialog>
