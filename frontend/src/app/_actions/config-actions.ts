@@ -189,6 +189,40 @@ export async function deleteBranch(id: string): Promise<APIResponse> {
 }
 
 // ============================================================================
+// LOCATION REFERENCE DATA
+// ============================================================================
+
+/**
+ * Get all Zambian provinces
+ * Endpoint: GET /api/v1/provinces
+ */
+export async function getProvinces(): Promise<APIResponse> {
+  const url = `/api/v1/provinces`;
+  try {
+    const response = await authenticatedApiClient({ url });
+    return fromBackend(response);
+  } catch (error: Error | any) {
+    return handleError(error, "GET", url);
+  }
+}
+
+/**
+ * Get towns/districts, optionally filtered by province
+ * Endpoint: GET /api/v1/towns?province_id=<uuid>
+ */
+export async function getTowns(provinceId?: string): Promise<APIResponse> {
+  const url = provinceId
+    ? `/api/v1/towns?province_id=${provinceId}`
+    : `/api/v1/towns`;
+  try {
+    const response = await authenticatedApiClient({ url });
+    return fromBackend(response);
+  } catch (error: Error | any) {
+    return handleError(error, "GET", url);
+  }
+}
+
+// ============================================================================
 // DEPARTMENT MANAGEMENT
 // ============================================================================
 

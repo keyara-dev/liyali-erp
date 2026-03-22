@@ -33,6 +33,8 @@ import { ConfirmationModal } from "@/components/modals/confirmation-modal";
 import { toast } from "sonner";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
+import { SelectField } from "@/components/ui/select-field";
+import { SearchSelectField } from "@/components/ui/search-select-field";
 import {
   getBranches,
   createBranch,
@@ -40,6 +42,7 @@ import {
   deleteBranch,
 } from "@/app/_actions/config-actions";
 import { queryKeys } from "@/lib/query-keys";
+import { useProvinces, useTowns } from "@/hooks/use-location-queries";
 
 interface Branch {
   id: string;
@@ -93,6 +96,20 @@ export default function BranchesClient() {
     queryFn: () => getBranches({ page: 1, page_size: 100 }),
     staleTime: 5 * 60 * 1000,
   });
+
+  // Location reference data
+  const { data: provinces = [], isLoading: provincesLoading } = useProvinces();
+  // Form dropdown — only runs when a province is selected
+  const { data: towns = [], isLoading: townsLoading } = useTowns(
+    formData.provinceId || undefined,
+  );
+  // All towns — for resolving names in the table
+  const { data: allTowns = [] } = useTowns("all");
+
+  const getProvinceName = (id: string) =>
+    provinces.find((p) => p.id === id)?.name ?? id;
+  const getTownName = (id: string) =>
+    allTowns.find((t) => t.id === id)?.name ?? id;
 
   const branches: Branch[] = branchesResponse?.success
     ? (branchesResponse.data as Branch[]) || []
@@ -203,12 +220,12 @@ export default function BranchesClient() {
       setError("Branch code is required");
       return false;
     }
-    if (!formData.provinceId.trim()) {
-      setError("Province ID is required");
+    if (!formData.provinceId) {
+      setError("Province is required");
       return false;
     }
-    if (!formData.townId.trim()) {
-      setError("Town ID is required");
+    if (!formData.townId) {
+      setError("Town / District is required");
       return false;
     }
     return true;
@@ -311,8 +328,8 @@ export default function BranchesClient() {
                     <TableRow className="bg-muted/50">
                       <TableHead>Name</TableHead>
                       <TableHead>Code</TableHead>
-                      <TableHead>Province ID</TableHead>
-                      <TableHead>Town ID</TableHead>
+                      <TableHead>Province</TableHead>
+                      <TableHead>Town</TableHead>
                       <TableHead>Address</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
@@ -327,10 +344,10 @@ export default function BranchesClient() {
                           <Badge variant="outline">{branch.code}</Badge>
                         </TableCell>
                         <TableCell className="text-sm text-muted-foreground">
-                          {branch.province_id}
+                          {getProvinceName(branch.province_id)}
                         </TableCell>
                         <TableCell className="text-sm text-muted-foreground">
-                          {branch.town_id}
+                          {getTownName(branch.town_id)}
                         </TableCell>
                         <TableCell className="max-w-xs truncate text-sm text-muted-foreground">
                           {branch.address || "—"}
@@ -383,8 +400,8 @@ export default function BranchesClient() {
                     <TableRow className="bg-muted/30">
                       <TableHead>Name</TableHead>
                       <TableHead>Code</TableHead>
-                      <TableHead>Province ID</TableHead>
-                      <TableHead>Town ID</TableHead>
+                      <TableHead>Province</TableHead>
+                      <TableHead>Town</TableHead>
                       <TableHead>Address</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -400,10 +417,10 @@ export default function BranchesClient() {
                           </Badge>
                         </TableCell>
                         <TableCell className="text-sm text-muted-foreground line-through">
-                          {branch.province_id}
+                          {getProvinceName(branch.province_id)}
                         </TableCell>
                         <TableCell className="text-sm text-muted-foreground line-through">
-                          {branch.town_id}
+                          {getTownName(branch.town_id)}
                         </TableCell>
                         <TableCell className="max-w-xs truncate text-sm text-muted-foreground line-through">
                           {branch.address || "—"}
@@ -465,26 +482,32 @@ export default function BranchesClient() {
               required
             />
 
-            <Input
-              label="Province ID"
-              placeholder="UUID of the province"
+            <SelectField
+              label="Province"
               value={formData.provinceId}
-              onChange={(e) => {
-                setFormData((p) => ({ ...p, provinceId: e.target.value }));
+              options={provinces.map((p) => ({ value: p.id, label: p.name }))}
+              isLoading={provincesLoading}
+              onValueChange={(value) => {
+                setFormData((p) => ({ ...p, provinceId: value, townId: "" }));
                 setError("");
               }}
-              required
             />
 
-            <Input
-              label="Town ID"
-              placeholder="UUID of the town"
+            <SearchSelectField
+              label="Town / District"
               value={formData.townId}
-              onChange={(e) => {
-                setFormData((p) => ({ ...p, townId: e.target.value }));
+              options={towns.map((t) => ({
+                id: t.id,
+                label: t.name,
+                value: t.id,
+              }))}
+              isLoading={townsLoading}
+              isDisabled={!formData.provinceId}
+              onModal
+              onValueChange={(value) => {
+                setFormData((p) => ({ ...p, townId: value }));
                 setError("");
               }}
-              required
             />
 
             <Input

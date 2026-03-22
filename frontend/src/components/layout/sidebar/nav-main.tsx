@@ -36,7 +36,6 @@ import {
   MailOpen,
   DollarSign,
   GitBranch,
-  MapPin,
   QrCode,
   type LucideIcon,
   ChevronRight,
@@ -123,6 +122,13 @@ export const routes: NavGroup[] = [
             requiredRoles: ["finance", "admin"],
             requiredPermissions: ["grn.view"],
           },
+          {
+            title: "Vendors",
+            href: "/vendors",
+            icon: StoreIcon,
+            requiredRoles: ["admin", "approver"],
+            requiredPermissions: ["vendor.view"],
+          },
         ],
       },
       {
@@ -180,11 +186,7 @@ export const routes: NavGroup[] = [
             href: "/admin/categories",
             icon: Blocks,
           },
-          {
-            title: "Branches",
-            href: "/admin/branches",
-            icon: MapPin,
-          },
+
           {
             title: "System Monitoring",
             href: "/admin/monitoring",

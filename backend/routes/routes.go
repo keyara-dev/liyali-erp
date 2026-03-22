@@ -82,6 +82,10 @@ func SetupRoutes(app *fiber.App, handlerRegistry *handlers.HandlerRegistry, rbac
 	// Subscription routes (authentication required, no tenant middleware)
 	// subscriptions := protected.Group("/subscriptions")
 
+	// Reference data — global location data (Zambian provinces and towns)
+	protected.Get("/provinces", handlers.GetProvinces)
+	protected.Get("/towns", handlers.GetTowns)
+
 	// Organization-specific subscription routes
 	orgSubs := protected.Group("/organizations/:id")
 	orgSubs.Get("/subscription", handlerRegistry.Subscription.GetOrganizationSubscription)
@@ -460,6 +464,10 @@ func SetupRoutes(app *fiber.App, handlerRegistry *handlers.HandlerRegistry, rbac
 	notifications.Post("/mark-as-read", handlerRegistry.Notification.MarkAsRead)
 	notifications.Post("/mark-all-as-read", handlerRegistry.Notification.MarkAllAsRead)
 	notifications.Delete("/:id", handlerRegistry.Notification.DeleteNotification)
+	
+	// Notification Preferences (tenant-scoped)
+	notifications.Get("/preferences", handlerRegistry.Notification.GetNotificationPreferences)
+	notifications.Put("/preferences", handlerRegistry.Notification.UpdateNotificationPreferences)
 
 	// Audit Logs (tenant-scoped) - ENABLED
 	audit := tenant.Group("/audit-logs")

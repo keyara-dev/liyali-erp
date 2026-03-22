@@ -139,6 +139,25 @@ func (OrganizationBranch) TableName() string {
 	return "organization_branches"
 }
 
+// Province represents a Zambian province (global reference data)
+type Province struct {
+	ID   string `gorm:"primaryKey" json:"id"`
+	Name string `gorm:"not null;unique" json:"name"`
+	Code string `gorm:"not null;unique" json:"code"`
+}
+
+func (Province) TableName() string { return "provinces" }
+
+// Town represents a Zambian town/district (global reference data)
+type Town struct {
+	ID         string `gorm:"primaryKey" json:"id"`
+	ProvinceID string `gorm:"index;not null" json:"provinceId"`
+	Name       string `gorm:"not null" json:"name"`
+	Code       string `json:"code,omitempty"`
+}
+
+func (Town) TableName() string { return "towns" }
+
 // OrganizationInvitation represents a pending invitation for an existing platform
 // user to join an organization.  The token field is intentionally hidden from
 // list responses (json:"-") and only returned at creation time.

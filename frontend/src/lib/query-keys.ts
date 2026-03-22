@@ -117,6 +117,11 @@ export const queryKeys = {
     roles: () => [...queryKeys.config.all(), 'roles'] as const,
     branches: () => [...queryKeys.config.all(), 'branches'] as const,
     activeBranches: () => [...queryKeys.config.all(), 'branches', 'active'] as const,
+    provinces: () => [...queryKeys.config.all(), 'provinces'] as const,
+    towns: (provinceId?: string) =>
+      provinceId
+        ? ([...queryKeys.config.all(), 'towns', provinceId] as const)
+        : ([...queryKeys.config.all(), 'towns'] as const),
   },
 
   /**
