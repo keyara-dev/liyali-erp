@@ -79,14 +79,14 @@ export async function createBranch({
   townId,
   provinceId,
   address,
-  // isActive = true
+  isActive = true,
 }: {
   name: string;
   code: string;
   townId: string;
   provinceId: string;
   address?: string;
-  // isActive?: boolean;
+  isActive?: boolean;
 }): Promise<APIResponse> {
   const url = `/api/v1/branches`;
 
@@ -106,7 +106,7 @@ export async function createBranch({
         town_id: townId,
         province_id: provinceId,
         address,
-        // is_active: isActive
+        is_active: isActive,
       },
     });
     revalidatePath("/dashboard/system-configs/locations");
@@ -128,7 +128,7 @@ export async function updateBranch({
   townId,
   provinceId,
   address,
-  // isActive
+  isActive,
 }: {
   id: string;
   name: string;
@@ -136,14 +136,12 @@ export async function updateBranch({
   townId: string;
   provinceId: string;
   address?: string;
-  // isActive?: boolean;
+  isActive?: boolean;
 }): Promise<APIResponse> {
   const url = `/api/v1/branches/${id}`;
 
-  if (!id || !name || !code || !townId || !provinceId) {
-    return badRequestResponse(
-      "ID, name, code, town ID, and province ID are required",
-    );
+  if (!id) {
+    return badRequestResponse("Branch ID is required");
   }
 
   try {
@@ -156,8 +154,8 @@ export async function updateBranch({
         town_id: townId,
         province_id: provinceId,
         address,
-        // is_active: isActive,
-        manager_id: null, // Optional field from API docs
+        is_active: isActive,
+        manager_id: null,
       },
     });
     revalidatePath("/dashboard/system-configs/locations");

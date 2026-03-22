@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { Plus, Edit, Trash2, AlertCircle, MapPin } from "lucide-react";
+import { Plus, Edit, Trash2, AlertCircle, MapPin, ToggleRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -46,16 +46,16 @@ import { useProvinces, useTowns } from "@/hooks/use-location-queries";
 
 interface Branch {
   id: string;
-  organization_id: string;
+  organizationId: string;
   name: string;
   code: string;
-  province_id: string;
-  town_id: string;
+  provinceId: string;
+  townId: string;
   address?: string;
-  manager_id?: string | null;
-  is_active: boolean;
-  created_at: string;
-  updated_at: string;
+  managerId?: string | null;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
 }
 
 interface BranchFormData {
@@ -151,6 +151,7 @@ export default function BranchesClient() {
         townId: data.townId,
         provinceId: data.provinceId,
         address: data.address || undefined,
+        isActive: data.isActive,
       }),
     onSuccess: (response) => {
       if (response.success) {
@@ -201,10 +202,10 @@ export default function BranchesClient() {
       setFormData({
         name: branch.name,
         code: branch.code,
-        provinceId: branch.province_id,
-        townId: branch.town_id,
+        provinceId: branch.provinceId,
+        townId: branch.townId,
         address: branch.address || "",
-        isActive: branch.is_active,
+        isActive: branch.isActive,
       });
     } else {
       resetForm();
@@ -247,8 +248,8 @@ export default function BranchesClient() {
     }
   };
 
-  const activeBranches = branches.filter((b) => b.is_active);
-  const inactiveBranches = branches.filter((b) => !b.is_active);
+  const activeBranches = branches.filter((b) => b.isActive);
+  const inactiveBranches = branches.filter((b) => !b.isActive);
 
   if (isLoading) {
     return (
@@ -350,10 +351,10 @@ export default function BranchesClient() {
                           <Badge variant="outline">{branch.code}</Badge>
                         </TableCell>
                         <TableCell className="text-sm text-muted-foreground">
-                          {getProvinceName(branch.province_id)}
+                          {getProvinceName(branch.provinceId)}
                         </TableCell>
                         <TableCell className="text-sm text-muted-foreground">
-                          {getTownName(branch.town_id)}
+                          {getTownName(branch.townId)}
                         </TableCell>
                         <TableCell className="max-w-xs truncate text-sm text-muted-foreground">
                           {branch.address || "—"}
@@ -409,6 +410,7 @@ export default function BranchesClient() {
                       <TableHead>Province</TableHead>
                       <TableHead>Town</TableHead>
                       <TableHead>Address</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -423,13 +425,35 @@ export default function BranchesClient() {
                           </Badge>
                         </TableCell>
                         <TableCell className="text-sm text-muted-foreground line-through">
-                          {getProvinceName(branch.province_id)}
+                          {getProvinceName(branch.provinceId)}
                         </TableCell>
                         <TableCell className="text-sm text-muted-foreground line-through">
-                          {getTownName(branch.town_id)}
+                          {getTownName(branch.townId)}
                         </TableCell>
                         <TableCell className="max-w-xs truncate text-sm text-muted-foreground line-through">
                           {branch.address || "—"}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="gap-1 text-xs text-green-600 hover:text-green-700"
+                            disabled={updateMutation.isPending}
+                            onClick={() =>
+                              updateMutation.mutate({
+                                id: branch.id,
+                                name: branch.name,
+                                code: branch.code,
+                                provinceId: branch.provinceId,
+                                townId: branch.townId,
+                                address: branch.address || "",
+                                isActive: true,
+                              })
+                            }
+                          >
+                            <ToggleRight className="h-3 w-3" />
+                            Activate
+                          </Button>
                         </TableCell>
                       </TableRow>
                     ))}

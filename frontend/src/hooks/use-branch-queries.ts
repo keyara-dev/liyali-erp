@@ -8,10 +8,10 @@ export interface Branch {
   id: string;
   name: string;
   code: string;
-  province_id: string;
-  town_id: string;
+  provinceId: string;
+  townId: string;
   address?: string;
-  is_active: boolean;
+  isActive: boolean;
 }
 
 export const useActiveBranches = () =>
