@@ -12,13 +12,14 @@ import (
 
 // NotificationEvent represents a trigger event
 type NotificationEvent struct {
-	Type         string // approval_required, document_approved, document_rejected, assignment, status_change
-	DocumentID   string
-	DocumentType string
-	Action       string
-	ActorID      string  // User who triggered the event
-	Details      string
-	Timestamp    time.Time
+	Type           string // approval_required, document_approved, document_rejected, assignment, status_change
+	DocumentID     string
+	DocumentType   string
+	OrganizationID string // Required for org-scoped queries (e.g. notifyStatusChange)
+	Action         string
+	ActorID        string // User who triggered the event
+	Details        string
+	Timestamp      time.Time
 }
 
 // NotificationService handles notification creation and management
@@ -44,6 +45,8 @@ func (ns *NotificationService) HandleWorkflowEvent(event NotificationEvent) erro
 		return ns.notifyDocumentAssignment(event)
 	case "status_change":
 		return ns.notifyStatusChange(event)
+	case "document_returned_for_revision", "document_returned_to_draft":
+		return ns.notifyDocumentReturnedForRevision(event)
 	default:
 		logging.WithFields(map[string]interface{}{
 			"event_type": event.Type,
@@ -251,6 +254,53 @@ func (ns *NotificationService) notifyDocumentRejected(event NotificationEvent) e
 			return fmt.Errorf("failed to fetch budget: %v", err)
 		}
 		recipientID = budget.OwnerID
+	case "purchase_order":
+		var po models.PurchaseOrder
+		if err := ns.db.First(&po, "id = ?", event.DocumentID).Error; err != nil {
+			return fmt.Errorf("failed to fetch purchase order: %v", err)
+		}
+		// PO has no direct requester — trace back through linked requisition
+		reqID := po.LinkedRequisition
+		if reqID == "" && po.SourceRequisitionId != nil {
+			reqID = *po.SourceRequisitionId
+		}
+		if reqID != "" {
+			var req models.Requisition
+			if err := ns.db.First(&req, "id = ?", reqID).Error; err == nil {
+				recipientID = req.RequesterId
+			}
+		}
+	case "payment_voucher":
+		var pv models.PaymentVoucher
+		if err := ns.db.First(&pv, "id = ?", event.DocumentID).Error; err != nil {
+			return fmt.Errorf("failed to fetch payment voucher: %v", err)
+		}
+		// PV traces back through linked PO → requisition
+		if pv.LinkedPO != "" {
+			var po models.PurchaseOrder
+			if err := ns.db.First(&po, "id = ?", pv.LinkedPO).Error; err == nil {
+				reqID := po.LinkedRequisition
+				if reqID == "" && po.SourceRequisitionId != nil {
+					reqID = *po.SourceRequisitionId
+				}
+				if reqID != "" {
+					var req models.Requisition
+					if err := ns.db.First(&req, "id = ?", reqID).Error; err == nil {
+						recipientID = req.RequesterId
+					}
+				}
+			}
+		}
+	case "grn":
+		var grn models.GoodsReceivedNote
+		if err := ns.db.First(&grn, "id = ?", event.DocumentID).Error; err != nil {
+			return fmt.Errorf("failed to fetch GRN: %v", err)
+		}
+		if grn.ReceivedBy != "" {
+			recipientID = grn.ReceivedBy
+		} else {
+			recipientID = grn.CreatedBy
+		}
 	default:
 		logging.WithFields(map[string]interface{}{
 			"operation":     "notify_document_rejected",
@@ -298,6 +348,115 @@ func (ns *NotificationService) notifyDocumentRejected(event NotificationEvent) e
 	return nil
 }
 
+// notifyDocumentReturnedForRevision notifies the document owner when their submission is returned for changes
+func (ns *NotificationService) notifyDocumentReturnedForRevision(event NotificationEvent) error {
+	var recipientID string
+
+	switch event.DocumentType {
+	case "requisition":
+		var req models.Requisition
+		if err := ns.db.First(&req, "id = ?", event.DocumentID).Error; err != nil {
+			return fmt.Errorf("failed to fetch requisition: %v", err)
+		}
+		recipientID = req.RequesterId
+	case "budget":
+		var budget models.Budget
+		if err := ns.db.First(&budget, "id = ?", event.DocumentID).Error; err != nil {
+			return fmt.Errorf("failed to fetch budget: %v", err)
+		}
+		recipientID = budget.OwnerID
+	case "purchase_order":
+		var po models.PurchaseOrder
+		if err := ns.db.First(&po, "id = ?", event.DocumentID).Error; err != nil {
+			return fmt.Errorf("failed to fetch purchase order: %v", err)
+		}
+		reqID := po.LinkedRequisition
+		if reqID == "" && po.SourceRequisitionId != nil {
+			reqID = *po.SourceRequisitionId
+		}
+		if reqID != "" {
+			var req models.Requisition
+			if err := ns.db.First(&req, "id = ?", reqID).Error; err == nil {
+				recipientID = req.RequesterId
+			}
+		}
+	case "payment_voucher":
+		var pv models.PaymentVoucher
+		if err := ns.db.First(&pv, "id = ?", event.DocumentID).Error; err != nil {
+			return fmt.Errorf("failed to fetch payment voucher: %v", err)
+		}
+		if pv.LinkedPO != "" {
+			var po models.PurchaseOrder
+			if err := ns.db.First(&po, "id = ?", pv.LinkedPO).Error; err == nil {
+				reqID := po.LinkedRequisition
+				if reqID == "" && po.SourceRequisitionId != nil {
+					reqID = *po.SourceRequisitionId
+				}
+				if reqID != "" {
+					var req models.Requisition
+					if err := ns.db.First(&req, "id = ?", reqID).Error; err == nil {
+						recipientID = req.RequesterId
+					}
+				}
+			}
+		}
+	case "grn":
+		var grn models.GoodsReceivedNote
+		if err := ns.db.First(&grn, "id = ?", event.DocumentID).Error; err != nil {
+			return fmt.Errorf("failed to fetch GRN: %v", err)
+		}
+		if grn.ReceivedBy != "" {
+			recipientID = grn.ReceivedBy
+		} else {
+			recipientID = grn.CreatedBy
+		}
+	default:
+		logging.WithFields(map[string]interface{}{
+			"operation":     "notify_document_returned",
+			"document_type": event.DocumentType,
+		}).Warn("notification_for_revision_not_configured")
+		return nil
+	}
+
+	if recipientID == "" {
+		return fmt.Errorf("could not determine notification recipient for %s revision", event.DocumentType)
+	}
+
+	notification := models.Notification{
+		ID:           uuid.New().String(),
+		RecipientID:  recipientID,
+		Type:         "document_rejected",
+		DocumentID:   event.DocumentID,
+		DocumentType: event.DocumentType,
+		Subject:      fmt.Sprintf("Revision Required — %s", event.DocumentType),
+		Body: fmt.Sprintf(
+			"Your %s (ID: %s) has been returned for revision. Reason: %s\nPlease review and resubmit.",
+			event.DocumentType, event.DocumentID, event.Details,
+		),
+		Sent:      false,
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	}
+
+	if err := ns.db.Create(&notification).Error; err != nil {
+		logging.WithFields(map[string]interface{}{
+			"operation":     "create_revision_notification",
+			"recipient_id":  recipientID,
+			"document_id":   event.DocumentID,
+			"document_type": event.DocumentType,
+		}).WithError(err).Error("failed_to_create_revision_notification")
+		return err
+	}
+
+	logging.WithFields(map[string]interface{}{
+		"operation":     "create_revision_notification",
+		"recipient_id":  recipientID,
+		"document_id":   event.DocumentID,
+		"document_type": event.DocumentType,
+	}).Info("created_revision_notification_for_recipient")
+	return nil
+}
+
 // notifyDocumentAssignment creates notifications when a document is assigned
 func (ns *NotificationService) notifyDocumentAssignment(event NotificationEvent) error {
 	// Get the user the document was assigned to
@@ -336,9 +495,10 @@ func (ns *NotificationService) notifyDocumentAssignment(event NotificationEvent)
 
 // notifyStatusChange creates notifications for status changes
 func (ns *NotificationService) notifyStatusChange(event NotificationEvent) error {
-	// Get all users with finance or admin role for status change notifications
+	// Get all users with finance or admin role in the same organization
 	var admins []models.User
-	if err := ns.db.Where("role IN ? AND active = ?", []string{"finance", "admin"}, true).
+	if err := ns.db.Where("role IN ? AND active = ? AND current_organization_id = ?",
+		[]string{"finance", "admin"}, true, event.OrganizationID).
 		Find(&admins).Error; err != nil {
 		logging.WithFields(map[string]interface{}{
 			"operation": "fetch_admin_users",
@@ -414,8 +574,10 @@ func (ns *NotificationService) MarkAsRead(notificationID string) error {
 	if err := ns.db.Model(&models.Notification{}).
 		Where("id = ?", notificationID).
 		Updates(map[string]interface{}{
-			"sent":     true,
-			"sent_at":  &now,
+			"sent":      true,
+			"sent_at":   &now,
+			"is_read":   true,
+			"read_at":   &now,
 			"updated_at": now,
 		}).Error; err != nil {
 		return fmt.Errorf("failed to mark notification as read: %v", err)
@@ -434,8 +596,10 @@ func (ns *NotificationService) MarkMultipleAsRead(notificationIDs []string) erro
 	if err := ns.db.Model(&models.Notification{}).
 		Where("id IN ?", notificationIDs).
 		Updates(map[string]interface{}{
-			"sent":     true,
-			"sent_at":  &now,
+			"sent":      true,
+			"sent_at":   &now,
+			"is_read":   true,
+			"read_at":   &now,
 			"updated_at": now,
 		}).Error; err != nil {
 		return fmt.Errorf("failed to mark notifications as read: %v", err)

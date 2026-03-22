@@ -3,7 +3,9 @@ package handlers
 import (
 	"log"
 	"strconv"
+	"time"
 
+	"github.com/google/uuid"
 	"github.com/liyali/liyali-gateway/config"
 	"github.com/liyali/liyali-gateway/models"
 	"github.com/liyali/liyali-gateway/services"
@@ -33,6 +35,23 @@ type NotificationStatsResponse struct {
 	Pending int64 `json:"pending"`
 	Read    int64 `json:"read"`
 	Total   int64 `json:"total"`
+}
+
+// NotificationPreferencesRequest represents the request body for updating preferences
+type NotificationPreferencesRequest struct {
+	EmailEnabled           bool `json:"emailEnabled"`
+	PushEnabled            bool `json:"pushEnabled"`
+	InAppEnabled           bool `json:"inAppEnabled"`
+	NotifyTaskAssigned     bool `json:"notifyTaskAssigned"`
+	NotifyTaskReassigned   bool `json:"notifyTaskReassigned"`
+	NotifyTaskApproved     bool `json:"notifyTaskApproved"`
+	NotifyTaskRejected     bool `json:"notifyTaskRejected"`
+	NotifyWorkflowComplete bool `json:"notifyWorkflowComplete"`
+	NotifyApprovalOverdue  bool `json:"notifyApprovalOverdue"`
+	NotifyCommentsAdded    bool `json:"notifyCommentsAdded"`
+	QuietHoursEnabled      bool `json:"quietHoursEnabled"`
+	QuietHoursStart        int  `json:"quietHoursStart"`
+	QuietHoursEnd          int  `json:"quietHoursEnd"`
 }
 
 // GetNotifications retrieves notifications for the current user with pagination and filtering
@@ -90,7 +109,7 @@ func (h *NotificationHandler) GetNotifications(c *fiber.Ctx) error {
 	}
 	
 	if unreadOnly {
-		query = query.Where("sent = ?", false)
+		query = query.Where("is_read = ?", false)
 	}
 
 	// Get total count
@@ -116,8 +135,8 @@ func (h *NotificationHandler) GetNotifications(c *fiber.Ctx) error {
 			"documentType":   notification.DocumentType,
 			"entityId":       notification.DocumentID,       // Alias for backward compatibility
 			"entityType":     notification.DocumentType,     // Alias for backward compatibility
-			"isRead":         notification.Sent,             // Map sent to isRead
-			"readAt":         notification.SentAt,           // Map sentAt to readAt
+			"isRead":         notification.IsRead,           // Use actual IsRead field
+			"readAt":         notification.ReadAt,           // Use actual ReadAt field
 			"createdAt":      notification.CreatedAt,
 			"updatedAt":      notification.UpdatedAt,
 			"importance":     "MEDIUM",                       // Default importance
@@ -188,12 +207,12 @@ func (h *NotificationHandler) GetNotificationStats(c *fiber.Ctx) error {
 
 	// Get pending (unread) notifications count
 	db.Model(&models.Notification{}).
-		Where("organization_id = ? AND recipient_id = ? AND sent = ?", organizationID, userID, false).
+		Where("organization_id = ? AND recipient_id = ? AND is_read = ?", organizationID, userID, false).
 		Count(&pendingCount)
 
 	// Get read notifications count
 	db.Model(&models.Notification{}).
-		Where("organization_id = ? AND recipient_id = ? AND sent = ?", organizationID, userID, true).
+		Where("organization_id = ? AND recipient_id = ? AND is_read = ?", organizationID, userID, true).
 		Count(&readCount)
 
 	// Get total notifications count
@@ -271,7 +290,7 @@ func (h *NotificationHandler) MarkAllAsRead(c *fiber.Ctx) error {
 	// Get all unread notification IDs for the user
 	var notificationIDs []string
 	if err := db.Model(&models.Notification{}).
-		Where("organization_id = ? AND recipient_id = ? AND sent = ?", organizationID, userID, false).
+		Where("organization_id = ? AND recipient_id = ? AND is_read = ?", organizationID, userID, false).
 		Pluck("id", &notificationIDs).Error; err != nil {
 		log.Printf("Error fetching unread notification IDs: %v", err)
 		return utils.SendInternalError(c, "Failed to fetch unread notifications", err)
@@ -369,7 +388,7 @@ func (h *NotificationHandler) GetRecentNotifications(c *fiber.Ctx) error {
 	var readNotifications []models.Notification
 
 	// Get unread notifications
-	if err := db.Where("organization_id = ? AND recipient_id = ? AND sent = ?", 
+	if err := db.Where("organization_id = ? AND recipient_id = ? AND is_read = ?", 
 		organizationID, userID, false).
 		Order("created_at DESC").
 		Limit(10).
@@ -379,7 +398,7 @@ func (h *NotificationHandler) GetRecentNotifications(c *fiber.Ctx) error {
 	}
 
 	// Get recent read notifications
-	if err := db.Where("organization_id = ? AND recipient_id = ? AND sent = ?", 
+	if err := db.Where("organization_id = ? AND recipient_id = ? AND is_read = ?", 
 		organizationID, userID, true).
 		Order("created_at DESC").
 		Limit(5).
@@ -403,8 +422,8 @@ func (h *NotificationHandler) GetRecentNotifications(c *fiber.Ctx) error {
 			"documentType": notification.DocumentType,
 			"entityId":     notification.EntityID,     // Frontend expects entityId
 			"entityType":   notification.EntityType,   // Frontend expects entityType
-			"isRead":       notification.Sent,
-			"readAt":       notification.SentAt,
+			"isRead":       notification.IsRead,       // Use actual IsRead field
+			"readAt":       notification.ReadAt,       // Use actual ReadAt field
 			"createdAt":    notification.CreatedAt,
 			"updatedAt":    notification.UpdatedAt,
 			"importance":   "MEDIUM",
@@ -461,4 +480,185 @@ func (h *NotificationHandler) getDocumentNumber(db *gorm.DB, documentType, docum
 		}
 	}
 	return ""
+}
+
+// GetNotificationPreferences retrieves notification preferences for the current user
+func (h *NotificationHandler) GetNotificationPreferences(c *fiber.Ctx) error {
+	db := config.DB
+	
+	// Safely get organizationID
+	organizationIDRaw := c.Locals("organizationID")
+	if organizationIDRaw == nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Organization context required",
+		})
+	}
+	organizationID, ok := organizationIDRaw.(string)
+	if !ok {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Invalid organization context",
+		})
+	}
+	
+	// Safely get userID
+	userIDRaw := c.Locals("userID")
+	if userIDRaw == nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "User context required",
+		})
+	}
+	userID, ok := userIDRaw.(string)
+	if !ok {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Invalid user context",
+		})
+	}
+
+	// Get or create preferences for the user
+	var preferences models.NotificationPreferences
+	if err := db.Where("user_id = ? AND organization_id = ?", userID, organizationID).
+		First(&preferences).Error; err != nil {
+		
+		// If not found, create default preferences
+		if err == gorm.ErrRecordNotFound {
+			preferences = models.NotificationPreferences{
+				ID:                     uuid.New().String(),
+				UserID:                 userID,
+				OrganizationID:         organizationID,
+				EmailEnabled:           false,
+				PushEnabled:            true,
+				InAppEnabled:           true,
+				NotifyTaskAssigned:     true,
+				NotifyTaskReassigned:   true,
+				NotifyTaskApproved:     true,
+				NotifyTaskRejected:     true,
+				NotifyWorkflowComplete: true,
+				NotifyApprovalOverdue:  true,
+				NotifyCommentsAdded:    false,
+				QuietHoursEnabled:      false,
+				QuietHoursStart:        22,
+				QuietHoursEnd:          8,
+				CreatedAt:              time.Now(),
+				UpdatedAt:              time.Now(),
+			}
+			
+			if err := db.Create(&preferences).Error; err != nil {
+				log.Printf("Error creating default notification preferences: %v", err)
+				return utils.SendInternalError(c, "Failed to create notification preferences", err)
+			}
+		} else {
+			log.Printf("Error fetching notification preferences: %v", err)
+			return utils.SendInternalError(c, "Failed to fetch notification preferences", err)
+		}
+	}
+
+	return utils.SendSimpleSuccess(c, preferences, "Notification preferences retrieved successfully")
+}
+
+// UpdateNotificationPreferences updates notification preferences for the current user
+func (h *NotificationHandler) UpdateNotificationPreferences(c *fiber.Ctx) error {
+	db := config.DB
+	
+	// Safely get organizationID
+	organizationIDRaw := c.Locals("organizationID")
+	if organizationIDRaw == nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Organization context required",
+		})
+	}
+	organizationID, ok := organizationIDRaw.(string)
+	if !ok {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Invalid organization context",
+		})
+	}
+	
+	// Safely get userID
+	userIDRaw := c.Locals("userID")
+	if userIDRaw == nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "User context required",
+		})
+	}
+	userID, ok := userIDRaw.(string)
+	if !ok {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Invalid user context",
+		})
+	}
+
+	// Parse request body
+	var req NotificationPreferencesRequest
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(types.ErrorResponse{
+			Error:   "Invalid request body",
+			Message: "Failed to parse notification preferences request",
+		})
+	}
+
+	// Validate request
+	if err := h.validate.Struct(req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(types.ErrorResponse{
+			Error:   "Validation failed",
+			Message: err.Error(),
+		})
+	}
+
+	// Validate quiet hours
+	if req.QuietHoursStart < 0 || req.QuietHoursStart > 23 {
+		return c.Status(fiber.StatusBadRequest).JSON(types.ErrorResponse{
+			Error:   "Invalid quiet hours start",
+			Message: "Quiet hours start must be between 0 and 23",
+		})
+	}
+	if req.QuietHoursEnd < 0 || req.QuietHoursEnd > 23 {
+		return c.Status(fiber.StatusBadRequest).JSON(types.ErrorResponse{
+			Error:   "Invalid quiet hours end",
+			Message: "Quiet hours end must be between 0 and 23",
+		})
+	}
+
+	// Get or create preferences
+	var preferences models.NotificationPreferences
+	if err := db.Where("user_id = ? AND organization_id = ?", userID, organizationID).
+		First(&preferences).Error; err != nil {
+		
+		// If not found, create new preferences
+		if err == gorm.ErrRecordNotFound {
+			preferences = models.NotificationPreferences{
+				ID:                     uuid.New().String(),
+				UserID:                 userID,
+				OrganizationID:         organizationID,
+				CreatedAt:              time.Now(),
+				UpdatedAt:              time.Now(),
+			}
+		} else {
+			log.Printf("Error fetching notification preferences: %v", err)
+			return utils.SendInternalError(c, "Failed to fetch notification preferences", err)
+		}
+	}
+
+	// Update preferences
+	preferences.EmailEnabled = req.EmailEnabled
+	preferences.PushEnabled = req.PushEnabled
+	preferences.InAppEnabled = req.InAppEnabled
+	preferences.NotifyTaskAssigned = req.NotifyTaskAssigned
+	preferences.NotifyTaskReassigned = req.NotifyTaskReassigned
+	preferences.NotifyTaskApproved = req.NotifyTaskApproved
+	preferences.NotifyTaskRejected = req.NotifyTaskRejected
+	preferences.NotifyWorkflowComplete = req.NotifyWorkflowComplete
+	preferences.NotifyApprovalOverdue = req.NotifyApprovalOverdue
+	preferences.NotifyCommentsAdded = req.NotifyCommentsAdded
+	preferences.QuietHoursEnabled = req.QuietHoursEnabled
+	preferences.QuietHoursStart = req.QuietHoursStart
+	preferences.QuietHoursEnd = req.QuietHoursEnd
+	preferences.UpdatedAt = time.Now()
+
+	// Save to database
+	if err := db.Save(&preferences).Error; err != nil {
+		log.Printf("Error updating notification preferences: %v", err)
+		return utils.SendInternalError(c, "Failed to update notification preferences", err)
+	}
+
+	return utils.SendSimpleSuccess(c, preferences, "Notification preferences updated successfully")
 }

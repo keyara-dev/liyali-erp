@@ -341,6 +341,30 @@ type Notification struct {
 	UpdatedAt      time.Time     `json:"updatedAt"`
 }
 
+// NotificationPreferences stores user notification preferences
+type NotificationPreferences struct {
+	ID                     string    `gorm:"primaryKey" json:"id"`
+	UserID                 string    `gorm:"uniqueIndex;not null" json:"userId"`
+	User                   *User     `gorm:"foreignKey:UserID" json:"user,omitempty"`
+	OrganizationID         string    `gorm:"index;not null" json:"organizationId"`
+	Organization           *Organization `gorm:"foreignKey:OrganizationID" json:"organization,omitempty"`
+	EmailEnabled           bool      `gorm:"default:false" json:"emailEnabled"`
+	PushEnabled            bool      `gorm:"default:true" json:"pushEnabled"`
+	InAppEnabled           bool      `gorm:"default:true" json:"inAppEnabled"`
+	NotifyTaskAssigned     bool      `gorm:"default:true" json:"notifyTaskAssigned"`
+	NotifyTaskReassigned   bool      `gorm:"default:true" json:"notifyTaskReassigned"`
+	NotifyTaskApproved     bool      `gorm:"default:true" json:"notifyTaskApproved"`
+	NotifyTaskRejected     bool      `gorm:"default:true" json:"notifyTaskRejected"`
+	NotifyWorkflowComplete bool      `gorm:"default:true" json:"notifyWorkflowComplete"`
+	NotifyApprovalOverdue  bool      `gorm:"default:true" json:"notifyApprovalOverdue"`
+	NotifyCommentsAdded    bool      `gorm:"default:false" json:"notifyCommentsAdded"`
+	QuietHoursEnabled      bool      `gorm:"default:false" json:"quietHoursEnabled"`
+	QuietHoursStart        int       `gorm:"default:22" json:"quietHoursStart"` // 22 = 10 PM
+	QuietHoursEnd          int       `gorm:"default:8" json:"quietHoursEnd"`    // 8 = 8 AM
+	CreatedAt              time.Time `json:"createdAt"`
+	UpdatedAt              time.Time `json:"updatedAt"`
+}
+
 // TableName specifies table names for GORM
 func (User) TableName() string { return "users" }
 func (Requisition) TableName() string { return "requisitions" }
@@ -353,3 +377,4 @@ func (CategoryBudgetCode) TableName() string { return "category_budget_codes" }
 func (Vendor) TableName() string { return "vendors" }
 func (AuditLog) TableName() string { return "audit_logs" }
 func (Notification) TableName() string { return "notifications" }
+func (NotificationPreferences) TableName() string { return "notification_preferences" }

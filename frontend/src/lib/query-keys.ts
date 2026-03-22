@@ -131,6 +131,11 @@ export const queryKeys = {
     all: () => ['notifications'] as const,
     unread: () => [...queryKeys.notifications.all(), 'unread'] as const,
     unreadCount: () => [...queryKeys.notifications.all(), 'unread-count'] as const,
+    list: (params?: Record<string, any>) =>
+      [...queryKeys.notifications.all(), 'list', { params }] as const,
+    recent: () => [...queryKeys.notifications.all(), 'recent'] as const,
+    stats: () => [...queryKeys.notifications.all(), 'stats'] as const,
+    preferences: () => ['notification-preferences'] as const,
   },
 
   /**

@@ -302,13 +302,14 @@ func (s *WorkflowExecutionService) autoApproveAndGeneratePO(
 	// 5. Send notification
 	if s.notificationService != nil {
 		event := NotificationEvent{
-			Type:         "document_auto_approved",
-			DocumentID:   entityID,
-			DocumentType: "requisition",
-			Action:       "auto_approved",
-			ActorID:      "system",
-			Details:      "Requisition auto-approved via accounting workflow",
-			Timestamp:    now,
+			Type:           "document_auto_approved",
+			DocumentID:     entityID,
+			DocumentType:   "requisition",
+			OrganizationID: organizationID,
+			Action:         "auto_approved",
+			ActorID:        "system",
+			Details:        "Requisition auto-approved via accounting workflow",
+			Timestamp:      now,
 		}
 		go func(e NotificationEvent) {
 			notifyCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -421,13 +422,14 @@ func (s *WorkflowExecutionService) assignWorkflow(
 	// Send notification for approval required
 	if s.notificationService != nil {
 		notificationEvent := NotificationEvent{
-			Type:         "approval_required",
-			DocumentID:   entityID,
-			DocumentType: entityType,
-			Action:       "workflow_assigned",
-			ActorID:      userID,
-			Details:      fmt.Sprintf("Workflow assigned for %s approval", entityType),
-			Timestamp:    time.Now(),
+			Type:           "approval_required",
+			DocumentID:     entityID,
+			DocumentType:   entityType,
+			OrganizationID: organizationID,
+			Action:         "workflow_assigned",
+			ActorID:        userID,
+			Details:        fmt.Sprintf("Workflow assigned for %s approval", entityType),
+			Timestamp:      time.Now(),
 		}
 
 		// Send notification asynchronously to avoid blocking
@@ -870,13 +872,14 @@ func (s *WorkflowExecutionService) handleWorkflowCompletion(ctx context.Context,
 	// Send approval notification
 	if s.notificationService != nil {
 		notificationEvent := NotificationEvent{
-			Type:         "document_approved",
-			DocumentID:   assignment.EntityID,
-			DocumentType: assignment.EntityType,
-			Action:       "workflow_completed",
-			ActorID:      userID,
-			Details:      "Document has been fully approved through workflow",
-			Timestamp:    time.Now(),
+			Type:           "document_approved",
+			DocumentID:     assignment.EntityID,
+			DocumentType:   assignment.EntityType,
+			OrganizationID: assignment.OrganizationID,
+			Action:         "workflow_completed",
+			ActorID:        userID,
+			Details:        "Document has been fully approved through workflow",
+			Timestamp:      time.Now(),
 		}
 
 		go func(event NotificationEvent) {
@@ -902,13 +905,14 @@ func (s *WorkflowExecutionService) handleWorkflowCompletion(ctx context.Context,
 func (s *WorkflowExecutionService) handleStageProgression(ctx context.Context, assignment models.WorkflowAssignment, userID string) {
 	if s.notificationService != nil {
 		notificationEvent := NotificationEvent{
-			Type:         "approval_required",
-			DocumentID:   assignment.EntityID,
-			DocumentType: assignment.EntityType,
-			Action:       "next_stage_approval",
-			ActorID:      userID,
-			Details:      fmt.Sprintf("Document moved to next approval stage (%d)", assignment.CurrentStage),
-			Timestamp:    time.Now(),
+			Type:           "approval_required",
+			DocumentID:     assignment.EntityID,
+			DocumentType:   assignment.EntityType,
+			OrganizationID: assignment.OrganizationID,
+			Action:         "next_stage_approval",
+			ActorID:        userID,
+			Details:        fmt.Sprintf("Document moved to next approval stage (%d)", assignment.CurrentStage),
+			Timestamp:      time.Now(),
 		}
 
 		go func(event NotificationEvent) {
@@ -929,13 +933,14 @@ func (s *WorkflowExecutionService) handleStageProgression(ctx context.Context, a
 func (s *WorkflowExecutionService) handlePartialApproval(ctx context.Context, assignment models.WorkflowAssignment, userID string, stage models.WorkflowStage) {
 	if s.notificationService != nil {
 		notificationEvent := NotificationEvent{
-			Type:         "partial_approval",
-			DocumentID:   assignment.EntityID,
-			DocumentType: assignment.EntityType,
-			Action:       "partial_stage_approval",
-			ActorID:      userID,
-			Details:      fmt.Sprintf("Partial approval received for stage %d (%s)", stage.StageNumber, stage.StageName),
-			Timestamp:    time.Now(),
+			Type:           "partial_approval",
+			DocumentID:     assignment.EntityID,
+			DocumentType:   assignment.EntityType,
+			OrganizationID: assignment.OrganizationID,
+			Action:         "partial_stage_approval",
+			ActorID:        userID,
+			Details:        fmt.Sprintf("Partial approval received for stage %d (%s)", stage.StageNumber, stage.StageName),
+			Timestamp:      time.Now(),
 		}
 
 		go func(event NotificationEvent) {
@@ -1226,13 +1231,14 @@ func (s *WorkflowExecutionService) RejectWorkflowTaskWithVersion(ctx context.Con
 	// Send notification
 	if s.notificationService != nil {
 		notificationEvent := NotificationEvent{
-			Type:         notificationType,
-			DocumentID:   assignment.EntityID,
-			DocumentType: assignment.EntityType,
-			Action:       notificationAction,
-			ActorID:      userID,
-			Details:      reason,
-			Timestamp:    time.Now(),
+			Type:           notificationType,
+			DocumentID:     assignment.EntityID,
+			DocumentType:   assignment.EntityType,
+			OrganizationID: assignment.OrganizationID,
+			Action:         notificationAction,
+			ActorID:        userID,
+			Details:        reason,
+			Timestamp:      time.Now(),
 		}
 
 		go func(event NotificationEvent) {

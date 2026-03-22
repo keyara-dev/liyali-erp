@@ -38,15 +38,24 @@ export interface NotificationStats {
 }
 
 export interface NotificationPreferences {
-  notifyOn: {
-    taskAssigned: boolean;
-    taskReassigned: boolean;
-    taskApproved: boolean;
-    taskRejected: boolean;
-    workflowComplete: boolean;
-    approvalOverdue: boolean;
-    commentsAdded: boolean;
-  };
+  id: string;
+  userId: string;
+  organizationId: string;
+  emailEnabled: boolean;
+  pushEnabled: boolean;
+  inAppEnabled: boolean;
+  notifyTaskAssigned: boolean;
+  notifyTaskReassigned: boolean;
+  notifyTaskApproved: boolean;
+  notifyTaskRejected: boolean;
+  notifyWorkflowComplete: boolean;
+  notifyApprovalOverdue: boolean;
+  notifyCommentsAdded: boolean;
+  quietHoursEnabled: boolean;
+  quietHoursStart: number;
+  quietHoursEnd: number;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface NotificationsResponse {
@@ -86,7 +95,7 @@ export async function getNotifications(
     limit?: number;
     type?: string;
     unreadOnly?: boolean;
-  } = {}
+  } = {},
 ): Promise<APIResponse<Notification[]>> {
   const searchParams = new URLSearchParams();
 
@@ -105,7 +114,7 @@ export async function getNotifications(
 
     return successResponse(
       response.data?.data || [],
-      "Notifications retrieved successfully"
+      "Notifications retrieved successfully",
     );
   } catch (error: any) {
     return handleError(error, "GET", url);
@@ -129,7 +138,7 @@ export async function getRecentNotifications(): Promise<
 
     return successResponse(
       response.data?.data || [],
-      "Recent notifications retrieved successfully"
+      "Recent notifications retrieved successfully",
     );
   } catch (error: any) {
     return handleError(error, "GET", url);
@@ -153,7 +162,7 @@ export async function getNotificationStats(): Promise<
 
     return successResponse(
       response.data?.data || { pending: 0, read: 0, total: 0 },
-      "Notification statistics retrieved successfully"
+      "Notification statistics retrieved successfully",
     );
   } catch (error: any) {
     return handleError(error, "GET", url);
@@ -169,7 +178,7 @@ export async function getNotificationStats(): Promise<
  * Calls: POST /api/v1/notifications/mark-as-read
  */
 export async function markNotificationsAsRead(
-  notificationIds: string[]
+  notificationIds: string[],
 ): Promise<APIResponse<{ markedCount: number }>> {
   if (!notificationIds?.length) {
     return badRequestResponse("Notification IDs are required");
@@ -186,7 +195,7 @@ export async function markNotificationsAsRead(
 
     return successResponse(
       response.data?.data || { markedCount: 0 },
-      "Notifications marked as read successfully"
+      "Notifications marked as read successfully",
     );
   } catch (error: any) {
     return handleError(error, "POST", url);
@@ -210,7 +219,7 @@ export async function markAllNotificationsAsRead(): Promise<
 
     return successResponse(
       response.data?.data || { markedCount: 0 },
-      "All notifications marked as read successfully"
+      "All notifications marked as read successfully",
     );
   } catch (error: any) {
     return handleError(error, "POST", url);
@@ -222,7 +231,7 @@ export async function markAllNotificationsAsRead(): Promise<
  * Calls: DELETE /api/v1/notifications/{id}
  */
 export async function deleteNotification(
-  notificationId: string
+  notificationId: string,
 ): Promise<APIResponse<{ deletedId: string }>> {
   if (!notificationId) {
     return badRequestResponse("Notification ID is required");
@@ -238,7 +247,7 @@ export async function deleteNotification(
 
     return successResponse(
       response.data?.data || { deletedId: notificationId },
-      "Notification deleted successfully"
+      "Notification deleted successfully",
     );
   } catch (error: any) {
     return handleError(error, "DELETE", url);
@@ -251,43 +260,49 @@ export async function deleteNotification(
 
 /**
  * Get notification preferences for a user
- * Note: Currently returns default preferences since backend doesn't have this endpoint yet
+ * Calls: GET /api/v1/notifications/preferences
  */
-export async function getNotificationPreferences(
-  userId: string
-): Promise<APIResponse<NotificationPreferences>> {
-  // For now, return default preferences since backend doesn't have this endpoint yet
-  const defaultPreferences: NotificationPreferences = {
-    notifyOn: {
-      taskAssigned: true,
-      taskReassigned: true,
-      taskApproved: true,
-      taskRejected: true,
-      workflowComplete: true,
-      approvalOverdue: true,
-      commentsAdded: true,
-    },
-  };
+export async function getNotificationPreferences(): Promise<
+  APIResponse<NotificationPreferences>
+> {
+  const url = `/api/v1/notifications/preferences`;
 
-  return successResponse(
-    defaultPreferences,
-    "Notification preferences retrieved successfully"
-  );
+  try {
+    const response = await authenticatedApiClient({
+      method: "GET",
+      url,
+    });
+
+    return successResponse(
+      response.data?.data,
+      "Notification preferences retrieved successfully",
+    );
+  } catch (error: any) {
+    return handleError(error, "GET", url);
+  }
 }
 
 /**
  * Update notification preferences for a user
- * Note: Currently simulates success since backend doesn't have this endpoint yet
+ * Calls: PUT /api/v1/notifications/preferences
  */
-export async function updateNotificationPreferences(data: {
-  userId: string;
-  preferences: NotificationPreferences;
-}): Promise<APIResponse<NotificationPreferences>> {
-  // For now, just simulate success since backend doesn't have this endpoint yet
-  await new Promise((resolve) => setTimeout(resolve, 500));
+export async function updateNotificationPreferences(
+  preferences: NotificationPreferences,
+): Promise<APIResponse<NotificationPreferences>> {
+  const url = `/api/v1/notifications/preferences`;
 
-  return successResponse(
-    data.preferences,
-    "Notification preferences updated successfully"
-  );
+  try {
+    const response = await authenticatedApiClient({
+      method: "PUT",
+      url,
+      data: preferences,
+    });
+
+    return successResponse(
+      response.data?.data,
+      "Notification preferences updated successfully",
+    );
+  } catch (error: any) {
+    return handleError(error, "PUT", url);
+  }
 }

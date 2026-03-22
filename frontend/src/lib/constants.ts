@@ -152,6 +152,12 @@ export const QUERY_KEYS = {
     STATS: "grn-stats",
   },
 
+  // Vendors
+  VENDORS: {
+    ALL: "vendors-all",
+    BY_ID: "vendor-by-id",
+  },
+
   // Approval Tasks (Backend-powered)
   APPROVALS: {
     ALL: "approvals-all",

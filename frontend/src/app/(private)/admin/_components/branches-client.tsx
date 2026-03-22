@@ -127,7 +127,9 @@ export default function BranchesClient() {
     onSuccess: (response) => {
       if (response.success) {
         toast.success("Branch created successfully");
-        queryClient.invalidateQueries({ queryKey: queryKeys.config.branches() });
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.config.branches(),
+        });
         handleCloseModal();
       } else {
         setError(response.message || "Failed to create branch");
@@ -153,7 +155,9 @@ export default function BranchesClient() {
     onSuccess: (response) => {
       if (response.success) {
         toast.success("Branch updated successfully");
-        queryClient.invalidateQueries({ queryKey: queryKeys.config.branches() });
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.config.branches(),
+        });
         handleCloseModal();
       } else {
         setError(response.message || "Failed to update branch");
@@ -171,7 +175,9 @@ export default function BranchesClient() {
     onSuccess: (response) => {
       if (response.success) {
         toast.success("Branch deleted successfully");
-        queryClient.invalidateQueries({ queryKey: queryKeys.config.branches() });
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.config.branches(),
+        });
       } else {
         toast.error(response.message || "Failed to delete branch");
       }

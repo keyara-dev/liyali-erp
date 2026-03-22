@@ -41,6 +41,7 @@ import {
   ChevronRight,
   Blocks,
   ClipboardCopy,
+  CogIcon,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -109,19 +110,20 @@ export const routes: NavGroup[] = [
             requiredPermissions: ["purchase_order.view"],
           },
           {
-            title: "Payment Vouchers",
-            href: "/payment-vouchers",
-            icon: FileText,
-            requiredRoles: ["finance", "admin"],
-            requiredPermissions: ["payment_voucher.view"],
-          },
-          {
             title: "Goods Received Notes",
             href: "/grn",
             icon: FileCheck,
             requiredRoles: ["finance", "admin"],
             requiredPermissions: ["grn.view"],
           },
+          {
+            title: "Payment Vouchers",
+            href: "/payment-vouchers",
+            icon: FileText,
+            requiredRoles: ["finance", "admin"],
+            requiredPermissions: ["payment_voucher.view"],
+          },
+
           {
             title: "Vendors",
             href: "/vendors",
@@ -146,7 +148,13 @@ export const routes: NavGroup[] = [
         href: "/tasks",
         icon: CheckSquare,
         requiredRoles: ["finance", "approver", "admin"],
-        requiredPermissions: ["requisition.approve", "purchase_order.approve", "payment_voucher.approve", "grn.approve", "budget.approve"],
+        requiredPermissions: [
+          "requisition.approve",
+          "purchase_order.approve",
+          "payment_voucher.approve",
+          "grn.approve",
+          "budget.approve",
+        ],
       },
       {
         title: "Reports & Analytics",
@@ -182,6 +190,11 @@ export const routes: NavGroup[] = [
         icon: SettingsIcon,
         items: [
           {
+            title: "General Settings",
+            href: "/settings",
+            icon: CogIcon,
+          },
+          {
             title: "Categories",
             href: "/admin/categories",
             icon: Blocks,
@@ -206,7 +219,7 @@ export const routes: NavGroup[] = [
 function canShowItem(
   item: NavItem,
   userRole: string,
-  rawPermissions: string[]
+  rawPermissions: string[],
 ): boolean {
   if (!item.requiredRoles && !item.requiredPermissions) return true;
   if (item.requiredRoles?.includes(userRole)) return true;
@@ -225,9 +238,7 @@ export function NavMain() {
 
   const filteredRoutes = routes
     .filter(
-      (group) =>
-        !group.requiredRoles ||
-        group.requiredRoles.includes(userRole)
+      (group) => !group.requiredRoles || group.requiredRoles.includes(userRole),
     )
     .map((group) => ({
       ...group,
@@ -236,7 +247,7 @@ export function NavMain() {
         .map((item) => ({
           ...item,
           items: item.items?.filter((sub) =>
-            canShowItem(sub, userRole, rawPermissions)
+            canShowItem(sub, userRole, rawPermissions),
           ),
         }))
         // Hide parent if all sub-items were filtered out (but keep if no sub-items)
@@ -247,93 +258,91 @@ export function NavMain() {
   return (
     <div className="h-full overflow-y-auto overflow-clip">
       {filteredRoutes.map((nav: NavGroup) => (
-          <SidebarGroup key={nav.title} className="w-full">
-            <SidebarGroupLabel>{nav.title}</SidebarGroupLabel>
-            <SidebarGroupContent className="flex flex-col gap-2 max-w-full ">
-              <SidebarMenu>
-                {nav.items.map((item) => (
-                  <SidebarMenuItem key={item.title}>
-                    {Array.isArray(item.items) && item.items.length > 0 ? (
-                      <>
-                        <div className="hidden group-data-[collapsible=icon]:block">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <SidebarMenuButton tooltip={item.title}>
-                                {item.icon && <item.icon />}
-                                <span>{item.title}</span>
-                                <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
-                              </SidebarMenuButton>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent
-                              side={isMobile ? "bottom" : "right"}
-                              align={isMobile ? "end" : "start"}
-                              className="min-w-48 rounded-lg"
-                            >
-                              <DropdownMenuLabel>
-                                {item.title}
-                              </DropdownMenuLabel>
-                              {item.items?.map((item) => (
-                                <DropdownMenuItem
-                                  className="hover:text-foreground active:text-foreground active:bg-primary/20 hover:bg-primary/20"
-                                  asChild
-                                  key={item.title}
-                                >
-                                  <Link href={item.href}>{item.title}</Link>
-                                </DropdownMenuItem>
-                              ))}
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </div>
-                        <Collapsible className="group/collapsible block group-data-[collapsible=icon]:hidden">
-                          <CollapsibleTrigger asChild>
-                            <SidebarMenuButton
-                              className="hover:text-foreground active:text-foreground hover:bg-primary/20 active:bg-primary/20"
-                              tooltip={item.title}
-                            >
+        <SidebarGroup key={nav.title} className="w-full">
+          <SidebarGroupLabel>{nav.title}</SidebarGroupLabel>
+          <SidebarGroupContent className="flex flex-col gap-2 max-w-full ">
+            <SidebarMenu>
+              {nav.items.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  {Array.isArray(item.items) && item.items.length > 0 ? (
+                    <>
+                      <div className="hidden group-data-[collapsible=icon]:block">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <SidebarMenuButton tooltip={item.title}>
                               {item.icon && <item.icon />}
                               <span>{item.title}</span>
                               <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
                             </SidebarMenuButton>
-                          </CollapsibleTrigger>
-                          <CollapsibleContent>
-                            <SidebarMenuSub>
-                              {item?.items?.map((subItem, key) => (
-                                <SidebarMenuSubItem key={key}>
-                                  <SidebarMenuSubButton
-                                    className="hover:text-foreground active:text-foreground hover:bg-primary/20 active:bg-primary/20"
-                                    isActive={pathname === subItem.href}
-                                    asChild
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent
+                            side={isMobile ? "bottom" : "right"}
+                            align={isMobile ? "end" : "start"}
+                            className="min-w-48 rounded-lg"
+                          >
+                            <DropdownMenuLabel>{item.title}</DropdownMenuLabel>
+                            {item.items?.map((item) => (
+                              <DropdownMenuItem
+                                className="hover:text-foreground active:text-foreground active:bg-primary/20 hover:bg-primary/20"
+                                asChild
+                                key={item.title}
+                              >
+                                <Link href={item.href}>{item.title}</Link>
+                              </DropdownMenuItem>
+                            ))}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                      <Collapsible className="group/collapsible block group-data-[collapsible=icon]:hidden">
+                        <CollapsibleTrigger asChild>
+                          <SidebarMenuButton
+                            className="hover:text-foreground active:text-foreground hover:bg-primary/20 active:bg-primary/20"
+                            tooltip={item.title}
+                          >
+                            {item.icon && <item.icon />}
+                            <span>{item.title}</span>
+                            <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+                          </SidebarMenuButton>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent>
+                          <SidebarMenuSub>
+                            {item?.items?.map((subItem, key) => (
+                              <SidebarMenuSubItem key={key}>
+                                <SidebarMenuSubButton
+                                  className="hover:text-foreground active:text-foreground hover:bg-primary/20 active:bg-primary/20"
+                                  isActive={pathname === subItem.href}
+                                  asChild
+                                >
+                                  <Link
+                                    href={subItem.href}
+                                    // target={subItem.newTab ? "_blank" : ""}
                                   >
-                                    <Link
-                                      href={subItem.href}
-                                      // target={subItem.newTab ? "_blank" : ""}
-                                    >
-                                      <span>{subItem.title}</span>
-                                    </Link>
-                                  </SidebarMenuSubButton>
-                                </SidebarMenuSubItem>
-                              ))}
-                            </SidebarMenuSub>
-                          </CollapsibleContent>
-                        </Collapsible>
-                      </>
-                    ) : (
-                      <SidebarMenuButton
-                        className="hover:text-foreground active:text-foreground hover:bg-primary/20 active:bg-primary/20"
-                        isActive={pathname === item.href}
-                        tooltip={item.title}
-                        asChild
+                                    <span>{subItem.title}</span>
+                                  </Link>
+                                </SidebarMenuSubButton>
+                              </SidebarMenuSubItem>
+                            ))}
+                          </SidebarMenuSub>
+                        </CollapsibleContent>
+                      </Collapsible>
+                    </>
+                  ) : (
+                    <SidebarMenuButton
+                      className="hover:text-foreground active:text-foreground hover:bg-primary/20 active:bg-primary/20"
+                      isActive={pathname === item.href}
+                      tooltip={item.title}
+                      asChild
+                    >
+                      <Link
+                        href={item.href}
+                        // target={item.newTab ? "_blank" : ""}
                       >
-                        <Link
-                          href={item.href}
-                          // target={item.newTab ? "_blank" : ""}
-                        >
-                          {item.icon && <item.icon />}
-                          <span>{item.title}</span>
-                        </Link>
-                      </SidebarMenuButton>
-                    )}
-                    {/* {!!item.isComing && (
+                        {item.icon && <item.icon />}
+                        <span>{item.title}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  )}
+                  {/* {!!item.isComing && (
                       <SidebarMenuBadge className="peer-hover/menu-button:text-foreground opacity-50">
                         Coming
                       </SidebarMenuBadge>
@@ -355,12 +364,12 @@ export function NavMain() {
                         {item.isDataBadge}
                       </SidebarMenuBadge>
                     )} */}
-                  </SidebarMenuItem>
-                ))}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        ))}
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+      ))}
     </div>
   );
 }

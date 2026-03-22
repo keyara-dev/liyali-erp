@@ -5,6 +5,7 @@ import { NotificationTypeEnum as NotificationType } from "@/types";
 import {
   useGetNotificationPreferences,
   useUpdateNotificationPreferences,
+  type NotificationPreferences,
 } from "@/hooks/use-notifications";
 import { Button } from "@/components/ui/button";
 import {
@@ -42,7 +43,7 @@ const notificationTypeDescriptions: Record<NotificationType, string> = {
 };
 
 export interface NotificationPreferencesProps {
-  userId: string;
+  userId?: string; // Optional now since API uses current user
   onSaved?: () => void;
 }
 
@@ -50,9 +51,7 @@ export function NotificationPreferences({
   userId,
   onSaved,
 }: NotificationPreferencesProps) {
-  const { data: preferences, isLoading } = useGetNotificationPreferences({
-    userId,
-  });
+  const { data: preferences, isLoading } = useGetNotificationPreferences();
   const updateMutation = useUpdateNotificationPreferences();
 
   const [savedMessage, setSavedMessage] = useState(false);
@@ -69,16 +68,15 @@ export function NotificationPreferences({
   });
 
   useEffect(() => {
-    if (preferences?.data) {
-      const prefs = preferences.data;
+    if (preferences) {
       setLocalPreferences({
-        TASK_ASSIGNED: prefs.notifyOn?.taskAssigned ?? true,
-        TASK_REASSIGNED: prefs.notifyOn?.taskReassigned ?? true,
-        TASK_APPROVED: prefs.notifyOn?.taskApproved ?? true,
-        TASK_REJECTED: prefs.notifyOn?.taskRejected ?? true,
-        WORKFLOW_COMPLETE: prefs.notifyOn?.workflowComplete ?? true,
-        APPROVAL_OVERDUE: prefs.notifyOn?.approvalOverdue ?? true,
-        COMMENT_ADDED: prefs.notifyOn?.commentsAdded ?? true,
+        TASK_ASSIGNED: preferences.notifyTaskAssigned ?? true,
+        TASK_REASSIGNED: preferences.notifyTaskReassigned ?? true,
+        TASK_APPROVED: preferences.notifyTaskApproved ?? true,
+        TASK_REJECTED: preferences.notifyTaskRejected ?? true,
+        WORKFLOW_COMPLETE: preferences.notifyWorkflowComplete ?? true,
+        APPROVAL_OVERDUE: preferences.notifyApprovalOverdue ?? true,
+        COMMENT_ADDED: preferences.notifyCommentsAdded ?? true,
       });
     }
   }, [preferences]);
@@ -93,20 +91,28 @@ export function NotificationPreferences({
 
   const handleSave = async () => {
     try {
-      await updateMutation.mutateAsync({
-        userId,
-        preferences: {
-          notifyOn: {
-            taskAssigned: localPreferences.TASK_ASSIGNED,
-            taskReassigned: localPreferences.TASK_REASSIGNED,
-            taskApproved: localPreferences.TASK_APPROVED,
-            taskRejected: localPreferences.TASK_REJECTED,
-            workflowComplete: localPreferences.WORKFLOW_COMPLETE,
-            approvalOverdue: localPreferences.APPROVAL_OVERDUE,
-            commentsAdded: localPreferences.COMMENT_ADDED,
-          },
-        },
-      });
+      const prefs: NotificationPreferences = {
+        id: preferences?.id || "",
+        userId: preferences?.userId || "",
+        organizationId: preferences?.organizationId || "",
+        emailEnabled: preferences?.emailEnabled || false,
+        pushEnabled: preferences?.pushEnabled || false,
+        inAppEnabled: preferences?.inAppEnabled || false,
+        notifyTaskAssigned: localPreferences.TASK_ASSIGNED,
+        notifyTaskReassigned: localPreferences.TASK_REASSIGNED,
+        notifyTaskApproved: localPreferences.TASK_APPROVED,
+        notifyTaskRejected: localPreferences.TASK_REJECTED,
+        notifyWorkflowComplete: localPreferences.WORKFLOW_COMPLETE,
+        notifyApprovalOverdue: localPreferences.APPROVAL_OVERDUE,
+        notifyCommentsAdded: localPreferences.COMMENT_ADDED,
+        quietHoursEnabled: preferences?.quietHoursEnabled || false,
+        quietHoursStart: preferences?.quietHoursStart || 0,
+        quietHoursEnd: preferences?.quietHoursEnd || 0,
+        createdAt: preferences?.createdAt || new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      await updateMutation.mutateAsync(prefs);
       setSavedMessage(true);
       onSaved?.();
       setTimeout(() => setSavedMessage(false), 3000);
@@ -115,9 +121,16 @@ export function NotificationPreferences({
     }
   };
 
-  const hasChanges =
-    JSON.stringify(preferences?.data?.notifyOn) !==
-    JSON.stringify(localPreferences);
+  const hasChanges = preferences
+    ? preferences.notifyTaskAssigned !== localPreferences.TASK_ASSIGNED ||
+      preferences.notifyTaskReassigned !== localPreferences.TASK_REASSIGNED ||
+      preferences.notifyTaskApproved !== localPreferences.TASK_APPROVED ||
+      preferences.notifyTaskRejected !== localPreferences.TASK_REJECTED ||
+      preferences.notifyWorkflowComplete !==
+        localPreferences.WORKFLOW_COMPLETE ||
+      preferences.notifyApprovalOverdue !== localPreferences.APPROVAL_OVERDUE ||
+      preferences.notifyCommentsAdded !== localPreferences.COMMENT_ADDED
+    : false;
 
   if (isLoading) {
     return (

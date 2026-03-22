@@ -1,8 +1,8 @@
 "use client";
 
-import React from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { queryKeys } from "@/lib/query-keys";
 
 // Import server actions
 import {
@@ -32,10 +32,10 @@ export function useNotifications(
     limit?: number;
     type?: string;
     unreadOnly?: boolean;
-  } = {}
+  } = {},
 ) {
   return useQuery({
-    queryKey: ["notifications", params],
+    queryKey: queryKeys.notifications.list(params),
     queryFn: () => getNotifications(params),
     staleTime: 30000, // 30 seconds
     refetchInterval: 60000, // Refetch every minute
@@ -44,7 +44,7 @@ export function useNotifications(
 
 export function useRecentNotifications() {
   return useQuery({
-    queryKey: ["notifications", "recent"],
+    queryKey: queryKeys.notifications.recent(),
     queryFn: getRecentNotifications,
     staleTime: 15000, // 15 seconds
     refetchInterval: 30000, // Refetch every 30 seconds
@@ -53,7 +53,7 @@ export function useRecentNotifications() {
 
 export function useNotificationStats() {
   return useQuery({
-    queryKey: ["notifications", "stats"],
+    queryKey: queryKeys.notifications.stats(),
     queryFn: getNotificationStats,
     staleTime: 15000, // 15 seconds
     refetchInterval: 30000, // Refetch every 30 seconds
@@ -66,8 +66,7 @@ export function useMarkAsRead() {
   return useMutation({
     mutationFn: markNotificationsAsRead,
     onSuccess: () => {
-      // Invalidate and refetch notification queries
-      queryClient.invalidateQueries({ queryKey: ["notifications"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.notifications.all() });
       toast.success("Notifications marked as read");
     },
     onError: (error) => {
@@ -83,8 +82,7 @@ export function useMarkAllAsRead() {
   return useMutation({
     mutationFn: markAllNotificationsAsRead,
     onSuccess: () => {
-      // Invalidate and refetch notification queries
-      queryClient.invalidateQueries({ queryKey: ["notifications"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.notifications.all() });
       toast.success("All notifications marked as read");
     },
     onError: (error) => {
@@ -100,8 +98,7 @@ export function useDeleteNotification() {
   return useMutation({
     mutationFn: deleteNotification,
     onSuccess: () => {
-      // Invalidate and refetch notification queries
-      queryClient.invalidateQueries({ queryKey: ["notifications"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.notifications.all() });
       toast.success("Notification deleted");
     },
     onError: (error) => {
@@ -111,10 +108,13 @@ export function useDeleteNotification() {
   });
 }
 
-export function useGetNotificationPreferences(params: { userId: string }) {
+export function useGetNotificationPreferences() {
   return useQuery({
-    queryKey: ["notification-preferences", params.userId],
-    queryFn: () => getNotificationPreferences(params.userId),
+    queryKey: queryKeys.notifications.preferences(),
+    queryFn: async () => {
+      const response = await getNotificationPreferences();
+      return response.data;
+    },
     staleTime: 300000, // 5 minutes
   });
 }
@@ -124,10 +124,10 @@ export function useUpdateNotificationPreferences() {
 
   return useMutation({
     mutationFn: updateNotificationPreferences,
-    onSuccess: (_, variables) => {
+    onSuccess: (_, preferences) => {
       // Invalidate and refetch notification preferences
       queryClient.invalidateQueries({
-        queryKey: ["notification-preferences", variables.userId],
+        queryKey: queryKeys.notifications.preferences(),
       });
       toast.success("Notification preferences updated");
     },
@@ -176,7 +176,7 @@ export function formatNotificationTime(createdAt: string): string {
   const now = new Date();
   const notificationTime = new Date(createdAt);
   const diffInMinutes = Math.floor(
-    (now.getTime() - notificationTime.getTime()) / (1000 * 60)
+    (now.getTime() - notificationTime.getTime()) / (1000 * 60),
   );
 
   if (diffInMinutes < 1) {
@@ -194,7 +194,7 @@ export function formatNotificationTime(createdAt: string): string {
 
 export function getDocumentUrl(
   documentType: string,
-  documentId: string
+  documentId: string,
 ): string {
   switch (documentType.toLowerCase()) {
     case "requisition":
@@ -216,7 +216,7 @@ export function getDocumentUrl(
 // SPECIALIZED HOOKS
 // ============================================================================
 
-export function useNotificationBell(userId: string) {
+export function useNotificationBell() {
   const recentQuery = useRecentNotifications();
   const statsQuery = useNotificationStats();
 
@@ -226,22 +226,4 @@ export function useNotificationBell(userId: string) {
     isLoading: recentQuery.isLoading || statsQuery.isLoading,
     error: recentQuery.error || statsQuery.error,
   };
-}
-
-export function useMarkNotificationAsRead() {
-  return useMarkAsRead();
-}
-
-export function useNotificationPolling(userId: string, intervalMs: number) {
-  const queryClient = useQueryClient();
-
-  React.useEffect(() => {
-    const interval = setInterval(() => {
-      // Refetch recent notifications and stats
-      queryClient.invalidateQueries({ queryKey: ["notifications", "recent"] });
-      queryClient.invalidateQueries({ queryKey: ["notifications", "stats"] });
-    }, intervalMs);
-
-    return () => clearInterval(interval);
-  }, [queryClient, intervalMs]);
 }
