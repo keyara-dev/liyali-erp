@@ -39,7 +39,7 @@ func TestWorkflowsIntegration(t *testing.T) {
 		assert.NotNil(t, mockAssignment)
 		assert.Equal(t, mockRequisition.ID, mockAssignment.EntityID)
 		assert.Equal(t, mockWorkflow.ID, mockAssignment.WorkflowID)
-		assert.Equal(t, "in_progress", mockAssignment.Status)
+		assert.Equal(t, "IN_PROGRESS", mockAssignment.Status)
 		assert.Equal(t, 1, mockAssignment.CurrentStage)
 	})
 
@@ -63,7 +63,7 @@ func TestWorkflowsIntegration(t *testing.T) {
 
 		// Verify task creation
 		assert.NotNil(t, mockTask)
-		assert.Equal(t, "pending", mockTask.Status)
+		assert.Equal(t, "PENDING", mockTask.Status)
 		assert.Equal(t, "Manager Approval", mockTask.StageName)
 		assert.Equal(t, "role", mockTask.AssignmentType)
 		assert.NotNil(t, mockTask.AssignedRole)
@@ -94,7 +94,7 @@ func TestWorkflowsIntegration(t *testing.T) {
 		assert.Equal(t, "approved", mockApproval.Action)
 		assert.Equal(t, builder.GetManagerID(), mockApproval.ApproverID)
 		assert.Equal(t, "manager", mockApproval.ApproverRole)
-		assert.Equal(t, "completed", mockUpdatedTask.Status)
+		assert.Equal(t, "COMPLETED", mockUpdatedTask.Status)
 	})
 
 	t.Run("Workflow completion", func(t *testing.T) {
@@ -114,9 +114,9 @@ func TestWorkflowsIntegration(t *testing.T) {
 		}
 
 		// Verify workflow completion
-		assert.Equal(t, "completed", mockCompletedAssignment.Status)
+		assert.Equal(t, "COMPLETED", mockCompletedAssignment.Status)
 		assert.NotNil(t, mockCompletedAssignment.CompletedAt)
-		assert.Equal(t, "approved", mockCompletedRequisition.Status)
+		assert.Equal(t, "APPROVED", mockCompletedRequisition.Status)
 	})
 
 	t.Run("Rejection handling", func(t *testing.T) {
@@ -147,7 +147,7 @@ func TestWorkflowsIntegration(t *testing.T) {
 		// Verify rejection handling
 		assert.Equal(t, "rejected", mockRejection.Action)
 		assert.Contains(t, mockRejection.Comments, "Insufficient information")
-		assert.Equal(t, "rejected", mockRejectedAssignment.Status)
-		assert.Equal(t, "rejected", mockRejectedRequisition.Status)
+		assert.Equal(t, "REJECTED", mockRejectedAssignment.Status)
+		assert.Equal(t, "REJECTED", mockRejectedRequisition.Status)
 	})
 }

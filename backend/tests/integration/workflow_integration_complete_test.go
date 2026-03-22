@@ -89,7 +89,7 @@ func TestWorkflowIntegrationComplete(t *testing.T) {
 
 	t.Run("Workflow status tracking", func(t *testing.T) {
 		// Mock workflow assignment status progression
-		statusProgression := []string{"in_progress", "in_progress", "in_progress", "completed"}
+		statusProgression := []string{"IN_PROGRESS", "IN_PROGRESS", "IN_PROGRESS", "COMPLETED"}
 		
 		for i, status := range statusProgression {
 			mockAssignment := &models.WorkflowAssignment{
@@ -104,6 +104,6 @@ func TestWorkflowIntegrationComplete(t *testing.T) {
 		}
 		
 		// Verify final status
-		assert.Equal(t, "completed", statusProgression[len(statusProgression)-1])
+		assert.Equal(t, "COMPLETED", statusProgression[len(statusProgression)-1])
 	})
 }

@@ -28,10 +28,10 @@ func TestDocumentService_CreateDocument(t *testing.T) {
 		assert.NotNil(t, mockDoc)
 		assert.Equal(t, "REQUISITION", mockDoc.DocumentType)
 		assert.Equal(t, "Test Requisition", mockDoc.Title)
-		assert.Equal(t, "draft", mockDoc.Status)
+		assert.Equal(t, "DRAFT", mockDoc.Status)
 		assert.Equal(t, builder.GetOrganizationID(), mockDoc.OrganizationID)
 	})
-	
+
 	t.Run("Budget document creation", func(t *testing.T) {
 		// Create mock budget document
 		mockDoc := &models.Document{
@@ -88,22 +88,22 @@ func TestDocumentService_UpdateDocument(t *testing.T) {
 		
 		// Verify update
 		assert.Equal(t, "Updated Title", mockDoc.Title)
-		assert.Equal(t, "pending", mockDoc.Status)
+		assert.Equal(t, "PENDING", mockDoc.Status)
 	})
-	
+
 	t.Run("Document status transition", func(t *testing.T) {
 		// Simulate status transitions
 		validTransitions := map[string][]string{
-			"draft":    {"pending", "cancelled"},
-			"pending":  {"approved", "rejected", "cancelled"},
-			"approved": {"completed", "cancelled"},
-			"rejected": {"draft", "cancelled"},
+			"DRAFT":    {"PENDING", "CANCELLED"},
+			"PENDING":  {"APPROVED", "REJECTED", "CANCELLED"},
+			"APPROVED": {"COMPLETED", "CANCELLED"},
+			"REJECTED": {"DRAFT", "CANCELLED"},
 		}
-		
+
 		// Verify transitions
-		assert.Contains(t, validTransitions["draft"], "pending")
-		assert.Contains(t, validTransitions["pending"], "approved")
-		assert.Contains(t, validTransitions["approved"], "completed")
+		assert.Contains(t, validTransitions["DRAFT"], "PENDING")
+		assert.Contains(t, validTransitions["PENDING"], "APPROVED")
+		assert.Contains(t, validTransitions["APPROVED"], "COMPLETED")
 	})
 }
 
@@ -222,7 +222,7 @@ func TestDocumentService_ListDocuments(t *testing.T) {
 		
 		// Verify filter
 		assert.Len(t, pendingDocs, 1)
-		assert.Equal(t, "pending", pendingDocs[0].Status)
+		assert.Equal(t, "PENDING", pendingDocs[0].Status)
 	})
 }
 
@@ -243,8 +243,8 @@ func TestDocumentService_DeleteDocument(t *testing.T) {
 		
 		// Verify document exists
 		assert.NotNil(t, mockDoc)
-		assert.Equal(t, "draft", mockDoc.Status)
-		
+		assert.Equal(t, "DRAFT", mockDoc.Status)
+
 		// Simulate deletion (only draft documents can be deleted)
 		var deletedDoc *models.Document
 		if mockDoc.Status == "DRAFT" {
@@ -270,8 +270,8 @@ func TestDocumentService_DeleteDocument(t *testing.T) {
 		
 		// Verify document exists
 		assert.NotNil(t, mockDoc)
-		assert.Equal(t, "pending", mockDoc.Status)
-		
+		assert.Equal(t, "PENDING", mockDoc.Status)
+
 		// Try to delete (should fail for non-draft)
 		canDelete := mockDoc.Status == "DRAFT"
 		assert.False(t, canDelete)
@@ -314,13 +314,13 @@ func TestDocumentService_DocumentStats(t *testing.T) {
 		// Calculate stats
 		stats := map[string]int{
 			"total":       len(mockDocs),
-			"draft":       0,
-			"pending":     0,
-			"approved":    0,
+			"DRAFT":       0,
+			"PENDING":     0,
+			"APPROVED":    0,
 			"requisition": 0,
 			"budget":      0,
 		}
-		
+
 		for _, doc := range mockDocs {
 			stats[doc.Status]++
 			if doc.DocumentType == "REQUISITION" {
@@ -329,12 +329,12 @@ func TestDocumentService_DocumentStats(t *testing.T) {
 				stats["budget"]++
 			}
 		}
-		
+
 		// Verify stats
 		assert.Equal(t, 3, stats["total"])
-		assert.Equal(t, 1, stats["draft"])
-		assert.Equal(t, 1, stats["pending"])
-		assert.Equal(t, 1, stats["approved"])
+		assert.Equal(t, 1, stats["DRAFT"])
+		assert.Equal(t, 1, stats["PENDING"])
+		assert.Equal(t, 1, stats["APPROVED"])
 		assert.Equal(t, 2, stats["requisition"])
 		assert.Equal(t, 1, stats["budget"])
 	})

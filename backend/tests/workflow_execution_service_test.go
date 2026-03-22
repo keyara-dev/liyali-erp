@@ -57,7 +57,7 @@ func TestStageProgressInfo(t *testing.T) {
 	assert.Equal(t, 1, stageInfo.StageNumber)
 	assert.Equal(t, "Manager Approval", stageInfo.StageName)
 	assert.Equal(t, "manager", stageInfo.RequiredRole)
-	assert.Equal(t, "approved", stageInfo.Status)
+	assert.Equal(t, "APPROVED", stageInfo.Status)
 	assert.False(t, stageInfo.IsCurrentStage)
 	assert.Equal(t, "user-123", stageInfo.ApproverID)
 	assert.Equal(t, "John Manager", stageInfo.ApproverName)
@@ -97,18 +97,18 @@ func TestWorkflowStatusResponse(t *testing.T) {
 	
 	assert.Equal(t, 2, response.CurrentStage)
 	assert.Equal(t, 3, response.TotalStages)
-	assert.Equal(t, "in_progress", response.Status)
+	assert.Equal(t, "IN_PROGRESS", response.Status)
 	assert.Equal(t, "Finance Team", response.NextApprover)
 	assert.True(t, response.CanApprove)
 	assert.True(t, response.CanReject)
 	assert.Len(t, response.StageProgress, 2)
-	
+
 	// Check first stage
-	assert.Equal(t, "approved", response.StageProgress[0].Status)
+	assert.Equal(t, "APPROVED", response.StageProgress[0].Status)
 	assert.False(t, response.StageProgress[0].IsCurrentStage)
-	
+
 	// Check current stage
-	assert.Equal(t, "pending", response.StageProgress[1].Status)
+	assert.Equal(t, "PENDING", response.StageProgress[1].Status)
 	assert.True(t, response.StageProgress[1].IsCurrentStage)
 }
 
@@ -151,7 +151,7 @@ func TestWorkflowStatusResponseJSON(t *testing.T) {
 	assert.NotNil(t, response)
 	assert.Equal(t, 1, response.CurrentStage)
 	assert.Equal(t, 2, response.TotalStages)
-	assert.Equal(t, "completed", response.Status)
+	assert.Equal(t, "COMPLETED", response.Status)
 	assert.Len(t, response.StageProgress, 1)
 }
 
@@ -198,21 +198,21 @@ func TestCustomRoleValidation(t *testing.T) {
 		// Verify custom roles are properly stored and retrieved
 		assert.Equal(t, 2, response.CurrentStage)
 		assert.Equal(t, 2, response.TotalStages)
-		assert.Equal(t, "in_progress", response.Status)
+		assert.Equal(t, "IN_PROGRESS", response.Status)
 		assert.Len(t, response.StageProgress, 2)
-		
+
 		// Verify custom roles in completed stage
 		completedStage := response.StageProgress[0]
 		assert.Equal(t, "procurement_specialist", completedStage.RequiredRole)
 		assert.Equal(t, "procurement_specialist", completedStage.ApproverRole)
-		assert.Equal(t, "approved", completedStage.Status)
+		assert.Equal(t, "APPROVED", completedStage.Status)
 		assert.False(t, completedStage.IsCurrentStage)
 		assert.NotNil(t, completedStage.CompletedAt)
-		
+
 		// Verify custom roles in current stage
 		currentStage := response.StageProgress[1]
 		assert.Equal(t, "department_head_procurement", currentStage.RequiredRole)
-		assert.Equal(t, "pending", currentStage.Status)
+		assert.Equal(t, "PENDING", currentStage.Status)
 		assert.True(t, currentStage.IsCurrentStage)
 	})
 	
