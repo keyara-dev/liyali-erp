@@ -8,8 +8,8 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/liyali/liyali-gateway/models"
+	"github.com/glebarez/sqlite"
 	"github.com/stretchr/testify/require"
-	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 )
