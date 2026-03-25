@@ -582,3 +582,306 @@ func TestValidateWorkflow_Success(t *testing.T) {
 		t.Errorf("expected 200, got %d; body=%v", resp.StatusCode, body)
 	}
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Extended app factories for missing endpoints
+// ─────────────────────────────────────────────────────────────────────────────
+
+func newWorkflowAppExtended(t *testing.T) *fiber.App {
+	t.Helper()
+	svc := newWorkflowService(t)
+	h := NewWorkflowHandler(svc)
+	auth := withTenantCtx(testOrgID, testUserID, testUserRole)
+
+	app := fiber.New(fiber.Config{
+		ErrorHandler: func(c *fiber.Ctx, err error) error {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+		},
+	})
+
+	app.Get("/workflows/default/:documentType", auth, h.GetDefaultWorkflow)
+	app.Post("/workflows/:id/duplicate", auth, h.DuplicateWorkflow)
+	app.Post("/workflows/:id/set-default", auth, h.SetDefaultWorkflow)
+	app.Post("/workflows/resolve", auth, h.ResolveWorkflow)
+	app.Get("/workflows/:id/usage", auth, h.GetWorkflowUsage)
+	return app
+}
+
+func newWorkflowAppExtendedNoAuth(t *testing.T) *fiber.App {
+	t.Helper()
+	svc := newWorkflowService(t)
+	h := NewWorkflowHandler(svc)
+
+	app := fiber.New(fiber.Config{
+		ErrorHandler: func(c *fiber.Ctx, err error) error {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+		},
+	})
+	app.Use(fiberrecover.New())
+
+	app.Get("/workflows/default/:documentType", h.GetDefaultWorkflow)
+	app.Post("/workflows/:id/duplicate", h.DuplicateWorkflow)
+	app.Post("/workflows/:id/set-default", h.SetDefaultWorkflow)
+	app.Post("/workflows/resolve", h.ResolveWorkflow)
+	app.Get("/workflows/:id/usage", h.GetWorkflowUsage)
+	return app
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GetDefaultWorkflow
+// ─────────────────────────────────────────────────────────────────────────────
+
+func TestGetDefaultWorkflow_NoAuth(t *testing.T) {
+	db := setupTestDB(t)
+	defer teardownTestDB(t, db)
+	setupWorkflowTestDB(t)
+
+	app := newWorkflowAppExtendedNoAuth(t)
+	resp := testRequest(app, http.MethodGet, "/workflows/default/requisition", nil)
+	if resp.StatusCode == http.StatusOK {
+		t.Errorf("expected non-200 without auth, got 200")
+	}
+}
+
+func TestGetDefaultWorkflow_NotFound(t *testing.T) {
+	db := setupTestDB(t)
+	defer teardownTestDB(t, db)
+	setupWorkflowTestDB(t)
+
+	app := newWorkflowAppExtended(t)
+	resp := testRequest(app, http.MethodGet, "/workflows/default/purchase_order", nil)
+	if resp.StatusCode != http.StatusNotFound {
+		t.Errorf("expected 404 for unknown document type, got %d", resp.StatusCode)
+	}
+}
+
+func TestGetDefaultWorkflow_Success(t *testing.T) {
+	db := setupTestDB(t)
+	defer teardownTestDB(t, db)
+	setupWorkflowTestDB(t)
+	seedTestUser(t)
+
+	// Insert a workflow marked as default for "requisition".
+	wf := makeWorkflow(t, testOrgID, testUserID)
+	if err := config.DB.Model(&wf).Update("is_default", true).Error; err != nil {
+		t.Fatalf("TestGetDefaultWorkflow_Success: set is_default: %v", err)
+	}
+
+	app := newWorkflowAppExtended(t)
+	resp := testRequest(app, http.MethodGet, "/workflows/default/requisition", nil)
+	if resp.StatusCode != http.StatusOK {
+		body := decodeResponse(resp)
+		t.Errorf("expected 200, got %d; body=%v", resp.StatusCode, body)
+	}
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// DuplicateWorkflow
+// ─────────────────────────────────────────────────────────────────────────────
+
+func TestDuplicateWorkflow_NoAuth(t *testing.T) {
+	db := setupTestDB(t)
+	defer teardownTestDB(t, db)
+	setupWorkflowTestDB(t)
+
+	app := newWorkflowAppExtendedNoAuth(t)
+	resp := testRequest(app, http.MethodPost, "/workflows/"+uuid.New().String()+"/duplicate", map[string]interface{}{
+		"name": "Copy",
+	})
+	if resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusCreated {
+		t.Errorf("expected non-2xx without auth, got %d", resp.StatusCode)
+	}
+}
+
+func TestDuplicateWorkflow_NotFound(t *testing.T) {
+	db := setupTestDB(t)
+	defer teardownTestDB(t, db)
+	setupWorkflowTestDB(t)
+
+	app := newWorkflowAppExtended(t)
+	resp := testRequest(app, http.MethodPost, "/workflows/"+uuid.New().String()+"/duplicate", map[string]interface{}{
+		"name": "Copy of Missing",
+	})
+	// Handler returns 404 when original workflow is not found.
+	if resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusCreated {
+		t.Errorf("expected non-2xx for non-existent workflow, got %d", resp.StatusCode)
+	}
+}
+
+func TestDuplicateWorkflow_Success(t *testing.T) {
+	db := setupTestDB(t)
+	defer teardownTestDB(t, db)
+	setupWorkflowTestDB(t)
+	seedTestUser(t)
+
+	wf := makeWorkflow(t, testOrgID, testUserID)
+	app := newWorkflowAppExtended(t)
+	resp := testRequest(app, http.MethodPost, "/workflows/"+wf.ID.String()+"/duplicate", map[string]interface{}{
+		"name": "Test Workflow (Copy)",
+	})
+	if resp.StatusCode != http.StatusCreated {
+		body := decodeResponse(resp)
+		t.Errorf("expected 201, got %d; body=%v", resp.StatusCode, body)
+	}
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SetDefaultWorkflow
+// ─────────────────────────────────────────────────────────────────────────────
+
+func TestSetDefaultWorkflow_NoAuth(t *testing.T) {
+	db := setupTestDB(t)
+	defer teardownTestDB(t, db)
+	setupWorkflowTestDB(t)
+
+	app := newWorkflowAppExtendedNoAuth(t)
+	resp := testRequest(app, http.MethodPost, "/workflows/"+uuid.New().String()+"/set-default", map[string]interface{}{
+		"entityType": "requisition",
+	})
+	if resp.StatusCode == http.StatusOK {
+		t.Errorf("expected non-200 without auth, got 200")
+	}
+}
+
+func TestSetDefaultWorkflow_MissingEntityType(t *testing.T) {
+	db := setupTestDB(t)
+	defer teardownTestDB(t, db)
+	setupWorkflowTestDB(t)
+
+	app := newWorkflowAppExtended(t)
+	resp := testRequest(app, http.MethodPost, "/workflows/"+uuid.New().String()+"/set-default", map[string]interface{}{})
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Errorf("expected 400 for missing entityType, got %d", resp.StatusCode)
+	}
+}
+
+func TestSetDefaultWorkflow_Success(t *testing.T) {
+	db := setupTestDB(t)
+	defer teardownTestDB(t, db)
+	setupWorkflowTestDB(t)
+	seedTestUser(t)
+
+	wf := makeWorkflow(t, testOrgID, testUserID)
+	app := newWorkflowAppExtended(t)
+	resp := testRequest(app, http.MethodPost, "/workflows/"+wf.ID.String()+"/set-default", map[string]interface{}{
+		"entityType": "requisition",
+	})
+	if resp.StatusCode != http.StatusOK {
+		body := decodeResponse(resp)
+		t.Errorf("expected 200, got %d; body=%v", resp.StatusCode, body)
+	}
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ResolveWorkflow
+// ─────────────────────────────────────────────────────────────────────────────
+
+func TestResolveWorkflow_NoAuth(t *testing.T) {
+	db := setupTestDB(t)
+	defer teardownTestDB(t, db)
+	setupWorkflowTestDB(t)
+
+	app := newWorkflowAppExtendedNoAuth(t)
+	resp := testRequest(app, http.MethodPost, "/workflows/resolve", map[string]interface{}{
+		"entityType": "requisition",
+	})
+	if resp.StatusCode == http.StatusOK {
+		t.Errorf("expected non-200 without auth, got 200")
+	}
+}
+
+func TestResolveWorkflow_MissingEntityType(t *testing.T) {
+	db := setupTestDB(t)
+	defer teardownTestDB(t, db)
+	setupWorkflowTestDB(t)
+
+	app := newWorkflowAppExtended(t)
+	resp := testRequest(app, http.MethodPost, "/workflows/resolve", map[string]interface{}{})
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Errorf("expected 400 for missing entityType, got %d", resp.StatusCode)
+	}
+}
+
+func TestResolveWorkflow_NotFound(t *testing.T) {
+	db := setupTestDB(t)
+	defer teardownTestDB(t, db)
+	setupWorkflowTestDB(t)
+
+	app := newWorkflowAppExtended(t)
+	resp := testRequest(app, http.MethodPost, "/workflows/resolve", map[string]interface{}{
+		"entityType": "purchase_order",
+	})
+	// No active default workflow exists for this entity type — expect 404.
+	if resp.StatusCode != http.StatusNotFound {
+		t.Errorf("expected 404 when no workflow matches, got %d", resp.StatusCode)
+	}
+}
+
+func TestResolveWorkflow_Success(t *testing.T) {
+	db := setupTestDB(t)
+	defer teardownTestDB(t, db)
+	setupWorkflowTestDB(t)
+	seedTestUser(t)
+
+	// Insert an active default workflow for "requisition".
+	wf := makeWorkflow(t, testOrgID, testUserID)
+	if err := config.DB.Model(&wf).Updates(map[string]interface{}{"is_active": true, "is_default": true}).Error; err != nil {
+		t.Fatalf("TestResolveWorkflow_Success: set is_default/is_active: %v", err)
+	}
+
+	app := newWorkflowAppExtended(t)
+	resp := testRequest(app, http.MethodPost, "/workflows/resolve", map[string]interface{}{
+		"entityType": "requisition",
+	})
+	if resp.StatusCode != http.StatusOK {
+		body := decodeResponse(resp)
+		t.Errorf("expected 200, got %d; body=%v", resp.StatusCode, body)
+	}
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GetWorkflowUsage
+// ─────────────────────────────────────────────────────────────────────────────
+
+func TestGetWorkflowUsage_NoAuth(t *testing.T) {
+	db := setupTestDB(t)
+	defer teardownTestDB(t, db)
+	setupWorkflowTestDB(t)
+
+	app := newWorkflowAppExtendedNoAuth(t)
+	resp := testRequest(app, http.MethodGet, "/workflows/"+uuid.New().String()+"/usage", nil)
+	if resp.StatusCode == http.StatusOK {
+		t.Errorf("expected non-200 without auth, got 200")
+	}
+}
+
+func TestGetWorkflowUsage_ZeroCount(t *testing.T) {
+	db := setupTestDB(t)
+	defer teardownTestDB(t, db)
+	setupWorkflowTestDB(t)
+	seedTestUser(t)
+
+	wf := makeWorkflow(t, testOrgID, testUserID)
+	app := newWorkflowAppExtended(t)
+	resp := testRequest(app, http.MethodGet, "/workflows/"+wf.ID.String()+"/usage", nil)
+	if resp.StatusCode != http.StatusOK {
+		body := decodeResponse(resp)
+		t.Errorf("expected 200, got %d; body=%v", resp.StatusCode, body)
+	}
+}
+
+func TestGetWorkflowUsage_Success(t *testing.T) {
+	db := setupTestDB(t)
+	defer teardownTestDB(t, db)
+	setupWorkflowTestDB(t)
+	seedTestUser(t)
+
+	// A workflow that has never been assigned returns usageCount=0 and canDelete=true.
+	wf := makeWorkflow(t, testOrgID, testUserID)
+	app := newWorkflowAppExtended(t)
+	resp := testRequest(app, http.MethodGet, "/workflows/"+wf.ID.String()+"/usage", nil)
+	if resp.StatusCode != http.StatusOK {
+		body := decodeResponse(resp)
+		t.Errorf("expected 200, got %d; body=%v", resp.StatusCode, body)
+	}
+}

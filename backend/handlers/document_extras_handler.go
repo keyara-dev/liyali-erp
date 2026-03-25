@@ -15,6 +15,7 @@ import (
 	"github.com/liyali/liyali-gateway/types"
 	"github.com/liyali/liyali-gateway/utils"
 	"gorm.io/datatypes"
+	"gorm.io/gorm"
 )
 
 // ============================================================================
@@ -517,12 +518,12 @@ func GetRequisitionStats(c *fiber.Ctx) error {
 	stats := fiber.Map{}
 	for _, status := range []string{"draft", "pending", "approved", "rejected", "completed", "cancelled"} {
 		var count int64
-		base.Where("UPPER(status) = ?", strings.ToUpper(status)).Count(&count)
+		base.Session(&gorm.Session{}).Where("UPPER(status) = ?", strings.ToUpper(status)).Count(&count)
 		stats[status] = count
 	}
 
 	var total int64
-	base.Count(&total)
+	base.Session(&gorm.Session{}).Count(&total)
 	stats["total"] = total
 
 	return utils.SendSimpleSuccess(c, stats, "Requisition statistics retrieved successfully")
@@ -544,12 +545,12 @@ func GetPurchaseOrderStats(c *fiber.Ctx) error {
 	stats := fiber.Map{}
 	for _, status := range []string{"draft", "pending", "approved", "rejected", "fulfilled", "completed", "cancelled"} {
 		var count int64
-		base.Where("UPPER(status) = ?", strings.ToUpper(status)).Count(&count)
+		base.Session(&gorm.Session{}).Where("UPPER(status) = ?", strings.ToUpper(status)).Count(&count)
 		stats[status] = count
 	}
 
 	var total int64
-	base.Count(&total)
+	base.Session(&gorm.Session{}).Count(&total)
 	stats["total"] = total
 
 	return utils.SendSimpleSuccess(c, stats, "Purchase order statistics retrieved successfully")
@@ -571,12 +572,12 @@ func GetPaymentVoucherStats(c *fiber.Ctx) error {
 	stats := fiber.Map{}
 	for _, status := range []string{"draft", "pending", "approved", "rejected", "paid", "completed", "cancelled"} {
 		var count int64
-		base.Where("UPPER(status) = ?", strings.ToUpper(status)).Count(&count)
+		base.Session(&gorm.Session{}).Where("UPPER(status) = ?", strings.ToUpper(status)).Count(&count)
 		stats[status] = count
 	}
 
 	var total int64
-	base.Count(&total)
+	base.Session(&gorm.Session{}).Count(&total)
 	stats["total"] = total
 
 	return utils.SendSimpleSuccess(c, stats, "Payment voucher statistics retrieved successfully")

@@ -441,8 +441,8 @@ export function CreateRequisitionDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl! p-0 overflow-y-auto h-[90svh] max-h-[90vh]">
-        <DialogHeader className="p-4 pb-0">
+      <DialogContent className="max-w-3xl! p-0 flex flex-col h-[90svh] max-h-[90vh]">
+        <DialogHeader className="p-4 pb-0 shrink-0">
           <DialogTitle className="font-bold">
             {isEditing ? "Edit Requisition" : "Create New Requisition"}
           </DialogTitle>
@@ -490,7 +490,7 @@ export function CreateRequisitionDialog({
           </div>
         </DialogHeader>
 
-        <div className="space-y-6 p-4">
+        <div className="flex-1 overflow-y-auto space-y-6 p-4">
           {/* Configuration Checklist Banner - Show if any required configs are missing */}
           {!configStatus.allConfigured && !configStatus.isLoading && (
             <ConfigurationChecklistBanner
@@ -965,7 +965,7 @@ export function CreateRequisitionDialog({
         </div>
 
         {/* Dialog Footer */}
-        <div className="bg-card/5 backdrop-blur-xs sticky bottom-0 flex flex-col-reverse justify-end gap-3 p-4 rounded-b-lg border-t py-6 sm:flex-row sm:py-6">
+        <div className="bg-card/5 backdrop-blur-xs shrink-0 flex flex-col-reverse justify-end gap-3 p-4 rounded-b-lg border-t py-6 sm:flex-row sm:py-6">
           {step === "details" ? (
             <>
               <Button
