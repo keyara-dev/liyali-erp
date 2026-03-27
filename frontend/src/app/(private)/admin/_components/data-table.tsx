@@ -82,6 +82,9 @@ type UsersDataTableProps = {
   currentDepartment?: string;
 };
 
+const getUserDisplayName = (user: User): string =>
+  `${user.first_name || ""} ${user.last_name || ""}`.trim() || user.name || user.email || "Unknown User";
+
 const getColumns = (
   onDelete: (id: string) => void,
   onToggleStatus: (id: string, isActive: boolean) => void,
@@ -103,7 +106,7 @@ const getColumns = (
     id: "username",
     header: "Name",
     cell: ({ row }) => {
-      const fullName = `${row.original.first_name} ${row.original.last_name}`;
+      const fullName = getUserDisplayName(row.original);
       const avatarSrc = (row.original as any).avatar || (row.original as any).preferences?.avatar || getAvatarSrc(fullName);
       return (
         <div className="flex items-center gap-3">
@@ -373,7 +376,7 @@ export default function UsersDataTable({
       setDeleteDialog({
         open: true,
         userId: id,
-        userName: `${user.first_name} ${user.last_name}`,
+        userName: getUserDisplayName(user),
       });
     }
   };
@@ -384,7 +387,7 @@ export default function UsersDataTable({
       setToggleStatusDialog({
         open: true,
         userId: id,
-        userName: `${user.first_name} ${user.last_name}`,
+        userName: getUserDisplayName(user),
         activate,
       });
     }
@@ -415,7 +418,7 @@ export default function UsersDataTable({
       setResetPasswordDialog({
         open: true,
         userId: id,
-        userName: `${user.first_name} ${user.last_name}`,
+        userName: getUserDisplayName(user),
       });
     }
   };

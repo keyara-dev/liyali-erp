@@ -76,7 +76,7 @@ const SelectField = React.forwardRef<HTMLSelectElement, SelectInputProps>(
         {label && (
           <label
             className={cn(
-              "mb-0.5 pl-1 text-sm font-medium text-slate-700 dark:text-slate-300 truncate",
+              "mb-1 pl-1 text-sm font-medium text-slate-700 dark:text-slate-300 truncate",
               {
                 "text-red-500": onError || isInvalid,
                 "opacity-50": isDisabled || props?.disabled,
@@ -94,7 +94,9 @@ const SelectField = React.forwardRef<HTMLSelectElement, SelectInputProps>(
         )}
 
         <Select
-          {...(value !== undefined ? { value } : { defaultValue: String(defaultValue) })}
+          {...(value !== undefined
+            ? { value }
+            : { defaultValue: String(defaultValue) })}
           onValueChange={onValueChange}
           disabled={isDisabled || props?.disabled}
         >

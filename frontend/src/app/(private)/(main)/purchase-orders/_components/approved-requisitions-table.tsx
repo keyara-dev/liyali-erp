@@ -27,6 +27,7 @@ import { CreatePOFromRequisitionDialog } from "./create-po-from-requisition-dial
 import { createPurchaseOrderFromRequisition } from "@/app/_actions/purchase-orders";
 import { toast } from "sonner";
 import { Card } from "@/components/ui/card";
+import { usePermissions } from "@/hooks/use-permissions";
 
 interface ApprovedRequisitionsTableProps {
   userId: string;
@@ -61,12 +62,22 @@ export function ApprovedRequisitionsTable({
     staleTime: 2 * 60 * 1000, // 2 minutes
   });
 
+  const { hasPermission, isAdmin, isFinance } = usePermissions();
+
+  const canCreatePO =
+    hasPermission("purchase_order", "create") || isAdmin() || isFinance();
+
   const handleCreatePO = (requisition: Requisition) => {
     setSelectedRequisition(requisition);
     setIsCreateDialogOpen(true);
   };
 
-  const handleConfirmCreate = async (workflowId: string, vendorId?: string, vendorName?: string, procurementFlow?: "" | "goods_first" | "payment_first") => {
+  const handleConfirmCreate = async (
+    workflowId: string,
+    vendorId?: string,
+    vendorName?: string,
+    procurementFlow?: "" | "goods_first" | "payment_first",
+  ) => {
     if (!selectedRequisition) return;
 
     setIsCreating(true);
@@ -219,14 +230,16 @@ export function ApprovedRequisitionsTable({
                           <Eye className="h-4 w-4 mr-1" />
                           View
                         </Button>
-                        <Button
-                          variant="default"
-                          size="sm"
-                          onClick={() => handleCreatePO(requisition)}
-                        >
-                          <FileText className="h-4 w-4 mr-1" />
-                          Create PO
-                        </Button>
+                        {canCreatePO && (
+                          <Button
+                            variant="default"
+                            size="sm"
+                            onClick={() => handleCreatePO(requisition)}
+                          >
+                            <FileText className="h-4 w-4 mr-1" />
+                            Create PO
+                          </Button>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>

@@ -35,6 +35,9 @@ import {
   WorkflowStatusSummary,
 } from "./approval-history-panel";
 import { CreateRequisitionDialog } from "./create-requisition-dialog";
+import { CreatePOFromRequisitionDialog } from "@/app/(private)/(main)/purchase-orders/_components/create-po-from-requisition-dialog";
+import { createPurchaseOrderFromRequisition } from "@/app/_actions/purchase-orders";
+import { toast } from "sonner";
 import { DocumentLinks } from "@/components/document-links";
 import { WorkflowDocument } from "@/types";
 import {
@@ -67,6 +70,7 @@ import { Badge } from "@/components";
 import { DocumentLoadingPage } from "@/components/base/document-loading-page";
 import ErrorDisplay from "@/components/base/error-display";
 import { useRequisitionDetail } from "@/hooks/use-requisition-detail";
+import { usePermissions } from "@/hooks/use-permissions";
 import { useRouter } from "next/navigation";
 
 interface RequisitionDetailClientProps {
@@ -83,7 +87,11 @@ export function RequisitionDetailClient({
   initialRequisition,
 }: RequisitionDetailClientProps) {
   const router = useRouter();
-  const [editInitialStep, setEditInitialStep] = useState<"details" | "items">("details");
+  const [editInitialStep, setEditInitialStep] = useState<"details" | "items">(
+    "details",
+  );
+  const [isCreatePOOpen, setIsCreatePOOpen] = useState(false);
+  const [isCreatingPO, setIsCreatingPO] = useState(false);
 
   // Use the new hook to manage all document detail logic
   const {
@@ -122,6 +130,12 @@ export function RequisitionDetailClient({
     initialRequisition,
   });
 
+  const { hasPermission, isAdmin, isFinance } = usePermissions();
+
+  const canGeneratePO =
+    requisition?.status?.toUpperCase() === "APPROVED" &&
+    (hasPermission("purchase_order", "create") || isAdmin() || isFinance());
+
   if (isLoading) return <DocumentLoadingPage />;
 
   if (!requisition)
@@ -156,6 +170,37 @@ export function RequisitionDetailClient({
       submittedByName: requisition.requestedByName || "User",
       submittedByRole: requisition.requestedByRole || userRole,
     });
+  };
+
+  const handleConfirmCreatePO = async (
+    workflowId: string,
+    vendorId?: string,
+    vendorName?: string,
+    procurementFlow?: "" | "goods_first" | "payment_first",
+  ) => {
+    setIsCreatingPO(true);
+    try {
+      const response = await createPurchaseOrderFromRequisition(
+        requisition,
+        workflowId,
+        vendorId,
+        vendorName,
+        procurementFlow,
+      );
+
+      if (response.success && response.data) {
+        toast.success("Purchase Order created successfully");
+        setIsCreatePOOpen(false);
+        router.push(`/purchase-orders/${response.data.id}`);
+      } else {
+        toast.error(response.message || "Failed to create Purchase Order");
+      }
+    } catch (error) {
+      console.error("Error creating PO:", error);
+      toast.error("An error occurred while creating the Purchase Order");
+    } finally {
+      setIsCreatingPO(false);
+    }
   };
 
   return (
@@ -195,9 +240,22 @@ export function RequisitionDetailClient({
             <Download className="h-4 w-4" />
             Export PDF
           </Button>
+          {canGeneratePO && (
+            <Button
+              onClick={() => setIsCreatePOOpen(true)}
+              variant="default"
+              className="gap-2 h-11"
+            >
+              <ShoppingCart className="h-4 w-4" />
+              Generate PO
+            </Button>
+          )}
           {permissions.canEdit && (
             <Button
-              onClick={() => { setEditInitialStep("details"); handleEdit(); }}
+              onClick={() => {
+                setEditInitialStep("details");
+                handleEdit();
+              }}
               variant="outline"
               className="gap-2 h-11"
             >
@@ -670,7 +728,10 @@ export function RequisitionDetailClient({
                 )}
                 {permissions.canEdit && (
                   <Button
-                    onClick={() => { setEditInitialStep("items"); handleEdit(); }}
+                    onClick={() => {
+                      setEditInitialStep("items");
+                      handleEdit();
+                    }}
                     variant="outline"
                     size="sm"
                     className="gap-2"
@@ -832,6 +893,15 @@ export function RequisitionDetailClient({
           </TabsContent>
         </Tabs>
       </Card>
+
+      {/* Create PO from Requisition Dialog */}
+      <CreatePOFromRequisitionDialog
+        open={isCreatePOOpen}
+        onOpenChange={setIsCreatePOOpen}
+        requisition={requisition}
+        onConfirm={handleConfirmCreatePO}
+        isCreating={isCreatingPO}
+      />
 
       {/* PDF Preview Dialog */}
       {previewBlob && (

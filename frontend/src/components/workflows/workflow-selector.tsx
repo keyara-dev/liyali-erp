@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { cn } from "@/lib/utils";
+import { Badge } from "../ui/badge";
 
 export interface WorkflowSelectorProps {
   entityType:
@@ -71,7 +72,14 @@ export function WorkflowSelector({
       onWorkflowSelect?.(workflows[0]);
       setHasAutoSelected(true);
     }
-  }, [defaultWorkflow, workflows, value, onChange, onWorkflowSelect, hasAutoSelected]);
+  }, [
+    defaultWorkflow,
+    workflows,
+    value,
+    onChange,
+    onWorkflowSelect,
+    hasAutoSelected,
+  ]);
 
   // Find selected workflow for details
   const selectedWorkflow = workflows?.find((w) => w.id === value) ?? null;
@@ -194,10 +202,10 @@ function WorkflowDetails({ workflow }: WorkflowDetailsProps) {
   const isAccounting = routingType === "accounting";
 
   return (
-    <div className="rounded-lg border bg-muted/50 p-3 space-y-2">
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex-1 space-y-1">
-          <div className="flex items-center gap-2">
+    <div className="rounded-lg border bg-muted/50 p-3 space-y-4">
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex-1 space-y-2">
+          <div className="flex items-center gap-4">
             <h4 className="text-sm font-medium">{workflow.name}</h4>
             {isAccounting ? (
               <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-medium text-amber-700 dark:text-amber-400">
@@ -220,14 +228,8 @@ function WorkflowDetails({ workflow }: WorkflowDetailsProps) {
         </div>
       </div>
 
-      <div className="flex items-center gap-4 text-xs text-muted-foreground">
-        <div className="flex items-center gap-1">
-          <Info className="h-3 w-3" />
-          <span>
-            {stagesCount} approval {stagesCount === 1 ? "stage" : "stages"}
-          </span>
-        </div>
-        {isAccounting && conditions?.autoApprove && (
+      {isAccounting && conditions?.autoApprove && (
+        <div className="flex items-center gap-4 text-xs text-muted-foreground">
           <div className="flex items-center gap-1 text-amber-700 dark:text-amber-400">
             <Zap className="h-3 w-3" />
             <span>
@@ -237,13 +239,15 @@ function WorkflowDetails({ workflow }: WorkflowDetailsProps) {
                 : ""}
             </span>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {workflow.stages && workflow.stages.length > 0 && (
         <div className="pt-2 border-t space-y-1">
-          <p className="text-xs font-medium text-muted-foreground">
-            Approval Stages:
+          <p className="text-sm flex items-center gap-1 font-medium text-foreground/75 mb-2">
+            Approval Stage
+            {stagesCount === 1 ? "" : "s"}:{" "}
+            <Badge variant={"info"}>{stagesCount}</Badge>
           </p>
           <div className="space-y-1">
             {workflow.stages.slice(0, 3).map((stage: any, index: number) => (

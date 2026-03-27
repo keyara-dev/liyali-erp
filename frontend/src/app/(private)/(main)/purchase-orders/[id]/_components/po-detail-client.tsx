@@ -7,7 +7,7 @@ import { Building2, TrendingUp, Download, Eye } from "lucide-react";
 import { PageHeader } from "@/components/base/page-header";
 import { DocumentLoadingPage } from "@/components/base/document-loading-page";
 import ErrorDisplay from "@/components/base/error-display";
-import { POItemsTable } from "./po-items-table";
+import { RequisitionItemsList } from "@/app/(private)/(main)/requisitions/_components/requisition-items-list";
 import { PDFPreviewDialog } from "@/components/modals/pdf-preview-dialog";
 import { usePurchaseOrderDetail } from "@/hooks/use-purchase-order-detail";
 
@@ -75,28 +75,30 @@ export function PODetailClient({
           onBackClick={handleBack}
           showBackButton={true}
         />
-        <Button
-          onClick={handlePreviewPDF}
-          disabled={isExporting}
-          variant="outline"
-          className="gap-2 h-11 mt-2 mr-2"
-          isLoading={isExporting}
-          loadingText="Loading..."
-        >
-          <Eye className="h-4 w-4" />
-          Preview
-        </Button>
-        <Button
-          onClick={handleExportPDF}
-          disabled={isExporting}
-          variant="outline"
-          className="gap-2 h-11 mt-2"
-          isLoading={isExporting}
-          loadingText="Exporting..."
-        >
-          <Download className="h-4 w-4" />
-          Export PDF
-        </Button>
+        <div className="flex gap-2 mt-2">
+          <Button
+            onClick={handlePreviewPDF}
+            disabled={isExporting}
+            variant="outline"
+            className="gap-2 h-11"
+            isLoading={isExporting}
+            loadingText="Loading..."
+          >
+            <Eye className="h-4 w-4" />
+            Preview
+          </Button>
+          <Button
+            onClick={handleExportPDF}
+            disabled={isExporting}
+            variant="outline"
+            className="gap-2 h-11"
+            isLoading={isExporting}
+            loadingText="Exporting..."
+          >
+            <Download className="h-4 w-4" />
+            Export PDF
+          </Button>
+        </div>
       </div>
 
       {/* Vendor Information */}
@@ -139,57 +141,55 @@ export function PODetailClient({
         </Card>
       )}
 
-      {/* PO Details and Status */}
-      <div className="grid gap-4 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <TrendingUp className="h-5 w-5" />
-              Order Details
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="grid gap-4 md:grid-cols-2">
-            <div>
-              <p className="text-sm text-muted-foreground">Created Date</p>
-              <p className="font-semibold">
-                {new Date(po.createdAt).toLocaleDateString()}
-              </p>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Delivery Date</p>
-              <p className="font-semibold">
-                {new Date(po.deliveryDate).toLocaleDateString()}
-              </p>
-            </div>
-            {po.department && (
+      {/* PO Details and Total Amount (unified card) */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <TrendingUp className="h-5 w-5" />
+            Purchase Order Summary
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-3">
               <div>
-                <p className="text-sm text-muted-foreground">Department</p>
-                <p className="font-semibold">{po.department}</p>
+                <p className="text-sm text-muted-foreground">Created Date</p>
+                <p className="font-semibold">
+                  {new Date(po.createdAt).toLocaleDateString()}
+                </p>
               </div>
-            )}
-            {po.priority && (
               <div>
-                <p className="text-sm text-muted-foreground">Priority</p>
-                <p className="font-semibold capitalize">{po.priority}</p>
+                <p className="text-sm text-muted-foreground">Delivery Date</p>
+                <p className="font-semibold">
+                  {new Date(po.deliveryDate).toLocaleDateString()}
+                </p>
               </div>
-            )}
-          </CardContent>
-        </Card>
+              {po.department && (
+                <div>
+                  <p className="text-sm text-muted-foreground">Department</p>
+                  <p className="font-semibold">{po.department}</p>
+                </div>
+              )}
+              {po.priority && (
+                <div>
+                  <p className="text-sm text-muted-foreground">Priority</p>
+                  <p className="font-semibold capitalize">{po.priority}</p>
+                </div>
+              )}
+            </div>
 
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium">Total Amount</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">
-              K{po.totalAmount?.toLocaleString("en-ZM") || "0"}
+            <div className="border-l border-muted/30 pl-4 md:pl-8">
+              <p className="text-sm text-muted-foreground">Total Amount</p>
+              <p className="text-2xl font-bold text-green-600">
+                K{po.totalAmount?.toLocaleString("en-ZM") || "0"}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {po.items?.length || 0} item{po.items?.length === 1 ? "" : "s"}
+              </p>
             </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              {po.items?.length || 0} items
-            </p>
-          </CardContent>
-        </Card>
-      </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Line Items */}
       {po.items && po.items.length > 0 && (
@@ -198,55 +198,27 @@ export function PODetailClient({
             <CardTitle>Line Items</CardTitle>
           </CardHeader>
           <CardContent>
-            <POItemsTable
+            <RequisitionItemsList
               items={po.items.map((item, index) => ({
-                ...item,
                 id: item.id || `item-${index}`,
-                itemNumber: index + 1,
-                totalPrice: item.amount || item.totalPrice || 0,
+                description: item.description || item.itemCode || "—",
+                quantity: item.quantity || 0,
+                unitPrice: item.unitPrice || 0,
+                amount: item.totalPrice || item.amount || 0,
+                totalPrice: item.totalPrice || item.amount || 0,
                 unit: item.unit || "unit",
+                category: item.category,
+                notes: item.notes,
               }))}
+              currency={po.currency || "K"}
+              isEstimate={false}
             />
           </CardContent>
         </Card>
       )}
 
-      {/* Cost Summary */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Cost Summary</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-2 max-w-xs ml-auto">
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Subtotal:</span>
-              <span className="font-semibold">
-                K{(po.subtotal || po.totalAmount || 0).toLocaleString("en-ZM")}
-              </span>
-            </div>
-            {po.tax !== undefined && (
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Tax:</span>
-                <span className="font-semibold">
-                  K{po.tax.toLocaleString("en-ZM")}
-                </span>
-              </div>
-            )}
-            <div className="border-t pt-2 flex justify-between">
-              <span className="font-semibold">Total:</span>
-              <span className="text-lg font-bold text-green-600">
-                K{(po.totalAmount || 0).toLocaleString("en-ZM")}
-              </span>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
       {/* Action Buttons */}
       <div className="flex gap-4 pt-4">
-        <Button variant="outline" onClick={handleBack}>
-          Cancel
-        </Button>
         {po.status?.toUpperCase() === "PENDING" && (
           <Button
             onClick={handleApprove}

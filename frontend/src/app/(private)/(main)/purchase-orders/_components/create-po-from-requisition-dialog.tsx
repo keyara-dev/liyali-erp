@@ -12,13 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { SelectField } from "@/components/ui/select-field";
 import { Requisition } from "@/types/requisition";
 import { FileText, CheckCircle2, AlertCircle, ArrowDownUp } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
@@ -32,7 +26,12 @@ interface CreatePOFromRequisitionDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   requisition: Requisition;
-  onConfirm: (workflowId: string, vendorId?: string, vendorName?: string, procurementFlow?: "" | "goods_first" | "payment_first") => Promise<void>;
+  onConfirm: (
+    workflowId: string,
+    vendorId?: string,
+    vendorName?: string,
+    procurementFlow?: "" | "goods_first" | "payment_first",
+  ) => Promise<void>;
   isCreating: boolean;
 }
 
@@ -46,12 +45,14 @@ export function CreatePOFromRequisitionDialog({
   const [workflowId, setWorkflowId] = useState("");
   const [workflowError, setWorkflowError] = useState<string | null>(null);
   const [selectedVendorId, setSelectedVendorId] = useState(
-    requisition.vendorId ?? ""
+    requisition.vendorId ?? "",
   );
   const [selectedVendorName, setSelectedVendorName] = useState(
-    requisition.vendorName ?? ""
+    requisition.vendorName ?? "",
   );
-  const [procurementFlow, setProcurementFlow] = useState<"" | "goods_first" | "payment_first">("");
+  const [procurementFlow, setProcurementFlow] = useState<
+    "" | "goods_first" | "payment_first"
+  >("");
 
   const { data: vendors = [] } = useVendors();
 
@@ -112,7 +113,7 @@ export function CreatePOFromRequisitionDialog({
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent
-        className="max-w-lg max-h-[90vh] overflow-y-auto"
+        className="max-w-5xl! max-h-[90vh] overflow-y-auto"
         onInteractOutside={(e) => e.preventDefault()}
       >
         <DialogHeader>
@@ -126,7 +127,7 @@ export function CreatePOFromRequisitionDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className="space-y-6">
           {/* Configuration Checklist Banner */}
           {!configStatus.allConfigured && (
             <ConfigurationChecklistBanner
@@ -148,28 +149,19 @@ export function CreatePOFromRequisitionDialog({
           />
 
           {/* Vendor Selector (optional) */}
-          <div className="space-y-1.5">
-            <Label htmlFor="vendor-select">Vendor</Label>
-            <Select
-              value={selectedVendorId}
-              onValueChange={handleVendorChange}
-              disabled={isCreating}
-            >
-              <SelectTrigger id="vendor-select">
-                <SelectValue placeholder="No vendor (optional)" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="">No vendor</SelectItem>
-                {vendors
-                  .filter((v) => v.active)
-                  .map((v) => (
-                    <SelectItem key={v.id} value={v.id}>
-                      {v.name}
-                    </SelectItem>
-                  ))}
-              </SelectContent>
-            </Select>
-          </div>
+          <SelectField
+            label="Vendor"
+            placeholder="No vendor (optional)"
+            value={selectedVendorId}
+            onValueChange={handleVendorChange}
+            isDisabled={isCreating}
+            options={vendors
+              .filter((v) => v.active)
+              .map((v) => ({
+                value: v.id,
+                name: v.name,
+              }))}
+          />
 
           {/* Procurement Flow Override */}
           <div className="space-y-2">
@@ -178,33 +170,55 @@ export function CreatePOFromRequisitionDialog({
               Procurement Flow
             </Label>
             <p className="text-xs text-muted-foreground">
-              Override the organisation default for this purchase order only.
+              Override the organization default for this purchase order only.
             </p>
             <RadioGroup
               value={procurementFlow}
-              onValueChange={(v) => setProcurementFlow(v as "" | "goods_first" | "payment_first")}
+              onValueChange={(v) =>
+                setProcurementFlow(v as "" | "goods_first" | "payment_first")
+              }
               disabled={isCreating}
               className="space-y-2"
             >
               <div className="flex items-start gap-2.5 rounded-md border p-3 cursor-pointer hover:bg-muted/50 transition-colors">
-                <RadioGroupItem value="" id="po-flow-default" className="mt-0.5" />
+                <RadioGroupItem
+                  value=""
+                  id="po-flow-default"
+                  className="mt-0.5"
+                />
                 <Label htmlFor="po-flow-default" className="cursor-pointer">
-                  <span className="font-medium text-sm">Use organisation default</span>
-                  <p className="text-xs text-muted-foreground font-normal">Follow the workspace-level procurement flow setting</p>
+                  <span className="font-medium text-sm">
+                    Use organisation default
+                  </span>
+                  <p className="text-xs text-muted-foreground font-normal">
+                    Follow the workspace-level procurement flow setting
+                  </p>
                 </Label>
               </div>
               <div className="flex items-start gap-2.5 rounded-md border p-3 cursor-pointer hover:bg-muted/50 transition-colors">
-                <RadioGroupItem value="goods_first" id="po-flow-goods" className="mt-0.5" />
+                <RadioGroupItem
+                  value="goods_first"
+                  id="po-flow-goods"
+                  className="mt-0.5"
+                />
                 <Label htmlFor="po-flow-goods" className="cursor-pointer">
                   <span className="font-medium text-sm">Goods-First</span>
-                  <p className="text-xs text-muted-foreground font-normal">GRN must be approved before payment can be processed</p>
+                  <p className="text-xs text-muted-foreground font-normal">
+                    GRN must be approved before payment can be processed
+                  </p>
                 </Label>
               </div>
               <div className="flex items-start gap-2.5 rounded-md border p-3 cursor-pointer hover:bg-muted/50 transition-colors">
-                <RadioGroupItem value="payment_first" id="po-flow-payment" className="mt-0.5" />
+                <RadioGroupItem
+                  value="payment_first"
+                  id="po-flow-payment"
+                  className="mt-0.5"
+                />
                 <Label htmlFor="po-flow-payment" className="cursor-pointer">
                   <span className="font-medium text-sm">Payment-First</span>
-                  <p className="text-xs text-muted-foreground font-normal">Payment is processed upfront; GRN confirms delivery later</p>
+                  <p className="text-xs text-muted-foreground font-normal">
+                    Payment is processed upfront; GRN confirms delivery later
+                  </p>
                 </Label>
               </div>
             </RadioGroup>
@@ -288,7 +302,7 @@ export function CreatePOFromRequisitionDialog({
         </div>
 
         {/* Actions */}
-        <DialogFooter className="gap-2 sm:gap-0">
+        <DialogFooter className="sticky bottom-0 z-50 bg-card/5 backdrop-blur-xs border-t py-4 sm:py-4 flex flex-col-reverse justify-end gap-3 p-4 sm:flex-row rounded-b-lg">
           <Button
             type="button"
             variant="outline"
@@ -297,8 +311,13 @@ export function CreatePOFromRequisitionDialog({
           >
             Cancel
           </Button>
-          <Button onClick={handleConfirm} disabled={isCreating || !canCreate} isLoading={isCreating} loadingText="Creating...">
-            <FileText className="mr-2 h-4 w-4" />
+          <Button
+            onClick={handleConfirm}
+            disabled={isCreating || !canCreate}
+            isLoading={isCreating}
+            loadingText="Creating..."
+          >
+            <FileText className="h-4 w-4" />
             Create Purchase Order
           </Button>
         </DialogFooter>
