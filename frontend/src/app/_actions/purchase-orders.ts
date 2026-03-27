@@ -289,3 +289,51 @@ export async function deletePurchaseOrder(poId: string): Promise<APIResponse> {
     return handleError(error, "DELETE", url);
   }
 }
+
+/**
+ * Withdraw purchase order (PENDING only, not claimed)
+ * Calls: POST /api/v1/purchase-orders/{id}/withdraw
+ */
+export async function withdrawPurchaseOrder(
+  poId: string,
+): Promise<APIResponse<PurchaseOrder>> {
+  const url = `/api/v1/purchase-orders/${poId}/withdraw`;
+
+  try {
+    const response = await authenticatedApiClient({
+      method: "POST",
+      url,
+    });
+
+    return successResponse(
+      response.data?.data,
+      response.data?.message || "Purchase order withdrawn successfully",
+    );
+  } catch (error: any) {
+    return handleError(error, "POST", url);
+  }
+}
+
+/**
+ * Get document chain for a purchase order (Req → PO → GRN → PV)
+ * Calls: GET /api/document-chain/:documentId?documentType=purchase_order
+ */
+export async function getPurchaseOrderChain(
+  poId: string,
+): Promise<APIResponse<any>> {
+  const url = `/api/document-chain/${poId}?documentType=purchase_order`;
+
+  try {
+    const response = await authenticatedApiClient({
+      method: "GET",
+      url,
+    });
+
+    return successResponse(
+      response.data?.data,
+      "Purchase order chain retrieved successfully",
+    );
+  } catch (error: any) {
+    return handleError(error, "GET", url);
+  }
+}

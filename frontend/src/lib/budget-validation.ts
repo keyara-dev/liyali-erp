@@ -9,42 +9,11 @@ export function calculateTotalAllocated(items: BudgetItem[]): number {
 }
 
 /**
- * Calculate total spent amount across all budget items
- */
-export function calculateTotalSpent(items: BudgetItem[]): number {
-  return items.reduce((sum, item) => sum + item.spentAmount, 0)
-}
-
-/**
  * Calculate remaining budget after allocations
  */
 export function calculateRemainingBudget(totalAmount: number, items: BudgetItem[]): number {
   const totalAllocated = calculateTotalAllocated(items)
   return totalAmount - totalAllocated
-}
-
-/**
- * Calculate remaining budget for a specific item (allocated - spent)
- */
-export function calculateItemRemaining(item: BudgetItem): number {
-  return item.allocatedAmount - item.spentAmount
-}
-
-/**
- * Calculate percentage of budget allocated
- */
-export function calculateAllocationPercentage(totalAmount: number, items: BudgetItem[]): number {
-  if (totalAmount === 0) return 0
-  const totalAllocated = calculateTotalAllocated(items)
-  return (totalAllocated / totalAmount) * 100
-}
-
-/**
- * Calculate percentage of allocated budget that has been spent
- */
-export function calculateSpentPercentage(item: BudgetItem): number {
-  if (item.allocatedAmount === 0) return 0
-  return (item.spentAmount / item.allocatedAmount) * 100
 }
 
 /**
@@ -102,33 +71,6 @@ export function validateBudgetItem(
     return {
       valid: false,
       error: `This would exceed your budget by ${excess.toLocaleString('en-US', {
-        style: 'currency',
-        currency: 'USD',
-      })}`,
-    }
-  }
-
-  return { valid: true }
-}
-
-/**
- * Validate budget has proper allocation before submission
- */
-export function validateBudgetForSubmission(budget: Budget): ValidationResult {
-  // Check total budget is greater than 0
-  if (budget.totalBudget <= 0) {
-    return {
-      valid: false,
-      error: 'Total budget must be greater than 0',
-    }
-  }
-
-  // Check allocated amount is not greater than total budget
-  if (budget.allocatedAmount > budget.totalBudget) {
-    const excess = budget.allocatedAmount - budget.totalBudget
-    return {
-      valid: false,
-      error: `Budget is over-allocated by ${excess.toLocaleString('en-US', {
         style: 'currency',
         currency: 'USD',
       })}`,

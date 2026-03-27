@@ -1,11 +1,11 @@
 import React from "react";
 import { Document, Page, Text, View } from "@react-pdf/renderer";
 import { PurchaseOrder } from "@/types/purchase-order";
-import { pdfStyles } from "./pdf-styles";
-import { generateDocumentQRData } from "./qr-utils";
+import { pdfStyles } from "@/lib/pdf/pdf-styles";
+import { generateDocumentQRData } from "@/lib/pdf/qr-utils";
 import { PDFHeader, PDFFooter, DocumentHeader } from "./requisition-pdf";
-import { capitalize } from "../utils";
-import { ApprovalSignaturesSection } from "./components/approval-signatures-section";
+import { capitalize } from "@/lib/utils";
+import { ApprovalSignaturesSection } from "./approval-signatures-section";
 
 interface PurchaseOrderPDFProps {
   purchaseOrder: PurchaseOrder;

@@ -1,12 +1,12 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { PurchaseOrder } from '@/types/purchase-order';
-import { WorkflowDocument } from '@/types/workflow';
-import { QUERY_KEYS } from '@/lib/constants';
+import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { PurchaseOrder } from "@/types/purchase-order";
+import { WorkflowDocument } from "@/types/workflow";
+import { QUERY_KEYS } from "@/lib/constants";
 
-const PO_STORAGE_KEY = 'liyali_purchase_orders';
+const PO_STORAGE_KEY = "liyali_purchase_orders";
 
 // ============================================================================
 // STORAGE UTILITIES
@@ -17,13 +17,13 @@ const PO_STORAGE_KEY = 'liyali_purchase_orders';
  */
 function loadPurchaseOrdersFromStorage(): PurchaseOrder[] {
   try {
-    if (typeof window === 'undefined') return [];
+    if (typeof window === "undefined") return [];
     const stored = localStorage.getItem(PO_STORAGE_KEY);
     if (!stored) return [];
     const parsed = JSON.parse(stored);
     return Array.isArray(parsed) ? parsed : [];
   } catch (error) {
-    console.error('Failed to load purchase orders from storage:', error);
+    console.error("Failed to load purchase orders from storage:", error);
     return [];
   }
 }
@@ -33,9 +33,9 @@ function loadPurchaseOrdersFromStorage(): PurchaseOrder[] {
  */
 function savePurchaseOrderToStorage(po: PurchaseOrder): void {
   try {
-    if (typeof window === 'undefined') return;
+    if (typeof window === "undefined") return;
     const orders = loadPurchaseOrdersFromStorage();
-    const index = orders.findIndex(r => r.id === po.id);
+    const index = orders.findIndex((r) => r.id === po.id);
     if (index >= 0) {
       orders[index] = po;
     } else {
@@ -43,7 +43,7 @@ function savePurchaseOrderToStorage(po: PurchaseOrder): void {
     }
     localStorage.setItem(PO_STORAGE_KEY, JSON.stringify(orders));
   } catch (error) {
-    console.error('Failed to save purchase order to storage:', error);
+    console.error("Failed to save purchase order to storage:", error);
   }
 }
 
@@ -52,11 +52,11 @@ function savePurchaseOrderToStorage(po: PurchaseOrder): void {
  */
 function getPurchaseOrderFromStorage(poId: string): PurchaseOrder | null {
   try {
-    if (typeof window === 'undefined') return null;
+    if (typeof window === "undefined") return null;
     const orders = loadPurchaseOrdersFromStorage();
-    return orders.find(r => r.id === poId) || null;
+    return orders.find((r) => r.id === poId) || null;
   } catch (error) {
-    console.error('Failed to get purchase order from storage:', error);
+    console.error("Failed to get purchase order from storage:", error);
     return null;
   }
 }
@@ -66,12 +66,12 @@ function getPurchaseOrderFromStorage(poId: string): PurchaseOrder | null {
  */
 function deletePurchaseOrderFromStorage(poId: string): void {
   try {
-    if (typeof window === 'undefined') return;
+    if (typeof window === "undefined") return;
     const orders = loadPurchaseOrdersFromStorage();
-    const filtered = orders.filter(r => r.id !== poId);
+    const filtered = orders.filter((r) => r.id !== poId);
     localStorage.setItem(PO_STORAGE_KEY, JSON.stringify(filtered));
   } catch (error) {
-    console.error('Failed to delete purchase order from storage:', error);
+    console.error("Failed to delete purchase order from storage:", error);
   }
 }
 
@@ -80,10 +80,10 @@ function deletePurchaseOrderFromStorage(poId: string): void {
  */
 function clearPurchaseOrdersStorage(): void {
   try {
-    if (typeof window === 'undefined') return;
+    if (typeof window === "undefined") return;
     localStorage.removeItem(PO_STORAGE_KEY);
   } catch (error) {
-    console.error('Failed to clear purchase orders storage:', error);
+    console.error("Failed to clear purchase orders storage:", error);
   }
 }
 
@@ -97,13 +97,16 @@ function clearPurchaseOrdersStorage(): void {
 function purchaseOrderToWorkflowDocument(po: PurchaseOrder): WorkflowDocument {
   return {
     id: po.id,
-    type: 'PURCHASE_ORDER',
-    documentNumber: (po as any).documentNumber || `PO-${po.id.substring(0, 8).toUpperCase()}`,
+    type: "purchase_order",
+    documentNumber:
+      (po as any).documentNumber || `PO-${po.id.substring(0, 8).toUpperCase()}`,
     status: po.status as any,
     currentStage: po.currentStage || 1,
     createdBy: po.createdBy,
-    createdAt: po.createdAt instanceof Date ? po.createdAt : new Date(po.createdAt),
-    updatedAt: po.updatedAt instanceof Date ? po.updatedAt : new Date(po.updatedAt),
+    createdAt:
+      po.createdAt instanceof Date ? po.createdAt : new Date(po.createdAt),
+    updatedAt:
+      po.updatedAt instanceof Date ? po.updatedAt : new Date(po.updatedAt),
     metadata: po.metadata,
   };
 }
@@ -111,7 +114,9 @@ function purchaseOrderToWorkflowDocument(po: PurchaseOrder): WorkflowDocument {
 /**
  * Public export of conversion function for use in components
  */
-export function convertPurchaseOrderToWorkflowDocument(po: PurchaseOrder): WorkflowDocument {
+export function convertPurchaseOrderToWorkflowDocument(
+  po: PurchaseOrder,
+): WorkflowDocument {
   return purchaseOrderToWorkflowDocument(po);
 }
 
@@ -145,19 +150,25 @@ export function usePurchaseOrderStorage() {
  */
 export const usePurchaseOrdersWithStorage = (includeStorageData = true) =>
   useQuery({
-    queryKey: [QUERY_KEYS.PURCHASE_ORDERS?.ALL || 'PURCHASE_ORDERS', 'with-storage'],
+    queryKey: [
+      QUERY_KEYS.PURCHASE_ORDERS?.ALL || "PURCHASE_ORDERS",
+      "with-storage",
+    ],
     queryFn: async () => {
       let allOrders: PurchaseOrder[] = [];
 
       // Load from localStorage only (mock data)
-      if (typeof window !== 'undefined') {
+      if (typeof window !== "undefined") {
         try {
           const storedOrders = loadPurchaseOrdersFromStorage();
           if (storedOrders && storedOrders.length > 0) {
             allOrders = storedOrders;
           }
         } catch (storageError) {
-          console.error('Failed to load purchase orders from storage:', storageError);
+          console.error(
+            "Failed to load purchase orders from storage:",
+            storageError,
+          );
         }
       }
 
@@ -170,9 +181,14 @@ export const usePurchaseOrdersWithStorage = (includeStorageData = true) =>
 /**
  * React Query hook for fetching purchase orders as workflow documents
  */
-export const usePurchaseOrdersAsWorkflowDocuments = (includeStorageData = true) =>
+export const usePurchaseOrdersAsWorkflowDocuments = (
+  includeStorageData = true,
+) =>
   useQuery({
-    queryKey: [QUERY_KEYS.PURCHASE_ORDERS?.ALL || 'PURCHASE_ORDERS', 'as-documents'],
+    queryKey: [
+      QUERY_KEYS.PURCHASE_ORDERS?.ALL || "PURCHASE_ORDERS",
+      "as-documents",
+    ],
     queryFn: async () => {
       const orders = loadPurchaseOrdersFromStorage();
       return orders.map(purchaseOrderToWorkflowDocument);

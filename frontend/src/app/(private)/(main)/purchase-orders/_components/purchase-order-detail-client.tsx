@@ -1,0 +1,720 @@
+"use client";
+
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Send,
+  AlertCircle,
+  Download,
+  Eye,
+  Pencil,
+  Calendar,
+  Building,
+  DollarSign,
+  Clock,
+  Tag,
+  FileText,
+  Undo2,
+  Paperclip,
+  ImageIcon,
+  ShoppingCart,
+  CheckSquare,
+  GitBranch,
+  Activity,
+} from "lucide-react";
+import { PageHeader } from "@/components/base/page-header";
+import { PurchaseOrderItemsList } from "./purchase-order-items-list";
+import { PurchaseOrder, PurchaseOrderAttachment } from "@/types/purchase-order";
+import {
+  ActivityLogContent,
+  ApprovalChainContent,
+  ApprovalActionContent,
+  WorkflowStatusSummary,
+} from "@/app/(private)/(main)/requisitions/_components/approval-history-panel";
+import { DocumentLinks } from "@/components/document-links";
+import { WorkflowDocument } from "@/types";
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyMedia,
+} from "@/components/ui/empty";
+import { Package } from "lucide-react";
+import dynamic from "next/dynamic";
+
+const PDFPreviewDialog = dynamic(
+  () =>
+    import("@/components/modals/pdf-preview-dialog").then(
+      (mod) => mod.PDFPreviewDialog,
+    ),
+  { ssr: false },
+);
+
+const AttachmentPreviewDialog = dynamic(
+  () =>
+    import("@/components/modals/attachment-preview-dialog").then(
+      (mod) => mod.AttachmentPreviewDialog,
+    ),
+  { ssr: false },
+);
+import { PurchaseOrderSubmitDialog } from "./purchase-order-submit-dialog";
+import { ConfirmationModal } from "@/components/modals/confirmation-modal";
+import { Badge } from "@/components";
+import { DocumentLoadingPage } from "@/components/base/document-loading-page";
+import ErrorDisplay from "@/components/base/error-display";
+import { usePurchaseOrderDetail } from "@/hooks/use-purchase-order-detail";
+import { useRouter } from "next/navigation";
+
+/**
+ * Props for the PurchaseOrderDetailClient component
+ */
+interface PurchaseOrderDetailClientProps {
+  /** Purchase Order ID */
+  purchaseOrderId: string;
+  /** Current user ID */
+  userId: string;
+  /** Current user role */
+  userRole: string;
+  /** Optional initial PO data from server-side rendering */
+  initialPurchaseOrder?: PurchaseOrder;
+}
+
+/**
+ * Main client component for Purchase Order detail page
+ *
+ * Manages all UI state and interactions for the PO detail page including:
+ * - Displaying PO metadata and items
+ * - Handling submission for approval
+ * - Managing approval workflow interactions
+ * - Displaying approval chain and activity log
+ * - PDF preview and export
+ * - Attachment preview
+ * - Permission-based action buttons
+ *
+ * This component follows the same pattern as the Requisition detail page
+ * for consistency across document types.
+ *
+ * @param props - Component props
+ * @param props.purchaseOrderId - Purchase Order ID to display
+ * @param props.userId - Current user ID for permission checks
+ * @param props.userRole - Current user role for permission checks
+ * @param props.initialPurchaseOrder - Optional initial PO data from server
+ *
+ * @example
+ * ```tsx
+ * <PurchaseOrderDetailClient
+ *   purchaseOrderId="po-123"
+ *   userId="user-456"
+ *   userRole="PROCUREMENT_OFFICER"
+ *   initialPurchaseOrder={serverPO}
+ * />
+ * ```
+ *
+ * **Validates: Requirements 6.1, 11.6, 12.1, 12.5, 12.6**
+ */
+export function PurchaseOrderDetailClient({
+  purchaseOrderId,
+  userId,
+  userRole,
+  initialPurchaseOrder,
+}: PurchaseOrderDetailClientProps) {
+  const router = useRouter();
+
+  // Use the custom hook to manage all document detail logic
+  // This hook handles data fetching, mutations, UI state, and permissions
+  const {
+    document: purchaseOrder,
+    isLoading,
+    chain,
+    approvalData,
+    isExporting,
+    previewOpen,
+    setPreviewOpen,
+    previewBlob,
+    showSubmitDialog,
+    setShowSubmitDialog,
+    showWithdrawModal,
+    setShowWithdrawModal,
+    attachmentPreviewOpen,
+    setAttachmentPreviewOpen,
+    selectedAttachment,
+    handlePreviewPDF,
+    handleExportPDF,
+    handleSubmitForApproval: handleSubmit,
+    handleEdit,
+    handleWithdraw,
+    handleApprovalComplete,
+    handleAttachmentPreview,
+    permissions,
+    submitMutation,
+    withdrawMutation,
+  } = usePurchaseOrderDetail({
+    poId: purchaseOrderId,
+    userId,
+    userRole,
+    initialPurchaseOrder,
+  });
+
+  // Show loading state while fetching initial data
+  if (isLoading) return <DocumentLoadingPage />;
+
+  // Show error state if PO not found
+  if (!purchaseOrder)
+    return (
+      <ErrorDisplay
+        title="Purchase Order Not Found"
+        message="The purchase order you're looking for doesn't exist."
+        showBackButton
+      />
+    );
+
+  // Extract attachments from metadata
+  const attachments: PurchaseOrderAttachment[] =
+    (purchaseOrder.metadata?.attachments as PurchaseOrderAttachment[]) || [];
+
+  /**
+   * Formats file size in bytes to human-readable format (B, KB, MB)
+   */
+  const formatBytes = (bytes: number) => {
+    if (bytes === 0) return "0 B";
+    const k = 1024;
+    const sizes = ["B", "KB", "MB"];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
+  };
+
+  /**
+   * Custom submit handler that passes additional PO metadata
+   * This ensures the submission includes submitter information
+   */
+  const handleSubmitForApproval = async (
+    workflowId: string,
+    comments?: string,
+  ) => {
+    await handleSubmit(workflowId, comments, {
+      submittedBy: userId,
+      submittedByName: purchaseOrder.requestedByName || "User",
+      submittedByRole: purchaseOrder.requestedByRole || userRole,
+    });
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-start justify-between gap-4">
+        <PageHeader
+          title={purchaseOrder.documentNumber}
+          subtitle={`${purchaseOrder.title || "Untitled Purchase Order"} • Created ${new Date(purchaseOrder.createdAt).toLocaleDateString("en-ZM", { year: "numeric", month: "long", day: "numeric" })}${purchaseOrder.updatedAt && new Date(purchaseOrder.updatedAt).getTime() !== new Date(purchaseOrder.createdAt).getTime() ? ` • Updated ${new Date(purchaseOrder.updatedAt).toLocaleDateString("en-ZM", { year: "numeric", month: "long", day: "numeric" })}` : ""}`}
+          badges={[
+            {
+              status: purchaseOrder.status,
+              type: "document",
+            },
+          ]}
+          onBackClick={() => router.back()}
+          showBackButton={true}
+        />
+        <div className="flex gap-2 mt-2">
+          <Button
+            onClick={handlePreviewPDF}
+            disabled={isExporting}
+            variant="outline"
+            className="gap-2 h-11"
+          >
+            <Eye className="h-4 w-4" />
+            Preview
+          </Button>
+          <Button
+            onClick={handleExportPDF}
+            disabled={isExporting}
+            isLoading={isExporting}
+            loadingText="Exporting..."
+            variant="outline"
+            className="gap-2 h-11"
+          >
+            <Download className="h-4 w-4" />
+            Export PDF
+          </Button>
+          {permissions.canEdit && (
+            <Button
+              onClick={handleEdit}
+              variant="outline"
+              className="gap-2 h-11"
+            >
+              <Pencil className="h-4 w-4" />
+              Edit
+            </Button>
+          )}
+          {permissions.canSubmit && (
+            <Button
+              onClick={() => setShowSubmitDialog(true)}
+              className="gap-2 h-11"
+            >
+              <Send className="h-4 w-4" />
+              Submit for Approval
+            </Button>
+          )}
+          {permissions.canWithdraw && (
+            <Button
+              onClick={() => setShowWithdrawModal(true)}
+              variant="outline"
+              className="gap-2 h-11 text-amber-600 border-amber-300 hover:bg-amber-50"
+            >
+              <Undo2 className="h-4 w-4" />
+              Withdraw
+            </Button>
+          )}
+        </div>
+      </div>
+
+      {/* Purchase Order Details Card */}
+      <div className="gradient-primary border-0 overflow-hidden rounded-lg p-6">
+        <h2 className="text-lg font-semibold mb-6 text-primary-foreground">
+          Purchase Order Details
+        </h2>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="space-y-1">
+            <label className="text-xs font-semibold text-primary-foreground/80 uppercase tracking-wider flex items-center gap-1">
+              <FileText className="h-3 w-3" />
+              Title
+            </label>
+            <p className="text-base font-medium text-primary-foreground">
+              {purchaseOrder.title || "—"}
+            </p>
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-xs font-semibold text-primary-foreground/80 uppercase tracking-wider flex items-center gap-1">
+              <Building className="h-3 w-3" />
+              Vendor
+            </label>
+            <p className="text-base font-medium text-primary-foreground">
+              {purchaseOrder.vendorName || "—"}
+            </p>
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-xs font-semibold text-primary-foreground/80 uppercase tracking-wider flex items-center gap-1">
+              <Building className="h-3 w-3" />
+              Department
+            </label>
+            <p className="text-base font-medium text-primary-foreground">
+              {purchaseOrder.department || "—"}
+            </p>
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-xs font-semibold text-primary-foreground/80 uppercase tracking-wider flex items-center gap-1">
+              <AlertCircle className="h-3 w-3" />
+              Priority
+            </label>
+            <div className="flex items-center">
+              <Badge
+                className={`inline-flex capitalize items-center px-2 py-1 rounded-full text-xs font-medium border ${
+                  purchaseOrder.priority?.toUpperCase() === "URGENT"
+                    ? "bg-red-100 text-red-800 border-red-200"
+                    : purchaseOrder.priority?.toUpperCase() === "HIGH"
+                      ? "bg-orange-100 text-orange-800 border-orange-200"
+                      : purchaseOrder.priority?.toUpperCase() === "MEDIUM"
+                        ? "bg-blue-100 text-blue-800 border-blue-200"
+                        : "bg-gray-100 text-gray-800 border-gray-200"
+                }`}
+              >
+                {purchaseOrder.priority || "Medium"}
+              </Badge>
+            </div>
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-xs font-semibold text-primary-foreground/80 uppercase tracking-wider flex items-center gap-1">
+              <DollarSign className="h-3 w-3" />
+              Total Amount
+            </label>
+            <p className="text-base font-bold text-primary-foreground">
+              {purchaseOrder.currency}{" "}
+              {purchaseOrder.totalAmount?.toLocaleString("en-ZM", {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              }) || "0.00"}
+            </p>
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-xs font-semibold text-primary-foreground/80 uppercase tracking-wider flex items-center gap-1">
+              <Tag className="h-3 w-3" />
+              Budget Code
+            </label>
+            <p className="text-sm font-medium font-mono bg-white/10 px-2 py-1 rounded text-primary-foreground">
+              {purchaseOrder.budgetCode || "—"}
+            </p>
+          </div>
+
+          {purchaseOrder.costCenter && (
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-primary-foreground/80 uppercase tracking-wider flex items-center gap-1">
+                <Building className="h-3 w-3" />
+                Cost Center
+              </label>
+              <p className="text-sm font-medium font-mono bg-white/10 px-2 py-1 rounded text-primary-foreground">
+                {purchaseOrder.costCenter}
+              </p>
+            </div>
+          )}
+
+          {purchaseOrder.projectCode && (
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-primary-foreground/80 uppercase tracking-wider flex items-center gap-1">
+                <FileText className="h-3 w-3" />
+                Project Code
+              </label>
+              <p className="text-sm font-medium font-mono bg-white/10 px-2 py-1 rounded text-primary-foreground">
+                {purchaseOrder.projectCode}
+              </p>
+            </div>
+          )}
+
+          <div className="space-y-1">
+            <label className="text-xs font-semibold text-primary-foreground/80 uppercase tracking-wider flex items-center gap-1">
+              <Calendar className="h-3 w-3" />
+              Created Date
+            </label>
+            <p className="text-sm font-medium text-primary-foreground">
+              {new Date(purchaseOrder.createdAt).toLocaleDateString("en-ZM", {
+                year: "numeric",
+                month: "long",
+                day: "numeric",
+              })}
+            </p>
+          </div>
+
+          {purchaseOrder.updatedAt &&
+            new Date(purchaseOrder.updatedAt).getTime() !==
+              new Date(purchaseOrder.createdAt).getTime() && (
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-primary-foreground/80 uppercase tracking-wider flex items-center gap-1">
+                  <Clock className="h-3 w-3" />
+                  Last Updated
+                </label>
+                <p className="text-sm font-medium text-primary-foreground">
+                  {new Date(purchaseOrder.updatedAt).toLocaleDateString(
+                    "en-ZM",
+                    {
+                      year: "numeric",
+                      month: "long",
+                      day: "numeric",
+                    },
+                  )}
+                </p>
+              </div>
+            )}
+
+          {purchaseOrder.deliveryDate && (
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-primary-foreground/80 uppercase tracking-wider flex items-center gap-1">
+                <Calendar className="h-3 w-3" />
+                Delivery Date
+              </label>
+              <p
+                className={`text-sm font-medium ${
+                  new Date(purchaseOrder.deliveryDate) < new Date() &&
+                  purchaseOrder.status?.toUpperCase() !== "COMPLETED"
+                    ? "text-red-200 font-bold"
+                    : "text-primary-foreground"
+                }`}
+              >
+                {new Date(purchaseOrder.deliveryDate).toLocaleDateString(
+                  "en-ZM",
+                  {
+                    year: "numeric",
+                    month: "long",
+                    day: "numeric",
+                  },
+                )}
+                {new Date(purchaseOrder.deliveryDate) < new Date() &&
+                  purchaseOrder.status?.toUpperCase() !== "COMPLETED" && (
+                    <span className="ml-2 text-xs">(Overdue)</span>
+                  )}
+              </p>
+            </div>
+          )}
+
+          <div className="space-y-1">
+            <label className="text-xs font-semibold text-primary-foreground/80 uppercase tracking-wider">
+              Approval Stage
+            </label>
+            <p className="text-sm font-medium font-mono bg-white/10 px-2 py-1 rounded text-primary-foreground">
+              {purchaseOrder.currentStage &&
+              approvalData?.workflowStatus?.totalStages
+                ? `${purchaseOrder.currentStage}/${approvalData.workflowStatus.totalStages}`
+                : `${purchaseOrder.approvalStage || 0}/1`}
+            </p>
+          </div>
+        </div>
+
+        {/* Description */}
+        {purchaseOrder.description && (
+          <div className="mt-6 pt-6 border-t border-white/20">
+            <label className="text-xs font-semibold text-primary-foreground/80 uppercase tracking-wider block mb-2">
+              Description
+            </label>
+            <p className="text-sm text-primary-foreground leading-relaxed">
+              {purchaseOrder.description}
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* Document Chain — only shown once PO is approved */}
+      {purchaseOrder.status?.toUpperCase() === "APPROVED" && (
+        <DocumentLinks
+          currentDocument={purchaseOrder as unknown as WorkflowDocument}
+          chain={chain}
+          showViewLinks={userRole.toLowerCase() !== "requester"}
+        />
+      )}
+
+      {/* ── Tabbed Content ──────────────────────────────────────────── */}
+      <Card className="p-6 border-0 shadow-sm">
+        <Tabs defaultValue="items" className="w-full">
+          <TabsList className="grid w-full grid-cols-5 h-auto">
+            <TabsTrigger
+              value="items"
+              className="gap-1.5 text-xs sm:text-sm px-2 py-2"
+            >
+              <ShoppingCart className="h-4 w-4 shrink-0" />
+              <span className="hidden sm:inline">PO</span> Items
+              {purchaseOrder.items?.length > 0 && (
+                <Badge
+                  variant="secondary"
+                  className="ml-1 text-xs h-5 min-w-5 px-1.5"
+                >
+                  {purchaseOrder.items.length}
+                </Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger
+              value="documents"
+              className="gap-1.5 text-xs sm:text-sm px-2 py-2"
+            >
+              <Paperclip className="h-4 w-4 shrink-0" />
+              <span className="hidden sm:inline">Supporting</span> Docs
+              {attachments.length > 0 && (
+                <Badge
+                  variant="secondary"
+                  className="ml-1 text-xs h-5 min-w-5 px-1.5"
+                >
+                  {attachments.length}
+                </Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger
+              value="action"
+              className="gap-1.5 text-xs sm:text-sm px-2 py-2"
+            >
+              <CheckSquare className="h-4 w-4 shrink-0" />
+              <span className="hidden sm:inline">Approval</span> Action
+            </TabsTrigger>
+            <TabsTrigger
+              value="chain"
+              className="gap-1.5 text-xs sm:text-sm px-2 py-2"
+            >
+              <GitBranch className="h-4 w-4 shrink-0" />
+              <span className="hidden sm:inline">Approval</span> Chain
+            </TabsTrigger>
+            <TabsTrigger
+              value="activity"
+              className="gap-1.5 text-xs sm:text-sm px-2 py-2"
+            >
+              <Activity className="h-4 w-4 shrink-0" />
+              <span className="hidden sm:inline">Activity</span> Log
+              {purchaseOrder.actionHistory &&
+                purchaseOrder.actionHistory.length > 0 && (
+                  <Badge
+                    variant="secondary"
+                    className="ml-1 text-xs h-5 min-w-5 px-1.5"
+                  >
+                    {purchaseOrder.actionHistory.length}
+                  </Badge>
+                )}
+            </TabsTrigger>
+          </TabsList>
+
+          {/* ── Tab 1: PO Items ── */}
+          <TabsContent value="items" className="mt-6">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-lg font-semibold">
+                Items ({purchaseOrder.items?.length || 0})
+              </h2>
+            </div>
+
+            {purchaseOrder.items && purchaseOrder.items.length > 0 ? (
+              <PurchaseOrderItemsList
+                items={purchaseOrder.items}
+                currency={purchaseOrder.currency}
+              />
+            ) : (
+              <Empty>
+                <EmptyMedia variant="icon">
+                  <Package className="h-6 w-6" />
+                </EmptyMedia>
+                <EmptyContent>
+                  <EmptyDescription>No items added yet</EmptyDescription>
+                </EmptyContent>
+              </Empty>
+            )}
+          </TabsContent>
+
+          {/* ── Tab 2: Supporting Documents ── */}
+          <TabsContent value="documents" className="mt-6">
+            {attachments.length > 0 ? (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-lg font-semibold">
+                    Supporting Documents ({attachments.length})
+                  </h2>
+                </div>
+                {attachments.map((attachment) => (
+                  <button
+                    key={attachment.fileId}
+                    type="button"
+                    onClick={() => handleAttachmentPreview(attachment)}
+                    className="flex items-center justify-between gap-3 p-3 rounded-lg border hover:bg-muted/50 transition group w-full text-left"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      {attachment.mimeType === "application/pdf" ? (
+                        <FileText className="h-5 w-5 text-red-500 shrink-0" />
+                      ) : (
+                        <ImageIcon className="h-5 w-5 text-blue-500 shrink-0" />
+                      )}
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium truncate">
+                          {attachment.fileName}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {formatBytes(attachment.fileSize)}
+                        </p>
+                      </div>
+                    </div>
+                    <Eye className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition shrink-0" />
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <Empty>
+                <EmptyMedia variant="icon">
+                  <Paperclip className="h-6 w-6" />
+                </EmptyMedia>
+                <EmptyContent>
+                  <EmptyDescription>
+                    No supporting documents attached
+                  </EmptyDescription>
+                </EmptyContent>
+              </Empty>
+            )}
+          </TabsContent>
+
+          {/* ── Tab 3: Approval Action ── */}
+          <TabsContent value="action" className="space-y-4 mt-6">
+            {approvalData?.hasError ? (
+              <div className="text-center py-8 text-red-500">
+                <AlertCircle className="h-8 w-8 mx-auto mb-2" />
+                <p className="text-sm">Failed to load approval data</p>
+                <button
+                  onClick={approvalData.refetchAll}
+                  className="mt-2 text-xs text-blue-600 hover:underline"
+                >
+                  Try again
+                </button>
+              </div>
+            ) : (
+              <ApprovalActionContent
+                requisitionId={purchaseOrderId}
+                requisition={purchaseOrder as any}
+                workflowStatus={approvalData?.workflowStatus}
+                isLoading={approvalData?.isLoading || false}
+                onApprovalComplete={handleApprovalComplete}
+              />
+            )}
+          </TabsContent>
+
+          {/* ── Tab 4: Approval Chain ── */}
+          <TabsContent value="chain" className="space-y-4 mt-6">
+            {approvalData?.hasError ? (
+              <div className="text-center py-8 text-red-500">
+                <AlertCircle className="h-8 w-8 mx-auto mb-2" />
+                <p className="text-sm">Failed to load approval data</p>
+                <button
+                  onClick={approvalData.refetchAll}
+                  className="mt-2 text-xs text-blue-600 hover:underline"
+                >
+                  Try again
+                </button>
+              </div>
+            ) : (
+              <>
+                <ApprovalChainContent
+                  requisition={purchaseOrder as any}
+                  approvalChain={purchaseOrder?.approvalChain}
+                  approvalHistory={approvalData?.approvalHistory || []}
+                  workflowStatus={approvalData?.workflowStatus}
+                  availableApprovers={approvalData?.availableApprovers || []}
+                  isLoading={approvalData?.isLoading || false}
+                />
+                <WorkflowStatusSummary
+                  requisition={purchaseOrder as any}
+                  workflowStatus={approvalData?.workflowStatus}
+                />
+              </>
+            )}
+          </TabsContent>
+
+          {/* ── Tab 5: Activity Log (Timeline) ── */}
+          <TabsContent value="activity" className="space-y-4 mt-6">
+            <ActivityLogContent actionHistory={purchaseOrder?.actionHistory} />
+          </TabsContent>
+        </Tabs>
+      </Card>
+
+      {/* PDF Preview Dialog */}
+      {previewBlob && (
+        <PDFPreviewDialog
+          open={previewOpen}
+          onOpenChange={setPreviewOpen}
+          pdfBlob={previewBlob}
+          fileName={`Purchase Order: ${purchaseOrder.documentNumber}`}
+          onDownload={handleExportPDF}
+        />
+      )}
+
+      {/* Submit Dialog */}
+      <PurchaseOrderSubmitDialog
+        open={showSubmitDialog}
+        onOpenChange={setShowSubmitDialog}
+        purchaseOrder={purchaseOrder}
+        onSubmit={handleSubmitForApproval}
+        isSubmitting={submitMutation.isPending}
+      />
+
+      {/* Withdraw Confirmation Modal */}
+      <ConfirmationModal
+        open={showWithdrawModal}
+        onOpenChange={setShowWithdrawModal}
+        onConfirm={handleWithdraw}
+        type="withdraw"
+        title="Withdraw Purchase Order"
+        description={`Are you sure you want to withdraw purchase order ${purchaseOrder.documentNumber || purchaseOrder.id}? It will be reverted to draft status and you can edit and re-submit it later.`}
+        isLoading={withdrawMutation?.isPending || false}
+      />
+
+      {/* Attachment Preview Dialog */}
+      <AttachmentPreviewDialog
+        open={attachmentPreviewOpen}
+        onOpenChange={setAttachmentPreviewOpen}
+        attachment={selectedAttachment}
+        attachments={attachments}
+      />
+    </div>
+  );
+}

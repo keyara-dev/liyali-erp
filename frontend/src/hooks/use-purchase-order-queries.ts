@@ -10,10 +10,12 @@ import {
   submitPurchaseOrderForApproval,
   deletePurchaseOrder,
   getPurchaseOrderStats,
+  getPurchaseOrderChain,
 } from "@/app/_actions/purchase-orders";
 import {
   PurchaseOrder,
   PurchaseOrderStats,
+  PurchaseOrderChain,
   CreatePurchaseOrderRequest,
   UpdatePurchaseOrderRequest,
   SubmitPurchaseOrderRequest,
@@ -43,16 +45,18 @@ export const usePurchaseOrders = (initialPOs?: PurchaseOrder[]) =>
 
 /**
  * Fetch a specific purchase order by ID
+ * Includes approval history and action history
  *
  * @param poId - Purchase Order ID to fetch
- * @returns Query result with single purchase order
+ * @param initialData - Optional initial data from server component
+ * @returns Query result with single purchase order including approval data
  *
  * @example
  * const { data: purchaseOrder } = usePurchaseOrderById(poId)
  */
 export const usePurchaseOrderById = (
   poId: string,
-  initialData?: PurchaseOrder
+  initialData?: PurchaseOrder,
 ) =>
   useQuery({
     queryKey: [QUERY_KEYS.PURCHASE_ORDERS.BY_ID, poId],
@@ -63,6 +67,7 @@ export const usePurchaseOrderById = (
     },
     initialData,
     staleTime: 5 * 60 * 1000, // 5 minutes
+    enabled: !!poId,
   });
 
 /**
@@ -120,7 +125,7 @@ export const useSavePurchaseOrder = (onSuccess?: () => void) => {
     mutationFn: async (
       data:
         | CreatePurchaseOrderRequest
-        | (UpdatePurchaseOrderRequest & { poId?: string })
+        | (UpdatePurchaseOrderRequest & { poId?: string }),
     ) => {
       const response =
         "poId" in data && data.poId
@@ -133,13 +138,12 @@ export const useSavePurchaseOrder = (onSuccess?: () => void) => {
       return response;
     },
     onSuccess: (response) => {
-      const isUpdate = (
-        response.data as PurchaseOrder & { poId?: string }
-      )?.poId;
+      const isUpdate = (response.data as PurchaseOrder & { poId?: string })
+        ?.poId;
       toast.success(
         isUpdate
           ? "Purchase order updated successfully"
-          : "Purchase order created successfully"
+          : "Purchase order created successfully",
       );
 
       // Invalidate purchase order queries
@@ -169,6 +173,9 @@ export const useSavePurchaseOrder = (onSuccess?: () => void) => {
 /**
  * Submit purchase order for approval mutation
  *
+ * @deprecated Use useSubmitPurchaseOrderForApproval from use-purchase-order-mutations.ts instead
+ * This hook is kept for backward compatibility but will be removed in a future version.
+ *
  * @param poId - Purchase Order ID to submit
  * @param onSuccess - Callback after successful submission
  * @returns Mutation object
@@ -184,14 +191,12 @@ export const useSavePurchaseOrder = (onSuccess?: () => void) => {
  */
 export const useSubmitPurchaseOrderForApproval = (
   poId: string,
-  onSuccess?: () => void
+  onSuccess?: () => void,
 ) => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (
-      data: Omit<SubmitPurchaseOrderRequest, "poId">
-    ) => {
+    mutationFn: async (data: Omit<SubmitPurchaseOrderRequest, "poId">) => {
       const response = await submitPurchaseOrderForApproval({
         poId,
         ...data,
@@ -282,3 +287,33 @@ export const useDeletePurchaseOrder = (onSuccess?: () => void) => {
     },
   });
 };
+
+/**
+ * Fetch the document chain for a purchase order (Req → PO → GRN → PV)
+ * Integrates with GET /api/document-chain/:documentId endpoint
+ * with documentType=purchase_order query parameter
+ *
+ * @param poId - Purchase Order ID to fetch chain for
+ * @param initialData - Optional initial data from server component
+ * @returns Query result with document chain data
+ *
+ * @example
+ * const { data: chain } = usePurchaseOrderChain(poId)
+ *
+ * **Validates: Requirements 8.1, 14.6**
+ */
+export const usePurchaseOrderChain = (
+  poId: string,
+  initialData?: PurchaseOrderChain,
+) =>
+  useQuery({
+    queryKey: [QUERY_KEYS.PURCHASE_ORDERS.BY_ID, poId, "chain"],
+    queryFn: async () => {
+      const response = await getPurchaseOrderChain(poId);
+      if (!response.success) throw new Error(response.message);
+      return response.data as PurchaseOrderChain;
+    },
+    initialData,
+    enabled: !!poId,
+    staleTime: 30 * 1000, // 30 seconds
+  });

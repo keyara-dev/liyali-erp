@@ -1,10 +1,10 @@
 import React from "react";
 import { Document, Page, Text, View, Image } from "@react-pdf/renderer";
 import { Requisition, RequisitionAttachment } from "@/types/requisition";
-import { pdfStyles } from "./pdf-styles";
-import { generateDocumentQRData } from "./qr-utils";
-import { capitalize } from "../utils";
-import { ApprovalSignaturesSection } from "./components/approval-signatures-section";
+import { pdfStyles } from "@/lib/pdf/pdf-styles";
+import { generateDocumentQRData } from "@/lib/pdf/qr-utils";
+import { capitalize } from "@/lib/utils";
+import { ApprovalSignaturesSection } from "./approval-signatures-section";
 
 export interface DocumentHeader {
   logoUrl?: string;

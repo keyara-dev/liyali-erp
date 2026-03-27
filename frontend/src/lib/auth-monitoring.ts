@@ -279,14 +279,6 @@ class AuthMonitor {
 export const authMonitor = new AuthMonitor();
 
 // Convenience functions for common tracking scenarios
-export const trackSessionError = (error: any, userId?: string) => {
-  authMonitor.trackSessionVerificationFailure(error, userId);
-};
-
-export const trackOrgFetchError = (error: any, userId?: string) => {
-  authMonitor.trackOrganizationFetchFailure(error, userId);
-};
-
 export const trackPageRedirect = (path: string) => {
   authMonitor.trackRedirect(path);
 };
@@ -303,14 +295,3 @@ export const startLoginTimer = () => {
   authMonitor.startLoginTiming();
 };
 
-export const endLoginTimer = (organizationId?: string) => {
-  authMonitor.endLoginTiming(organizationId);
-};
-
-// React hook for accessing metrics in components
-export const useAuthMetrics = () => {
-  return {
-    metrics: authMonitor.getMetrics(),
-    recentEvents: authMonitor.getRecentEvents(),
-  };
-};

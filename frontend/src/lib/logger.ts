@@ -60,35 +60,3 @@ export const logger = {
   }
 }
 
-/**
- * Logger hook for React components
- * Provides component-specific logging
- */
-export function useLogger(componentName: string) {
-  return {
-    debug: (message: string, data?: any) =>
-      logger.debug(message, { component: componentName, ...data }),
-    info: (message: string, data?: any) =>
-      logger.info(message, { component: componentName, ...data }),
-    warn: (message: string, data?: any) =>
-      logger.warn(message, { component: componentName, ...data }),
-    error: (message: string, error?: Error | any, data?: any) =>
-      logger.error(message, error, { component: componentName, ...data })
-  }
-}
-
-/**
- * Server-side logger with additional context
- */
-export function getServerLogger(componentName: string) {
-  return {
-    debug: (message: string, data?: any) =>
-      logger.debug(`[SERVER] ${message}`, { component: componentName, ...data }),
-    info: (message: string, data?: any) =>
-      logger.info(`[SERVER] ${message}`, { component: componentName, ...data }),
-    warn: (message: string, data?: any) =>
-      logger.warn(`[SERVER] ${message}`, { component: componentName, ...data }),
-    error: (message: string, error?: Error | any, data?: any) =>
-      logger.error(`[SERVER] ${message}`, error, { component: componentName, ...data })
-  }
-}

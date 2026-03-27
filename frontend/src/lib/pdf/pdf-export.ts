@@ -1,15 +1,15 @@
 import React from "react";
 import { pdf } from "@react-pdf/renderer";
-import RequisitionPDF from "./requisition-pdf";
-import PurchaseOrderPDF from "./purchase-order-pdf";
-import PaymentVoucherPDF from "./payment-voucher-pdf";
-import { GoodsReceivedNotePDF } from "@/lib/pdf-generators/grn-pdf";
+import RequisitionPDF from "@/components/pdf/requisition-pdf";
+import PurchaseOrderPDF from "@/components/pdf/purchase-order-pdf";
+import PaymentVoucherPDF from "@/components/pdf/payment-voucher-pdf";
+import { GoodsReceivedNotePDF } from "@/components/pdf/grn-pdf";
 import { Requisition } from "@/types/requisition";
 import { PurchaseOrder } from "@/types/purchase-order";
 import { PaymentVoucher } from "@/types/payment-voucher";
 import { GoodsReceivedNote } from "@/types/goods-received-note";
 import { getDocumentQRCodeUrl } from "./qr-utils";
-import type { DocumentHeader } from "./requisition-pdf";
+import type { DocumentHeader } from "@/components/pdf/requisition-pdf";
 
 export type { DocumentHeader };
 
@@ -163,39 +163,6 @@ export async function getPaymentVoucherPDFBlob(
 }
 
 /**
- * Get Requisition PDF as data URL for preview
- */
-export async function getRequisitionPDFUrl(
-  requisition: Requisition,
-  documentHeader?: DocumentHeader,
-): Promise<string> {
-  const blob = await getRequisitionPDFBlob(requisition, documentHeader);
-  return URL.createObjectURL(blob);
-}
-
-/**
- * Get Purchase Order PDF as data URL for preview
- */
-export async function getPurchaseOrderPDFUrl(
-  purchaseOrder: PurchaseOrder,
-  documentHeader?: DocumentHeader,
-): Promise<string> {
-  const blob = await getPurchaseOrderPDFBlob(purchaseOrder, documentHeader);
-  return URL.createObjectURL(blob);
-}
-
-/**
- * Get Payment Voucher PDF as data URL for preview
- */
-export async function getPaymentVoucherPDFUrl(
-  paymentVoucher: PaymentVoucher,
-  documentHeader?: DocumentHeader,
-): Promise<string> {
-  const blob = await getPaymentVoucherPDFBlob(paymentVoucher, documentHeader);
-  return URL.createObjectURL(blob);
-}
-
-/**
  * Export a GRN as PDF
  */
 export async function exportGrnPDF(
@@ -240,13 +207,3 @@ export async function getGrnPDFBlob(
   return pdf(doc as any).toBlob();
 }
 
-/**
- * Get GRN PDF as data URL for preview
- */
-export async function getGrnPDFUrl(
-  grn: GoodsReceivedNote,
-  documentHeader?: DocumentHeader,
-): Promise<string> {
-  const blob = await getGrnPDFBlob(grn, documentHeader);
-  return URL.createObjectURL(blob);
-}

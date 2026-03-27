@@ -5,11 +5,11 @@ import {
   GRNItem,
   QualityIssue,
 } from "@/types/goods-received-note";
-import { pdfStyles } from "../pdf/pdf-styles";
-import { generateDocumentQRData } from "../pdf/qr-utils";
-import { PDFHeader, PDFFooter, DocumentHeader } from "../pdf/requisition-pdf";
-import { ApprovalSignaturesSection } from "../pdf/components/approval-signatures-section";
-import { capitalize } from "../utils";
+import { pdfStyles } from "@/lib/pdf/pdf-styles";
+import { generateDocumentQRData } from "@/lib/pdf/qr-utils";
+import { PDFHeader, PDFFooter, DocumentHeader } from "./requisition-pdf";
+import { ApprovalSignaturesSection } from "./approval-signatures-section";
+import { capitalize } from "@/lib/utils";
 
 interface GRNPDFProps {
   grn: GoodsReceivedNote;
@@ -526,51 +526,6 @@ const GoodsReceivedNotePDF: React.FC<GRNPDFProps> = ({
             ))}
           </View>
         )}
-
-        {/* QR Code and Tracking Information */}
-        <View
-          style={{
-            marginTop: 20,
-            paddingTop: 10,
-            borderTopWidth: 1,
-            borderTopColor: "#ddd",
-            display: "flex",
-            flexDirection: "row",
-            gap: 15,
-            alignItems: "flex-start",
-          }}
-        >
-          {/* QR Code Section */}
-          {qrCodeUrl && (
-            <View style={{ width: 80, height: 80 }}>
-              <Image source={qrCodeUrl} style={{ width: 80, height: 80 }} />
-            </View>
-          )}
-
-          {/* Tracking Information */}
-          <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 8, fontWeight: "bold", marginBottom: 4 }}>
-              DOCUMENT TRACKING
-            </Text>
-            <Text style={{ fontSize: 7, marginBottom: 2 }}>
-              Tracking Code: {documentNumber}
-            </Text>
-            <Text style={{ fontSize: 7, marginBottom: 2 }}>
-              Document ID: {grn.id}
-            </Text>
-            <Text style={{ fontSize: 7, marginBottom: 2 }}>
-              Status: {capitalize(grn.status)}
-            </Text>
-            <Text style={{ fontSize: 7, marginBottom: 2 }}>
-              Created: {new Date(grn.createdAt).toLocaleDateString()}{" "}
-              {new Date(grn.createdAt).toLocaleTimeString()}
-            </Text>
-            <Text style={{ fontSize: 7 }}>
-              Generated: {new Date().toLocaleDateString()}{" "}
-              {new Date().toLocaleTimeString()}
-            </Text>
-          </View>
-        </View>
 
         {/* Approval Signatures Section */}
         {grn.approvalHistory && grn.approvalHistory.length > 0 && (

@@ -1,6 +1,7 @@
 import { verifySession } from "@/lib/auth";
 import { redirect } from "next/navigation";
-import { PODetailClient } from "./_components/po-detail-client";
+import { PurchaseOrderDetailClient } from "../_components/purchase-order-detail-client";
+import { getPurchaseOrderById } from "@/app/_actions/purchase-orders";
 
 export const metadata = {
   title: "Purchase Order Details",
@@ -20,13 +21,19 @@ export default async function PODetailPage({ params }: PODetailPageProps) {
     redirect("/login");
   }
 
-  const POId = (await params).id;
+  const purchaseOrderId = (await params).id;
+
+  // Server-side data fetching for initial PO load
+  const poResult = await getPurchaseOrderById(purchaseOrderId);
+  const initialPurchaseOrder =
+    poResult.success && poResult.data ? poResult.data : undefined;
 
   return (
-    <PODetailClient
-      poId={POId}
+    <PurchaseOrderDetailClient
+      purchaseOrderId={purchaseOrderId}
       userId={session.user.id}
       userRole={(session.user as any).role}
+      initialPurchaseOrder={initialPurchaseOrder}
     />
   );
 }
