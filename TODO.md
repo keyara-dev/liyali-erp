@@ -1,8 +1,64 @@
 # Liyali Gateway - TODO & Future Enhancements
 
-> Last updated: 2026-03-16
-> Status: Post system-wide audit (2026-03-16). New sections added: Database/Migrations, Security Hardening, Frontend Type Safety.
+> Last updated: 2026-03-26
+> Status: Post full MVP readiness audit (2026-03-26). Added Section 0 (MVP blockers). Corrected stale items: bulk operations confirmed implemented, migration numbering confirmed 000-009 only. Roadmap updated.
 > This document captures every remaining stub, placeholder, and enhancement opportunity.
+
+---
+
+## 0. MVP Readiness — Audit 2026-03-26
+
+> Full system audit completed 2026-03-26. Items below must be resolved before production deploy.
+> Confirmed working (no action needed): CORS, graceful shutdown, role-based doc visibility, workflow claim expiry, rejection with stage return, session revocation, rate limiting, bulk operations (real API calls), migrations 000-009 (all have .down.sql). Frontend .env is gitignored — not committed.
+
+### 0.1 Blockers — Must fix before any production deploy
+
+| ID  | Item                                    | File                                               | Notes                                                                                                       |
+| --- | --------------------------------------- | -------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| B1  | JWT_SECRET falls back to known string   | `backend/main.go:56-64`                            | Sets `"temp-production-secret-change-me"` when env var missing. Anyone who reads the code can forge tokens. Change to `log.Fatal`. |
+| B2  | Email service is a stub — never sends   | `backend/services/email_service.go`                | `SendInvitationEmail` logs and returns nil. Password resets and invitations never delivered. Wire SMTP/Resend/SendGrid. |
+| B3  | Audit service LogAction/LogEvent empty  | `backend/services/audit_service.go:11-37`          | Both methods are no-ops. No audit trail is written anywhere. Implement or at minimum log to structured output. |
+
+### 0.2 High Priority — Fix before or immediately after launch
+
+| ID  | Item                                      | File                                                                 | Notes                                                                                                       |
+| --- | ----------------------------------------- | -------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| H1  | Fail-open session check                   | `backend/middleware/middleware.go:278-280`                           | If DB is unreachable during session validation, ALL tokens pass (including revoked). Reject on DB timeout.   |
+| H2  | No startup env var validation             | `backend/main.go`                                                    | Server starts with empty DB_PASSWORD, empty FRONTEND_URL etc. — silently uses bad defaults. Add `log.Fatal` guard before `InitDatabase()`. |
+| H3  | Debug log.Printf in workflow hot paths    | `backend/services/workflow_execution_service.go:651,1013`            | `[DEBUG]` log statements in approval and rejection paths log sensitive user/role data in production. Remove or gate behind log level. |
+| H4  | Async notification errors swallowed       | `backend/services/workflow_execution_service.go` (multiple)          | Notification goroutines print errors with `fmt.Printf` only — no tracking, no retry. At minimum log to structured logger. |
+| H5  | Update org member role — endpoint missing | `frontend/src/app/_actions/user-actions.ts:230`                      | Frontend calls `PUT /api/v1/organization/members/:id` which does not exist in backend routes. Implement endpoint. |
+| H6  | User profile update skips backend         | `frontend/src/app/_actions/settings.ts:67`                           | Settings save action has TODO "Call backend API to update user profile." Profile changes lost on refresh.     |
+
+### 0.3 Medium Priority — Fix within first week post-launch
+
+| ID  | Item                                      | File                                                                     | Notes                                                                                           |
+| --- | ----------------------------------------- | ------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------- |
+| M1  | Admin org membership check placeholder   | `backend/middleware/admin.go:117`                                        | Any admin role can access any org. TODO comment in place. Implement or explicitly document the intentional behavior. |
+| M2  | Rate limiter ignores proxy headers        | `backend/middleware/middleware.go`                                        | Keys off raw IP only. Behind a load balancer all requests share one IP. Add `X-Forwarded-For` / `X-Real-IP` parsing. |
+| M3  | `session.user as any` casts — 24+ places | Multiple frontend components                                             | Session type from `@auth/core` has no `role` field. Extend `next-auth.d.ts`, then remove all `as any` casts. |
+| M4  | PO and PV PDF generators are placeholders | `frontend/src/lib/pdf-generators/purchase-order-pdf.tsx` `:19`          | Both files return placeholder. Install `@react-pdf/renderer`, implement generators. |
+| M5  | Subscription upgrade — no payment         | `backend/services/subscription_service.go:246`                           | UpgradeSubscription changes tier in DB only. No payment processor wired. Gate behind payment or remove upgrade UI. |
+| M6  | TOTP 2FA records preference only          | `backend/handlers/admin_console_user_handler.go:542`                     | Enable2FA stores a flag but no secret generation, QR enrollment, or verification endpoint. Implement fully or remove 2FA UI. |
+| M7  | Vendor placeholder ID hardcoded           | `backend/services/document_automation_service.go:81-90`                  | Uses `"vendor-placeholder-001"` when vendor not found. Should fail or prompt user. |
+
+### 0.4 Low Priority / Post-MVP
+
+| ID  | Item                                     | File                                                               |
+| --- | ---------------------------------------- | ------------------------------------------------------------------ |
+| L1  | Offline PWA queue — PO/PV/Budget/Vendor  | `frontend/src/hooks/use-offline-queue-processor.ts:290,320,368,378` |
+| L2  | Image upload is a placeholder toast      | `frontend/src/components/ui/image-upload.tsx:31`                   |
+| L3  | PDF batch export needs `jszip`           | `frontend/src/lib/pdf/pdf-batch-export.ts:40+`                     |
+| L4  | Department module assignment stubs       | `backend/services/department_service.go:302-330`                   |
+| L5  | Performance logger memory usage = 0      | `backend/logging/middleware/performance_logger.go:213`             |
+| L6  | Admin console settings bulk/import/export | `admin-console/src/app/_actions/settings.ts:250-426`              |
+| L7  | Admin console feature flag templates     | `admin-console/src/app/_actions/feature-flags.ts:372`              |
+| L8  | Google OAuth button is "Coming soon"     | `frontend/src/app/(auth)/login/_components/login-form.tsx:135`     |
+| L9  | Notifications need paginated response    | `frontend/src/app/(private)/(main)/notifications/_components/notifications-client.tsx:75` |
+| L10 | Workflow document attachments            | `frontend/src/components/workflows/workflow-stage-form.tsx:70`     |
+| L11 | Cache manager is a placeholder concept   | `frontend/src/lib/cache-manager.ts:284`                            |
+| L12 | Admin user sessions — MVP stub           | `backend/handlers/admin_console_user_handler.go:602`               |
+| L13 | API alert rules CRUD — 501 stubs         | `backend/handlers/admin_api_monitoring_handler.go:82,177`          |
 
 ---
 
@@ -259,8 +315,8 @@ Items are grouped by area and sorted by priority within each group.
 
 | #   | Item                                            | File                                           | Line    | Priority | Notes                                                                                                                                |
 | --- | ----------------------------------------------- | ---------------------------------------------- | ------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| [ ] | Replace mock bulk operations with real DB calls | `frontend/src/app/_actions/bulk-operations.ts` | 31-288  | High     | Multiple TODOs: "In production, replace with actual database operations." All bulk approve/reject/reassign use simulated operations. |
-| [ ] | Audit trail logging for bulk ops                | `frontend/src/app/_actions/bulk-operations.ts` | 59, 120 | Medium   | TODO: "Log to audit trail."                                                                                                          |
+| [x] | Replace mock bulk operations with real DB calls | `frontend/src/app/_actions/bulk-operations.ts` | 31-288  | High     | **Confirmed implemented (2026-03-26 audit).** Frontend calls real `/api/v1/approvals/bulk/{approve,reject,reassign}` endpoints. Backend routes exist with `RequireFeature("bulk_operations")` middleware. |
+| [ ] | Audit trail logging for bulk ops                | `frontend/src/app/_actions/bulk-operations.ts` | 59, 120 | Medium   | TODO: "Log to audit trail." Blocked on audit service implementation (see B3 in Section 0).                                           |
 
 ### 4.3 Offline / PWA Features
 
@@ -318,13 +374,14 @@ Items are grouped by area and sorted by priority within each group.
 
 ## 5. Database & Migrations
 
-| #   | Item                                     | File                                                                        | Priority | Notes                                                                                                                              |
-| --- | ---------------------------------------- | --------------------------------------------------------------------------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| [ ] | Fix duplicate migration 027              | `backend/database/migrations/`                                              | High     | Two files share number 027: `027_fix_pro_tier_clears_trial.up.sql` and `027_organization_branches.up.sql`. Rename second to 032+. |
-| [ ] | Commit migration 031                     | `backend/database/migrations/031_seed_global_system_roles.up.sql`          | High     | File exists locally but is untracked (`??` in git status). Commit or remove.                                                      |
-| [ ] | Write DOWN migration for 031             | `backend/database/migrations/031_seed_global_system_roles.down.sql`        | Medium   | No rollback script exists for the global system roles seed.                                                                       |
-| [ ] | Add missing DOWN migrations              | `backend/database/migrations/`                                              | Low      | Only 13 of 31 UP migrations have a corresponding DOWN file. Add rollbacks for: user profile (021), activity logs (023), MFA/LDAP (024), impersonation logs (025), org branches (030), etc. |
-| [ ] | Verify IsSuperAdmin column nullable      | `backend/models/models.go` + migration 017                                  | Medium   | Model uses `*bool` (nullable pointer). Confirm DB column matches — if NOT NULL default false, change to `bool` in model.           |
+> **2026-03-26 audit note**: Migrations directory contains only 000–009. Previous references to 027/031 duplicate/missing files were stale — those migrations no longer exist. All 9 migration files (000–009) have matching `.down.sql` files.
+
+| #      | Item                                | File                                       | Priority | Notes                                                                                                              |
+| ------ | ----------------------------------- | ------------------------------------------ | -------- | ------------------------------------------------------------------------------------------------------------------ |
+| [DONE] | Fix duplicate migration 027         | `backend/database/migrations/`             | N/A      | **Not present (2026-03-26).** Migrations restructured to 000–009 only. No duplicate exists.                        |
+| [DONE] | Commit migration 031                | `backend/database/migrations/`             | N/A      | **Not present (2026-03-26).** File no longer exists in the migrations directory.                                   |
+| [DONE] | Add missing DOWN migrations         | `backend/database/migrations/`             | N/A      | **All 9 migrations (000–009) have .down.sql counterparts (2026-03-26 audit).**                                     |
+| [ ]    | Verify IsSuperAdmin column nullable | `backend/models/models.go` + migration 017 | Medium   | Model uses `*bool` (nullable pointer). Confirm DB column matches — if NOT NULL default false, change to `bool`.    |
 
 ---
 
@@ -360,41 +417,57 @@ Items are grouped by area and sorted by priority within each group.
 
 ---
 
-## 6. Suggested Implementation Roadmap
+## 9. Implementation Roadmap
 
-### Sprint 1: High-Priority Backend (estimated: ~2-3 days of work)
+> Updated 2026-03-26 post-audit. Sprint 0 is new — must complete before any production deploy.
 
-1. **Audit service** - Implement `LogAction` and `LogEvent` so all actions are tracked
-2. **Bulk operations** - Replace simulated bulk approve/reject with real DB operations
-3. **2FA infrastructure** - Add TOTP secret generation, QR enrollment, verification endpoint
-4. **Payment integration** - PayBoss checkout for subscription upgrades
+### Sprint 0: MVP Blockers (do this first — ~1 day)
 
-### Sprint 2: Admin Console Polish (estimated: ~2 days)
+1. **B1** — `backend/main.go`: Replace JWT_SECRET fallback with `log.Fatal` in production
+2. **B2** — `backend/services/email_service.go`: Wire real email provider (SMTP/Resend/SendGrid)
+3. **B3** — `backend/services/audit_service.go`: Implement `LogAction` / `LogEvent`
+4. **H1** — `backend/middleware/middleware.go:278`: Reject (not pass) when session DB check fails
+5. **H2** — `backend/main.go`: Add `log.Fatal` guard for required env vars before server starts
+6. **H3** — `backend/services/workflow_execution_service.go`: Remove `[DEBUG]` log.Printf statements
+7. **H4** — workflow_execution_service.go: Route async notification errors to structured logger
+8. **H5** — Implement `PUT /api/v1/organization/members/:id` in backend
+9. **H6** — `frontend/src/app/_actions/settings.ts`: Wire profile save to backend API
 
-1. **Feature flag bulk operations** - Backend endpoint + wire frontend
-2. **Settings bulk/import/export** - Backend endpoints + wire frontend
-3. **Feature flag audit trail** - Query `admin_audit_logs` for flag-related actions
-4. **API alert rules** - Create model + CRUD + threshold evaluation
+### Sprint 1: High-Priority Backend (~2 days)
 
-### Sprint 3: Tenant App Completeness (estimated: ~3 days)
+1. **M1** — `backend/middleware/admin.go:117`: Implement org membership check (or document skip)
+2. **M5** — `backend/services/subscription_service.go`: Gate upgrade behind payment or disable UI
+3. **M6** — Admin TOTP 2FA: Implement secret generation, QR enrollment, verify endpoint — or remove UI
+4. **M7** — `backend/services/document_automation_service.go`: Replace vendor placeholder ID with real lookup
+5. **M2** — `backend/middleware/middleware.go`: Parse `X-Forwarded-For` for rate limiter
 
-1. **Dashboard analytics** - Add missing metrics to backend analytics endpoints
-2. **PDF generation** - Install `@react-pdf/renderer`, implement PO and PV generators
-3. **Image upload** - Integrate ImageKit or S3-compatible upload
-4. **Offline operations** - Implement remaining offline queue processors
+### Sprint 2: Frontend Polish (~2 days)
 
-### Sprint 4: Infrastructure & Testing (estimated: ~2 days)
+1. **M3** — Extend NextAuth session type in `next-auth.d.ts`; remove all `session.user as any` casts (24+ occurrences)
+2. **M4** — Install `@react-pdf/renderer`; implement PO and PV PDF generators
+3. **Admin console** — Settings bulk/import/export + feature flag templates (see Section 2.1, 2.2)
+4. **L8** — Remove "Coming soon" Google OAuth button or implement it
 
-1. **Repository layer** - Complete sqlc migration for account lockout + password reset
-2. **Unit tests** - Uncomment and fix workflow, notification, budget, document tests
-3. **Department modules** - Create junction table + implement assignment handlers
-4. **Session tracking** - Real session table for admin users
+### Sprint 3: Completeness (~3 days)
+
+1. **L1** — Offline PWA queue processors for PO, PV, Budget, Vendor
+2. **L2** — Image upload: integrate ImageKit or S3-compatible provider
+3. **L3** — PDF batch export: install `jszip`, implement batch export
+4. **L4** — Department modules: create junction table + assignment handlers
+5. **L12** — Admin user sessions: real session tracking table
+
+### Sprint 4: Infrastructure & Testing (~2 days)
+
+1. Repository layer — complete sqlc migration for account lockout + password reset
+2. Unit tests — fix workflow state machine, notification service, budget validation tests
+3. Performance logger — implement real memory usage via `runtime.ReadMemStats`
+4. `IsSuperAdmin` column nullable — verify model vs DB schema (Section 5)
 
 ### Deferred / Won't Do
 
 - Database backup/restore/migration via web UI (security decision)
 - System config update/service restart via web UI (security decision)
-- Cache manager implementation (premature optimization)
+- Cache manager implementation (`frontend/src/lib/cache-manager.ts`) — premature optimization
 
 ---
 
