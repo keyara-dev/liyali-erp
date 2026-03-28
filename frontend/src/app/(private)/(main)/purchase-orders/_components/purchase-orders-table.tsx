@@ -100,7 +100,7 @@ const columns: ColumnDef<WorkflowDocument>[] = [
   },
   {
     id: "amount",
-    accessorKey: "metadata.totalAmount",
+    accessorKey: "metadata.amount",
     header: ({ column }) => (
       <Button
         variant="ghost"
@@ -113,7 +113,7 @@ const columns: ColumnDef<WorkflowDocument>[] = [
     ),
     cell: ({ row }) => (
       <div className="font-medium">
-        K {(row.original.metadata?.totalAmount || 0).toLocaleString()}
+        K {(row.original.metadata?.amount || 0).toLocaleString()}
       </div>
     ),
   },
@@ -129,12 +129,18 @@ const columns: ColumnDef<WorkflowDocument>[] = [
     id: "stage",
     accessorKey: "currentStage",
     header: "Stage",
-    cell: ({ row }) => (
-      <StageIndicator
-        currentStage={row.original.currentStage || 1}
-        totalStages={4}
-      />
-    ),
+    cell: ({ row }) => {
+      const status = row.original.status?.toUpperCase();
+      if (status === "DRAFT" || !row.original.currentStage) {
+        return <span className="text-xs text-muted-foreground">Draft</span>;
+      }
+      return (
+        <StageIndicator
+          currentStage={row.original.currentStage}
+          totalStages={4}
+        />
+      );
+    },
   },
   {
     id: "createdDate",

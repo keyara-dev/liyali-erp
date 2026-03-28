@@ -11,6 +11,7 @@ import {
   AlertTriangle,
   AlertCircle,
   Plus,
+  Send,
 } from "lucide-react";
 import { PageHeader } from "@/components/base/page-header";
 import { DocumentLoadingPage } from "@/components/base/document-loading-page";
@@ -21,6 +22,7 @@ import { useAddQualityIssueMutation } from "@/hooks/use-quality-issue-mutations"
 import { useGRNDetail } from "@/hooks/use-grn-detail";
 import { Badge } from "@/components";
 import type { QualityIssue } from "@/types/goods-received-note";
+import { GRNSubmitDialog } from "./grn-submit-dialog";
 
 interface GRNDetailClientProps {
   grnId: string;
@@ -41,6 +43,10 @@ export function GRNDetailClient({
     document: grn,
     isLoading,
     permissions,
+    showSubmitDialog,
+    setShowSubmitDialog,
+    handleSubmitForApproval,
+    submitMutation,
   } = useGRNDetail({
     grnId,
     userId,
@@ -212,6 +218,12 @@ export function GRNDetailClient({
               <p className="font-semibold">{grn.approvedBy}</p>
             </div>
           )}
+          {grn.linkedPV && (
+            <div>
+              <p className="text-sm text-muted-foreground">Source Payment Voucher</p>
+              <p className="font-semibold font-mono">{grn.linkedPV}</p>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -320,6 +332,12 @@ export function GRNDetailClient({
         <Button variant="outline" onClick={handleBack}>
           Cancel
         </Button>
+        {permissions.canSubmit && (
+          <Button onClick={() => setShowSubmitDialog(true)} className="gap-2">
+            <Send className="h-4 w-4" />
+            Submit for Approval
+          </Button>
+        )}
         {grn.status === "SUBMITTED" && (
           <Button
             onClick={handleConfirm}
@@ -329,6 +347,15 @@ export function GRNDetailClient({
           </Button>
         )}
       </div>
+
+      {/* GRN Submit Dialog */}
+      <GRNSubmitDialog
+        open={showSubmitDialog}
+        onOpenChange={setShowSubmitDialog}
+        grn={grn}
+        onSubmit={handleSubmitForApproval}
+        isSubmitting={submitMutation.isPending}
+      />
 
       {/* Quality Issue Report Dialog */}
       <QualityIssueReportDialog

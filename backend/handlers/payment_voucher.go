@@ -166,6 +166,30 @@ func CreatePaymentVoucher(c *fiber.Ctx) error {
 		vendorIDPtr = &req.VendorID
 	}
 
+	// One-to-one guard + PO APPROVED gate
+	if req.LinkedPO != "" {
+		var linkedPO models.PurchaseOrder
+		if err := config.DB.
+			Where("document_number = ? AND organization_id = ?", req.LinkedPO, tenant.OrganizationID).
+			First(&linkedPO).Error; err != nil {
+			return utils.SendBadRequestError(c, "Linked purchase order not found")
+		}
+		if strings.ToUpper(linkedPO.Status) != "APPROVED" {
+			return utils.SendBadRequestError(c, fmt.Sprintf(
+				"Cannot create PV: linked PO %s is in %s status and must be APPROVED first.",
+				req.LinkedPO, linkedPO.Status))
+		}
+		var existingPV models.PaymentVoucher
+		if err := config.DB.
+			Where("linked_po = ? AND organization_id = ? AND UPPER(status) != 'CANCELLED'",
+				req.LinkedPO, tenant.OrganizationID).
+			First(&existingPV).Error; err == nil {
+			return utils.SendConflictError(c, fmt.Sprintf(
+				"Payment voucher %s already exists for PO %s (status: %s).",
+				existingPV.DocumentNumber, req.LinkedPO, existingPV.Status))
+		}
+	}
+
 	// Generate voucher number
 	documentNumber := utils.GenerateDocumentNumber("PV")
 
@@ -474,6 +498,36 @@ func SubmitPaymentVoucher(c *fiber.Ctx) error {
 			"success": false,
 			"message": fmt.Sprintf("Cannot submit payment voucher in %s status", voucher.Status),
 		})
+	}
+
+	// Gate: if linked to a PO, it must still be APPROVED before PV can be submitted
+	if voucher.LinkedPO != "" {
+		var linkedPO models.PurchaseOrder
+		if err := config.DB.
+			Where("document_number = ? AND organization_id = ?", voucher.LinkedPO, organizationID).
+			First(&linkedPO).Error; err != nil {
+			return utils.SendBadRequestError(c, "Linked purchase order not found")
+		}
+		if strings.ToUpper(linkedPO.Status) != "APPROVED" {
+			return utils.SendBadRequestError(c, fmt.Sprintf(
+				"Cannot submit PV: linked PO %s is in %s status and must be APPROVED.",
+				voucher.LinkedPO, linkedPO.Status))
+		}
+	}
+
+	// Gate: goods-first flow — linked GRN must still be APPROVED before PV can be submitted
+	if voucher.LinkedGRN != "" {
+		var linkedGRN models.GoodsReceivedNote
+		if err := config.DB.
+			Where("document_number = ? AND organization_id = ?", voucher.LinkedGRN, organizationID).
+			First(&linkedGRN).Error; err != nil {
+			return utils.SendBadRequestError(c, "Linked goods received note not found")
+		}
+		if strings.ToUpper(linkedGRN.Status) != "APPROVED" {
+			return utils.SendBadRequestError(c, fmt.Sprintf(
+				"Cannot submit PV: linked GRN %s is in %s status and must be APPROVED.",
+				voucher.LinkedGRN, linkedGRN.Status))
+		}
 	}
 
 	// Get workflow execution service from context

@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/base64"
+	"fmt"
 	"strings"
 	"time"
 
@@ -69,6 +70,17 @@ func CreatePurchaseOrderFromRequisition(c *fiber.Ctx) error {
 	}
 	if req.Currency == "" {
 		req.Currency = "ZMW"
+	}
+
+	// One-to-one: reject if any non-cancelled PO already exists for this REQ
+	var existingPO models.PurchaseOrder
+	if err := config.DB.
+		Where("source_requisition_id = ? AND organization_id = ? AND UPPER(status) != 'CANCELLED'",
+			req.RequisitionID, tenant.OrganizationID).
+		First(&existingPO).Error; err == nil {
+		return utils.SendConflictError(c, fmt.Sprintf(
+			"Purchase order %s already exists for this requisition (status: %s).",
+			existingPO.DocumentNumber, existingPO.Status))
 	}
 
 	// Load requisition (with preferred vendor) to compare for audit trail

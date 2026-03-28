@@ -13,6 +13,12 @@ import { WorkflowDocument } from "./workflow";
 // CORE PURCHASE ORDER TYPES
 // ============================================================================
 
+export interface LinkedPVSummary {
+  id: string;
+  documentNumber: string;
+  status: string;
+}
+
 /**
  * Attachment metadata for purchase order supporting documents
  */
@@ -174,6 +180,8 @@ export interface PurchaseOrder extends WorkflowDocument {
   requestedByName?: string;
   /** Requester role for PV creation */
   requestedByRole?: string;
+  /** Linked payment voucher summary (populated on list/detail responses) */
+  linkedPV?: LinkedPVSummary;
 }
 
 /**

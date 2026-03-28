@@ -363,6 +363,19 @@ func (s *DocumentAutomationService) CreatePaymentVoucherFromGRN(
 		}, nil
 	}
 
+	// One-to-one: skip if any non-cancelled PV already exists for this PO
+	var existingPV models.PaymentVoucher
+	if err := s.db.
+		Where("linked_po = ? AND organization_id = ? AND UPPER(status) != 'CANCELLED'",
+			purchaseOrder.DocumentNumber, grn.OrganizationID).
+		First(&existingPV).Error; err == nil {
+		return &AutomationResult{
+			Success: false,
+			Error: fmt.Errorf("payment voucher %s already exists for PO %s",
+				existingPV.DocumentNumber, purchaseOrder.DocumentNumber),
+		}, nil
+	}
+
 	// Generate PV document number
 	documentNumber := utils.GenerateDocumentNumber("PV")
 
@@ -377,6 +390,7 @@ func (s *DocumentAutomationService) CreatePaymentVoucherFromGRN(
 		Currency:       purchaseOrder.Currency,
 		PaymentMethod:  "bank_transfer", // Default payment method
 		LinkedPO:       purchaseOrder.DocumentNumber,
+		LinkedGRN:      grn.DocumentNumber,
 		ApprovalStage:  0,
 		CreatedAt:      time.Now(),
 		UpdatedAt:      time.Now(),

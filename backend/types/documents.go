@@ -64,6 +64,13 @@ type RequisitionItem struct {
 	Notes           *string  `json:"notes,omitempty"`
 }
 
+// LinkedPOSummary is a compact PO reference embedded in RequisitionResponse
+type LinkedPOSummary struct {
+	ID             string `json:"id"`
+	DocumentNumber string `json:"documentNumber"`
+	Status         string `json:"status"`
+}
+
 // RequisitionResponse represents a requisition in responses
 type RequisitionResponse struct {
 	ID                  string            `json:"id"`
@@ -99,6 +106,9 @@ type RequisitionResponse struct {
 
 	// Action history for frontend
 	ActionHistory []ActionHistoryEntry `json:"actionHistory,omitempty"`
+
+	// Linked PO (populated on list responses for approved-req table)
+	LinkedPO *LinkedPOSummary `json:"linkedPO,omitempty"`
 
 	CreatedAt time.Time `json:"createdAt"`
 	UpdatedAt time.Time `json:"updatedAt"`
@@ -230,24 +240,33 @@ type POItem struct {
 	Notes      string  `json:"notes,omitempty"`      // Item notes - ADDED
 }
 
+// LinkedPVSummary is a compact PV reference embedded in PurchaseOrderResponse
+type LinkedPVSummary struct {
+	ID             string `json:"id"`
+	DocumentNumber string `json:"documentNumber"`
+	Status         string `json:"status"`
+}
+
 // PurchaseOrderResponse represents a PO in responses
 type PurchaseOrderResponse struct {
-	ID                string               `json:"id"`
-	DocumentNumber    string               `json:"documentNumber"`
-	VendorID          string               `json:"vendorId"`
-	VendorName        string               `json:"vendorName"`
-	Status            string               `json:"status"`
-	Items             []POItem             `json:"items"`
-	TotalAmount       float64              `json:"totalAmount"`
-	Currency          string               `json:"currency"`
-	DeliveryDate      time.Time            `json:"deliveryDate"`
-	ApprovalStage     int                  `json:"approvalStage"`
-	ApprovalHistory   []ApprovalRecord     `json:"approvalHistory"`
-	ActionHistory     []ActionHistoryEntry `json:"actionHistory,omitempty"`
-	LinkedRequisition string               `json:"linkedRequisition"`
-	ProcurementFlow   string               `json:"procurementFlow"` // "" | "goods_first" | "payment_first"
-	CreatedAt         time.Time            `json:"createdAt"`
-	UpdatedAt         time.Time            `json:"updatedAt"`
+	ID                  string               `json:"id"`
+	DocumentNumber      string               `json:"documentNumber"`
+	VendorID            string               `json:"vendorId"`
+	VendorName          string               `json:"vendorName"`
+	Status              string               `json:"status"`
+	Items               []POItem             `json:"items"`
+	TotalAmount         float64              `json:"totalAmount"`
+	Currency            string               `json:"currency"`
+	DeliveryDate        time.Time            `json:"deliveryDate"`
+	ApprovalStage       int                  `json:"approvalStage"`
+	ApprovalHistory     []ApprovalRecord     `json:"approvalHistory"`
+	ActionHistory       []ActionHistoryEntry `json:"actionHistory,omitempty"`
+	LinkedRequisition   string               `json:"linkedRequisition"`
+	SourceRequisitionId string               `json:"sourceRequisitionId,omitempty"`
+	LinkedPV            *LinkedPVSummary     `json:"linkedPV,omitempty"`
+	ProcurementFlow     string               `json:"procurementFlow"` // "" | "goods_first" | "payment_first"
+	CreatedAt           time.Time            `json:"createdAt"`
+	UpdatedAt           time.Time            `json:"updatedAt"`
 }
 
 // ================== PAYMENT VOUCHER TYPES ==================

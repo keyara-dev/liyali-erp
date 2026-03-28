@@ -167,6 +167,29 @@ func CreateGRN(c *fiber.Ctx) error {
 		}
 	}
 
+	// One-to-one: reject if any non-cancelled GRN already exists for this PO/PV
+	if effectiveFlow == "payment_first" && req.LinkedPV != "" {
+		var existingGRN models.GoodsReceivedNote
+		if err := config.DB.
+			Where("linked_pv = ? AND organization_id = ? AND UPPER(status) != 'CANCELLED'",
+				req.LinkedPV, tenant.OrganizationID).
+			First(&existingGRN).Error; err == nil {
+			return utils.SendConflictError(c, fmt.Sprintf(
+				"Goods received note %s already exists for payment voucher %s (status: %s).",
+				existingGRN.DocumentNumber, req.LinkedPV, existingGRN.Status))
+		}
+	} else {
+		var existingGRN models.GoodsReceivedNote
+		if err := config.DB.
+			Where("po_document_number = ? AND organization_id = ? AND UPPER(status) != 'CANCELLED'",
+				req.PODocumentNumber, tenant.OrganizationID).
+			First(&existingGRN).Error; err == nil {
+			return utils.SendConflictError(c, fmt.Sprintf(
+				"Goods received note %s already exists for purchase order %s (status: %s).",
+				existingGRN.DocumentNumber, req.PODocumentNumber, existingGRN.Status))
+		}
+	}
+
 	// Payment-first enforcement: require an approved PV before goods can be received
 	var linkedPVDoc *models.PaymentVoucher
 	if effectiveFlow == "payment_first" {
@@ -541,6 +564,37 @@ func SubmitGRN(c *fiber.Ctx) error {
 			"success": false,
 			"message": fmt.Sprintf("Cannot submit GRN in %s status", grn.Status),
 		})
+	}
+
+	// Gate: linked PO must still be APPROVED before GRN can be submitted
+	if grn.PODocumentNumber != "" {
+		var linkedPO models.PurchaseOrder
+		if err := config.DB.
+			Where("document_number = ? AND organization_id = ?", grn.PODocumentNumber, organizationID).
+			First(&linkedPO).Error; err != nil {
+			return utils.SendBadRequestError(c, "Linked purchase order not found")
+		}
+		if strings.ToUpper(linkedPO.Status) != "APPROVED" {
+			return utils.SendBadRequestError(c, fmt.Sprintf(
+				"Cannot submit GRN: linked PO %s is in %s status and must be APPROVED.",
+				grn.PODocumentNumber, linkedPO.Status))
+		}
+	}
+
+	// Gate: payment-first — linked PV must still be APPROVED or PAID
+	if grn.LinkedPV != "" {
+		var linkedPV models.PaymentVoucher
+		if err := config.DB.
+			Where("document_number = ? AND organization_id = ?", grn.LinkedPV, organizationID).
+			First(&linkedPV).Error; err != nil {
+			return utils.SendBadRequestError(c, "Linked payment voucher not found")
+		}
+		pvStatus := strings.ToUpper(linkedPV.Status)
+		if pvStatus != "APPROVED" && pvStatus != "PAID" {
+			return utils.SendBadRequestError(c, fmt.Sprintf(
+				"Cannot submit GRN: linked PV %s is in %s status and must be APPROVED or PAID.",
+				grn.LinkedPV, linkedPV.Status))
+		}
 	}
 
 	// Get workflow execution service from context

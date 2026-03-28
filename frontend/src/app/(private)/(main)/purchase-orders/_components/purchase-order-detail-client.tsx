@@ -22,7 +22,9 @@ import {
   CheckSquare,
   GitBranch,
   Activity,
+  ArrowRight,
 } from "lucide-react";
+import { StatusBadge } from "@/components/status-badge";
 import { PageHeader } from "@/components/base/page-header";
 import { PurchaseOrderItemsList } from "./purchase-order-items-list";
 import { PurchaseOrder, PurchaseOrderAttachment } from "@/types/purchase-order";
@@ -451,6 +453,20 @@ export function PurchaseOrderDetailClient({
                 : `${purchaseOrder.approvalStage || 0}/1`}
             </p>
           </div>
+
+          {purchaseOrder.linkedRequisition && (
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-primary-foreground/80 uppercase tracking-wider flex items-center gap-1">
+                <FileText className="h-3 w-3" /> Source Requisition
+              </label>
+              <a
+                href={`/requisitions/${purchaseOrder.sourceRequisitionId || purchaseOrder.linkedRequisition}`}
+                className="text-base font-medium text-primary-foreground underline underline-offset-2 hover:opacity-80"
+              >
+                {purchaseOrder.linkedRequisition}
+              </a>
+            </div>
+          )}
         </div>
 
         {/* Description */}
@@ -466,13 +482,64 @@ export function PurchaseOrderDetailClient({
         )}
       </div>
 
-      {/* Document Chain — only shown once PO is approved */}
-      {purchaseOrder.status?.toUpperCase() === "APPROVED" && (
+      {/* Document Chain — shown once PO is pending or approved */}
+      {["APPROVED", "PENDING"].includes(purchaseOrder.status?.toUpperCase() ?? "") && (
         <DocumentLinks
           currentDocument={purchaseOrder as unknown as WorkflowDocument}
           chain={chain}
           showViewLinks={userRole.toLowerCase() !== "requester"}
         />
+      )}
+
+      {/* Payment Voucher — shown only when PO is APPROVED */}
+      {purchaseOrder.status?.toUpperCase() === "APPROVED" && (
+        <Card className="p-4 border-0 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-semibold">Payment Voucher</h3>
+              <p className="text-xs text-muted-foreground">
+                {purchaseOrder.linkedPV
+                  ? "A payment voucher is linked to this PO"
+                  : "No payment voucher yet"}
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              {purchaseOrder.linkedPV ? (
+                <>
+                  <StatusBadge
+                    status={purchaseOrder.linkedPV.status}
+                    type="document"
+                  />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() =>
+                      router.push(
+                        `/payment-vouchers/${purchaseOrder.linkedPV!.id}`,
+                      )
+                    }
+                  >
+                    View PV
+                    <ArrowRight className="h-3 w-3 ml-1" />
+                  </Button>
+                </>
+              ) : (
+                <Button
+                  variant="default"
+                  size="sm"
+                  onClick={() =>
+                    router.push(
+                      `/payment-vouchers/new?linkedPO=${purchaseOrder.documentNumber}`,
+                    )
+                  }
+                >
+                  <FileText className="h-4 w-4 mr-1" />
+                  Create PV
+                </Button>
+              )}
+            </div>
+          </div>
+        </Card>
       )}
 
       {/* ── Tabbed Content ──────────────────────────────────────────── */}

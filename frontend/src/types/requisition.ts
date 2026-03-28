@@ -31,6 +31,12 @@ export interface RequisitionItem {
   totalPrice?: number; // Alias for amount
 }
 
+export interface LinkedPOSummary {
+  id: string;
+  documentNumber: string;
+  status: string;
+}
+
 export interface Requisition {
   // Core fields
   id: string;
@@ -91,6 +97,7 @@ export interface Requisition {
   vendorId?: string; // For PO creation
   vendorName?: string; // For PO creation
   attachments?: RequisitionAttachment[]; // Supporting documents
+  linkedPO?: LinkedPOSummary; // Populated on list responses
 }
 
 // ============================================================================

@@ -107,6 +107,45 @@ func GetPurchaseOrders(c *fiber.Ctx) error {
 		responses = append(responses, modelToPurchaseOrderResponse(order))
 	}
 
+	// Batch-enrich responses with linked PV info (single query, not N+1)
+	if len(responses) > 0 {
+		docNumbers := make([]string, len(responses))
+		for i, r := range responses {
+			docNumbers[i] = r.DocumentNumber
+		}
+
+		type pvRow struct {
+			LinkedPO       string
+			ID             string
+			DocumentNumber string
+			Status         string
+		}
+		var pvRows []pvRow
+		config.DB.Raw(`
+			SELECT DISTINCT ON (linked_po)
+				linked_po, id, document_number, status
+			FROM payment_vouchers
+			WHERE linked_po = ANY(?)
+			  AND organization_id = ?
+			  AND UPPER(status) != 'CANCELLED'
+			ORDER BY linked_po, created_at DESC
+		`, docNumbers, tenant.OrganizationID).Scan(&pvRows)
+
+		pvMap := make(map[string]pvRow)
+		for _, r := range pvRows {
+			pvMap[r.LinkedPO] = r
+		}
+		for i, r := range responses {
+			if row, ok := pvMap[r.DocumentNumber]; ok {
+				responses[i].LinkedPV = &types.LinkedPVSummary{
+					ID:             row.ID,
+					DocumentNumber: row.DocumentNumber,
+					Status:         row.Status,
+				}
+			}
+		}
+	}
+
 	logger.Info("purchase_orders_retrieved_successfully")
 
 	return utils.SendPaginatedSuccess(c, responses, "Purchase orders retrieved successfully", page, limit, total)
@@ -479,6 +518,41 @@ func DeletePurchaseOrder(c *fiber.Ctx) error {
 }
 
 // Helper function to convert model to response
+// convertReqItemsToPOItems maps RequisitionItems to POItems for sync on submission.
+func convertReqItemsToPOItems(reqItems []types.RequisitionItem) []types.POItem {
+	poItems := make([]types.POItem, 0, len(reqItems))
+	for _, ri := range reqItems {
+		id := ""
+		if ri.ID != nil {
+			id = *ri.ID
+		}
+		unit := ""
+		if ri.Unit != nil {
+			unit = *ri.Unit
+		}
+		notes := ""
+		if ri.Notes != nil {
+			notes = *ri.Notes
+		}
+		category := ""
+		if ri.Category != nil {
+			category = *ri.Category
+		}
+		poItems = append(poItems, types.POItem{
+			ID:          id,
+			Description: ri.Description,
+			Quantity:    ri.Quantity,
+			UnitPrice:   ri.UnitPrice,
+			Amount:      ri.Amount,
+			TotalPrice:  ri.Amount,
+			Unit:        unit,
+			Notes:       notes,
+			Category:    category,
+		})
+	}
+	return poItems
+}
+
 func modelToPurchaseOrderResponse(order models.PurchaseOrder) types.PurchaseOrderResponse {
 	var items []types.POItem
 	if len(order.Items.Data()) > 0 {
@@ -498,23 +572,29 @@ func modelToPurchaseOrderResponse(order models.PurchaseOrder) types.PurchaseOrde
 
 	actionHistory := order.ActionHistory.Data()
 
+	srcReqID := ""
+	if order.SourceRequisitionId != nil {
+		srcReqID = *order.SourceRequisitionId
+	}
+
 	return types.PurchaseOrderResponse{
-		ID:                order.ID,
-		DocumentNumber:    order.DocumentNumber,
-		VendorID:          vendorID,
-		VendorName:        vendorName,
-		Status:            order.Status,
-		Items:             items,
-		TotalAmount:       order.TotalAmount,
-		Currency:          order.Currency,
-		DeliveryDate:      order.DeliveryDate,
-		ApprovalStage:     order.ApprovalStage,
-		ApprovalHistory:   approvalHistory,
-		ActionHistory:     actionHistory,
-		LinkedRequisition: order.LinkedRequisition,
-		ProcurementFlow:   order.ProcurementFlow,
-		CreatedAt:         order.CreatedAt,
-		UpdatedAt:         order.UpdatedAt,
+		ID:                  order.ID,
+		DocumentNumber:      order.DocumentNumber,
+		VendorID:            vendorID,
+		VendorName:          vendorName,
+		Status:              order.Status,
+		Items:               items,
+		TotalAmount:         order.TotalAmount,
+		Currency:            order.Currency,
+		DeliveryDate:        order.DeliveryDate,
+		ApprovalStage:       order.ApprovalStage,
+		ApprovalHistory:     approvalHistory,
+		ActionHistory:       actionHistory,
+		LinkedRequisition:   order.LinkedRequisition,
+		SourceRequisitionId: srcReqID,
+		ProcurementFlow:     order.ProcurementFlow,
+		CreatedAt:           order.CreatedAt,
+		UpdatedAt:           order.UpdatedAt,
 	}
 }
 
@@ -576,6 +656,33 @@ func SubmitPurchaseOrder(c *fiber.Ctx) error {
 			"success": false,
 			"message": fmt.Sprintf("Cannot submit purchase order in %s status", order.Status),
 		})
+	}
+
+	// Gate + sync: if linked to a REQ, it must be APPROVED before PO can be submitted
+	if order.SourceRequisitionId != nil && *order.SourceRequisitionId != "" {
+		var req models.Requisition
+		if err := config.DB.First(&req, "id = ? AND organization_id = ?", *order.SourceRequisitionId, organizationID).Error; err != nil {
+			return utils.SendBadRequestError(c, "Linked requisition not found")
+		}
+		if strings.ToUpper(req.Status) != "APPROVED" {
+			return utils.SendBadRequestError(c, fmt.Sprintf(
+				"Cannot submit PO: linked requisition %s is in %s status and must be APPROVED first.",
+				req.DocumentNumber, req.Status))
+		}
+
+		// Sync items and amounts from the approved REQ
+		reqItems := req.Items.Data()
+		poItems := convertReqItemsToPOItems(reqItems)
+		order.Items = datatypes.NewJSONType(poItems)
+		order.TotalAmount = req.TotalAmount
+		order.Currency = req.Currency
+		if req.PreferredVendorID != nil && *req.PreferredVendorID != "" {
+			order.VendorID = req.PreferredVendorID
+		}
+		order.UpdatedAt = time.Now()
+		if err := config.DB.Save(&order).Error; err != nil {
+			return utils.SendInternalError(c, "Failed to sync PO data from requisition", err)
+		}
 	}
 
 	// Get workflow execution service from context

@@ -118,6 +118,45 @@ func GetRequisitions(c *fiber.Ctx) error {
 		responses = append(responses, modelToRequisitionResponse(req))
 	}
 
+	// Batch-enrich responses with linked PO info (single query, not N+1)
+	if len(responses) > 0 {
+		reqIDs := make([]string, len(responses))
+		for i, r := range responses {
+			reqIDs[i] = r.ID
+		}
+
+		type poRow struct {
+			SourceRequisitionId string
+			ID                  string
+			DocumentNumber      string
+			Status              string
+		}
+		var poRows []poRow
+		config.DB.Raw(`
+			SELECT DISTINCT ON (source_requisition_id)
+				source_requisition_id, id, document_number, status
+			FROM purchase_orders
+			WHERE source_requisition_id = ANY(?)
+			  AND organization_id = ?
+			  AND UPPER(status) != 'CANCELLED'
+			ORDER BY source_requisition_id, created_at DESC
+		`, reqIDs, organizationID).Scan(&poRows)
+
+		poMap := make(map[string]poRow)
+		for _, r := range poRows {
+			poMap[r.SourceRequisitionId] = r
+		}
+		for i, r := range responses {
+			if row, ok := poMap[r.ID]; ok {
+				responses[i].LinkedPO = &types.LinkedPOSummary{
+					ID:             row.ID,
+					DocumentNumber: row.DocumentNumber,
+					Status:         row.Status,
+				}
+			}
+		}
+	}
+
 	// Calculate pagination
 	pagination := utils.CalculatePagination(page, pageSize, total)
 

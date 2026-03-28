@@ -285,7 +285,7 @@ export interface ActionHistoryEntry {
   remarks?: string;
   stageNumber?: number;
   stageName?: string;
-  changedFields?: string[];
+  changedFields?: Record<string, unknown>;
   metadata?: Record<string, any>; // Additional metadata (e.g. linkedDocNumber, linkedDocType, flow)
 }
 

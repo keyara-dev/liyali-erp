@@ -21,7 +21,9 @@ import {
   ChevronLeft,
   ChevronRight,
   Loader2,
+  ArrowRight,
 } from "lucide-react";
+import { StatusBadge } from "@/components/status-badge";
 import { useRouter } from "next/navigation";
 import { CreatePOFromRequisitionDialog } from "./create-po-from-requisition-dialog";
 import { createPurchaseOrderFromRequisition } from "@/app/_actions/purchase-orders";
@@ -230,16 +232,34 @@ export function ApprovedRequisitionsTable({
                           <Eye className="h-4 w-4 mr-1" />
                           View
                         </Button>
-                        {canCreatePO && (
-                          <Button
-                            variant="default"
-                            size="sm"
-                            onClick={() => handleCreatePO(requisition)}
-                          >
-                            <FileText className="h-4 w-4 mr-1" />
-                            Create PO
-                          </Button>
-                        )}
+                        {canCreatePO && (() => {
+                          const lpo = requisition.linkedPO;
+                          if (lpo) {
+                            return (
+                              <div className="flex items-center gap-2">
+                                <StatusBadge status={lpo.status} type="document" />
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => router.push(`/purchase-orders/${lpo.id}`)}
+                                >
+                                  View PO
+                                  <ArrowRight className="h-3 w-3 ml-1" />
+                                </Button>
+                              </div>
+                            );
+                          }
+                          return (
+                            <Button
+                              variant="default"
+                              size="sm"
+                              onClick={() => handleCreatePO(requisition)}
+                            >
+                              <FileText className="h-4 w-4 mr-1" />
+                              Create PO
+                            </Button>
+                          );
+                        })()}
                       </div>
                     </TableCell>
                   </TableRow>

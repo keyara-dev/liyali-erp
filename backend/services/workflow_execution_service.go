@@ -1206,15 +1206,149 @@ func (s *WorkflowExecutionService) RejectWorkflowTaskWithVersion(ctx context.Con
 		assignment.CompletedAt = &now
 		assignment.UpdatedAt = time.Now()
 
-		// Update the actual document status to "rejected"
-		if err := s.updateDocumentStatus(tx, assignment.EntityType, assignment.EntityID, "REJECTED"); err != nil {
-			tx.Rollback()
-			return fmt.Errorf("failed to update document status: %w", err)
-		}
+		if strings.EqualFold(assignment.EntityType, "purchase_order") {
+			// PO: revert to DRAFT (not permanently rejected); linked REQ also reverts
+			var po models.PurchaseOrder
+			if err := tx.First(&po, "id = ?", assignment.EntityID).Error; err != nil {
+				tx.Rollback()
+				return fmt.Errorf("failed to load purchase order: %w", err)
+			}
+			prevStatus := po.Status
+			if err := s.updateDocumentStatus(tx, "purchase_order", assignment.EntityID, "DRAFT"); err != nil {
+				tx.Rollback()
+				return fmt.Errorf("failed to update document status: %w", err)
+			}
+			if err := s.addActionHistoryEntryWithMeta(tx, "purchase_order", assignment.EntityID, userID,
+				"WORKFLOW_REJECTED_REVERTED_TO_DRAFT", reason,
+				prevStatus, "DRAFT",
+				map[string]interface{}{"approvalStage": map[string]interface{}{"from": task.StageNumber, "to": 0}},
+			); err != nil {
+				fmt.Printf("Warning: failed to add PO action history entry: %v\n", err)
+			}
 
-		// Add action history entry to the document
-		if err := s.addActionHistoryEntry(tx, assignment.EntityType, assignment.EntityID, userID, "WORKFLOW_REJECTED", reason); err != nil {
-			fmt.Printf("Warning: failed to add action history entry: %v\n", err)
+			// Revert the linked REQ to DRAFT as well
+			if po.SourceRequisitionId != nil {
+				reqID := *po.SourceRequisitionId
+				var req models.Requisition
+				if err := tx.First(&req, "id = ?", reqID).Error; err == nil {
+					prevReqStatus := req.Status
+					if err := s.updateDocumentStatus(tx, "requisition", reqID, "DRAFT"); err != nil {
+						tx.Rollback()
+						return fmt.Errorf("failed to revert linked requisition: %w", err)
+					}
+					tx.Model(&models.WorkflowAssignment{}).
+						Where("entity_id = ? AND UPPER(status) = 'IN_PROGRESS'", reqID).
+						Updates(map[string]interface{}{"status": "RETURNED", "completed_at": now, "updated_at": time.Now()})
+					tx.Model(&models.WorkflowTask{}).
+						Where("entity_id = ? AND UPPER(status) IN ('PENDING', 'CLAIMED')", reqID).
+						Updates(map[string]interface{}{"status": "CANCELLED", "updated_at": time.Now()})
+					if err := s.addActionHistoryEntryWithMeta(tx, "requisition", reqID, userID,
+						"REVERTED_TO_DRAFT_BY_PO_REJECTION",
+						fmt.Sprintf("Linked PO %s was rejected. Requisition returned to DRAFT for revision.", po.DocumentNumber),
+						prevReqStatus, "DRAFT",
+						map[string]interface{}{"triggeredBy": map[string]interface{}{"type": "purchase_order", "id": po.ID, "documentNumber": po.DocumentNumber}},
+					); err != nil {
+						fmt.Printf("Warning: failed to add REQ action history entry: %v\n", err)
+					}
+				}
+			}
+		} else if strings.EqualFold(assignment.EntityType, "payment_voucher") {
+			// PV rejection:
+			//   - Goods-first (LinkedGRN set): PV + GRN both → DRAFT; PO stays APPROVED
+			//   - Payment-first (no LinkedGRN): PV → DRAFT only; PO stays APPROVED
+			var pv models.PaymentVoucher
+			if err := tx.First(&pv, "id = ?", assignment.EntityID).Error; err != nil {
+				tx.Rollback()
+				return fmt.Errorf("failed to load payment voucher: %w", err)
+			}
+			prevStatus := pv.Status
+			if err := s.updateDocumentStatus(tx, "payment_voucher", assignment.EntityID, "DRAFT"); err != nil {
+				tx.Rollback()
+				return fmt.Errorf("failed to update document status: %w", err)
+			}
+			if err := s.addActionHistoryEntryWithMeta(tx, "payment_voucher", assignment.EntityID, userID,
+				"WORKFLOW_REJECTED_REVERTED_TO_DRAFT", reason,
+				prevStatus, "DRAFT",
+				map[string]interface{}{"approvalStage": map[string]interface{}{"from": task.StageNumber, "to": 0}},
+			); err != nil {
+				fmt.Printf("Warning: failed to add PV action history entry: %v\n", err)
+			}
+
+			// Goods-first: also revert the linked GRN to DRAFT (receiving must be redone)
+			if pv.LinkedGRN != "" {
+				var grn models.GoodsReceivedNote
+				if err := tx.Where("document_number = ? AND organization_id = ?", pv.LinkedGRN, assignment.OrganizationID).
+					First(&grn).Error; err == nil {
+					prevGRNStatus := grn.Status
+					if err := s.updateDocumentStatus(tx, "grn", grn.ID, "DRAFT"); err != nil {
+						tx.Rollback()
+						return fmt.Errorf("failed to revert linked GRN: %w", err)
+					}
+					// Cancel any in-progress GRN workflow assignments
+					tx.Model(&models.WorkflowAssignment{}).
+						Where("entity_id = ? AND UPPER(status) = 'IN_PROGRESS'", grn.ID).
+						Updates(map[string]interface{}{"status": "RETURNED", "completed_at": now, "updated_at": time.Now()})
+					// Cancel pending/claimed GRN tasks
+					tx.Model(&models.WorkflowTask{}).
+						Where("entity_id = ? AND UPPER(status) IN ('PENDING', 'CLAIMED')", grn.ID).
+						Updates(map[string]interface{}{"status": "CANCELLED", "updated_at": time.Now()})
+					if err := s.addActionHistoryEntryWithMeta(tx, "grn", grn.ID, userID,
+						"REVERTED_TO_DRAFT_BY_PV_REJECTION",
+						fmt.Sprintf("Linked PV %s was rejected. GRN returned to DRAFT for correction.", pv.DocumentNumber),
+						prevGRNStatus, "DRAFT",
+						map[string]interface{}{"triggeredBy": map[string]interface{}{"type": "payment_voucher", "id": pv.ID, "documentNumber": pv.DocumentNumber}},
+					); err != nil {
+						fmt.Printf("Warning: failed to add GRN action history entry: %v\n", err)
+					}
+				}
+			}
+		} else if strings.EqualFold(assignment.EntityType, "grn") {
+			// GRN: revert to DRAFT — receiving issue, upstream docs (PO/PV) are unaffected
+			var grn models.GoodsReceivedNote
+			if err := tx.First(&grn, "id = ?", assignment.EntityID).Error; err != nil {
+				tx.Rollback()
+				return fmt.Errorf("failed to load GRN: %w", err)
+			}
+			prevStatus := grn.Status
+			if err := s.updateDocumentStatus(tx, "grn", assignment.EntityID, "DRAFT"); err != nil {
+				tx.Rollback()
+				return fmt.Errorf("failed to update GRN status: %w", err)
+			}
+			if err := s.addActionHistoryEntryWithMeta(tx, "grn", assignment.EntityID, userID,
+				"WORKFLOW_REJECTED_REVERTED_TO_DRAFT", reason,
+				prevStatus, "DRAFT",
+				map[string]interface{}{"approvalStage": map[string]interface{}{"from": task.StageNumber, "to": 0}},
+			); err != nil {
+				fmt.Printf("Warning: failed to add GRN action history entry: %v\n", err)
+			}
+		} else if strings.EqualFold(assignment.EntityType, "requisition") {
+			// REQ: revert to DRAFT — user corrects and re-submits; no cascade up
+			var req models.Requisition
+			if err := tx.First(&req, "id = ?", assignment.EntityID).Error; err != nil {
+				tx.Rollback()
+				return fmt.Errorf("failed to load requisition: %w", err)
+			}
+			prevStatus := req.Status
+			if err := s.updateDocumentStatus(tx, "requisition", assignment.EntityID, "DRAFT"); err != nil {
+				tx.Rollback()
+				return fmt.Errorf("failed to update requisition status: %w", err)
+			}
+			if err := s.addActionHistoryEntryWithMeta(tx, "requisition", assignment.EntityID, userID,
+				"WORKFLOW_REJECTED_REVERTED_TO_DRAFT", reason,
+				prevStatus, "DRAFT",
+				map[string]interface{}{"approvalStage": map[string]interface{}{"from": task.StageNumber, "to": 0}},
+			); err != nil {
+				fmt.Printf("Warning: failed to add REQ action history entry: %v\n", err)
+			}
+		} else {
+			// Standard: all other document types → REJECTED permanently
+			if err := s.updateDocumentStatus(tx, assignment.EntityType, assignment.EntityID, "REJECTED"); err != nil {
+				tx.Rollback()
+				return fmt.Errorf("failed to update document status: %w", err)
+			}
+			if err := s.addActionHistoryEntry(tx, assignment.EntityType, assignment.EntityID, userID, "WORKFLOW_REJECTED", reason); err != nil {
+				fmt.Printf("Warning: failed to add action history entry: %v\n", err)
+			}
 		}
 	}
 
@@ -1721,6 +1855,78 @@ func (s *WorkflowExecutionService) addActionHistoryEntry(tx *gorm.DB, entityType
 
 		grn.ActionHistory = datatypes.NewJSONType(history)
 
+		return tx.Save(&grn).Error
+	}
+
+	return nil
+}
+
+// addActionHistoryEntryWithMeta is like addActionHistoryEntry but also records
+// previousStatus, newStatus, and changedFields for full audit snapshots.
+func (s *WorkflowExecutionService) addActionHistoryEntryWithMeta(
+	tx *gorm.DB, entityType, entityID, userID, action, comments,
+	previousStatus, newStatus string, changedFields map[string]interface{},
+) error {
+	actionEntry := types.ActionHistoryEntry{
+		ID:             uuid.New().String(),
+		ActionType:     action,
+		PerformedBy:    userID,
+		PerformedAt:    time.Now(),
+		Comments:       comments,
+		PreviousStatus: previousStatus,
+		NewStatus:      newStatus,
+		ChangedFields:  changedFields,
+	}
+
+	switch entityType {
+	case "REQUISITION", "requisition":
+		var requisition models.Requisition
+		if err := tx.Where("id = ?", entityID).First(&requisition).Error; err != nil {
+			return err
+		}
+		history := requisition.ActionHistory.Data()
+		history = append(history, actionEntry)
+		requisition.ActionHistory = datatypes.NewJSONType(history)
+		return tx.Save(&requisition).Error
+
+	case "BUDGET", "budget":
+		var budget models.Budget
+		if err := tx.Where("id = ?", entityID).First(&budget).Error; err != nil {
+			return err
+		}
+		history := budget.ActionHistory.Data()
+		history = append(history, actionEntry)
+		budget.ActionHistory = datatypes.NewJSONType(history)
+		return tx.Save(&budget).Error
+
+	case "PURCHASE_ORDER", "purchase_order":
+		var po models.PurchaseOrder
+		if err := tx.Where("id = ?", entityID).First(&po).Error; err != nil {
+			return err
+		}
+		history := po.ActionHistory.Data()
+		history = append(history, actionEntry)
+		po.ActionHistory = datatypes.NewJSONType(history)
+		return tx.Save(&po).Error
+
+	case "PAYMENT_VOUCHER", "payment_voucher":
+		var pv models.PaymentVoucher
+		if err := tx.Where("id = ?", entityID).First(&pv).Error; err != nil {
+			return err
+		}
+		history := pv.ActionHistory.Data()
+		history = append(history, actionEntry)
+		pv.ActionHistory = datatypes.NewJSONType(history)
+		return tx.Save(&pv).Error
+
+	case "GRN", "grn":
+		var grn models.GoodsReceivedNote
+		if err := tx.Where("id = ?", entityID).First(&grn).Error; err != nil {
+			return err
+		}
+		history := grn.ActionHistory.Data()
+		history = append(history, actionEntry)
+		grn.ActionHistory = datatypes.NewJSONType(history)
 		return tx.Save(&grn).Error
 	}
 
