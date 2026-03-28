@@ -118,12 +118,28 @@ export function DocumentLinks({
         ]
       : [
           {
+            label: "Purchase Order (Auto-approved)",
+            docNumber: chain.poDocumentNumber,
+            href: showViewLinks && chain.poId ? `/purchase-orders` : undefined,
+            status: chain.poStatus,
+            exists: !!chain.poId,
+            placeholder: "Auto-generating on approval",
+          },
+          {
+            label: "Goods Received Note",
+            docNumber: chain.grnDocumentNumber,
+            href: showViewLinks && chain.grnId ? `/grn/${chain.grnId}` : undefined,
+            status: chain.grnStatus,
+            exists: !!chain.grnId,
+            placeholder: "Pending goods receipt",
+          },
+          {
             label: "Payment Voucher",
             docNumber: chain.pvDocumentNumber,
             href: showViewLinks && chain.pvId ? `/payment-vouchers` : undefined,
             status: chain.pvStatus,
             exists: !!chain.pvId,
-            placeholder: "Not yet created",
+            placeholder: "Awaiting GRN approval",
           },
         ];
 
@@ -135,9 +151,7 @@ export function DocumentLinks({
             Procurement Chain
           </CardTitle>
           <CardDescription className="text-blue-800 dark:text-blue-200">
-            {isProcurement
-              ? "Track your requisition through Purchase Order → GRN → Payment Voucher"
-              : "Track your requisition through to Payment Voucher"}
+            Track your requisition through Purchase Order → GRN → Payment Voucher
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -152,7 +166,7 @@ export function DocumentLinks({
             <span>
               {isProcurement
                 ? "Procurement path: Requisition → Purchase Order → Goods Receipt → Payment"
-                : "Accounting path: Requisition → Payment Voucher (direct)"}
+                : "Accounting path: Requisition → Purchase Order (auto) → Goods Receipt → Payment"}
             </span>
           </div>
         </CardContent>

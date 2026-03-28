@@ -21,8 +21,8 @@ export function useGRNDetail({
   initialGRN,
 }: UseGRNDetailProps) {
   const queryClient = useQueryClient();
-  const { session } = useSession();
-  const userName = session?.user?.name || "User";
+  const { user } = useSession();
+  const userName = user?.name || "User";
 
   return useDocumentDetail<any>({
     documentId: grnId,
