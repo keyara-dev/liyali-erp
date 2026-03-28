@@ -369,6 +369,16 @@ func CreateRequisition(c *fiber.Ctx) error {
 	config.DB.Preload("Requester").Preload("Category").Preload("PreferredVendor").First(&requisition)
 
 	go utils.SyncDocument(config.DB, "REQUISITION", requisition.ID)
+	go services.LogDocumentEvent(config.DB, services.DocumentEvent{
+		OrganizationID: organizationID,
+		DocumentID:     requisition.ID,
+		DocumentType:   "requisition",
+		UserID:         userID,
+		ActorName:      user.Name,
+		ActorRole:      user.Role,
+		Action:         "created",
+		Details:        map[string]interface{}{"documentNumber": requisition.DocumentNumber, "title": requisition.Title},
+	})
 
 	return c.Status(fiber.StatusCreated).JSON(types.DetailResponse{
 		Success: true,
@@ -452,8 +462,13 @@ func UpdateRequisition(c *fiber.Ctx) error {
 		})
 	}
 
-	// Check if requisition is in a state that allows editing (draft or pending)
-	if strings.ToUpper(requisition.Status) != "DRAFT" && strings.ToUpper(requisition.Status) != "PENDING" {
+	// Check if requisition is in a state that allows editing
+	// Exception: metadata-only updates (e.g. adding quotations) are always allowed
+	statusUpper := strings.ToUpper(requisition.Status)
+	isMetadataOnly := req.Metadata != nil && req.Title == "" && req.Description == "" &&
+		req.Department == "" && req.Priority == "" && len(req.Items) == 0 &&
+		req.TotalAmount == 0 && req.Currency == ""
+	if statusUpper != "DRAFT" && statusUpper != "PENDING" && !isMetadataOnly {
 		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
 			"success": false,
 			"message": fmt.Sprintf("Cannot update requisition in %s status", requisition.Status),
@@ -565,7 +580,46 @@ func UpdateRequisition(c *fiber.Ctx) error {
 	// Preload requester, category, and vendor
 	config.DB.Preload("Requester").Preload("Category").Preload("PreferredVendor").First(&requisition)
 
+	// Sync quotations to linked PO (if metadata["quotations"] changed)
+	if req.Metadata != nil {
+		if _, hasQuotations := req.Metadata["quotations"]; hasQuotations {
+			go func(reqID string, orgID string, newMeta []byte) {
+				var po models.PurchaseOrder
+				if err := config.DB.Where("source_requisition_id = ? AND organization_id = ?", reqID, orgID).
+					First(&po).Error; err != nil {
+					return // no linked PO
+				}
+				poMeta := map[string]interface{}{}
+				if len(po.Metadata) > 0 {
+					json.Unmarshal(po.Metadata, &poMeta)
+				}
+				var reqMeta map[string]interface{}
+				if err := json.Unmarshal(newMeta, &reqMeta); err == nil {
+					if q, ok := reqMeta["quotations"]; ok {
+						poMeta["quotations"] = q
+					}
+				}
+				if metaBytes, err := json.Marshal(poMeta); err == nil {
+					po.Metadata = datatypes.JSON(metaBytes)
+					config.DB.Save(&po)
+				}
+			}(requisition.ID, organizationID, requisition.Metadata)
+		}
+	}
+
 	go utils.SyncDocument(config.DB, "REQUISITION", requisition.ID)
+
+	actorID, _ := c.Locals("userID").(string)
+	actorRole, _ := c.Locals("userRole").(string)
+	go services.LogDocumentEvent(config.DB, services.DocumentEvent{
+		OrganizationID: organizationID,
+		DocumentID:     requisition.ID,
+		DocumentType:   "requisition",
+		UserID:         actorID,
+		ActorRole:      actorRole,
+		Action:         "updated",
+		Details:        map[string]interface{}{"documentNumber": requisition.DocumentNumber},
+	})
 
 	return c.JSON(types.DetailResponse{
 		Success: true,
@@ -1050,6 +1104,14 @@ func SubmitRequisition(c *fiber.Ctx) error {
 	config.DB.Preload("Requester").Preload("Category").Preload("PreferredVendor").First(&requisition)
 
 	go utils.SyncDocument(config.DB, "REQUISITION", requisition.ID)
+	go services.LogDocumentEvent(config.DB, services.DocumentEvent{
+		OrganizationID: organizationID,
+		DocumentID:     requisition.ID,
+		DocumentType:   "requisition",
+		UserID:         userID,
+		Action:         "submitted",
+		Details:        map[string]interface{}{"routingPath": routingResult.RoutingPath, "autoApproved": routingResult.AutoApproved},
+	})
 
 	// Build response with routing information
 	responseData := fiber.Map{

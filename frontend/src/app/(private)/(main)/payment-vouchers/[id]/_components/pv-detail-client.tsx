@@ -66,6 +66,8 @@ import { DocumentLoadingPage } from "@/components/base/document-loading-page";
 import ErrorDisplay from "@/components/base/error-display";
 import { usePaymentVoucherDetail } from "@/hooks/use-payment-voucher-detail";
 import { useRouter } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
+import { getAuditEvents, type AuditEvent } from "@/app/_actions/audit";
 
 /**
  * Props for the PVDetailClient component
@@ -122,6 +124,15 @@ export function PVDetailClient({
   initialPaymentVoucher,
 }: PVDetailClientProps) {
   const router = useRouter();
+
+  const { data: auditEventsData } = useQuery({
+    queryKey: ["audit-events", "payment_voucher", pvId],
+    queryFn: async () => {
+      const res = await getAuditEvents("payment_voucher", pvId);
+      return res.success ? ((res.data as AuditEvent[]) ?? []) : [];
+    },
+    enabled: !!pvId,
+  });
 
   // Use the custom hook to manage all document detail logic
   const {
@@ -693,7 +704,10 @@ export function PVDetailClient({
 
           {/* ── Tab 5: Activity Log (Timeline) ── */}
           <TabsContent value="activity" className="space-y-4 mt-6">
-            <ActivityLogContent actionHistory={paymentVoucher?.actionHistory} />
+            <ActivityLogContent
+              actionHistory={paymentVoucher?.actionHistory}
+              auditEvents={auditEventsData}
+            />
           </TabsContent>
         </Tabs>
       </Card>

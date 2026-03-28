@@ -161,6 +161,8 @@ func GetDocumentApprovalHistory(db *gorm.DB, entityID, entityType string) []type
 				Comments:     r.Comments,
 				Signature:    r.Signature,
 				ApprovedAt:   r.ApprovedAt,
+				ManNumber:    r.ManNumber,
+				Position:     r.Position,
 				StageNumber:  &stageNum,
 				AssignedRole: &role,
 			})

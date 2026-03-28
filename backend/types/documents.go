@@ -204,23 +204,28 @@ func (fd FlexibleDate) MarshalJSON() ([]byte, error) {
 
 // CreatePurchaseOrderRequest represents a PO creation request
 type CreatePurchaseOrderRequest struct {
-	VendorID          string       `json:"vendorId"`
-	Items             []POItem     `json:"items" validate:"required,min=1"`
-	TotalAmount       float64      `json:"totalAmount" validate:"required,gt=0"`
-	Currency          string       `json:"currency" validate:"required"`
-	DeliveryDate      FlexibleDate `json:"deliveryDate" validate:"required"`
-	LinkedRequisition string       `json:"linkedRequisition"`
+	VendorID          string                 `json:"vendorId"`
+	Items             []POItem               `json:"items" validate:"required,min=1"`
+	TotalAmount       float64                `json:"totalAmount" validate:"required,gt=0"`
+	Currency          string                 `json:"currency" validate:"required"`
+	DeliveryDate      FlexibleDate           `json:"deliveryDate" validate:"required"`
+	LinkedRequisition string                 `json:"linkedRequisition"`
 	// "" = inherit from org, "goods_first" or "payment_first" to override
-	ProcurementFlow   string       `json:"procurementFlow"`
+	ProcurementFlow   string                 `json:"procurementFlow"`
+	Metadata          map[string]interface{} `json:"metadata"`
+	EstimatedCost     float64                `json:"estimatedCost"`
 }
 
 // UpdatePurchaseOrderRequest represents a PO update request
 type UpdatePurchaseOrderRequest struct {
-	VendorID     string       `json:"vendorId"`
-	Items        []POItem     `json:"items"`
-	TotalAmount  float64      `json:"totalAmount"`
-	Currency     string       `json:"currency"`
-	DeliveryDate FlexibleDate `json:"deliveryDate"`
+	VendorID                string                 `json:"vendorId"`
+	Items                   []POItem               `json:"items"`
+	TotalAmount             float64                `json:"totalAmount"`
+	Currency                string                 `json:"currency"`
+	DeliveryDate            FlexibleDate           `json:"deliveryDate"`
+	Metadata                map[string]interface{} `json:"metadata"`
+	QuotationGateOverridden *bool                  `json:"quotationGateOverridden"`
+	BypassJustification     string                 `json:"bypassJustification"`
 }
 
 // POItem represents an item in a purchase order
@@ -249,24 +254,29 @@ type LinkedPVSummary struct {
 
 // PurchaseOrderResponse represents a PO in responses
 type PurchaseOrderResponse struct {
-	ID                  string               `json:"id"`
-	DocumentNumber      string               `json:"documentNumber"`
-	VendorID            string               `json:"vendorId"`
-	VendorName          string               `json:"vendorName"`
-	Status              string               `json:"status"`
-	Items               []POItem             `json:"items"`
-	TotalAmount         float64              `json:"totalAmount"`
-	Currency            string               `json:"currency"`
-	DeliveryDate        time.Time            `json:"deliveryDate"`
-	ApprovalStage       int                  `json:"approvalStage"`
-	ApprovalHistory     []ApprovalRecord     `json:"approvalHistory"`
-	ActionHistory       []ActionHistoryEntry `json:"actionHistory,omitempty"`
-	LinkedRequisition   string               `json:"linkedRequisition"`
-	SourceRequisitionId string               `json:"sourceRequisitionId,omitempty"`
-	LinkedPV            *LinkedPVSummary     `json:"linkedPV,omitempty"`
-	ProcurementFlow     string               `json:"procurementFlow"` // "" | "goods_first" | "payment_first"
-	CreatedAt           time.Time            `json:"createdAt"`
-	UpdatedAt           time.Time            `json:"updatedAt"`
+	ID                      string                 `json:"id"`
+	DocumentNumber          string                 `json:"documentNumber"`
+	VendorID                string                 `json:"vendorId"`
+	VendorName              string                 `json:"vendorName"`
+	Status                  string                 `json:"status"`
+	Items                   []POItem               `json:"items"`
+	TotalAmount             float64                `json:"totalAmount"`
+	Currency                string                 `json:"currency"`
+	DeliveryDate            time.Time              `json:"deliveryDate"`
+	ApprovalStage           int                    `json:"approvalStage"`
+	ApprovalHistory         []ApprovalRecord       `json:"approvalHistory"`
+	ActionHistory           []ActionHistoryEntry   `json:"actionHistory,omitempty"`
+	LinkedRequisition       string                 `json:"linkedRequisition"`
+	SourceRequisitionId     string                 `json:"sourceRequisitionId,omitempty"`
+	LinkedPV                *LinkedPVSummary       `json:"linkedPV,omitempty"`
+	ProcurementFlow         string                 `json:"procurementFlow"` // "" | "goods_first" | "payment_first"
+	Metadata                map[string]interface{} `json:"metadata,omitempty"`
+	EstimatedCost           float64                `json:"estimatedCost,omitempty"`
+	AutomationUsed          bool                   `json:"automationUsed,omitempty"`
+	QuotationGateOverridden bool                   `json:"quotationGateOverridden,omitempty"`
+	BypassJustification     string                 `json:"bypassJustification,omitempty"`
+	CreatedAt               time.Time              `json:"createdAt"`
+	UpdatedAt               time.Time              `json:"updatedAt"`
 }
 
 // ================== PAYMENT VOUCHER TYPES ==================
@@ -374,6 +384,22 @@ type GRNResponse struct {
 	UpdatedAt        time.Time            `json:"updatedAt"`
 }
 
+// ================== QUOTATION TYPES ==================
+
+// Quotation represents a vendor price quote attached to a REQ or PO.
+// Stored in metadata["quotations"] on both Requisition and PurchaseOrder.
+type Quotation struct {
+	VendorID   string  `json:"vendorId"`
+	VendorName string  `json:"vendorName"`
+	Amount     float64 `json:"amount"`
+	Currency   string  `json:"currency"`
+	FileID     string  `json:"fileId"`
+	FileName   string  `json:"fileName"`
+	FileUrl    string  `json:"fileUrl"`
+	UploadedAt string  `json:"uploadedAt"`
+	RfqID      string  `json:"rfqId,omitempty"` // Future RFQ extension hook
+}
+
 // ================== VENDOR TYPES ==================
 
 // CreateVendorRequest represents a vendor creation request
@@ -385,6 +411,15 @@ type CreateVendorRequest struct {
 	City        string `json:"city" validate:"required"`
 	BankAccount string `json:"bankAccount" validate:"required"`
 	TaxID       string `json:"taxId" validate:"required"`
+	// Bank details (optional)
+	BankName      string `json:"bankName"`
+	AccountName   string `json:"accountName"`
+	AccountNumber string `json:"accountNumber"`
+	BranchCode    string `json:"branchCode"`
+	SwiftCode     string `json:"swiftCode"`
+	// Contact & address
+	ContactPerson   string `json:"contactPerson"`
+	PhysicalAddress string `json:"physicalAddress"`
 }
 
 // UpdateVendorRequest represents a vendor update request
@@ -397,6 +432,15 @@ type UpdateVendorRequest struct {
 	BankAccount string `json:"bankAccount"`
 	TaxID       string `json:"taxId"`
 	Active      bool   `json:"active"`
+	// Bank details
+	BankName      string `json:"bankName"`
+	AccountName   string `json:"accountName"`
+	AccountNumber string `json:"accountNumber"`
+	BranchCode    string `json:"branchCode"`
+	SwiftCode     string `json:"swiftCode"`
+	// Contact & address
+	ContactPerson   string `json:"contactPerson"`
+	PhysicalAddress string `json:"physicalAddress"`
 }
 
 // VendorResponse represents a vendor in responses
@@ -411,8 +455,17 @@ type VendorResponse struct {
 	BankAccount string    `json:"bankAccount"`
 	TaxID       string    `json:"taxId"`
 	Active      bool      `json:"active"`
-	CreatedAt   time.Time `json:"createdAt"`
-	UpdatedAt   time.Time `json:"updatedAt"`
+	// Bank details
+	BankName      string `json:"bankName,omitempty"`
+	AccountName   string `json:"accountName,omitempty"`
+	AccountNumber string `json:"accountNumber,omitempty"`
+	BranchCode    string `json:"branchCode,omitempty"`
+	SwiftCode     string `json:"swiftCode,omitempty"`
+	// Contact & address
+	ContactPerson   string `json:"contactPerson,omitempty"`
+	PhysicalAddress string `json:"physicalAddress,omitempty"`
+	CreatedAt time.Time `json:"createdAt"`
+	UpdatedAt time.Time `json:"updatedAt"`
 }
 
 // ================== APPROVAL TYPES ==================

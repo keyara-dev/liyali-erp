@@ -682,6 +682,8 @@ func (s *WorkflowExecutionService) ApproveWorkflowTaskWithVersion(ctx context.Co
 		ApproverID:     userID,
 		ApproverName:   user.Name,
 		ApproverRole:   user.Role,
+		ManNumber:      user.ManNumber,
+		Position:       user.Position,
 		Action:         "approved",
 		Comments:       comments,
 		Signature:      signature,
@@ -693,6 +695,17 @@ func (s *WorkflowExecutionService) ApproveWorkflowTaskWithVersion(ctx context.Co
 		tx.Rollback()
 		return fmt.Errorf("failed to record approval: %w", err)
 	}
+
+	go LogDocumentEvent(s.db, DocumentEvent{
+		OrganizationID: assignment.OrganizationID,
+		DocumentID:     assignment.EntityID,
+		DocumentType:   strings.ToLower(assignment.EntityType),
+		UserID:         userID,
+		ActorName:      user.Name,
+		ActorRole:      user.Role,
+		Action:         "approved",
+		Details:        map[string]interface{}{"stageNumber": task.StageNumber, "stageName": task.StageName},
+	})
 
 	// Check if stage completion criteria are met
 	stageComplete, err := s.checkStageCompletionCriteria(tx, taskID, currentStage, assignment.OrganizationID)
@@ -1065,6 +1078,8 @@ func (s *WorkflowExecutionService) RejectWorkflowTaskWithVersion(ctx context.Con
 		ApproverID:     userID,
 		ApproverName:   user.Name,
 		ApproverRole:   user.Role,
+		ManNumber:      user.ManNumber,
+		Position:       user.Position,
 		Action:         actionLabel,
 		Comments:       reason,
 		Signature:      signature,
@@ -1076,6 +1091,17 @@ func (s *WorkflowExecutionService) RejectWorkflowTaskWithVersion(ctx context.Con
 		tx.Rollback()
 		return fmt.Errorf("failed to record rejection: %w", err)
 	}
+
+	go LogDocumentEvent(s.db, DocumentEvent{
+		OrganizationID: assignment.OrganizationID,
+		DocumentID:     assignment.EntityID,
+		DocumentType:   strings.ToLower(assignment.EntityType),
+		UserID:         userID,
+		ActorName:      user.Name,
+		ActorRole:      user.Role,
+		Action:         actionLabel,
+		Details:        map[string]interface{}{"stageNumber": task.StageNumber, "stageName": task.StageName, "reason": reason},
+	})
 
 	// Add stage execution to history
 	stageExecution := models.StageExecution{

@@ -216,6 +216,8 @@ export interface ApprovalRecord {
   actionTakenByRole?: string;
   actionTakenAt?: Date;
   remarks?: string;
+  manNumber?: string;
+  position?: string;
 }
 
 export interface ApprovalTask {
@@ -374,6 +376,30 @@ export interface Vendor {
   taxId?: string;
   active: boolean;
   createdBy?: string;
+  // Bank details
+  bankName?: string;
+  accountName?: string;
+  accountNumber?: string;
+  branchCode?: string;
+  swiftCode?: string;
+  // Contact & address
+  contactPerson?: string;
+  physicalAddress?: string;
   createdAt: Date;
   updatedAt: Date;
+}
+
+
+/** Vendor price quotation — stored in metadata["quotations"] on REQ and PO */
+export interface Quotation {
+  vendorId: string;
+  vendorName: string;
+  amount: number;
+  currency: string;
+  fileId: string;
+  fileName: string;
+  fileUrl: string;
+  uploadedAt: string;
+  /** Future RFQ hook — blank for now */
+  rfqId?: string;
 }

@@ -224,6 +224,15 @@ func CreatePaymentVoucher(c *fiber.Ctx) error {
 	config.DB.Preload("Vendor").First(&voucher)
 
 	go utils.SyncDocument(config.DB, "PAYMENT_VOUCHER", voucher.ID)
+	go services.LogDocumentEvent(config.DB, services.DocumentEvent{
+		OrganizationID: tenant.OrganizationID,
+		DocumentID:     voucher.ID,
+		DocumentType:   "payment_voucher",
+		UserID:         tenant.UserID,
+		ActorRole:      tenant.UserRole,
+		Action:         "created",
+		Details:        map[string]interface{}{"documentNumber": voucher.DocumentNumber},
+	})
 
 	return c.Status(fiber.StatusCreated).JSON(types.DetailResponse{
 		Success: true,
@@ -581,6 +590,16 @@ func SubmitPaymentVoucher(c *fiber.Ctx) error {
 	}
 
 	go utils.SyncDocument(config.DB, "PAYMENT_VOUCHER", voucher.ID)
+	go services.LogDocumentEvent(config.DB, services.DocumentEvent{
+		OrganizationID: organizationID,
+		DocumentID:     voucher.ID,
+		DocumentType:   "payment_voucher",
+		UserID:         userID,
+		ActorName:      user.Name,
+		ActorRole:      user.Role,
+		Action:         "submitted",
+		Details:        map[string]interface{}{"documentNumber": voucher.DocumentNumber},
+	})
 
 	return c.JSON(types.DetailResponse{
 		Success: true,

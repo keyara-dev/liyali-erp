@@ -160,6 +160,9 @@ export async function updateRequisition(
           ...(data.attachments?.length
             ? { attachments: data.attachments }
             : {}),
+          ...(data.quotations !== undefined
+            ? { quotations: data.quotations }
+            : {}),
         },
       },
     });

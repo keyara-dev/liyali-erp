@@ -45,7 +45,9 @@ type ApprovalRecord struct {
 	Comments     string    `json:"comments,omitempty"`
 	Signature    string    `json:"signature,omitempty"` // Base64 encoded
 	ApprovedAt   time.Time `json:"approvedAt"`
-	
+	ManNumber    string    `json:"manNumber,omitempty"`
+	Position     string    `json:"position,omitempty"`
+
 	// Extended fields for UI compatibility
 	StageNumber      *int       `json:"stageNumber,omitempty"`        // Stage number
 	StageName        *string    `json:"stageName,omitempty"`          // Stage name

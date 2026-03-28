@@ -130,20 +130,46 @@ export const ApprovalSignaturesSection: React.FC<
                 fontSize: 8,
                 fontWeight: "bold",
                 color: "#111827",
-                marginBottom: 2,
+                marginBottom: 1,
               }}
             >
               {getName(r)}
             </Text>
 
-            {/* Position / role */}
-            {getRole(r) && (
+            {/* Position */}
+            {r.position && (
+              <Text
+                style={{
+                  fontSize: 6,
+                  color: "#374151",
+                  marginBottom: 1,
+                }}
+              >
+                {r.position}
+              </Text>
+            )}
+
+            {/* Man No */}
+            {r.manNumber && (
+              <Text
+                style={{
+                  fontSize: 6,
+                  color: "#6b7280",
+                  marginBottom: 1,
+                }}
+              >
+                Man No: {r.manNumber}
+              </Text>
+            )}
+
+            {/* Role (fallback label) */}
+            {!r.position && getRole(r) && (
               <Text
                 style={{
                   fontSize: 6,
                   color: "#6b7280",
                   fontStyle: "italic",
-                  marginBottom: 3,
+                  marginBottom: 1,
                 }}
               >
                 {getRole(r)}
@@ -151,7 +177,7 @@ export const ApprovalSignaturesSection: React.FC<
             )}
 
             {/* Approval date */}
-            <Text style={{ fontSize: 6, color: "#6b7280" }}>
+            <Text style={{ fontSize: 6, color: "#6b7280", marginTop: 2 }}>
               {formatDate(getDate(r))}
             </Text>
           </View>

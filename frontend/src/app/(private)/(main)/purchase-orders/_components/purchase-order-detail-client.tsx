@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useRef } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -23,6 +24,11 @@ import {
   GitBranch,
   Activity,
   ArrowRight,
+  Upload,
+  TrendingUp,
+  TrendingDown,
+  Minus,
+  AlertTriangle,
 } from "lucide-react";
 import { StatusBadge } from "@/components/status-badge";
 import { PageHeader } from "@/components/base/page-header";
@@ -62,11 +68,21 @@ const AttachmentPreviewDialog = dynamic(
 );
 import { PurchaseOrderSubmitDialog } from "./purchase-order-submit-dialog";
 import { ConfirmationModal } from "@/components/modals/confirmation-modal";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { QuotationCollectionSection } from "@/app/(private)/(main)/requisitions/_components/quotation-collection-section";
+import { useVendors } from "@/hooks/use-vendor-queries";
+import type { Quotation } from "@/types/core";
 import { Badge } from "@/components";
 import { DocumentLoadingPage } from "@/components/base/document-loading-page";
 import ErrorDisplay from "@/components/base/error-display";
 import { usePurchaseOrderDetail } from "@/hooks/use-purchase-order-detail";
 import { useRouter } from "next/navigation";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { getAuditEvents, type AuditEvent } from "@/app/_actions/audit";
+import { uploadToImageKit } from "@/lib/imagekit";
+import { updatePurchaseOrder } from "@/app/_actions/purchase-orders";
+import { QUERY_KEYS } from "@/lib/constants";
+import { toast } from "sonner";
 
 /**
  * Props for the PurchaseOrderDetailClient component
@@ -122,9 +138,22 @@ export function PurchaseOrderDetailClient({
   initialPurchaseOrder,
 }: PurchaseOrderDetailClientProps) {
   const router = useRouter();
+  const queryClient = useQueryClient();
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { data: vendors = [] } = useVendors({ active: true });
 
   // Use the custom hook to manage all document detail logic
   // This hook handles data fetching, mutations, UI state, and permissions
+  const { data: auditEventsData } = useQuery({
+    queryKey: ["audit-events", "purchase_order", purchaseOrderId],
+    queryFn: async () => {
+      const res = await getAuditEvents("purchase_order", purchaseOrderId);
+      return res.success ? ((res.data as AuditEvent[]) ?? []) : [];
+    },
+    enabled: !!purchaseOrderId,
+  });
+
   const {
     document: purchaseOrder,
     isLoading,
@@ -171,9 +200,69 @@ export function PurchaseOrderDetailClient({
       />
     );
 
-  // Extract attachments from metadata
+  // Extract attachments: merge PO's own + REQ's (tagged fromRequisition)
   const attachments: PurchaseOrderAttachment[] =
     (purchaseOrder.metadata?.attachments as PurchaseOrderAttachment[]) || [];
+
+  // Extract quotations from PO metadata
+  const quotations: Quotation[] =
+    (purchaseOrder.metadata?.quotations as Quotation[]) ?? [];
+
+  const isDraft = purchaseOrder.status?.toUpperCase() === "DRAFT";
+
+  // Look up full vendor details from the vendors list
+  const vendorDetails = vendors.find(
+    (v) => v.id === purchaseOrder.vendorId,
+  );
+
+  const canEditQuotations =
+    isDraft ||
+    ["admin", "finance", "approver"].includes(userRole?.toLowerCase());
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsUploading(true);
+    try {
+      const result = await uploadToImageKit(file, "purchase-orders/attachments");
+      const newAttachment: PurchaseOrderAttachment = {
+        fileId: result.fileId,
+        fileName: result.name,
+        fileUrl: result.url,
+        fileSize: result.size,
+        mimeType: file.type,
+        uploadedAt: new Date().toISOString(),
+      };
+      const existingOwn = attachments.filter((a) => !a.fromRequisition);
+      const fromReq = attachments.filter((a) => a.fromRequisition);
+      const merged = [...existingOwn, newAttachment, ...fromReq];
+      await updatePurchaseOrder({
+        purchaseOrderId: purchaseOrderId,
+        poId: purchaseOrderId,
+        metadata: { ...purchaseOrder.metadata, attachments: merged },
+      });
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.PURCHASE_ORDERS.BY_ID, purchaseOrderId],
+      });
+      toast.success("Document uploaded successfully");
+    } catch {
+      toast.error("Failed to upload document");
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  const handleSaveQuotations = async (updated: Quotation[]) => {
+    await updatePurchaseOrder({
+      purchaseOrderId,
+      poId: purchaseOrderId,
+      metadata: { ...purchaseOrder.metadata, quotations: updated },
+    });
+    queryClient.invalidateQueries({
+      queryKey: [QUERY_KEYS.PURCHASE_ORDERS.BY_ID, purchaseOrderId],
+    });
+  };
 
   /**
    * Formats file size in bytes to human-readable format (B, KB, MB)
@@ -332,7 +421,7 @@ export function PurchaseOrderDetailClient({
           <div className="space-y-1">
             <label className="text-xs font-semibold text-primary-foreground/80 uppercase tracking-wider flex items-center gap-1">
               <DollarSign className="h-3 w-3" />
-              Total Amount
+              {purchaseOrder.estimatedCost ? "Selected Supplier" : "Total Amount"}
             </label>
             <p className="text-base font-bold text-primary-foreground">
               {purchaseOrder.currency}{" "}
@@ -342,6 +431,54 @@ export function PurchaseOrderDetailClient({
               }) || "0.00"}
             </p>
           </div>
+
+          {purchaseOrder.estimatedCost ? (() => {
+            const estimated = purchaseOrder.estimatedCost;
+            const actual = purchaseOrder.totalAmount || 0;
+            const diff = actual - estimated;
+            const pct = estimated > 0 ? (diff / estimated) * 100 : 0;
+            const isOver = diff > 0;
+            const isUnder = diff < 0;
+            const color = isUnder
+              ? "text-green-300"
+              : Math.abs(pct) <= 10
+                ? "text-amber-300"
+                : "text-red-300";
+            const Icon = isUnder ? TrendingDown : isOver ? TrendingUp : Minus;
+            return (
+              <>
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-primary-foreground/80 uppercase tracking-wider flex items-center gap-1">
+                    <DollarSign className="h-3 w-3" />
+                    Estimated (from REQ)
+                  </label>
+                  <p className="text-base font-medium text-primary-foreground/80">
+                    {purchaseOrder.currency}{" "}
+                    {estimated.toLocaleString("en-ZM", {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })}
+                  </p>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-primary-foreground/80 uppercase tracking-wider flex items-center gap-1">
+                    <Icon className="h-3 w-3" />
+                    Variance
+                  </label>
+                  <p className={`text-sm font-semibold ${color}`}>
+                    {isUnder ? "−" : isOver ? "+" : ""}
+                    {purchaseOrder.currency}{" "}
+                    {Math.abs(diff).toLocaleString("en-ZM", {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })}{" "}
+                    ({isUnder ? "−" : isOver ? "+" : ""}
+                    {Math.abs(pct).toFixed(1)}%)
+                  </p>
+                </div>
+              </>
+            );
+          })() : null}
 
           <div className="space-y-1">
             <label className="text-xs font-semibold text-primary-foreground/80 uppercase tracking-wider flex items-center gap-1">
@@ -481,6 +618,61 @@ export function PurchaseOrderDetailClient({
           </div>
         )}
       </div>
+
+      {/* Vendor Details Card — shown when full vendor record is available */}
+      {vendorDetails && (
+        vendorDetails.email ||
+        vendorDetails.phone ||
+        vendorDetails.contactPerson ||
+        vendorDetails.physicalAddress ||
+        vendorDetails.bankName ||
+        vendorDetails.accountNumber
+      ) && (
+        <div className="rounded-lg border p-4 space-y-3 bg-muted/30">
+          <h3 className="text-sm font-semibold flex items-center gap-2">
+            <Building className="h-4 w-4" />
+            Supplier Details — {vendorDetails.name}
+          </h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-sm">
+            {vendorDetails.contactPerson && (
+              <div>
+                <span className="text-xs text-muted-foreground">Contact Person</span>
+                <p className="font-medium">{vendorDetails.contactPerson}</p>
+              </div>
+            )}
+            {vendorDetails.email && (
+              <div>
+                <span className="text-xs text-muted-foreground">Email</span>
+                <p className="font-medium">{vendorDetails.email}</p>
+              </div>
+            )}
+            {vendorDetails.phone && (
+              <div>
+                <span className="text-xs text-muted-foreground">Phone</span>
+                <p className="font-medium">{vendorDetails.phone}</p>
+              </div>
+            )}
+            {vendorDetails.physicalAddress && (
+              <div>
+                <span className="text-xs text-muted-foreground">Address</span>
+                <p className="font-medium">{vendorDetails.physicalAddress}</p>
+              </div>
+            )}
+            {vendorDetails.bankName && (
+              <div>
+                <span className="text-xs text-muted-foreground">Bank</span>
+                <p className="font-medium">{vendorDetails.bankName}</p>
+              </div>
+            )}
+            {vendorDetails.accountNumber && (
+              <div>
+                <span className="text-xs text-muted-foreground">Account Number</span>
+                <p className="font-medium font-mono">{vendorDetails.accountNumber}</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Document Chain — shown once PO is pending or approved */}
       {["APPROVED", "PENDING"].includes(purchaseOrder.status?.toUpperCase() ?? "") && (
@@ -635,13 +827,40 @@ export function PurchaseOrderDetailClient({
 
           {/* ── Tab 2: Supporting Documents ── */}
           <TabsContent value="documents" className="mt-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold">
+                Supporting Documents
+                {attachments.length > 0 && (
+                  <span className="ml-2 text-sm font-normal text-muted-foreground">
+                    ({attachments.length})
+                  </span>
+                )}
+              </h2>
+              {isDraft && (
+                <>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    className="hidden"
+                    accept="application/pdf,image/*"
+                    onChange={handleFileUpload}
+                  />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-2"
+                    disabled={isUploading}
+                    isLoading={isUploading}
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    <Upload className="h-4 w-4" />
+                    Upload Document
+                  </Button>
+                </>
+              )}
+            </div>
             {attachments.length > 0 ? (
               <div className="space-y-2">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-lg font-semibold">
-                    Supporting Documents ({attachments.length})
-                  </h2>
-                </div>
                 {attachments.map((attachment) => (
                   <button
                     key={attachment.fileId}
@@ -659,9 +878,21 @@ export function PurchaseOrderDetailClient({
                         <p className="text-sm font-medium truncate">
                           {attachment.fileName}
                         </p>
-                        <p className="text-xs text-muted-foreground">
-                          {formatBytes(attachment.fileSize)}
-                        </p>
+                        <div className="flex items-center gap-2">
+                          <p className="text-xs text-muted-foreground">
+                            {formatBytes(attachment.fileSize)}
+                          </p>
+                          {attachment.fromRequisition && (
+                            <span className="text-xs px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 font-medium">
+                              From Requisition
+                            </span>
+                          )}
+                          {attachment.category && (
+                            <span className="text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground capitalize">
+                              {attachment.category.replace(/_/g, " ")}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
                     <Eye className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition shrink-0" />
@@ -675,10 +906,24 @@ export function PurchaseOrderDetailClient({
                 </EmptyMedia>
                 <EmptyContent>
                   <EmptyDescription>
-                    No supporting documents attached
+                    {isDraft
+                      ? "No documents yet — upload supporting documents above"
+                      : "No supporting documents attached"}
                   </EmptyDescription>
                 </EmptyContent>
               </Empty>
+            )}
+
+            {/* Quotations section */}
+            {!purchaseOrder.automationUsed && (
+              <QuotationCollectionSection
+                quotations={quotations}
+                requisitionId={purchaseOrderId}
+                currency={purchaseOrder.currency || "ZMW"}
+                vendors={vendors}
+                canEdit={canEditQuotations}
+                onSave={handleSaveQuotations}
+              />
             )}
           </TabsContent>
 
@@ -696,13 +941,30 @@ export function PurchaseOrderDetailClient({
                 </button>
               </div>
             ) : (
-              <ApprovalActionContent
-                requisitionId={purchaseOrderId}
-                requisition={purchaseOrder as any}
-                workflowStatus={approvalData?.workflowStatus}
-                isLoading={approvalData?.isLoading || false}
-                onApprovalComplete={handleApprovalComplete}
-              />
+              <>
+                {purchaseOrder.quotationGateOverridden && (
+                  <Alert className="border-amber-200 bg-amber-50 mb-4">
+                    <AlertTriangle className="h-4 w-4 text-amber-600" />
+                    <AlertDescription>
+                      <p className="text-amber-800 font-medium text-sm">
+                        Quotation Override Applied
+                      </p>
+                      {purchaseOrder.bypassJustification && (
+                        <p className="text-amber-700 text-xs mt-1">
+                          {purchaseOrder.bypassJustification}
+                        </p>
+                      )}
+                    </AlertDescription>
+                  </Alert>
+                )}
+                <ApprovalActionContent
+                  requisitionId={purchaseOrderId}
+                  requisition={purchaseOrder as any}
+                  workflowStatus={approvalData?.workflowStatus}
+                  isLoading={approvalData?.isLoading || false}
+                  onApprovalComplete={handleApprovalComplete}
+                />
+              </>
             )}
           </TabsContent>
 
@@ -739,7 +1001,10 @@ export function PurchaseOrderDetailClient({
 
           {/* ── Tab 5: Activity Log (Timeline) ── */}
           <TabsContent value="activity" className="space-y-4 mt-6">
-            <ActivityLogContent actionHistory={purchaseOrder?.actionHistory} />
+            <ActivityLogContent
+              actionHistory={purchaseOrder?.actionHistory}
+              auditEvents={auditEventsData}
+            />
           </TabsContent>
         </Tabs>
       </Card>

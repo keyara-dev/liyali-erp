@@ -315,6 +315,15 @@ func CreateGRN(c *fiber.Ctx) error {
 	}
 
 	go utils.SyncDocument(config.DB, "GRN", grn.ID)
+	go services.LogDocumentEvent(config.DB, services.DocumentEvent{
+		OrganizationID: tenant.OrganizationID,
+		DocumentID:     grn.ID,
+		DocumentType:   "grn",
+		UserID:         tenant.UserID,
+		ActorRole:      tenant.UserRole,
+		Action:         "created",
+		Details:        map[string]interface{}{"documentNumber": grn.DocumentNumber},
+	})
 
 	return c.Status(fiber.StatusCreated).JSON(types.DetailResponse{
 		Success: true,
@@ -651,6 +660,16 @@ func SubmitGRN(c *fiber.Ctx) error {
 	config.DB.Preload("PurchaseOrder").Preload("Vendor").First(&grn)
 
 	go utils.SyncDocument(config.DB, "GRN", grn.ID)
+	go services.LogDocumentEvent(config.DB, services.DocumentEvent{
+		OrganizationID: organizationID,
+		DocumentID:     grn.ID,
+		DocumentType:   "grn",
+		UserID:         userID,
+		ActorName:      user.Name,
+		ActorRole:      user.Role,
+		Action:         "submitted",
+		Details:        map[string]interface{}{"documentNumber": grn.DocumentNumber},
+	})
 
 	return c.JSON(types.DetailResponse{
 		Success: true,

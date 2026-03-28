@@ -478,6 +478,9 @@ func SetupRoutes(app *fiber.App, handlerRegistry *handlers.HandlerRegistry, rbac
 	audit.Get("/", middleware.RequirePermission(rbacService, "audit_log", "view"), middleware.RequireFeature("audit_logs_90_days"), handlers.GetAuditLogs)
 	audit.Get("/document/:documentId", middleware.RequirePermission(rbacService, "audit_log", "view"), middleware.RequireFeature("audit_logs_90_days"), handlers.GetDocumentAuditLogs)
 
+	// Audit Events — document activity log (entityType + entityId query params)
+	tenant.Get("/audit-events", handlers.GetDocumentAuditEvents)
+
 	// Admin-only routes (system-wide access)
 	admin := apiV1.Group("/admin", middleware.AuthMiddleware(), middleware.SuperAdminMiddleware())
 

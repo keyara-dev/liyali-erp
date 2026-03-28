@@ -204,6 +204,9 @@ export async function updatePurchaseOrder(
         budgetCode: data.budgetCode,
         costCenter: data.costCenter,
         projectCode: data.projectCode,
+        metadata: data.metadata,
+        quotationGateOverridden: data.quotationGateOverridden,
+        bypassJustification: data.bypassJustification,
       },
     });
 

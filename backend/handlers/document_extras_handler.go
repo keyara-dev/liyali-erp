@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -100,6 +101,37 @@ func CreatePurchaseOrderFromRequisition(c *fiber.Ctx) error {
 	documentNumber := utils.GenerateDocumentNumber("PO")
 	orderID := uuid.New().String()
 
+	// Build PO metadata: copy REQ's attachments (tagged fromRequisition) + REQ's quotations
+	poMetadata := map[string]interface{}{}
+	if len(requisition.Metadata) > 0 {
+		var reqMeta map[string]interface{}
+		if err := json.Unmarshal(requisition.Metadata, &reqMeta); err == nil {
+			// Copy attachments with fromRequisition flag
+			if rawAttachments, ok := reqMeta["attachments"]; ok {
+				if attachSlice, ok2 := rawAttachments.([]interface{}); ok2 {
+					tagged := make([]interface{}, 0, len(attachSlice))
+					for _, a := range attachSlice {
+						if aMap, ok3 := a.(map[string]interface{}); ok3 {
+							aMap["fromRequisition"] = true
+							tagged = append(tagged, aMap)
+						}
+					}
+					poMetadata["attachments"] = tagged
+				}
+			}
+			// Copy quotations as-is
+			if quotations, ok := reqMeta["quotations"]; ok {
+				poMetadata["quotations"] = quotations
+			}
+		}
+	}
+
+	// Set EstimatedCost from REQ total when REQ is marked as estimate
+	estimatedCost := 0.0
+	if requisition.IsEstimate {
+		estimatedCost = requisition.TotalAmount
+	}
+
 	order := models.PurchaseOrder{
 		ID:                orderID,
 		OrganizationID:    tenant.OrganizationID,
@@ -119,8 +151,15 @@ func CreatePurchaseOrderFromRequisition(c *fiber.Ctx) error {
 		CostCenter:        req.CostCenter,
 		ProjectCode:       req.ProjectCode,
 		ProcurementFlow:   req.ProcurementFlow,
+		EstimatedCost:     estimatedCost,
 		CreatedAt:         time.Now(),
 		UpdatedAt:         time.Now(),
+	}
+
+	if len(poMetadata) > 0 {
+		if metaBytes, err := json.Marshal(poMetadata); err == nil {
+			order.Metadata = datatypes.JSON(metaBytes)
+		}
 	}
 
 	if req.RequiredByDate != nil {

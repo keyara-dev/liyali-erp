@@ -306,6 +306,8 @@ type StageApprovalRecord struct {
 	Approver         *User     `gorm:"foreignKey:ApproverID" json:"approver,omitempty"`
 	ApproverName     string    `json:"approverName"`
 	ApproverRole     string    `json:"approverRole"`
+	ManNumber        string    `gorm:"column:man_number" json:"manNumber"`
+	Position         string    `gorm:"column:position" json:"position"`
 	Action           string    `json:"action"` // "approved", "rejected"
 	Comments         string    `json:"comments"`
 	Signature        string    `json:"signature"`

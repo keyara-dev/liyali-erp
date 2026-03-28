@@ -14,13 +14,14 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Label } from "@/components/ui/label";
 import { SelectField } from "@/components/ui/select-field";
 import { Requisition } from "@/types/requisition";
-import { FileText, CheckCircle2, AlertCircle, ArrowDownUp } from "lucide-react";
+import { FileText, CheckCircle2, AlertCircle, ArrowDownUp, AlertTriangle } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { WorkflowSelector } from "@/components/workflows/workflow-selector";
 import { useConfigurationStatus } from "@/hooks/use-configuration-status";
 import { ConfigurationChecklistBanner } from "@/components/ui/configuration-checklist-banner";
 import { useVendors } from "@/hooks/use-vendor-queries";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import type { Quotation } from "@/types/core";
 
 interface CreatePOFromRequisitionDialogProps {
   open: boolean;
@@ -55,6 +56,8 @@ export function CreatePOFromRequisitionDialog({
   >("");
 
   const { data: vendors = [] } = useVendors();
+  const reqQuotations: Quotation[] =
+    (requisition.metadata?.quotations as Quotation[]) ?? [];
 
   // Check configuration status
   const configStatus = useConfigurationStatus({
@@ -148,20 +151,81 @@ export function CreatePOFromRequisitionDialog({
             showDetails={true}
           />
 
-          {/* Vendor Selector (optional) */}
-          <SelectField
-            label="Vendor"
-            placeholder="No vendor (optional)"
-            value={selectedVendorId}
-            onValueChange={handleVendorChange}
-            isDisabled={isCreating}
-            options={vendors
-              .filter((v) => v.active)
-              .map((v) => ({
-                value: v.id,
-                name: v.name,
-              }))}
-          />
+          {/* Vendor / Quotation Selector */}
+          {reqQuotations.length > 0 ? (
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">
+                Select Supplier from Quotations
+              </Label>
+              <p className="text-xs text-muted-foreground">
+                {reqQuotations.length} quotation
+                {reqQuotations.length !== 1 ? "s" : ""} collected on this
+                requisition.
+              </p>
+              <div className="space-y-2">
+                {reqQuotations.map((q, i) => {
+                  const isSelected = selectedVendorId
+                    ? selectedVendorId === q.vendorId
+                    : selectedVendorName === q.vendorName;
+                  return (
+                    <button
+                      key={`${q.vendorId}-${i}`}
+                      type="button"
+                      disabled={isCreating}
+                      onClick={() => {
+                        setSelectedVendorId(q.vendorId || "");
+                        setSelectedVendorName(q.vendorName);
+                      }}
+                      className={`w-full flex items-center justify-between rounded-md border px-3 py-2.5 text-left transition-colors ${
+                        isSelected
+                          ? "border-primary bg-primary/5"
+                          : "hover:bg-muted/50"
+                      }`}
+                    >
+                      <span className="text-sm font-medium">
+                        {q.vendorName}
+                      </span>
+                      <span className="text-sm font-mono text-muted-foreground">
+                        {q.currency || requisition.currency}{" "}
+                        {q.amount.toLocaleString("en-ZM", {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+              {!selectedVendorName && (
+                <p className="text-xs text-amber-600">
+                  Select a supplier above or leave blank to assign later.
+                </p>
+              )}
+            </div>
+          ) : (
+            <>
+              <Alert className="border-amber-200 bg-amber-50 py-2">
+                <AlertTriangle className="h-4 w-4 text-amber-600" />
+                <AlertDescription className="text-amber-700 text-xs">
+                  No quotations on this requisition yet — select a vendor
+                  manually or add quotations first.
+                </AlertDescription>
+              </Alert>
+              <SelectField
+                label="Vendor"
+                placeholder="No vendor (optional)"
+                value={selectedVendorId}
+                onValueChange={handleVendorChange}
+                isDisabled={isCreating}
+                options={vendors
+                  .filter((v) => v.active)
+                  .map((v) => ({
+                    value: v.id,
+                    name: v.name,
+                  }))}
+              />
+            </>
+          )}
 
           {/* Procurement Flow Override */}
           <div className="space-y-2">

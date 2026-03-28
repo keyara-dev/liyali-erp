@@ -177,20 +177,27 @@ func CreateVendor(c *fiber.Ctx) error {
 	vendorCode := utils.GenerateVendorCode()
 
 	vendor := models.Vendor{
-		ID:             uuid.New().String(),
-		OrganizationID: tenant.OrganizationID, // SECURITY: Set organization ID
-		VendorCode:     vendorCode,
-		Name:           req.Name,
-		Email:          req.Email,
-		Phone:          req.Phone,
-		Country:        req.Country,
-		City:           req.City,
-		BankAccount:    req.BankAccount,
-		TaxID:          req.TaxID,
-		Active:         true,
-		CreatedBy:      tenant.UserID,
-		CreatedAt:      time.Now(),
-		UpdatedAt:      time.Now(),
+		ID:              uuid.New().String(),
+		OrganizationID:  tenant.OrganizationID, // SECURITY: Set organization ID
+		VendorCode:      vendorCode,
+		Name:            req.Name,
+		Email:           req.Email,
+		Phone:           req.Phone,
+		Country:         req.Country,
+		City:            req.City,
+		BankAccount:     req.BankAccount,
+		TaxID:           req.TaxID,
+		Active:          true,
+		CreatedBy:       tenant.UserID,
+		BankName:        req.BankName,
+		AccountName:     req.AccountName,
+		AccountNumber:   req.AccountNumber,
+		BranchCode:      req.BranchCode,
+		SwiftCode:       req.SwiftCode,
+		ContactPerson:   req.ContactPerson,
+		PhysicalAddress: req.PhysicalAddress,
+		CreatedAt:       time.Now(),
+		UpdatedAt:       time.Now(),
 	}
 
 	if err := config.DB.Create(&vendor).Error; err != nil {
@@ -311,6 +318,27 @@ func UpdateVendor(c *fiber.Ctx) error {
 	if req.TaxID != "" {
 		vendor.TaxID = req.TaxID
 	}
+	if req.BankName != "" {
+		vendor.BankName = req.BankName
+	}
+	if req.AccountName != "" {
+		vendor.AccountName = req.AccountName
+	}
+	if req.AccountNumber != "" {
+		vendor.AccountNumber = req.AccountNumber
+	}
+	if req.BranchCode != "" {
+		vendor.BranchCode = req.BranchCode
+	}
+	if req.SwiftCode != "" {
+		vendor.SwiftCode = req.SwiftCode
+	}
+	if req.ContactPerson != "" {
+		vendor.ContactPerson = req.ContactPerson
+	}
+	if req.PhysicalAddress != "" {
+		vendor.PhysicalAddress = req.PhysicalAddress
+	}
 
 	// Update active status (if explicitly provided in request)
 	if c.Query("active") != "" {
@@ -381,17 +409,24 @@ func DeleteVendor(c *fiber.Ctx) error {
 // Helper function to convert model to response
 func modelToVendorResponse(vendor models.Vendor) types.VendorResponse {
 	return types.VendorResponse{
-		ID:          vendor.ID,
-		VendorCode:  vendor.VendorCode,
-		Name:        vendor.Name,
-		Email:       vendor.Email,
-		Phone:       vendor.Phone,
-		Country:     vendor.Country,
-		City:        vendor.City,
-		BankAccount: vendor.BankAccount,
-		TaxID:       vendor.TaxID,
-		Active:      vendor.Active,
-		CreatedAt:   vendor.CreatedAt,
-		UpdatedAt:   vendor.UpdatedAt,
+		ID:              vendor.ID,
+		VendorCode:      vendor.VendorCode,
+		Name:            vendor.Name,
+		Email:           vendor.Email,
+		Phone:           vendor.Phone,
+		Country:         vendor.Country,
+		City:            vendor.City,
+		BankAccount:     vendor.BankAccount,
+		TaxID:           vendor.TaxID,
+		Active:          vendor.Active,
+		BankName:        vendor.BankName,
+		AccountName:     vendor.AccountName,
+		AccountNumber:   vendor.AccountNumber,
+		BranchCode:      vendor.BranchCode,
+		SwiftCode:       vendor.SwiftCode,
+		ContactPerson:   vendor.ContactPerson,
+		PhysicalAddress: vendor.PhysicalAddress,
+		CreatedAt:       vendor.CreatedAt,
+		UpdatedAt:       vendor.UpdatedAt,
 	}
 }

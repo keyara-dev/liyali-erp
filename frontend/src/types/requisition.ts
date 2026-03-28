@@ -98,6 +98,8 @@ export interface Requisition {
   vendorName?: string; // For PO creation
   attachments?: RequisitionAttachment[]; // Supporting documents
   linkedPO?: LinkedPOSummary; // Populated on list responses
+  /** Quotations collected for this REQ (stored in metadata["quotations"]) */
+  quotations?: import("./core").Quotation[];
 }
 
 // ============================================================================
@@ -150,6 +152,7 @@ export interface UpdateRequisitionRequest {
   requestedFor?: string; // Who the requisition is for
   otherCategoryText?: string; // Custom category name when "OTHER" is selected
   attachments?: RequisitionAttachment[]; // Supporting documents
+  quotations?: import("./core").Quotation[]; // Vendor quotations
 }
 
 export interface SubmitRequisitionRequest {

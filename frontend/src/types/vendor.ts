@@ -16,6 +16,13 @@ export interface CreateVendorRequest {
   city: string;
   bankAccount: string;
   taxId: string;
+  bankName?: string;
+  accountName?: string;
+  accountNumber?: string;
+  branchCode?: string;
+  swiftCode?: string;
+  contactPerson?: string;
+  physicalAddress?: string;
 }
 
 export interface UpdateVendorRequest {
@@ -27,6 +34,13 @@ export interface UpdateVendorRequest {
   bankAccount?: string;
   taxId?: string;
   active?: boolean;
+  bankName?: string;
+  accountName?: string;
+  accountNumber?: string;
+  branchCode?: string;
+  swiftCode?: string;
+  contactPerson?: string;
+  physicalAddress?: string;
 }
 
 // ================== FILTER TYPES ==================

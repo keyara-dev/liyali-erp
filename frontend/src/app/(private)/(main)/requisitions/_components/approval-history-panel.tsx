@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { ActionHistoryEntry, ApprovalRecord } from "@/types";
 import { WorkflowDocument } from "@/types/workflow";
+import type { AuditEvent } from "@/app/_actions/audit";
 import { AuditTrailEntry } from "@/types/requisition";
 import { ApprovalActionPanel } from "./requisition-approval-panel";
 import { useApprovalPanelData } from "@/hooks/use-approval-history";
@@ -116,12 +117,41 @@ export function getActionLabel(actionType: string) {
 
 // ── Activity Log (Timeline) Content ─────────────────────────────────────
 
+// Re-export so detail pages can import one type for the audit events prop
+export type { AuditEvent as AuditEventEntry } from "@/app/_actions/audit";
+
 interface ActivityLogContentProps {
   actionHistory?: ActionHistoryEntry[];
+  auditEvents?: AuditEvent[];
 }
 
-export function ActivityLogContent({ actionHistory }: ActivityLogContentProps) {
-  const sortedHistory = [...(actionHistory || [])].sort(
+function auditEventToHistoryEntry(evt: AuditEvent): ActionHistoryEntry {
+  const ts = new Date(evt.createdAt);
+  return {
+    id: evt.id,
+    action: evt.action.toUpperCase(),
+    actionType: evt.action.toUpperCase(),
+    performedBy: evt.userId ?? "",
+    performedByName: evt.actorName ?? evt.userId ?? "System",
+    performedByRole: evt.actorRole ?? "",
+    timestamp: ts,
+    performedAt: ts,
+    comments: typeof evt.details?.reason === "string" ? evt.details.reason : undefined,
+  };
+}
+
+export function ActivityLogContent({ actionHistory, auditEvents }: ActivityLogContentProps) {
+  const legacyEntries = actionHistory ?? [];
+  const liveEntries = (auditEvents ?? []).map(auditEventToHistoryEntry);
+
+  // Merge: prefer live audit events; deduplicate by composite key
+  const legacyIds = new Set(legacyEntries.map((e) => e.id));
+  const merged = [
+    ...legacyEntries,
+    ...liveEntries.filter((e) => !legacyIds.has(e.id)),
+  ];
+
+  const sortedHistory = [...merged].sort(
     (a, b) =>
       new Date(b.performedAt || b.timestamp || 0).getTime() -
       new Date(a.performedAt || a.timestamp || 0).getTime(),
@@ -133,7 +163,7 @@ export function ActivityLogContent({ actionHistory }: ActivityLogContentProps) {
         <Clock className="h-8 w-8 mx-auto mb-2 text-gray-400" />
         <p className="text-sm">No activity yet</p>
         <p className="text-xs text-gray-400 mt-1">
-          Actions will appear here as the requisition progresses
+          Actions will appear here as the document progresses
         </p>
       </div>
     );

@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -256,8 +257,15 @@ func CreatePurchaseOrder(c *fiber.Ctx) error {
 		DeliveryDate:      req.DeliveryDate.Time,
 		ApprovalStage:     0,
 		LinkedRequisition: req.LinkedRequisition,
+		EstimatedCost:     req.EstimatedCost,
 		CreatedAt:         time.Now(),
 		UpdatedAt:         time.Now(),
+	}
+
+	if len(req.Metadata) > 0 {
+		if metaBytes, err := json.Marshal(req.Metadata); err == nil {
+			order.Metadata = datatypes.JSON(metaBytes)
+		}
 	}
 
 	order.Items = datatypes.NewJSONType(req.Items)
@@ -278,6 +286,15 @@ func CreatePurchaseOrder(c *fiber.Ctx) error {
 	config.DB.Preload("Vendor").First(&order)
 
 	go utils.SyncDocument(config.DB, "PURCHASE_ORDER", order.ID)
+	go services.LogDocumentEvent(config.DB, services.DocumentEvent{
+		OrganizationID: tenant.OrganizationID,
+		DocumentID:     order.ID,
+		DocumentType:   "purchase_order",
+		UserID:         tenant.UserID,
+		ActorRole:      tenant.UserRole,
+		Action:         "created",
+		Details:        map[string]interface{}{"documentNumber": order.DocumentNumber},
+	})
 
 	logger.Info("purchase_order_created_successfully")
 
@@ -427,6 +444,17 @@ func UpdatePurchaseOrder(c *fiber.Ctx) error {
 		changes["delivery_date"] = req.DeliveryDate.Time
 		order.DeliveryDate = req.DeliveryDate.Time
 	}
+	if len(req.Metadata) > 0 {
+		if metaBytes, err := json.Marshal(req.Metadata); err == nil {
+			order.Metadata = datatypes.JSON(metaBytes)
+		}
+	}
+	if req.QuotationGateOverridden != nil {
+		order.QuotationGateOverridden = *req.QuotationGateOverridden
+	}
+	if req.BypassJustification != "" {
+		order.BypassJustification = req.BypassJustification
+	}
 
 	order.UpdatedAt = time.Now()
 
@@ -446,6 +474,21 @@ func UpdatePurchaseOrder(c *fiber.Ctx) error {
 	config.DB.Preload("Vendor").First(&order)
 
 	go utils.SyncDocument(config.DB, "PURCHASE_ORDER", order.ID)
+
+	orgID, _ := c.Locals("organizationID").(string)
+	actorID, _ := c.Locals("userID").(string)
+	actorRole, _ := c.Locals("userRole").(string)
+	if len(changes) > 0 {
+		go services.LogDocumentEvent(config.DB, services.DocumentEvent{
+			OrganizationID: orgID,
+			DocumentID:     order.ID,
+			DocumentType:   "purchase_order",
+			UserID:         actorID,
+			ActorRole:      actorRole,
+			Action:         "updated",
+			Details:        changes,
+		})
+	}
 
 	logger.Info("purchase_order_updated_successfully")
 
@@ -577,24 +620,35 @@ func modelToPurchaseOrderResponse(order models.PurchaseOrder) types.PurchaseOrde
 		srcReqID = *order.SourceRequisitionId
 	}
 
+	// Unmarshal metadata JSONB into map
+	var metadata map[string]interface{}
+	if len(order.Metadata) > 0 {
+		_ = json.Unmarshal(order.Metadata, &metadata)
+	}
+
 	return types.PurchaseOrderResponse{
-		ID:                  order.ID,
-		DocumentNumber:      order.DocumentNumber,
-		VendorID:            vendorID,
-		VendorName:          vendorName,
-		Status:              order.Status,
-		Items:               items,
-		TotalAmount:         order.TotalAmount,
-		Currency:            order.Currency,
-		DeliveryDate:        order.DeliveryDate,
-		ApprovalStage:       order.ApprovalStage,
-		ApprovalHistory:     approvalHistory,
-		ActionHistory:       actionHistory,
-		LinkedRequisition:   order.LinkedRequisition,
-		SourceRequisitionId: srcReqID,
-		ProcurementFlow:     order.ProcurementFlow,
-		CreatedAt:           order.CreatedAt,
-		UpdatedAt:           order.UpdatedAt,
+		ID:                      order.ID,
+		DocumentNumber:          order.DocumentNumber,
+		VendorID:                vendorID,
+		VendorName:              vendorName,
+		Status:                  order.Status,
+		Items:                   items,
+		TotalAmount:             order.TotalAmount,
+		Currency:                order.Currency,
+		DeliveryDate:            order.DeliveryDate,
+		ApprovalStage:           order.ApprovalStage,
+		ApprovalHistory:         approvalHistory,
+		ActionHistory:           actionHistory,
+		LinkedRequisition:       order.LinkedRequisition,
+		SourceRequisitionId:     srcReqID,
+		ProcurementFlow:         order.ProcurementFlow,
+		Metadata:                metadata,
+		EstimatedCost:           order.EstimatedCost,
+		AutomationUsed:          order.AutomationUsed,
+		QuotationGateOverridden: order.QuotationGateOverridden,
+		BypassJustification:     order.BypassJustification,
+		CreatedAt:               order.CreatedAt,
+		UpdatedAt:               order.UpdatedAt,
 	}
 }
 
@@ -656,6 +710,45 @@ func SubmitPurchaseOrder(c *fiber.Ctx) error {
 			"success": false,
 			"message": fmt.Sprintf("Cannot submit purchase order in %s status", order.Status),
 		})
+	}
+
+	// Quotation gate: require 3 quotations unless auto-PO or bypass approved
+	if !order.AutomationUsed {
+		var quotations []types.Quotation
+		if len(order.Metadata) > 0 {
+			var meta map[string]interface{}
+			if err := json.Unmarshal(order.Metadata, &meta); err == nil {
+				if rawQ, ok := meta["quotations"]; ok {
+					if qBytes, err := json.Marshal(rawQ); err == nil {
+						_ = json.Unmarshal(qBytes, &quotations)
+					}
+				}
+			}
+		}
+		quotationCount := len(quotations)
+		if quotationCount < 3 {
+			if !order.QuotationGateOverridden || order.BypassJustification == "" {
+				return c.Status(fiber.StatusUnprocessableEntity).JSON(fiber.Map{
+					"success": false,
+					"error":   "quotation_required",
+					"message": fmt.Sprintf("At least 3 quotations are required before submission. Currently %d attached.", quotationCount),
+					"count":   quotationCount,
+				})
+			}
+			// Bypass approved — log audit event
+			go services.LogDocumentEvent(config.DB, services.DocumentEvent{
+				OrganizationID: organizationID,
+				DocumentID:     order.ID,
+				DocumentType:   "purchase_order",
+				UserID:         userID,
+				ActorRole:      func() string { r, _ := c.Locals("userRole").(string); return r }(),
+				Action:         "quotation_gate_bypassed",
+				Details: map[string]interface{}{
+					"justification":  order.BypassJustification,
+					"quotationCount": quotationCount,
+				},
+			})
+		}
 	}
 
 	// Gate + sync: if linked to a REQ, it must be APPROVED before PO can be submitted
@@ -745,6 +838,16 @@ func SubmitPurchaseOrder(c *fiber.Ctx) error {
 	config.DB.Preload("Vendor").First(&order)
 
 	go utils.SyncDocument(config.DB, "PURCHASE_ORDER", order.ID)
+	go services.LogDocumentEvent(config.DB, services.DocumentEvent{
+		OrganizationID: organizationID,
+		DocumentID:     order.ID,
+		DocumentType:   "purchase_order",
+		UserID:         userID,
+		ActorName:      user.Name,
+		ActorRole:      user.Role,
+		Action:         "submitted",
+		Details:        map[string]interface{}{"documentNumber": order.DocumentNumber, "workflowId": submitReq.WorkflowID},
+	})
 
 	logging.AddFieldsToRequest(c, map[string]interface{}{
 		"order_id":      order.ID,

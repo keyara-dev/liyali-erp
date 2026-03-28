@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
@@ -30,6 +31,13 @@ const EMPTY_FORM = {
   city: "",
   bankAccount: "",
   taxId: "",
+  bankName: "",
+  accountName: "",
+  accountNumber: "",
+  branchCode: "",
+  swiftCode: "",
+  contactPerson: "",
+  physicalAddress: "",
   active: true,
 };
 
@@ -40,7 +48,7 @@ export function VendorFormDialog({
 }: VendorFormDialogProps) {
   const isEdit = !!vendor;
   const [form, setForm] = useState(EMPTY_FORM);
-  const [errors, setErrors] = useState<Partial<typeof EMPTY_FORM>>({});
+  const [errors, setErrors] = useState<Partial<Record<keyof typeof EMPTY_FORM, string>>>({});
 
   const createMutation = useCreateVendor(() => onOpenChange(false));
   const updateMutation = useUpdateVendor(() => onOpenChange(false));
@@ -58,6 +66,13 @@ export function VendorFormDialog({
           city: vendor.city ?? "",
           bankAccount: vendor.bankAccount ?? "",
           taxId: vendor.taxId ?? "",
+          bankName: vendor.bankName ?? "",
+          accountName: vendor.accountName ?? "",
+          accountNumber: vendor.accountNumber ?? "",
+          branchCode: vendor.branchCode ?? "",
+          swiftCode: vendor.swiftCode ?? "",
+          contactPerson: vendor.contactPerson ?? "",
+          physicalAddress: vendor.physicalAddress ?? "",
           active: vendor.active,
         });
       } else {
@@ -69,13 +84,13 @@ export function VendorFormDialog({
 
   function set(field: keyof typeof EMPTY_FORM, value: string | boolean) {
     setForm((prev) => ({ ...prev, [field]: value }));
-    if (errors[field as keyof typeof errors]) {
+    if (errors[field]) {
       setErrors((prev) => ({ ...prev, [field]: undefined }));
     }
   }
 
   function validate() {
-    const next: Partial<typeof EMPTY_FORM> = {};
+    const next: Partial<Record<keyof typeof EMPTY_FORM, string>> = {};
     if (!form.name.trim()) next.name = "Name is required";
     if (!form.email.trim()) next.email = "Email is required";
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email))
@@ -101,13 +116,13 @@ export function VendorFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-xl overflow-y-auto max-h-[90svh] p-0">
+        <DialogHeader className="px-6 pt-6 pb-2">
           <DialogTitle>{isEdit ? "Edit Vendor" : "Add Vendor"}</DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4 py-2">
-          {/* Name */}
+        <form onSubmit={handleSubmit} className="px-6 pb-2 space-y-5">
+          {/* ── Basic Info ── */}
           <div className="space-y-1.5">
             <Label htmlFor="name">
               Name <span className="text-destructive">*</span>
@@ -124,7 +139,6 @@ export function VendorFormDialog({
             )}
           </div>
 
-          {/* Email + Phone */}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label htmlFor="email">
@@ -159,7 +173,6 @@ export function VendorFormDialog({
             </div>
           </div>
 
-          {/* Country + City */}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label htmlFor="country">
@@ -193,20 +206,19 @@ export function VendorFormDialog({
             </div>
           </div>
 
-          {/* Bank Account + Tax ID */}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label htmlFor="bankAccount">Bank Account</Label>
+              <Label htmlFor="contactPerson">Contact Person</Label>
               <Input
-                id="bankAccount"
-                value={form.bankAccount}
-                onChange={(e) => set("bankAccount", e.target.value)}
-                placeholder="Account number"
+                id="contactPerson"
+                value={form.contactPerson}
+                onChange={(e) => set("contactPerson", e.target.value)}
+                placeholder="Primary contact name"
                 disabled={isPending}
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="taxId">Tax ID</Label>
+              <Label htmlFor="taxId">Tax ID / TPIN</Label>
               <Input
                 id="taxId"
                 value={form.taxId}
@@ -214,6 +226,91 @@ export function VendorFormDialog({
                 placeholder="Tax / TPIN number"
                 disabled={isPending}
               />
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="physicalAddress">Physical Address</Label>
+            <Textarea
+              id="physicalAddress"
+              value={form.physicalAddress}
+              onChange={(e) => set("physicalAddress", e.target.value)}
+              placeholder="Street address, building, area..."
+              rows={2}
+              disabled={isPending}
+            />
+          </div>
+
+          {/* ── Bank Details ── */}
+          <div className="space-y-3 pt-2 border-t">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              Bank Details
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="bankName">Bank Name</Label>
+                <Input
+                  id="bankName"
+                  value={form.bankName}
+                  onChange={(e) => set("bankName", e.target.value)}
+                  placeholder="e.g. Zanaco"
+                  disabled={isPending}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="accountName">Account Name</Label>
+                <Input
+                  id="accountName"
+                  value={form.accountName}
+                  onChange={(e) => set("accountName", e.target.value)}
+                  placeholder="Name on account"
+                  disabled={isPending}
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="accountNumber">Account Number</Label>
+                <Input
+                  id="accountNumber"
+                  value={form.accountNumber}
+                  onChange={(e) => set("accountNumber", e.target.value)}
+                  placeholder="Account number"
+                  disabled={isPending}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="bankAccount">Legacy Bank Account</Label>
+                <Input
+                  id="bankAccount"
+                  value={form.bankAccount}
+                  onChange={(e) => set("bankAccount", e.target.value)}
+                  placeholder="Legacy field"
+                  disabled={isPending}
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="branchCode">Branch Code</Label>
+                <Input
+                  id="branchCode"
+                  value={form.branchCode}
+                  onChange={(e) => set("branchCode", e.target.value)}
+                  placeholder="Sort/branch code"
+                  disabled={isPending}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="swiftCode">SWIFT / BIC Code</Label>
+                <Input
+                  id="swiftCode"
+                  value={form.swiftCode}
+                  onChange={(e) => set("swiftCode", e.target.value)}
+                  placeholder="SWIFT code"
+                  disabled={isPending}
+                />
+              </div>
             </div>
           </div>
 
@@ -234,7 +331,7 @@ export function VendorFormDialog({
             </div>
           )}
 
-          <DialogFooter>
+          <DialogFooter className="pb-4 pt-2">
             <Button
               type="button"
               variant="outline"

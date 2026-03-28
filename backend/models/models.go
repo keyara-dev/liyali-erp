@@ -166,6 +166,16 @@ type PurchaseOrder struct {
 	
 	ActionHistory datatypes.JSONType[[]types.ActionHistoryEntry] `gorm:"type:jsonb" json:"actionHistory,omitempty"` // Action history for UI
 	
+	// Metadata: attachments, quotations, and other JSONB extras
+	Metadata datatypes.JSON `gorm:"type:jsonb" json:"metadata,omitempty"`
+
+	// Cost tracking
+	EstimatedCost float64 `gorm:"column:estimated_cost;default:0" json:"estimatedCost,omitempty"`
+
+	// Quotation bypass
+	QuotationGateOverridden bool   `gorm:"column:quotation_gate_overridden;default:false" json:"quotationGateOverridden,omitempty"`
+	BypassJustification     string `gorm:"column:bypass_justification" json:"bypassJustification,omitempty"`
+
 	// Legacy aliases for backward compatibility
 	RequiredByDate          *time.Time `json:"requiredByDate,omitempty"`          // Required delivery date
 	SourceRequisitionId     *string    `gorm:"column:source_requisition_id" json:"sourceRequisitionId,omitempty"`     // Source requisition ID
@@ -295,23 +305,39 @@ type Vendor struct {
 	Phone          string        `json:"phone"`
 	Country        string        `json:"country"`
 	City           string        `json:"city"`
-	BankAccount    string        `json:"bankAccount"`
+	BankAccount    string        `json:"bankAccount"` // Legacy — kept for backward compat
 	TaxID          string        `json:"taxId"`
 	Active         bool          `json:"active"`
 	CreatedBy      string        `json:"createdBy"` // User who created the vendor
-	CreatedAt      time.Time     `json:"createdAt"`
-	UpdatedAt      time.Time     `json:"updatedAt"`
+
+	// Bank details
+	BankName      string `gorm:"column:bank_name" json:"bankName,omitempty"`
+	AccountName   string `gorm:"column:account_name" json:"accountName,omitempty"`
+	AccountNumber string `gorm:"column:account_number" json:"accountNumber,omitempty"`
+	BranchCode    string `gorm:"column:branch_code" json:"branchCode,omitempty"`
+	SwiftCode     string `gorm:"column:swift_code" json:"swiftCode,omitempty"`
+
+	// Contact & address
+	ContactPerson   string `gorm:"column:contact_person" json:"contactPerson,omitempty"`
+	PhysicalAddress string `gorm:"column:physical_address" json:"physicalAddress,omitempty"`
+
+	CreatedAt time.Time `json:"createdAt"`
+	UpdatedAt time.Time `json:"updatedAt"`
 }
 
-// AuditLog tracks all document changes
+// AuditLog tracks all document changes (organization-scoped)
 type AuditLog struct {
-	ID            string         `gorm:"primaryKey" json:"id"`
-	DocumentID    string         `gorm:"index" json:"documentId"`
-	DocumentType  string         `json:"documentType"`
-	UserID        string         `json:"userId"`
-	Action        string         `json:"action"` // create, update, approve, reject
-	Changes       datatypes.JSONType[map[string]interface{}] `gorm:"type:jsonb" json:"changes"`
-	CreatedAt     time.Time      `json:"createdAt"`
+	ID             string         `gorm:"primaryKey" json:"id"`
+	OrganizationID string         `gorm:"index;not null;default:''" json:"organizationId"`
+	DocumentID     string         `gorm:"index" json:"documentId"`
+	DocumentType   string         `gorm:"index" json:"documentType"`
+	UserID         string         `json:"userId"`
+	ActorName      string         `json:"actorName"`
+	ActorRole      string         `json:"actorRole"`
+	Action         string         `json:"action"` // created, updated, submitted, approved, rejected, attachment_uploaded, quotation_gate_bypassed
+	Changes        datatypes.JSONType[map[string]interface{}] `gorm:"type:jsonb" json:"changes"`
+	Details        datatypes.JSON `gorm:"type:jsonb" json:"details,omitempty"` // Arbitrary context: field deltas, old/new values, etc.
+	CreatedAt      time.Time      `gorm:"index" json:"createdAt"`
 }
 
 // Notification for email/SMS delivery

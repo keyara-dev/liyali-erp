@@ -9,9 +9,26 @@ import (
 	"github.com/liyali/liyali-gateway/utils"
 )
 
-// GetAuditLogs returns audit logs with pagination and filtering
+func auditLogToMap(a models.AuditLog) map[string]interface{} {
+	return map[string]interface{}{
+		"id":             a.ID,
+		"organizationId": a.OrganizationID,
+		"documentId":     a.DocumentID,
+		"documentType":   a.DocumentType,
+		"userId":         a.UserID,
+		"actorName":      a.ActorName,
+		"actorRole":      a.ActorRole,
+		"action":         a.Action,
+		"details":        a.Details,
+		"changes":        a.Changes,
+		"createdAt":      a.CreatedAt,
+	}
+}
+
+// GetAuditLogs returns org-scoped audit logs with pagination and filtering
 func GetAuditLogs(c *fiber.Ctx) error {
-	// Parse query parameters
+	orgID := c.Locals("organizationID").(string)
+
 	page := c.QueryInt("page", 1)
 	limit := c.QueryInt("limit", 50)
 	action := c.Query("action")
@@ -25,9 +42,8 @@ func GetAuditLogs(c *fiber.Ctx) error {
 		limit = 50
 	}
 
-	// Build query - Note: AuditLog doesn't have organization_id in current model
-	query := config.DB.Model(&models.AuditLog{})
-	
+	query := config.DB.Model(&models.AuditLog{}).Where("organization_id = ?", orgID)
+
 	if action != "" {
 		query = query.Where("action = ?", action)
 	}
@@ -38,14 +54,12 @@ func GetAuditLogs(c *fiber.Ctx) error {
 		query = query.Where("user_id = ?", userID)
 	}
 
-	// Get total count
 	var total int64
 	if err := query.Count(&total).Error; err != nil {
 		log.Printf("Error counting audit logs: %v", err)
 		return utils.SendInternalError(c, "Failed to count audit logs", err)
 	}
 
-	// Get paginated results
 	var auditLogs []models.AuditLog
 	offset := (page - 1) * limit
 	if err := query.
@@ -57,52 +71,40 @@ func GetAuditLogs(c *fiber.Ctx) error {
 		return utils.SendInternalError(c, "Failed to fetch audit logs", err)
 	}
 
-	// Convert to response format
 	responses := make([]map[string]interface{}, 0, len(auditLogs))
-	for _, auditLog := range auditLogs {
-		responses = append(responses, map[string]interface{}{
-			"id":           auditLog.ID,
-			"documentId":   auditLog.DocumentID,
-			"documentType": auditLog.DocumentType,
-			"userId":       auditLog.UserID,
-			"action":       auditLog.Action,
-			"changes":      auditLog.Changes,
-			"createdAt":    auditLog.CreatedAt,
-		})
+	for _, a := range auditLogs {
+		responses = append(responses, auditLogToMap(a))
 	}
 
 	return utils.SendPaginatedSuccess(c, responses, "Audit logs retrieved successfully", page, limit, total)
 }
 
-// GetDocumentAuditLogs returns audit logs for a specific document
+// GetDocumentAuditLogs returns audit logs for a specific document (org-scoped)
 func GetDocumentAuditLogs(c *fiber.Ctx) error {
+	orgID := c.Locals("organizationID").(string)
 	documentID := c.Params("documentId")
 	if documentID == "" {
 		return utils.SendBadRequestError(c, "Document ID is required")
 	}
 
-	// Parse query parameters
 	page := c.QueryInt("page", 1)
-	limit := c.QueryInt("limit", 50)
+	limit := c.QueryInt("limit", 100)
 
 	if page < 1 {
 		page = 1
 	}
-	if limit < 1 || limit > 100 {
-		limit = 50
+	if limit < 1 || limit > 200 {
+		limit = 100
 	}
 
-	// Build query for document-specific logs
-	query := config.DB.Where("document_id = ?", documentID)
+	query := config.DB.Where("organization_id = ? AND document_id = ?", orgID, documentID)
 
-	// Get total count
 	var total int64
 	if err := query.Model(&models.AuditLog{}).Count(&total).Error; err != nil {
 		log.Printf("Error counting document audit logs: %v", err)
 		return utils.SendInternalError(c, "Failed to count audit logs", err)
 	}
 
-	// Get paginated results
 	var auditLogs []models.AuditLog
 	offset := (page - 1) * limit
 	if err := query.
@@ -114,19 +116,58 @@ func GetDocumentAuditLogs(c *fiber.Ctx) error {
 		return utils.SendInternalError(c, "Failed to fetch audit logs", err)
 	}
 
-	// Convert to response format
 	responses := make([]map[string]interface{}, 0, len(auditLogs))
-	for _, auditLog := range auditLogs {
-		responses = append(responses, map[string]interface{}{
-			"id":           auditLog.ID,
-			"documentId":   auditLog.DocumentID,
-			"documentType": auditLog.DocumentType,
-			"userId":       auditLog.UserID,
-			"action":       auditLog.Action,
-			"changes":      auditLog.Changes,
-			"createdAt":    auditLog.CreatedAt,
-		})
+	for _, a := range auditLogs {
+		responses = append(responses, auditLogToMap(a))
 	}
 
 	return utils.SendPaginatedSuccess(c, responses, "Document audit logs retrieved successfully", page, limit, total)
+}
+
+// GetDocumentAuditEvents returns audit events for a specific document by entityType + entityId query params.
+// Route: GET /api/v1/audit-events?entityType=purchase_order&entityId=<id>
+func GetDocumentAuditEvents(c *fiber.Ctx) error {
+	orgID := c.Locals("organizationID").(string)
+	entityType := c.Query("entityType")
+	entityID := c.Query("entityId")
+
+	if entityType == "" || entityID == "" {
+		return utils.SendBadRequestError(c, "entityType and entityId query parameters are required")
+	}
+
+	page := c.QueryInt("page", 1)
+	limit := c.QueryInt("limit", 100)
+	if page < 1 {
+		page = 1
+	}
+	if limit < 1 || limit > 200 {
+		limit = 100
+	}
+
+	query := config.DB.Where(
+		"organization_id = ? AND document_type = ? AND document_id = ?",
+		orgID, entityType, entityID,
+	)
+
+	var total int64
+	if err := query.Model(&models.AuditLog{}).Count(&total).Error; err != nil {
+		return utils.SendInternalError(c, "Failed to count audit events", err)
+	}
+
+	var auditLogs []models.AuditLog
+	offset := (page - 1) * limit
+	if err := query.
+		Offset(offset).
+		Limit(limit).
+		Order("created_at DESC").
+		Find(&auditLogs).Error; err != nil {
+		return utils.SendInternalError(c, "Failed to fetch audit events", err)
+	}
+
+	responses := make([]map[string]interface{}, 0, len(auditLogs))
+	for _, a := range auditLogs {
+		responses = append(responses, auditLogToMap(a))
+	}
+
+	return utils.SendPaginatedSuccess(c, responses, "Audit events retrieved successfully", page, limit, total)
 }

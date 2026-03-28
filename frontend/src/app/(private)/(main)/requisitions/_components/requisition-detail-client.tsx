@@ -72,6 +72,13 @@ import ErrorDisplay from "@/components/base/error-display";
 import { useRequisitionDetail } from "@/hooks/use-requisition-detail";
 import { usePermissions } from "@/hooks/use-permissions";
 import { useRouter } from "next/navigation";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { getAuditEvents, type AuditEvent } from "@/app/_actions/audit";
+import { QuotationCollectionSection } from "./quotation-collection-section";
+import { updateRequisition } from "@/app/_actions/requisitions";
+import { useVendors } from "@/hooks/use-vendor-queries";
+import { type Quotation } from "@/types/core";
+import { QUERY_KEYS } from "@/lib/constants";
 
 interface RequisitionDetailClientProps {
   requisitionId: string;
@@ -87,11 +94,23 @@ export function RequisitionDetailClient({
   initialRequisition,
 }: RequisitionDetailClientProps) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [editInitialStep, setEditInitialStep] = useState<"details" | "items">(
     "details",
   );
   const [isCreatePOOpen, setIsCreatePOOpen] = useState(false);
   const [isCreatingPO, setIsCreatingPO] = useState(false);
+
+  const { data: vendors = [] } = useVendors({ active: true });
+
+  const { data: auditEventsData } = useQuery({
+    queryKey: ["audit-events", "requisition", requisitionId],
+    queryFn: async () => {
+      const res = await getAuditEvents("requisition", requisitionId);
+      return res.success ? ((res.data as AuditEvent[]) ?? []) : [];
+    },
+    enabled: !!requisitionId,
+  });
 
   // Use the new hook to manage all document detail logic
   const {
@@ -151,6 +170,23 @@ export function RequisitionDetailClient({
     requisition.attachments ||
     (requisition.metadata?.attachments as RequisitionAttachment[]) ||
     [];
+
+  const quotations: Quotation[] =
+    (requisition.metadata?.quotations as Quotation[]) || [];
+
+  const canEditQuotations =
+    ["admin", "finance", "approver"].includes(userRole.toLowerCase()) ||
+    requisition.requesterId === userId;
+
+  const handleSaveQuotations = async (newQuotations: Quotation[]) => {
+    await updateRequisition({
+      requisitionId: requisition.id,
+      quotations: newQuotations,
+    });
+    queryClient.invalidateQueries({
+      queryKey: [QUERY_KEYS.REQUISITIONS.BY_ID, requisition.id],
+    });
+  };
 
   const formatBytes = (bytes: number) => {
     if (bytes === 0) return "0 B";
@@ -830,6 +866,18 @@ export function RequisitionDetailClient({
                 </EmptyContent>
               </Empty>
             )}
+
+            {/* ── Quotations section — shown only on APPROVED reqs ── */}
+            {requisition.status?.toUpperCase() === "APPROVED" && (
+              <QuotationCollectionSection
+                quotations={quotations}
+                requisitionId={requisition.id}
+                currency={requisition.currency || "ZMW"}
+                vendors={vendors}
+                canEdit={canEditQuotations}
+                onSave={handleSaveQuotations}
+              />
+            )}
           </TabsContent>
 
           {/* ── Tab 3: Approval Action ── */}
@@ -889,7 +937,10 @@ export function RequisitionDetailClient({
 
           {/* ── Tab 5: Activity Log (Timeline) ── */}
           <TabsContent value="activity" className="space-y-4 mt-6">
-            <ActivityLogContent actionHistory={requisition?.actionHistory} />
+            <ActivityLogContent
+              actionHistory={requisition?.actionHistory}
+              auditEvents={auditEventsData}
+            />
           </TabsContent>
         </Tabs>
       </Card>

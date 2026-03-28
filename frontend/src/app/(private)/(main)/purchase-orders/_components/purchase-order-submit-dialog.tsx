@@ -11,55 +11,25 @@ import {
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Label } from "@/components/ui/label";
 import { PurchaseOrder } from "@/types/purchase-order";
 import type { Workflow } from "@/types/workflow-config";
-import { Send, CheckCircle2, AlertCircle } from "lucide-react";
+import { Send, CheckCircle2, AlertCircle, AlertTriangle } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { WorkflowSelector } from "@/components/workflows/workflow-selector";
 import { WorkflowRequirementBanner } from "@/components/ui/workflow-requirement-banner";
+import { updatePurchaseOrder } from "@/app/_actions/purchase-orders";
+import { toast } from "sonner";
+import type { Quotation } from "@/types/core";
 
-/**
- * Props for the PurchaseOrderSubmitDialog component
- */
 interface PurchaseOrderSubmitDialogProps {
-  /** Whether the dialog is open */
   open: boolean;
-  /** Callback to change the open state */
   onOpenChange: (open: boolean) => void;
-  /** The purchase order to submit */
   purchaseOrder: PurchaseOrder;
-  /** Callback to submit the PO with selected workflow and optional comments */
   onSubmit: (workflowId: string, comments?: string) => Promise<void>;
-  /** Whether the submission is in progress */
   isSubmitting: boolean;
 }
 
-/**
- * Dialog component for submitting a purchase order for approval
- *
- * Displays a workflow selection interface with PO summary and validation.
- * Ensures the PO has required data (items, vendor) before allowing submission.
- *
- * @param props - Component props
- * @param props.open - Whether the dialog is open
- * @param props.onOpenChange - Callback to change the open state
- * @param props.purchaseOrder - The purchase order to submit
- * @param props.onSubmit - Callback to submit the PO with selected workflow and optional comments
- * @param props.isSubmitting - Whether the submission is in progress
- *
- * @example
- * ```tsx
- * <PurchaseOrderSubmitDialog
- *   open={showDialog}
- *   onOpenChange={setShowDialog}
- *   purchaseOrder={purchaseOrder}
- *   onSubmit={handleSubmit}
- *   isSubmitting={submitMutation.isPending}
- * />
- * ```
- *
- * **Validates: Requirements 1.3, 9.1, 9.2, 9.3, 9.4, 9.5, 9.6, 9.7**
- */
 export function PurchaseOrderSubmitDialog({
   open,
   onOpenChange,
@@ -70,53 +40,79 @@ export function PurchaseOrderSubmitDialog({
   const [comments, setComments] = useState("");
   const [workflowId, setWorkflowId] = useState("");
   const [workflowError, setWorkflowError] = useState<string | null>(null);
+  const [bypassEnabled, setBypassEnabled] = useState(false);
+  const [bypassJustification, setBypassJustification] = useState("");
+  const [isSavingBypass, setIsSavingBypass] = useState(false);
 
-  // Validation: PO must have items and vendor before submission
   const hasItems = purchaseOrder.items && purchaseOrder.items.length > 0;
   const hasVendor = !!purchaseOrder.vendorId || !!purchaseOrder.vendorName;
-  const canSubmit = hasItems && hasVendor && workflowId;
 
-  /**
-   * Handles workflow selection from the WorkflowSelector component
-   * Currently only tracks workflowId state, but can be extended for additional workflow details
-   */
-  const handleWorkflowSelect = useCallback((_workflow: Workflow | null) => {
-    // Workflow selection is tracked via workflowId state
-    // Additional workflow details can be used here if needed in the future
-  }, []);
+  // Quotation gate
+  const isAutomatic = purchaseOrder.automationUsed;
+  const quotations: Quotation[] =
+    (purchaseOrder.metadata?.quotations as Quotation[]) ?? [];
+  const quotationCount = quotations.length;
+  const needsQuotations = !isAutomatic && quotationCount < 3;
+  const bypassAlreadySaved = purchaseOrder.quotationGateOverridden;
+  // Bypass is satisfied when already saved OR user has enabled + filled justification
+  const bypassSatisfied =
+    bypassAlreadySaved ||
+    (bypassEnabled && bypassJustification.trim().length > 0);
 
-  /**
-   * Handles the submit button click
-   * Validates workflow selection and calls the onSubmit callback
-   */
+  const canSubmit =
+    hasItems &&
+    hasVendor &&
+    workflowId &&
+    (!needsQuotations || bypassSatisfied);
+
+  const handleWorkflowSelect = useCallback((_workflow: Workflow | null) => {}, []);
+
   const handleSubmit = async () => {
-    // Validate workflow selection
     if (!workflowId) {
       setWorkflowError("Please select a workflow");
       return;
     }
-
     if (!canSubmit) return;
-
     setWorkflowError(null);
-    await onSubmit(workflowId, comments);
 
-    // Only reset if submission was successful (dialog will close)
-    // The handleClose function will also reset state when dialog closes
+    // If bypass is newly enabled, persist it before submitting
+    if (needsQuotations && bypassEnabled && !bypassAlreadySaved) {
+      setIsSavingBypass(true);
+      try {
+        const result = await updatePurchaseOrder({
+          purchaseOrderId: purchaseOrder.id,
+          poId: purchaseOrder.id,
+          quotationGateOverridden: true,
+          bypassJustification: bypassJustification.trim(),
+        });
+        if (!result.success) {
+          toast.error("Failed to save bypass justification");
+          setIsSavingBypass(false);
+          return;
+        }
+      } catch {
+        toast.error("Failed to save bypass justification");
+        setIsSavingBypass(false);
+        return;
+      }
+      setIsSavingBypass(false);
+    }
+
+    await onSubmit(workflowId, comments);
   };
 
-  /**
-   * Handles dialog close
-   * Resets all form state when dialog is closed
-   */
   const handleClose = () => {
-    if (!isSubmitting) {
+    if (!isSubmitting && !isSavingBypass) {
       setComments("");
       setWorkflowId("");
       setWorkflowError(null);
+      setBypassEnabled(false);
+      setBypassJustification("");
       onOpenChange(false);
     }
   };
+
+  const isPending = isSubmitting || isSavingBypass;
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
@@ -135,16 +131,14 @@ export function PurchaseOrderSubmitDialog({
         </DialogHeader>
 
         <div className="space-y-4">
-          {/* Workflow Requirement Banner - Shows if no workflows configured */}
           <WorkflowRequirementBanner entityType="purchase_order" />
 
-          {/* Workflow Selector */}
           <WorkflowSelector
             entityType="purchase_order"
             value={workflowId}
             onChange={setWorkflowId}
             onWorkflowSelect={handleWorkflowSelect}
-            disabled={isSubmitting}
+            disabled={isPending}
             required
             error={workflowError || undefined}
             showDetails={true}
@@ -156,9 +150,7 @@ export function PurchaseOrderSubmitDialog({
           <div className="space-y-3 rounded-lg border p-4 bg-muted/50">
             <div className="flex justify-between items-center">
               <span className="text-sm font-medium">Document Number:</span>
-              <span className="text-sm font-mono">
-                {purchaseOrder.documentNumber}
-              </span>
+              <span className="text-sm font-mono">{purchaseOrder.documentNumber}</span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-sm font-medium">Title:</span>
@@ -175,14 +167,10 @@ export function PurchaseOrderSubmitDialog({
             {purchaseOrder.priority && (
               <div className="flex justify-between items-center">
                 <span className="text-sm font-medium">Priority:</span>
-                <span className="text-sm capitalize">
-                  {purchaseOrder.priority}
-                </span>
+                <span className="text-sm capitalize">{purchaseOrder.priority}</span>
               </div>
             )}
-
             <Separator />
-
             <div className="flex justify-between items-center">
               <span className="text-sm font-medium">Total Amount:</span>
               <span className="text-sm font-mono text-primary">
@@ -193,9 +181,19 @@ export function PurchaseOrderSubmitDialog({
                 }) || "0.00"}
               </span>
             </div>
-
             <Separator />
-
+            <div className="flex justify-between items-center">
+              <span className="text-sm font-medium">Quotations:</span>
+              <span
+                className={`text-sm font-mono ${
+                  quotationCount >= 3 || isAutomatic
+                    ? "text-green-600"
+                    : "text-amber-600"
+                }`}
+              >
+                {isAutomatic ? "N/A (auto-PO)" : `${quotationCount}/3`}
+              </span>
+            </div>
             <div className="flex justify-between items-center">
               <span className="text-sm font-medium">Items:</span>
               <span className="text-sm">
@@ -224,7 +222,65 @@ export function PurchaseOrderSubmitDialog({
             </Alert>
           )}
 
-          {canSubmit && (
+          {/* Quotation gate warning + bypass section */}
+          {needsQuotations && !bypassAlreadySaved && (
+            <Alert className="border-amber-200 bg-amber-50">
+              <AlertTriangle className="h-4 w-4 text-amber-600" />
+              <AlertDescription className="space-y-3">
+                <p className="text-amber-800 font-medium">
+                  Only {quotationCount} of 3 required quotations have been added.
+                </p>
+                <p className="text-amber-700 text-xs">
+                  You can add more quotations in the Supporting Documents tab, or
+                  override the requirement with a justification below.
+                </p>
+                <div className="flex items-start gap-2 pt-1">
+                  <input
+                    type="checkbox"
+                    id="bypass-check"
+                    checked={bypassEnabled}
+                    onChange={(e) => {
+                      setBypassEnabled(e.target.checked);
+                      if (!e.target.checked) setBypassJustification("");
+                    }}
+                    className="mt-0.5 h-4 w-4 rounded border-amber-400 accent-amber-600"
+                  />
+                  <Label htmlFor="bypass-check" className="text-amber-800 text-xs cursor-pointer">
+                    Override the minimum quotation requirement
+                  </Label>
+                </div>
+                {bypassEnabled && (
+                  <div className="space-y-1.5 pt-1">
+                    <Label className="text-xs text-amber-800">
+                      Justification (required)
+                    </Label>
+                    <Textarea
+                      placeholder="Explain why fewer than 3 quotations are available (e.g. only 2 vendors supply this item in the region)..."
+                      value={bypassJustification}
+                      onChange={(e) => setBypassJustification(e.target.value)}
+                      rows={3}
+                      className="text-sm border-amber-300 focus:border-amber-500"
+                      disabled={isPending}
+                    />
+                  </div>
+                )}
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {bypassAlreadySaved && (
+            <Alert className="border-amber-200 bg-amber-50">
+              <AlertTriangle className="h-4 w-4 text-amber-600" />
+              <AlertDescription>
+                <p className="text-amber-800 font-medium text-sm">Quotation Override Applied</p>
+                <p className="text-amber-700 text-xs mt-1">
+                  {purchaseOrder.bypassJustification}
+                </p>
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {canSubmit && !needsQuotations && (
             <Alert>
               <CheckCircle2 className="h-4 w-4" />
               <AlertDescription>
@@ -234,14 +290,13 @@ export function PurchaseOrderSubmitDialog({
             </Alert>
           )}
 
-          {/* Comments */}
           <Textarea
             id="comments"
             label="Comments (Optional)"
             placeholder="Add any comments or notes for the approvers..."
             value={comments}
             onChange={(e) => setComments(e.target.value)}
-            disabled={isSubmitting}
+            disabled={isPending}
             rows={4}
           />
         </div>
@@ -252,18 +307,20 @@ export function PurchaseOrderSubmitDialog({
             type="button"
             variant="outline"
             onClick={handleClose}
-            disabled={isSubmitting}
+            disabled={isPending}
           >
             Cancel
           </Button>
           <Button
             onClick={handleSubmit}
-            disabled={isSubmitting || !canSubmit}
-            isLoading={isSubmitting}
-            loadingText="Submitting..."
+            disabled={isPending || !canSubmit}
+            isLoading={isPending}
+            loadingText={isSavingBypass ? "Saving override..." : "Submitting..."}
           >
             <Send className="mr-2 h-4 w-4" />
-            Submit for Approval
+            {needsQuotations && bypassEnabled && !bypassAlreadySaved
+              ? "Submit with Override"
+              : "Submit for Approval"}
           </Button>
         </div>
       </DialogContent>
