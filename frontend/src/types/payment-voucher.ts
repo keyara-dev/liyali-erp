@@ -4,7 +4,8 @@
  */
 
 // Import shared types from core
-import type { PaymentMethod } from "./core";
+import type { PaymentMethod, ActionHistoryEntry, ApprovalRecord } from "./core";
+import type { WorkflowDocument } from "./workflow";
 
 // ============================================================================
 // CORE PAYMENT VOUCHER TYPES
@@ -17,60 +18,145 @@ export interface PaymentItem {
   taxAmount?: number;
 }
 
-export interface PaymentVoucher {
-  // Core fields
+/**
+ * Payment Voucher document
+ *
+ * Extends WorkflowDocument to support approval workflow functionality.
+ * Represents a payment request to a vendor for goods or services received.
+ */
+export interface PaymentVoucher extends WorkflowDocument {
+  // WorkflowDocument fields (inherited):
+  // - id: string
+  // - type: "payment_voucher"
+  // - documentNumber?: string
+  // - status?: DocumentStatus
+  // - currentStage?: number
+  // - createdBy?: string
+  // - createdByUser?: User
+  // - createdAt?: Date
+  // - updatedAt?: Date
+  // - metadata?: Record<string, any>
+
+  /** Type discriminator for WorkflowDocument */
+  type: "payment_voucher";
+
+  // ── Core Fields ──
+  /** Unique payment voucher identifier */
   id: string;
+  /** Organization that owns this PV */
   organizationId: string;
+  /** Human-readable document number (e.g., "PV-2024-001") */
   documentNumber: string;
+  /** Vendor identifier */
   vendorId: string;
+  /** Vendor entity (populated from backend) */
   vendor?: any;
+  /** Vendor name for display */
   vendorName: string;
+  /** Vendor invoice number */
   invoiceNumber: string;
-  status: string; // draft, pending, approved, rejected, paid, completed, cancelled
+  /** Current status: DRAFT, IN_REVIEW, PENDING, APPROVED, REJECTED, PAID, COMPLETED, CANCELLED */
+  status: PaymentVoucherStatus;
+  /** Payment amount */
   amount: number;
+  /** Currency code (e.g., "ZMW", "USD") */
   currency: string;
-  paymentMethod: string; // bank_transfer, check, cash, wire_transfer
+  /** Payment method: bank_transfer, check, cash, wire_transfer */
+  paymentMethod: string;
+  /** General ledger code */
   glCode: string;
+  /** Detailed description of the payment */
   description: string;
+  /** Current approval stage number */
   approvalStage: number;
-  approvalHistory: any[];
+  /** History of approval actions */
+  approvalHistory: ApprovalRecord[];
+  /** Complete action history for audit trail */
+  actionHistory: ActionHistoryEntry[];
+  /** ID of the purchase order that generated this PV */
   linkedPO: string;
   /** Goods-first flow: GRN document number that was approved before this PV */
   linkedGRN?: string;
+  /** Procurement flow type: "goods_first" or "payment_first" */
+  procurementFlow: "goods_first" | "payment_first";
+  /** Timestamp when PV was created */
   createdAt: Date;
+  /** Timestamp when PV was last updated */
   updatedAt: Date;
 
-  // Business requirement fields
+  // ── Business Requirement Fields ──
+  /** Bank account details for payment */
   bankDetails: any;
+  /** Date when payment was requested */
   requestedDate: Date;
-  totalAmount: number; // Same as amount
+  /** Total amount (alias for amount) */
+  totalAmount: number;
+  /** Line items for the payment */
   items: PaymentItem[];
+  /** Budget code for financial tracking */
   budgetCode: string;
+  /** Cost center for accounting */
   costCenter: string;
+  /** Project code for project tracking */
   projectCode: string;
+  /** Tax amount */
   taxAmount: number;
+  /** Withholding tax amount */
   withholdingTaxAmount: number;
+  /** Amount actually paid */
   paidAmount: number;
+  /** Date when payment was made */
   paidDate: Date;
+  /** Payment due date */
   paymentDueDate: Date;
+  /** Name of user who requested payment */
   requestedByName: string;
+  /** Short title for the PV */
   title: string;
+  /** Department name */
   department: string;
+  /** Department identifier */
   departmentId: string;
+  /** Priority level: LOW, MEDIUM, HIGH, URGENT */
   priority: string;
+  /** Timestamp when PV was submitted for approval */
   submittedAt: Date;
+  /** Timestamp when PV was approved */
   approvedAt: Date;
+  /** User ID who created this PV */
   createdBy: string;
-  ownerId: string; // Same as createdBy
+  /** Owner user ID (alias for createdBy) */
+  ownerId: string;
 
-  // UI compatibility fields
+  // ── Workflow Fields ──
+  /** Current workflow stage (for approval chain display) */
   currentStage?: number;
+  /** Current approval stage (alias for currentStage) */
   currentApprovalStage?: number;
-  actionHistory?: any[];
-  metadata?: Record<string, any>;
-  type?: string;
+  /** Total number of approval stages */
+  totalApprovalStages?: number;
+  /** Approval chain for workflow display */
+  approvalChain?: ApprovalRecord[];
+  /** User entity who created this PV */
   createdByUser?: any;
-  approvalChain?: any[]; // For PDF generation
+}
+
+/**
+ * Type guard to check if a WorkflowDocument is a PaymentVoucher
+ *
+ * @param doc - The document to check
+ * @returns true if the document is a PaymentVoucher, false otherwise
+ *
+ * @example
+ * ```tsx
+ * if (isPaymentVoucher(document)) {
+ *   // TypeScript now knows document is a PaymentVoucher
+ *   console.log(document.vendorName);
+ * }
+ * ```
+ */
+export function isPaymentVoucher(doc: WorkflowDocument): doc is PaymentVoucher {
+  return doc.type === "payment_voucher";
 }
 
 // ============================================================================
@@ -199,13 +285,18 @@ export interface PaymentVoucherStats {
 // TYPE ALIASES
 // ============================================================================
 
+/**
+ * Valid payment voucher status values
+ */
 export type PaymentVoucherStatus =
   | "DRAFT"
+  | "IN_REVIEW"
   | "PENDING"
   | "APPROVED"
   | "REJECTED"
   | "PAID"
   | "COMPLETED"
   | "CANCELLED";
+
 // Re-export PaymentMethod from core
 export type { PaymentMethod } from "./core";

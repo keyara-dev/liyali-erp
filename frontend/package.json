@@ -8,9 +8,13 @@
     "start": "next start",
     "lint": "next lint",
     "test": "vitest",
-    "test:ui": "vitest --ui",
     "test:run": "vitest run",
-    "test:coverage": "vitest run --coverage"
+    "test:ui": "vitest --ui",
+    "test:coverage": "vitest run --coverage",
+    "test:unit": "vitest run src/__tests__/unit",
+    "test:components": "vitest run src/__tests__/components",
+    "test:integration": "vitest run src/__tests__/integration",
+    "test:property": "vitest run src/__tests__/property"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

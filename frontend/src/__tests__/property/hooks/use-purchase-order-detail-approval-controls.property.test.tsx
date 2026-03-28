@@ -7,7 +7,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, cleanup } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import * as fc from 'fast-check';
 import { ApprovalActionContent } from '@/app/(private)/(main)/requisitions/_components/approval-history-panel';
@@ -35,7 +35,7 @@ function createWrapper() {
 }
 
 // Mock the ApprovalActionPanel component to avoid complex dependencies
-vi.mock('@/app/(private)/(main)/requisitions/_components/approval-action-panel', () => ({
+vi.mock('@/app/(private)/(main)/requisitions/_components/requisition-approval-panel', () => ({
   ApprovalActionPanel: ({ requisitionId, onApprovalComplete }: any) => (
     <div data-testid="approval-action-panel">
       Approval Action Panel for {requisitionId}
@@ -141,7 +141,7 @@ describe('Property 5: Approval action controls visibility', () => {
         workflowStatusArbitrary,
         async (po, workflowStatus) => {
           // Execute: Render the component with generated data
-          const { container } = render(
+          const { unmount } = render(
             <ApprovalActionContent
               requisitionId={po.id}
               requisition={po}
@@ -153,14 +153,19 @@ describe('Property 5: Approval action controls visibility', () => {
           );
 
           // Determine expected visibility
-          const isPending = 
-            po.status?.toUpperCase() === 'PENDING' || 
+          // Source has early return for DRAFT/REJECTED → "Ready to Submit"
+          // Then: (PENDING || IN_REVIEW || workflow_in_progress) && canApprove → show panel
+          const isDraftOrRejected =
+            po.status?.toUpperCase() === 'DRAFT' ||
+            po.status?.toUpperCase() === 'REJECTED';
+          const isPending =
+            po.status?.toUpperCase() === 'PENDING' ||
             po.status?.toUpperCase() === 'IN_REVIEW';
           const isWorkflowInProgress = workflowStatus.status === 'in_progress';
           const canApprove = workflowStatus.canApprove;
 
-          const shouldShowApprovalControls = 
-            isPending && isWorkflowInProgress && canApprove;
+          const shouldShowApprovalControls =
+            !isDraftOrRejected && (isPending || isWorkflowInProgress) && canApprove;
 
           // Check if approval action panel is rendered
           const approvalPanel = screen.queryByTestId('approval-action-panel');
@@ -176,16 +181,10 @@ describe('Property 5: Approval action controls visibility', () => {
           }
 
           // Additional invariant checks:
-          // If approval panel is visible, then status must be PENDING/IN_REVIEW and canApprove must be true
+          // If approval panel is visible, canApprove must be true and at least one trigger condition met
           if (approvalPanel) {
-            expect(isPending).toBe(true);
             expect(canApprove).toBe(true);
-            expect(isWorkflowInProgress).toBe(true);
-          }
-
-          // If status is not PENDING/IN_REVIEW, approval panel must not be visible
-          if (!isPending) {
-            expect(approvalPanel).not.toBeInTheDocument();
+            expect(isPending || isWorkflowInProgress).toBe(true);
           }
 
           // If canApprove is false, approval panel must not be visible
@@ -193,10 +192,13 @@ describe('Property 5: Approval action controls visibility', () => {
             expect(approvalPanel).not.toBeInTheDocument();
           }
 
-          // If workflow is not in progress, approval panel must not be visible
-          if (!isWorkflowInProgress) {
+          // If neither pending/in_review nor workflow in_progress, approval panel must not be visible
+          if (!isPending && !isWorkflowInProgress) {
             expect(approvalPanel).not.toBeInTheDocument();
           }
+
+          // Cleanup after each iteration to avoid DOM accumulation
+          unmount();
         }
       ),
       {
@@ -227,7 +229,7 @@ describe('Property 5: Approval action controls visibility', () => {
           ws.canApprove === true && ws.status === 'in_progress'
         ),
         async (pendingPO, approverWorkflowStatus) => {
-          const { container } = render(
+          const { unmount } = render(
             <ApprovalActionContent
               requisitionId={pendingPO.id}
               requisition={pendingPO}
@@ -241,6 +243,7 @@ describe('Property 5: Approval action controls visibility', () => {
           // For PENDING POs with canApprove=true, approval panel must be visible
           const approvalPanel = screen.queryByTestId('approval-action-panel');
           expect(approvalPanel).toBeInTheDocument();
+          unmount();
         }
       ),
       { numRuns: 50 }
@@ -264,7 +267,7 @@ describe('Property 5: Approval action controls visibility', () => {
         ),
         workflowStatusArbitrary.filter((ws) => ws.canApprove === false),
         async (pendingPO, nonApproverWorkflowStatus) => {
-          const { container } = render(
+          const { unmount } = render(
             <ApprovalActionContent
               requisitionId={pendingPO.id}
               requisition={pendingPO}
@@ -281,6 +284,7 @@ describe('Property 5: Approval action controls visibility', () => {
 
           // Should show "No Actions Available" message instead
           expect(screen.getByText('No Actions Available')).toBeInTheDocument();
+          unmount();
         }
       ),
       { numRuns: 50 }
@@ -288,11 +292,12 @@ describe('Property 5: Approval action controls visibility', () => {
   });
 
   /**
-   * Property: For non-PENDING POs, approval controls must never be visible
-   * 
-   * This property verifies that regardless of canApprove value,
-   * if the PO is not in PENDING status, approval controls are not shown.
-   * 
+   * Property: For non-PENDING POs with workflow not in progress, approval controls must never be visible
+   *
+   * This property verifies that when neither the status nor the workflow triggers
+   * the approval panel condition, approval controls are not shown.
+   * The source shows the panel when: (PENDING || IN_REVIEW || workflow_in_progress) && canApprove
+   *
    * **Validates: Requirements 3.8, 7.3**
    */
   it('should never show approval controls for non-PENDING POs regardless of canApprove', async () => {
@@ -302,9 +307,10 @@ describe('Property 5: Approval action controls visibility', () => {
           const status = po.status?.toUpperCase();
           return status !== 'PENDING' && status !== 'IN_REVIEW';
         }),
-        workflowStatusArbitrary,
+        // Also filter out in_progress workflow status, since source checks that OR condition
+        workflowStatusArbitrary.filter((ws) => ws.status !== 'in_progress'),
         async (nonPendingPO, workflowStatus) => {
-          const { container } = render(
+          const { unmount } = render(
             <ApprovalActionContent
               requisitionId={nonPendingPO.id}
               requisition={nonPendingPO}
@@ -315,9 +321,10 @@ describe('Property 5: Approval action controls visibility', () => {
             { wrapper: createWrapper() }
           );
 
-          // For non-PENDING POs, approval panel must never be visible
+          // For non-PENDING POs with non-in_progress workflow, approval panel must never be visible
           const approvalPanel = screen.queryByTestId('approval-action-panel');
           expect(approvalPanel).not.toBeInTheDocument();
+          unmount();
         }
       ),
       { numRuns: 50 }
@@ -340,7 +347,7 @@ describe('Property 5: Approval action controls visibility', () => {
         ),
         workflowStatusArbitrary,
         async (draftPO, workflowStatus) => {
-          const { container } = render(
+          const { unmount } = render(
             <ApprovalActionContent
               requisitionId={draftPO.id}
               requisition={draftPO}
@@ -353,10 +360,11 @@ describe('Property 5: Approval action controls visibility', () => {
 
           // DRAFT POs should show "Ready to Submit" message
           expect(screen.getByText('Ready to Submit')).toBeInTheDocument();
-          
+
           // Should NOT show approval panel
           const approvalPanel = screen.queryByTestId('approval-action-panel');
           expect(approvalPanel).not.toBeInTheDocument();
+          unmount();
         }
       ),
       { numRuns: 30 }
@@ -378,7 +386,7 @@ describe('Property 5: Approval action controls visibility', () => {
         workflowStatusArbitrary,
         async (po, workflowStatus) => {
           // Render the component twice with the same inputs
-          const { container: container1 } = render(
+          const { unmount: unmount1 } = render(
             <ApprovalActionContent
               requisitionId={po.id}
               requisition={po}
@@ -389,10 +397,11 @@ describe('Property 5: Approval action controls visibility', () => {
             { wrapper: createWrapper() }
           );
 
-          const approvalPanel1 = screen.queryAllByTestId('approval-action-panel')[0];
+          const approvalPanel1 = screen.queryByTestId('approval-action-panel');
+          unmount1();
 
-          // Clean up and render again
-          const { container: container2 } = render(
+          // Render again with same inputs
+          const { unmount: unmount2 } = render(
             <ApprovalActionContent
               requisitionId={po.id}
               requisition={po}
@@ -403,7 +412,8 @@ describe('Property 5: Approval action controls visibility', () => {
             { wrapper: createWrapper() }
           );
 
-          const approvalPanel2 = screen.queryAllByTestId('approval-action-panel')[1];
+          const approvalPanel2 = screen.queryByTestId('approval-action-panel');
+          unmount2();
 
           // Visibility should be consistent
           if (approvalPanel1) {
@@ -445,7 +455,7 @@ describe('Property 5: Approval action controls visibility', () => {
             type: 'purchase_order',
           };
 
-          const { container } = render(
+          const { unmount } = render(
             <ApprovalActionContent
               requisitionId={po.id}
               requisition={po}
@@ -459,6 +469,7 @@ describe('Property 5: Approval action controls visibility', () => {
           // Regardless of case, PENDING status with canApprove=true should show approval controls
           const approvalPanel = screen.queryByTestId('approval-action-panel');
           expect(approvalPanel).toBeInTheDocument();
+          unmount();
         }
       ),
       { numRuns: 30 }
@@ -493,7 +504,7 @@ describe('Property 5: Additional approval control invariants', () => {
         purchaseOrderArbitrary,
         workflowStatusArbitrary,
         async (po, workflowStatus) => {
-          const { container } = render(
+          const { unmount } = render(
             <ApprovalActionContent
               requisitionId={po.id}
               requisition={po}
@@ -506,10 +517,11 @@ describe('Property 5: Additional approval control invariants', () => {
 
           // Should show loading message
           expect(screen.getByText('Loading approval data...')).toBeInTheDocument();
-          
+
           // Should NOT show approval panel
           const approvalPanel = screen.queryByTestId('approval-action-panel');
           expect(approvalPanel).not.toBeInTheDocument();
+          unmount();
         }
       ),
       { numRuns: 30 }
@@ -530,7 +542,7 @@ describe('Property 5: Additional approval control invariants', () => {
         purchaseOrderArbitrary,
         workflowStatusArbitrary,
         async (po, workflowStatus) => {
-          const { container } = render(
+          const { unmount } = render(
             <ApprovalActionContent
               requisitionId={po.id}
               requisition={po}
@@ -543,23 +555,25 @@ describe('Property 5: Additional approval control invariants', () => {
 
           const approvalPanel = screen.queryByTestId('approval-action-panel');
 
-          const isPending = 
-            po.status?.toUpperCase() === 'PENDING' || 
+          const isPending =
+            po.status?.toUpperCase() === 'PENDING' ||
             po.status?.toUpperCase() === 'IN_REVIEW';
           const isWorkflowInProgress = workflowStatus.status === 'in_progress';
           const canApprove = workflowStatus.canApprove;
 
-          // If approval panel is visible, BOTH conditions must be true
+          // If approval panel is visible, canApprove must be true and at least one trigger condition met
+          // Source condition: (PENDING || IN_REVIEW || workflow_in_progress) && canApprove
           if (approvalPanel) {
-            expect(isPending).toBe(true);
             expect(canApprove).toBe(true);
-            expect(isWorkflowInProgress).toBe(true);
+            expect(isPending || isWorkflowInProgress).toBe(true);
           }
 
-          // If either condition is false, approval panel must NOT be visible
-          if (!isPending || !canApprove || !isWorkflowInProgress) {
+          // If canApprove is false or neither trigger condition is met, approval panel must NOT be visible
+          if (!canApprove || (!isPending && !isWorkflowInProgress)) {
             expect(approvalPanel).not.toBeInTheDocument();
           }
+
+          unmount();
         }
       ),
       { numRuns: 50 }

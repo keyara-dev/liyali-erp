@@ -11,7 +11,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import * as fc from 'fast-check';
-import { usePurchaseOrderDetail } from '../use-purchase-order-detail';
+import { usePurchaseOrderDetail } from '@/hooks/use-purchase-order-detail';
 import { PurchaseOrder } from '@/types/purchase-order';
 
 // ============================================================================
@@ -35,11 +35,12 @@ function createWrapper() {
 }
 
 // Mock the dependencies
-vi.mock('../use-purchase-order-queries', () => ({
-  usePurchaseOrderById: vi.fn(() => ({
-    data: undefined,
+vi.mock('@/hooks/use-purchase-order-queries', () => ({
+  usePurchaseOrderById: vi.fn((_id, initialDocument) => ({
+    data: initialDocument,
     isLoading: false,
     error: null,
+    refetch: vi.fn(),
   })),
   usePurchaseOrderChain: vi.fn(() => ({
     data: undefined,
@@ -47,7 +48,7 @@ vi.mock('../use-purchase-order-queries', () => ({
   })),
 }));
 
-vi.mock('../use-purchase-order-mutations', () => ({
+vi.mock('@/hooks/use-purchase-order-mutations', () => ({
   useSubmitPurchaseOrderForApproval: vi.fn(() => ({
     mutateAsync: vi.fn(),
     isPending: false,

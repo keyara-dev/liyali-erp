@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { isPurchaseOrder, PurchaseOrder } from "../purchase-order";
-import { WorkflowDocument } from "../workflow";
+import { isPurchaseOrder, PurchaseOrder } from "@/types/purchase-order";
+import { WorkflowDocument } from "@/types/workflow";
 
 describe("PurchaseOrder Type Guard", () => {
   it("should identify a valid PurchaseOrder", () => {

@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import { describe, it, expect } from "vitest";
-import { PurchaseOrderItemsList } from "../purchase-order-items-list";
+import { PurchaseOrderItemsList } from "@/app/(private)/(main)/purchase-orders/_components/purchase-order-items-list";
 import { POItem } from "@/types/purchase-order";
 
 describe("PurchaseOrderItemsList", () => {

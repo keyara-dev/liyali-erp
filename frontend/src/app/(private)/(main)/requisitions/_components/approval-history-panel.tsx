@@ -12,6 +12,8 @@ import {
   Send,
   AlertCircle,
   User,
+  Undo2,
+  DollarSign,
 } from "lucide-react";
 import { ActionHistoryEntry, ApprovalRecord } from "@/types";
 import { WorkflowDocument } from "@/types/workflow";
@@ -41,6 +43,12 @@ export function getActionIcon(actionType: string) {
     case "REVERSE":
     case "REVERSED":
       return <Edit className="h-5 w-5 text-amber-600" />;
+    case "WITHDRAW":
+    case "WITHDRAWN":
+      return <Undo2 className="h-5 w-5 text-orange-600" />;
+    case "MARK_PAID":
+    case "MARKED_PAID":
+      return <DollarSign className="h-5 w-5 text-emerald-600" />;
     default:
       return <Clock className="h-5 w-5 text-gray-600" />;
   }
@@ -63,6 +71,12 @@ export function getActionColor(actionType: string) {
     case "REVERSE":
     case "REVERSED":
       return "bg-amber-50 dark:bg-amber-950/30 border-amber-300 dark:border-amber-700";
+    case "WITHDRAW":
+    case "WITHDRAWN":
+      return "bg-orange-50 dark:bg-orange-950/30 border-orange-300 dark:border-orange-700";
+    case "MARK_PAID":
+    case "MARKED_PAID":
+      return "bg-emerald-50 dark:bg-emerald-950/30 border-emerald-300 dark:border-emerald-700";
     default:
       return "bg-gray-50 dark:bg-gray-800/30 border-gray-300 dark:border-gray-600";
   }
@@ -89,6 +103,12 @@ export function getActionLabel(actionType: string) {
       return "Deleted";
     case "REVERT_TO_DRAFT":
       return "Reverted to Draft";
+    case "WITHDRAW":
+    case "WITHDRAWN":
+      return "Withdrawn";
+    case "MARK_PAID":
+    case "MARKED_PAID":
+      return "Marked as Paid";
     default:
       return actionType;
   }
@@ -222,9 +242,7 @@ export function ApprovalChainContent({
     return (
       <div className="text-center py-8">
         <div className="inline-block h-6 w-6 rounded-full border-2 border-blue-200 border-t-blue-600 animate-spin"></div>
-        <p className="text-sm text-gray-500 mt-2">
-          Loading approval chain...
-        </p>
+        <p className="text-sm text-gray-500 mt-2">Loading approval chain...</p>
       </div>
     );
   }
@@ -242,8 +260,7 @@ export function ApprovalChainContent({
           for approval.
         </p>
         <p className="text-xs text-gray-500">
-          Click &ldquo;Submit for Approval&rdquo; to start the workflow
-          process.
+          Click &ldquo;Submit for Approval&rdquo; to start the workflow process.
         </p>
       </div>
     );
@@ -253,9 +270,7 @@ export function ApprovalChainContent({
     return (
       <div className="text-center py-12 text-gray-500">
         <AlertCircle className="h-12 w-12 mx-auto mb-4 text-gray-400" />
-        <h4 className="font-semibold text-lg mb-2">
-          No Workflow Configured
-        </h4>
+        <h4 className="font-semibold text-lg mb-2">No Workflow Configured</h4>
         <p className="text-sm text-gray-600 mb-4">
           No approval workflow has been configured for this document type.
         </p>
@@ -416,19 +431,23 @@ export function ApprovalChainContent({
                     </div>
                   )}
 
-                  {stage.isCurrentStage && stage.status?.toUpperCase() === "PENDING" && (
-                    <div className="mt-3 p-3 bg-blue-100 dark:bg-blue-900/30 rounded border border-blue-200 dark:border-blue-700">
-                      <p className="text-sm text-blue-800 dark:text-blue-300">
-                        <span className="font-medium">
-                          Next Action Required:
-                        </span>
-                        <span className="ml-1">
-                          This stage requires approval from a user with the{" "}
-                          <strong>{formatRoleForDisplay(stage.requiredRole)}</strong> role.
-                        </span>
-                      </p>
-                    </div>
-                  )}
+                  {stage.isCurrentStage &&
+                    stage.status?.toUpperCase() === "PENDING" && (
+                      <div className="mt-3 p-3 bg-blue-100 dark:bg-blue-900/30 rounded border border-blue-200 dark:border-blue-700">
+                        <p className="text-sm text-blue-800 dark:text-blue-300">
+                          <span className="font-medium">
+                            Next Action Required:
+                          </span>
+                          <span className="ml-1">
+                            This stage requires approval from a user with the{" "}
+                            <strong>
+                              {formatRoleForDisplay(stage.requiredRole)}
+                            </strong>{" "}
+                            role.
+                          </span>
+                        </p>
+                      </div>
+                    )}
                 </div>
 
                 <div className="flex-shrink-0">
@@ -525,9 +544,7 @@ export function ApprovalChainContent({
                         <p className="text-xs text-gray-600 mb-2">
                           <span className="font-medium">Date:</span>{" "}
                           {new Date(
-                            approval.actionTakenAt ||
-                              approval.approvedAt ||
-                              "",
+                            approval.actionTakenAt || approval.approvedAt || "",
                           ).toLocaleString()}
                         </p>
                       )}
@@ -536,7 +553,8 @@ export function ApprovalChainContent({
                         <div className="mt-2 p-2 bg-white/50 rounded border">
                           <p className="text-sm text-gray-700">
                             <span className="font-medium">Comments:</span>{" "}
-                            &ldquo;{approval.comments || approval.remarks}&rdquo;
+                            &ldquo;{approval.comments || approval.remarks}
+                            &rdquo;
                           </p>
                         </div>
                       )}
@@ -562,52 +580,50 @@ export function ApprovalChainContent({
       )}
 
       {/* Available Approvers Section */}
-      {availableApprovers.length > 0 && workflowStatus?.status?.toUpperCase() !== "COMPLETED" && (
-        <div className="border-t pt-4">
-          <h4 className="font-semibold text-sm text-gray-700 mb-3 flex items-center gap-2">
-            <User className="h-4 w-4" />
-            Available Approvers ({availableApprovers.length})
-          </h4>
-          <p className="text-xs text-gray-600 mb-3">
-            People who have permission to approve this requisition at various
-            stages
-          </p>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-60 overflow-y-auto">
-            {availableApprovers.map((approver: any) => (
-              <div
-                key={approver.id}
-                className="p-3 border rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
-                    <User className="h-4 w-4 text-blue-600" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-sm truncate">
-                      {approver.name || "Unknown"}
-                    </p>
-                    <p className="text-xs text-gray-600 truncate">
-                      {approver.role}{" "}
-                      {approver.department && `• ${approver.department}`}
-                    </p>
-                    {approver.email && (
-                      <p className="text-xs text-gray-500 truncate">
-                        {approver.email}
+      {availableApprovers.length > 0 &&
+        workflowStatus?.status?.toUpperCase() !== "COMPLETED" && (
+          <div className="border-t pt-4">
+            <h4 className="font-semibold text-sm text-gray-700 mb-3 flex items-center gap-2">
+              <User className="h-4 w-4" />
+              Available Approvers ({availableApprovers.length})
+            </h4>
+            <p className="text-xs text-gray-600 mb-3">
+              People who have permission to approve this requisition at various
+              stages
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-60 overflow-y-auto">
+              {availableApprovers.map((approver: any) => (
+                <div
+                  key={approver.id}
+                  className="p-3 border rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+                      <User className="h-4 w-4 text-blue-600" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-sm truncate">
+                        {approver.name || "Unknown"}
                       </p>
-                    )}
+                      <p className="text-xs text-gray-600 truncate">
+                        {approver.role}{" "}
+                        {approver.department && `• ${approver.department}`}
+                      </p>
+                      {approver.email && (
+                        <p className="text-xs text-gray-500 truncate">
+                          {approver.email}
+                        </p>
+                      )}
+                    </div>
+                    <Badge variant="outline" className="text-xs flex-shrink-0">
+                      Can Approve
+                    </Badge>
                   </div>
-                  <Badge
-                    variant="outline"
-                    className="text-xs flex-shrink-0"
-                  >
-                    Can Approve
-                  </Badge>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
-      )}
+        )}
     </>
   );
 }
@@ -633,9 +649,7 @@ export function ApprovalActionContent({
     return (
       <div className="text-center py-8">
         <div className="inline-block h-6 w-6 rounded-full border-2 border-blue-200 border-t-blue-600 animate-spin"></div>
-        <p className="text-sm text-gray-500 mt-2">
-          Loading approval data...
-        </p>
+        <p className="text-sm text-gray-500 mt-2">Loading approval data...</p>
       </div>
     );
   }
@@ -890,7 +904,9 @@ export function ApprovalHistoryPanel({
   return (
     <Card className="p-6">
       <Tabs defaultValue="timeline" className="w-full">
-        <TabsList className={`grid w-full ${isAdminUser ? "grid-cols-4" : "grid-cols-3"}`}>
+        <TabsList
+          className={`grid w-full ${isAdminUser ? "grid-cols-4" : "grid-cols-3"}`}
+        >
           <TabsTrigger value="timeline">Timeline</TabsTrigger>
           <TabsTrigger value="chain">Approval Chain</TabsTrigger>
           <TabsTrigger value="approvers">Approval Actions</TabsTrigger>

@@ -541,3 +541,174 @@ func SubmitPaymentVoucher(c *fiber.Ctx) error {
 		},
 	})
 }
+
+// WithdrawPaymentVoucher withdraws a payment voucher from approval workflow
+func WithdrawPaymentVoucher(c *fiber.Ctx) error {
+	id := c.Params("id")
+	if id == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"success": false,
+			"message": "Payment Voucher ID is required",
+		})
+	}
+
+	// Get organization ID and user ID from context
+	organizationID := c.Locals("organizationID").(string)
+	userID := c.Locals("userID").(string)
+
+	// Get existing payment voucher
+	var voucher models.PaymentVoucher
+	if err := config.DB.Where("id = ? AND organization_id = ?", id, organizationID).First(&voucher).Error; err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
+			"success": false,
+			"message": "Payment Voucher not found",
+		})
+	}
+
+	// Verify that the current user is the creator (only the submitter can withdraw)
+	// Note: PaymentVoucher doesn't have a CreatedBy field, so we check the first action history entry
+	var actionHistory []types.ActionHistoryEntry
+	actionHistory = voucher.ActionHistory.Data()
+	if actionHistory == nil || len(actionHistory) == 0 {
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
+			"success": false,
+			"message": "Cannot determine payment voucher creator",
+		})
+	}
+
+	// Find the CREATE action to determine the creator
+	creatorID := ""
+	for _, action := range actionHistory {
+		if strings.ToUpper(action.ActionType) == "CREATE" {
+			creatorID = action.PerformedBy
+			break
+		}
+	}
+
+	if creatorID != userID {
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
+			"success": false,
+			"message": "Only the creator can withdraw this payment voucher",
+		})
+	}
+
+	// Check if payment voucher is in a state that can be withdrawn (pending)
+	if strings.ToUpper(voucher.Status) != "PENDING" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"success": false,
+			"message": fmt.Sprintf("Cannot withdraw payment voucher in %s status. Only pending payment vouchers can be withdrawn.", voucher.Status),
+		})
+	}
+
+	// Check if there is an active workflow task that is claimed
+	var workflowTask models.WorkflowTask
+	err := config.DB.Where("entity_id = ? AND entity_type = ? AND UPPER(status) IN (?, ?)",
+		id, "payment_voucher", "PENDING", "CLAIMED").First(&workflowTask).Error
+
+	if err == nil {
+		// Task exists - check if it's claimed
+		if strings.ToUpper(workflowTask.Status) == "CLAIMED" && workflowTask.ClaimedBy != nil {
+			return c.Status(fiber.StatusConflict).JSON(fiber.Map{
+				"success": false,
+				"message": "Cannot withdraw payment voucher. It is currently being reviewed by an approver.",
+			})
+		}
+	}
+
+	// Start a transaction to ensure all changes are atomic
+	tx := config.DB.Begin()
+	if tx.Error != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"success": false,
+			"message": "Failed to start transaction",
+			"error":   tx.Error.Error(),
+		})
+	}
+
+	// Delete the workflow task(s) for this payment voucher
+	if err := tx.Where("entity_id = ? AND entity_type = ?", id, "payment_voucher").
+		Delete(&models.WorkflowTask{}).Error; err != nil {
+		tx.Rollback()
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"success": false,
+			"message": "Failed to remove workflow tasks",
+			"error":   err.Error(),
+		})
+	}
+
+	// Delete the workflow assignment(s) for this payment voucher
+	if err := tx.Where("entity_id = ? AND entity_type = ?", id, "payment_voucher").
+		Delete(&models.WorkflowAssignment{}).Error; err != nil {
+		tx.Rollback()
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"success": false,
+			"message": "Failed to remove workflow assignments",
+			"error":   err.Error(),
+		})
+	}
+
+	// Update payment voucher status back to draft and reset approval fields
+	previousStatus := voucher.Status
+	voucher.Status = "DRAFT"
+	voucher.ApprovalStage = 0
+	voucher.UpdatedAt = time.Now()
+
+	// Clear approval history since we're reverting to draft
+	voucher.ApprovalHistory = datatypes.NewJSONType([]types.ApprovalRecord{})
+
+	// Add action history entry for withdrawal
+	if actionHistory == nil {
+		actionHistory = []types.ActionHistoryEntry{}
+	}
+
+	// Get user info for action history
+	performerName := "Unknown User"
+	performerRole := "unknown"
+	var user models.User
+	if err := tx.Where("id = ?", userID).First(&user).Error; err == nil {
+		performerName = user.Name
+		performerRole = user.Role
+	}
+
+	actionHistory = append(actionHistory, types.ActionHistoryEntry{
+		ID:              uuid.New().String(),
+		Action:          "WITHDRAW",
+		PerformedBy:     userID,
+		PerformedByName: performerName,
+		PerformedByRole: performerRole,
+		Timestamp:       time.Now(),
+		Comments:        "Payment voucher withdrawn by creator",
+		ActionType:      "WITHDRAW",
+		PreviousStatus:  previousStatus,
+		NewStatus:       "DRAFT",
+	})
+	voucher.ActionHistory = datatypes.NewJSONType(actionHistory)
+
+	// Save payment voucher changes
+	if err := tx.Save(&voucher).Error; err != nil {
+		tx.Rollback()
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"success": false,
+			"message": "Failed to update payment voucher status",
+			"error":   err.Error(),
+		})
+	}
+
+	// Commit transaction
+	if err := tx.Commit().Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"success": false,
+			"message": "Failed to commit changes",
+			"error":   err.Error(),
+		})
+	}
+
+	// Preload vendor for response
+	config.DB.Preload("Vendor").First(&voucher)
+
+	return c.JSON(fiber.Map{
+		"success": true,
+		"data":    modelToPaymentVoucherResponse(voucher),
+		"message": "Payment voucher withdrawn successfully. You can now edit and re-submit it.",
+	})
+}

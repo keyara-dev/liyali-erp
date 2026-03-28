@@ -17,7 +17,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { PurchaseOrderSubmitDialog } from "../purchase-order-submit-dialog";
+import { PurchaseOrderSubmitDialog } from "@/app/(private)/(main)/purchase-orders/_components/purchase-order-submit-dialog";
 import { PurchaseOrder } from "@/types/purchase-order";
 
 // ============================================================================

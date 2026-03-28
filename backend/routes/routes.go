@@ -295,6 +295,9 @@ func SetupRoutes(app *fiber.App, handlerRegistry *handlers.HandlerRegistry, rbac
 		middleware.RequirePermission(rbacService, "organization", "view"),
 		handlers.ListAllPermissions)
 
+	// Document chain route (generic endpoint for all workflow documents)
+	tenant.Get("/document-chain/:id", handlers.GetDocumentChain)
+
 	// Requisition routes (tenant-scoped)
 	requisitions := tenant.Group("/requisitions", middleware.InjectWorkflowExecutionService(handlerRegistry.WorkflowExecutionService))
 	requisitions.Get("/", middleware.RequirePermission(rbacService, "requisition", "view"), handlers.GetRequisitions)
@@ -339,6 +342,7 @@ func SetupRoutes(app *fiber.App, handlerRegistry *handlers.HandlerRegistry, rbac
 	pvs.Put("/:id", middleware.RequirePermission(rbacService, "payment_voucher", "edit"), handlers.UpdatePaymentVoucher)
 	pvs.Delete("/:id", middleware.RequirePermission(rbacService, "payment_voucher", "delete"), handlers.DeletePaymentVoucher)
 	pvs.Post("/:id/submit", middleware.RequirePermission(rbacService, "payment_voucher", "edit"), handlers.SubmitPaymentVoucher)
+	pvs.Post("/:id/withdraw", middleware.RequirePermission(rbacService, "payment_voucher", "edit"), handlers.WithdrawPaymentVoucher)
 	pvs.Post("/:id/mark-paid", middleware.RequirePermission(rbacService, "payment_voucher", "edit"), handlers.MarkPaymentVoucherPaid)
 
 	// GRN routes (tenant-scoped)

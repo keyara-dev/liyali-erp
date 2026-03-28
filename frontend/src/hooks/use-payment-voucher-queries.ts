@@ -5,10 +5,9 @@ import { QUERY_KEYS } from "@/lib/constants";
 import {
   getPaymentVouchers,
   getPaymentVoucherById,
+  getPaymentVoucherChain,
   createPaymentVoucher,
   updatePaymentVoucher,
-  submitPaymentVoucherForApproval,
-  markPaymentVoucherAsPaid,
   deletePaymentVoucher,
   getPaymentVoucherStats,
 } from "@/app/_actions/payment-vouchers";
@@ -17,21 +16,16 @@ import {
   PaymentVoucherStats,
   CreatePaymentVoucherRequest,
   UpdatePaymentVoucherRequest,
-  SubmitPaymentVoucherRequest,
-  MarkPaymentVoucherPaidRequest,
 } from "@/types/payment-voucher";
 import { toast } from "sonner";
 
-/**
- * Fetch all payment vouchers
- * Standard data - 5 minute refresh interval
- *
- * @param initialPVs - Optional initial data from server component
- * @returns Query result with payment vouchers array
- *
- * @example
- * const { data: paymentVouchers } = usePaymentVouchers(initialPVs)
- */
+// Re-export mutation hooks from mutations file
+export {
+  useSubmitPaymentVoucherForApproval,
+  useWithdrawPaymentVoucher,
+  useMarkPaymentVoucherAsPaid,
+} from "./use-payment-voucher-mutations";
+
 export const usePaymentVouchers = (initialPVs?: PaymentVoucher[]) =>
   useQuery({
     queryKey: [QUERY_KEYS.PAYMENT_VOUCHERS.ALL],
@@ -40,21 +34,12 @@ export const usePaymentVouchers = (initialPVs?: PaymentVoucher[]) =>
       return response.success ? response.data : [];
     },
     initialData: initialPVs,
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 5 * 60 * 1000,
   });
 
-/**
- * Fetch a specific payment voucher by ID
- *
- * @param pvId - Payment Voucher ID to fetch
- * @returns Query result with single payment voucher
- *
- * @example
- * const { data: paymentVoucher } = usePaymentVoucherById(pvId)
- */
 export const usePaymentVoucherById = (
   pvId: string,
-  initialData?: PaymentVoucher
+  initialData?: PaymentVoucher,
 ) =>
   useQuery({
     queryKey: [QUERY_KEYS.PAYMENT_VOUCHERS.BY_ID, pvId],
@@ -64,18 +49,9 @@ export const usePaymentVoucherById = (
       return response.data;
     },
     initialData,
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 5 * 60 * 1000,
   });
 
-/**
- * Fetch payment voucher statistics
- *
- * @param initialStats - Optional initial data from server component
- * @returns Query result with payment voucher statistics
- *
- * @example
- * const { data: stats } = usePaymentVoucherStats()
- */
 export const usePaymentVoucherStats = (initialStats?: PaymentVoucherStats) =>
   useQuery({
     queryKey: [QUERY_KEYS.PAYMENT_VOUCHERS.STATS],
@@ -84,37 +60,9 @@ export const usePaymentVoucherStats = (initialStats?: PaymentVoucherStats) =>
       return response.success ? response.data : null;
     },
     initialData: initialStats,
-    staleTime: 10 * 60 * 1000, // 10 minutes
+    staleTime: 10 * 60 * 1000,
   });
 
-/**
- * Create or update payment voucher mutation
- * Handles both create (no ID) and update (with ID) operations
- * Only DRAFT payment vouchers can be updated
- *
- * @param onSuccess - Callback after successful mutation
- * @returns Mutation object with mutate and mutateAsync
- *
- * @example
- * const saveMutation = useSavePaymentVoucher(() => {
- *   queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PAYMENT_VOUCHERS.ALL] })
- * })
- *
- * // Create
- * await saveMutation.mutateAsync({
- *   title: 'Payment for PO-001',
- *   vendorName: 'Supplier Inc',
- *   items: [...],
- *   createdBy: userId
- * })
- *
- * // Update
- * await saveMutation.mutateAsync({
- *   pvId: 'pv-1',
- *   title: 'Payment for PO-001 Updated',
- *   items: [...]
- * })
- */
 export const useSavePaymentVoucher = (onSuccess?: () => void) => {
   const queryClient = useQueryClient();
 
@@ -122,7 +70,7 @@ export const useSavePaymentVoucher = (onSuccess?: () => void) => {
     mutationFn: async (
       data:
         | CreatePaymentVoucherRequest
-        | (UpdatePaymentVoucherRequest & { pvId?: string })
+        | (UpdatePaymentVoucherRequest & { pvId?: string }),
     ) => {
       const response =
         "pvId" in data && data.pvId
@@ -135,24 +83,20 @@ export const useSavePaymentVoucher = (onSuccess?: () => void) => {
       return response;
     },
     onSuccess: (response) => {
-      const isUpdate = (
-        response.data as PaymentVoucher & { pvId?: string }
-      )?.pvId;
+      const isUpdate = (response.data as PaymentVoucher & { pvId?: string })
+        ?.pvId;
       toast.success(
         isUpdate
           ? "Payment voucher updated successfully"
-          : "Payment voucher created successfully"
+          : "Payment voucher created successfully",
       );
 
-      // Invalidate payment voucher queries
       queryClient.invalidateQueries({
         queryKey: [QUERY_KEYS.PAYMENT_VOUCHERS.ALL],
       });
       queryClient.invalidateQueries({
         queryKey: [QUERY_KEYS.PAYMENT_VOUCHERS.STATS],
       });
-
-      // Invalidate dashboard metrics
       queryClient.invalidateQueries({
         queryKey: [QUERY_KEYS.DASHBOARD.METRICS],
       });
@@ -168,149 +112,6 @@ export const useSavePaymentVoucher = (onSuccess?: () => void) => {
   });
 };
 
-/**
- * Submit payment voucher for approval mutation
- *
- * @param pvId - Payment Voucher ID to submit
- * @param onSuccess - Callback after successful submission
- * @returns Mutation object
- *
- * @example
- * const submitMutation = useSubmitPaymentVoucherForApproval(pvId)
- * await submitMutation.mutateAsync({
- *   submittedBy: userId,
- *   submittedByName: 'John Doe',
- *   submittedByRole: 'REQUESTER',
- *   comments: 'Please review'
- * })
- */
-export const useSubmitPaymentVoucherForApproval = (
-  pvId: string,
-  onSuccess?: () => void
-) => {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (
-      data: Omit<SubmitPaymentVoucherRequest, "pvId">
-    ) => {
-      const response = await submitPaymentVoucherForApproval({
-        pvId,
-        ...data,
-      });
-
-      if (!response.success) {
-        throw new Error(response.message);
-      }
-      return response;
-    },
-    onSuccess: () => {
-      toast.success("Payment voucher submitted for approval");
-
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.PAYMENT_VOUCHERS.BY_ID, pvId],
-      });
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.PAYMENT_VOUCHERS.ALL],
-      });
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.PAYMENT_VOUCHERS.STATS],
-      });
-
-      // Invalidate dashboard metrics
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.DASHBOARD.METRICS],
-      });
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.DASHBOARD.ACTIVITIES],
-      });
-
-      onSuccess?.();
-    },
-    onError: (error: Error) => {
-      toast.error(error.message || "Failed to submit payment voucher");
-    },
-  });
-};
-
-/**
- * Mark payment voucher as paid mutation
- *
- * @param pvId - Payment Voucher ID to mark as paid
- * @param onSuccess - Callback after successful marking
- * @returns Mutation object
- *
- * @example
- * const markPaidMutation = useMarkPaymentVoucherAsPaid(pvId)
- * await markPaidMutation.mutateAsync({
- *   paidAmount: 5000,
- *   paidDate: new Date(),
- *   referenceNumber: 'TRANSFER-123',
- *   markedBy: userId,
- *   markedByName: 'Finance Officer',
- *   markedByRole: 'FINANCE_OFFICER'
- * })
- */
-export const useMarkPaymentVoucherAsPaid = (
-  pvId: string,
-  onSuccess?: () => void
-) => {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (
-      data: Omit<MarkPaymentVoucherPaidRequest, "pvId">
-    ) => {
-      const response = await markPaymentVoucherAsPaid({
-        pvId,
-        ...data,
-      });
-
-      if (!response.success) {
-        throw new Error(response.message);
-      }
-      return response;
-    },
-    onSuccess: () => {
-      toast.success("Payment voucher marked as paid");
-
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.PAYMENT_VOUCHERS.BY_ID, pvId],
-      });
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.PAYMENT_VOUCHERS.ALL],
-      });
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.PAYMENT_VOUCHERS.STATS],
-      });
-
-      // Invalidate dashboard metrics
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.DASHBOARD.METRICS],
-      });
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.DASHBOARD.ACTIVITIES],
-      });
-
-      onSuccess?.();
-    },
-    onError: (error: Error) => {
-      toast.error(error.message || "Failed to mark payment voucher as paid");
-    },
-  });
-};
-
-/**
- * Delete payment voucher mutation
- * Only DRAFT payment vouchers can be deleted
- *
- * @param onSuccess - Callback after successful deletion
- * @returns Mutation object
- *
- * @example
- * const deleteMutation = useDeletePaymentVoucher()
- * await deleteMutation.mutateAsync(pvId)
- */
 export const useDeletePaymentVoucher = (onSuccess?: () => void) => {
   const queryClient = useQueryClient();
 
@@ -335,8 +136,6 @@ export const useDeletePaymentVoucher = (onSuccess?: () => void) => {
       queryClient.invalidateQueries({
         queryKey: [QUERY_KEYS.APPROVALS_PENDING],
       });
-
-      // Invalidate dashboard metrics
       queryClient.invalidateQueries({
         queryKey: [QUERY_KEYS.DASHBOARD.METRICS],
       });
@@ -351,3 +150,34 @@ export const useDeletePaymentVoucher = (onSuccess?: () => void) => {
     },
   });
 };
+
+/**
+ * Fetch the document chain for a payment voucher
+ * Integrates with GET /api/document-chain/:documentId endpoint
+ * with documentType=payment_voucher query parameter
+ *
+ * Returns the complete procurement flow chain:
+ * - Goods-first flow: Requisition → PO → GRN → PV
+ * - Payment-first flow: Requisition → PO → PV
+ *
+ * @param pvId - Payment Voucher ID to fetch chain for
+ * @param initialData - Optional initial data from server component
+ * @returns Query result with document chain data
+ *
+ * @example
+ * const { data: chain } = usePaymentVoucherChain(pvId)
+ *
+ * **Validates: Requirements 8.1, 8.7, 17.3, 17.4**
+ */
+export const usePaymentVoucherChain = (pvId: string, initialData?: any) =>
+  useQuery({
+    queryKey: [QUERY_KEYS.PAYMENT_VOUCHERS.BY_ID, pvId, "chain"],
+    queryFn: async () => {
+      const response = await getPaymentVoucherChain(pvId);
+      if (!response.success) throw new Error(response.message);
+      return response.data;
+    },
+    initialData,
+    enabled: !!pvId,
+    staleTime: 30 * 1000, // 30 seconds
+  });

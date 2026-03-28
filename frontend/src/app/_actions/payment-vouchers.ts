@@ -45,7 +45,8 @@ export async function createPaymentVoucherFromPurchaseOrder(
         title: `Payment for ${po.documentNumber}`,
         description: po.description,
         vendorId: vendorIdOverride ?? po.vendorId,
-        vendorName: vendorIdOverride !== undefined ? vendorNameOverride : po.vendorName,
+        vendorName:
+          vendorIdOverride !== undefined ? vendorNameOverride : po.vendorName,
         department: po.department,
         departmentId: po.departmentId,
         requestedBy: po.requestedBy,
@@ -327,6 +328,34 @@ export async function getPaymentVoucherStats(): Promise<
     return successResponse(
       response.data?.data,
       "Payment voucher statistics retrieved successfully",
+    );
+  } catch (error: any) {
+    return handleError(error, "GET", url);
+  }
+}
+
+/**
+ * Get document chain for a payment voucher
+ * Calls: GET /api/document-chain/:documentId?documentType=payment_voucher
+ *
+ * Returns the complete procurement flow chain:
+ * - Goods-first flow: Requisition → PO → GRN → PV
+ * - Payment-first flow: Requisition → PO → PV
+ */
+export async function getPaymentVoucherChain(
+  pvId: string,
+): Promise<APIResponse<any>> {
+  const url = `/api/document-chain/${pvId}?documentType=payment_voucher`;
+
+  try {
+    const response = await authenticatedApiClient({
+      method: "GET",
+      url,
+    });
+
+    return successResponse(
+      response.data?.data,
+      "Payment voucher chain retrieved successfully",
     );
   } catch (error: any) {
     return handleError(error, "GET", url);
