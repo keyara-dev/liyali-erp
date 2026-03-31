@@ -9,6 +9,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 	"github.com/liyali/liyali-gateway/config"
+	db "github.com/liyali/liyali-gateway/database/sqlc"
 	"github.com/liyali/liyali-gateway/logging"
 	"github.com/liyali/liyali-gateway/middleware"
 	"github.com/liyali/liyali-gateway/models"
@@ -22,8 +23,6 @@ import (
 func GetRequisitions(c *fiber.Ctx) error {
 	logger := logging.FromContext(c)
 	logger.Info("get_requisitions_request")
-
-	db := config.DB
 
 	// Extract and normalize pagination parameters
 	page, pageSize := utils.NormalizePaginationParams(
@@ -57,59 +56,91 @@ func GetRequisitions(c *fiber.Ctx) error {
 		"organizationID": organizationID,
 	})
 
-	// Determine document visibility scope for this user
-	scope := utils.GetDocumentScope(db, tenant.UserID, tenant.UserRole, organizationID)
+	scope := utils.GetDocumentScope(config.DB, tenant.UserID, tenant.UserRole, organizationID)
 
-	// Build query with organization filter
-	query := db.Where("organization_id = ?", organizationID)
-
-	// Apply document scope
-	if scope.IsProcurement {
-		// Procurement users only see requisitions assigned to a procurement workflow
-		query = query.Where(
-			`id IN (
-				SELECT wa.entity_id FROM workflow_assignments wa
-				JOIN workflows w ON w.id = wa.workflow_id
-				WHERE wa.entity_type = 'requisition' AND wa.organization_id = ?
-				AND (
-					w.conditions->>'routingType' IS NULL OR
-					w.conditions->>'routingType' = '' OR
-					w.conditions->>'routingType' = 'procurement'
-				)
-			)`,
-			organizationID,
-		)
-	} else {
-		query = scope.ApplyToQuery(query, "requester_id", "requisition", "")
-	}
-	if status != "" {
-		query = query.Where("UPPER(status) = UPPER(?)", status)
-	}
-	if department != "" {
-		query = query.Where("department = ?", department)
-	}
-	if priority != "" {
-		query = query.Where("priority = ?", priority)
+	ctx := c.Context()
+	offset := int32((page - 1) * pageSize)
+	orgRoleIDs := scope.OrgRoleIDs
+	if orgRoleIDs == nil {
+		orgRoleIDs = []string{}
 	}
 
-	// Get total count
 	var total int64
-	if err := query.Model(&models.Requisition{}).Count(&total).Error; err != nil {
-		return utils.SendInternalError(c, "Failed to count requisitions", err)
+	var ids []string
+
+	switch {
+	case scope.CanViewAll:
+		total, err = config.Queries.CountRequisitionsAll(ctx, organizationID, status, department, priority)
+		if err != nil {
+			return utils.SendInternalError(c, "Failed to count requisitions", err)
+		}
+		ids, err = config.Queries.ListRequisitionIDsAll(ctx, db.ListRequisitionIDsAllParams{
+			OrganizationID: organizationID,
+			Column2:        status,
+			Column3:        department,
+			Column4:        priority,
+			Limit:          int32(pageSize),
+			Offset:         offset,
+		})
+		if err != nil {
+			return utils.SendInternalError(c, "Failed to fetch requisitions", err)
+		}
+	case scope.IsProcurement:
+		total, err = config.Queries.CountRequisitionsProcurement(ctx, organizationID, status, department, priority)
+		if err != nil {
+			return utils.SendInternalError(c, "Failed to count requisitions", err)
+		}
+		ids, err = config.Queries.ListRequisitionIDsProcurement(ctx, db.ListRequisitionIDsProcurementParams{
+			OrganizationID: organizationID,
+			Column2:        status,
+			Column3:        department,
+			Column4:        priority,
+			Limit:          int32(pageSize),
+			Offset:         offset,
+		})
+		if err != nil {
+			return utils.SendInternalError(c, "Failed to fetch requisitions", err)
+		}
+	default:
+		total, err = config.Queries.CountRequisitionsLimited(ctx, db.CountRequisitionsLimitedParams{
+			OrganizationID: organizationID,
+			Column2:        status,
+			Column3:        department,
+			Column4:        priority,
+			RequesterID:    scope.UserID,
+			Lower:          scope.UserRole,
+			Column7:        orgRoleIDs,
+		})
+		if err != nil {
+			return utils.SendInternalError(c, "Failed to count requisitions", err)
+		}
+		ids, err = config.Queries.ListRequisitionIDsLimited(ctx, db.ListRequisitionIDsLimitedParams{
+			OrganizationID: organizationID,
+			Column2:        status,
+			Column3:        department,
+			Column4:        priority,
+			RequesterID:    scope.UserID,
+			Lower:          scope.UserRole,
+			Column7:        orgRoleIDs,
+			Limit:          int32(pageSize),
+			Offset:         offset,
+		})
+		if err != nil {
+			return utils.SendInternalError(c, "Failed to fetch requisitions", err)
+		}
 	}
 
-	// Fetch paginated results
 	var requisitions []models.Requisition
-	offset := (page - 1) * pageSize
-	if err := query.
-		Offset(offset).
-		Limit(pageSize).
-		Preload("Requester").
-		Preload("Category").
-		Preload("PreferredVendor").
-		Order("created_at DESC").
-		Find(&requisitions).Error; err != nil {
-		return utils.SendInternalError(c, "Failed to fetch requisitions", err)
+	if len(ids) > 0 {
+		if err := config.DB.
+			Where("id IN ?", ids).
+			Preload("Requester").
+			Preload("Category").
+			Preload("PreferredVendor").
+			Order("created_at DESC").
+			Find(&requisitions).Error; err != nil {
+			return utils.SendInternalError(c, "Failed to fetch requisitions", err)
+		}
 	}
 
 	// Convert to response format
@@ -124,42 +155,29 @@ func GetRequisitions(c *fiber.Ctx) error {
 		for i, r := range responses {
 			reqIDs[i] = r.ID
 		}
-
-		type poRow struct {
-			SourceRequisitionId string
-			ID                  string
-			DocumentNumber      string
-			Status              string
-		}
-		var poRows []poRow
-		config.DB.Raw(`
-			SELECT DISTINCT ON (source_requisition_id)
-				source_requisition_id, id, document_number, status
-			FROM purchase_orders
-			WHERE source_requisition_id = ANY(?)
-			  AND organization_id = ?
-			  AND UPPER(status) != 'CANCELLED'
-			ORDER BY source_requisition_id, created_at DESC
-		`, reqIDs, organizationID).Scan(&poRows)
-
-		poMap := make(map[string]poRow)
+		poRows, _ := config.Queries.GetLinkedPOsForRequisitions(ctx, reqIDs, organizationID)
+		poMap := make(map[string]db.GetLinkedPOsForRequisitionsRow, len(poRows))
 		for _, r := range poRows {
-			poMap[r.SourceRequisitionId] = r
+			if r.SourceRequisitionID != nil {
+				poMap[*r.SourceRequisitionID] = r
+			}
 		}
 		for i, r := range responses {
 			if row, ok := poMap[r.ID]; ok {
+				poStatus := ""
+				if row.Status != nil {
+					poStatus = *row.Status
+				}
 				responses[i].LinkedPO = &types.LinkedPOSummary{
 					ID:             row.ID,
 					DocumentNumber: row.DocumentNumber,
-					Status:         row.Status,
+					Status:         poStatus,
 				}
 			}
 		}
 	}
 
-	// Calculate pagination
 	pagination := utils.CalculatePagination(page, pageSize, total)
-
 	return utils.SendSuccess(c, fiber.StatusOK, responses, "Requisitions retrieved successfully", pagination)
 }
 

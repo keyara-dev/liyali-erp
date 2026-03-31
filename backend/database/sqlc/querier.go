@@ -21,20 +21,54 @@ type Querier interface {
 	CountActiveSessions(ctx context.Context) (int64, error)
 	CountActiveUsers(ctx context.Context) (int64, error)
 	CountActiveWorkflows(ctx context.Context, organizationID string) (int64, error)
-	CountCustomRoles(ctx context.Context, organizationID string) (int64, error)
-	CountOrganizationRoles(ctx context.Context, organizationID string) (int64, error)
+	CountAuditEvents(ctx context.Context, organizationID string, documentType string, documentID string) (int64, error)
+	// Audit log queries
+	// Uses empty-string = skip-filter pattern to avoid nullable params.
+	// All queries return the full row (no preloads needed for audit logs).
+	CountAuditLogs(ctx context.Context, organizationID string, column2 string, column3 string, column4 string) (int64, error)
+	CountCustomRoles(ctx context.Context, organizationID *string) (int64, error)
+	CountDocumentAuditLogs(ctx context.Context, organizationID string, documentID string) (int64, error)
+	// Goods received note read queries.
+	// Both CanViewAll and IsProcurement use the unfiltered path (ApplyToQuery passes through).
+	// Limited adds owner (created_by OR received_by) + workflow_tasks involvement.
+	CountGRNsAll(ctx context.Context, organizationID string, column2 string, column3 string) (int64, error)
+	CountGRNsLimited(ctx context.Context, arg CountGRNsLimitedParams) (int64, error)
+	CountOrganizationRoles(ctx context.Context, organizationID *string) (int64, error)
+	// Payment voucher read queries.
+	// Three scope variants:
+	//   All         → scope.CanViewAll
+	//   Procurement → scope.IsProcurement (linked_po != '' filter)
+	//   Limited     → default (owner + workflow_tasks involvement filter)
+	CountPaymentVouchersAll(ctx context.Context, organizationID string, column2 string, column3 string) (int64, error)
+	CountPaymentVouchersLimited(ctx context.Context, arg CountPaymentVouchersLimitedParams) (int64, error)
+	CountPaymentVouchersProcurement(ctx context.Context, organizationID string, column2 string, column3 string) (int64, error)
+	// Purchase order read queries.
+	// Both CanViewAll and IsProcurement return all POs (ApplyToQuery passes through for both).
+	// Only two scope variants needed: All and Limited.
+	CountPurchaseOrdersAll(ctx context.Context, organizationID string, column2 string, column3 string) (int64, error)
+	CountPurchaseOrdersLimited(ctx context.Context, arg CountPurchaseOrdersLimitedParams) (int64, error)
+	// Requisition read queries.
+	// List queries return only `id`; the handler fetches full data via GORM with Preload
+	// to avoid complex pgtype↔model conversions. This keeps mappers unchanged.
+	// Three scope variants per list/count pair:
+	//   All         → scope.CanViewAll
+	//   Procurement → scope.IsProcurement (workflow_assignments subquery filter)
+	//   Limited     → default (owner + workflow_tasks involvement filter)
+	CountRequisitionsAll(ctx context.Context, organizationID string, column2 string, column3 string, column4 string) (int64, error)
+	CountRequisitionsLimited(ctx context.Context, arg CountRequisitionsLimitedParams) (int64, error)
+	CountRequisitionsProcurement(ctx context.Context, organizationID string, column2 string, column3 string, column4 string) (int64, error)
 	CountUserActiveSessions(ctx context.Context, userID string) (int64, error)
 	CountUsers(ctx context.Context) (int64, error)
 	CountWorkflows(ctx context.Context, organizationID string) (int64, error)
 	CountWorkflowsByDocumentType(ctx context.Context, organizationID string, documentType string) (int64, error)
-	CreateAccountLockout(ctx context.Context, userID string, email string, ipAddress *string, reason string, unlocksAt pgtype.Timestamp) (AccountLockout, error)
-	CreateFeatureFlag(ctx context.Context, name string, description *string, planRequirements []byte, isTrialAllowed *bool, isEnterpriseOnly *bool) (FeatureFlag, error)
+	CreateAccountLockout(ctx context.Context, userID string, email string, ipAddress *string, reason string, unlocksAt pgtype.Timestamptz) (AccountLockout, error)
+	CreateFeatureFlag(ctx context.Context, name string, description *string, planRequirements []byte, isTrialAllowed bool, isEnterpriseOnly bool) (SubscriptionFeatureRequirement, error)
 	CreateLoginAttempt(ctx context.Context, arg CreateLoginAttemptParams) (LoginAttempt, error)
-	// Enhanced RBAC with custom organization roles
+	// Enhanced RBAC with global system roles + org custom roles
 	CreateOrganizationRole(ctx context.Context, arg CreateOrganizationRoleParams) (OrganizationRole, error)
 	CreateOrganizationSubscription(ctx context.Context, arg CreateOrganizationSubscriptionParams) (OrganizationSubscription, error)
-	CreatePasswordReset(ctx context.Context, userID string, token string, expiresAt pgtype.Timestamp) (PasswordReset, error)
-	CreateSession(ctx context.Context, userID string, refreshToken string, ipAddress *string, userAgent *string, expiresAt pgtype.Timestamp) (Session, error)
+	CreatePasswordReset(ctx context.Context, userID string, token string, expiresAt pgtype.Timestamptz) (PasswordReset, error)
+	CreateSession(ctx context.Context, userID string, refreshToken string, ipAddress *string, userAgent *string, expiresAt pgtype.Timestamptz) (Session, error)
 	// ============================================================================
 	// AUDIT LOG QUERIES
 	// ============================================================================
@@ -47,7 +81,7 @@ type Querier interface {
 	DeactivateWorkflow(ctx context.Context, iD pgtype.UUID, organizationID string) (Workflow, error)
 	DeleteExpiredPasswordResets(ctx context.Context) error
 	DeleteExpiredSessions(ctx context.Context) error
-	DeleteOldLoginAttempts(ctx context.Context, attemptedAt pgtype.Timestamp) error
+	DeleteOldLoginAttempts(ctx context.Context, attemptedAt pgtype.Timestamptz) error
 	DeletePasswordResetsByUserID(ctx context.Context, userID string) error
 	DeleteSession(ctx context.Context, id pgtype.UUID) error
 	DeleteSessionByRefreshToken(ctx context.Context, refreshToken string) error
@@ -73,7 +107,12 @@ type Querier interface {
 	GetAllSubscriptionPlans(ctx context.Context) ([]SubscriptionPlan, error)
 	GetDefaultWorkflowByDocumentType(ctx context.Context, organizationID string, documentType string) (Workflow, error)
 	GetFeatureFlagByName(ctx context.Context, name string) (FeatureFlag, error)
-	GetFeatureFlagsForPlan(ctx context.Context, planRequirements []byte, column2 interface{}) ([]FeatureFlag, error)
+	GetFeatureFlagsForPlan(ctx context.Context, planRequirements []byte, column2 interface{}) ([]SubscriptionFeatureRequirement, error)
+	// Batch enrichment queries for document cross-linking.
+	// These replace the existing config.DB.Raw(DISTINCT ON...) calls in the list handlers.
+	// pgx/v5 encodes []string natively for the ANY($n::text[]) array parameter.
+	GetLinkedPOsForRequisitions(ctx context.Context, column1 []string, organizationID string) ([]GetLinkedPOsForRequisitionsRow, error)
+	GetLinkedPVsForPurchaseOrders(ctx context.Context, column1 []string, organizationID string) ([]GetLinkedPVsForPurchaseOrdersRow, error)
 	GetLoginAttemptsByEmail(ctx context.Context, email string, limit int32, offset int32) ([]LoginAttempt, error)
 	GetLoginAttemptsByUser(ctx context.Context, userID *string, limit int32, offset int32) ([]LoginAttempt, error)
 	GetOrganizationAuditLogs(ctx context.Context, organizationID string, limit int32, offset int32) ([]GetOrganizationAuditLogsRow, error)
@@ -82,7 +121,7 @@ type Querier interface {
 	// ============================================================================
 	GetOrganizationPlanLimits(ctx context.Context, id string) (GetOrganizationPlanLimitsRow, error)
 	GetOrganizationRoleByID(ctx context.Context, id pgtype.UUID) (OrganizationRole, error)
-	GetOrganizationRoleByName(ctx context.Context, organizationID string, name string) (OrganizationRole, error)
+	GetOrganizationRoleByName(ctx context.Context, organizationID *string, name string) (OrganizationRole, error)
 	GetOrganizationSubscription(ctx context.Context, organizationID string) (OrganizationSubscription, error)
 	// ============================================================================
 	// ORGANIZATION SUBSCRIPTION QUERIES
@@ -95,8 +134,8 @@ type Querier interface {
 	GetPasswordResetByToken(ctx context.Context, token string) (PasswordReset, error)
 	GetPlanDistribution(ctx context.Context) ([]GetPlanDistributionRow, error)
 	GetRecentAuditLogs(ctx context.Context, limit int32, offset int32) ([]GetRecentAuditLogsRow, error)
-	GetRecentFailedAttempts(ctx context.Context, email string, attemptedAt pgtype.Timestamp) (int64, error)
-	GetRecentFailedAttemptsByIP(ctx context.Context, ipAddress *string, attemptedAt pgtype.Timestamp) (int64, error)
+	GetRecentFailedAttempts(ctx context.Context, email string, attemptedAt pgtype.Timestamptz) (int64, error)
+	GetRecentFailedAttemptsByIP(ctx context.Context, ipAddress *string, attemptedAt pgtype.Timestamptz) (int64, error)
 	GetSessionByRefreshToken(ctx context.Context, refreshToken string) (Session, error)
 	GetSessionsByUserID(ctx context.Context, userID string) ([]Session, error)
 	GetSubscriptionAnalytics(ctx context.Context) (GetSubscriptionAnalyticsRow, error)
@@ -111,9 +150,22 @@ type Querier interface {
 	GetWorkflowByID(ctx context.Context, iD pgtype.UUID, organizationID string) (Workflow, error)
 	ListActiveWorkflows(ctx context.Context, organizationID string, limit int32, offset int32) ([]Workflow, error)
 	ListActiveWorkflowsByDocumentType(ctx context.Context, organizationID string, documentType string, limit int32, offset int32) ([]Workflow, error)
-	ListCustomRoles(ctx context.Context, organizationID string, limit int32, offset int32) ([]OrganizationRole, error)
-	ListOrganizationRoles(ctx context.Context, organizationID string, limit int32, offset int32) ([]OrganizationRole, error)
-	ListSystemRoles(ctx context.Context, organizationID string) ([]OrganizationRole, error)
+	ListAuditEvents(ctx context.Context, organizationID string, documentType string, documentID string, limit int32, offset int32) ([]ListAuditEventsRow, error)
+	ListAuditLogs(ctx context.Context, arg ListAuditLogsParams) ([]ListAuditLogsRow, error)
+	ListCustomRoles(ctx context.Context, organizationID *string, limit int32, offset int32) ([]OrganizationRole, error)
+	ListDocumentAuditLogs(ctx context.Context, organizationID string, documentID string, limit int32, offset int32) ([]ListDocumentAuditLogsRow, error)
+	ListGRNIDsAll(ctx context.Context, organizationID string, column2 string, column3 string, limit int32, offset int32) ([]string, error)
+	ListGRNIDsLimited(ctx context.Context, arg ListGRNIDsLimitedParams) ([]string, error)
+	ListOrganizationRoles(ctx context.Context, organizationID *string, limit int32, offset int32) ([]OrganizationRole, error)
+	ListPaymentVoucherIDsAll(ctx context.Context, organizationID string, column2 string, column3 string, limit int32, offset int32) ([]string, error)
+	ListPaymentVoucherIDsLimited(ctx context.Context, arg ListPaymentVoucherIDsLimitedParams) ([]string, error)
+	ListPaymentVoucherIDsProcurement(ctx context.Context, organizationID string, column2 string, column3 string, limit int32, offset int32) ([]string, error)
+	ListPurchaseOrderIDsAll(ctx context.Context, organizationID string, column2 string, column3 string, limit int32, offset int32) ([]string, error)
+	ListPurchaseOrderIDsLimited(ctx context.Context, arg ListPurchaseOrderIDsLimitedParams) ([]string, error)
+	ListRequisitionIDsAll(ctx context.Context, arg ListRequisitionIDsAllParams) ([]string, error)
+	ListRequisitionIDsLimited(ctx context.Context, arg ListRequisitionIDsLimitedParams) ([]string, error)
+	ListRequisitionIDsProcurement(ctx context.Context, arg ListRequisitionIDsProcurementParams) ([]string, error)
+	ListSystemRoles(ctx context.Context) ([]OrganizationRole, error)
 	ListUsers(ctx context.Context, limit int32, offset int32) ([]User, error)
 	ListUsersByOrganization(ctx context.Context, organizationID string, limit int32, offset int32) ([]User, error)
 	ListUsersWithRole(ctx context.Context, organizationID string, roleID pgtype.UUID, limit int32, offset int32) ([]ListUsersWithRoleRow, error)
@@ -126,12 +178,12 @@ type Querier interface {
 	StartOrganizationTrial(ctx context.Context, dollar_1 string) error
 	UnlockAccount(ctx context.Context, userID string) error
 	UnlockAccountByEmail(ctx context.Context, email string) error
-	UpdateFeatureFlag(ctx context.Context, arg UpdateFeatureFlagParams) (FeatureFlag, error)
-	UpdateOrganizationPlan(ctx context.Context, iD string, currentPlanID pgtype.UUID, subscriptionStatus *string, maxUsersAllowed *int32) error
+	UpdateFeatureFlag(ctx context.Context, name string, description *string, planRequirements []byte, isTrialAllowed bool, isEnterpriseOnly bool) (SubscriptionFeatureRequirement, error)
+	UpdateOrganizationPlan(ctx context.Context, iD string, currentPlanID pgtype.UUID, subscriptionStatus string, maxUsersAllowed *int32) error
 	UpdateOrganizationRole(ctx context.Context, iD pgtype.UUID, name string, description *string, permissions []byte) (OrganizationRole, error)
 	UpdateOrganizationSubscription(ctx context.Context, arg UpdateOrganizationSubscriptionParams) (OrganizationSubscription, error)
-	UpdateOrganizationSubscriptionStatus(ctx context.Context, iD string, subscriptionStatus *string) error
-	UpdateSessionRefreshToken(ctx context.Context, iD pgtype.UUID, refreshToken string, expiresAt pgtype.Timestamp, refreshToken_2 string) (int64, error)
+	UpdateOrganizationSubscriptionStatus(ctx context.Context, iD string, subscriptionStatus string) error
+	UpdateSessionRefreshToken(ctx context.Context, iD pgtype.UUID, refreshToken string, expiresAt pgtype.Timestamptz, refreshToken_2 string) (int64, error)
 	UpdateSubscriptionPlan(ctx context.Context, arg UpdateSubscriptionPlanParams) (SubscriptionPlan, error)
 	UpdateSubscriptionStatus(ctx context.Context, organizationID string, status string) error
 	UpdateUser(ctx context.Context, arg UpdateUserParams) (User, error)

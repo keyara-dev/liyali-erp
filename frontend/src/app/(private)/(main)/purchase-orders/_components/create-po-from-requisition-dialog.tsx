@@ -14,7 +14,13 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Label } from "@/components/ui/label";
 import { SelectField } from "@/components/ui/select-field";
 import { Requisition } from "@/types/requisition";
-import { FileText, CheckCircle2, AlertCircle, ArrowDownUp, AlertTriangle } from "lucide-react";
+import {
+  FileText,
+  CheckCircle2,
+  AlertCircle,
+  ArrowDownUp,
+  AlertTriangle,
+} from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { WorkflowSelector } from "@/components/workflows/workflow-selector";
 import { useConfigurationStatus } from "@/hooks/use-configuration-status";
@@ -252,7 +258,7 @@ export function CreatePOFromRequisitionDialog({
                 />
                 <Label htmlFor="po-flow-default" className="cursor-pointer">
                   <span className="font-medium text-sm">
-                    Use organisation default
+                    Use organization default
                   </span>
                   <p className="text-xs text-muted-foreground font-normal">
                     Follow the workspace-level procurement flow setting
@@ -350,7 +356,8 @@ export function CreatePOFromRequisitionDialog({
               <AlertDescription>
                 A new purchase order will be created with the selected workflow.
                 The PO will be in draft status and can be edited before
-                submission.
+                submission. Suppliers can be attached now or later from the
+                purchase order record.
               </AlertDescription>
             </Alert>
           )}

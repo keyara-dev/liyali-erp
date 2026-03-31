@@ -8,6 +8,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 	"github.com/liyali/liyali-gateway/config"
+	db "github.com/liyali/liyali-gateway/database/sqlc"
 	"github.com/liyali/liyali-gateway/logging"
 	"github.com/liyali/liyali-gateway/middleware"
 	"github.com/liyali/liyali-gateway/models"
@@ -32,8 +33,6 @@ func GetPaymentVouchers(c *fiber.Ctx) error {
 		})
 	}
 
-	db := config.DB
-
 	page := c.QueryInt("page", 1)
 	limit := c.QueryInt("limit", 10)
 	if page < 1 {
@@ -56,52 +55,104 @@ func GetPaymentVouchers(c *fiber.Ctx) error {
 		"organization_id": tenant.OrganizationID,
 	})
 
-	// Determine document visibility scope for this user
-	scope := utils.GetDocumentScope(db, tenant.UserID, tenant.UserRole, tenant.OrganizationID)
+	scope := utils.GetDocumentScope(config.DB, tenant.UserID, tenant.UserRole, tenant.OrganizationID)
 
-	// Start with organization filter - CRITICAL SECURITY FIX
-	query := db.Where("organization_id = ?", tenant.OrganizationID)
-
-	// Apply document scope
-	if scope.IsProcurement {
-		// Procurement users only see PVs generated from a PO (procurement chain)
-		query = query.Where("linked_po != ''")
-	} else {
-		query = scope.ApplyToQuery(query, "created_by", "payment_voucher", "")
-	}
-
-	if status != "" {
-		query = query.Where("UPPER(status) = UPPER(?)", status)
-	}
-	if vendorID != "" {
-		query = query.Where("vendor_id = ?", vendorID)
+	ctx := c.Context()
+	offset := int32((page - 1) * limit)
+	orgRoleIDs := scope.OrgRoleIDs
+	if orgRoleIDs == nil {
+		orgRoleIDs = []string{}
 	}
 
 	var total int64
-	if err := query.Model(&models.PaymentVoucher{}).Count(&total).Error; err != nil {
-		logging.LogError(c, err, "failed_to_count_payment_vouchers", map[string]interface{}{
-			"error_type": "database_error",
+	var ids []string
+
+	switch {
+	case scope.CanViewAll:
+		total, err = config.Queries.CountPaymentVouchersAll(ctx, tenant.OrganizationID, status, vendorID)
+		if err != nil {
+			logging.LogError(c, err, "failed_to_count_payment_vouchers", map[string]interface{}{"error_type": "database_error"})
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"success": false,
+				"message": "Failed to count payment vouchers",
+				"error":   err.Error(),
+			})
+		}
+		ids, err = config.Queries.ListPaymentVoucherIDsAll(ctx, tenant.OrganizationID, status, vendorID, int32(limit), offset)
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"success": false,
+				"message": "Failed to fetch payment vouchers",
+				"error":   err.Error(),
+			})
+		}
+	case scope.IsProcurement:
+		total, err = config.Queries.CountPaymentVouchersProcurement(ctx, tenant.OrganizationID, status, vendorID)
+		if err != nil {
+			logging.LogError(c, err, "failed_to_count_payment_vouchers", map[string]interface{}{"error_type": "database_error"})
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"success": false,
+				"message": "Failed to count payment vouchers",
+				"error":   err.Error(),
+			})
+		}
+		ids, err = config.Queries.ListPaymentVoucherIDsProcurement(ctx, tenant.OrganizationID, status, vendorID, int32(limit), offset)
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"success": false,
+				"message": "Failed to fetch payment vouchers",
+				"error":   err.Error(),
+			})
+		}
+	default:
+		total, err = config.Queries.CountPaymentVouchersLimited(ctx, db.CountPaymentVouchersLimitedParams{
+			OrganizationID: tenant.OrganizationID,
+			Column2:        status,
+			Column3:        vendorID,
+			CreatedBy:      &scope.UserID,
+			Lower:          scope.UserRole,
+			Column6:        orgRoleIDs,
 		})
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"success": false,
-			"message": "Failed to count payment vouchers",
-			"error":   err.Error(),
+		if err != nil {
+			logging.LogError(c, err, "failed_to_count_payment_vouchers", map[string]interface{}{"error_type": "database_error"})
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"success": false,
+				"message": "Failed to count payment vouchers",
+				"error":   err.Error(),
+			})
+		}
+		ids, err = config.Queries.ListPaymentVoucherIDsLimited(ctx, db.ListPaymentVoucherIDsLimitedParams{
+			OrganizationID: tenant.OrganizationID,
+			Column2:        status,
+			Column3:        vendorID,
+			CreatedBy:      &scope.UserID,
+			Lower:          scope.UserRole,
+			Column6:        orgRoleIDs,
+			Limit:          int32(limit),
+			Offset:         offset,
 		})
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"success": false,
+				"message": "Failed to fetch payment vouchers",
+				"error":   err.Error(),
+			})
+		}
 	}
 
 	var vouchers []models.PaymentVoucher
-	offset := (page - 1) * limit
-	if err := query.
-		Offset(offset).
-		Limit(limit).
-		Preload("Vendor").
-		Order("created_at DESC").
-		Find(&vouchers).Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"success": false,
-			"message": "Failed to fetch payment vouchers",
-			"error":   err.Error(),
-		})
+	if len(ids) > 0 {
+		if err := config.DB.
+			Where("id IN ?", ids).
+			Preload("Vendor").
+			Order("created_at DESC").
+			Find(&vouchers).Error; err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"success": false,
+				"message": "Failed to fetch payment vouchers",
+				"error":   err.Error(),
+			})
+		}
 	}
 
 	responses := make([]types.PaymentVoucherResponse, 0, len(vouchers))

@@ -41,11 +41,11 @@ func (q *Queries) AssignUserRole(ctx context.Context, userID string, organizatio
 }
 
 const countCustomRoles = `-- name: CountCustomRoles :one
-SELECT COUNT(*) FROM organization_roles 
+SELECT COUNT(*) FROM organization_roles
 WHERE organization_id = $1 AND is_system_role = false AND active = true
 `
 
-func (q *Queries) CountCustomRoles(ctx context.Context, organizationID string) (int64, error) {
+func (q *Queries) CountCustomRoles(ctx context.Context, organizationID *string) (int64, error) {
 	row := q.db.QueryRow(ctx, countCustomRoles, organizationID)
 	var count int64
 	err := row.Scan(&count)
@@ -53,11 +53,11 @@ func (q *Queries) CountCustomRoles(ctx context.Context, organizationID string) (
 }
 
 const countOrganizationRoles = `-- name: CountOrganizationRoles :one
-SELECT COUNT(*) FROM organization_roles 
-WHERE organization_id = $1 AND active = true
+SELECT COUNT(*) FROM organization_roles
+WHERE ((organization_id = $1 AND active = true) OR (organization_id IS NULL AND is_system_role = true AND active = true))
 `
 
-func (q *Queries) CountOrganizationRoles(ctx context.Context, organizationID string) (int64, error) {
+func (q *Queries) CountOrganizationRoles(ctx context.Context, organizationID *string) (int64, error) {
 	row := q.db.QueryRow(ctx, countOrganizationRoles, organizationID)
 	var count int64
 	err := row.Scan(&count)
@@ -74,7 +74,7 @@ INSERT INTO organization_roles (
 `
 
 type CreateOrganizationRoleParams struct {
-	OrganizationID string  `json:"organization_id"`
+	OrganizationID *string `json:"organization_id"`
 	Name           string  `json:"name"`
 	Description    *string `json:"description"`
 	IsSystemRole   *bool   `json:"is_system_role"`
@@ -82,7 +82,7 @@ type CreateOrganizationRoleParams struct {
 	CreatedBy      *string `json:"created_by"`
 }
 
-// Enhanced RBAC with custom organization roles
+// Enhanced RBAC with global system roles + org custom roles
 func (q *Queries) CreateOrganizationRole(ctx context.Context, arg CreateOrganizationRoleParams) (OrganizationRole, error) {
 	row := q.db.QueryRow(ctx, createOrganizationRole,
 		arg.OrganizationID,
@@ -109,7 +109,7 @@ func (q *Queries) CreateOrganizationRole(ctx context.Context, arg CreateOrganiza
 }
 
 const deactivateOrganizationRole = `-- name: DeactivateOrganizationRole :exec
-UPDATE organization_roles SET 
+UPDATE organization_roles SET
     active = false,
     updated_at = NOW()
 WHERE id = $1 AND is_system_role = false
@@ -143,11 +143,13 @@ func (q *Queries) GetOrganizationRoleByID(ctx context.Context, id pgtype.UUID) (
 }
 
 const getOrganizationRoleByName = `-- name: GetOrganizationRoleByName :one
-SELECT id, organization_id, name, description, is_system_role, permissions, active, created_by, created_at, updated_at FROM organization_roles 
-WHERE organization_id = $1 AND name = $2 AND active = true
+SELECT id, organization_id, name, description, is_system_role, permissions, active, created_by, created_at, updated_at FROM organization_roles
+WHERE ((organization_id = $1 AND name = $2) OR (organization_id IS NULL AND is_system_role = true AND name = $2))
+AND active = true
+LIMIT 1
 `
 
-func (q *Queries) GetOrganizationRoleByName(ctx context.Context, organizationID string, name string) (OrganizationRole, error) {
+func (q *Queries) GetOrganizationRoleByName(ctx context.Context, organizationID *string, name string) (OrganizationRole, error) {
 	row := q.db.QueryRow(ctx, getOrganizationRoleByName, organizationID, name)
 	var i OrganizationRole
 	err := row.Scan(
@@ -173,15 +175,15 @@ WHERE uor.user_id = $1 AND uor.organization_id = $2 AND uor.active = true
 `
 
 type GetUserRoleAssignmentsRow struct {
-	ID              pgtype.UUID      `json:"id"`
-	UserID          string           `json:"user_id"`
-	OrganizationID  string           `json:"organization_id"`
-	RoleID          pgtype.UUID      `json:"role_id"`
-	AssignedBy      *string          `json:"assigned_by"`
-	AssignedAt      pgtype.Timestamp `json:"assigned_at"`
-	Active          *bool            `json:"active"`
-	RoleName        string           `json:"role_name"`
-	RoleDescription *string          `json:"role_description"`
+	ID              pgtype.UUID        `json:"id"`
+	UserID          string             `json:"user_id"`
+	OrganizationID  string             `json:"organization_id"`
+	RoleID          pgtype.UUID        `json:"role_id"`
+	AssignedBy      *string            `json:"assigned_by"`
+	AssignedAt      pgtype.Timestamptz `json:"assigned_at"`
+	Active          *bool              `json:"active"`
+	RoleName        string             `json:"role_name"`
+	RoleDescription *string            `json:"role_description"`
 }
 
 func (q *Queries) GetUserRoleAssignments(ctx context.Context, userID string, organizationID string) ([]GetUserRoleAssignmentsRow, error) {
@@ -252,13 +254,13 @@ func (q *Queries) GetUserRoles(ctx context.Context, userID string, organizationI
 }
 
 const listCustomRoles = `-- name: ListCustomRoles :many
-SELECT id, organization_id, name, description, is_system_role, permissions, active, created_by, created_at, updated_at FROM organization_roles 
+SELECT id, organization_id, name, description, is_system_role, permissions, active, created_by, created_at, updated_at FROM organization_roles
 WHERE organization_id = $1 AND is_system_role = false AND active = true
 ORDER BY name ASC
 LIMIT $2 OFFSET $3
 `
 
-func (q *Queries) ListCustomRoles(ctx context.Context, organizationID string, limit int32, offset int32) ([]OrganizationRole, error) {
+func (q *Queries) ListCustomRoles(ctx context.Context, organizationID *string, limit int32, offset int32) ([]OrganizationRole, error) {
 	rows, err := q.db.Query(ctx, listCustomRoles, organizationID, limit, offset)
 	if err != nil {
 		return nil, err
@@ -290,13 +292,17 @@ func (q *Queries) ListCustomRoles(ctx context.Context, organizationID string, li
 }
 
 const listOrganizationRoles = `-- name: ListOrganizationRoles :many
-SELECT id, organization_id, name, description, is_system_role, permissions, active, created_by, created_at, updated_at FROM organization_roles 
-WHERE organization_id = $1 AND active = true
+SELECT id, organization_id, name, description, is_system_role, permissions, active, created_by, created_at, updated_at FROM organization_roles
+WHERE (
+    (organization_id = $1 AND active = true)
+    OR
+    (organization_id IS NULL AND is_system_role = true AND active = true)
+)
 ORDER BY is_system_role DESC, name ASC
 LIMIT $2 OFFSET $3
 `
 
-func (q *Queries) ListOrganizationRoles(ctx context.Context, organizationID string, limit int32, offset int32) ([]OrganizationRole, error) {
+func (q *Queries) ListOrganizationRoles(ctx context.Context, organizationID *string, limit int32, offset int32) ([]OrganizationRole, error) {
 	rows, err := q.db.Query(ctx, listOrganizationRoles, organizationID, limit, offset)
 	if err != nil {
 		return nil, err
@@ -328,13 +334,13 @@ func (q *Queries) ListOrganizationRoles(ctx context.Context, organizationID stri
 }
 
 const listSystemRoles = `-- name: ListSystemRoles :many
-SELECT id, organization_id, name, description, is_system_role, permissions, active, created_by, created_at, updated_at FROM organization_roles 
-WHERE organization_id = $1 AND is_system_role = true AND active = true
+SELECT id, organization_id, name, description, is_system_role, permissions, active, created_by, created_at, updated_at FROM organization_roles
+WHERE organization_id IS NULL AND is_system_role = true AND active = true
 ORDER BY name ASC
 `
 
-func (q *Queries) ListSystemRoles(ctx context.Context, organizationID string) ([]OrganizationRole, error) {
-	rows, err := q.db.Query(ctx, listSystemRoles, organizationID)
+func (q *Queries) ListSystemRoles(ctx context.Context) ([]OrganizationRole, error) {
+	rows, err := q.db.Query(ctx, listSystemRoles)
 	if err != nil {
 		return nil, err
 	}
@@ -365,7 +371,7 @@ func (q *Queries) ListSystemRoles(ctx context.Context, organizationID string) ([
 }
 
 const listUsersWithRole = `-- name: ListUsersWithRole :many
-SELECT u.id, u.email, u.name, u.password, u.role, u.active, u.last_login, u.current_organization_id, u.is_super_admin, u.preferences, u.created_at, u.updated_at, u.deleted_at, uor.assigned_at FROM users u
+SELECT u.id, u.email, u.name, u.password, u.role, u.active, u.last_login, u.current_organization_id, u.is_super_admin, u.preferences, u.deleted_at, u.position, u.man_number, u.nrc_number, u.contact, u.mfa_enabled, u.is_ldap_user, u.must_change_password, u.created_at, u.updated_at, uor.assigned_at FROM users u
 INNER JOIN user_organization_roles uor ON u.id = uor.user_id
 WHERE uor.organization_id = $1 AND uor.role_id = $2 AND uor.active = true
 ORDER BY u.name
@@ -373,20 +379,27 @@ LIMIT $3 OFFSET $4
 `
 
 type ListUsersWithRoleRow struct {
-	ID                    string           `json:"id"`
-	Email                 string           `json:"email"`
-	Name                  string           `json:"name"`
-	Password              string           `json:"password"`
-	Role                  string           `json:"role"`
-	Active                *bool            `json:"active"`
-	LastLogin             pgtype.Timestamp `json:"last_login"`
-	CurrentOrganizationID *string          `json:"current_organization_id"`
-	IsSuperAdmin          *bool            `json:"is_super_admin"`
-	Preferences           []byte           `json:"preferences"`
-	CreatedAt             pgtype.Timestamp `json:"created_at"`
-	UpdatedAt             pgtype.Timestamp `json:"updated_at"`
-	DeletedAt             pgtype.Timestamp `json:"deleted_at"`
-	AssignedAt            pgtype.Timestamp `json:"assigned_at"`
+	ID                    string             `json:"id"`
+	Email                 string             `json:"email"`
+	Name                  string             `json:"name"`
+	Password              string             `json:"password"`
+	Role                  string             `json:"role"`
+	Active                bool               `json:"active"`
+	LastLogin             pgtype.Timestamp   `json:"last_login"`
+	CurrentOrganizationID *string            `json:"current_organization_id"`
+	IsSuperAdmin          bool               `json:"is_super_admin"`
+	Preferences           []byte             `json:"preferences"`
+	DeletedAt             pgtype.Timestamp   `json:"deleted_at"`
+	Position              *string            `json:"position"`
+	ManNumber             *string            `json:"man_number"`
+	NrcNumber             *string            `json:"nrc_number"`
+	Contact               *string            `json:"contact"`
+	MfaEnabled            bool               `json:"mfa_enabled"`
+	IsLdapUser            bool               `json:"is_ldap_user"`
+	MustChangePassword    bool               `json:"must_change_password"`
+	CreatedAt             pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt             pgtype.Timestamptz `json:"updated_at"`
+	AssignedAt            pgtype.Timestamptz `json:"assigned_at"`
 }
 
 func (q *Queries) ListUsersWithRole(ctx context.Context, organizationID string, roleID pgtype.UUID, limit int32, offset int32) ([]ListUsersWithRoleRow, error) {
@@ -414,9 +427,16 @@ func (q *Queries) ListUsersWithRole(ctx context.Context, organizationID string, 
 			&i.CurrentOrganizationID,
 			&i.IsSuperAdmin,
 			&i.Preferences,
+			&i.DeletedAt,
+			&i.Position,
+			&i.ManNumber,
+			&i.NrcNumber,
+			&i.Contact,
+			&i.MfaEnabled,
+			&i.IsLdapUser,
+			&i.MustChangePassword,
 			&i.CreatedAt,
 			&i.UpdatedAt,
-			&i.DeletedAt,
 			&i.AssignedAt,
 		); err != nil {
 			return nil, err
@@ -430,7 +450,7 @@ func (q *Queries) ListUsersWithRole(ctx context.Context, organizationID string, 
 }
 
 const removeAllUserRoles = `-- name: RemoveAllUserRoles :exec
-UPDATE user_organization_roles SET 
+UPDATE user_organization_roles SET
     active = false
 WHERE user_id = $1 AND organization_id = $2
 `
@@ -441,7 +461,7 @@ func (q *Queries) RemoveAllUserRoles(ctx context.Context, userID string, organiz
 }
 
 const removeUserRole = `-- name: RemoveUserRole :exec
-UPDATE user_organization_roles SET 
+UPDATE user_organization_roles SET
     active = false
 WHERE user_id = $1 AND organization_id = $2 AND role_id = $3
 `
@@ -452,7 +472,7 @@ func (q *Queries) RemoveUserRole(ctx context.Context, userID string, organizatio
 }
 
 const updateOrganizationRole = `-- name: UpdateOrganizationRole :one
-UPDATE organization_roles SET 
+UPDATE organization_roles SET
     name = COALESCE($2, name),
     description = COALESCE($3, description),
     permissions = COALESCE($4, permissions),

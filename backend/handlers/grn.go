@@ -8,6 +8,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 	"github.com/liyali/liyali-gateway/config"
+	db "github.com/liyali/liyali-gateway/database/sqlc"
 	"github.com/liyali/liyali-gateway/middleware"
 	"github.com/liyali/liyali-gateway/models"
 	"github.com/liyali/liyali-gateway/services"
@@ -28,8 +29,6 @@ func GetGRNs(c *fiber.Ctx) error {
 		})
 	}
 
-	db := config.DB
-
 	page := c.QueryInt("page", 1)
 	limit := c.QueryInt("limit", 10)
 	if page < 1 {
@@ -42,43 +41,82 @@ func GetGRNs(c *fiber.Ctx) error {
 	status := c.Query("status")
 	poDocumentNumber := c.Query("poDocumentNumber")
 
-	// Determine document visibility scope for this user
-	scope := utils.GetDocumentScope(db, tenant.UserID, tenant.UserRole, tenant.OrganizationID)
+	scope := utils.GetDocumentScope(config.DB, tenant.UserID, tenant.UserRole, tenant.OrganizationID)
 
-	// Start with organization filter - CRITICAL SECURITY FIX
-	query := db.Where("organization_id = ?", tenant.OrganizationID)
-
-	// Apply document scope (procurement users see all GRNs; limited users see own + involved)
-	query = scope.ApplyToQuery(query, "created_by", "grn", "received_by")
-
-	if status != "" {
-		query = query.Where("UPPER(status) = UPPER(?)", status)
-	}
-	if poDocumentNumber != "" {
-		query = query.Where("po_document_number = ?", poDocumentNumber)
+	ctx := c.Context()
+	offset := int32((page - 1) * limit)
+	orgRoleIDs := scope.OrgRoleIDs
+	if orgRoleIDs == nil {
+		orgRoleIDs = []string{}
 	}
 
 	var total int64
-	if err := query.Model(&models.GoodsReceivedNote{}).Count(&total).Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"success": false,
-			"message": "Failed to count GRNs",
-			"error":   err.Error(),
+	var ids []string
+
+	if scope.CanViewAll || scope.IsProcurement {
+		total, err = config.Queries.CountGRNsAll(ctx, tenant.OrganizationID, status, poDocumentNumber)
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"success": false,
+				"message": "Failed to count GRNs",
+				"error":   err.Error(),
+			})
+		}
+		ids, err = config.Queries.ListGRNIDsAll(ctx, tenant.OrganizationID, status, poDocumentNumber, int32(limit), offset)
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"success": false,
+				"message": "Failed to fetch GRNs",
+				"error":   err.Error(),
+			})
+		}
+	} else {
+		total, err = config.Queries.CountGRNsLimited(ctx, db.CountGRNsLimitedParams{
+			OrganizationID: tenant.OrganizationID,
+			Column2:        status,
+			Column3:        poDocumentNumber,
+			CreatedBy:      &scope.UserID,
+			Lower:          scope.UserRole,
+			Column6:        orgRoleIDs,
 		})
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"success": false,
+				"message": "Failed to count GRNs",
+				"error":   err.Error(),
+			})
+		}
+		ids, err = config.Queries.ListGRNIDsLimited(ctx, db.ListGRNIDsLimitedParams{
+			OrganizationID: tenant.OrganizationID,
+			Column2:        status,
+			Column3:        poDocumentNumber,
+			CreatedBy:      &scope.UserID,
+			Lower:          scope.UserRole,
+			Column6:        orgRoleIDs,
+			Limit:          int32(limit),
+			Offset:         offset,
+		})
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"success": false,
+				"message": "Failed to fetch GRNs",
+				"error":   err.Error(),
+			})
+		}
 	}
 
 	var grns []models.GoodsReceivedNote
-	offset := (page - 1) * limit
-	if err := query.
-		Offset(offset).
-		Limit(limit).
-		Order("created_at DESC").
-		Find(&grns).Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"success": false,
-			"message": "Failed to fetch GRNs",
-			"error":   err.Error(),
-		})
+	if len(ids) > 0 {
+		if err := config.DB.
+			Where("id IN ?", ids).
+			Order("created_at DESC").
+			Find(&grns).Error; err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"success": false,
+				"message": "Failed to fetch GRNs",
+				"error":   err.Error(),
+			})
+		}
 	}
 
 	responses := make([]types.GRNResponse, 0, len(grns))

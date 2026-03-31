@@ -16,7 +16,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-// orgMemberGuard verifies that userID is an active member of the caller's organisation.
+// orgMemberGuard verifies that userID is an active member of the caller's organization.
 // Returns a non-nil error response if the check fails; callers should return that value immediately.
 func orgMemberGuard(c *fiber.Ctx, orgID, userID string) error {
 	var count int64
@@ -29,7 +29,7 @@ func orgMemberGuard(c *fiber.Ctx, orgID, userID string) error {
 	return nil
 }
 
-// OrgGetUserById returns a single user by ID, scoped to the caller's organisation.
+// OrgGetUserById returns a single user by ID, scoped to the caller's organization.
 // GET /api/v1/organization/users/:id
 func OrgGetUserById(c *fiber.Ctx) error {
 	tenant, err := middleware.GetTenantContext(c)
@@ -103,7 +103,7 @@ func OrgGetUserById(c *fiber.Ctx) error {
 	return utils.SendSimpleSuccess(c, user, "User retrieved successfully")
 }
 
-// OrgUpdateUserStatus activates or suspends a user, scoped to the caller's organisation.
+// OrgUpdateUserStatus activates or suspends a user, scoped to the caller's organization.
 // PUT /api/v1/organization/users/:id/status
 func OrgUpdateUserStatus(c *fiber.Ctx) error {
 	tenant, err := middleware.GetTenantContext(c)
@@ -152,7 +152,7 @@ func OrgUpdateUserStatus(c *fiber.Ctx) error {
 	}, "User status updated successfully")
 }
 
-// OrgResetUserPassword resets a user's password, scoped to the caller's organisation.
+// OrgResetUserPassword resets a user's password, scoped to the caller's organization.
 // POST /api/v1/organization/users/:id/reset-password
 func OrgResetUserPassword(c *fiber.Ctx) error {
 	tenant, err := middleware.GetTenantContext(c)
@@ -203,7 +203,7 @@ func OrgResetUserPassword(c *fiber.Ctx) error {
 	return utils.SendSimpleSuccess(c, response, "Password reset successfully")
 }
 
-// OrgGetUserActivity returns paginated activity logs for a user, scoped to the caller's organisation.
+// OrgGetUserActivity returns paginated activity logs for a user, scoped to the caller's organization.
 // GET /api/v1/organization/users/:id/activity
 func OrgGetUserActivity(c *fiber.Ctx) error {
 	tenant, err := middleware.GetTenantContext(c)
@@ -407,7 +407,7 @@ func OrgExportUserActivity(c *fiber.Ctx) error {
 	return c.Send(buf.Bytes())
 }
 
-// OrgGetUserSecurityEvents returns security-relevant activity events for a user, scoped to the caller's organisation.
+// OrgGetUserSecurityEvents returns security-relevant activity events for a user, scoped to the caller's organization.
 // GET /api/v1/organization/users/:id/security-events
 func OrgGetUserSecurityEvents(c *fiber.Ctx) error {
 	tenant, err := middleware.GetTenantContext(c)
@@ -459,7 +459,7 @@ func OrgGetUserSecurityEvents(c *fiber.Ctx) error {
 	}, "Security events retrieved successfully")
 }
 
-// OrgGetUserLoginHistory returns login and failed-login events for a user, scoped to the caller's organisation.
+// OrgGetUserLoginHistory returns login and failed-login events for a user, scoped to the caller's organization.
 // GET /api/v1/organization/users/:id/login-history
 func OrgGetUserLoginHistory(c *fiber.Ctx) error {
 	tenant, err := middleware.GetTenantContext(c)
@@ -512,7 +512,7 @@ func OrgGetUserLoginHistory(c *fiber.Ctx) error {
 	}, "Login history retrieved successfully")
 }
 
-// OrgGetUserWorkStats returns work statistics for a user, scoped to the caller's organisation.
+// OrgGetUserWorkStats returns work statistics for a user, scoped to the caller's organization.
 // GET /api/v1/organization/users/:id/work-stats
 func OrgGetUserWorkStats(c *fiber.Ctx) error {
 	tenant, err := middleware.GetTenantContext(c)
@@ -588,7 +588,7 @@ func OrgGetUserWorkStats(c *fiber.Ctx) error {
 	}, "User statistics retrieved successfully")
 }
 
-// OrgGetUserSessions returns active sessions for a user, scoped to the caller's organisation.
+// OrgGetUserSessions returns active sessions for a user, scoped to the caller's organization.
 // GET /api/v1/organization/users/:id/sessions
 func OrgGetUserSessions(c *fiber.Ctx) error {
 	tenant, err := middleware.GetTenantContext(c)
@@ -624,7 +624,7 @@ func OrgGetUserSessions(c *fiber.Ctx) error {
 	return utils.SendSimpleSuccess(c, sessions, "User sessions retrieved successfully")
 }
 
-// OrgTerminateUserSession terminates a specific session for a user, scoped to the caller's organisation.
+// OrgTerminateUserSession terminates a specific session for a user, scoped to the caller's organization.
 // DELETE /api/v1/organization/users/:id/sessions/:sessionId
 func OrgTerminateUserSession(c *fiber.Ctx) error {
 	tenant, err := middleware.GetTenantContext(c)
@@ -643,7 +643,7 @@ func OrgTerminateUserSession(c *fiber.Ctx) error {
 	return utils.SendSimpleSuccess(c, nil, "Session terminated successfully")
 }
 
-// OrgTerminateAllUserSessions terminates all sessions for a user, scoped to the caller's organisation.
+// OrgTerminateAllUserSessions terminates all sessions for a user, scoped to the caller's organization.
 // DELETE /api/v1/organization/users/:id/sessions
 func OrgTerminateAllUserSessions(c *fiber.Ctx) error {
 	tenant, err := middleware.GetTenantContext(c)
@@ -661,7 +661,7 @@ func OrgTerminateAllUserSessions(c *fiber.Ctx) error {
 	return utils.SendSimpleSuccess(c, nil, "All sessions terminated successfully")
 }
 
-// OrgImpersonateUser generates a short-lived impersonation token for a user in the caller's organisation.
+// OrgImpersonateUser generates a short-lived impersonation token for a user in the caller's organization.
 // Only the org admin may call this. The token is valid for 15 minutes and all usage is audit-logged.
 // POST /api/v1/organization/users/:id/impersonate
 func OrgImpersonateUser(c *fiber.Ctx) error {

@@ -48,7 +48,7 @@ INSERT INTO users (
     id, email, name, password, role, active, current_organization_id, is_super_admin
 ) VALUES (
     $1, $2, $3, $4, $5, $6, $7, $8
-) RETURNING id, email, name, password, role, active, last_login, current_organization_id, is_super_admin, preferences, created_at, updated_at, deleted_at
+) RETURNING id, email, name, password, role, active, last_login, current_organization_id, is_super_admin, preferences, deleted_at, position, man_number, nrc_number, contact, mfa_enabled, is_ldap_user, must_change_password, created_at, updated_at
 `
 
 type CreateUserParams struct {
@@ -57,9 +57,9 @@ type CreateUserParams struct {
 	Name                  string  `json:"name"`
 	Password              string  `json:"password"`
 	Role                  string  `json:"role"`
-	Active                *bool   `json:"active"`
+	Active                bool    `json:"active"`
 	CurrentOrganizationID *string `json:"current_organization_id"`
-	IsSuperAdmin          *bool   `json:"is_super_admin"`
+	IsSuperAdmin          bool    `json:"is_super_admin"`
 }
 
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, error) {
@@ -85,9 +85,16 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.CurrentOrganizationID,
 		&i.IsSuperAdmin,
 		&i.Preferences,
+		&i.DeletedAt,
+		&i.Position,
+		&i.ManNumber,
+		&i.NrcNumber,
+		&i.Contact,
+		&i.MfaEnabled,
+		&i.IsLdapUser,
+		&i.MustChangePassword,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.DeletedAt,
 	)
 	return i, err
 }
@@ -105,7 +112,7 @@ func (q *Queries) DeactivateUser(ctx context.Context, id string) error {
 }
 
 const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT id, email, name, password, role, active, last_login, current_organization_id, is_super_admin, preferences, created_at, updated_at, deleted_at FROM users WHERE email = $1
+SELECT id, email, name, password, role, active, last_login, current_organization_id, is_super_admin, preferences, deleted_at, position, man_number, nrc_number, contact, mfa_enabled, is_ldap_user, must_change_password, created_at, updated_at FROM users WHERE email = $1
 `
 
 func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error) {
@@ -122,16 +129,23 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 		&i.CurrentOrganizationID,
 		&i.IsSuperAdmin,
 		&i.Preferences,
+		&i.DeletedAt,
+		&i.Position,
+		&i.ManNumber,
+		&i.NrcNumber,
+		&i.Contact,
+		&i.MfaEnabled,
+		&i.IsLdapUser,
+		&i.MustChangePassword,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.DeletedAt,
 	)
 	return i, err
 }
 
 const getUserByID = `-- name: GetUserByID :one
 
-SELECT id, email, name, password, role, active, last_login, current_organization_id, is_super_admin, preferences, created_at, updated_at, deleted_at FROM users WHERE id = $1
+SELECT id, email, name, password, role, active, last_login, current_organization_id, is_super_admin, preferences, deleted_at, position, man_number, nrc_number, contact, mfa_enabled, is_ldap_user, must_change_password, created_at, updated_at FROM users WHERE id = $1
 `
 
 // Enhanced user queries with security features
@@ -149,15 +163,22 @@ func (q *Queries) GetUserByID(ctx context.Context, id string) (User, error) {
 		&i.CurrentOrganizationID,
 		&i.IsSuperAdmin,
 		&i.Preferences,
+		&i.DeletedAt,
+		&i.Position,
+		&i.ManNumber,
+		&i.NrcNumber,
+		&i.Contact,
+		&i.MfaEnabled,
+		&i.IsLdapUser,
+		&i.MustChangePassword,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.DeletedAt,
 	)
 	return i, err
 }
 
 const listUsers = `-- name: ListUsers :many
-SELECT id, email, name, password, role, active, last_login, current_organization_id, is_super_admin, preferences, created_at, updated_at, deleted_at FROM users 
+SELECT id, email, name, password, role, active, last_login, current_organization_id, is_super_admin, preferences, deleted_at, position, man_number, nrc_number, contact, mfa_enabled, is_ldap_user, must_change_password, created_at, updated_at FROM users 
 ORDER BY created_at DESC
 LIMIT $1 OFFSET $2
 `
@@ -182,9 +203,16 @@ func (q *Queries) ListUsers(ctx context.Context, limit int32, offset int32) ([]U
 			&i.CurrentOrganizationID,
 			&i.IsSuperAdmin,
 			&i.Preferences,
+			&i.DeletedAt,
+			&i.Position,
+			&i.ManNumber,
+			&i.NrcNumber,
+			&i.Contact,
+			&i.MfaEnabled,
+			&i.IsLdapUser,
+			&i.MustChangePassword,
 			&i.CreatedAt,
 			&i.UpdatedAt,
-			&i.DeletedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -197,7 +225,7 @@ func (q *Queries) ListUsers(ctx context.Context, limit int32, offset int32) ([]U
 }
 
 const listUsersByOrganization = `-- name: ListUsersByOrganization :many
-SELECT u.id, u.email, u.name, u.password, u.role, u.active, u.last_login, u.current_organization_id, u.is_super_admin, u.preferences, u.created_at, u.updated_at, u.deleted_at FROM users u
+SELECT u.id, u.email, u.name, u.password, u.role, u.active, u.last_login, u.current_organization_id, u.is_super_admin, u.preferences, u.deleted_at, u.position, u.man_number, u.nrc_number, u.contact, u.mfa_enabled, u.is_ldap_user, u.must_change_password, u.created_at, u.updated_at FROM users u
 INNER JOIN organization_members om ON u.id = om.user_id
 WHERE om.organization_id = $1 AND om.active = true
 ORDER BY u.name
@@ -224,9 +252,16 @@ func (q *Queries) ListUsersByOrganization(ctx context.Context, organizationID st
 			&i.CurrentOrganizationID,
 			&i.IsSuperAdmin,
 			&i.Preferences,
+			&i.DeletedAt,
+			&i.Position,
+			&i.ManNumber,
+			&i.NrcNumber,
+			&i.Contact,
+			&i.MfaEnabled,
+			&i.IsLdapUser,
+			&i.MustChangePassword,
 			&i.CreatedAt,
 			&i.UpdatedAt,
-			&i.DeletedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -247,7 +282,7 @@ UPDATE users SET
     current_organization_id = COALESCE($6, current_organization_id),
     updated_at = NOW()
 WHERE id = $1
-RETURNING id, email, name, password, role, active, last_login, current_organization_id, is_super_admin, preferences, created_at, updated_at, deleted_at
+RETURNING id, email, name, password, role, active, last_login, current_organization_id, is_super_admin, preferences, deleted_at, position, man_number, nrc_number, contact, mfa_enabled, is_ldap_user, must_change_password, created_at, updated_at
 `
 
 type UpdateUserParams struct {
@@ -255,7 +290,7 @@ type UpdateUserParams struct {
 	Name                  string  `json:"name"`
 	Email                 string  `json:"email"`
 	Role                  string  `json:"role"`
-	Active                *bool   `json:"active"`
+	Active                bool    `json:"active"`
 	CurrentOrganizationID *string `json:"current_organization_id"`
 }
 
@@ -280,9 +315,16 @@ func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) (User, e
 		&i.CurrentOrganizationID,
 		&i.IsSuperAdmin,
 		&i.Preferences,
+		&i.DeletedAt,
+		&i.Position,
+		&i.ManNumber,
+		&i.NrcNumber,
+		&i.Contact,
+		&i.MfaEnabled,
+		&i.IsLdapUser,
+		&i.MustChangePassword,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.DeletedAt,
 	)
 	return i, err
 }

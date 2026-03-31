@@ -4,7 +4,7 @@ import { verifySession } from "@/lib/auth";
 
 export const metadata = {
   title: "Vendors",
-  description: "Manage suppliers and vendors for your organisation",
+  description: "Manage suppliers and vendors for your organization",
 };
 
 export default async function VendorsPage() {

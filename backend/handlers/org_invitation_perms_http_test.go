@@ -115,7 +115,7 @@ func seedOrgWithAdminMember(t *testing.T, orgID, userID string) {
 	t.Helper()
 	now := time.Now()
 
-	// Upsert organisation via GORM so column mapping is correct
+	// Upsert organization via GORM so column mapping is correct
 	org := models.Organization{
 		ID:        orgID,
 		Name:      "Test Org",

@@ -234,7 +234,7 @@ func TestCreateOrganization_WithName_Success_TopRoute(t *testing.T) {
 
 	app := newOrgTopApp(withTenantCtx(testOrgID, testUserID, testUserRole))
 	resp := testRequest(app, http.MethodPost, "/orgs/", map[string]interface{}{
-		"name": "Test Organisation Beta",
+		"name": "Test Organization Beta",
 	})
 	if resp.StatusCode != http.StatusCreated {
 		t.Errorf("expected 201 for create-organization with name, got %d", resp.StatusCode)

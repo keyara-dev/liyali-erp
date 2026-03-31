@@ -158,28 +158,26 @@ WHERE name = $1 AND is_active = true;
 SELECT organization_has_feature($1, $2) as has_access;
 
 -- name: GetFeatureFlagsForPlan :many
-SELECT ff.* FROM feature_flags ff
-WHERE ff.is_active = true
-  AND (
-    ff.plan_requirements ? $1 
+SELECT ff.* FROM subscription_feature_requirements ff
+WHERE (
+    ff.plan_requirements ? $1
     OR ($2 = true AND ff.is_trial_allowed = true)
   )
 ORDER BY ff.name ASC;
 
 -- name: CreateFeatureFlag :one
-INSERT INTO feature_flags (
+INSERT INTO subscription_feature_requirements (
     name, description, plan_requirements, is_trial_allowed, is_enterprise_only
 ) VALUES (
     $1, $2, $3, $4, $5
 ) RETURNING *;
 
 -- name: UpdateFeatureFlag :one
-UPDATE feature_flags SET
+UPDATE subscription_feature_requirements SET
     description = $2,
     plan_requirements = $3,
     is_trial_allowed = $4,
     is_enterprise_only = $5,
-    is_active = $6,
     updated_at = CURRENT_TIMESTAMP
 WHERE name = $1
 RETURNING *;

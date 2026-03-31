@@ -32,7 +32,7 @@ func (r *SessionRepository) Create(ctx context.Context, userID, refreshToken, ip
 		userAg = &userAgent
 	}
 
-	expiresAtPgType := pgtype.Timestamp{
+	expiresAtPgType := pgtype.Timestamptz{
 		Time:  expiresAt,
 		Valid: true,
 	}
@@ -133,7 +133,7 @@ func (r *SessionRepository) UpdateRefreshToken(ctx context.Context, id uuid.UUID
 	rowsAffected, err := r.queries.UpdateSessionRefreshToken(ctx, pgtype.UUID{
 		Bytes: id,
 		Valid: true,
-	}, newRefreshToken, pgtype.Timestamp{
+	}, newRefreshToken, pgtype.Timestamptz{
 		Time:  expiresAt,
 		Valid: true,
 	}, oldRefreshToken)

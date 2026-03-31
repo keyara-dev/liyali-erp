@@ -42,7 +42,7 @@ INSERT INTO sessions (
 ) RETURNING id, user_id, refresh_token, ip_address, user_agent, expires_at, created_at, updated_at
 `
 
-func (q *Queries) CreateSession(ctx context.Context, userID string, refreshToken string, ipAddress *string, userAgent *string, expiresAt pgtype.Timestamp) (Session, error) {
+func (q *Queries) CreateSession(ctx context.Context, userID string, refreshToken string, ipAddress *string, userAgent *string, expiresAt pgtype.Timestamptz) (Session, error) {
 	row := q.db.QueryRow(ctx, createSession,
 		userID,
 		refreshToken,
@@ -162,7 +162,7 @@ SET refresh_token = $2, expires_at = $3, updated_at = NOW()
 WHERE id = $1 AND refresh_token = $4
 `
 
-func (q *Queries) UpdateSessionRefreshToken(ctx context.Context, iD pgtype.UUID, refreshToken string, expiresAt pgtype.Timestamp, refreshToken_2 string) (int64, error) {
+func (q *Queries) UpdateSessionRefreshToken(ctx context.Context, iD pgtype.UUID, refreshToken string, expiresAt pgtype.Timestamptz, refreshToken_2 string) (int64, error) {
 	result, err := q.db.Exec(ctx, updateSessionRefreshToken,
 		iD,
 		refreshToken,

@@ -1,7 +1,14 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { Plus, Edit, Trash2, AlertCircle, MapPin, ToggleRight } from "lucide-react";
+import {
+  Plus,
+  Edit,
+  Trash2,
+  AlertCircle,
+  MapPin,
+  ToggleRight,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -302,7 +309,7 @@ export default function BranchesClient() {
           <div>
             <CardTitle>Branch Management</CardTitle>
             <CardDescription>
-              Manage your organisation&apos;s physical branches and locations
+              Manage your organization&apos;s physical branches and locations
             </CardDescription>
           </div>
           <Button onClick={() => handleOpenModal()} size="sm" className="gap-2">

@@ -9,14 +9,16 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/liyali/liyali-gateway/bootstrap"
+	db "github.com/liyali/liyali-gateway/database/sqlc"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 )
 
 var (
-	DB     *gorm.DB
-	PgxDB  *pgxpool.Pool
+	DB      *gorm.DB
+	PgxDB   *pgxpool.Pool
+	Queries *db.Queries
 )
 
 // InitDatabase initializes both GORM and pgx database connections with proper bootstrap
@@ -62,7 +64,10 @@ func InitDatabase() {
 		log.Fatalf("Failed to ping database: %v", err)
 	}
 
-	log.Println("✓ Database connected successfully (GORM + pgx)")
+	// Initialize sqlc typed query interface
+	Queries = db.New(PgxDB)
+
+	log.Println("✓ Database connected successfully (GORM + pgx + sqlc)")
 
 	// Initialize bootstrap system
 	bootstrapConfig := bootstrap.DefaultBootstrapConfig()

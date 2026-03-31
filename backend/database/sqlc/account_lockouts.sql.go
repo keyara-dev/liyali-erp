@@ -30,7 +30,7 @@ INSERT INTO account_lockouts (
 ) RETURNING id, user_id, email, ip_address, reason, locked_at, unlocks_at, active
 `
 
-func (q *Queries) CreateAccountLockout(ctx context.Context, userID string, email string, ipAddress *string, reason string, unlocksAt pgtype.Timestamp) (AccountLockout, error) {
+func (q *Queries) CreateAccountLockout(ctx context.Context, userID string, email string, ipAddress *string, reason string, unlocksAt pgtype.Timestamptz) (AccountLockout, error) {
 	row := q.db.QueryRow(ctx, createAccountLockout,
 		userID,
 		email,

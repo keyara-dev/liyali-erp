@@ -19,7 +19,7 @@ INSERT INTO password_resets (
 ) RETURNING id, user_id, token, expires_at, used_at, created_at
 `
 
-func (q *Queries) CreatePasswordReset(ctx context.Context, userID string, token string, expiresAt pgtype.Timestamp) (PasswordReset, error) {
+func (q *Queries) CreatePasswordReset(ctx context.Context, userID string, token string, expiresAt pgtype.Timestamptz) (PasswordReset, error) {
 	row := q.db.QueryRow(ctx, createPasswordReset, userID, token, expiresAt)
 	var i PasswordReset
 	err := row.Scan(

@@ -56,7 +56,7 @@ func (r *LoginAttemptRepository) Create(ctx context.Context, userID, email, ipAd
 }
 
 func (r *LoginAttemptRepository) GetRecentFailedAttempts(ctx context.Context, email string, since time.Time) (int64, error) {
-	sinceTimestamp := pgtype.Timestamp{
+	sinceTimestamp := pgtype.Timestamptz{
 		Time:  since,
 		Valid: true,
 	}
@@ -75,7 +75,7 @@ func (r *LoginAttemptRepository) GetRecentFailedAttemptsByIP(ctx context.Context
 		ipAddrPtr = &ipAddress
 	}
 
-	sinceTimestamp := pgtype.Timestamp{
+	sinceTimestamp := pgtype.Timestamptz{
 		Time:  since,
 		Valid: true,
 	}
@@ -124,7 +124,7 @@ func (r *LoginAttemptRepository) GetByEmail(ctx context.Context, email string, l
 }
 
 func (r *LoginAttemptRepository) DeleteOld(ctx context.Context, before time.Time) error {
-	beforeTimestamp := pgtype.Timestamp{
+	beforeTimestamp := pgtype.Timestamptz{
 		Time:  before,
 		Valid: true,
 	}

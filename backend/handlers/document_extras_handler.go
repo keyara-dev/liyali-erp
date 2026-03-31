@@ -36,25 +36,25 @@ func CreatePurchaseOrderFromRequisition(c *fiber.Ctx) error {
 	}
 
 	var req struct {
-		RequisitionID             string        `json:"requisitionId"`
-		RequisitionDocumentNumber string        `json:"requisitionDocumentNumber"`
-		Title                     string        `json:"title"`
-		Description               string        `json:"description"`
-		VendorID                  string        `json:"vendorId"`
-		VendorName                string        `json:"vendorName"`
-		Department                string        `json:"department"`
-		DepartmentID              string        `json:"departmentId"`
-		RequiredByDate            *time.Time    `json:"requiredByDate"`
-		Priority                  string        `json:"priority"`
+		RequisitionID             string         `json:"requisitionId"`
+		RequisitionDocumentNumber string         `json:"requisitionDocumentNumber"`
+		Title                     string         `json:"title"`
+		Description               string         `json:"description"`
+		VendorID                  string         `json:"vendorId"`
+		VendorName                string         `json:"vendorName"`
+		Department                string         `json:"department"`
+		DepartmentID              string         `json:"departmentId"`
+		RequiredByDate            *time.Time     `json:"requiredByDate"`
+		Priority                  string         `json:"priority"`
 		Items                     []types.POItem `json:"items"`
-		TotalAmount               float64       `json:"totalAmount"`
-		Currency                  string        `json:"currency"`
-		BudgetCode                string        `json:"budgetCode"`
-		CostCenter                string        `json:"costCenter"`
-		ProjectCode               string        `json:"projectCode"`
-		WorkflowID                string        `json:"workflowId"`
+		TotalAmount               float64        `json:"totalAmount"`
+		Currency                  string         `json:"currency"`
+		BudgetCode                string         `json:"budgetCode"`
+		CostCenter                string         `json:"costCenter"`
+		ProjectCode               string         `json:"projectCode"`
+		WorkflowID                string         `json:"workflowId"`
 		// "" = inherit from org, "goods_first" or "payment_first" to override per-PO
-		ProcurementFlow           string        `json:"procurementFlow"`
+		ProcurementFlow string `json:"procurementFlow"`
 	}
 
 	if err := c.BodyParser(&req); err != nil {
@@ -137,7 +137,7 @@ func CreatePurchaseOrderFromRequisition(c *fiber.Ctx) error {
 		OrganizationID:    tenant.OrganizationID,
 		DocumentNumber:    documentNumber,
 		VendorID:          vendorIDPtr,
-		Status: "DRAFT",
+		Status:            "DRAFT",
 		TotalAmount:       req.TotalAmount,
 		Currency:          req.Currency,
 		ApprovalStage:     0,
@@ -275,7 +275,7 @@ func CreatePaymentVoucherFromPO(c *fiber.Ctx) error {
 		SourceRequisitionID         string              `json:"sourceRequisitionId"`
 		WorkflowID                  string              `json:"workflowId"`
 		// Goods-first flow: required GRN document number (e.g. "GRN-20240101-001")
-		LinkedGRNDocumentNumber     string              `json:"linkedGRNDocumentNumber"`
+		LinkedGRNDocumentNumber string `json:"linkedGRNDocumentNumber"`
 	}
 
 	if err := c.BodyParser(&req); err != nil {
@@ -352,7 +352,7 @@ func CreatePaymentVoucherFromPO(c *fiber.Ctx) error {
 		DocumentNumber: documentNumber,
 		VendorID:       vendorIDPtr,
 		InvoiceNumber:  invoiceRef,
-		Status: "DRAFT",
+		Status:         "DRAFT",
 		Amount:         req.TotalAmount,
 		Currency:       req.Currency,
 		PaymentMethod:  "bank_transfer",
@@ -639,7 +639,7 @@ func GetPaymentVoucherStats(c *fiber.Ctx) error {
 // GET /api/v1/users/department-heads/list
 // ============================================================================
 
-// GetDepartmentHeadsList returns organisation members with roles that can act as approvers/HODs.
+// GetDepartmentHeadsList returns organization members with roles that can act as approvers/HODs.
 func GetDepartmentHeadsList(c *fiber.Ctx) error {
 	tenant, err := middleware.GetTenantContext(c)
 	if err != nil {

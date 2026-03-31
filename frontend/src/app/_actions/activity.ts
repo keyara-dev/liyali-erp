@@ -89,7 +89,9 @@ export async function getAdminUserActivity(
 /**
  * Admin: Get a specific user's sessions
  */
-export async function getAdminUserSessions(userId: string): Promise<APIResponse> {
+export async function getAdminUserSessions(
+  userId: string,
+): Promise<APIResponse> {
   try {
     const response = await authenticatedApiClient({
       url: `/api/v1/organization/users/${userId}/sessions`,
@@ -132,7 +134,11 @@ export async function adminTerminateUserSession(
     const currentUserId = session?.user?.id || session?.user_id;
     let shouldLogout = false;
     if (currentUserId && currentUserId === userId) {
-      try { await deleteSession(); } catch { /* non-fatal */ }
+      try {
+        await deleteSession();
+      } catch {
+        /* non-fatal */
+      }
       shouldLogout = true;
     }
 
@@ -146,7 +152,10 @@ export async function adminTerminateUserSession(
   } catch (error: any) {
     return {
       success: false,
-      message: error.response?.data?.message || error.message || "Failed to terminate session",
+      message:
+        error.response?.data?.message ||
+        error.message ||
+        "Failed to terminate session",
       data: null,
       status: error.response?.status || 500,
       statusText: "ERROR",
@@ -157,7 +166,9 @@ export async function adminTerminateUserSession(
 /**
  * Admin: Terminate all sessions for a user
  */
-export async function adminTerminateAllSessions(userId: string): Promise<APIResponse> {
+export async function adminTerminateAllSessions(
+  userId: string,
+): Promise<APIResponse> {
   try {
     const response = await authenticatedApiClient({
       url: `/api/v1/organization/users/${userId}/sessions`,
@@ -169,7 +180,11 @@ export async function adminTerminateAllSessions(userId: string): Promise<APIResp
     const currentUserId = session?.user?.id || session?.user_id;
     let shouldLogout = false;
     if (currentUserId && currentUserId === userId) {
-      try { await deleteSession(); } catch { /* non-fatal */ }
+      try {
+        await deleteSession();
+      } catch {
+        /* non-fatal */
+      }
       shouldLogout = true;
     }
 
@@ -183,7 +198,10 @@ export async function adminTerminateAllSessions(userId: string): Promise<APIResp
   } catch (error: any) {
     return {
       success: false,
-      message: error.response?.data?.message || error.message || "Failed to terminate sessions",
+      message:
+        error.response?.data?.message ||
+        error.message ||
+        "Failed to terminate sessions",
       data: null,
       status: error.response?.status || 500,
       statusText: "ERROR",
@@ -266,7 +284,9 @@ export async function getAdminUserLoginHistory(
 /**
  * Admin: Get work statistics for a specific user
  */
-export async function getAdminUserWorkStats(userId: string): Promise<APIResponse> {
+export async function getAdminUserWorkStats(
+  userId: string,
+): Promise<APIResponse> {
   try {
     const response = await authenticatedApiClient({
       url: `/api/v1/organization/users/${userId}/work-stats`,
@@ -313,8 +333,7 @@ export async function exportUserActivity(
       responseType: "blob",
     });
 
-    const contentType =
-      format === "json" ? "application/json" : "text/csv";
+    const contentType = format === "json" ? "application/json" : "text/csv";
     const blob = new Blob([response.data], { type: contentType });
     const blobUrl = URL.createObjectURL(blob);
     const filename = `activity-${userId}-${new Date().toISOString().slice(0, 10)}.${format}`;
@@ -329,7 +348,10 @@ export async function exportUserActivity(
   } catch (error: any) {
     return {
       success: false,
-      message: error.response?.data?.message || error.message || "Failed to export activity",
+      message:
+        error.response?.data?.message ||
+        error.message ||
+        "Failed to export activity",
       data: null,
       status: error.response?.status || 500,
       statusText: "ERROR",
@@ -338,7 +360,7 @@ export async function exportUserActivity(
 }
 
 /**
- * Admin: Impersonate a user within the caller's organisation.
+ * Admin: Impersonate a user within the caller's organization.
  * Only org admins may impersonate; the action is audit-logged on the backend.
  */
 export async function impersonateUser(userId: string): Promise<APIResponse> {

@@ -9,6 +9,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 	"github.com/liyali/liyali-gateway/config"
+	db "github.com/liyali/liyali-gateway/database/sqlc"
 	"github.com/liyali/liyali-gateway/logging"
 	"github.com/liyali/liyali-gateway/middleware"
 	"github.com/liyali/liyali-gateway/models"
@@ -30,8 +31,6 @@ func GetPurchaseOrders(c *fiber.Ctx) error {
 			"error": "Organization context required",
 		})
 	}
-
-	db := config.DB
 
 	page := c.QueryInt("page", 1)
 	limit := c.QueryInt("limit", 10)
@@ -55,52 +54,88 @@ func GetPurchaseOrders(c *fiber.Ctx) error {
 		"organizationID": tenant.OrganizationID,
 	})
 
-	// Determine document visibility scope for this user
-	scope := utils.GetDocumentScope(db, tenant.UserID, tenant.UserRole, tenant.OrganizationID)
+	scope := utils.GetDocumentScope(config.DB, tenant.UserID, tenant.UserRole, tenant.OrganizationID)
 
-	// SECURITY: Always filter by organization ID first
-	query := db.Where("organization_id = ?", tenant.OrganizationID)
-
-	// Apply document scope (procurement users see all POs; limited users see own + involved)
-	query = scope.ApplyToQuery(query, "created_by", "purchase_order", "")
-
-	if status != "" {
-		query = query.Where("UPPER(status) = UPPER(?)", status)
-	}
-	if vendorID != "" {
-		query = query.Where("vendor_id = ?", vendorID)
+	ctx := c.Context()
+	offset := int32((page - 1) * limit)
+	orgRoleIDs := scope.OrgRoleIDs
+	if orgRoleIDs == nil {
+		orgRoleIDs = []string{}
 	}
 
 	var total int64
-	if err := query.Model(&models.PurchaseOrder{}).Count(&total).Error; err != nil {
-		logging.LogError(c, err, "failed_to_count_purchase_orders", map[string]interface{}{
-			"error_type": "database_error",
+	var ids []string
+
+	if scope.CanViewAll || scope.IsProcurement {
+		total, err = config.Queries.CountPurchaseOrdersAll(ctx, tenant.OrganizationID, status, vendorID)
+		if err != nil {
+			logging.LogError(c, err, "failed_to_count_purchase_orders", map[string]interface{}{"error_type": "database_error"})
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"success": false,
+				"message": "Failed to count purchase orders",
+				"error":   err.Error(),
+			})
+		}
+		ids, err = config.Queries.ListPurchaseOrderIDsAll(ctx, tenant.OrganizationID, status, vendorID, int32(limit), offset)
+		if err != nil {
+			logging.LogError(c, err, "failed_to_fetch_purchase_orders", map[string]interface{}{"error_type": "database_error", "offset": offset, "limit": limit})
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"success": false,
+				"message": "Failed to fetch purchase orders",
+				"error":   err.Error(),
+			})
+		}
+	} else {
+		total, err = config.Queries.CountPurchaseOrdersLimited(ctx, db.CountPurchaseOrdersLimitedParams{
+			OrganizationID: tenant.OrganizationID,
+			Column2:        status,
+			Column3:        vendorID,
+			CreatedBy:      &scope.UserID,
+			Lower:          scope.UserRole,
+			Column6:        orgRoleIDs,
 		})
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"success": false,
-			"message": "Failed to count purchase orders",
-			"error":   err.Error(),
+		if err != nil {
+			logging.LogError(c, err, "failed_to_count_purchase_orders", map[string]interface{}{"error_type": "database_error"})
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"success": false,
+				"message": "Failed to count purchase orders",
+				"error":   err.Error(),
+			})
+		}
+		ids, err = config.Queries.ListPurchaseOrderIDsLimited(ctx, db.ListPurchaseOrderIDsLimitedParams{
+			OrganizationID: tenant.OrganizationID,
+			Column2:        status,
+			Column3:        vendorID,
+			CreatedBy:      &scope.UserID,
+			Lower:          scope.UserRole,
+			Column6:        orgRoleIDs,
+			Limit:          int32(limit),
+			Offset:         offset,
 		})
+		if err != nil {
+			logging.LogError(c, err, "failed_to_fetch_purchase_orders", map[string]interface{}{"error_type": "database_error", "offset": offset, "limit": limit})
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"success": false,
+				"message": "Failed to fetch purchase orders",
+				"error":   err.Error(),
+			})
+		}
 	}
 
 	var orders []models.PurchaseOrder
-	offset := (page - 1) * limit
-	if err := query.
-		Offset(offset).
-		Limit(limit).
-		Preload("Vendor").
-		Order("created_at DESC").
-		Find(&orders).Error; err != nil {
-		logging.LogError(c, err, "failed_to_fetch_purchase_orders", map[string]interface{}{
-			"error_type": "database_error",
-			"offset":     offset,
-			"limit":      limit,
-		})
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"success": false,
-			"message": "Failed to fetch purchase orders",
-			"error":   err.Error(),
-		})
+	if len(ids) > 0 {
+		if err := config.DB.
+			Where("id IN ?", ids).
+			Preload("Vendor").
+			Order("created_at DESC").
+			Find(&orders).Error; err != nil {
+			logging.LogError(c, err, "failed_to_fetch_purchase_orders", map[string]interface{}{"error_type": "database_error"})
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"success": false,
+				"message": "Failed to fetch purchase orders",
+				"error":   err.Error(),
+			})
+		}
 	}
 
 	responses := make([]types.PurchaseOrderResponse, 0, len(orders))
@@ -110,38 +145,27 @@ func GetPurchaseOrders(c *fiber.Ctx) error {
 
 	// Batch-enrich responses with linked PV info (single query, not N+1)
 	if len(responses) > 0 {
-		docNumbers := make([]string, len(responses))
+		poDocNumbers := make([]string, len(responses))
 		for i, r := range responses {
-			docNumbers[i] = r.DocumentNumber
+			poDocNumbers[i] = r.DocumentNumber
 		}
-
-		type pvRow struct {
-			LinkedPO       string
-			ID             string
-			DocumentNumber string
-			Status         string
-		}
-		var pvRows []pvRow
-		config.DB.Raw(`
-			SELECT DISTINCT ON (linked_po)
-				linked_po, id, document_number, status
-			FROM payment_vouchers
-			WHERE linked_po = ANY(?)
-			  AND organization_id = ?
-			  AND UPPER(status) != 'CANCELLED'
-			ORDER BY linked_po, created_at DESC
-		`, docNumbers, tenant.OrganizationID).Scan(&pvRows)
-
-		pvMap := make(map[string]pvRow)
+		pvRows, _ := config.Queries.GetLinkedPVsForPurchaseOrders(ctx, poDocNumbers, tenant.OrganizationID)
+		pvMap := make(map[string]db.GetLinkedPVsForPurchaseOrdersRow, len(pvRows))
 		for _, r := range pvRows {
-			pvMap[r.LinkedPO] = r
+			if r.LinkedPo != nil {
+				pvMap[*r.LinkedPo] = r
+			}
 		}
 		for i, r := range responses {
 			if row, ok := pvMap[r.DocumentNumber]; ok {
+				pvStatus := ""
+				if row.Status != nil {
+					pvStatus = *row.Status
+				}
 				responses[i].LinkedPV = &types.LinkedPVSummary{
 					ID:             row.ID,
 					DocumentNumber: row.DocumentNumber,
-					Status:         row.Status,
+					Status:         pvStatus,
 				}
 			}
 		}
@@ -406,7 +430,12 @@ func UpdatePurchaseOrder(c *fiber.Ctx) error {
 		})
 	}
 
-	if strings.ToUpper(order.Status) != "DRAFT" && strings.ToUpper(order.Status) != "PENDING" {
+	// Metadata-only updates (quotations, attachments, bypass fields) are allowed on any status
+	isMetadataOnly := len(req.Metadata) > 0 &&
+		req.VendorID == "" &&
+		len(req.Items) == 0 && req.TotalAmount == 0 &&
+		req.Currency == "" && req.DeliveryDate.Time.IsZero()
+	if strings.ToUpper(order.Status) != "DRAFT" && strings.ToUpper(order.Status) != "PENDING" && !isMetadataOnly {
 		logging.LogWarn(c, "invalid_status_for_update", map[string]interface{}{
 			"current_status":  order.Status,
 			"document_number": order.DocumentNumber,
@@ -807,15 +836,17 @@ func SubmitPurchaseOrder(c *fiber.Ctx) error {
 	// Get user info for action history
 	var user models.User
 	if err := config.DB.Where("id = ?", userID).First(&user).Error; err == nil {
+		submitTime := time.Now()
 		actionHistory = append(actionHistory, types.ActionHistoryEntry{
 			ID:              uuid.New().String(),
 			Action:          "SUBMIT",
+			ActionType:      "SUBMIT",
 			PerformedBy:     userID,
 			PerformedByName: user.Name,
 			PerformedByRole: user.Role,
-			Timestamp:       time.Now(),
+			Timestamp:       submitTime,
+			PerformedAt:     submitTime,
 			Comments:        "Purchase order submitted for approval",
-			ActionType:      "SUBMIT",
 			PreviousStatus:  "DRAFT",
 			NewStatus:       "PENDING",
 		})

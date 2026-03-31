@@ -13,7 +13,7 @@ export function VendorsClient({ userId, userRole }: VendorsClientProps) {
     <div className="space-y-6">
       <PageHeader
         title="Vendors"
-        subtitle="Manage suppliers and vendors for your organisation"
+        subtitle="Manage suppliers and vendors for your organization"
         showBackButton={false}
       />
       <VendorsTable userId={userId} userRole={userRole} />

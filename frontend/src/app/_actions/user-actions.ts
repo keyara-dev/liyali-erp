@@ -136,9 +136,10 @@ export async function getUsers(params?: {
       let preferences: Record<string, any> = {};
       if (userData?.preferences) {
         try {
-          preferences = typeof userData.preferences === "string"
-            ? JSON.parse(userData.preferences)
-            : userData.preferences;
+          preferences =
+            typeof userData.preferences === "string"
+              ? JSON.parse(userData.preferences)
+              : userData.preferences;
         } catch {}
       }
       const avatar = preferences?.avatar || userData?.avatar || "";
@@ -194,7 +195,8 @@ export async function getAdminUsers(params?: {
   if (params?.role) queryParams.append("role", params.role);
   // Map status → active boolean param
   if (params?.status === "active") queryParams.append("active", "true");
-  else if (params?.status === "inactive" || params?.status === "suspended") queryParams.append("active", "false");
+  else if (params?.status === "inactive" || params?.status === "suspended")
+    queryParams.append("active", "false");
   queryParams.append("page", String(params?.page ?? 1));
   queryParams.append("page_size", String(params?.limit ?? 10));
 
@@ -209,7 +211,10 @@ export async function getAdminUsers(params?: {
       let preferences: Record<string, any> = {};
       if (m.preferences) {
         try {
-          preferences = typeof m.preferences === "string" ? JSON.parse(m.preferences) : m.preferences;
+          preferences =
+            typeof m.preferences === "string"
+              ? JSON.parse(m.preferences)
+              : m.preferences;
         } catch {}
       }
       const nameParts = (m.name || "").split(" ");
@@ -349,9 +354,11 @@ export async function updateUser(
     if (data.name !== undefined) payload.name = data.name;
     if (data.email !== undefined) payload.email = data.email;
     if (data.role !== undefined) payload.role = data.role;
-    if (data.department_id !== undefined) payload.department_id = data.department_id;
+    if (data.department_id !== undefined)
+      payload.department_id = data.department_id;
     if (data.branch_id !== undefined) payload.branch_id = data.branch_id;
-    if (data.is_active !== undefined) payload.status = data.is_active ? "active" : "inactive";
+    if (data.is_active !== undefined)
+      payload.status = data.is_active ? "active" : "inactive";
     if (data.position !== undefined) payload.position = data.position;
     if (data.manNumber !== undefined) payload.manNumber = data.manNumber;
     if (data.nrcNumber !== undefined) payload.nrcNumber = data.nrcNumber;
@@ -471,7 +478,7 @@ export async function toggleUserMFA(
   // MFA management for org users is not supported via this app.
   return {
     success: false,
-    message: "MFA management is not supported for organisation users.",
+    message: "MFA management is not supported for organization users.",
     data: null,
     status: 501,
   };
@@ -520,7 +527,7 @@ export async function searchUsers(query: string): Promise<APIResponse> {
 }
 
 /**
- * Get a single user by ID, scoped to the caller's organisation.
+ * Get a single user by ID, scoped to the caller's organization.
  * Calls: GET /api/v1/organization/users/:id
  * Normalizes snake_case backend fields to camelCase expected by the User type.
  */
@@ -535,9 +542,10 @@ export async function getAdminUserById(id: string): Promise<APIResponse> {
     let preferences: Record<string, any> = {};
     if (raw.preferences) {
       try {
-        preferences = typeof raw.preferences === "string"
-          ? JSON.parse(raw.preferences)
-          : raw.preferences;
+        preferences =
+          typeof raw.preferences === "string"
+            ? JSON.parse(raw.preferences)
+            : raw.preferences;
       } catch {}
     }
     // Normalize snake_case → camelCase for fields the component expects
@@ -595,6 +603,10 @@ export async function adminResetUserPassword(id: string): Promise<APIResponse> {
     });
     return successResponse(response.data.data, "Password reset email sent");
   } catch (error) {
-    return handleError(error, "POST", `/api/v1/organization/users/${id}/reset-password`);
+    return handleError(
+      error,
+      "POST",
+      `/api/v1/organization/users/${id}/reset-password`,
+    );
   }
 }

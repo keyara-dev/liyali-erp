@@ -55,7 +55,7 @@ const deleteOldLoginAttempts = `-- name: DeleteOldLoginAttempts :exec
 DELETE FROM login_attempts WHERE attempted_at < $1
 `
 
-func (q *Queries) DeleteOldLoginAttempts(ctx context.Context, attemptedAt pgtype.Timestamp) error {
+func (q *Queries) DeleteOldLoginAttempts(ctx context.Context, attemptedAt pgtype.Timestamptz) error {
 	_, err := q.db.Exec(ctx, deleteOldLoginAttempts, attemptedAt)
 	return err
 }
@@ -137,7 +137,7 @@ SELECT COUNT(*) FROM login_attempts
 WHERE email = $1 AND success = false AND attempted_at > $2
 `
 
-func (q *Queries) GetRecentFailedAttempts(ctx context.Context, email string, attemptedAt pgtype.Timestamp) (int64, error) {
+func (q *Queries) GetRecentFailedAttempts(ctx context.Context, email string, attemptedAt pgtype.Timestamptz) (int64, error) {
 	row := q.db.QueryRow(ctx, getRecentFailedAttempts, email, attemptedAt)
 	var count int64
 	err := row.Scan(&count)
@@ -149,7 +149,7 @@ SELECT COUNT(*) FROM login_attempts
 WHERE ip_address = $1 AND success = false AND attempted_at > $2
 `
 
-func (q *Queries) GetRecentFailedAttemptsByIP(ctx context.Context, ipAddress *string, attemptedAt pgtype.Timestamp) (int64, error) {
+func (q *Queries) GetRecentFailedAttemptsByIP(ctx context.Context, ipAddress *string, attemptedAt pgtype.Timestamptz) (int64, error) {
 	row := q.db.QueryRow(ctx, getRecentFailedAttemptsByIP, ipAddress, attemptedAt)
 	var count int64
 	err := row.Scan(&count)

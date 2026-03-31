@@ -92,7 +92,7 @@ func CreateOrganizationUser(c *fiber.Ctx) error {
 		req.FirstName = req.Name
 	}
 
-	// Validate department belongs to this organisation (if provided)
+	// Validate department belongs to this organization (if provided)
 	if req.DepartmentID != "" {
 		var deptCount int64
 		if err := config.DB.Table("organization_departments").
@@ -102,7 +102,7 @@ func CreateOrganizationUser(c *fiber.Ctx) error {
 		}
 	}
 
-	// Validate branch belongs to this organisation (if provided)
+	// Validate branch belongs to this organization (if provided)
 	if req.BranchID != nil && *req.BranchID != "" {
 		var branchCount int64
 		if err := config.DB.Table("organization_branches").
@@ -141,7 +141,7 @@ func CreateOrganizationUser(c *fiber.Ctx) error {
 		})
 	}
 
-	// Man Number uniqueness within this organisation
+	// Man Number uniqueness within this organization
 	var manCount int64
 	config.DB.Table("users").
 		Joins("JOIN organization_members ON organization_members.user_id = users.id").
@@ -152,7 +152,7 @@ func CreateOrganizationUser(c *fiber.Ctx) error {
 		return utils.SendConflictError(c, "A user with this Man Number already exists in this organization")
 	}
 
-	// NRC Number uniqueness within this organisation
+	// NRC Number uniqueness within this organization
 	var nrcCount int64
 	config.DB.Table("users").
 		Joins("JOIN organization_members ON organization_members.user_id = users.id").
@@ -222,7 +222,7 @@ func CreateOrganizationUser(c *fiber.Ctx) error {
 		return utils.SendInternalError(c, "Failed to create user", err)
 	}
 
-	// Add user to the organisation with department assignment
+	// Add user to the organization with department assignment
 	orgService := services.NewOrganizationService(tx)
 	var departmentPtr *string
 	if req.DepartmentID != "" {
@@ -323,7 +323,7 @@ func UpdateOrganizationUser(c *fiber.Ctx) error {
 		return utils.SendBadRequestError(c, "Invalid request body")
 	}
 
-	// Verify the user belongs to this organisation
+	// Verify the user belongs to this organization
 	var memberCount int64
 	if err := config.DB.Table("organization_members").
 		Where("organization_id = ? AND user_id = ? AND active = true", tenant.OrganizationID, userID).

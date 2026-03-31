@@ -44,14 +44,14 @@ func (q *Queries) CheckOrganizationUserLimit(ctx context.Context, id string) (bo
 }
 
 const createFeatureFlag = `-- name: CreateFeatureFlag :one
-INSERT INTO feature_flags (
+INSERT INTO subscription_feature_requirements (
     name, description, plan_requirements, is_trial_allowed, is_enterprise_only
 ) VALUES (
     $1, $2, $3, $4, $5
-) RETURNING id, name, description, plan_requirements, is_trial_allowed, is_enterprise_only, is_active, created_at, updated_at
+) RETURNING name, description, plan_requirements, is_trial_allowed, is_enterprise_only, created_at, updated_at
 `
 
-func (q *Queries) CreateFeatureFlag(ctx context.Context, name string, description *string, planRequirements []byte, isTrialAllowed *bool, isEnterpriseOnly *bool) (FeatureFlag, error) {
+func (q *Queries) CreateFeatureFlag(ctx context.Context, name string, description *string, planRequirements []byte, isTrialAllowed bool, isEnterpriseOnly bool) (SubscriptionFeatureRequirement, error) {
 	row := q.db.QueryRow(ctx, createFeatureFlag,
 		name,
 		description,
@@ -59,15 +59,13 @@ func (q *Queries) CreateFeatureFlag(ctx context.Context, name string, descriptio
 		isTrialAllowed,
 		isEnterpriseOnly,
 	)
-	var i FeatureFlag
+	var i SubscriptionFeatureRequirement
 	err := row.Scan(
-		&i.ID,
 		&i.Name,
 		&i.Description,
 		&i.PlanRequirements,
 		&i.IsTrialAllowed,
 		&i.IsEnterpriseOnly,
-		&i.IsActive,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -84,13 +82,13 @@ INSERT INTO organization_subscriptions (
 `
 
 type CreateOrganizationSubscriptionParams struct {
-	OrganizationID       string           `json:"organization_id"`
-	PlanID               pgtype.UUID      `json:"plan_id"`
-	StripeSubscriptionID *string          `json:"stripe_subscription_id"`
-	Status               string           `json:"status"`
-	CurrentPeriodStart   pgtype.Timestamp `json:"current_period_start"`
-	CurrentPeriodEnd     pgtype.Timestamp `json:"current_period_end"`
-	CancelAtPeriodEnd    *bool            `json:"cancel_at_period_end"`
+	OrganizationID       string             `json:"organization_id"`
+	PlanID               pgtype.UUID        `json:"plan_id"`
+	StripeSubscriptionID *string            `json:"stripe_subscription_id"`
+	Status               string             `json:"status"`
+	CurrentPeriodStart   pgtype.Timestamptz `json:"current_period_start"`
+	CurrentPeriodEnd     pgtype.Timestamptz `json:"current_period_end"`
+	CancelAtPeriodEnd    *bool              `json:"cancel_at_period_end"`
 }
 
 func (q *Queries) CreateOrganizationSubscription(ctx context.Context, arg CreateOrganizationSubscriptionParams) (OrganizationSubscription, error) {
@@ -249,7 +247,7 @@ func (q *Queries) ExtendOrganizationTrial(ctx context.Context, column1 string, c
 
 const getAllFeatureFlags = `-- name: GetAllFeatureFlags :many
 
-SELECT id, name, description, plan_requirements, is_trial_allowed, is_enterprise_only, is_active, created_at, updated_at FROM feature_flags 
+SELECT id, key, name, description, type, default_value, enabled, environment, category, tags, targeting, variations, last_evaluated, evaluation_count, is_archived, expires_at, created_by, updated_by, created_at, updated_at FROM feature_flags 
 WHERE is_active = true 
 ORDER BY name ASC
 `
@@ -268,12 +266,23 @@ func (q *Queries) GetAllFeatureFlags(ctx context.Context) ([]FeatureFlag, error)
 		var i FeatureFlag
 		if err := rows.Scan(
 			&i.ID,
+			&i.Key,
 			&i.Name,
 			&i.Description,
-			&i.PlanRequirements,
-			&i.IsTrialAllowed,
-			&i.IsEnterpriseOnly,
-			&i.IsActive,
+			&i.Type,
+			&i.DefaultValue,
+			&i.Enabled,
+			&i.Environment,
+			&i.Category,
+			&i.Tags,
+			&i.Targeting,
+			&i.Variations,
+			&i.LastEvaluated,
+			&i.EvaluationCount,
+			&i.IsArchived,
+			&i.ExpiresAt,
+			&i.CreatedBy,
+			&i.UpdatedBy,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
@@ -314,18 +323,18 @@ LIMIT $1 OFFSET $2
 `
 
 type GetAllOrganizationsWithSubscriptionStatusRow struct {
-	ID                   string           `json:"id"`
-	Name                 string           `json:"name"`
-	SubscriptionStatus   *string          `json:"subscription_status"`
-	TrialStartDate       pgtype.Timestamp `json:"trial_start_date"`
-	TrialEndDate         pgtype.Timestamp `json:"trial_end_date"`
-	GracePeriodEndsAt    pgtype.Timestamp `json:"grace_period_ends_at"`
-	PlanName             *string          `json:"plan_name"`
-	PlanSlug             *string          `json:"plan_slug"`
-	StripeSubscriptionID *string          `json:"stripe_subscription_id"`
-	PaymentFailedCount   *int32           `json:"payment_failed_count"`
-	LastPaymentFailedAt  pgtype.Timestamp `json:"last_payment_failed_at"`
-	TrialDaysRemaining   int32            `json:"trial_days_remaining"`
+	ID                   string             `json:"id"`
+	Name                 string             `json:"name"`
+	SubscriptionStatus   string             `json:"subscription_status"`
+	TrialStartDate       pgtype.Timestamptz `json:"trial_start_date"`
+	TrialEndDate         pgtype.Timestamptz `json:"trial_end_date"`
+	GracePeriodEndsAt    pgtype.Timestamptz `json:"grace_period_ends_at"`
+	PlanName             *string            `json:"plan_name"`
+	PlanSlug             *string            `json:"plan_slug"`
+	StripeSubscriptionID *string            `json:"stripe_subscription_id"`
+	PaymentFailedCount   *int32             `json:"payment_failed_count"`
+	LastPaymentFailedAt  pgtype.Timestamptz `json:"last_payment_failed_at"`
+	TrialDaysRemaining   int32              `json:"trial_days_remaining"`
 }
 
 // ============================================================================
@@ -409,7 +418,7 @@ func (q *Queries) GetAllSubscriptionPlans(ctx context.Context) ([]SubscriptionPl
 }
 
 const getFeatureFlagByName = `-- name: GetFeatureFlagByName :one
-SELECT id, name, description, plan_requirements, is_trial_allowed, is_enterprise_only, is_active, created_at, updated_at FROM feature_flags 
+SELECT id, key, name, description, type, default_value, enabled, environment, category, tags, targeting, variations, last_evaluated, evaluation_count, is_archived, expires_at, created_by, updated_by, created_at, updated_at FROM feature_flags 
 WHERE name = $1 AND is_active = true
 `
 
@@ -418,12 +427,23 @@ func (q *Queries) GetFeatureFlagByName(ctx context.Context, name string) (Featur
 	var i FeatureFlag
 	err := row.Scan(
 		&i.ID,
+		&i.Key,
 		&i.Name,
 		&i.Description,
-		&i.PlanRequirements,
-		&i.IsTrialAllowed,
-		&i.IsEnterpriseOnly,
-		&i.IsActive,
+		&i.Type,
+		&i.DefaultValue,
+		&i.Enabled,
+		&i.Environment,
+		&i.Category,
+		&i.Tags,
+		&i.Targeting,
+		&i.Variations,
+		&i.LastEvaluated,
+		&i.EvaluationCount,
+		&i.IsArchived,
+		&i.ExpiresAt,
+		&i.CreatedBy,
+		&i.UpdatedBy,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -431,32 +451,29 @@ func (q *Queries) GetFeatureFlagByName(ctx context.Context, name string) (Featur
 }
 
 const getFeatureFlagsForPlan = `-- name: GetFeatureFlagsForPlan :many
-SELECT ff.id, ff.name, ff.description, ff.plan_requirements, ff.is_trial_allowed, ff.is_enterprise_only, ff.is_active, ff.created_at, ff.updated_at FROM feature_flags ff
-WHERE ff.is_active = true
-  AND (
-    ff.plan_requirements ? $1 
+SELECT ff.name, ff.description, ff.plan_requirements, ff.is_trial_allowed, ff.is_enterprise_only, ff.created_at, ff.updated_at FROM subscription_feature_requirements ff
+WHERE (
+    ff.plan_requirements ? $1
     OR ($2 = true AND ff.is_trial_allowed = true)
   )
 ORDER BY ff.name ASC
 `
 
-func (q *Queries) GetFeatureFlagsForPlan(ctx context.Context, planRequirements []byte, column2 interface{}) ([]FeatureFlag, error) {
+func (q *Queries) GetFeatureFlagsForPlan(ctx context.Context, planRequirements []byte, column2 interface{}) ([]SubscriptionFeatureRequirement, error) {
 	rows, err := q.db.Query(ctx, getFeatureFlagsForPlan, planRequirements, column2)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []FeatureFlag{}
+	items := []SubscriptionFeatureRequirement{}
 	for rows.Next() {
-		var i FeatureFlag
+		var i SubscriptionFeatureRequirement
 		if err := rows.Scan(
-			&i.ID,
 			&i.Name,
 			&i.Description,
 			&i.PlanRequirements,
 			&i.IsTrialAllowed,
 			&i.IsEnterpriseOnly,
-			&i.IsActive,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
@@ -486,20 +503,20 @@ LIMIT $2 OFFSET $3
 `
 
 type GetOrganizationAuditLogsRow struct {
-	ID             pgtype.UUID      `json:"id"`
-	OrganizationID string           `json:"organization_id"`
-	Action         string           `json:"action"`
-	OldPlanID      pgtype.UUID      `json:"old_plan_id"`
-	NewPlanID      pgtype.UUID      `json:"new_plan_id"`
-	OldStatus      *string          `json:"old_status"`
-	NewStatus      *string          `json:"new_status"`
-	Metadata       []byte           `json:"metadata"`
-	PerformedBy    *string          `json:"performed_by"`
-	PerformedAt    pgtype.Timestamp `json:"performed_at"`
-	OldPlanName    *string          `json:"old_plan_name"`
-	OldPlanSlug    *string          `json:"old_plan_slug"`
-	NewPlanName    *string          `json:"new_plan_name"`
-	NewPlanSlug    *string          `json:"new_plan_slug"`
+	ID             pgtype.UUID        `json:"id"`
+	OrganizationID string             `json:"organization_id"`
+	Action         string             `json:"action"`
+	OldPlanID      pgtype.UUID        `json:"old_plan_id"`
+	NewPlanID      pgtype.UUID        `json:"new_plan_id"`
+	OldStatus      *string            `json:"old_status"`
+	NewStatus      *string            `json:"new_status"`
+	Metadata       []byte             `json:"metadata"`
+	PerformedBy    *string            `json:"performed_by"`
+	PerformedAt    pgtype.Timestamptz `json:"performed_at"`
+	OldPlanName    *string            `json:"old_plan_name"`
+	OldPlanSlug    *string            `json:"old_plan_slug"`
+	NewPlanName    *string            `json:"new_plan_name"`
+	NewPlanSlug    *string            `json:"new_plan_slug"`
 }
 
 func (q *Queries) GetOrganizationAuditLogs(ctx context.Context, organizationID string, limit int32, offset int32) ([]GetOrganizationAuditLogsRow, error) {
@@ -680,17 +697,17 @@ WHERE o.id = $1
 `
 
 type GetOrganizationTrialStatusRow struct {
-	OrganizationID     string           `json:"organization_id"`
-	SubscriptionStatus *string          `json:"subscription_status"`
-	TrialStartDate     pgtype.Timestamp `json:"trial_start_date"`
-	TrialEndDate       pgtype.Timestamp `json:"trial_end_date"`
-	GracePeriodEndsAt  pgtype.Timestamp `json:"grace_period_ends_at"`
-	PlanSlug           *string          `json:"plan_slug"`
-	PlanName           *string          `json:"plan_name"`
-	DaysRemaining      int32            `json:"days_remaining"`
-	IsExpired          bool             `json:"is_expired"`
-	IsActive           bool             `json:"is_active"`
-	InGracePeriod      bool             `json:"in_grace_period"`
+	OrganizationID     string             `json:"organization_id"`
+	SubscriptionStatus string             `json:"subscription_status"`
+	TrialStartDate     pgtype.Timestamptz `json:"trial_start_date"`
+	TrialEndDate       pgtype.Timestamptz `json:"trial_end_date"`
+	GracePeriodEndsAt  pgtype.Timestamptz `json:"grace_period_ends_at"`
+	PlanSlug           *string            `json:"plan_slug"`
+	PlanName           *string            `json:"plan_name"`
+	DaysRemaining      int32              `json:"days_remaining"`
+	IsExpired          bool               `json:"is_expired"`
+	IsActive           bool               `json:"is_active"`
+	InGracePeriod      bool               `json:"in_grace_period"`
 }
 
 // ============================================================================
@@ -777,21 +794,21 @@ LIMIT $1 OFFSET $2
 `
 
 type GetRecentAuditLogsRow struct {
-	ID               pgtype.UUID      `json:"id"`
-	OrganizationID   string           `json:"organization_id"`
-	Action           string           `json:"action"`
-	OldPlanID        pgtype.UUID      `json:"old_plan_id"`
-	NewPlanID        pgtype.UUID      `json:"new_plan_id"`
-	OldStatus        *string          `json:"old_status"`
-	NewStatus        *string          `json:"new_status"`
-	Metadata         []byte           `json:"metadata"`
-	PerformedBy      *string          `json:"performed_by"`
-	PerformedAt      pgtype.Timestamp `json:"performed_at"`
-	OrganizationName *string          `json:"organization_name"`
-	OldPlanName      *string          `json:"old_plan_name"`
-	OldPlanSlug      *string          `json:"old_plan_slug"`
-	NewPlanName      *string          `json:"new_plan_name"`
-	NewPlanSlug      *string          `json:"new_plan_slug"`
+	ID               pgtype.UUID        `json:"id"`
+	OrganizationID   string             `json:"organization_id"`
+	Action           string             `json:"action"`
+	OldPlanID        pgtype.UUID        `json:"old_plan_id"`
+	NewPlanID        pgtype.UUID        `json:"new_plan_id"`
+	OldStatus        *string            `json:"old_status"`
+	NewStatus        *string            `json:"new_status"`
+	Metadata         []byte             `json:"metadata"`
+	PerformedBy      *string            `json:"performed_by"`
+	PerformedAt      pgtype.Timestamptz `json:"performed_at"`
+	OrganizationName *string            `json:"organization_name"`
+	OldPlanName      *string            `json:"old_plan_name"`
+	OldPlanSlug      *string            `json:"old_plan_slug"`
+	NewPlanName      *string            `json:"new_plan_name"`
+	NewPlanSlug      *string            `json:"new_plan_slug"`
 }
 
 func (q *Queries) GetRecentAuditLogs(ctx context.Context, limit int32, offset int32) ([]GetRecentAuditLogsRow, error) {
@@ -939,10 +956,10 @@ ORDER BY o.trial_end_date ASC
 `
 
 type GetTrialsEndingSoonRow struct {
-	ID            string           `json:"id"`
-	Name          string           `json:"name"`
-	TrialEndDate  pgtype.Timestamp `json:"trial_end_date"`
-	DaysRemaining int32            `json:"days_remaining"`
+	ID            string             `json:"id"`
+	Name          string             `json:"name"`
+	TrialEndDate  pgtype.Timestamptz `json:"trial_end_date"`
+	DaysRemaining int32              `json:"days_remaining"`
 }
 
 func (q *Queries) GetTrialsEndingSoon(ctx context.Context) ([]GetTrialsEndingSoonRow, error) {
@@ -993,44 +1010,31 @@ func (q *Queries) StartOrganizationTrial(ctx context.Context, dollar_1 string) e
 }
 
 const updateFeatureFlag = `-- name: UpdateFeatureFlag :one
-UPDATE feature_flags SET
+UPDATE subscription_feature_requirements SET
     description = $2,
     plan_requirements = $3,
     is_trial_allowed = $4,
     is_enterprise_only = $5,
-    is_active = $6,
     updated_at = CURRENT_TIMESTAMP
 WHERE name = $1
-RETURNING id, name, description, plan_requirements, is_trial_allowed, is_enterprise_only, is_active, created_at, updated_at
+RETURNING name, description, plan_requirements, is_trial_allowed, is_enterprise_only, created_at, updated_at
 `
 
-type UpdateFeatureFlagParams struct {
-	Name             string  `json:"name"`
-	Description      *string `json:"description"`
-	PlanRequirements []byte  `json:"plan_requirements"`
-	IsTrialAllowed   *bool   `json:"is_trial_allowed"`
-	IsEnterpriseOnly *bool   `json:"is_enterprise_only"`
-	IsActive         *bool   `json:"is_active"`
-}
-
-func (q *Queries) UpdateFeatureFlag(ctx context.Context, arg UpdateFeatureFlagParams) (FeatureFlag, error) {
+func (q *Queries) UpdateFeatureFlag(ctx context.Context, name string, description *string, planRequirements []byte, isTrialAllowed bool, isEnterpriseOnly bool) (SubscriptionFeatureRequirement, error) {
 	row := q.db.QueryRow(ctx, updateFeatureFlag,
-		arg.Name,
-		arg.Description,
-		arg.PlanRequirements,
-		arg.IsTrialAllowed,
-		arg.IsEnterpriseOnly,
-		arg.IsActive,
+		name,
+		description,
+		planRequirements,
+		isTrialAllowed,
+		isEnterpriseOnly,
 	)
-	var i FeatureFlag
+	var i SubscriptionFeatureRequirement
 	err := row.Scan(
-		&i.ID,
 		&i.Name,
 		&i.Description,
 		&i.PlanRequirements,
 		&i.IsTrialAllowed,
 		&i.IsEnterpriseOnly,
-		&i.IsActive,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -1046,7 +1050,7 @@ UPDATE organizations SET
 WHERE id = $1
 `
 
-func (q *Queries) UpdateOrganizationPlan(ctx context.Context, iD string, currentPlanID pgtype.UUID, subscriptionStatus *string, maxUsersAllowed *int32) error {
+func (q *Queries) UpdateOrganizationPlan(ctx context.Context, iD string, currentPlanID pgtype.UUID, subscriptionStatus string, maxUsersAllowed *int32) error {
 	_, err := q.db.Exec(ctx, updateOrganizationPlan,
 		iD,
 		currentPlanID,
@@ -1072,15 +1076,15 @@ RETURNING id, organization_id, plan_id, stripe_subscription_id, status, current_
 `
 
 type UpdateOrganizationSubscriptionParams struct {
-	OrganizationID       string           `json:"organization_id"`
-	PlanID               pgtype.UUID      `json:"plan_id"`
-	StripeSubscriptionID *string          `json:"stripe_subscription_id"`
-	Status               string           `json:"status"`
-	CurrentPeriodStart   pgtype.Timestamp `json:"current_period_start"`
-	CurrentPeriodEnd     pgtype.Timestamp `json:"current_period_end"`
-	CancelAtPeriodEnd    *bool            `json:"cancel_at_period_end"`
-	PaymentFailedCount   *int32           `json:"payment_failed_count"`
-	LastPaymentFailedAt  pgtype.Timestamp `json:"last_payment_failed_at"`
+	OrganizationID       string             `json:"organization_id"`
+	PlanID               pgtype.UUID        `json:"plan_id"`
+	StripeSubscriptionID *string            `json:"stripe_subscription_id"`
+	Status               string             `json:"status"`
+	CurrentPeriodStart   pgtype.Timestamptz `json:"current_period_start"`
+	CurrentPeriodEnd     pgtype.Timestamptz `json:"current_period_end"`
+	CancelAtPeriodEnd    *bool              `json:"cancel_at_period_end"`
+	PaymentFailedCount   *int32             `json:"payment_failed_count"`
+	LastPaymentFailedAt  pgtype.Timestamptz `json:"last_payment_failed_at"`
 }
 
 func (q *Queries) UpdateOrganizationSubscription(ctx context.Context, arg UpdateOrganizationSubscriptionParams) (OrganizationSubscription, error) {
@@ -1120,7 +1124,7 @@ UPDATE organizations SET
 WHERE id = $1
 `
 
-func (q *Queries) UpdateOrganizationSubscriptionStatus(ctx context.Context, iD string, subscriptionStatus *string) error {
+func (q *Queries) UpdateOrganizationSubscriptionStatus(ctx context.Context, iD string, subscriptionStatus string) error {
 	_, err := q.db.Exec(ctx, updateOrganizationSubscriptionStatus, iD, subscriptionStatus)
 	return err
 }

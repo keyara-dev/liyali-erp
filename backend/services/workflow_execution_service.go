@@ -1796,16 +1796,19 @@ func (s *WorkflowExecutionService) updateDocumentStatus(tx *gorm.DB, entityType,
 
 // addActionHistoryEntry adds an action history entry to the document
 func (s *WorkflowExecutionService) addActionHistoryEntry(tx *gorm.DB, entityType, entityID, userID, action, comments string) error {
+	now := time.Now()
 	actionEntry := types.ActionHistoryEntry{
 		ID:              uuid.New().String(),
+		Action:          action,
 		ActionType:      action,
 		PerformedBy:     userID,
 		PerformedByName: "", // Will be filled by caller if needed
 		PerformedByRole: "", // Will be filled by caller if needed
-		PerformedAt:     time.Now(),
+		Timestamp:       now,
+		PerformedAt:     now,
 		Comments:        comments,
 		PreviousStatus:  "", // Could be enhanced to track status transitions
-		NewStatus: "APPROVED",
+		NewStatus:       "APPROVED",
 	}
 
 	switch entityType {
@@ -1893,11 +1896,14 @@ func (s *WorkflowExecutionService) addActionHistoryEntryWithMeta(
 	tx *gorm.DB, entityType, entityID, userID, action, comments,
 	previousStatus, newStatus string, changedFields map[string]interface{},
 ) error {
+	now2 := time.Now()
 	actionEntry := types.ActionHistoryEntry{
 		ID:             uuid.New().String(),
+		Action:         action,
 		ActionType:     action,
 		PerformedBy:    userID,
-		PerformedAt:    time.Now(),
+		Timestamp:      now2,
+		PerformedAt:    now2,
 		Comments:       comments,
 		PreviousStatus: previousStatus,
 		NewStatus:      newStatus,

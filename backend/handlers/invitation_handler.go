@@ -14,7 +14,7 @@ import (
 // ─── Admin-side handlers ─────────────────────────────────────────────────────
 
 // LookupUserByEmail checks whether an email address belongs to an existing platform
-// user and whether that user is already a member of the current organisation.
+// user and whether that user is already a member of the current organization.
 // The frontend uses this before showing the create-vs-invite decision banner.
 //
 // GET /api/v1/organization/users/lookup?email=
@@ -152,7 +152,7 @@ func SendInvitation(c *fiber.Ctx) error {
 	}, "Invitation sent successfully")
 }
 
-// ListOrgInvitations returns all invitations for the current organisation.
+// ListOrgInvitations returns all invitations for the current organization.
 //
 // GET /api/v1/organization/invitations
 func ListOrgInvitations(c *fiber.Ctx) error {

@@ -260,8 +260,8 @@ func AdminGetAdminUser(c *fiber.Ctx) error {
 // AdminCreateAdminUser creates a new admin user.
 //
 // Two user types are supported:
-//  - is_super_admin=false: platform admin for the frontend app — gets role="admin" and a personal organisation
-//  - is_super_admin=true:  admin console super admin — gets role="super_admin", no organisation created
+//   - is_super_admin=false: platform admin for the frontend app — gets role="admin" and a personal organization
+//   - is_super_admin=true:  admin console super admin — gets role="super_admin", no organization created
 func AdminCreateAdminUser(c *fiber.Ctx) error {
 	db := config.DB
 
@@ -330,7 +330,7 @@ func AdminCreateAdminUser(c *fiber.Ctx) error {
 		return utils.SendInternalError(c, "Failed to create admin user", err)
 	}
 
-	// Platform admin users (non-super-admin) get a personal organisation so they
+	// Platform admin users (non-super-admin) get a personal organization so they
 	// can immediately use the frontend app.
 	if !request.IsSuperAdmin {
 		orgName := name + "'s Organization"
@@ -376,7 +376,7 @@ func AdminCreateAdminUser(c *fiber.Ctx) error {
 				"updated_at":      now,
 			})
 
-			// Set the new org as the user's current organisation
+			// Set the new org as the user's current organization
 			db.Table("users").Where("id = ?", userID).Updates(map[string]interface{}{
 				"current_organization_id": orgID,
 				"updated_at":              now,
@@ -678,9 +678,9 @@ func AdminToggleTwoFactor(c *fiber.Ctx) error {
 	})
 
 	return utils.SendSimpleSuccess(c, map[string]interface{}{
-		"user_id":     userID,
-		"two_factor":  req.Enabled,
-		"message":     "Two-factor authentication configuration has been recorded. Full TOTP enrollment requires additional setup.",
+		"user_id":    userID,
+		"two_factor": req.Enabled,
+		"message":    "Two-factor authentication configuration has been recorded. Full TOTP enrollment requires additional setup.",
 	}, "Two-factor authentication preference updated")
 }
 

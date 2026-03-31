@@ -443,7 +443,7 @@ func TestUpdateOrganizationRole_WrongOrg(t *testing.T) {
 
 	// Role belongs to a different org.
 	roleID := uuid.New().String()
-	seedRole(t, db, roleID, "other-org-999", "Foreign Role", "Belongs to another organisation entirely", false)
+	seedRole(t, db, roleID, "other-org-999", "Foreign Role", "Belongs to another organization entirely", false)
 
 	app := newRolesApp(withTenantCtx(testOrgID, testUserID, testUserRole))
 

@@ -33,7 +33,14 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Loader2, Trash2, Save, Building2, FileText, ArrowDownUp } from "lucide-react";
+import {
+  Loader2,
+  Trash2,
+  Save,
+  Building2,
+  FileText,
+  ArrowDownUp,
+} from "lucide-react";
 import { toast } from "sonner";
 
 export function WorkspaceSettings() {
@@ -231,11 +238,11 @@ export function WorkspaceSettings() {
                 </div>
 
                 <Input
-                  label="Organisation Name"
+                  label="Organization Name"
                   id="doc-header-name"
                   value={formData.name}
                   onChange={(e) => handleInputChange("name", e.target.value)}
-                  placeholder="Enter organisation name"
+                  placeholder="Enter organization name"
                   disabled={isUpdating}
                 />
                 <Input
@@ -345,9 +352,18 @@ export function WorkspaceSettings() {
             className="space-y-3"
           >
             <div className="flex items-start gap-3 rounded-lg border p-4 cursor-pointer hover:bg-muted/50 transition-colors">
-              <RadioGroupItem value="goods_first" id="flow-goods-first" className="mt-0.5" />
-              <Label htmlFor="flow-goods-first" className="cursor-pointer space-y-1">
-                <span className="font-medium">Goods-First (Recommended for government)</span>
+              <RadioGroupItem
+                value="goods_first"
+                id="flow-goods-first"
+                className="mt-0.5"
+              />
+              <Label
+                htmlFor="flow-goods-first"
+                className="cursor-pointer space-y-1"
+              >
+                <span className="font-medium">
+                  Goods-First (Recommended for government)
+                </span>
                 <p className="text-sm text-muted-foreground font-normal">
                   Goods must be received and the GRN approved before a payment
                   voucher can be created. Flow: REQ → PO → GRN → PV → Payment
@@ -355,13 +371,22 @@ export function WorkspaceSettings() {
               </Label>
             </div>
             <div className="flex items-start gap-3 rounded-lg border p-4 cursor-pointer hover:bg-muted/50 transition-colors">
-              <RadioGroupItem value="payment_first" id="flow-payment-first" className="mt-0.5" />
-              <Label htmlFor="flow-payment-first" className="cursor-pointer space-y-1">
-                <span className="font-medium">Payment-First (Commercial / upfront payment)</span>
+              <RadioGroupItem
+                value="payment_first"
+                id="flow-payment-first"
+                className="mt-0.5"
+              />
+              <Label
+                htmlFor="flow-payment-first"
+                className="cursor-pointer space-y-1"
+              >
+                <span className="font-medium">
+                  Payment-First (Commercial / upfront payment)
+                </span>
                 <p className="text-sm text-muted-foreground font-normal">
                   Payment is processed before goods are delivered. A GRN is
-                  created after delivery to confirm receipt. Flow: REQ → PO →
-                  PV → Payment → GRN
+                  created after delivery to confirm receipt. Flow: REQ → PO → PV
+                  → Payment → GRN
                 </p>
               </Label>
             </div>

@@ -34,8 +34,9 @@ go.work
 # Logs
 *.log
 
-# Binary
+# Binaries
 liyali-gateway-backend
+liyali-backend
 
 # Air live reload
 tmp/

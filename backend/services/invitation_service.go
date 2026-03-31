@@ -116,7 +116,7 @@ func (s *InvitationService) AcceptInvitation(token, acceptingUserID string) erro
 		return errors.New("this invitation was not sent to your account")
 	}
 
-	// Add user to the organisation.
+	// Add user to the organization.
 	orgSvc := NewOrganizationService(s.db)
 	if err := orgSvc.AddMemberWithDepartment(inv.OrganizationID, acceptingUserID, inv.Role, inv.DepartmentID); err != nil {
 		return fmt.Errorf("failed to add user to organization: %w", err)
@@ -170,7 +170,7 @@ func (s *InvitationService) CancelInvitation(invitationID, adminUserID, orgID st
 	return s.db.Model(&inv).Update("status", "CANCELLED").Error
 }
 
-// ListOrgInvitations returns all invitations for the given organisation, newest first.
+// ListOrgInvitations returns all invitations for the given organization, newest first.
 func (s *InvitationService) ListOrgInvitations(orgID string) ([]models.OrganizationInvitation, error) {
 	var invs []models.OrganizationInvitation
 	err := s.db.

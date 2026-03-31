@@ -1,27 +1,59 @@
 package handlers
 
 import (
-	"log"
+	"encoding/json"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/liyali/liyali-gateway/config"
-	"github.com/liyali/liyali-gateway/models"
+	db "github.com/liyali/liyali-gateway/database/sqlc"
 	"github.com/liyali/liyali-gateway/utils"
 )
 
-func auditLogToMap(a models.AuditLog) map[string]interface{} {
+func auditRowToMap(row db.ListAuditLogsRow) map[string]interface{} {
 	return map[string]interface{}{
-		"id":             a.ID,
-		"organizationId": a.OrganizationID,
-		"documentId":     a.DocumentID,
-		"documentType":   a.DocumentType,
-		"userId":         a.UserID,
-		"actorName":      a.ActorName,
-		"actorRole":      a.ActorRole,
-		"action":         a.Action,
-		"details":        a.Details,
-		"changes":        a.Changes,
-		"createdAt":      a.CreatedAt,
+		"id":             row.ID,
+		"organizationId": row.OrganizationID,
+		"documentId":     row.DocumentID,
+		"documentType":   row.DocumentType,
+		"userId":         row.UserID,
+		"actorName":      row.ActorName,
+		"actorRole":      row.ActorRole,
+		"action":         row.Action,
+		"details":        json.RawMessage(row.Details),
+		"changes":        json.RawMessage(row.Changes),
+		"createdAt":      row.CreatedAt.Time,
+	}
+}
+
+func auditDocRowToMap(row db.ListDocumentAuditLogsRow) map[string]interface{} {
+	return map[string]interface{}{
+		"id":             row.ID,
+		"organizationId": row.OrganizationID,
+		"documentId":     row.DocumentID,
+		"documentType":   row.DocumentType,
+		"userId":         row.UserID,
+		"actorName":      row.ActorName,
+		"actorRole":      row.ActorRole,
+		"action":         row.Action,
+		"details":        json.RawMessage(row.Details),
+		"changes":        json.RawMessage(row.Changes),
+		"createdAt":      row.CreatedAt.Time,
+	}
+}
+
+func auditEventRowToMap(row db.ListAuditEventsRow) map[string]interface{} {
+	return map[string]interface{}{
+		"id":             row.ID,
+		"organizationId": row.OrganizationID,
+		"documentId":     row.DocumentID,
+		"documentType":   row.DocumentType,
+		"userId":         row.UserID,
+		"actorName":      row.ActorName,
+		"actorRole":      row.ActorRole,
+		"action":         row.Action,
+		"details":        json.RawMessage(row.Details),
+		"changes":        json.RawMessage(row.Changes),
+		"createdAt":      row.CreatedAt.Time,
 	}
 }
 
@@ -42,38 +74,29 @@ func GetAuditLogs(c *fiber.Ctx) error {
 		limit = 50
 	}
 
-	query := config.DB.Model(&models.AuditLog{}).Where("organization_id = ?", orgID)
+	ctx := c.Context()
 
-	if action != "" {
-		query = query.Where("action = ?", action)
-	}
-	if documentType != "" {
-		query = query.Where("document_type = ?", documentType)
-	}
-	if userID != "" {
-		query = query.Where("user_id = ?", userID)
-	}
-
-	var total int64
-	if err := query.Count(&total).Error; err != nil {
-		log.Printf("Error counting audit logs: %v", err)
+	total, err := config.Queries.CountAuditLogs(ctx, orgID, action, documentType, userID)
+	if err != nil {
 		return utils.SendInternalError(c, "Failed to count audit logs", err)
 	}
 
-	var auditLogs []models.AuditLog
-	offset := (page - 1) * limit
-	if err := query.
-		Offset(offset).
-		Limit(limit).
-		Order("created_at DESC").
-		Find(&auditLogs).Error; err != nil {
-		log.Printf("Error fetching audit logs: %v", err)
+	offset := int32((page - 1) * limit)
+	rows, err := config.Queries.ListAuditLogs(ctx, db.ListAuditLogsParams{
+		OrganizationID: orgID,
+		Column2:        action,
+		Column3:        documentType,
+		Column4:        userID,
+		Limit:          int32(limit),
+		Offset:         offset,
+	})
+	if err != nil {
 		return utils.SendInternalError(c, "Failed to fetch audit logs", err)
 	}
 
-	responses := make([]map[string]interface{}, 0, len(auditLogs))
-	for _, a := range auditLogs {
-		responses = append(responses, auditLogToMap(a))
+	responses := make([]map[string]interface{}, 0, len(rows))
+	for _, row := range rows {
+		responses = append(responses, auditRowToMap(row))
 	}
 
 	return utils.SendPaginatedSuccess(c, responses, "Audit logs retrieved successfully", page, limit, total)
@@ -97,28 +120,22 @@ func GetDocumentAuditLogs(c *fiber.Ctx) error {
 		limit = 100
 	}
 
-	query := config.DB.Where("organization_id = ? AND document_id = ?", orgID, documentID)
+	ctx := c.Context()
 
-	var total int64
-	if err := query.Model(&models.AuditLog{}).Count(&total).Error; err != nil {
-		log.Printf("Error counting document audit logs: %v", err)
+	total, err := config.Queries.CountDocumentAuditLogs(ctx, orgID, documentID)
+	if err != nil {
 		return utils.SendInternalError(c, "Failed to count audit logs", err)
 	}
 
-	var auditLogs []models.AuditLog
-	offset := (page - 1) * limit
-	if err := query.
-		Offset(offset).
-		Limit(limit).
-		Order("created_at DESC").
-		Find(&auditLogs).Error; err != nil {
-		log.Printf("Error fetching document audit logs: %v", err)
+	offset := int32((page - 1) * limit)
+	rows, err := config.Queries.ListDocumentAuditLogs(ctx, orgID, documentID, int32(limit), offset)
+	if err != nil {
 		return utils.SendInternalError(c, "Failed to fetch audit logs", err)
 	}
 
-	responses := make([]map[string]interface{}, 0, len(auditLogs))
-	for _, a := range auditLogs {
-		responses = append(responses, auditLogToMap(a))
+	responses := make([]map[string]interface{}, 0, len(rows))
+	for _, row := range rows {
+		responses = append(responses, auditDocRowToMap(row))
 	}
 
 	return utils.SendPaginatedSuccess(c, responses, "Document audit logs retrieved successfully", page, limit, total)
@@ -144,29 +161,22 @@ func GetDocumentAuditEvents(c *fiber.Ctx) error {
 		limit = 100
 	}
 
-	query := config.DB.Where(
-		"organization_id = ? AND document_type = ? AND document_id = ?",
-		orgID, entityType, entityID,
-	)
+	ctx := c.Context()
 
-	var total int64
-	if err := query.Model(&models.AuditLog{}).Count(&total).Error; err != nil {
+	total, err := config.Queries.CountAuditEvents(ctx, orgID, entityType, entityID)
+	if err != nil {
 		return utils.SendInternalError(c, "Failed to count audit events", err)
 	}
 
-	var auditLogs []models.AuditLog
-	offset := (page - 1) * limit
-	if err := query.
-		Offset(offset).
-		Limit(limit).
-		Order("created_at DESC").
-		Find(&auditLogs).Error; err != nil {
+	offset := int32((page - 1) * limit)
+	rows, err := config.Queries.ListAuditEvents(ctx, orgID, entityType, entityID, int32(limit), offset)
+	if err != nil {
 		return utils.SendInternalError(c, "Failed to fetch audit events", err)
 	}
 
-	responses := make([]map[string]interface{}, 0, len(auditLogs))
-	for _, a := range auditLogs {
-		responses = append(responses, auditLogToMap(a))
+	responses := make([]map[string]interface{}, 0, len(rows))
+	for _, row := range rows {
+		responses = append(responses, auditEventRowToMap(row))
 	}
 
 	return utils.SendPaginatedSuccess(c, responses, "Audit events retrieved successfully", page, limit, total)

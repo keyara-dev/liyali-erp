@@ -38,7 +38,7 @@ interface AdminUserCreateDialogProps {
 const USER_TYPE_OPTIONS = [
   {
     value: "admin",
-    label: "Platform Admin — frontend app access with personal organisation",
+    label: "Platform Admin — frontend app access with personal organization",
   },
   {
     value: "super_admin",
@@ -107,7 +107,10 @@ export function AdminUserCreateDialog({
           onUserCreated();
           handleClose();
         } else {
-          notify({ title: result.message || "Failed to create admin user", type: "error" });
+          notify({
+            title: result.message || "Failed to create admin user",
+            type: "error",
+          });
         }
       },
       onError: (error) => {
@@ -338,7 +341,7 @@ export function AdminUserCreateDialog({
                 <p className="font-medium">Admin console access</p>
                 <p className="text-muted-foreground">
                   This user will have full platform access and can log into the
-                  admin console. No organisation will be created.
+                  admin console. No organization will be created.
                 </p>
               </div>
             </div>
@@ -346,9 +349,9 @@ export function AdminUserCreateDialog({
             <div className="flex gap-3 rounded-lg border border-blue-500/30 bg-blue-500/10 p-3">
               <Building2 className="h-4 w-4 mt-0.5 shrink-0 text-blue-500" />
               <div className="text-sm text-blue-600 dark:text-blue-400">
-                <p className="font-medium">Personal organisation</p>
+                <p className="font-medium">Personal organization</p>
                 <p className="text-muted-foreground">
-                  A personal organisation will automatically be created for this
+                  A personal organization will automatically be created for this
                   user so they can start using the platform immediately.
                 </p>
               </div>
