@@ -267,6 +267,9 @@ func CreatePurchaseOrder(c *fiber.Ctx) error {
 	documentNumber := utils.GenerateDocumentNumber("PO")
 	orderID := uuid.New().String()
 
+	var createUser models.User
+	config.DB.Where("id = ?", tenant.UserID).First(&createUser)
+
 	logging.AddFieldToRequest(c, "document_number", documentNumber)
 	logging.AddFieldToRequest(c, "order_id", orderID)
 
@@ -294,6 +297,19 @@ func CreatePurchaseOrder(c *fiber.Ctx) error {
 
 	order.Items = datatypes.NewJSONType(req.Items)
 	order.ApprovalHistory = datatypes.NewJSONType([]types.ApprovalRecord{})
+	createNow := time.Now()
+	order.ActionHistory = datatypes.NewJSONType([]types.ActionHistoryEntry{{
+		ID:              uuid.New().String(),
+		Action:          "CREATE",
+		ActionType:      "CREATE",
+		PerformedBy:     tenant.UserID,
+		PerformedByName: createUser.Name,
+		PerformedByRole: createUser.Role,
+		Timestamp:       createNow,
+		PerformedAt:     createNow,
+		Comments:        "Purchase order created",
+		NewStatus:       "DRAFT",
+	}})
 
 	if err := config.DB.Create(&order).Error; err != nil {
 		logging.LogError(c, err, "failed_to_create_purchase_order", map[string]interface{}{
@@ -315,6 +331,7 @@ func CreatePurchaseOrder(c *fiber.Ctx) error {
 		DocumentID:     order.ID,
 		DocumentType:   "purchase_order",
 		UserID:         tenant.UserID,
+		ActorName:      createUser.Name,
 		ActorRole:      tenant.UserRole,
 		Action:         "created",
 		Details:        map[string]interface{}{"documentNumber": order.DocumentNumber},
@@ -485,6 +502,28 @@ func UpdatePurchaseOrder(c *fiber.Ctx) error {
 		order.BypassJustification = req.BypassJustification
 	}
 
+	orgID, _ := c.Locals("organizationID").(string)
+	actorID, _ := c.Locals("userID").(string)
+	actorRole, _ := c.Locals("userRole").(string)
+	var updateUser models.User
+	config.DB.Where("id = ?", actorID).First(&updateUser)
+	if len(changes) > 0 {
+		updateNow := time.Now()
+		existingHistory := order.ActionHistory.Data()
+		existingHistory = append(existingHistory, types.ActionHistoryEntry{
+			ID:              uuid.New().String(),
+			Action:          "UPDATE",
+			ActionType:      "UPDATE",
+			PerformedBy:     actorID,
+			PerformedByName: updateUser.Name,
+			PerformedByRole: actorRole,
+			Timestamp:       updateNow,
+			PerformedAt:     updateNow,
+			Comments:        "Purchase order updated",
+			NewStatus:       order.Status,
+		})
+		order.ActionHistory = datatypes.NewJSONType(existingHistory)
+	}
 	order.UpdatedAt = time.Now()
 
 	if err := config.DB.Save(&order).Error; err != nil {
@@ -504,15 +543,13 @@ func UpdatePurchaseOrder(c *fiber.Ctx) error {
 
 	go utils.SyncDocument(config.DB, "PURCHASE_ORDER", order.ID)
 
-	orgID, _ := c.Locals("organizationID").(string)
-	actorID, _ := c.Locals("userID").(string)
-	actorRole, _ := c.Locals("userRole").(string)
 	if len(changes) > 0 {
 		go services.LogDocumentEvent(config.DB, services.DocumentEvent{
 			OrganizationID: orgID,
 			DocumentID:     order.ID,
 			DocumentType:   "purchase_order",
 			UserID:         actorID,
+			ActorName:      updateUser.Name,
 			ActorRole:      actorRole,
 			Action:         "updated",
 			Details:        changes,
@@ -764,12 +801,30 @@ func SubmitPurchaseOrder(c *fiber.Ctx) error {
 					"count":   quotationCount,
 				})
 			}
-			// Bypass approved — log audit event
+			// Bypass approved — add to action history and log audit event
+			var bypassUser models.User
+			config.DB.Where("id = ?", userID).First(&bypassUser)
+			bypassTime := time.Now()
+			bypassHistory := order.ActionHistory.Data()
+			bypassHistory = append(bypassHistory, types.ActionHistoryEntry{
+				ID:              uuid.New().String(),
+				Action:          "QUOTATION_GATE_BYPASSED",
+				ActionType:      "QUOTATION_GATE_BYPASSED",
+				PerformedBy:     userID,
+				PerformedByName: bypassUser.Name,
+				PerformedByRole: bypassUser.Role,
+				Timestamp:       bypassTime,
+				PerformedAt:     bypassTime,
+				Comments:        order.BypassJustification,
+				NewStatus:       order.Status,
+			})
+			order.ActionHistory = datatypes.NewJSONType(bypassHistory)
 			go services.LogDocumentEvent(config.DB, services.DocumentEvent{
 				OrganizationID: organizationID,
 				DocumentID:     order.ID,
 				DocumentType:   "purchase_order",
 				UserID:         userID,
+				ActorName:      bypassUser.Name,
 				ActorRole:      func() string { r, _ := c.Locals("userRole").(string); return r }(),
 				Action:         "quotation_gate_bypassed",
 				Details: map[string]interface{}{

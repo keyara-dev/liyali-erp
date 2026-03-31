@@ -101,6 +101,9 @@ func CreatePurchaseOrderFromRequisition(c *fiber.Ctx) error {
 	documentNumber := utils.GenerateDocumentNumber("PO")
 	orderID := uuid.New().String()
 
+	var poFromReqUser models.User
+	config.DB.Where("id = ?", tenant.UserID).First(&poFromReqUser)
+
 	// Build PO metadata: copy REQ's attachments (tagged fromRequisition) + REQ's quotations
 	poMetadata := map[string]interface{}{}
 	if len(requisition.Metadata) > 0 {
@@ -211,6 +214,19 @@ func CreatePurchaseOrderFromRequisition(c *fiber.Ctx) error {
 			},
 		})
 	}
+	poFromReqNow := time.Now()
+	initialHistory = append(initialHistory, types.ActionHistoryEntry{
+		ID:              uuid.New().String(),
+		Action:          "CREATE",
+		ActionType:      "CREATE",
+		PerformedBy:     tenant.UserID,
+		PerformedByName: poFromReqUser.Name,
+		PerformedByRole: poFromReqUser.Role,
+		Timestamp:       poFromReqNow,
+		PerformedAt:     poFromReqNow,
+		Comments:        "Purchase order created from requisition",
+		NewStatus:       "DRAFT",
+	})
 	order.ActionHistory = datatypes.NewJSONType(initialHistory)
 
 	if err := config.DB.Create(&order).Error; err != nil {
@@ -237,6 +253,16 @@ func CreatePurchaseOrderFromRequisition(c *fiber.Ctx) error {
 
 	config.DB.Preload("Vendor").First(&order)
 	go utils.SyncDocument(config.DB, "PURCHASE_ORDER", order.ID)
+	go services.LogDocumentEvent(config.DB, services.DocumentEvent{
+		OrganizationID: tenant.OrganizationID,
+		DocumentID:     order.ID,
+		DocumentType:   "purchase_order",
+		UserID:         tenant.UserID,
+		ActorName:      poFromReqUser.Name,
+		ActorRole:      poFromReqUser.Role,
+		Action:         "created",
+		Details:        map[string]interface{}{"documentNumber": order.DocumentNumber, "sourceRequisition": req.RequisitionDocumentNumber},
+	})
 
 	logger.Info("po_from_requisition_created")
 	return utils.SendCreatedSuccess(c, modelToPurchaseOrderResponse(order), "Purchase order created from requisition successfully")
@@ -341,6 +367,9 @@ func CreatePaymentVoucherFromPO(c *fiber.Ctx) error {
 	documentNumber := utils.GenerateDocumentNumber("PV")
 	invoiceRef := "INV-" + po.DocumentNumber
 
+	var pvFromPOUser models.User
+	config.DB.Where("id = ?", tenant.UserID).First(&pvFromPOUser)
+
 	linkedGRNDocNum := ""
 	if linkedGRN != nil {
 		linkedGRNDocNum = linkedGRN.DocumentNumber
@@ -427,6 +456,19 @@ func CreatePaymentVoucherFromPO(c *fiber.Ctx) error {
 			},
 		})
 	}
+	pvFromPONow := time.Now()
+	pvInitialHistory = append(pvInitialHistory, types.ActionHistoryEntry{
+		ID:              uuid.New().String(),
+		Action:          "CREATE",
+		ActionType:      "CREATE",
+		PerformedBy:     tenant.UserID,
+		PerformedByName: pvFromPOUser.Name,
+		PerformedByRole: pvFromPOUser.Role,
+		Timestamp:       pvFromPONow,
+		PerformedAt:     pvFromPONow,
+		Comments:        "Payment voucher created from purchase order",
+		NewStatus:       "DRAFT",
+	})
 	voucher.ActionHistory = datatypes.NewJSONType(pvInitialHistory)
 
 	if err := config.DB.Create(&voucher).Error; err != nil {
@@ -460,6 +502,16 @@ func CreatePaymentVoucherFromPO(c *fiber.Ctx) error {
 
 	config.DB.Preload("Vendor").First(&voucher)
 	go utils.SyncDocument(config.DB, "PAYMENT_VOUCHER", voucher.ID)
+	go services.LogDocumentEvent(config.DB, services.DocumentEvent{
+		OrganizationID: tenant.OrganizationID,
+		DocumentID:     voucher.ID,
+		DocumentType:   "payment_voucher",
+		UserID:         tenant.UserID,
+		ActorName:      pvFromPOUser.Name,
+		ActorRole:      pvFromPOUser.Role,
+		Action:         "created",
+		Details:        map[string]interface{}{"documentNumber": voucher.DocumentNumber, "sourcePO": req.PurchaseOrderDocumentNumber},
+	})
 
 	logger.Info("pv_from_po_created")
 	return utils.SendCreatedSuccess(c, modelToPaymentVoucherResponse(voucher), "Payment voucher created from purchase order successfully")
@@ -544,6 +596,16 @@ func MarkPaymentVoucherPaid(c *fiber.Ctx) error {
 	}
 
 	go utils.SyncDocument(config.DB, "PAYMENT_VOUCHER", voucher.ID)
+	go services.LogDocumentEvent(config.DB, services.DocumentEvent{
+		OrganizationID: tenant.OrganizationID,
+		DocumentID:     voucher.ID,
+		DocumentType:   "payment_voucher",
+		UserID:         userID,
+		ActorName:      user.Name,
+		ActorRole:      user.Role,
+		Action:         "marked_paid",
+		Details:        map[string]interface{}{"documentNumber": voucher.DocumentNumber, "paidAmount": req.PaidAmount},
+	})
 
 	logger.Info("pv_marked_paid")
 	return utils.SendSimpleSuccess(c, modelToPaymentVoucherResponse(voucher), "Payment voucher marked as paid successfully")
@@ -866,6 +928,16 @@ func ConfirmGRN(c *fiber.Ctx) error {
 	}
 
 	go utils.SyncDocument(config.DB, "GRN", grn.ID)
+	go services.LogDocumentEvent(config.DB, services.DocumentEvent{
+		OrganizationID: tenant.OrganizationID,
+		DocumentID:     grn.ID,
+		DocumentType:   "grn",
+		UserID:         userID,
+		ActorName:      user.Name,
+		ActorRole:      user.Role,
+		Action:         "confirmed",
+		Details:        map[string]interface{}{"documentNumber": grn.DocumentNumber},
+	})
 
 	logger.Info("grn_confirmed")
 	return utils.SendSimpleSuccess(c, modelToGRNResponse(grn), "GRN confirmed successfully")

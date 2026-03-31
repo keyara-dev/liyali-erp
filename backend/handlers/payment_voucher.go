@@ -244,6 +244,9 @@ func CreatePaymentVoucher(c *fiber.Ctx) error {
 	// Generate voucher number
 	documentNumber := utils.GenerateDocumentNumber("PV")
 
+	var pvCreateUser models.User
+	config.DB.Where("id = ?", tenant.UserID).First(&pvCreateUser)
+
 	voucher := models.PaymentVoucher{
 		ID:             uuid.New().String(),
 		OrganizationID: tenant.OrganizationID, // SECURITY FIX: Set organization ID
@@ -263,6 +266,19 @@ func CreatePaymentVoucher(c *fiber.Ctx) error {
 	}
 
 	voucher.ApprovalHistory = datatypes.NewJSONType([]types.ApprovalRecord{})
+	pvCreateNow := time.Now()
+	voucher.ActionHistory = datatypes.NewJSONType([]types.ActionHistoryEntry{{
+		ID:              uuid.New().String(),
+		Action:          "CREATE",
+		ActionType:      "CREATE",
+		PerformedBy:     tenant.UserID,
+		PerformedByName: pvCreateUser.Name,
+		PerformedByRole: pvCreateUser.Role,
+		Timestamp:       pvCreateNow,
+		PerformedAt:     pvCreateNow,
+		Comments:        "Payment voucher created",
+		NewStatus:       "DRAFT",
+	}})
 
 	if err := config.DB.Create(&voucher).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
@@ -280,6 +296,7 @@ func CreatePaymentVoucher(c *fiber.Ctx) error {
 		DocumentID:     voucher.ID,
 		DocumentType:   "payment_voucher",
 		UserID:         tenant.UserID,
+		ActorName:      pvCreateUser.Name,
 		ActorRole:      tenant.UserRole,
 		Action:         "created",
 		Details:        map[string]interface{}{"documentNumber": voucher.DocumentNumber},
@@ -405,7 +422,24 @@ func UpdatePaymentVoucher(c *fiber.Ctx) error {
 		voucher.Description = req.Description
 	}
 
-	voucher.UpdatedAt = time.Now()
+	var pvUpdateUser models.User
+	config.DB.Where("id = ?", tenant.UserID).First(&pvUpdateUser)
+	pvUpdateNow := time.Now()
+	pvUpdateHistory := voucher.ActionHistory.Data()
+	pvUpdateHistory = append(pvUpdateHistory, types.ActionHistoryEntry{
+		ID:              uuid.New().String(),
+		Action:          "UPDATE",
+		ActionType:      "UPDATE",
+		PerformedBy:     tenant.UserID,
+		PerformedByName: pvUpdateUser.Name,
+		PerformedByRole: pvUpdateUser.Role,
+		Timestamp:       pvUpdateNow,
+		PerformedAt:     pvUpdateNow,
+		Comments:        "Payment voucher updated",
+		NewStatus:       voucher.Status,
+	})
+	voucher.ActionHistory = datatypes.NewJSONType(pvUpdateHistory)
+	voucher.UpdatedAt = pvUpdateNow
 
 	if err := config.DB.Save(&voucher).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
@@ -418,6 +452,16 @@ func UpdatePaymentVoucher(c *fiber.Ctx) error {
 	config.DB.Preload("Vendor").First(&voucher)
 
 	go utils.SyncDocument(config.DB, "PAYMENT_VOUCHER", voucher.ID)
+	go services.LogDocumentEvent(config.DB, services.DocumentEvent{
+		OrganizationID: tenant.OrganizationID,
+		DocumentID:     voucher.ID,
+		DocumentType:   "payment_voucher",
+		UserID:         tenant.UserID,
+		ActorName:      pvUpdateUser.Name,
+		ActorRole:      tenant.UserRole,
+		Action:         "updated",
+		Details:        map[string]interface{}{"documentNumber": voucher.DocumentNumber},
+	})
 
 	return c.JSON(types.DetailResponse{
 		Success: true,
@@ -829,6 +873,17 @@ func WithdrawPaymentVoucher(c *fiber.Ctx) error {
 
 	// Preload vendor for response
 	config.DB.Preload("Vendor").First(&voucher)
+
+	go services.LogDocumentEvent(config.DB, services.DocumentEvent{
+		OrganizationID: organizationID,
+		DocumentID:     voucher.ID,
+		DocumentType:   "payment_voucher",
+		UserID:         userID,
+		ActorName:      user.Name,
+		ActorRole:      user.Role,
+		Action:         "withdrawn",
+		Details:        map[string]interface{}{"documentNumber": voucher.DocumentNumber},
+	})
 
 	return c.JSON(fiber.Map{
 		"success": true,

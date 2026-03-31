@@ -241,6 +241,17 @@ func CreateBudget(c *fiber.Ctx) error {
 
 	config.DB.Preload("Owner").First(&budget)
 
+	go services.LogDocumentEvent(config.DB, services.DocumentEvent{
+		OrganizationID: tenant.OrganizationID,
+		DocumentID:     budget.ID,
+		DocumentType:   "budget",
+		UserID:         userID,
+		ActorName:      user.Name,
+		ActorRole:      user.Role,
+		Action:         "created",
+		Details:        map[string]interface{}{"budgetCode": budget.BudgetCode},
+	})
+
 	logger.Info("budget_created_successfully")
 	return utils.SendCreatedSuccess(c, modelToBudgetResponse(budget), "Budget created successfully")
 }
@@ -457,6 +468,17 @@ func UpdateBudget(c *fiber.Ctx) error {
 			logging.LogError(c, err, "failed_to_save_action_history")
 			return utils.SendInternalError(c, "Failed to update action history", err)
 		}
+
+		go services.LogDocumentEvent(config.DB, services.DocumentEvent{
+			OrganizationID: tenant.OrganizationID,
+			DocumentID:     budget.ID,
+			DocumentType:   "budget",
+			UserID:         fmt.Sprintf("%v", userID),
+			ActorName:      user.Name,
+			ActorRole:      user.Role,
+			Action:         "updated",
+			Details:        map[string]interface{}{"updates": updates},
+		})
 	}
 
 	// Commit transaction
@@ -636,6 +658,19 @@ func SubmitBudget(c *fiber.Ctx) error {
 	}
 
 	config.DB.Preload("Owner").First(&budget)
+
+	var submitUser models.User
+	config.DB.Where("id = ?", userID).First(&submitUser)
+	go services.LogDocumentEvent(config.DB, services.DocumentEvent{
+		OrganizationID: organizationID,
+		DocumentID:     budget.ID,
+		DocumentType:   "budget",
+		UserID:         userID,
+		ActorName:      submitUser.Name,
+		ActorRole:      submitUser.Role,
+		Action:         "submitted",
+		Details:        map[string]interface{}{"budgetCode": budget.BudgetCode},
+	})
 
 	logger.Info("budget_submitted_successfully")
 	return utils.SendSimpleSuccess(c, modelToBudgetResponse(budget), "Budget submitted for approval successfully")

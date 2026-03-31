@@ -318,6 +318,21 @@ func CreateGRN(c *fiber.Ctx) error {
 
 	emptyHistory := []types.ApprovalRecord{}
 	grn.ApprovalHistory = datatypes.NewJSONType(emptyHistory)
+	var grnCreateUser models.User
+	config.DB.Where("id = ?", tenant.UserID).First(&grnCreateUser)
+	grnCreateNow := time.Now()
+	grnInitialHistory = append(grnInitialHistory, types.ActionHistoryEntry{
+		ID:              uuid.New().String(),
+		Action:          "CREATE",
+		ActionType:      "CREATE",
+		PerformedBy:     tenant.UserID,
+		PerformedByName: grnCreateUser.Name,
+		PerformedByRole: grnCreateUser.Role,
+		Timestamp:       grnCreateNow,
+		PerformedAt:     grnCreateNow,
+		Comments:        "GRN created",
+		NewStatus:       "DRAFT",
+	})
 	grn.ActionHistory = datatypes.NewJSONType(grnInitialHistory)
 
 	if err := config.DB.Create(&grn).Error; err != nil {
@@ -358,6 +373,7 @@ func CreateGRN(c *fiber.Ctx) error {
 		DocumentID:     grn.ID,
 		DocumentType:   "grn",
 		UserID:         tenant.UserID,
+		ActorName:      grnCreateUser.Name,
 		ActorRole:      tenant.UserRole,
 		Action:         "created",
 		Details:        map[string]interface{}{"documentNumber": grn.DocumentNumber},
@@ -468,7 +484,24 @@ func UpdateGRN(c *fiber.Ctx) error {
 		grn.QualityIssues = datatypes.NewJSONType(req.QualityIssues)
 	}
 
-	grn.UpdatedAt = time.Now()
+	var grnUpdateUser models.User
+	config.DB.Where("id = ?", tenant.UserID).First(&grnUpdateUser)
+	grnUpdateNow := time.Now()
+	grnUpdateHistory := grn.ActionHistory.Data()
+	grnUpdateHistory = append(grnUpdateHistory, types.ActionHistoryEntry{
+		ID:              uuid.New().String(),
+		Action:          "UPDATE",
+		ActionType:      "UPDATE",
+		PerformedBy:     tenant.UserID,
+		PerformedByName: grnUpdateUser.Name,
+		PerformedByRole: grnUpdateUser.Role,
+		Timestamp:       grnUpdateNow,
+		PerformedAt:     grnUpdateNow,
+		Comments:        "GRN updated",
+		NewStatus:       grn.Status,
+	})
+	grn.ActionHistory = datatypes.NewJSONType(grnUpdateHistory)
+	grn.UpdatedAt = grnUpdateNow
 
 	if err := config.DB.Save(&grn).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
@@ -479,6 +512,16 @@ func UpdateGRN(c *fiber.Ctx) error {
 	}
 
 	go utils.SyncDocument(config.DB, "GRN", grn.ID)
+	go services.LogDocumentEvent(config.DB, services.DocumentEvent{
+		OrganizationID: tenant.OrganizationID,
+		DocumentID:     grn.ID,
+		DocumentType:   "grn",
+		UserID:         tenant.UserID,
+		ActorName:      grnUpdateUser.Name,
+		ActorRole:      tenant.UserRole,
+		Action:         "updated",
+		Details:        map[string]interface{}{"documentNumber": grn.DocumentNumber},
+	})
 
 	return c.JSON(types.DetailResponse{
 		Success: true,

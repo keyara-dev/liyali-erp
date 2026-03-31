@@ -629,11 +629,14 @@ func UpdateRequisition(c *fiber.Ctx) error {
 
 	actorID, _ := c.Locals("userID").(string)
 	actorRole, _ := c.Locals("userRole").(string)
+	var reqUpdateUser models.User
+	config.DB.Where("id = ?", actorID).First(&reqUpdateUser)
 	go services.LogDocumentEvent(config.DB, services.DocumentEvent{
 		OrganizationID: organizationID,
 		DocumentID:     requisition.ID,
 		DocumentType:   "requisition",
 		UserID:         actorID,
+		ActorName:      reqUpdateUser.Name,
 		ActorRole:      actorRole,
 		Action:         "updated",
 		Details:        map[string]interface{}{"documentNumber": requisition.DocumentNumber},
@@ -994,6 +997,17 @@ func WithdrawRequisition(c *fiber.Ctx) error {
 
 	// Preload requester, category, and vendor for response
 	config.DB.Preload("Requester").Preload("Category").Preload("PreferredVendor").First(&requisition)
+
+	go services.LogDocumentEvent(config.DB, services.DocumentEvent{
+		OrganizationID: organizationID,
+		DocumentID:     requisition.ID,
+		DocumentType:   "requisition",
+		UserID:         userID,
+		ActorName:      user.Name,
+		ActorRole:      user.Role,
+		Action:         "withdrawn",
+		Details:        map[string]interface{}{"documentNumber": requisition.DocumentNumber},
+	})
 
 	return c.JSON(fiber.Map{
 		"success": true,
