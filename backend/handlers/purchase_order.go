@@ -275,16 +275,25 @@ func CreatePurchaseOrder(c *fiber.Ctx) error {
 
 	order := models.PurchaseOrder{
 		ID:                orderID,
-		OrganizationID:    tenant.OrganizationID, // SECURITY FIX: Set organization ID
+		OrganizationID:    tenant.OrganizationID,
 		DocumentNumber:    documentNumber,
 		VendorID:          vendorIDPtr,
-		Status: "DRAFT",
+		Status:            "DRAFT",
 		TotalAmount:       req.TotalAmount,
 		Currency:          req.Currency,
 		DeliveryDate:      req.DeliveryDate.Time,
 		ApprovalStage:     0,
 		LinkedRequisition: req.LinkedRequisition,
 		EstimatedCost:     req.EstimatedCost,
+		CreatedBy:         tenant.UserID,
+		Title:             req.Title,
+		Description:       req.Description,
+		Department:        req.Department,
+		DepartmentID:      req.DepartmentID,
+		Priority:          req.Priority,
+		BudgetCode:        req.BudgetCode,
+		CostCenter:        req.CostCenter,
+		ProjectCode:       req.ProjectCode,
 		CreatedAt:         time.Now(),
 		UpdatedAt:         time.Now(),
 	}
@@ -500,6 +509,30 @@ func UpdatePurchaseOrder(c *fiber.Ctx) error {
 	}
 	if req.BypassJustification != "" {
 		order.BypassJustification = req.BypassJustification
+	}
+	if req.Title != "" {
+		order.Title = req.Title
+	}
+	if req.Description != "" {
+		order.Description = req.Description
+	}
+	if req.Department != "" {
+		order.Department = req.Department
+	}
+	if req.DepartmentID != "" {
+		order.DepartmentID = req.DepartmentID
+	}
+	if req.Priority != "" {
+		order.Priority = req.Priority
+	}
+	if req.BudgetCode != "" {
+		order.BudgetCode = req.BudgetCode
+	}
+	if req.CostCenter != "" {
+		order.CostCenter = req.CostCenter
+	}
+	if req.ProjectCode != "" {
+		order.ProjectCode = req.ProjectCode
 	}
 
 	orgID, _ := c.Locals("organizationID").(string)

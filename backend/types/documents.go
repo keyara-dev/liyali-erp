@@ -211,9 +211,18 @@ type CreatePurchaseOrderRequest struct {
 	DeliveryDate      FlexibleDate           `json:"deliveryDate" validate:"required"`
 	LinkedRequisition string                 `json:"linkedRequisition"`
 	// "" = inherit from org, "goods_first" or "payment_first" to override
-	ProcurementFlow   string                 `json:"procurementFlow"`
-	Metadata          map[string]interface{} `json:"metadata"`
-	EstimatedCost     float64                `json:"estimatedCost"`
+	ProcurementFlow string                 `json:"procurementFlow"`
+	Metadata        map[string]interface{} `json:"metadata"`
+	EstimatedCost   float64                `json:"estimatedCost"`
+	// Business fields
+	Title        string `json:"title"`
+	Description  string `json:"description"`
+	Department   string `json:"department"`
+	DepartmentID string `json:"departmentId"`
+	Priority     string `json:"priority"`
+	BudgetCode   string `json:"budgetCode"`
+	CostCenter   string `json:"costCenter"`
+	ProjectCode  string `json:"projectCode"`
 }
 
 // UpdatePurchaseOrderRequest represents a PO update request
@@ -226,6 +235,15 @@ type UpdatePurchaseOrderRequest struct {
 	Metadata                map[string]interface{} `json:"metadata"`
 	QuotationGateOverridden *bool                  `json:"quotationGateOverridden"`
 	BypassJustification     string                 `json:"bypassJustification"`
+	// Business fields
+	Title        string `json:"title"`
+	Description  string `json:"description"`
+	Department   string `json:"department"`
+	DepartmentID string `json:"departmentId"`
+	Priority     string `json:"priority"`
+	BudgetCode   string `json:"budgetCode"`
+	CostCenter   string `json:"costCenter"`
+	ProjectCode  string `json:"projectCode"`
 }
 
 // POItem represents an item in a purchase order
@@ -303,7 +321,15 @@ type CreatePaymentVoucherRequest struct {
 	Description   string  `json:"description" validate:"required,min=10"`
 	LinkedPO      string  `json:"linkedPO"`
 	// Goods-first flow: GRN document number that was approved before this PV
-	LinkedGRN     string  `json:"linkedGRN"`
+	LinkedGRN string `json:"linkedGRN"`
+	// Business fields
+	Title        string `json:"title"`
+	Department   string `json:"department"`
+	DepartmentID string `json:"departmentId"`
+	Priority     string `json:"priority"`
+	BudgetCode   string `json:"budgetCode"`
+	CostCenter   string `json:"costCenter"`
+	ProjectCode  string `json:"projectCode"`
 }
 
 // UpdatePaymentVoucherRequest represents a payment voucher update request
@@ -315,6 +341,14 @@ type UpdatePaymentVoucherRequest struct {
 	PaymentMethod string  `json:"paymentMethod"`
 	GLCode        string  `json:"glCode"`
 	Description   string  `json:"description"`
+	// Business fields
+	Title        string `json:"title"`
+	Department   string `json:"department"`
+	DepartmentID string `json:"departmentId"`
+	Priority     string `json:"priority"`
+	BudgetCode   string `json:"budgetCode"`
+	CostCenter   string `json:"costCenter"`
+	ProjectCode  string `json:"projectCode"`
 }
 
 // PaymentVoucherResponse represents a payment voucher in responses

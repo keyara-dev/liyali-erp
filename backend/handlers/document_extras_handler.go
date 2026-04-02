@@ -88,6 +88,11 @@ func CreatePurchaseOrderFromRequisition(c *fiber.Ctx) error {
 	var requisition models.Requisition
 	config.DB.Preload("PreferredVendor").Where("id = ? AND organization_id = ?", req.RequisitionID, tenant.OrganizationID).First(&requisition)
 
+	// Enforce currency inheritance: PO must use the same currency as the source REQ
+	if requisition.Currency != "" {
+		req.Currency = requisition.Currency
+	}
+
 	// Verify vendor belongs to this org if provided
 	var vendorIDPtr *string
 	if req.VendorID != "" {
@@ -322,6 +327,11 @@ func CreatePaymentVoucherFromPO(c *fiber.Ctx) error {
 	var po models.PurchaseOrder
 	if err := config.DB.Preload("Vendor").Where("id = ? AND organization_id = ?", req.PurchaseOrderID, tenant.OrganizationID).First(&po).Error; err != nil {
 		return utils.SendBadRequestError(c, "Purchase order not found")
+	}
+
+	// Enforce currency inheritance: PV must use the same currency as the linked PO
+	if po.Currency != "" {
+		req.Currency = po.Currency
 	}
 
 	// Resolve effective procurement flow: PO override → org default → "goods_first"

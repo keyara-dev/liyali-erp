@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -249,11 +250,11 @@ func CreatePaymentVoucher(c *fiber.Ctx) error {
 
 	voucher := models.PaymentVoucher{
 		ID:             uuid.New().String(),
-		OrganizationID: tenant.OrganizationID, // SECURITY FIX: Set organization ID
+		OrganizationID: tenant.OrganizationID,
 		DocumentNumber: documentNumber,
 		VendorID:       vendorIDPtr,
 		InvoiceNumber:  req.InvoiceNumber,
-		Status: "DRAFT",
+		Status:         "DRAFT",
 		Amount:         req.Amount,
 		Currency:       req.Currency,
 		PaymentMethod:  req.PaymentMethod,
@@ -261,6 +262,14 @@ func CreatePaymentVoucher(c *fiber.Ctx) error {
 		Description:    req.Description,
 		ApprovalStage:  0,
 		LinkedPO:       req.LinkedPO,
+		CreatedBy:      tenant.UserID,
+		Title:          req.Title,
+		Department:     req.Department,
+		DepartmentID:   req.DepartmentID,
+		Priority:       req.Priority,
+		BudgetCode:     req.BudgetCode,
+		CostCenter:     req.CostCenter,
+		ProjectCode:    req.ProjectCode,
 		CreatedAt:      time.Now(),
 		UpdatedAt:      time.Now(),
 	}
@@ -420,6 +429,27 @@ func UpdatePaymentVoucher(c *fiber.Ctx) error {
 	}
 	if req.Description != "" {
 		voucher.Description = req.Description
+	}
+	if req.Title != "" {
+		voucher.Title = req.Title
+	}
+	if req.Department != "" {
+		voucher.Department = req.Department
+	}
+	if req.DepartmentID != "" {
+		voucher.DepartmentID = req.DepartmentID
+	}
+	if req.Priority != "" {
+		voucher.Priority = req.Priority
+	}
+	if req.BudgetCode != "" {
+		voucher.BudgetCode = req.BudgetCode
+	}
+	if req.CostCenter != "" {
+		voucher.CostCenter = req.CostCenter
+	}
+	if req.ProjectCode != "" {
+		voucher.ProjectCode = req.ProjectCode
 	}
 
 	var pvUpdateUser models.User
