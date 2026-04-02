@@ -65,7 +65,10 @@ export function PurchaseOrderSubmitDialog({
     workflowId &&
     (!needsQuotations || bypassSatisfied);
 
-  const handleWorkflowSelect = useCallback((_workflow: Workflow | null) => {}, []);
+  const handleWorkflowSelect = useCallback(
+    (_workflow: Workflow | null) => {},
+    [],
+  );
 
   const handleSubmit = async () => {
     if (!workflowId) {
@@ -117,7 +120,7 @@ export function PurchaseOrderSubmitDialog({
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent
-        className="max-w-lg max-h-[90vh] overflow-y-auto"
+        className="max-w-3xl! max-h-[90vh] overflow-y-auto"
         onInteractOutside={(e) => e.preventDefault()}
       >
         <DialogHeader>
@@ -150,7 +153,9 @@ export function PurchaseOrderSubmitDialog({
           <div className="space-y-3 rounded-lg border p-4 bg-muted/50">
             <div className="flex justify-between items-center">
               <span className="text-sm font-medium">Document Number:</span>
-              <span className="text-sm font-mono">{purchaseOrder.documentNumber}</span>
+              <span className="text-sm font-mono">
+                {purchaseOrder.documentNumber}
+              </span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-sm font-medium">Title:</span>
@@ -167,7 +172,9 @@ export function PurchaseOrderSubmitDialog({
             {purchaseOrder.priority && (
               <div className="flex justify-between items-center">
                 <span className="text-sm font-medium">Priority:</span>
-                <span className="text-sm capitalize">{purchaseOrder.priority}</span>
+                <span className="text-sm capitalize">
+                  {purchaseOrder.priority}
+                </span>
               </div>
             )}
             <Separator />
@@ -187,8 +194,8 @@ export function PurchaseOrderSubmitDialog({
               <span
                 className={`text-sm font-mono ${
                   quotationCount >= 3 || isAutomatic
-                    ? "text-green-600"
-                    : "text-amber-600"
+                    ? "text-green-600 dark:text-green-400"
+                    : "text-amber-600 dark:text-amber-400"
                 }`}
               >
                 {isAutomatic ? "N/A (auto-PO)" : `${quotationCount}/3`}
@@ -224,15 +231,16 @@ export function PurchaseOrderSubmitDialog({
 
           {/* Quotation gate warning + bypass section */}
           {needsQuotations && !bypassAlreadySaved && (
-            <Alert className="border-amber-200 bg-amber-50">
-              <AlertTriangle className="h-4 w-4 text-amber-600" />
+            <Alert className="border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-950/40">
+              <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
               <AlertDescription className="space-y-3">
-                <p className="text-amber-800 font-medium">
-                  Only {quotationCount} of 3 required quotations have been added.
+                <p className="text-amber-800 dark:text-amber-200 font-medium">
+                  Only {quotationCount} of 3 required quotations have been
+                  added.
                 </p>
-                <p className="text-amber-700 text-xs">
-                  You can add more quotations in the Supporting Documents tab, or
-                  override the requirement with a justification below.
+                <p className="text-amber-700 dark:text-amber-300 text-xs">
+                  You can add more quotations in the Supporting Documents tab,
+                  or override the requirement with a justification below.
                 </p>
                 <div className="flex items-start gap-2 pt-1">
                   <input
@@ -243,15 +251,18 @@ export function PurchaseOrderSubmitDialog({
                       setBypassEnabled(e.target.checked);
                       if (!e.target.checked) setBypassJustification("");
                     }}
-                    className="mt-0.5 h-4 w-4 rounded border-amber-400 accent-amber-600"
+                    className="mt-0.5 h-4 w-4 rounded border-amber-400 dark:border-amber-600 accent-amber-600"
                   />
-                  <Label htmlFor="bypass-check" className="text-amber-800 text-xs cursor-pointer">
+                  <Label
+                    htmlFor="bypass-check"
+                    className="text-amber-800 dark:text-amber-200 text-xs cursor-pointer"
+                  >
                     Override the minimum quotation requirement
                   </Label>
                 </div>
                 {bypassEnabled && (
                   <div className="space-y-1.5 pt-1">
-                    <Label className="text-xs text-amber-800">
+                    <Label className="text-xs text-amber-800 dark:text-amber-200">
                       Justification (required)
                     </Label>
                     <Textarea
@@ -259,7 +270,7 @@ export function PurchaseOrderSubmitDialog({
                       value={bypassJustification}
                       onChange={(e) => setBypassJustification(e.target.value)}
                       rows={3}
-                      className="text-sm border-amber-300 focus:border-amber-500"
+                      className="text-sm border-amber-300 focus:border-amber-500 dark:border-amber-700 dark:focus:border-amber-500 dark:bg-background dark:text-foreground dark:placeholder:text-muted-foreground"
                       disabled={isPending}
                     />
                   </div>
@@ -269,11 +280,13 @@ export function PurchaseOrderSubmitDialog({
           )}
 
           {bypassAlreadySaved && (
-            <Alert className="border-amber-200 bg-amber-50">
-              <AlertTriangle className="h-4 w-4 text-amber-600" />
+            <Alert className="border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-950/40">
+              <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
               <AlertDescription>
-                <p className="text-amber-800 font-medium text-sm">Quotation Override Applied</p>
-                <p className="text-amber-700 text-xs mt-1">
+                <p className="text-amber-800 dark:text-amber-200 font-medium text-sm">
+                  Quotation Override Applied
+                </p>
+                <p className="text-amber-700 dark:text-amber-300 text-xs mt-1">
                   {purchaseOrder.bypassJustification}
                 </p>
               </AlertDescription>
@@ -315,7 +328,9 @@ export function PurchaseOrderSubmitDialog({
             onClick={handleSubmit}
             disabled={isPending || !canSubmit}
             isLoading={isPending}
-            loadingText={isSavingBypass ? "Saving override..." : "Submitting..."}
+            loadingText={
+              isSavingBypass ? "Saving override..." : "Submitting..."
+            }
           >
             <Send className="mr-2 h-4 w-4" />
             {needsQuotations && bypassEnabled && !bypassAlreadySaved
