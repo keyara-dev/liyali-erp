@@ -1,21 +1,17 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { SelectField } from "@/components/ui/select-field";
 import { Badge } from "@/components";
-import {
-  FileText,
-  Plus,
-  ExternalLink,
-  Upload,
-  X,
-} from "lucide-react";
+import { FileText, Plus, ExternalLink, X } from "lucide-react";
+import FileUpload from "@/components/base/file-upload";
 import { Quotation } from "@/types/core";
 import { Vendor } from "@/types/vendor";
 import { uploadToImageKit } from "@/lib/imagekit";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 interface QuotationCollectionSectionProps {
   quotations: Quotation[];
@@ -39,7 +35,7 @@ export function QuotationCollectionSection({
   const [vendorName, setVendorName] = useState("");
   const [amount, setAmount] = useState("");
   const [file, setFile] = useState<File | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [fileKey, setFileKey] = useState(0);
 
   const count = quotations.length;
   const hasEnough = count >= 3;
@@ -49,7 +45,7 @@ export function QuotationCollectionSection({
     setVendorName("");
     setAmount("");
     setFile(null);
-    if (fileInputRef.current) fileInputRef.current.value = "";
+    setFileKey((k) => k + 1);
     setShowForm(false);
   }
 
@@ -132,6 +128,104 @@ export function QuotationCollectionSection({
         )}
       </div>
 
+      {/* Add quotation form */}
+      {showForm && (
+        <div className="rounded-lg border p-4 space-y-3 bg-muted/20">
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-medium">New Quotation</p>
+            <button
+              type="button"
+              onClick={reset}
+              className="text-muted-foreground hover:text-foreground"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+
+          <div
+            className={cn(
+              "grid grid-cols-1 place-items-end sm:grid-cols-3 gap-3",
+              {
+                "sm:grid-cols-2": vendorId,
+              },
+            )}
+          >
+            {vendors.length > 0 ? (
+              <>
+                <SelectField
+                  label="Vendor"
+                  value={vendorId || "__none__"}
+                  onValueChange={(v) =>
+                    handleVendorSelect(v === "__none__" ? "" : v)
+                  }
+                  placeholder="Select vendor..."
+                  options={[
+                    { value: "__none__", label: "None (enter manually)" },
+                    ...vendors.map((v) => ({ value: v.id, label: v.name })),
+                  ]}
+                />
+                {!vendorId && (
+                  <Input
+                    placeholder="Or type vendor name"
+                    value={vendorName}
+                    onChange={(e) => setVendorName(e.target.value)}
+                    className="mt-1.5 text-sm"
+                  />
+                )}
+              </>
+            ) : (
+              <Input
+                label="Vendor Name"
+                placeholder="Vendor name"
+                value={vendorName}
+                onChange={(e) => setVendorName(e.target.value)}
+              />
+            )}
+
+            <Input
+              label={`Quoted Amount (${currency})`}
+              type="number"
+              placeholder="0.00"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              min="0"
+              step="0.01"
+            />
+          </div>
+
+          <FileUpload
+            key={fileKey}
+            id="quotation-file"
+            label="Quote Document (optional)"
+            accept=".pdf,.docx,.jpg,.jpeg,.png,.gif,.webp,.bmp"
+            maxFileSize={10}
+            compact
+            onFileChange={setFile}
+          />
+
+          <div className="flex justify-end gap-2 pt-1">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={reset}
+              disabled={saving}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              disabled={saving}
+              isLoading={saving}
+              onClick={handleAdd}
+            >
+              Add Quotation
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Quotation table */}
       {quotations.length > 0 && (
         <div className="rounded-lg border overflow-hidden">
@@ -140,7 +234,9 @@ export function QuotationCollectionSection({
               <tr>
                 <th className="text-left p-3 font-medium">Vendor</th>
                 <th className="text-right p-3 font-medium">Amount</th>
-                <th className="text-left p-3 font-medium hidden sm:table-cell">Date</th>
+                <th className="text-left p-3 font-medium hidden sm:table-cell">
+                  Date
+                </th>
                 <th className="p-3 font-medium">Quote</th>
               </tr>
             </thead>
@@ -184,131 +280,11 @@ export function QuotationCollectionSection({
         </div>
       )}
 
-      {/* Add quotation form */}
-      {showForm && (
-        <div className="rounded-lg border p-4 space-y-3 bg-muted/20">
-          <div className="flex items-center justify-between">
-            <p className="text-sm font-medium">New Quotation</p>
-            <button
-              type="button"
-              onClick={reset}
-              className="text-muted-foreground hover:text-foreground"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {vendors.length > 0 ? (
-              <div className="space-y-1.5">
-                <Label>Vendor</Label>
-                <select
-                  className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
-                  value={vendorId}
-                  onChange={(e) => handleVendorSelect(e.target.value)}
-                >
-                  <option value="">Select vendor...</option>
-                  {vendors.map((v) => (
-                    <option key={v.id} value={v.id}>
-                      {v.name}
-                    </option>
-                  ))}
-                </select>
-                {!vendorId && (
-                  <Input
-                    placeholder="Or type vendor name"
-                    value={vendorName}
-                    onChange={(e) => setVendorName(e.target.value)}
-                    className="mt-1.5 text-sm"
-                  />
-                )}
-              </div>
-            ) : (
-              <div className="space-y-1.5">
-                <Label>Vendor Name</Label>
-                <Input
-                  placeholder="Vendor name"
-                  value={vendorName}
-                  onChange={(e) => setVendorName(e.target.value)}
-                />
-              </div>
-            )}
-
-            <div className="space-y-1.5">
-              <Label>Quoted Amount ({currency})</Label>
-              <Input
-                type="number"
-                placeholder="0.00"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                min="0"
-                step="0.01"
-              />
-            </div>
-          </div>
-
-          <div className="space-y-1.5">
-            <Label>Quote Document (optional)</Label>
-            <div className="flex items-center gap-2">
-              <input
-                ref={fileInputRef}
-                type="file"
-                className="hidden"
-                accept="application/pdf,image/*"
-                onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-              />
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="gap-2"
-                onClick={() => fileInputRef.current?.click()}
-              >
-                <Upload className="h-4 w-4" />
-                {file ? file.name : "Choose file"}
-              </Button>
-              {file && (
-                <button
-                  type="button"
-                  className="text-muted-foreground hover:text-destructive"
-                  onClick={() => {
-                    setFile(null);
-                    if (fileInputRef.current) fileInputRef.current.value = "";
-                  }}
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              )}
-            </div>
-          </div>
-
-          <div className="flex justify-end gap-2 pt-1">
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={reset}
-              disabled={saving}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              disabled={saving}
-              isLoading={saving}
-              onClick={handleAdd}
-            >
-              Add Quotation
-            </Button>
-          </div>
-        </div>
-      )}
-
       {quotations.length === 0 && !showForm && (
         <p className="text-sm text-muted-foreground">
           No quotations added yet.
-          {canEdit && ' Click "Add Quotation" to begin collecting vendor quotes.'}
+          {canEdit &&
+            ' Click "Add Quotation" to begin collecting vendor quotes.'}
         </p>
       )}
     </div>
