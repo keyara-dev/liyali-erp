@@ -4,6 +4,7 @@ import axiosClient, { AxiosRequestConfig, AxiosRequestHeaders } from "axios";
 
 export const axios = axiosClient.create({
   baseURL: process.env.BASE_URL || "http://localhost:8080",
+  
 });
 
 // Reusable error handler following DRY principle
@@ -69,6 +70,7 @@ axios.interceptors.response.use(responseHandler, errorHandler);
 
 export type RequestType = AxiosRequestConfig & {
   contentType?: AxiosRequestHeaders["Content-Type"];
+  
 };
 
 const authenticatedApiClient = async (

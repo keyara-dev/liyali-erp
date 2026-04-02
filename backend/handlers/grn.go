@@ -307,6 +307,7 @@ func CreateGRN(c *fiber.Ctx) error {
 		LinkedPV:          linkedPVDocNum,
 		WarehouseLocation: req.WarehouseLocation,
 		Notes:             req.Notes,
+		CreatedBy:         tenant.UserID,
 		CreatedAt:         time.Now(),
 		UpdatedAt:         time.Now(),
 	}
@@ -592,22 +593,48 @@ func modelToGRNResponse(grn models.GoodsReceivedNote) types.GRNResponse {
 
 	var actionHistory []types.ActionHistoryEntry
 	actionHistory = grn.ActionHistory.Data()
+	
+	// Unmarshal metadata
+	var metadata map[string]interface{}
+	if len(grn.Metadata) > 0 {
+		_ = json.Unmarshal(grn.Metadata, &metadata)
+	}
+	
+	// Unmarshal autoCreatedPV
+	var autoCreatedPV interface{}
+	if len(grn.AutoCreatedPV) > 0 {
+		_ = json.Unmarshal(grn.AutoCreatedPV, &autoCreatedPV)
+	}
 
 	return types.GRNResponse{
-		ID:               grn.ID,
-		DocumentNumber:   grn.DocumentNumber,
-		PODocumentNumber: grn.PODocumentNumber,
-		Status:           grn.Status,
-		ReceivedDate:     grn.ReceivedDate,
-		ReceivedBy:       grn.ReceivedBy,
-		Items:            items,
-		QualityIssues:    qualityIssues,
-		ApprovalStage:    grn.ApprovalStage,
-		ApprovalHistory:  approvalHistory,
-		ActionHistory:    actionHistory,
-		LinkedPV:         grn.LinkedPV,
-		CreatedAt:        grn.CreatedAt,
-		UpdatedAt:        grn.UpdatedAt,
+		ID:                grn.ID,
+		OrganizationID:    grn.OrganizationID,
+		DocumentNumber:    grn.DocumentNumber,
+		PODocumentNumber:  grn.PODocumentNumber,
+		Status:            grn.Status,
+		ReceivedDate:      grn.ReceivedDate,
+		ReceivedBy:        grn.ReceivedBy,
+		Items:             items,
+		QualityIssues:     qualityIssues,
+		ApprovalStage:     grn.ApprovalStage,
+		ApprovalHistory:   approvalHistory,
+		ActionHistory:     actionHistory,
+		LinkedPV:          grn.LinkedPV,
+		BudgetCode:        grn.BudgetCode,
+		CostCenter:        grn.CostCenter,
+		ProjectCode:       grn.ProjectCode,
+		CreatedBy:         grn.CreatedBy,
+		OwnerID:           grn.OwnerID,
+		WarehouseLocation: grn.WarehouseLocation,
+		Notes:             grn.Notes,
+		CurrentStage:      grn.CurrentStage,
+		StageName:         grn.StageName,
+		ApprovedBy:        grn.ApprovedBy,
+		AutomationUsed:    grn.AutomationUsed,
+		AutoCreatedPV:     autoCreatedPV,
+		Metadata:          metadata,
+		CreatedAt:         grn.CreatedAt,
+		UpdatedAt:         grn.UpdatedAt,
 	}
 }
 

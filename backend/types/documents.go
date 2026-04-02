@@ -255,6 +255,7 @@ type LinkedPVSummary struct {
 // PurchaseOrderResponse represents a PO in responses
 type PurchaseOrderResponse struct {
 	ID                      string                 `json:"id"`
+	OrganizationID          string                 `json:"organizationId"`
 	DocumentNumber          string                 `json:"documentNumber"`
 	VendorID                string                 `json:"vendorId"`
 	VendorName              string                 `json:"vendorName"`
@@ -275,8 +276,18 @@ type PurchaseOrderResponse struct {
 	AutomationUsed          bool                   `json:"automationUsed,omitempty"`
 	QuotationGateOverridden bool                   `json:"quotationGateOverridden,omitempty"`
 	BypassJustification     string                 `json:"bypassJustification,omitempty"`
-	CreatedAt               time.Time              `json:"createdAt"`
-	UpdatedAt               time.Time              `json:"updatedAt"`
+	// Business requirement fields
+	Title        string `json:"title,omitempty"`
+	Description  string `json:"description,omitempty"`
+	Department   string `json:"department,omitempty"`
+	DepartmentID string `json:"departmentId,omitempty"`
+	Priority     string `json:"priority,omitempty"`
+	BudgetCode   string `json:"budgetCode,omitempty"`
+	CostCenter   string `json:"costCenter,omitempty"`
+	ProjectCode  string `json:"projectCode,omitempty"`
+	CreatedBy    string `json:"createdBy,omitempty"`
+	CreatedAt    time.Time `json:"createdAt"`
+	UpdatedAt    time.Time `json:"updatedAt"`
 }
 
 // ================== PAYMENT VOUCHER TYPES ==================
@@ -308,24 +319,45 @@ type UpdatePaymentVoucherRequest struct {
 
 // PaymentVoucherResponse represents a payment voucher in responses
 type PaymentVoucherResponse struct {
-	ID              string               `json:"id"`
-	DocumentNumber  string               `json:"documentNumber"`
-	VendorID        string               `json:"vendorId"`
-	VendorName      string               `json:"vendorName"`
-	InvoiceNumber   string               `json:"invoiceNumber"`
-	Status          string               `json:"status"`
-	Amount          float64              `json:"amount"`
-	Currency        string               `json:"currency"`
-	PaymentMethod   string               `json:"paymentMethod"`
-	GLCode          string               `json:"glCode"`
-	Description     string               `json:"description"`
-	ApprovalStage   int                  `json:"approvalStage"`
-	ApprovalHistory []ApprovalRecord     `json:"approvalHistory"`
-	ActionHistory   []ActionHistoryEntry `json:"actionHistory,omitempty"`
-	LinkedPO        string               `json:"linkedPO"`
-	LinkedGRN       string               `json:"linkedGRN"` // Goods-first: GRN approved before this PV
-	CreatedAt       time.Time            `json:"createdAt"`
-	UpdatedAt       time.Time            `json:"updatedAt"`
+	ID                   string               `json:"id"`
+	OrganizationID       string               `json:"organizationId"`
+	DocumentNumber       string               `json:"documentNumber"`
+	VendorID             string               `json:"vendorId"`
+	VendorName           string               `json:"vendorName"`
+	InvoiceNumber        string               `json:"invoiceNumber"`
+	Status               string               `json:"status"`
+	Amount               float64              `json:"amount"`
+	Currency             string               `json:"currency"`
+	PaymentMethod        string               `json:"paymentMethod"`
+	GLCode               string               `json:"glCode"`
+	Description          string               `json:"description"`
+	ApprovalStage        int                  `json:"approvalStage"`
+	ApprovalHistory      []ApprovalRecord     `json:"approvalHistory"`
+	ActionHistory        []ActionHistoryEntry `json:"actionHistory,omitempty"`
+	LinkedPO             string               `json:"linkedPO"`
+	LinkedGRN            string               `json:"linkedGRN"` // Goods-first: GRN approved before this PV
+	// Business requirement fields
+	Title                string      `json:"title,omitempty"`
+	Department           string      `json:"department,omitempty"`
+	DepartmentID         string      `json:"departmentId,omitempty"`
+	Priority             string      `json:"priority,omitempty"`
+	BudgetCode           string      `json:"budgetCode,omitempty"`
+	CostCenter           string      `json:"costCenter,omitempty"`
+	ProjectCode          string      `json:"projectCode,omitempty"`
+	CreatedBy            string      `json:"createdBy,omitempty"`
+	RequestedByName      string      `json:"requestedByName,omitempty"`
+	RequestedDate        *time.Time  `json:"requestedDate,omitempty"`
+	SubmittedAt          *time.Time  `json:"submittedAt,omitempty"`
+	ApprovedAt           *time.Time  `json:"approvedAt,omitempty"`
+	PaidDate             *time.Time  `json:"paidDate,omitempty"`
+	PaymentDueDate       *time.Time  `json:"paymentDueDate,omitempty"`
+	TaxAmount            *float64    `json:"taxAmount,omitempty"`
+	WithholdingTaxAmount *float64    `json:"withholdingTaxAmount,omitempty"`
+	PaidAmount           *float64    `json:"paidAmount,omitempty"`
+	BankDetails          interface{} `json:"bankDetails,omitempty"`
+	Items                []PaymentItem `json:"items,omitempty"`
+	CreatedAt            time.Time   `json:"createdAt"`
+	UpdatedAt            time.Time   `json:"updatedAt"`
 }
 
 // ================== GRN TYPES ==================
@@ -368,20 +400,35 @@ type QualityIssue struct {
 
 // GRNResponse represents a GRN in responses
 type GRNResponse struct {
-	ID               string               `json:"id"`
-	DocumentNumber   string               `json:"documentNumber"`
-	PODocumentNumber string               `json:"poDocumentNumber"`
-	Status           string               `json:"status"`
-	ReceivedDate     time.Time            `json:"receivedDate"`
-	ReceivedBy       string               `json:"receivedBy"`
-	Items            []GRNItem            `json:"items"`
-	QualityIssues    []QualityIssue       `json:"qualityIssues"`
-	ApprovalStage    int                  `json:"approvalStage"`
-	ApprovalHistory  []ApprovalRecord     `json:"approvalHistory"`
-	ActionHistory    []ActionHistoryEntry `json:"actionHistory,omitempty"`
-	LinkedPV         string               `json:"linkedPV"` // Payment-first: PV approved before this GRN
-	CreatedAt        time.Time            `json:"createdAt"`
-	UpdatedAt        time.Time            `json:"updatedAt"`
+	ID                string               `json:"id"`
+	OrganizationID    string               `json:"organizationId"`
+	DocumentNumber    string               `json:"documentNumber"`
+	PODocumentNumber  string               `json:"poDocumentNumber"`
+	Status            string               `json:"status"`
+	ReceivedDate      time.Time            `json:"receivedDate"`
+	ReceivedBy        string               `json:"receivedBy"`
+	Items             []GRNItem            `json:"items"`
+	QualityIssues     []QualityIssue       `json:"qualityIssues"`
+	ApprovalStage     int                  `json:"approvalStage"`
+	ApprovalHistory   []ApprovalRecord     `json:"approvalHistory"`
+	ActionHistory     []ActionHistoryEntry `json:"actionHistory,omitempty"`
+	LinkedPV          string               `json:"linkedPV"` // Payment-first: PV approved before this GRN
+	// Business requirement fields
+	BudgetCode        string                 `json:"budgetCode,omitempty"`
+	CostCenter        string                 `json:"costCenter,omitempty"`
+	ProjectCode       string                 `json:"projectCode,omitempty"`
+	CreatedBy         string                 `json:"createdBy,omitempty"`
+	OwnerID           string                 `json:"ownerId,omitempty"`
+	WarehouseLocation string                 `json:"warehouseLocation,omitempty"`
+	Notes             string                 `json:"notes,omitempty"`
+	CurrentStage      int                    `json:"currentStage,omitempty"`
+	StageName         string                 `json:"stageName,omitempty"`
+	ApprovedBy        string                 `json:"approvedBy,omitempty"`
+	AutomationUsed    bool                   `json:"automationUsed,omitempty"`
+	AutoCreatedPV     interface{}            `json:"autoCreatedPV,omitempty"`
+	Metadata          map[string]interface{} `json:"metadata,omitempty"`
+	CreatedAt         time.Time              `json:"createdAt"`
+	UpdatedAt         time.Time              `json:"updatedAt"`
 }
 
 // ================== QUOTATION TYPES ==================

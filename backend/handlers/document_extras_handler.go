@@ -155,6 +155,7 @@ func CreatePurchaseOrderFromRequisition(c *fiber.Ctx) error {
 		ProjectCode:       req.ProjectCode,
 		ProcurementFlow:   req.ProcurementFlow,
 		EstimatedCost:     estimatedCost,
+		CreatedBy:         tenant.UserID,
 		CreatedAt:         time.Now(),
 		UpdatedAt:         time.Now(),
 	}
@@ -395,6 +396,7 @@ func CreatePaymentVoucherFromPO(c *fiber.Ctx) error {
 		BudgetCode:     req.BudgetCode,
 		CostCenter:     req.CostCenter,
 		ProjectCode:    req.ProjectCode,
+		CreatedBy:      tenant.UserID,
 		CreatedAt:      time.Now(),
 		UpdatedAt:      time.Now(),
 	}

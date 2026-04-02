@@ -32,6 +32,7 @@ import { createGRNAction } from "@/app/_actions/grn-actions";
 import type { GRNItem } from "@/types/goods-received-note";
 import type { PurchaseOrder } from "@/types/purchase-order";
 import type { PaymentVoucher } from "@/types/payment-voucher";
+import { formatCurrency } from "@/lib/utils";
 
 interface CreateGRNDialogProps {
   open: boolean;
@@ -76,7 +77,10 @@ export function CreateGRNDialog({
 
   // Approved POs for goods_first mode
   const approvedPOs = useMemo(
-    () => (purchaseOrders as PurchaseOrder[]).filter((po) => po.status?.toUpperCase() === "APPROVED"),
+    () =>
+      (purchaseOrders as PurchaseOrder[]).filter(
+        (po) => po.status?.toUpperCase() === "APPROVED",
+      ),
     [purchaseOrders],
   );
 
@@ -85,7 +89,8 @@ export function CreateGRNDialog({
     () =>
       (paymentVouchers as PaymentVoucher[]).filter(
         (pv) =>
-          (pv.status?.toUpperCase() === "APPROVED" || pv.status?.toUpperCase() === "PAID") &&
+          (pv.status?.toUpperCase() === "APPROVED" ||
+            pv.status?.toUpperCase() === "PAID") &&
           pv.linkedPO,
       ),
     [paymentVouchers],
@@ -135,13 +140,18 @@ export function CreateGRNDialog({
     }
   };
 
-  const updateItem = (key: string, field: keyof GRNItem, value: string | number) => {
+  const updateItem = (
+    key: string,
+    field: keyof GRNItem,
+    value: string | number,
+  ) => {
     setItems((prev) =>
       prev.map((item) => {
         if (item._key !== key) return item;
         const updated = { ...item, [field]: value };
         if (field === "quantityReceived" || field === "quantityOrdered") {
-          updated.variance = Number(updated.quantityReceived) - Number(updated.quantityOrdered);
+          updated.variance =
+            Number(updated.quantityReceived) - Number(updated.quantityOrdered);
         }
         return updated;
       }),
@@ -169,8 +179,8 @@ export function CreateGRNDialog({
 
   const poDocumentNumber =
     orgFlow === "payment_first"
-      ? pvLinkedPO?.documentNumber ?? ""
-      : selectedPO?.documentNumber ?? "";
+      ? (pvLinkedPO?.documentNumber ?? "")
+      : (selectedPO?.documentNumber ?? "");
 
   const canCreate =
     poDocumentNumber !== "" &&
@@ -238,7 +248,9 @@ export function CreateGRNDialog({
           {/* Flow indicator */}
           <div className="flex items-center gap-2 text-sm">
             <span className="text-muted-foreground">Procurement flow:</span>
-            <Badge variant={orgFlow === "goods_first" ? "default" : "secondary"}>
+            <Badge
+              variant={orgFlow === "goods_first" ? "default" : "secondary"}
+            >
               {orgFlow === "goods_first" ? "Goods-First" : "Payment-First"}
             </Badge>
           </div>
@@ -252,10 +264,16 @@ export function CreateGRNDialog({
               {approvedPOs.length === 0 ? (
                 <Alert>
                   <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>No approved purchase orders available.</AlertDescription>
+                  <AlertDescription>
+                    No approved purchase orders available.
+                  </AlertDescription>
                 </Alert>
               ) : (
-                <Select value={selectedPOId} onValueChange={handlePOSelect} disabled={isCreating}>
+                <Select
+                  value={selectedPOId}
+                  onValueChange={handlePOSelect}
+                  disabled={isCreating}
+                >
                   <SelectTrigger id="po-select">
                     <SelectValue placeholder="Select approved PO" />
                   </SelectTrigger>
@@ -281,8 +299,10 @@ export function CreateGRNDialog({
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Total:</span>
                     <span className="font-mono text-blue-600">
-                      {selectedPO.currency}{" "}
-                      {selectedPO.totalAmount?.toLocaleString("en-ZM", { minimumFractionDigits: 2 })}
+                      {formatCurrency(
+                        selectedPO.totalAmount,
+                        selectedPO.currency,
+                      )}
                     </span>
                   </div>
                 </div>
@@ -291,7 +311,8 @@ export function CreateGRNDialog({
           ) : (
             <div className="space-y-1.5">
               <Label htmlFor="pv-select">
-                Payment Voucher (approved / paid) <span className="text-destructive">*</span>
+                Payment Voucher (approved / paid){" "}
+                <span className="text-destructive">*</span>
               </Label>
               <p className="text-xs text-muted-foreground">
                 Payment-first flow: select the PV that funded this delivery.
@@ -299,10 +320,16 @@ export function CreateGRNDialog({
               {approvedPVs.length === 0 ? (
                 <Alert>
                   <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>No approved or paid payment vouchers available.</AlertDescription>
+                  <AlertDescription>
+                    No approved or paid payment vouchers available.
+                  </AlertDescription>
                 </Alert>
               ) : (
-                <Select value={selectedPVDocNumber} onValueChange={handlePVSelect} disabled={isCreating}>
+                <Select
+                  value={selectedPVDocNumber}
+                  onValueChange={handlePVSelect}
+                  disabled={isCreating}
+                >
                   <SelectTrigger id="pv-select">
                     <SelectValue placeholder="Select approved / paid PV" />
                   </SelectTrigger>
@@ -328,8 +355,7 @@ export function CreateGRNDialog({
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Amount:</span>
                     <span className="font-mono text-blue-600">
-                      {selectedPV.currency}{" "}
-                      {selectedPV.amount?.toLocaleString("en-ZM", { minimumFractionDigits: 2 })}
+                      {formatCurrency(selectedPV.amount, selectedPV.currency)}
                     </span>
                   </div>
                 </div>
@@ -366,7 +392,13 @@ export function CreateGRNDialog({
                 <Label className="text-sm font-medium">
                   Items <span className="text-destructive">*</span>
                 </Label>
-                <Button type="button" variant="outline" size="sm" onClick={addItem} disabled={isCreating}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={addItem}
+                  disabled={isCreating}
+                >
                   <Plus className="h-3.5 w-3.5 mr-1" />
                   Add Item
                 </Button>
@@ -387,10 +419,15 @@ export function CreateGRNDialog({
                     <span />
                   </div>
                   {items.map((item) => (
-                    <div key={item._key} className="grid grid-cols-[1fr_80px_80px_100px_auto] gap-2 items-center">
+                    <div
+                      key={item._key}
+                      className="grid grid-cols-[1fr_80px_80px_100px_auto] gap-2 items-center"
+                    >
                       <Input
                         value={item.description}
-                        onChange={(e) => updateItem(item._key, "description", e.target.value)}
+                        onChange={(e) =>
+                          updateItem(item._key, "description", e.target.value)
+                        }
                         placeholder="Item description"
                         disabled={isCreating}
                         className="text-sm"
@@ -398,7 +435,13 @@ export function CreateGRNDialog({
                       <Input
                         type="number"
                         value={item.quantityOrdered}
-                        onChange={(e) => updateItem(item._key, "quantityOrdered", Number(e.target.value))}
+                        onChange={(e) =>
+                          updateItem(
+                            item._key,
+                            "quantityOrdered",
+                            Number(e.target.value),
+                          )
+                        }
                         disabled={isCreating}
                         className="text-sm"
                         min={0}
@@ -406,14 +449,22 @@ export function CreateGRNDialog({
                       <Input
                         type="number"
                         value={item.quantityReceived}
-                        onChange={(e) => updateItem(item._key, "quantityReceived", Number(e.target.value))}
+                        onChange={(e) =>
+                          updateItem(
+                            item._key,
+                            "quantityReceived",
+                            Number(e.target.value),
+                          )
+                        }
                         disabled={isCreating}
                         className="text-sm"
                         min={0}
                       />
                       <Select
                         value={item.condition}
-                        onValueChange={(v) => updateItem(item._key, "condition", v)}
+                        onValueChange={(v) =>
+                          updateItem(item._key, "condition", v)
+                        }
                         disabled={isCreating}
                       >
                         <SelectTrigger className="text-sm h-9">
@@ -444,7 +495,12 @@ export function CreateGRNDialog({
         </div>
 
         <DialogFooter className="gap-2 sm:gap-0">
-          <Button type="button" variant="outline" onClick={handleClose} disabled={isCreating}>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleClose}
+            disabled={isCreating}
+          >
             Cancel
           </Button>
           <Button

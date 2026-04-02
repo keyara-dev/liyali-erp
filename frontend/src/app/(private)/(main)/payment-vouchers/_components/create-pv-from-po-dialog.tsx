@@ -29,12 +29,18 @@ import { ConfigurationChecklistBanner } from "@/components/ui/configuration-chec
 import { useVendors } from "@/hooks/use-vendor-queries";
 import { useGRNs } from "@/hooks/use-grn-queries";
 import { useOrganizationSettingsQuery } from "@/hooks/use-organization-queries";
+import { formatCurrency } from "@/lib/utils";
 
 interface CreatePVFromPODialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   purchaseOrder: PurchaseOrder;
-  onConfirm: (workflowId: string, vendorId?: string, vendorName?: string, linkedGRNDocumentNumber?: string) => Promise<void>;
+  onConfirm: (
+    workflowId: string,
+    vendorId?: string,
+    vendorName?: string,
+    linkedGRNDocumentNumber?: string,
+  ) => Promise<void>;
   isCreating: boolean;
 }
 
@@ -48,10 +54,10 @@ export function CreatePVFromPODialog({
   const [workflowId, setWorkflowId] = useState("");
   const [workflowError, setWorkflowError] = useState<string | null>(null);
   const [selectedVendorId, setSelectedVendorId] = useState(
-    purchaseOrder.vendorId ?? ""
+    purchaseOrder.vendorId ?? "",
   );
   const [selectedVendorName, setSelectedVendorName] = useState(
-    purchaseOrder.vendorName ?? ""
+    purchaseOrder.vendorName ?? "",
   );
   const [selectedGRNDocNumber, setSelectedGRNDocNumber] = useState("");
 
@@ -132,7 +138,9 @@ export function CreatePVFromPODialog({
     }
   };
 
-  const selectedGRN = grns.find((g) => g.documentNumber === selectedGRNDocNumber);
+  const selectedGRN = grns.find(
+    (g) => g.documentNumber === selectedGRNDocNumber,
+  );
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
@@ -168,7 +176,9 @@ export function CreatePVFromPODialog({
               {isGoodsFirst ? "Goods-First" : "Payment-First"}
             </Badge>
             {purchaseOrder.procurementFlow && (
-              <span className="text-xs text-muted-foreground">(PO override)</span>
+              <span className="text-xs text-muted-foreground">
+                (PO override)
+              </span>
             )}
           </div>
 
@@ -215,14 +225,16 @@ export function CreatePVFromPODialog({
                 Linked GRN <span className="text-destructive">*</span>
               </Label>
               <p className="text-xs text-muted-foreground">
-                Goods-first flow requires an approved GRN for this PO before payment can be processed.
+                Goods-first flow requires an approved GRN for this PO before
+                payment can be processed.
               </p>
               {grns.length === 0 ? (
                 <Alert variant="destructive">
                   <AlertCircle className="h-4 w-4" />
                   <AlertDescription>
-                    No approved GRNs found for PO {purchaseOrder.documentNumber}.
-                    Goods must be received and the GRN approved before creating a payment voucher.
+                    No approved GRNs found for PO {purchaseOrder.documentNumber}
+                    . Goods must be received and the GRN approved before
+                    creating a payment voucher.
                   </AlertDescription>
                 </Alert>
               ) : (
@@ -237,7 +249,8 @@ export function CreatePVFromPODialog({
                   <SelectContent>
                     {grns.map((grn) => (
                       <SelectItem key={grn.id} value={grn.documentNumber}>
-                        {grn.documentNumber} — received {new Date(grn.receivedDate).toLocaleDateString("en-ZM")}
+                        {grn.documentNumber} — received{" "}
+                        {new Date(grn.receivedDate).toLocaleDateString("en-ZM")}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -297,11 +310,10 @@ export function CreatePVFromPODialog({
             <div className="flex justify-between items-center">
               <span className="text-sm font-medium">Total Amount:</span>
               <span className="text-sm font-mono text-blue-600">
-                {purchaseOrder.currency}{" "}
-                {purchaseOrder.totalAmount?.toLocaleString("en-ZM", {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
-                }) || "0.00"}
+                {formatCurrency(
+                  purchaseOrder.totalAmount,
+                  purchaseOrder.currency,
+                )}
               </span>
             </div>
 
@@ -363,7 +375,12 @@ export function CreatePVFromPODialog({
           >
             Cancel
           </Button>
-          <Button onClick={handleConfirm} disabled={isCreating || !canCreate} isLoading={isCreating} loadingText="Creating...">
+          <Button
+            onClick={handleConfirm}
+            disabled={isCreating || !canCreate}
+            isLoading={isCreating}
+            loadingText="Creating..."
+          >
             <FileText className="mr-2 h-4 w-4" />
             Create Payment Voucher
           </Button>

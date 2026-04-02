@@ -536,26 +536,54 @@ func modelToPaymentVoucherResponse(voucher models.PaymentVoucher) types.PaymentV
 	}
 
 	actionHistory := voucher.ActionHistory.Data()
+	
+	// Unmarshal bank details
+	var bankDetails interface{}
+	if len(voucher.BankDetails) > 0 {
+		_ = json.Unmarshal(voucher.BankDetails, &bankDetails)
+	}
+	
+	items := voucher.Items.Data()
 
 	return types.PaymentVoucherResponse{
-		ID:              voucher.ID,
-		DocumentNumber:  voucher.DocumentNumber,
-		VendorID:        vendorID,
-		VendorName:      vendorName,
-		InvoiceNumber:   voucher.InvoiceNumber,
-		Status:          voucher.Status,
-		Amount:          voucher.Amount,
-		Currency:        voucher.Currency,
-		PaymentMethod:   voucher.PaymentMethod,
-		GLCode:          voucher.GLCode,
-		Description:     voucher.Description,
-		ApprovalStage:   voucher.ApprovalStage,
-		ApprovalHistory: approvalHistory,
-		ActionHistory:   actionHistory,
-		LinkedPO:        voucher.LinkedPO,
-		LinkedGRN:       voucher.LinkedGRN,
-		CreatedAt:       voucher.CreatedAt,
-		UpdatedAt:       voucher.UpdatedAt,
+		ID:                   voucher.ID,
+		OrganizationID:       voucher.OrganizationID,
+		DocumentNumber:       voucher.DocumentNumber,
+		VendorID:             vendorID,
+		VendorName:           vendorName,
+		InvoiceNumber:        voucher.InvoiceNumber,
+		Status:               voucher.Status,
+		Amount:               voucher.Amount,
+		Currency:             voucher.Currency,
+		PaymentMethod:        voucher.PaymentMethod,
+		GLCode:               voucher.GLCode,
+		Description:          voucher.Description,
+		ApprovalStage:        voucher.ApprovalStage,
+		ApprovalHistory:      approvalHistory,
+		ActionHistory:        actionHistory,
+		LinkedPO:             voucher.LinkedPO,
+		LinkedGRN:            voucher.LinkedGRN,
+		Title:                voucher.Title,
+		Department:           voucher.Department,
+		DepartmentID:         voucher.DepartmentID,
+		Priority:             voucher.Priority,
+		BudgetCode:           voucher.BudgetCode,
+		CostCenter:           voucher.CostCenter,
+		ProjectCode:          voucher.ProjectCode,
+		CreatedBy:            voucher.CreatedBy,
+		RequestedByName:      voucher.RequestedByName,
+		RequestedDate:        voucher.RequestedDate,
+		SubmittedAt:          voucher.SubmittedAt,
+		ApprovedAt:           voucher.ApprovedAt,
+		PaidDate:             voucher.PaidDate,
+		PaymentDueDate:       voucher.PaymentDueDate,
+		TaxAmount:            voucher.TaxAmount,
+		WithholdingTaxAmount: voucher.WithholdingTaxAmount,
+		PaidAmount:           voucher.PaidAmount,
+		BankDetails:          bankDetails,
+		Items:                items,
+		CreatedAt:            voucher.CreatedAt,
+		UpdatedAt:            voucher.UpdatedAt,
 	}
 }
 

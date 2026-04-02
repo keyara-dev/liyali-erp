@@ -27,6 +27,7 @@ import { CreatePVFromPODialog } from "./create-pv-from-po-dialog";
 import { createPaymentVoucherFromPurchaseOrder } from "@/app/_actions/payment-vouchers";
 import { toast } from "sonner";
 import { Card } from "@/components/ui/card";
+import { formatCurrency } from "@/lib/utils";
 
 interface ApprovedPurchaseOrdersTableProps {
   userId: string;
@@ -65,7 +66,12 @@ export function ApprovedPurchaseOrdersTable({
     setIsCreateDialogOpen(true);
   };
 
-  const handleConfirmCreate = async (workflowId: string, vendorId?: string, vendorName?: string, linkedGRNDocumentNumber?: string) => {
+  const handleConfirmCreate = async (
+    workflowId: string,
+    vendorId?: string,
+    vendorName?: string,
+    linkedGRNDocumentNumber?: string,
+  ) => {
     if (!selectedPO) return;
 
     setIsCreating(true);
@@ -191,11 +197,7 @@ export function ApprovedPurchaseOrdersTable({
                     </TableCell>
                     <TableCell>{po.department}</TableCell>
                     <TableCell className="font-mono">
-                      {po.currency}{" "}
-                      {po.totalAmount?.toLocaleString("en-ZM", {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2,
-                      })}
+                      {formatCurrency(po.totalAmount, po.currency)}
                     </TableCell>
                     <TableCell>{po.items?.length || 0}</TableCell>
                     <TableCell className="text-sm">

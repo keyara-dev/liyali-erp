@@ -68,6 +68,7 @@ import { usePaymentVoucherDetail } from "@/hooks/use-payment-voucher-detail";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { getAuditEvents, type AuditEvent } from "@/app/_actions/audit";
+import { formatCurrency } from "@/lib/utils";
 
 /**
  * Props for the PVDetailClient component
@@ -354,13 +355,10 @@ export function PVDetailClient({
               Total Amount
             </label>
             <p className="text-base font-bold text-primary-foreground">
-              {paymentVoucher.currency}{" "}
-              {(
-                paymentVoucher.totalAmount || paymentVoucher.amount
-              )?.toLocaleString("en-ZM", {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2,
-              }) || "0.00"}
+              {formatCurrency(
+                paymentVoucher.totalAmount || paymentVoucher.amount,
+                paymentVoucher.currency,
+              )}
             </p>
           </div>
 

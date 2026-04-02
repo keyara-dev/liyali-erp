@@ -41,10 +41,14 @@ export async function createPurchaseOrderFromRequisition(
       data: {
         requisitionId: requisition.id,
         requisitionDocumentNumber: requisition.documentNumber,
-        title: requisition.title,
+        // Auto-generate title if not provided
+        title:
+          requisition.title ||
+          `Purchase Order from ${requisition.documentNumber}`,
         description: requisition.description,
         vendorId: vendorIdOverride ?? requisition.vendorId,
         vendorName: vendorNameOverride ?? requisition.vendorName,
+        // Ensure department and budget code are passed from requisition
         department: requisition.department,
         departmentId: requisition.departmentId,
         requiredByDate: requisition.requiredByDate,

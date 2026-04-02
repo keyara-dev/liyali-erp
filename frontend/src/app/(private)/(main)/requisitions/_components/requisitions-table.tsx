@@ -35,6 +35,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ConfirmationModal } from "@/components/modals/confirmation-modal";
+import { formatCurrency } from "@/lib/utils";
 
 import { RequisitionFilters } from "./requisitions-filters";
 
@@ -168,12 +169,7 @@ const columns: ColumnDef<Requisition>[] = [
       const amount = row.original.totalAmount;
       return (
         <div className="font-medium">
-          {amount
-            ? `${row.original.currency} ${amount.toLocaleString("en-ZM", {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2,
-              })}`
-            : "-"}
+          {amount ? formatCurrency(amount, row.original.currency) : "-"}
         </div>
       );
     },

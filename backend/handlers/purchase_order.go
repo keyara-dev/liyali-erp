@@ -694,6 +694,7 @@ func modelToPurchaseOrderResponse(order models.PurchaseOrder) types.PurchaseOrde
 
 	return types.PurchaseOrderResponse{
 		ID:                      order.ID,
+		OrganizationID:          order.OrganizationID,
 		DocumentNumber:          order.DocumentNumber,
 		VendorID:                vendorID,
 		VendorName:              vendorName,
@@ -713,6 +714,16 @@ func modelToPurchaseOrderResponse(order models.PurchaseOrder) types.PurchaseOrde
 		AutomationUsed:          order.AutomationUsed,
 		QuotationGateOverridden: order.QuotationGateOverridden,
 		BypassJustification:     order.BypassJustification,
+		// Add missing fields that are stored in DB but not returned
+		Title:                   order.Title,
+		Description:             order.Description,
+		Department:              order.Department,
+		DepartmentID:            order.DepartmentID,
+		Priority:                order.Priority,
+		BudgetCode:              order.BudgetCode,
+		CostCenter:              order.CostCenter,
+		ProjectCode:             order.ProjectCode,
+		CreatedBy:               order.CreatedBy,
 		CreatedAt:               order.CreatedAt,
 		UpdatedAt:               order.UpdatedAt,
 	}

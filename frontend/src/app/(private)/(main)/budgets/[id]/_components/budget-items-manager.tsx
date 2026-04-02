@@ -30,6 +30,7 @@ import {
 } from "@/components/ui/dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from "sonner";
+import { formatCurrency } from "@/lib/utils";
 
 export interface BudgetItem {
   id: string;
@@ -104,7 +105,7 @@ export function BudgetItemsManager({
 
     if (totalAllocated + amount > totalBudget) {
       toast.error(
-        `Cannot exceed total budget. Remaining: ${currency}${remainingBudget.toLocaleString()}`,
+        `Cannot exceed total budget. Remaining: ${formatCurrency(remainingBudget, currency)}`,
       );
       return;
     }
@@ -162,7 +163,7 @@ export function BudgetItemsManager({
     if (otherItemsTotal + amount > totalBudget) {
       const available = totalBudget - otherItemsTotal;
       toast.error(
-        `Cannot exceed total budget. Available: ${currency}${available.toLocaleString()}`,
+        `Cannot exceed total budget. Available: ${formatCurrency(available, currency)}`,
       );
       return;
     }
@@ -374,7 +375,7 @@ export function BudgetItemsManager({
             <DialogDescription>
               {editingItem
                 ? "Update the budget item details below"
-                : `Add a new budget item. Remaining budget: ${currency}${remainingBudget.toLocaleString()}`}
+                : `Add a new budget item. Remaining budget: ${formatCurrency(remainingBudget, currency)}`}
             </DialogDescription>
           </DialogHeader>
 

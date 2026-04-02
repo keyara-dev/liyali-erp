@@ -11,7 +11,7 @@ export const notify = ({
   title,
   description,
   action,
-  type = "default"
+  type = "default",
 }: {
   title?: string;
   description?: string;
@@ -23,7 +23,7 @@ export const notify = ({
 }) => {
   const options = {
     description,
-    action
+    action,
   };
 
   switch (type) {
@@ -47,7 +47,7 @@ export function generateAvatarFallback(string: string) {
 
 export function getAvatarSrc(name: string) {
   return `https://ui-avatars.com/api/?name=${encodeURIComponent(
-    name
+    name,
   )}&background=008ffb&color=ffffff&size=128`;
 }
 
@@ -58,7 +58,7 @@ export function capitalize(str: string) {
 export function generateMeta({
   title,
   description,
-  canonical
+  canonical,
 }: {
   title: string;
   description: string;
@@ -69,11 +69,11 @@ export function generateMeta({
     description: description,
     metadataBase: new URL(`https://infratel.co.zm/`),
     alternates: {
-      canonical: `/dashboard${canonical}`
+      canonical: `/dashboard${canonical}`,
     },
     openGraph: {
-      images: [`https://infratel.co.zm/wp-content/uploads/2024/04/logo.png`]
-    }
+      images: [`https://infratel.co.zm/wp-content/uploads/2024/04/logo.png`],
+    },
   };
 }
 
@@ -93,7 +93,9 @@ export function generateRandomString(length = 10) {
   const allCharacters = uppercase + lowercase + numbers + special;
 
   if (length < 4) {
-    throw new Error("Length must be at least 4 to include all required character types");
+    throw new Error(
+      "Length must be at least 4 to include all required character types",
+    );
   }
 
   // Ensure at least one of each required type
@@ -114,4 +116,33 @@ export function generateRandomString(length = 10) {
     .split("")
     .sort(() => Math.random() - 0.5)
     .join("");
+}
+
+/**
+ * Format a number as currency with the specified currency code
+ *
+ * @param amount - The amount to format
+ * @param currency - The currency code (e.g., "USD", "ZMW", "EUR")
+ * @param locale - The locale to use for formatting (defaults to "en-ZM")
+ * @returns Formatted currency string
+ *
+ * @example
+ * formatCurrency(1234.56, "USD") // "USD 1,234.56"
+ * formatCurrency(1234.56, "ZMW") // "ZMW 1,234.56"
+ */
+export function formatCurrency(
+  amount: number | null | undefined,
+  currency: string = "USD",
+  locale: string = "en-ZM",
+): string {
+  if (amount === null || amount === undefined) {
+    return `${currency} 0.00`;
+  }
+
+  const formatted = amount.toLocaleString(locale, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+
+  return `${currency} ${formatted}`;
 }

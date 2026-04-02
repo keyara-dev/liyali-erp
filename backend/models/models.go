@@ -156,6 +156,7 @@ type PurchaseOrder struct {
 	BudgetCode    string     `json:"budgetCode,omitempty"`    // Budget code - ADDED
 	CostCenter    string     `json:"costCenter,omitempty"`    // Cost center - ADDED
 	ProjectCode   string     `json:"projectCode,omitempty"`   // Project code - ADDED
+	CreatedBy     string     `json:"createdBy,omitempty"`     // Creator user ID - ADDED
 	
 	// Procurement flow override: "goods_first", "payment_first", or "" (inherit from org)
 	ProcurementFlow string `gorm:"column:procurement_flow;default:''" json:"procurementFlow"`
@@ -210,6 +211,7 @@ type PaymentVoucher struct {
 	Department              string                                    `json:"department,omitempty"`              // Department
 	DepartmentID            string                                    `json:"departmentId,omitempty"`            // Department ID
 	Priority                string                                    `json:"priority,omitempty"`                // Priority level
+	CreatedBy               string                                    `json:"createdBy,omitempty"`               // Creator user ID - ADDED
 	RequestedByName         string                                    `json:"requestedByName,omitempty"`         // Name of requester
 	RequestedDate           *time.Time                                `json:"requestedDate,omitempty"`           // When payment was requested
 	SubmittedAt             *time.Time                                `json:"submittedAt,omitempty"`             // Submission date

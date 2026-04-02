@@ -10,6 +10,7 @@ import { ApprovalActionPanel } from "@/components/workflows/approval-action-pane
 import { usePaymentVoucherById } from "@/hooks/use-payment-voucher-queries";
 import { useApprovalTasks } from "@/hooks/use-approval-workflow";
 import type { ApprovalTask } from "@/types";
+import { formatCurrency } from "@/lib/utils";
 
 interface PVApprovalClientProps {
   pvId: string;
@@ -103,7 +104,10 @@ export function PVApprovalClient({ pvId }: PVApprovalClientProps) {
               <div>
                 <p className="text-sm text-muted-foreground">Total Amount</p>
                 <p className="font-bold text-lg text-green-600">
-                  K{(pv.amount || pv.totalAmount || 0).toLocaleString("en-ZM")}
+                  {formatCurrency(
+                    pv.amount || pv.totalAmount || 0,
+                    pv.currency || "ZMW",
+                  )}
                 </p>
               </div>
               {pv.paymentDueDate && (
@@ -203,14 +207,17 @@ export function PVApprovalClient({ pvId }: PVApprovalClientProps) {
                             {item.quantity || 1}
                           </td>
                           <td className="py-3 px-4 text-right">
-                            K{(item.unitPrice || 0).toLocaleString("en-ZM")}
+                            {formatCurrency(
+                              item.unitPrice || 0,
+                              pv.currency || "ZMW",
+                            )}
                           </td>
                           <td className="py-3 px-4 text-right font-semibold">
-                            K
-                            {(
+                            {formatCurrency(
                               item.totalPrice ||
-                              (item.quantity || 1) * (item.unitPrice || 0)
-                            ).toLocaleString("en-ZM")}
+                                (item.quantity || 1) * (item.unitPrice || 0),
+                              pv.currency || "ZMW",
+                            )}
                           </td>
                         </tr>
                       ))}

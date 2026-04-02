@@ -58,7 +58,8 @@ export function PVCreateClient({
 
   // Filter to show only APPROVED purchase orders
   const approvedPOs =
-    purchaseOrders?.filter((po) => po.status?.toUpperCase() === "APPROVED") || [];
+    purchaseOrders?.filter((po) => po.status?.toUpperCase() === "APPROVED") ||
+    [];
 
   const handleSelectPO = (poId: string) => {
     const po = approvedPOs.find((p) => p.id === poId);
@@ -77,7 +78,7 @@ export function PVCreateClient({
         vendorId: selectedPO.vendorId,
         invoiceNumber: selectedPO.documentNumber || "INV-" + Date.now(),
         amount: selectedPO.totalAmount || 0,
-        currency: selectedPO.currency || "USD",
+        currency: selectedPO.currency || "ZMW",
         paymentMethod: "bank_transfer",
         glCode: selectedPO.budgetCode || "GL-001",
         description:

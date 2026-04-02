@@ -1,6 +1,7 @@
 "use client";
 
 import { PaymentItem } from "@/types/payment-voucher";
+import { formatCurrency } from "@/lib/utils";
 
 /**
  * Props for the PaymentVoucherItemsList component
@@ -49,13 +50,6 @@ export function PaymentVoucherItemsList({
 
   const totalAmount = providedTotal ?? calculatedTotal;
 
-  // Format number with locale-specific formatting (2 decimal places)
-  const fmt = (n: number) =>
-    n.toLocaleString("en-ZM", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    });
-
   // Handle empty state
   if (!items || items.length === 0) {
     return (
@@ -88,7 +82,7 @@ export function PaymentVoucherItemsList({
           const glCode = item.glCode;
           const taxInfo =
             item.taxAmount && item.taxAmount > 0
-              ? `Tax: ${currency} ${fmt(item.taxAmount)}`
+              ? `Tax: ${formatCurrency(item.taxAmount, currency)}`
               : null;
 
           return (
@@ -115,7 +109,7 @@ export function PaymentVoucherItemsList({
 
               {/* Amount */}
               <span className="font-semibold text-right tabular-nums">
-                {currency} {fmt(amount)}
+                {formatCurrency(amount, currency)}
               </span>
             </div>
           );
@@ -131,7 +125,7 @@ export function PaymentVoucherItemsList({
           </span>
         </div>
         <span className="sm:hidden font-bold tabular-nums text-right">
-          {currency} {fmt(totalAmount)}
+          {formatCurrency(totalAmount, currency)}
         </span>
 
         {/* desktop layout */}
@@ -145,7 +139,7 @@ export function PaymentVoucherItemsList({
           </span>
         </div>
         <span className="hidden sm:block font-bold tabular-nums text-right">
-          {currency} {fmt(totalAmount)}
+          {formatCurrency(totalAmount, currency)}
         </span>
       </div>
     </div>

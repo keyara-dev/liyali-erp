@@ -17,6 +17,7 @@ import { Send, CheckCircle2, AlertCircle } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { WorkflowSelector } from "@/components/workflows/workflow-selector";
 import { WorkflowRequirementBanner } from "@/components/ui/workflow-requirement-banner";
+import { formatCurrency } from "@/lib/utils";
 
 /**
  * Props for the PaymentVoucherSubmitDialog component
@@ -196,13 +197,10 @@ export function PaymentVoucherSubmitDialog({
             <div className="flex justify-between items-center">
               <span className="text-sm font-medium">Total Amount:</span>
               <span className="text-sm font-mono text-primary">
-                {paymentVoucher.currency}{" "}
-                {(
-                  paymentVoucher.totalAmount || paymentVoucher.amount
-                )?.toLocaleString("en-ZM", {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
-                }) || "0.00"}
+                {formatCurrency(
+                  paymentVoucher.totalAmount || paymentVoucher.amount,
+                  paymentVoucher.currency,
+                )}
               </span>
             </div>
 

@@ -83,6 +83,7 @@ import { uploadToImageKit } from "@/lib/imagekit";
 import { updatePurchaseOrder } from "@/app/_actions/purchase-orders";
 import { QUERY_KEYS } from "@/lib/constants";
 import { toast } from "sonner";
+import { formatCurrency } from "@/lib/utils";
 
 /**
  * Props for the PurchaseOrderDetailClient component
@@ -211,9 +212,7 @@ export function PurchaseOrderDetailClient({
   const isDraft = purchaseOrder.status?.toUpperCase() === "DRAFT";
 
   // Look up full vendor details from the vendors list
-  const vendorDetails = vendors.find(
-    (v) => v.id === purchaseOrder.vendorId,
-  );
+  const vendorDetails = vendors.find((v) => v.id === purchaseOrder.vendorId);
 
   const canEditQuotations =
     isDraft ||
@@ -224,7 +223,10 @@ export function PurchaseOrderDetailClient({
     if (!file) return;
     setIsUploading(true);
     try {
-      const result = await uploadToImageKit(file, "purchase-orders/attachments");
+      const result = await uploadToImageKit(
+        file,
+        "purchase-orders/attachments",
+      );
       const newAttachment: PurchaseOrderAttachment = {
         fileId: result.fileId,
         fileName: result.name,
@@ -421,64 +423,66 @@ export function PurchaseOrderDetailClient({
           <div className="space-y-1">
             <label className="text-xs font-semibold text-primary-foreground/80 uppercase tracking-wider flex items-center gap-1">
               <DollarSign className="h-3 w-3" />
-              {purchaseOrder.estimatedCost ? "Selected Supplier" : "Total Amount"}
+              {purchaseOrder.estimatedCost
+                ? "Selected Supplier"
+                : "Total Amount"}
             </label>
             <p className="text-base font-bold text-primary-foreground">
-              {purchaseOrder.currency}{" "}
-              {purchaseOrder.totalAmount?.toLocaleString("en-ZM", {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2,
-              }) || "0.00"}
+              {formatCurrency(
+                purchaseOrder.totalAmount,
+                purchaseOrder.currency,
+              )}
             </p>
           </div>
 
-          {purchaseOrder.estimatedCost ? (() => {
-            const estimated = purchaseOrder.estimatedCost;
-            const actual = purchaseOrder.totalAmount || 0;
-            const diff = actual - estimated;
-            const pct = estimated > 0 ? (diff / estimated) * 100 : 0;
-            const isOver = diff > 0;
-            const isUnder = diff < 0;
-            const color = isUnder
-              ? "text-green-300"
-              : Math.abs(pct) <= 10
-                ? "text-amber-300"
-                : "text-red-300";
-            const Icon = isUnder ? TrendingDown : isOver ? TrendingUp : Minus;
-            return (
-              <>
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-primary-foreground/80 uppercase tracking-wider flex items-center gap-1">
-                    <DollarSign className="h-3 w-3" />
-                    Estimated (from REQ)
-                  </label>
-                  <p className="text-base font-medium text-primary-foreground/80">
-                    {purchaseOrder.currency}{" "}
-                    {estimated.toLocaleString("en-ZM", {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    })}
-                  </p>
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-primary-foreground/80 uppercase tracking-wider flex items-center gap-1">
-                    <Icon className="h-3 w-3" />
-                    Variance
-                  </label>
-                  <p className={`text-sm font-semibold ${color}`}>
-                    {isUnder ? "−" : isOver ? "+" : ""}
-                    {purchaseOrder.currency}{" "}
-                    {Math.abs(diff).toLocaleString("en-ZM", {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    })}{" "}
-                    ({isUnder ? "−" : isOver ? "+" : ""}
-                    {Math.abs(pct).toFixed(1)}%)
-                  </p>
-                </div>
-              </>
-            );
-          })() : null}
+          {purchaseOrder.estimatedCost
+            ? (() => {
+                const estimated = purchaseOrder.estimatedCost;
+                const actual = purchaseOrder.totalAmount || 0;
+                const diff = actual - estimated;
+                const pct = estimated > 0 ? (diff / estimated) * 100 : 0;
+                const isOver = diff > 0;
+                const isUnder = diff < 0;
+                const color = isUnder
+                  ? "text-green-300"
+                  : Math.abs(pct) <= 10
+                    ? "text-amber-300"
+                    : "text-red-300";
+                const Icon = isUnder
+                  ? TrendingDown
+                  : isOver
+                    ? TrendingUp
+                    : Minus;
+                return (
+                  <>
+                    <div className="space-y-1">
+                      <label className="text-xs font-semibold text-primary-foreground/80 uppercase tracking-wider flex items-center gap-1">
+                        <DollarSign className="h-3 w-3" />
+                        Estimated (from REQ)
+                      </label>
+                      <p className="text-base font-medium text-primary-foreground/80">
+                        {formatCurrency(estimated, purchaseOrder.currency)}
+                      </p>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs font-semibold text-primary-foreground/80 uppercase tracking-wider flex items-center gap-1">
+                        <Icon className="h-3 w-3" />
+                        Variance
+                      </label>
+                      <p className={`text-sm font-semibold ${color}`}>
+                        {isUnder ? "−" : isOver ? "+" : ""}
+                        {formatCurrency(
+                          Math.abs(diff),
+                          purchaseOrder.currency,
+                        )}{" "}
+                        ({isUnder ? "−" : isOver ? "+" : ""}
+                        {Math.abs(pct).toFixed(1)}%)
+                      </p>
+                    </div>
+                  </>
+                );
+              })()
+            : null}
 
           <div className="space-y-1">
             <label className="text-xs font-semibold text-primary-foreground/80 uppercase tracking-wider flex items-center gap-1">
@@ -620,62 +624,69 @@ export function PurchaseOrderDetailClient({
       </div>
 
       {/* Vendor Details Card — shown when full vendor record is available */}
-      {vendorDetails && (
-        vendorDetails.email ||
-        vendorDetails.phone ||
-        vendorDetails.contactPerson ||
-        vendorDetails.physicalAddress ||
-        vendorDetails.bankName ||
-        vendorDetails.accountNumber
-      ) && (
-        <div className="rounded-lg border p-4 space-y-3 bg-muted/30">
-          <h3 className="text-sm font-semibold flex items-center gap-2">
-            <Building className="h-4 w-4" />
-            Supplier Details — {vendorDetails.name}
-          </h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-sm">
-            {vendorDetails.contactPerson && (
-              <div>
-                <span className="text-xs text-muted-foreground">Contact Person</span>
-                <p className="font-medium">{vendorDetails.contactPerson}</p>
-              </div>
-            )}
-            {vendorDetails.email && (
-              <div>
-                <span className="text-xs text-muted-foreground">Email</span>
-                <p className="font-medium">{vendorDetails.email}</p>
-              </div>
-            )}
-            {vendorDetails.phone && (
-              <div>
-                <span className="text-xs text-muted-foreground">Phone</span>
-                <p className="font-medium">{vendorDetails.phone}</p>
-              </div>
-            )}
-            {vendorDetails.physicalAddress && (
-              <div>
-                <span className="text-xs text-muted-foreground">Address</span>
-                <p className="font-medium">{vendorDetails.physicalAddress}</p>
-              </div>
-            )}
-            {vendorDetails.bankName && (
-              <div>
-                <span className="text-xs text-muted-foreground">Bank</span>
-                <p className="font-medium">{vendorDetails.bankName}</p>
-              </div>
-            )}
-            {vendorDetails.accountNumber && (
-              <div>
-                <span className="text-xs text-muted-foreground">Account Number</span>
-                <p className="font-medium font-mono">{vendorDetails.accountNumber}</p>
-              </div>
-            )}
+      {vendorDetails &&
+        (vendorDetails.email ||
+          vendorDetails.phone ||
+          vendorDetails.contactPerson ||
+          vendorDetails.physicalAddress ||
+          vendorDetails.bankName ||
+          vendorDetails.accountNumber) && (
+          <div className="rounded-lg border p-4 space-y-3 bg-muted/30">
+            <h3 className="text-sm font-semibold flex items-center gap-2">
+              <Building className="h-4 w-4" />
+              Supplier Details — {vendorDetails.name}
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-sm">
+              {vendorDetails.contactPerson && (
+                <div>
+                  <span className="text-xs text-muted-foreground">
+                    Contact Person
+                  </span>
+                  <p className="font-medium">{vendorDetails.contactPerson}</p>
+                </div>
+              )}
+              {vendorDetails.email && (
+                <div>
+                  <span className="text-xs text-muted-foreground">Email</span>
+                  <p className="font-medium">{vendorDetails.email}</p>
+                </div>
+              )}
+              {vendorDetails.phone && (
+                <div>
+                  <span className="text-xs text-muted-foreground">Phone</span>
+                  <p className="font-medium">{vendorDetails.phone}</p>
+                </div>
+              )}
+              {vendorDetails.physicalAddress && (
+                <div>
+                  <span className="text-xs text-muted-foreground">Address</span>
+                  <p className="font-medium">{vendorDetails.physicalAddress}</p>
+                </div>
+              )}
+              {vendorDetails.bankName && (
+                <div>
+                  <span className="text-xs text-muted-foreground">Bank</span>
+                  <p className="font-medium">{vendorDetails.bankName}</p>
+                </div>
+              )}
+              {vendorDetails.accountNumber && (
+                <div>
+                  <span className="text-xs text-muted-foreground">
+                    Account Number
+                  </span>
+                  <p className="font-medium font-mono">
+                    {vendorDetails.accountNumber}
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
       {/* Document Chain — shown once PO is pending or approved */}
-      {["APPROVED", "PENDING"].includes(purchaseOrder.status?.toUpperCase() ?? "") && (
+      {["APPROVED", "PENDING"].includes(
+        purchaseOrder.status?.toUpperCase() ?? "",
+      ) && (
         <DocumentLinks
           currentDocument={purchaseOrder as unknown as WorkflowDocument}
           chain={chain}
