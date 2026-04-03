@@ -125,44 +125,85 @@ interface ActivityLogContentProps {
   auditEvents?: AuditEvent[];
 }
 
-function auditEventToHistoryEntry(evt: AuditEvent): ActionHistoryEntry {
-  const ts = new Date(evt.createdAt);
-  return {
-    id: evt.id,
-    action: evt.action.toUpperCase(),
-    actionType: evt.action.toUpperCase(),
-    performedBy: evt.userId ?? "",
-    performedByName: evt.actorName ?? evt.userId ?? "System",
-    performedByRole: evt.actorRole ?? "",
-    timestamp: ts,
-    performedAt: ts,
-    comments: typeof evt.details?.reason === "string" ? evt.details.reason : undefined,
-  };
+// Unified log entry type
+interface LogEntry {
+  id: string;
+  action: string;
+  actorName: string;
+  actorRole: string;
+  timestamp: Date;
+  comments?: string;
+  remarks?: string;
+  previousStatus?: string;
+  newStatus?: string;
+  stageNumber?: number;
+  stageName?: string;
+  changes?: Record<string, { old?: unknown; new?: unknown }>;
+  details?: Record<string, unknown>;
 }
 
-export function ActivityLogContent({ actionHistory, auditEvents }: ActivityLogContentProps) {
-  const legacyEntries = actionHistory ?? [];
-  const liveEntries = (auditEvents ?? []).map(auditEventToHistoryEntry);
+function normalizeAction(action: string): string {
+  return action.toUpperCase().replace(/-/g, "_");
+}
 
-  // Merge: prefer live audit events; deduplicate by composite key
-  const legacyIds = new Set(legacyEntries.map((e) => e.id));
-  const merged = [
-    ...legacyEntries,
-    ...liveEntries.filter((e) => !legacyIds.has(e.id)),
-  ];
+// Deduplicate by rounding timestamps to the nearest 5 seconds + action type
+function deduplicateEntries(entries: LogEntry[]): LogEntry[] {
+  const seen = new Set<string>();
+  return entries.filter((e) => {
+    const bucket = Math.round(e.timestamp.getTime() / 5000);
+    const key = `${normalizeAction(e.action)}_${bucket}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
 
-  const sortedHistory = [...merged].sort(
-    (a, b) =>
-      new Date(b.performedAt || b.timestamp || 0).getTime() -
-      new Date(a.performedAt || a.timestamp || 0).getTime(),
+export function ActivityLogContent({
+  actionHistory,
+  auditEvents,
+}: ActivityLogContentProps) {
+  // Convert audit events to unified entries
+  const auditEntries: LogEntry[] = (auditEvents ?? []).map((evt) => ({
+    id: evt.id,
+    action: normalizeAction(evt.action),
+    actorName: evt.actorName || "System",
+    actorRole: evt.actorRole || "",
+    timestamp: new Date(evt.createdAt),
+    comments:
+      typeof evt.details?.reason === "string" ? evt.details.reason : undefined,
+    changes: evt.changes,
+    details: evt.details,
+  }));
+
+  // Convert action history to unified entries
+  const historyEntries: LogEntry[] = (actionHistory ?? []).map((e) => ({
+    id: e.id,
+    action: normalizeAction(e.actionType || e.action),
+    actorName: e.performedByName || "System",
+    actorRole: e.performedByRole || "",
+    timestamp: new Date(e.performedAt || e.timestamp || 0),
+    comments: e.comments,
+    remarks: e.remarks,
+    previousStatus: e.previousStatus,
+    newStatus: e.newStatus,
+    stageNumber: e.stageNumber,
+    stageName: e.stageName,
+  }));
+
+  // Merge: audit events are richer, history may have extra entries not yet in audit log
+  // Deduplicate by action + timestamp bucket to avoid showing same event twice
+  const all = deduplicateEntries(
+    [...auditEntries, ...historyEntries].sort(
+      (a, b) => b.timestamp.getTime() - a.timestamp.getTime(),
+    ),
   );
 
-  if (sortedHistory.length === 0) {
+  if (all.length === 0) {
     return (
-      <div className="text-center py-8 text-gray-500">
-        <Clock className="h-8 w-8 mx-auto mb-2 text-gray-400" />
+      <div className="text-center py-8 text-muted-foreground">
+        <Clock className="h-8 w-8 mx-auto mb-2 opacity-40" />
         <p className="text-sm">No activity yet</p>
-        <p className="text-xs text-gray-400 mt-1">
+        <p className="text-xs opacity-60 mt-1">
           Actions will appear here as the document progresses
         </p>
       </div>
@@ -170,66 +211,232 @@ export function ActivityLogContent({ actionHistory, auditEvents }: ActivityLogCo
   }
 
   return (
-    <div className="space-y-3 max-h-[32rem] overflow-y-auto">
-      {sortedHistory.map((action) => (
-        <div
-          key={action.id}
-          className={`p-4 rounded-lg border-2 ${getActionColor(action.actionType || "unknown")}`}
-        >
-          <div className="flex items-start gap-3">
-            {getActionIcon(action.actionType || "unknown")}
-            <div className="flex-1 min-w-0">
+    <div className="space-y-2 max-h-[36rem] overflow-y-auto pr-1">
+      {all.map((entry) => {
+        const cfg = getEntryConfig(entry.action);
+        const hasChanges =
+          entry.changes && Object.keys(entry.changes).length > 0;
+        const filteredChanges = hasChanges
+          ? Object.entries(entry.changes!).filter(([k]) => k !== "metadata")
+          : [];
+
+        return (
+          <div
+            key={entry.id}
+            className={`rounded-lg border-l-4 border border-border/50 p-3 ${cfg.borderClass} ${cfg.bgClass}`}
+          >
+            {/* Header row */}
+            <div className="flex items-start justify-between gap-2">
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="font-semibold text-sm text-gray-900 dark:text-gray-100">
-                  {action.performedByName}
+                <span
+                  className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full ${cfg.badgeClass}`}
+                >
+                  <span className="shrink-0">{cfg.icon}</span>
+                  {cfg.label}
                 </span>
-                <Badge variant="outline" className="text-xs">
-                  {getActionLabel(action.actionType || "unknown")}
-                </Badge>
-                {action.performedByRole && (
-                  <Badge variant="secondary" className="text-xs">
-                    {action.performedByRole}
-                  </Badge>
+                <span className="text-sm font-medium text-foreground">
+                  {entry.actorName}
+                </span>
+                {entry.actorRole && (
+                  <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+                    {entry.actorRole}
+                  </span>
                 )}
               </div>
-              <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                {new Date(
-                  action.performedAt || action.timestamp || 0,
-                ).toLocaleString()}
-              </p>
-
-              {action.previousStatus && action.newStatus && (
-                <div className="text-xs mt-2 text-gray-700 dark:text-gray-300">
-                  Status:{" "}
-                  <span className="font-mono">{action.previousStatus}</span> →{" "}
-                  <span className="font-mono">{action.newStatus}</span>
-                </div>
-              )}
-
-              {action.stageNumber && action.stageName && (
-                <div className="text-xs mt-2 text-gray-700 dark:text-gray-300">
-                  Stage {action.stageNumber}:{" "}
-                  <span className="font-semibold">{action.stageName}</span>
-                </div>
-              )}
-
-              {action.comments && (
-                <p className="text-sm mt-2 text-gray-700 dark:text-gray-300 italic">
-                  &ldquo;{action.comments}&rdquo;
-                </p>
-              )}
-
-              {action.remarks && (
-                <p className="text-sm mt-2 text-red-700 dark:text-red-400 font-semibold">
-                  Reason: &ldquo;{action.remarks}&rdquo;
-                </p>
-              )}
+              <span className="text-xs text-muted-foreground whitespace-nowrap shrink-0">
+                {entry.timestamp.toLocaleString()}
+              </span>
             </div>
+
+            {/* Status change */}
+            {entry.previousStatus && entry.newStatus && (
+              <div className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
+                <span className="font-mono bg-muted px-1.5 py-0.5 rounded">
+                  {entry.previousStatus}
+                </span>
+                <span>→</span>
+                <span className="font-mono bg-muted px-1.5 py-0.5 rounded">
+                  {entry.newStatus}
+                </span>
+              </div>
+            )}
+
+            {/* Stage info */}
+            {entry.stageNumber && entry.stageName && (
+              <p className="mt-1.5 text-xs text-muted-foreground">
+                Stage {entry.stageNumber}:{" "}
+                <span className="font-medium">{entry.stageName}</span>
+              </p>
+            )}
+
+            {/* Comments / remarks */}
+            {entry.comments && (
+              <p className="mt-1.5 text-xs text-muted-foreground italic">
+                &ldquo;{entry.comments}&rdquo;
+              </p>
+            )}
+            {entry.remarks && (
+              <p className="mt-1.5 text-xs text-red-600 dark:text-red-400 font-medium">
+                Reason: &ldquo;{entry.remarks}&rdquo;
+              </p>
+            )}
+
+            {/* Field-level changes */}
+            {filteredChanges.length > 0 && (
+              <div className="mt-2 rounded border border-border/60 overflow-hidden text-xs">
+                {filteredChanges.map(([field, change]) => (
+                  <div
+                    key={field}
+                    className="flex items-center gap-2 px-2.5 py-1.5 border-b last:border-b-0 border-border/40 bg-background/60"
+                  >
+                    <span className="font-medium text-muted-foreground w-24 shrink-0 capitalize">
+                      {field.replace(/([A-Z])/g, " $1").trim()}
+                    </span>
+                    {change?.old !== undefined && (
+                      <span className="line-through text-red-500 dark:text-red-400 truncate max-w-[130px]">
+                        {String(change.old ?? "—")}
+                      </span>
+                    )}
+                    {change?.old !== undefined && change?.new !== undefined && (
+                      <span className="text-muted-foreground">→</span>
+                    )}
+                    {change?.new !== undefined && (
+                      <span className="text-green-600 dark:text-green-400 font-medium truncate max-w-[130px]">
+                        {String(change.new ?? "—")}
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Attachment / quotation details from audit event details */}
+            {entry.details &&
+              !hasChanges &&
+              (() => {
+                const d = entry.details;
+                const items = [
+                  d.fileName && `File: ${d.fileName}`,
+                  d.vendorName && `Vendor: ${d.vendorName}`,
+                  d.amount &&
+                    `Amount: ${d.currency ?? ""} ${Number(d.amount).toLocaleString()}`,
+                ].filter(Boolean);
+                return items.length > 0 ? (
+                  <p className="mt-1.5 text-xs text-muted-foreground">
+                    {items.join(" · ")}
+                  </p>
+                ) : null;
+              })()}
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
+}
+
+// Maps action strings to display config
+function getEntryConfig(action: string): {
+  label: string;
+  icon: React.ReactNode;
+  badgeClass: string;
+  borderClass: string;
+  bgClass: string;
+} {
+  const a = action.toUpperCase();
+  if (a.includes("CREAT") || a === "CREATE")
+    return {
+      label: "Created",
+      icon: <Plus className="h-3 w-3" />,
+      badgeClass:
+        "bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-200",
+      borderClass: "border-l-blue-500",
+      bgClass: "",
+    };
+  if (a.includes("APPROV"))
+    return {
+      label: "Approved",
+      icon: <CheckCircle className="h-3 w-3" />,
+      badgeClass:
+        "bg-green-100 text-green-800 dark:bg-green-900/60 dark:text-green-200",
+      borderClass: "border-l-green-500",
+      bgClass: "",
+    };
+  if (a.includes("REJECT"))
+    return {
+      label: "Rejected",
+      icon: <XCircle className="h-3 w-3" />,
+      badgeClass:
+        "bg-red-100 text-red-800 dark:bg-red-900/60 dark:text-red-200",
+      borderClass: "border-l-red-500",
+      bgClass: "",
+    };
+  if (a.includes("SUBMIT"))
+    return {
+      label: "Submitted",
+      icon: <Send className="h-3 w-3" />,
+      badgeClass:
+        "bg-purple-100 text-purple-800 dark:bg-purple-900/60 dark:text-purple-200",
+      borderClass: "border-l-purple-500",
+      bgClass: "",
+    };
+  if (a.includes("WITHDRAW"))
+    return {
+      label: "Withdrawn",
+      icon: <Undo2 className="h-3 w-3" />,
+      badgeClass:
+        "bg-orange-100 text-orange-800 dark:bg-orange-900/60 dark:text-orange-200",
+      borderClass: "border-l-orange-500",
+      bgClass: "",
+    };
+  if (a.includes("ATTACHMENT") || a.includes("UPLOAD"))
+    return {
+      label: a.includes("DELET") ? "File Deleted" : "File Uploaded",
+      icon: <Plus className="h-3 w-3" />,
+      badgeClass:
+        "bg-cyan-100 text-cyan-800 dark:bg-cyan-900/60 dark:text-cyan-200",
+      borderClass: "border-l-cyan-500",
+      bgClass: "",
+    };
+  if (a.includes("QUOTATION"))
+    return {
+      label: a.includes("DELET")
+        ? "Quotation Removed"
+        : a.includes("UPDAT")
+          ? "Quotation Updated"
+          : "Quotation Added",
+      icon: <DollarSign className="h-3 w-3" />,
+      badgeClass:
+        "bg-teal-100 text-teal-800 dark:bg-teal-900/60 dark:text-teal-200",
+      borderClass: "border-l-teal-500",
+      bgClass: "",
+    };
+  if (a.includes("MARK_PAID") || a.includes("MARKED_PAID"))
+    return {
+      label: "Marked as Paid",
+      icon: <DollarSign className="h-3 w-3" />,
+      badgeClass:
+        "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-200",
+      borderClass: "border-l-emerald-500",
+      bgClass: "",
+    };
+  if (a.includes("BYPASS") || a.includes("QUOTATION_GATE"))
+    return {
+      label: "Gate Bypassed",
+      icon: <AlertCircle className="h-3 w-3" />,
+      badgeClass:
+        "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/60 dark:text-yellow-200",
+      borderClass: "border-l-yellow-500",
+      bgClass: "",
+    };
+  // default: update
+  return {
+    label: "Updated",
+    icon: <Edit className="h-3 w-3" />,
+    badgeClass:
+      "bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-200",
+    borderClass: "border-l-amber-500",
+    bgClass: "",
+  };
 }
 
 // ── Approval Chain Content ──────────────────────────────────────────────

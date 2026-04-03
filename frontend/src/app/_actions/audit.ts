@@ -13,6 +13,7 @@ export interface AuditEvent {
   actorName?: string;
   actorRole?: string;
   action: string;
+  changes?: Record<string, { old?: unknown; new?: unknown }>;
   details?: Record<string, unknown>;
   createdAt: string;
 }

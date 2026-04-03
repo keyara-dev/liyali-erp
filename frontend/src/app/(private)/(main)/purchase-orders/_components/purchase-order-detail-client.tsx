@@ -216,9 +216,7 @@ export function PurchaseOrderDetailClient({
   // Look up full vendor details from the vendors list
   const vendorDetails = vendors.find((v) => v.id === purchaseOrder.vendorId);
 
-  const canEditQuotations =
-    isDraft ||
-    ["admin", "finance", "approver"].includes(userRole?.toLowerCase());
+  const canEditQuotations = isDraft;
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

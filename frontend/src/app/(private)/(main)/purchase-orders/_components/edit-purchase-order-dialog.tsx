@@ -109,7 +109,7 @@ export function EditPurchaseOrderDialog({
       budgetCode: formData.budgetCode,
       costCenter: formData.costCenter,
       projectCode: formData.projectCode,
-      deliveryDate: formData.deliveryDate,
+      deliveryDate: formData.deliveryDate ?? undefined,
     });
   };
 
@@ -289,7 +289,7 @@ export function EditPurchaseOrderDialog({
             {/* Delivery Date */}
             <DatePicker
               label="Delivery Date"
-              value={formData.deliveryDate}
+              value={formData.deliveryDate ?? undefined}
               onValueChange={(date) =>
                 setFormData({ ...formData, deliveryDate: date as Date })
               }
