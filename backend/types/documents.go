@@ -228,6 +228,7 @@ type CreatePurchaseOrderRequest struct {
 // UpdatePurchaseOrderRequest represents a PO update request
 type UpdatePurchaseOrderRequest struct {
 	VendorID                string                 `json:"vendorId"`
+	VendorName              string                 `json:"vendorName"`
 	Items                   []POItem               `json:"items"`
 	TotalAmount             float64                `json:"totalAmount"`
 	Currency                string                 `json:"currency"`

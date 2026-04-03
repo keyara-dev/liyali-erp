@@ -472,6 +472,25 @@ func UpdatePurchaseOrder(c *fiber.Ctx) error {
 		})
 	}
 
+	// Capture old values BEFORE making changes for audit trail
+	oldValues := map[string]interface{}{
+		"title":        order.Title,
+		"description":  order.Description,
+		"department":   order.Department,
+		"departmentId": order.DepartmentID,
+		"priority":     order.Priority,
+		"budgetCode":   order.BudgetCode,
+		"costCenter":   order.CostCenter,
+		"projectCode":  order.ProjectCode,
+		"vendorId":     "",
+		"totalAmount":  order.TotalAmount,
+		"currency":     order.Currency,
+		"deliveryDate": order.DeliveryDate,
+	}
+	if order.VendorID != nil {
+		oldValues["vendorId"] = *order.VendorID
+	}
+
 	// Track changes for logging
 	changes := make(map[string]interface{})
 
@@ -480,28 +499,34 @@ func UpdatePurchaseOrder(c *fiber.Ctx) error {
 		if order.VendorID != nil {
 			fromVendorID = *order.VendorID
 		}
-		changes["vendor_id"] = map[string]string{"from": fromVendorID, "to": req.VendorID}
+		if fromVendorID != req.VendorID {
+			changes["vendorId"] = map[string]string{"old": fromVendorID, "new": req.VendorID}
+		}
 		order.VendorID = &req.VendorID
 	}
 	if len(req.Items) > 0 {
-		changes["items_count"] = len(req.Items)
+		changes["itemsCount"] = map[string]int{"old": len(order.Items.Data()), "new": len(req.Items)}
 		order.Items = datatypes.NewJSONType(req.Items)
 	}
-	if req.TotalAmount > 0 {
-		changes["total_amount"] = map[string]float64{"from": order.TotalAmount, "to": req.TotalAmount}
+	if req.TotalAmount > 0 && req.TotalAmount != order.TotalAmount {
+		changes["totalAmount"] = map[string]float64{"old": order.TotalAmount, "new": req.TotalAmount}
 		order.TotalAmount = req.TotalAmount
 	}
-	if req.Currency != "" {
-		changes["currency"] = map[string]string{"from": order.Currency, "to": req.Currency}
+	if req.Currency != "" && req.Currency != order.Currency {
+		changes["currency"] = map[string]string{"old": order.Currency, "new": req.Currency}
 		order.Currency = req.Currency
 	}
-	if !req.DeliveryDate.Time.IsZero() {
-		changes["delivery_date"] = req.DeliveryDate.Time
+	if !req.DeliveryDate.Time.IsZero() && !req.DeliveryDate.Time.Equal(order.DeliveryDate) {
+		changes["deliveryDate"] = map[string]interface{}{
+			"old": order.DeliveryDate.Format(time.RFC3339),
+			"new": req.DeliveryDate.Time.Format(time.RFC3339),
+		}
 		order.DeliveryDate = req.DeliveryDate.Time
 	}
 	if len(req.Metadata) > 0 {
 		if metaBytes, err := json.Marshal(req.Metadata); err == nil {
 			order.Metadata = datatypes.JSON(metaBytes)
+			changes["metadata"] = "updated"
 		}
 	}
 	if req.QuotationGateOverridden != nil {
@@ -510,28 +535,36 @@ func UpdatePurchaseOrder(c *fiber.Ctx) error {
 	if req.BypassJustification != "" {
 		order.BypassJustification = req.BypassJustification
 	}
-	if req.Title != "" {
+	if req.Title != "" && req.Title != order.Title {
+		changes["title"] = map[string]string{"old": order.Title, "new": req.Title}
 		order.Title = req.Title
 	}
-	if req.Description != "" {
+	if req.Description != "" && req.Description != order.Description {
+		changes["description"] = map[string]string{"old": order.Description, "new": req.Description}
 		order.Description = req.Description
 	}
-	if req.Department != "" {
+	if req.Department != "" && req.Department != order.Department {
+		changes["department"] = map[string]string{"old": order.Department, "new": req.Department}
 		order.Department = req.Department
 	}
-	if req.DepartmentID != "" {
+	if req.DepartmentID != "" && req.DepartmentID != order.DepartmentID {
+		changes["departmentId"] = map[string]string{"old": order.DepartmentID, "new": req.DepartmentID}
 		order.DepartmentID = req.DepartmentID
 	}
-	if req.Priority != "" {
+	if req.Priority != "" && req.Priority != order.Priority {
+		changes["priority"] = map[string]string{"old": order.Priority, "new": req.Priority}
 		order.Priority = req.Priority
 	}
-	if req.BudgetCode != "" {
+	if req.BudgetCode != "" && req.BudgetCode != order.BudgetCode {
+		changes["budgetCode"] = map[string]string{"old": order.BudgetCode, "new": req.BudgetCode}
 		order.BudgetCode = req.BudgetCode
 	}
-	if req.CostCenter != "" {
+	if req.CostCenter != "" && req.CostCenter != order.CostCenter {
+		changes["costCenter"] = map[string]string{"old": order.CostCenter, "new": req.CostCenter}
 		order.CostCenter = req.CostCenter
 	}
-	if req.ProjectCode != "" {
+	if req.ProjectCode != "" && req.ProjectCode != order.ProjectCode {
+		changes["projectCode"] = map[string]string{"old": order.ProjectCode, "new": req.ProjectCode}
 		order.ProjectCode = req.ProjectCode
 	}
 
@@ -577,6 +610,10 @@ func UpdatePurchaseOrder(c *fiber.Ctx) error {
 	go utils.SyncDocument(config.DB, "PURCHASE_ORDER", order.ID)
 
 	if len(changes) > 0 {
+		// Create snapshot of current state after changes
+		snapshot := services.CreateDocumentSnapshot(order)
+
+		// Log the audit event with changes and snapshot for full transparency
 		go services.LogDocumentEvent(config.DB, services.DocumentEvent{
 			OrganizationID: orgID,
 			DocumentID:     order.ID,
@@ -585,7 +622,12 @@ func UpdatePurchaseOrder(c *fiber.Ctx) error {
 			ActorName:      updateUser.Name,
 			ActorRole:      actorRole,
 			Action:         "updated",
-			Details:        changes,
+			Changes:        changes,
+			Snapshot:       snapshot,
+			Details: map[string]interface{}{
+				"documentNumber": order.DocumentNumber,
+				"updateType":     "manual_edit",
+			},
 		})
 	}
 

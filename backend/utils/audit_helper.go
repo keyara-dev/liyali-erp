@@ -80,10 +80,7 @@ func CreateAuditLog(params AuditLogParams) error {
 
 	// Convert changes to JSON
 	if params.Changes != nil {
-		changesJSON, err := json.Marshal(params.Changes)
-		if err == nil {
-			auditLog.Changes = datatypes.NewJSONType(params.Changes)
-		}
+		auditLog.Changes = datatypes.NewJSONType(params.Changes)
 	}
 
 	// Convert details to JSON

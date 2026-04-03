@@ -77,13 +77,13 @@ import { DocumentLoadingPage } from "@/components/base/document-loading-page";
 import ErrorDisplay from "@/components/base/error-display";
 import { usePurchaseOrderDetail } from "@/hooks/use-purchase-order-detail";
 import { useRouter } from "next/navigation";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { getAuditEvents, type AuditEvent } from "@/app/_actions/audit";
 import { uploadToImageKit } from "@/lib/imagekit";
 import { updatePurchaseOrder } from "@/app/_actions/purchase-orders";
-import { QUERY_KEYS } from "@/lib/constants";
 import { toast } from "sonner";
 import { formatCurrency } from "@/lib/utils";
+import { EditPurchaseOrderDialog } from "./edit-purchase-order-dialog";
 
 /**
  * Props for the PurchaseOrderDetailClient component
@@ -139,7 +139,6 @@ export function PurchaseOrderDetailClient({
   initialPurchaseOrder,
 }: PurchaseOrderDetailClientProps) {
   const router = useRouter();
-  const queryClient = useQueryClient();
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { data: vendors = [] } = useVendors({ active: true });
@@ -164,6 +163,8 @@ export function PurchaseOrderDetailClient({
     previewOpen,
     setPreviewOpen,
     previewBlob,
+    isEditDialogOpen,
+    setIsEditDialogOpen,
     showSubmitDialog,
     setShowSubmitDialog,
     showWithdrawModal,
@@ -175,6 +176,7 @@ export function PurchaseOrderDetailClient({
     handleExportPDF,
     handleSubmitForApproval: handleSubmit,
     handleEdit,
+    handleDocumentUpdated,
     handleWithdraw,
     handleApprovalComplete,
     handleAttachmentPreview,
@@ -243,9 +245,7 @@ export function PurchaseOrderDetailClient({
         poId: purchaseOrderId,
         metadata: { ...purchaseOrder.metadata, attachments: merged },
       });
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.PURCHASE_ORDERS.BY_ID, purchaseOrderId],
-      });
+      handleDocumentUpdated();
       toast.success("Document uploaded successfully");
     } catch {
       toast.error("Failed to upload document");
@@ -261,9 +261,27 @@ export function PurchaseOrderDetailClient({
       poId: purchaseOrderId,
       metadata: { ...purchaseOrder.metadata, quotations: updated },
     });
-    queryClient.invalidateQueries({
-      queryKey: [QUERY_KEYS.PURCHASE_ORDERS.BY_ID, purchaseOrderId],
+    handleDocumentUpdated();
+  };
+
+  const handleSelectVendor = async (
+    vendorId: string,
+    vendorName: string,
+    amount: number,
+    fileUrl: string,
+  ) => {
+    await updatePurchaseOrder({
+      purchaseOrderId,
+      poId: purchaseOrderId,
+      vendorId,
+      vendorName,
+      totalAmount: amount,
+      metadata: {
+        ...purchaseOrder.metadata,
+        selectedQuotationFileUrl: fileUrl,
+      },
     });
+    handleDocumentUpdated();
   };
 
   /**
@@ -423,9 +441,7 @@ export function PurchaseOrderDetailClient({
           <div className="space-y-1">
             <label className="text-xs font-semibold text-primary-foreground/80 uppercase tracking-wider flex items-center gap-1">
               <DollarSign className="h-3 w-3" />
-              {purchaseOrder.estimatedCost
-                ? "Selected Supplier"
-                : "Total Amount"}
+              Estimated Cost
             </label>
             <p className="text-base font-bold text-primary-foreground">
               {formatCurrency(
@@ -434,55 +450,6 @@ export function PurchaseOrderDetailClient({
               )}
             </p>
           </div>
-
-          {purchaseOrder.estimatedCost
-            ? (() => {
-                const estimated = purchaseOrder.estimatedCost;
-                const actual = purchaseOrder.totalAmount || 0;
-                const diff = actual - estimated;
-                const pct = estimated > 0 ? (diff / estimated) * 100 : 0;
-                const isOver = diff > 0;
-                const isUnder = diff < 0;
-                const color = isUnder
-                  ? "text-green-300"
-                  : Math.abs(pct) <= 10
-                    ? "text-amber-300"
-                    : "text-red-300";
-                const Icon = isUnder
-                  ? TrendingDown
-                  : isOver
-                    ? TrendingUp
-                    : Minus;
-                return (
-                  <>
-                    <div className="space-y-1">
-                      <label className="text-xs font-semibold text-primary-foreground/80 uppercase tracking-wider flex items-center gap-1">
-                        <DollarSign className="h-3 w-3" />
-                        Estimated (from REQ)
-                      </label>
-                      <p className="text-base font-medium text-primary-foreground/80">
-                        {formatCurrency(estimated, purchaseOrder.currency)}
-                      </p>
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-xs font-semibold text-primary-foreground/80 uppercase tracking-wider flex items-center gap-1">
-                        <Icon className="h-3 w-3" />
-                        Variance
-                      </label>
-                      <p className={`text-sm font-semibold ${color}`}>
-                        {isUnder ? "−" : isOver ? "+" : ""}
-                        {formatCurrency(
-                          Math.abs(diff),
-                          purchaseOrder.currency,
-                        )}{" "}
-                        ({isUnder ? "−" : isOver ? "+" : ""}
-                        {Math.abs(pct).toFixed(1)}%)
-                      </p>
-                    </div>
-                  </>
-                );
-              })()
-            : null}
 
           <div className="space-y-1">
             <label className="text-xs font-semibold text-primary-foreground/80 uppercase tracking-wider flex items-center gap-1">
@@ -623,65 +590,140 @@ export function PurchaseOrderDetailClient({
         )}
       </div>
 
-      {/* Vendor Details Card — shown when full vendor record is available */}
-      {vendorDetails &&
-        (vendorDetails.email ||
-          vendorDetails.phone ||
-          vendorDetails.contactPerson ||
-          vendorDetails.physicalAddress ||
-          vendorDetails.bankName ||
-          vendorDetails.accountNumber) && (
-          <div className="rounded-lg border p-4 space-y-3 bg-muted/30">
-            <h3 className="text-sm font-semibold flex items-center gap-2">
-              <Building className="h-4 w-4" />
-              Supplier Details — {vendorDetails.name}
-            </h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-sm">
-              {vendorDetails.contactPerson && (
-                <div>
-                  <span className="text-xs text-muted-foreground">
-                    Contact Person
-                  </span>
-                  <p className="font-medium">{vendorDetails.contactPerson}</p>
+      {/* Vendor Details Card — shown when vendor is selected */}
+      {purchaseOrder.vendorId && (
+        <div className="rounded-lg border p-4 space-y-4 bg-muted/30">
+          <h3 className="text-sm font-semibold flex items-center gap-2">
+            <Building className="h-4 w-4" />
+            Supplier Details —{" "}
+            {purchaseOrder.vendorName ||
+              vendorDetails?.name ||
+              "Unknown Vendor"}
+          </h3>
+
+          {/* Cost Comparison Section — always shown when vendor is selected */}
+          {(() => {
+            const estimated =
+              purchaseOrder.estimatedCost || purchaseOrder.totalAmount;
+            const selectedFileUrl = purchaseOrder.metadata
+              ?.selectedQuotationFileUrl as string | undefined;
+            const selectedQuotation = selectedFileUrl
+              ? quotations.find((q) => q.fileUrl === selectedFileUrl)
+              : undefined;
+            const actual =
+              selectedQuotation?.amount ?? purchaseOrder.totalAmount;
+            const diff = actual - estimated;
+            const pct = estimated > 0 ? (diff / estimated) * 100 : 0;
+            const isOver = diff > 0;
+            const isUnder = diff < 0;
+            const color = isUnder
+              ? "text-green-600 dark:text-green-400"
+              : Math.abs(pct) <= 10
+                ? "text-amber-600 dark:text-amber-400"
+                : "text-red-600 dark:text-red-400";
+            const Icon = isUnder ? TrendingDown : isOver ? TrendingUp : Minus;
+            return (
+              <div className="rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/30 p-3 space-y-3">
+                <h4 className="text-xs font-semibold text-blue-900 dark:text-blue-100 uppercase tracking-wider">
+                  Cost Comparison
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div>
+                    <span className="text-xs text-blue-700 dark:text-blue-300 font-medium">
+                      {purchaseOrder.estimatedCost
+                        ? "Estimated Cost (from REQ)"
+                        : "PO Estimated Cost"}
+                    </span>
+                    <p className="text-base font-bold text-blue-900 dark:text-blue-100">
+                      {formatCurrency(estimated, purchaseOrder.currency)}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-xs text-blue-700 dark:text-blue-300 font-medium">
+                      Selected Supplier Price
+                    </span>
+                    <p className="text-base font-bold text-blue-900 dark:text-blue-100">
+                      {formatCurrency(actual, purchaseOrder.currency)}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-xs text-blue-700 dark:text-blue-300 font-medium flex items-center gap-1">
+                      <Icon className="h-3 w-3" />
+                      Variance
+                    </span>
+                    <p className={`text-base font-bold ${color}`}>
+                      {isUnder ? "−" : isOver ? "+" : ""}
+                      {formatCurrency(Math.abs(diff), purchaseOrder.currency)}
+                      <span className="text-sm font-normal ml-1">
+                        ({isUnder ? "−" : isOver ? "+" : ""}
+                        {Math.abs(pct).toFixed(1)}%)
+                      </span>
+                    </p>
+                  </div>
                 </div>
-              )}
-              {vendorDetails.email && (
-                <div>
-                  <span className="text-xs text-muted-foreground">Email</span>
-                  <p className="font-medium">{vendorDetails.email}</p>
-                </div>
-              )}
-              {vendorDetails.phone && (
-                <div>
-                  <span className="text-xs text-muted-foreground">Phone</span>
-                  <p className="font-medium">{vendorDetails.phone}</p>
-                </div>
-              )}
-              {vendorDetails.physicalAddress && (
-                <div>
-                  <span className="text-xs text-muted-foreground">Address</span>
-                  <p className="font-medium">{vendorDetails.physicalAddress}</p>
-                </div>
-              )}
-              {vendorDetails.bankName && (
-                <div>
-                  <span className="text-xs text-muted-foreground">Bank</span>
-                  <p className="font-medium">{vendorDetails.bankName}</p>
-                </div>
-              )}
-              {vendorDetails.accountNumber && (
-                <div>
-                  <span className="text-xs text-muted-foreground">
-                    Account Number
-                  </span>
-                  <p className="font-medium font-mono">
-                    {vendorDetails.accountNumber}
-                  </p>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
+              </div>
+            );
+          })()}
+
+          {/* Vendor Contact Details - only show if vendor details are available */}
+          {vendorDetails &&
+            (vendorDetails.contactPerson ||
+              vendorDetails.email ||
+              vendorDetails.phone ||
+              vendorDetails.physicalAddress ||
+              vendorDetails.bankName ||
+              vendorDetails.accountNumber) && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-sm">
+                {vendorDetails.contactPerson && (
+                  <div>
+                    <span className="text-xs text-muted-foreground">
+                      Contact Person
+                    </span>
+                    <p className="font-medium">{vendorDetails.contactPerson}</p>
+                  </div>
+                )}
+                {vendorDetails.email && (
+                  <div>
+                    <span className="text-xs text-muted-foreground">Email</span>
+                    <p className="font-medium">{vendorDetails.email}</p>
+                  </div>
+                )}
+                {vendorDetails.phone && (
+                  <div>
+                    <span className="text-xs text-muted-foreground">Phone</span>
+                    <p className="font-medium">{vendorDetails.phone}</p>
+                  </div>
+                )}
+                {vendorDetails.physicalAddress && (
+                  <div>
+                    <span className="text-xs text-muted-foreground">
+                      Address
+                    </span>
+                    <p className="font-medium">
+                      {vendorDetails.physicalAddress}
+                    </p>
+                  </div>
+                )}
+                {vendorDetails.bankName && (
+                  <div>
+                    <span className="text-xs text-muted-foreground">Bank</span>
+                    <p className="font-medium">{vendorDetails.bankName}</p>
+                  </div>
+                )}
+                {vendorDetails.accountNumber && (
+                  <div>
+                    <span className="text-xs text-muted-foreground">
+                      Account Number
+                    </span>
+                    <p className="font-medium font-mono">
+                      {vendorDetails.accountNumber}
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+        </div>
+      )}
 
       {/* Document Chain — shown once PO is pending or approved */}
       {["APPROVED", "PENDING"].includes(
@@ -934,6 +976,14 @@ export function PurchaseOrderDetailClient({
                 vendors={vendors}
                 canEdit={canEditQuotations}
                 onSave={handleSaveQuotations}
+                selectedVendorId={purchaseOrder.vendorId}
+                selectedQuotationFileId={
+                  purchaseOrder.metadata?.selectedQuotationFileUrl as
+                    | string
+                    | undefined
+                }
+                onSelectVendor={handleSelectVendor}
+                showVendorSelection={isDraft}
               />
             )}
           </TabsContent>
@@ -1057,6 +1107,14 @@ export function PurchaseOrderDetailClient({
         onOpenChange={setAttachmentPreviewOpen}
         attachment={selectedAttachment}
         attachments={attachments}
+      />
+
+      {/* Edit Purchase Order Dialog */}
+      <EditPurchaseOrderDialog
+        open={isEditDialogOpen}
+        onOpenChange={setIsEditDialogOpen}
+        purchaseOrder={purchaseOrder}
+        onSuccess={handleDocumentUpdated}
       />
     </div>
   );

@@ -319,6 +319,10 @@ export interface UpdatePurchaseOrderRequest {
   quotationGateOverridden?: boolean;
   /** Justification for bypassing quotation gate */
   bypassJustification?: string;
+  /** Updated department name */
+  department?: string;
+  /** Updated department ID */
+  departmentId?: string;
 }
 
 /**
