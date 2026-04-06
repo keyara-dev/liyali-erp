@@ -60,12 +60,14 @@ const AttachmentPreviewDialog = dynamic(
   { ssr: false },
 );
 import { PaymentVoucherSubmitDialog } from "../../_components/payment-voucher-submit-dialog";
+import { MarkPaidDialog } from "../../_components/mark-paid-dialog";
 import { ConfirmationModal } from "@/components/modals/confirmation-modal";
 import { Badge } from "@/components";
 import { DocumentLoadingPage } from "@/components/base/document-loading-page";
 import ErrorDisplay from "@/components/base/error-display";
 import { usePaymentVoucherDetail } from "@/hooks/use-payment-voucher-detail";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getAuditEvents, type AuditEvent } from "@/app/_actions/audit";
 import { formatCurrency } from "@/lib/utils";
@@ -125,6 +127,7 @@ export function PVDetailClient({
   initialPaymentVoucher,
 }: PVDetailClientProps) {
   const router = useRouter();
+  const [showMarkPaidDialog, setShowMarkPaidDialog] = useState(false);
 
   const { data: auditEventsData } = useQuery({
     queryKey: ["audit-events", "payment_voucher", pvId],
@@ -275,6 +278,15 @@ export function PVDetailClient({
             >
               <Undo2 className="h-4 w-4" />
               Withdraw
+            </Button>
+          )}
+          {paymentVoucher.status?.toUpperCase() === "APPROVED" && (
+            <Button
+              onClick={() => setShowMarkPaidDialog(true)}
+              className="gap-2 h-11 bg-emerald-600 hover:bg-emerald-700"
+            >
+              <CheckSquare className="h-4 w-4" />
+              Mark as Paid
             </Button>
           )}
         </div>
@@ -747,6 +759,16 @@ export function PVDetailClient({
         onOpenChange={setAttachmentPreviewOpen}
         attachment={selectedAttachment}
         attachments={attachments}
+      />
+
+      {/* Mark as Paid Dialog */}
+      <MarkPaidDialog
+        open={showMarkPaidDialog}
+        onOpenChange={setShowMarkPaidDialog}
+        paymentVoucher={paymentVoucher}
+        userId={userId}
+        userRole={userRole}
+        onSuccess={handleApprovalComplete}
       />
     </div>
   );

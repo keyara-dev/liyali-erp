@@ -562,6 +562,9 @@ func MarkPaymentVoucherPaid(c *fiber.Ctx) error {
 	if req.PaidAmount <= 0 {
 		return utils.SendBadRequestError(c, "paidAmount must be greater than 0")
 	}
+	if req.ReferenceNumber == "" {
+		return utils.SendBadRequestError(c, "referenceNumber is required")
+	}
 
 	var voucher models.PaymentVoucher
 	if err := config.DB.Where("id = ? AND organization_id = ?", id, tenant.OrganizationID).First(&voucher).Error; err != nil {
@@ -570,6 +573,18 @@ func MarkPaymentVoucherPaid(c *fiber.Ctx) error {
 
 	if strings.ToUpper(voucher.Status) != "APPROVED" {
 		return utils.SendBadRequestError(c, "Only approved payment vouchers can be marked as paid")
+	}
+
+	// Amount mismatch validation — paidAmount must match the approved voucher amount
+	const amountTolerance = 0.01 // allow for floating point rounding
+	if req.PaidAmount < voucher.Amount-amountTolerance || req.PaidAmount > voucher.Amount+amountTolerance {
+		return c.Status(fiber.StatusUnprocessableEntity).JSON(fiber.Map{
+			"success":        false,
+			"error":          "amount_mismatch",
+			"message":        fmt.Sprintf("Paid amount (%.2f) does not match the approved voucher amount (%.2f). Please enter the exact approved amount.", req.PaidAmount, voucher.Amount),
+			"approvedAmount": voucher.Amount,
+			"paidAmount":     req.PaidAmount,
+		})
 	}
 
 	now := time.Now()
