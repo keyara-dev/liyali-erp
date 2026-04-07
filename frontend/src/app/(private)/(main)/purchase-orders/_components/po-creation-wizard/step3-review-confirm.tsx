@@ -201,24 +201,24 @@ export function Step3ReviewConfirm({
         </div>
       </div>
 
-      {/* ── Step 2 Summary (Req 5.2) ── */}
+      {/* ── Step 2 Summary — selected vendor only (Req 5.2) ── */}
       <div className="rounded-lg border bg-muted/40 p-4 space-y-3">
         <div className="flex items-center gap-2">
           <Users className="h-4 w-4 text-muted-foreground" />
-          <span className="text-sm font-semibold">Vendors & Quotes</span>
+          <span className="text-sm font-semibold">Selected Supplier</span>
           <Badge variant="secondary" className="text-xs">
             Step 2
           </Badge>
         </div>
         <Separator />
-        {step2.vendors.length === 0 ? (
+        {!selectedVendorEntry ? (
           <p className="text-sm text-muted-foreground italic">
-            No vendors added — supplier will be assigned later.
+            No supplier selected — can be assigned later from the PO.
           </p>
         ) : (
           <div className="space-y-2">
-            {step2.vendors.map((vendor) => {
-              const isSelected = vendor.localId === step2.selectedVendorLocalId;
+            {[selectedVendorEntry].map((vendor) => {
+              const isSelected = true;
               return (
                 <div
                   key={vendor.localId}
