@@ -1,13 +1,14 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { UserPlus, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Label } from "@/components/ui/label";
+import { AlertTriangle } from "lucide-react";
 import { SelectField } from "@/components/ui/select-field";
 import { useVendors } from "@/hooks/use-vendor-queries";
 import { CostComparisonPanel } from "@/components/purchase-orders/cost-comparison-panel";
+import { QuotationCollectionSection } from "@/app/(private)/(main)/requisitions/_components/quotation-collection-section";
 import { InlineVendorForm } from "./inline-vendor-form";
 import type { Vendor } from "@/types/vendor";
 import type { Quotation } from "@/types/core";
@@ -38,10 +39,9 @@ function vendorToEntry(vendor: Vendor): WizardVendorEntry {
 /**
  * Step 2 — Vendor & Quotes.
  *
- * If the requisition has quotations in metadata, shows them as a clickable
- * supplier selector (mirrors the old CreatePOFromRequisitionDialog).
- * If no quotations exist, falls back to a vendor dropdown.
- * "Add New Vendor" inline form is always available.
+ * Shows the QuotationCollectionSection so users can view existing quotations,
+ * add new ones, and select a supplier. Falls back to a vendor dropdown when
+ * no quotations exist yet.
  *
  * Requirements: 3.1, 3.2, 3.5, 3.6, 3.7, 3.8, 3.9, 3.10, 3.11
  */
@@ -57,50 +57,71 @@ export function Step2VendorQuotes({
 
   const { data: allVendors = [], isLoading: vendorsLoading } = useVendors();
 
-  // Quotations already attached to the requisition
-  const reqQuotations: Quotation[] =
-    (requisition.metadata?.quotations as Quotation[]) ?? [];
+  // Live quotations — start from REQ metadata, updated as user adds more
+  const liveQuotations: Quotation[] =
+    data.quotations ?? (requisition.metadata?.quotations as Quotation[]) ?? [];
 
-  // Derive the currently selected vendor entry
+  // Derive selected vendor entry
   const selectedEntry = data.selectedVendorLocalId
     ? (data.vendors.find((v) => v.localId === data.selectedVendorLocalId) ??
       null)
     : null;
 
-  // ── select from existing quotations ───────────────────────────────────────
+  // ── quotation save (in-memory) ─────────────────────────────────────────────
 
-  const handleSelectFromQuotation = (q: Quotation) => {
-    // Check if this vendor is already in the list
-    const existing = data.vendors.find(
-      (v) => v.vendorId === q.vendorId || v.vendorName === q.vendorName,
-    );
+  const handleQuotationSave = useCallback(
+    async (updatedQuotations: Quotation[]) => {
+      onChange({ ...data, quotations: updatedQuotations });
+    },
+    [data, onChange],
+  );
 
-    if (existing) {
-      // Just select it
-      onChange({ ...data, selectedVendorLocalId: existing.localId });
-    } else {
-      // Add and select
-      const entry: WizardVendorEntry = {
-        localId: generateLocalId(),
-        vendorId: q.vendorId ?? "",
-        vendorName: q.vendorName,
-        quotations: [],
-        quotedAmount: q.amount,
-      };
-      onChange({
-        ...data,
-        vendors: [...data.vendors, entry],
-        selectedVendorLocalId: entry.localId,
-      });
-    }
-  };
+  // ── select vendor from quotation row ──────────────────────────────────────
 
-  // ── select from vendor dropdown (no-quotation fallback) ───────────────────
+  const handleSelectVendorFromQuotation = useCallback(
+    async (
+      vendorId: string,
+      vendorName: string,
+      amount: number,
+      fileUrl: string,
+    ) => {
+      const existing = data.vendors.find(
+        (v) => v.vendorId === vendorId || v.vendorName === vendorName,
+      );
+
+      if (existing) {
+        onChange({
+          ...data,
+          selectedVendorLocalId: existing.localId,
+          selectedQuotationFileId: fileUrl,
+          selectedQuotedAmount: amount,
+        });
+      } else {
+        const entry: WizardVendorEntry = {
+          localId: generateLocalId(),
+          vendorId: vendorId ?? "",
+          vendorName,
+          quotations: [],
+          quotedAmount: amount,
+          selectedQuotationFileId: fileUrl,
+        };
+        onChange({
+          ...data,
+          vendors: [...data.vendors, entry],
+          selectedVendorLocalId: entry.localId,
+          selectedQuotationFileId: fileUrl,
+          selectedQuotedAmount: amount,
+        });
+      }
+    },
+    [data, onChange],
+  );
+
+  // ── vendor dropdown (no-quotation fallback) ───────────────────────────────
 
   const handleVendorDropdownChange = useCallback(
     (vendorId: string) => {
       if (!vendorId) {
-        // Clear selection
         onChange({ ...data, selectedVendorLocalId: null });
         return;
       }
@@ -150,89 +171,46 @@ export function Step2VendorQuotes({
 
   // ── cost comparison ────────────────────────────────────────────────────────
 
-  const costComparisonVendors = data.vendors.map((v) => ({
-    vendorId: v.vendorId || v.localId,
-    vendorName: v.vendorName,
-    quotedAmount: v.quotedAmount,
-    isSelected: v.localId === data.selectedVendorLocalId,
+  const costComparisonVendors = liveQuotations.map((q) => ({
+    vendorId: q.vendorId || q.vendorName,
+    vendorName: q.vendorName,
+    quotedAmount: q.amount,
+    isSelected:
+      selectedEntry?.vendorId === q.vendorId ||
+      selectedEntry?.vendorName === q.vendorName,
   }));
 
-  // The vendor ID currently selected (for the dropdown fallback)
   const selectedVendorId = selectedEntry?.vendorId ?? "";
 
   return (
-    <div className="space-y-6" data-testid="step2-vendor-quotes">
-      {/* ── Quotation-based vendor selector ── */}
-      {reqQuotations.length > 0 ? (
-        <div className="space-y-2">
-          <Label className="text-sm font-medium">
-            Select Supplier from Quotations
-          </Label>
-          <p className="text-xs text-muted-foreground">
-            {reqQuotations.length} quotation
-            {reqQuotations.length !== 1 ? "s" : ""} collected on this
-            requisition.
-          </p>
-          <div className="space-y-2">
-            {reqQuotations.map((q, i) => {
-              const isSelected =
-                selectedEntry?.vendorId === q.vendorId ||
-                selectedEntry?.vendorName === q.vendorName;
-              return (
-                <button
-                  key={`${q.vendorId}-${i}`}
-                  type="button"
-                  onClick={() => handleSelectFromQuotation(q)}
-                  className={`w-full flex items-center justify-between rounded-md border px-3 py-2.5 text-left transition-colors ${
-                    isSelected
-                      ? "border-primary bg-primary/5"
-                      : "hover:bg-muted/50"
-                  }`}
-                >
-                  <span className="flex items-center gap-2 text-sm font-medium">
-                    {isSelected && (
-                      <CheckCircle2 className="h-4 w-4 text-primary shrink-0" />
-                    )}
-                    {q.vendorName}
-                  </span>
-                  <span className="text-sm font-mono text-muted-foreground">
-                    {q.currency || requisition.currency}{" "}
-                    {q.amount?.toLocaleString("en-ZM", {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    })}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-          {!selectedEntry && (
-            <p className="text-xs text-amber-600">
-              Select a supplier above or leave blank to assign later.
-            </p>
-          )}
-        </div>
-      ) : (
-        /* ── Fallback: vendor dropdown when no quotations ── */
-        <div className="space-y-3">
-          <Alert className="border-amber-200 bg-amber-50 dark:bg-amber-950/30 py-2">
-            <AlertTriangle className="h-4 w-4 text-amber-600" />
-            <AlertDescription className="text-amber-700 dark:text-amber-300 text-xs">
-              No quotations on this requisition yet — select a vendor manually
-              or add a new one below.
-            </AlertDescription>
-          </Alert>
-          <SelectField
-            label="Vendor (optional)"
-            placeholder="No vendor — assign later"
-            value={selectedVendorId}
-            onValueChange={handleVendorDropdownChange}
-            isLoading={vendorsLoading}
-            options={(allVendors as Vendor[])
-              .filter((v) => v.active)
-              .map((v) => ({ value: v.id, name: v.name }))}
-          />
-        </div>
+    <div className="space-y-4" data-testid="step2-vendor-quotes">
+      {/* ── Quotation collection section ── */}
+      <QuotationCollectionSection
+        quotations={liveQuotations}
+        requisitionId={requisition.id}
+        currency={requisition.currency ?? "ZMW"}
+        vendors={Array.isArray(allVendors) ? (allVendors as Vendor[]) : []}
+        canEdit={true}
+        onSave={handleQuotationSave}
+        showVendorSelection={true}
+        selectedVendorId={selectedEntry?.vendorId}
+        selectedVendorAmount={data.selectedQuotedAmount}
+        selectedQuotationFileId={data.selectedQuotationFileId}
+        onSelectVendor={handleSelectVendorFromQuotation}
+      />
+
+      {/* ── Vendor dropdown fallback when no quotations ── */}
+      {liveQuotations.length === 0 && (
+        <SelectField
+          label="Vendor (optional)"
+          placeholder="No vendor — assign later"
+          value={selectedVendorId}
+          onValueChange={handleVendorDropdownChange}
+          isLoading={vendorsLoading}
+          options={(allVendors as Vendor[])
+            .filter((v) => v.active)
+            .map((v) => ({ value: v.id, name: v.name }))}
+        />
       )}
 
       {/* ── Add New Vendor ── */}
@@ -254,8 +232,8 @@ export function Step2VendorQuotes({
         />
       )}
 
-      {/* ── Cost comparison (when at least one vendor added) ── */}
-      {data.vendors.length > 0 && (
+      {/* ── Cost comparison ── */}
+      {costComparisonVendors.length > 0 && (
         <CostComparisonPanel
           estimatedCost={requisition.totalAmount ?? 0}
           currency={requisition.currency ?? "ZMW"}

@@ -32,6 +32,12 @@ export interface WizardStep2State {
   vendors: WizardVendorEntry[];
   /** localId of the vendor designated as the final supplier */
   selectedVendorLocalId: string | null;
+  /** Live quotations (starts from REQ metadata, updated as user adds more) */
+  quotations?: Quotation[];
+  /** fileUrl of the selected quotation row */
+  selectedQuotationFileId?: string;
+  /** Quoted amount from the selected quotation */
+  selectedQuotedAmount?: number;
 }
 
 export interface WizardStep3State {
