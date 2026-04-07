@@ -199,20 +199,6 @@ export function Step2VendorQuotes({
         onSelectVendor={handleSelectVendorFromQuotation}
       />
 
-      {/* ── Vendor dropdown fallback when no quotations ── */}
-      {liveQuotations.length === 0 && (
-        <SelectField
-          label="Vendor (optional)"
-          placeholder="No vendor — assign later"
-          value={selectedVendorId}
-          onValueChange={handleVendorDropdownChange}
-          isLoading={vendorsLoading}
-          options={(allVendors as Vendor[])
-            .filter((v) => v.active)
-            .map((v) => ({ value: v.id, name: v.name }))}
-        />
-      )}
-
       {/* ── Add New Vendor ── */}
       {!showInlineForm ? (
         <div className="flex justify-end">
@@ -231,6 +217,20 @@ export function Step2VendorQuotes({
         <InlineVendorForm
           onSaved={handleNewVendorSaved}
           onCancel={() => setShowInlineForm(false)}
+        />
+      )}
+
+      {/* ── Vendor dropdown fallback when no quotations ── */}
+      {liveQuotations.length === 0 && (
+        <SelectField
+          label="Vendor (optional)"
+          placeholder="No vendor — assign later"
+          value={selectedVendorId}
+          onValueChange={handleVendorDropdownChange}
+          isLoading={vendorsLoading}
+          options={(allVendors as Vendor[])
+            .filter((v) => v.active)
+            .map((v) => ({ value: v.id, name: v.name }))}
         />
       )}
 

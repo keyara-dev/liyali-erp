@@ -343,7 +343,7 @@ export function Step3ReviewConfirm({
       )}
 
       {/* ── Footer ── */}
-      <div className="flex justify-between pt-2">
+      <div className="sticky bottom-0 z-50 bg-card/5  backdrop-blur-xs border-t  flex flex-col-reverse justify-between sm:flex-row rounded-b-lg pt-4 pb-2">
         <Button
           type="button"
           variant="outline"
