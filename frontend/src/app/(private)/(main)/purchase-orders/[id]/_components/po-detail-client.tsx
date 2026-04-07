@@ -1,13 +1,15 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Building2, TrendingUp, Download, Eye } from "lucide-react";
+import { Building2, TrendingUp, Download, Eye, Pencil } from "lucide-react";
 import { PageHeader } from "@/components/base/page-header";
 import { DocumentLoadingPage } from "@/components/base/document-loading-page";
 import ErrorDisplay from "@/components/base/error-display";
 import { RequisitionItemsList } from "@/app/(private)/(main)/requisitions/_components/requisition-items-list";
+import { POItemsEditor } from "./po-items-editor";
 import { PDFPreviewDialog } from "@/components/modals/pdf-preview-dialog";
 import { usePurchaseOrderDetail } from "@/hooks/use-purchase-order-detail";
 
@@ -23,6 +25,7 @@ export function PODetailClient({
   userRole,
 }: PODetailClientProps) {
   const router = useRouter();
+  const [editingItems, setEditingItems] = useState(false);
 
   // Use the hook to manage all document detail logic
   const {
@@ -192,12 +195,44 @@ export function PODetailClient({
       </Card>
 
       {/* Line Items */}
-      {po.items && po.items.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Line Items</CardTitle>
-          </CardHeader>
-          <CardContent>
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle>
+              PO Items {po.items?.length ? `(${po.items.length})` : ""}
+            </CardTitle>
+            {permissions.canEdit && !editingItems && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setEditingItems(true)}
+              >
+                <Pencil className="h-3.5 w-3.5 mr-1" />
+                {po.items?.length ? "Edit Items" : "Add Items"}
+              </Button>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent>
+          {editingItems ? (
+            <POItemsEditor
+              poId={poId}
+              items={(po.items ?? []).map((item, index) => ({
+                id: item.id || `item-${index}`,
+                description: item.description || item.itemCode || "",
+                quantity: item.quantity || 0,
+                unitPrice: item.unitPrice || 0,
+                amount: item.totalPrice || item.amount || 0,
+                totalPrice: item.totalPrice || item.amount || 0,
+                unit: item.unit,
+                category: item.category,
+                notes: item.notes,
+              }))}
+              currency={po.currency || "ZMW"}
+              onSaved={() => setEditingItems(false)}
+              onCancel={() => setEditingItems(false)}
+            />
+          ) : po.items && po.items.length > 0 ? (
             <RequisitionItemsList
               items={po.items.map((item, index) => ({
                 id: item.id || `item-${index}`,
@@ -213,9 +248,21 @@ export function PODetailClient({
               currency={po.currency || "K"}
               isEstimate={false}
             />
-          </CardContent>
-        </Card>
-      )}
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              No items added yet.
+              {permissions.canEdit && (
+                <button
+                  className="ml-1 text-primary underline"
+                  onClick={() => setEditingItems(true)}
+                >
+                  Add items
+                </button>
+              )}
+            </p>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Action Buttons */}
       <div className="flex gap-4 pt-4">
