@@ -215,16 +215,18 @@ export function Step2VendorQuotes({
 
       {/* ── Add New Vendor ── */}
       {!showInlineForm ? (
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={() => setShowInlineForm(true)}
-          data-testid="add-new-vendor-btn"
-        >
-          <UserPlus className="mr-1.5 h-4 w-4" />
-          Add New Vendor
-        </Button>
+        <div className="flex justify-end">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setShowInlineForm(true)}
+            data-testid="add-new-vendor-btn"
+          >
+            <UserPlus className="mr-1.5 h-4 w-4" />
+            Add New Vendor
+          </Button>
+        </div>
       ) : (
         <InlineVendorForm
           onSaved={handleNewVendorSaved}
