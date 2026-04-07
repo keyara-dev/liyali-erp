@@ -25,9 +25,7 @@ import {
 } from "lucide-react";
 import { StatusBadge } from "@/components/status-badge";
 import { useRouter } from "next/navigation";
-import { CreatePOFromRequisitionDialog } from "./create-po-from-requisition-dialog";
-import { createPurchaseOrderFromRequisition } from "@/app/_actions/purchase-orders";
-import { toast } from "sonner";
+import { POCreationWizard } from "./po-creation-wizard";
 import { Card } from "@/components/ui/card";
 import { usePermissions } from "@/hooks/use-permissions";
 
@@ -46,7 +44,6 @@ export function ApprovedRequisitionsTable({
   const [selectedRequisition, setSelectedRequisition] =
     useState<Requisition | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [isCreating, setIsCreating] = useState(false);
 
   // Fetch approved requisitions
   const {
@@ -72,42 +69,6 @@ export function ApprovedRequisitionsTable({
   const handleCreatePO = (requisition: Requisition) => {
     setSelectedRequisition(requisition);
     setIsCreateDialogOpen(true);
-  };
-
-  const handleConfirmCreate = async (
-    workflowId: string,
-    vendorId?: string,
-    vendorName?: string,
-    procurementFlow?: "" | "goods_first" | "payment_first",
-  ) => {
-    if (!selectedRequisition) return;
-
-    setIsCreating(true);
-    try {
-      const response = await createPurchaseOrderFromRequisition(
-        selectedRequisition,
-        workflowId,
-        vendorId,
-        vendorName,
-        procurementFlow,
-      );
-
-      if (response.success && response.data) {
-        toast.success("Purchase Order created successfully");
-        setIsCreateDialogOpen(false);
-        setSelectedRequisition(null);
-
-        // Navigate to the new PO detail page
-        router.push(`/purchase-orders/${response.data.id}`);
-      } else {
-        toast.error(response.message || "Failed to create Purchase Order");
-      }
-    } catch (error) {
-      console.error("Error creating PO:", error);
-      toast.error("An error occurred while creating the Purchase Order");
-    } finally {
-      setIsCreating(false);
-    }
   };
 
   const handleViewRequisition = (requisitionId: string) => {
@@ -232,34 +193,40 @@ export function ApprovedRequisitionsTable({
                           <Eye className="h-4 w-4 mr-1" />
                           View
                         </Button>
-                        {canCreatePO && (() => {
-                          const lpo = requisition.linkedPO;
-                          if (lpo) {
+                        {canCreatePO &&
+                          (() => {
+                            const lpo = requisition.linkedPO;
+                            if (lpo) {
+                              return (
+                                <div className="flex items-center gap-2">
+                                  <StatusBadge
+                                    status={lpo.status}
+                                    type="document"
+                                  />
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() =>
+                                      router.push(`/purchase-orders/${lpo.id}`)
+                                    }
+                                  >
+                                    View PO
+                                    <ArrowRight className="h-3 w-3 ml-1" />
+                                  </Button>
+                                </div>
+                              );
+                            }
                             return (
-                              <div className="flex items-center gap-2">
-                                <StatusBadge status={lpo.status} type="document" />
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => router.push(`/purchase-orders/${lpo.id}`)}
-                                >
-                                  View PO
-                                  <ArrowRight className="h-3 w-3 ml-1" />
-                                </Button>
-                              </div>
+                              <Button
+                                variant="default"
+                                size="sm"
+                                onClick={() => handleCreatePO(requisition)}
+                              >
+                                <FileText className="h-4 w-4 mr-1" />
+                                Create PO
+                              </Button>
                             );
-                          }
-                          return (
-                            <Button
-                              variant="default"
-                              size="sm"
-                              onClick={() => handleCreatePO(requisition)}
-                            >
-                              <FileText className="h-4 w-4 mr-1" />
-                              Create PO
-                            </Button>
-                          );
-                        })()}
+                          })()}
                       </div>
                     </TableCell>
                   </TableRow>
@@ -298,14 +265,12 @@ export function ApprovedRequisitionsTable({
         </div>
       </Card>
 
-      {/* Create PO Dialog */}
+      {/* Create PO Wizard */}
       {selectedRequisition && (
-        <CreatePOFromRequisitionDialog
+        <POCreationWizard
           open={isCreateDialogOpen}
           onOpenChange={setIsCreateDialogOpen}
           requisition={selectedRequisition}
-          onConfirm={handleConfirmCreate}
-          isCreating={isCreating}
         />
       )}
     </>
