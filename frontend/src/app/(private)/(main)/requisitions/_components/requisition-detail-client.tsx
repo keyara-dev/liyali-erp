@@ -35,8 +35,7 @@ import {
   WorkflowStatusSummary,
 } from "./approval-history-panel";
 import { CreateRequisitionDialog } from "./create-requisition-dialog";
-import { CreatePOFromRequisitionDialog } from "@/app/(private)/(main)/purchase-orders/_components/create-po-from-requisition-dialog";
-import { createPurchaseOrderFromRequisition } from "@/app/_actions/purchase-orders";
+import { POCreationWizard } from "@/app/(private)/(main)/purchase-orders/_components/po-creation-wizard";
 import { toast } from "sonner";
 import { DocumentLinks } from "@/components/document-links";
 import { WorkflowDocument } from "@/types";
@@ -99,7 +98,6 @@ export function RequisitionDetailClient({
     "details",
   );
   const [isCreatePOOpen, setIsCreatePOOpen] = useState(false);
-  const [isCreatingPO, setIsCreatingPO] = useState(false);
 
   const { data: vendors = [] } = useVendors({ active: true });
 
@@ -206,37 +204,6 @@ export function RequisitionDetailClient({
       submittedByName: requisition.requestedByName || "User",
       submittedByRole: requisition.requestedByRole || userRole,
     });
-  };
-
-  const handleConfirmCreatePO = async (
-    workflowId: string,
-    vendorId?: string,
-    vendorName?: string,
-    procurementFlow?: "" | "goods_first" | "payment_first",
-  ) => {
-    setIsCreatingPO(true);
-    try {
-      const response = await createPurchaseOrderFromRequisition(
-        requisition,
-        workflowId,
-        vendorId,
-        vendorName,
-        procurementFlow,
-      );
-
-      if (response.success && response.data) {
-        toast.success("Purchase Order created successfully");
-        setIsCreatePOOpen(false);
-        router.push(`/purchase-orders/${response.data.id}`);
-      } else {
-        toast.error(response.message || "Failed to create Purchase Order");
-      }
-    } catch (error) {
-      console.error("Error creating PO:", error);
-      toast.error("An error occurred while creating the Purchase Order");
-    } finally {
-      setIsCreatingPO(false);
-    }
   };
 
   return (
@@ -945,13 +912,11 @@ export function RequisitionDetailClient({
         </Tabs>
       </Card>
 
-      {/* Create PO from Requisition Dialog */}
-      <CreatePOFromRequisitionDialog
+      {/* Create PO from Requisition — 3-step wizard */}
+      <POCreationWizard
         open={isCreatePOOpen}
         onOpenChange={setIsCreatePOOpen}
         requisition={requisition}
-        onConfirm={handleConfirmCreatePO}
-        isCreating={isCreatingPO}
       />
 
       {/* PDF Preview Dialog */}
