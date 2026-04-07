@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
 import { ShoppingCart } from "lucide-react";
 import { QUERY_KEYS } from "@/lib/constants";
 import {
@@ -63,6 +64,7 @@ export function POCreationWizard({
   requisition,
 }: POCreationWizardProps) {
   const queryClient = useQueryClient();
+  const router = useRouter();
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -154,9 +156,10 @@ export function POCreationWizard({
         queryKey: [QUERY_KEYS.PURCHASE_ORDERS.ALL],
       });
 
-      // Req 5.7: show success toast and close dialog
+      // Req 5.7: show success toast, close dialog, navigate to PO detail
       toast.success("Purchase order created successfully");
       handleOpenChange(false);
+      router.push(`/purchase-orders/${createdPO.id}`);
     } catch (err) {
       // Req 5.8: re-throw so Step3 can display the inline error
       throw err;
