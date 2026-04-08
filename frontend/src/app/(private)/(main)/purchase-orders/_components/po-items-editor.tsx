@@ -110,8 +110,12 @@ export function POItemsEditor({
       });
       if (!result.success) throw new Error(result.message || "Failed to save");
 
-      queryClient.invalidateQueries({
+      // Refetch immediately so the header total updates without waiting
+      await queryClient.refetchQueries({
         queryKey: [QUERY_KEYS.PURCHASE_ORDERS.BY_ID, poId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.PURCHASE_ORDERS.ALL],
       });
       queryClient.invalidateQueries({
         queryKey: ["audit-events", "purchase_order", poId],
