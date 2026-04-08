@@ -143,7 +143,12 @@ interface LogEntry {
 }
 
 function normalizeAction(action: string): string {
-  return action.toUpperCase().replace(/-/g, "_");
+  const upper = action.toUpperCase().replace(/-/g, "_");
+  // Normalize backend variations to a single canonical form
+  if (upper === "UPDATE") return "UPDATED";
+  if (upper === "CREATE") return "CREATED";
+  if (upper === "DELETE") return "DELETED";
+  return upper;
 }
 
 // Deduplicate by rounding timestamps to the nearest 5 seconds + action type
