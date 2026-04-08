@@ -132,24 +132,31 @@ export function POCreationWizard({
 
       const createdPO = result.data;
 
-      // Collect all quotations from Step 2 vendors (non-blocking patch)
-      const allQuotations = wizardState.step2.vendors.flatMap(
-        (v) => v.quotations,
-      );
+      // Quotations to persist: use live quotations from step2 (which includes
+      // any newly added ones), falling back to the REQ's existing quotations
+      const liveQuotations =
+        wizardState.step2.quotations ??
+        (requisition.metadata?.quotations as any[]) ??
+        [];
 
-      if (allQuotations.length > 0) {
-        // Fire-and-forget: patch quotations onto the created PO
-        updatePurchaseOrder({
-          poId: createdPO.id,
-          purchaseOrderId: createdPO.id,
-          metadata: { quotations: allQuotations },
-        }).catch(() => {
-          // Non-blocking: warn but don't roll back (design.md error handling)
-          toast.warning(
-            "Purchase order created, but quotations could not be saved. You can add them from the PO detail page.",
-          );
-        });
-      }
+      // Always patch metadata: quotations + selected quotation file URL
+      updatePurchaseOrder({
+        poId: createdPO.id,
+        purchaseOrderId: createdPO.id,
+        metadata: {
+          quotations: liveQuotations,
+          ...(wizardState.step2.selectedQuotationFileId
+            ? {
+                selectedQuotationFileUrl:
+                  wizardState.step2.selectedQuotationFileId,
+              }
+            : {}),
+        },
+      }).catch(() => {
+        toast.warning(
+          "Purchase order created, but quotations could not be saved. You can add them from the PO detail page.",
+        );
+      });
 
       // Req 5.7: invalidate purchase orders cache
       queryClient.invalidateQueries({
