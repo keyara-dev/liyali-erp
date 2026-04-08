@@ -289,11 +289,13 @@ export function QuotationCollectionSection({
             </thead>
             <tbody>
               {quotations.map((q, i) => {
-                // Use fileUrl as the unique identifier — no fallback to vendorId to avoid ambiguity
+                // Primary: match by fileUrl (unique identifier)
+                // Fallback: match by vendorId when no fileUrl is stored yet
                 const isSelected =
                   showVendorSelection &&
-                  !!selectedQuotationFileId &&
-                  q.fileUrl === selectedQuotationFileId;
+                  (selectedQuotationFileId
+                    ? q.fileUrl === selectedQuotationFileId
+                    : !!selectedVendorId && q.vendorId === selectedVendorId);
                 return (
                   <tr
                     key={`${q.vendorId}-${i}`}
