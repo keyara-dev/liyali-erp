@@ -505,7 +505,12 @@ func UpdatePurchaseOrder(c *fiber.Ctx) error {
 		order.VendorID = &req.VendorID
 	}
 	if len(req.Items) > 0 {
-		changes["itemsCount"] = map[string]int{"old": len(order.Items.Data()), "new": len(req.Items)}
+		oldItems := order.Items.Data()
+		changes["items"] = map[string]interface{}{
+			"old": oldItems,
+			"new": req.Items,
+		}
+		changes["itemsCount"] = map[string]int{"old": len(oldItems), "new": len(req.Items)}
 		order.Items = datatypes.NewJSONType(req.Items)
 	}
 	if req.TotalAmount > 0 && req.TotalAmount != order.TotalAmount {

@@ -217,7 +217,9 @@ export function ActivityLogContent({
         const hasChanges =
           entry.changes && Object.keys(entry.changes).length > 0;
         const filteredChanges = hasChanges
-          ? Object.entries(entry.changes!).filter(([k]) => k !== "metadata")
+          ? Object.entries(entry.changes!).filter(
+              ([k]) => k !== "metadata" && k !== "itemsCount",
+            )
           : [];
 
         return (
@@ -284,29 +286,89 @@ export function ActivityLogContent({
             {/* Field-level changes */}
             {filteredChanges.length > 0 && (
               <div className="mt-2 rounded border border-border/60 overflow-hidden text-xs">
-                {filteredChanges.map(([field, change]) => (
-                  <div
-                    key={field}
-                    className="flex items-center gap-2 px-2.5 py-1.5 border-b last:border-b-0 border-border/40 bg-background/60"
-                  >
-                    <span className="font-medium text-muted-foreground w-24 shrink-0 capitalize">
-                      {field.replace(/([A-Z])/g, " $1").trim()}
-                    </span>
-                    {change?.old !== undefined && (
-                      <span className="line-through text-red-500 dark:text-red-400 truncate max-w-[130px]">
-                        {String(change.old ?? "—")}
+                {filteredChanges.map(([field, change]) => {
+                  // Special handling for items array changes
+                  const isItemsField = field === "items";
+                  const oldIsArray = Array.isArray(change?.old);
+                  const newIsArray = Array.isArray(change?.new);
+
+                  if (isItemsField && (oldIsArray || newIsArray)) {
+                    const oldItems = (change?.old as any[]) ?? [];
+                    const newItems = (change?.new as any[]) ?? [];
+                    return (
+                      <div
+                        key={field}
+                        className="px-2.5 py-2 border-b last:border-b-0 border-border/40 bg-background/60 space-y-1.5"
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-muted-foreground w-24 shrink-0 capitalize">
+                            Items
+                          </span>
+                          <span className="line-through text-red-500 dark:text-red-400">
+                            {oldItems.length} item
+                            {oldItems.length !== 1 ? "s" : ""}
+                          </span>
+                          <span className="text-muted-foreground">→</span>
+                          <span className="text-green-600 dark:text-green-400 font-medium">
+                            {newItems.length} item
+                            {newItems.length !== 1 ? "s" : ""}
+                          </span>
+                        </div>
+                        {/* Show new items as a compact list */}
+                        {newItems.length > 0 && (
+                          <div className="ml-24 space-y-0.5">
+                            {newItems.map((item: any, i: number) => (
+                              <div
+                                key={i}
+                                className="text-muted-foreground flex gap-2"
+                              >
+                                <span className="font-mono text-muted-foreground/50 w-5 shrink-0">
+                                  {String(i + 1).padStart(2, "0")}
+                                </span>
+                                <span className="truncate">
+                                  {item.description || "—"}
+                                </span>
+                                <span className="shrink-0 tabular-nums">
+                                  ×{item.quantity}
+                                </span>
+                                <span className="shrink-0 tabular-nums text-green-600 dark:text-green-400">
+                                  {item.unitPrice
+                                    ? `@ ${Number(item.unitPrice).toLocaleString("en-ZM", { minimumFractionDigits: 2 })}`
+                                    : ""}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div
+                      key={field}
+                      className="flex items-center gap-2 px-2.5 py-1.5 border-b last:border-b-0 border-border/40 bg-background/60"
+                    >
+                      <span className="font-medium text-muted-foreground w-24 shrink-0 capitalize">
+                        {field.replace(/([A-Z])/g, " $1").trim()}
                       </span>
-                    )}
-                    {change?.old !== undefined && change?.new !== undefined && (
-                      <span className="text-muted-foreground">→</span>
-                    )}
-                    {change?.new !== undefined && (
-                      <span className="text-green-600 dark:text-green-400 font-medium truncate max-w-[130px]">
-                        {String(change.new ?? "—")}
-                      </span>
-                    )}
-                  </div>
-                ))}
+                      {change?.old !== undefined && (
+                        <span className="line-through text-red-500 dark:text-red-400 truncate max-w-[130px]">
+                          {String(change.old ?? "—")}
+                        </span>
+                      )}
+                      {change?.old !== undefined &&
+                        change?.new !== undefined && (
+                          <span className="text-muted-foreground">→</span>
+                        )}
+                      {change?.new !== undefined && (
+                        <span className="text-green-600 dark:text-green-400 font-medium truncate max-w-[130px]">
+                          {String(change.new ?? "—")}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             )}
 
