@@ -9,7 +9,7 @@ import { PageHeader } from "@/components/base/page-header";
 import { DocumentLoadingPage } from "@/components/base/document-loading-page";
 import ErrorDisplay from "@/components/base/error-display";
 import { RequisitionItemsList } from "@/app/(private)/(main)/requisitions/_components/requisition-items-list";
-import { POItemsEditor } from "./po-items-editor";
+import { POItemsEditor } from "../../_components/po-items-editor";
 import { PDFPreviewDialog } from "@/components/modals/pdf-preview-dialog";
 import { usePurchaseOrderDetail } from "@/hooks/use-purchase-order-detail";
 

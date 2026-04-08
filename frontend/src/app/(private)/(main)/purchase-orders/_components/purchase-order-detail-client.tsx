@@ -33,6 +33,7 @@ import {
 import { StatusBadge } from "@/components/status-badge";
 import { PageHeader } from "@/components/base/page-header";
 import { PurchaseOrderItemsList } from "./purchase-order-items-list";
+import { POItemsEditor } from "./po-items-editor";
 import { PurchaseOrder, PurchaseOrderAttachment } from "@/types/purchase-order";
 import {
   ActivityLogContent,
@@ -140,6 +141,7 @@ export function PurchaseOrderDetailClient({
 }: PurchaseOrderDetailClientProps) {
   const router = useRouter();
   const [isUploading, setIsUploading] = useState(false);
+  const [editingItems, setEditingItems] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { data: vendors = [] } = useVendors({ active: true });
 
@@ -857,9 +859,37 @@ export function PurchaseOrderDetailClient({
               <h2 className="text-lg font-semibold">
                 Items ({purchaseOrder.items?.length || 0})
               </h2>
+              {permissions.canEdit && !editingItems && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setEditingItems(true)}
+                >
+                  <Pencil className="h-3.5 w-3.5 mr-1" />
+                  {purchaseOrder.items?.length ? "Edit Items" : "Add Items"}
+                </Button>
+              )}
             </div>
 
-            {purchaseOrder.items && purchaseOrder.items.length > 0 ? (
+            {editingItems ? (
+              <POItemsEditor
+                poId={purchaseOrderId}
+                items={(purchaseOrder.items ?? []).map((item, index) => ({
+                  id: item.id || `item-${index}`,
+                  description: item.description || "",
+                  quantity: item.quantity || 0,
+                  unitPrice: item.unitPrice || 0,
+                  amount: item.totalPrice || item.amount || 0,
+                  totalPrice: item.totalPrice || item.amount || 0,
+                  unit: item.unit,
+                  category: item.category,
+                  notes: item.notes,
+                }))}
+                currency={purchaseOrder.currency || "ZMW"}
+                onSaved={() => setEditingItems(false)}
+                onCancel={() => setEditingItems(false)}
+              />
+            ) : purchaseOrder.items && purchaseOrder.items.length > 0 ? (
               <PurchaseOrderItemsList
                 items={purchaseOrder.items}
                 currency={purchaseOrder.currency}
