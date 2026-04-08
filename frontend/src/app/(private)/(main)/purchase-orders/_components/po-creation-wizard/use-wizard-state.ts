@@ -29,9 +29,11 @@ function buildInitialStep1(requisition: Requisition): WizardStep1State {
     budgetCode: requisition.budgetCode ?? "",
     costCenter: requisition.costCenter ?? "",
     projectCode: requisition.projectCode ?? "",
-    deliveryDate: requisition.requiredByDate
-      ? new Date(requisition.requiredByDate)
-      : null,
+    deliveryDate: (() => {
+      if (!requisition.requiredByDate) return null;
+      const d = new Date(requisition.requiredByDate);
+      return isNaN(d.getTime()) ? null : d;
+    })(),
     currency: requisition.currency ?? "",
   };
 }

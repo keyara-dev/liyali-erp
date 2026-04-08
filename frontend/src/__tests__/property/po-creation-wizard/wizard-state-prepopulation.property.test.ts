@@ -84,9 +84,13 @@ describe("Property 4: Wizard pre-populates from requisition", () => {
           step1.department === requisition.department &&
           step1.departmentId === requisition.departmentId &&
           step1.currency === requisition.currency &&
-          step1.deliveryDate !== null &&
-          step1.deliveryDate?.getTime() ===
-            new Date(requisition.requiredByDate).getTime()
+          // Guard for invalid dates (NaN): both sides must be valid or both null
+          (requisition.requiredByDate == null ||
+          isNaN(new Date(requisition.requiredByDate).getTime())
+            ? step1.deliveryDate === null
+            : step1.deliveryDate !== null &&
+              step1.deliveryDate?.getTime() ===
+                new Date(requisition.requiredByDate).getTime())
         );
       }),
       { numRuns: 100 },
