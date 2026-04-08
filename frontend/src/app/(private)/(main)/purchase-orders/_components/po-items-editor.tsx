@@ -113,6 +113,9 @@ export function POItemsEditor({
       queryClient.invalidateQueries({
         queryKey: [QUERY_KEYS.PURCHASE_ORDERS.BY_ID, poId],
       });
+      queryClient.invalidateQueries({
+        queryKey: ["audit-events", "purchase_order", poId],
+      });
       toast.success("Items updated");
       onSaved(finalItems);
     } catch (err) {

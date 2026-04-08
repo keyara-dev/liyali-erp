@@ -147,15 +147,26 @@ function normalizeAction(action: string): string {
 }
 
 // Deduplicate by rounding timestamps to the nearest 5 seconds + action type
+// Prefer entries that have changes data over those that don't
 function deduplicateEntries(entries: LogEntry[]): LogEntry[] {
-  const seen = new Set<string>();
-  return entries.filter((e) => {
+  const seen = new Map<string, LogEntry>();
+  for (const e of entries) {
     const bucket = Math.round(e.timestamp.getTime() / 5000);
     const key = `${normalizeAction(e.action)}_${bucket}`;
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
+    const existing = seen.get(key);
+    if (!existing) {
+      seen.set(key, e);
+    } else {
+      // Prefer the entry that has changes data
+      const existingHasChanges =
+        existing.changes && Object.keys(existing.changes).length > 0;
+      const newHasChanges = e.changes && Object.keys(e.changes).length > 0;
+      if (!existingHasChanges && newHasChanges) {
+        seen.set(key, e);
+      }
+    }
+  }
+  return [...seen.values()];
 }
 
 export function ActivityLogContent({
@@ -191,12 +202,12 @@ export function ActivityLogContent({
   }));
 
   // Merge: audit events are richer, history may have extra entries not yet in audit log
-  // Deduplicate by action + timestamp bucket to avoid showing same event twice
+  // Deduplicate by action + timestamp bucket, preferring entries with changes data
   const all = deduplicateEntries(
     [...auditEntries, ...historyEntries].sort(
       (a, b) => b.timestamp.getTime() - a.timestamp.getTime(),
     ),
-  );
+  ).sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
 
   if (all.length === 0) {
     return (
