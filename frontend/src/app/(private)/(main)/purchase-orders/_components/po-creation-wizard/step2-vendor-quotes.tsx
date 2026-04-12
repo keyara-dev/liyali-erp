@@ -90,8 +90,15 @@ export function Step2VendorQuotes({
       );
 
       if (existing) {
+        // Update the existing entry's quotedAmount and selectedQuotationFileId
+        const updatedVendors = data.vendors.map((v) =>
+          v.localId === existing.localId
+            ? { ...v, quotedAmount: amount, selectedQuotationFileId: fileUrl }
+            : v,
+        );
         onChange({
           ...data,
+          vendors: updatedVendors,
           selectedVendorLocalId: existing.localId,
           selectedQuotationFileId: fileUrl,
           selectedQuotedAmount: amount,

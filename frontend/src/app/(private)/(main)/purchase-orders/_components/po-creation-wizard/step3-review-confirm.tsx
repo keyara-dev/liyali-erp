@@ -85,13 +85,19 @@ export function Step3ReviewConfirm({
     ? step2.vendors.find((v) => v.localId === step2.selectedVendorLocalId)
     : null;
 
+  // Use step2.selectedQuotedAmount as the authoritative quoted amount —
+  // selectedVendorEntry.quotedAmount can be stale if the same vendor was
+  // re-selected with a different quotation row.
+  const selectedQuotedAmount =
+    step2.selectedQuotedAmount ?? selectedVendorEntry?.quotedAmount;
+
   // Cost comparison data — selected vendor only (Req 5.3)
   const costComparisonVendors = selectedVendorEntry
     ? [
         {
           vendorId: selectedVendorEntry.vendorId || selectedVendorEntry.localId,
           vendorName: selectedVendorEntry.vendorName,
-          quotedAmount: selectedVendorEntry.quotedAmount,
+          quotedAmount: selectedQuotedAmount,
           isSelected: true,
         },
       ]
@@ -238,8 +244,8 @@ export function Step3ReviewConfirm({
                     )}
                   </div>
                   <span className="font-mono text-muted-foreground">
-                    {vendor.quotedAmount !== undefined
-                      ? formatCurrency(vendor.quotedAmount, step1.currency)
+                    {selectedQuotedAmount !== undefined
+                      ? formatCurrency(selectedQuotedAmount, step1.currency)
                       : "—"}
                   </span>
                 </div>

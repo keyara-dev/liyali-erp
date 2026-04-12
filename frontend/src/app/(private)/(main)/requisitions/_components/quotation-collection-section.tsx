@@ -11,7 +11,7 @@ import { Quotation } from "@/types/core";
 import { Vendor } from "@/types/vendor";
 import { uploadToImageKit } from "@/lib/imagekit";
 import { toast } from "sonner";
-import { cn } from "@/lib/utils";
+import { cn, formatCurrency } from "@/lib/utils";
 
 interface QuotationCollectionSectionProps {
   quotations: Quotation[];
@@ -314,11 +314,12 @@ export function QuotationCollectionSection({
                       </div>
                     </td>
                     <td className="p-3 text-right font-mono">
-                      {q.currency || currency}{" "}
+                      {/* {q.currency || currency}{" "}
                       {q.amount.toLocaleString("en-ZM", {
                         minimumFractionDigits: 2,
                         maximumFractionDigits: 2,
-                      })}
+                      })} */}
+                      {formatCurrency(q.amount, q.currency)}
                     </td>
                     <td className="p-3 text-muted-foreground text-xs hidden sm:table-cell">
                       {new Date(q.uploadedAt).toLocaleDateString("en-ZM", {
