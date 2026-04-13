@@ -130,7 +130,9 @@ export function POShippingEditor({
   const handleSave = async () => {
     setSaving(true);
     try {
-      const updatedMeta: ShippingMetadata = {
+      // Spread ALL existing metadata keys first (preserves quotations,
+      // attachments, selectedQuotationFileUrl, etc.), then overlay new values.
+      const updatedMeta: Record<string, unknown> = {
         ...meta,
         // Only persist non-empty values
         ...(receiverName.trim() && { receiverName: receiverName.trim() }),

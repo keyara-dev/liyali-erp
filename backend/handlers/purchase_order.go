@@ -529,7 +529,17 @@ func UpdatePurchaseOrder(c *fiber.Ctx) error {
 		order.DeliveryDate = req.DeliveryDate.Time
 	}
 	if len(req.Metadata) > 0 {
-		if metaBytes, err := json.Marshal(req.Metadata); err == nil {
+		// Deep-merge incoming metadata with existing — never wipe keys like
+		// quotations, attachments, selectedQuotationFileUrl that other parts
+		// of the UI manage independently.
+		existingMeta := map[string]interface{}{}
+		if len(order.Metadata) > 0 {
+			_ = json.Unmarshal(order.Metadata, &existingMeta)
+		}
+		for k, v := range req.Metadata {
+			existingMeta[k] = v
+		}
+		if metaBytes, err := json.Marshal(existingMeta); err == nil {
 			order.Metadata = datatypes.JSON(metaBytes)
 			changes["metadata"] = "updated"
 		}
