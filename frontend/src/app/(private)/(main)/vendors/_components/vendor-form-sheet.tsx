@@ -98,6 +98,8 @@ export function VendorFormDialog({
       next.physicalAddress = "Physical address is required";
     if (!form.city.trim()) next.city = "City is required";
     if (!form.country.trim()) next.country = "Country is required";
+    if (!form.email.trim()) next.email = "Email is required";
+    if (!form.phone.trim()) next.phone = "Phone number is required";
     if (!form.taxId.trim()) next.taxId = "Tax ID / TPIN is required";
     if (!form.bankName.trim()) next.bankName = "Bank name is required";
     if (!form.accountName.trim()) next.accountName = "Account name is required";
@@ -152,7 +154,9 @@ export function VendorFormDialog({
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="email">
+                  Email <span className="text-destructive">*</span>
+                </Label>
                 <Input
                   id="email"
                   type="email"
@@ -161,9 +165,14 @@ export function VendorFormDialog({
                   placeholder="vendor@example.com"
                   disabled={isPending}
                 />
+                {errors.email && (
+                  <p className="text-xs text-destructive">{errors.email}</p>
+                )}
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="phone">Phone</Label>
+                <Label htmlFor="phone">
+                  Phone <span className="text-destructive">*</span>
+                </Label>
                 <Input
                   id="phone"
                   value={form.phone}
@@ -171,6 +180,9 @@ export function VendorFormDialog({
                   placeholder="+260 97..."
                   disabled={isPending}
                 />
+                {errors.phone && (
+                  <p className="text-xs text-destructive">{errors.phone}</p>
+                )}
               </div>
             </div>
 

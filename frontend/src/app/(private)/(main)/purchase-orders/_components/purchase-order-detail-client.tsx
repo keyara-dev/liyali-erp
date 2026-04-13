@@ -315,71 +315,66 @@ export function PurchaseOrderDetailClient({
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-start justify-between gap-4">
-        <PageHeader
-          title={purchaseOrder.documentNumber}
-          subtitle={`${purchaseOrder.title || "Untitled Purchase Order"} • Created ${new Date(purchaseOrder.createdAt).toLocaleDateString("en-ZM", { year: "numeric", month: "long", day: "numeric" })}${purchaseOrder.updatedAt && new Date(purchaseOrder.updatedAt).getTime() !== new Date(purchaseOrder.createdAt).getTime() ? ` • Updated ${new Date(purchaseOrder.updatedAt).toLocaleDateString("en-ZM", { year: "numeric", month: "long", day: "numeric" })}` : ""}`}
-          badges={[
-            {
-              status: purchaseOrder.status,
-              type: "document",
-            },
-          ]}
-          onBackClick={() => router.back()}
-          showBackButton={true}
-        />
-        <div className="flex gap-2 mt-2">
-          <Button
-            onClick={handlePreviewPDF}
-            disabled={isExporting}
-            variant="outline"
-            className="gap-2 h-11"
-          >
-            <Eye className="h-4 w-4" />
-            Preview
-          </Button>
-          <Button
-            onClick={handleExportPDF}
-            disabled={isExporting}
-            isLoading={isExporting}
-            loadingText="Exporting..."
-            variant="outline"
-            className="gap-2 h-11"
-          >
-            <Download className="h-4 w-4" />
-            Export PDF
-          </Button>
-          {permissions.canEdit && (
+      <PageHeader
+        title={purchaseOrder.documentNumber}
+        subtitle={`${purchaseOrder.title || "Untitled Purchase Order"} • Created ${new Date(purchaseOrder.createdAt).toLocaleDateString("en-ZM", { year: "numeric", month: "long", day: "numeric" })}${purchaseOrder.updatedAt && new Date(purchaseOrder.updatedAt).getTime() !== new Date(purchaseOrder.createdAt).getTime() ? ` • Updated ${new Date(purchaseOrder.updatedAt).toLocaleDateString("en-ZM", { year: "numeric", month: "long", day: "numeric" })}` : ""}`}
+        badges={[{ status: purchaseOrder.status, type: "document" }]}
+        onBackClick={() => router.back()}
+        showBackButton={true}
+        actions={
+          <>
             <Button
-              onClick={handleEdit}
+              onClick={handlePreviewPDF}
+              disabled={isExporting}
               variant="outline"
-              className="gap-2 h-11"
+              className="gap-2 h-9"
             >
-              <Pencil className="h-4 w-4" />
-              Edit
+              <Eye className="h-4 w-4" />
+              Preview
             </Button>
-          )}
-          {permissions.canSubmit && (
             <Button
-              onClick={() => setShowSubmitDialog(true)}
-              className="gap-2 h-11"
-            >
-              <Send className="h-4 w-4" />
-              Submit for Approval
-            </Button>
-          )}
-          {permissions.canWithdraw && (
-            <Button
-              onClick={() => setShowWithdrawModal(true)}
+              onClick={handleExportPDF}
+              disabled={isExporting}
+              isLoading={isExporting}
+              loadingText="Exporting..."
               variant="outline"
-              className="gap-2 h-11 text-amber-600 border-amber-300 hover:bg-amber-50"
+              className="gap-2 h-9"
             >
-              <Undo2 className="h-4 w-4" />
-              Withdraw
+              <Download className="h-4 w-4" />
+              Export PDF
             </Button>
-          )}
-        </div>
-      </div>
+            {permissions.canEdit && (
+              <Button
+                onClick={handleEdit}
+                variant="outline"
+                className="gap-2 h-9"
+              >
+                <Pencil className="h-4 w-4" />
+                Edit
+              </Button>
+            )}
+            {permissions.canSubmit && (
+              <Button
+                onClick={() => setShowSubmitDialog(true)}
+                className="gap-2 h-9"
+              >
+                <Send className="h-4 w-4" />
+                Submit for Approval
+              </Button>
+            )}
+            {permissions.canWithdraw && (
+              <Button
+                onClick={() => setShowWithdrawModal(true)}
+                variant="outline"
+                className="gap-2 h-9 text-amber-600 border-amber-300 hover:bg-amber-50"
+              >
+                <Undo2 className="h-4 w-4" />
+                Withdraw
+              </Button>
+            )}
+          </>
+        }
+      />
 
       {/* Purchase Order Details Card */}
       <div className="gradient-primary border-0 overflow-hidden rounded-lg p-6">
@@ -792,75 +787,77 @@ export function PurchaseOrderDetailClient({
       {/* ── Tabbed Content ──────────────────────────────────────────── */}
       <Card className="p-6 border-0 shadow-sm">
         <Tabs defaultValue="items" className="w-full">
-          <TabsList className="grid w-full grid-cols-6 h-auto">
-            <TabsTrigger
-              value="items"
-              className="gap-1.5 text-xs sm:text-sm px-2 py-2"
-            >
-              <ShoppingCart className="h-4 w-4 shrink-0" />
-              <span className="hidden sm:inline">PO</span> Items
-              {purchaseOrder.items?.length > 0 && (
-                <Badge
-                  variant="secondary"
-                  className="ml-1 text-xs h-5 min-w-5 px-1.5"
-                >
-                  {purchaseOrder.items.length}
-                </Badge>
-              )}
-            </TabsTrigger>
-            <TabsTrigger
-              value="documents"
-              className="gap-1.5 text-xs sm:text-sm px-2 py-2"
-            >
-              <Paperclip className="h-4 w-4 shrink-0" />
-              <span className="hidden sm:inline">Supporting</span> Docs
-              {attachments.length > 0 && (
-                <Badge
-                  variant="secondary"
-                  className="ml-1 text-xs h-5 min-w-5 px-1.5"
-                >
-                  {attachments.length}
-                </Badge>
-              )}
-            </TabsTrigger>
-            <TabsTrigger
-              value="action"
-              className="gap-1.5 text-xs sm:text-sm px-2 py-2"
-            >
-              <CheckSquare className="h-4 w-4 shrink-0" />
-              <span className="hidden sm:inline">Approval</span> Action
-            </TabsTrigger>
-            <TabsTrigger
-              value="chain"
-              className="gap-1.5 text-xs sm:text-sm px-2 py-2"
-            >
-              <GitBranch className="h-4 w-4 shrink-0" />
-              <span className="hidden sm:inline">Approval</span> Chain
-            </TabsTrigger>
-            <TabsTrigger
-              value="activity"
-              className="gap-1.5 text-xs sm:text-sm px-2 py-2"
-            >
-              <Activity className="h-4 w-4 shrink-0" />
-              <span className="hidden sm:inline">Activity</span> Log
-              {purchaseOrder.actionHistory &&
-                purchaseOrder.actionHistory.length > 0 && (
+          <div className="overflow-x-auto no-scrollbar -mx-6 px-6">
+            <TabsList className="flex min-w-full h-auto">
+              <TabsTrigger
+                value="items"
+                className="gap-1.5 text-xs sm:text-sm px-2 py-2 flex-1 shrink-0 whitespace-nowrap"
+              >
+                <ShoppingCart className="h-4 w-4 shrink-0" />
+                <span className="hidden sm:inline">PO</span> Items
+                {purchaseOrder.items?.length > 0 && (
                   <Badge
                     variant="secondary"
                     className="ml-1 text-xs h-5 min-w-5 px-1.5"
                   >
-                    {purchaseOrder.actionHistory.length}
+                    {purchaseOrder.items.length}
                   </Badge>
                 )}
-            </TabsTrigger>
-            <TabsTrigger
-              value="shipping"
-              className="gap-1.5 text-xs sm:text-sm px-2 py-2"
-            >
-              <Truck className="h-4 w-4 shrink-0" />
-              <span className="hidden sm:inline">Shipping</span> &amp; Tax
-            </TabsTrigger>
-          </TabsList>
+              </TabsTrigger>
+              <TabsTrigger
+                value="documents"
+                className="gap-1.5 text-xs sm:text-sm px-2 py-2 flex-1 shrink-0 whitespace-nowrap"
+              >
+                <Paperclip className="h-4 w-4 shrink-0" />
+                <span className="hidden sm:inline">Supporting</span> Docs
+                {attachments.length > 0 && (
+                  <Badge
+                    variant="secondary"
+                    className="ml-1 text-xs h-5 min-w-5 px-1.5"
+                  >
+                    {attachments.length}
+                  </Badge>
+                )}
+              </TabsTrigger>
+              <TabsTrigger
+                value="action"
+                className="gap-1.5 text-xs sm:text-sm px-2 py-2 flex-1 shrink-0 whitespace-nowrap"
+              >
+                <CheckSquare className="h-4 w-4 shrink-0" />
+                <span className="hidden sm:inline">Approval</span> Action
+              </TabsTrigger>
+              <TabsTrigger
+                value="chain"
+                className="gap-1.5 text-xs sm:text-sm px-2 py-2 flex-1 shrink-0 whitespace-nowrap"
+              >
+                <GitBranch className="h-4 w-4 shrink-0" />
+                <span className="hidden sm:inline">Approval</span> Chain
+              </TabsTrigger>
+              <TabsTrigger
+                value="activity"
+                className="gap-1.5 text-xs sm:text-sm px-2 py-2 flex-1 shrink-0 whitespace-nowrap"
+              >
+                <Activity className="h-4 w-4 shrink-0" />
+                <span className="hidden sm:inline">Activity</span> Log
+                {purchaseOrder.actionHistory &&
+                  purchaseOrder.actionHistory.length > 0 && (
+                    <Badge
+                      variant="secondary"
+                      className="ml-1 text-xs h-5 min-w-5 px-1.5"
+                    >
+                      {purchaseOrder.actionHistory.length}
+                    </Badge>
+                  )}
+              </TabsTrigger>
+              <TabsTrigger
+                value="shipping"
+                className="gap-1.5 text-xs sm:text-sm px-2 py-2 flex-1 shrink-0 whitespace-nowrap"
+              >
+                <Truck className="h-4 w-4 shrink-0" />
+                <span className="hidden sm:inline">Shipping</span> &amp; Tax
+              </TabsTrigger>
+            </TabsList>
+          </div>
 
           {/* ── Tab 1: PO Items ── */}
           <TabsContent value="items" className="mt-6">

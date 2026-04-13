@@ -10,6 +10,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { QUERY_KEYS } from "@/lib/constants";
 import { toast } from "sonner";
 import type { PurchaseOrder } from "@/types/purchase-order";
+import { formatCurrency } from "@/lib/utils";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -123,9 +124,6 @@ export function POShippingEditor({
   const delCost = deliveryCost ? parseFloat(deliveryCost) : 0;
   const grandTotal = subtotal + taxAmt + delCost;
 
-  const fmt = (n: number) =>
-    `${purchaseOrder.currency ?? ""} ${n.toLocaleString("en-ZM", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-
   // ── Save ───────────────────────────────────────────────────────────────────
   const handleSave = async () => {
     setSaving(true);
@@ -175,7 +173,7 @@ export function POShippingEditor({
     <div className="space-y-6">
       {/* ── Shipping / Receiver ── */}
       <div className="space-y-4">
-        <div className="flex items-center gap-2 mb-1">
+        <div className="flex items-center gap-2 mb-4">
           <Truck className="h-4 w-4 text-muted-foreground" />
           <h3 className="text-sm font-semibold">Shipping To</h3>
           <span className="text-xs text-muted-foreground">
@@ -183,62 +181,51 @@ export function POShippingEditor({
           </span>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="space-y-1.5">
-            <Label htmlFor="receiverName">Receiver Name</Label>
-            <Input
-              id="receiverName"
-              placeholder="e.g. Abraham W Simasiku"
-              value={receiverName}
-              onChange={(e) => setReceiverName(e.target.value)}
-              disabled={!canEdit}
-            />
-          </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 ">
+          <Input
+            id="receiverName"
+            label="Receiver Name"
+            placeholder="e.g. Bob W Simasiku"
+            value={receiverName}
+            onChange={(e) => setReceiverName(e.target.value)}
+            disabled={!canEdit}
+          />
+          <Input
+            id="department"
+            label="Department"
+            placeholder="e.g. Stores"
+            value={department}
+            onChange={(e) => setDepartment(e.target.value)}
+            disabled={!canEdit}
+          />
 
-          <div className="space-y-1.5">
-            <Label htmlFor="department">Department</Label>
-            <Input
-              id="department"
-              placeholder="e.g. Stores"
-              value={department}
-              onChange={(e) => setDepartment(e.target.value)}
-              disabled={!canEdit}
-            />
-          </div>
+          <Input
+            label="Address"
+            id="receiverAddress"
+            placeholder="e.g. Ke Agency, 33 NAPSA Building, Mongu"
+            value={receiverAddress}
+            onChange={(e) => setReceiverAddress(e.target.value)}
+            disabled={!canEdit}
+          />
 
-          <div className="space-y-1.5 sm:col-span-2">
-            <Label htmlFor="receiverAddress">Address</Label>
-            <Input
-              id="receiverAddress"
-              placeholder="e.g. Keyara Creative, 33 NAPSA Building, Mongu"
-              value={receiverAddress}
-              onChange={(e) => setReceiverAddress(e.target.value)}
-              disabled={!canEdit}
-            />
-          </div>
+          <Input
+            id="receiverContact"
+            label="Contact / Phone"
+            placeholder="e.g. 0974291023"
+            value={receiverContact}
+            onChange={(e) => setReceiverContact(e.target.value)}
+            disabled={!canEdit}
+          />
 
-          <div className="space-y-1.5">
-            <Label htmlFor="receiverContact">Contact / Phone</Label>
-            <Input
-              id="receiverContact"
-              placeholder="e.g. 0974291023"
-              value={receiverContact}
-              onChange={(e) => setReceiverContact(e.target.value)}
-              disabled={!canEdit}
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="receiverEmail">Email</Label>
-            <Input
-              id="receiverEmail"
-              type="email"
-              placeholder="e.g. abraham@kecreate.com"
-              value={receiverEmail}
-              onChange={(e) => setReceiverEmail(e.target.value)}
-              disabled={!canEdit}
-            />
-          </div>
+          <Input
+            id="receiverEmail"
+            label="Email Address"
+            type="email"
+            placeholder="e.g. simasiku@mail.com"
+            value={receiverEmail}
+            onChange={(e) => setReceiverEmail(e.target.value)}
+            disabled={!canEdit}
+          />
         </div>
       </div>
 
@@ -248,27 +235,23 @@ export function POShippingEditor({
       <div className="space-y-4">
         <h3 className="text-sm font-semibold">Document Classification</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="space-y-1.5">
-            <Label htmlFor="purchaseType">Purchase Type</Label>
-            <Input
-              id="purchaseType"
-              placeholder="e.g. SERVICE OR GOODS"
-              value={purchaseType}
-              onChange={(e) => setPurchaseType(e.target.value)}
-              disabled={!canEdit}
-            />
-          </div>
+          <Input
+            id="purchaseType"
+            label="Purchase Type"
+            placeholder="e.g. SERVICE OR GOODS"
+            value={purchaseType}
+            onChange={(e) => setPurchaseType(e.target.value)}
+            disabled={!canEdit}
+          />
 
-          <div className="space-y-1.5">
-            <Label htmlFor="fundSource">Fund Source</Label>
-            <Input
-              id="fundSource"
-              placeholder="e.g. CDF 2026 BUDGET"
-              value={fundSource}
-              onChange={(e) => setFundSource(e.target.value)}
-              disabled={!canEdit}
-            />
-          </div>
+          <Input
+            id="fundSource"
+            label="Fund Source"
+            placeholder="e.g. CDF 2026 BUDGET"
+            value={fundSource}
+            onChange={(e) => setFundSource(e.target.value)}
+            disabled={!canEdit}
+          />
         </div>
       </div>
 
@@ -284,9 +267,9 @@ export function POShippingEditor({
         </h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-1.5">
-            <Label htmlFor="taxRate">Tax Rate (%)</Label>
             <Input
               id="taxRate"
+              label="Tax Rate (%)"
               type="number"
               min="0"
               max="100"
@@ -295,12 +278,11 @@ export function POShippingEditor({
               value={taxRate}
               onChange={(e) => setTaxRate(e.target.value)}
               disabled={!canEdit}
+              descriptionText={
+                taxRate &&
+                `  Tax amount: ${formatCurrency(taxAmt, purchaseOrder.currency)}`
+              }
             />
-            {taxRate && (
-              <p className="text-xs text-muted-foreground">
-                Tax amount: {fmt(taxAmt)}
-              </p>
-            )}
           </div>
 
           <div className="space-y-1.5">
@@ -325,24 +307,30 @@ export function POShippingEditor({
           <div className="rounded-lg border bg-muted/40 p-4 space-y-1.5 text-sm">
             <div className="flex justify-between">
               <span className="text-muted-foreground">Order Sub Total</span>
-              <span className="font-medium">{fmt(subtotal)}</span>
+              <span className="font-medium">
+                {formatCurrency(subtotal, purchaseOrder.currency)}
+              </span>
             </div>
             {taxRate && (
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Tax ({taxRate}%)</span>
-                <span className="font-medium">{fmt(taxAmt)}</span>
+                <span className="font-medium">
+                  {formatCurrency(taxAmt, purchaseOrder.currency)}
+                </span>
               </div>
             )}
             {deliveryCost && (
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Delivery Cost</span>
-                <span className="font-medium">{fmt(delCost)}</span>
+                <span className="font-medium">
+                  {formatCurrency(delCost, purchaseOrder.currency)}
+                </span>
               </div>
             )}
             <div className="flex justify-between border-t pt-1.5 font-semibold">
               <span>Total Order Value</span>
               <span className="text-green-700 dark:text-green-400">
-                {fmt(grandTotal)}
+                {formatCurrency(grandTotal, purchaseOrder.currency)}
               </span>
             </div>
           </div>
@@ -352,12 +340,14 @@ export function POShippingEditor({
       {/* ── Save ── */}
       {canEdit && (
         <div className="flex justify-end pt-2">
-          <Button onClick={handleSave} disabled={saving} size="sm">
-            {saving ? (
-              <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
-            ) : (
-              <Save className="h-3.5 w-3.5 mr-1.5" />
-            )}
+          <Button
+            onClick={handleSave}
+            disabled={saving}
+            size="sm"
+            isLoading={saving}
+            loadingText="Saving..."
+          >
+            <Save className="h-4 w-4" />
             Save Details
           </Button>
         </div>

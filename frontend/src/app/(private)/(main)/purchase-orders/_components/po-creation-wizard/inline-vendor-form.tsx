@@ -20,7 +20,11 @@ export interface InlineVendorFormProps {
 
 interface FormState {
   name: string;
+  email: string;
+  phone: string;
   physicalAddress: string;
+  city: string;
+  country: string;
   taxId: string;
   bankName: string;
   branchCode: string;
@@ -30,11 +34,21 @@ interface FormState {
 
 interface FormErrors {
   name?: string;
+  email?: string;
+  phone?: string;
+  physicalAddress?: string;
+  city?: string;
+  country?: string;
+  taxId?: string;
 }
 
 const EMPTY_FORM: FormState = {
   name: "",
+  email: "",
+  phone: "",
   physicalAddress: "",
+  city: "",
+  country: "",
   taxId: "",
   bankName: "",
   branchCode: "",
