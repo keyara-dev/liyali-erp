@@ -43,7 +43,7 @@ export function PDFPreviewDialog({
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [numPages, setNumPages] = useState<number>(0);
   const [pageNumber, setPageNumber] = useState<number>(1);
-  const [scale, setScale] = useState<number>(1.0);
+  const [scale, setScale] = useState<number>(1.5);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -138,7 +138,7 @@ export function PDFPreviewDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="h-[90vh] max-h-[90vh] min-w-5xl max-w-5xl gap-0 p-0">
+      <DialogContent className="h-[95vh] max-h-[95vh] min-w-5xl max-w-5xl gap-0 p-0">
         {/* Header */}
         <DialogHeader className="flex flex-row items-center justify-between border-b px-6 py-4">
           <DialogTitle className="text-lg font-semibold">

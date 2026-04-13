@@ -45,6 +45,19 @@ const PaymentVoucherPDF: React.FC<PaymentVoucherPDFProps> = ({
   documentHeader,
 }) => {
   const documentNumber = paymentVoucher.documentNumber;
+
+  // Pull vendor details from vendor object
+  const vendor = paymentVoucher.vendor;
+  const vendorAddress =
+    vendor?.physicalAddress || vendor?.city
+      ? [vendor?.physicalAddress, vendor?.city, vendor?.country]
+          .filter(Boolean)
+          .join(", ")
+      : null;
+  const vendorContact = vendor?.phone || null;
+  const vendorEmail = vendor?.email || null;
+  const vendorTpin = vendor?.taxId || null;
+
   const qrData = generateDocumentQRData(
     "PAYMENT_VOUCHER",
     documentNumber,
@@ -201,6 +214,67 @@ const PaymentVoucherPDF: React.FC<PaymentVoucherPDFProps> = ({
               </Text>
             </View>
           </View>
+
+          {/* Vendor contact details row */}
+          {(vendorAddress || vendorContact || vendorEmail || vendorTpin) && (
+            <View
+              style={{
+                display: "flex",
+                flexDirection: "row",
+                gap: 12,
+                marginBottom: 7,
+              }}
+            >
+              {vendorAddress && (
+                <View style={{ flex: 1 }}>
+                  <Text
+                    style={{
+                      fontSize: 7,
+                      fontWeight: "bold",
+                      marginBottom: 1,
+                      color: "#666",
+                    }}
+                  >
+                    ADDRESS
+                  </Text>
+                  <Text style={{ fontSize: 8 }}>{vendorAddress}</Text>
+                </View>
+              )}
+              {vendorContact && (
+                <View style={{ flex: 1 }}>
+                  <Text
+                    style={{
+                      fontSize: 7,
+                      fontWeight: "bold",
+                      marginBottom: 1,
+                      color: "#666",
+                    }}
+                  >
+                    CONTACT
+                  </Text>
+                  <Text style={{ fontSize: 8 }}>{vendorContact}</Text>
+                  {vendorEmail && (
+                    <Text style={{ fontSize: 8 }}>{vendorEmail}</Text>
+                  )}
+                </View>
+              )}
+              {vendorTpin && (
+                <View style={{ flex: 1 }}>
+                  <Text
+                    style={{
+                      fontSize: 7,
+                      fontWeight: "bold",
+                      marginBottom: 1,
+                      color: "#666",
+                    }}
+                  >
+                    TPIN
+                  </Text>
+                  <Text style={{ fontSize: 8 }}>{vendorTpin}</Text>
+                </View>
+              )}
+            </View>
+          )}
 
           {/* Description */}
           <View style={{ marginBottom: 7 }}>

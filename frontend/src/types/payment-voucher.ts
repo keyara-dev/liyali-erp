@@ -4,7 +4,7 @@
  */
 
 // Import shared types from core
-import type { PaymentMethod, ActionHistoryEntry, ApprovalRecord } from "./core";
+import type { PaymentMethod, ActionHistoryEntry, ApprovalRecord, Vendor } from "./core";
 import type { WorkflowDocument } from "./workflow";
 
 // ============================================================================
@@ -50,7 +50,7 @@ export interface PaymentVoucher extends WorkflowDocument {
   /** Vendor identifier */
   vendorId: string;
   /** Vendor entity (populated from backend) */
-  vendor?: any;
+  vendor?: Vendor;
   /** Vendor name for display */
   vendorName: string;
   /** Vendor invoice number */

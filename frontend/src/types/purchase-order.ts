@@ -7,6 +7,7 @@
  * @module types/purchase-order
  */
 
+import { Vendor } from "./core";
 import { WorkflowDocument } from "./workflow";
 
 // ============================================================================
@@ -107,7 +108,7 @@ export interface PurchaseOrder extends WorkflowDocument {
   /** Vendor identifier */
   vendorId: string;
   /** Vendor entity (populated from backend) */
-  vendor?: any;
+  vendor?: Vendor;
   /** Vendor name for display */
   vendorName: string;
   /** Current status: DRAFT, PENDING, APPROVED, REJECTED, FULFILLED, COMPLETED, CANCELLED */

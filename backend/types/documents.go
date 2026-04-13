@@ -89,6 +89,7 @@ type RequisitionResponse struct {
 	CategoryName        string            `json:"categoryName,omitempty"`
 	PreferredVendorID   *string           `json:"preferredVendorId,omitempty"`
 	PreferredVendorName string            `json:"preferredVendorName,omitempty"`
+	PreferredVendor     *VendorResponse   `json:"preferredVendor,omitempty"`
 	IsEstimate          bool              `json:"isEstimate"`
 	ApprovalStage       int               `json:"approvalStage"`
 	ApprovalHistory     []ApprovalRecord  `json:"approvalHistory"`
@@ -278,6 +279,7 @@ type PurchaseOrderResponse struct {
 	DocumentNumber          string                 `json:"documentNumber"`
 	VendorID                string                 `json:"vendorId"`
 	VendorName              string                 `json:"vendorName"`
+	Vendor                  *VendorResponse        `json:"vendor,omitempty"`
 	Status                  string                 `json:"status"`
 	Items                   []POItem               `json:"items"`
 	TotalAmount             float64                `json:"totalAmount"`
@@ -359,6 +361,7 @@ type PaymentVoucherResponse struct {
 	DocumentNumber       string               `json:"documentNumber"`
 	VendorID             string               `json:"vendorId"`
 	VendorName           string               `json:"vendorName"`
+	Vendor               *VendorResponse      `json:"vendor,omitempty"`
 	InvoiceNumber        string               `json:"invoiceNumber"`
 	Status               string               `json:"status"`
 	Amount               float64              `json:"amount"`

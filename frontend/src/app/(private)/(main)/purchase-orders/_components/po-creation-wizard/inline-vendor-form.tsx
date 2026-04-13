@@ -63,8 +63,8 @@ const EMPTY_FORM: FormState = {
 /**
  * Inline new-vendor form for Step 2 of the PO Creation Wizard.
  *
- * Flat layout (no section grouping). Only `name` is required; all other
- * fields are optional. Calls `useCreateVendor` on save. On API failure,
+ * Flat layout (no section grouping). Required fields: name, email, phone,
+ * address, city, country, TPIN. Calls `useCreateVendor` on save. On API failure,
  * keeps the form open with data preserved and shows an inline error message.
  *
  * Requirements: 3.2, 3.3, 3.4, 3.5, 3.6, 9.10
@@ -82,8 +82,8 @@ export function InlineVendorForm({ onSaved, onCancel }: InlineVendorFormProps) {
 
   function set(field: keyof FormState, value: string) {
     setForm((prev) => ({ ...prev, [field]: value }));
-    if (field === "name" && errors.name) {
-      setErrors((prev) => ({ ...prev, name: undefined }));
+    if (field in errors) {
+      setErrors((prev) => ({ ...prev, [field]: undefined }));
     }
     // Clear API error when user edits anything
     if (apiError) setApiError(null);
@@ -93,9 +93,14 @@ export function InlineVendorForm({ onSaved, onCancel }: InlineVendorFormProps) {
 
   function validate(): boolean {
     const next: FormErrors = {};
-    if (!form.name.trim()) {
-      next.name = "Vendor name is required";
-    }
+    if (!form.name.trim()) next.name = "Vendor name is required";
+    if (!form.email.trim()) next.email = "Email is required";
+    if (!form.phone.trim()) next.phone = "Phone number is required";
+    if (!form.physicalAddress.trim())
+      next.physicalAddress = "Physical address is required";
+    if (!form.city.trim()) next.city = "City is required";
+    if (!form.country.trim()) next.country = "Country is required";
+    if (!form.taxId.trim()) next.taxId = "Tax ID / TPIN is required";
     setErrors(next);
     return Object.keys(next).length === 0;
   }
@@ -110,12 +115,12 @@ export function InlineVendorForm({ onSaved, onCancel }: InlineVendorFormProps) {
     createMutation.mutate(
       {
         name: form.name.trim(),
-        // Required fields in CreateVendorRequest — pass empty strings for
-        // optional-in-wizard fields so the type is satisfied.
-        physicalAddress: form.physicalAddress.trim() || "",
-        city: "",
-        country: "",
-        taxId: form.taxId.trim() || "",
+        email: form.email.trim(),
+        phone: form.phone.trim(),
+        physicalAddress: form.physicalAddress.trim(),
+        city: form.city.trim(),
+        country: form.country.trim(),
+        taxId: form.taxId.trim(),
         bankName: form.bankName.trim() || "",
         accountName: form.accountName.trim() || "",
         accountNumber: form.accountNumber.trim() || "",
@@ -180,31 +185,108 @@ export function InlineVendorForm({ onSaved, onCancel }: InlineVendorFormProps) {
         )}
       </div>
 
-      {/* ── Physical Address (optional) ── */}
+      {/* ── Email & Phone (required) ── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="space-y-1.5">
+          <Label htmlFor="inline-vendor-email">
+            Email <span className="text-destructive">*</span>
+          </Label>
+          <Input
+            id="inline-vendor-email"
+            type="email"
+            value={form.email}
+            onChange={(e) => set("email", e.target.value)}
+            placeholder="vendor@example.com"
+            disabled={isPending}
+          />
+          {errors.email && (
+            <p className="text-xs text-destructive">{errors.email}</p>
+          )}
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="inline-vendor-phone">
+            Phone <span className="text-destructive">*</span>
+          </Label>
+          <Input
+            id="inline-vendor-phone"
+            value={form.phone}
+            onChange={(e) => set("phone", e.target.value)}
+            placeholder="+260 97..."
+            disabled={isPending}
+          />
+          {errors.phone && (
+            <p className="text-xs text-destructive">{errors.phone}</p>
+          )}
+        </div>
+      </div>
+
+      {/* ── Physical Address (required) ── */}
       <div className="space-y-1.5">
-        <Label htmlFor="inline-vendor-address">Physical Address</Label>
+        <Label htmlFor="inline-vendor-address">
+          Physical Address <span className="text-destructive">*</span>
+        </Label>
         <Textarea
           id="inline-vendor-address"
           value={form.physicalAddress}
           onChange={(e) => set("physicalAddress", e.target.value)}
-          placeholder="Street address, building, area... (optional)"
+          placeholder="Street address, building, area..."
           rows={2}
           disabled={isPending}
         />
+        {errors.physicalAddress && (
+          <p className="text-xs text-destructive">{errors.physicalAddress}</p>
+        )}
       </div>
 
-      {/* ── Tax ID (optional) ── */}
+      {/* ── City & Country (required) ── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="space-y-1.5">
+          <Label htmlFor="inline-vendor-city">
+            City <span className="text-destructive">*</span>
+          </Label>
+          <Input
+            id="inline-vendor-city"
+            value={form.city}
+            onChange={(e) => set("city", e.target.value)}
+            placeholder="Lusaka"
+            disabled={isPending}
+          />
+          {errors.city && (
+            <p className="text-xs text-destructive">{errors.city}</p>
+          )}
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="inline-vendor-country">
+            Country <span className="text-destructive">*</span>
+          </Label>
+          <Input
+            id="inline-vendor-country"
+            value={form.country}
+            onChange={(e) => set("country", e.target.value)}
+            placeholder="Zambia"
+            disabled={isPending}
+          />
+          {errors.country && (
+            <p className="text-xs text-destructive">{errors.country}</p>
+          )}
+        </div>
+      </div>
+
+      {/* ── Tax ID / TPIN (required) ── */}
       <div className="space-y-1.5">
         <Label htmlFor="inline-vendor-taxid">
-          Tax ID / TPIN / Registration No.
+          Tax ID / TPIN <span className="text-destructive">*</span>
         </Label>
         <Input
           id="inline-vendor-taxid"
           value={form.taxId}
           onChange={(e) => set("taxId", e.target.value)}
-          placeholder="Tax / TPIN number (optional)"
+          placeholder="Tax / TPIN number"
           disabled={isPending}
         />
+        {errors.taxId && (
+          <p className="text-xs text-destructive">{errors.taxId}</p>
+        )}
       </div>
 
       {/* ── Bank fields (optional) ── */}

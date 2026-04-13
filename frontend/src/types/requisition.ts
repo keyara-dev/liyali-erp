@@ -3,6 +3,8 @@
  * Aligned with backend models and database schema
  */
 
+import type { Vendor } from "./core";
+
 // ============================================================================
 // CORE REQUISITION TYPES
 // ============================================================================
@@ -60,7 +62,7 @@ export interface Requisition {
   category?: any;
   categoryName: string;
   preferredVendorId?: string;
-  preferredVendor?: any;
+  preferredVendor?: Vendor;
   preferredVendorName: string;
 
   automationUsed?: boolean;

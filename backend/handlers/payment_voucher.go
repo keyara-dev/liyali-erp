@@ -561,8 +561,11 @@ func modelToPaymentVoucherResponse(voucher models.PaymentVoucher) types.PaymentV
 		vendorID = *voucher.VendorID
 	}
 	vendorName := ""
+	var vendorResp *types.VendorResponse
 	if voucher.Vendor != nil {
 		vendorName = voucher.Vendor.Name
+		vr := modelToVendorResponse(*voucher.Vendor)
+		vendorResp = &vr
 	}
 
 	actionHistory := voucher.ActionHistory.Data()
@@ -581,6 +584,7 @@ func modelToPaymentVoucherResponse(voucher models.PaymentVoucher) types.PaymentV
 		DocumentNumber:       voucher.DocumentNumber,
 		VendorID:             vendorID,
 		VendorName:           vendorName,
+		Vendor:               vendorResp,
 		InvoiceNumber:        voucher.InvoiceNumber,
 		Status:               voucher.Status,
 		Amount:               voucher.Amount,

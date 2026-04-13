@@ -765,8 +765,11 @@ func modelToPurchaseOrderResponse(order models.PurchaseOrder) types.PurchaseOrde
 		vendorID = *order.VendorID
 	}
 	vendorName := ""
+	var vendorResp *types.VendorResponse
 	if order.Vendor != nil {
 		vendorName = order.Vendor.Name
+		vr := modelToVendorResponse(*order.Vendor)
+		vendorResp = &vr
 	}
 
 	actionHistory := order.ActionHistory.Data()
@@ -788,6 +791,7 @@ func modelToPurchaseOrderResponse(order models.PurchaseOrder) types.PurchaseOrde
 		DocumentNumber:          order.DocumentNumber,
 		VendorID:                vendorID,
 		VendorName:              vendorName,
+		Vendor:                  vendorResp,
 		Status:                  order.Status,
 		Items:                   items,
 		TotalAmount:             order.TotalAmount,

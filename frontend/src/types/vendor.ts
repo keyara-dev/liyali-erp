@@ -10,8 +10,8 @@ export type { Vendor } from "./core";
 
 export interface CreateVendorRequest {
   name: string;
-  email?: string;
-  phone?: string;
+  email: string;
+  phone: string;
   contactPerson?: string;
   physicalAddress: string;
   city: string;

@@ -781,8 +781,11 @@ func modelToRequisitionResponse(req models.Requisition) types.RequisitionRespons
 	}
 
 	preferredVendorName := ""
+	var preferredVendorResp *types.VendorResponse
 	if req.PreferredVendor != nil {
 		preferredVendorName = req.PreferredVendor.Name
+		vr := modelToVendorResponse(*req.PreferredVendor)
+		preferredVendorResp = &vr
 	}
 
 	// Extract metadata fields
@@ -827,6 +830,7 @@ func modelToRequisitionResponse(req models.Requisition) types.RequisitionRespons
 		CategoryName:        categoryName,
 		PreferredVendorID:   req.PreferredVendorID,
 		PreferredVendorName: preferredVendorName,
+		PreferredVendor:     preferredVendorResp,
 		IsEstimate:          req.IsEstimate,
 		ApprovalStage:       req.ApprovalStage,
 		ApprovalHistory:     approvalHistory,

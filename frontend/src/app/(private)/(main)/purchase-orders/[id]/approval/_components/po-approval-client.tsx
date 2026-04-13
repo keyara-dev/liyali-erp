@@ -78,19 +78,19 @@ export function POApprovalClient({
             <CardContent className="grid gap-4 md:grid-cols-2">
               <div>
                 <p className="text-sm text-muted-foreground">Vendor Name</p>
-                <p className="font-semibold">{po.vendor.name}</p>
+                <p className="font-semibold">{po.vendor?.name || po.vendorName || "—"}</p>
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Contact Person</p>
-                <p className="font-semibold">{po.vendor.contactPerson}</p>
+                <p className="font-semibold">{po.vendor?.contactPerson || "—"}</p>
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Email</p>
-                <p className="font-semibold text-blue-600">{po.vendor.email}</p>
+                <p className="font-semibold text-blue-600">{po.vendor?.email || "—"}</p>
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Phone</p>
-                <p className="font-semibold">{po.vendor.phone}</p>
+                <p className="font-semibold">{po.vendor?.phone || "—"}</p>
               </div>
             </CardContent>
           </Card>
