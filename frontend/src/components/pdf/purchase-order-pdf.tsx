@@ -130,17 +130,15 @@ const PurchaseOrderPDF: React.FC<PurchaseOrderPDFProps> = ({
   const vendorEmail = vendor?.email || null;
   const vendorTpin = vendor?.taxId || null;
 
-  // Shipping / receiver — from metadata or org info
+  // Shipping / receiver — from metadata only (set via Shipping & Tax tab)
   const meta = purchaseOrder.metadata || {};
   const receiverName =
     (meta.receiverName as string) || documentHeader?.orgName || "—";
-  const receiverAddress =
-    (meta.receiverAddress as string) || documentHeader?.address || "—";
-  const receiverContact =
-    (meta.receiverContact as string) || documentHeader?.contact || null;
-  const receiverEmail =
-    (meta.receiverEmail as string) || documentHeader?.email || null;
-  const receiverDept = purchaseOrder.department || null;
+  const receiverAddress = (meta.receiverAddress as string) || null;
+  const receiverContact = (meta.receiverContact as string) || null;
+  const receiverEmail = (meta.receiverEmail as string) || null;
+  const receiverDept =
+    (meta.receiverDept as string) || purchaseOrder.department || null;
 
   // Financial breakdown
   const subtotal = purchaseOrder.subtotal ?? purchaseOrder.totalAmount ?? 0;
@@ -300,7 +298,9 @@ const PurchaseOrderPDF: React.FC<PurchaseOrderPDFProps> = ({
               >
                 {receiverName}
               </Text>
-              <LabelValue label="ADDRESS" value={receiverAddress} />
+              {receiverAddress && (
+                <LabelValue label="ADDRESS" value={receiverAddress} />
+              )}
               {receiverContact && (
                 <LabelValue label="CONTACT" value={receiverContact} />
               )}
@@ -418,9 +418,9 @@ const PurchaseOrderPDF: React.FC<PurchaseOrderPDFProps> = ({
                 const desc = item.description || item.itemDescription || "—";
                 const unitPrice = item.unitPrice ?? item.estimatedCost ?? 0;
                 const total =
-                  item.totalPrice ??
-                  item.amount ??
-                  item.quantity * unitPrice ??
+                  (item.totalPrice ??
+                    item.amount ??
+                    item.quantity * unitPrice) ||
                   0;
                 return (
                   <View
