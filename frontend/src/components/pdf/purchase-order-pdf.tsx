@@ -14,24 +14,95 @@ interface PurchaseOrderPDFProps {
   documentHeader?: DocumentHeader;
 }
 
+const BLUE = "#1e40af";
+const BLUE_LIGHT = "#dbeafe";
+const GRAY_LABEL = "#6b7280";
+const GRAY_BORDER = "#e5e7eb";
+const GREEN_TOTAL = "#166534";
+
 const getStatusColor = (status: string) => {
-  switch (status) {
+  switch (status?.toUpperCase()) {
     case "DRAFT":
       return pdfStyles.statusDraft;
     case "SUBMITTED":
       return pdfStyles.statusSubmitted;
     case "IN_REVIEW":
       return pdfStyles.statusInReview;
+    case "PENDING":
+      return pdfStyles.statusInReview;
     case "APPROVED":
       return pdfStyles.statusApproved;
-    case "REVISION":
-      return pdfStyles.statusInReview;
     case "REJECTED":
       return pdfStyles.statusRejected;
     default:
       return pdfStyles.statusDraft;
   }
 };
+
+const getPriorityColor = (priority: string) => {
+  switch (priority?.toUpperCase()) {
+    case "URGENT":
+      return { backgroundColor: "#fee2e2", color: "#991b1b" };
+    case "HIGH":
+      return { backgroundColor: "#fed7aa", color: "#92400e" };
+    case "MEDIUM":
+      return { backgroundColor: "#dbeafe", color: "#1e40af" };
+    default:
+      return { backgroundColor: "#f3f4f6", color: "#374151" };
+  }
+};
+
+// ── Reusable label+value pair ─────────────────────────────────────────────────
+function LabelValue({
+  label,
+  value,
+}: {
+  label: string;
+  value?: string | null;
+}) {
+  return (
+    <View style={{ marginBottom: 4 }}>
+      <Text
+        style={{
+          fontSize: 7,
+          fontWeight: "bold",
+          color: GRAY_LABEL,
+          textTransform: "uppercase",
+          marginBottom: 1,
+        }}
+      >
+        {label}
+      </Text>
+      <Text style={{ fontSize: 8.5, color: "#1f2937" }}>{value || "—"}</Text>
+    </View>
+  );
+}
+
+// ── Bordered section box ──────────────────────────────────────────────────────
+function SectionBox({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <View style={{ borderWidth: 1, borderColor: BLUE, marginBottom: 8 }}>
+      <View
+        style={{
+          backgroundColor: BLUE_LIGHT,
+          paddingHorizontal: 6,
+          paddingVertical: 3,
+        }}
+      >
+        <Text style={{ fontSize: 8, fontWeight: "bold", color: BLUE }}>
+          {title}
+        </Text>
+      </View>
+      <View style={{ padding: 7 }}>{children}</View>
+    </View>
+  );
+}
 
 const PurchaseOrderPDF: React.FC<PurchaseOrderPDFProps> = ({
   purchaseOrder,
@@ -46,10 +117,51 @@ const PurchaseOrderPDF: React.FC<PurchaseOrderPDFProps> = ({
     new Date(purchaseOrder.createdAt),
   );
 
+  // Pull vendor details — may be on vendor object or flat fields
+  const vendor = purchaseOrder.vendor;
+  const vendorName = vendor?.name || purchaseOrder.vendorName || "—";
+  const vendorAddress =
+    vendor?.physicalAddress || vendor?.city
+      ? [vendor?.physicalAddress, vendor?.city, vendor?.country]
+          .filter(Boolean)
+          .join(", ")
+      : null;
+  const vendorContact = vendor?.phone || null;
+  const vendorEmail = vendor?.email || null;
+  const vendorTpin = vendor?.taxId || null;
+
+  // Shipping / receiver — from metadata or org info
+  const meta = purchaseOrder.metadata || {};
+  const receiverName =
+    (meta.receiverName as string) || documentHeader?.orgName || "—";
+  const receiverAddress =
+    (meta.receiverAddress as string) || documentHeader?.address || "—";
+  const receiverContact =
+    (meta.receiverContact as string) || documentHeader?.contact || null;
+  const receiverEmail =
+    (meta.receiverEmail as string) || documentHeader?.email || null;
+  const receiverDept = purchaseOrder.department || null;
+
+  // Financial breakdown
+  const subtotal = purchaseOrder.subtotal ?? purchaseOrder.totalAmount ?? 0;
+  const taxAmount = purchaseOrder.tax ?? 0;
+  const deliveryCost = (meta.deliveryCost as number) ?? 0;
+  const totalValue = purchaseOrder.totalAmount ?? 0;
+
+  // Metadata table fields
+  const sourceReq = purchaseOrder.linkedRequisition || "—";
+  const purchaseType = (meta.purchaseType as string) || "SERVICE OR GOODS";
+  const fundSource =
+    purchaseOrder.costCenter ||
+    purchaseOrder.budgetCode ||
+    (meta.fundSource as string) ||
+    "—";
+  const reqDept = purchaseOrder.department || "—";
+
   return (
     <Document>
       <Page size="A4" style={pdfStyles.page}>
-        {/* Header with Republic of Zambia and Logo */}
+        {/* ── Header ── */}
         <PDFHeader
           title="PURCHASE ORDER"
           logoUrl={documentHeader?.logoUrl}
@@ -57,33 +169,37 @@ const PurchaseOrderPDF: React.FC<PurchaseOrderPDFProps> = ({
           tagline={documentHeader?.tagline}
         />
 
-        {/* Main Header Section */}
+        {/* ── Doc number + Status/Priority ── */}
         <View
-          style={[
-            pdfStyles.header,
-            {
-              marginBottom: 16,
-              paddingBottom: 10,
-              flexDirection: "row",
-              justifyContent: "space-between",
-            },
-          ]}
+          style={{
+            flexDirection: "row",
+            justifyContent: "space-between",
+            marginBottom: 12,
+            paddingBottom: 8,
+            borderBottomWidth: 1,
+            borderBottomColor: GRAY_BORDER,
+          }}
         >
-          <View style={{ textAlign: "left" }}>
+          <View>
             <Text style={{ fontSize: 10, fontWeight: "bold", marginBottom: 2 }}>
               Document No: {documentNumber}
             </Text>
-            <Text style={{ fontSize: 8, color: "#666", marginBottom: 3 }}>
+            <Text style={{ fontSize: 8, color: GRAY_LABEL }}>
               Date: {new Date(purchaseOrder.createdAt).toLocaleDateString()}
             </Text>
           </View>
-
-          {/* STATUS AND PRIORITY BADGES */}
-          <View style={{ textAlign: "right" }}>
-            <Text style={{ fontSize: 7, fontWeight: "bold", marginBottom: 1 }}>
-              STATUS & PRIORITY
+          <View style={{ alignItems: "flex-end" }}>
+            <Text
+              style={{
+                fontSize: 7,
+                fontWeight: "bold",
+                marginBottom: 3,
+                color: GRAY_LABEL,
+              }}
+            >
+              STATUS &amp; PRIORITY
             </Text>
-            <View style={{ marginBottom: 0, flexDirection: "row", gap: 4 }}>
+            <View style={{ flexDirection: "row", gap: 4 }}>
               <View
                 style={[
                   pdfStyles.statusBadge,
@@ -91,27 +207,14 @@ const PurchaseOrderPDF: React.FC<PurchaseOrderPDFProps> = ({
                 ]}
               >
                 <Text style={{ fontSize: 9 }}>
-                  {capitalize(purchaseOrder.status)}
+                  {capitalize(purchaseOrder.status || "DRAFT")}
                 </Text>
               </View>
               {purchaseOrder.priority && (
                 <View
                   style={[
                     pdfStyles.statusBadge,
-                    {
-                      backgroundColor:
-                        purchaseOrder.priority?.toUpperCase() === "URGENT"
-                          ? "#fee2e2"
-                          : purchaseOrder.priority?.toUpperCase() === "HIGH"
-                            ? "#fed7aa"
-                            : "#dbeafe",
-                      color:
-                        purchaseOrder.priority?.toUpperCase() === "URGENT"
-                          ? "#991b1b"
-                          : purchaseOrder.priority?.toUpperCase() === "HIGH"
-                            ? "#92400e"
-                            : "#1e40af",
-                    },
+                    getPriorityColor(purchaseOrder.priority),
                   ]}
                 >
                   <Text style={{ fontSize: 9 }}>
@@ -123,351 +226,372 @@ const PurchaseOrderPDF: React.FC<PurchaseOrderPDFProps> = ({
           </View>
         </View>
 
-        {/* SECTION 1: PURCHASE ORDER DETAILS */}
-        <View
-          style={{
-            marginBottom: 12,
-            borderWidth: 1,
-            borderColor: "#1e40af",
-            padding: 7,
-          }}
-        >
-          <Text
-            style={{
-              fontSize: 9,
-              fontWeight: "bold",
-              backgroundColor: "#dbeafe",
-              padding: 3,
-              marginBottom: 6,
-            }}
-          >
-            SECTION 1: PURCHASE ORDER DETAILS
-          </Text>
-
-          {/* Vendor Info */}
-          <View
-            style={{
-              marginBottom: 7,
-              display: "flex",
-              flexDirection: "row",
-              gap: 12,
-            }}
-          >
-            <View style={{ flex: 2 }}>
+        {/* ── Vendor Details + Shipping To (side by side) ── */}
+        <View style={{ flexDirection: "row", gap: 8, marginBottom: 8 }}>
+          {/* Vendor Details */}
+          <View style={{ flex: 1, borderWidth: 1, borderColor: BLUE }}>
+            <View
+              style={{
+                backgroundColor: BLUE_LIGHT,
+                paddingHorizontal: 6,
+                paddingVertical: 3,
+              }}
+            >
+              <Text style={{ fontSize: 8, fontWeight: "bold", color: BLUE }}>
+                VENDOR DETAILS
+              </Text>
+            </View>
+            <View style={{ padding: 7 }}>
               <Text
                 style={{
                   fontSize: 7,
                   fontWeight: "bold",
+                  color: GRAY_LABEL,
                   marginBottom: 1,
-                  color: "#666",
                 }}
               >
                 VENDOR/SUPPLIER
               </Text>
-              <Text style={{ fontSize: 9, fontWeight: "bold" }}>
-                {purchaseOrder.vendorName || "—"}
-              </Text>
-            </View>
-            <View style={{ flex: 1 }}>
               <Text
-                style={{
-                  fontSize: 7,
-                  fontWeight: "bold",
-                  marginBottom: 1,
-                  color: "#666",
-                }}
+                style={{ fontSize: 9, fontWeight: "bold", marginBottom: 5 }}
               >
-                DEPARTMENT
+                {vendorName}
               </Text>
-              <Text style={{ fontSize: 9 }}>
-                {purchaseOrder.department || "—"}
-              </Text>
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text
-                style={{
-                  fontSize: 7,
-                  fontWeight: "bold",
-                  marginBottom: 1,
-                  color: "#666",
-                }}
-              >
-                BUDGET CODE
-              </Text>
-              <Text style={{ fontSize: 8 }}>
-                {purchaseOrder.budgetCode || "—"}
-              </Text>
+              {vendorAddress && (
+                <LabelValue label="ADDRESS" value={vendorAddress} />
+              )}
+              {vendorContact && (
+                <LabelValue label="CONTACT" value={vendorContact} />
+              )}
+              {vendorEmail && <LabelValue label="EMAIL" value={vendorEmail} />}
+              {vendorTpin && <LabelValue label="TPIN" value={vendorTpin} />}
             </View>
           </View>
 
-          {/* Order Details Row */}
-          <View style={{ display: "flex", flexDirection: "row", gap: 12 }}>
-            <View style={{ flex: 1 }}>
+          {/* Shipping To */}
+          <View style={{ flex: 1, borderWidth: 1, borderColor: BLUE }}>
+            <View
+              style={{
+                backgroundColor: BLUE_LIGHT,
+                paddingHorizontal: 6,
+                paddingVertical: 3,
+              }}
+            >
+              <Text style={{ fontSize: 8, fontWeight: "bold", color: BLUE }}>
+                SHIPPING TO
+              </Text>
+            </View>
+            <View style={{ padding: 7 }}>
               <Text
                 style={{
                   fontSize: 7,
                   fontWeight: "bold",
+                  color: GRAY_LABEL,
                   marginBottom: 1,
-                  color: "#666",
                 }}
               >
-                ORDER DATE
+                RECEIVER NAME
               </Text>
-              <Text style={{ fontSize: 9 }}>
-                {new Date(purchaseOrder.createdAt).toLocaleDateString()}
-              </Text>
-            </View>
-            <View style={{ flex: 1 }}>
               <Text
-                style={{
-                  fontSize: 7,
-                  fontWeight: "bold",
-                  marginBottom: 1,
-                  color: "#666",
-                }}
+                style={{ fontSize: 9, fontWeight: "bold", marginBottom: 5 }}
               >
-                REQUIRED BY DATE
+                {receiverName}
               </Text>
-              <Text style={{ fontSize: 9 }}>
-                {purchaseOrder.requiredByDate
-                  ? new Date(purchaseOrder.requiredByDate).toLocaleDateString()
-                  : "—"}
-              </Text>
+              <LabelValue label="ADDRESS" value={receiverAddress} />
+              {receiverContact && (
+                <LabelValue label="CONTACT" value={receiverContact} />
+              )}
+              {receiverEmail && (
+                <LabelValue label="EMAIL" value={receiverEmail} />
+              )}
+              {receiverDept && (
+                <LabelValue label="DEPARTMENT" value={receiverDept} />
+              )}
             </View>
-            {purchaseOrder.linkedRequisition && (
-              <View style={{ flex: 1 }}>
-                <Text
-                  style={{
-                    fontSize: 7,
-                    fontWeight: "bold",
-                    marginBottom: 1,
-                    color: "#666",
-                  }}
-                >
-                  SOURCE REQUISITION
-                </Text>
-                <Text style={{ fontSize: 9 }}>
-                  {purchaseOrder.linkedRequisition}
-                </Text>
-              </View>
-            )}
           </View>
         </View>
 
-        {/* Line Items Table */}
+        {/* ── Metadata table: Source REQ / Purchase Type / Dept / Fund Source ── */}
+        <View style={{ borderWidth: 1, borderColor: BLUE, marginBottom: 10 }}>
+          {/* Header row */}
+          <View
+            style={{
+              flexDirection: "row",
+              backgroundColor: BLUE_LIGHT,
+              borderBottomWidth: 1,
+              borderBottomColor: BLUE,
+            }}
+          >
+            {[
+              "SOURCE REQUISITION",
+              "PURCHASE TYPE",
+              "REQUESTING DEPARTMENT",
+              "FUND SOURCE",
+            ].map((h, i) => (
+              <Text
+                key={h}
+                style={{
+                  flex: 1,
+                  fontSize: 7,
+                  fontWeight: "bold",
+                  color: BLUE,
+                  paddingHorizontal: 5,
+                  paddingVertical: 3,
+                  borderLeftWidth: i > 0 ? 1 : 0,
+                  borderLeftColor: BLUE,
+                }}
+              >
+                {h}
+              </Text>
+            ))}
+          </View>
+          {/* Data row */}
+          <View style={{ flexDirection: "row" }}>
+            {[sourceReq, purchaseType, reqDept, fundSource].map((v, i) => (
+              <Text
+                key={i}
+                style={{
+                  flex: 1,
+                  fontSize: 8,
+                  color: "#1f2937",
+                  paddingHorizontal: 5,
+                  paddingVertical: 4,
+                  borderLeftWidth: i > 0 ? 1 : 0,
+                  borderLeftColor: GRAY_BORDER,
+                }}
+              >
+                {v}
+              </Text>
+            ))}
+          </View>
+        </View>
+
+        {/* ── Order Items ── */}
         {purchaseOrder.items && purchaseOrder.items.length > 0 && (
           <View style={{ marginBottom: 10 }}>
             <Text style={{ fontSize: 9, fontWeight: "bold", marginBottom: 4 }}>
               ORDER ITEMS:
             </Text>
 
-            {/* Table Header */}
-            <View
-              style={{
-                borderWidth: 1,
-                borderColor: "#1e40af",
-                marginBottom: 0,
-              }}
-            >
+            {/* Table */}
+            <View style={{ borderWidth: 1, borderColor: BLUE }}>
+              {/* Header */}
               <View
                 style={{
-                  display: "flex",
                   flexDirection: "row",
                   backgroundColor: "#f3f4f6",
                   borderBottomWidth: 1,
-                  borderBottomColor: "#1e40af",
+                  borderBottomColor: BLUE,
                 }}
               >
-                <Text
-                  style={{
-                    flex: 0.5,
-                    paddingVertical: 3,
-                    paddingHorizontal: 4,
-                    fontSize: 7.5,
-                    fontWeight: "bold",
-                    color: "#1e40af",
-                    textAlign: "center",
-                  }}
-                >
-                  Item
-                </Text>
-                <Text
-                  style={{
-                    flex: 2,
-                    paddingVertical: 3,
-                    paddingHorizontal: 4,
-                    fontSize: 7.5,
-                    fontWeight: "bold",
-                    color: "#1e40af",
-                    borderLeftWidth: 1,
-                    borderLeftColor: "#1e40af",
-                  }}
-                >
-                  Description
-                </Text>
-                <Text
-                  style={{
-                    flex: 1,
-                    paddingVertical: 3,
-                    paddingHorizontal: 4,
-                    fontSize: 7.5,
-                    fontWeight: "bold",
-                    color: "#1e40af",
-                    textAlign: "center",
-                    borderLeftWidth: 1,
-                    borderLeftColor: "#1e40af",
-                  }}
-                >
-                  Qty
-                </Text>
-                <Text
-                  style={{
-                    flex: 1,
-                    paddingVertical: 3,
-                    paddingHorizontal: 4,
-                    fontSize: 7.5,
-                    fontWeight: "bold",
-                    color: "#1e40af",
-                    textAlign: "right",
-                    borderLeftWidth: 1,
-                    borderLeftColor: "#1e40af",
-                  }}
-                >
-                  Unit Price
-                </Text>
-                <Text
-                  style={{
-                    flex: 1,
-                    paddingVertical: 3,
-                    paddingHorizontal: 4,
-                    fontSize: 7.5,
-                    fontWeight: "bold",
-                    color: "#1e40af",
-                    textAlign: "right",
-                    borderLeftWidth: 1,
-                    borderLeftColor: "#1e40af",
-                  }}
-                >
-                  Total
-                </Text>
+                {[
+                  { label: "Item", flex: 0.4, align: "center" as const },
+                  { label: "Description", flex: 2.5, align: "left" as const },
+                  { label: "Qty", flex: 0.7, align: "center" as const },
+                  { label: "Unit Price", flex: 1.2, align: "right" as const },
+                  { label: "Total", flex: 1.2, align: "right" as const },
+                ].map((col, i) => (
+                  <Text
+                    key={col.label}
+                    style={{
+                      flex: col.flex,
+                      paddingVertical: 3,
+                      paddingHorizontal: 4,
+                      fontSize: 7.5,
+                      fontWeight: "bold",
+                      color: BLUE,
+                      textAlign: col.align,
+                      borderLeftWidth: i > 0 ? 1 : 0,
+                      borderLeftColor: BLUE,
+                    }}
+                  >
+                    {col.label}
+                  </Text>
+                ))}
               </View>
 
-              {/* Table Rows */}
+              {/* Rows */}
               {purchaseOrder.items.map((item: any, index: number) => {
-                const itemDescription =
-                  item.description || item.itemDescription || "";
-                const unitPrice = item.unitPrice || item.estimatedCost || 0;
-                const totalPrice =
-                  item.totalPrice || item.quantity * unitPrice || 0;
-
+                const desc = item.description || item.itemDescription || "—";
+                const unitPrice = item.unitPrice ?? item.estimatedCost ?? 0;
+                const total =
+                  item.totalPrice ??
+                  item.amount ??
+                  item.quantity * unitPrice ??
+                  0;
                 return (
                   <View
-                    key={item.id}
+                    key={item.id || index}
                     style={{
-                      display: "flex",
                       flexDirection: "row",
                       borderBottomWidth: 1,
-                      borderBottomColor: "#e5e7eb",
+                      borderBottomColor: GRAY_BORDER,
                     }}
                   >
                     <Text
                       style={{
-                        flex: 0.5,
-                        paddingVertical: 2,
+                        flex: 0.4,
+                        paddingVertical: 3,
                         paddingHorizontal: 4,
                         fontSize: 7.5,
-                        color: "#1f2937",
                         textAlign: "center",
+                        color: "#1f2937",
                       }}
                     >
                       {index + 1}
                     </Text>
                     <Text
                       style={{
-                        flex: 2,
-                        paddingVertical: 2,
+                        flex: 2.5,
+                        paddingVertical: 3,
                         paddingHorizontal: 4,
                         fontSize: 7.5,
                         color: "#1f2937",
                         borderLeftWidth: 1,
-                        borderLeftColor: "#e5e7eb",
+                        borderLeftColor: GRAY_BORDER,
                       }}
                     >
-                      {itemDescription}
+                      {desc}
                     </Text>
                     <Text
                       style={{
-                        flex: 1,
-                        paddingVertical: 2,
+                        flex: 0.7,
+                        paddingVertical: 3,
                         paddingHorizontal: 4,
                         fontSize: 7.5,
-                        color: "#1f2937",
                         textAlign: "center",
+                        color: "#1f2937",
                         borderLeftWidth: 1,
-                        borderLeftColor: "#e5e7eb",
+                        borderLeftColor: GRAY_BORDER,
                       }}
                     >
-                      {item.quantity} {item.unit || ""}
+                      {item.quantity}
+                      {item.unit ? ` ${item.unit}` : ""}
                     </Text>
                     <Text
                       style={{
-                        flex: 1,
-                        paddingVertical: 2,
+                        flex: 1.2,
+                        paddingVertical: 3,
                         paddingHorizontal: 4,
                         fontSize: 7.5,
-                        color: "#1f2937",
                         textAlign: "right",
+                        color: "#1f2937",
                         borderLeftWidth: 1,
-                        borderLeftColor: "#e5e7eb",
+                        borderLeftColor: GRAY_BORDER,
                       }}
                     >
-                      {purchaseOrder.currency}{" "}
-                      {unitPrice?.toLocaleString() || "0"}
+                      {purchaseOrder.currency} {unitPrice.toLocaleString()}
                     </Text>
                     <Text
                       style={{
-                        flex: 1,
-                        paddingVertical: 2,
+                        flex: 1.2,
+                        paddingVertical: 3,
                         paddingHorizontal: 4,
                         fontSize: 7.5,
-                        color: "#1f2937",
                         textAlign: "right",
+                        color: "#1f2937",
                         borderLeftWidth: 1,
-                        borderLeftColor: "#e5e7eb",
+                        borderLeftColor: GRAY_BORDER,
                       }}
                     >
-                      {purchaseOrder.currency}{" "}
-                      {totalPrice?.toLocaleString() || "0"}
+                      {purchaseOrder.currency} {total.toLocaleString()}
                     </Text>
                   </View>
                 );
               })}
             </View>
 
-            {/* Totals */}
+            {/* ── Totals breakdown ── */}
             <View
               style={{
-                display: "flex",
                 flexDirection: "row",
                 justifyContent: "flex-end",
                 marginTop: 6,
-                paddingTop: 4,
               }}
             >
-              <View style={{ width: "35%" }}>
+              <View style={{ width: "42%" }}>
+                {/* Sub Total */}
                 <View
                   style={{
-                    display: "flex",
                     flexDirection: "row",
                     justifyContent: "space-between",
-                    paddingBottom: 4,
+                    paddingVertical: 3,
+                    borderBottomWidth: 1,
+                    borderBottomColor: GRAY_BORDER,
+                  }}
+                >
+                  <Text style={{ fontSize: 8, color: "#1f2937" }}>
+                    ORDER SUB TOTAL:
+                  </Text>
+                  <Text
+                    style={{
+                      fontSize: 8,
+                      fontWeight: "bold",
+                      color: "#1f2937",
+                    }}
+                  >
+                    {purchaseOrder.currency} {subtotal.toLocaleString()}
+                  </Text>
+                </View>
+                {/* Tax */}
+                <View
+                  style={{
+                    flexDirection: "row",
+                    justifyContent: "space-between",
+                    paddingVertical: 3,
+                    borderBottomWidth: 1,
+                    borderBottomColor: GRAY_BORDER,
+                  }}
+                >
+                  <Text style={{ fontSize: 8, color: "#1f2937" }}>
+                    TOTAL TAX 16% :
+                  </Text>
+                  <Text
+                    style={{
+                      fontSize: 8,
+                      fontWeight: "bold",
+                      color: "#1f2937",
+                    }}
+                  >
+                    {purchaseOrder.currency} {taxAmount.toLocaleString()}
+                  </Text>
+                </View>
+                {/* Delivery */}
+                <View
+                  style={{
+                    flexDirection: "row",
+                    justifyContent: "space-between",
+                    paddingVertical: 3,
+                    borderBottomWidth: 1,
+                    borderBottomColor: GRAY_BORDER,
+                  }}
+                >
+                  <Text style={{ fontSize: 8, color: "#1f2937" }}>
+                    DELIVERY COST:
+                  </Text>
+                  <Text
+                    style={{
+                      fontSize: 8,
+                      fontWeight: "bold",
+                      color: "#1f2937",
+                    }}
+                  >
+                    {purchaseOrder.currency} {deliveryCost.toLocaleString()}
+                  </Text>
+                </View>
+                {/* Total Order Value */}
+                <View
+                  style={{
+                    flexDirection: "row",
+                    justifyContent: "space-between",
+                    paddingVertical: 4,
                     borderBottomWidth: 2,
-                    borderBottomColor: "#1e40af",
+                    borderBottomColor: BLUE,
                   }}
                 >
                   <Text
                     style={{
-                      fontSize: 8,
+                      fontSize: 9,
                       fontWeight: "bold",
                       color: "#1f2937",
                     }}
@@ -478,11 +602,10 @@ const PurchaseOrderPDF: React.FC<PurchaseOrderPDFProps> = ({
                     style={{
                       fontSize: 10,
                       fontWeight: "bold",
-                      color: "#166534",
+                      color: GREEN_TOTAL,
                     }}
                   >
-                    {purchaseOrder.currency}{" "}
-                    {purchaseOrder.totalAmount?.toLocaleString() || "0"}
+                    {purchaseOrder.currency} {totalValue.toLocaleString()}
                   </Text>
                 </View>
               </View>
@@ -490,7 +613,7 @@ const PurchaseOrderPDF: React.FC<PurchaseOrderPDFProps> = ({
           </View>
         )}
 
-        {/* APPROVAL CHAIN */}
+        {/* ── Approval Chain ── */}
         {purchaseOrder.approvalHistory &&
           purchaseOrder.approvalHistory.length > 0 && (
             <ApprovalSignaturesSection
@@ -499,7 +622,7 @@ const PurchaseOrderPDF: React.FC<PurchaseOrderPDFProps> = ({
             />
           )}
 
-        {/* Footer: QR Code, Tracking, and Branding */}
+        {/* ── Footer ── */}
         <PDFFooter
           documentNumber={documentNumber}
           document={purchaseOrder}
