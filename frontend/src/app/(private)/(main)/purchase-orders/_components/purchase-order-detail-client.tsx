@@ -29,6 +29,7 @@ import {
   TrendingDown,
   Minus,
   AlertTriangle,
+  Truck,
 } from "lucide-react";
 import { StatusBadge } from "@/components/status-badge";
 import { PageHeader } from "@/components/base/page-header";
@@ -71,6 +72,7 @@ import { PurchaseOrderSubmitDialog } from "./purchase-order-submit-dialog";
 import { ConfirmationModal } from "@/components/modals/confirmation-modal";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { QuotationCollectionSection } from "@/app/(private)/(main)/requisitions/_components/quotation-collection-section";
+import { POShippingEditor } from "./po-shipping-editor";
 import { useVendors } from "@/hooks/use-vendor-queries";
 import type { Quotation } from "@/types/core";
 import { Badge } from "@/components";
@@ -790,7 +792,7 @@ export function PurchaseOrderDetailClient({
       {/* ── Tabbed Content ──────────────────────────────────────────── */}
       <Card className="p-6 border-0 shadow-sm">
         <Tabs defaultValue="items" className="w-full">
-          <TabsList className="grid w-full grid-cols-5 h-auto">
+          <TabsList className="grid w-full grid-cols-6 h-auto">
             <TabsTrigger
               value="items"
               className="gap-1.5 text-xs sm:text-sm px-2 py-2"
@@ -850,6 +852,13 @@ export function PurchaseOrderDetailClient({
                     {purchaseOrder.actionHistory.length}
                   </Badge>
                 )}
+            </TabsTrigger>
+            <TabsTrigger
+              value="shipping"
+              className="gap-1.5 text-xs sm:text-sm px-2 py-2"
+            >
+              <Truck className="h-4 w-4 shrink-0" />
+              <span className="hidden sm:inline">Shipping</span> &amp; Tax
             </TabsTrigger>
           </TabsList>
 
@@ -1093,6 +1102,19 @@ export function PurchaseOrderDetailClient({
             <ActivityLogContent
               actionHistory={purchaseOrder?.actionHistory}
               auditEvents={auditEventsData}
+            />
+          </TabsContent>
+
+          {/* ── Tab 6: Shipping & Tax ── */}
+          <TabsContent value="shipping" className="mt-6">
+            <POShippingEditor
+              poId={purchaseOrderId}
+              purchaseOrder={purchaseOrder}
+              canEdit={
+                permissions.canEdit ||
+                ["admin", "finance"].includes(userRole?.toLowerCase())
+              }
+              onSaved={handleDocumentUpdated}
             />
           </TabsContent>
         </Tabs>

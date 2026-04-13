@@ -144,7 +144,10 @@ const PurchaseOrderPDF: React.FC<PurchaseOrderPDFProps> = ({
 
   // Financial breakdown
   const subtotal = purchaseOrder.subtotal ?? purchaseOrder.totalAmount ?? 0;
-  const taxAmount = purchaseOrder.tax ?? 0;
+  const taxRate = (meta.taxRate as number) ?? null;
+  const taxAmount = taxRate
+    ? (subtotal * taxRate) / 100
+    : (purchaseOrder.tax ?? 0);
   const deliveryCost = (meta.deliveryCost as number) ?? 0;
   const totalValue = purchaseOrder.totalAmount ?? 0;
 
@@ -533,52 +536,56 @@ const PurchaseOrderPDF: React.FC<PurchaseOrderPDFProps> = ({
                     {purchaseOrder.currency} {subtotal.toLocaleString()}
                   </Text>
                 </View>
-                {/* Tax */}
-                <View
-                  style={{
-                    flexDirection: "row",
-                    justifyContent: "space-between",
-                    paddingVertical: 3,
-                    borderBottomWidth: 1,
-                    borderBottomColor: GRAY_BORDER,
-                  }}
-                >
-                  <Text style={{ fontSize: 8, color: "#1f2937" }}>
-                    TOTAL TAX 16% :
-                  </Text>
-                  <Text
+                {/* Tax — only when provided */}
+                {taxAmount > 0 && (
+                  <View
                     style={{
-                      fontSize: 8,
-                      fontWeight: "bold",
-                      color: "#1f2937",
+                      flexDirection: "row",
+                      justifyContent: "space-between",
+                      paddingVertical: 3,
+                      borderBottomWidth: 1,
+                      borderBottomColor: GRAY_BORDER,
                     }}
                   >
-                    {purchaseOrder.currency} {taxAmount.toLocaleString()}
-                  </Text>
-                </View>
-                {/* Delivery */}
-                <View
-                  style={{
-                    flexDirection: "row",
-                    justifyContent: "space-between",
-                    paddingVertical: 3,
-                    borderBottomWidth: 1,
-                    borderBottomColor: GRAY_BORDER,
-                  }}
-                >
-                  <Text style={{ fontSize: 8, color: "#1f2937" }}>
-                    DELIVERY COST:
-                  </Text>
-                  <Text
+                    <Text style={{ fontSize: 8, color: "#1f2937" }}>
+                      {taxRate ? `TOTAL TAX ${taxRate}% :` : "TOTAL TAX :"}
+                    </Text>
+                    <Text
+                      style={{
+                        fontSize: 8,
+                        fontWeight: "bold",
+                        color: "#1f2937",
+                      }}
+                    >
+                      {purchaseOrder.currency} {taxAmount.toLocaleString()}
+                    </Text>
+                  </View>
+                )}
+                {/* Delivery — only when provided */}
+                {deliveryCost > 0 && (
+                  <View
                     style={{
-                      fontSize: 8,
-                      fontWeight: "bold",
-                      color: "#1f2937",
+                      flexDirection: "row",
+                      justifyContent: "space-between",
+                      paddingVertical: 3,
+                      borderBottomWidth: 1,
+                      borderBottomColor: GRAY_BORDER,
                     }}
                   >
-                    {purchaseOrder.currency} {deliveryCost.toLocaleString()}
-                  </Text>
-                </View>
+                    <Text style={{ fontSize: 8, color: "#1f2937" }}>
+                      DELIVERY COST:
+                    </Text>
+                    <Text
+                      style={{
+                        fontSize: 8,
+                        fontWeight: "bold",
+                        color: "#1f2937",
+                      }}
+                    >
+                      {purchaseOrder.currency} {deliveryCost.toLocaleString()}
+                    </Text>
+                  </View>
+                )}
                 {/* Total Order Value */}
                 <View
                   style={{
