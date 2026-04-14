@@ -287,6 +287,8 @@ export function Step1PODetails({
       {/* ── Optional fields ── */}
       <div className="space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <Input
+            label="Budget Code"
             name="po-budget-code"
             placeholder="e.g. BUD-2025-001"
             value={data.budgetCode}
