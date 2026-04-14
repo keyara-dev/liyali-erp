@@ -349,12 +349,13 @@ export function Step3ReviewConfirm({
       )}
 
       {/* ── Footer ── */}
-      <div className="sticky bottom-0 z-50 bg-card/5  backdrop-blur-xs border-t  flex flex-col-reverse justify-between sm:flex-row rounded-b-lg pt-4 pb-2">
+      <div className="sticky bottom-0 z-50 bg-background border-t flex flex-col-reverse sm:flex-row justify-between gap-2 pt-4 pb-2">
         <Button
           type="button"
           variant="outline"
           onClick={onBack}
           disabled={isSubmitting}
+          className="w-full sm:w-auto"
           data-testid="step3-back-button"
         >
           Back
@@ -363,6 +364,7 @@ export function Step3ReviewConfirm({
           type="button"
           onClick={handleSubmit}
           disabled={isDisabled}
+          className="w-full sm:w-auto"
           data-testid="step3-submit-button"
         >
           {isSubmitting ? (

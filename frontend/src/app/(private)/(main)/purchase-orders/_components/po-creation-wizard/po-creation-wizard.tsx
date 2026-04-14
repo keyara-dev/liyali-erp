@@ -181,7 +181,7 @@ export function POCreationWizard({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       {/* Req 8.3: max-h-[90vh] with internal scrolling */}
       <DialogContent
-        className="max-w-3xl! max-h-[90vh] overflow-y-auto"
+        className="w-full max-w-lg sm:max-w-2xl max-h-[92vh] overflow-y-auto"
         onInteractOutside={(e) => e.preventDefault()}
         data-testid="po-creation-wizard"
       >

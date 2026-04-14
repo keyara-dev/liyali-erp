@@ -288,11 +288,12 @@ export function Step2VendorQuotes({
       )}
 
       {/* ── Footer ── */}
-      <div className="flex justify-between pt-2">
+      <div className="flex flex-col-reverse sm:flex-row justify-between gap-2 pt-2">
         <Button
           type="button"
           variant="outline"
           onClick={onBack}
+          className="w-full sm:w-auto"
           data-testid="step2-back-button"
         >
           Back
@@ -300,6 +301,7 @@ export function Step2VendorQuotes({
         <Button
           type="button"
           onClick={handleNext}
+          className="w-full sm:w-auto"
           data-testid="step2-next-button"
         >
           Next
