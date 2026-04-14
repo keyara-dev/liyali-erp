@@ -45,7 +45,9 @@ export function PurchaseOrderSubmitDialog({
   const [isSavingBypass, setIsSavingBypass] = useState(false);
 
   const hasItems = purchaseOrder.items && purchaseOrder.items.length > 0;
-  const hasVendor = !!purchaseOrder.vendorId || !!purchaseOrder.vendorName;
+  const hasVendor = !!(
+    purchaseOrder.vendorId?.trim() || purchaseOrder.vendorName?.trim()
+  );
 
   // Quotation gate
   const isAutomatic = purchaseOrder.automationUsed;

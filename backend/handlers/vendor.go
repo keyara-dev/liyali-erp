@@ -151,12 +151,6 @@ func CreateVendor(c *fiber.Ctx) error {
 			"message": "City is required",
 		})
 	}
-	if req.BankAccount == "" {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"success": false,
-			"message": "Bank account is required",
-		})
-	}
 	if req.TaxID == "" {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"success": false,

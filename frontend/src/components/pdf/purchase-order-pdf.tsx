@@ -117,15 +117,17 @@ const PurchaseOrderPDF: React.FC<PurchaseOrderPDFProps> = ({
     new Date(purchaseOrder.createdAt),
   );
 
-  // Pull vendor details — may be on vendor object or flat fields
+  // Pull vendor details — vendor object (from DB preload) or flat fields
   const vendor = purchaseOrder.vendor;
   const vendorName = vendor?.name || purchaseOrder.vendorName || "—";
+  // Build address from vendor object fields
+  const vendorAddressParts = [
+    vendor?.physicalAddress,
+    vendor?.city,
+    vendor?.country,
+  ].filter(Boolean);
   const vendorAddress =
-    vendor?.physicalAddress || vendor?.city
-      ? [vendor?.physicalAddress, vendor?.city, vendor?.country]
-          .filter(Boolean)
-          .join(", ")
-      : null;
+    vendorAddressParts.length > 0 ? vendorAddressParts.join(", ") : null;
   const vendorContact = vendor?.phone || null;
   const vendorEmail = vendor?.email || null;
   const vendorTpin = vendor?.taxId || null;
