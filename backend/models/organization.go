@@ -55,6 +55,14 @@ type OrganizationSettings struct {
 	// Procurement Flow: "goods_first" (receive goods before payment) or "payment_first" (pay before receiving goods)
 	ProcurementFlow string `gorm:"default:goods_first" json:"procurementFlow"`
 
+	// Automation Settings (Opt-In Flags)
+	// When enabled, auto-created GRNs are automatically submitted to workflow instead of staying in DRAFT
+	AutoSubmitGRNToWorkflow bool `gorm:"column:auto_submit_grn_to_workflow;default:false" json:"autoSubmitGRNToWorkflow"`
+	// When enabled, created PVs are automatically submitted to workflow instead of staying in DRAFT
+	AutoSubmitPVToWorkflow bool `gorm:"column:auto_submit_pv_to_workflow;default:false" json:"autoSubmitPVToWorkflow"`
+	// When enabled, PVs are automatically created from approved POs in payment-first flow
+	AutoCreatePVFromPO bool `gorm:"column:auto_create_pv_from_po;default:false" json:"autoCreatePVFromPO"`
+
 	CreatedAt time.Time `json:"createdAt"`
 	UpdatedAt time.Time `json:"updatedAt"`
 }

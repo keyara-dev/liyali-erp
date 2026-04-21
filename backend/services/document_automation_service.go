@@ -27,6 +27,11 @@ type AutomationConfig struct {
 	AutoCreateGRNFromPO         bool
 	AutoCreatePVFromGRN         bool
 	RequireApprovalForAuto      bool
+	
+	// Opt-in flags for automatic workflow submission
+	AutoSubmitGRNToWorkflow bool
+	AutoSubmitPVToWorkflow  bool
+	AutoCreatePVFromPO      bool
 }
 
 // AutomationResult contains the result of an automation operation

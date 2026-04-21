@@ -106,7 +106,8 @@ export function usePurchaseOrderDetail({
       return {
         mutateAsync: async (data: any) => {
           return mutation.mutateAsync({
-            purchaseOrderId: id,
+            poId: id, // FIX: Use 'poId' to match the action's expected field
+            purchaseOrderId: id, // Keep for backward compatibility
             workflowId: data.workflowId,
             submittingUserId: userId,
             submittedByName: data.submittedByName || "User",

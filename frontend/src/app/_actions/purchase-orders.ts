@@ -233,7 +233,19 @@ export async function updatePurchaseOrder(
 export async function submitPurchaseOrderForApproval(
   data: SubmitPurchaseOrderRequest,
 ): Promise<APIResponse<PurchaseOrder>> {
-  const url = `/api/v1/purchase-orders/${data.poId}/submit`;
+  // FIX: Support both field names and validate
+  const poId = data.poId || data.purchaseOrderId;
+
+  if (!poId) {
+    console.error("[submitPurchaseOrderForApproval] Missing PO ID:", data);
+    return {
+      success: false,
+      message: "Purchase Order ID is required",
+      data: null,
+    };
+  }
+
+  const url = `/api/v1/purchase-orders/${poId}/submit`;
 
   try {
     const response = await authenticatedApiClient({

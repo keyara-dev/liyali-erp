@@ -856,15 +856,20 @@ func SubmitPurchaseOrder(c *fiber.Ctx) error {
 	}
 
 	logging.AddFieldsToRequest(c, map[string]interface{}{
-		"operation": "submit_purchase_order",
-		"order_id":  id,
+		"operation":       "submit_purchase_order",
+		"order_id":        id,
+		"organization_id": organizationID,
+		"user_id":         userID,
 	})
 
 	// Get existing purchase order
 	var order models.PurchaseOrder
-	if err := config.DB.Where("id = ? AND organization_id = ?", id, organizationID).First(&order).Error; err != nil {
+	if err := config.DB.Where("id = ? AND organization_id = ? AND deleted_at IS NULL", id, organizationID).First(&order).Error; err != nil {
 		logging.LogError(c, err, "purchase_order_not_found", map[string]interface{}{
-			"order_id": id,
+			"order_id":        id,
+			"organization_id": organizationID,
+			"user_id":         userID,
+			"error_detail":    err.Error(),
 		})
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
 			"success": false,
