@@ -241,7 +241,7 @@ export async function submitPurchaseOrderForApproval(
     return {
       success: false,
       message: "Purchase Order ID is required",
-      data: null,
+      data: undefined, // FIX: Use undefined instead of null for TypeScript
     };
   }
 
