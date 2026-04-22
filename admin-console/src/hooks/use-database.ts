@@ -13,6 +13,7 @@ import {
   getDatabaseStats,
   getDatabaseSchemas,
   getDatabasePerformanceMetrics,
+  type DatabaseBackup,
   type DatabaseFilters,
 } from "@/app/_actions/database";
 import { queryKeys } from "@/lib/query-keys";
@@ -85,7 +86,13 @@ export function useDatabaseBackups(filters?: DatabaseFilters) {
     queryFn: async () => {
       const result = await getDatabaseBackups(filters);
       if (!result.success) throw new Error(result.message);
-      return result.data;
+      const data = result.data as
+        | DatabaseBackup[]
+        | { backups?: DatabaseBackup[] }
+        | null
+        | undefined;
+      if (Array.isArray(data)) return data;
+      return data?.backups ?? [];
     },
   });
 }

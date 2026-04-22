@@ -1,23 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Zap,
-  RefreshCw,
-  Activity,
-  AlertTriangle,
-  BarChart3,
-  Settings,
-} from "lucide-react";
+import { Zap, RefreshCw, Activity, AlertTriangle, Settings } from "lucide-react";
 import { toast } from "sonner";
 import {
   exportAPIData,
@@ -39,7 +25,7 @@ import { APIAlertsPanel } from "./components/api-alerts-panel";
 import { APIPerformanceChart } from "./components/api-performance-chart";
 
 export default function APIMonitoringPage() {
-  const [activeTab, setActiveTab] = useState("overview");
+  const [activeTab, setActiveTab] = useState("performance");
   const [filters, setFilters] = useState<APIFilters>({ time_range: "24h" });
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -159,11 +145,7 @@ export default function APIMonitoringPage() {
         onValueChange={setActiveTab}
         className="space-y-4"
       >
-        <TabsList className="grid w-full grid-cols-5">
-          <TabsTrigger value="overview" className="flex items-center gap-2">
-            <BarChart3 className="h-4 w-4" />
-            Overview
-          </TabsTrigger>
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="endpoints" className="flex items-center gap-2">
             <Zap className="h-4 w-4" />
             Endpoints
@@ -181,127 +163,6 @@ export default function APIMonitoringPage() {
             Alerts
           </TabsTrigger>
         </TabsList>
-
-        <TabsContent value="overview" className="space-y-4">
-          <div className="grid gap-6">
-            {/* Performance Chart */}
-            <APIPerformanceChart
-              timeRange={filters.time_range}
-              onTimeRangeChange={(range) =>
-                setFilters((prev) => ({ ...prev, time_range: range }))
-              }
-            />
-
-            {/* Recent Errors and Alerts */}
-            <div className="grid gap-6 md:grid-cols-2">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">Recent Errors</CardTitle>
-                  <CardDescription>
-                    Latest API errors requiring attention
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {errors.slice(0, 5).length === 0 ? (
-                    <div className="text-center py-8">
-                      <AlertTriangle className="h-8 w-8 text-green-600 mx-auto mb-2" />
-                      <p className="text-sm text-muted-foreground">
-                        No recent errors
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      {errors.slice(0, 5).map((error) => (
-                        <div
-                          key={error.id}
-                          className="flex items-center justify-between p-3 border rounded-lg"
-                        >
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2">
-                              <span className="text-sm font-medium">
-                                {error.method} {error.endpoint_path}
-                              </span>
-                              <span className="text-xs text-red-600">
-                                {error.status_code}
-                              </span>
-                            </div>
-                            <p className="text-xs text-muted-foreground">
-                              {error.error_message.substring(0, 60)}...
-                            </p>
-                          </div>
-                          <div className="text-xs text-muted-foreground">
-                            {new Date(error.occurred_at).toLocaleTimeString()}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">Active Alerts</CardTitle>
-                  <CardDescription>
-                    Current system alerts and notifications
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {alerts.filter((a) => a.is_active).slice(0, 5).length ===
-                  0 ? (
-                    <div className="text-center py-8">
-                      <Settings className="h-8 w-8 text-green-600 mx-auto mb-2" />
-                      <p className="text-sm text-muted-foreground">
-                        No active alerts
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      {alerts
-                        .filter((a) => a.is_active)
-                        .slice(0, 5)
-                        .map((alert) => (
-                          <div
-                            key={alert.id}
-                            className="flex items-center justify-between p-3 border rounded-lg"
-                          >
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2">
-                                <span className="text-sm font-medium">
-                                  {alert.title}
-                                </span>
-                                <span
-                                  className={`text-xs px-2 py-1 rounded ${
-                                    alert.severity === "critical"
-                                      ? "bg-red-100 text-red-800"
-                                      : alert.severity === "high"
-                                        ? "bg-orange-100 text-orange-800"
-                                        : alert.severity === "medium"
-                                          ? "bg-yellow-100 text-yellow-800"
-                                          : "bg-blue-100 text-blue-800"
-                                  }`}
-                                >
-                                  {alert.severity}
-                                </span>
-                              </div>
-                              <p className="text-xs text-muted-foreground">
-                                {alert.description.substring(0, 60)}...
-                              </p>
-                            </div>
-                            <div className="text-xs text-muted-foreground">
-                              {new Date(
-                                alert.triggered_at,
-                              ).toLocaleTimeString()}
-                            </div>
-                          </div>
-                        ))}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-        </TabsContent>
 
         <TabsContent value="endpoints" className="space-y-4">
           <APIEndpointsTable

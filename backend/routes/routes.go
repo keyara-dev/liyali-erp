@@ -454,11 +454,11 @@ func SetupRoutes(app *fiber.App, handlerRegistry *handlers.HandlerRegistry, rbac
 
 	// Reports routes (tenant-scoped) - Unified reports for all users with role-based filtering
 	reports := tenant.Group("/reports")
-	reports.Get("/dashboard", handlerRegistry.Reports.GetDashboardReports)           // All users - role-filtered
-	reports.Get("/system-stats", handlerRegistry.Reports.GetSystemStatistics)        // All users - role-filtered
-	reports.Get("/approval-metrics", handlerRegistry.Reports.GetApprovalMetrics)     // All users - role-filtered
+	reports.Get("/dashboard", handlerRegistry.Reports.GetDashboardReports)                                                                           // All users - role-filtered
+	reports.Get("/system-stats", handlerRegistry.Reports.GetSystemStatistics)                                                                        // All users - role-filtered
+	reports.Get("/approval-metrics", handlerRegistry.Reports.GetApprovalMetrics)                                                                     // All users - role-filtered
 	reports.Get("/user-activity", middleware.RequirePermission(rbacService, "report", "view_users"), handlerRegistry.Reports.GetUserActivityMetrics) // Admin/Manager only
-	reports.Get("/analytics", middleware.RequirePermission(rbacService, "report", "view_analytics"), handlerRegistry.Reports.GetAnalyticsDashboard)   // Admin/Manager only
+	reports.Get("/analytics", middleware.RequirePermission(rbacService, "report", "view_analytics"), handlerRegistry.Reports.GetAnalyticsDashboard)  // Admin/Manager only
 
 	// Notifications (tenant-scoped) - ENABLED
 	notifications := tenant.Group("/notifications")
@@ -468,7 +468,7 @@ func SetupRoutes(app *fiber.App, handlerRegistry *handlers.HandlerRegistry, rbac
 	notifications.Post("/mark-as-read", handlerRegistry.Notification.MarkAsRead)
 	notifications.Post("/mark-all-as-read", handlerRegistry.Notification.MarkAllAsRead)
 	notifications.Delete("/:id", handlerRegistry.Notification.DeleteNotification)
-	
+
 	// Notification Preferences (tenant-scoped)
 	notifications.Get("/preferences", handlerRegistry.Notification.GetNotificationPreferences)
 	notifications.Put("/preferences", handlerRegistry.Notification.UpdateNotificationPreferences)
@@ -487,7 +487,7 @@ func SetupRoutes(app *fiber.App, handlerRegistry *handlers.HandlerRegistry, rbac
 	// Admin dashboard and analytics
 	admin.Get("/dashboard", handlers.GetAdminDashboard)
 	admin.Get("/analytics", handlers.GetAdminAnalytics)
-	admin.Get("/system/health", handlers.GetSystemHealth)
+	admin.Get("/system/health", handlers.RunSystemHealthCheck)
 	admin.Get("/system/metrics", handlers.GetSystemMetrics)
 	admin.Get("/system/alerts", handlers.GetSystemAlerts)
 	admin.Get("/system/logs", handlers.GetSystemLogs)
@@ -731,6 +731,11 @@ func SetupRoutes(app *fiber.App, handlerRegistry *handlers.HandlerRegistry, rbac
 	adminSupport.Get("/workflow-tasks/:id", handlers.AdminGetSupportWorkflowTask)
 	adminSupport.Post("/workflow-tasks/:id/reassign", handlers.AdminReassignWorkflowTask)
 	adminSupport.Post("/workflow-tasks/:id/reset", handlers.AdminResetWorkflowTask)
+	adminSupport.Get("/tickets/stats", handlers.AdminGetSupportTicketStats)
+	adminSupport.Get("/tickets", handlers.AdminListSupportTickets)
+	adminSupport.Post("/tickets", handlers.AdminCreateSupportTicket)
+	adminSupport.Get("/tickets/:id", handlers.AdminGetSupportTicket)
+	adminSupport.Put("/tickets/:id", handlers.AdminUpdateSupportTicket)
 
 	// Note: Development tools and test workflow tasks are now created via seed data migrations
 }

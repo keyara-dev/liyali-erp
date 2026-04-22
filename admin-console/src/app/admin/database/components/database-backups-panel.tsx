@@ -308,12 +308,17 @@ export function DatabaseBackupsPanel({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {backups.map((backup) => {
+                {backups.map((backup, index) => {
                   const connection = connections.find(
                     (c) => c.id === backup.connection_id,
                   );
                   return (
-                    <TableRow key={backup.id}>
+                    <TableRow
+                      key={
+                        backup.id ||
+                        `${backup.connection_id || "backup"}-${backup.started_at || "started"}-${index}`
+                      }
+                    >
                       <TableCell>
                         <div className="space-y-1">
                           <div className="flex items-center gap-2">

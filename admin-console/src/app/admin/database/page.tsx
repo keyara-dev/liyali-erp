@@ -14,7 +14,6 @@ import {
   Database,
   RefreshCw,
   Activity,
-  HardDrive,
   Search,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -26,14 +25,12 @@ import {
   useDatabaseConnections,
   useDatabaseMetrics,
   useDatabaseQueries,
-  useDatabaseBackups,
   useDatabaseStats,
 } from "@/hooks/use-database";
 import { DatabaseFiltersComponent } from "./components/database-filters";
 import { DatabaseStatsGrid } from "./components/database-stats-grid";
 import { DatabaseConnectionsTable } from "./components/database-connections-table";
 import { DatabaseQueryPanel } from "./components/database-query-panel";
-import { DatabaseBackupsPanel } from "./components/database-backups-panel";
 
 export default function DatabasePage() {
   const [activeTab, setActiveTab] = useState("overview");
@@ -53,8 +50,6 @@ export default function DatabasePage() {
     useDatabaseMetrics(filters);
   const { data: queries = [], refetch: refetchQueries } =
     useDatabaseQueries(filters);
-  const { data: backups = [], refetch: refetchBackups } =
-    useDatabaseBackups(filters);
   const { data: stats, refetch: refetchStats } = useDatabaseStats();
 
   const isLoading = isLoadingConnections;
@@ -74,7 +69,6 @@ export default function DatabasePage() {
     refetchConnections();
     refetchMetrics();
     refetchQueries();
-    refetchBackups();
     refetchStats();
   };
 
@@ -118,15 +112,21 @@ export default function DatabasePage() {
     handleRefresh();
   };
 
+  const formatQueryText = (queryText?: string | null) => {
+    const text = queryText?.trim();
+    if (!text) return "No query text available";
+    return text.length > 60 ? `${text.substring(0, 60)}...` : text;
+  };
+
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
       <div className="flex items-center justify-between space-y-2">
         <div>
           <h2 className="text-3xl font-bold tracking-tight">
-            Database Management
+            Database Diagnostics
           </h2>
           <p className="text-muted-foreground">
-            Monitor and manage database connections, queries, and backups
+            Read-only monitoring for database connections, activity, and query history
           </p>
         </div>
         <div className="flex items-center space-x-2">
@@ -164,7 +164,7 @@ export default function DatabasePage() {
         onValueChange={setActiveTab}
         className="space-y-4"
       >
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="overview" className="flex items-center gap-2">
             <Database className="h-4 w-4" />
             Overview
@@ -175,11 +175,7 @@ export default function DatabasePage() {
           </TabsTrigger>
           <TabsTrigger value="queries" className="flex items-center gap-2">
             <Search className="h-4 w-4" />
-            Queries
-          </TabsTrigger>
-          <TabsTrigger value="backups" className="flex items-center gap-2">
-            <HardDrive className="h-4 w-4" />
-            Backups
+            History
           </TabsTrigger>
         </TabsList>
 
@@ -204,9 +200,9 @@ export default function DatabasePage() {
                     </div>
                   ) : (
                     <div className="space-y-3">
-                      {connections.slice(0, 5).map((connection) => (
+                      {connections.slice(0, 5).map((connection, index) => (
                         <div
-                          key={connection.id}
+                          key={connection.id || `${connection.name || "connection"}-${index}`}
                           className="flex items-center justify-between p-3 border rounded-lg"
                         >
                           <div className="flex items-center gap-3">
@@ -262,13 +258,13 @@ export default function DatabasePage() {
                     </div>
                   ) : (
                     <div className="space-y-3">
-                      {queries.slice(0, 5).map((query) => {
+                      {queries.slice(0, 5).map((query, index) => {
                         const connection = connections.find(
                           (c) => c.id === query.connection_id,
                         );
                         return (
                           <div
-                            key={query.id}
+                            key={query.id || `${query.connection_id || "query"}-${query.started_at || "started"}-${index}`}
                             className="flex items-center justify-between p-3 border rounded-lg"
                           >
                             <div className="flex-1">
@@ -291,9 +287,7 @@ export default function DatabasePage() {
                                 </span>
                               </div>
                               <p className="text-xs text-muted-foreground font-mono mt-1">
-                                {query.query_text.length > 60
-                                  ? `${query.query_text.substring(0, 60)}...`
-                                  : query.query_text}
+                                {formatQueryText(query.query_text)}
                               </p>
                             </div>
                             <div className="text-xs text-muted-foreground">
@@ -312,81 +306,6 @@ export default function DatabasePage() {
               </Card>
             </div>
 
-            {/* Recent Backups */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Recent Backups</CardTitle>
-                <CardDescription>
-                  Latest database backup operations
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {backups.length === 0 ? (
-                  <div className="text-center py-8">
-                    <HardDrive className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-                    <p className="text-sm text-muted-foreground">
-                      No recent backups
-                    </p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {backups.slice(0, 5).map((backup) => {
-                      const connection = connections.find(
-                        (c) => c.id === backup.connection_id,
-                      );
-                      return (
-                        <div
-                          key={backup.id}
-                          className="flex items-center justify-between p-3 border rounded-lg"
-                        >
-                          <div className="flex items-center gap-3">
-                            <HardDrive className="h-4 w-4 text-muted-foreground" />
-                            <div>
-                              <div className="flex items-center gap-2">
-                                <p className="font-medium">
-                                  {connection?.name || "Unknown"}
-                                </p>
-                                <span
-                                  className={`text-xs px-2 py-1 rounded ${
-                                    backup.backup_type === "full"
-                                      ? "bg-blue-100 text-blue-800"
-                                      : backup.backup_type === "incremental"
-                                        ? "bg-green-100 text-green-800"
-                                        : "bg-orange-100 text-orange-800"
-                                  }`}
-                                >
-                                  {backup.backup_type}
-                                </span>
-                              </div>
-                              <p className="text-xs text-muted-foreground">
-                                {backup.backup_method} •{" "}
-                                {(backup.file_size / 1024 / 1024).toFixed(1)} MB
-                              </p>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span
-                              className={`h-2 w-2 rounded-full ${
-                                backup.status === "completed"
-                                  ? "bg-green-600"
-                                  : backup.status === "failed"
-                                    ? "bg-red-600"
-                                    : backup.status === "running"
-                                      ? "bg-blue-600"
-                                      : "bg-gray-400"
-                              }`}
-                            />
-                            <span className="text-xs capitalize">
-                              {backup.status}
-                            </span>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
           </div>
         </TabsContent>
 
@@ -403,16 +322,6 @@ export default function DatabasePage() {
             connections={connections}
             queries={queries}
             isLoading={isLoading}
-            onQueryUpdated={handleDataUpdated}
-          />
-        </TabsContent>
-
-        <TabsContent value="backups" className="space-y-4">
-          <DatabaseBackupsPanel
-            connections={connections}
-            backups={backups}
-            isLoading={isLoading}
-            onBackupUpdated={handleDataUpdated}
           />
         </TabsContent>
       </Tabs>

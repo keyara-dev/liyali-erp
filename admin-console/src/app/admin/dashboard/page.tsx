@@ -17,9 +17,9 @@ export default function AdminDashboard() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Admin Dashboard</h1>
+        <h1 className="text-3xl font-bold tracking-tight">Support Console</h1>
         <p className="text-muted-foreground">
-          Platform overview and management portal
+          Investigate organizations, users, workflows, and platform health from one place
         </p>
       </div>
 
@@ -27,15 +27,15 @@ export default function AdminDashboard() {
         <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:inline-flex">
           <TabsTrigger value="overview" className="flex items-center gap-2">
             <LayoutDashboard className="h-4 w-4" />
-            <span className="hidden sm:inline">Overview</span>
+            <span className="hidden sm:inline">Support Overview</span>
           </TabsTrigger>
           <TabsTrigger value="analytics" className="flex items-center gap-2">
             <BarChart3 className="h-4 w-4" />
-            <span className="hidden sm:inline">Analytics</span>
+            <span className="hidden sm:inline">Operations</span>
           </TabsTrigger>
           <TabsTrigger value="api-health" className="flex items-center gap-2">
             <Activity className="h-4 w-4" />
-            <span className="hidden sm:inline">API &amp; App Health</span>
+            <span className="hidden sm:inline">Diagnostics</span>
           </TabsTrigger>
           <TabsTrigger value="security" className="flex items-center gap-2">
             <Shield className="h-4 w-4" />

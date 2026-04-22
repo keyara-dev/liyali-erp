@@ -73,6 +73,28 @@ func setupRemainingAdminDB(t *testing.T) *gorm.DB {
 			description TEXT,
 			created_at DATETIME
 		)`,
+		`CREATE TABLE IF NOT EXISTS support_tickets (
+			id TEXT PRIMARY KEY,
+			ticket_number TEXT UNIQUE NOT NULL,
+			organization_id TEXT,
+			user_id TEXT,
+			created_by_admin_id TEXT,
+			assigned_to_admin_id TEXT,
+			source TEXT DEFAULT 'manual',
+			category TEXT DEFAULT 'general',
+			priority TEXT DEFAULT 'medium',
+			status TEXT DEFAULT 'open',
+			subject TEXT NOT NULL,
+			description TEXT NOT NULL,
+			internal_notes TEXT DEFAULT '',
+			external_reference TEXT DEFAULT '',
+			resolution_summary TEXT DEFAULT '',
+			metadata TEXT,
+			resolved_at DATETIME,
+			closed_at DATETIME,
+			created_at DATETIME,
+			updated_at DATETIME
+		)`,
 		`CREATE TABLE IF NOT EXISTS organizations (
 			id TEXT PRIMARY KEY,
 			name TEXT DEFAULT '',
@@ -691,8 +713,8 @@ func TestUpdateAdminAuditLogRetentionSettings_Success(t *testing.T) {
 
 	app := newAuditLogApp()
 	resp := testRequest(app, http.MethodPut, "/admin/audit-logs/retention-settings", map[string]interface{}{
-		"retention_days":        180,
-		"auto_archive_enabled":  true,
+		"retention_days":       180,
+		"auto_archive_enabled": true,
 	})
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 }

@@ -129,8 +129,11 @@ export function SubscriptionsTab() {
               </div>
             ) : revenueByTier.length > 0 ? (
               <div className="space-y-3">
-                {revenueByTier.map((tier) => (
-                  <div key={tier.tier ?? tier.revenue} className="space-y-1">
+                {revenueByTier.map((tier, index) => (
+                  <div
+                    key={tier.tier || tier.revenue || `revenue-tier-${index}`}
+                    className="space-y-1"
+                  >
                     <div className="flex items-center justify-between text-sm">
                       <div className="flex items-center gap-2">
                         <span className="font-medium capitalize">{tier.tier ?? "—"}</span>
@@ -182,14 +185,17 @@ export function SubscriptionsTab() {
               </div>
             ) : tierDistribution.length > 0 ? (
               <div className="space-y-3">
-                {tierDistribution.map((tier: any) => {
+                {tierDistribution.map((tier: any, index: number) => {
                   const total = tierDistribution.reduce(
                     (sum: number, t: any) => sum + (t.count ?? 0),
                     0,
                   );
                   const pct = total > 0 ? ((tier.count ?? 0) / total) * 100 : 0;
                   return (
-                    <div key={tier.tier ?? tier.name} className="space-y-1">
+                    <div
+                      key={tier.tier || tier.name || `tier-${index}`}
+                      className="space-y-1"
+                    >
                       <div className="flex items-center justify-between text-sm">
                         <div className="flex items-center gap-2">
                           <Users className="h-3.5 w-3.5 text-muted-foreground" />

@@ -176,10 +176,10 @@ export default function OrganizationsPage() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
             <Building2 className="h-8 w-8" />
-            Organizations
+            Organization Support
           </h1>
           <p className="text-muted-foreground">
-            Manage organizations and workspaces
+            Investigate org status, trial state, membership, and usage
           </p>
         </div>
         <div className="grid gap-4 md:grid-cols-4">
@@ -221,10 +221,10 @@ export default function OrganizationsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">
-            Organization Management
+            Organization Support
           </h1>
           <p className="text-muted-foreground">
-            Manage all organizations, subscriptions, and trials
+            Investigate org status, trial state, membership, and usage
           </p>
         </div>
         <Button onClick={() => setShowCreateOrganization(true)}>
@@ -304,12 +304,12 @@ export default function OrganizationsPage() {
 
       {/* Organizations Management */}
       <Card>
-        <CardHeader>
-          <CardTitle>All Organizations</CardTitle>
-          <CardDescription>
-            Manage and support all platform organizations
-          </CardDescription>
-        </CardHeader>
+          <CardHeader>
+            <CardTitle>All Organizations</CardTitle>
+            <CardDescription>
+            Investigate and support all platform organizations
+            </CardDescription>
+          </CardHeader>
         <CardContent>
           {/* Advanced Filters */}
           <OrganizationAdvancedFilters

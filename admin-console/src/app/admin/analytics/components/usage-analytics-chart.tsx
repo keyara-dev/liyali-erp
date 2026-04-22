@@ -58,6 +58,13 @@ export function UsageAnalyticsChart({
     );
   }
 
+  const featureUsage = Array.isArray(analytics.feature_usage)
+    ? analytics.feature_usage
+    : [];
+  const usageTrends = Array.isArray(analytics.usage_trends)
+    ? analytics.usage_trends
+    : [];
+
   const formatNumber = (num: number) => {
     if (num >= 1000000) {
       return (num / 1000000).toFixed(1) + "M";
@@ -68,7 +75,7 @@ export function UsageAnalyticsChart({
     return num.toString();
   };
 
-  const usageChartData = analytics?.usage_trends?.map((point) => ({
+  const usageChartData = usageTrends.map((point) => ({
     date: new Date(point.date)?.toLocaleDateString([], {
       month: "short",
       day: "numeric",
@@ -172,7 +179,7 @@ export function UsageAnalyticsChart({
         <CardContent>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={analytics.feature_usage.slice(0, 8)}>
+              <BarChart data={featureUsage.slice(0, 8)}>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                 <XAxis
                   dataKey="feature_name"
@@ -198,7 +205,7 @@ export function UsageAnalyticsChart({
             </ResponsiveContainer>
           </div>
           <div className="space-y-2 mt-4 max-h-32 overflow-y-auto">
-            {analytics.feature_usage.slice(0, 5).map((feature, index) => (
+            {featureUsage.slice(0, 5).map((feature) => (
               <div
                 key={feature.feature_name}
                 className="flex items-center justify-between text-sm"
@@ -432,7 +439,7 @@ export function UsageAnalyticsChart({
 
             <div className="text-center">
               <div className="text-2xl font-bold text-purple-600">
-                {analytics.feature_usage.length}
+                {featureUsage.length}
               </div>
               <div className="text-sm text-muted-foreground">Features Used</div>
             </div>
@@ -454,7 +461,7 @@ export function UsageAnalyticsChart({
             <h4 className="text-sm font-medium">
               Top Features by Adoption Rate
             </h4>
-            {analytics.feature_usage
+            {[...featureUsage]
               .sort((a, b) => b.adoption_rate - a.adoption_rate)
               .slice(0, 5)
               .map((feature, index) => (

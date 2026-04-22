@@ -253,8 +253,13 @@ export function DatabaseConnectionsTable({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {connections.map((connection) => (
-                <TableRow key={connection.id}>
+              {connections.map((connection, index) => (
+                <TableRow
+                  key={
+                    connection.id ||
+                    `${connection.name || "connection"}-${index}`
+                  }
+                >
                   <TableCell>
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
@@ -461,9 +466,12 @@ export function DatabaseConnectionsTable({
                   </p>
                 ) : (
                   <div className="space-y-2 max-h-48 overflow-y-auto">
-                    {connectionTables.slice(0, 10).map((table) => (
+                    {connectionTables.slice(0, 10).map((table, index) => (
                       <div
-                        key={table.id}
+                        key={
+                          table.id ||
+                          `${table.schema_name || "schema"}-${table.table_name || "table"}-${index}`
+                        }
                         className="flex items-center justify-between p-2 border rounded"
                       >
                         <div>

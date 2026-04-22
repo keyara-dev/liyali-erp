@@ -230,7 +230,7 @@ export function SecurityEventsPanel({
       {/* Security Events Grid */}
       <div className="grid gap-4 md:grid-cols-2">
         {securityEvents.map((event, index) => (
-          <Card key={index}>
+          <Card key={`${event.title}-${index}`}>
             <CardHeader className="pb-3">
               <CardTitle className="text-sm flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -285,7 +285,7 @@ export function SecurityEventsPanel({
           <div className="space-y-3">
             {stats.activity_by_hour.slice(-6).map((activity, index) => (
               <div
-                key={index}
+                key={activity.hour ?? `activity-hour-${index}`}
                 className="flex items-center justify-between p-3 rounded-lg bg-muted/20"
               >
                 <div className="flex items-center gap-3">

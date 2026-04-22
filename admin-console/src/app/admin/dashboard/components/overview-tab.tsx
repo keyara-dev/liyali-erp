@@ -187,7 +187,7 @@ export function OverviewTab() {
             <div className="space-y-3">
               {dashboardData.recent_activities.slice(0, 10).map((activity, i) => (
                 <div
-                  key={activity.id ?? i}
+                  key={activity.id || `activity-${i}`}
                   className="flex items-start gap-3 py-1 border-b last:border-0"
                 >
                   <div className="flex-1 min-w-0">
