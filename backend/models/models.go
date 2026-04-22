@@ -258,7 +258,7 @@ type GoodsReceivedNote struct {
 	OwnerID           string                                    `json:"ownerId,omitempty"`           // Owner user ID (maps to createdBy)
 	WarehouseLocation string                                    `json:"warehouseLocation,omitempty"` // Warehouse location
 	Notes             string                                    `json:"notes,omitempty"`             // Additional notes
-	CurrentStage      int                                       `json:"currentStage,omitempty"`      // Maps to ApprovalStage
+	CurrentStage      int                                       `gorm:"-" json:"currentStage,omitempty"` // Computed alias for ApprovalStage — no DB column
 	StageName         string                                    `json:"stageName,omitempty"`         // Current stage name
 	ApprovedBy        string                                    `json:"approvedBy,omitempty"`        // Who approved the GRN
 	// Payment-First flow: references the PV that was paid before goods were received

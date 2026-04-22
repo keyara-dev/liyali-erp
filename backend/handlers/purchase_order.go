@@ -334,7 +334,7 @@ func CreatePurchaseOrder(c *fiber.Ctx) error {
 
 	config.DB.Preload("Vendor").First(&order)
 
-	go utils.SyncDocument(config.DB, "PURCHASE_ORDER", order.ID)
+	go utils.SyncDocumentAs(config.DB, "PURCHASE_ORDER", order.ID, tenant.UserID)
 	go services.LogDocumentEvent(config.DB, services.DocumentEvent{
 		OrganizationID: tenant.OrganizationID,
 		DocumentID:     order.ID,
@@ -629,7 +629,7 @@ func UpdatePurchaseOrder(c *fiber.Ctx) error {
 
 	config.DB.Preload("Vendor").First(&order)
 
-	go utils.SyncDocument(config.DB, "PURCHASE_ORDER", order.ID)
+	go utils.SyncDocumentAs(config.DB, "PURCHASE_ORDER", order.ID, actorID)
 
 	if len(changes) > 0 {
 		// Create snapshot of current state after changes
@@ -1051,7 +1051,7 @@ func SubmitPurchaseOrder(c *fiber.Ctx) error {
 	// Preload vendor
 	config.DB.Preload("Vendor").First(&order)
 
-	go utils.SyncDocument(config.DB, "PURCHASE_ORDER", order.ID)
+	go utils.SyncDocumentAs(config.DB, "PURCHASE_ORDER", order.ID, userID)
 	go services.LogDocumentEvent(config.DB, services.DocumentEvent{
 		OrganizationID: organizationID,
 		DocumentID:     order.ID,

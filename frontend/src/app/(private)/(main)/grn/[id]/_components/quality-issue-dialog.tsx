@@ -110,7 +110,7 @@ export function QualityIssueReportDialog({
           <div className="space-y-2">
             <Label htmlFor="item-select">Item *</Label>
             <Select value={selectedItemId} onValueChange={setSelectedItemId}>
-              <SelectTrigger id="item-select">
+              <SelectTrigger id="item-select" className="w-full">
                 <SelectValue placeholder="Select item with issue" />
               </SelectTrigger>
               <SelectContent>
@@ -157,7 +157,7 @@ export function QualityIssueReportDialog({
                 setSeverity(val as "LOW" | "MEDIUM" | "HIGH")
               }
             >
-              <SelectTrigger id="severity-select">
+              <SelectTrigger id="severity-select" className="w-full">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>

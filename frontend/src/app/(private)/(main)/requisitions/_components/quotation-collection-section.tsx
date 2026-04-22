@@ -75,6 +75,7 @@ export function QuotationCollectionSection({
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deletingIdx, setDeletingIdx] = useState<number | null>(null);
+  const [replacePanelIdx, setReplacePanelIdx] = useState<number | null>(null);
   const [replacingIdx, setReplacingIdx] = useState<number | null>(null);
   const [selectingVendor, setSelectingVendor] = useState(false);
 
@@ -190,6 +191,7 @@ export function QuotationCollectionSection({
       await onSave(updated);
       setReplaceFile(null);
       setReplaceFileKey((k) => k + 1);
+      setReplacePanelIdx(null);
       toast.success("Quote document replaced");
     } catch {
       toast.error("Failed to replace document");
@@ -351,6 +353,7 @@ export function QuotationCollectionSection({
             const isLowest = i === lowestIdx && quotations.length > 1;
             const isDeleting = deletingIdx === i;
             const isReplacing = replacingIdx === i;
+            const isPanelOpen = replacePanelIdx === i;
 
             return (
               <div
@@ -448,9 +451,11 @@ export function QuotationCollectionSection({
                         variant="ghost"
                         className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
                         title="Replace quote document"
-                        onClick={() =>
-                          setReplacingIdx(replacingIdx === i ? null : i)
-                        }
+                        onClick={() => {
+                          setReplacePanelIdx(isPanelOpen ? null : i);
+                          setReplaceFile(null);
+                          setReplaceFileKey((k) => k + 1);
+                        }}
                         disabled={isDeleting || isReplacing}
                       >
                         <RefreshCw className="h-3.5 w-3.5" />
@@ -475,7 +480,7 @@ export function QuotationCollectionSection({
                 </div>
 
                 {/* Replace file inline panel */}
-                {replacingIdx === i && canEdit && (
+                {isPanelOpen && canEdit && (
                   <div className="mt-3 pt-3 border-t space-y-2">
                     <p className="text-xs text-muted-foreground font-medium flex items-center gap-1.5">
                       <Upload className="h-3.5 w-3.5" />
@@ -496,7 +501,7 @@ export function QuotationCollectionSection({
                         variant="ghost"
                         size="sm"
                         onClick={() => {
-                          setReplacingIdx(null);
+                          setReplacePanelIdx(null);
                           setReplaceFile(null);
                           setReplaceFileKey((k) => k + 1);
                         }}

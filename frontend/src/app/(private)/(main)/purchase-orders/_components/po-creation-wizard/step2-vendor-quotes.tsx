@@ -190,105 +190,110 @@ export function Step2VendorQuotes({
   const selectedVendorId = selectedEntry?.vendorId ?? "";
 
   return (
-    <div className="space-y-4" data-testid="step2-vendor-quotes">
-      {/* ── Quotation collection section ── */}
-      <QuotationCollectionSection
-        quotations={liveQuotations}
-        requisitionId={requisition.id}
-        currency={requisition.currency ?? "ZMW"}
-        vendors={Array.isArray(allVendors) ? (allVendors as Vendor[]) : []}
-        canEdit={true}
-        onSave={handleQuotationSave}
-        showVendorSelection={true}
-        selectedVendorId={selectedEntry?.vendorId}
-        selectedVendorAmount={data.selectedQuotedAmount}
-        selectedQuotationFileId={data.selectedQuotationFileId}
-        onSelectVendor={handleSelectVendorFromQuotation}
-      />
-
-      {/* ── Add New Vendor ── */}
-      {!showInlineForm ? (
-        <div className="flex justify-end">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => setShowInlineForm(true)}
-            data-testid="add-new-vendor-btn"
-          >
-            <UserPlus className="mr-1.5 h-4 w-4" />
-            Add New Vendor
-          </Button>
-        </div>
-      ) : (
-        <InlineVendorForm
-          onSaved={handleNewVendorSaved}
-          onCancel={() => setShowInlineForm(false)}
-        />
-      )}
-
-      {/* ── Vendor dropdown fallback when no quotations ── */}
-      {liveQuotations.length === 0 && (
-        <SelectField
-          label="Vendor (optional)"
-          placeholder="No vendor — assign later"
-          value={selectedVendorId}
-          onValueChange={handleVendorDropdownChange}
-          isLoading={vendorsLoading}
-          options={(allVendors as Vendor[])
-            .filter((v) => v.active)
-            .map((v) => ({ value: v.id, name: v.name }))}
-        />
-      )}
-
-      {/* ── Cost comparison ── */}
-      {costComparisonVendors.length > 0 && (
-        <CostComparisonPanel
-          estimatedCost={requisition.totalAmount ?? 0}
+    <div
+      className="flex flex-col flex-1 min-h-0 px-2"
+      data-testid="step2-vendor-quotes"
+    >
+      <div className="flex-1 overflow-y-auto p-4 space-y-4 min-w-0">
+        {/* ── Quotation collection section ── */}
+        <QuotationCollectionSection
+          quotations={liveQuotations}
+          requisitionId={requisition.id}
           currency={requisition.currency ?? "ZMW"}
-          vendors={costComparisonVendors}
+          vendors={Array.isArray(allVendors) ? (allVendors as Vendor[]) : []}
+          canEdit={true}
+          onSave={handleQuotationSave}
+          showVendorSelection={true}
+          selectedVendorId={selectedEntry?.vendorId}
+          selectedVendorAmount={data.selectedQuotedAmount}
+          selectedQuotationFileId={data.selectedQuotationFileId}
+          onSelectVendor={handleSelectVendorFromQuotation}
         />
-      )}
 
-      {/* ── No vendor warning ── */}
-      {showNoVendorWarning && (
-        <Alert
-          variant="default"
-          className="border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-700"
-          data-testid="no-vendor-warning"
-        >
-          <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-          <AlertDescription className="text-amber-800 dark:text-amber-200">
-            No supplier selected. You can still proceed — the supplier can be
-            assigned later.
-            <div className="mt-2 flex gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => setShowNoVendorWarning(false)}
-              >
-                Go Back
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                className="bg-amber-600 hover:bg-amber-700 text-white"
-                onClick={() => {
-                  setShowNoVendorWarning(false);
-                  onNext();
-                }}
-                data-testid="no-vendor-warning-proceed"
-              >
-                Proceed Anyway
-              </Button>
-            </div>
-          </AlertDescription>
-        </Alert>
-      )}
+        {/* ── Add New Vendor ── */}
+        {!showInlineForm ? (
+          <div className="flex justify-end">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setShowInlineForm(true)}
+              data-testid="add-new-vendor-btn"
+            >
+              <UserPlus className="mr-1.5 h-4 w-4" />
+              Add New Vendor
+            </Button>
+          </div>
+        ) : (
+          <InlineVendorForm
+            onSaved={handleNewVendorSaved}
+            onCancel={() => setShowInlineForm(false)}
+          />
+        )}
 
-      {/* ── Footer ── */}
-      <div className="flex flex-col-reverse sm:flex-row justify-between gap-2 pt-2">
+        {/* ── Vendor dropdown fallback when no quotations ── */}
+        {liveQuotations.length === 0 && (
+          <SelectField
+            label="Vendor (optional)"
+            placeholder="No vendor — assign later"
+            value={selectedVendorId}
+            onValueChange={handleVendorDropdownChange}
+            isLoading={vendorsLoading}
+            options={(allVendors as Vendor[])
+              .filter((v) => v.active)
+              .map((v) => ({ value: v.id, name: v.name }))}
+          />
+        )}
+
+        {/* ── Cost comparison ── */}
+        {costComparisonVendors.length > 0 && (
+          <CostComparisonPanel
+            estimatedCost={requisition.totalAmount ?? 0}
+            currency={requisition.currency ?? "ZMW"}
+            vendors={costComparisonVendors}
+          />
+        )}
+
+        {/* ── No vendor warning ── */}
+        {showNoVendorWarning && (
+          <Alert
+            variant="default"
+            className="border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-700"
+            data-testid="no-vendor-warning"
+          >
+            <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+            <AlertDescription className="text-amber-800 dark:text-amber-200">
+              No supplier selected. You can still proceed — the supplier can be
+              assigned later.
+              <div className="mt-2 flex gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowNoVendorWarning(false)}
+                >
+                  Go Back
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  className="bg-amber-600 hover:bg-amber-700 text-white"
+                  onClick={() => {
+                    setShowNoVendorWarning(false);
+                    onNext();
+                  }}
+                  data-testid="no-vendor-warning-proceed"
+                >
+                  Proceed Anyway
+                </Button>
+              </div>
+            </AlertDescription>
+          </Alert>
+        )}
+      </div>
+
+      {/* ── Sticky Footer ── */}
+      <div className="shrink-0 border-t bg-card/5 backdrop-blur-xs flex flex-col-reverse sm:flex-row justify-between gap-2 p-4">
         <Button
           type="button"
           variant="outline"

@@ -5,25 +5,23 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { SelectField } from "@/components/ui/select-field";
 import { PurchaseOrder } from "@/types/purchase-order";
-import { FileText, CheckCircle2, AlertCircle, Package } from "lucide-react";
+import {
+  FileText,
+  CheckCircle2,
+  AlertCircle,
+  Package,
+  Truck,
+  Wallet,
+} from "lucide-react";
 import { Separator } from "@/components/ui/separator";
-import { WorkflowSelector } from "@/components/workflows/workflow-selector";
 import { useConfigurationStatus } from "@/hooks/use-configuration-status";
 import { ConfigurationChecklistBanner } from "@/components/ui/configuration-checklist-banner";
 import { useVendors } from "@/hooks/use-vendor-queries";
@@ -51,8 +49,6 @@ export function CreatePVFromPODialog({
   onConfirm,
   isCreating,
 }: CreatePVFromPODialogProps) {
-  const [workflowId, setWorkflowId] = useState("");
-  const [workflowError, setWorkflowError] = useState<string | null>(null);
   const [selectedVendorId, setSelectedVendorId] = useState(
     purchaseOrder.vendorId ?? "",
   );
@@ -80,38 +76,31 @@ export function CreatePVFromPODialog({
     poDocumentNumber: purchaseOrder.documentNumber,
   });
 
-  // Check configuration status
+  // Configuration check — workflow is picked at submit time, so skip it here
   const configStatus = useConfigurationStatus({
-    includeWorkflow: true,
-    workflowEntityType: "payment_voucher",
+    includeWorkflow: false,
   });
 
   const canCreate =
-    workflowId &&
     purchaseOrder.status?.toUpperCase() === "APPROVED" &&
     configStatus.allConfigured &&
     (!isGoodsFirst || selectedGRNDocNumber !== "");
 
   const handleConfirm = async () => {
-    if (!workflowId) {
-      setWorkflowError("Please select a workflow");
-      return;
-    }
-
     if (isGoodsFirst && !selectedGRNDocNumber) {
       return; // GRN selection is enforced by canCreate
     }
 
     if (!canCreate) return;
 
-    setWorkflowError(null);
+    // Pass empty workflowId — it's stored but unused at creation (see
+    // payment-vouchers.ts); the submit dialog captures the real workflow.
     await onConfirm(
-      workflowId,
+      "",
       selectedVendorId || undefined,
       selectedVendorName || undefined,
       isGoodsFirst ? selectedGRNDocNumber : undefined,
     );
-    setWorkflowId("");
     setSelectedVendorId(purchaseOrder.vendorId ?? "");
     setSelectedVendorName(purchaseOrder.vendorName ?? "");
     setSelectedGRNDocNumber("");
@@ -119,8 +108,6 @@ export function CreatePVFromPODialog({
 
   const handleClose = () => {
     if (!isCreating) {
-      setWorkflowId("");
-      setWorkflowError(null);
       setSelectedVendorId(purchaseOrder.vendorId ?? "");
       setSelectedVendorName(purchaseOrder.vendorName ?? "");
       setSelectedGRNDocNumber("");
@@ -129,11 +116,12 @@ export function CreatePVFromPODialog({
   };
 
   const handleVendorChange = (value: string) => {
-    setSelectedVendorId(value);
-    if (value === "") {
+    const nextId = value === "__none__" ? "" : value;
+    setSelectedVendorId(nextId);
+    if (nextId === "") {
       setSelectedVendorName("");
     } else {
-      const vendor = vendors.find((v) => v.id === value);
+      const vendor = vendors.find((v) => v.id === nextId);
       setSelectedVendorName(vendor?.name ?? "");
     }
   };
@@ -145,21 +133,22 @@ export function CreatePVFromPODialog({
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent
-        className="max-w-lg max-h-[90vh] overflow-y-auto"
+        className="max-w-2xl! p-0 flex flex-col h-[90svh] max-h-[90vh] overflow-hidden"
         onInteractOutside={(e) => e.preventDefault()}
       >
-        <DialogHeader>
+        <DialogHeader className="p-4 pb-3 shrink-0 border-b">
           <DialogTitle className="flex items-center gap-2">
             <FileText className="h-5 w-5" />
             Create Payment Voucher
           </DialogTitle>
           <DialogDescription>
-            Select an approval workflow for the new payment voucher. The PV will
-            be created from the approved purchase order below.
+            Create a payment voucher from this approved purchase order. The PV
+            starts as a draft — you'll pick the approval workflow when
+            submitting it.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className="flex-1 overflow-y-auto p-4 space-y-4 min-w-0">
           {/* Configuration Checklist Banner */}
           {!configStatus.allConfigured && (
             <ConfigurationChecklistBanner
@@ -169,66 +158,69 @@ export function CreatePVFromPODialog({
             />
           )}
 
-          {/* Flow indicator */}
-          <div className="flex items-center gap-2 text-sm">
-            <span className="text-muted-foreground">Procurement flow:</span>
-            <Badge variant={isGoodsFirst ? "default" : "secondary"}>
-              {isGoodsFirst ? "Goods-First" : "Payment-First"}
-            </Badge>
-            {purchaseOrder.procurementFlow && (
-              <span className="text-xs text-muted-foreground">
-                (PO override)
-              </span>
-            )}
-          </div>
-
-          {/* Workflow Selector */}
-          <WorkflowSelector
-            entityType="payment_voucher"
-            value={workflowId}
-            onChange={setWorkflowId}
-            disabled={isCreating}
-            required
-            error={workflowError || undefined}
-            showDetails={true}
-          />
+          {/* Procurement flow banner */}
+          {(() => {
+            const FlowIcon = isGoodsFirst ? Truck : Wallet;
+            const isOverride = !!purchaseOrder.procurementFlow;
+            return (
+              <div
+                className={`flex items-start gap-3 rounded-lg border p-3 ${
+                  isGoodsFirst
+                    ? "border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/30"
+                    : "border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30"
+                }`}
+              >
+                <div
+                  className={`rounded-md p-1.5 shrink-0 ${
+                    isGoodsFirst
+                      ? "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-200"
+                      : "bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-200"
+                  }`}
+                >
+                  <FlowIcon className="h-4 w-4" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-sm font-semibold">
+                      {isGoodsFirst ? "Goods-First" : "Payment-First"}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {isOverride ? "PO override" : "Organization default"}
+                    </span>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {isGoodsFirst
+                      ? "An approved GRN is required before this payment voucher can proceed."
+                      : "Payment is processed upfront — the GRN confirms delivery later."}
+                  </p>
+                </div>
+              </div>
+            );
+          })()}
 
           {/* Vendor Selector (optional) */}
-          <div className="space-y-1.5">
-            <Label htmlFor="vendor-select">Vendor</Label>
-            <Select
-              value={selectedVendorId}
-              onValueChange={handleVendorChange}
-              disabled={isCreating}
-            >
-              <SelectTrigger id="vendor-select">
-                <SelectValue placeholder="No vendor (optional)" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="">No vendor</SelectItem>
-                {vendors
-                  .filter((v) => v.active)
-                  .map((v) => (
-                    <SelectItem key={v.id} value={v.id}>
-                      {v.name}
-                    </SelectItem>
-                  ))}
-              </SelectContent>
-            </Select>
-          </div>
+          <SelectField
+            label="Vendor"
+            placeholder="No vendor (optional)"
+            value={selectedVendorId || "__none__"}
+            onValueChange={handleVendorChange}
+            isDisabled={isCreating}
+            options={[
+              { value: "__none__", label: "No vendor" },
+              ...vendors
+                .filter((v) => v.active)
+                .map((v) => ({ value: v.id, label: v.name })),
+            ]}
+          />
 
           {/* GRN Selector — required for goods_first flow */}
-          {isGoodsFirst && (
-            <div className="space-y-1.5">
-              <Label htmlFor="grn-select" className="flex items-center gap-1.5">
-                <Package className="h-4 w-4" />
-                Linked GRN <span className="text-destructive">*</span>
-              </Label>
-              <p className="text-xs text-muted-foreground">
-                Goods-first flow requires an approved GRN for this PO before
-                payment can be processed.
-              </p>
-              {grns.length === 0 ? (
+          {isGoodsFirst &&
+            (grns.length === 0 ? (
+              <div className="space-y-1.5">
+                <Label className="flex items-center gap-1.5">
+                  <Package className="h-4 w-4" />
+                  Linked GRN <span className="text-destructive">*</span>
+                </Label>
                 <Alert variant="destructive">
                   <AlertCircle className="h-4 w-4" />
                   <AlertDescription>
@@ -237,45 +229,46 @@ export function CreatePVFromPODialog({
                     creating a payment voucher.
                   </AlertDescription>
                 </Alert>
-              ) : (
-                <Select
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <SelectField
+                  label="Linked GRN"
+                  required
+                  placeholder="Select approved GRN"
+                  descriptionText="Goods-first flow requires an approved GRN for this PO before payment can be processed."
                   value={selectedGRNDocNumber}
                   onValueChange={setSelectedGRNDocNumber}
-                  disabled={isCreating}
-                >
-                  <SelectTrigger id="grn-select">
-                    <SelectValue placeholder="Select approved GRN" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {grns.map((grn) => (
-                      <SelectItem key={grn.id} value={grn.documentNumber}>
-                        {grn.documentNumber} — received{" "}
-                        {new Date(grn.receivedDate).toLocaleDateString("en-ZM")}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-              {selectedGRN && (
-                <div className="rounded-md border bg-muted/50 p-3 text-sm space-y-1">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Received by:</span>
-                    <span>{selectedGRN.receivedBy}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Items:</span>
-                    <span>{selectedGRN.items?.length ?? 0}</span>
-                  </div>
-                  {selectedGRN.warehouseLocation && (
+                  isDisabled={isCreating}
+                  options={grns.map((grn) => ({
+                    value: grn.documentNumber,
+                    label: `${grn.documentNumber} — received ${new Date(
+                      grn.receivedDate,
+                    ).toLocaleDateString("en-ZM")}`,
+                  }))}
+                />
+                {selectedGRN && (
+                  <div className="rounded-md border bg-muted/50 p-3 text-sm space-y-1">
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">Location:</span>
-                      <span>{selectedGRN.warehouseLocation}</span>
+                      <span className="text-muted-foreground">
+                        Received by:
+                      </span>
+                      <span>{selectedGRN.receivedBy}</span>
                     </div>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Items:</span>
+                      <span>{selectedGRN.items?.length ?? 0}</span>
+                    </div>
+                    {selectedGRN.warehouseLocation && (
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Location:</span>
+                        <span>{selectedGRN.warehouseLocation}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            ))}
 
           <Separator />
 
@@ -365,8 +358,8 @@ export function CreatePVFromPODialog({
           )}
         </div>
 
-        {/* Actions */}
-        <DialogFooter className="gap-2 sm:gap-0">
+        {/* Sticky Footer */}
+        <div className="shrink-0 border-t bg-card/5 backdrop-blur-xs flex flex-col-reverse sm:flex-row justify-end gap-2 p-4">
           <Button
             type="button"
             variant="outline"
@@ -384,7 +377,7 @@ export function CreatePVFromPODialog({
             <FileText className="mr-2 h-4 w-4" />
             Create Payment Voucher
           </Button>
-        </DialogFooter>
+        </div>
       </DialogContent>
     </Dialog>
   );

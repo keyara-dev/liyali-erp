@@ -362,7 +362,7 @@ func CreatePaymentVoucher(c *fiber.Ctx) error {
 
 	config.DB.Preload("Vendor").First(&voucher)
 
-	go utils.SyncDocument(config.DB, "PAYMENT_VOUCHER", voucher.ID)
+	go utils.SyncDocumentAs(config.DB, "PAYMENT_VOUCHER", voucher.ID, tenant.UserID)
 	go services.LogDocumentEvent(config.DB, services.DocumentEvent{
 		OrganizationID: tenant.OrganizationID,
 		DocumentID:     voucher.ID,
@@ -550,7 +550,7 @@ func UpdatePaymentVoucher(c *fiber.Ctx) error {
 
 	config.DB.Preload("Vendor").First(&voucher)
 
-	go utils.SyncDocument(config.DB, "PAYMENT_VOUCHER", voucher.ID)
+	go utils.SyncDocumentAs(config.DB, "PAYMENT_VOUCHER", voucher.ID, tenant.UserID)
 	go services.LogDocumentEvent(config.DB, services.DocumentEvent{
 		OrganizationID: tenant.OrganizationID,
 		DocumentID:     voucher.ID,
@@ -821,7 +821,7 @@ func SubmitPaymentVoucher(c *fiber.Ctx) error {
 		return utils.SendInternalError(c, "Failed to submit payment voucher", err)
 	}
 
-	go utils.SyncDocument(config.DB, "PAYMENT_VOUCHER", voucher.ID)
+	go utils.SyncDocumentAs(config.DB, "PAYMENT_VOUCHER", voucher.ID, userID)
 	go services.LogDocumentEvent(config.DB, services.DocumentEvent{
 		OrganizationID: organizationID,
 		DocumentID:     voucher.ID,

@@ -7,24 +7,23 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { SelectField } from "@/components/ui/select-field";
 import { Separator } from "@/components/ui/separator";
-import { Package, AlertCircle, Plus, Trash2 } from "lucide-react";
+import {
+  Package,
+  AlertCircle,
+  Plus,
+  Trash2,
+  Truck,
+  Wallet,
+} from "lucide-react";
 import { toast } from "sonner";
 import { useOrganizationSettingsQuery } from "@/hooks/use-organization-queries";
 import { useSession } from "@/hooks/use-session";
@@ -35,6 +34,7 @@ import type { GRNItem } from "@/types/goods-received-note";
 import type { PurchaseOrder } from "@/types/purchase-order";
 import type { PaymentVoucher } from "@/types/payment-voucher";
 import { formatCurrency } from "@/lib/utils";
+import { Textarea } from "@/components";
 
 interface CreateGRNDialogProps {
   open: boolean;
@@ -253,13 +253,16 @@ export function CreateGRNDialog({
     }
   };
 
+  const isGoodsFirst = orgFlow === "goods_first";
+  const FlowIcon = isGoodsFirst ? Truck : Wallet;
+
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent
-        className="max-w-2xl max-h-[90vh] overflow-y-auto"
+        className="max-w-2xl! p-0 flex flex-col h-[90svh] max-h-[90vh] overflow-hidden"
         onInteractOutside={(e) => e.preventDefault()}
       >
-        <DialogHeader>
+        <DialogHeader className="px-4 pt-4 pb-2 shrink-0 border-b">
           <DialogTitle className="flex items-center gap-2">
             <Package className="h-5 w-5" />
             Create Goods Received Note
@@ -269,104 +272,119 @@ export function CreateGRNDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
-          {/* Flow indicator */}
-          <div className="flex items-center gap-2 text-sm">
-            <span className="text-muted-foreground">Procurement flow:</span>
-            <Badge
-              variant={orgFlow === "goods_first" ? "default" : "secondary"}
+        <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-4 min-w-0">
+          {/* Procurement flow banner */}
+          <div
+            className={`flex items-start gap-3 rounded-lg border p-3 ${
+              isGoodsFirst
+                ? "border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/30"
+                : "border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30"
+            }`}
+          >
+            <div
+              className={`rounded-md p-1.5 shrink-0 ${
+                isGoodsFirst
+                  ? "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-200"
+                  : "bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-200"
+              }`}
             >
-              {orgFlow === "goods_first" ? "Goods-First" : "Payment-First"}
-            </Badge>
+              <FlowIcon className="h-4 w-4" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-semibold">
+                  {isGoodsFirst ? "Goods-First" : "Payment-First"}
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  Organization default
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {isGoodsFirst
+                  ? "Record receipt against an approved PO. Payment follows delivery confirmation."
+                  : "Delivery follows payment — select the approved PV that funded this receipt."}
+              </p>
+            </div>
           </div>
 
           {/* Source document selector */}
-          {orgFlow === "goods_first" ? (
-            <div className="space-y-1.5">
-              <Label htmlFor="po-select">
-                Purchase Order <span className="text-destructive">*</span>
-              </Label>
-              {approvedPOs.length === 0 ? (
+          {isGoodsFirst ? (
+            approvedPOs.length === 0 ? (
+              <div className="space-y-1.5">
+                <Label>
+                  Purchase Order <span className="text-destructive">*</span>
+                </Label>
                 <Alert>
                   <AlertCircle className="h-4 w-4" />
                   <AlertDescription>
                     No approved purchase orders available.
                   </AlertDescription>
                 </Alert>
-              ) : (
-                <Select
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <SelectField
+                  label="Purchase Order"
+                  required
+                  placeholder="Select approved PO"
                   value={selectedPOId}
                   onValueChange={handlePOSelect}
-                  disabled={isCreating}
-                >
-                  <SelectTrigger id="po-select">
-                    <SelectValue placeholder="Select approved PO" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {approvedPOs.map((po) => (
-                      <SelectItem key={po.id} value={po.id}>
-                        {po.documentNumber} — {po.title || po.description}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-              {selectedPO && (
-                <div className="rounded-md border bg-muted/50 p-3 text-sm space-y-1">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Vendor:</span>
-                    <span>{selectedPO.vendorName || "—"}</span>
+                  isDisabled={isCreating}
+                  options={approvedPOs.map((po) => ({
+                    value: po.id,
+                    label: `${po.documentNumber} — ${po.title || po.description || "Untitled"}`,
+                  }))}
+                />
+                {selectedPO && (
+                  <div className="rounded-md border bg-muted/50 p-3 text-sm space-y-1">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Vendor:</span>
+                      <span>{selectedPO.vendorName || "—"}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Department:</span>
+                      <span>{selectedPO.department}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Total:</span>
+                      <span className="font-mono text-blue-600">
+                        {formatCurrency(
+                          selectedPO.totalAmount,
+                          selectedPO.currency,
+                        )}
+                      </span>
+                    </div>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Department:</span>
-                    <span>{selectedPO.department}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Total:</span>
-                    <span className="font-mono text-blue-600">
-                      {formatCurrency(
-                        selectedPO.totalAmount,
-                        selectedPO.currency,
-                      )}
-                    </span>
-                  </div>
-                </div>
-              )}
+                )}
+              </div>
+            )
+          ) : approvedPVs.length === 0 ? (
+            <div className="space-y-1.5">
+              <Label>
+                Payment Voucher <span className="text-destructive">*</span>
+              </Label>
+              <Alert>
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  No approved or paid payment vouchers available.
+                </AlertDescription>
+              </Alert>
             </div>
           ) : (
-            <div className="space-y-1.5">
-              <Label htmlFor="pv-select">
-                Payment Voucher (approved / paid){" "}
-                <span className="text-destructive">*</span>
-              </Label>
-              <p className="text-xs text-muted-foreground">
-                Payment-first flow: select the PV that funded this delivery.
-              </p>
-              {approvedPVs.length === 0 ? (
-                <Alert>
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>
-                    No approved or paid payment vouchers available.
-                  </AlertDescription>
-                </Alert>
-              ) : (
-                <Select
-                  value={selectedPVDocNumber}
-                  onValueChange={handlePVSelect}
-                  disabled={isCreating}
-                >
-                  <SelectTrigger id="pv-select">
-                    <SelectValue placeholder="Select approved / paid PV" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {approvedPVs.map((pv) => (
-                      <SelectItem key={pv.id} value={pv.documentNumber}>
-                        {pv.documentNumber} — PO: {pv.linkedPO} ({pv.status})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
+            <div className="space-y-2">
+              <SelectField
+                label="Payment Voucher (approved / paid)"
+                required
+                placeholder="Select approved / paid PV"
+                descriptionText="Payment-first flow: select the PV that funded this delivery."
+                value={selectedPVDocNumber}
+                onValueChange={handlePVSelect}
+                isDisabled={isCreating}
+                options={approvedPVs.map((pv) => ({
+                  value: pv.documentNumber,
+                  label: `${pv.documentNumber} — PO: ${pv.linkedPO} (${pv.status})`,
+                }))}
+              />
               {selectedPV && (
                 <div className="rounded-md border bg-muted/50 p-3 text-sm space-y-1">
                   <div className="flex justify-between">
@@ -388,78 +406,64 @@ export function CreateGRNDialog({
             </div>
           )}
 
-          {/* Receipt details */}
-          <div className="grid grid-cols-2 gap-3">
-            <Input
-              label="Warehouse Location"
-              id="warehouse-location"
-              value={warehouseLocation}
-              onChange={(e) => setWarehouseLocation(e.target.value)}
-              placeholder="e.g. Warehouse A, Bay 3"
-              disabled={isCreating}
-            />
-            <Input
-              label="Notes"
-              id="notes"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Optional notes"
-              disabled={isCreating}
-            />
-          </div>
-
-          <Separator />
-
           {/* Items */}
-          {effectivePO || items.length > 0 ? (
+          {(effectivePO || items.length > 0) && (
             <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <Label className="text-sm font-medium">
-                  Items <span className="text-destructive">*</span>
-                </Label>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={addItem}
-                  disabled={isCreating}
-                >
-                  <Plus className="h-3.5 w-3.5 mr-1" />
-                  Add Item
-                </Button>
-              </div>
+              <Label className="text-sm font-semibold">
+                Items <span className="text-destructive">*</span>
+              </Label>
 
-              {items.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-4 border rounded-md">
-                  No items. Add items manually or select a PO above.
-                </p>
-              ) : (
-                <div className="space-y-2">
-                  {/* Header row */}
-                  <div className="grid grid-cols-[1fr_80px_80px_100px_auto] gap-2 text-xs text-muted-foreground px-1">
-                    <span>Description</span>
-                    <span>Ordered</span>
-                    <span>Received</span>
-                    <span>Condition</span>
-                    <span />
-                  </div>
-                  {items.map((item) => (
+              <div className="rounded-lg border border-border overflow-hidden">
+                {/* Column headers */}
+                <div className="grid grid-cols-[1.75rem_1fr_4rem_4rem_7rem_1.75rem] gap-x-3 px-3 py-2 bg-muted/60 border-b border-border">
+                  <span className="text-xs font-medium text-muted-foreground">
+                    #
+                  </span>
+                  <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    Description
+                  </span>
+                  <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider text-center">
+                    Ordered
+                  </span>
+                  <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider text-center">
+                    Received
+                  </span>
+                  <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    Condition
+                  </span>
+                  <span />
+                </div>
+
+                {/* Item rows */}
+                <div className="divide-y divide-border/60">
+                  {items.map((item, index) => (
                     <div
                       key={item._key}
-                      className="grid grid-cols-[1fr_80px_80px_100px_auto] gap-2 items-center"
+                      className="grid grid-cols-[1.75rem_1fr_4rem_4rem_7rem_1.75rem] gap-x-3 px-3 py-2 items-center hover:bg-muted/20 transition-colors"
                     >
-                      <Input
+                      {/* # */}
+                      <span className="text-xs text-muted-foreground/50 font-mono tabular-nums">
+                        {String(index + 1).padStart(2, "0")}
+                      </span>
+
+                      {/* Description */}
+                      <input
+                        className="min-w-0 w-full bg-transparent text-sm placeholder:text-muted-foreground/40 focus:outline-none focus:bg-muted/30 rounded px-1.5 py-1 -mx-1.5 border border-transparent focus:border-border transition-colors"
+                        placeholder="Item description…"
                         value={item.description}
+                        disabled={isCreating}
                         onChange={(e) =>
                           updateItem(item._key, "description", e.target.value)
                         }
-                        placeholder="Item description"
-                        disabled={isCreating}
-                        className="text-sm"
                       />
-                      <Input
+
+                      {/* Ordered */}
+                      <input
                         type="number"
+                        min={0}
+                        className="w-full bg-transparent text-sm text-center tabular-nums placeholder:text-muted-foreground/40 focus:outline-none focus:bg-muted/30 rounded px-1 py-1 border border-transparent focus:border-border transition-colors"
                         value={item.quantityOrdered}
+                        disabled={isCreating}
                         onChange={(e) =>
                           updateItem(
                             item._key,
@@ -467,13 +471,15 @@ export function CreateGRNDialog({
                             Number(e.target.value),
                           )
                         }
-                        disabled={isCreating}
-                        className="text-sm"
-                        min={0}
                       />
-                      <Input
+
+                      {/* Received */}
+                      <input
                         type="number"
+                        min={0}
+                        className="w-full bg-transparent text-sm text-center tabular-nums placeholder:text-muted-foreground/40 focus:outline-none focus:bg-muted/30 rounded px-1 py-1 border border-transparent focus:border-border transition-colors"
                         value={item.quantityReceived}
+                        disabled={isCreating}
                         onChange={(e) =>
                           updateItem(
                             item._key,
@@ -481,45 +487,75 @@ export function CreateGRNDialog({
                             Number(e.target.value),
                           )
                         }
-                        disabled={isCreating}
-                        className="text-sm"
-                        min={0}
                       />
-                      <Select
+
+                      {/* Condition */}
+                      <select
+                        className="w-full bg-transparent text-sm placeholder:text-muted-foreground/40 focus:outline-none focus:bg-muted/30 rounded px-1.5 py-1 -mx-1.5 border border-transparent focus:border-border transition-colors appearance-none cursor-pointer"
                         value={item.condition}
-                        onValueChange={(v) =>
-                          updateItem(item._key, "condition", v)
-                        }
                         disabled={isCreating}
+                        onChange={(e) =>
+                          updateItem(item._key, "condition", e.target.value)
+                        }
                       >
-                        <SelectTrigger className="text-sm h-9">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="good">Good</SelectItem>
-                          <SelectItem value="damaged">Damaged</SelectItem>
-                          <SelectItem value="missing">Missing</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <Button
+                        <option value="good">Good</option>
+                        <option value="damaged">Damaged</option>
+                        <option value="missing">Missing</option>
+                      </select>
+
+                      {/* Delete */}
+                      <button
                         type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="h-9 w-9 text-muted-foreground hover:text-destructive"
                         onClick={() => removeItem(item._key)}
                         disabled={isCreating}
+                        className="text-muted-foreground/30 hover:text-red-500 transition-colors flex items-center justify-center disabled:opacity-50"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
+                      </button>
                     </div>
                   ))}
+
+                  {/* Add item row */}
+                  <button
+                    type="button"
+                    onClick={addItem}
+                    disabled={isCreating}
+                    className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/30 transition-colors disabled:opacity-50"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    Add item
+                  </button>
                 </div>
-              )}
+              </div>
             </div>
-          ) : null}
+          )}
+
+          <Separator />
+
+          {/* Receipt details */}
+
+          <Input
+            label="Warehouse Location"
+            id="warehouse-location"
+            required
+            value={warehouseLocation}
+            onChange={(e) => setWarehouseLocation(e.target.value)}
+            placeholder="e.g. Warehouse A, Bay 3"
+            disabled={isCreating}
+          />
+          <Textarea
+            label="Notes"
+            id="notes"
+            rows={3}
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            placeholder="Optional notes"
+            disabled={isCreating}
+          />
         </div>
 
-        <DialogFooter className="gap-2 sm:gap-0">
+        {/* Sticky Footer */}
+        <div className="shrink-0 border-t bg-card/5 backdrop-blur-xs flex flex-col-reverse sm:flex-row justify-end gap-2 p-4">
           <Button
             type="button"
             variant="outline"
@@ -537,7 +573,7 @@ export function CreateGRNDialog({
             <Package className="mr-2 h-4 w-4" />
             Create GRN
           </Button>
-        </DialogFooter>
+        </div>
       </DialogContent>
     </Dialog>
   );

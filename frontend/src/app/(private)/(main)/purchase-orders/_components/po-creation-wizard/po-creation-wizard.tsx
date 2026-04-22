@@ -179,23 +179,25 @@ export function POCreationWizard({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      {/* Req 8.3: max-h-[90vh] with internal scrolling */}
       <DialogContent
-        className="w-full max-w-lg sm:max-w-2xl max-h-[92vh] overflow-y-auto"
+        className="w-full max-w-lg sm:max-w-2xl p-0 flex flex-col h-[90svh] max-h-[90vh] overflow-hidden"
         onInteractOutside={(e) => e.preventDefault()}
         data-testid="po-creation-wizard"
       >
-        <DialogHeader>
+        <DialogHeader className="p-4 pb-3 shrink-0 border-b">
           <DialogTitle className="flex items-center gap-2">
             <ShoppingCart className="h-5 w-5" />
             Create Purchase Order
           </DialogTitle>
-        </DialogHeader>
 
-        {/* Req 1.2: step indicator */}
-        <div className="pb-2">
-          <WizardStepIndicator currentStep={currentStep} steps={WIZARD_STEPS} />
-        </div>
+          {/* Req 1.2: step indicator */}
+          <div className="pt-2">
+            <WizardStepIndicator
+              currentStep={currentStep}
+              steps={WIZARD_STEPS}
+            />
+          </div>
+        </DialogHeader>
 
         {/* Step content */}
         {currentStep === 1 && (

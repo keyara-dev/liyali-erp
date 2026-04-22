@@ -11,10 +11,8 @@ import {
   removeQualityIssueFromGRN,
   updateQualityIssueInGRN,
 } from "@/app/_actions/grn-actions";
-import type {
-  QualityIssue,
-  GoodsReceivedNote,
-} from "@/types/goods-received-note";
+import type { QualityIssue } from "@/types/goods-received-note";
+import { QUERY_KEYS } from "@/lib/constants";
 
 /**
  * Mutation hook for adding a quality issue to a GRN
@@ -28,13 +26,16 @@ export function useAddQualityIssueMutation(grnId: string) {
       const result = await addQualityIssueToGRN(grnId, issue);
       return result;
     },
-    onSuccess: (updatedGRN) => {
-      // Update the GRN query cache with the updated data
-      queryClient.setQueryData(["grn", grnId], updatedGRN);
-
-      // Invalidate related queries if needed
+    onSuccess: () => {
+      // Invalidate the detail + list caches so fresh data is fetched.
+      // We don't setQueryData directly because the mutation result is wrapped
+      // in an APIResponse, which would clobber the detail cache with the
+      // wrong shape.
       queryClient.invalidateQueries({
-        queryKey: ["grns"],
+        queryKey: [QUERY_KEYS.GRN.BY_ID, grnId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.GRN.ALL],
       });
     },
     onError: (error: Error) => {
@@ -54,10 +55,12 @@ export function useRemoveQualityIssueMutation(grnId: string) {
       const result = await removeQualityIssueFromGRN(grnId, issueId);
       return result;
     },
-    onSuccess: (updatedGRN) => {
-      queryClient.setQueryData(["grn", grnId], updatedGRN);
+    onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: ["grns"],
+        queryKey: [QUERY_KEYS.GRN.BY_ID, grnId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.GRN.ALL],
       });
     },
     onError: (error: Error) => {
@@ -83,10 +86,12 @@ export function useUpdateQualityIssueMutation(grnId: string) {
       const result = await updateQualityIssueInGRN(grnId, issueId, updates);
       return result;
     },
-    onSuccess: (updatedGRN) => {
-      queryClient.setQueryData(["grn", grnId], updatedGRN);
+    onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: ["grns"],
+        queryKey: [QUERY_KEYS.GRN.BY_ID, grnId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.GRN.ALL],
       });
     },
     onError: (error: Error) => {

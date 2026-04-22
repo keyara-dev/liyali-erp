@@ -386,7 +386,7 @@ func CreateRequisition(c *fiber.Ctx) error {
 	// Preload requester, category, and vendor
 	config.DB.Preload("Requester").Preload("Category").Preload("PreferredVendor").First(&requisition)
 
-	go utils.SyncDocument(config.DB, "REQUISITION", requisition.ID)
+	go utils.SyncDocumentAs(config.DB, "REQUISITION", requisition.ID, userID)
 	go services.LogDocumentEvent(config.DB, services.DocumentEvent{
 		OrganizationID: organizationID,
 		DocumentID:     requisition.ID,
@@ -630,12 +630,12 @@ func UpdateRequisition(c *fiber.Ctx) error {
 		}
 	}
 
-	go utils.SyncDocument(config.DB, "REQUISITION", requisition.ID)
-
 	actorID, _ := c.Locals("userID").(string)
 	actorRole, _ := c.Locals("userRole").(string)
 	var reqUpdateUser models.User
 	config.DB.Where("id = ?", actorID).First(&reqUpdateUser)
+
+	go utils.SyncDocumentAs(config.DB, "REQUISITION", requisition.ID, actorID)
 	go services.LogDocumentEvent(config.DB, services.DocumentEvent{
 		OrganizationID: organizationID,
 		DocumentID:     requisition.ID,
@@ -1144,7 +1144,7 @@ func SubmitRequisition(c *fiber.Ctx) error {
 	// Preload requester, category, and vendor
 	config.DB.Preload("Requester").Preload("Category").Preload("PreferredVendor").First(&requisition)
 
-	go utils.SyncDocument(config.DB, "REQUISITION", requisition.ID)
+	go utils.SyncDocumentAs(config.DB, "REQUISITION", requisition.ID, userID)
 	go services.LogDocumentEvent(config.DB, services.DocumentEvent{
 		OrganizationID: organizationID,
 		DocumentID:     requisition.ID,

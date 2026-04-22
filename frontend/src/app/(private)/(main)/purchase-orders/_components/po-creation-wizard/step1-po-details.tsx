@@ -146,173 +146,175 @@ export function Step1PODetails({
   // ── render ─────────────────────────────────────────────────────────────────
 
   return (
-    <div className="space-y-6">
-      {/* ── Source Requisition (read-only) ── */}
-      <div className="rounded-lg border bg-muted/40 p-4 space-y-2">
-        <div className="flex items-center gap-2 mb-1">
-          <FileText className="h-4 w-4 text-muted-foreground" />
-          <span className="text-sm font-semibold">Source Requisition</span>
+    <div className="flex flex-col flex-1 min-h-0 px-2">
+      <div className="flex-1 overflow-y-auto p-4 space-y-6">
+        {/* ── Source Requisition (read-only) ── */}
+        <div className="rounded-lg border bg-muted/40 p-4 space-y-2">
+          <div className="flex items-center gap-2 mb-1">
+            <FileText className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm font-semibold">Source Requisition</span>
+          </div>
+          <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+            <span className="text-muted-foreground">Document Number</span>
+            <span className="font-mono font-medium">
+              {requisition.documentNumber}
+            </span>
+            <span className="text-muted-foreground">Total Amount</span>
+            <span className="font-mono font-medium text-blue-600 dark:text-blue-400">
+              {requisition.currency}{" "}
+              {requisition.totalAmount?.toLocaleString("en-ZM", {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              }) ?? "0.00"}
+            </span>
+          </div>
         </div>
-        <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
-          <span className="text-muted-foreground">Document Number</span>
-          <span className="font-mono font-medium">
-            {requisition.documentNumber}
-          </span>
-          <span className="text-muted-foreground">Total Amount</span>
-          <span className="font-mono font-medium text-blue-600 dark:text-blue-400">
-            {requisition.currency}{" "}
-            {requisition.totalAmount?.toLocaleString("en-ZM", {
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 2,
-            }) ?? "0.00"}
-          </span>
-        </div>
-      </div>
 
-      <Separator />
+        <Separator />
 
-      {/* ── Required fields ── */}
-      <div className="space-y-4">
-        <Input
-          label="Title"
-          name="po-title"
-          required
-          placeholder="Enter purchase order title"
-          value={data.title}
-          onChange={(e) => set("title", e.target.value)}
-          isInvalid={!!errors.title}
-          errorText={errors.title}
-        />
-        {errors.title && (
-          <span className="sr-only" data-testid="error-title">
-            {errors.title}
-          </span>
-        )}
+        {/* ── Required fields ── */}
+        <div className="space-y-4">
+          <Input
+            label="Title"
+            name="po-title"
+            required
+            placeholder="Enter purchase order title"
+            value={data.title}
+            onChange={(e) => set("title", e.target.value)}
+            isInvalid={!!errors.title}
+            errorText={errors.title}
+          />
+          {errors.title && (
+            <span className="sr-only" data-testid="error-title">
+              {errors.title}
+            </span>
+          )}
 
-        <Textarea
-          label="Description"
-          name="po-description"
-          placeholder="Describe the purpose of this purchase order (optional)"
-          rows={3}
-          value={data.description}
-          onChange={(e) => set("description", e.target.value)}
-        />
+          <Textarea
+            label="Description"
+            name="po-description"
+            placeholder="Describe the purpose of this purchase order (optional)"
+            rows={3}
+            value={data.description}
+            onChange={(e) => set("description", e.target.value)}
+          />
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="flex flex-col gap-1">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="flex flex-col gap-1">
+              <SelectField
+                label="Department"
+                name="po-department"
+                required
+                placeholder="Select department"
+                isLoading={departmentsLoading}
+                value={data.departmentId}
+                onValueChange={handleDepartmentChange}
+                options={departmentOptions}
+                isInvalid={!!errors.departmentId}
+              />
+              {errors.departmentId && (
+                <span
+                  className="ml-1 text-xs text-red-600 dark:text-red-400"
+                  data-testid="error-departmentId"
+                >
+                  {errors.departmentId}
+                </span>
+              )}
+            </div>
+
             <SelectField
-              label="Department"
-              name="po-department"
-              required
-              placeholder="Select department"
-              isLoading={departmentsLoading}
-              value={data.departmentId}
-              onValueChange={handleDepartmentChange}
-              options={departmentOptions}
-              isInvalid={!!errors.departmentId}
+              label="Priority"
+              name="po-priority"
+              value={data.priority}
+              onValueChange={(v) =>
+                set("priority", v as WizardStep1State["priority"])
+              }
+              options={PRIORITY_OPTIONS}
+              placeholder="Select priority"
             />
-            {errors.departmentId && (
-              <span
-                className="ml-1 text-xs text-red-600 dark:text-red-400"
-                data-testid="error-departmentId"
-              >
-                {errors.departmentId}
-              </span>
-            )}
           </div>
 
-          <SelectField
-            label="Priority"
-            name="po-priority"
-            value={data.priority}
-            onValueChange={(v) =>
-              set("priority", v as WizardStep1State["priority"])
-            }
-            options={PRIORITY_OPTIONS}
-            placeholder="Select priority"
-          />
-        </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="flex flex-col gap-1">
+              <DatePicker
+                label="Delivery Date"
+                name="po-delivery-date"
+                required
+                placeholder="Pick a delivery date"
+                value={data.deliveryDate ?? undefined}
+                onValueChange={(date) => {
+                  onChange({ ...data, deliveryDate: date ?? null });
+                  if (errors.deliveryDate) {
+                    setErrors((prev) => ({ ...prev, deliveryDate: undefined }));
+                  }
+                }}
+                isInvalid={!!errors.deliveryDate}
+                minDate={new Date()}
+              />
+              {errors.deliveryDate && (
+                <span
+                  className="ml-1 text-xs text-red-600 dark:text-red-400"
+                  data-testid="error-deliveryDate"
+                >
+                  {errors.deliveryDate}
+                </span>
+              )}
+            </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="flex flex-col gap-1">
-            <DatePicker
-              label="Delivery Date"
-              name="po-delivery-date"
-              required
-              placeholder="Pick a delivery date"
-              value={data.deliveryDate ?? undefined}
-              onValueChange={(date) => {
-                onChange({ ...data, deliveryDate: date ?? null });
-                if (errors.deliveryDate) {
-                  setErrors((prev) => ({ ...prev, deliveryDate: undefined }));
-                }
-              }}
-              isInvalid={!!errors.deliveryDate}
-              minDate={new Date()}
-            />
-            {errors.deliveryDate && (
-              <span
-                className="ml-1 text-xs text-red-600 dark:text-red-400"
-                data-testid="error-deliveryDate"
-              >
-                {errors.deliveryDate}
-              </span>
-            )}
-          </div>
-
-          <div className="flex flex-col gap-1">
-            <SelectField
-              label="Currency"
-              name="po-currency"
-              required
-              placeholder="Select currency"
-              isLoading={currenciesLoading}
-              value={data.currency}
-              onValueChange={(v) => set("currency", v)}
-              options={currencyOptions}
-              isInvalid={!!errors.currency}
-            />
-            {errors.currency && (
-              <span
-                className="ml-1 text-xs text-red-600 dark:text-red-400"
-                data-testid="error-currency"
-              >
-                {errors.currency}
-              </span>
-            )}
+            <div className="flex flex-col gap-1">
+              <SelectField
+                label="Currency"
+                name="po-currency"
+                required
+                placeholder="Select currency"
+                isLoading={currenciesLoading}
+                value={data.currency}
+                onValueChange={(v) => set("currency", v)}
+                options={currencyOptions}
+                isInvalid={!!errors.currency}
+              />
+              {errors.currency && (
+                <span
+                  className="ml-1 text-xs text-red-600 dark:text-red-400"
+                  data-testid="error-currency"
+                >
+                  {errors.currency}
+                </span>
+              )}
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* ── Optional fields ── */}
-      <div className="space-y-4">
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <Input
-            label="Budget Code"
-            name="po-budget-code"
-            placeholder="e.g. BUD-2025-001"
-            value={data.budgetCode}
-            onChange={(e) => set("budgetCode", e.target.value)}
-          />
-          <Input
-            label="Cost Center"
-            name="po-cost-center"
-            placeholder="e.g. CC-FINANCE"
-            value={data.costCenter}
-            onChange={(e) => set("costCenter", e.target.value)}
-          />
-          <Input
-            label="Project Code"
-            name="po-project-code"
-            placeholder="e.g. PROJ-001"
-            value={data.projectCode}
-            onChange={(e) => set("projectCode", e.target.value)}
-          />
+        {/* ── Optional fields ── */}
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <Input
+              label="Budget Code"
+              name="po-budget-code"
+              placeholder="e.g. BUD-2025-001"
+              value={data.budgetCode}
+              onChange={(e) => set("budgetCode", e.target.value)}
+            />
+            <Input
+              label="Cost Center"
+              name="po-cost-center"
+              placeholder="e.g. CC-FINANCE"
+              value={data.costCenter}
+              onChange={(e) => set("costCenter", e.target.value)}
+            />
+            <Input
+              label="Project Code"
+              name="po-project-code"
+              placeholder="e.g. PROJ-001"
+              value={data.projectCode}
+              onChange={(e) => set("projectCode", e.target.value)}
+            />
+          </div>
         </div>
       </div>
 
-      {/* ── Footer ── */}
-      <div className="flex justify-end pt-2">
+      {/* ── Sticky Footer ── */}
+      <div className="shrink-0 border-t bg-card/5 backdrop-blur-xs flex justify-end gap-2 p-4">
         <Button
           type="button"
           onClick={handleNext}

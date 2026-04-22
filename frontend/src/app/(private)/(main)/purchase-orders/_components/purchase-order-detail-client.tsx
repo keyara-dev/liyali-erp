@@ -84,9 +84,11 @@ import { useQuery } from "@tanstack/react-query";
 import { getAuditEvents, type AuditEvent } from "@/app/_actions/audit";
 import { uploadToImageKit } from "@/lib/imagekit";
 import { updatePurchaseOrder } from "@/app/_actions/purchase-orders";
+import { createPaymentVoucherFromPurchaseOrder } from "@/app/_actions/payment-vouchers";
 import { toast } from "sonner";
 import { formatCurrency } from "@/lib/utils";
 import { EditPurchaseOrderDialog } from "./edit-purchase-order-dialog";
+import { CreatePVFromPODialog } from "@/app/(private)/(main)/payment-vouchers/_components/create-pv-from-po-dialog";
 
 /**
  * Props for the PurchaseOrderDetailClient component
@@ -144,6 +146,8 @@ export function PurchaseOrderDetailClient({
   const router = useRouter();
   const [isUploading, setIsUploading] = useState(false);
   const [editingItems, setEditingItems] = useState(false);
+  const [isCreatePVDialogOpen, setIsCreatePVDialogOpen] = useState(false);
+  const [isCreatingPV, setIsCreatingPV] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { data: vendors = [] } = useVendors({ active: true });
 
@@ -284,6 +288,37 @@ export function PurchaseOrderDetailClient({
       },
     });
     handleDocumentUpdated();
+  };
+
+  const handleConfirmCreatePV = async (
+    workflowId: string,
+    vendorId?: string,
+    vendorName?: string,
+    linkedGRNDocumentNumber?: string,
+  ) => {
+    setIsCreatingPV(true);
+    try {
+      const response = await createPaymentVoucherFromPurchaseOrder(
+        purchaseOrder,
+        workflowId,
+        vendorId,
+        vendorName,
+        linkedGRNDocumentNumber,
+      );
+      if (response.success && response.data) {
+        toast.success("Payment Voucher created successfully");
+        setIsCreatePVDialogOpen(false);
+        handleDocumentUpdated();
+        router.push(`/payment-vouchers/${response.data.id}`);
+      } else {
+        toast.error(response.message || "Failed to create Payment Voucher");
+      }
+    } catch (error) {
+      console.error("Error creating PV:", error);
+      toast.error("An error occurred while creating the Payment Voucher");
+    } finally {
+      setIsCreatingPV(false);
+    }
   };
 
   /**
@@ -769,11 +804,7 @@ export function PurchaseOrderDetailClient({
                 <Button
                   variant="default"
                   size="sm"
-                  onClick={() =>
-                    router.push(
-                      `/payment-vouchers/new?linkedPO=${purchaseOrder.documentNumber}`,
-                    )
-                  }
+                  onClick={() => setIsCreatePVDialogOpen(true)}
                 >
                   <FileText className="h-4 w-4 mr-1" />
                   Create PV
@@ -1162,6 +1193,15 @@ export function PurchaseOrderDetailClient({
         onOpenChange={setIsEditDialogOpen}
         purchaseOrder={purchaseOrder}
         onSuccess={handleDocumentUpdated}
+      />
+
+      {/* Create Payment Voucher Dialog */}
+      <CreatePVFromPODialog
+        open={isCreatePVDialogOpen}
+        onOpenChange={setIsCreatePVDialogOpen}
+        purchaseOrder={purchaseOrder}
+        onConfirm={handleConfirmCreatePV}
+        isCreating={isCreatingPV}
       />
     </div>
   );

@@ -258,7 +258,7 @@ func CreatePurchaseOrderFromRequisition(c *fiber.Ctx) error {
 	}
 
 	config.DB.Preload("Vendor").First(&order)
-	go utils.SyncDocument(config.DB, "PURCHASE_ORDER", order.ID)
+	go utils.SyncDocumentAs(config.DB, "PURCHASE_ORDER", order.ID, tenant.UserID)
 	go services.LogDocumentEvent(config.DB, services.DocumentEvent{
 		OrganizationID: tenant.OrganizationID,
 		DocumentID:     order.ID,
@@ -513,7 +513,7 @@ func CreatePaymentVoucherFromPO(c *fiber.Ctx) error {
 	}
 
 	config.DB.Preload("Vendor").First(&voucher)
-	go utils.SyncDocument(config.DB, "PAYMENT_VOUCHER", voucher.ID)
+	go utils.SyncDocumentAs(config.DB, "PAYMENT_VOUCHER", voucher.ID, tenant.UserID)
 	go services.LogDocumentEvent(config.DB, services.DocumentEvent{
 		OrganizationID: tenant.OrganizationID,
 		DocumentID:     voucher.ID,
@@ -966,7 +966,7 @@ func ConfirmGRN(c *fiber.Ctx) error {
 		return utils.SendInternalError(c, "Failed to confirm GRN", err)
 	}
 
-	go utils.SyncDocument(config.DB, "GRN", grn.ID)
+	go utils.SyncDocumentAs(config.DB, "GRN", grn.ID, userID)
 	go services.LogDocumentEvent(config.DB, services.DocumentEvent{
 		OrganizationID: tenant.OrganizationID,
 		DocumentID:     grn.ID,

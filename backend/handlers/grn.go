@@ -377,7 +377,7 @@ func CreateGRN(c *fiber.Ctx) error {
 		config.DB.Save(&po)
 	}
 
-	go utils.SyncDocument(config.DB, "GRN", grn.ID)
+	go utils.SyncDocumentAs(config.DB, "GRN", grn.ID, tenant.UserID)
 	go services.LogDocumentEvent(config.DB, services.DocumentEvent{
 		OrganizationID: tenant.OrganizationID,
 		DocumentID:     grn.ID,
@@ -526,7 +526,7 @@ func UpdateGRN(c *fiber.Ctx) error {
 		})
 	}
 
-	go utils.SyncDocument(config.DB, "GRN", grn.ID)
+	go utils.SyncDocumentAs(config.DB, "GRN", grn.ID, tenant.UserID)
 	go services.LogDocumentEvent(config.DB, services.DocumentEvent{
 		OrganizationID: tenant.OrganizationID,
 		DocumentID:     grn.ID,
@@ -641,7 +641,7 @@ func modelToGRNResponse(grn models.GoodsReceivedNote) types.GRNResponse {
 		OwnerID:           grn.OwnerID,
 		WarehouseLocation: grn.WarehouseLocation,
 		Notes:             grn.Notes,
-		CurrentStage:      grn.CurrentStage,
+		CurrentStage:      grn.ApprovalStage,
 		StageName:         grn.StageName,
 		ApprovedBy:        grn.ApprovedBy,
 		AutomationUsed:    grn.AutomationUsed,
@@ -787,7 +787,7 @@ func SubmitGRN(c *fiber.Ctx) error {
 	// Preload purchase order and vendor
 	config.DB.Preload("PurchaseOrder").Preload("Vendor").First(&grn)
 
-	go utils.SyncDocument(config.DB, "GRN", grn.ID)
+	go utils.SyncDocumentAs(config.DB, "GRN", grn.ID, userID)
 	go services.LogDocumentEvent(config.DB, services.DocumentEvent{
 		OrganizationID: organizationID,
 		DocumentID:     grn.ID,

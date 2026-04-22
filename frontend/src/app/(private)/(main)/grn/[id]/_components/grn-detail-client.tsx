@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { toast } from "sonner";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
   Package,
@@ -12,7 +13,17 @@ import {
   AlertCircle,
   Plus,
   Send,
+  CheckCircle2,
+  ClipboardList,
+  Layers,
+  Warehouse,
+  Calendar,
+  User,
+  Link as LinkIcon,
+  Eye,
+  Download,
 } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PageHeader } from "@/components/base/page-header";
 import { DocumentLoadingPage } from "@/components/base/document-loading-page";
 import ErrorDisplay from "@/components/base/error-display";
@@ -20,9 +31,12 @@ import { GRNItemsMatchingTable } from "./grn-items-matching-table";
 import { QualityIssueReportDialog } from "./quality-issue-dialog";
 import { useAddQualityIssueMutation } from "@/hooks/use-quality-issue-mutations";
 import { useGRNDetail } from "@/hooks/use-grn-detail";
+import { useOrganizationMembersQuery } from "@/hooks/use-organization-queries";
 import { Badge } from "@/components";
 import type { QualityIssue } from "@/types/goods-received-note";
 import { GRNSubmitDialog } from "./grn-submit-dialog";
+import { PDFPreviewDialog } from "@/components/modals/pdf-preview-dialog";
+import { cn } from "@/lib/utils";
 
 interface GRNDetailClientProps {
   grnId: string;
@@ -38,7 +52,6 @@ export function GRNDetailClient({
   const router = useRouter();
   const [isQualityDialogOpen, setIsQualityDialogOpen] = useState(false);
 
-  // Use the hook to manage document detail logic
   const {
     document: grn,
     isLoading,
@@ -47,14 +60,43 @@ export function GRNDetailClient({
     setShowSubmitDialog,
     handleSubmitForApproval,
     submitMutation,
+    isExporting,
+    previewOpen,
+    setPreviewOpen,
+    previewBlob,
+    handlePreviewPDF,
+    handleExportPDF,
   } = useGRNDetail({
     grnId,
     userId,
     userRole,
   });
 
-  // Mutation for adding quality issues (GRN-specific)
   const addQualityIssueMutation = useAddQualityIssueMutation(grnId);
+
+  // Org members for resolving user IDs → names (Received By, Approved By).
+  // Backend returns a paginated shape { members, total, ... } for page >= 1 —
+  // normalize defensively so a shape change doesn't crash the page.
+  const { data: membersData } = useOrganizationMembersQuery(1, 100);
+  const userLookup = useMemo(() => {
+    const map = new Map<string, { name?: string; email?: string }>();
+    const list: Array<Record<string, any>> = Array.isArray(membersData)
+      ? (membersData as Array<Record<string, any>>)
+      : ((membersData as any)?.members ?? []);
+    for (const m of list) {
+      // `user_id` is the canonical user identifier on an org_members row;
+      // `id` is the membership row id. Backends may return either, so check both.
+      const id = m?.user_id || m?.userId || m?.id;
+      if (id) map.set(id, { name: m.name, email: m.email });
+    }
+    return map;
+  }, [membersData]);
+
+  const resolveUser = (id?: string) => {
+    if (!id) return "—";
+    const hit = userLookup.get(id);
+    return hit?.name || hit?.email || id;
+  };
 
   const handleConfirm = () => {
     toast.success("Navigating to confirmation...");
@@ -85,13 +127,93 @@ export function GRNDetailClient({
       />
     );
 
-  const hasQualityIssues = grn.qualityIssues.length > 0;
-  const hasVariances = grn.items.some(
+  const qualityIssues = grn.qualityIssues ?? [];
+  const hasQualityIssues = qualityIssues.length > 0;
+  const items = grn.items ?? [];
+  const hasVariances = items.some(
     (item: { variance: number }) => item.variance !== 0,
+  );
+  const goodCount = items.filter(
+    (i: { condition: string }) => i.condition?.toLowerCase() === "good",
+  ).length;
+
+  // Stage display is status-aware. A GRN has no workflow stage until submitted,
+  // so show "Awaiting submission" in DRAFT rather than leaking `undefined / 2`.
+  const statusKey = grn.status?.toUpperCase();
+  const totalStages = 2;
+  const currentStageNum = Number(grn.currentStage) || 0;
+  const isDraft = statusKey === "DRAFT";
+  const isTerminal = statusKey === "APPROVED" || statusKey === "COMPLETED";
+  const stagePrimary = isDraft
+    ? "Awaiting submission"
+    : isTerminal
+      ? "Completed"
+      : currentStageNum > 0
+        ? `${currentStageNum} / ${totalStages}`
+        : "—";
+  const stageSecondary = isDraft
+    ? "Submit to start the approval workflow"
+    : grn.stageName || (isTerminal ? "Approval complete" : "In progress");
+  const stagePercent = isDraft
+    ? 0
+    : isTerminal
+      ? 100
+      : Math.min(
+          100,
+          Math.round((currentStageNum / totalStages) * 100),
+        );
+
+  const headerActions = (
+    <div className="flex flex-wrap items-center gap-2">
+      <Button
+        size="sm"
+        variant="outline"
+        onClick={handlePreviewPDF}
+        disabled={isExporting}
+        isLoading={isExporting}
+        loadingText="Loading..."
+        className="gap-1.5"
+      >
+        <Eye className="h-3.5 w-3.5" />
+        Preview
+      </Button>
+      <Button
+        size="sm"
+        variant="outline"
+        onClick={handleExportPDF}
+        disabled={isExporting}
+        isLoading={isExporting}
+        loadingText="Exporting..."
+        className="gap-1.5"
+      >
+        <Download className="h-3.5 w-3.5" />
+        Export PDF
+      </Button>
+      {permissions.canSubmit && (
+        <Button
+          size="sm"
+          onClick={() => setShowSubmitDialog(true)}
+          className="gap-1.5"
+        >
+          <Send className="h-3.5 w-3.5" />
+          Submit for Approval
+        </Button>
+      )}
+      {statusKey === "APPROVED" && (
+        <Button
+          size="sm"
+          onClick={handleConfirm}
+          className="gap-1.5 bg-blue-600 hover:bg-blue-700"
+        >
+          <CheckCircle2 className="h-3.5 w-3.5" />
+          Confirm Receipt
+        </Button>
+      )}
+    </div>
   );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       {/* Header */}
       <PageHeader
         title={grn.documentNumber}
@@ -104,251 +226,275 @@ export function GRNDetailClient({
         ]}
         onBackClick={handleBack}
         showBackButton={true}
+        actions={headerActions}
       />
 
-      {/* Status and Stage Info */}
-      <div className="grid gap-4 md:grid-cols-2">
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium">Current Stage</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-lg font-semibold">{grn.stageName}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Stage {grn.currentStage} of 2
-            </p>
-            <div className="flex gap-1 mt-3">
-              {[1, 2].map((stage) => (
-                <div
-                  key={stage}
-                  className={`h-2 flex-1 rounded-full ${
-                    stage <= grn.currentStage ? "bg-blue-600" : "bg-gray-200"
-                  }`}
-                />
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+      {/* Compact stat strip */}
+      <Card className="border-border/60 p-0">
+        <CardContent className="grid grid-cols-2 md:grid-cols-4 divide-y md:divide-y-0 md:divide-x divide-border/60 p-0">
+          <StatCell
+            icon={<Layers className="h-4 w-4" />}
+            label="Stage"
+            primary={stagePrimary}
+            secondary={stageSecondary}
+            accent={isDraft ? "slate" : isTerminal ? "emerald" : "blue"}
+            progress={stagePercent}
+          />
+          <StatCell
+            icon={<Package className="h-4 w-4" />}
+            label="Items"
+            primary={String(items.length)}
+            secondary={`${goodCount} in good condition`}
+            accent="emerald"
+          />
+          <StatCell
+            icon={<ClipboardList className="h-4 w-4" />}
+            label="Variances"
+            primary={hasVariances ? "Yes" : "None"}
+            secondary={
+              hasVariances ? "Some qty mismatches" : "All qty match PO"
+            }
+            accent={hasVariances ? "amber" : "slate"}
+          />
+          <StatCell
+            icon={<AlertTriangle className="h-4 w-4" />}
+            label="Quality Issues"
+            primary={String(qualityIssues.length)}
+            secondary={
+              hasQualityIssues ? "Reported during intake" : "None reported"
+            }
+            accent={hasQualityIssues ? "rose" : "slate"}
+          />
+        </CardContent>
+      </Card>
 
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium">Total Items</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{grn.items.length}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              {
-                grn.items.filter(
-                  (i: { condition: string }) => i.condition === "GOOD",
-                ).length
-              }{" "}
-              in good condition
-            </p>
-          </CardContent>
-        </Card>
-      </div>
+      {/* GRN Information — compact inline */}
+      <Card className="border-border/60">
+        <CardContent className="p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <FileText className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm font-semibold">GRN Information</span>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-3 text-sm">
+            <InfoField
+              icon={<LinkIcon className="h-3.5 w-3.5" />}
+              label="PO Reference"
+              value={
+                grn.poDocumentNumber ? (
+                  <Link
+                    href={`/purchase-orders?search=${encodeURIComponent(
+                      grn.poDocumentNumber,
+                    )}`}
+                    className="font-mono text-blue-600 hover:underline"
+                  >
+                    {grn.poDocumentNumber}
+                  </Link>
+                ) : (
+                  "—"
+                )
+              }
+            />
+            <InfoField
+              icon={<Warehouse className="h-3.5 w-3.5" />}
+              label="Warehouse"
+              value={grn.warehouseLocation || "—"}
+            />
+            <InfoField
+              icon={<Calendar className="h-3.5 w-3.5" />}
+              label="Received Date"
+              value={
+                grn.receivedDate
+                  ? new Date(grn.receivedDate).toLocaleDateString("en-ZM", {
+                      year: "numeric",
+                      month: "short",
+                      day: "numeric",
+                    })
+                  : "—"
+              }
+            />
+            <InfoField
+              icon={<User className="h-3.5 w-3.5" />}
+              label="Received By"
+              value={resolveUser(grn.receivedBy)}
+            />
+            {grn.approvedBy && (
+              <InfoField
+                icon={<CheckCircle2 className="h-3.5 w-3.5" />}
+                label="Approved By"
+                value={resolveUser(grn.approvedBy)}
+              />
+            )}
+            {grn.linkedPV && (
+              <InfoField
+                icon={<LinkIcon className="h-3.5 w-3.5" />}
+                label="Source Payment Voucher"
+                value={<span className="font-mono">{grn.linkedPV}</span>}
+              />
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
-      {/* Alerts for Issues */}
+      {/* Inline banners for urgent issues */}
       {(hasQualityIssues || hasVariances) && (
         <div className="space-y-2">
           {hasQualityIssues && (
-            <Card className="border-yellow-200 bg-yellow-50">
-              <CardContent className="pt-4 flex gap-3">
-                <AlertTriangle className="h-5 w-5 text-yellow-600 shrink-0 mt-0.5" />
-                <div>
-                  <p className="font-semibold text-yellow-900">
-                    Quality Issues Detected
-                  </p>
-                  <p className="text-sm text-yellow-800">
-                    {grn.qualityIssues.length} issue(s) reported during
-                    inspection
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
+            <div className="flex items-start gap-2.5 rounded-md border border-yellow-200 bg-yellow-50 dark:bg-yellow-950/30 dark:border-yellow-800 p-3 text-sm">
+              <AlertTriangle className="h-4 w-4 text-yellow-600 dark:text-yellow-400 shrink-0 mt-0.5" />
+              <div>
+                <p className="font-medium text-yellow-900 dark:text-yellow-200">
+                  {qualityIssues.length} quality issue
+                  {qualityIssues.length !== 1 ? "s" : ""} reported
+                </p>
+                <p className="text-xs text-yellow-800 dark:text-yellow-300">
+                  See the Reports &amp; Issues tab for details.
+                </p>
+              </div>
+            </div>
           )}
           {hasVariances && (
-            <Card className="border-orange-200 bg-orange-50">
-              <CardContent className="pt-4 flex gap-3">
-                <AlertCircle className="h-5 w-5 text-orange-600 shrink-0 mt-0.5" />
-                <div>
-                  <p className="font-semibold text-orange-900">
-                    Quantity Variances
-                  </p>
-                  <p className="text-sm text-orange-800">
-                    Some items received differ from PO quantities
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
+            <div className="flex items-start gap-2.5 rounded-md border border-orange-200 bg-orange-50 dark:bg-orange-950/30 dark:border-orange-800 p-3 text-sm">
+              <AlertCircle className="h-4 w-4 text-orange-600 dark:text-orange-400 shrink-0 mt-0.5" />
+              <div>
+                <p className="font-medium text-orange-900 dark:text-orange-200">
+                  Quantity variances detected
+                </p>
+                <p className="text-xs text-orange-800 dark:text-orange-300">
+                  Some items received differ from PO quantities.
+                </p>
+              </div>
+            </div>
           )}
         </div>
       )}
 
-      {/* GRN Information */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <FileText className="h-5 w-5" />
-            GRN Information
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="grid gap-4 md:grid-cols-3">
-          <div>
-            <p className="text-sm text-muted-foreground">PO Number</p>
-            <p className="font-semibold">{grn.documentNumber}</p>
-          </div>
-          <div>
-            <p className="text-sm text-muted-foreground">Warehouse Location</p>
-            <p className="font-semibold">{grn.warehouseLocation}</p>
-          </div>
-          <div>
-            <p className="text-sm text-muted-foreground">Received Date</p>
-            <p className="font-semibold">
-              {new Date(grn.receivedDate).toLocaleDateString()}
-            </p>
-          </div>
-          <div>
-            <p className="text-sm text-muted-foreground">Received By</p>
-            <p className="font-semibold">{grn.receivedBy}</p>
-          </div>
-          {grn.approvedBy && (
-            <div>
-              <p className="text-sm text-muted-foreground">Approved By</p>
-              <p className="font-semibold">{grn.approvedBy}</p>
-            </div>
-          )}
-          {grn.linkedPV && (
-            <div>
-              <p className="text-sm text-muted-foreground">Source Payment Voucher</p>
-              <p className="font-semibold font-mono">{grn.linkedPV}</p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      {/* Tabs: Items / Reports & Issues */}
+      <Tabs defaultValue="items" className="w-full">
+        <TabsList>
+          <TabsTrigger value="items" className="gap-2">
+            <Package className="h-4 w-4" />
+            Items
+            <span className="text-xs text-muted-foreground">
+              ({items.length})
+            </span>
+          </TabsTrigger>
+          <TabsTrigger value="reports" className="gap-2">
+            <ClipboardList className="h-4 w-4" />
+            Reports &amp; Issues
+            {(hasQualityIssues || (grn.notes && grn.notes.length > 0)) && (
+              <span className="text-xs text-muted-foreground">
+                ({qualityIssues.length})
+              </span>
+            )}
+          </TabsTrigger>
+        </TabsList>
 
-      {/* Items Matching */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Package className="h-5 w-5" />
-            Items Received vs. Ordered
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <GRNItemsMatchingTable items={grn.items} />
-        </CardContent>
-      </Card>
+        <TabsContent value="items" className="mt-4">
+          <GRNItemsMatchingTable items={items} />
+        </TabsContent>
 
-      {/* Quality Issues */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5" />
-              Quality Issues Reported
-            </CardTitle>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => setIsQualityDialogOpen(true)}
-              className="gap-2"
-            >
-              <Plus className="h-4 w-4" />
-              Report Issue
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {hasQualityIssues ? (
-            <div className="space-y-3">
-              {grn.qualityIssues.map(
-                (
-                  issue: {
-                    id?: string;
-                    itemDescription: string;
-                    issueType: string;
-                    description: string;
-                    severity: string;
-                  },
-                  index: number,
-                ) => {
-                  const severityColors = {
-                    LOW: "bg-yellow-100 text-yellow-800 border-yellow-200",
-                    MEDIUM: "bg-orange-100 text-orange-800 border-orange-200",
-                    HIGH: "bg-red-100 text-red-800 border-red-200",
-                  };
-                  return (
-                    <div
-                      key={issue.id || index}
-                      className={`p-4 border rounded-lg ${severityColors[issue.severity as keyof typeof severityColors]}`}
-                    >
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <p className="font-semibold">
-                            {issue.itemDescription}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {issue.issueType}
-                          </p>
-                          <p className="text-sm mt-1">{issue.description}</p>
+        <TabsContent value="reports" className="mt-4 space-y-4">
+          {/* Quality Issues */}
+          <div className="rounded-lg border border-border">
+            <div className="flex items-center justify-between p-4 border-b">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm font-semibold">Quality Issues</span>
+                <Badge variant="secondary" className="text-xs">
+                  {qualityIssues.length}
+                </Badge>
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setIsQualityDialogOpen(true)}
+                className="gap-1.5"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                Report Issue
+              </Button>
+            </div>
+            <div className="p-4">
+              {hasQualityIssues ? (
+                <div className="space-y-2">
+                  {qualityIssues.map(
+                    (
+                      issue: {
+                        id?: string;
+                        itemDescription: string;
+                        issueType: string;
+                        description: string;
+                        severity: string;
+                      },
+                      index: number,
+                    ) => {
+                      const severityKey = issue.severity?.toUpperCase();
+                      const severityStyles: Record<string, string> = {
+                        LOW: "border-yellow-200 bg-yellow-50 dark:border-yellow-800 dark:bg-yellow-950/30",
+                        MEDIUM:
+                          "border-orange-200 bg-orange-50 dark:border-orange-800 dark:bg-orange-950/30",
+                        HIGH: "border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950/30",
+                      };
+                      return (
+                        <div
+                          key={issue.id || index}
+                          className={cn(
+                            "p-3 border rounded-md",
+                            severityStyles[severityKey] ||
+                              "border-border bg-muted/30",
+                          )}
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium text-sm truncate">
+                                {issue.itemDescription}
+                              </p>
+                              <p className="text-[11px] text-muted-foreground uppercase tracking-wider">
+                                {issue.issueType}
+                              </p>
+                              <p className="text-sm mt-1.5">
+                                {issue.description}
+                              </p>
+                            </div>
+                            <Badge variant="outline" className="text-xs shrink-0">
+                              {issue.severity}
+                            </Badge>
+                          </div>
                         </div>
-                        <Badge variant="outline" className="ml-2">
-                          {issue.severity}
-                        </Badge>
-                      </div>
-                    </div>
-                  );
-                },
+                      );
+                    },
+                  )}
+                </div>
+              ) : (
+                <div className="text-center py-6">
+                  <p className="text-sm text-muted-foreground">
+                    No quality issues reported yet
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Click &ldquo;Report Issue&rdquo; to add quality concerns
+                    during inspection
+                  </p>
+                </div>
               )}
             </div>
-          ) : (
-            <div className="text-center py-6">
-              <p className="text-sm text-muted-foreground">
-                No quality issues reported yet
-              </p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Click "Report Issue" to add quality concerns during inspection
-              </p>
+          </div>
+
+          {/* Notes */}
+          {grn.notes && (
+            <div className="rounded-lg border border-border">
+              <div className="flex items-center gap-2 p-4 border-b">
+                <FileText className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm font-semibold">Notes</span>
+              </div>
+              <div className="p-4">
+                <p className="text-sm whitespace-pre-wrap">{grn.notes}</p>
+              </div>
             </div>
           )}
-        </CardContent>
-      </Card>
+        </TabsContent>
+      </Tabs>
 
-      {/* Notes */}
-      {grn.notes && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Notes</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm whitespace-pre-wrap">{grn.notes}</p>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Action Buttons */}
-      <div className="flex gap-4 pt-4">
-        <Button variant="outline" onClick={handleBack}>
-          Cancel
-        </Button>
-        {permissions.canSubmit && (
-          <Button onClick={() => setShowSubmitDialog(true)} className="gap-2">
-            <Send className="h-4 w-4" />
-            Submit for Approval
-          </Button>
-        )}
-        {grn.status?.toUpperCase() === "APPROVED" && (
-          <Button
-            onClick={handleConfirm}
-            className="bg-blue-600 hover:bg-blue-700"
-          >
-            Confirm Receipt
-          </Button>
-        )}
-      </div>
-
-      {/* GRN Submit Dialog */}
+      {/* Submit / Confirm dialogs */}
       <GRNSubmitDialog
         open={showSubmitDialog}
         onOpenChange={setShowSubmitDialog}
@@ -357,13 +503,112 @@ export function GRNDetailClient({
         isSubmitting={submitMutation.isPending}
       />
 
-      {/* Quality Issue Report Dialog */}
       <QualityIssueReportDialog
         open={isQualityDialogOpen}
         onOpenChange={setIsQualityDialogOpen}
-        items={grn.items}
+        items={items}
         onAddIssue={handleAddQualityIssue}
       />
+
+      {/* PDF Preview Dialog */}
+      {previewBlob && (
+        <PDFPreviewDialog
+          open={previewOpen}
+          onOpenChange={setPreviewOpen}
+          pdfBlob={previewBlob}
+          fileName={`Goods Received Note: ${grn.documentNumber}`}
+          onDownload={handleExportPDF}
+        />
+      )}
+    </div>
+  );
+}
+
+// ── Sub-components ──────────────────────────────────────────────────────────
+
+interface StatCellProps {
+  icon: React.ReactNode;
+  label: string;
+  primary: string;
+  secondary?: string;
+  accent?: "blue" | "emerald" | "amber" | "rose" | "slate";
+  progress?: number; // 0–100 for the bottom progress bar
+}
+
+const ACCENT_CLASSES = {
+  blue: "bg-blue-100 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300",
+  emerald:
+    "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300",
+  amber:
+    "bg-amber-100 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300",
+  rose: "bg-rose-100 text-rose-700 dark:bg-rose-950/50 dark:text-rose-300",
+  slate:
+    "bg-slate-100 text-slate-600 dark:bg-slate-800/60 dark:text-slate-300",
+} as const;
+
+const PROGRESS_CLASSES = {
+  blue: "bg-blue-500",
+  emerald: "bg-emerald-500",
+  amber: "bg-amber-500",
+  rose: "bg-rose-500",
+  slate: "bg-slate-400",
+} as const;
+
+function StatCell({
+  icon,
+  label,
+  primary,
+  secondary,
+  accent = "slate",
+  progress,
+}: StatCellProps) {
+  return (
+    <div className="p-4 space-y-1.5">
+      <div className="flex items-center gap-2">
+        <span
+          className={cn(
+            "flex items-center justify-center rounded-md h-6 w-6",
+            ACCENT_CLASSES[accent],
+          )}
+        >
+          {icon}
+        </span>
+        <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+          {label}
+        </span>
+      </div>
+      <div className="text-xl font-bold tabular-nums leading-tight">
+        {primary}
+      </div>
+      {secondary && (
+        <p className="text-xs text-muted-foreground">{secondary}</p>
+      )}
+      {typeof progress === "number" && (
+        <div className="h-1 bg-muted rounded-full overflow-hidden mt-1">
+          <div
+            className={cn("h-full transition-all", PROGRESS_CLASSES[accent])}
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
+interface InfoFieldProps {
+  icon: React.ReactNode;
+  label: string;
+  value: React.ReactNode;
+}
+
+function InfoField({ icon, label, value }: InfoFieldProps) {
+  return (
+    <div className="min-w-0">
+      <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-0.5">
+        <span className="text-muted-foreground/70">{icon}</span>
+        <span>{label}</span>
+      </div>
+      <div className="font-medium truncate">{value}</div>
     </div>
   );
 }
