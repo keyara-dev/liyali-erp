@@ -206,6 +206,14 @@ func CreateGRN(c *fiber.Ctx) error {
 		}
 	}
 
+	// Goods-first: the PO must be APPROVED before goods can be received against it.
+	// Payment-first enforces the PV-approval gate further down; no PO-status gate there.
+	if effectiveFlow != "payment_first" && strings.ToUpper(po.Status) != "APPROVED" {
+		return utils.SendBadRequestError(c, fmt.Sprintf(
+			"Cannot create GRN: linked PO %s is in %s status and must be APPROVED first.",
+			po.DocumentNumber, po.Status))
+	}
+
 	// One-to-one: reject if any non-cancelled GRN already exists for this PO/PV
 	if effectiveFlow == "payment_first" && req.LinkedPV != "" {
 		var existingGRN models.GoodsReceivedNote
@@ -718,11 +726,19 @@ func SubmitGRN(c *fiber.Ctx) error {
 	// Get workflow execution service from context
 	workflowExecutionService := c.Locals("workflowExecutionService").(*services.WorkflowExecutionService)
 
-	// Assign workflow to the GRN
-	assignment, err := workflowExecutionService.AssignWorkflowToDocumentWithID(
-		c.Context(), organizationID, grn.ID, "grn", submitReq.WorkflowID, userID,
+	// Atomic submit: status change + workflow assignment in a single transaction.
+	tx := config.DB.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	assignment, err := workflowExecutionService.AssignWorkflowToDocumentWithIDTx(
+		c.Context(), tx, organizationID, grn.ID, "grn", submitReq.WorkflowID, userID,
 	)
 	if err != nil {
+		tx.Rollback()
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"success": false,
 			"message": "Failed to assign workflow to GRN",
@@ -730,39 +746,37 @@ func SubmitGRN(c *fiber.Ctx) error {
 		})
 	}
 
-	// Update GRN status to pending
 	grn.Status = "PENDING"
 	grn.UpdatedAt = time.Now()
 
-	// Add action history entry for submission
-	var actionHistory []types.ActionHistoryEntry
-	actionHistory = grn.ActionHistory.Data()
-
-	// Get user info for action history
 	var user models.User
-	if err := config.DB.Where("id = ?", userID).First(&user).Error; err == nil {
-		actionHistory = append(actionHistory, types.ActionHistoryEntry{
-			ID:              uuid.New().String(),
-			Action:          "SUBMIT",
-			PerformedBy:     userID,
-			PerformedByName: user.Name,
-			PerformedByRole: user.Role,
-			Timestamp:       time.Now(),
-			Comments:        "GRN submitted for approval",
-			ActionType:      "SUBMIT",
-			PreviousStatus:  "DRAFT",
-			NewStatus:       "PENDING",
-		})
-		grn.ActionHistory = datatypes.NewJSONType(actionHistory)
-	}
+	_ = config.DB.Where("id = ?", userID).First(&user).Error
+	actionHistory := grn.ActionHistory.Data()
+	actionHistory = append(actionHistory, types.ActionHistoryEntry{
+		ID:              uuid.New().String(),
+		Action:          "SUBMIT",
+		PerformedBy:     userID,
+		PerformedByName: user.Name,
+		PerformedByRole: user.Role,
+		Timestamp:       time.Now(),
+		Comments:        "GRN submitted for approval",
+		ActionType:      "SUBMIT",
+		PreviousStatus:  "DRAFT",
+		NewStatus:       "PENDING",
+	})
+	grn.ActionHistory = datatypes.NewJSONType(actionHistory)
 
-	// Save GRN
-	if err := config.DB.Save(&grn).Error; err != nil {
+	if err := tx.Save(&grn).Error; err != nil {
+		tx.Rollback()
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"success": false,
 			"message": "Failed to update GRN status",
 			"error":   err.Error(),
 		})
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		return utils.SendInternalError(c, "Failed to submit GRN", err)
 	}
 
 	// Preload purchase order and vendor

@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useCallback, useMemo, useEffect } from "react";
 import { DataTable } from "@/components/ui/data-table";
 import { StatusBadge } from "@/components/status-badge";
-import { Download, Eye, Pencil, Trash2, MoreVertical } from "lucide-react";
+import { Download, Eye, Pencil, MoreVertical } from "lucide-react";
 import { WorkflowDocument } from "@/types/workflow";
 import { GoodsReceivedNote } from "@/types/goods-received-note";
 import type { ActionButton } from "@/components/ui/action-buttons";
@@ -73,29 +73,10 @@ function GrnOptionsMenu({
           <Download className="mr-2 h-4 w-4" />
           Download
         </DropdownMenuItem>
-        {grn.status?.toUpperCase() === "PENDING" && (
-          <>
-            <DropdownMenuItem
-              onClick={() => console.log("Approve GRN:", grn.id)}
-            >
-              <div className="mr-2 h-4 w-4 text-green-600">✓</div>
-              Approve
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => console.log("Reject GRN:", grn.id)}
-            >
-              <div className="mr-2 h-4 w-4 text-red-600">✕</div>
-              Reject
-            </DropdownMenuItem>
-          </>
-        )}
-        {grn.status?.toUpperCase() !== "APPROVED" && canModify && (
-          <DropdownMenuItem
-            onClick={() => console.log("Delete GRN:", grn.id)}
-            className="text-destructive"
-          >
-            <Trash2 className="mr-2 h-4 w-4" />
-            Delete
+        {grn.status?.toUpperCase() === "DRAFT" && canModify && (
+          <DropdownMenuItem onClick={() => router.push(`/grn/${grn.id}`)}>
+            <Pencil className="mr-2 h-4 w-4" />
+            Edit
           </DropdownMenuItem>
         )}
       </DropdownMenuContent>

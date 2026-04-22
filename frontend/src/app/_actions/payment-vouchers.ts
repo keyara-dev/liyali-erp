@@ -98,6 +98,12 @@ export async function createPaymentVoucher(
         paymentMethod: data.paymentMethod,
         bankDetails: data.bankDetails,
         items: data.items,
+        invoiceNumber: data.invoiceNumber,
+        amount: data.amount,
+        currency: data.currency,
+        glCode: data.glCode,
+        linkedPO: data.linkedPO,
+        linkedGRN: data.linkedGRNDocumentNumber,
         budgetCode: data.budgetCode,
         costCenter: data.costCenter,
         projectCode: data.projectCode,
@@ -219,6 +225,30 @@ export async function updatePaymentVoucher(
     );
   } catch (error: any) {
     return handleError(error, "PUT", url);
+  }
+}
+
+/**
+ * Withdraw a Payment Voucher from approval (PENDING only, not claimed).
+ * Calls: POST /api/v1/payment-vouchers/{id}/withdraw
+ */
+export async function withdrawPaymentVoucher(
+  pvId: string,
+): Promise<APIResponse<PaymentVoucher>> {
+  const url = `/api/v1/payment-vouchers/${pvId}/withdraw`;
+
+  try {
+    const response = await authenticatedApiClient({
+      method: "POST",
+      url,
+    });
+
+    return successResponse(
+      response.data?.data,
+      response.data?.message || "Payment voucher withdrawn successfully",
+    );
+  } catch (error: any) {
+    return handleError(error, "POST", url);
   }
 }
 

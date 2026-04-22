@@ -87,9 +87,13 @@ export function POItemsEditor({
       toast.error("Add at least one item");
       return;
     }
-    const invalid = items.some((i) => !i.description.trim() || i.quantity <= 0);
+    const invalid = items.some(
+      (i) => !i.description.trim() || i.quantity <= 0 || i.unitPrice < 0,
+    );
     if (invalid) {
-      toast.error("All items need a description and quantity > 0");
+      toast.error(
+        "All items need a description, quantity > 0, and unit price >= 0",
+      );
       return;
     }
 

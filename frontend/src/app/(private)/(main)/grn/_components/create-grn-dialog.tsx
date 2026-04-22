@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { QUERY_KEYS } from "@/lib/constants";
 import {
   Dialog,
   DialogContent,
@@ -62,6 +64,7 @@ export function CreateGRNDialog({
   onSuccess,
 }: CreateGRNDialogProps) {
   const { user } = useSession();
+  const queryClient = useQueryClient();
   const { data: orgSettings } = useOrganizationSettingsQuery();
   const { data: purchaseOrders = [] } = usePurchaseOrders();
   const { data: paymentVouchers = [] } = usePaymentVouchers();
@@ -184,8 +187,15 @@ export function CreateGRNDialog({
 
   const canCreate =
     poDocumentNumber !== "" &&
+    warehouseLocation.trim() !== "" &&
     items.length > 0 &&
-    items.every((i) => i.description.trim() !== "") &&
+    items.every(
+      (i) =>
+        i.description.trim() !== "" &&
+        Number(i.quantityOrdered) > 0 &&
+        Number(i.quantityReceived) >= 0 &&
+        Number(i.quantityReceived) <= Number(i.quantityOrdered),
+    ) &&
     (orgFlow === "goods_first" || selectedPVDocNumber !== "");
 
   const handleCreate = async () => {
@@ -205,6 +215,21 @@ export function CreateGRNDialog({
 
       if (response.success) {
         toast.success("GRN created successfully");
+        // A new GRN affects: GRN lists, the linked PO detail (create-GRN button),
+        // the linked PV (goods-first eligibility), and dashboard counters.
+        queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.GRN.ALL] });
+        queryClient.invalidateQueries({
+          queryKey: [QUERY_KEYS.PURCHASE_ORDERS.ALL],
+        });
+        queryClient.invalidateQueries({
+          queryKey: [QUERY_KEYS.PURCHASE_ORDERS.BY_ID],
+        });
+        queryClient.invalidateQueries({
+          queryKey: [QUERY_KEYS.PAYMENT_VOUCHERS.ALL],
+        });
+        queryClient.invalidateQueries({
+          queryKey: [QUERY_KEYS.DASHBOARD.METRICS],
+        });
         handleClose();
         onSuccess?.();
       } else {

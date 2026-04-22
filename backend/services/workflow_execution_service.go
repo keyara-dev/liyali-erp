@@ -102,6 +102,104 @@ func (s *WorkflowExecutionService) AssignWorkflowToDocumentWithID(
 	return s.assignWorkflow(ctx, organizationID, entityID, entityType, userID, workflow)
 }
 
+// AssignWorkflowToDocumentWithIDTx is the transactional variant of
+// AssignWorkflowToDocumentWithID. It runs all writes inside the caller-provided
+// transaction so that failure in subsequent handler steps (e.g. persisting the
+// document's new PENDING status) rolls the assignment back together with the
+// document change — eliminating orphaned "PENDING doc without workflow" or
+// "workflow with no matching doc status" inconsistencies.
+//
+// The caller owns Commit/Rollback and must run any async side effects
+// (notifications, etc.) after commit.
+func (s *WorkflowExecutionService) AssignWorkflowToDocumentWithIDTx(
+	ctx context.Context,
+	tx *gorm.DB,
+	organizationID, entityID, entityType, workflowID, userID string,
+) (*models.WorkflowAssignment, error) {
+	workflowUUID, err := uuid.Parse(workflowID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid workflow ID format")
+	}
+
+	workflow, err := s.workflowService.GetWorkflow(ctx, workflowUUID, organizationID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get selected workflow: %w", err)
+	}
+
+	if !workflow.IsActive {
+		return nil, fmt.Errorf("selected workflow is inactive")
+	}
+
+	if !strings.EqualFold(workflow.EntityType, entityType) {
+		return nil, fmt.Errorf("workflow entity type mismatch")
+	}
+
+	stages, err := workflow.GetStages()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get workflow stages: %w", err)
+	}
+	if len(stages) == 0 {
+		return nil, fmt.Errorf("workflow has no stages")
+	}
+
+	now := time.Now()
+	assignment := &models.WorkflowAssignment{
+		ID:              uuid.New().String(),
+		OrganizationID:  organizationID,
+		EntityID:        entityID,
+		EntityType:      entityType,
+		WorkflowID:      workflow.ID,
+		WorkflowVersion: workflow.Version,
+		CurrentStage:    1,
+		Status:          "IN_PROGRESS",
+		StageHistory:    datatypes.JSON{},
+		AssignedAt:      now,
+		AssignedBy:      userID,
+		CreatedAt:       now,
+		UpdatedAt:       now,
+	}
+	if err := tx.Create(assignment).Error; err != nil {
+		return nil, fmt.Errorf("failed to create workflow assignment: %w", err)
+	}
+
+	firstStage := stages[0]
+	documentPriority := s.getDocumentPriority(tx, entityID, entityType)
+
+	task := &models.WorkflowTask{
+		ID:                   uuid.New().String(),
+		OrganizationID:       organizationID,
+		WorkflowAssignmentID: assignment.ID,
+		EntityID:             entityID,
+		EntityType:           entityType,
+		StageNumber:          firstStage.StageNumber,
+		StageName:            firstStage.StageName,
+		AssignmentType:       "role",
+		AssignedRole:         &firstStage.RequiredRole,
+		Status:               "PENDING",
+		Priority:             documentPriority,
+		CreatedAt:            now,
+	}
+
+	var calculatedDueDate time.Time
+	if firstStage.TimeoutHours != nil && *firstStage.TimeoutHours > 0 {
+		calculatedDueDate = now.Add(time.Duration(*firstStage.TimeoutHours) * time.Hour)
+	} else {
+		calculatedDueDate = now.Add(7 * 24 * time.Hour)
+	}
+	documentDueDate := s.getDocumentDueDate(tx, entityID, entityType)
+	if documentDueDate != nil && documentDueDate.Before(calculatedDueDate) {
+		task.DueDate = documentDueDate
+	} else {
+		task.DueDate = &calculatedDueDate
+	}
+
+	if err := tx.Create(task).Error; err != nil {
+		return nil, fmt.Errorf("failed to create workflow task: %w", err)
+	}
+
+	return assignment, nil
+}
+
 // SubmitRoutingResult contains the result of a routing-aware requisition submission.
 type SubmitRoutingResult struct {
 	RoutingPath     string                      `json:"routingPath"`              // "accounting" or "procurement"
@@ -241,7 +339,7 @@ func (s *WorkflowExecutionService) autoApproveAndGeneratePO(
 	}
 
 	// 2. Update requisition status to "approved"
-	if err := s.updateDocumentStatus(tx, "requisition", entityID, "APPROVED"); err != nil {
+	if err := s.updateDocumentStatusScoped(tx, "requisition", entityID, organizationID, "APPROVED"); err != nil {
 		tx.Rollback()
 		return nil, fmt.Errorf("failed to update requisition status: %w", err)
 	}
@@ -770,7 +868,7 @@ func (s *WorkflowExecutionService) ApproveWorkflowTaskWithVersion(ctx context.Co
 			assignment.CurrentStage = len(stages)
 
 			// Update the actual document status to "approved"
-			if err := s.updateDocumentStatus(tx, assignment.EntityType, assignment.EntityID, "APPROVED"); err != nil {
+			if err := s.updateDocumentStatusScoped(tx, assignment.EntityType, assignment.EntityID, assignment.OrganizationID, "APPROVED"); err != nil {
 				tx.Rollback()
 				return fmt.Errorf("failed to update document status: %w", err)
 			}
@@ -1153,7 +1251,7 @@ func (s *WorkflowExecutionService) RejectWorkflowTaskWithVersion(ctx context.Con
 		assignment.UpdatedAt = time.Now()
 
 		// Update document status to "revision"
-		if err := s.updateDocumentStatus(tx, assignment.EntityType, assignment.EntityID, "REVISION"); err != nil {
+		if err := s.updateDocumentStatusScoped(tx, assignment.EntityType, assignment.EntityID, assignment.OrganizationID, "REVISION"); err != nil {
 			tx.Rollback()
 			return fmt.Errorf("failed to update document status: %w", err)
 		}
@@ -1212,7 +1310,7 @@ func (s *WorkflowExecutionService) RejectWorkflowTaskWithVersion(ctx context.Con
 		assignment.UpdatedAt = time.Now()
 
 		// Update document status to "draft"
-		if err := s.updateDocumentStatus(tx, assignment.EntityType, assignment.EntityID, "DRAFT"); err != nil {
+		if err := s.updateDocumentStatusScoped(tx, assignment.EntityType, assignment.EntityID, assignment.OrganizationID, "DRAFT"); err != nil {
 			tx.Rollback()
 			return fmt.Errorf("failed to update document status: %w", err)
 		}
@@ -1240,7 +1338,7 @@ func (s *WorkflowExecutionService) RejectWorkflowTaskWithVersion(ctx context.Con
 				return fmt.Errorf("failed to load purchase order: %w", err)
 			}
 			prevStatus := po.Status
-			if err := s.updateDocumentStatus(tx, "purchase_order", assignment.EntityID, "DRAFT"); err != nil {
+			if err := s.updateDocumentStatusScoped(tx, "purchase_order", assignment.EntityID, assignment.OrganizationID, "DRAFT"); err != nil {
 				tx.Rollback()
 				return fmt.Errorf("failed to update document status: %w", err)
 			}
@@ -1258,7 +1356,7 @@ func (s *WorkflowExecutionService) RejectWorkflowTaskWithVersion(ctx context.Con
 				var req models.Requisition
 				if err := tx.First(&req, "id = ?", reqID).Error; err == nil {
 					prevReqStatus := req.Status
-					if err := s.updateDocumentStatus(tx, "requisition", reqID, "DRAFT"); err != nil {
+					if err := s.updateDocumentStatusScoped(tx, "requisition", reqID, assignment.OrganizationID, "DRAFT"); err != nil {
 						tx.Rollback()
 						return fmt.Errorf("failed to revert linked requisition: %w", err)
 					}
@@ -1288,7 +1386,7 @@ func (s *WorkflowExecutionService) RejectWorkflowTaskWithVersion(ctx context.Con
 				return fmt.Errorf("failed to load payment voucher: %w", err)
 			}
 			prevStatus := pv.Status
-			if err := s.updateDocumentStatus(tx, "payment_voucher", assignment.EntityID, "DRAFT"); err != nil {
+			if err := s.updateDocumentStatusScoped(tx, "payment_voucher", assignment.EntityID, assignment.OrganizationID, "DRAFT"); err != nil {
 				tx.Rollback()
 				return fmt.Errorf("failed to update document status: %w", err)
 			}
@@ -1306,7 +1404,7 @@ func (s *WorkflowExecutionService) RejectWorkflowTaskWithVersion(ctx context.Con
 				if err := tx.Where("document_number = ? AND organization_id = ?", pv.LinkedGRN, assignment.OrganizationID).
 					First(&grn).Error; err == nil {
 					prevGRNStatus := grn.Status
-					if err := s.updateDocumentStatus(tx, "grn", grn.ID, "DRAFT"); err != nil {
+					if err := s.updateDocumentStatusScoped(tx, "grn", grn.ID, assignment.OrganizationID, "DRAFT"); err != nil {
 						tx.Rollback()
 						return fmt.Errorf("failed to revert linked GRN: %w", err)
 					}
@@ -1336,7 +1434,7 @@ func (s *WorkflowExecutionService) RejectWorkflowTaskWithVersion(ctx context.Con
 				return fmt.Errorf("failed to load GRN: %w", err)
 			}
 			prevStatus := grn.Status
-			if err := s.updateDocumentStatus(tx, "grn", assignment.EntityID, "DRAFT"); err != nil {
+			if err := s.updateDocumentStatusScoped(tx, "grn", assignment.EntityID, assignment.OrganizationID, "DRAFT"); err != nil {
 				tx.Rollback()
 				return fmt.Errorf("failed to update GRN status: %w", err)
 			}
@@ -1355,7 +1453,7 @@ func (s *WorkflowExecutionService) RejectWorkflowTaskWithVersion(ctx context.Con
 				return fmt.Errorf("failed to load requisition: %w", err)
 			}
 			prevStatus := req.Status
-			if err := s.updateDocumentStatus(tx, "requisition", assignment.EntityID, "DRAFT"); err != nil {
+			if err := s.updateDocumentStatusScoped(tx, "requisition", assignment.EntityID, assignment.OrganizationID, "DRAFT"); err != nil {
 				tx.Rollback()
 				return fmt.Errorf("failed to update requisition status: %w", err)
 			}
@@ -1368,7 +1466,7 @@ func (s *WorkflowExecutionService) RejectWorkflowTaskWithVersion(ctx context.Con
 			}
 		} else {
 			// Standard: all other document types → REJECTED permanently
-			if err := s.updateDocumentStatus(tx, assignment.EntityType, assignment.EntityID, "REJECTED"); err != nil {
+			if err := s.updateDocumentStatusScoped(tx, assignment.EntityType, assignment.EntityID, assignment.OrganizationID, "REJECTED"); err != nil {
 				tx.Rollback()
 				return fmt.Errorf("failed to update document status: %w", err)
 			}
@@ -1769,20 +1867,37 @@ type ApproverInfo struct {
 	Role  string `json:"role"`
 }
 
-// updateDocumentStatus updates the status of the actual document when workflow completes
+// updateDocumentStatus updates the status of the actual document when a
+// workflow step completes or is rolled back.
+//
+// Callers pass the assignment's organization_id so the UPDATE is scoped to that
+// tenant — defense in depth against a task somehow referencing an entity ID
+// that belongs to another org. An empty orgID falls back to ID-only matching
+// for backward compatibility (e.g. utility callers that do not yet have org
+// context), so do not remove the empty check without auditing every call site.
 func (s *WorkflowExecutionService) updateDocumentStatus(tx *gorm.DB, entityType, entityID, newStatus string) error {
+	return s.updateDocumentStatusScoped(tx, entityType, entityID, "", newStatus)
+}
+
+func (s *WorkflowExecutionService) updateDocumentStatusScoped(tx *gorm.DB, entityType, entityID, organizationID, newStatus string) error {
+	addOrgScope := func(q *gorm.DB) *gorm.DB {
+		if organizationID != "" {
+			return q.Where("organization_id = ?", organizationID)
+		}
+		return q
+	}
 	var err error
 	switch entityType {
 	case "REQUISITION", "requisition":
-		err = tx.Model(&models.Requisition{}).Where("id = ?", entityID).Update("status", newStatus).Error
+		err = addOrgScope(tx.Model(&models.Requisition{}).Where("id = ?", entityID)).Update("status", newStatus).Error
 	case "BUDGET", "budget":
-		err = tx.Model(&models.Budget{}).Where("id = ?", entityID).Update("status", newStatus).Error
+		err = addOrgScope(tx.Model(&models.Budget{}).Where("id = ?", entityID)).Update("status", newStatus).Error
 	case "PURCHASE_ORDER", "purchase_order":
-		err = tx.Model(&models.PurchaseOrder{}).Where("id = ?", entityID).Update("status", newStatus).Error
+		err = addOrgScope(tx.Model(&models.PurchaseOrder{}).Where("id = ?", entityID)).Update("status", newStatus).Error
 	case "PAYMENT_VOUCHER", "payment_voucher":
-		err = tx.Model(&models.PaymentVoucher{}).Where("id = ?", entityID).Update("status", newStatus).Error
+		err = addOrgScope(tx.Model(&models.PaymentVoucher{}).Where("id = ?", entityID)).Update("status", newStatus).Error
 	case "GRN", "grn":
-		err = tx.Model(&models.GoodsReceivedNote{}).Where("id = ?", entityID).Update("status", newStatus).Error
+		err = addOrgScope(tx.Model(&models.GoodsReceivedNote{}).Where("id = ?", entityID)).Update("status", newStatus).Error
 	default:
 		return fmt.Errorf("unsupported entity type: %s", entityType)
 	}

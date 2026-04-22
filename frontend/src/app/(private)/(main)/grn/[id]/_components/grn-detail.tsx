@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Download, ChevronLeft, CheckCircle2, XCircle } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -17,6 +18,7 @@ import { useOrganizationContext } from "@/hooks/use-organization";
 import { useGRNById } from "@/hooks/use-grn-queries";
 import { DocumentLoadingPage } from "@/components/base/document-loading-page";
 import ErrorDisplay from "@/components/base/error-display";
+import { QUERY_KEYS } from "@/lib/constants";
 import Link from "next/link";
 
 interface GrnDetailProps {
@@ -27,6 +29,7 @@ interface GrnDetailProps {
 
 export function GrnDetail({ grnId, userId, userRole }: GrnDetailProps) {
   const { currentOrganization } = useOrganizationContext();
+  const queryClient = useQueryClient();
 
   // Fetch real GRN data from backend
   const { data: grn, isLoading, refetch } = useGRNById(grnId);
@@ -59,6 +62,13 @@ export function GrnDetail({ grnId, userId, userRole }: GrnDetailProps) {
   const handleApproveSubmit = async (data: any) => {
     try {
       console.log("Approving GRN with data:", data);
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.GRN.BY_ID, grnId],
+      });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.GRN.ALL] });
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.PURCHASE_ORDERS.BY_ID],
+      });
       await refetch();
       setShowApprovalDialog(false);
     } catch (error) {
@@ -76,13 +86,14 @@ export function GrnDetail({ grnId, userId, userRole }: GrnDetailProps) {
       />
     );
 
-  const canApprove = grn.status === "SUBMITTED";
+  const grnStatus = grn.status?.toUpperCase();
+  const canApprove = grnStatus === "PENDING";
   const statusVariant =
-    grn.status === "APPROVED"
+    grnStatus === "APPROVED"
       ? "default"
-      : grn.status === "REJECTED"
+      : grnStatus === "REJECTED"
         ? "destructive"
-        : grn.status === "SUBMITTED"
+        : grnStatus === "PENDING"
           ? "secondary"
           : "outline";
 

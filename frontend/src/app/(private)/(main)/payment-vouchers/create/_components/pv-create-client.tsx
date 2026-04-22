@@ -32,9 +32,19 @@ import Link from "next/link";
 import { PageHeader } from "@/components/base/page-header";
 import { usePurchaseOrders } from "@/hooks/use-purchase-order-queries";
 import { useSavePaymentVoucher } from "@/hooks/use-payment-voucher-queries";
+import { useGRNs } from "@/hooks/use-grn-queries";
+import { useOrganizationSettingsQuery } from "@/hooks/use-organization-queries";
 import { CreatePaymentVoucherRequest } from "@/types/payment-voucher";
 import { PurchaseOrder } from "@/types/purchase-order";
 import { toast } from "sonner";
+
+// The narrow GRN shape this page actually reads. `useGRNs` returns the slim
+// type from grn-actions.ts; we don't need the full domain type here.
+interface GRNSummary {
+  documentNumber: string;
+  poDocumentNumber: string;
+  status: string;
+}
 
 interface PVCreateClientProps {
   userId: string;
@@ -49,6 +59,8 @@ export function PVCreateClient({
 }: PVCreateClientProps) {
   const router = useRouter();
   const { data: purchaseOrders, isLoading: isLoadingPOs } = usePurchaseOrders();
+  const { data: orgSettings } = useOrganizationSettingsQuery();
+  const { data: grns = [] } = useGRNs(1, 500);
   const savePVMutation = useSavePaymentVoucher(() => {
     router.push("/payment-vouchers");
   });
@@ -56,10 +68,24 @@ export function PVCreateClient({
   const [selectedPO, setSelectedPO] = useState<PurchaseOrder | null>(null);
   const [isCreating, setIsCreating] = useState(false);
 
-  // Filter to show only APPROVED purchase orders
+  const orgFlow = orgSettings?.procurementFlow ?? "goods_first";
+
+  // For goods-first flow, a PO is only eligible once an APPROVED GRN exists against it.
+  // Per-PO flow override takes precedence over the org setting.
+  const hasApprovedGrnForPo = (po: PurchaseOrder) =>
+    (grns as unknown as GRNSummary[]).some(
+      (g) =>
+        g.poDocumentNumber === po.documentNumber &&
+        g.status?.toUpperCase() === "APPROVED",
+    );
+
   const approvedPOs =
-    purchaseOrders?.filter((po) => po.status?.toUpperCase() === "APPROVED") ||
-    [];
+    purchaseOrders?.filter((po) => {
+      if (po.status?.toUpperCase() !== "APPROVED") return false;
+      const poFlow = po.procurementFlow || orgFlow;
+      if (poFlow === "goods_first") return hasApprovedGrnForPo(po);
+      return true;
+    }) || [];
 
   const handleSelectPO = (poId: string) => {
     const po = approvedPOs.find((p) => p.id === poId);
@@ -74,6 +100,16 @@ export function PVCreateClient({
 
     setIsCreating(true);
     try {
+      const poFlow = selectedPO.procurementFlow || orgFlow;
+      const linkedGRN =
+        poFlow === "goods_first"
+          ? (grns as unknown as GRNSummary[]).find(
+              (g) =>
+                g.poDocumentNumber === selectedPO.documentNumber &&
+                g.status?.toUpperCase() === "APPROVED",
+            )?.documentNumber
+          : undefined;
+
       const pvData = {
         vendorId: selectedPO.vendorId,
         invoiceNumber: selectedPO.documentNumber || "INV-" + Date.now(),
@@ -83,7 +119,8 @@ export function PVCreateClient({
         glCode: selectedPO.budgetCode || "GL-001",
         description:
           selectedPO.description || `Payment for ${selectedPO.documentNumber}`,
-        linkedPO: selectedPO.id,
+        linkedPO: selectedPO.documentNumber,
+        ...(linkedGRN ? { linkedGRNDocumentNumber: linkedGRN } : {}),
       } as unknown as CreatePaymentVoucherRequest;
 
       await savePVMutation.mutateAsync(pvData);

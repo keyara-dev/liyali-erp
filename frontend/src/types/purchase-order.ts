@@ -465,6 +465,6 @@ export type PurchaseOrderStatus =
   | "PENDING"
   | "APPROVED"
   | "REJECTED"
+  | "REVISION"
   | "FULFILLED"
-  | "COMPLETED"
   | "CANCELLED";

@@ -8,8 +8,6 @@ import {
   Download,
   Eye,
   Pencil,
-  CheckCircle2,
-  XCircle,
   MoreVertical,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -182,22 +180,6 @@ function PvOptionsMenu({
           <Download className="mr-2 h-4 w-4" />
           Download
         </DropdownMenuItem>
-        {pv.status === "IN_REVIEW" && (
-          <>
-            <DropdownMenuItem
-              onClick={() => console.log("Approve voucher:", pv.id)}
-            >
-              <CheckCircle2 className="mr-2 h-4 w-4 text-green-600" />
-              Approve
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => console.log("Reject voucher:", pv.id)}
-            >
-              <XCircle className="mr-2 h-4 w-4 text-red-600" />
-              Reject
-            </DropdownMenuItem>
-          </>
-        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );

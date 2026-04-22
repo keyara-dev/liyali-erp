@@ -240,6 +240,68 @@ func CreatePaymentVoucher(c *fiber.Ctx) error {
 				"Payment voucher %s already exists for PO %s (status: %s).",
 				existingPV.DocumentNumber, req.LinkedPO, existingPV.Status))
 		}
+
+		// Goods-first flow: require an APPROVED GRN before allowing PV creation.
+		// Resolve effective flow: PO override → org default → "goods_first".
+		effectiveFlow := strings.ToLower(strings.TrimSpace(linkedPO.ProcurementFlow))
+		if effectiveFlow == "" {
+			orgSvc := services.NewOrganizationService(config.DB)
+			orgSettings, _ := orgSvc.GetOrganizationSettings(tenant.OrganizationID)
+			if orgSettings != nil && orgSettings.ProcurementFlow != "" {
+				effectiveFlow = strings.ToLower(strings.TrimSpace(orgSettings.ProcurementFlow))
+			} else {
+				effectiveFlow = "goods_first"
+			}
+		}
+
+		if effectiveFlow == "goods_first" {
+			if req.LinkedGRN == "" {
+				return utils.SendBadRequestError(c, fmt.Sprintf(
+					"Cannot create PV for PO %s: goods-first flow requires an APPROVED GRN first. Link the GRN via linkedGRN.",
+					req.LinkedPO))
+			}
+			var linkedGRN models.GoodsReceivedNote
+			if err := config.DB.
+				Where("document_number = ? AND organization_id = ?", req.LinkedGRN, tenant.OrganizationID).
+				First(&linkedGRN).Error; err != nil {
+				return utils.SendBadRequestError(c, "Linked GRN not found")
+			}
+			if linkedGRN.PODocumentNumber != req.LinkedPO {
+				return utils.SendBadRequestError(c, fmt.Sprintf(
+					"GRN %s is not linked to PO %s", req.LinkedGRN, req.LinkedPO))
+			}
+			if strings.ToUpper(linkedGRN.Status) != "APPROVED" {
+				return utils.SendBadRequestError(c, fmt.Sprintf(
+					"Cannot create PV: linked GRN %s is in %s status and must be APPROVED first.",
+					req.LinkedGRN, linkedGRN.Status))
+			}
+
+			// Guard against over-invoicing: PV amount may not exceed the value of
+			// what was actually received. received_value = Σ (grnItem.quantityReceived × poItem.unitPrice),
+			// matched by description. 0.01 tolerance absorbs FP rounding.
+			poItems := linkedPO.Items.Data()
+			grnItems := linkedGRN.Items.Data()
+			unitPriceByDesc := make(map[string]float64, len(poItems))
+			for _, pi := range poItems {
+				unitPriceByDesc[pi.Description] = pi.UnitPrice
+			}
+			var receivedValue float64
+			for _, gi := range grnItems {
+				receivedValue += float64(gi.QuantityReceived) * unitPriceByDesc[gi.Description]
+			}
+			if req.Amount > receivedValue+0.01 {
+				return utils.SendBadRequestError(c, fmt.Sprintf(
+					"PV amount %.2f exceeds received value %.2f on GRN %s. Adjust the invoice amount to match goods actually received.",
+					req.Amount, receivedValue, req.LinkedGRN))
+			}
+		}
+
+		// Final backstop: a PV against an approved PO can never exceed that PO's total.
+		if req.Amount > linkedPO.TotalAmount+0.01 {
+			return utils.SendBadRequestError(c, fmt.Sprintf(
+				"PV amount %.2f exceeds linked PO %s total %.2f.",
+				req.Amount, req.LinkedPO, linkedPO.TotalAmount))
+		}
 	}
 
 	// Generate voucher number
@@ -262,6 +324,7 @@ func CreatePaymentVoucher(c *fiber.Ctx) error {
 		Description:    req.Description,
 		ApprovalStage:  0,
 		LinkedPO:       req.LinkedPO,
+		LinkedGRN:      req.LinkedGRN,
 		CreatedBy:      tenant.UserID,
 		Title:          req.Title,
 		Department:     req.Department,
@@ -699,11 +762,19 @@ func SubmitPaymentVoucher(c *fiber.Ctx) error {
 	// Get workflow execution service from context
 	workflowExecutionService := c.Locals("workflowExecutionService").(*services.WorkflowExecutionService)
 
-	// Assign workflow to the payment voucher
-	assignment, err := workflowExecutionService.AssignWorkflowToDocumentWithID(
-		c.Context(), organizationID, voucher.ID, "payment_voucher", submitReq.WorkflowID, userID,
+	// Atomic submit: status change + workflow assignment in a single transaction.
+	tx := config.DB.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	assignment, err := workflowExecutionService.AssignWorkflowToDocumentWithIDTx(
+		c.Context(), tx, organizationID, voucher.ID, "payment_voucher", submitReq.WorkflowID, userID,
 	)
 	if err != nil {
+		tx.Rollback()
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"success": false,
 			"message": "Failed to assign workflow to payment voucher",
@@ -711,39 +782,37 @@ func SubmitPaymentVoucher(c *fiber.Ctx) error {
 		})
 	}
 
-	// Update payment voucher status to pending
 	voucher.Status = "PENDING"
 	voucher.UpdatedAt = time.Now()
 
-	// Add action history entry for submission
-	var actionHistory []types.ActionHistoryEntry
-	actionHistory = voucher.ActionHistory.Data()
-
-	// Get user info for action history
 	var user models.User
-	if err := config.DB.Where("id = ?", userID).First(&user).Error; err == nil {
-		actionHistory = append(actionHistory, types.ActionHistoryEntry{
-			ID:              uuid.New().String(),
-			Action:          "SUBMIT",
-			PerformedBy:     userID,
-			PerformedByName: user.Name,
-			PerformedByRole: user.Role,
-			Timestamp:       time.Now(),
-			Comments:        "Payment voucher submitted for approval",
-			ActionType:      "SUBMIT",
-			PreviousStatus:  "DRAFT",
-			NewStatus:       "PENDING",
-		})
-		voucher.ActionHistory = datatypes.NewJSONType(actionHistory)
-	}
+	_ = config.DB.Where("id = ?", userID).First(&user).Error
+	actionHistory := voucher.ActionHistory.Data()
+	actionHistory = append(actionHistory, types.ActionHistoryEntry{
+		ID:              uuid.New().String(),
+		Action:          "SUBMIT",
+		PerformedBy:     userID,
+		PerformedByName: user.Name,
+		PerformedByRole: user.Role,
+		Timestamp:       time.Now(),
+		Comments:        "Payment voucher submitted for approval",
+		ActionType:      "SUBMIT",
+		PreviousStatus:  "DRAFT",
+		NewStatus:       "PENDING",
+	})
+	voucher.ActionHistory = datatypes.NewJSONType(actionHistory)
 
-	// Save payment voucher
-	if err := config.DB.Save(&voucher).Error; err != nil {
+	if err := tx.Save(&voucher).Error; err != nil {
+		tx.Rollback()
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"success": false,
 			"message": "Failed to update payment voucher status",
 			"error":   err.Error(),
 		})
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		return utils.SendInternalError(c, "Failed to submit payment voucher", err)
 	}
 
 	go utils.SyncDocument(config.DB, "PAYMENT_VOUCHER", voucher.ID)

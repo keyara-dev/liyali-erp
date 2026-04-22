@@ -3,14 +3,7 @@
 import { useCallback, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ColumnDef } from "@tanstack/react-table";
-import {
-  ArrowUpDown,
-  Download,
-  Eye,
-  CheckCircle2,
-  XCircle,
-  MoreVertical,
-} from "lucide-react";
+import { ArrowUpDown, Download, Eye, MoreVertical } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/ui/data-table";
 import { StatusBadge as CentralizedStatusBadge } from "@/components/status-badge";
@@ -184,18 +177,6 @@ function PoOptionsMenu({
           <Download className="mr-2 h-4 w-4" />
           Download
         </DropdownMenuItem>
-        {po.status === "IN_REVIEW" && (
-          <>
-            <DropdownMenuItem onClick={() => console.log("Approve PO:", po.id)}>
-              <CheckCircle2 className="mr-2 h-4 w-4 text-green-600" />
-              Approve
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => console.log("Reject PO:", po.id)}>
-              <XCircle className="mr-2 h-4 w-4 text-red-600" />
-              Reject
-            </DropdownMenuItem>
-          </>
-        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );

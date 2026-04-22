@@ -338,7 +338,7 @@ export function GRNDetailClient({
             Submit for Approval
           </Button>
         )}
-        {grn.status === "SUBMITTED" && (
+        {grn.status?.toUpperCase() === "APPROVED" && (
           <Button
             onClick={handleConfirm}
             className="bg-blue-600 hover:bg-blue-700"

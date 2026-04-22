@@ -975,11 +975,21 @@ func SubmitPurchaseOrder(c *fiber.Ctx) error {
 	// Get workflow execution service from context
 	workflowExecutionService := c.Locals("workflowExecutionService").(*services.WorkflowExecutionService)
 
-	// Assign workflow to the purchase order
-	assignment, err := workflowExecutionService.AssignWorkflowToDocumentWithID(
-		c.Context(), organizationID, order.ID, "purchase_order", submitReq.WorkflowID, userID,
+	// Status transition + workflow assignment must be atomic: either both persist
+	// or neither does. Otherwise we risk orphan docs (PENDING with no workflow)
+	// or orphan workflows (assignment with doc still DRAFT).
+	tx := config.DB.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	assignment, err := workflowExecutionService.AssignWorkflowToDocumentWithIDTx(
+		c.Context(), tx, organizationID, order.ID, "purchase_order", submitReq.WorkflowID, userID,
 	)
 	if err != nil {
+		tx.Rollback()
 		logging.LogError(c, err, "workflow_assignment_failed", map[string]interface{}{
 			"order_id": id,
 		})
@@ -990,36 +1000,30 @@ func SubmitPurchaseOrder(c *fiber.Ctx) error {
 		})
 	}
 
-	// Update purchase order status to pending
 	order.Status = "PENDING"
 	order.UpdatedAt = time.Now()
 
-	// Add action history entry for submission
-	var actionHistory []types.ActionHistoryEntry
-	actionHistory = order.ActionHistory.Data()
-
-	// Get user info for action history
 	var user models.User
-	if err := config.DB.Where("id = ?", userID).First(&user).Error; err == nil {
-		submitTime := time.Now()
-		actionHistory = append(actionHistory, types.ActionHistoryEntry{
-			ID:              uuid.New().String(),
-			Action:          "SUBMIT",
-			ActionType:      "SUBMIT",
-			PerformedBy:     userID,
-			PerformedByName: user.Name,
-			PerformedByRole: user.Role,
-			Timestamp:       submitTime,
-			PerformedAt:     submitTime,
-			Comments:        "Purchase order submitted for approval",
-			PreviousStatus:  "DRAFT",
-			NewStatus:       "PENDING",
-		})
-		order.ActionHistory = datatypes.NewJSONType(actionHistory)
-	}
+	_ = config.DB.Where("id = ?", userID).First(&user).Error
+	submitTime := time.Now()
+	actionHistory := order.ActionHistory.Data()
+	actionHistory = append(actionHistory, types.ActionHistoryEntry{
+		ID:              uuid.New().String(),
+		Action:          "SUBMIT",
+		ActionType:      "SUBMIT",
+		PerformedBy:     userID,
+		PerformedByName: user.Name,
+		PerformedByRole: user.Role,
+		Timestamp:       submitTime,
+		PerformedAt:     submitTime,
+		Comments:        "Purchase order submitted for approval",
+		PreviousStatus:  "DRAFT",
+		NewStatus:       "PENDING",
+	})
+	order.ActionHistory = datatypes.NewJSONType(actionHistory)
 
-	// Save purchase order
-	if err := config.DB.Save(&order).Error; err != nil {
+	if err := tx.Save(&order).Error; err != nil {
+		tx.Rollback()
 		logging.LogError(c, err, "purchase_order_update_failed", map[string]interface{}{
 			"order_id": id,
 		})
@@ -1028,6 +1032,13 @@ func SubmitPurchaseOrder(c *fiber.Ctx) error {
 			"message": "Failed to update purchase order status",
 			"error":   err.Error(),
 		})
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		logging.LogError(c, err, "purchase_order_submit_commit_failed", map[string]interface{}{
+			"order_id": id,
+		})
+		return utils.SendInternalError(c, "Failed to submit purchase order", err)
 	}
 
 	// Preload vendor

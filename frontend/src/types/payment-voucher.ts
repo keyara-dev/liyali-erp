@@ -290,12 +290,11 @@ export interface PaymentVoucherStats {
  */
 export type PaymentVoucherStatus =
   | "DRAFT"
-  | "IN_REVIEW"
   | "PENDING"
   | "APPROVED"
   | "REJECTED"
+  | "REVISION"
   | "PAID"
-  | "COMPLETED"
   | "CANCELLED";
 
 // Re-export PaymentMethod from core

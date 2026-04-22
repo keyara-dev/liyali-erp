@@ -41,7 +41,14 @@ interface GoodsReceivedNote {
   id: string;
   grnNumber: string;
   poNumber: string;
-  status: "DRAFT" | "SUBMITTED" | "CONFIRMED" | "REJECTED";
+  status:
+    | "DRAFT"
+    | "PENDING"
+    | "APPROVED"
+    | "REJECTED"
+    | "REVISION"
+    | "COMPLETED"
+    | "CANCELLED";
   warehouseLocation: string;
   receivedDate: string;
   receivedBy: string;

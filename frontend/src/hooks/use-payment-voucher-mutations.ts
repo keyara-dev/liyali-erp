@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import {
   submitPaymentVoucherForApproval,
   markPaymentVoucherAsPaid,
+  withdrawPaymentVoucher,
 } from "@/app/_actions/payment-vouchers";
 import {
   SubmitPaymentVoucherRequest,
@@ -147,11 +148,9 @@ export const useWithdrawPaymentVoucher = (onSuccess?: () => void) => {
 
   return useMutation({
     mutationFn: async (paymentVoucherId: string) => {
-      // TODO: Implement withdrawPaymentVoucher action when backend endpoint is ready
-      // const result = await withdrawPaymentVoucher(paymentVoucherId);
-      throw new Error(
-        "Withdraw endpoint not yet implemented. Backend needs POST /api/v1/payment-vouchers/:id/withdraw",
-      );
+      const result = await withdrawPaymentVoucher(paymentVoucherId);
+      if (!result.success) throw new Error(result.message);
+      return result;
     },
     onSuccess: (result: any) => {
       toast.success(

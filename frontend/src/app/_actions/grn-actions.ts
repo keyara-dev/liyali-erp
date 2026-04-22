@@ -20,7 +20,14 @@ export interface GoodsReceivedNote {
   id: string;
   documentNumber: string;
   poDocumentNumber: string;
-  status: "DRAFT" | "SUBMITTED" | "CONFIRMED" | "REJECTED" | "APPROVED";
+  status:
+    | "DRAFT"
+    | "PENDING"
+    | "APPROVED"
+    | "REJECTED"
+    | "REVISION"
+    | "COMPLETED"
+    | "CANCELLED";
   warehouseLocation: string;
   receivedDate: string;
   receivedBy: string;
