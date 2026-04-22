@@ -32,6 +32,8 @@ import { QualityIssueReportDialog } from "./quality-issue-dialog";
 import { useAddQualityIssueMutation } from "@/hooks/use-quality-issue-mutations";
 import { useGRNDetail } from "@/hooks/use-grn-detail";
 import { useOrganizationMembersQuery } from "@/hooks/use-organization-queries";
+import { usePurchaseOrders } from "@/hooks/use-purchase-order-queries";
+import type { PurchaseOrder } from "@/types/purchase-order";
 import { Badge } from "@/components";
 import type { QualityIssue } from "@/types/goods-received-note";
 import { GRNSubmitDialog } from "./grn-submit-dialog";
@@ -73,6 +75,18 @@ export function GRNDetailClient({
   });
 
   const addQualityIssueMutation = useAddQualityIssueMutation(grnId);
+
+  // Resolve the linked PO so we can deep-link to /purchase-orders/{id}.
+  // GRN only carries poDocumentNumber, so we cross-reference against the PO
+  // list. Covered by the same query as the GRN list page, so the cache is
+  // usually warm when arriving from there.
+  const { data: purchaseOrders = [] } = usePurchaseOrders();
+  const linkedPO = useMemo(() => {
+    if (!grn?.poDocumentNumber) return undefined;
+    return (purchaseOrders as PurchaseOrder[]).find(
+      (po) => po.documentNumber === grn.poDocumentNumber,
+    );
+  }, [purchaseOrders, grn?.poDocumentNumber]);
 
   // Org members for resolving user IDs → names (Received By, Approved By).
   // Backend returns a paginated shape { members, total, ... } for page >= 1 —
@@ -158,10 +172,7 @@ export function GRNDetailClient({
     ? 0
     : isTerminal
       ? 100
-      : Math.min(
-          100,
-          Math.round((currentStageNum / totalStages) * 100),
-        );
+      : Math.min(100, Math.round((currentStageNum / totalStages) * 100));
 
   const headerActions = (
     <div className="flex flex-wrap items-center gap-2">
@@ -281,14 +292,18 @@ export function GRNDetailClient({
               label="PO Reference"
               value={
                 grn.poDocumentNumber ? (
-                  <Link
-                    href={`/purchase-orders?search=${encodeURIComponent(
-                      grn.poDocumentNumber,
-                    )}`}
-                    className="font-mono text-blue-600 hover:underline"
-                  >
-                    {grn.poDocumentNumber}
-                  </Link>
+                  linkedPO ? (
+                    <Link
+                      href={`/purchase-orders/${linkedPO.id}`}
+                      className="font-mono text-blue-600 hover:underline"
+                    >
+                      {grn.poDocumentNumber}
+                    </Link>
+                  ) : (
+                    <span className="font-mono text-muted-foreground">
+                      {grn.poDocumentNumber}
+                    </span>
+                  )
                 ) : (
                   "—"
                 )
@@ -456,7 +471,10 @@ export function GRNDetailClient({
                                 {issue.description}
                               </p>
                             </div>
-                            <Badge variant="outline" className="text-xs shrink-0">
+                            <Badge
+                              variant="outline"
+                              className="text-xs shrink-0"
+                            >
                               {issue.severity}
                             </Badge>
                           </div>
@@ -539,11 +557,9 @@ const ACCENT_CLASSES = {
   blue: "bg-blue-100 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300",
   emerald:
     "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300",
-  amber:
-    "bg-amber-100 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300",
+  amber: "bg-amber-100 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300",
   rose: "bg-rose-100 text-rose-700 dark:bg-rose-950/50 dark:text-rose-300",
-  slate:
-    "bg-slate-100 text-slate-600 dark:bg-slate-800/60 dark:text-slate-300",
+  slate: "bg-slate-100 text-slate-600 dark:bg-slate-800/60 dark:text-slate-300",
 } as const;
 
 const PROGRESS_CLASSES = {
