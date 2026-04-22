@@ -325,7 +325,7 @@ func CreateRequisition(c *fiber.Ctx) error {
 		Description:       req.Description,
 		Department:        req.Department,
 		DepartmentId:      req.DepartmentId,
-		Status: "DRAFT",
+		Status:            models.StatusDraft,
 		Priority:          req.Priority,
 		TotalAmount:       req.TotalAmount,
 		Currency:          req.Currency,
@@ -369,7 +369,7 @@ func CreateRequisition(c *fiber.Ctx) error {
 			Timestamp:       time.Now(),
 			Comments:        "Requisition created",
 			ActionType:      "CREATE",
-			NewStatus: "DRAFT",
+			NewStatus:       models.StatusDraft,
 		},
 	}
 	requisition.ActionHistory = datatypes.NewJSONType(actionHistory)
@@ -419,20 +419,25 @@ func GetRequisition(c *fiber.Ctx) error {
 		})
 	}
 
-	// Get organization ID from context (set by auth middleware)
+	// Get organization ID + user context for access scoping
 	organizationID := c.Locals("organizationID").(string)
+	userID, _ := c.Locals("userID").(string)
+	userRole, _ := c.Locals("userRole").(string)
 
-	var requisition models.Requisition
-
-	// Try to find by ID first (UUID), then by requisition number, filtered by organization
-	err := config.DB.
+	// Org + role/ownership scope. Detail now mirrors list visibility: a user
+	// who shouldn't see the requisition in the list can't reach it via the
+	// UUID either. Requester + assigned approvers + privileged/procurement
+	// all still see their expected rows via ApplyToQuery.
+	scope := utils.GetDocumentScope(config.DB, userID, userRole, organizationID)
+	query := config.DB.
 		Preload("Requester").
 		Preload("Category").
 		Preload("PreferredVendor").
-		Where("organization_id = ? AND (id = ? OR document_number = ?)", organizationID, id, id).
-		First(&requisition).Error
+		Where("organization_id = ? AND (id = ? OR document_number = ?)", organizationID, id, id)
+	query = scope.ApplyToQuery(query, "requester_id", "requisition", "")
 
-	if err != nil {
+	var requisition models.Requisition
+	if err := query.First(&requisition).Error; err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
 			"success": false,
 			"message": "Requisition not found",
@@ -943,7 +948,7 @@ func WithdrawRequisition(c *fiber.Ctx) error {
 
 	// Update requisition status back to draft and reset approval fields
 	previousStatus := requisition.Status
-	requisition.Status = "DRAFT"
+	requisition.Status = models.StatusDraft
 	requisition.ApprovalStage = 0
 	requisition.UpdatedAt = time.Now()
 
@@ -976,7 +981,7 @@ func WithdrawRequisition(c *fiber.Ctx) error {
 		Comments:        "Requisition withdrawn by requester",
 		ActionType:      "WITHDRAW",
 		PreviousStatus:  previousStatus,
-		NewStatus:       "DRAFT",
+		NewStatus:       models.StatusDraft,
 	})
 	requisition.ActionHistory = datatypes.NewJSONType(actionHistory)
 
@@ -1084,7 +1089,7 @@ func SubmitRequisition(c *fiber.Ctx) error {
 	// If auto-approved, the requisition status was already updated by the routing service.
 	// Otherwise, update to "pending" and add action history.
 	if !routingResult.AutoApproved {
-		requisition.Status = "PENDING"
+		requisition.Status = models.StatusPending
 		requisition.UpdatedAt = time.Now()
 
 		// Add action history entry for submission
@@ -1112,8 +1117,8 @@ func SubmitRequisition(c *fiber.Ctx) error {
 			Timestamp:       time.Now(),
 			Comments:        "Requisition submitted for approval",
 			ActionType:      "SUBMIT",
-			PreviousStatus:  "DRAFT",
-			NewStatus:       "PENDING",
+			PreviousStatus:  models.StatusDraft,
+			NewStatus:       models.StatusPending,
 		})
 		requisition.ActionHistory = datatypes.NewJSONType(actionHistory)
 

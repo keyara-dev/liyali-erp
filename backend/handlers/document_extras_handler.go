@@ -145,7 +145,7 @@ func CreatePurchaseOrderFromRequisition(c *fiber.Ctx) error {
 		OrganizationID:    tenant.OrganizationID,
 		DocumentNumber:    documentNumber,
 		VendorID:          vendorIDPtr,
-		Status:            "DRAFT",
+		Status:            models.StatusDraft,
 		TotalAmount:       req.TotalAmount,
 		Currency:          req.Currency,
 		ApprovalStage:     0,
@@ -231,7 +231,7 @@ func CreatePurchaseOrderFromRequisition(c *fiber.Ctx) error {
 		Timestamp:       poFromReqNow,
 		PerformedAt:     poFromReqNow,
 		Comments:        "Purchase order created from requisition",
-		NewStatus:       "DRAFT",
+		NewStatus:       models.StatusDraft,
 	})
 	order.ActionHistory = datatypes.NewJSONType(initialHistory)
 
@@ -392,7 +392,7 @@ func CreatePaymentVoucherFromPO(c *fiber.Ctx) error {
 		DocumentNumber: documentNumber,
 		VendorID:       vendorIDPtr,
 		InvoiceNumber:  invoiceRef,
-		Status:         "DRAFT",
+		Status:         models.StatusDraft,
 		Amount:         req.TotalAmount,
 		Currency:       req.Currency,
 		PaymentMethod:  "bank_transfer",
@@ -479,7 +479,7 @@ func CreatePaymentVoucherFromPO(c *fiber.Ctx) error {
 		Timestamp:       pvFromPONow,
 		PerformedAt:     pvFromPONow,
 		Comments:        "Payment voucher created from purchase order",
-		NewStatus:       "DRAFT",
+		NewStatus:       models.StatusDraft,
 	})
 	voucher.ActionHistory = datatypes.NewJSONType(pvInitialHistory)
 
@@ -534,7 +534,15 @@ func CreatePaymentVoucherFromPO(c *fiber.Ctx) error {
 // POST /api/v1/payment-vouchers/:id/mark-paid
 // ============================================================================
 
-// MarkPaymentVoucherPaid marks an approved PV as paid and records payment details.
+// MarkPaymentVoucherPaid marks an approved PV as paid by completing its
+// payment_execution workflow task. The task is auto-created when the PV's
+// final approval stage completes, so callers no longer need to look it up
+// themselves. Amount mismatches are still rejected here rather than deep in
+// the workflow so the error surface stays specific.
+//
+// Behind the scenes this delegates to ApproveWorkflowTask, which means the
+// PAID transition inherits the full workflow plumbing: claim check, optimistic
+// locking, signed ActionHistory entry, SyncDocument, notification event.
 func MarkPaymentVoucherPaid(c *fiber.Ctx) error {
 	logger := logging.FromContext(c)
 	logger.Info("mark_pv_paid_request")
@@ -551,9 +559,10 @@ func MarkPaymentVoucherPaid(c *fiber.Ctx) error {
 
 	var req struct {
 		PaidAmount      float64    `json:"paidAmount"`
-		PaidDate        *time.Time `json:"paidDate"`
+		PaidDate        *time.Time `json:"paidDate"` // accepted but not used; payment date is server-side now
 		ReferenceNumber string     `json:"referenceNumber"`
 		Comments        string     `json:"comments"`
+		Signature       string     `json:"signature"`
 	}
 
 	if err := c.BodyParser(&req); err != nil {
@@ -565,17 +574,22 @@ func MarkPaymentVoucherPaid(c *fiber.Ctx) error {
 	if req.ReferenceNumber == "" {
 		return utils.SendBadRequestError(c, "referenceNumber is required")
 	}
+	if req.Signature == "" {
+		return utils.SendBadRequestError(c, "signature is required to execute payment")
+	}
 
 	var voucher models.PaymentVoucher
 	if err := config.DB.Where("id = ? AND organization_id = ?", id, tenant.OrganizationID).First(&voucher).Error; err != nil {
 		return utils.SendNotFoundError(c, "Payment voucher not found")
 	}
 
-	if strings.ToUpper(voucher.Status) != "APPROVED" {
+	if strings.ToUpper(voucher.Status) != models.StatusApproved {
 		return utils.SendBadRequestError(c, "Only approved payment vouchers can be marked as paid")
 	}
 
-	// Amount mismatch validation — paidAmount must match the approved voucher amount
+	// Amount mismatch validation — paidAmount must match the approved voucher amount.
+	// Kept at the handler edge so clients get a specific amount_mismatch error
+	// code rather than a generic workflow error.
 	const amountTolerance = 0.01 // allow for floating point rounding
 	if req.PaidAmount < voucher.Amount-amountTolerance || req.PaidAmount > voucher.Amount+amountTolerance {
 		return c.Status(fiber.StatusUnprocessableEntity).JSON(fiber.Map{
@@ -587,52 +601,50 @@ func MarkPaymentVoucherPaid(c *fiber.Ctx) error {
 		})
 	}
 
-	now := time.Now()
-	paidDate := &now
-	if req.PaidDate != nil {
-		paidDate = req.PaidDate
+	// Find the open payment_execution task created when the PV was fully approved.
+	var task models.WorkflowTask
+	if err := config.DB.Where(
+		"entity_id = ? AND organization_id = ? AND kind = ? AND UPPER(status) IN ('PENDING','CLAIMED')",
+		voucher.ID, tenant.OrganizationID, models.TaskKindPaymentExecution,
+	).First(&task).Error; err != nil {
+		return utils.SendBadRequestError(c, "No pending payment execution task found for this voucher. The PV may not yet be fully approved, or it may already be PAID.")
 	}
 
-	voucher.Status = "PAID"
-	voucher.PaidAmount = &req.PaidAmount
-	voucher.PaidDate = paidDate
-	voucher.UpdatedAt = now
-
 	userID := c.Locals("userID").(string)
-	var user models.User
-	config.DB.Where("id = ?", userID).First(&user)
 
-	actionHistory := voucher.ActionHistory.Data()
-	actionHistory = append(actionHistory, types.ActionHistoryEntry{
-		ID:              uuid.New().String(),
-		Action:          "MARK_PAID",
-		PerformedBy:     userID,
-		PerformedByName: user.Name,
-		PerformedByRole: user.Role,
-		Timestamp:       now,
-		Comments:        req.Comments,
-		ActionType:      "MARK_PAID",
-		PreviousStatus:  "APPROVED",
-		NewStatus:       "PAID",
-	})
-	voucher.ActionHistory = datatypes.NewJSONType(actionHistory)
+	// The workflow service enforces claim rules. If the task is unclaimed, auto-claim
+	// it to the caller for convenience so a single button press can execute payment.
+	if task.ClaimedBy == nil {
+		claimNow := time.Now()
+		claimExpiry := claimNow.Add(30 * time.Minute)
+		config.DB.Model(&task).Updates(map[string]interface{}{
+			"status":       "CLAIMED",
+			"claimed_by":   userID,
+			"claimed_at":   claimNow,
+			"claim_expiry": claimExpiry,
+			"version":      task.Version + 1,
+		})
+		task.Version++ // keep local copy in sync for the version-locked approve
+	}
 
-	if err := config.DB.Save(&voucher).Error; err != nil {
+	workflowExecutionService := c.Locals("workflowExecutionService").(*services.WorkflowExecutionService)
+
+	commentsWithRef := req.Comments
+	if req.ReferenceNumber != "" {
+		commentsWithRef = fmt.Sprintf("[Ref: %s] %s", req.ReferenceNumber, req.Comments)
+	}
+
+	if err := workflowExecutionService.ApproveWorkflowTaskWithVersion(
+		c.Context(), task.ID, userID, req.Signature, commentsWithRef, task.Version,
+	); err != nil {
 		logging.LogError(c, err, "mark_pv_paid_failed", nil)
 		return utils.SendInternalError(c, "Failed to mark payment voucher as paid", err)
 	}
 
-	go utils.SyncDocument(config.DB, "PAYMENT_VOUCHER", voucher.ID)
-	go services.LogDocumentEvent(config.DB, services.DocumentEvent{
-		OrganizationID: tenant.OrganizationID,
-		DocumentID:     voucher.ID,
-		DocumentType:   "payment_voucher",
-		UserID:         userID,
-		ActorName:      user.Name,
-		ActorRole:      user.Role,
-		Action:         "marked_paid",
-		Details:        map[string]interface{}{"documentNumber": voucher.DocumentNumber, "paidAmount": req.PaidAmount},
-	})
+	// Reload for response
+	if err := config.DB.Where("id = ?", voucher.ID).First(&voucher).Error; err != nil {
+		return utils.SendInternalError(c, "Failed to reload payment voucher", err)
+	}
 
 	logger.Info("pv_marked_paid")
 	return utils.SendSimpleSuccess(c, modelToPaymentVoucherResponse(voucher), "Payment voucher marked as paid successfully")
@@ -931,7 +943,7 @@ func ConfirmGRN(c *fiber.Ctx) error {
 	config.DB.Where("id = ?", userID).First(&user)
 
 	now := time.Now()
-	grn.Status = "COMPLETED"
+	grn.Status = models.StatusCompleted
 	grn.UpdatedAt = now
 
 	actionHistory := grn.ActionHistory.Data()
@@ -944,8 +956,8 @@ func ConfirmGRN(c *fiber.Ctx) error {
 		Timestamp:       now,
 		Comments:        req.Comments,
 		ActionType:      "CONFIRM",
-		PreviousStatus:  "APPROVED",
-		NewStatus:       "COMPLETED",
+		PreviousStatus:  models.StatusApproved,
+		NewStatus:       models.StatusCompleted,
 	})
 	grn.ActionHistory = datatypes.NewJSONType(actionHistory)
 

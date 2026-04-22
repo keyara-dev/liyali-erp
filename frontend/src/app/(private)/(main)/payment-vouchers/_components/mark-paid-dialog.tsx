@@ -23,6 +23,7 @@ import {
 import { CheckCircle } from "lucide-react";
 import { PaymentVoucher } from "@/types/payment-voucher";
 import { useMarkPaymentVoucherAsPaid } from "@/hooks/use-payment-voucher-mutations";
+import { DigitalSignaturePad } from "@/components/ui/digital-signature-pad";
 import { formatCurrency } from "@/lib/utils";
 
 interface MarkPaidDialogProps {
@@ -53,6 +54,7 @@ export function MarkPaidDialog({
     new Date().toISOString().split("T")[0],
   );
   const [comments, setComments] = useState("");
+  const [signature, setSignature] = useState("");
 
   const mutation = useMarkPaymentVoucherAsPaid(() => {
     toast.success("Payment voucher marked as paid");
@@ -74,6 +76,10 @@ export function MarkPaidDialog({
       toast.error("Payment date is required");
       return;
     }
+    if (!signature) {
+      toast.error("Signature is required to execute payment");
+      return;
+    }
 
     mutation.mutate({
       paymentVoucherId: paymentVoucher.id,
@@ -87,6 +93,7 @@ export function MarkPaidDialog({
       paymentReference: referenceNumber,
       referenceNumber,
       comments,
+      signature,
     });
   };
 
@@ -182,6 +189,15 @@ export function MarkPaidDialog({
               value={comments}
               onChange={(e) => setComments(e.target.value)}
             />
+          </div>
+
+          {/* Signature — executing a payment now records an attributed,
+              signed ActionHistory entry through the workflow task engine. */}
+          <div className="space-y-2">
+            <Label>
+              Signature <span className="text-destructive">*</span>
+            </Label>
+            <DigitalSignaturePad onSignatureChange={setSignature} />
           </div>
         </div>
 

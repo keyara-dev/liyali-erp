@@ -316,7 +316,7 @@ func CreatePaymentVoucher(c *fiber.Ctx) error {
 		DocumentNumber: documentNumber,
 		VendorID:       vendorIDPtr,
 		InvoiceNumber:  req.InvoiceNumber,
-		Status:         "DRAFT",
+		Status:         models.StatusDraft,
 		Amount:         req.Amount,
 		Currency:       req.Currency,
 		PaymentMethod:  req.PaymentMethod,
@@ -349,7 +349,7 @@ func CreatePaymentVoucher(c *fiber.Ctx) error {
 		Timestamp:       pvCreateNow,
 		PerformedAt:     pvCreateNow,
 		Comments:        "Payment voucher created",
-		NewStatus:       "DRAFT",
+		NewStatus:       models.StatusDraft,
 	}})
 
 	if err := config.DB.Create(&voucher).Error; err != nil {
@@ -405,12 +405,18 @@ func GetPaymentVoucher(c *fiber.Ctx) error {
 		})
 	}
 
-	var voucher models.PaymentVoucher
-	// SECURITY FIX: Filter by organization ID
-	if err := config.DB.
+	// Org scope + role/ownership scope. Detail endpoint now mirrors the list
+	// endpoint's access policy so a user without visibility in the list can't
+	// reach the doc by guessing/sharing the UUID. ApplyToQuery is a no-op for
+	// privileged and procurement users.
+	scope := utils.GetDocumentScope(config.DB, tenant.UserID, tenant.UserRole, tenant.OrganizationID)
+	query := config.DB.
 		Preload("Vendor").
-		Where("id = ? AND organization_id = ?", id, tenant.OrganizationID).
-		First(&voucher).Error; err != nil {
+		Where("id = ? AND organization_id = ?", id, tenant.OrganizationID)
+	query = scope.ApplyToQuery(query, "created_by", "payment_voucher", "")
+
+	var voucher models.PaymentVoucher
+	if err := query.First(&voucher).Error; err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
 			"success": false,
 			"message": "Payment voucher not found",
@@ -782,7 +788,7 @@ func SubmitPaymentVoucher(c *fiber.Ctx) error {
 		})
 	}
 
-	voucher.Status = "PENDING"
+	voucher.Status = models.StatusPending
 	voucher.UpdatedAt = time.Now()
 
 	var user models.User
@@ -797,8 +803,8 @@ func SubmitPaymentVoucher(c *fiber.Ctx) error {
 		Timestamp:       time.Now(),
 		Comments:        "Payment voucher submitted for approval",
 		ActionType:      "SUBMIT",
-		PreviousStatus:  "DRAFT",
-		NewStatus:       "PENDING",
+		PreviousStatus:  models.StatusDraft,
+		NewStatus:       models.StatusPending,
 	})
 	voucher.ActionHistory = datatypes.NewJSONType(actionHistory)
 
@@ -948,7 +954,7 @@ func WithdrawPaymentVoucher(c *fiber.Ctx) error {
 
 	// Update payment voucher status back to draft and reset approval fields
 	previousStatus := voucher.Status
-	voucher.Status = "DRAFT"
+	voucher.Status = models.StatusDraft
 	voucher.ApprovalStage = 0
 	voucher.UpdatedAt = time.Now()
 
@@ -979,7 +985,7 @@ func WithdrawPaymentVoucher(c *fiber.Ctx) error {
 		Comments:        "Payment voucher withdrawn by creator",
 		ActionType:      "WITHDRAW",
 		PreviousStatus:  previousStatus,
-		NewStatus:       "DRAFT",
+		NewStatus:       models.StatusDraft,
 	})
 	voucher.ActionHistory = datatypes.NewJSONType(actionHistory)
 

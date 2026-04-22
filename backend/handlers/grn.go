@@ -309,7 +309,7 @@ func CreateGRN(c *fiber.Ctx) error {
 		OrganizationID:    tenant.OrganizationID,
 		DocumentNumber:    documentNumber,
 		PODocumentNumber:  req.PODocumentNumber,
-		Status: "DRAFT",
+		Status:            models.StatusDraft,
 		ReceivedDate:      time.Now(),
 		ReceivedBy:        req.ReceivedBy,
 		ApprovalStage:     0,
@@ -341,7 +341,7 @@ func CreateGRN(c *fiber.Ctx) error {
 		Timestamp:       grnCreateNow,
 		PerformedAt:     grnCreateNow,
 		Comments:        "GRN created",
-		NewStatus:       "DRAFT",
+		NewStatus:       models.StatusDraft,
 	})
 	grn.ActionHistory = datatypes.NewJSONType(grnInitialHistory)
 
@@ -420,9 +420,14 @@ func GetGRN(c *fiber.Ctx) error {
 		})
 	}
 
+	// Org + role/ownership scope. GRNs have a second owner column (received_by)
+	// so both creator and receiver can access the detail view.
+	scope := utils.GetDocumentScope(config.DB, tenant.UserID, tenant.UserRole, tenant.OrganizationID)
+	query := config.DB.Where("id = ? AND organization_id = ?", id, tenant.OrganizationID)
+	query = scope.ApplyToQuery(query, "created_by", "grn", "received_by")
+
 	var grn models.GoodsReceivedNote
-	// SECURITY FIX: Filter by organization ID
-	if err := config.DB.Where("id = ? AND organization_id = ?", id, tenant.OrganizationID).First(&grn).Error; err != nil {
+	if err := query.First(&grn).Error; err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
 			"success": false,
 			"message": "GRN not found",
@@ -746,7 +751,7 @@ func SubmitGRN(c *fiber.Ctx) error {
 		})
 	}
 
-	grn.Status = "PENDING"
+	grn.Status = models.StatusPending
 	grn.UpdatedAt = time.Now()
 
 	var user models.User
@@ -761,8 +766,8 @@ func SubmitGRN(c *fiber.Ctx) error {
 		Timestamp:       time.Now(),
 		Comments:        "GRN submitted for approval",
 		ActionType:      "SUBMIT",
-		PreviousStatus:  "DRAFT",
-		NewStatus:       "PENDING",
+		PreviousStatus:  models.StatusDraft,
+		NewStatus:       models.StatusPending,
 	})
 	grn.ActionHistory = datatypes.NewJSONType(actionHistory)
 

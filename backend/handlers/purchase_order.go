@@ -278,7 +278,7 @@ func CreatePurchaseOrder(c *fiber.Ctx) error {
 		OrganizationID:    tenant.OrganizationID,
 		DocumentNumber:    documentNumber,
 		VendorID:          vendorIDPtr,
-		Status:            "DRAFT",
+		Status:            models.StatusDraft,
 		TotalAmount:       req.TotalAmount,
 		Currency:          req.Currency,
 		DeliveryDate:      req.DeliveryDate.Time,
@@ -317,7 +317,7 @@ func CreatePurchaseOrder(c *fiber.Ctx) error {
 		Timestamp:       createNow,
 		PerformedAt:     createNow,
 		Comments:        "Purchase order created",
-		NewStatus:       "DRAFT",
+		NewStatus:       models.StatusDraft,
 	}})
 
 	if err := config.DB.Create(&order).Error; err != nil {
@@ -386,11 +386,18 @@ func GetPurchaseOrder(c *fiber.Ctx) error {
 		"order_id":  id,
 	})
 
-	var order models.PurchaseOrder
-	if err := config.DB.
+	// Scope to what the caller is actually allowed to see. Previously this
+	// endpoint only filtered by organization_id, so any user with the UUID
+	// could view any PO in their org — bypassing the list endpoint's scope.
+	// 404 (not 403) on scope miss keeps document existence private.
+	scope := utils.GetDocumentScope(config.DB, tenant.UserID, tenant.UserRole, tenant.OrganizationID)
+	query := config.DB.
 		Preload("Vendor").
-		Where("id = ? AND organization_id = ?", id, tenant.OrganizationID).
-		First(&order).Error; err != nil {
+		Where("id = ? AND organization_id = ?", id, tenant.OrganizationID)
+	query = scope.ApplyToQuery(query, "created_by", "purchase_order", "")
+
+	var order models.PurchaseOrder
+	if err := query.First(&order).Error; err != nil {
 		logging.LogError(c, err, "purchase_order_not_found", map[string]interface{}{
 			"order_id":   id,
 			"error_type": "not_found",
@@ -1000,7 +1007,7 @@ func SubmitPurchaseOrder(c *fiber.Ctx) error {
 		})
 	}
 
-	order.Status = "PENDING"
+	order.Status = models.StatusPending
 	order.UpdatedAt = time.Now()
 
 	var user models.User
@@ -1017,8 +1024,8 @@ func SubmitPurchaseOrder(c *fiber.Ctx) error {
 		Timestamp:       submitTime,
 		PerformedAt:     submitTime,
 		Comments:        "Purchase order submitted for approval",
-		PreviousStatus:  "DRAFT",
-		NewStatus:       "PENDING",
+		PreviousStatus:  models.StatusDraft,
+		NewStatus:       models.StatusPending,
 	})
 	order.ActionHistory = datatypes.NewJSONType(actionHistory)
 

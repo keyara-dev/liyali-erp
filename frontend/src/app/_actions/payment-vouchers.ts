@@ -303,6 +303,7 @@ export async function markPaymentVoucherAsPaid(
         paidDate: data.paidDate,
         referenceNumber: data.referenceNumber,
         comments: data.comments,
+        signature: data.signature,
         markedBy: data.markedBy,
         markedByName: data.markedByName,
         markedByRole: data.markedByRole,

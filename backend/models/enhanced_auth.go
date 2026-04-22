@@ -254,7 +254,15 @@ type WorkflowTask struct {
 	EntityType           string             `gorm:"not null" json:"entityType"`
 	StageNumber          int                `gorm:"not null" json:"stageNumber"`
 	StageName            string             `gorm:"not null" json:"stageName"`
-	
+
+	// Kind distinguishes regular approval tasks from side-effect tasks like
+	// payment execution. Defaults to "approval". When set to "payment_execution"
+	// on a payment_voucher entity, completing this task flips PV status to PAID
+	// and persists PaidAmount/PaidDate — no further workflow stages follow.
+	// Note: this is separate from the computed UI-label TaskType below, which
+	// describes WHAT the task is about (e.g. "PURCHASE_ORDER_APPROVAL").
+	Kind                 string             `gorm:"column:kind;default:'approval';not null" json:"kind"`
+
 	// Assignment details
 	AssignmentType string  `gorm:"default:'role'" json:"assignmentType"` // "role", "specific_user"
 	AssignedRole   *string `json:"assignedRole,omitempty"`

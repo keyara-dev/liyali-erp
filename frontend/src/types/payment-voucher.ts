@@ -265,6 +265,11 @@ export interface MarkPaymentVoucherPaidRequest {
   paymentReference?: string;
   referenceNumber?: string; // Alias for paymentReference
   comments?: string;
+  /**
+   * Required by backend since the PAID transition is now executed as a
+   * workflow payment_execution task. Must be a non-empty data URL (png).
+   */
+  signature: string;
 }
 
 // ============================================================================

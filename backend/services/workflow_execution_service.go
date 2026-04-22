@@ -339,7 +339,7 @@ func (s *WorkflowExecutionService) autoApproveAndGeneratePO(
 	}
 
 	// 2. Update requisition status to "approved"
-	if err := s.updateDocumentStatusScoped(tx, "requisition", entityID, organizationID, "APPROVED"); err != nil {
+	if err := s.updateDocumentStatusScoped(tx, "requisition", entityID, organizationID, models.StatusApproved); err != nil {
 		tx.Rollback()
 		return nil, fmt.Errorf("failed to update requisition status: %w", err)
 	}
@@ -699,6 +699,152 @@ func (s *WorkflowExecutionService) ApproveWorkflowTask(ctx context.Context, task
 	return s.ApproveWorkflowTaskWithVersion(ctx, taskID, userID, signature, comments, 0)
 }
 
+// createPaymentExecutionTask queues the post-approval PAID step as a workflow
+// task assigned to the finance role. The task is tied to the same workflow
+// assignment so the PV detail page's stage history still displays it as the
+// trailing step after approval. A 7-day default due date matches ordinary
+// approval tasks; explicit timeout support can be added later if finance
+// teams ask for tighter SLAs.
+func (s *WorkflowExecutionService) createPaymentExecutionTask(
+	tx *gorm.DB,
+	assignment *models.WorkflowAssignment,
+	now time.Time,
+) error {
+	// Don't double-create if a payment task already exists for this PV
+	// (defensive — this path runs at most once per PV, but approve handlers
+	// can be retried on network errors and the task-creation step must be
+	// idempotent if the final stage is ever re-approved).
+	var existing models.WorkflowTask
+	if err := tx.Where("entity_id = ? AND kind = ? AND UPPER(status) IN ('PENDING','CLAIMED')",
+		assignment.EntityID, models.TaskKindPaymentExecution).
+		First(&existing).Error; err == nil {
+		return nil
+	}
+
+	financeRole := "finance"
+	dueDate := now.Add(7 * 24 * time.Hour)
+
+	task := &models.WorkflowTask{
+		ID:                   uuid.New().String(),
+		OrganizationID:       assignment.OrganizationID,
+		WorkflowAssignmentID: assignment.ID,
+		EntityID:             assignment.EntityID,
+		EntityType:           assignment.EntityType,
+		StageNumber:          0,
+		StageName:            "Payment Execution",
+		Kind:                 models.TaskKindPaymentExecution,
+		AssignmentType:       "role",
+		AssignedRole:         &financeRole,
+		Status:               "PENDING",
+		Priority:             s.getDocumentPriority(tx, assignment.EntityID, assignment.EntityType),
+		DueDate:              &dueDate,
+		Version:              1,
+		CreatedAt:            now,
+	}
+
+	if err := tx.Create(task).Error; err != nil {
+		return fmt.Errorf("failed to create payment execution task: %w", err)
+	}
+	return nil
+}
+
+// completePaymentExecutionTask handles the PAID transition for a
+// payment_execution task. Runs inside the caller's transaction; caller owns
+// commit/rollback. Flips PV APPROVED -> PAID, sets PaidAmount/PaidDate to the
+// approved PV amount, and appends a signed ActionHistory entry attributing
+// the payment to the claiming user.
+//
+// We intentionally don't accept a different paidAmount: partial payments
+// would let a claimant shave the invoice silently, and mismatched amounts
+// should be handled by rejecting the payment task (which returns PV to
+// APPROVED) and creating a corrected PV instead.
+func (s *WorkflowExecutionService) completePaymentExecutionTask(
+	tx *gorm.DB,
+	task *models.WorkflowTask,
+	userID string,
+	user *models.User,
+	signature, comments string,
+	now time.Time,
+) error {
+	if signature == "" {
+		return fmt.Errorf("signature is required to execute payment")
+	}
+	if !strings.EqualFold(task.EntityType, "payment_voucher") {
+		return fmt.Errorf("payment_execution task is only valid for payment_voucher entities (got %s)", task.EntityType)
+	}
+
+	var voucher models.PaymentVoucher
+	if err := tx.Where("id = ? AND organization_id = ?", task.EntityID, task.OrganizationID).First(&voucher).Error; err != nil {
+		return fmt.Errorf("payment voucher not found: %w", err)
+	}
+	if strings.ToUpper(voucher.Status) != models.StatusApproved {
+		return fmt.Errorf("payment voucher is in %s status; must be APPROVED to execute payment", voucher.Status)
+	}
+
+	// Mark task completed (version-locked to guard against concurrent completion).
+	result := tx.Model(task).
+		Where("id = ? AND version = ?", task.ID, task.Version).
+		Updates(map[string]interface{}{
+			"status":       "COMPLETED",
+			"completed_at": now,
+			"updated_by":   userID,
+			"version":      task.Version + 1,
+		})
+	if result.Error != nil {
+		return fmt.Errorf("failed to complete payment execution task: %w", result.Error)
+	}
+	if result.RowsAffected == 0 {
+		return fmt.Errorf("payment task was modified by another user, please refresh and try again")
+	}
+
+	paidAmount := voucher.Amount
+	voucher.Status = models.StatusPaid
+	voucher.PaidAmount = &paidAmount
+	voucher.PaidDate = &now
+	voucher.UpdatedAt = now
+
+	actionHistory := voucher.ActionHistory.Data()
+	actionHistory = append(actionHistory, types.ActionHistoryEntry{
+		ID:              uuid.New().String(),
+		Action:          "PAYMENT_EXECUTED",
+		ActionType:      "MARK_PAID",
+		PerformedBy:     userID,
+		PerformedByName: user.Name,
+		PerformedByRole: user.Role,
+		Timestamp:       now,
+		PerformedAt:     now,
+		Comments:        comments,
+		PreviousStatus:  models.StatusApproved,
+		NewStatus:       models.StatusPaid,
+		Metadata: map[string]interface{}{
+			"paidAmount": paidAmount,
+			"signature":  signature,
+			"taskId":     task.ID,
+		},
+	})
+	voucher.ActionHistory = datatypes.NewJSONType(actionHistory)
+
+	if err := tx.Save(&voucher).Error; err != nil {
+		return fmt.Errorf("failed to mark payment voucher as paid: %w", err)
+	}
+
+	go utils.SyncDocument(s.db, "PAYMENT_VOUCHER", voucher.ID)
+	go LogDocumentEvent(s.db, DocumentEvent{
+		OrganizationID: voucher.OrganizationID,
+		DocumentID:     voucher.ID,
+		DocumentType:   "payment_voucher",
+		UserID:         userID,
+		ActorName:      user.Name,
+		ActorRole:      user.Role,
+		Action:         "paid",
+		Details: map[string]interface{}{
+			"documentNumber": voucher.DocumentNumber,
+			"paidAmount":     paidAmount,
+		},
+	})
+	return nil
+}
+
 // ApproveWorkflowTaskWithVersion approves a workflow task with version control for optimistic locking
 func (s *WorkflowExecutionService) ApproveWorkflowTaskWithVersion(ctx context.Context, taskID, userID, signature, comments string, expectedVersion int) error {
 	tx := s.db.Begin()
@@ -752,6 +898,22 @@ func (s *WorkflowExecutionService) ApproveWorkflowTaskWithVersion(ctx context.Co
 	if err := s.canUserActOnTask(tx, &task, &user); err != nil {
 		tx.Rollback()
 		return err
+	}
+
+	// Payment-execution tasks follow a different completion path: no stage
+	// advancement, no workflow assignment updates — just flip the PV to PAID
+	// and record a signed ActionHistory entry. Branch before touching the
+	// workflow assignment so we don't require an assignment row for
+	// standalone execution tasks.
+	if strings.EqualFold(task.Kind, models.TaskKindPaymentExecution) {
+		if err := s.completePaymentExecutionTask(tx, &task, userID, &user, signature, comments, time.Now()); err != nil {
+			tx.Rollback()
+			return err
+		}
+		if err := tx.Commit().Error; err != nil {
+			return fmt.Errorf("failed to commit payment execution: %w", err)
+		}
+		return nil
 	}
 
 	// Get the workflow assignment
@@ -868,7 +1030,7 @@ func (s *WorkflowExecutionService) ApproveWorkflowTaskWithVersion(ctx context.Co
 			assignment.CurrentStage = len(stages)
 
 			// Update the actual document status to "approved"
-			if err := s.updateDocumentStatusScoped(tx, assignment.EntityType, assignment.EntityID, assignment.OrganizationID, "APPROVED"); err != nil {
+			if err := s.updateDocumentStatusScoped(tx, assignment.EntityType, assignment.EntityID, assignment.OrganizationID, models.StatusApproved); err != nil {
 				tx.Rollback()
 				return fmt.Errorf("failed to update document status: %w", err)
 			}
@@ -877,6 +1039,16 @@ func (s *WorkflowExecutionService) ApproveWorkflowTaskWithVersion(ctx context.Co
 			if err := s.addActionHistoryEntry(tx, assignment.EntityType, assignment.EntityID, userID, "WORKFLOW_COMPLETED", "Document approved through workflow system"); err != nil {
 				// Log error but don't fail the approval
 				fmt.Printf("Warning: failed to add action history entry: %v\n", err)
+			}
+
+			// Payment vouchers: after final approval, create a payment_execution
+			// task so the PAID transition has an audit trail (claim + signature
+			// + attributed actor) rather than being a blind endpoint flip.
+			if strings.EqualFold(assignment.EntityType, "payment_voucher") {
+				if err := s.createPaymentExecutionTask(tx, &assignment, now); err != nil {
+					tx.Rollback()
+					return fmt.Errorf("failed to create payment execution task: %w", err)
+				}
 			}
 		} else {
 			// Move to next stage
@@ -1251,7 +1423,7 @@ func (s *WorkflowExecutionService) RejectWorkflowTaskWithVersion(ctx context.Con
 		assignment.UpdatedAt = time.Now()
 
 		// Update document status to "revision"
-		if err := s.updateDocumentStatusScoped(tx, assignment.EntityType, assignment.EntityID, assignment.OrganizationID, "REVISION"); err != nil {
+		if err := s.updateDocumentStatusScoped(tx, assignment.EntityType, assignment.EntityID, assignment.OrganizationID, models.StatusRevision); err != nil {
 			tx.Rollback()
 			return fmt.Errorf("failed to update document status: %w", err)
 		}
@@ -1310,7 +1482,7 @@ func (s *WorkflowExecutionService) RejectWorkflowTaskWithVersion(ctx context.Con
 		assignment.UpdatedAt = time.Now()
 
 		// Update document status to "draft"
-		if err := s.updateDocumentStatusScoped(tx, assignment.EntityType, assignment.EntityID, assignment.OrganizationID, "DRAFT"); err != nil {
+		if err := s.updateDocumentStatusScoped(tx, assignment.EntityType, assignment.EntityID, assignment.OrganizationID, models.StatusDraft); err != nil {
 			tx.Rollback()
 			return fmt.Errorf("failed to update document status: %w", err)
 		}
@@ -1338,7 +1510,7 @@ func (s *WorkflowExecutionService) RejectWorkflowTaskWithVersion(ctx context.Con
 				return fmt.Errorf("failed to load purchase order: %w", err)
 			}
 			prevStatus := po.Status
-			if err := s.updateDocumentStatusScoped(tx, "purchase_order", assignment.EntityID, assignment.OrganizationID, "DRAFT"); err != nil {
+			if err := s.updateDocumentStatusScoped(tx, "purchase_order", assignment.EntityID, assignment.OrganizationID, models.StatusDraft); err != nil {
 				tx.Rollback()
 				return fmt.Errorf("failed to update document status: %w", err)
 			}
@@ -1356,7 +1528,7 @@ func (s *WorkflowExecutionService) RejectWorkflowTaskWithVersion(ctx context.Con
 				var req models.Requisition
 				if err := tx.First(&req, "id = ?", reqID).Error; err == nil {
 					prevReqStatus := req.Status
-					if err := s.updateDocumentStatusScoped(tx, "requisition", reqID, assignment.OrganizationID, "DRAFT"); err != nil {
+					if err := s.updateDocumentStatusScoped(tx, "requisition", reqID, assignment.OrganizationID, models.StatusDraft); err != nil {
 						tx.Rollback()
 						return fmt.Errorf("failed to revert linked requisition: %w", err)
 					}
@@ -1386,7 +1558,7 @@ func (s *WorkflowExecutionService) RejectWorkflowTaskWithVersion(ctx context.Con
 				return fmt.Errorf("failed to load payment voucher: %w", err)
 			}
 			prevStatus := pv.Status
-			if err := s.updateDocumentStatusScoped(tx, "payment_voucher", assignment.EntityID, assignment.OrganizationID, "DRAFT"); err != nil {
+			if err := s.updateDocumentStatusScoped(tx, "payment_voucher", assignment.EntityID, assignment.OrganizationID, models.StatusDraft); err != nil {
 				tx.Rollback()
 				return fmt.Errorf("failed to update document status: %w", err)
 			}
@@ -1404,7 +1576,7 @@ func (s *WorkflowExecutionService) RejectWorkflowTaskWithVersion(ctx context.Con
 				if err := tx.Where("document_number = ? AND organization_id = ?", pv.LinkedGRN, assignment.OrganizationID).
 					First(&grn).Error; err == nil {
 					prevGRNStatus := grn.Status
-					if err := s.updateDocumentStatusScoped(tx, "grn", grn.ID, assignment.OrganizationID, "DRAFT"); err != nil {
+					if err := s.updateDocumentStatusScoped(tx, "grn", grn.ID, assignment.OrganizationID, models.StatusDraft); err != nil {
 						tx.Rollback()
 						return fmt.Errorf("failed to revert linked GRN: %w", err)
 					}
@@ -1434,7 +1606,7 @@ func (s *WorkflowExecutionService) RejectWorkflowTaskWithVersion(ctx context.Con
 				return fmt.Errorf("failed to load GRN: %w", err)
 			}
 			prevStatus := grn.Status
-			if err := s.updateDocumentStatusScoped(tx, "grn", assignment.EntityID, assignment.OrganizationID, "DRAFT"); err != nil {
+			if err := s.updateDocumentStatusScoped(tx, "grn", assignment.EntityID, assignment.OrganizationID, models.StatusDraft); err != nil {
 				tx.Rollback()
 				return fmt.Errorf("failed to update GRN status: %w", err)
 			}
@@ -1453,7 +1625,7 @@ func (s *WorkflowExecutionService) RejectWorkflowTaskWithVersion(ctx context.Con
 				return fmt.Errorf("failed to load requisition: %w", err)
 			}
 			prevStatus := req.Status
-			if err := s.updateDocumentStatusScoped(tx, "requisition", assignment.EntityID, assignment.OrganizationID, "DRAFT"); err != nil {
+			if err := s.updateDocumentStatusScoped(tx, "requisition", assignment.EntityID, assignment.OrganizationID, models.StatusDraft); err != nil {
 				tx.Rollback()
 				return fmt.Errorf("failed to update requisition status: %w", err)
 			}
@@ -1466,7 +1638,7 @@ func (s *WorkflowExecutionService) RejectWorkflowTaskWithVersion(ctx context.Con
 			}
 		} else {
 			// Standard: all other document types → REJECTED permanently
-			if err := s.updateDocumentStatusScoped(tx, assignment.EntityType, assignment.EntityID, assignment.OrganizationID, "REJECTED"); err != nil {
+			if err := s.updateDocumentStatusScoped(tx, assignment.EntityType, assignment.EntityID, assignment.OrganizationID, models.StatusRejected); err != nil {
 				tx.Rollback()
 				return fmt.Errorf("failed to update document status: %w", err)
 			}

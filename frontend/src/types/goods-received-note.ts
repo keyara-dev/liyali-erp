@@ -38,14 +38,7 @@ export interface GoodsReceivedNote {
   organizationId: string;
   documentNumber: string;
   poDocumentNumber: string;
-  status:
-    | "DRAFT"
-    | "PENDING"
-    | "APPROVED"
-    | "REJECTED"
-    | "REVISION"
-    | "COMPLETED"
-    | "CANCELLED"; // Stored as UPPERCASE
+  status: GRNStatus; // Stored as UPPERCASE
   receivedDate: Date;
   receivedBy: string;
   items: GRNItem[];
@@ -148,12 +141,17 @@ export interface GRNStats {
 // TYPE ALIASES
 // ============================================================================
 
+/**
+ * GRN status values the backend actually writes. The GRN lifecycle is
+ * DRAFT -> PENDING -> APPROVED -> COMPLETED (via /confirm). REVISION/REJECTED
+ * are set by the workflow on rejection/return.
+ */
 export type GRNStatus =
   | "DRAFT"
   | "PENDING"
   | "APPROVED"
   | "REJECTED"
-  | "PAID"
+  | "REVISION"
   | "COMPLETED"
   | "CANCELLED";
 // Re-export shared types from core

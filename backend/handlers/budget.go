@@ -201,7 +201,7 @@ func CreateBudget(c *fiber.Ctx) error {
 		Description:     req.Description, // Add description field
 		Department:      req.Department,
 		DepartmentID:    req.DepartmentID, // Add department ID field
-		Status: "DRAFT",
+		Status:          models.StatusDraft,
 		FiscalYear:      req.FiscalYear,
 		TotalBudget:     req.TotalBudget,
 		AllocatedAmount: req.AllocatedAmount,
@@ -630,7 +630,7 @@ func SubmitBudget(c *fiber.Ctx) error {
 	}
 
 	// Update budget status to pending
-	budget.Status = "PENDING"
+	budget.Status = models.StatusPending
 	budget.UpdatedAt = time.Now()
 
 	// Add action to history
