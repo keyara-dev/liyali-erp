@@ -39,6 +39,7 @@ var RequiredTables = []string{
 	// "approval_tasks", // DEPRECATED: Legacy approval system, kept in DB for backward compatibility
 	"notifications",
 	"audit_logs",
+	"support_tickets",
 }
 
 // RequiredIndexes defines critical indexes that must exist
@@ -131,7 +132,7 @@ func (v *DatabaseValidator) VerifySchemaIntegrity(ctx context.Context) error {
 func (v *DatabaseValidator) QuickSchemaCheck(ctx context.Context) error {
 	// Just check a few critical tables
 	criticalTables := []string{"users", "organizations", "vendors"}
-	
+
 	for _, tableName := range criticalTables {
 		exists, err := v.tableExists(ctx, tableName)
 		if err != nil {
@@ -166,10 +167,11 @@ func (v *DatabaseValidator) tableExists(ctx context.Context, tableName string) (
 func (v *DatabaseValidator) verifyTableStructures(ctx context.Context) error {
 	// Define critical columns for key tables
 	criticalColumns := map[string][]string{
-		"users": {"id", "email", "name", "password", "role", "active"},
-		"organizations": {"id", "name", "slug", "active"},
-		"vendors": {"id", "vendor_code", "name", "active"},
-		"requisitions": {"id", "organization_id", "document_number", "requester_id", "status"},
+		"users":           {"id", "email", "name", "password", "role", "active"},
+		"organizations":   {"id", "name", "slug", "active"},
+		"vendors":         {"id", "vendor_code", "name", "active"},
+		"requisitions":    {"id", "organization_id", "document_number", "requester_id", "status"},
+		"support_tickets": {"id", "ticket_number", "subject", "status", "priority"},
 	}
 
 	for tableName, columns := range criticalColumns {

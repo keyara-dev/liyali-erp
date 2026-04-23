@@ -151,6 +151,34 @@ export interface DatabaseStats {
   }>;
 }
 
+const normalizeDatabaseStats = (
+  stats: DatabaseStats | null | undefined,
+): DatabaseStats => ({
+  total_connections: stats?.total_connections ?? 0,
+  active_connections: stats?.active_connections ?? 0,
+  primary_connections: stats?.primary_connections ?? 0,
+  replica_connections: stats?.replica_connections ?? 0,
+  total_databases: stats?.total_databases ?? 0,
+  total_tables: stats?.total_tables ?? 0,
+  total_size_bytes: stats?.total_size_bytes ?? 0,
+  avg_cpu_usage: stats?.avg_cpu_usage ?? 0,
+  avg_memory_usage: stats?.avg_memory_usage ?? 0,
+  avg_disk_usage: stats?.avg_disk_usage ?? 0,
+  total_queries_today: stats?.total_queries_today ?? 0,
+  slow_queries_today: stats?.slow_queries_today ?? 0,
+  active_backups: stats?.active_backups ?? 0,
+  pending_migrations: stats?.pending_migrations ?? 0,
+  connections_by_type: Array.isArray(stats?.connections_by_type)
+    ? stats.connections_by_type
+    : [],
+  top_databases_by_size: Array.isArray(stats?.top_databases_by_size)
+    ? stats.top_databases_by_size
+    : [],
+  recent_slow_queries: Array.isArray(stats?.recent_slow_queries)
+    ? stats.recent_slow_queries
+    : [],
+});
+
 /**
  * Get all database connections with filtering
  */
@@ -556,7 +584,7 @@ export async function getDatabaseStats(): Promise<
     });
 
     return successResponse(
-      response?.data?.data || response?.data,
+      normalizeDatabaseStats(response?.data?.data || response?.data),
       "Database statistics retrieved successfully",
     );
   } catch (error: Error | any) {

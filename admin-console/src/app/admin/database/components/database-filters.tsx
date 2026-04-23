@@ -171,8 +171,13 @@ export function DatabaseFiltersComponent({
               <DropdownMenuSeparator />
 
               {connections.length > 0 ? (
-                connections.map((connection) => (
-                  <div key={connection.id}>
+                connections.map((connection, index) => (
+                  <div
+                    key={
+                      connection.id ||
+                      `${connection.name || "connection"}-${index}`
+                    }
+                  >
                     <DropdownMenuLabel className="text-xs text-muted-foreground">
                       {connection.name}
                     </DropdownMenuLabel>

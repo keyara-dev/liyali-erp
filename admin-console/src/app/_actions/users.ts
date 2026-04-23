@@ -18,7 +18,7 @@ export interface PlatformUser {
   updated_at: string;
   last_login?: string;
   login_count: number;
-  organizations: UserOrganization[];
+  organizations: UserOrganization[] | null;
   profile?: {
     avatar_url?: string;
     department?: string;
@@ -26,6 +26,15 @@ export interface PlatformUser {
     phone?: string;
   };
 }
+
+const normalizeOrganizations = (
+  organizations: UserOrganization[] | null | undefined,
+): UserOrganization[] => organizations ?? [];
+
+const normalizePlatformUser = (user: PlatformUser): PlatformUser => ({
+  ...user,
+  organizations: normalizeOrganizations(user.organizations),
+});
 
 export interface UserOrganization {
   organization_id: string;
@@ -122,8 +131,14 @@ export async function getAllUsers(filters?: UserFilters): Promise<
       method: "GET",
     });
 
+    const data = response?.data?.data || response?.data || {};
     return successResponse(
-      response?.data?.data || response?.data,
+      {
+        ...data,
+        users: Array.isArray(data?.users)
+          ? data.users.map(normalizePlatformUser)
+          : [],
+      },
       "Users retrieved successfully",
     );
   } catch (error: Error | any) {
@@ -145,8 +160,9 @@ export async function getUserById(
       method: "GET",
     });
 
+    const data = response?.data?.data || response?.data || null;
     return successResponse(
-      response?.data?.data || response?.data,
+      data ? normalizePlatformUser(data) : data,
       "User retrieved successfully",
     );
   } catch (error: Error | any) {

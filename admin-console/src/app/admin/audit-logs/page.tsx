@@ -231,7 +231,7 @@ export default function AuditLogsPage() {
         onValueChange={setActiveTab}
         className="space-y-4"
       >
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="logs" className="flex items-center gap-2">
             <Activity className="h-4 w-4" />
             Audit Logs
@@ -243,10 +243,6 @@ export default function AuditLogsPage() {
           <TabsTrigger value="analytics" className="flex items-center gap-2">
             <Eye className="h-4 w-4" />
             Analytics
-          </TabsTrigger>
-          <TabsTrigger value="compliance" className="flex items-center gap-2">
-            <AlertTriangle className="h-4 w-4" />
-            Compliance
           </TabsTrigger>
         </TabsList>
 
@@ -434,27 +430,6 @@ export default function AuditLogsPage() {
             stats={stats ?? null}
             isLoading={isLoading}
           />
-        </TabsContent>
-
-        <TabsContent value="compliance" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Compliance Dashboard</CardTitle>
-              <CardDescription>
-                Compliance monitoring and reporting features
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="text-center py-8">
-                <AlertTriangle className="h-12 w-12 text-muted-foreground/50 mx-auto mb-4" />
-                <h3 className="text-lg font-semibold">Compliance Dashboard</h3>
-                <p className="text-sm text-muted-foreground mt-1">Coming Soon</p>
-                <p className="text-xs text-muted-foreground/70 mt-2 max-w-md mx-auto">
-                  Compliance monitoring with policy enforcement, regulatory reporting, and data retention management.
-                </p>
-              </div>
-            </CardContent>
-          </Card>
         </TabsContent>
       </Tabs>
 

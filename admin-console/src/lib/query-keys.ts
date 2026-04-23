@@ -76,6 +76,19 @@ export const queryKeys = {
     systemHealth: () => ["dashboard", "system-health"] as const,
   },
 
+  // ── Support ────────────────────────────────────────────────────────────────
+  support: {
+    all: ["support"] as const,
+    tickets: (filters?: unknown) => ["support", "tickets", filters] as const,
+    ticket: (id: string) => ["support", "tickets", id] as const,
+    stats: () => ["support", "tickets", "stats"] as const,
+    documents: (filters?: unknown) => ["support", "documents", filters] as const,
+    document: (id: string) => ["support", "documents", id] as const,
+    workflowTasks: (filters?: unknown) =>
+      ["support", "workflow-tasks", filters] as const,
+    workflowTask: (id: string) => ["support", "workflow-tasks", id] as const,
+  },
+
   // ── Database ───────────────────────────────────────────────────────────────
   database: {
     all: ["database"] as const,

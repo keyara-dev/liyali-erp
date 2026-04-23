@@ -111,7 +111,7 @@ export function AuditLogAnalyticsCharts({
           <div className="mt-4 space-y-2">
             {(stats.top_actions ?? []).slice(0, 3).map((action, index) => (
               <div
-                key={action.action}
+                key={action.action || `top-action-${index}`}
                 className="flex items-center justify-between text-sm"
               >
                 <span className="capitalize">{action.action}</span>
@@ -157,7 +157,7 @@ export function AuditLogAnalyticsCharts({
           <div className="mt-4 space-y-2">
             {(analytics.user_activity ?? []).slice(0, 3).map((user, index) => (
               <div
-                key={user.user_id}
+                key={user.user_id || user.user_name || `user-${index}`}
                 className="flex items-center justify-between text-sm"
               >
                 <span className="truncate">{user.user_name}</span>
@@ -277,7 +277,7 @@ export function AuditLogAnalyticsCharts({
                 >
                   {(analytics.device_analytics ?? []).map((entry, index) => (
                     <Cell
-                      key={`cell-${index}`}
+                      key={`${entry.device_type ?? "device"}-${index}`}
                       fill={COLORS[index % COLORS.length]}
                     />
                   ))}
@@ -289,7 +289,7 @@ export function AuditLogAnalyticsCharts({
           <div className="mt-4 space-y-2">
             {(analytics.device_analytics ?? []).map((device, index) => (
               <div
-                key={device.device_type}
+                key={device.device_type || `device-${index}`}
                 className="flex items-center justify-between text-sm"
               >
                 <div className="flex items-center gap-2">

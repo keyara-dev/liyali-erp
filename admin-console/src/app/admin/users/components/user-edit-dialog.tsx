@@ -107,6 +107,8 @@ export function UserEditDialog({
 
   if (!user) return null;
 
+  const userOrganizations = user.organizations ?? [];
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -239,17 +241,17 @@ export function UserEditDialog({
           </Card>
 
           {/* Organization Memberships */}
-          {user.organizations.length > 0 && (
+          {userOrganizations.length > 0 && (
             <Card>
               <CardHeader>
                 <CardTitle className="text-lg flex items-center gap-2">
                   <Building2 className="h-4 w-4" />
-                  Organization Memberships ({user.organizations.length})
+                  Organization Memberships ({userOrganizations.length})
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  {user.organizations.map((org) => (
+                  {userOrganizations.map((org) => (
                     <div
                       key={org.organization_id}
                       className="flex items-center justify-between rounded-lg border p-3"

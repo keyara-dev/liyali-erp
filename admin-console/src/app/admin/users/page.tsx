@@ -167,15 +167,19 @@ export default function UsersPage() {
     );
   };
 
+  const getUserOrganizations = (user: PlatformUser) => user.organizations ?? [];
+
   if (isLoading && users.length === 0) {
     return (
       <div className="space-y-6">
         <div>
           <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
             <Users className="h-8 w-8" />
-            Platform Users
+            User Support
           </h1>
-          <p className="text-muted-foreground">Manage platform user accounts</p>
+          <p className="text-muted-foreground">
+            Investigate sessions, permissions, lockouts, and account issues
+          </p>
         </div>
         <div className="grid gap-4 md:grid-cols-4">
           {[...Array(4)].map((_, i) => (
@@ -215,9 +219,9 @@ export default function UsersPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">User Management</h1>
+          <h1 className="text-3xl font-bold tracking-tight">User Support</h1>
           <p className="text-muted-foreground">
-            Manage all platform users and their organization memberships
+            Investigate sessions, permissions, lockouts, and account issues
           </p>
         </div>
         <Button onClick={() => setShowCreateUser(true)}>
@@ -347,20 +351,22 @@ export default function UsersPage() {
                         )}
                         <span className="flex items-center">
                           <Building2 className="mr-1 h-3 w-3" />
-                          {user.organizations.length} org
-                          {user.organizations.length !== 1 ? "s" : ""}
+                          {getUserOrganizations(user).length} org
+                          {getUserOrganizations(user).length !== 1 ? "s" : ""}
                         </span>
                         <span className="flex items-center">
                           <Calendar className="mr-1 h-3 w-3" />
                           {new Date(user.created_at).toLocaleDateString()}
                         </span>
                       </div>
-                      {user.organizations.length > 0 && (
+                      {getUserOrganizations(user).length > 0 && (
                         <div className="flex items-center gap-2 mt-2">
                           <span className="text-xs text-muted-foreground">
                             Organizations:
                           </span>
-                          {user.organizations.slice(0, 3).map((org) => (
+                          {getUserOrganizations(user)
+                            .slice(0, 3)
+                            .map((org) => (
                             <Badge
                               key={org.organization_id}
                               variant="outline"
@@ -372,9 +378,9 @@ export default function UsersPage() {
                               )}
                             </Badge>
                           ))}
-                          {user.organizations.length > 3 && (
+                          {getUserOrganizations(user).length > 3 && (
                             <Badge variant="outline" className="text-xs">
-                              +{user.organizations.length - 3} more
+                              +{getUserOrganizations(user).length - 3} more
                             </Badge>
                           )}
                         </div>

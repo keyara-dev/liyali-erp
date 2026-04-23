@@ -59,6 +59,7 @@ export function UserDetailsDialog({
   const [sessions, setSessions] = useState<UserSession[]>([]);
   const [organizations, setOrganizations] = useState<UserOrganization[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const userOrganizations = user.organizations ?? [];
 
   useEffect(() => {
     if (open && user) {
@@ -232,7 +233,7 @@ export function UserDetailsDialog({
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium">Organizations:</span>
                     <span className="text-sm font-bold">
-                      {user.organizations.length}
+                      {userOrganizations.length}
                     </span>
                   </div>
                   <div className="flex items-center justify-between">

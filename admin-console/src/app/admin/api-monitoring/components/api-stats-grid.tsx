@@ -95,6 +95,10 @@ export function APIStatsGrid({ stats, isLoading }: APIStatsGridProps) {
 
   const topEndpointsData = (stats.top_endpoints ?? []).slice(0, 5);
   const slowestEndpointsData = (stats.slowest_endpoints ?? []).slice(0, 5);
+  const getEndpointKey = (
+    endpoint: { endpoint_id?: string; path: string; method: string },
+    index: number,
+  ) => endpoint.endpoint_id || `${endpoint.method}-${endpoint.path}-${index}`;
 
   return (
     <div className="space-y-6">
@@ -270,7 +274,7 @@ export function APIStatsGrid({ stats, isLoading }: APIStatsGridProps) {
                   >
                     {categoryData.map((entry, index) => (
                       <Cell
-                        key={`cell-${index}`}
+                        key={`${entry.name}-${index}`}
                         fill={COLORS[index % COLORS.length]}
                       />
                     ))}
@@ -339,7 +343,7 @@ export function APIStatsGrid({ stats, isLoading }: APIStatsGridProps) {
             <div className="space-y-4">
               {topEndpointsData.map((endpoint, index) => (
                 <div
-                  key={endpoint.endpoint_id}
+                  key={getEndpointKey(endpoint, index)}
                   className="flex items-center justify-between p-3 border rounded-lg"
                 >
                   <div className="flex-1">
@@ -382,7 +386,7 @@ export function APIStatsGrid({ stats, isLoading }: APIStatsGridProps) {
             <div className="space-y-4">
               {slowestEndpointsData.map((endpoint, index) => (
                 <div
-                  key={endpoint.endpoint_id}
+                  key={getEndpointKey(endpoint, index)}
                   className="flex items-center justify-between p-3 border rounded-lg"
                 >
                   <div className="flex-1">

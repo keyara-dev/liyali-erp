@@ -13,7 +13,7 @@ type AdminRoutesType = {
 
 export const admin_routes: AdminRoutesType[] = [
   {
-    title: "Overview",
+    title: "Support Overview",
     items: [
       {
         title: "Dashboard",
@@ -25,36 +25,30 @@ export const admin_routes: AdminRoutesType[] = [
         href: "/admin/system-health",
         icon: "Activity",
       },
+      {
+        title: "Analytics",
+        href: "/admin/analytics",
+        icon: "BarChart3",
+      },
     ],
   },
   {
-    title: "Organization Management",
+    title: "Customer Support",
     items: [
+      {
+        title: "Tickets",
+        href: "/admin/tickets",
+        icon: "Ticket",
+      },
       {
         title: "Organizations",
         href: "/admin/organizations",
         icon: "Building2",
       },
       {
-        title: "Subscriptions",
-        href: "/admin/subscriptions",
-        icon: "CreditCard",
-        badge: "3",
-      },
-    ],
-  },
-  {
-    title: "User Management",
-    items: [
-      {
         title: "Users",
         href: "/admin/users",
         icon: "Users",
-      },
-      {
-        title: "Roles & Permissions",
-        href: "/admin/roles",
-        icon: "Shield",
       },
       {
         title: "Admin Users",
@@ -64,25 +58,14 @@ export const admin_routes: AdminRoutesType[] = [
     ],
   },
   {
-    title: "System Management",
+    title: "Diagnostics",
     items: [
-      {
-        title: "Analytics",
-        href: "/admin/analytics",
-        icon: "BarChart3",
-      },
       {
         title: "Audit Logs",
         href: "/admin/audit-logs",
         icon: "FileText",
       },
       { title: "API Monitoring", href: "/admin/api-monitoring", icon: "Zap" },
-      { title: "Database", href: "/admin/database", icon: "Database" },
-    ],
-  },
-  {
-    title: "Security",
-    items: [
       {
         title: "Impersonation Logs",
         href: "/admin/impersonation",
@@ -91,8 +74,19 @@ export const admin_routes: AdminRoutesType[] = [
     ],
   },
   {
-    title: "Configuration",
+    title: "Platform Control",
     items: [
+      {
+        title: "Roles & Permissions",
+        href: "/admin/roles",
+        icon: "Shield",
+      },
+      {
+        title: "Subscriptions",
+        href: "/admin/subscriptions",
+        icon: "CreditCard",
+        badge: "3",
+      },
       {
         title: "System Settings",
         href: "/admin/settings",

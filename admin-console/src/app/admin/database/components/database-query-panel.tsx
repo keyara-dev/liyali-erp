@@ -10,9 +10,6 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
-import { SelectField } from "@/components/ui/select-field";
 import {
   Table,
   TableBody,
@@ -21,7 +18,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Dialog,
   DialogContent,
@@ -29,116 +25,29 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
-  Play,
-  Square,
-  Clock,
-  CheckCircle,
-  XCircle,
-  AlertTriangle,
-  Eye,
-  MoreHorizontal,
-  Database,
-  Activity,
-} from "lucide-react";
-import { notify } from "@/lib/utils";
-import {
-  executeDatabaseQuery,
-  cancelDatabaseQuery,
-  getDatabaseQueries,
-  type DatabaseConnection,
-  type DatabaseQuery,
-} from "@/app/_actions/database";
+import { Eye, Clock, CheckCircle, XCircle, Database, Activity } from "lucide-react";
+import type { DatabaseConnection, DatabaseQuery } from "@/app/_actions/database";
 
 interface DatabaseQueryPanelProps {
   connections: DatabaseConnection[];
   queries: DatabaseQuery[];
   isLoading: boolean;
-  onQueryUpdated: () => void;
-}
-
-interface QueryResult {
-  columns: string[];
-  rows: any[][];
-  row_count: number;
-  execution_time: number;
-  query_id: string;
 }
 
 export function DatabaseQueryPanel({
   connections,
   queries,
   isLoading,
-  onQueryUpdated,
 }: DatabaseQueryPanelProps) {
-  const [selectedConnectionId, setSelectedConnectionId] = useState<string>("");
-  const [queryText, setQueryText] = useState("");
-  const [isExecuting, setIsExecuting] = useState(false);
-  const [queryResult, setQueryResult] = useState<QueryResult | null>(null);
-  const [queryError, setQueryError] = useState<string | null>(null);
   const [selectedQuery, setSelectedQuery] = useState<DatabaseQuery | null>(
     null,
   );
   const [showQueryDialog, setShowQueryDialog] = useState(false);
 
-  const handleExecuteQuery = async () => {
-    if (!selectedConnectionId || !queryText.trim()) {
-      notify({ title: "Please select a connection and enter a query", type: "error" });
-      return;
-    }
-
-    setIsExecuting(true);
-    setQueryResult(null);
-    setQueryError(null);
-
-    try {
-      const result = await executeDatabaseQuery(
-        selectedConnectionId,
-        queryText,
-        {
-          limit: 1000,
-          timeout: 30000,
-        },
-      );
-
-      if (result.success && result.data) {
-        setQueryResult(result.data);
-        notify({ title: `Query executed successfully in ${result.data.execution_time.toFixed(0)}ms`, type: "success" });
-        onQueryUpdated();
-      } else {
-        setQueryError(result.message || "Query execution failed");
-        notify({ title: "Query execution failed", type: "error" });
-      }
-    } catch (error) {
-      console.error("Error executing query:", error);
-      setQueryError("Failed to execute query");
-      notify({ title: "Failed to execute query", type: "error" });
-    } finally {
-      setIsExecuting(false);
-    }
-  };
-
-  const handleCancelQuery = async (queryId: string) => {
-    try {
-      const result = await cancelDatabaseQuery(queryId);
-      if (result.success) {
-        notify({ title: "Query cancelled successfully", type: "success" });
-        onQueryUpdated();
-      } else {
-        notify({ title: "Failed to cancel query", type: "error" });
-      }
-    } catch (error) {
-      console.error("Error cancelling query:", error);
-      notify({ title: "Failed to cancel query", type: "error" });
-    }
+  const formatQueryText = (queryText?: string | null) => {
+    const text = queryText?.trim();
+    if (!text) return "No query text available";
+    return text;
   };
 
   const handleViewQuery = (query: DatabaseQuery) => {
@@ -172,7 +81,7 @@ export function DatabaseQueryPanel({
       case "cancelled":
         return (
           <Badge variant="secondary" className="flex items-center gap-1">
-            <Square className="h-3 w-3" />
+            <XCircle className="h-3 w-3" />
             Cancelled
           </Badge>
         );
@@ -188,129 +97,13 @@ export function DatabaseQueryPanel({
     return `${duration.toFixed(0)}ms`;
   };
 
-  const activeConnections = connections.filter((c) => c.status === "connected");
-
   return (
     <div className="space-y-6">
-      {/* Query Executor */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Query Executor</CardTitle>
-          <CardDescription>
-            Execute SQL queries against your database connections
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <SelectField
-              label="Database Connection"
-              placeholder="Select a connection"
-              options={activeConnections.map((c) => ({ value: c.id, label: `${c.name} (${c.type})` }))}
-              value={selectedConnectionId}
-              onValueChange={setSelectedConnectionId}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="query-text">SQL Query</Label>
-            <Textarea
-              id="query-text"
-              placeholder="Enter your SQL query here..."
-              value={queryText}
-              onChange={(e) => setQueryText(e.target.value)}
-              rows={6}
-              className="font-mono"
-            />
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Button
-              onClick={handleExecuteQuery}
-              disabled={!selectedConnectionId || !queryText.trim()}
-              isLoading={isExecuting}
-              loadingText="Executing..."
-            >
-              <Play className="mr-2 h-4 w-4" />
-              Execute Query
-            </Button>
-            {isExecuting && (
-              <Button variant="outline" onClick={() => setIsExecuting(false)}>
-                <Square className="mr-2 h-4 w-4" />
-                Cancel
-              </Button>
-            )}
-          </div>
-
-          {/* Query Results */}
-          {queryResult && (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-medium">Query Results</h3>
-                <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                  <span>{queryResult.row_count} rows</span>
-                  <span>{queryResult.execution_time.toFixed(0)}ms</span>
-                </div>
-              </div>
-
-              <ScrollArea className="h-96 border rounded-lg">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      {queryResult.columns.map((column, index) => (
-                        <TableHead key={index} className="font-mono">
-                          {column}
-                        </TableHead>
-                      ))}
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {queryResult.rows.map((row, rowIndex) => (
-                      <TableRow key={rowIndex}>
-                        {row.map((cell, cellIndex) => (
-                          <TableCell
-                            key={cellIndex}
-                            className="font-mono text-sm"
-                          >
-                            {cell === null ? (
-                              <span className="text-muted-foreground italic">
-                                NULL
-                              </span>
-                            ) : (
-                              String(cell)
-                            )}
-                          </TableCell>
-                        ))}
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </ScrollArea>
-            </div>
-          )}
-
-          {/* Query Error */}
-          {queryError && (
-            <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
-              <div className="flex items-center gap-2">
-                <AlertTriangle className="h-4 w-4 text-red-600" />
-                <span className="text-sm font-medium text-red-800">
-                  Query Error
-                </span>
-              </div>
-              <p className="text-sm text-red-700 mt-1 font-mono">
-                {queryError}
-              </p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Query History */}
       <Card>
         <CardHeader>
           <CardTitle>Query History</CardTitle>
           <CardDescription>
-            Recent database queries and their execution status
+            Read-only view of recent database queries and execution status
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -349,19 +142,25 @@ export function DatabaseQueryPanel({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {queries.map((query) => {
+                {queries.map((query, index) => {
                   const connection = connections.find(
                     (c) => c.id === query.connection_id,
                   );
                   return (
-                    <TableRow key={query.id}>
+                    <TableRow
+                      key={
+                        query.id ||
+                        `${query.connection_id || "query"}-${query.started_at || "started"}-${index}`
+                      }
+                    >
                       <TableCell>
                         <div className="max-w-xs">
                           <p className="font-mono text-sm truncate">
-                            {query.query_text}
+                            {formatQueryText(query.query_text)}
                           </p>
                           <p className="text-xs text-muted-foreground">
-                            Hash: {query.query_hash.substring(0, 8)}...
+                            Hash: {(query.query_hash ?? "unknown").slice(0, 8)}
+                            ...
                           </p>
                         </div>
                       </TableCell>
@@ -398,34 +197,14 @@ export function DatabaseQueryPanel({
                         </span>
                       </TableCell>
                       <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" className="h-8 w-8 p-0">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                            <DropdownMenuItem
-                              onClick={() => handleViewQuery(query)}
-                            >
-                              <Eye className="mr-2 h-4 w-4" />
-                              View Details
-                            </DropdownMenuItem>
-                            {query.status === "running" && (
-                              <>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem
-                                  onClick={() => handleCancelQuery(query.id)}
-                                  className="text-red-600"
-                                >
-                                  <Square className="mr-2 h-4 w-4" />
-                                  Cancel Query
-                                </DropdownMenuItem>
-                              </>
-                            )}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleViewQuery(query)}
+                        >
+                          <Eye className="mr-2 h-4 w-4" />
+                          View Details
+                        </Button>
                       </TableCell>
                     </TableRow>
                   );
@@ -436,7 +215,6 @@ export function DatabaseQueryPanel({
         </CardContent>
       </Card>
 
-      {/* Query Details Dialog */}
       <Dialog open={showQueryDialog} onOpenChange={setShowQueryDialog}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -451,7 +229,6 @@ export function DatabaseQueryPanel({
 
           {selectedQuery && (
             <div className="space-y-6">
-              {/* Query Summary */}
               <div className="space-y-4">
                 <h3 className="text-sm font-medium">Query Summary</h3>
                 <div className="grid grid-cols-2 gap-4">
@@ -498,17 +275,15 @@ export function DatabaseQueryPanel({
                 </div>
               </div>
 
-              {/* Query Text */}
               <div className="space-y-4">
                 <h3 className="text-sm font-medium">Query Text</h3>
                 <div className="p-3 bg-muted rounded-lg">
                   <pre className="text-sm font-mono whitespace-pre-wrap">
-                    {selectedQuery.query_text}
+                    {formatQueryText(selectedQuery.query_text)}
                   </pre>
                 </div>
               </div>
 
-              {/* Error Message */}
               {selectedQuery.error_message && (
                 <div className="space-y-4">
                   <h3 className="text-sm font-medium">Error Message</h3>
@@ -520,7 +295,6 @@ export function DatabaseQueryPanel({
                 </div>
               )}
 
-              {/* Timestamps */}
               <div className="space-y-4">
                 <h3 className="text-sm font-medium">Timestamps</h3>
                 <div className="grid grid-cols-2 gap-4">

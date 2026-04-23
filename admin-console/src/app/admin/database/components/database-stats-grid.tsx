@@ -73,13 +73,20 @@ export function DatabaseStatsGrid({
     );
   }
 
-  const connectionTypeData = stats.connections_by_type.map((item) => ({
+  const connectionTypeData = (stats.connections_by_type ?? []).map((item) => ({
     name: item.type,
     value: item.count,
     percentage: item.percentage,
   }));
 
-  const topDatabasesData = stats.top_databases_by_size.slice(0, 5);
+  const topDatabasesData = (stats.top_databases_by_size ?? []).slice(0, 5);
+
+  const getSlowQueryKey = (
+    query: DatabaseStats["recent_slow_queries"][number],
+    index: number,
+  ) =>
+    query.query_id?.trim() ||
+    `${query.connection_name || "connection"}-${query.started_at || "started"}-${index}`;
 
   const formatBytes = (bytes: number) => {
     if (bytes === 0) return "0 Bytes";
@@ -292,7 +299,7 @@ export function DatabaseStatsGrid({
       </div>
 
       {/* Recent Slow Queries */}
-      {stats.recent_slow_queries.length > 0 && (
+      {(stats.recent_slow_queries ?? []).length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle className="text-lg">Recent Slow Queries</CardTitle>
@@ -302,9 +309,9 @@ export function DatabaseStatsGrid({
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {stats.recent_slow_queries.map((query, index) => (
+              {(stats.recent_slow_queries ?? []).map((query, index) => (
                 <div
-                  key={query.query_id}
+                  key={getSlowQueryKey(query, index)}
                   className="flex items-center justify-between p-3 border rounded-lg"
                 >
                   <div className="flex-1">

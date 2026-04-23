@@ -7,8 +7,28 @@ import {
   getUsageAnalytics,
   exportAnalyticsReport,
   type AnalyticsFilters,
+  type UsageAnalytics,
 } from "@/app/_actions/analytics";
 import { queryKeys } from "@/lib/query-keys";
+
+const normalizeUsageAnalytics = (
+  data: UsageAnalytics | null | undefined,
+): UsageAnalytics => ({
+  total_api_requests: data?.total_api_requests ?? 0,
+  active_sessions: data?.active_sessions ?? 0,
+  feature_usage: Array.isArray(data?.feature_usage)
+    ? data.feature_usage
+    : [],
+  usage_trends: Array.isArray(data?.usage_trends) ? data.usage_trends : [],
+  performance_metrics: {
+    average_response_time:
+      data?.performance_metrics?.average_response_time ?? 0,
+    error_rate: data?.performance_metrics?.error_rate ?? 0,
+    uptime_percentage: data?.performance_metrics?.uptime_percentage ?? 100,
+    peak_concurrent_users:
+      data?.performance_metrics?.peak_concurrent_users ?? 0,
+  },
+});
 
 export function useAnalyticsOverview(filters?: AnalyticsFilters) {
   return useQuery({
@@ -149,20 +169,7 @@ export function useUsageAnalytics(filters?: AnalyticsFilters) {
       if (!result.success) throw new Error(result.message);
 
       // Provide default values to prevent UI breaks
-      return (
-        result.data || {
-          total_api_requests: 0,
-          active_sessions: 0,
-          feature_usage: [],
-          usage_trends: [],
-          performance_metrics: {
-            average_response_time: 0,
-            error_rate: 0,
-            uptime_percentage: 100,
-            peak_concurrent_users: 0,
-          },
-        }
-      );
+      return normalizeUsageAnalytics(result.data);
     },
     retry: 2,
     retryDelay: 1000,

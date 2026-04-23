@@ -119,8 +119,12 @@ export default function SystemHealthPage() {
       <div className="space-y-6">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">System Health</h1>
-            <p className="text-muted-foreground">Monitor system performance and health</p>
+            <h1 className="text-3xl font-bold tracking-tight">
+              Diagnostics &amp; Health
+            </h1>
+            <p className="text-muted-foreground">
+              Monitor system performance, health, and alerts
+            </p>
           </div>
         </div>
         <div className="grid gap-4 md:grid-cols-4">
@@ -157,7 +161,9 @@ export default function SystemHealthPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">System Health</h1>
+          <h1 className="text-3xl font-bold tracking-tight">
+            Diagnostics &amp; Health
+          </h1>
           <p className="text-muted-foreground">
             Monitor system performance, health, and alerts
           </p>

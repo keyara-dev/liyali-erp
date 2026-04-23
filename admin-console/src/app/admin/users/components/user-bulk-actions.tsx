@@ -54,6 +54,7 @@ export function UserBulkActions({
   const selectedUserObjects = users.filter((user) =>
     selectedUsers.includes(user.id),
   );
+  const getUserOrganizations = (user: PlatformUser) => user.organizations ?? [];
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
@@ -131,7 +132,9 @@ export function UserBulkActions({
           user.role,
           user.status,
           user.phone || "",
-          user.organizations.map((org) => org.organization_name).join("; "),
+          getUserOrganizations(user)
+            .map((org) => org.organization_name)
+            .join("; "),
           new Date(user.created_at).toISOString(),
           user.last_login ? new Date(user.last_login).toISOString() : "",
           user.login_count,
