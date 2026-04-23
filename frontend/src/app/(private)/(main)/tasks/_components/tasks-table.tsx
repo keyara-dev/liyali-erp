@@ -357,6 +357,9 @@ export function TasksTable() {
                   requisition: `/requisitions/${docId}`,
                   purchase_order: `/purchase-orders/${docId}`,
                   payment_voucher: `/payment-vouchers/${docId}`,
+                  // Backend stores GRN tasks with entity_type = "grn"; keep
+                  // the long form as a safety fallback for older rows.
+                  grn: `/grn/${docId}`,
                   goods_received_note: `/grn/${docId}`,
                   budget: `/budgets/${docId}`,
                 };
@@ -451,7 +454,7 @@ export function TasksTable() {
                 <SelectItem value="requisition">Requisition</SelectItem>
                 <SelectItem value="purchase_order">Purchase Order</SelectItem>
                 <SelectItem value="payment_voucher">Payment Voucher</SelectItem>
-                <SelectItem value="goods_received_note">GRN</SelectItem>
+                <SelectItem value="grn">GRN</SelectItem>
                 <SelectItem value="budget">Budget</SelectItem>
               </SelectContent>
             </Select>

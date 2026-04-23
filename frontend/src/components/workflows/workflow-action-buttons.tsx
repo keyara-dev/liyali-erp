@@ -276,6 +276,9 @@ export const WorkflowActionButtons = memo(function WorkflowActionButtons({
       requisition: `/requisitions/${docId}`,
       purchase_order: `/purchase-orders/${docId}`,
       payment_voucher: `/payment-vouchers/${docId}`,
+      // Backend stores GRN tasks with entity_type = "grn"; accept both
+      // forms so the view button routes correctly regardless.
+      grn: `/grn/${docId}`,
       goods_received_note: `/grn/${docId}`,
       budget: `/budgets/${docId}`,
     };

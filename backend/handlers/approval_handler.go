@@ -578,12 +578,12 @@ func (h *ApprovalHandler) populateWorkflowTaskFields(db *gorm.DB, task *models.W
 			task.Title = budget.Name + " - Approval Required"
 			task.TaskType = "BUDGET_APPROVAL"
 		}
-	case "goods_received_note":
+	case "grn", "goods_received_note":
 		var grn models.GoodsReceivedNote
 		if err := db.Where("id = ?", task.EntityID).First(&grn).Error; err == nil {
 			task.DocumentNumber = grn.DocumentNumber
-			task.Title = "GRN " + grn.DocumentNumber + " - Confirmation Required"
-			task.TaskType = "GOODS_RECEIVED_NOTE_CONFIRMATION"
+			task.Title = "Goods Received Note - Approval Required"
+			task.TaskType = "GRN_APPROVAL"
 		}
 	}
 

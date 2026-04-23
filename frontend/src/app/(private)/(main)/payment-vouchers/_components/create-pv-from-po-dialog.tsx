@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import Link from "next/link";
 import {
   Dialog,
   DialogContent,
@@ -70,11 +71,26 @@ export function CreatePVFromPODialog({
 
   const isGoodsFirst = effectiveFlow === "goods_first";
 
-  // Fetch approved GRNs for this PO (only needed for goods_first)
-  const { data: grns = [] } = useGRNs(1, 50, {
-    status: "APPROVED",
+  // Fetch all GRNs for this PO so we can distinguish between "no GRN yet"
+  // and "GRN exists but not yet approved" — the empty-state message changes.
+  const { data: allGRNs = [] } = useGRNs(1, 50, {
     poDocumentNumber: purchaseOrder.documentNumber,
   });
+  const grns = useMemo(
+    () =>
+      allGRNs.filter((g: any) => g.status?.toUpperCase() === "APPROVED"),
+    [allGRNs],
+  );
+  const pendingGRNs = useMemo(
+    () =>
+      allGRNs.filter(
+        (g: any) =>
+          g.status?.toUpperCase() !== "APPROVED" &&
+          g.status?.toUpperCase() !== "REJECTED" &&
+          g.status?.toUpperCase() !== "CANCELLED",
+      ),
+    [allGRNs],
+  );
 
   // Configuration check — workflow is picked at submit time, so skip it here
   const configStatus = useConfigurationStatus({
@@ -221,14 +237,38 @@ export function CreatePVFromPODialog({
                   <Package className="h-4 w-4" />
                   Linked GRN <span className="text-destructive">*</span>
                 </Label>
-                <Alert variant="destructive">
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>
-                    No approved GRNs found for PO {purchaseOrder.documentNumber}
-                    . Goods must be received and the GRN approved before
-                    creating a payment voucher.
-                  </AlertDescription>
-                </Alert>
+                {pendingGRNs.length > 0 ? (
+                  <Alert className="border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-950/40">
+                    <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                    <AlertDescription className="space-y-2 text-amber-800 dark:text-amber-200">
+                      <p>
+                        A GRN exists for this PO but hasn&apos;t been approved
+                        yet. Submit and approve it first before creating a
+                        payment voucher.
+                      </p>
+                      <div className="flex flex-col gap-1">
+                        {pendingGRNs.map((g: any) => (
+                          <Link
+                            key={g.id}
+                            href={`/grn/${g.id}`}
+                            className="text-xs font-mono text-amber-900 dark:text-amber-100 underline underline-offset-2 hover:no-underline"
+                          >
+                            {g.documentNumber} ({g.status})
+                          </Link>
+                        ))}
+                      </div>
+                    </AlertDescription>
+                  </Alert>
+                ) : (
+                  <Alert variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>
+                      No GRNs found for PO {purchaseOrder.documentNumber}.
+                      Goods must be received and the GRN approved before
+                      creating a payment voucher.
+                    </AlertDescription>
+                  </Alert>
+                )}
               </div>
             ) : (
               <div className="space-y-2">
