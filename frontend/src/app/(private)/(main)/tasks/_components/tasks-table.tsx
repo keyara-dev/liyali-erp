@@ -6,7 +6,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 
 import { StatusBadge } from "@/components/status-badge";
-import { Badge } from "@/components/ui/badge";
+import { PriorityBadge } from "@/components/ui/priority-badge";
 import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
 import {
@@ -96,18 +96,6 @@ function getDocRoute(task: WorkflowTask): string {
     budget: `/budgets/${docId}`,
   };
   return routes[docType] || `/tasks/${task.id}`;
-}
-
-function PriorityBadge({ p }: { p?: string }) {
-  const v = p?.toUpperCase();
-  return (
-    <Badge
-      variant={v === "HIGH" || v === "URGENT" ? "destructive" : v === "MEDIUM" ? "warning" : "info"}
-      className="px-2 py-0.5 rounded text-[10px] uppercase font-medium tracking-wider"
-    >
-      {p || "MEDIUM"}
-    </Badge>
-  );
 }
 
 function DueCell({ t }: { t: WorkflowTask }) {
@@ -245,7 +233,7 @@ export function TasksTable() {
         </span>
       ),
     },
-    { id: "priority", header: "Priority", priority: "md", cell: (t) => <PriorityBadge p={t.priority} /> },
+    { id: "priority", header: "Priority", priority: "md", cell: (t) => <PriorityBadge priority={t.priority} /> },
     {
       id: "status",
       header: "Status",
@@ -358,7 +346,7 @@ export function TasksTable() {
               <StatusBadge status={t.status} type="execution" />
             </div>
             <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-              <PriorityBadge p={t.priority} />
+              <PriorityBadge priority={t.priority} />
               {t.stageName && <span>{t.stageName}</span>}
               <DueCell t={t} />
             </div>
