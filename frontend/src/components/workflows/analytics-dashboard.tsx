@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useAnalyticsDashboard } from "@/hooks/use-reports-queries";
+import type { DateRange } from "@/types/reports";
 import {
   TrendingUp,
   CheckCircle2,
@@ -15,9 +16,13 @@ import {
   Target,
 } from "lucide-react";
 
-export function AnalyticsDashboard() {
+interface AnalyticsDashboardProps {
+  dateRange?: DateRange;
+}
+
+export function AnalyticsDashboard({ dateRange }: AnalyticsDashboardProps = {}) {
   // Fetch live analytics from database
-  const { data: analytics, isLoading, error } = useAnalyticsDashboard();
+  const { data: analytics, isLoading, error } = useAnalyticsDashboard(dateRange);
 
   if (isLoading) {
     return (

@@ -171,8 +171,7 @@ export function AdminReportsClient({
         </TabsContent>
 
         <TabsContent value="analytics" className="mt-0">
-          {/* dateRange wired in Plan C Task 8 */}
-          <AnalyticsDashboard />
+          <AnalyticsDashboard dateRange={dateRange} />
         </TabsContent>
 
         <TabsContent value="approvals" className="mt-0">
