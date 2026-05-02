@@ -1,7 +1,6 @@
+// frontend/src/app/(private)/admin/_components/system-statistics.tsx
 "use client";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useSystemStats } from "@/hooks/use-reports-queries";
 import {
@@ -11,25 +10,36 @@ import {
   AlertCircle,
   TrendingUp,
 } from "lucide-react";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-} from "recharts";
+import { MetricCard } from "@/components/ui/metric-card";
+import { ReportChart } from "@/components/ui/report-chart";
+import { StatusBadge } from "@/components/status-badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import EmptyState from "@/components/base/empty-state";
+import type { DateRange } from "@/types/reports";
 
-export function SystemStatistics() {
-  // Fetch live statistics from database
-  const { data: stats, isLoading, error } = useSystemStats();
+interface SystemStatisticsProps {
+  dateRange?: DateRange;
+}
+
+interface DocTypeRow extends Record<string, unknown> {
+  name: string;
+  count: number;
+}
+
+export function SystemStatistics({ dateRange }: SystemStatisticsProps) {
+  const { data: stats, isLoading, error } = useSystemStats(dateRange);
 
   if (isLoading) {
     return (
-      <div className="text-center py-8 text-muted-foreground">
-        Loading system statistics...
+      <div className="space-y-6">
+        <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-28 rounded-md" />
+          ))}
+        </div>
+        <Skeleton className="h-72 rounded-md" />
+        <Skeleton className="h-56 rounded-md" />
       </div>
     );
   }
@@ -47,164 +57,101 @@ export function SystemStatistics() {
 
   if (!stats) {
     return (
-      <div className="text-center py-8 text-muted-foreground">
-        No statistics available
-      </div>
+      <EmptyState
+        title="No statistics available"
+        description="No data found for the selected date range."
+      />
     );
   }
 
-  // Prepare chart data for document types
-  const chartData = [
-    {
-      name: "Requisitions",
-      count: stats?.documentTypeBreakdown?.requisitions || 0,
-    },
-    {
-      name: "Purchase Orders",
-      count: stats?.documentTypeBreakdown?.purchaseOrders || 0,
-    },
-    {
-      name: "Payment Vouchers",
-      count: stats?.documentTypeBreakdown?.paymentVouchers || 0,
-    },
-    { name: "GRN", count: stats?.documentTypeBreakdown?.grn || 0 },
-    { name: "Budgets", count: stats?.documentTypeBreakdown?.budgets || 0 },
+  const docTypeRows: DocTypeRow[] = [
+    { name: "Requisitions", count: stats.documentTypeBreakdown?.requisitions ?? 0 },
+    { name: "Purchase Orders", count: stats.documentTypeBreakdown?.purchaseOrders ?? 0 },
+    { name: "Payment Vouchers", count: stats.documentTypeBreakdown?.paymentVouchers ?? 0 },
+    { name: "GRN", count: stats.documentTypeBreakdown?.grn ?? 0 },
+    { name: "Budgets", count: stats.documentTypeBreakdown?.budgets ?? 0 },
+  ];
+
+  const statusRows: { label: string; value: number; status: string }[] = [
+    { label: "Draft", value: stats.statusBreakdown?.draft ?? 0, status: "draft" },
+    { label: "Submitted", value: stats.statusBreakdown?.submitted ?? 0, status: "submitted" },
+    { label: "In Review", value: stats.statusBreakdown?.inReview ?? 0, status: "in_approval" },
+    { label: "Approved", value: stats.statusBreakdown?.approved ?? 0, status: "approved" },
+    { label: "Rejected", value: stats.statusBreakdown?.rejected ?? 0, status: "rejected" },
   ];
 
   return (
     <div className="space-y-6">
-      {/* Key Metrics Grid */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Total Documents
-            </CardTitle>
-            <FileText className="h-5 w-5 text-primary" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">
-              {stats?.totalDocuments || 0}
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">All time</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Approval Rate
-            </CardTitle>
-            <TrendingUp className="h-5 w-5 text-secondary" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">
-              {(stats?.approvalRate || 0).toFixed(1)}%
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              {stats?.approvedDocuments || 0} approved
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Avg Approval Time
-            </CardTitle>
-            <Clock className="h-5 w-5 text-accent" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">
-              {(stats?.averageApprovalTime || 0).toFixed(1)}
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">days</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Rejection Rate
-            </CardTitle>
-            <AlertCircle className="h-5 w-5 text-destructive" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">
-              {(stats?.rejectionRate || 0).toFixed(1)}%
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              {stats?.rejectedDocuments || 0} rejected
-            </p>
-          </CardContent>
-        </Card>
+      <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
+        <MetricCard
+          title="Total Documents"
+          value={stats.totalDocuments ?? 0}
+          icon={<FileText className="h-4 w-4" />}
+          accent="blue"
+          secondary="All time"
+        />
+        <MetricCard
+          title="Approval Rate"
+          value={`${(stats.approvalRate ?? 0).toFixed(1)}%`}
+          icon={<TrendingUp className="h-4 w-4" />}
+          accent="emerald"
+          secondary={`${stats.approvedDocuments ?? 0} approved`}
+        />
+        <MetricCard
+          title="Avg Approval Time"
+          value={(stats.averageApprovalTime ?? 0).toFixed(1)}
+          icon={<Clock className="h-4 w-4" />}
+          accent="amber"
+          secondary="days"
+        />
+        <MetricCard
+          title="Rejection Rate"
+          value={`${(stats.rejectionRate ?? 0).toFixed(1)}%`}
+          icon={<AlertCircle className="h-4 w-4" />}
+          accent="rose"
+          secondary={`${stats.rejectedDocuments ?? 0} rejected`}
+        />
       </div>
 
-      {/* Document Type Distribution Chart */}
-      <Card>
+      <Card className="border-border/60">
         <CardHeader>
-          <CardTitle className="text-lg">Document Type Distribution</CardTitle>
+          <CardTitle className="text-base">Document Type Distribution</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="h-80 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" />
-                <YAxis />
-                <Tooltip />
-                <Bar dataKey="count" fill="var(--primary)" />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
+          <ReportChart<DocTypeRow>
+            kind="bar"
+            data={docTypeRows}
+            xKey="name"
+            series={[{ dataKey: "count", label: "Count" }]}
+            perBarColor
+          />
         </CardContent>
       </Card>
 
-      {/* Status Summary Table */}
-      <Card>
+      <Card className="border-border/60">
         <CardHeader>
-          <CardTitle className="text-lg">Status Summary</CardTitle>
+          <CardTitle className="text-base">Status Summary</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-3">
-            {[
-              {
-                label: "Draft",
-                value: stats?.statusBreakdown?.draft || 0,
-                variant: "outline" as const,
-              },
-              {
-                label: "Submitted",
-                value: stats?.statusBreakdown?.submitted || 0,
-                variant: "secondary" as const,
-              },
-              {
-                label: "In Review",
-                value: stats?.statusBreakdown?.inReview || 0,
-                variant: "default" as const,
-              },
-              {
-                label: "Approved",
-                value: stats?.statusBreakdown?.approved || 0,
-                variant: "default" as const,
-              },
-              {
-                label: "Rejected",
-                value: stats?.statusBreakdown?.rejected || 0,
-                variant: "destructive" as const,
-              },
-            ].map((item) => (
-              <div
-                key={item.label}
-                className="flex items-center justify-between p-3 border rounded-lg"
+          <ul className="divide-y divide-border/60">
+            {statusRows.map((row) => (
+              <li
+                key={row.label}
+                className="flex items-center justify-between py-3"
               >
-                <span className="font-medium">{item.label}</span>
-                <Badge variant={item.variant}>{item.value}</Badge>
-              </div>
+                <div className="flex items-center gap-3">
+                  <StatusBadge status={row.status} type="document" />
+                </div>
+                <span className="text-sm font-semibold tabular-nums">
+                  {row.value}
+                </span>
+              </li>
             ))}
-          </div>
+          </ul>
         </CardContent>
       </Card>
     </div>
   );
 }
+
+export type { SystemStatisticsProps };
