@@ -28,18 +28,24 @@ export function useDateRangeUrlState({
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const searchString = searchParams.toString();
 
   const from = searchParams.get(fromKey) || defaultFrom;
   const to = searchParams.get(toKey) || defaultTo;
 
   const setRange = useCallback(
     (newFrom: string, newTo: string) => {
-      const params = new URLSearchParams(searchParams.toString());
+      const params = new URLSearchParams(searchString);
+      const currentFrom = params.get(fromKey) || defaultFrom;
+      const currentTo = params.get(toKey) || defaultTo;
+      if (newFrom === currentFrom && newTo === currentTo) {
+        return;
+      }
       params.set(fromKey, newFrom);
       params.set(toKey, newTo);
       router.replace(`${pathname}?${params.toString()}`, { scroll: false });
     },
-    [router, pathname, searchParams, fromKey, toKey]
+    [router, pathname, searchString, fromKey, toKey, defaultFrom, defaultTo]
   );
 
   return { from, to, setRange };

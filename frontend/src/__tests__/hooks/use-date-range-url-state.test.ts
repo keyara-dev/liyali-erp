@@ -4,9 +4,10 @@ import { useDateRangeUrlState } from "@/hooks/use-date-range-url-state";
 
 const replace = vi.fn();
 const params = new URLSearchParams();
+const mockRouter = { replace };
 
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ replace }),
+  useRouter: () => mockRouter,
   usePathname: () => "/admin/reports",
   useSearchParams: () => params,
 }));
@@ -44,5 +45,22 @@ describe("useDateRangeUrlState", () => {
     expect(replace).toHaveBeenCalledTimes(1);
     expect(replace.mock.calls[0][0]).toContain("from=2026-04-01");
     expect(replace.mock.calls[0][0]).toContain("to=2026-04-30");
+  });
+
+  it("setRange does NOT call router.replace when from/to are unchanged", () => {
+    const { result } = renderHook(() =>
+      useDateRangeUrlState({ defaultFrom: "2026-01-01", defaultTo: "2026-01-31" })
+    );
+    act(() => result.current.setRange("2026-01-01", "2026-01-31"));
+    expect(replace).not.toHaveBeenCalled();
+  });
+
+  it("setRange identity is stable across renders when params are unchanged", () => {
+    const { result, rerender } = renderHook(() =>
+      useDateRangeUrlState({ defaultFrom: "2026-01-01", defaultTo: "2026-01-31" })
+    );
+    const first = result.current.setRange;
+    rerender();
+    expect(result.current.setRange).toBe(first);
   });
 });
