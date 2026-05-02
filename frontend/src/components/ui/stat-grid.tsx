@@ -53,8 +53,8 @@ export function StatGrid({ items, className }: StatGridProps) {
           className
         )}
       >
-        {items.map((it) => (
-          <div key={it.label} className="p-2.5 sm:p-3 space-y-0.5 sm:space-y-1">
+        {items.map((it, idx) => (
+          <div key={`${it.label}-${idx}`} className="p-2.5 sm:p-3 space-y-0.5 sm:space-y-1">
             <div className="flex items-center justify-between gap-1.5">
               <span className="text-[10px] sm:text-xs font-medium text-muted-foreground uppercase tracking-wider truncate">
                 {it.label}
