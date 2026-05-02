@@ -37,8 +37,10 @@ const dateFilterPresets = [
   { name: "This Week", value: "thisWeek" },
   { name: "Last 7 Days", value: "last7Days" },
   { name: "Last 28 Days", value: "last28Days" },
+  { name: "Last 90 Days", value: "last90Days" },
   { name: "This Month", value: "thisMonth" },
   { name: "Last Month", value: "lastMonth" },
+  { name: "Last Quarter", value: "lastQuarter" },
   { name: "This Year", value: "thisYear" }
 ];
 
@@ -122,12 +124,21 @@ export default function CalendarDateRangePicker({
         const twentyEightDaysAgo = subDays(today, 27); // 27 days ago + today = 28 days
         handleQuickSelect(startOfDay(twentyEightDaysAgo), endOfDay(today));
         break;
+      case "last90Days":
+        const ninetyDaysAgo = subDays(today, 89);
+        handleQuickSelect(startOfDay(ninetyDaysAgo), endOfDay(today));
+        break;
       case "thisMonth":
         handleQuickSelect(startOfMonth(today), endOfDay(today));
         break;
       case "lastMonth":
         const lastMonth = subMonths(today, 1);
         handleQuickSelect(startOfMonth(lastMonth), endOfMonth(lastMonth));
+        break;
+      case "lastQuarter":
+        const quarterStart = startOfMonth(subMonths(today, 3));
+        const quarterEnd = endOfMonth(subMonths(today, 1));
+        handleQuickSelect(startOfDay(quarterStart), endOfDay(quarterEnd));
         break;
       case "thisYear":
         const startOfCurrentYear = startOfYear(today);
