@@ -1,31 +1,36 @@
 "use client";
 
 import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useApprovalMetrics } from "@/hooks/use-reports-queries";
 import { Input } from "@/components/ui/input";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Search, AlertCircle } from "lucide-react";
+import { Search, AlertCircle, CheckCircle2, XCircle, Clock } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { MetricCard } from "@/components/ui/metric-card";
+import { FilterBar } from "@/components/ui/filter-bar";
+import { DataList, DataListColumn } from "@/components/ui/data-list";
+import { DocumentTypeChip } from "@/components/ui/document-type-chip";
+import { StatusBadge } from "@/components/status-badge";
+import EmptyState from "@/components/base/empty-state";
+import type { DateRange, ApprovalActivity } from "@/types/reports";
 
-export function ApprovalReports() {
+interface ApprovalReportsProps {
+  dateRange?: DateRange;
+}
+
+export function ApprovalReports({ dateRange }: ApprovalReportsProps) {
   const [searchTerm, setSearchTerm] = useState("");
-
-  // Fetch live approval metrics from database
-  const { data: metrics, isLoading, error } = useApprovalMetrics();
+  const { data: metrics, isLoading, error } = useApprovalMetrics(dateRange);
 
   if (isLoading) {
     return (
-      <div className="text-center py-8 text-muted-foreground">
-        Loading approval reports...
+      <div className="space-y-6">
+        <div className="grid gap-3 grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <Skeleton key={i} className="h-28 rounded-md" />
+          ))}
+        </div>
+        <Skeleton className="h-72 rounded-md" />
       </div>
     );
   }
@@ -43,169 +48,140 @@ export function ApprovalReports() {
 
   if (!metrics) {
     return (
-      <div className="text-center py-8 text-muted-foreground">
-        No approval data available
-      </div>
+      <EmptyState
+        title="No approval data"
+        description="No approvals found for the selected date range."
+      />
     );
   }
 
-  const filteredActivity = (metrics?.recentApprovals || []).filter(
+  const filtered: ApprovalActivity[] = (metrics.recentApprovals ?? []).filter(
     (item) =>
       (item.documentNumber || "")
         .toLowerCase()
         .includes(searchTerm.toLowerCase()) ||
-      item.approverName.toLowerCase().includes(searchTerm.toLowerCase()),
+      (item.approverName || "").toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const statusColors: Record<
-    string,
-    "default" | "destructive" | "secondary" | "outline"
-  > = {
-    approved: "default",
-    rejected: "destructive",
-  };
+  const columns: DataListColumn<ApprovalActivity>[] = [
+    {
+      id: "doc",
+      header: "Document",
+      cell: (a) => (
+        <span className="font-medium text-primary">{a.documentNumber}</span>
+      ),
+    },
+    {
+      id: "type",
+      header: "Type",
+      priority: "md",
+      cell: (a) => <DocumentTypeChip type={a.documentType} />,
+    },
+    {
+      id: "status",
+      header: "Status",
+      cell: (a) => <StatusBadge status={a.action} type="action" />,
+    },
+    {
+      id: "approver",
+      header: "Approver",
+      priority: "md",
+      cell: (a) => (
+        <span className="text-sm text-muted-foreground">{a.approverName}</span>
+      ),
+    },
+    {
+      id: "time",
+      header: "Time",
+      priority: "lg",
+      cell: (a) => (
+        <span className="text-sm text-muted-foreground">
+          {new Date(a.createdAt).toLocaleDateString("en", {
+            month: "short",
+            day: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+          })}
+        </span>
+      ),
+    },
+  ];
 
-  const formatDocumentType = (type: string) => {
-    const typeMap: Record<string, string> = {
-      requisition: "Requisition",
-      REQUISITION: "Requisition",
-      purchase_order: "Purchase Order",
-      PURCHASE_ORDER: "Purchase Order",
-      payment_voucher: "Payment Voucher",
-      PAYMENT_VOUCHER: "Payment Voucher",
-      grn: "GRN",
-      GRN: "GRN",
-      budget: "Budget",
-      BUDGET: "Budget",
-    };
-    return typeMap[type] || type;
-  };
+  const hasActiveFilters = searchTerm.length > 0;
 
   return (
     <div className="space-y-6">
-      {/* Approval Metrics */}
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Approved This Period
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-secondary">
-              {metrics?.totalApproved || 0}
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              {(metrics?.approvalRate || 0).toFixed(1)}% approval rate
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Rejections
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-destructive">
-              {metrics?.totalRejected || 0}
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              {(100 - (metrics?.approvalRate || 0)).toFixed(1)}% rejection rate
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Pending Review
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-accent">
-              {metrics?.totalPending || 0}
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Awaiting next approver
-            </p>
-          </CardContent>
-        </Card>
+      <div className="grid gap-3 grid-cols-2 lg:grid-cols-3">
+        <MetricCard
+          title="Approved"
+          value={metrics.totalApproved ?? 0}
+          icon={<CheckCircle2 className="h-4 w-4" />}
+          accent="emerald"
+          secondary={`${(metrics.approvalRate ?? 0).toFixed(1)}% approval rate`}
+        />
+        <MetricCard
+          title="Rejections"
+          value={metrics.totalRejected ?? 0}
+          icon={<XCircle className="h-4 w-4" />}
+          accent="rose"
+          secondary={`${(100 - (metrics.approvalRate ?? 0)).toFixed(1)}% rejection rate`}
+        />
+        <MetricCard
+          title="Pending Review"
+          value={metrics.totalPending ?? 0}
+          icon={<Clock className="h-4 w-4" />}
+          accent="amber"
+          secondary="Awaiting next approver"
+        />
       </div>
 
-      {/* Recent Approvals Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Recent Approvals & Actions</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {/* Search */}
+      <FilterBar
+        search={
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search by document or approver..."
+              placeholder="Search by document or approver…"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10"
             />
           </div>
+        }
+        hasActiveFilters={hasActiveFilters}
+        onReset={() => setSearchTerm("")}
+        meta={`${filtered.length} approval${filtered.length === 1 ? "" : "s"}${hasActiveFilters ? " (filtered)" : ""}`}
+      />
 
-          {/* Table */}
-          <div className="rounded-md border overflow-hidden">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Document</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Approver</TableHead>
-                  <TableHead>Time</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredActivity.length === 0 ? (
-                  <TableRow>
-                    <TableCell
-                      colSpan={5}
-                      className="text-center py-4 text-muted-foreground"
-                    >
-                      No approvals found
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  filteredActivity.map((activity) => (
-                    <TableRow key={activity.id}>
-                      <TableCell className="font-medium text-primary">
-                        {activity.documentNumber}
-                      </TableCell>
-                      <TableCell className="text-sm">
-                        {formatDocumentType(activity.documentType)}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={statusColors[activity.action]}>
-                          {activity.action}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {activity.approverName}
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {new Date(activity.createdAt).toLocaleDateString([], {
-                          month: "short",
-                          day: "numeric",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
+      <DataList<ApprovalActivity>
+        rows={filtered}
+        columns={columns}
+        getRowId={(a) => a.id}
+        emptyMessage="No approvals found."
+        mobileCard={(a) => (
+          <div className="flex flex-col gap-2">
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <div className="font-medium text-primary">{a.documentNumber}</div>
+                <div className="text-xs text-muted-foreground">
+                  {a.approverName}
+                </div>
+              </div>
+              <StatusBadge status={a.action} type="action" />
+            </div>
+            <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+              <DocumentTypeChip type={a.documentType} />
+              <span>
+                {new Date(a.createdAt).toLocaleDateString("en", {
+                  month: "short",
+                  day: "numeric",
+                })}
+              </span>
+            </div>
           </div>
-        </CardContent>
-      </Card>
+        )}
+      />
     </div>
   );
 }
+
+export type { ApprovalReportsProps };
