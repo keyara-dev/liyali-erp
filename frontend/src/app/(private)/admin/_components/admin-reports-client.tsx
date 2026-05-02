@@ -1,16 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
+import { format, subDays, startOfDay, endOfDay } from "date-fns";
 import { useQueryClient } from "@tanstack/react-query";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Button } from "@/components/ui/button";
 import { ApprovalReports } from "./approval-reports";
 import { UserActivityReports } from "./user-activity-reports";
 import { SystemStatistics } from "./system-statistics";
 import { AnalyticsDashboard } from "@/components/workflows/analytics-dashboard";
-import { Download, RefreshCw } from "lucide-react";
+import { ReportsHeader } from "./reports-header";
 import { QUERY_KEYS } from "@/lib/constants";
 import { notify } from "@/lib/utils";
+import { useDateRangeUrlState } from "@/hooks/use-date-range-url-state";
+import type { DateRange } from "@/types/reports";
 import {
   useSystemStats,
   useApprovalMetrics,
@@ -29,19 +31,37 @@ interface AdminReportsClientProps {
   userRole: string;
 }
 
+function defaultRange() {
+  const today = new Date();
+  return {
+    from: format(startOfDay(subDays(today, 27)), "yyyy-MM-dd"),
+    to: format(endOfDay(today), "yyyy-MM-dd"),
+  };
+}
+
 export function AdminReportsClient({
-  userId,
-  userRole,
+  userId: _userId,
+  userRole: _userRole,
 }: AdminReportsClientProps) {
   const [activeTab, setActiveTab] = useState("overview");
   const [isRefreshing, setIsRefreshing] = useState(false);
   const queryClient = useQueryClient();
 
-  // Get data for export
-  const { data: systemStats } = useSystemStats();
-  const { data: approvalMetrics } = useApprovalMetrics();
-  const { data: userActivity } = useUserActivity();
-  const { data: analytics } = useAnalyticsDashboard();
+  const initial = useMemo(defaultRange, []);
+  const { from, to } = useDateRangeUrlState({
+    defaultFrom: initial.from,
+    defaultTo: initial.to,
+  });
+  // Map URL string params to the DateRange shape expected by report hooks/components
+  const dateRange = useMemo<DateRange>(
+    () => ({ startDate: from, endDate: to }),
+    [from, to]
+  );
+
+  const { data: systemStats } = useSystemStats(dateRange);
+  const { data: approvalMetrics } = useApprovalMetrics(dateRange);
+  const { data: userActivity } = useUserActivity(dateRange);
+  const { data: analytics } = useAnalyticsDashboard(dateRange);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -65,7 +85,7 @@ export function AdminReportsClient({
         description: "Reports refreshed successfully",
         type: "success",
       });
-    } catch (error) {
+    } catch {
       notify({
         title: "Error",
         description: "Failed to refresh reports. Please try again.",
@@ -76,81 +96,40 @@ export function AdminReportsClient({
     }
   };
 
-  const handleExport = () => {
+  const handleExport = (formatChoice: "csv") => {
+    if (formatChoice !== "csv") return;
     try {
       switch (activeTab) {
         case "overview":
-          if (systemStats) {
-            exportSystemStatsToCSV(systemStats);
-            notify({
-              title: "Success",
-              description: "System statistics exported to CSV",
-              type: "success",
-            });
-          } else {
-            notify({
-              title: "Error",
-              description: "No data available to export",
-              type: "error",
-            });
-          }
+          if (!systemStats)
+            return notify({ title: "Error", description: "No data to export", type: "error" });
+          exportSystemStatsToCSV(systemStats);
           break;
         case "analytics":
-          if (analytics) {
-            exportAnalyticsDashboardToCSV(analytics);
-            notify({
-              title: "Success",
-              description: "Analytics dashboard exported to CSV",
-              type: "success",
-            });
-          } else {
-            notify({
-              title: "Error",
-              description: "No data available to export",
-              type: "error",
-            });
-          }
+          if (!analytics)
+            return notify({ title: "Error", description: "No data to export", type: "error" });
+          exportAnalyticsDashboardToCSV(analytics);
           break;
         case "approvals":
-          if (approvalMetrics) {
-            exportApprovalMetricsToCSV(approvalMetrics);
-            notify({
-              title: "Success",
-              description: "Approval metrics exported to CSV",
-              type: "success",
-            });
-          } else {
-            notify({
-              title: "Error",
-              description: "No data available to export",
-              type: "error",
-            });
-          }
+          if (!approvalMetrics)
+            return notify({ title: "Error", description: "No data to export", type: "error" });
+          exportApprovalMetricsToCSV(approvalMetrics);
           break;
         case "activity":
-          if (userActivity) {
-            exportUserActivityToCSV(userActivity);
-            notify({
-              title: "Success",
-              description: "User activity exported to CSV",
-              type: "success",
-            });
-          } else {
-            notify({
-              title: "Error",
-              description: "No data available to export",
-              type: "error",
-            });
-          }
+          if (!userActivity)
+            return notify({ title: "Error", description: "No data to export", type: "error" });
+          exportUserActivityToCSV(userActivity);
           break;
         default:
-          notify({
-            title: "Error",
-            description: "Unknown tab selected",
-            type: "error",
-          });
+          notify({ title: "Error", description: "Unknown tab selected", type: "error" });
+          return;
       }
-    } catch (error) {
+      notify({
+        title: "Exported",
+        description: "Current view downloaded as CSV",
+        type: "success",
+      });
+    } catch {
       notify({
         title: "Error",
         description: "An error occurred during export",
@@ -160,61 +139,48 @@ export function AdminReportsClient({
   };
 
   return (
-    <div className="space-y-6">
-      {/* Page Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Admin Reports</h1>
-          <p className="text-muted-foreground">
-            Monitor workflow approvals, user activity, and system metrics
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleRefresh}
-            disabled={isRefreshing}
-          >
-            <RefreshCw
-              className={`h-4 w-4 mr-2 ${isRefreshing ? "animate-spin" : ""}`}
-            />
-            Refresh
-          </Button>
-          <Button variant="outline" size="sm" onClick={handleExport}>
-            <Download className="h-4 w-4 mr-2" />
-            Export
-          </Button>
-        </div>
-      </div>
+    <div className="space-y-5">
+      <ReportsHeader
+        title="Admin Reports"
+        subtitle="Workflow approvals, user activity, system metrics"
+        onRefresh={handleRefresh}
+        onExport={handleExport}
+        isRefreshing={isRefreshing}
+      />
 
-      {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-4 lg:w-auto">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="analytics">Analytics</TabsTrigger>
-          <TabsTrigger value="approvals">Approvals</TabsTrigger>
-          <TabsTrigger value="activity">Activity</TabsTrigger>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-5">
+        <TabsList className="inline-flex h-9 w-full sm:w-auto bg-muted/60 p-1 rounded-lg">
+          {[
+            { v: "overview", label: "Overview" },
+            { v: "analytics", label: "Analytics" },
+            { v: "approvals", label: "Approvals" },
+            { v: "activity", label: "Activity" },
+          ].map((t) => (
+            <TabsTrigger
+              key={t.v}
+              value={t.v}
+              className="flex-1 sm:flex-initial sm:px-6 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm rounded-md"
+            >
+              {t.label}
+            </TabsTrigger>
+          ))}
         </TabsList>
 
-        {/* System Statistics Tab */}
-        <TabsContent value="overview" className="space-y-6">
-          <SystemStatistics />
+        <TabsContent value="overview" className="mt-0">
+          <SystemStatistics dateRange={dateRange} />
         </TabsContent>
 
-        {/* Analytics Tab */}
-        <TabsContent value="analytics" className="space-y-6">
+        <TabsContent value="analytics" className="mt-0">
+          {/* dateRange wired in Plan C Task 8 */}
           <AnalyticsDashboard />
         </TabsContent>
 
-        {/* Approval Reports Tab */}
-        <TabsContent value="approvals" className="space-y-6">
-          <ApprovalReports />
+        <TabsContent value="approvals" className="mt-0">
+          <ApprovalReports dateRange={dateRange} />
         </TabsContent>
 
-        {/* User Activity Reports Tab */}
-        <TabsContent value="activity" className="space-y-6">
-          <UserActivityReports />
+        <TabsContent value="activity" className="mt-0">
+          <UserActivityReports dateRange={dateRange} />
         </TabsContent>
       </Tabs>
     </div>
