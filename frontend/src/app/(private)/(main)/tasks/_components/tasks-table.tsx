@@ -6,7 +6,6 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 
 import { StatusBadge } from "@/components/status-badge";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
@@ -83,6 +82,20 @@ function getTitle(t: WorkflowTask) {
     t.title ||
     `${capitalize(t.entityType || t.documentType || "").replaceAll("_", " ")} Requires Approval`
   );
+}
+
+function getDocRoute(task: WorkflowTask): string {
+  const docType = (task.entityType || task.documentType || "").toLowerCase();
+  const docId = task.entityId || task.documentId;
+  const routes: Record<string, string> = {
+    requisition: `/requisitions/${docId}`,
+    purchase_order: `/purchase-orders/${docId}`,
+    payment_voucher: `/payment-vouchers/${docId}`,
+    grn: `/grn/${docId}`,
+    goods_received_note: `/grn/${docId}`,
+    budget: `/budgets/${docId}`,
+  };
+  return routes[docType] || `/tasks/${task.id}`;
 }
 
 function PriorityBadge({ p }: { p?: string }) {
@@ -252,19 +265,7 @@ export function TasksTable() {
           onRefresh={handleRefresh}
           variant="table"
           showViewButton={false}
-          onView={(task) => {
-            const docType = (task.entityType || task.documentType || "").toLowerCase();
-            const docId = task.entityId || task.documentId;
-            const routes: Record<string, string> = {
-              requisition: `/requisitions/${docId}`,
-              purchase_order: `/purchase-orders/${docId}`,
-              payment_voucher: `/payment-vouchers/${docId}`,
-              grn: `/grn/${docId}`,
-              goods_received_note: `/grn/${docId}`,
-              budget: `/budgets/${docId}`,
-            };
-            router.push(routes[docType] || `/tasks/${task.id}`);
-          }}
+          onView={(task) => router.push(getDocRoute(task))}
         />
       ),
     },
@@ -371,19 +372,7 @@ export function TasksTable() {
                 onRefresh={handleRefresh}
                 variant="compact"
                 showViewButton
-                onView={(task) => {
-                  const docType = (task.entityType || task.documentType || "").toLowerCase();
-                  const docId = task.entityId || task.documentId;
-                  const routes: Record<string, string> = {
-                    requisition: `/requisitions/${docId}`,
-                    purchase_order: `/purchase-orders/${docId}`,
-                    payment_voucher: `/payment-vouchers/${docId}`,
-                    grn: `/grn/${docId}`,
-                    goods_received_note: `/grn/${docId}`,
-                    budget: `/budgets/${docId}`,
-                  };
-                  router.push(routes[docType] || `/tasks/${task.id}`);
-                }}
+                onView={(task) => router.push(getDocRoute(task))}
               />
             </div>
           </div>
