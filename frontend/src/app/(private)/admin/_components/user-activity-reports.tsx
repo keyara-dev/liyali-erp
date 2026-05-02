@@ -1,27 +1,47 @@
 "use client";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useUserActivity } from "@/hooks/use-reports-queries";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import { User, Users, CheckCircle2, AlertCircle } from "lucide-react";
+import { MetricCard } from "@/components/ui/metric-card";
+import { DataList, DataListColumn } from "@/components/ui/data-list";
+import EmptyState from "@/components/base/empty-state";
+import type { DateRange, UserActivity } from "@/types/reports";
 
-export function UserActivityReports() {
-  // Fetch live user activity from database
-  const { data: activity, isLoading, error } = useUserActivity();
+interface UserActivityReportsProps {
+  dateRange?: DateRange;
+}
+
+function formatDate(iso?: string) {
+  if (!iso) return "N/A";
+  try {
+    return new Date(iso).toLocaleDateString("en", {
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  } catch {
+    return "N/A";
+  }
+}
+
+export function UserActivityReports({ dateRange }: UserActivityReportsProps) {
+  const { data: activity, isLoading, error } = useUserActivity(dateRange);
 
   if (isLoading) {
     return (
-      <div className="text-center py-8 text-muted-foreground">
-        Loading user activity reports...
+      <div className="space-y-6">
+        <div className="grid gap-3 grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <Skeleton key={i} className="h-28 rounded-md" />
+          ))}
+        </div>
+        <Skeleton className="h-44 rounded-md" />
+        <Skeleton className="h-72 rounded-md" />
       </div>
     );
   }
@@ -39,179 +59,181 @@ export function UserActivityReports() {
 
   if (!activity) {
     return (
-      <div className="text-center py-8 text-muted-foreground">
-        No user activity data available
-      </div>
+      <EmptyState
+        title="No user activity"
+        description="No user activity found for the selected date range."
+      />
     );
   }
 
-  const topContributors = (activity?.users || []).slice(0, 3);
+  const topContributors = (activity.users ?? []).slice(0, 5);
+  const allUsers = activity.users ?? [];
+
+  const columns: DataListColumn<UserActivity>[] = [
+    {
+      id: "name",
+      header: "User",
+      cell: (u) => <span className="font-medium">{u.name}</span>,
+    },
+    {
+      id: "role",
+      header: "Role",
+      priority: "md",
+      cell: (u) => (
+        <Badge variant="outline">{u.role.replace(/_/g, " ")}</Badge>
+      ),
+    },
+    {
+      id: "approvals",
+      header: <span className="text-right block">Approvals</span>,
+      priority: "md",
+      cell: (u) => (
+        <span className="text-right block tabular-nums">{u.approvalCount}</span>
+      ),
+    },
+    {
+      id: "rejections",
+      header: <span className="text-right block">Rejections</span>,
+      priority: "md",
+      cell: (u) => (
+        <span className="text-right block tabular-nums">
+          {u.rejectionCount}
+        </span>
+      ),
+    },
+    {
+      id: "active",
+      header: <span className="text-right block">Active</span>,
+      priority: "lg",
+      cell: (u) => (
+        <span className="text-right block tabular-nums">
+          {u.activeDocuments}
+        </span>
+      ),
+    },
+    {
+      id: "last",
+      header: "Last activity",
+      priority: "lg",
+      cell: (u) => (
+        <span className="text-sm text-muted-foreground">
+          {formatDate(u.lastActivity)}
+        </span>
+      ),
+    },
+  ];
 
   return (
     <div className="space-y-6">
-      {/* Activity Overview Cards */}
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Active Users
-            </CardTitle>
-            <Users className="h-5 w-5 text-primary" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">
-              {activity?.activeUsers || 0}
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              {activity?.users?.length || 0} total users
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Docs in Progress
-            </CardTitle>
-            <User className="h-5 w-5 text-secondary" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">
-              {activity?.documentsInProgress || 0}
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Across all users
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Total Actions
-            </CardTitle>
-            <CheckCircle2 className="h-5 w-5 text-accent" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">
-              {activity?.totalActions || 0}
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Approvals and rejections
-            </p>
-          </CardContent>
-        </Card>
+      <div className="grid gap-3 grid-cols-2 lg:grid-cols-3">
+        <MetricCard
+          title="Active Users"
+          value={activity.activeUsers ?? 0}
+          icon={<Users className="h-4 w-4" />}
+          accent="blue"
+          secondary={`${allUsers.length} total users`}
+        />
+        <MetricCard
+          title="Docs in Progress"
+          value={activity.documentsInProgress ?? 0}
+          icon={<User className="h-4 w-4" />}
+          accent="violet"
+          secondary="Across all users"
+        />
+        <MetricCard
+          title="Total Actions"
+          value={activity.totalActions ?? 0}
+          icon={<CheckCircle2 className="h-4 w-4" />}
+          accent="emerald"
+          secondary="Approvals and rejections"
+        />
       </div>
 
-      {/* Top Contributors */}
-      <Card>
+      <Card className="border-border/60">
         <CardHeader>
-          <CardTitle className="text-lg">Top Contributors</CardTitle>
+          <CardTitle className="text-base">Top Contributors</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            {topContributors.length === 0 ? (
-              <div className="text-center py-4 text-muted-foreground">
-                No contributors yet
-              </div>
-            ) : (
-              topContributors.map((user, index) => (
-                <div
-                  key={user.id}
-                  className="flex items-center justify-between p-3 border rounded-lg"
+          {topContributors.length === 0 ? (
+            <EmptyState
+              title="No contributors yet"
+              description="Approvals will appear here once users start acting on tasks."
+            />
+          ) : (
+            <ul className="space-y-2">
+              {topContributors.map((u, idx) => (
+                <li
+                  key={u.id}
+                  className="flex items-center justify-between p-3 rounded-md border border-border/60"
                 >
-                  <div className="flex items-center gap-3 flex-1">
-                    <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                      <span className="text-sm font-semibold text-primary">
-                        {user.name.charAt(0)}
-                      </span>
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center font-semibold text-primary text-sm shrink-0">
+                      {(u.name || "?").charAt(0).toUpperCase()}
                     </div>
-                    <div className="flex-1">
-                      <p className="font-medium">{user.name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {user.role.replace(/_/g, " ")}
+                    <div className="min-w-0">
+                      <p className="font-medium leading-tight truncate">
+                        {u.name}{" "}
+                        {idx === 0 && (
+                          <span className="ml-1 text-[10px] uppercase text-amber-600 font-bold">
+                            Top
+                          </span>
+                        )}
+                      </p>
+                      <p className="text-xs text-muted-foreground capitalize">
+                        {u.role.replace(/_/g, " ")}
                       </p>
                     </div>
                   </div>
-                  <div className="text-right">
+                  <div className="text-right shrink-0">
                     <Badge variant="secondary">
-                      {user.approvalCount} approvals
+                      {u.approvalCount} approvals
                     </Badge>
                     <p className="text-xs text-muted-foreground mt-1">
-                      {user.activeDocuments} active
+                      {u.activeDocuments} active
                     </p>
                   </div>
-                </div>
-              ))
-            )}
-          </div>
+                </li>
+              ))}
+            </ul>
+          )}
         </CardContent>
       </Card>
 
-      {/* All Users Activity Table */}
-      <Card>
+      <Card className="border-border/60">
         <CardHeader>
-          <CardTitle className="text-lg">User Activity Log</CardTitle>
+          <CardTitle className="text-base">User Activity Log</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="rounded-md border overflow-hidden">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>User</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead className="text-right">Approvals</TableHead>
-                  <TableHead className="text-right">Rejections</TableHead>
-                  <TableHead className="text-right">Active Docs</TableHead>
-                  <TableHead>Last Activity</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {(activity?.users || []).length === 0 ? (
-                  <TableRow>
-                    <TableCell
-                      colSpan={6}
-                      className="text-center py-4 text-muted-foreground"
-                    >
-                      No user activity found
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  (activity?.users || []).map((user) => (
-                    <TableRow key={user.id}>
-                      <TableCell className="font-medium">{user.name}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline">
-                          {user.role.replace(/_/g, " ")}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {user.approvalCount}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {user.rejectionCount}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {user.activeDocuments}
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {user.lastActivity
-                          ? new Date(user.lastActivity).toLocaleDateString([], {
-                              month: "short",
-                              day: "numeric",
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })
-                          : "N/A"}
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
+          <DataList<UserActivity>
+            rows={allUsers}
+            columns={columns}
+            getRowId={(u) => u.id}
+            emptyMessage="No user activity found."
+            mobileCard={(u) => (
+              <div className="flex flex-col gap-2">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="font-medium">{u.name}</div>
+                    <div className="text-xs text-muted-foreground capitalize">
+                      {u.role.replace(/_/g, " ")}
+                    </div>
+                  </div>
+                  <Badge variant="secondary">{u.approvalCount} ✓</Badge>
+                </div>
+                <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                  <span>{u.rejectionCount} rejected</span>
+                  <span>·</span>
+                  <span>{u.activeDocuments} active</span>
+                  <span>·</span>
+                  <span>{formatDate(u.lastActivity)}</span>
+                </div>
+              </div>
+            )}
+          />
         </CardContent>
       </Card>
     </div>
   );
 }
+
+export type { UserActivityReportsProps };
