@@ -8,9 +8,10 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { SelectField } from "@/components/ui/select-field";
 import Search from "@/components/ui/search-field";
+import { StatGrid } from "@/components/ui/stat-grid";
+import { FilterBar } from "@/components/ui/filter-bar";
 import {
   CheckCircle2,
-  AlertCircle,
   Clock,
   RefreshCw,
   Users,
@@ -180,76 +181,41 @@ export function ApprovalsList({ userId, userRole }: ApprovalsListProps) {
 
   return (
     <div className="space-y-4">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-        <div>
-          <h2 className="text-xl font-bold">Approval Tasks</h2>
-          <p className="text-sm text-muted-foreground">
-            Review and approve pending workflow tasks assigned to your role
-          </p>
-        </div>
+      {/* Header row: refresh action only — page title is provided by parent PageHeader */}
+      <div className="flex items-center justify-end">
         <Button
           onClick={handleRefresh}
           variant="outline"
           size="sm"
           disabled={isTasksLoading}
-          className="gap-2 self-start"
+          className="gap-2"
         >
-          <RefreshCw
-            className={cn("h-3.5 w-3.5", isTasksLoading && "animate-spin")}
-          />
+          <RefreshCw className={cn("h-3.5 w-3.5", isTasksLoading && "animate-spin")} />
           Refresh
         </Button>
       </div>
 
-      {/* Compact stat strip — 5-up */}
-      <Card className="border-border/60 p-0">
-        <CardContent className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 divide-y sm:divide-y-0 sm:divide-x divide-border/60 p-0">
-          <StatCell
-            icon={<Users className="h-3 w-3 sm:h-4 sm:w-4" />}
-            label="Claimed by Me"
-            value={stats.claimedByMe}
-            accent="blue"
-          />
-          <StatCell
-            icon={<Clock className="h-3 w-3 sm:h-4 sm:w-4" />}
-            label="Available"
-            value={stats.available}
-            accent="emerald"
-          />
-          <StatCell
-            icon={<UserCheck className="h-3 w-3 sm:h-4 sm:w-4" />}
-            label="Claimed by Others"
-            value={stats.claimedByOthers}
-            accent="amber"
-          />
-          <StatCell
-            icon={<CheckCircle2 className="h-3 w-3 sm:h-4 sm:w-4" />}
-            label="Completed"
-            value={stats.completed}
-            accent="slate"
-          />
-          <StatCell
-            icon={<ListFilter className="h-3 w-3 sm:h-4 sm:w-4" />}
-            label="Total (view)"
-            value={stats.total}
-            accent="violet"
-          />
-        </CardContent>
-      </Card>
+      <StatGrid
+        items={[
+          { label: "Claimed by Me", value: stats.claimedByMe, icon: <Users className="h-3 w-3 sm:h-4 sm:w-4" />, accent: "blue" },
+          { label: "Available", value: stats.available, icon: <Clock className="h-3 w-3 sm:h-4 sm:w-4" />, accent: "emerald" },
+          { label: "Claimed by Others", value: stats.claimedByOthers, icon: <UserCheck className="h-3 w-3 sm:h-4 sm:w-4" />, accent: "amber" },
+          { label: "Completed", value: stats.completed, icon: <CheckCircle2 className="h-3 w-3 sm:h-4 sm:w-4" />, accent: "slate" },
+          { label: "Total (view)", value: stats.total, icon: <ListFilter className="h-3 w-3 sm:h-4 sm:w-4" />, accent: "violet" },
+        ]}
+      />
 
-      {/* Filters — inline, clean */}
-      <Card className="border-border/60">
-        <CardContent className="p-3 sm:p-4">
-          <div className="grid gap-3 md:grid-cols-[1fr_auto_auto_auto] md:items-start">
-            <div className="min-w-0">
-              <Search
-                placeholder="Search by document number, type, or stage…"
-                value={searchQuery}
-                onChange={(v) => setSearchQuery(v)}
-                isClearable
-              />
-            </div>
+      <FilterBar
+        search={
+          <Search
+            placeholder="Search by document number, type, or stage…"
+            value={searchQuery}
+            onChange={(v) => setSearchQuery(v)}
+            isClearable
+          />
+        }
+        filters={
+          <>
             <SelectField
               placeholder="Status"
               classNames={{ wrapper: "md:w-44" }}
@@ -285,33 +251,17 @@ export function ApprovalsList({ userId, userRole }: ApprovalsListProps) {
                 { value: "name", label: "Document" },
               ]}
             />
-          </div>
-          {hasActiveFilters && (
-            <div className="mt-2 flex items-center justify-between">
-              <span className="text-xs text-muted-foreground">
-                Showing {stats.total} task{stats.total !== 1 ? "s" : ""}
-              </span>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={clearFilters}
-                className="h-7 text-xs"
-              >
-                Reset filters
-              </Button>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+          </>
+        }
+        hasActiveFilters={hasActiveFilters}
+        onReset={clearFilters}
+        meta={`Showing ${stats.total} task${stats.total !== 1 ? "s" : ""}`}
+      />
 
       {/* Task groups */}
       <div className="space-y-6">
         {groupedTasks.claimedByMe.length > 0 && (
-          <TaskGroup
-            title="Claimed by You"
-            count={groupedTasks.claimedByMe.length}
-            accent="blue"
-          >
+          <TaskGroup title="Claimed by You" count={groupedTasks.claimedByMe.length} accent="blue">
             {groupedTasks.claimedByMe.map((task) => (
               <ApprovalTaskCard
                 key={task.id}
@@ -324,11 +274,7 @@ export function ApprovalsList({ userId, userRole }: ApprovalsListProps) {
         )}
 
         {groupedTasks.available.length > 0 && (
-          <TaskGroup
-            title="Available Tasks"
-            count={groupedTasks.available.length}
-            accent="emerald"
-          >
+          <TaskGroup title="Available Tasks" count={groupedTasks.available.length} accent="emerald">
             {groupedTasks.available.map((task) => (
               <ApprovalTaskCard
                 key={task.id}
@@ -341,11 +287,7 @@ export function ApprovalsList({ userId, userRole }: ApprovalsListProps) {
         )}
 
         {groupedTasks.claimedByOthers.length > 0 && (
-          <TaskGroup
-            title="Claimed by Others"
-            count={groupedTasks.claimedByOthers.length}
-            accent="amber"
-          >
+          <TaskGroup title="Claimed by Others" count={groupedTasks.claimedByOthers.length} accent="amber">
             {groupedTasks.claimedByOthers.map((task) => (
               <ApprovalTaskCard
                 key={task.id}
@@ -358,11 +300,7 @@ export function ApprovalsList({ userId, userRole }: ApprovalsListProps) {
         )}
 
         {groupedTasks.completed.length > 0 && (
-          <TaskGroup
-            title="Completed"
-            count={groupedTasks.completed.length}
-            accent="slate"
-          >
+          <TaskGroup title="Completed" count={groupedTasks.completed.length} accent="slate">
             {groupedTasks.completed.map((task) => (
               <ApprovalTaskCard
                 key={task.id}
@@ -374,7 +312,6 @@ export function ApprovalsList({ userId, userRole }: ApprovalsListProps) {
           </TaskGroup>
         )}
 
-        {/* Empty state */}
         {filteredTasks.length === 0 && !isTasksLoading && (
           <Card className="border-dashed border-border/60">
             <CardContent className="py-10 text-center">
@@ -394,7 +331,6 @@ export function ApprovalsList({ userId, userRole }: ApprovalsListProps) {
           </Card>
         )}
 
-        {/* Loading skeleton */}
         {isTasksLoading && (
           <div className="grid gap-3">
             {[1, 2, 3].map((i) => (
@@ -422,16 +358,6 @@ export function ApprovalsList({ userId, userRole }: ApprovalsListProps) {
 
 type Accent = "blue" | "emerald" | "amber" | "slate" | "violet";
 
-const CHIP_CLASSES: Record<Accent, string> = {
-  blue: "bg-blue-100 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300",
-  emerald:
-    "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300",
-  amber: "bg-amber-100 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300",
-  slate: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
-  violet:
-    "bg-violet-100 text-violet-700 dark:bg-violet-950/50 dark:text-violet-300",
-};
-
 const BADGE_CLASSES: Record<Accent, string> = {
   blue: "bg-blue-600 text-white",
   emerald: "bg-emerald-600 text-white",
@@ -439,36 +365,6 @@ const BADGE_CLASSES: Record<Accent, string> = {
   slate: "bg-slate-600 text-white",
   violet: "bg-violet-600 text-white",
 };
-
-interface StatCellProps {
-  icon: React.ReactNode;
-  label: string;
-  value: number;
-  accent: Accent;
-}
-
-function StatCell({ icon, label, value, accent }: StatCellProps) {
-  return (
-    <div className="p-2.5 sm:p-3 space-y-0.5 sm:space-y-1">
-      <div className="flex items-center justify-between gap-1.5">
-        <span className="text-[10px] sm:text-xs font-medium text-muted-foreground uppercase tracking-wider truncate">
-          {label}
-        </span>
-        <span
-          className={cn(
-            "flex items-center justify-center rounded-md shrink-0 h-5 w-5 sm:h-6 sm:w-6",
-            CHIP_CLASSES[accent],
-          )}
-        >
-          {icon}
-        </span>
-      </div>
-      <div className="text-base sm:text-xl font-bold tabular-nums leading-tight">
-        {value}
-      </div>
-    </div>
-  );
-}
 
 function TaskGroup({
   title,
