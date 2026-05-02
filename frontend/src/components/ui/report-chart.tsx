@@ -24,23 +24,21 @@ import { cn } from "@/lib/utils";
 
 export type ReportChartKind = "bar" | "line" | "area";
 
-export interface ReportSeries {
-  /** Key in each data row to plot. */
-  dataKey: string;
+export interface ReportSeries<T = Record<string, unknown>> {
+  /** Key in each data row to plot. Constrained to `keyof T` when `T` is supplied. */
+  dataKey: keyof T & string;
   /** Display label. */
   label: string;
   /** Optional explicit color override. Defaults to chart-1..5 cycling. */
   color?: string;
 }
 
-export interface ReportChartProps<
-  T extends Record<string, unknown> = Record<string, unknown>,
-> {
+export interface ReportChartProps<T extends Record<string, unknown> = Record<string, unknown>> {
   kind: ReportChartKind;
   data: T[];
   /** Key in each data row to use as the X axis label. */
-  xKey: string;
-  series: ReportSeries[];
+  xKey: keyof T & string;
+  series: ReportSeries<T>[];
   /** Tailwind classes for the outer container; defaults to a sensible aspect. */
   className?: string;
   /** Show legend. Default false (single-series charts don't need it). */
