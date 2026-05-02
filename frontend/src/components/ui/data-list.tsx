@@ -44,6 +44,20 @@ const HIDE: Record<NonNullable<DataListColumn<unknown>["priority"]>, string> = {
   lg: "hidden lg:table-cell",
 };
 
+/**
+ * Returns true when a click/keydown event originates inside an interactive
+ * descendant (button, link, form control) so that row-level onRowClick is
+ * suppressed.  Note: [role='button'] is intentionally excluded here because
+ * the row wrapper itself carries that role; checking it would always match.
+ * Explicit <button> / <a> tags are sufficient for the action-cell guard.
+ */
+function shouldIgnoreRowClick(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  return Boolean(
+    target.closest("button, a, input, select, textarea, label")
+  );
+}
+
 export function DataList<T>({
   rows,
   columns,
@@ -57,9 +71,9 @@ export function DataList<T>({
 }: DataListProps<T>) {
   if (isLoading) {
     return (
-      <>
+      <div className={className}>
         {/* Desktop skeleton */}
-        <div className="hidden md:block rounded-md border">
+        <div className="hidden md:block rounded-md border overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
@@ -93,7 +107,7 @@ export function DataList<T>({
             </div>
           ))}
         </div>
-      </>
+      </div>
     );
   }
 
@@ -108,7 +122,7 @@ export function DataList<T>({
   return (
     <div className={className}>
       {/* Desktop / tablet: table */}
-      <div className="hidden md:block rounded-md border">
+      <div className="hidden md:block rounded-md border overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
@@ -123,7 +137,25 @@ export function DataList<T>({
             {rows.map((row) => (
               <TableRow
                 key={getRowId(row)}
-                onClick={onRowClick ? () => onRowClick(row) : undefined}
+                role={onRowClick ? "button" : undefined}
+                tabIndex={onRowClick ? 0 : undefined}
+                onClick={
+                  onRowClick
+                    ? (e) => {
+                        if (!shouldIgnoreRowClick(e.target)) onRowClick(row);
+                      }
+                    : undefined
+                }
+                onKeyDown={
+                  onRowClick
+                    ? (e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          if (e.key === " ") e.preventDefault();
+                          if (!shouldIgnoreRowClick(e.target)) onRowClick(row);
+                        }
+                      }
+                    : undefined
+                }
                 className={onRowClick ? "cursor-pointer" : undefined}
               >
                 {columns.map((c) => (
@@ -141,7 +173,25 @@ export function DataList<T>({
         {rows.map((row) => (
           <div
             key={getRowId(row)}
-            onClick={onRowClick ? () => onRowClick(row) : undefined}
+            role={onRowClick ? "button" : undefined}
+            tabIndex={onRowClick ? 0 : undefined}
+            onClick={
+              onRowClick
+                ? (e) => {
+                    if (!shouldIgnoreRowClick(e.target)) onRowClick(row);
+                  }
+                : undefined
+            }
+            onKeyDown={
+              onRowClick
+                ? (e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      if (e.key === " ") e.preventDefault();
+                      if (!shouldIgnoreRowClick(e.target)) onRowClick(row);
+                    }
+                  }
+                : undefined
+            }
             className={cn(
               "rounded-md border bg-card p-3 transition-colors",
               onRowClick && "cursor-pointer active:bg-muted/40"
