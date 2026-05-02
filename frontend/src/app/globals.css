@@ -56,6 +56,15 @@
   --accent: oklch(89.538% 0.04321 263.71);
   --accent-foreground: oklch(50.989% 0.23128 262.506);
 
+  /* Warm accent (complement to cerulean primary) */
+  --accent-warm: oklch(72% 0.16 38);
+  --accent-warm-foreground: oklch(100% 0 0);
+
+  /* Motion */
+  --motion-fast: 120ms;
+  --motion-base: 200ms;
+  --motion-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+
   --destructive: oklch(57.521% 0.23298 28.077);
   --destructive-foreground: oklch(100% 0 0);
 
@@ -104,6 +113,9 @@
   /* Accent: #e49815 - Brighter for dark mode */
   --accent: oklch(23.705% 0.02842 257.547 / 0.815);
   --accent-foreground: oklch(0.707 0.022 261.325);
+
+  --accent-warm: oklch(76% 0.15 38);
+  --accent-warm-foreground: oklch(15% 0 0);
 
   --destructive: oklch(54.469% 0.22296 28.931);
   --destructive-foreground: oklch(0.985 0.002 247.839);
@@ -250,6 +262,8 @@
   --color-muted-foreground: var(--muted-foreground);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
+  --color-accent-warm: var(--accent-warm);
+  --color-accent-warm-foreground: var(--accent-warm-foreground);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
   --color-border: var(--border);
