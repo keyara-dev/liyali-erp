@@ -6,6 +6,7 @@ import { SidebarInset, useSidebar } from "../ui/sidebar";
 import { SiteHeader } from "./header";
 import { TrialCountdown } from "@/components/subscription/trial-countdown";
 import { TrialBottomBanner } from "@/components/subscription/trial-bottom-banner";
+import { MobileBottomNav } from "./mobile-bottom-nav";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -57,7 +58,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           </div>
 
           <div className="flex-1">
-            <div className="@container/main p-4 pb-24 xl:group-data-[theme-content-layout=centered]/layout:container xl:group-data-[theme-content-layout=centered]/layout:mx-auto">
+            <div className="@container/main p-4 pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-24 xl:group-data-[theme-content-layout=centered]/layout:container xl:group-data-[theme-content-layout=centered]/layout:mx-auto">
               {children}
             </div>
           </div>
@@ -66,6 +67,9 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
       {/* Bottom Trial Banner */}
       <TrialBottomBanner />
+
+      {/* Mobile bottom navigation */}
+      <MobileBottomNav />
     </div>
   );
 }
