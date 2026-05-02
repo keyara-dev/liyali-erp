@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { PageHeader } from "@/components/base/page-header";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TasksTable } from "./tasks-table";
@@ -13,49 +13,61 @@ interface TasksClientProps {
   userRole: string;
 }
 
+type TabValue = "tasks" | "approvals";
+
 export function TasksClient({ userId, userRole }: TasksClientProps) {
   const searchParams = useSearchParams();
-  const [refreshTrigger, setRefreshTrigger] = useState(0);
-  const [activeTab, setActiveTab] = useState<"tasks" | "approvals">("tasks");
+  const router = useRouter();
+  const pathname = usePathname();
+  const [refreshTrigger] = useState(0);
+  const [activeTab, setActiveTab] = useState<TabValue>("tasks");
 
-  // Check for tab query parameter on mount
   useEffect(() => {
     const tabParam = searchParams.get("tab");
-    if (tabParam === "approvals") {
-      setActiveTab("approvals");
+    if (tabParam === "approvals" || tabParam === "tasks") {
+      setActiveTab(tabParam);
     }
   }, [searchParams]);
 
+  const handleTabChange = (value: string) => {
+    const v = value as TabValue;
+    setActiveTab(v);
+    // Keep URL in sync so refreshes/back-button preserve tab state.
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("tab", v);
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+  };
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <PageHeader
         title="Workflows"
-        subtitle="Manage your tasks and approvals"
+        subtitle="Tasks and approvals assigned to you"
         showBackButton={false}
       />
 
-      {/* Tabs */}
-      <Tabs
-        value={activeTab}
-        onValueChange={(value) => setActiveTab(value as "tasks" | "approvals")}
-        className="space-y-6"
-      >
-        <TabsList className="grid w-full max-w-md grid-cols-2">
-          <TabsTrigger value="tasks">Tasks</TabsTrigger>
-          <TabsTrigger value="approvals">Approvals</TabsTrigger>
+      <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-5">
+        <TabsList className="inline-flex h-9 w-full sm:w-auto bg-muted/60 p-1 rounded-lg">
+          <TabsTrigger
+            value="tasks"
+            className="flex-1 sm:flex-initial sm:px-6 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm rounded-md"
+          >
+            Tasks
+          </TabsTrigger>
+          <TabsTrigger
+            value="approvals"
+            className="flex-1 sm:flex-initial sm:px-6 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm rounded-md"
+          >
+            Approvals
+          </TabsTrigger>
         </TabsList>
 
-        {/* Tasks Tab */}
-        <TabsContent value="tasks" className="space-y-4">
-          {/* Task Stats */}
+        <TabsContent value="tasks" className="space-y-4 mt-0">
           <TaskStatsCards userId={userId} refreshTrigger={refreshTrigger} />
-
-          {/* Tasks Table with built-in filters */}
           <TasksTable />
         </TabsContent>
 
-        {/* Approvals Tab */}
-        <TabsContent value="approvals" className="space-y-4">
+        <TabsContent value="approvals" className="space-y-4 mt-0">
           <ApprovalsList userId={userId} userRole={userRole} />
         </TabsContent>
       </Tabs>
