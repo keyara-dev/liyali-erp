@@ -2,14 +2,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { ResponsiveSheet } from "@/components/ui/responsive-sheet";
 import {
   Select,
   SelectContent,
@@ -93,19 +86,42 @@ export function QualityIssueReportDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
-        <DialogHeader>
-          <div className="flex items-center gap-2">
-            <AlertTriangle className="h-5 w-5 text-yellow-600" />
-            <DialogTitle>Report Quality Issue</DialogTitle>
-          </div>
-          <DialogDescription>
-            Document quality issues or defects found during goods inspection.
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="space-y-4">
+    <ResponsiveSheet
+      open={open}
+      onOpenChange={handleOpenChange}
+      title={
+        <div className="flex items-center gap-2">
+          <AlertTriangle className="h-5 w-5 text-yellow-600" />
+          Report Quality Issue
+        </div>
+      }
+      description="Document quality issues or defects found during goods inspection."
+      desktopMaxWidth="sm:max-w-[500px]"
+      footer={
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <Button
+            variant="outline"
+            onClick={() => handleOpenChange(false)}
+            disabled={isSubmitting}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={handleSubmit}
+            disabled={
+              isSubmitting ||
+              !selectedItemId ||
+              !description.trim() ||
+              !severity
+            }
+            className="bg-yellow-600 hover:bg-yellow-700"
+          >
+            {isSubmitting ? "Reporting..." : "Report Issue"}
+          </Button>
+        </div>
+      }
+    >
+      <div className="space-y-4">
           {/* Item Selection */}
           <div className="space-y-2">
             <Label htmlFor="item-select">Item *</Label>
@@ -192,30 +208,7 @@ export function QualityIssueReportDialog({
             descriptionText={`${description.length}/500 characters`}
           />
         </div>
-
-        <DialogFooter>
-          <Button
-            variant="outline"
-            onClick={() => handleOpenChange(false)}
-            disabled={isSubmitting}
-          >
-            Cancel
-          </Button>
-          <Button
-            onClick={handleSubmit}
-            disabled={
-              isSubmitting ||
-              !selectedItemId ||
-              !description.trim() ||
-              !severity
-            }
-            className="bg-yellow-600 hover:bg-yellow-700"
-          >
-            {isSubmitting ? "Reporting..." : "Report Issue"}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    </ResponsiveSheet>
   );
 }
 
