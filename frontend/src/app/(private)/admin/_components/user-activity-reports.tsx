@@ -85,31 +85,24 @@ export function UserActivityReports({ dateRange }: UserActivityReportsProps) {
     },
     {
       id: "approvals",
-      header: <span className="text-right block">Approvals</span>,
+      header: "Approvals",
+      align: "right",
       priority: "md",
-      cell: (u) => (
-        <span className="text-right block tabular-nums">{u.approvalCount}</span>
-      ),
+      cell: (u) => <span className="tabular-nums">{u.approvalCount}</span>,
     },
     {
       id: "rejections",
-      header: <span className="text-right block">Rejections</span>,
-      priority: "md",
-      cell: (u) => (
-        <span className="text-right block tabular-nums">
-          {u.rejectionCount}
-        </span>
-      ),
+      header: "Rejections",
+      align: "right",
+      priority: "lg",
+      cell: (u) => <span className="tabular-nums">{u.rejectionCount}</span>,
     },
     {
       id: "active",
-      header: <span className="text-right block">Active</span>,
+      header: "Active",
+      align: "right",
       priority: "lg",
-      cell: (u) => (
-        <span className="text-right block tabular-nums">
-          {u.activeDocuments}
-        </span>
-      ),
+      cell: (u) => <span className="tabular-nums">{u.activeDocuments}</span>,
     },
     {
       id: "last",
