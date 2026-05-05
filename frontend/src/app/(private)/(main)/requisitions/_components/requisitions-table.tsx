@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useMemo, useEffect, useState } from "react";
-import * as React from "react";
 import { useRouter } from "next/navigation";
 import {
   Eye,
@@ -438,7 +437,7 @@ export function RequisitionsTable({
         filters={
           <>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-38">
+              <SelectTrigger className="w-36">
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>
@@ -452,7 +451,7 @@ export function RequisitionsTable({
             </Select>
 
             <Select value={priorityFilter} onValueChange={setPriorityFilter}>
-              <SelectTrigger className="w-32.5">
+              <SelectTrigger className="w-32">
                 <SelectValue placeholder="Priority" />
               </SelectTrigger>
               <SelectContent>
