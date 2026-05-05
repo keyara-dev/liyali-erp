@@ -261,7 +261,8 @@ export function CreateGRNDialog({
         </span>
       }
       description="Record goods received against a purchase order."
-      desktopMaxWidth="max-w-2xl!"
+      desktopMaxWidth="sm:max-w-2xl"
+      dismissibleOnOutsideClick={false}
       footer={
         <div className="flex flex-wrap items-center justify-end gap-2">
           <Button

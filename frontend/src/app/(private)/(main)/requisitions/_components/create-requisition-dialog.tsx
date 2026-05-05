@@ -531,18 +531,13 @@ export function CreateRequisitionDialog({
     <ResponsiveSheet
       open={open}
       onOpenChange={onOpenChange}
-      title={
-        <>
-          <span className="font-bold">
-            {isEditing ? "Edit Requisition" : "Create New Requisition"}
-          </span>
-          {stepIndicator}
-        </>
-      }
-      desktopMaxWidth="max-w-3xl!"
+      title={isEditing ? "Edit Requisition" : "Create New Requisition"}
+      desktopMaxWidth="sm:max-w-3xl"
+      dismissibleOnOutsideClick={false}
       footer={sheetFooter}
     >
-        <div className="space-y-6 p-4">
+        {stepIndicator}
+        <div className="space-y-6">
           {/* Configuration Checklist Banner - Show if any required configs are missing */}
           {!configStatus.allConfigured && !configStatus.isLoading && (
             <ConfigurationChecklistBanner

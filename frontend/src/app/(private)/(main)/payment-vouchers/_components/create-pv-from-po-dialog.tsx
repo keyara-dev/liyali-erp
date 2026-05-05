@@ -174,6 +174,7 @@ export function CreatePVFromPODialog({
       }
       description="Create a payment voucher from this approved purchase order. The PV starts as a draft — you'll pick the approval workflow when submitting it."
       desktopMaxWidth="sm:max-w-2xl"
+      dismissibleOnOutsideClick={false}
       footer={footerContent}
     >
         <div className="space-y-4 min-w-0">
