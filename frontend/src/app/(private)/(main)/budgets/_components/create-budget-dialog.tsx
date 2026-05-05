@@ -3,13 +3,7 @@
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { ResponsiveSheet } from "@/components/ui/responsive-sheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -169,145 +163,143 @@ export function CreateBudgetDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md p-0  max-h-[90vh]">
-        <DialogHeader className="p-6 pb-0">
-          <DialogTitle>Create New Budget</DialogTitle>
-          <DialogDescription>
-            Create a new budget for your department. You can add budget items
-            later.
-          </DialogDescription>
-        </DialogHeader>
+    <ResponsiveSheet
+      open={open}
+      onOpenChange={onOpenChange}
+      title="Create New Budget"
+      description="Create a new budget for your department. You can add budget items later."
+      desktopMaxWidth="sm:max-w-md"
+      dismissibleOnOutsideClick={false}
+      footer={
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            disabled={isSubmitting}
+          >
+            Cancel
+          </Button>
+          <Button
+            type="submit"
+            form="create-budget-form"
+            disabled={isSubmitting || !configStatus.allConfigured}
+            isLoading={isSubmitting}
+            loadingText="Creating..."
+          >
+            Create Budget
+          </Button>
+        </div>
+      }
+    >
+      {/* Configuration Checklist Banner */}
+      {!configStatus.allConfigured && (
+        <ConfigurationChecklistBanner
+          requirements={configStatus.requirements}
+          title="Configuration Required"
+          description="Complete the following configurations before creating a budget:"
+        />
+      )}
+      <form
+        id="create-budget-form"
+        onSubmit={handleSubmit}
+        className="space-y-4 pt-2"
+      >
+        {/* Alert about budget items */}
+        <Alert>
+          <InfoIcon className="h-4 w-4" />
+          <AlertDescription>
+            Items will be added after the budget is successfully created.
+          </AlertDescription>
+        </Alert>
 
-        {/* Configuration Checklist Banner */}
-        {!configStatus.allConfigured && (
-          <ConfigurationChecklistBanner
-            requirements={configStatus.requirements}
-            title="Configuration Required"
-            description="Complete the following configurations before creating a budget:"
+        {/* Budget Code (Auto-generated) */}
+        <Input
+          label="Budget Code"
+          value={formData.budgetCode}
+          disabled={true}
+          placeholder="Auto-generated"
+          descriptionText="This code is automatically generated"
+        />
+
+        {/* Budget Name */}
+        <Input
+          label="Budget Name"
+          required
+          placeholder="e.g., IT Department Annual Budget 2024"
+          value={formData.name}
+          onChange={(e) => handleInputChange("name", e.target.value)}
+          disabled={isSubmitting}
+        />
+
+        {/* Description */}
+        <Textarea
+          label="Description"
+          placeholder="Add a description for this budget (optional)"
+          value={formData.description}
+          onChange={(e) => handleInputChange("description", e.target.value)}
+          disabled={isSubmitting}
+          rows={3}
+        />
+
+        {/* Department */}
+        <SelectField
+          label="Department"
+          required
+          placeholder={
+            isLoadingDepartments
+              ? "Loading departments..."
+              : "Select a department"
+          }
+          value={formData.departmentId}
+          onValueChange={handleDepartmentChange}
+          disabled={isSubmitting || isLoadingDepartments}
+          isLoading={isLoadingDepartments}
+          options={departments.map((dept) => ({
+            value: dept.id,
+            label: dept.name,
+          }))}
+        />
+
+        {/* Fiscal Year */}
+        <Input
+          label="Fiscal Year"
+          required
+          type="number"
+          placeholder="2024"
+          value={formData.fiscalYear}
+          onChange={(e) => handleInputChange("fiscalYear", e.target.value)}
+          disabled={isSubmitting}
+        />
+
+        {/* Total Amount and Currency */}
+        <div className="grid grid-cols-2 gap-4">
+          <Input
+            label="Total Amount"
+            required
+            type="number"
+            placeholder="0.00"
+            step="0.01"
+            value={formData.totalAmount}
+            onChange={(e) =>
+              handleInputChange("totalAmount", e.target.value)
+            }
+            disabled={isSubmitting}
           />
-        )}
-        <form onSubmit={handleSubmit} className="flex flex-col overflow-y-auto">
-          <div className="space-y-4 p-6">
-            {/* Alert about budget items */}
-            <Alert>
-              <InfoIcon className="h-4 w-4" />
-              <AlertDescription>
-                Items will be added after the budget is successfully created.
-              </AlertDescription>
-            </Alert>
 
-            {/* Budget Code (Auto-generated) */}
-            <Input
-              label="Budget Code"
-              value={formData.budgetCode}
-              disabled={true}
-              placeholder="Auto-generated"
-              descriptionText="This code is automatically generated"
-            />
-
-            {/* Budget Name */}
-            <Input
-              label="Budget Name"
-              required
-              placeholder="e.g., IT Department Annual Budget 2024"
-              value={formData.name}
-              onChange={(e) => handleInputChange("name", e.target.value)}
-              disabled={isSubmitting}
-            />
-
-            {/* Description */}
-            <Textarea
-              label="Description"
-              placeholder="Add a description for this budget (optional)"
-              value={formData.description}
-              onChange={(e) => handleInputChange("description", e.target.value)}
-              disabled={isSubmitting}
-              rows={3}
-            />
-
-            {/* Department */}
-            <SelectField
-              label="Department"
-              required
-              placeholder={
-                isLoadingDepartments
-                  ? "Loading departments..."
-                  : "Select a department"
-              }
-              value={formData.departmentId}
-              onValueChange={handleDepartmentChange}
-              disabled={isSubmitting || isLoadingDepartments}
-              isLoading={isLoadingDepartments}
-              options={departments.map((dept) => ({
-                value: dept.id,
-                label: dept.name,
-              }))}
-            />
-
-            {/* Fiscal Year */}
-            <Input
-              label="Fiscal Year"
-              required
-              type="number"
-              placeholder="2024"
-              value={formData.fiscalYear}
-              onChange={(e) => handleInputChange("fiscalYear", e.target.value)}
-              disabled={isSubmitting}
-            />
-
-            {/* Total Amount and Currency */}
-            <div className="grid grid-cols-2 gap-4">
-              <Input
-                label="Total Amount"
-                required
-                type="number"
-                placeholder="0.00"
-                step="0.01"
-                value={formData.totalAmount}
-                onChange={(e) =>
-                  handleInputChange("totalAmount", e.target.value)
-                }
-                disabled={isSubmitting}
-              />
-
-              <SelectField
-                label="Currency"
-                required
-                value={formData.currency}
-                onValueChange={(value) => handleInputChange("currency", value)}
-                disabled={isSubmitting}
-                options={currencies.map((curr) => ({
-                  value: curr.code,
-                  label: curr.label,
-                }))}
-              />
-            </div>
-          </div>
-
-          {/* Sticky Footer */}
-          <div className="bg-card/5 backdrop-blur-xs sticky bottom-0 flex flex-col-reverse justify-end gap-3 p-6 rounded-b-lg border-t sm:flex-row">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-              disabled={isSubmitting}
-              className="flex-1 sm:flex-none"
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              disabled={isSubmitting || !configStatus.allConfigured}
-              className="flex-1 sm:flex-none"
-              isLoading={isSubmitting}
-              loadingText="Creating..."
-            >
-              Create Budget
-            </Button>
-          </div>
-        </form>
-      </DialogContent>
-    </Dialog>
+          <SelectField
+            label="Currency"
+            required
+            value={formData.currency}
+            onValueChange={(value) => handleInputChange("currency", value)}
+            disabled={isSubmitting}
+            options={currencies.map((curr) => ({
+              value: curr.code,
+              label: curr.label,
+            }))}
+          />
+        </div>
+      </form>
+    </ResponsiveSheet>
   );
 }
