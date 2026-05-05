@@ -1,37 +1,34 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
-import { useCallback, useMemo, useEffect } from "react";
-import {
-  ArrowUpDown,
-  Download,
-  Eye,
-  Pencil,
-  MoreVertical,
-} from "lucide-react";
+import { useCallback, useMemo, useEffect, useState } from "react";
+import { Download, Eye, FileText, MoreVertical, Pencil, Search } from "lucide-react";
 
-import { DataTable } from "@/components/ui/data-table";
+import { DataList, DataListColumn } from "@/components/ui/data-list";
+import { FilterBar } from "@/components/ui/filter-bar";
 import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import type { ActionButton } from "@/components/ui/action-buttons";
 import type { GoodsReceivedNote } from "@/app/_actions/grn-actions";
 import type { PurchaseOrder } from "@/types/purchase-order";
 import { useGRNs } from "@/hooks/use-grn-queries";
 import { usePurchaseOrders } from "@/hooks/use-purchase-order-queries";
 import { formatCurrency } from "@/lib/utils";
+import { useDebounce } from "@/hooks/use-debounce";
 
 interface GrnTableProps {
   userId: string;
@@ -74,19 +71,25 @@ function GrnOptionsMenu({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <button className="h-8 w-8 rounded-md border border-input bg-background px-2 py-1.5 hover:bg-accent hover:text-accent-foreground">
+        <Button variant="outline" size="icon" className="h-8 w-8">
           <MoreVertical className="h-4 w-4" />
-        </button>
+        </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
+        <DropdownMenuItem
+          onClick={() => router.push(`/grn/${grn.id}`)}
+        >
+          <Eye className="mr-2 h-4 w-4" />
+          View Details
+        </DropdownMenuItem>
         <DropdownMenuItem
           onClick={() => console.log("Download PDF for GRN:", grn.id)}
         >
           <Download className="mr-2 h-4 w-4" />
           Download
         </DropdownMenuItem>
-        {grn.status?.toUpperCase() === "DRAFT" && canModify && (
-          <DropdownMenuItem onClick={() => router.push(`/grn/${grn.id}`)}>
+        {grn.status?.toUpperCase() !== "APPROVED" && canModify && (
+          <DropdownMenuItem onClick={() => router.push(`/grn/${grn.id}/edit`)}>
             <Pencil className="mr-2 h-4 w-4" />
             Edit
           </DropdownMenuItem>
@@ -103,12 +106,17 @@ export function GrnTable({
   onRefresh: _onRefresh,
 }: GrnTableProps) {
   const router = useRouter();
-  const { data: grns = [], refetch } = useGRNs(1, 50);
+  const { data: grns = [], isLoading, refetch } = useGRNs(1, 50);
   const { data: purchaseOrders = [] } = usePurchaseOrders();
 
   useEffect(() => {
     refetch();
   }, [refreshTrigger, refetch]);
+
+  // Filter state
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const debouncedSearch = useDebounce(searchQuery, 500);
 
   // Map POs by documentNumber so each GRN row can resolve vendor / amount /
   // currency / PO link without an N+1 request.
@@ -120,197 +128,231 @@ export function GrnTable({
     return map;
   }, [purchaseOrders]);
 
-  const columns = useMemo<ColumnDef<GoodsReceivedNote>[]>(
-    () => [
-      {
-        accessorKey: "documentNumber",
-        header: ({ column }) => (
-          <Button
-            variant="ghost"
-            onClick={() =>
-              column.toggleSorting(column.getIsSorted() === "asc")
-            }
-            className="-ml-3"
-          >
-            GRN Number
-            <ArrowUpDown className="ml-2 h-4 w-4" />
-          </Button>
-        ),
-        cell: ({ row }) => (
-          <div className="font-semibold uppercase">
-            {row.original.documentNumber || row.original.id}
-          </div>
-        ),
-      },
-      {
-        accessorKey: "poDocumentNumber",
-        header: "PO Reference",
-        cell: ({ row }) => {
-          const poDoc = row.original.poDocumentNumber;
-          const po = poDoc ? posByDocNumber.get(poDoc) : undefined;
-          if (!poDoc) {
-            return <span className="text-muted-foreground">—</span>;
-          }
-          return po ? (
-            <Link
-              href={`/purchase-orders/${po.id}`}
-              className="text-blue-600 hover:underline font-mono text-sm"
-            >
-              {poDoc}
-            </Link>
-          ) : (
-            <span className="font-mono text-sm text-muted-foreground">
-              {poDoc}
-            </span>
-          );
-        },
-      },
-      {
-        id: "vendor",
-        header: "Vendor",
-        cell: ({ row }) => {
-          const po = posByDocNumber.get(row.original.poDocumentNumber);
-          const vendor = po?.vendorName?.trim();
-          return (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <div className="max-w-[200px] truncate font-medium capitalize cursor-help">
-                  {vendor || "—"}
-                </div>
-              </TooltipTrigger>
-              {vendor && (
-                <TooltipContent>
-                  <p className="max-w-xs">{vendor}</p>
-                </TooltipContent>
-              )}
-            </Tooltip>
-          );
-        },
-      },
-      {
-        id: "itemsCount",
-        header: "Items",
-        cell: ({ row }) => {
-          const itemsCount = row.original.items?.length || 0;
-          return (
-            <div className="text-center">
-              <span className="inline-flex items-center justify-center w-6 h-6 text-xs font-medium bg-foreground/5 rounded-full">
-                {itemsCount}
-              </span>
-            </div>
-          );
-        },
-      },
-      {
-        id: "amount",
-        header: ({ column }) => (
-          <Button
-            variant="ghost"
-            onClick={() =>
-              column.toggleSorting(column.getIsSorted() === "asc")
-            }
-            className="-ml-3"
-          >
-            Received Value
-            <ArrowUpDown className="ml-2 h-4 w-4" />
-          </Button>
-        ),
-        accessorFn: (row) =>
-          computeReceivedAmount(row, posByDocNumber.get(row.poDocumentNumber)) ??
-          0,
-        cell: ({ row }) => {
-          const po = posByDocNumber.get(row.original.poDocumentNumber);
-          const amount = computeReceivedAmount(row.original, po);
-          if (amount === undefined) {
-            return <span className="text-muted-foreground">—</span>;
-          }
-          return (
-            <div className="font-medium">
-              {formatCurrency(amount, po?.currency || "ZMW")}
-            </div>
-          );
-        },
-      },
-      {
-        accessorKey: "status",
-        header: "Status",
-        cell: ({ row }) => (
-          <StatusBadge
-            status={row.original.status || "DRAFT"}
-            type="document"
-          />
-        ),
-      },
-      {
-        accessorKey: "receivedDate",
-        header: ({ column }) => (
-          <Button
-            variant="ghost"
-            onClick={() =>
-              column.toggleSorting(column.getIsSorted() === "asc")
-            }
-            className="-ml-3"
-          >
-            Received Date
-            <ArrowUpDown className="ml-2 h-4 w-4" />
-          </Button>
-        ),
-        cell: ({ row }) => {
-          const date = row.original.receivedDate || row.original.createdAt;
-          return (
-            <div className="text-sm text-muted-foreground">
-              {date ? new Date(date).toLocaleDateString() : "—"}
-            </div>
-          );
-        },
-      },
-    ],
-    [posByDocNumber],
-  );
+  // Client-side filtering
+  const filteredGrns = useMemo(() => {
+    let filtered = grns;
 
-  const getActions = useCallback(
-    (grn: GoodsReceivedNote): ActionButton[] => {
-      const canModify =
-        grn.createdBy === userId ||
-        grn.receivedBy === userId ||
-        GRN_EDIT_ROLES.includes(userRole);
-      return [
-        {
-          icon: <Eye className="h-3.5 w-3.5" />,
-          label: "View",
-          tooltip: "View Details",
-          onClick: () => router.push(`/grn/${grn.id}`),
-        },
-        ...(grn.status?.toUpperCase() !== "APPROVED" && canModify
-          ? [
-              {
-                icon: <Pencil className="h-3.5 w-3.5" />,
-                label: "Edit",
-                tooltip: "Edit GRN",
-                onClick: () => router.push(`/grn/${grn.id}/edit`),
-              },
-            ]
-          : []),
-      ];
+    if (statusFilter !== "all") {
+      filtered = filtered.filter(
+        (g) => g.status?.toLowerCase() === statusFilter,
+      );
+    }
+
+    if (debouncedSearch) {
+      const s = debouncedSearch.toLowerCase();
+      filtered = filtered.filter(
+        (g) =>
+          g.documentNumber?.toLowerCase().includes(s) ||
+          g.poDocumentNumber?.toLowerCase().includes(s) ||
+          g.receivedBy?.toLowerCase().includes(s) ||
+          // vendorName is on the linked PO, not on the GRN itself
+          posByDocNumber.get(g.poDocumentNumber)?.vendorName?.toLowerCase().includes(s),
+      );
+    }
+
+    return filtered;
+  }, [grns, statusFilter, debouncedSearch, posByDocNumber]);
+
+  const hasActiveFilters = Boolean(searchQuery) || statusFilter !== "all";
+
+  const clearFilters = useCallback(() => {
+    setSearchQuery("");
+    setStatusFilter("all");
+  }, []);
+
+  const columns: DataListColumn<GoodsReceivedNote>[] = [
+    {
+      id: "documentNumber",
+      header: "GRN #",
+      priority: "always",
+      cell: (row) => (
+        <div className="font-semibold uppercase">
+          {row.documentNumber || row.id}
+        </div>
+      ),
     },
-    [router, userId, userRole],
-  );
-
-  return (
-    <DataTable
-      columns={columns}
-      data={grns}
-      actions={getActions}
-      hideSearchBar={false}
-      renderRowActions={(grn: GoodsReceivedNote) => {
+    {
+      id: "poDocumentNumber",
+      header: "PO",
+      priority: "md",
+      cell: (row) => {
+        const poDoc = row.poDocumentNumber;
+        const po = poDoc ? posByDocNumber.get(poDoc) : undefined;
+        if (!poDoc) return <span className="text-muted-foreground">—</span>;
+        return po ? (
+          <Link
+            href={`/purchase-orders/${po.id}`}
+            className="text-blue-600 hover:underline font-mono text-sm"
+          >
+            {poDoc}
+          </Link>
+        ) : (
+          <span className="font-mono text-sm text-muted-foreground">{poDoc}</span>
+        );
+      },
+    },
+    {
+      id: "vendor",
+      header: "Vendor",
+      priority: "lg",
+      cell: (row) => {
+        const vendor = posByDocNumber.get(row.poDocumentNumber)?.vendorName?.trim();
+        return (
+          <span className="font-medium capitalize">{vendor || "—"}</span>
+        );
+      },
+    },
+    {
+      id: "amount",
+      header: "Received Value",
+      priority: "lg",
+      align: "right",
+      cell: (row) => {
+        const po = posByDocNumber.get(row.poDocumentNumber);
+        const amount = computeReceivedAmount(row, po);
+        if (amount === undefined) {
+          return <span className="text-muted-foreground">—</span>;
+        }
+        return (
+          <div className="font-medium">
+            {formatCurrency(amount, po?.currency || "ZMW")}
+          </div>
+        );
+      },
+    },
+    {
+      id: "receivedBy",
+      header: "Received by",
+      priority: "lg",
+      cell: (row) => (
+        <span className="text-muted-foreground">{row.receivedBy || "—"}</span>
+      ),
+    },
+    {
+      id: "receivedDate",
+      header: "Received",
+      priority: "md",
+      cell: (row) => {
+        const date = row.receivedDate || row.createdAt;
+        return (
+          <span className="text-sm text-muted-foreground">
+            {date ? new Date(date).toLocaleDateString() : "—"}
+          </span>
+        );
+      },
+    },
+    {
+      id: "status",
+      header: "Status",
+      cell: (row) => (
+        <StatusBadge status={row.status || "DRAFT"} type="document" />
+      ),
+    },
+    {
+      id: "actions",
+      header: <span className="sr-only">Actions</span>,
+      cell: (row) => {
         const canModify =
-          grn.createdBy === userId ||
-          grn.receivedBy === userId ||
+          row.createdBy === userId ||
+          row.receivedBy === userId ||
           GRN_EDIT_ROLES.includes(userRole);
         return (
-          <GrnOptionsMenu grn={grn} router={router} canModify={canModify} />
+          <GrnOptionsMenu grn={row} router={router} canModify={canModify} />
         );
-      }}
-    />
+      },
+    },
+  ];
+
+  return (
+    <div className="space-y-4">
+      <FilterBar
+        search={
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search GRN number, PO reference, receiver…"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+        }
+        filters={
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-40">
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All statuses</SelectItem>
+              <SelectItem value="draft">Draft</SelectItem>
+              <SelectItem value="pending">Pending</SelectItem>
+              <SelectItem value="approved">Approved</SelectItem>
+              <SelectItem value="rejected">Rejected</SelectItem>
+              <SelectItem value="revision">Revision</SelectItem>
+              <SelectItem value="completed">Completed</SelectItem>
+              <SelectItem value="cancelled">Cancelled</SelectItem>
+            </SelectContent>
+          </Select>
+        }
+        hasActiveFilters={hasActiveFilters}
+        onReset={clearFilters}
+        meta={`${filteredGrns.length} GRN${filteredGrns.length === 1 ? "" : "s"}${hasActiveFilters ? " (filtered)" : ""}`}
+      />
+
+      <DataList<GoodsReceivedNote>
+        rows={filteredGrns}
+        columns={columns}
+        getRowId={(row) => row.id}
+        isLoading={isLoading}
+        emptyMessage={
+          <div className="flex flex-col items-center gap-3 py-4">
+            <FileText className="h-10 w-10 text-muted-foreground" />
+            <div>
+              <p className="font-medium">No Goods Received Notes Found</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {hasActiveFilters
+                  ? "No GRNs match your current filters. Try adjusting your search criteria."
+                  : "No GRNs have been created yet."}
+              </p>
+            </div>
+          </div>
+        }
+        mobileCard={(row) => {
+          const po = posByDocNumber.get(row.poDocumentNumber);
+          const vendor = po?.vendorName?.trim();
+          const canModify =
+            row.createdBy === userId ||
+            row.receivedBy === userId ||
+            GRN_EDIT_ROLES.includes(userRole);
+          return (
+            <div className="flex flex-col gap-2">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <div className="font-medium text-primary line-clamp-1 uppercase">
+                    {row.documentNumber || row.id}
+                  </div>
+                  <div className="text-xs text-muted-foreground line-clamp-1">
+                    {row.poDocumentNumber ? `PO ${row.poDocumentNumber}` : "—"}
+                  </div>
+                </div>
+                <StatusBadge status={row.status || "DRAFT"} type="document" />
+              </div>
+              <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                {vendor && <span className="capitalize">{vendor}</span>}
+                {row.receivedBy && <span>{row.receivedBy}</span>}
+                {(row.receivedDate || row.createdAt) && (
+                  <span>
+                    {new Date(row.receivedDate || row.createdAt).toLocaleDateString()}
+                  </span>
+                )}
+              </div>
+              <div className="pt-1">
+                <GrnOptionsMenu grn={row} router={router} canModify={canModify} />
+              </div>
+            </div>
+          );
+        }}
+      />
+    </div>
   );
 }
