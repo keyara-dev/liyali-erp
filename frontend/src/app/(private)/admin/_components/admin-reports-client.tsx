@@ -48,7 +48,7 @@ export function AdminReportsClient({
   const queryClient = useQueryClient();
 
   const initial = useMemo(defaultRange, []);
-  const { from, to } = useDateRangeUrlState({
+  const { from, to, setRange } = useDateRangeUrlState({
     defaultFrom: initial.from,
     defaultTo: initial.to,
   });
@@ -143,6 +143,9 @@ export function AdminReportsClient({
       <ReportsHeader
         title="Admin Reports"
         subtitle="Workflow approvals, user activity, system metrics"
+        from={from}
+        to={to}
+        onRangeChange={setRange}
         onRefresh={handleRefresh}
         onExport={handleExport}
         isRefreshing={isRefreshing}

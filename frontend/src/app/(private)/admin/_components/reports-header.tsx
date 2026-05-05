@@ -1,6 +1,5 @@
 "use client";
 import * as React from "react";
-import { format, subDays, startOfDay, endOfDay } from "date-fns";
 import { Download, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/base/page-header";
@@ -11,7 +10,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import CalendarDateRangePicker from "@/components/ui/date-range-picker";
-import { useDateRangeUrlState } from "@/hooks/use-date-range-url-state";
 import { cn } from "@/lib/utils";
 
 export type ReportsExportFormat = "csv";
@@ -19,33 +17,28 @@ export type ReportsExportFormat = "csv";
 export interface ReportsHeaderProps {
   title: string;
   subtitle: string;
+  /** ISO YYYY-MM-DD. Required — owner is the parent. */
+  from: string;
+  /** ISO YYYY-MM-DD. */
+  to: string;
+  onRangeChange: (from: string, to: string) => void;
   onRefresh: () => void;
   onExport: (format: ReportsExportFormat) => void;
   isRefreshing: boolean;
   className?: string;
 }
 
-function defaultRange() {
-  const today = new Date();
-  const from = format(startOfDay(subDays(today, 27)), "yyyy-MM-dd");
-  const to = format(endOfDay(today), "yyyy-MM-dd");
-  return { from, to };
-}
-
 export function ReportsHeader({
   title,
   subtitle,
+  from,
+  to,
+  onRangeChange,
   onRefresh,
   onExport,
   isRefreshing,
   className,
 }: ReportsHeaderProps) {
-  const initial = React.useMemo(defaultRange, []);
-  const { from, to, setRange } = useDateRangeUrlState({
-    defaultFrom: initial.from,
-    defaultTo: initial.to,
-  });
-
   const initialFromDate = React.useMemo(() => new Date(from), [from]);
   const initialToDate = React.useMemo(() => new Date(to), [to]);
 
@@ -92,7 +85,7 @@ export function ReportsHeader({
           <CalendarDateRangePicker
             initialFrom={initialFromDate}
             initialTo={initialToDate}
-            onChange={(newFrom, newTo) => setRange(newFrom, newTo)}
+            onChange={onRangeChange}
           />
         </div>
       </div>
