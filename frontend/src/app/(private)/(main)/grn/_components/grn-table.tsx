@@ -87,12 +87,6 @@ function GrnOptionsMenu({
           <Eye className="mr-2 h-4 w-4" />
           View Details
         </DropdownMenuItem>
-        <DropdownMenuItem
-          onClick={() => console.log("Download PDF for GRN:", grn.id)}
-        >
-          <Download className="mr-2 h-4 w-4" />
-          Download
-        </DropdownMenuItem>
         {grn.status?.toUpperCase() !== "APPROVED" && canModify && (
           <DropdownMenuItem onClick={() => router.push(`/grn/${grn.id}/edit`)}>
             <Pencil className="mr-2 h-4 w-4" />

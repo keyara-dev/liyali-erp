@@ -165,16 +165,6 @@ function ReqOptionsMenu({
             </DropdownMenuItem>
           )}
 
-          {reqStatus === "DRAFT" && req.requesterId === userId && (
-            <DropdownMenuItem
-              onClick={() => console.log("Delete requisition:", req.id)}
-              className="text-red-600 focus:text-red-600"
-            >
-              <XCircle className="mr-2 h-4 w-4" />
-              Delete
-            </DropdownMenuItem>
-          )}
-
           {/* Show additional info */}
           {req.categoryName && (
             <div className="px-2 py-1.5 text-xs text-muted-foreground border-t">

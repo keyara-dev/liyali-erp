@@ -58,12 +58,6 @@ function PoOptionsMenu({
           <Eye className="mr-2 h-4 w-4" />
           View Details
         </DropdownMenuItem>
-        <DropdownMenuItem
-          onClick={() => console.log("Download PDF for PO:", po.id)}
-        >
-          <Download className="mr-2 h-4 w-4" />
-          Download
-        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );
