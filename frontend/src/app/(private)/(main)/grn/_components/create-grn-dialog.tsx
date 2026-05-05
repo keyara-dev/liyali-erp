@@ -3,13 +3,7 @@
 import { useState, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { QUERY_KEYS } from "@/lib/constants";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { ResponsiveSheet } from "@/components/ui/responsive-sheet";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Input } from "@/components/ui/input";
@@ -257,22 +251,40 @@ export function CreateGRNDialog({
   const FlowIcon = isGoodsFirst ? Truck : Wallet;
 
   return (
-    <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent
-        className="max-w-2xl! p-0 flex flex-col h-[90svh] max-h-[90vh] overflow-hidden"
-        onInteractOutside={(e) => e.preventDefault()}
-      >
-        <DialogHeader className="px-4 pt-4 pb-2 shrink-0 border-b">
-          <DialogTitle className="flex items-center gap-2">
-            <Package className="h-5 w-5" />
-            Create Goods Received Note
-          </DialogTitle>
-          <DialogDescription>
-            Record goods received against a purchase order.
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-4 min-w-0">
+    <ResponsiveSheet
+      open={open}
+      onOpenChange={handleClose}
+      title={
+        <span className="flex items-center gap-2">
+          <Package className="h-5 w-5" />
+          Create Goods Received Note
+        </span>
+      }
+      description="Record goods received against a purchase order."
+      desktopMaxWidth="max-w-2xl!"
+      footer={
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleClose}
+            disabled={isCreating}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={handleCreate}
+            disabled={isCreating || !canCreate}
+            isLoading={isCreating}
+            loadingText="Creating..."
+          >
+            <Package className="mr-2 h-4 w-4" />
+            Create GRN
+          </Button>
+        </div>
+      }
+    >
+        <div className="space-y-4 min-w-0">
           {/* Procurement flow banner */}
           <div
             className={`flex items-start gap-3 rounded-lg border p-3 ${
@@ -553,28 +565,6 @@ export function CreateGRNDialog({
             disabled={isCreating}
           />
         </div>
-
-        {/* Sticky Footer */}
-        <div className="shrink-0 border-t bg-card/5 backdrop-blur-xs flex flex-col-reverse sm:flex-row justify-end gap-2 p-4">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={handleClose}
-            disabled={isCreating}
-          >
-            Cancel
-          </Button>
-          <Button
-            onClick={handleCreate}
-            disabled={isCreating || !canCreate}
-            isLoading={isCreating}
-            loadingText="Creating..."
-          >
-            <Package className="mr-2 h-4 w-4" />
-            Create GRN
-          </Button>
-        </div>
-      </DialogContent>
-    </Dialog>
+    </ResponsiveSheet>
   );
 }
