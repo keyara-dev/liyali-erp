@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
-import { Pencil, Plus, PowerOff, Power, X } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Pencil, Plus, PowerOff, Power } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -35,85 +36,14 @@ function formatDate(date: Date | string) {
   });
 }
 
-function VendorDetailPanel({
-  vendor,
-  onClose,
-}: {
-  vendor: Vendor;
-  onClose: () => void;
-}) {
-  const field = (label: string, value?: string | null) => (
-    <div className="space-y-0.5">
-      <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="text-sm">{value || "—"}</p>
-    </div>
-  );
-
-  return (
-    <div className="rounded-lg border bg-muted/30 p-4 space-y-4">
-      <div className="flex items-center justify-between">
-        <p className="text-sm font-semibold">{vendor.name}</p>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-6 w-6"
-          onClick={onClose}
-        >
-          <X className="h-3.5 w-3.5" />
-        </Button>
-      </div>
-
-      <div className="grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-4">
-        {field("Vendor Code", vendor.vendorCode)}
-        {field("Email", vendor.email)}
-        {field("Phone", vendor.phone)}
-        {field("Contact Person", vendor.contactPerson)}
-      </div>
-
-      <div className="border-t pt-3 space-y-1">
-        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-          Location
-        </p>
-        <div className="grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-3">
-          {field("Physical Address", vendor.physicalAddress)}
-          {field("City", vendor.city)}
-          {field("Country", vendor.country)}
-        </div>
-      </div>
-
-      <div className="border-t pt-3 space-y-1">
-        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-          Tax &amp; Registration
-        </p>
-        <div className="grid grid-cols-2 gap-x-6 gap-y-3">
-          {field("Tax ID / TPIN", vendor.taxId)}
-        </div>
-      </div>
-
-      <div className="border-t pt-3 space-y-1">
-        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-          Bank Details
-        </p>
-        <div className="grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-3">
-          {field("Bank Name", vendor.bankName)}
-          {field("Branch Code", vendor.branchCode)}
-          {field("Account Name", vendor.accountName)}
-          {field("Account Number", vendor.accountNumber)}
-          {field("SWIFT / BIC", vendor.swiftCode)}
-        </div>
-      </div>
-    </div>
-  );
-}
-
 export function VendorsTable({ userRole }: VendorsTableProps) {
+  const router = useRouter();
   const { data: vendors = [], isLoading } = useVendors();
   const { rawPermissions } = usePermissions();
   const toggleStatus = useToggleVendorStatus();
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingVendor, setEditingVendor] = useState<Vendor | null>(null);
-  const [selectedVendor, setSelectedVendor] = useState<Vendor | null>(null);
 
   // Filter state
   const [searchQuery, setSearchQuery] = useState("");
@@ -139,7 +69,7 @@ export function VendorsTable({ userRole }: VendorsTableProps) {
   }
 
   function handleRowClick(vendor: Vendor) {
-    setSelectedVendor((prev) => (prev?.id === vendor.id ? null : vendor));
+    router.push(`/vendors/${vendor.id}`);
   }
 
   // Derived filter values
@@ -377,12 +307,6 @@ export function VendorsTable({ userRole }: VendorsTableProps) {
         )}
       />
 
-      {selectedVendor && (
-        <VendorDetailPanel
-          vendor={selectedVendor}
-          onClose={() => setSelectedVendor(null)}
-        />
-      )}
       <VendorFormDialog
         open={dialogOpen}
         onOpenChange={setDialogOpen}
