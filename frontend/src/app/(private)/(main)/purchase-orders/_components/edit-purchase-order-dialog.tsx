@@ -2,25 +2,11 @@
 
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
+import { ResponsiveSheet } from "@/components/ui/responsive-sheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { SelectField } from "@/components/ui/select-field";
 import { Loader2, Save } from "lucide-react";
 import { PurchaseOrder } from "@/types/purchase-order";
@@ -134,216 +120,15 @@ export function EditPurchaseOrderDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-full max-w-lg max-h-[85vh] flex flex-col overflow-hidden">
-        <DialogHeader>
-          <DialogTitle>Edit Purchase Order</DialogTitle>
-          <p className="text-sm text-muted-foreground">
-            {purchaseOrder.documentNumber}
-          </p>
-        </DialogHeader>
-
-        <ScrollArea className="flex-1 pr-4">
-          <div className="space-y-4 py-4">
-            {/* Status Warning */}
-            {!canEdit && (
-              <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
-                <p className="text-sm text-amber-800">
-                  This purchase order cannot be edited because it is{" "}
-                  <span className="font-semibold">{purchaseOrder.status}</span>.
-                  Only DRAFT or REJECTED purchase orders can be edited.
-                </p>
-              </div>
-            )}
-
-            {/* Document Number (Read-only) */}
-            <div className="space-y-2">
-              <Label>Document Number</Label>
-              <Input
-                value={purchaseOrder.documentNumber}
-                disabled
-                className="bg-muted"
-              />
-              <p className="text-xs text-muted-foreground">
-                Document number cannot be changed
-              </p>
-            </div>
-
-            {/* Title */}
-            <Input
-              label="Title"
-              required
-              placeholder="Enter purchase order title"
-              value={formData.title}
-              onChange={(e) =>
-                setFormData({ ...formData, title: e.target.value })
-              }
-              disabled={!canEdit}
-            />
-
-            {/* Description */}
-            <div className="space-y-2">
-              <Textarea
-                id="description"
-                label="Description"
-                placeholder="Enter purchase order description..."
-                rows={3}
-                value={formData.description}
-                onChange={(e) =>
-                  setFormData({ ...formData, description: e.target.value })
-                }
-                disabled={!canEdit}
-              />
-            </div>
-
-            {/* Department and Priority */}
-            <div className="grid grid-cols-2 gap-4">
-              <SelectField
-                label="Department"
-                required
-                isLoading={departmentsLoading}
-                placeholder="Select department"
-                value={formData.department}
-                onValueChange={(value) =>
-                  setFormData({
-                    ...formData,
-                    department: value,
-                    departmentId: Array.isArray(departments)
-                      ? departments.find((d) => d.name === value)?.id || value
-                      : value,
-                  })
-                }
-                options={
-                  Array.isArray(departments)
-                    ? departments.map((department) => ({
-                        value: department.name,
-                        label: department.name,
-                      }))
-                    : []
-                }
-                disabled={!canEdit}
-              />
-
-              <SelectField
-                label="Priority"
-                required
-                value={formData.priority}
-                onValueChange={(value) =>
-                  setFormData({ ...formData, priority: value })
-                }
-                options={[
-                  { value: "LOW", label: "Low" },
-                  { value: "MEDIUM", label: "Medium" },
-                  { value: "HIGH", label: "High" },
-                  { value: "URGENT", label: "Urgent" },
-                ]}
-                placeholder="Select priority"
-                disabled={!canEdit}
-              />
-            </div>
-
-            {/* Budget Code */}
-            <SelectField
-              label="Budget Code"
-              placeholder="Select budget code"
-              isLoading={budgetsLoading}
-              value={formData.budgetCode}
-              onValueChange={(value) =>
-                setFormData({ ...formData, budgetCode: value })
-              }
-              options={[
-                { value: "", label: "None" },
-                ...(Array.isArray(budgets)
-                  ? budgets.map((budget) => ({
-                      value: budget.budgetCode,
-                      label: `${budget.budgetCode} - ${budget.name}`,
-                    }))
-                  : []),
-              ]}
-              disabled={!canEdit}
-            />
-
-            {/* Cost Center and Project Code */}
-            <div className="grid grid-cols-2 gap-4">
-              <Input
-                label="Cost Center"
-                placeholder="Cost center code"
-                value={formData.costCenter}
-                onChange={(e) =>
-                  setFormData({ ...formData, costCenter: e.target.value })
-                }
-                disabled={!canEdit}
-              />
-
-              <Input
-                label="Project Code"
-                placeholder="Project code"
-                value={formData.projectCode}
-                onChange={(e) =>
-                  setFormData({ ...formData, projectCode: e.target.value })
-                }
-                disabled={!canEdit}
-              />
-            </div>
-
-            {/* Delivery Date */}
-            <DatePicker
-              label="Delivery Date"
-              value={formData.deliveryDate ?? undefined}
-              onValueChange={(date) =>
-                setFormData({ ...formData, deliveryDate: date as Date })
-              }
-              disabled={!canEdit}
-            />
-
-            {/* Read-only fields */}
-            <div className="space-y-4 pt-4 border-t">
-              <h3 className="text-sm font-semibold text-muted-foreground">
-                Read-Only Fields
-              </h3>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Vendor</Label>
-                  <Input
-                    value={purchaseOrder.vendorName || "—"}
-                    disabled
-                    className="bg-muted"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Vendor cannot be changed
-                  </p>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Total Amount</Label>
-                  <Input
-                    value={`${purchaseOrder.currency} ${purchaseOrder.totalAmount?.toLocaleString() || "0.00"}`}
-                    disabled
-                    className="bg-muted"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Amount cannot be changed
-                  </p>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Status</Label>
-                <Input
-                  value={purchaseOrder.status || "—"}
-                  disabled
-                  className="bg-muted"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Status is managed by the approval workflow
-                </p>
-              </div>
-            </div>
-          </div>
-        </ScrollArea>
-
-        <DialogFooter className="gap-2">
+    <ResponsiveSheet
+      open={open}
+      onOpenChange={onOpenChange}
+      title="Edit Purchase Order"
+      description={purchaseOrder.documentNumber}
+      desktopMaxWidth="sm:max-w-lg"
+      dismissibleOnOutsideClick={false}
+      footer={
+        <div className="flex flex-wrap items-center justify-end gap-2">
           <Button
             type="button"
             variant="outline"
@@ -361,8 +146,206 @@ export function EditPurchaseOrderDialog({
             <Save className="mr-2 h-4 w-4" />
             Save Changes
           </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </div>
+      }
+    >
+      <div className="space-y-4 py-4">
+        {/* Status Warning */}
+        {!canEdit && (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
+            <p className="text-sm text-amber-800">
+              This purchase order cannot be edited because it is{" "}
+              <span className="font-semibold">{purchaseOrder.status}</span>.
+              Only DRAFT or REJECTED purchase orders can be edited.
+            </p>
+          </div>
+        )}
+
+        {/* Document Number (Read-only) */}
+        <div className="space-y-2">
+          <Label>Document Number</Label>
+          <Input
+            value={purchaseOrder.documentNumber}
+            disabled
+            className="bg-muted"
+          />
+          <p className="text-xs text-muted-foreground">
+            Document number cannot be changed
+          </p>
+        </div>
+
+        {/* Title */}
+        <Input
+          label="Title"
+          required
+          placeholder="Enter purchase order title"
+          value={formData.title}
+          onChange={(e) =>
+            setFormData({ ...formData, title: e.target.value })
+          }
+          disabled={!canEdit}
+        />
+
+        {/* Description */}
+        <div className="space-y-2">
+          <Textarea
+            id="description"
+            label="Description"
+            placeholder="Enter purchase order description..."
+            rows={3}
+            value={formData.description}
+            onChange={(e) =>
+              setFormData({ ...formData, description: e.target.value })
+            }
+            disabled={!canEdit}
+          />
+        </div>
+
+        {/* Department and Priority */}
+        <div className="grid grid-cols-2 gap-4">
+          <SelectField
+            label="Department"
+            required
+            isLoading={departmentsLoading}
+            placeholder="Select department"
+            value={formData.department}
+            onValueChange={(value) =>
+              setFormData({
+                ...formData,
+                department: value,
+                departmentId: Array.isArray(departments)
+                  ? departments.find((d) => d.name === value)?.id || value
+                  : value,
+              })
+            }
+            options={
+              Array.isArray(departments)
+                ? departments.map((department) => ({
+                    value: department.name,
+                    label: department.name,
+                  }))
+                : []
+            }
+            disabled={!canEdit}
+          />
+
+          <SelectField
+            label="Priority"
+            required
+            value={formData.priority}
+            onValueChange={(value) =>
+              setFormData({ ...formData, priority: value })
+            }
+            options={[
+              { value: "LOW", label: "Low" },
+              { value: "MEDIUM", label: "Medium" },
+              { value: "HIGH", label: "High" },
+              { value: "URGENT", label: "Urgent" },
+            ]}
+            placeholder="Select priority"
+            disabled={!canEdit}
+          />
+        </div>
+
+        {/* Budget Code */}
+        <SelectField
+          label="Budget Code"
+          placeholder="Select budget code"
+          isLoading={budgetsLoading}
+          value={formData.budgetCode}
+          onValueChange={(value) =>
+            setFormData({ ...formData, budgetCode: value })
+          }
+          options={[
+            { value: "", label: "None" },
+            ...(Array.isArray(budgets)
+              ? budgets.map((budget) => ({
+                  value: budget.budgetCode,
+                  label: `${budget.budgetCode} - ${budget.name}`,
+                }))
+              : []),
+          ]}
+          disabled={!canEdit}
+        />
+
+        {/* Cost Center and Project Code */}
+        <div className="grid grid-cols-2 gap-4">
+          <Input
+            label="Cost Center"
+            placeholder="Cost center code"
+            value={formData.costCenter}
+            onChange={(e) =>
+              setFormData({ ...formData, costCenter: e.target.value })
+            }
+            disabled={!canEdit}
+          />
+
+          <Input
+            label="Project Code"
+            placeholder="Project code"
+            value={formData.projectCode}
+            onChange={(e) =>
+              setFormData({ ...formData, projectCode: e.target.value })
+            }
+            disabled={!canEdit}
+          />
+        </div>
+
+        {/* Delivery Date */}
+        <DatePicker
+          label="Delivery Date"
+          value={formData.deliveryDate ?? undefined}
+          onValueChange={(date) =>
+            setFormData({ ...formData, deliveryDate: date as Date })
+          }
+          disabled={!canEdit}
+        />
+
+        {/* Read-only fields */}
+        <div className="space-y-4 pt-4 border-t">
+          <h3 className="text-sm font-semibold text-muted-foreground">
+            Read-Only Fields
+          </h3>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Vendor</Label>
+              <Input
+                value={purchaseOrder.vendorName || "—"}
+                disabled
+                className="bg-muted"
+              />
+              <p className="text-xs text-muted-foreground">
+                Vendor cannot be changed
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Total Amount</Label>
+              <Input
+                value={`${purchaseOrder.currency} ${purchaseOrder.totalAmount?.toLocaleString() || "0.00"}`}
+                disabled
+                className="bg-muted"
+              />
+              <p className="text-xs text-muted-foreground">
+                Amount cannot be changed
+              </p>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Status</Label>
+            <Input
+              value={purchaseOrder.status || "—"}
+              disabled
+              className="bg-muted"
+            />
+            <p className="text-xs text-muted-foreground">
+              Status is managed by the approval workflow
+            </p>
+          </div>
+        </div>
+      </div>
+    </ResponsiveSheet>
   );
 }
