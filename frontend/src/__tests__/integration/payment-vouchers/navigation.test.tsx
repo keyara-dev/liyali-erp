@@ -7,6 +7,18 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useRouter } from "next/navigation";
+import React from "react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+
+function createWrapper() {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  const Wrapper = ({ children }: { children: React.ReactNode }) => (
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  );
+  return Wrapper;
+}
 
 // Mock next/navigation
 vi.mock("next/navigation", () => ({
@@ -69,7 +81,7 @@ vi.mock("@/components/ui/dropdown-menu", () => ({
   DropdownMenu: ({ children }: any) => <div>{children}</div>,
   DropdownMenuContent: ({ children }: any) => <div>{children}</div>,
   DropdownMenuItem: ({ children, onClick }: any) => (
-    <button onClick={onClick}>{children}</button>
+    <button role="menuitem" onClick={onClick}>{children}</button>
   ),
   DropdownMenuTrigger: ({ children, asChild }: any) =>
     asChild ? children : <div>{children}</div>,
@@ -299,8 +311,10 @@ describe("Payment Voucher Navigation", () => {
         />,
       );
 
-      const viewButton = await screen.findByRole("button", { name: /view/i });
-      await user.click(viewButton);
+      const trigger = (await screen.findAllByRole("button", { name: /row actions/i }))[0];
+      await user.click(trigger);
+      const viewItem = (await screen.findAllByRole("menuitem", { name: /view/i }))[0];
+      await user.click(viewItem);
 
       await waitFor(() => {
         expect(mockPush).toHaveBeenCalledWith("/payment-vouchers/pv-123");
@@ -319,8 +333,10 @@ describe("Payment Voucher Navigation", () => {
         />,
       );
 
-      const viewButton = await screen.findByRole("button", { name: /view/i });
-      await user.click(viewButton);
+      const trigger = (await screen.findAllByRole("button", { name: /row actions/i }))[0];
+      await user.click(trigger);
+      const viewItem = (await screen.findAllByRole("menuitem", { name: /view/i }))[0];
+      await user.click(viewItem);
 
       await waitFor(() => {
         const callArg = mockPush.mock.calls[0][0];
@@ -338,7 +354,7 @@ describe("Payment Voucher Navigation", () => {
         />,
       );
 
-      const editButton = await screen.findByRole("button", { name: /edit/i });
+      const editButton = (await screen.findAllByRole("menuitem", { name: /edit/i }))[0];
       expect(editButton).toBeDefined();
     });
 
@@ -354,7 +370,9 @@ describe("Payment Voucher Navigation", () => {
         />,
       );
 
-      const editButton = await screen.findByRole("button", { name: /edit/i });
+      const trigger = (await screen.findAllByRole("button", { name: /row actions/i }))[0];
+      await user.click(trigger);
+      const editButton = (await screen.findAllByRole("menuitem", { name: /edit/i }))[0];
       await user.click(editButton);
 
       await waitFor(() => {
@@ -382,6 +400,7 @@ describe("Payment Voucher Navigation", () => {
             updatedAt: new Date("2024-01-01"),
           } as any}
         />,
+        { wrapper: createWrapper() },
       );
 
       const backButton = screen.getByRole("button", { name: /back/i });
@@ -408,6 +427,7 @@ describe("Payment Voucher Navigation", () => {
             updatedAt: new Date("2024-01-01"),
           } as any}
         />,
+        { wrapper: createWrapper() },
       );
 
       const backButton = screen.getByRole("button", { name: /back/i });
@@ -433,8 +453,10 @@ describe("Payment Voucher Navigation", () => {
         />,
       );
 
-      // Step 2: Click View to navigate to detail
-      const viewButton = await screen.findByRole("button", { name: /^view$/i });
+      // Step 2: Click View to navigate to detail via DropdownMenu
+      const trigger = (await screen.findAllByRole("button", { name: /row actions/i }))[0];
+      await user.click(trigger);
+      const viewButton = (await screen.findAllByRole("menuitem", { name: /view/i }))[0];
       await user.click(viewButton);
 
       await waitFor(() => {
@@ -460,6 +482,7 @@ describe("Payment Voucher Navigation", () => {
             updatedAt: new Date("2024-01-01"),
           } as any}
         />,
+        { wrapper: createWrapper() },
       );
 
       // Step 4: Click back button

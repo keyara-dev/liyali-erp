@@ -9,6 +9,18 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useRouter } from "next/navigation";
+import React from "react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+
+function createWrapper() {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  const Wrapper = ({ children }: { children: React.ReactNode }) => (
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  );
+  return Wrapper;
+}
 
 // Mock next/navigation
 vi.mock("next/navigation", () => ({
@@ -66,9 +78,10 @@ vi.mock("@/components/ui/dropdown-menu", () => ({
   DropdownMenu: ({ children }: any) => <div>{children}</div>,
   DropdownMenuContent: ({ children }: any) => <div>{children}</div>,
   DropdownMenuItem: ({ children, onClick }: any) => (
-    <button onClick={onClick}>{children}</button>
+    <button role="menuitem" onClick={onClick}>{children}</button>
   ),
-  DropdownMenuTrigger: ({ children }: any) => <div>{children}</div>,
+  DropdownMenuTrigger: ({ children, asChild }: any) =>
+    asChild ? children : <div>{children}</div>,
 }));
 
 // Mock all the complex components in the detail client
@@ -240,11 +253,11 @@ describe("Purchase Order Navigation", () => {
         />,
       );
 
-      // Find and click the View button
-      const viewButton = await screen.findByRole("button", {
-        name: /view/i,
-      });
-      await user.click(viewButton);
+      // Find and click the View button via DropdownMenu trigger
+      const trigger = (await screen.findAllByRole("button", { name: /row actions/i }))[0];
+      await user.click(trigger);
+      const viewItem = (await screen.findAllByRole("menuitem", { name: /view/i }))[0];
+      await user.click(viewItem);
 
       // Verify navigation to detail page
       await waitFor(() => {
@@ -264,10 +277,10 @@ describe("Purchase Order Navigation", () => {
         />,
       );
 
-      const viewButton = await screen.findByRole("button", {
-        name: /view/i,
-      });
-      await user.click(viewButton);
+      const trigger = (await screen.findAllByRole("button", { name: /row actions/i }))[0];
+      await user.click(trigger);
+      const viewItem = (await screen.findAllByRole("menuitem", { name: /view/i }))[0];
+      await user.click(viewItem);
 
       await waitFor(() => {
         const callArg = mockPush.mock.calls[0][0];
@@ -296,6 +309,7 @@ describe("Purchase Order Navigation", () => {
             updatedAt: new Date("2024-01-01"),
           }}
         />,
+        { wrapper: createWrapper() },
       );
 
       // The PageHeader component should render with showBackButton={true}
@@ -324,6 +338,7 @@ describe("Purchase Order Navigation", () => {
             updatedAt: new Date("2024-01-01"),
           }}
         />,
+        { wrapper: createWrapper() },
       );
 
       const backButton = screen.getByRole("button", { name: /back/i });
@@ -350,11 +365,11 @@ describe("Purchase Order Navigation", () => {
         />,
       );
 
-      // Step 2: Click view button to navigate to detail
-      const viewButton = await screen.findByRole("button", {
-        name: /view/i,
-      });
-      await user.click(viewButton);
+      // Step 2: Click view button to navigate to detail via DropdownMenu
+      const trigger = (await screen.findAllByRole("button", { name: /row actions/i }))[0];
+      await user.click(trigger);
+      const viewItem = (await screen.findAllByRole("menuitem", { name: /view/i }))[0];
+      await user.click(viewItem);
 
       await waitFor(() => {
         expect(mockPush).toHaveBeenCalledWith("/purchase-orders/po-123");
@@ -379,6 +394,7 @@ describe("Purchase Order Navigation", () => {
             updatedAt: new Date("2024-01-01"),
           }}
         />,
+        { wrapper: createWrapper() },
       );
 
       // Step 4: Click back button
