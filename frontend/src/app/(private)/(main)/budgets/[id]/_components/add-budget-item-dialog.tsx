@@ -2,20 +2,13 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { ResponsiveSheet } from "@/components/ui/responsive-sheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { BudgetItem } from "@/types/budget";
 import {
   validateBudgetItem,
-  calculateTotalAllocated,
   calculateRemainingBudget,
 } from "@/lib/budget-validation";
 import { formatCurrency } from "@/lib/utils";
@@ -105,71 +98,81 @@ export function AddBudgetItemDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle>Add Budget Item</DialogTitle>
-          <DialogDescription>
-            Add a new line item to your budget allocation. Remaining budget:{" "}
-            {formatCurrency(remainingBudget)}
-          </DialogDescription>
-        </DialogHeader>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Category */}
-          <Input
-            label="Category"
-            required
-            id="category"
-            placeholder="e.g., Hardware, Software, Personnel"
-            value={formData.category}
-            onChange={(e) => handleInputChange("category", e.target.value)}
+    <ResponsiveSheet
+      open={open}
+      onOpenChange={onOpenChange}
+      title="Add Budget Item"
+      description={
+        <>
+          Add a new line item to your budget allocation. Remaining budget:{" "}
+          {formatCurrency(remainingBudget)}
+        </>
+      }
+      desktopMaxWidth="sm:max-w-md"
+      footer={
+        <div className="flex gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => onOpenChange(false)}
             disabled={isSubmitting}
-          />
-
-          {/* Description */}
-          <Textarea
-            label="Description"
-            id="description"
-            placeholder="Describe this budget item (optional)"
-            value={formData.description}
-            onChange={(e) => handleInputChange("description", e.target.value)}
+            className="flex-1"
+          >
+            Cancel
+          </Button>
+          <Button
+            type="submit"
+            form="add-budget-item-form"
             disabled={isSubmitting}
-            rows={3}
-          />
+            className="flex-1"
+          >
+            {isSubmitting ? "Adding..." : "Add Item"}
+          </Button>
+        </div>
+      }
+    >
+      <form
+        id="add-budget-item-form"
+        onSubmit={handleSubmit}
+        className="space-y-4"
+      >
+        {/* Category */}
+        <Input
+          label="Category"
+          required
+          id="category"
+          placeholder="e.g., Hardware, Software, Personnel"
+          value={formData.category}
+          onChange={(e) => handleInputChange("category", e.target.value)}
+          disabled={isSubmitting}
+        />
 
-          {/* Allocated Amount */}
-          <Input
-            label="Allocated Amount"
-            required
-            id="allocatedAmount"
-            type="number"
-            placeholder="0.00"
-            step="0.01"
-            value={formData.allocatedAmount}
-            onChange={(e) =>
-              handleInputChange("allocatedAmount", e.target.value)
-            }
-            disabled={isSubmitting}
-          />
+        {/* Description */}
+        <Textarea
+          label="Description"
+          id="description"
+          placeholder="Describe this budget item (optional)"
+          value={formData.description}
+          onChange={(e) => handleInputChange("description", e.target.value)}
+          disabled={isSubmitting}
+          rows={3}
+        />
 
-          {/* Actions */}
-          <div className="flex gap-2 pt-4">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-              disabled={isSubmitting}
-              className="flex-1"
-            >
-              Cancel
-            </Button>
-            <Button type="submit" disabled={isSubmitting} className="flex-1">
-              {isSubmitting ? "Adding..." : "Add Item"}
-            </Button>
-          </div>
-        </form>
-      </DialogContent>
-    </Dialog>
+        {/* Allocated Amount */}
+        <Input
+          label="Allocated Amount"
+          required
+          id="allocatedAmount"
+          type="number"
+          placeholder="0.00"
+          step="0.01"
+          value={formData.allocatedAmount}
+          onChange={(e) =>
+            handleInputChange("allocatedAmount", e.target.value)
+          }
+          disabled={isSubmitting}
+        />
+      </form>
+    </ResponsiveSheet>
   );
 }
