@@ -123,7 +123,7 @@ export function CreatePOFromRequisitionDialog({
         </span>
       }
       description="Select an approval workflow for the new purchase order. The PO will be created from the approved requisition below."
-      desktopMaxWidth="max-w-5xl"
+      desktopMaxWidth="sm:max-w-5xl"
       dismissibleOnOutsideClick={false}
       footer={
         <div className="flex flex-wrap items-center justify-end gap-2">
