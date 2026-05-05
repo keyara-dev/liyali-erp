@@ -2,13 +2,7 @@
 
 import { useState, useMemo } from "react";
 import Link from "next/link";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { ResponsiveSheet } from "@/components/ui/responsive-sheet";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Label } from "@/components/ui/label";
@@ -146,25 +140,43 @@ export function CreatePVFromPODialog({
     (g) => g.documentNumber === selectedGRNDocNumber,
   );
 
-  return (
-    <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent
-        className="max-w-2xl! p-0 flex flex-col h-[90svh] max-h-[90vh] overflow-hidden"
-        onInteractOutside={(e) => e.preventDefault()}
+  const footerContent = (
+    <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 w-full">
+      <Button
+        type="button"
+        variant="outline"
+        onClick={handleClose}
+        disabled={isCreating}
       >
-        <DialogHeader className="p-4 pb-3 shrink-0 border-b">
-          <DialogTitle className="flex items-center gap-2">
-            <FileText className="h-5 w-5" />
-            Create Payment Voucher
-          </DialogTitle>
-          <DialogDescription>
-            Create a payment voucher from this approved purchase order. The PV
-            starts as a draft — you'll pick the approval workflow when
-            submitting it.
-          </DialogDescription>
-        </DialogHeader>
+        Cancel
+      </Button>
+      <Button
+        onClick={handleConfirm}
+        disabled={isCreating || !canCreate}
+        isLoading={isCreating}
+        loadingText="Creating..."
+      >
+        <FileText className="mr-2 h-4 w-4" />
+        Create Payment Voucher
+      </Button>
+    </div>
+  );
 
-        <div className="flex-1 overflow-y-auto p-4 space-y-4 min-w-0">
+  return (
+    <ResponsiveSheet
+      open={open}
+      onOpenChange={handleClose}
+      title={
+        <span className="flex items-center gap-2">
+          <FileText className="h-5 w-5" />
+          Create Payment Voucher
+        </span>
+      }
+      description="Create a payment voucher from this approved purchase order. The PV starts as a draft — you'll pick the approval workflow when submitting it."
+      desktopMaxWidth="sm:max-w-2xl"
+      footer={footerContent}
+    >
+        <div className="space-y-4 min-w-0">
           {/* Configuration Checklist Banner */}
           {!configStatus.allConfigured && (
             <ConfigurationChecklistBanner
@@ -397,28 +409,6 @@ export function CreatePVFromPODialog({
             </Alert>
           )}
         </div>
-
-        {/* Sticky Footer */}
-        <div className="shrink-0 border-t bg-card/5 backdrop-blur-xs flex flex-col-reverse sm:flex-row justify-end gap-2 p-4">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={handleClose}
-            disabled={isCreating}
-          >
-            Cancel
-          </Button>
-          <Button
-            onClick={handleConfirm}
-            disabled={isCreating || !canCreate}
-            isLoading={isCreating}
-            loadingText="Creating..."
-          >
-            <FileText className="mr-2 h-4 w-4" />
-            Create Payment Voucher
-          </Button>
-        </div>
-      </DialogContent>
-    </Dialog>
+    </ResponsiveSheet>
   );
 }
