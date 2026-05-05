@@ -30,7 +30,6 @@ const MORE_LINKS: MoreLink[] = [
   { href: "/payment-vouchers", label: "Payment Vouchers" },
   { href: "/grn", label: "Goods Received Notes" },
   { href: "/budgets", label: "Budgets" },
-  { href: "/reports", label: "Reports" },
   { href: "/settings", label: "Settings" },
 ];
 
