@@ -119,4 +119,19 @@ describe("DataList", () => {
     const skeletonEls = container.querySelectorAll('[class*="animate-pulse"]');
     expect(skeletonEls.length).toBeGreaterThan(0);
   });
+
+  it("applies align class to header and cell when align is set", () => {
+    const { container } = render(
+      <DataList<Row>
+        rows={[{ id: "1", name: "alpha" }]}
+        getRowId={(r) => r.id}
+        columns={[{ id: "name", header: "Name", cell: (r) => r.name, align: "right" }]}
+        mobileCard={(r) => <div>{r.name}</div>}
+      />
+    );
+    const ths = container.querySelectorAll("th");
+    const tds = container.querySelectorAll("td");
+    expect(Array.from(ths).some((el) => el.className.includes("text-right"))).toBe(true);
+    expect(Array.from(tds).some((el) => el.className.includes("text-right"))).toBe(true);
+  });
 });

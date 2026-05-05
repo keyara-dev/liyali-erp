@@ -22,6 +22,8 @@ export interface DataListColumn<T> {
    * 'lg' = visible lg+
    */
   priority?: "always" | "md" | "lg";
+  /** Text alignment for header and cell. Default 'left'. */
+  align?: "left" | "right" | "center";
   className?: string;
 }
 
@@ -42,6 +44,12 @@ const HIDE: Record<NonNullable<DataListColumn<unknown>["priority"]>, string> = {
   always: "",
   md: "hidden md:table-cell",
   lg: "hidden lg:table-cell",
+};
+
+const ALIGN: Record<NonNullable<DataListColumn<unknown>["align"]>, string> = {
+  left: "",
+  right: "text-right",
+  center: "text-center",
 };
 
 /**
@@ -78,7 +86,7 @@ export function DataList<T>({
             <TableHeader>
               <TableRow>
                 {columns.map((c) => (
-                  <TableHead key={c.id} className={cn(HIDE[c.priority || "always"])}>
+                  <TableHead key={c.id} className={cn(HIDE[c.priority || "always"], ALIGN[c.align || "left"])}>
                     {c.header}
                   </TableHead>
                 ))}
@@ -88,7 +96,7 @@ export function DataList<T>({
               {Array.from({ length: skeletonRows }).map((_, i) => (
                 <TableRow key={i}>
                   {columns.map((c) => (
-                    <TableCell key={c.id} className={cn(HIDE[c.priority || "always"])}>
+                    <TableCell key={c.id} className={cn(HIDE[c.priority || "always"], ALIGN[c.align || "left"])}>
                       <Skeleton className="h-4 w-24" />
                     </TableCell>
                   ))}
@@ -127,7 +135,7 @@ export function DataList<T>({
           <TableHeader>
             <TableRow>
               {columns.map((c) => (
-                <TableHead key={c.id} className={cn(HIDE[c.priority || "always"], c.className)}>
+                <TableHead key={c.id} className={cn(HIDE[c.priority || "always"], ALIGN[c.align || "left"], c.className)}>
                   {c.header}
                 </TableHead>
               ))}
@@ -159,7 +167,7 @@ export function DataList<T>({
                 className={onRowClick ? "cursor-pointer" : undefined}
               >
                 {columns.map((c) => (
-                  <TableCell key={c.id} className={cn(HIDE[c.priority || "always"], c.className)}>
+                  <TableCell key={c.id} className={cn(HIDE[c.priority || "always"], ALIGN[c.align || "left"], c.className)}>
                     {c.cell(row)}
                   </TableCell>
                 ))}
