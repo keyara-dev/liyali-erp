@@ -74,6 +74,11 @@ vi.mock("@/components/ui/dropdown-menu", () => ({
 // Mock all the complex components in the detail client
 vi.mock("@/components/ui/card", () => ({
   Card: ({ children }: any) => <div>{children}</div>,
+  CardContent: ({ children }: any) => <div>{children}</div>,
+  CardHeader: ({ children }: any) => <div>{children}</div>,
+  CardTitle: ({ children }: any) => <div>{children}</div>,
+  CardDescription: ({ children }: any) => <div>{children}</div>,
+  CardFooter: ({ children }: any) => <div>{children}</div>,
 }));
 
 vi.mock("@/components/ui/button", () => ({
