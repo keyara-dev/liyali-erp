@@ -255,6 +255,7 @@ export function BudgetsTable({
           size="sm"
           variant="outline"
           onClick={() => router.push(`/budgets/${row.id}`)}
+          aria-label="Row actions"
         >
           <Eye className="h-4 w-4 mr-1" />
           View Details
