@@ -22,7 +22,11 @@ export interface DataListColumn<T> {
    * 'lg' = visible lg+
    */
   priority?: "always" | "md" | "lg";
-  /** Text alignment for header and cell. Default 'left'. */
+  /**
+   * Text alignment for header and cell on the desktop table only.
+   * The mobile card layout is owned by the `mobileCard` render prop and
+   * ignores `align`. Default `"left"`.
+   */
   align?: "left" | "right" | "center";
   className?: string;
 }
