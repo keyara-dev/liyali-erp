@@ -1,31 +1,12 @@
 "use client";
 
-import { useMemo, useEffect } from "react";
-import * as React from "react";
+import { useMemo, useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import {
-  ColumnDef,
-  ColumnFiltersState,
-  SortingState,
-  VisibilityState,
-  flexRender,
-  getCoreRowModel,
-  getFilteredRowModel,
-  getPaginationRowModel,
-  getSortedRowModel,
-  useReactTable,
-} from "@tanstack/react-table";
 import { useRouter } from "next/navigation";
-import { ArrowUpDown, Eye, FolderOpen } from "lucide-react";
+import { Eye, FolderOpen } from "lucide-react";
 
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { DataList, DataListColumn } from "@/components/ui/data-list";
+import { FilterBar } from "@/components/ui/filter-bar";
 import {
   Empty,
   EmptyContent,
@@ -36,50 +17,19 @@ import {
 } from "@/components/ui/empty";
 import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { CustomPagination } from "@/components/ui/custom-pagination";
 import { useBudgets } from "@/hooks/use-budget-queries";
 import { Budget } from "@/types/budget";
 import { QUERY_KEYS } from "@/lib/constants";
-
-const COLUMN_COUNT = 8; // matches the number of columns in the table
-
-function BudgetsTableSkeleton() {
-  return (
-    <div className="space-y-4">
-      <div className="bg-card rounded-lg border">
-        {/* Header */}
-        <div className="grid grid-cols-8 gap-4 p-4 border-b">
-          {Array.from({ length: COLUMN_COUNT }).map((_, i) => (
-            <div key={i} className="h-4 bg-muted rounded animate-pulse" />
-          ))}
-        </div>
-        {/* Rows */}
-        {Array.from({ length: 5 }).map((_, row) => (
-          <div
-            key={row}
-            className="grid grid-cols-8 gap-4 p-4 border-b last:border-b-0"
-          >
-            {Array.from({ length: COLUMN_COUNT }).map((_, col) => (
-              <div
-                key={col}
-                className="h-4 bg-muted rounded animate-pulse"
-              />
-            ))}
-          </div>
-        ))}
-      </div>
-      {/* Pagination placeholder */}
-      <div className="flex items-center justify-between">
-        <div className="h-4 bg-muted rounded w-32 animate-pulse" />
-        <div className="flex space-x-2">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="h-8 w-8 bg-muted rounded animate-pulse" />
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
+import { useDebounce } from "@/hooks/use-debounce";
 
 interface BudgetsTableProps {
   userRole: string;
@@ -87,6 +37,8 @@ interface BudgetsTableProps {
   onBudgetAction: () => void;
   initialData?: Budget[];
 }
+
+const PAGE_SIZE = 10;
 
 export function BudgetsTable({
   userRole,
@@ -113,72 +65,167 @@ export function BudgetsTable({
     }
   }, [refreshTrigger, refetch, queryClient]);
 
-  const [sorting, setSorting] = React.useState<SortingState>([]);
-  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
-    [],
+  // Filter state
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [yearFilter, setYearFilter] = useState<string>("all");
+  const [departmentFilter, setDepartmentFilter] = useState<string>("all");
+  const [page, setPage] = useState(1);
+  const debouncedSearch = useDebounce(searchQuery, 500);
+
+  // Reset to page 1 whenever filters change
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch, statusFilter, yearFilter, departmentFilter]);
+
+  // Dynamic filter options derived from data
+  const fiscalYears = useMemo(
+    () =>
+      Array.from(new Set(budgets.map((b) => b.fiscalYear).filter(Boolean)))
+        .sort()
+        .reverse(),
+    [budgets],
   );
-  const [columnVisibility, setColumnVisibility] =
-    React.useState<VisibilityState>({});
 
-  const columns: ColumnDef<Budget>[] = [
+  const departments = useMemo(
+    () =>
+      Array.from(new Set(budgets.map((b) => b.department).filter(Boolean))).sort(),
+    [budgets],
+  );
+
+  // Client-side filtering
+  const filteredBudgets = useMemo(() => {
+    let filtered = budgets;
+    if (statusFilter !== "all") {
+      filtered = filtered.filter(
+        (b) => b.status?.toLowerCase() === statusFilter.toLowerCase(),
+      );
+    }
+    if (yearFilter !== "all") {
+      filtered = filtered.filter((b) => String(b.fiscalYear) === yearFilter);
+    }
+    if (departmentFilter !== "all") {
+      filtered = filtered.filter((b) => b.department === departmentFilter);
+    }
+    if (debouncedSearch) {
+      const s = debouncedSearch.toLowerCase();
+      filtered = filtered.filter(
+        (b) =>
+          b.name?.toLowerCase().includes(s) ||
+          b.budgetCode?.toLowerCase().includes(s) ||
+          b.description?.toLowerCase?.().includes(s),
+      );
+    }
+    return filtered;
+  }, [budgets, statusFilter, yearFilter, departmentFilter, debouncedSearch]);
+
+  // Pagination
+  const totalRows = filteredBudgets.length;
+  const totalPages = Math.max(1, Math.ceil(totalRows / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const pagedBudgets = filteredBudgets.slice(
+    (safePage - 1) * PAGE_SIZE,
+    safePage * PAGE_SIZE,
+  );
+
+  const paginationData = useMemo(
+    () => ({
+      page: safePage,
+      limit: PAGE_SIZE,
+      total: totalRows,
+      totalPages,
+      hasNext: safePage < totalPages,
+      hasPrev: safePage > 1,
+      page_size: PAGE_SIZE,
+      total_pages: totalPages,
+      totalCount: totalRows,
+      has_next: safePage < totalPages,
+      has_prev: safePage > 1,
+    }),
+    [safePage, totalRows, totalPages],
+  );
+
+  const hasActiveFilters =
+    Boolean(searchQuery) ||
+    statusFilter !== "all" ||
+    yearFilter !== "all" ||
+    departmentFilter !== "all";
+
+  const clearFilters = () => {
+    setSearchQuery("");
+    setStatusFilter("all");
+    setYearFilter("all");
+    setDepartmentFilter("all");
+  };
+
+  // DataList columns
+  const columns: DataListColumn<Budget>[] = [
     {
-      accessorKey: "budgetCode",
-      header: ({ column }) => (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-          className="-ml-3"
-        >
-          Budget Code
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      ),
-      cell: ({ row }) => (
-        <div className="font-semibold">{row.getValue("budgetCode")}</div>
+      id: "budgetCode",
+      header: "Budget Code",
+      priority: "always",
+      cell: (row) => (
+        <div className="font-semibold">{row.budgetCode}</div>
       ),
     },
     {
-      accessorKey: "department",
+      id: "name",
+      header: "Name",
+      priority: "md",
+      cell: (row) => (
+        <div>
+          <div className="font-medium line-clamp-1">{row.name}</div>
+          {row.description && (
+            <div className="text-xs text-muted-foreground line-clamp-1">
+              {row.description}
+            </div>
+          )}
+        </div>
+      ),
+    },
+    {
+      id: "department",
       header: "Department",
-      cell: ({ row }) => <div>{row.getValue("department")}</div>,
+      priority: "md",
+      cell: (row) => <div>{row.department ?? "—"}</div>,
     },
     {
-      accessorKey: "totalBudget",
+      id: "fiscalYear",
+      header: "FY",
+      priority: "md",
+      align: "right",
+      cell: (row) => <div className="tabular-nums">{row.fiscalYear}</div>,
+    },
+    {
+      id: "totalBudget",
       header: "Total Budget",
-      cell: ({ row }) => (
-        <div className="font-medium">
-          K{(row.original.totalBudget || 0).toLocaleString()}
+      priority: "md",
+      align: "right",
+      cell: (row) => (
+        <div className="font-medium tabular-nums">
+          K{(row.totalBudget || 0).toLocaleString()}
         </div>
       ),
     },
     {
-      accessorKey: "allocatedAmount",
-      header: "Allocated Amount",
-      cell: ({ row }) => (
-        <div className="font-medium">
-          K{(row.original.allocatedAmount || 0).toLocaleString()}
-        </div>
-      ),
+      id: "utilization",
+      header: "Used",
+      priority: "lg",
+      align: "right",
+      cell: (row) => {
+        const used = row.allocatedAmount ?? 0;
+        const total = row.totalBudget ?? 0;
+        const pct = total > 0 ? Math.round((used / total) * 100) : 0;
+        return <span className="tabular-nums">{pct}%</span>;
+      },
     },
     {
-      accessorKey: "fiscalYear",
-      header: "Fiscal Year",
-      cell: ({ row }) => <div>{row.getValue("fiscalYear")}</div>,
-    },
-    {
-      accessorKey: "status",
-      header: "Status",
-      cell: ({ row }) => (
-        <StatusBadge status={row.getValue("status")} type="document" />
-      ),
-    },
-    {
-      accessorKey: "approvalStage",
-      header: "Approval Stage",
-      cell: ({ row }) => {
-        const status = row.original.status;
-        const stage = row.original.approvalStage;
-
+      id: "approvalStage",
+      header: "Stage",
+      priority: "lg",
+      cell: (row) => {
+        const status = row.status;
+        const stage = row.approvalStage;
         return (
           <div className="text-sm">
             {status?.toUpperCase() === "DRAFT"
@@ -195,12 +242,19 @@ export function BudgetsTable({
       },
     },
     {
+      id: "status",
+      header: "Status",
+      priority: "always",
+      cell: (row) => <StatusBadge status={row.status} type="document" />,
+    },
+    {
       id: "actions",
-      cell: ({ row }) => (
+      header: <span className="sr-only">Actions</span>,
+      cell: (row) => (
         <Button
           size="sm"
           variant="outline"
-          onClick={() => router.push(`/budgets/${row.original.id}`)}
+          onClick={() => router.push(`/budgets/${row.id}`)}
         >
           <Eye className="h-4 w-4 mr-1" />
           View Details
@@ -209,130 +263,162 @@ export function BudgetsTable({
     },
   ];
 
-  const table = useReactTable({
-    data: budgets,
-    columns,
-    onSortingChange: setSorting,
-    onColumnFiltersChange: setColumnFilters,
-    getCoreRowModel: getCoreRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
-    onColumnVisibilityChange: setColumnVisibility,
-    state: {
-      sorting,
-      columnFilters,
-      columnVisibility,
-    },
-  });
-
-  // Derive pagination directly from table state
-  const pageIndex = table.getState().pagination.pageIndex;
-  const pageSize = table.getState().pagination.pageSize;
-  const totalRows = table.getFilteredRowModel().rows.length;
-  const totalPages = table.getPageCount();
-
-  const paginationData = useMemo(
-    () => ({
-      page: pageIndex + 1,
-      limit: pageSize,
-      total: totalRows,
-      totalPages,
-      hasNext: pageIndex + 1 < totalPages,
-      hasPrev: pageIndex > 0,
-      page_size: pageSize,
-      total_pages: totalPages,
-      totalCount: totalRows,
-      has_next: pageIndex + 1 < totalPages,
-      has_prev: pageIndex > 0,
-    }),
-    [pageIndex, pageSize, totalRows, totalPages],
-  );
-
-  if (isLoading) {
-    return <BudgetsTableSkeleton />;
-  }
-
   return (
     <div className="space-y-4">
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id}>
-                {headerGroup.headers.map((header) => {
-                  return (
-                    <TableHead key={header.id}>
-                      {header.isPlaceholder
-                        ? null
-                        : flexRender(
-                            header.column.columnDef.header,
-                            header.getContext(),
-                          )}
-                    </TableHead>
-                  );
-                })}
-              </TableRow>
-            ))}
-          </TableHeader>
-          <TableBody>
-            {table.getRowModel().rows?.length ? (
-              table.getRowModel().rows.map((row) => (
-                <TableRow
-                  key={row.id}
-                  data-state={row.getIsSelected() && "selected"}
+      {/* Filter Bar */}
+      <FilterBar
+        hasActiveFilters={hasActiveFilters}
+        onReset={clearFilters}
+        search={
+          <Input
+            placeholder="Search budgets..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="h-8 w-full sm:w-56"
+          />
+        }
+        filters={
+          <>
+            <Select value={yearFilter} onValueChange={setYearFilter}>
+              <SelectTrigger className="h-8 w-full sm:w-32">
+                <SelectValue placeholder="Fiscal Year" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Years</SelectItem>
+                {fiscalYears.map((fy) => (
+                  <SelectItem key={fy} value={String(fy)}>
+                    FY {fy}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
+              <SelectTrigger className="h-8 w-full sm:w-40">
+                <SelectValue placeholder="Department" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Departments</SelectItem>
+                {departments.map((dept) => (
+                  <SelectItem key={dept} value={dept}>
+                    {dept}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="h-8 w-full sm:w-36">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Statuses</SelectItem>
+                <SelectItem value="draft">Draft</SelectItem>
+                <SelectItem value="pending">Pending</SelectItem>
+                <SelectItem value="approved">Approved</SelectItem>
+                <SelectItem value="rejected">Rejected</SelectItem>
+                <SelectItem value="completed">Completed</SelectItem>
+                <SelectItem value="cancelled">Cancelled</SelectItem>
+              </SelectContent>
+            </Select>
+          </>
+        }
+      />
+
+      {/* Data table */}
+      <DataList
+        rows={pagedBudgets}
+        columns={columns}
+        getRowId={(row) => row.id}
+        isLoading={isLoading}
+        onRowClick={(row) => router.push(`/budgets/${row.id}`)}
+        emptyMessage={
+          <Empty className="border-0">
+            <EmptyContent>
+              <EmptyHeader>
+                <EmptyMedia variant="icon">
+                  <FolderOpen />
+                </EmptyMedia>
+                <EmptyTitle>No budgets found</EmptyTitle>
+                <EmptyDescription>
+                  {hasActiveFilters
+                    ? "No budgets match your current filters. Try clearing them."
+                    : "You haven't created any budgets yet. Create your first budget to get started."}
+                </EmptyDescription>
+              </EmptyHeader>
+            </EmptyContent>
+          </Empty>
+        }
+        mobileCard={(row) => {
+          const used = row.allocatedAmount ?? 0;
+          const total = row.totalBudget ?? 0;
+          const pct = total > 0 ? Math.round((used / total) * 100) : 0;
+          const status = row.status;
+          const stage = row.approvalStage;
+          const stageLabel =
+            status?.toUpperCase() === "DRAFT"
+              ? "Not submitted"
+              : status?.toUpperCase() === "APPROVED"
+                ? "Completed"
+                : status?.toUpperCase() === "REJECTED"
+                  ? "Rejected"
+                  : stage > 0
+                    ? `Stage ${stage}`
+                    : "Pending";
+
+          return (
+            <div className="flex flex-col gap-2">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <div className="font-semibold text-primary line-clamp-1">
+                    {row.budgetCode}
+                  </div>
+                  <div className="text-xs text-muted-foreground line-clamp-1">
+                    {row.name}
+                  </div>
+                  <div className="text-xs text-muted-foreground line-clamp-1">
+                    {row.department ?? "—"} · FY {row.fiscalYear}
+                  </div>
+                </div>
+                <StatusBadge status={row.status} type="document" />
+              </div>
+              <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                <span>K{(total).toLocaleString()}</span>
+                <span>·</span>
+                <span className="tabular-nums">{pct}% used</span>
+                <span>·</span>
+                <span>{stageLabel}</span>
+              </div>
+              {/* Progress bar */}
+              <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                <div
+                  className="h-full bg-primary transition-all"
+                  style={{ width: `${Math.min(pct, 100)}%` }}
+                />
+              </div>
+              <div className="pt-1">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => router.push(`/budgets/${row.id}`)}
                 >
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext(),
-                      )}
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell colSpan={columns.length} className="h-24 p-0">
-                  <Empty className="border-0">
-                    <EmptyContent>
-                      <EmptyHeader>
-                        <EmptyMedia variant="icon">
-                          <FolderOpen />
-                        </EmptyMedia>
-                        <EmptyTitle>
-                          {isLoading
-                            ? "Loading budgets..."
-                            : "No budgets found"}
-                        </EmptyTitle>
-                        <EmptyDescription>
-                          {isLoading
-                            ? "Please wait while we fetch your budgets."
-                            : "You haven't created any budgets yet. Create your first budget to get started."}
-                        </EmptyDescription>
-                      </EmptyHeader>
-                    </EmptyContent>
-                  </Empty>
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </div>
+                  <Eye className="h-4 w-4 mr-1" />
+                  View Details
+                </Button>
+              </div>
+            </div>
+          );
+        }}
+      />
 
       {/* Pagination */}
-      <CustomPagination
-        pagination={paginationData}
-        updatePagination={(newPagination) => {
-          table.setPageIndex((newPagination.page ?? 1) - 1);
-          if (newPagination.page_size) {
-            table.setPageSize(newPagination.page_size);
-          }
-        }}
-        allowSetPageSize
-        showDetails
-      />
+      {totalRows > PAGE_SIZE && (
+        <CustomPagination
+          pagination={paginationData}
+          updatePagination={(newPagination) => {
+            if (newPagination.page) setPage(newPagination.page);
+          }}
+          showDetails
+        />
+      )}
     </div>
   );
 }
