@@ -7,13 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { ResponsiveSheet } from "@/components/ui/responsive-sheet";
 import { Vendor } from "@/types/vendor";
 import { useCreateVendor, useUpdateVendor } from "@/hooks/use-vendor-queries";
 
@@ -123,13 +117,29 @@ export function VendorFormDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-xl overflow-y-auto max-h-[90svh] p-0">
-        <DialogHeader className="px-6 pt-6 pb-2">
-          <DialogTitle>{isEdit ? "Edit Vendor" : "Add Vendor"}</DialogTitle>
-        </DialogHeader>
-
-        <form onSubmit={handleSubmit} className="px-6 pb-2 space-y-6">
+    <ResponsiveSheet
+      open={open}
+      onOpenChange={onOpenChange}
+      title={isEdit ? "Edit Vendor" : "Add Vendor"}
+      desktopMaxWidth="sm:max-w-xl"
+      footer={
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            disabled={isPending}
+          >
+            Cancel
+          </Button>
+          <Button type="submit" form="vendor-form" disabled={isPending}>
+            {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {isEdit ? "Save Changes" : "Add Vendor"}
+          </Button>
+        </div>
+      }
+    >
+      <form id="vendor-form" onSubmit={handleSubmit} className="pb-2 space-y-6">
           {/* ── Basic Information ── */}
           <section className="space-y-3">
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
@@ -380,22 +390,7 @@ export function VendorFormDialog({
             </div>
           )}
 
-          <DialogFooter className="pb-4 pt-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-              disabled={isPending}
-            >
-              Cancel
-            </Button>
-            <Button type="submit" disabled={isPending}>
-              {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {isEdit ? "Save Changes" : "Add Vendor"}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+      </form>
+    </ResponsiveSheet>
   );
 }
