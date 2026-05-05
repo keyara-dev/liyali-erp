@@ -2,12 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { ResponsiveSheet } from "@/components/ui/responsive-sheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -439,58 +434,115 @@ export function CreateRequisitionDialog({
     }
   };
 
+  const stepIndicator = (
+    <div className="flex items-center gap-1 pt-3">
+      <button
+        type="button"
+        onClick={() => setStep("details")}
+        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+          step === "details"
+            ? "bg-primary text-primary-foreground"
+            : "text-muted-foreground hover:text-foreground"
+        }`}
+      >
+        <span
+          className={`inline-flex items-center justify-center w-4 h-4 rounded-full text-[10px] font-bold ${step === "details" ? "bg-primary-foreground/20" : "bg-muted"}`}
+        >
+          1
+        </span>
+        Details
+      </button>
+      <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50" />
+      <button
+        type="button"
+        onClick={() => {
+          if (validateDetails()) setStep("items");
+        }}
+        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+          step === "items"
+            ? "bg-primary text-primary-foreground"
+            : "text-muted-foreground hover:text-foreground"
+        }`}
+      >
+        <span
+          className={`inline-flex items-center justify-center w-4 h-4 rounded-full text-[10px] font-bold ${step === "items" ? "bg-primary-foreground/20" : "bg-muted"}`}
+        >
+          2
+        </span>
+        Items{" "}
+        {formData.items.length > 0 && (
+          <span className="opacity-70">({formData.items.length})</span>
+        )}
+      </button>
+    </div>
+  );
+
+  const sheetFooter = (
+    <div className="flex flex-wrap items-center justify-end gap-3">
+      {step === "details" ? (
+        <>
+          <Button
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            disabled={createMutation.isPending || updateMutation.isPending}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={() => {
+              if (validateDetails()) setStep("items");
+            }}
+            className="gap-2 min-w-32"
+          >
+            Next
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </>
+      ) : (
+        <>
+          <Button
+            variant="outline"
+            onClick={() => setStep("details")}
+            className="gap-2"
+            disabled={createMutation.isPending || updateMutation.isPending}
+          >
+            <ChevronLeft className="h-4 w-4" />
+            Back
+          </Button>
+          <Button
+            onClick={handleSubmit}
+            isLoading={createMutation.isPending || updateMutation.isPending}
+            loadingText={isEditing ? "Updating..." : "Creating..."}
+            className="min-w-32"
+            disabled={
+              createMutation.isPending ||
+              updateMutation.isPending ||
+              !configStatus.allConfigured
+            }
+          >
+            {isEditing ? "Update Requisition" : "Create Requisition"}
+          </Button>
+        </>
+      )}
+    </div>
+  );
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl! p-0 flex flex-col h-[90svh] max-h-[90vh]">
-        <DialogHeader className="p-4 pb-0 shrink-0">
-          <DialogTitle className="font-bold">
+    <ResponsiveSheet
+      open={open}
+      onOpenChange={onOpenChange}
+      title={
+        <>
+          <span className="font-bold">
             {isEditing ? "Edit Requisition" : "Create New Requisition"}
-          </DialogTitle>
-
-          {/* Step indicator */}
-          <div className="flex items-center gap-1 pt-3">
-            <button
-              type="button"
-              onClick={() => setStep("details")}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
-                step === "details"
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <span
-                className={`inline-flex items-center justify-center w-4 h-4 rounded-full text-[10px] font-bold ${step === "details" ? "bg-primary-foreground/20" : "bg-muted"}`}
-              >
-                1
-              </span>
-              Details
-            </button>
-            <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50" />
-            <button
-              type="button"
-              onClick={() => {
-                if (validateDetails()) setStep("items");
-              }}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
-                step === "items"
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <span
-                className={`inline-flex items-center justify-center w-4 h-4 rounded-full text-[10px] font-bold ${step === "items" ? "bg-primary-foreground/20" : "bg-muted"}`}
-              >
-                2
-              </span>
-              Items{" "}
-              {formData.items.length > 0 && (
-                <span className="opacity-70">({formData.items.length})</span>
-              )}
-            </button>
-          </div>
-        </DialogHeader>
-
-        <div className="flex-1 overflow-y-auto space-y-6 p-4">
+          </span>
+          {stepIndicator}
+        </>
+      }
+      desktopMaxWidth="max-w-3xl!"
+      footer={sheetFooter}
+    >
+        <div className="space-y-6 p-4">
           {/* Configuration Checklist Banner - Show if any required configs are missing */}
           {!configStatus.allConfigured && !configStatus.isLoading && (
             <ConfigurationChecklistBanner
@@ -963,56 +1015,6 @@ export function CreateRequisitionDialog({
             </>
           )}
         </div>
-
-        {/* Dialog Footer */}
-        <div className="bg-card/5 backdrop-blur-xs shrink-0 flex flex-col-reverse justify-end gap-3 p-4 rounded-b-lg border-t py-6 sm:flex-row sm:py-6">
-          {step === "details" ? (
-            <>
-              <Button
-                variant="outline"
-                onClick={() => onOpenChange(false)}
-                disabled={createMutation.isPending || updateMutation.isPending}
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={() => {
-                  if (validateDetails()) setStep("items");
-                }}
-                className="gap-2 min-w-32"
-              >
-                Next
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </>
-          ) : (
-            <>
-              <Button
-                variant="outline"
-                onClick={() => setStep("details")}
-                className="gap-2"
-                disabled={createMutation.isPending || updateMutation.isPending}
-              >
-                <ChevronLeft className="h-4 w-4" />
-                Back
-              </Button>
-              <Button
-                onClick={handleSubmit}
-                isLoading={createMutation.isPending || updateMutation.isPending}
-                loadingText={isEditing ? "Updating..." : "Creating..."}
-                className="min-w-32"
-                disabled={
-                  createMutation.isPending ||
-                  updateMutation.isPending ||
-                  !configStatus.allConfigured
-                }
-              >
-                {isEditing ? "Update Requisition" : "Create Requisition"}
-              </Button>
-            </>
-          )}
-        </div>
-      </DialogContent>
-    </Dialog>
+    </ResponsiveSheet>
   );
 }
