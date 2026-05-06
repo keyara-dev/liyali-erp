@@ -54,6 +54,7 @@ export function Step2VendorQuotes({
 }: Step2Props) {
   const [showInlineForm, setShowInlineForm] = useState(false);
   const [showNoVendorWarning, setShowNoVendorWarning] = useState(false);
+  const [showNoQuotationWarning, setShowNoQuotationWarning] = useState(false);
 
   const { data: allVendors = [], isLoading: vendorsLoading } = useVendors();
 
@@ -188,11 +189,23 @@ export function Step2VendorQuotes({
   // ── next ───────────────────────────────────────────────────────────────────
 
   const handleNext = () => {
-    if (!data.selectedVendorLocalId) {
+    // Must have at least one quotation added
+    if (liveQuotations.length === 0) {
+      setShowNoQuotationWarning(true);
+      setShowNoVendorWarning(false);
+      return;
+    }
+    // Must have selected a quotation row (vendor + amount)
+    if (
+      !data.selectedVendorLocalId ||
+      data.selectedQuotedAmount === undefined
+    ) {
       setShowNoVendorWarning(true);
+      setShowNoQuotationWarning(false);
       return;
     }
     setShowNoVendorWarning(false);
+    setShowNoQuotationWarning(false);
     onNext();
   };
 
@@ -274,7 +287,22 @@ export function Step2VendorQuotes({
           />
         )}
 
-        {/* ── No vendor warning ── */}
+        {/* ── No quotation warning ── */}
+        {showNoQuotationWarning && (
+          <Alert
+            variant="default"
+            className="border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-700"
+            data-testid="no-quotation-warning"
+          >
+            <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+            <AlertDescription className="text-amber-800 dark:text-amber-200">
+              At least one quotation is required before proceeding. Click{" "}
+              <strong>+ Add Quotation</strong> to add one.
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {/* ── No vendor / quotation selection warning ── */}
         {showNoVendorWarning && (
           <Alert
             variant="default"
@@ -283,30 +311,9 @@ export function Step2VendorQuotes({
           >
             <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
             <AlertDescription className="text-amber-800 dark:text-amber-200">
-              No supplier selected. You can still proceed — the supplier can be
-              assigned later.
-              <div className="mt-2 flex gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowNoVendorWarning(false)}
-                >
-                  Go Back
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  className="bg-amber-600 hover:bg-amber-700 text-white"
-                  onClick={() => {
-                    setShowNoVendorWarning(false);
-                    onNext();
-                  }}
-                  data-testid="no-vendor-warning-proceed"
-                >
-                  Proceed Anyway
-                </Button>
-              </div>
+              Please select a quotation before proceeding. Click the{" "}
+              <strong>Select</strong> button on a quotation row to choose your
+              supplier.
             </AlertDescription>
           </Alert>
         )}
