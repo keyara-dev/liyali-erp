@@ -30,8 +30,15 @@ export interface ResponsiveSheetProps {
   description?: React.ReactNode;
   children: React.ReactNode;
   footer?: React.ReactNode;
-  /** Tailwind max-w on desktop. */
+  /** Tailwind max-w on desktop. Ignored when `fullScreen` is true. */
   desktopMaxWidth?: string;
+  /**
+   * Fill the viewport. Desktop: 95vw × 95vh. Mobile: inset-0 (full-screen
+   * drawer with top sheet edge instead of a partial pull-up). Use for
+   * PDF/image viewers and other read-only content that needs maximum screen
+   * area. Default: false.
+   */
+  fullScreen?: boolean;
   /**
    * When false, clicking the backdrop / pressing Escape / dragging the sheet
    * down does NOT dismiss. Use for forms with unsaved state.
@@ -49,6 +56,7 @@ export function ResponsiveSheet({
   children,
   footer,
   desktopMaxWidth = "sm:max-w-lg",
+  fullScreen = false,
   dismissibleOnOutsideClick = true,
   className,
 }: ResponsiveSheetProps) {
@@ -65,13 +73,23 @@ export function ResponsiveSheet({
           <Vaul.Overlay className="fixed inset-0 bg-black/40 z-50" />
           <Vaul.Content
             className={cn(
-              "fixed bottom-0 left-0 right-0 z-50 mt-24 flex max-h-[90svh] flex-col rounded-t-xl bg-background border-t",
+              "fixed left-0 right-0 z-50 flex flex-col bg-background border-t",
+              fullScreen
+                ? "inset-0 rounded-none"
+                : "bottom-0 mt-24 max-h-[90svh] rounded-t-xl",
               className
             )}
           >
-            <div className="mx-auto mt-2 h-1.5 w-12 shrink-0 rounded-full bg-muted" />
+            {!fullScreen && (
+              <div className="mx-auto mt-2 h-1.5 w-12 shrink-0 rounded-full bg-muted" />
+            )}
             {(title || description) && (
-              <div className="px-4 pt-3 pb-2 space-y-1 shrink-0">
+              <div
+                className={cn(
+                  "px-4 pb-2 space-y-1 shrink-0",
+                  fullScreen ? "pt-4" : "pt-3"
+                )}
+              >
                 {title && (
                   <Vaul.Title className="text-base font-semibold">
                     {title}
@@ -104,8 +122,10 @@ export function ResponsiveSheet({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         className={cn(
-          desktopMaxWidth,
-          "flex flex-col max-h-[90svh] p-0 overflow-hidden gap-0",
+          fullScreen
+            ? "max-w-[95vw] sm:max-w-[95vw] max-h-[95vh] w-[95vw]"
+            : cn(desktopMaxWidth, "max-h-[90svh]"),
+          "flex flex-col p-0 overflow-hidden gap-0",
           className
         )}
         onInteractOutside={
