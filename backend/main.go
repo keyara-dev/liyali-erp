@@ -38,8 +38,13 @@ func init() {
 	if os.Getenv("DB_USER") == "" {
 		os.Setenv("DB_USER", "postgres")
 	}
+	// Railway (and other PaaS) inject PORT; fall back to APP_PORT, then 8080
 	if os.Getenv("APP_PORT") == "" {
-		os.Setenv("APP_PORT", "8080")
+		if port := os.Getenv("PORT"); port != "" {
+			os.Setenv("APP_PORT", port)
+		} else {
+			os.Setenv("APP_PORT", "8080")
+		}
 	}
 	if os.Getenv("FRONTEND_URL") == "" {
 		os.Setenv("FRONTEND_URL", "http://localhost:3000")
