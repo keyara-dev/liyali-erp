@@ -18,7 +18,7 @@ Modern procurement management system with approval workflows, document managemen
 cd backend
 cp .env.example .env          # Configure DATABASE_URL
 go run cmd/migrate/main.go    # Run migrations
-go run main.go                # Start server (http://localhost:8081)
+go run main.go                # Start server (http://localhost:8080)
 ```
 
 ### Frontend
@@ -75,7 +75,7 @@ make deploy-admin        # Deploy admin only
 make pre-deploy          # Pre-deployment checks
 
 # Development
-make dev-backend         # Run backend (http://localhost:8081)
+make dev-backend         # Run backend (http://localhost:8080)
 make dev-web             # Run web (http://localhost:3000)
 make dev-admin           # Run admin (http://localhost:3000)
 
@@ -253,7 +253,7 @@ export default async function Page() {
 ```env
 DATABASE_URL=postgres://user:pass@host:5432/db?sslmode=require
 JWT_SECRET=your-secret-key-min-32-chars
-APP_PORT=8081
+APP_PORT=8080
 FRONTEND_URL=https://your-frontend.com
 ```
 
