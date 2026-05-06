@@ -33,7 +33,9 @@ export interface ReportSeries<T = Record<string, unknown>> {
   color?: string;
 }
 
-export interface ReportChartProps<T extends Record<string, unknown> = Record<string, unknown>> {
+export interface ReportChartProps<
+  T extends Record<string, unknown> = Record<string, unknown>,
+> {
   kind: ReportChartKind;
   data: T[];
   /** Key in each data row to use as the X axis label. */
@@ -76,18 +78,21 @@ export function ReportChart<T extends Record<string, unknown>>({
   }, [series]);
 
   return (
-    <ChartContainer config={config} className={cn("aspect-[16/7] w-full", className)}>
+    <ChartContainer
+      config={config}
+      className={cn("aspect-[16/7] w-full", className)}
+    >
       {kind === "bar" ? (
         <BarChart data={data}>
           <CartesianGrid strokeDasharray="3 3" vertical={false} />
-          <XAxis dataKey={xKey} tickLine={false} axisLine={false} />
+          <XAxis dataKey={xKey as string} tickLine={false} axisLine={false} />
           <YAxis tickLine={false} axisLine={false} width={32} />
           <ChartTooltip content={<ChartTooltipContent />} />
           {showLegend && <ChartLegend content={<ChartLegendContent />} />}
           {series.map((s) => (
             <Bar
               key={s.dataKey}
-              dataKey={s.dataKey}
+              dataKey={s.dataKey as string}
               fill={`var(--color-${s.dataKey})`}
               radius={[4, 4, 0, 0]}
             >
@@ -101,7 +106,7 @@ export function ReportChart<T extends Record<string, unknown>>({
       ) : kind === "line" ? (
         <LineChart data={data}>
           <CartesianGrid strokeDasharray="3 3" vertical={false} />
-          <XAxis dataKey={xKey} tickLine={false} axisLine={false} />
+          <XAxis dataKey={xKey as string} tickLine={false} axisLine={false} />
           <YAxis tickLine={false} axisLine={false} width={32} />
           <ChartTooltip content={<ChartTooltipContent />} />
           {showLegend && <ChartLegend content={<ChartLegendContent />} />}
@@ -109,7 +114,7 @@ export function ReportChart<T extends Record<string, unknown>>({
             <Line
               key={s.dataKey}
               type="monotone"
-              dataKey={s.dataKey}
+              dataKey={s.dataKey as string}
               stroke={`var(--color-${s.dataKey})`}
               strokeWidth={2}
               dot={false}
@@ -142,7 +147,7 @@ export function ReportChart<T extends Record<string, unknown>>({
             ))}
           </defs>
           <CartesianGrid strokeDasharray="3 3" vertical={false} />
-          <XAxis dataKey={xKey} tickLine={false} axisLine={false} />
+          <XAxis dataKey={xKey as string} tickLine={false} axisLine={false} />
           <YAxis tickLine={false} axisLine={false} width={32} />
           <ChartTooltip content={<ChartTooltipContent />} />
           {showLegend && <ChartLegend content={<ChartLegendContent />} />}
@@ -150,7 +155,7 @@ export function ReportChart<T extends Record<string, unknown>>({
             <Area
               key={s.dataKey}
               type="monotone"
-              dataKey={s.dataKey}
+              dataKey={s.dataKey as string}
               stroke={`var(--color-${s.dataKey})`}
               strokeWidth={2}
               fill={`url(#fill-${s.dataKey})`}
