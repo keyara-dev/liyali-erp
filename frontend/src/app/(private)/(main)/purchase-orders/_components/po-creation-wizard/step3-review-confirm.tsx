@@ -82,11 +82,14 @@ export function Step3ReviewConfirm({
     ? step2.vendors.find((v) => v.localId === step2.selectedVendorLocalId)
     : null;
 
-  // Use step2.selectedQuotedAmount as the authoritative quoted amount —
-  // selectedVendorEntry.quotedAmount can be stale if the same vendor was
-  // re-selected with a different quotation row.
+  // Use step2.selectedQuotedAmount as the authoritative quoted amount only
+  // when it was set by selecting THIS vendor's quotation row. If the vendor
+  // was selected via the dropdown (no quotation), both fields will be undefined.
+  // selectedVendorEntry.quotedAmount is the per-entry cache; step2.selectedQuotedAmount
+  // is the top-level cache updated by handleSelectVendorFromQuotation.
+  // They should agree — prefer the entry-level value, fall back to step2 level.
   const selectedQuotedAmount =
-    step2.selectedQuotedAmount ?? selectedVendorEntry?.quotedAmount;
+    selectedVendorEntry?.quotedAmount ?? step2.selectedQuotedAmount;
 
   // Cost comparison data — selected vendor only (Req 5.3)
   const costComparisonVendors = selectedVendorEntry

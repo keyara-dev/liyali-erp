@@ -85,8 +85,10 @@ export function Step2VendorQuotes({
       amount: number,
       fileUrl: string,
     ) => {
-      const existing = data.vendors.find(
-        (v) => v.vendorId === vendorId || v.vendorName === vendorName,
+      // Only match by vendorId when it's a non-empty real ID; otherwise fall
+      // back to name matching to avoid false positives on empty-string IDs.
+      const existing = data.vendors.find((v) =>
+        vendorId ? v.vendorId === vendorId : v.vendorName === vendorName,
       );
 
       if (existing) {
@@ -129,7 +131,13 @@ export function Step2VendorQuotes({
   const handleVendorDropdownChange = useCallback(
     (vendorId: string) => {
       if (!vendorId) {
-        onChange({ ...data, selectedVendorLocalId: null });
+        onChange({
+          ...data,
+          selectedVendorLocalId: null,
+          // Clear quoted amount and file id — no quotation associated
+          selectedQuotedAmount: undefined,
+          selectedQuotationFileId: undefined,
+        });
         return;
       }
       const vendor = (allVendors as Vendor[]).find((v) => v.id === vendorId);
@@ -137,13 +145,22 @@ export function Step2VendorQuotes({
 
       const existing = data.vendors.find((v) => v.vendorId === vendorId);
       if (existing) {
-        onChange({ ...data, selectedVendorLocalId: existing.localId });
+        onChange({
+          ...data,
+          selectedVendorLocalId: existing.localId,
+          // Clear quoted amount — vendor selected via dropdown has no quotation
+          selectedQuotedAmount: existing.quotedAmount,
+          selectedQuotationFileId: existing.selectedQuotationFileId,
+        });
       } else {
         const entry = vendorToEntry(vendor);
         onChange({
           ...data,
           vendors: [...data.vendors, entry],
           selectedVendorLocalId: entry.localId,
+          // No quotation for this vendor yet
+          selectedQuotedAmount: undefined,
+          selectedQuotationFileId: undefined,
         });
       }
     },
@@ -159,6 +176,9 @@ export function Step2VendorQuotes({
         ...data,
         vendors: [...data.vendors, entry],
         selectedVendorLocalId: entry.localId,
+        // New vendor has no quotation yet — clear quoted amount
+        selectedQuotedAmount: undefined,
+        selectedQuotationFileId: undefined,
       });
       setShowInlineForm(false);
     },
