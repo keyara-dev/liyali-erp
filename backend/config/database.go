@@ -23,15 +23,35 @@ var (
 
 // InitDatabase initializes both GORM and pgx database connections with proper bootstrap
 func InitDatabase() {
-	dsn := fmt.Sprintf(
-		"host=%s port=%s user=%s password=%s dbname=%s sslmode=%s",
-		os.Getenv("DB_HOST"),
-		os.Getenv("DB_PORT"),
-		os.Getenv("DB_USER"),
-		os.Getenv("DB_PASSWORD"),
-		os.Getenv("DB_NAME"),
-		os.Getenv("DB_SSL_MODE"),
-	)
+	// Prefer DATABASE_URL if set; otherwise build DSN from individual DB_* vars.
+	// This keeps the config simple for PaaS deployments (Railway, Fly.io, etc.)
+	// that inject a single DATABASE_URL secret.
+	databaseURL := os.Getenv("DATABASE_URL")
+
+	var dsn, pgxDSN string
+	if databaseURL != "" {
+		dsn = databaseURL
+		pgxDSN = databaseURL
+	} else {
+		dsn = fmt.Sprintf(
+			"host=%s port=%s user=%s password=%s dbname=%s sslmode=%s",
+			os.Getenv("DB_HOST"),
+			os.Getenv("DB_PORT"),
+			os.Getenv("DB_USER"),
+			os.Getenv("DB_PASSWORD"),
+			os.Getenv("DB_NAME"),
+			os.Getenv("DB_SSL_MODE"),
+		)
+		pgxDSN = fmt.Sprintf(
+			"postgres://%s:%s@%s:%s/%s?sslmode=%s",
+			os.Getenv("DB_USER"),
+			os.Getenv("DB_PASSWORD"),
+			os.Getenv("DB_HOST"),
+			os.Getenv("DB_PORT"),
+			os.Getenv("DB_NAME"),
+			os.Getenv("DB_SSL_MODE"),
+		)
+	}
 
 	// Initialize GORM connection (for existing functionality)
 	var err error
@@ -44,16 +64,6 @@ func InitDatabase() {
 	}
 
 	// Initialize pgx connection pool (for new enhanced features)
-	pgxDSN := fmt.Sprintf(
-		"postgres://%s:%s@%s:%s/%s?sslmode=%s",
-		os.Getenv("DB_USER"),
-		os.Getenv("DB_PASSWORD"),
-		os.Getenv("DB_HOST"),
-		os.Getenv("DB_PORT"),
-		os.Getenv("DB_NAME"),
-		os.Getenv("DB_SSL_MODE"),
-	)
-
 	PgxDB, err = pgxpool.New(context.Background(), pgxDSN)
 	if err != nil {
 		log.Fatalf("Failed to connect to database with pgx: %v", err)
