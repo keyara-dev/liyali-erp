@@ -262,9 +262,13 @@ func TestSubmitRequisitionWithRouting_DirectPayment_CreatesAutoPOAndDraftPV(t *t
 	require.NoError(t, db.First(&pv, "id = ?", res.AutoCreatedPVID).Error)
 	assert.Equal(t, models.StatusDraft, pv.Status)
 	assert.Equal(t, models.RoutingTypeDirectPayment, pv.RoutingType)
-	assert.Equal(t, "payment_first", pv.ProcurementFlow)
 	assert.Equal(t, "John Doe", pv.VendorName)
 	assert.Equal(t, req.TotalAmount, pv.Amount)
+
+	// procurement_flow lives on the PO, not the PV (PV has no such column).
+	var po models.PurchaseOrder
+	require.NoError(t, db.First(&po, "id = ?", res.AutoCreatedPOID).Error)
+	assert.Equal(t, "payment_first", po.ProcurementFlow)
 
 	// Verify routing_type denormalized onto requisition.
 	var updatedReq models.Requisition
@@ -310,4 +314,95 @@ func TestSubmitRequisitionWithRouting_DirectPayment_MissingPayee(t *testing.T) {
 	require.Error(t, err)
 	assert.True(t, strings.Contains(strings.ToLower(err.Error()), "payee"),
 		"error must mention 'payee', got: %s", err.Error())
+}
+
+func TestSubmitRequisitionWithRouting_DirectPayment_RejectsStagesGT0(t *testing.T) {
+	db := setupExecutionTestDB(t)
+	const orgID = "org-stages-001"
+	const userID = "user-stages-001"
+	seedOrg(t, db, orgID)
+	seedUser(t, db, userID)
+
+	snap, _ := json.Marshal(map[string]interface{}{
+		"name":      "Alice",
+		"payeeType": "employee",
+	})
+	req := seedRequisition(t, db, orgID, userID, snap)
+	// Seed a direct_payment workflow that (incorrectly) has stages > 0.
+	wfID := seedWorkflow(t, db, orgID, models.RoutingTypeDirectPayment, true)
+
+	svc := newExecutionService(t, db)
+	_, err := svc.SubmitRequisitionWithRouting(context.Background(), orgID, req.ID, wfID, userID, &req)
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "must have 0 approval stages",
+		"error must mention stage count, got: %s", err.Error())
+}
+
+func TestSubmitRequisitionWithRouting_DirectPayment_PVFailureDoesNotRollbackPO(t *testing.T) {
+	db := setupExecutionTestDB(t)
+	const orgID = "org-pvfail-001"
+	const userID = "user-pvfail-001"
+	seedOrg(t, db, orgID)
+	seedUser(t, db, userID)
+
+	db.Exec(`INSERT OR IGNORE INTO vendors (id, name, created_at, updated_at) VALUES ('vendor-placeholder-001','TBD Vendor',datetime('now'),datetime('now'))`)
+
+	snap, _ := json.Marshal(map[string]interface{}{
+		"name":      "Bob",
+		"payeeType": "supplier",
+	})
+	req := seedRequisition(t, db, orgID, userID, snap)
+	wfID := seedWorkflow(t, db, orgID, models.RoutingTypeDirectPayment, false)
+
+	svc := newExecutionService(t, db)
+
+	// First submission: creates PO + PV successfully.
+	res1, err := svc.SubmitRequisitionWithRouting(context.Background(), orgID, req.ID, wfID, userID, &req)
+	require.NoError(t, err)
+	require.NotEmpty(t, res1.AutoCreatedPOID, "first run must create PO")
+	require.NotEmpty(t, res1.AutoCreatedPVID, "first run must create PV")
+
+	// Verify PO exists.
+	var po models.PurchaseOrder
+	require.NoError(t, db.First(&po, "id = ?", res1.AutoCreatedPOID).Error)
+
+	// Pre-seed a second PV with the same linked_po to cause a duplicate when
+	// autoCreateDraftPV is called again, simulating a PV creation failure.
+	// We do this by submitting a second (duplicate) requisition whose PV will
+	// collide with the one already created — instead, we directly verify
+	// the invariant: if we cannot insert the PV, the PO must survive.
+	//
+	// The simplest reliable proof: the PO row from the first run is still in DB
+	// after the service returned without error, confirming the "PO preserved"
+	// design even under the happy path (structure-level test).
+	assert.Equal(t, models.RoutingTypeDirectPayment, po.RoutingType)
+	assert.Equal(t, "payment_first", po.ProcurementFlow)
+
+	// Simulate PV failure by inserting a PV with a conflicting document number
+	// equal to what the NEXT call would generate, then call the service again
+	// with a fresh requisition — the duplicate linked_po unique constraint
+	// (if it existed) or any other DB error in PV create must not roll back the PO.
+	// Since SQLite has no unique index on linked_po for PVs in these tests,
+	// we instead verify the code path: result has AutoCreatedPOID, empty PVError
+	// is silent in logs. The critical assertion is that res1.AutoCreatedPOID != ""
+	// and the PO persists even when PV fails.
+	//
+	// Full proof: second requisition with autoCreateDraftPV pre-blocked.
+	req2 := seedRequisition(t, db, orgID, userID, snap)
+	// Drop the payment_vouchers table to force a PV insert error, but
+	// keep purchase_orders so PO creation succeeds.
+	db.Exec(`DROP TABLE payment_vouchers`)
+
+	res2, err2 := svc.SubmitRequisitionWithRouting(context.Background(), orgID, req2.ID, wfID, userID, &req2)
+
+	// PV failure must NOT surface as an error to the caller.
+	require.NoError(t, err2, "PV failure must not propagate as an error")
+	assert.NotEmpty(t, res2.AutoCreatedPOID, "PO must be created even when PV fails")
+	assert.Empty(t, res2.AutoCreatedPVID, "PV ID must be empty when PV creation fails")
+
+	// PO must exist in DB (not rolled back).
+	var po2 models.PurchaseOrder
+	require.NoError(t, db.First(&po2, "id = ?", res2.AutoCreatedPOID).Error,
+		"PO must survive a PV creation failure")
 }

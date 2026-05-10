@@ -250,12 +250,16 @@ func (s *WorkflowExecutionService) SubmitRequisitionWithRouting(
 		routingType = strings.ToLower(conditions.RoutingType)
 	}
 
-	// 4. direct_payment-specific validation: payee must be present.
+	// 4. direct_payment-specific validation: payee must be present, and workflow must have 0 stages.
 	if routingType == models.RoutingTypeDirectPayment {
 		hasPayee := (requisition.PayeeID != nil && *requisition.PayeeID != "") ||
 			len(requisition.PayeeSnapshot) > 0
 		if !hasPayee {
 			return nil, fmt.Errorf("direct_payment requisition requires a payee: set payeeId or payeeSnapshot")
+		}
+		stages, _ := workflow.GetStages()
+		if len(stages) > 0 {
+			return nil, fmt.Errorf("direct_payment workflow %s must have 0 approval stages, has %d", workflow.ID, len(stages))
 		}
 	}
 
@@ -320,7 +324,7 @@ func (s *WorkflowExecutionService) SubmitRequisitionWithRouting(
 	if routingType == models.RoutingTypeDirectPayment && result.AutoCreatedPOID != "" {
 		pvID, pvErr := s.autoCreateDraftPV(ctx, requisition, result.AutoCreatedPOID)
 		if pvErr != nil {
-			log.Printf("Warning: auto-create draft PV failed for req %s: %v (PO preserved)", entityID, pvErr)
+			log.Printf("Warning: auto-create draft PV failed for req=%s po=%s: %v (PO preserved)", entityID, result.AutoCreatedPOID, pvErr)
 		} else {
 			result.AutoCreatedPVID = pvID
 		}
@@ -343,10 +347,12 @@ func (s *WorkflowExecutionService) autoCreateDraftPV(
 		return "", fmt.Errorf("load po: %w", err)
 	}
 
-	// Propagate routing_type to the PO row.
-	if err := s.db.WithContext(ctx).Model(&po).
-		Update("routing_type", models.RoutingTypeDirectPayment).Error; err != nil {
-		return "", fmt.Errorf("set po.routing_type: %w", err)
+	// Propagate routing_type and procurement_flow to the PO row.
+	if err := s.db.WithContext(ctx).Model(&po).Updates(map[string]any{
+		"routing_type":     models.RoutingTypeDirectPayment,
+		"procurement_flow": "payment_first",
+	}).Error; err != nil {
+		return "", fmt.Errorf("set po routing/procurement flow: %w", err)
 	}
 
 	// Derive payee display name from PayeeSnapshot.
@@ -360,30 +366,36 @@ func (s *WorkflowExecutionService) autoCreateDraftPV(
 		}
 	}
 
-	payeeSnapStr := "null"
+	// Build metadata via json.Marshal to avoid injection from raw payeeSnapshot.
+	metaPayload := map[string]interface{}{
+		"autoCreated": true,
+		"sourceReqID": req.ID,
+	}
 	if len(req.PayeeSnapshot) > 0 {
-		payeeSnapStr = string(req.PayeeSnapshot)
+		metaPayload["payeeSnapshot"] = json.RawMessage(req.PayeeSnapshot)
+	} else {
+		metaPayload["payeeSnapshot"] = nil
+	}
+	metaBytes, err := json.Marshal(metaPayload)
+	if err != nil {
+		return "", fmt.Errorf("marshal pv metadata: %w", err)
 	}
 
 	pvDocNum := utils.GenerateDocumentNumber("PV")
 	pv := models.PaymentVoucher{
-		ID:              uuid.New().String(),
-		DocumentNumber:  pvDocNum,
-		OrganizationID:  req.OrganizationID,
-		Status:          models.StatusDraft,
-		CreatedBy:       req.RequesterId,
-		LinkedPO:        po.DocumentNumber,
-		RoutingType:     models.RoutingTypeDirectPayment,
-		VendorName:      name,
-		Amount:          req.TotalAmount,
-		Currency:        req.Currency,
-		ProcurementFlow: "payment_first",
-		Metadata: datatypes.JSON([]byte(fmt.Sprintf(
-			`{"autoCreated":true,"sourceReqID":%q,"payeeSnapshot":%s}`,
-			req.ID, payeeSnapStr,
-		))),
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
+		ID:             uuid.New().String(),
+		DocumentNumber: pvDocNum,
+		OrganizationID: req.OrganizationID,
+		Status:         models.StatusDraft,
+		CreatedBy:      req.RequesterId,
+		LinkedPO:       po.DocumentNumber,
+		RoutingType:    models.RoutingTypeDirectPayment,
+		VendorName:     name,
+		Amount:         req.TotalAmount,
+		Currency:       req.Currency,
+		Metadata:       datatypes.JSON(metaBytes),
+		CreatedAt:      time.Now(),
+		UpdatedAt:      time.Now(),
 	}
 	pv.ApprovalHistory = datatypes.NewJSONType([]types.ApprovalRecord{})
 

@@ -265,9 +265,6 @@ type PaymentVoucher struct {
 	PaidAt          *time.Time     `json:"paidAt,omitempty"`                           // Actual payment timestamp
 	PaidBy          *string        `gorm:"type:varchar(255)" json:"paidBy,omitempty"`  // User ID who recorded the payment
 
-	// Procurement flow override: "goods_first", "payment_first", or "" (inherit from org)
-	ProcurementFlow string         `gorm:"column:procurement_flow;default:''" json:"procurementFlow"`
-
 	// Generic metadata (auto-creation context, etc.)
 	Metadata        datatypes.JSON `gorm:"type:jsonb" json:"metadata,omitempty"`
 
