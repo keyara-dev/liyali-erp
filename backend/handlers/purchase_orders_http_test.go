@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"net/http"
 	"testing"
 	"time"
@@ -13,6 +14,16 @@ import (
 	"github.com/liyali/liyali-gateway/types"
 	"gorm.io/datatypes"
 )
+
+// decodeJSON reads the response body once and unmarshals it into the typed
+// value pointed to by out. Fatals the test on any error.
+func decodeJSON(t *testing.T, resp *http.Response, out interface{}) {
+	t.Helper()
+	defer resp.Body.Close()
+	if err := json.NewDecoder(resp.Body).Decode(out); err != nil {
+		t.Fatalf("decodeJSON: %v", err)
+	}
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // app factory
@@ -513,5 +524,80 @@ func TestSubmitPurchaseOrder_AlreadyPending(t *testing.T) {
 	})
 	if resp.StatusCode != http.StatusBadRequest {
 		t.Errorf("expected 400 when submitting non-DRAFT PO, got %d", resp.StatusCode)
+	}
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Manual vendor name persistence (bug regression)
+// ─────────────────────────────────────────────────────────────────────────────
+
+func TestPurchaseOrder_PersistManualVendorName(t *testing.T) {
+	db := setupTestDB(t)
+	defer teardownTestDB(t, db)
+
+	app := newPurchaseOrderApp(t)
+
+	// CREATE: manual vendor (no vendor_id, vendorName only)
+	createBody := map[string]interface{}{
+		"vendorId":     "",
+		"vendorName":   "LIKS BUSINESS SOLUTIONS",
+		"items":        []map[string]interface{}{{"description": "Laptops", "quantity": 25, "unitPrice": 150000, "amount": 3750000}},
+		"totalAmount":  3750000.0,
+		"currency":     "ZMW",
+		"deliveryDate": time.Now().Add(7 * 24 * time.Hour).Format(time.RFC3339),
+		"title":        "Purchase of 25 Laptops",
+		"department":   "Information Technology",
+		"priority":     "high",
+	}
+	resp := testRequest(app, http.MethodPost, "/purchase-orders", createBody)
+	if resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusOK {
+		t.Fatalf("create PO: expected 200/201, got %d", resp.StatusCode)
+	}
+
+	var createResp struct {
+		Data types.PurchaseOrderResponse `json:"data"`
+	}
+	decodeJSON(t, resp, &createResp)
+
+	if createResp.Data.VendorName != "LIKS BUSINESS SOLUTIONS" {
+		t.Errorf("create response: expected vendorName=LIKS BUSINESS SOLUTIONS, got %q", createResp.Data.VendorName)
+	}
+	if createResp.Data.VendorID != "" {
+		t.Errorf("create response: expected empty vendorId, got %q", createResp.Data.VendorID)
+	}
+
+	// GET: fetch the same PO and confirm vendor_name persists
+	poID := createResp.Data.ID
+	getResp := testRequest(app, http.MethodGet, "/purchase-orders/"+poID, nil)
+	if getResp.StatusCode != http.StatusOK {
+		t.Fatalf("get PO: expected 200, got %d", getResp.StatusCode)
+	}
+
+	var getBody struct {
+		Data types.PurchaseOrderResponse `json:"data"`
+	}
+	decodeJSON(t, getResp, &getBody)
+
+	if getBody.Data.VendorName != "LIKS BUSINESS SOLUTIONS" {
+		t.Errorf("get response: expected vendorName=LIKS BUSINESS SOLUTIONS, got %q", getBody.Data.VendorName)
+	}
+
+	// UPDATE: change the manual vendor name
+	updateBody := map[string]interface{}{
+		"vendorId":   "",
+		"vendorName": "MICOP BUSINESS VENTURES",
+	}
+	updResp := testRequest(app, http.MethodPut, "/purchase-orders/"+poID, updateBody)
+	if updResp.StatusCode != http.StatusOK {
+		t.Fatalf("update PO: expected 200, got %d", updResp.StatusCode)
+	}
+
+	var updRespBody struct {
+		Data types.PurchaseOrderResponse `json:"data"`
+	}
+	decodeJSON(t, updResp, &updRespBody)
+
+	if updRespBody.Data.VendorName != "MICOP BUSINESS VENTURES" {
+		t.Errorf("update response: expected vendorName=MICOP BUSINESS VENTURES, got %q", updRespBody.Data.VendorName)
 	}
 }
