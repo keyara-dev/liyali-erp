@@ -1,0 +1,28 @@
+
+ RUN  v4.1.2 D:/dev/next-apps/liyali-gateway/frontend
+
+ ✓ src/__tests__/integration/admin-reports.test.tsx > AdminReportsClient (integration) > renders all 4 tabs with the correct titles 424ms
+ × src/__tests__/integration/admin-reports.test.tsx > AdminReportsClient (integration) > switches active tab to Analytics on click 125ms
+   → waitFor is not defined
+ ✓ src/__tests__/integration/admin-reports.test.tsx > AdminReportsClient (integration) > renders the page title and subtitle 101ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/__tests__/integration/admin-reports.test.tsx > AdminReportsClient (integration) > switches active tab to Analytics on click
+ReferenceError: waitFor is not defined
+ ❯ src/__tests__/integration/admin-reports.test.tsx:67:5
+     65|     expect(analyticsTab).toHaveAttribute("data-state", "inactive");
+     66|     fireEvent.click(analyticsTab);
+     67|     await waitFor(() => {
+       |     ^
+     68|       expect(analyticsTab).toHaveAttribute("data-state", "active");
+     69|     });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 2 passed (3)
+   Start at  10:26:15
+   Duration  135.32s (transform 1.53s, setup 17.13s, import 69.06s, tests 657ms, environment 46.65s)
+
