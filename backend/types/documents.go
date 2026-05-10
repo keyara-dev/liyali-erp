@@ -20,8 +20,9 @@ type CreateRequisitionRequest struct {
 	TotalAmount       float64           `json:"totalAmount" validate:"required,gt=0"`
 	Currency          string            `json:"currency" validate:"required"`
 	CategoryID        *string           `json:"categoryId" validate:"omitempty,uuid"`
-	PreferredVendorID *string           `json:"preferredVendorId" validate:"omitempty,uuid"`
-	IsEstimate        bool              `json:"isEstimate"`
+	PreferredVendorID   *string           `json:"preferredVendorId" validate:"omitempty,uuid"`
+	PreferredVendorName string            `json:"preferredVendorName"`
+	IsEstimate          bool              `json:"isEstimate"`
 
 	// Business requirement fields
 	BudgetCode        string                 `json:"budgetCode"`
@@ -44,8 +45,9 @@ type UpdateRequisitionRequest struct {
 	TotalAmount       float64                `json:"totalAmount"`
 	Currency          string                 `json:"currency"`
 	CategoryID        *string                `json:"categoryId" validate:"omitempty,uuid"`
-	PreferredVendorID *string                `json:"preferredVendorId" validate:"omitempty,uuid"`
-	IsEstimate        *bool                  `json:"isEstimate"`
+	PreferredVendorID   *string                `json:"preferredVendorId" validate:"omitempty,uuid"`
+	PreferredVendorName string                 `json:"preferredVendorName"`
+	IsEstimate          *bool                  `json:"isEstimate"`
 	SourceOfFunds     string                 `json:"sourceOfFunds,omitempty"` // Source of funding
 	Metadata          map[string]interface{} `json:"metadata"` // Additional metadata (e.g. attachments)
 }
@@ -206,6 +208,7 @@ func (fd FlexibleDate) MarshalJSON() ([]byte, error) {
 // CreatePurchaseOrderRequest represents a PO creation request
 type CreatePurchaseOrderRequest struct {
 	VendorID          string                 `json:"vendorId"`
+	VendorName        string                 `json:"vendorName"`
 	Items             []POItem               `json:"items" validate:"required,min=1"`
 	TotalAmount       float64                `json:"totalAmount" validate:"required,gt=0"`
 	Currency          string                 `json:"currency" validate:"required"`
@@ -316,6 +319,7 @@ type PurchaseOrderResponse struct {
 // CreatePaymentVoucherRequest represents a payment voucher creation request
 type CreatePaymentVoucherRequest struct {
 	VendorID      string  `json:"vendorId"`
+	VendorName    string  `json:"vendorName"`
 	InvoiceNumber string  `json:"invoiceNumber" validate:"required"`
 	Amount        float64 `json:"amount" validate:"required,gt=0"`
 	Currency      string  `json:"currency" validate:"required"`
@@ -338,6 +342,7 @@ type CreatePaymentVoucherRequest struct {
 // UpdatePaymentVoucherRequest represents a payment voucher update request
 type UpdatePaymentVoucherRequest struct {
 	VendorID      string  `json:"vendorId"`
+	VendorName    string  `json:"vendorName"`
 	InvoiceNumber string  `json:"invoiceNumber"`
 	Amount        float64 `json:"amount"`
 	Currency      string  `json:"currency"`
