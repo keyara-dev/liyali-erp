@@ -184,6 +184,13 @@ func (ws *WorkflowStage) Validate() error {
 	return nil
 }
 
+// RoutingType constants define the routing path for a workflow.
+const (
+	RoutingTypeProcurement  = "procurement"
+	RoutingTypeAccounting   = "accounting"
+	RoutingTypeDirectPayment = "direct_payment"
+)
+
 // WorkflowConditions defines when a workflow should be applied and routing behavior
 type WorkflowConditions struct {
 	AmountRange  *AmountRange           `json:"amountRange,omitempty"`
@@ -193,7 +200,7 @@ type WorkflowConditions struct {
 	CustomFields map[string]interface{} `json:"customFields,omitempty"`
 
 	// Routing behavior
-	RoutingType    string `json:"routingType,omitempty"`    // "procurement" (default) or "accounting"
+	RoutingType    string `json:"routingType,omitempty"`    // "procurement" (default), "accounting", or "direct_payment"
 	AutoApprove    bool   `json:"autoApprove,omitempty"`    // Skip workflow stages when criteria met
 	AutoGeneratePO bool   `json:"autoGeneratePO,omitempty"` // Auto-create PO after approval
 	AutoApprovePO  bool   `json:"autoApprovePO,omitempty"`  // Create PO as "approved" not "draft"

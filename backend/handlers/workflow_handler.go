@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"strconv"
+	"strings"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
@@ -275,12 +276,21 @@ func (h *WorkflowHandler) CreateWorkflow(c *fiber.Ctx) error {
 
 	logger.Debug("validating_workflow_stages")
 
-	// Validate workflow stages
-	if err := h.workflowService.ValidateWorkflowStages(req.Stages); err != nil {
-		logging.LogWarn(c, "workflow_stages_validation_failed", map[string]interface{}{
-			"validation_error": err.Error(),
-		})
-		return utils.SendBadRequestError(c, "Invalid workflow stages: "+err.Error())
+	// direct_payment workflows must have 0 approval stages — they auto-approve and skip manual sign-off.
+	if req.Conditions != nil && strings.EqualFold(req.Conditions.RoutingType, "direct_payment") {
+		if len(req.Stages) > 0 {
+			logging.LogWarn(c, "direct_payment_workflow_with_stages", map[string]interface{}{
+				"stage_count": len(req.Stages),
+			})
+			return utils.SendBadRequestError(c, "direct_payment workflows must have 0 approval stages")
+		}
+	} else {
+		if err := h.workflowService.ValidateWorkflowStages(req.Stages); err != nil {
+			logging.LogWarn(c, "workflow_stages_validation_failed", map[string]interface{}{
+				"validation_error": err.Error(),
+			})
+			return utils.SendBadRequestError(c, "Invalid workflow stages: "+err.Error())
+		}
 	}
 
 	logger.Debug("creating_workflow")

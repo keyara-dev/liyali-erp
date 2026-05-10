@@ -885,3 +885,49 @@ func TestGetWorkflowUsage_Success(t *testing.T) {
 		t.Errorf("expected 200, got %d; body=%v", resp.StatusCode, body)
 	}
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// DirectPayment routing type validation
+// ─────────────────────────────────────────────────────────────────────────────
+
+func TestCreateWorkflow_DirectPaymentRejectsStages(t *testing.T) {
+	db := setupTestDB(t)
+	defer teardownTestDB(t, db)
+	setupWorkflowTestDB(t)
+	seedTestUser(t)
+
+	app := newWorkflowApp(t)
+	resp := testRequest(app, http.MethodPost, "/workflows", map[string]interface{}{
+		"name":       "Direct Payment Workflow",
+		"entityType": "payment_voucher",
+		"stages":     validStagePayload(),
+		"conditions": map[string]interface{}{
+			"routingType": "direct_payment",
+		},
+	})
+	if resp.StatusCode != http.StatusBadRequest {
+		body := decodeResponse(resp)
+		t.Errorf("expected 400 for direct_payment with stages, got %d; body=%v", resp.StatusCode, body)
+	}
+}
+
+func TestCreateWorkflow_DirectPaymentZeroStagesOK(t *testing.T) {
+	db := setupTestDB(t)
+	defer teardownTestDB(t, db)
+	setupWorkflowTestDB(t)
+	seedTestUser(t)
+
+	app := newWorkflowApp(t)
+	resp := testRequest(app, http.MethodPost, "/workflows", map[string]interface{}{
+		"name":       "Direct Payment Workflow",
+		"entityType": "payment_voucher",
+		"conditions": map[string]interface{}{
+			"routingType": "direct_payment",
+			"autoApprove": true,
+		},
+	})
+	if resp.StatusCode != http.StatusCreated {
+		body := decodeResponse(resp)
+		t.Errorf("expected 201 for direct_payment with zero stages, got %d; body=%v", resp.StatusCode, body)
+	}
+}

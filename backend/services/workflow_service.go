@@ -25,7 +25,7 @@ type CreateWorkflowRequest struct {
 	Description  string                     `json:"description"`
 	EntityType   string                     `json:"entityType"`   // Primary field (no longer required in validation)
 	DocumentType string                     `json:"documentType"` // Legacy support
-	Stages       []models.WorkflowStage     `json:"stages" validate:"required"`
+	Stages       []models.WorkflowStage     `json:"stages"`
 	Conditions   *models.WorkflowConditions `json:"conditions"`
 	IsDefault    bool                       `json:"isDefault"`
 }
@@ -711,6 +711,14 @@ func (s *WorkflowService) validateCreateRequest(req CreateWorkflowRequest) error
 	}
 	if req.EntityType == "" {
 		return fmt.Errorf("entity type is required")
+	}
+
+	// direct_payment workflows must have 0 approval stages — they auto-approve and skip manual sign-off.
+	if req.Conditions != nil && strings.EqualFold(req.Conditions.RoutingType, models.RoutingTypeDirectPayment) {
+		if len(req.Stages) > 0 {
+			return fmt.Errorf("direct_payment workflows must have 0 approval stages")
+		}
+		return nil // Valid: direct_payment with no stages
 	}
 
 	// Allow 0 stages only when auto-approve is enabled in conditions
