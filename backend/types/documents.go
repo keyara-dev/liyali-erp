@@ -490,6 +490,47 @@ type Quotation struct {
 	RfqID      string  `json:"rfqId,omitempty"` // Future RFQ extension hook
 }
 
+// ================== PAYEE TYPES ==================
+
+// CreatePayeeRequest represents a payee creation request
+type CreatePayeeRequest struct {
+	PayeeType   string `json:"payeeType" validate:"required"`
+	Name        string `json:"name" validate:"required"`
+	Email       string `json:"email"`
+	Phone       string `json:"phone"`
+	BankName    string `json:"bankName"`
+	BankAccount string `json:"bankAccount"`
+	TaxID       string `json:"taxId"`
+}
+
+// UpdatePayeeRequest represents a payee partial-update request
+type UpdatePayeeRequest struct {
+	Name        string `json:"name"`
+	Email       string `json:"email"`
+	Phone       string `json:"phone"`
+	BankName    string `json:"bankName"`
+	BankAccount string `json:"bankAccount"`
+	TaxID       string `json:"taxId"`
+}
+
+// PayeeResponse is the JSON shape returned to clients
+type PayeeResponse struct {
+	ID             string    `json:"id"`
+	OrganizationID string    `json:"organizationId"`
+	PayeeType      string    `json:"payeeType"`
+	Name           string    `json:"name"`
+	Email          string    `json:"email,omitempty"`
+	Phone          string    `json:"phone,omitempty"`
+	BankName       string    `json:"bankName,omitempty"`
+	BankAccount    string    `json:"bankAccount,omitempty"`
+	TaxID          string    `json:"taxId,omitempty"`
+	SourceVendorID *string   `json:"sourceVendorId,omitempty"`
+	SourceUserID   *string   `json:"sourceUserId,omitempty"`
+	CreatedBy      *string   `json:"createdBy,omitempty"`
+	CreatedAt      time.Time `json:"createdAt"`
+	UpdatedAt      time.Time `json:"updatedAt"`
+}
+
 // ================== VENDOR TYPES ==================
 
 // CreateVendorRequest represents a vendor creation request

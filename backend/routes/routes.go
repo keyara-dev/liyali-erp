@@ -381,6 +381,14 @@ func SetupRoutes(app *fiber.App, handlerRegistry *handlers.HandlerRegistry, rbac
 	vendors.Get("/:id", middleware.RequirePermission(rbacService, "vendor", "view"), handlers.GetVendor)
 	vendors.Put("/:id", middleware.RequirePermission(rbacService, "vendor", "edit"), handlers.UpdateVendor)
 
+	// Payee routes (tenant-scoped)
+	payees := tenant.Group("/payees")
+	payees.Get("/", middleware.RequirePermission(rbacService, "vendor", "view"), handlers.GetPayees)
+	payees.Post("/", middleware.RequirePermission(rbacService, "vendor", "create"), handlers.CreatePayee)
+	payees.Get("/:id", middleware.RequirePermission(rbacService, "vendor", "view"), handlers.GetPayee)
+	payees.Put("/:id", middleware.RequirePermission(rbacService, "vendor", "edit"), handlers.UpdatePayee)
+	payees.Delete("/:id", middleware.RequirePermission(rbacService, "vendor", "edit"), handlers.DeletePayee)
+
 	// Approval Tasks routes (tenant-scoped) - Updated to use new handler
 	approvals := tenant.Group("/approvals", middleware.InjectWorkflowExecutionService(handlerRegistry.WorkflowExecutionService))
 	approvals.Get("/", handlerRegistry.Approval.GetApprovalTasks)
