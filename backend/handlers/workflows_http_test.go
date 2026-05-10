@@ -931,3 +931,101 @@ func TestCreateWorkflow_DirectPaymentZeroStagesOK(t *testing.T) {
 		t.Errorf("expected 201 for direct_payment with zero stages, got %d; body=%v", resp.StatusCode, body)
 	}
 }
+
+func TestUpdateWorkflow_DirectPaymentRejectsAddingStages(t *testing.T) {
+	db := setupTestDB(t)
+	defer teardownTestDB(t, db)
+	setupWorkflowTestDB(t)
+	seedTestUser(t)
+
+	app := newWorkflowApp(t)
+
+	// Step 1: Create a valid direct_payment workflow with 0 stages — expect 201.
+	createResp := testRequest(app, http.MethodPost, "/workflows", map[string]interface{}{
+		"name":       "Direct Payment Update Test",
+		"entityType": "payment_voucher",
+		"conditions": map[string]interface{}{
+			"routingType": "direct_payment",
+		},
+	})
+	if createResp.StatusCode != http.StatusCreated {
+		body := decodeResponse(createResp)
+		t.Fatalf("setup: expected 201, got %d; body=%v", createResp.StatusCode, body)
+	}
+
+	created := decodeResponse(createResp)
+	// The response is wrapped: {"success":true,"data":{...}}
+	var workflowID string
+	if data, ok := created["data"].(map[string]interface{}); ok {
+		workflowID, _ = data["id"].(string)
+	}
+	if workflowID == "" {
+		t.Fatal("setup: could not extract workflow ID from create response")
+	}
+
+	// Step 2: PATCH the workflow to add stages — expect 400.
+	updateResp := testRequest(app, http.MethodPut, "/workflows/"+workflowID, map[string]interface{}{
+		"stages": validStagePayload(),
+	})
+	if updateResp.StatusCode != http.StatusBadRequest {
+		body := decodeResponse(updateResp)
+		t.Errorf("expected 400 when adding stages to direct_payment workflow, got %d; body=%v", updateResp.StatusCode, body)
+	}
+}
+
+func TestCreateWorkflow_DirectPaymentCoercesAutoFlags(t *testing.T) {
+	db := setupTestDB(t)
+	defer teardownTestDB(t, db)
+	setupWorkflowTestDB(t)
+	seedTestUser(t)
+
+	app := newWorkflowApp(t)
+
+	// POST with all auto-flags explicitly false — backend must coerce them to true.
+	createResp := testRequest(app, http.MethodPost, "/workflows", map[string]interface{}{
+		"name":       "Direct Payment Coerce Test",
+		"entityType": "payment_voucher",
+		"conditions": map[string]interface{}{
+			"routingType":    "direct_payment",
+			"autoApprove":    false,
+			"autoGeneratePO": false,
+			"autoApprovePO":  false,
+		},
+	})
+	if createResp.StatusCode != http.StatusCreated {
+		body := decodeResponse(createResp)
+		t.Fatalf("expected 201, got %d; body=%v", createResp.StatusCode, body)
+	}
+
+	created := decodeResponse(createResp)
+	var workflowID string
+	if data, ok := created["data"].(map[string]interface{}); ok {
+		workflowID, _ = data["id"].(string)
+	}
+	if workflowID == "" {
+		t.Fatal("could not extract workflow ID from create response")
+	}
+
+	// Fetch the workflow and assert the three flags are true.
+	getResp := testRequest(app, http.MethodGet, "/workflows/"+workflowID, nil)
+	if getResp.StatusCode != http.StatusOK {
+		body := decodeResponse(getResp)
+		t.Fatalf("expected 200 on GET, got %d; body=%v", getResp.StatusCode, body)
+	}
+
+	fetched := decodeResponse(getResp)
+	var conditions map[string]interface{}
+	if data, ok := fetched["data"].(map[string]interface{}); ok {
+		conditions, _ = data["conditions"].(map[string]interface{})
+	}
+	if conditions == nil {
+		t.Fatal("fetched workflow has no conditions")
+	}
+
+	for _, flag := range []string{"autoApprove", "autoGeneratePO", "autoApprovePO"} {
+		val, _ := conditions[flag].(bool)
+		if !val {
+			t.Errorf("expected conditions.%s to be true after coercion, got false", flag)
+		}
+	}
+}

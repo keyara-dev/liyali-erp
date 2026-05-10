@@ -8,6 +8,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 	"github.com/liyali/liyali-gateway/logging"
+	"github.com/liyali/liyali-gateway/models"
 	"github.com/liyali/liyali-gateway/services"
 	"github.com/liyali/liyali-gateway/utils"
 )
@@ -277,7 +278,7 @@ func (h *WorkflowHandler) CreateWorkflow(c *fiber.Ctx) error {
 	logger.Debug("validating_workflow_stages")
 
 	// direct_payment workflows must have 0 approval stages — they auto-approve and skip manual sign-off.
-	if req.Conditions != nil && strings.EqualFold(req.Conditions.RoutingType, "direct_payment") {
+	if req.Conditions != nil && strings.EqualFold(req.Conditions.RoutingType, models.RoutingTypeDirectPayment) {
 		if len(req.Stages) > 0 {
 			logging.LogWarn(c, "direct_payment_workflow_with_stages", map[string]interface{}{
 				"stage_count": len(req.Stages),
@@ -350,12 +351,37 @@ func (h *WorkflowHandler) UpdateWorkflow(c *fiber.Ctx) error {
 	if req.Stages != nil {
 		logging.AddFieldToRequest(c, "stage_count", len(req.Stages))
 		logger.Debug("validating_updated_workflow_stages")
-		
-		if err := h.workflowService.ValidateWorkflowStages(req.Stages); err != nil {
-			logging.LogWarn(c, "updated_workflow_stages_validation_failed", map[string]interface{}{
-				"validation_error": err.Error(),
+
+		// Enforce direct_payment invariant: determine effective routing type.
+		// If the update payload omits conditions/routingType, we must fetch the
+		// existing workflow to check its stored routing type.
+		effectiveRoutingType := ""
+		if req.Conditions != nil {
+			effectiveRoutingType = req.Conditions.RoutingType
+		}
+		if effectiveRoutingType == "" {
+			existing, err := h.workflowService.GetWorkflow(c.Context(), workflowID, organizationID)
+			if err == nil {
+				cond, _ := existing.GetConditions()
+				if cond != nil {
+					effectiveRoutingType = cond.RoutingType
+				}
+			}
+		}
+		if strings.EqualFold(effectiveRoutingType, models.RoutingTypeDirectPayment) && len(req.Stages) > 0 {
+			logging.LogWarn(c, "direct_payment_workflow_update_with_stages", map[string]interface{}{
+				"stage_count": len(req.Stages),
 			})
-			return utils.SendBadRequestError(c, "Invalid workflow stages: "+err.Error())
+			return utils.SendBadRequestError(c, "direct_payment workflows must have 0 approval stages")
+		}
+
+		if !strings.EqualFold(effectiveRoutingType, models.RoutingTypeDirectPayment) {
+			if err := h.workflowService.ValidateWorkflowStages(req.Stages); err != nil {
+				logging.LogWarn(c, "updated_workflow_stages_validation_failed", map[string]interface{}{
+					"validation_error": err.Error(),
+				})
+				return utils.SendBadRequestError(c, "Invalid workflow stages: "+err.Error())
+			}
 		}
 	}
 

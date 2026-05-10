@@ -80,9 +80,11 @@ func (s *WorkflowService) normalizeStageRoles(stages []models.WorkflowStage) {
 
 // CreateWorkflow creates a new workflow
 func (s *WorkflowService) CreateWorkflow(ctx context.Context, organizationID, userID string, req CreateWorkflowRequest) (*models.Workflow, error) {
-	// Validate request
-	if err := s.validateCreateRequest(req); err != nil {
-		return nil, fmt.Errorf("validation failed: %w", err)
+	// Validate request (may coerce implied flags, e.g. for direct_payment)
+	var validateErr error
+	req, validateErr = s.validateCreateRequest(req)
+	if validateErr != nil {
+		return nil, fmt.Errorf("validation failed: %w", validateErr)
 	}
 
 	// Normalize entity type to lowercase for consistency
@@ -230,6 +232,32 @@ func (s *WorkflowService) UpdateWorkflow(ctx context.Context, id uuid.UUID, orga
 	existing, err := s.GetWorkflow(ctx, id, organizationID)
 	if err != nil {
 		return nil, err
+	}
+
+	// Enforce direct_payment invariant on update: if stages are explicitly provided,
+	// determine the effective routing type (from the request or from the stored workflow)
+	// and reject if direct_payment + stages > 0.
+	if req.Stages != nil {
+		effectiveRoutingType := ""
+		if req.Conditions != nil {
+			effectiveRoutingType = req.Conditions.RoutingType
+		}
+		if effectiveRoutingType == "" {
+			cond, _ := existing.GetConditions()
+			if cond != nil {
+				effectiveRoutingType = cond.RoutingType
+			}
+		}
+		if strings.EqualFold(effectiveRoutingType, models.RoutingTypeDirectPayment) && len(req.Stages) > 0 {
+			return nil, fmt.Errorf("direct_payment workflows must have 0 approval stages")
+		}
+	}
+
+	// Coerce implied flags when routing type is being set to direct_payment.
+	if req.Conditions != nil && strings.EqualFold(req.Conditions.RoutingType, models.RoutingTypeDirectPayment) {
+		req.Conditions.AutoApprove = true
+		req.Conditions.AutoGeneratePO = true
+		req.Conditions.AutoApprovePO = true
 	}
 
 	// Start transaction
@@ -705,32 +733,39 @@ func (s *WorkflowService) GetWorkflowUsageCount(ctx context.Context, organizatio
 }
 
 // Helper methods
-func (s *WorkflowService) validateCreateRequest(req CreateWorkflowRequest) error {
+
+// validateCreateRequest validates the create request and returns a (possibly mutated)
+// copy of the request with implied flags coerced for direct_payment workflows.
+func (s *WorkflowService) validateCreateRequest(req CreateWorkflowRequest) (CreateWorkflowRequest, error) {
 	if req.Name == "" {
-		return fmt.Errorf("workflow name is required")
+		return req, fmt.Errorf("workflow name is required")
 	}
 	if req.EntityType == "" {
-		return fmt.Errorf("entity type is required")
+		return req, fmt.Errorf("entity type is required")
 	}
 
 	// direct_payment workflows must have 0 approval stages — they auto-approve and skip manual sign-off.
 	if req.Conditions != nil && strings.EqualFold(req.Conditions.RoutingType, models.RoutingTypeDirectPayment) {
 		if len(req.Stages) > 0 {
-			return fmt.Errorf("direct_payment workflows must have 0 approval stages")
+			return req, fmt.Errorf("direct_payment workflows must have 0 approval stages")
 		}
-		return nil // Valid: direct_payment with no stages
+		// Coerce implied flags — spec says these are always true for direct_payment.
+		req.Conditions.AutoApprove = true
+		req.Conditions.AutoGeneratePO = true
+		req.Conditions.AutoApprovePO = true
+		return req, nil // Valid: direct_payment with no stages
 	}
 
 	// Allow 0 stages only when auto-approve is enabled in conditions
 	if len(req.Stages) == 0 {
 		if req.Conditions != nil && req.Conditions.AutoApprove {
-			return nil // Valid: auto-approve workflow with no manual stages
+			return req, nil // Valid: auto-approve workflow with no manual stages
 		}
-		return fmt.Errorf("workflow must have at least one stage (or enable auto-approval)")
+		return req, fmt.Errorf("workflow must have at least one stage (or enable auto-approval)")
 	}
 
 	// Validate stages
-	return s.ValidateWorkflowStages(req.Stages)
+	return req, s.ValidateWorkflowStages(req.Stages)
 }
 
 func (s *WorkflowService) unsetDefaultWorkflows(tx *gorm.DB, organizationID, entityType string) error {
