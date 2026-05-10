@@ -206,7 +206,7 @@ type PaymentVoucher struct {
 	LinkedGRN       string          `gorm:"column:linked_grn;default:''" json:"linkedGRN"` // Goods-first flow: GRN approved before this PV
 
 	// Frontend compatibility fields - CRITICAL: These must match frontend exactly
-	VendorName              string                                    `json:"vendorName,omitempty"`              // Computed from Vendor.Name
+	VendorName              string                                    `json:"vendorName,omitempty"`              // Persisted; falls back to Vendor.Name on read
 	Title                   string                                    `json:"title,omitempty"`                   // Payment voucher title
 	Department              string                                    `json:"department,omitempty"`              // Department
 	DepartmentID            string                                    `json:"departmentId,omitempty"`            // Department ID
