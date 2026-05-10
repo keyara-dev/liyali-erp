@@ -589,3 +589,69 @@ func TestMarkPaymentVoucherPaid_Success(t *testing.T) {
 		t.Errorf("expected success=true, got %v", body["success"])
 	}
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Manual vendor name persistence (bug regression)
+// ─────────────────────────────────────────────────────────────────────────────
+
+func TestPaymentVoucher_PersistManualVendorName(t *testing.T) {
+	db := setupTestDB(t)
+	defer teardownTestDB(t, db)
+
+	app := newPaymentVoucherApp(t)
+
+	createBody := map[string]interface{}{
+		"vendorId":      "",
+		"vendorName":    "BLUE FOX FARMS LIMITED",
+		"invoiceNumber": "INV-2026-001",
+		"amount":        3547200.0,
+		"currency":      "ZMW",
+		"paymentMethod": "bank_transfer",
+		"glCode":        "5100",
+		"description":   "Payment for laptop procurement quotation",
+	}
+	resp := testRequest(app, http.MethodPost, "/payment-vouchers", createBody)
+	if resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusOK {
+		t.Fatalf("create PV: expected 200/201, got %d", resp.StatusCode)
+	}
+
+	var createResp struct {
+		Data types.PaymentVoucherResponse `json:"data"`
+	}
+	decodeJSON(t, resp, &createResp)
+
+	if createResp.Data.VendorName != "BLUE FOX FARMS LIMITED" {
+		t.Errorf("create response: expected vendorName=BLUE FOX FARMS LIMITED, got %q", createResp.Data.VendorName)
+	}
+
+	pvID := createResp.Data.ID
+	getResp := testRequest(app, http.MethodGet, "/payment-vouchers/"+pvID, nil)
+	if getResp.StatusCode != http.StatusOK {
+		t.Fatalf("get PV: expected 200, got %d", getResp.StatusCode)
+	}
+
+	var getBody struct {
+		Data types.PaymentVoucherResponse `json:"data"`
+	}
+	decodeJSON(t, getResp, &getBody)
+
+	if getBody.Data.VendorName != "BLUE FOX FARMS LIMITED" {
+		t.Errorf("get response: expected vendorName=BLUE FOX FARMS LIMITED, got %q", getBody.Data.VendorName)
+	}
+
+	updateBody := map[string]interface{}{
+		"vendorId":   "",
+		"vendorName": "MICOP BUSINESS VENTURES",
+	}
+	updResp := testRequest(app, http.MethodPut, "/payment-vouchers/"+pvID, updateBody)
+	if updResp.StatusCode != http.StatusOK {
+		t.Fatalf("update PV: expected 200, got %d", updResp.StatusCode)
+	}
+	var updRespBody struct {
+		Data types.PaymentVoucherResponse `json:"data"`
+	}
+	decodeJSON(t, updResp, &updRespBody)
+	if updRespBody.Data.VendorName != "MICOP BUSINESS VENTURES" {
+		t.Errorf("update response: expected vendorName=MICOP BUSINESS VENTURES, got %q", updRespBody.Data.VendorName)
+	}
+}
