@@ -601,3 +601,63 @@ func TestPurchaseOrder_PersistManualVendorName(t *testing.T) {
 		t.Errorf("update response: expected vendorName=MICOP BUSINESS VENTURES, got %q", updRespBody.Data.VendorName)
 	}
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Scope isolation: procurement role cannot see direct_payment POs
+// ─────────────────────────────────────────────────────────────────────────────
+
+// makePurchaseOrderWithRouting creates a PO with an explicit routing_type.
+func makePurchaseOrderWithRouting(t *testing.T, docNum, status, routingType string) models.PurchaseOrder {
+	t.Helper()
+	order := models.PurchaseOrder{
+		ID:             uuid.New().String(),
+		OrganizationID: testOrgID,
+		DocumentNumber: docNum,
+		Status:         status,
+		RoutingType:    routingType,
+		TotalAmount:    500.00,
+		Currency:       "ZMW",
+		DeliveryDate:   time.Now().Add(30 * 24 * time.Hour),
+		CreatedAt:      time.Now(),
+		UpdatedAt:      time.Now(),
+	}
+	order.Items = datatypes.NewJSONType([]types.POItem{
+		{Description: "Item", Quantity: 1, UnitPrice: 500.0, Amount: 500.0},
+	})
+	order.ApprovalHistory = datatypes.NewJSONType([]types.ApprovalRecord{})
+	order.ActionHistory = datatypes.NewJSONType([]types.ActionHistoryEntry{})
+	if err := config.DB.Create(&order).Error; err != nil {
+		t.Fatalf("makePurchaseOrderWithRouting: %v", err)
+	}
+	return order
+}
+
+// TestPO_ProcurementUserCannotSeeDirectPayment verifies that a procurement-role
+// user receives 404 when fetching a direct_payment PO by ID (single-get endpoint).
+// The list endpoint is sqlc-backed and cannot be exercised in SQLite tests.
+func TestPO_ProcurementUserCannotSeeDirectPayment(t *testing.T) {
+	db := setupTestDB(t)
+	defer teardownTestDB(t, db)
+
+	// Seed a direct_payment PO and a procurement PO.
+	directPO := makePurchaseOrderWithRouting(t, "PO-DIRECT-SCOPE-001", "draft", "direct_payment")
+	procPO := makePurchaseOrderWithRouting(t, "PO-PROC-SCOPE-001", "draft", "procurement")
+
+	// Build app authenticating as procurement role.
+	app := fiber.New()
+	procAuth := withTenantCtx(testOrgID, testUserID, "procurement")
+	app.Get("/purchase-orders/:id", procAuth, GetPurchaseOrder)
+
+	// direct_payment PO → should be invisible (404, not 403, to avoid info leak).
+	resp := testRequest(app, http.MethodGet, "/purchase-orders/"+directPO.ID, nil)
+	if resp.StatusCode != http.StatusNotFound {
+		t.Errorf("procurement user: expected 404 for direct_payment PO, got %d", resp.StatusCode)
+	}
+
+	// procurement PO → should be visible (200).
+	resp2 := testRequest(app, http.MethodGet, "/purchase-orders/"+procPO.ID, nil)
+	if resp2.StatusCode != http.StatusOK {
+		body := decodeResponse(resp2)
+		t.Errorf("procurement user: expected 200 for procurement PO, got %d; body=%v", resp2.StatusCode, body)
+	}
+}

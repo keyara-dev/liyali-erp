@@ -655,3 +655,58 @@ func TestPaymentVoucher_PersistManualVendorName(t *testing.T) {
 		t.Errorf("update response: expected vendorName=MICOP BUSINESS VENTURES, got %q", updRespBody.Data.VendorName)
 	}
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Scope isolation: procurement role cannot see direct_payment PVs
+// ─────────────────────────────────────────────────────────────────────────────
+
+// makePaymentVoucherWithRouting creates a PaymentVoucher with an explicit routing_type.
+func makePaymentVoucherWithRouting(t *testing.T, docNum, status, routingType string) models.PaymentVoucher {
+	t.Helper()
+	voucher := models.PaymentVoucher{
+		ID:             uuid.New().String(),
+		OrganizationID: testOrgID,
+		DocumentNumber: docNum,
+		InvoiceNumber:  "INV-" + uuid.New().String()[:8],
+		Status:         status,
+		RoutingType:    routingType,
+		Amount:         500.00,
+		Currency:       "ZMW",
+		PaymentMethod:  "bank_transfer",
+		CreatedAt:      time.Now(),
+		UpdatedAt:      time.Now(),
+	}
+	voucher.ApprovalHistory = datatypes.NewJSONType([]types.ApprovalRecord{})
+	voucher.ActionHistory = datatypes.NewJSONType([]types.ActionHistoryEntry{})
+	if err := config.DB.Create(&voucher).Error; err != nil {
+		t.Fatalf("makePaymentVoucherWithRouting: %v", err)
+	}
+	return voucher
+}
+
+// TestPV_ProcurementUserCannotSeeDirectPayment verifies that a procurement-role
+// user receives 404 when fetching a direct_payment PV by ID (single-get endpoint).
+func TestPV_ProcurementUserCannotSeeDirectPayment(t *testing.T) {
+	db := setupTestDB(t)
+	defer teardownTestDB(t, db)
+
+	directPV := makePaymentVoucherWithRouting(t, "PV-DIRECT-SCOPE-001", "draft", "direct_payment")
+	procPV := makePaymentVoucherWithRouting(t, "PV-PROC-SCOPE-001", "draft", "procurement")
+
+	app := fiber.New()
+	procAuth := withTenantCtx(testOrgID, testUserID, "procurement")
+	app.Get("/payment-vouchers/:id", procAuth, GetPaymentVoucher)
+
+	// direct_payment PV → 404 (invisible, no info leak).
+	resp := testRequest(app, http.MethodGet, "/payment-vouchers/"+directPV.ID, nil)
+	if resp.StatusCode != http.StatusNotFound {
+		t.Errorf("procurement user: expected 404 for direct_payment PV, got %d", resp.StatusCode)
+	}
+
+	// procurement PV → 200.
+	resp2 := testRequest(app, http.MethodGet, "/payment-vouchers/"+procPV.ID, nil)
+	if resp2.StatusCode != http.StatusOK {
+		body := decodeResponse(resp2)
+		t.Errorf("procurement user: expected 200 for procurement PV, got %d; body=%v", resp2.StatusCode, body)
+	}
+}

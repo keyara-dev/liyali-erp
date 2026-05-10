@@ -991,3 +991,64 @@ func TestRequisition_PersistManualPreferredVendorName(t *testing.T) {
 		t.Errorf("update response: expected preferredVendorName=ANOTHER AD-HOC VENDOR, got %q", updRespBody.Data.PreferredVendorName)
 	}
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Scope isolation: procurement role cannot see direct_payment requisitions
+// ─────────────────────────────────────────────────────────────────────────────
+
+// makeRequisitionWithRouting creates a Requisition with an explicit routing_type.
+func makeRequisitionWithRouting(t *testing.T, docNum, status, routingType string) models.Requisition {
+	t.Helper()
+	req := models.Requisition{
+		ID:             uuid.New().String(),
+		OrganizationID: testOrgID,
+		DocumentNumber: docNum,
+		RequesterId:    testUserID,
+		RequesterName:  "Test User",
+		Title:          "Test " + routingType + " Requisition",
+		Department:     "Engineering",
+		Status:         status,
+		Priority:       "medium",
+		RoutingType:    routingType,
+		TotalAmount:    250.00,
+		Currency:       "ZMW",
+		CreatedAt:      time.Now(),
+		UpdatedAt:      time.Now(),
+	}
+	req.Items = datatypes.NewJSONType([]types.RequisitionItem{
+		{Description: "Item", Quantity: 1, UnitPrice: 250.00, Amount: 250.00},
+	})
+	req.ApprovalHistory = datatypes.NewJSONType([]types.ApprovalRecord{})
+	req.ActionHistory = datatypes.NewJSONType([]types.ActionHistoryEntry{})
+	if err := config.DB.Create(&req).Error; err != nil {
+		t.Fatalf("makeRequisitionWithRouting: %v", err)
+	}
+	return req
+}
+
+// TestRequisition_ProcurementUserCannotSeeDirectPayment verifies that a
+// procurement-role user receives 404 for a direct_payment requisition (single-get).
+func TestRequisition_ProcurementUserCannotSeeDirectPayment(t *testing.T) {
+	db := setupTestDB(t)
+	defer teardownTestDB(t, db)
+
+	directReq := makeRequisitionWithRouting(t, "REQ-DIRECT-SCOPE-001", "draft", "direct_payment")
+	procReq := makeRequisitionWithRouting(t, "REQ-PROC-SCOPE-001", "draft", "procurement")
+
+	app := fiber.New()
+	procAuth := withTenantCtx(testOrgID, testUserID, "procurement")
+	app.Get("/requisitions/:id", procAuth, GetRequisition)
+
+	// direct_payment requisition → 404 (invisible, no info leak).
+	resp := testRequest(app, http.MethodGet, "/requisitions/"+directReq.ID, nil)
+	if resp.StatusCode != http.StatusNotFound {
+		t.Errorf("procurement user: expected 404 for direct_payment requisition, got %d", resp.StatusCode)
+	}
+
+	// procurement requisition → 200.
+	resp2 := testRequest(app, http.MethodGet, "/requisitions/"+procReq.ID, nil)
+	if resp2.StatusCode != http.StatusOK {
+		body := decodeResponse(resp2)
+		t.Errorf("procurement user: expected 200 for procurement requisition, got %d; body=%v", resp2.StatusCode, body)
+	}
+}

@@ -553,3 +553,65 @@ func TestConfirmGRN_Success(t *testing.T) {
 		t.Errorf("expected success=true, got %v", body["success"])
 	}
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Scope isolation: procurement role cannot see GRNs linked to direct_payment POs
+// ─────────────────────────────────────────────────────────────────────────────
+
+// makeApprovedPOWithRouting creates a PO with an explicit routing_type for GRN linkage.
+func makeApprovedPOWithRouting(t *testing.T, docNum, routingType string) models.PurchaseOrder {
+	t.Helper()
+	order := models.PurchaseOrder{
+		ID:             uuid.New().String(),
+		OrganizationID: testOrgID,
+		DocumentNumber: docNum,
+		Status:         "APPROVED",
+		RoutingType:    routingType,
+		TotalAmount:    1000.00,
+		Currency:       "ZMW",
+		DeliveryDate:   time.Now().Add(30 * 24 * time.Hour),
+		CreatedAt:      time.Now(),
+		UpdatedAt:      time.Now(),
+	}
+	order.Items = datatypes.NewJSONType([]types.POItem{
+		{Description: "Widget", Quantity: 5, UnitPrice: 200.0, Amount: 1000.0},
+	})
+	order.ApprovalHistory = datatypes.NewJSONType([]types.ApprovalRecord{})
+	order.ActionHistory = datatypes.NewJSONType([]types.ActionHistoryEntry{})
+	if err := config.DB.Create(&order).Error; err != nil {
+		t.Fatalf("makeApprovedPOWithRouting: %v", err)
+	}
+	return order
+}
+
+// TestGRN_ProcurementUserCannotSeeDirectPaymentGRN verifies that a procurement-role
+// user receives 404 for a GRN linked to a direct_payment PO (single-get endpoint).
+func TestGRN_ProcurementUserCannotSeeDirectPaymentGRN(t *testing.T) {
+	db := setupTestDB(t)
+	defer teardownTestDB(t, db)
+
+	// Seed a direct_payment PO and a procurement PO.
+	directPO := makeApprovedPOWithRouting(t, "PO-DIRECT-GRN-SCOPE-001", "direct_payment")
+	procPO := makeApprovedPOWithRouting(t, "PO-PROC-GRN-SCOPE-001", "procurement")
+
+	// GRNs linked to each.
+	directGRN := makeGRN(t, "GRN-DIRECT-SCOPE-001", directPO.DocumentNumber, "draft")
+	procGRN := makeGRN(t, "GRN-PROC-SCOPE-001", procPO.DocumentNumber, "draft")
+
+	app := fiber.New()
+	procAuth := withTenantCtx(testOrgID, testUserID, "procurement")
+	app.Get("/grns/:id", procAuth, GetGRN)
+
+	// GRN linked to direct_payment PO → 404.
+	resp := testRequest(app, http.MethodGet, "/grns/"+directGRN.ID, nil)
+	if resp.StatusCode != http.StatusNotFound {
+		t.Errorf("procurement user: expected 404 for direct_payment GRN, got %d", resp.StatusCode)
+	}
+
+	// GRN linked to procurement PO → 200.
+	resp2 := testRequest(app, http.MethodGet, "/grns/"+procGRN.ID, nil)
+	if resp2.StatusCode != http.StatusOK {
+		body := decodeResponse(resp2)
+		t.Errorf("procurement user: expected 200 for procurement GRN, got %d; body=%v", resp2.StatusCode, body)
+	}
+}
