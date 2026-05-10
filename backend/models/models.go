@@ -39,6 +39,29 @@ type User struct {
 	OrgRoleIds []string `gorm:"-" json:"orgRoleIds,omitempty"` // Active custom org role UUIDs for current org (populated at request time)
 }
 
+// Payee — unified payee record for requisition payments.
+// Vendor/Employee entries snapshot key fields here for unified lookup;
+// "other" payees live exclusively in this table.
+type Payee struct {
+	ID             string         `gorm:"primaryKey" json:"id"`
+	OrganizationID string         `gorm:"index;not null" json:"organizationId"`
+	PayeeType      string         `gorm:"type:text;not null" json:"payeeType"` // vendor, employee, other
+	Name           string         `gorm:"type:text;not null" json:"name"`
+	Email          string         `gorm:"type:text" json:"email,omitempty"`
+	Phone          string         `gorm:"type:text" json:"phone,omitempty"`
+	BankName       string         `gorm:"type:text" json:"bankName,omitempty"`
+	BankAccount    string         `gorm:"type:text" json:"bankAccount,omitempty"`
+	TaxID          string         `gorm:"type:text;column:tax_id" json:"taxId,omitempty"`
+	SourceVendorID *string        `gorm:"type:varchar(255)" json:"sourceVendorId,omitempty"`
+	SourceUserID   *string        `gorm:"type:varchar(255)" json:"sourceUserId,omitempty"`
+	CreatedBy      *string        `gorm:"type:varchar(255)" json:"createdBy,omitempty"`
+	DeletedAt      gorm.DeletedAt `gorm:"index" json:"-"`
+	CreatedAt      time.Time      `json:"createdAt"`
+	UpdatedAt      time.Time      `json:"updatedAt"`
+}
+
+func (Payee) TableName() string { return "payees" }
+
 // Requisition workflow document
 type Requisition struct {
 	ID                string          `gorm:"primaryKey" json:"id"`
@@ -66,6 +89,11 @@ type Requisition struct {
 	PreferredVendor   *Vendor         `gorm:"foreignKey:PreferredVendorID" json:"preferredVendor,omitempty"`
 	PreferredVendorName string        `json:"preferredVendorName"`                       // Persisted; falls back to PreferredVendor.Name on read
 	IsEstimate        bool            `json:"isEstimate"`
+
+	// Direct-payment routing fields
+	RoutingType   string         `gorm:"type:text;not null;default:'procurement';index" json:"routingType"`
+	PayeeID       *string        `gorm:"type:varchar(255)" json:"payeeId,omitempty"`
+	PayeeSnapshot datatypes.JSON `gorm:"type:jsonb" json:"payeeSnapshot,omitempty"`
 
 	// Business requirement fields
 	BudgetCode          string                                    `json:"budgetCode"`
@@ -158,6 +186,9 @@ type PurchaseOrder struct {
 	ProjectCode   string     `json:"projectCode,omitempty"`   // Project code - ADDED
 	CreatedBy     string     `json:"createdBy,omitempty"`     // Creator user ID - ADDED
 	
+	// Direct-payment routing
+	RoutingType string `gorm:"type:text;not null;default:'procurement';index" json:"routingType"`
+
 	// Procurement flow override: "goods_first", "payment_first", or "" (inherit from org)
 	ProcurementFlow string `gorm:"column:procurement_flow;default:''" json:"procurementFlow"`
 
@@ -227,6 +258,12 @@ type PaymentVoucher struct {
 	BankDetails             datatypes.JSON                           `gorm:"type:jsonb" json:"bankDetails,omitempty"` // Bank details for payment
 	Items                   datatypes.JSONType[[]types.PaymentItem]  `gorm:"type:jsonb" json:"items,omitempty"`       // Payment items breakdown
 	ActionHistory           datatypes.JSONType[[]types.ActionHistoryEntry] `gorm:"type:jsonb" json:"actionHistory,omitempty"` // Action history for UI
+
+	// Direct-payment routing fields
+	RoutingType    string         `gorm:"type:text;not null;default:'procurement';index" json:"routingType"`
+	ProofOfPayment datatypes.JSON `gorm:"type:jsonb" json:"proofOfPayment,omitempty"` // Uploaded payment proof(s)
+	PaidAt         *time.Time     `json:"paidAt,omitempty"`                           // Actual payment timestamp
+	PaidBy         *string        `gorm:"type:varchar(255)" json:"paidBy,omitempty"`  // User ID who recorded the payment
 
 	CreatedAt       time.Time       `json:"createdAt"`
 	UpdatedAt       time.Time       `json:"updatedAt"`
