@@ -316,3 +316,58 @@ func TestUpdatePayee_Success(t *testing.T) {
 	// payeeType unchanged
 	assert.Equal(t, "other", data["payeeType"])
 }
+
+// ---------------------------------------------------------------------------
+// Cross-org isolation — single-resource endpoints
+// ---------------------------------------------------------------------------
+
+func TestGetPayee_CrossOrgReturns404(t *testing.T) {
+	db := setupTestDB(t)
+	defer teardownTestDB(t, db)
+	assert.NoError(t, db.AutoMigrate(&models.Payee{}))
+
+	// Payee belongs to org A.
+	p := seedPayee(t, db, testOrgID, "Org A Payee", "vendor")
+
+	// App authenticated as org B.
+	app := newPayeesApp(withTenantCtx("other-org-999", testUserID, testUserRole))
+
+	resp := testRequest(app, http.MethodGet, "/payees/"+p.ID, nil)
+	assert.Equal(t, http.StatusNotFound, resp.StatusCode)
+	body := decodeResponse(resp)
+	assert.Equal(t, false, body["success"])
+}
+
+func TestUpdatePayee_CrossOrgReturns404(t *testing.T) {
+	db := setupTestDB(t)
+	defer teardownTestDB(t, db)
+	assert.NoError(t, db.AutoMigrate(&models.Payee{}))
+
+	// Payee belongs to org A.
+	p := seedPayee(t, db, testOrgID, "Org A Payee", "vendor")
+
+	// App authenticated as org B.
+	app := newPayeesApp(withTenantCtx("other-org-999", testUserID, testUserRole))
+
+	resp := testRequest(app, http.MethodPut, "/payees/"+p.ID, map[string]interface{}{"name": "Hijacked"})
+	assert.Equal(t, http.StatusNotFound, resp.StatusCode)
+	body := decodeResponse(resp)
+	assert.Equal(t, false, body["success"])
+}
+
+func TestDeletePayee_CrossOrgReturns404(t *testing.T) {
+	db := setupTestDB(t)
+	defer teardownTestDB(t, db)
+	assert.NoError(t, db.AutoMigrate(&models.Payee{}))
+
+	// Payee belongs to org A.
+	p := seedPayee(t, db, testOrgID, "Org A Payee", "vendor")
+
+	// App authenticated as org B.
+	app := newPayeesApp(withTenantCtx("other-org-999", testUserID, testUserRole))
+
+	resp := testRequest(app, http.MethodDelete, "/payees/"+p.ID, nil)
+	assert.Equal(t, http.StatusNotFound, resp.StatusCode)
+	body := decodeResponse(resp)
+	assert.Equal(t, false, body["success"])
+}

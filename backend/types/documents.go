@@ -505,12 +505,13 @@ type CreatePayeeRequest struct {
 
 // UpdatePayeeRequest represents a payee partial-update request
 type UpdatePayeeRequest struct {
-	Name        string `json:"name"`
-	Email       string `json:"email"`
-	Phone       string `json:"phone"`
-	BankName    string `json:"bankName"`
-	BankAccount string `json:"bankAccount"`
-	TaxID       string `json:"taxId"`
+	PayeeType   *string `json:"payeeType,omitempty"`
+	Name        string  `json:"name"`
+	Email       string  `json:"email"`
+	Phone       string  `json:"phone"`
+	BankName    string  `json:"bankName"`
+	BankAccount string  `json:"bankAccount"`
+	TaxID       string  `json:"taxId"`
 }
 
 // PayeeResponse is the JSON shape returned to clients

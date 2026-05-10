@@ -51,7 +51,7 @@ func GetPayees(c *fiber.Ctx) error {
 		query = query.Where("payee_type = ?", payeeType)
 	}
 	if q != "" {
-		query = query.Where("name LIKE ?", "%"+q+"%")
+		query = query.Where("LOWER(name) LIKE LOWER(?)", "%"+q+"%")
 	}
 
 	var total int64
@@ -216,6 +216,15 @@ func UpdatePayee(c *fiber.Ctx) error {
 		})
 	}
 
+	if req.PayeeType != nil {
+		if !validPayeeTypes[strings.ToLower(*req.PayeeType)] {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"success": false,
+				"message": "payeeType must be one of: vendor, employee, other",
+			})
+		}
+		payee.PayeeType = strings.ToLower(*req.PayeeType)
+	}
 	if req.Name != "" {
 		payee.Name = req.Name
 	}
