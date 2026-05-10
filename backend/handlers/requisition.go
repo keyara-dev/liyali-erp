@@ -330,8 +330,9 @@ func CreateRequisition(c *fiber.Ctx) error {
 		TotalAmount:       req.TotalAmount,
 		Currency:          req.Currency,
 		CategoryID:        req.CategoryID,
-		PreferredVendorID: req.PreferredVendorID,
-		IsEstimate:        req.IsEstimate,
+		PreferredVendorID:   req.PreferredVendorID,
+		PreferredVendorName: req.PreferredVendorName, // persist manual ad-hoc vendor name
+		IsEstimate:          req.IsEstimate,
 		ApprovalStage:     0,
 
 		// Business requirement fields
@@ -545,6 +546,10 @@ func UpdateRequisition(c *fiber.Ctx) error {
 			}
 		}
 		requisition.PreferredVendorID = req.PreferredVendorID
+	}
+	// Persist preferred vendor name when supplied (covers manual ad-hoc vendors).
+	if req.PreferredVendorName != "" || (req.PreferredVendorID != nil && *req.PreferredVendorID == "") {
+		requisition.PreferredVendorName = req.PreferredVendorName
 	}
 	if req.IsEstimate != nil {
 		requisition.IsEstimate = *req.IsEstimate
@@ -785,10 +790,10 @@ func modelToRequisitionResponse(req models.Requisition) types.RequisitionRespons
 		categoryName = req.Category.Name
 	}
 
-	preferredVendorName := ""
+	preferredVendorName := req.PreferredVendorName // stored fallback (covers ad-hoc vendors)
 	var preferredVendorResp *types.VendorResponse
 	if req.PreferredVendor != nil {
-		preferredVendorName = req.PreferredVendor.Name
+		preferredVendorName = req.PreferredVendor.Name // canonical vendor record wins
 		vr := modelToVendorResponse(*req.PreferredVendor)
 		preferredVendorResp = &vr
 	}
