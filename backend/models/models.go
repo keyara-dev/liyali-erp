@@ -64,7 +64,7 @@ type Requisition struct {
 	CategoryName      string          `gorm:"-" json:"categoryName"`
 	PreferredVendorID *string         `json:"preferredVendorId,omitempty"`
 	PreferredVendor   *Vendor         `gorm:"foreignKey:PreferredVendorID" json:"preferredVendor,omitempty"`
-	PreferredVendorName string        `gorm:"-" json:"preferredVendorName"`
+	PreferredVendorName string        `json:"preferredVendorName"`                       // Persisted; falls back to PreferredVendor.Name on read
 	IsEstimate        bool            `json:"isEstimate"`
 
 	// Business requirement fields
@@ -143,7 +143,7 @@ type PurchaseOrder struct {
 	LinkedRequisition string          `json:"linkedRequisition"`
 
 	// Frontend compatibility fields - CRITICAL: These must match frontend exactly
-	VendorName    string     `gorm:"-" json:"vendorName,omitempty"`    // Computed from Vendor.Name
+	VendorName    string     `json:"vendorName,omitempty"`              // Persisted; falls back to Vendor.Name on read
 	Department    string     `json:"department,omitempty"`    // Department
 	DepartmentID  string     `json:"departmentId,omitempty"`  // Department ID
 	GLCode        string     `json:"glCode,omitempty"`        // GL Code - ADDED
