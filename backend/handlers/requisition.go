@@ -70,33 +70,47 @@ func GetRequisitions(c *fiber.Ctx) error {
 
 	switch {
 	case scope.CanViewAll:
-		total, err = config.Queries.CountRequisitionsAll(ctx, organizationID, status, department, priority)
+		total, err = config.Queries.CountRequisitionsAll(ctx, db.CountRequisitionsAllParams{
+			OrganizationID:    organizationID,
+			Column2:           status,
+			Column3:           department,
+			Column4:           priority,
+			HideDirectPayment: scope.HideDirectPayment,
+		})
 		if err != nil {
 			return utils.SendInternalError(c, "Failed to count requisitions", err)
 		}
 		ids, err = config.Queries.ListRequisitionIDsAll(ctx, db.ListRequisitionIDsAllParams{
-			OrganizationID: organizationID,
-			Column2:        status,
-			Column3:        department,
-			Column4:        priority,
-			Limit:          int32(pageSize),
-			Offset:         offset,
+			OrganizationID:    organizationID,
+			Column2:           status,
+			Column3:           department,
+			Column4:           priority,
+			HideDirectPayment: scope.HideDirectPayment,
+			Limit:             int32(pageSize),
+			Offset:            offset,
 		})
 		if err != nil {
 			return utils.SendInternalError(c, "Failed to fetch requisitions", err)
 		}
 	case scope.IsProcurement:
-		total, err = config.Queries.CountRequisitionsProcurement(ctx, organizationID, status, department, priority)
+		total, err = config.Queries.CountRequisitionsProcurement(ctx, db.CountRequisitionsProcurementParams{
+			OrganizationID:    organizationID,
+			Column2:           status,
+			Column3:           department,
+			Column4:           priority,
+			HideDirectPayment: scope.HideDirectPayment,
+		})
 		if err != nil {
 			return utils.SendInternalError(c, "Failed to count requisitions", err)
 		}
 		ids, err = config.Queries.ListRequisitionIDsProcurement(ctx, db.ListRequisitionIDsProcurementParams{
-			OrganizationID: organizationID,
-			Column2:        status,
-			Column3:        department,
-			Column4:        priority,
-			Limit:          int32(pageSize),
-			Offset:         offset,
+			OrganizationID:    organizationID,
+			Column2:           status,
+			Column3:           department,
+			Column4:           priority,
+			HideDirectPayment: scope.HideDirectPayment,
+			Limit:             int32(pageSize),
+			Offset:            offset,
 		})
 		if err != nil {
 			return utils.SendInternalError(c, "Failed to fetch requisitions", err)

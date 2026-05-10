@@ -16,7 +16,16 @@ WHERE organization_id = $1
   AND ($2::text = '' OR UPPER(status)     = UPPER($2))
   AND ($3::text = '' OR department        = $3)
   AND ($4::text = '' OR priority          = $4)
+  AND (NOT $5::bool OR routing_type != 'direct_payment')
 `
+
+type CountRequisitionsAllParams struct {
+	OrganizationID    string `json:"organization_id"`
+	Column2           string `json:"column_2"`
+	Column3           string `json:"column_3"`
+	Column4           string `json:"column_4"`
+	HideDirectPayment bool   `json:"hide_direct_payment"`
+}
 
 // Requisition read queries.
 // List queries return only `id`; the handler fetches full data via GORM with Preload
@@ -26,12 +35,13 @@ WHERE organization_id = $1
 //	All         → scope.CanViewAll
 //	Procurement → scope.IsProcurement (workflow_assignments subquery filter)
 //	Limited     → default (owner + workflow_tasks involvement filter)
-func (q *Queries) CountRequisitionsAll(ctx context.Context, organizationID string, column2 string, column3 string, column4 string) (int64, error) {
+func (q *Queries) CountRequisitionsAll(ctx context.Context, arg CountRequisitionsAllParams) (int64, error) {
 	row := q.db.QueryRow(ctx, countRequisitionsAll,
-		organizationID,
-		column2,
-		column3,
-		column4,
+		arg.OrganizationID,
+		arg.Column2,
+		arg.Column3,
+		arg.Column4,
+		arg.HideDirectPayment,
 	)
 	var count int64
 	err := row.Scan(&count)
@@ -91,6 +101,7 @@ WHERE r.organization_id = $1
   AND ($2::text = '' OR UPPER(r.status)   = UPPER($2))
   AND ($3::text = '' OR r.department      = $3)
   AND ($4::text = '' OR r.priority        = $4)
+  AND (NOT $5::bool OR r.routing_type != 'direct_payment')
   AND r.id IN (
       SELECT wa.entity_id
       FROM workflow_assignments wa
@@ -105,12 +116,21 @@ WHERE r.organization_id = $1
   )
 `
 
-func (q *Queries) CountRequisitionsProcurement(ctx context.Context, organizationID string, column2 string, column3 string, column4 string) (int64, error) {
+type CountRequisitionsProcurementParams struct {
+	OrganizationID    string `json:"organization_id"`
+	Column2           string `json:"column_2"`
+	Column3           string `json:"column_3"`
+	Column4           string `json:"column_4"`
+	HideDirectPayment bool   `json:"hide_direct_payment"`
+}
+
+func (q *Queries) CountRequisitionsProcurement(ctx context.Context, arg CountRequisitionsProcurementParams) (int64, error) {
 	row := q.db.QueryRow(ctx, countRequisitionsProcurement,
-		organizationID,
-		column2,
-		column3,
-		column4,
+		arg.OrganizationID,
+		arg.Column2,
+		arg.Column3,
+		arg.Column4,
+		arg.HideDirectPayment,
 	)
 	var count int64
 	err := row.Scan(&count)
@@ -123,17 +143,19 @@ WHERE organization_id = $1
   AND ($2::text = '' OR UPPER(status)     = UPPER($2))
   AND ($3::text = '' OR department        = $3)
   AND ($4::text = '' OR priority          = $4)
+  AND (NOT $5::bool OR routing_type != 'direct_payment')
 ORDER BY created_at DESC
-LIMIT $5 OFFSET $6
+LIMIT $6 OFFSET $7
 `
 
 type ListRequisitionIDsAllParams struct {
-	OrganizationID string `json:"organization_id"`
-	Column2        string `json:"column_2"`
-	Column3        string `json:"column_3"`
-	Column4        string `json:"column_4"`
-	Limit          int32  `json:"limit"`
-	Offset         int32  `json:"offset"`
+	OrganizationID    string `json:"organization_id"`
+	Column2           string `json:"column_2"`
+	Column3           string `json:"column_3"`
+	Column4           string `json:"column_4"`
+	HideDirectPayment bool   `json:"hide_direct_payment"`
+	Limit             int32  `json:"limit"`
+	Offset            int32  `json:"offset"`
 }
 
 func (q *Queries) ListRequisitionIDsAll(ctx context.Context, arg ListRequisitionIDsAllParams) ([]string, error) {
@@ -142,6 +164,7 @@ func (q *Queries) ListRequisitionIDsAll(ctx context.Context, arg ListRequisition
 		arg.Column2,
 		arg.Column3,
 		arg.Column4,
+		arg.HideDirectPayment,
 		arg.Limit,
 		arg.Offset,
 	)
@@ -235,6 +258,7 @@ WHERE r.organization_id = $1
   AND ($2::text = '' OR UPPER(r.status)   = UPPER($2))
   AND ($3::text = '' OR r.department      = $3)
   AND ($4::text = '' OR r.priority        = $4)
+  AND (NOT $5::bool OR r.routing_type != 'direct_payment')
   AND r.id IN (
       SELECT wa.entity_id
       FROM workflow_assignments wa
@@ -248,16 +272,17 @@ WHERE r.organization_id = $1
         )
   )
 ORDER BY r.created_at DESC
-LIMIT $5 OFFSET $6
+LIMIT $6 OFFSET $7
 `
 
 type ListRequisitionIDsProcurementParams struct {
-	OrganizationID string `json:"organization_id"`
-	Column2        string `json:"column_2"`
-	Column3        string `json:"column_3"`
-	Column4        string `json:"column_4"`
-	Limit          int32  `json:"limit"`
-	Offset         int32  `json:"offset"`
+	OrganizationID    string `json:"organization_id"`
+	Column2           string `json:"column_2"`
+	Column3           string `json:"column_3"`
+	Column4           string `json:"column_4"`
+	HideDirectPayment bool   `json:"hide_direct_payment"`
+	Limit             int32  `json:"limit"`
+	Offset            int32  `json:"offset"`
 }
 
 func (q *Queries) ListRequisitionIDsProcurement(ctx context.Context, arg ListRequisitionIDsProcurementParams) ([]string, error) {
@@ -266,6 +291,7 @@ func (q *Queries) ListRequisitionIDsProcurement(ctx context.Context, arg ListReq
 		arg.Column2,
 		arg.Column3,
 		arg.Column4,
+		arg.HideDirectPayment,
 		arg.Limit,
 		arg.Offset,
 	)

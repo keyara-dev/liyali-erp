@@ -70,7 +70,12 @@ func GetPaymentVouchers(c *fiber.Ctx) error {
 
 	switch {
 	case scope.CanViewAll:
-		total, err = config.Queries.CountPaymentVouchersAll(ctx, tenant.OrganizationID, status, vendorID)
+		total, err = config.Queries.CountPaymentVouchersAll(ctx, db.CountPaymentVouchersAllParams{
+			OrganizationID:    tenant.OrganizationID,
+			Column2:           status,
+			Column3:           vendorID,
+			HideDirectPayment: scope.HideDirectPayment,
+		})
 		if err != nil {
 			logging.LogError(c, err, "failed_to_count_payment_vouchers", map[string]interface{}{"error_type": "database_error"})
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
@@ -79,7 +84,14 @@ func GetPaymentVouchers(c *fiber.Ctx) error {
 				"error":   err.Error(),
 			})
 		}
-		ids, err = config.Queries.ListPaymentVoucherIDsAll(ctx, tenant.OrganizationID, status, vendorID, int32(limit), offset)
+		ids, err = config.Queries.ListPaymentVoucherIDsAll(ctx, db.ListPaymentVoucherIDsAllParams{
+			OrganizationID:    tenant.OrganizationID,
+			Column2:           status,
+			Column3:           vendorID,
+			HideDirectPayment: scope.HideDirectPayment,
+			Limit:             int32(limit),
+			Offset:            offset,
+		})
 		if err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 				"success": false,
@@ -88,7 +100,12 @@ func GetPaymentVouchers(c *fiber.Ctx) error {
 			})
 		}
 	case scope.IsProcurement:
-		total, err = config.Queries.CountPaymentVouchersProcurement(ctx, tenant.OrganizationID, status, vendorID)
+		total, err = config.Queries.CountPaymentVouchersProcurement(ctx, db.CountPaymentVouchersProcurementParams{
+			OrganizationID:    tenant.OrganizationID,
+			Column2:           status,
+			Column3:           vendorID,
+			HideDirectPayment: scope.HideDirectPayment,
+		})
 		if err != nil {
 			logging.LogError(c, err, "failed_to_count_payment_vouchers", map[string]interface{}{"error_type": "database_error"})
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
@@ -97,7 +114,14 @@ func GetPaymentVouchers(c *fiber.Ctx) error {
 				"error":   err.Error(),
 			})
 		}
-		ids, err = config.Queries.ListPaymentVoucherIDsProcurement(ctx, tenant.OrganizationID, status, vendorID, int32(limit), offset)
+		ids, err = config.Queries.ListPaymentVoucherIDsProcurement(ctx, db.ListPaymentVoucherIDsProcurementParams{
+			OrganizationID:    tenant.OrganizationID,
+			Column2:           status,
+			Column3:           vendorID,
+			HideDirectPayment: scope.HideDirectPayment,
+			Limit:             int32(limit),
+			Offset:            offset,
+		})
 		if err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 				"success": false,

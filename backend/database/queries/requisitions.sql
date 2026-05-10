@@ -11,7 +11,8 @@ SELECT COUNT(*) FROM requisitions
 WHERE organization_id = $1
   AND ($2::text = '' OR UPPER(status)     = UPPER($2))
   AND ($3::text = '' OR department        = $3)
-  AND ($4::text = '' OR priority          = $4);
+  AND ($4::text = '' OR priority          = $4)
+  AND (NOT $5::bool OR routing_type != 'direct_payment');
 
 -- name: ListRequisitionIDsAll :many
 SELECT id FROM requisitions
@@ -19,8 +20,9 @@ WHERE organization_id = $1
   AND ($2::text = '' OR UPPER(status)     = UPPER($2))
   AND ($3::text = '' OR department        = $3)
   AND ($4::text = '' OR priority          = $4)
+  AND (NOT $5::bool OR routing_type != 'direct_payment')
 ORDER BY created_at DESC
-LIMIT $5 OFFSET $6;
+LIMIT $6 OFFSET $7;
 
 -- name: CountRequisitionsProcurement :one
 SELECT COUNT(*) FROM requisitions r
@@ -28,6 +30,7 @@ WHERE r.organization_id = $1
   AND ($2::text = '' OR UPPER(r.status)   = UPPER($2))
   AND ($3::text = '' OR r.department      = $3)
   AND ($4::text = '' OR r.priority        = $4)
+  AND (NOT $5::bool OR r.routing_type != 'direct_payment')
   AND r.id IN (
       SELECT wa.entity_id
       FROM workflow_assignments wa
@@ -47,6 +50,7 @@ WHERE r.organization_id = $1
   AND ($2::text = '' OR UPPER(r.status)   = UPPER($2))
   AND ($3::text = '' OR r.department      = $3)
   AND ($4::text = '' OR r.priority        = $4)
+  AND (NOT $5::bool OR r.routing_type != 'direct_payment')
   AND r.id IN (
       SELECT wa.entity_id
       FROM workflow_assignments wa
@@ -60,7 +64,7 @@ WHERE r.organization_id = $1
         )
   )
 ORDER BY r.created_at DESC
-LIMIT $5 OFFSET $6;
+LIMIT $6 OFFSET $7;
 
 -- name: CountRequisitionsLimited :one
 SELECT COUNT(*) FROM requisitions r

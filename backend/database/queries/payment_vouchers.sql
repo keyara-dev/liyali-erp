@@ -8,15 +8,17 @@
 SELECT COUNT(*) FROM payment_vouchers
 WHERE organization_id = $1
   AND ($2::text = '' OR UPPER(status) = UPPER($2))
-  AND ($3::text = '' OR vendor_id     = $3);
+  AND ($3::text = '' OR vendor_id     = $3)
+  AND (NOT $4::bool OR routing_type != 'direct_payment');
 
 -- name: ListPaymentVoucherIDsAll :many
 SELECT id FROM payment_vouchers
 WHERE organization_id = $1
   AND ($2::text = '' OR UPPER(status) = UPPER($2))
   AND ($3::text = '' OR vendor_id     = $3)
+  AND (NOT $4::bool OR routing_type != 'direct_payment')
 ORDER BY created_at DESC
-LIMIT $4 OFFSET $5;
+LIMIT $5 OFFSET $6;
 
 -- name: CountPaymentVouchersProcurement :one
 SELECT COUNT(*) FROM payment_vouchers pv
@@ -24,7 +26,8 @@ WHERE pv.organization_id = $1
   AND pv.linked_po IS NOT NULL
   AND pv.linked_po != ''
   AND ($2::text = '' OR UPPER(pv.status) = UPPER($2))
-  AND ($3::text = '' OR pv.vendor_id     = $3);
+  AND ($3::text = '' OR pv.vendor_id     = $3)
+  AND (NOT $4::bool OR pv.routing_type != 'direct_payment');
 
 -- name: ListPaymentVoucherIDsProcurement :many
 SELECT pv.id FROM payment_vouchers pv
@@ -33,8 +36,9 @@ WHERE pv.organization_id = $1
   AND pv.linked_po != ''
   AND ($2::text = '' OR UPPER(pv.status) = UPPER($2))
   AND ($3::text = '' OR pv.vendor_id     = $3)
+  AND (NOT $4::bool OR pv.routing_type != 'direct_payment')
 ORDER BY pv.created_at DESC
-LIMIT $4 OFFSET $5;
+LIMIT $5 OFFSET $6;
 
 -- name: CountPaymentVouchersLimited :one
 SELECT COUNT(*) FROM payment_vouchers pv

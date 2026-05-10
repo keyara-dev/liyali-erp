@@ -15,13 +15,30 @@ SELECT COUNT(*) FROM goods_received_notes
 WHERE organization_id = $1
   AND ($2::text = '' OR UPPER(status)           = UPPER($2))
   AND ($3::text = '' OR po_document_number      = $3)
+  AND (NOT $4::bool OR EXISTS (
+        SELECT 1 FROM purchase_orders po
+        WHERE po.document_number = po_document_number
+          AND po.routing_type != 'direct_payment'
+      ))
 `
+
+type CountGRNsAllParams struct {
+	OrganizationID    string `json:"organization_id"`
+	Column2           string `json:"column_2"`
+	Column3           string `json:"column_3"`
+	HideDirectPayment bool   `json:"hide_direct_payment"`
+}
 
 // Goods received note read queries.
 // Both CanViewAll and IsProcurement use the unfiltered path (ApplyToQuery passes through).
 // Limited adds owner (created_by OR received_by) + workflow_tasks involvement.
-func (q *Queries) CountGRNsAll(ctx context.Context, organizationID string, column2 string, column3 string) (int64, error) {
-	row := q.db.QueryRow(ctx, countGRNsAll, organizationID, column2, column3)
+func (q *Queries) CountGRNsAll(ctx context.Context, arg CountGRNsAllParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countGRNsAll,
+		arg.OrganizationID,
+		arg.Column2,
+		arg.Column3,
+		arg.HideDirectPayment,
+	)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -77,17 +94,32 @@ SELECT id FROM goods_received_notes
 WHERE organization_id = $1
   AND ($2::text = '' OR UPPER(status)           = UPPER($2))
   AND ($3::text = '' OR po_document_number      = $3)
+  AND (NOT $4::bool OR EXISTS (
+        SELECT 1 FROM purchase_orders po
+        WHERE po.document_number = po_document_number
+          AND po.routing_type != 'direct_payment'
+      ))
 ORDER BY created_at DESC
-LIMIT $4 OFFSET $5
+LIMIT $5 OFFSET $6
 `
 
-func (q *Queries) ListGRNIDsAll(ctx context.Context, organizationID string, column2 string, column3 string, limit int32, offset int32) ([]string, error) {
+type ListGRNIDsAllParams struct {
+	OrganizationID    string `json:"organization_id"`
+	Column2           string `json:"column_2"`
+	Column3           string `json:"column_3"`
+	HideDirectPayment bool   `json:"hide_direct_payment"`
+	Limit             int32  `json:"limit"`
+	Offset            int32  `json:"offset"`
+}
+
+func (q *Queries) ListGRNIDsAll(ctx context.Context, arg ListGRNIDsAllParams) ([]string, error) {
 	rows, err := q.db.Query(ctx, listGRNIDsAll,
-		organizationID,
-		column2,
-		column3,
-		limit,
-		offset,
+		arg.OrganizationID,
+		arg.Column2,
+		arg.Column3,
+		arg.HideDirectPayment,
+		arg.Limit,
+		arg.Offset,
 	)
 	if err != nil {
 		return nil, err

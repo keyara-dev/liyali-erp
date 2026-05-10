@@ -6,15 +6,25 @@
 SELECT COUNT(*) FROM goods_received_notes
 WHERE organization_id = $1
   AND ($2::text = '' OR UPPER(status)           = UPPER($2))
-  AND ($3::text = '' OR po_document_number      = $3);
+  AND ($3::text = '' OR po_document_number      = $3)
+  AND (NOT $4::bool OR EXISTS (
+        SELECT 1 FROM purchase_orders po
+        WHERE po.document_number = po_document_number
+          AND po.routing_type != 'direct_payment'
+      ));
 
 -- name: ListGRNIDsAll :many
 SELECT id FROM goods_received_notes
 WHERE organization_id = $1
   AND ($2::text = '' OR UPPER(status)           = UPPER($2))
   AND ($3::text = '' OR po_document_number      = $3)
+  AND (NOT $4::bool OR EXISTS (
+        SELECT 1 FROM purchase_orders po
+        WHERE po.document_number = po_document_number
+          AND po.routing_type != 'direct_payment'
+      ))
 ORDER BY created_at DESC
-LIMIT $4 OFFSET $5;
+LIMIT $5 OFFSET $6;
 
 -- name: CountGRNsLimited :one
 SELECT COUNT(*) FROM goods_received_notes g

@@ -15,7 +15,15 @@ SELECT COUNT(*) FROM payment_vouchers
 WHERE organization_id = $1
   AND ($2::text = '' OR UPPER(status) = UPPER($2))
   AND ($3::text = '' OR vendor_id     = $3)
+  AND (NOT $4::bool OR routing_type != 'direct_payment')
 `
+
+type CountPaymentVouchersAllParams struct {
+	OrganizationID    string `json:"organization_id"`
+	Column2           string `json:"column_2"`
+	Column3           string `json:"column_3"`
+	HideDirectPayment bool   `json:"hide_direct_payment"`
+}
 
 // Payment voucher read queries.
 // Three scope variants:
@@ -23,8 +31,13 @@ WHERE organization_id = $1
 //	All         → scope.CanViewAll
 //	Procurement → scope.IsProcurement (linked_po != '' filter)
 //	Limited     → default (owner + workflow_tasks involvement filter)
-func (q *Queries) CountPaymentVouchersAll(ctx context.Context, organizationID string, column2 string, column3 string) (int64, error) {
-	row := q.db.QueryRow(ctx, countPaymentVouchersAll, organizationID, column2, column3)
+func (q *Queries) CountPaymentVouchersAll(ctx context.Context, arg CountPaymentVouchersAllParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countPaymentVouchersAll,
+		arg.OrganizationID,
+		arg.Column2,
+		arg.Column3,
+		arg.HideDirectPayment,
+	)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -81,10 +94,23 @@ WHERE pv.organization_id = $1
   AND pv.linked_po != ''
   AND ($2::text = '' OR UPPER(pv.status) = UPPER($2))
   AND ($3::text = '' OR pv.vendor_id     = $3)
+  AND (NOT $4::bool OR pv.routing_type != 'direct_payment')
 `
 
-func (q *Queries) CountPaymentVouchersProcurement(ctx context.Context, organizationID string, column2 string, column3 string) (int64, error) {
-	row := q.db.QueryRow(ctx, countPaymentVouchersProcurement, organizationID, column2, column3)
+type CountPaymentVouchersProcurementParams struct {
+	OrganizationID    string `json:"organization_id"`
+	Column2           string `json:"column_2"`
+	Column3           string `json:"column_3"`
+	HideDirectPayment bool   `json:"hide_direct_payment"`
+}
+
+func (q *Queries) CountPaymentVouchersProcurement(ctx context.Context, arg CountPaymentVouchersProcurementParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countPaymentVouchersProcurement,
+		arg.OrganizationID,
+		arg.Column2,
+		arg.Column3,
+		arg.HideDirectPayment,
+	)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -95,17 +121,28 @@ SELECT id FROM payment_vouchers
 WHERE organization_id = $1
   AND ($2::text = '' OR UPPER(status) = UPPER($2))
   AND ($3::text = '' OR vendor_id     = $3)
+  AND (NOT $4::bool OR routing_type != 'direct_payment')
 ORDER BY created_at DESC
-LIMIT $4 OFFSET $5
+LIMIT $5 OFFSET $6
 `
 
-func (q *Queries) ListPaymentVoucherIDsAll(ctx context.Context, organizationID string, column2 string, column3 string, limit int32, offset int32) ([]string, error) {
+type ListPaymentVoucherIDsAllParams struct {
+	OrganizationID    string `json:"organization_id"`
+	Column2           string `json:"column_2"`
+	Column3           string `json:"column_3"`
+	HideDirectPayment bool   `json:"hide_direct_payment"`
+	Limit             int32  `json:"limit"`
+	Offset            int32  `json:"offset"`
+}
+
+func (q *Queries) ListPaymentVoucherIDsAll(ctx context.Context, arg ListPaymentVoucherIDsAllParams) ([]string, error) {
 	rows, err := q.db.Query(ctx, listPaymentVoucherIDsAll,
-		organizationID,
-		column2,
-		column3,
-		limit,
-		offset,
+		arg.OrganizationID,
+		arg.Column2,
+		arg.Column3,
+		arg.HideDirectPayment,
+		arg.Limit,
+		arg.Offset,
 	)
 	if err != nil {
 		return nil, err
@@ -195,17 +232,28 @@ WHERE pv.organization_id = $1
   AND pv.linked_po != ''
   AND ($2::text = '' OR UPPER(pv.status) = UPPER($2))
   AND ($3::text = '' OR pv.vendor_id     = $3)
+  AND (NOT $4::bool OR pv.routing_type != 'direct_payment')
 ORDER BY pv.created_at DESC
-LIMIT $4 OFFSET $5
+LIMIT $5 OFFSET $6
 `
 
-func (q *Queries) ListPaymentVoucherIDsProcurement(ctx context.Context, organizationID string, column2 string, column3 string, limit int32, offset int32) ([]string, error) {
+type ListPaymentVoucherIDsProcurementParams struct {
+	OrganizationID    string `json:"organization_id"`
+	Column2           string `json:"column_2"`
+	Column3           string `json:"column_3"`
+	HideDirectPayment bool   `json:"hide_direct_payment"`
+	Limit             int32  `json:"limit"`
+	Offset            int32  `json:"offset"`
+}
+
+func (q *Queries) ListPaymentVoucherIDsProcurement(ctx context.Context, arg ListPaymentVoucherIDsProcurementParams) ([]string, error) {
 	rows, err := q.db.Query(ctx, listPaymentVoucherIDsProcurement,
-		organizationID,
-		column2,
-		column3,
-		limit,
-		offset,
+		arg.OrganizationID,
+		arg.Column2,
+		arg.Column3,
+		arg.HideDirectPayment,
+		arg.Limit,
+		arg.Offset,
 	)
 	if err != nil {
 		return nil, err

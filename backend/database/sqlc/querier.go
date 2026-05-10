@@ -31,7 +31,7 @@ type Querier interface {
 	// Goods received note read queries.
 	// Both CanViewAll and IsProcurement use the unfiltered path (ApplyToQuery passes through).
 	// Limited adds owner (created_by OR received_by) + workflow_tasks involvement.
-	CountGRNsAll(ctx context.Context, organizationID string, column2 string, column3 string) (int64, error)
+	CountGRNsAll(ctx context.Context, arg CountGRNsAllParams) (int64, error)
 	CountGRNsLimited(ctx context.Context, arg CountGRNsLimitedParams) (int64, error)
 	CountOrganizationRoles(ctx context.Context, organizationID *string) (int64, error)
 	// Payment voucher read queries.
@@ -39,13 +39,13 @@ type Querier interface {
 	//   All         → scope.CanViewAll
 	//   Procurement → scope.IsProcurement (linked_po != '' filter)
 	//   Limited     → default (owner + workflow_tasks involvement filter)
-	CountPaymentVouchersAll(ctx context.Context, organizationID string, column2 string, column3 string) (int64, error)
+	CountPaymentVouchersAll(ctx context.Context, arg CountPaymentVouchersAllParams) (int64, error)
 	CountPaymentVouchersLimited(ctx context.Context, arg CountPaymentVouchersLimitedParams) (int64, error)
-	CountPaymentVouchersProcurement(ctx context.Context, organizationID string, column2 string, column3 string) (int64, error)
+	CountPaymentVouchersProcurement(ctx context.Context, arg CountPaymentVouchersProcurementParams) (int64, error)
 	// Purchase order read queries.
 	// Both CanViewAll and IsProcurement return all POs (ApplyToQuery passes through for both).
 	// Only two scope variants needed: All and Limited.
-	CountPurchaseOrdersAll(ctx context.Context, organizationID string, column2 string, column3 string) (int64, error)
+	CountPurchaseOrdersAll(ctx context.Context, arg CountPurchaseOrdersAllParams) (int64, error)
 	CountPurchaseOrdersLimited(ctx context.Context, arg CountPurchaseOrdersLimitedParams) (int64, error)
 	// Requisition read queries.
 	// List queries return only `id`; the handler fetches full data via GORM with Preload
@@ -54,9 +54,9 @@ type Querier interface {
 	//   All         → scope.CanViewAll
 	//   Procurement → scope.IsProcurement (workflow_assignments subquery filter)
 	//   Limited     → default (owner + workflow_tasks involvement filter)
-	CountRequisitionsAll(ctx context.Context, organizationID string, column2 string, column3 string, column4 string) (int64, error)
+	CountRequisitionsAll(ctx context.Context, arg CountRequisitionsAllParams) (int64, error)
 	CountRequisitionsLimited(ctx context.Context, arg CountRequisitionsLimitedParams) (int64, error)
-	CountRequisitionsProcurement(ctx context.Context, organizationID string, column2 string, column3 string, column4 string) (int64, error)
+	CountRequisitionsProcurement(ctx context.Context, arg CountRequisitionsProcurementParams) (int64, error)
 	CountUserActiveSessions(ctx context.Context, userID string) (int64, error)
 	CountUsers(ctx context.Context) (int64, error)
 	CountWorkflows(ctx context.Context, organizationID string) (int64, error)
@@ -154,13 +154,13 @@ type Querier interface {
 	ListAuditLogs(ctx context.Context, arg ListAuditLogsParams) ([]ListAuditLogsRow, error)
 	ListCustomRoles(ctx context.Context, organizationID *string, limit int32, offset int32) ([]OrganizationRole, error)
 	ListDocumentAuditLogs(ctx context.Context, organizationID string, documentID string, limit int32, offset int32) ([]ListDocumentAuditLogsRow, error)
-	ListGRNIDsAll(ctx context.Context, organizationID string, column2 string, column3 string, limit int32, offset int32) ([]string, error)
+	ListGRNIDsAll(ctx context.Context, arg ListGRNIDsAllParams) ([]string, error)
 	ListGRNIDsLimited(ctx context.Context, arg ListGRNIDsLimitedParams) ([]string, error)
 	ListOrganizationRoles(ctx context.Context, organizationID *string, limit int32, offset int32) ([]OrganizationRole, error)
-	ListPaymentVoucherIDsAll(ctx context.Context, organizationID string, column2 string, column3 string, limit int32, offset int32) ([]string, error)
+	ListPaymentVoucherIDsAll(ctx context.Context, arg ListPaymentVoucherIDsAllParams) ([]string, error)
 	ListPaymentVoucherIDsLimited(ctx context.Context, arg ListPaymentVoucherIDsLimitedParams) ([]string, error)
-	ListPaymentVoucherIDsProcurement(ctx context.Context, organizationID string, column2 string, column3 string, limit int32, offset int32) ([]string, error)
-	ListPurchaseOrderIDsAll(ctx context.Context, organizationID string, column2 string, column3 string, limit int32, offset int32) ([]string, error)
+	ListPaymentVoucherIDsProcurement(ctx context.Context, arg ListPaymentVoucherIDsProcurementParams) ([]string, error)
+	ListPurchaseOrderIDsAll(ctx context.Context, arg ListPurchaseOrderIDsAllParams) ([]string, error)
 	ListPurchaseOrderIDsLimited(ctx context.Context, arg ListPurchaseOrderIDsLimitedParams) ([]string, error)
 	ListRequisitionIDsAll(ctx context.Context, arg ListRequisitionIDsAllParams) ([]string, error)
 	ListRequisitionIDsLimited(ctx context.Context, arg ListRequisitionIDsLimitedParams) ([]string, error)

@@ -15,13 +15,26 @@ SELECT COUNT(*) FROM purchase_orders
 WHERE organization_id = $1
   AND ($2::text = '' OR UPPER(status)    = UPPER($2))
   AND ($3::text = '' OR vendor_id        = $3)
+  AND (NOT $4::bool OR routing_type != 'direct_payment')
 `
+
+type CountPurchaseOrdersAllParams struct {
+	OrganizationID    string `json:"organization_id"`
+	Column2           string `json:"column_2"`
+	Column3           string `json:"column_3"`
+	HideDirectPayment bool   `json:"hide_direct_payment"`
+}
 
 // Purchase order read queries.
 // Both CanViewAll and IsProcurement return all POs (ApplyToQuery passes through for both).
 // Only two scope variants needed: All and Limited.
-func (q *Queries) CountPurchaseOrdersAll(ctx context.Context, organizationID string, column2 string, column3 string) (int64, error) {
-	row := q.db.QueryRow(ctx, countPurchaseOrdersAll, organizationID, column2, column3)
+func (q *Queries) CountPurchaseOrdersAll(ctx context.Context, arg CountPurchaseOrdersAllParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countPurchaseOrdersAll,
+		arg.OrganizationID,
+		arg.Column2,
+		arg.Column3,
+		arg.HideDirectPayment,
+	)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -76,17 +89,28 @@ SELECT id FROM purchase_orders
 WHERE organization_id = $1
   AND ($2::text = '' OR UPPER(status)    = UPPER($2))
   AND ($3::text = '' OR vendor_id        = $3)
+  AND (NOT $4::bool OR routing_type != 'direct_payment')
 ORDER BY created_at DESC
-LIMIT $4 OFFSET $5
+LIMIT $5 OFFSET $6
 `
 
-func (q *Queries) ListPurchaseOrderIDsAll(ctx context.Context, organizationID string, column2 string, column3 string, limit int32, offset int32) ([]string, error) {
+type ListPurchaseOrderIDsAllParams struct {
+	OrganizationID    string `json:"organization_id"`
+	Column2           string `json:"column_2"`
+	Column3           string `json:"column_3"`
+	HideDirectPayment bool   `json:"hide_direct_payment"`
+	Limit             int32  `json:"limit"`
+	Offset            int32  `json:"offset"`
+}
+
+func (q *Queries) ListPurchaseOrderIDsAll(ctx context.Context, arg ListPurchaseOrderIDsAllParams) ([]string, error) {
 	rows, err := q.db.Query(ctx, listPurchaseOrderIDsAll,
-		organizationID,
-		column2,
-		column3,
-		limit,
-		offset,
+		arg.OrganizationID,
+		arg.Column2,
+		arg.Column3,
+		arg.HideDirectPayment,
+		arg.Limit,
+		arg.Offset,
 	)
 	if err != nil {
 		return nil, err
