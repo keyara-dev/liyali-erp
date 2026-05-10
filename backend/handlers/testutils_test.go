@@ -35,6 +35,18 @@ func setupTestDB(t *testing.T) *gorm.DB {
 		t.Fatalf("failed to open in-memory SQLite DB: %v", err)
 	}
 
+	// Pin the connection pool to a single connection so that background
+	// goroutines (e.g. SyncDocumentAs, LogDocumentEvent) share the same
+	// in-memory SQLite database as the foreground test queries. Without
+	// this, the default pool may open a second connection which gets its
+	// own empty in-memory DB, causing goroutine-vs-test races.
+	sqlDB, err2 := db.DB()
+	if err2 != nil {
+		t.Fatalf("failed to get sql.DB from gorm: %v", err2)
+	}
+	sqlDB.SetMaxOpenConns(1)
+	sqlDB.SetMaxIdleConns(1)
+
 	// WorkflowTask and WorkflowAssignment are excluded here because their
 	// gorm:"type:uuid" columns trigger a SQLite syntax error. Tests that need
 	// workflow_tasks create it manually via setupWorkflowTasksTable().

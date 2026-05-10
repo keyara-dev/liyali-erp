@@ -278,6 +278,7 @@ func CreatePurchaseOrder(c *fiber.Ctx) error {
 		OrganizationID:    tenant.OrganizationID,
 		DocumentNumber:    documentNumber,
 		VendorID:          vendorIDPtr,
+		VendorName:        req.VendorName,
 		Status:            models.StatusDraft,
 		TotalAmount:       req.TotalAmount,
 		Currency:          req.Currency,
@@ -510,6 +511,15 @@ func UpdatePurchaseOrder(c *fiber.Ctx) error {
 			changes["vendorId"] = map[string]string{"old": fromVendorID, "new": req.VendorID}
 		}
 		order.VendorID = &req.VendorID
+	}
+	// Persist vendor name when a vendor change is part of this update.
+	// Guard prevents metadata-only updates (quotation list saves) from
+	// clobbering the stored name to empty.
+	if req.VendorID != "" || req.VendorName != "" {
+		if order.VendorName != req.VendorName {
+			changes["vendorName"] = map[string]string{"old": order.VendorName, "new": req.VendorName}
+		}
+		order.VendorName = req.VendorName
 	}
 	if len(req.Items) > 0 {
 		oldItems := order.Items.Data()
@@ -771,10 +781,10 @@ func modelToPurchaseOrderResponse(order models.PurchaseOrder) types.PurchaseOrde
 	if order.VendorID != nil {
 		vendorID = *order.VendorID
 	}
-	vendorName := ""
+	vendorName := order.VendorName              // stored fallback
 	var vendorResp *types.VendorResponse
 	if order.Vendor != nil {
-		vendorName = order.Vendor.Name
+		vendorName = order.Vendor.Name           // canonical wins when relation present
 		vr := modelToVendorResponse(*order.Vendor)
 		vendorResp = &vr
 	}
