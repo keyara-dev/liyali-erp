@@ -926,3 +926,68 @@ func TestGetRequisitionAuditTrail_Success(t *testing.T) {
 		t.Errorf("expected data field in response")
 	}
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// manual preferred vendor name (ad-hoc, no vendor record)
+// ─────────────────────────────────────────────────────────────────────────────
+
+func TestRequisition_PersistManualPreferredVendorName(t *testing.T) {
+	db := setupTestDB(t)
+	defer teardownTestDB(t, db)
+
+	seedTestUser(t)
+
+	app := newRequisitionApp(t)
+
+	createBody := map[string]interface{}{
+		"title":               "Test requisition with manual preferred vendor",
+		"description":         "Need supplies from a vendor not in the system",
+		"department":          "Information Technology",
+		"priority":            "medium",
+		"items":               []map[string]interface{}{{"description": "Toner", "quantity": 5, "unitPrice": 200, "amount": 1000}},
+		"totalAmount":         1000.0,
+		"currency":            "ZMW",
+		"preferredVendorName": "AD-HOC SUPPLIER LTD",
+	}
+	resp := testRequest(app, http.MethodPost, "/requisitions", createBody)
+	if resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusOK {
+		t.Fatalf("create requisition: expected 200/201, got %d", resp.StatusCode)
+	}
+
+	var createResp struct {
+		Data types.RequisitionResponse `json:"data"`
+	}
+	decodeJSON(t, resp, &createResp)
+
+	if createResp.Data.PreferredVendorName != "AD-HOC SUPPLIER LTD" {
+		t.Errorf("create response: expected preferredVendorName=AD-HOC SUPPLIER LTD, got %q", createResp.Data.PreferredVendorName)
+	}
+
+	reqID := createResp.Data.ID
+	getResp := testRequest(app, http.MethodGet, "/requisitions/"+reqID, nil)
+	if getResp.StatusCode != http.StatusOK {
+		t.Fatalf("get requisition: expected 200, got %d", getResp.StatusCode)
+	}
+	var getBody struct {
+		Data types.RequisitionResponse `json:"data"`
+	}
+	decodeJSON(t, getResp, &getBody)
+	if getBody.Data.PreferredVendorName != "AD-HOC SUPPLIER LTD" {
+		t.Errorf("get response: expected preferredVendorName=AD-HOC SUPPLIER LTD, got %q", getBody.Data.PreferredVendorName)
+	}
+
+	updateBody := map[string]interface{}{
+		"preferredVendorName": "ANOTHER AD-HOC VENDOR",
+	}
+	updResp := testRequest(app, http.MethodPut, "/requisitions/"+reqID, updateBody)
+	if updResp.StatusCode != http.StatusOK {
+		t.Fatalf("update requisition: expected 200, got %d", updResp.StatusCode)
+	}
+	var updRespBody struct {
+		Data types.RequisitionResponse `json:"data"`
+	}
+	decodeJSON(t, updResp, &updRespBody)
+	if updRespBody.Data.PreferredVendorName != "ANOTHER AD-HOC VENDOR" {
+		t.Errorf("update response: expected preferredVendorName=ANOTHER AD-HOC VENDOR, got %q", updRespBody.Data.PreferredVendorName)
+	}
+}
