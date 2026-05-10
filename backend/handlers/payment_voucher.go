@@ -315,6 +315,7 @@ func CreatePaymentVoucher(c *fiber.Ctx) error {
 		OrganizationID: tenant.OrganizationID,
 		DocumentNumber: documentNumber,
 		VendorID:       vendorIDPtr,
+		VendorName:     req.VendorName,
 		InvoiceNumber:  req.InvoiceNumber,
 		Status:         models.StatusDraft,
 		Amount:         req.Amount,
@@ -481,6 +482,9 @@ func UpdatePaymentVoucher(c *fiber.Ctx) error {
 	if req.VendorID != "" {
 		voucher.VendorID = &req.VendorID
 	}
+	if req.VendorID != "" || req.VendorName != "" {
+		voucher.VendorName = req.VendorName
+	}
 	if req.InvoiceNumber != "" {
 		voucher.InvoiceNumber = req.InvoiceNumber
 	}
@@ -629,10 +633,10 @@ func modelToPaymentVoucherResponse(voucher models.PaymentVoucher) types.PaymentV
 	if voucher.VendorID != nil {
 		vendorID = *voucher.VendorID
 	}
-	vendorName := ""
+	vendorName := voucher.VendorName // stored fallback
 	var vendorResp *types.VendorResponse
 	if voucher.Vendor != nil {
-		vendorName = voucher.Vendor.Name
+		vendorName = voucher.Vendor.Name // canonical wins when relation present
 		vr := modelToVendorResponse(*voucher.Vendor)
 		vendorResp = &vr
 	}

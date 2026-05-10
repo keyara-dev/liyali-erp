@@ -638,8 +638,8 @@ func (s *DocumentService) GetDocumentForPDFPublic(ctx context.Context, documentN
 				pv.ApprovalHistory = datatypes.NewJSONType(liveHistory)
 			}
 		}
-		// VendorName may be empty if the column was never written; fall back to preloaded Vendor.
-		if pv.VendorName == "" && pv.Vendor != nil {
+		// Populate virtual VendorName from preloaded Vendor relation (canonical wins when relation present).
+		if pv.Vendor != nil {
 			pv.VendorName = pv.Vendor.Name
 		}
 		result.Document = pv
