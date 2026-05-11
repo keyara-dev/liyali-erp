@@ -9,6 +9,7 @@
 
 import { Vendor } from "./core";
 import { WorkflowDocument } from "./workflow";
+import type { RoutingType } from "./requisition";
 
 // ============================================================================
 // CORE PURCHASE ORDER TYPES
@@ -197,6 +198,8 @@ export interface PurchaseOrder extends WorkflowDocument {
   quotationGateOverridden?: boolean;
   /** Justification text entered when bypassing the quotation gate */
   bypassJustification?: string;
+  /** Routing type inherited from source requisition */
+  routingType?: RoutingType;
 }
 
 /**

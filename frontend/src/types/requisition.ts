@@ -4,6 +4,14 @@
  */
 
 import type { Vendor } from "./core";
+import type { PayeeSnapshot } from "./payee";
+
+// ============================================================================
+// ROUTING TYPE
+// ============================================================================
+
+/** Routing path chosen when a requisition is submitted */
+export type RoutingType = "procurement" | "accounting" | "direct_payment";
 
 // ============================================================================
 // CORE REQUISITION TYPES
@@ -102,6 +110,14 @@ export interface Requisition {
   linkedPO?: LinkedPOSummary; // Populated on list responses
   /** Quotations collected for this REQ (stored in metadata["quotations"]) */
   quotations?: import("./core").Quotation[];
+
+  // ── Direct Payment Fields ──
+  /** Routing type chosen at submission: procurement | accounting | direct_payment */
+  routingType?: RoutingType;
+  /** Payee ID for direct_payment routing */
+  payeeId?: string;
+  /** Snapshot of payee data captured at submission time */
+  payeeSnapshot?: PayeeSnapshot;
 }
 
 // ============================================================================
