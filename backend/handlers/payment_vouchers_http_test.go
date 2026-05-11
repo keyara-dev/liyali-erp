@@ -1,7 +1,11 @@
 package handlers
 
 import (
+	"bytes"
+	"encoding/json"
+	"mime/multipart"
 	"net/http"
+	"net/http/httptest"
 	"testing"
 	"time"
 
@@ -27,11 +31,13 @@ func newPaymentVoucherApp(t *testing.T) *fiber.App {
 	app.Get("/payment-vouchers/stats", auth, GetPaymentVoucherStats)
 	app.Post("/payment-vouchers", auth, CreatePaymentVoucher)
 	app.Post("/payment-vouchers/from-po", auth, CreatePaymentVoucherFromPO)
+	app.Post("/payment-vouchers/recover-from-po/:poId", auth, RecoverPVFromPO)
 	app.Get("/payment-vouchers/:id", auth, GetPaymentVoucher)
 	app.Put("/payment-vouchers/:id", auth, UpdatePaymentVoucher)
 	app.Delete("/payment-vouchers/:id", auth, DeletePaymentVoucher)
 	app.Post("/payment-vouchers/:id/submit", auth, SubmitPaymentVoucher)
 	app.Post("/payment-vouchers/:id/mark-paid", auth, MarkPaymentVoucherPaid)
+	app.Post("/payment-vouchers/:id/mark-paid-with-pop", auth, MarkPaidWithPOP)
 	return app
 }
 
@@ -653,6 +659,298 @@ func TestPaymentVoucher_PersistManualVendorName(t *testing.T) {
 	decodeJSON(t, updResp, &updRespBody)
 	if updRespBody.Data.VendorName != "MICOP BUSINESS VENTURES" {
 		t.Errorf("update response: expected vendorName=MICOP BUSINESS VENTURES, got %q", updRespBody.Data.VendorName)
+	}
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// Multipart helpers for mark-paid-with-pop tests
+// ─────────────────────────────────────────────────────────────────────────────
+
+// multipartFile builds a multipart/form-data body with a single file field.
+// Returns (body *bytes.Buffer, contentType string).
+func multipartFile(t *testing.T, fieldName, fileName, mimeType string, content []byte) (*bytes.Buffer, string) {
+	t.Helper()
+	var buf bytes.Buffer
+	w := multipart.NewWriter(&buf)
+	part, err := w.CreateFormFile(fieldName, fileName)
+	if err != nil {
+		t.Fatalf("multipartFile CreateFormFile: %v", err)
+	}
+	if _, err := part.Write(content); err != nil {
+		t.Fatalf("multipartFile Write: %v", err)
+	}
+	// Override Content-Type header for the part to the desired mimeType.
+	// Note: CreateFormFile sets application/octet-stream; the handler reads
+	// the part header, but for tests we just trust the file extension / content.
+	_ = mimeType // handler sniffs via extension
+	if err := w.Close(); err != nil {
+		t.Fatalf("multipartFile Close: %v", err)
+	}
+	return &buf, w.FormDataContentType()
+}
+
+// appendField adds a plain text field to an existing multipart body.
+// Returns new *bytes.Buffer — the original is consumed.
+func appendField(existing *bytes.Buffer, fieldName, value string) *bytes.Buffer {
+	// We need to re-open the existing boundary; easiest is a fresh writer
+	// that appends fields then re-closes. Since the caller chains:
+	//   body, ct := multipartFile(...)
+	//   body = appendField(body, ...)
+	// we parse the boundary from the existing data and re-write everything.
+	// Simpler: just build a brand-new form with both file + field.
+	// This helper is only called ONCE, so re-build is fine.
+	_ = existing // unused; re-build handled by the test via testMultipartWithField
+	return existing // no-op placeholder — tests use testMultipartWithField instead
+}
+
+// testMultipartWithField builds a multipart form with a file + extra string fields.
+// fields is a map[fieldName]value for text fields.
+func testMultipartWithField(t *testing.T, fileField, fileName, mimeType string, content []byte, fields map[string]string) (*bytes.Buffer, string) {
+	t.Helper()
+	var buf bytes.Buffer
+	w := multipart.NewWriter(&buf)
+	// text fields first
+	for k, v := range fields {
+		if err := w.WriteField(k, v); err != nil {
+			t.Fatalf("testMultipartWithField WriteField %s: %v", k, err)
+		}
+	}
+	// file field
+	_ = mimeType
+	part, err := w.CreateFormFile(fileField, fileName)
+	if err != nil {
+		t.Fatalf("testMultipartWithField CreateFormFile: %v", err)
+	}
+	if _, err := part.Write(content); err != nil {
+		t.Fatalf("testMultipartWithField Write: %v", err)
+	}
+	if err := w.Close(); err != nil {
+		t.Fatalf("testMultipartWithField Close: %v", err)
+	}
+	return &buf, w.FormDataContentType()
+}
+
+// testMultipartNoFile builds a multipart form with only text fields (no file).
+func testMultipartNoFile(t *testing.T, fields map[string]string) (*bytes.Buffer, string) {
+	t.Helper()
+	var buf bytes.Buffer
+	w := multipart.NewWriter(&buf)
+	for k, v := range fields {
+		if err := w.WriteField(k, v); err != nil {
+			t.Fatalf("testMultipartNoFile WriteField %s: %v", k, err)
+		}
+	}
+	if err := w.Close(); err != nil {
+		t.Fatalf("testMultipartNoFile Close: %v", err)
+	}
+	return &buf, w.FormDataContentType()
+}
+
+// multipartRequest builds a *http.Request with a multipart body.
+func multipartRequest(method, path string, body *bytes.Buffer, contentType string) *http.Request {
+	req := httptest.NewRequest(method, path, body)
+	req.Header.Set("Content-Type", contentType)
+	return req
+}
+
+// makePVWithRoutingAndLinkedPO creates a PV linked to a PO with a specific routing type.
+func makePVWithRoutingAndLinkedPO(t *testing.T, docNum, status, routingType, linkedPO string) models.PaymentVoucher {
+	t.Helper()
+	voucher := models.PaymentVoucher{
+		ID:             uuid.New().String(),
+		OrganizationID: testOrgID,
+		DocumentNumber: docNum,
+		InvoiceNumber:  "INV-" + uuid.New().String()[:8],
+		Status:         status,
+		RoutingType:    routingType,
+		LinkedPO:       linkedPO,
+		Amount:         1000.00,
+		Currency:       "ZMW",
+		PaymentMethod:  "bank_transfer",
+		CreatedAt:      time.Now(),
+		UpdatedAt:      time.Now(),
+	}
+	voucher.ApprovalHistory = datatypes.NewJSONType([]types.ApprovalRecord{})
+	voucher.ActionHistory = datatypes.NewJSONType([]types.ActionHistoryEntry{})
+	if err := config.DB.Create(&voucher).Error; err != nil {
+		t.Fatalf("makePVWithRoutingAndLinkedPO: %v", err)
+	}
+	return voucher
+}
+
+// makePOWithRouting creates a PurchaseOrder with a specific routing_type.
+func makePOWithRouting(t *testing.T, docNum, status, routingType string) models.PurchaseOrder {
+	t.Helper()
+	order := models.PurchaseOrder{
+		ID:             uuid.New().String(),
+		OrganizationID: testOrgID,
+		DocumentNumber: docNum,
+		Status:         status,
+		RoutingType:    routingType,
+		TotalAmount:    1000.00,
+		Currency:       "ZMW",
+		DeliveryDate:   time.Now().Add(30 * 24 * time.Hour),
+		ApprovalStage:  0,
+		CreatedAt:      time.Now(),
+		UpdatedAt:      time.Now(),
+	}
+	order.Items = datatypes.NewJSONType([]types.POItem{
+		{Description: "Widget A", Quantity: 10, UnitPrice: 100.0, Amount: 1000.0},
+	})
+	order.ApprovalHistory = datatypes.NewJSONType([]types.ApprovalRecord{})
+	order.ActionHistory = datatypes.NewJSONType([]types.ActionHistoryEntry{})
+	if err := config.DB.Create(&order).Error; err != nil {
+		t.Fatalf("makePOWithRouting: %v", err)
+	}
+	return order
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// POST /payment-vouchers/:id/mark-paid-with-pop (Phase 5)
+// ─────────────────────────────────────────────────────────────────────────────
+
+func TestMarkPaid_RequiresApprovedStatus(t *testing.T) {
+	db := setupTestDB(t)
+	defer teardownTestDB(t, db)
+
+	pv := makePaymentVoucherWithRouting(t, "PV-MKP-DRAFT-001", models.StatusDraft, models.RoutingTypeDirectPayment)
+
+	body, ct := testMultipartWithField(t, "popFile", "slip.pdf", "application/pdf", []byte("%PDF-1.4"), map[string]string{
+		"paidDate": "2026-05-11",
+	})
+	req := multipartRequest(http.MethodPost, "/payment-vouchers/"+pv.ID+"/mark-paid-with-pop", body, ct)
+
+	app := newPaymentVoucherApp(t)
+	resp, err := app.Test(req, -1)
+	if err != nil {
+		t.Fatalf("app.Test: %v", err)
+	}
+	if resp.StatusCode != http.StatusConflict {
+		t.Fatalf("status=%d want 409 (must be approved first)", resp.StatusCode)
+	}
+}
+
+func TestMarkPaid_RequiresPOPFile(t *testing.T) {
+	db := setupTestDB(t)
+	defer teardownTestDB(t, db)
+
+	pv := makePaymentVoucherWithRouting(t, "PV-MKP-NOPOP-001", models.StatusApproved, models.RoutingTypeDirectPayment)
+
+	body, ct := testMultipartNoFile(t, map[string]string{"paidDate": "2026-05-11"})
+	req := multipartRequest(http.MethodPost, "/payment-vouchers/"+pv.ID+"/mark-paid-with-pop", body, ct)
+
+	app := newPaymentVoucherApp(t)
+	resp, err := app.Test(req, -1)
+	if err != nil {
+		t.Fatalf("app.Test: %v", err)
+	}
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Fatalf("status=%d want 400 (no POP file)", resp.StatusCode)
+	}
+}
+
+func TestMarkPaid_HappyPath(t *testing.T) {
+	db := setupTestDB(t)
+	defer teardownTestDB(t, db)
+
+	pv := makePaymentVoucherWithRouting(t, "PV-MKP-OK-001", models.StatusApproved, models.RoutingTypeDirectPayment)
+
+	body, ct := testMultipartWithField(t, "popFile", "slip.pdf", "application/pdf", []byte("%PDF-1.4"), map[string]string{
+		"paidDate": "2026-05-11",
+	})
+	req := multipartRequest(http.MethodPost, "/payment-vouchers/"+pv.ID+"/mark-paid-with-pop", body, ct)
+
+	app := newPaymentVoucherApp(t)
+	resp, err := app.Test(req, -1)
+	if err != nil {
+		t.Fatalf("app.Test: %v", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		body2 := decodeResponse(resp)
+		t.Fatalf("status=%d want 200; body=%v", resp.StatusCode, body2)
+	}
+	var result map[string]any
+	json.NewDecoder(resp.Body).Decode(&result)
+	data, _ := result["data"].(map[string]any)
+	if data == nil {
+		t.Fatal("response has no data field")
+	}
+	st, _ := data["status"].(string)
+	if st != models.StatusPaid {
+		t.Fatalf("status=%q want %q", st, models.StatusPaid)
+	}
+	if data["proofOfPayment"] == nil {
+		t.Fatal("proofOfPayment missing from response")
+	}
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// POST /payment-vouchers/recover-from-po/:poId (Phase 5)
+// ─────────────────────────────────────────────────────────────────────────────
+
+func TestRecoverFromPO_CreatesDraftPV(t *testing.T) {
+	db := setupTestDB(t)
+	defer teardownTestDB(t, db)
+
+	po := makePOWithRouting(t, "PO-REC-001", models.StatusApproved, models.RoutingTypeDirectPayment)
+
+	req := httptest.NewRequest(http.MethodPost, "/payment-vouchers/recover-from-po/"+po.ID, nil)
+	app := newPaymentVoucherApp(t)
+	resp, err := app.Test(req, -1)
+	if err != nil {
+		t.Fatalf("app.Test: %v", err)
+	}
+	if resp.StatusCode != http.StatusCreated {
+		body := decodeResponse(resp)
+		t.Fatalf("status=%d want 201; body=%v", resp.StatusCode, body)
+	}
+}
+
+func TestRecoverFromPO_Idempotent(t *testing.T) {
+	db := setupTestDB(t)
+	defer teardownTestDB(t, db)
+
+	po := makePOWithRouting(t, "PO-REC-IDEM-001", models.StatusApproved, models.RoutingTypeDirectPayment)
+
+	app := newPaymentVoucherApp(t)
+
+	req1 := httptest.NewRequest(http.MethodPost, "/payment-vouchers/recover-from-po/"+po.ID, nil)
+	resp1, err := app.Test(req1, -1)
+	if err != nil {
+		t.Fatalf("first call app.Test: %v", err)
+	}
+	resp1.Body.Close()
+	if resp1.StatusCode != http.StatusCreated {
+		t.Fatalf("first call status=%d want 201", resp1.StatusCode)
+	}
+
+	req2 := httptest.NewRequest(http.MethodPost, "/payment-vouchers/recover-from-po/"+po.ID, nil)
+	resp2, err := app.Test(req2, -1)
+	if err != nil {
+		t.Fatalf("second call app.Test: %v", err)
+	}
+	if resp2.StatusCode != http.StatusOK {
+		body := decodeResponse(resp2)
+		t.Fatalf("idempotent call status=%d want 200; body=%v", resp2.StatusCode, body)
+	}
+}
+
+func TestRecoverFromPO_RejectsNonDirectPayment(t *testing.T) {
+	db := setupTestDB(t)
+	defer teardownTestDB(t, db)
+
+	po := makePOWithRouting(t, "PO-REC-PROC-001", models.StatusApproved, models.RoutingTypeProcurement)
+
+	req := httptest.NewRequest(http.MethodPost, "/payment-vouchers/recover-from-po/"+po.ID, nil)
+	app := newPaymentVoucherApp(t)
+	resp, err := app.Test(req, -1)
+	if err != nil {
+		t.Fatalf("app.Test: %v", err)
+	}
+	if resp.StatusCode != http.StatusBadRequest {
+		body := decodeResponse(resp)
+		t.Fatalf("status=%d want 400 for non-direct_payment PO; body=%v", resp.StatusCode, body)
 	}
 }
 
