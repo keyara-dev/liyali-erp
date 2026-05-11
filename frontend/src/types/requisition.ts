@@ -146,6 +146,11 @@ export interface CreateRequisitionRequest {
   requestedFor?: string; // Who the requisition is for
   otherCategoryText?: string; // Custom category name when "OTHER" is selected
   attachments?: RequisitionAttachment[]; // Supporting documents
+
+  // Direct payment fields
+  routingType?: RoutingType;
+  payeeId?: string;
+  payeeSnapshot?: import("./payee").PayeeSnapshot;
 }
 
 export interface UpdateRequisitionRequest {
@@ -171,6 +176,11 @@ export interface UpdateRequisitionRequest {
   otherCategoryText?: string; // Custom category name when "OTHER" is selected
   attachments?: RequisitionAttachment[]; // Supporting documents
   quotations?: import("./core").Quotation[]; // Vendor quotations
+
+  // Direct payment fields
+  routingType?: RoutingType;
+  payeeId?: string;
+  payeeSnapshot?: import("./payee").PayeeSnapshot;
 }
 
 export interface SubmitRequisitionRequest {

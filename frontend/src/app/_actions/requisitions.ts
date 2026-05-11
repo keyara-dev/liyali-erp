@@ -49,6 +49,9 @@ export async function createRequisition(
         projectCode: data.projectCode,
         requestedFor: data.requestedFor,
         otherCategoryText: data.otherCategoryText,
+        routingType: data.routingType,
+        payeeId: data.payeeId,
+        payeeSnapshot: data.payeeSnapshot,
         metadata: {
           ...(data.attachments?.length
             ? { attachments: data.attachments }
