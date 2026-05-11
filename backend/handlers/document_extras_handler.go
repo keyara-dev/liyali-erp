@@ -981,3 +981,302 @@ func ConfirmGRN(c *fiber.Ctx) error {
 	logger.Info("grn_confirmed")
 	return utils.SendSimpleSuccess(c, modelToGRNResponse(grn), "GRN confirmed successfully")
 }
+
+// ============================================================================
+// PAYMENT VOUCHER — MARK PAID WITH PROOF OF PAYMENT (direct-payment flow)
+// POST /api/v1/payment-vouchers/:id/mark-paid-with-pop
+// ============================================================================
+
+// allowedPOPExtensions lists the file extensions accepted as proof of payment.
+var allowedPOPExtensions = map[string]bool{
+	".pdf":  true,
+	".jpg":  true,
+	".jpeg": true,
+	".png":  true,
+}
+
+const maxPOPSizeBytes = 10 * 1024 * 1024 // 10 MB
+
+// MarkPaidWithPOP marks an APPROVED PaymentVoucher as PAID by storing an
+// uploaded proof-of-payment file (PDF/JPG/PNG, ≤ 10 MB).
+//
+// Unlike the workflow-task-based MarkPaymentVoucherPaid this handler is
+// purpose-built for the direct_payment routing where there are no approval
+// stages — the file is the audit artefact. The file bytes are stored as
+// base64 in the proof_of_payment JSON column (no external storage dependency).
+//
+// Business rules:
+//   - Caller must be finance or admin.
+//   - PV must be in APPROVED status (409 otherwise).
+//   - popFile multipart field is required (400 otherwise).
+//   - File must be ≤ 10 MB and have an allowed extension.
+//   - On success: status → PAID, proof_of_payment populated, paid_at / paid_by set.
+//   - If PV routing_type is direct_payment and metadata.sourceReqID is set,
+//     the linked requisition status is cascaded to COMPLETED.
+func MarkPaidWithPOP(c *fiber.Ctx) error {
+	logger := logging.FromContext(c)
+	logger.Info("mark_paid_with_pop_request")
+
+	tenant, err := middleware.GetTenantContext(c)
+	if err != nil {
+		return utils.SendUnauthorizedError(c, "Organization context required")
+	}
+
+	// Role gate: only finance or admin may execute payment.
+	userRole, _ := c.Locals("userRole").(string)
+	if userRole != "finance" && userRole != "admin" && userRole != "super_admin" {
+		return utils.SendForbiddenError(c, "Only finance or admin users can mark a payment voucher as paid")
+	}
+
+	id := c.Params("id")
+	if id == "" {
+		return utils.SendBadRequestError(c, "Payment voucher ID is required")
+	}
+
+	// Load PV.
+	var voucher models.PaymentVoucher
+	if err := config.DB.Where("id = ? AND organization_id = ?", id, tenant.OrganizationID).First(&voucher).Error; err != nil {
+		return utils.SendNotFoundError(c, "Payment voucher not found")
+	}
+
+	// Must be APPROVED — return 409 Conflict so callers can distinguish
+	// "wrong state" from "bad request".
+	if strings.ToUpper(voucher.Status) != models.StatusApproved {
+		return c.Status(fiber.StatusConflict).JSON(fiber.Map{
+			"success": false,
+			"message": fmt.Sprintf("Payment voucher must be in APPROVED status to mark as paid (current: %s)", voucher.Status),
+		})
+	}
+
+	// Require popFile field.
+	fileHeader, err := c.FormFile("popFile")
+	if err != nil || fileHeader == nil {
+		return utils.SendBadRequestError(c, "popFile is required (PDF, JPG, or PNG, max 10 MB)")
+	}
+
+	// Validate size.
+	if fileHeader.Size > maxPOPSizeBytes {
+		return utils.SendBadRequestError(c, fmt.Sprintf("popFile exceeds maximum size of 10 MB (got %.2f MB)", float64(fileHeader.Size)/1024/1024))
+	}
+
+	// Validate extension.
+	dotIdx := strings.LastIndex(fileHeader.Filename, ".")
+	ext := ""
+	if dotIdx >= 0 {
+		ext = strings.ToLower(fileHeader.Filename[dotIdx:])
+	}
+	if !allowedPOPExtensions[ext] {
+		return utils.SendBadRequestError(c, "popFile must be a PDF, JPG, or PNG file")
+	}
+
+	// Read file bytes and encode as base64 for DB storage.
+	f, err := fileHeader.Open()
+	if err != nil {
+		return utils.SendInternalError(c, "Failed to open uploaded file", err)
+	}
+	defer f.Close()
+
+	var buf = make([]byte, fileHeader.Size)
+	if _, err := f.Read(buf); err != nil {
+		return utils.SendInternalError(c, "Failed to read uploaded file", err)
+	}
+	encoded := base64.StdEncoding.EncodeToString(buf)
+
+	// Optional paidDate (RFC3339 or date-only).
+	var paidAt time.Time
+	if paidDateStr := c.FormValue("paidDate"); paidDateStr != "" {
+		if t, parseErr := time.Parse("2006-01-02", paidDateStr); parseErr == nil {
+			paidAt = t
+		} else if t, parseErr := time.Parse(time.RFC3339, paidDateStr); parseErr == nil {
+			paidAt = t
+		}
+	}
+	if paidAt.IsZero() {
+		paidAt = time.Now()
+	}
+
+	notes := c.FormValue("notes")
+
+	// Build proof-of-payment payload.
+	popID := uuid.New().String()
+	popPayload := map[string]interface{}{
+		"id":          popID,
+		"fileName":    fileHeader.Filename,
+		"mimeType":    fileHeader.Header.Get("Content-Type"),
+		"sizeBytes":   fileHeader.Size,
+		"dataBase64":  encoded,
+		"uploadedAt":  time.Now().Format(time.RFC3339),
+		"uploadedBy":  tenant.UserID,
+	}
+	popBytes, _ := json.Marshal(popPayload)
+
+	userID := tenant.UserID
+	now := time.Now()
+
+	// Persist in a transaction.
+	err = config.DB.Transaction(func(tx *gorm.DB) error {
+		// Load actor for action history.
+		var actor models.User
+		tx.Where("id = ?", userID).First(&actor)
+
+		voucher.Status = models.StatusPaid
+		voucher.ProofOfPayment = datatypes.JSON(popBytes)
+		voucher.PaidAt = &paidAt
+		voucher.PaidBy = &userID
+		voucher.UpdatedAt = now
+
+		actionHistory := voucher.ActionHistory.Data()
+		actionHistory = append(actionHistory, types.ActionHistoryEntry{
+			ID:              uuid.New().String(),
+			Action:          "MARK_PAID",
+			ActionType:      "MARK_PAID",
+			PerformedBy:     userID,
+			PerformedByName: actor.Name,
+			PerformedByRole: actor.Role,
+			Timestamp:       now,
+			PerformedAt:     now,
+			Comments:        notes,
+			PreviousStatus:  models.StatusApproved,
+			NewStatus:       models.StatusPaid,
+		})
+		voucher.ActionHistory = datatypes.NewJSONType(actionHistory)
+
+		if err := tx.Save(&voucher).Error; err != nil {
+			return fmt.Errorf("update voucher: %w", err)
+		}
+
+		// Cascade requisition to COMPLETED for direct_payment chain.
+		if strings.EqualFold(voucher.RoutingType, models.RoutingTypeDirectPayment) && len(voucher.Metadata) > 0 {
+			var meta map[string]interface{}
+			if json.Unmarshal(voucher.Metadata, &meta) == nil {
+				if srcReqID, ok := meta["sourceReqID"].(string); ok && srcReqID != "" {
+					tx.Model(&models.Requisition{}).
+						Where("id = ? AND organization_id = ?", srcReqID, voucher.OrganizationID).
+						Updates(map[string]interface{}{
+							"status":     models.StatusCompleted,
+							"updated_at": now,
+						})
+				}
+			}
+		}
+
+		return nil
+	})
+	if err != nil {
+		logging.LogError(c, err, "mark_paid_with_pop_failed", nil)
+		return utils.SendInternalError(c, "Failed to mark payment voucher as paid", err)
+	}
+
+	go utils.SyncDocumentAs(config.DB, "PAYMENT_VOUCHER", voucher.ID, userID)
+
+	logger.Info("pv_marked_paid_with_pop")
+	return utils.SendSimpleSuccess(c, modelToPaymentVoucherResponse(voucher), "Payment voucher marked as paid successfully")
+}
+
+// ============================================================================
+// PAYMENT VOUCHER — RECOVER FROM PO
+// POST /api/v1/payment-vouchers/recover-from-po/:poId
+// ============================================================================
+
+// RecoverPVFromPO creates a draft PaymentVoucher for an existing direct_payment
+// PurchaseOrder whose auto-creation failed. Idempotent: if a PV already exists
+// for the PO, returns 200 with the existing PV instead of 201.
+//
+// Only admin or finance callers may trigger recovery.
+func RecoverPVFromPO(c *fiber.Ctx) error {
+	logger := logging.FromContext(c)
+	logger.Info("recover_pv_from_po_request")
+
+	tenant, err := middleware.GetTenantContext(c)
+	if err != nil {
+		return utils.SendUnauthorizedError(c, "Organization context required")
+	}
+
+	// Role gate: only admin or finance.
+	userRole, _ := c.Locals("userRole").(string)
+	if userRole != "admin" && userRole != "super_admin" && userRole != "finance" {
+		return utils.SendForbiddenError(c, "Only admin or finance users can recover a payment voucher from a PO")
+	}
+
+	poID := c.Params("poId")
+	if poID == "" {
+		return utils.SendBadRequestError(c, "PO ID is required")
+	}
+
+	// Load PO scoped to org.
+	var po models.PurchaseOrder
+	if err := config.DB.Where("id = ? AND organization_id = ?", poID, tenant.OrganizationID).First(&po).Error; err != nil {
+		return utils.SendNotFoundError(c, "Purchase order not found")
+	}
+
+	// Reject non-direct_payment POs.
+	if !strings.EqualFold(po.RoutingType, models.RoutingTypeDirectPayment) {
+		return utils.SendBadRequestError(c, fmt.Sprintf(
+			"PO %s has routing_type %q — recovery is only supported for direct_payment POs",
+			po.DocumentNumber, po.RoutingType,
+		))
+	}
+
+	// Idempotency check: return existing PV if one already exists.
+	var existingPV models.PaymentVoucher
+	if err := config.DB.
+		Where("linked_po = ? AND organization_id = ? AND UPPER(status) != ?",
+			po.DocumentNumber, tenant.OrganizationID, models.StatusCancelled).
+		First(&existingPV).Error; err == nil {
+		// PV already exists — return 200.
+		return utils.SendSimpleSuccess(c, modelToPaymentVoucherResponse(existingPV), "Payment voucher already exists for this PO")
+	}
+
+	// Create draft PV mirroring autoCreateDraftPV logic.
+	pvDocNum := utils.GenerateDocumentNumber("PV")
+	now := time.Now()
+
+	metaPayload := map[string]interface{}{
+		"autoCreated": false,
+		"recoveredBy": tenant.UserID,
+	}
+	metaBytes, _ := json.Marshal(metaPayload)
+
+	vendorName := po.VendorName
+	if vendorName == "" {
+		vendorName = "Direct Payment"
+	}
+
+	pv := models.PaymentVoucher{
+		ID:             uuid.New().String(),
+		DocumentNumber: pvDocNum,
+		OrganizationID: tenant.OrganizationID,
+		Status:         models.StatusDraft,
+		CreatedBy:      tenant.UserID,
+		LinkedPO:       po.DocumentNumber,
+		RoutingType:    models.RoutingTypeDirectPayment,
+		VendorName:     vendorName,
+		Amount:         po.TotalAmount,
+		Currency:       po.Currency,
+		Metadata:       datatypes.JSON(metaBytes),
+		CreatedAt:      now,
+		UpdatedAt:      now,
+	}
+	pv.ApprovalHistory = datatypes.NewJSONType([]types.ApprovalRecord{})
+	pv.ActionHistory = datatypes.NewJSONType([]types.ActionHistoryEntry{{
+		ID:          uuid.New().String(),
+		Action:      "RECOVER",
+		ActionType:  "CREATE",
+		PerformedBy: tenant.UserID,
+		Timestamp:   now,
+		PerformedAt: now,
+		Comments:    "Draft PV recovered from PO " + po.DocumentNumber,
+		NewStatus:   models.StatusDraft,
+	}})
+
+	if err := config.DB.Create(&pv).Error; err != nil {
+		logging.LogError(c, err, "recover_pv_from_po_failed", nil)
+		return utils.SendInternalError(c, "Failed to create payment voucher", err)
+	}
+
+	logger.Info("pv_recovered_from_po")
+	return c.Status(fiber.StatusCreated).JSON(types.DetailResponse{
+		Success: true,
+		Data:    modelToPaymentVoucherResponse(pv),
+	})
+}

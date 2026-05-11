@@ -399,6 +399,11 @@ type PaymentVoucherResponse struct {
 	PaidAmount           *float64    `json:"paidAmount,omitempty"`
 	BankDetails          interface{} `json:"bankDetails,omitempty"`
 	Items                []PaymentItem `json:"items,omitempty"`
+	// Direct-payment routing fields
+	RoutingType          string      `json:"routingType,omitempty"`
+	ProofOfPayment       interface{} `json:"proofOfPayment,omitempty"`
+	PaidAt               *time.Time  `json:"paidAt,omitempty"`
+	PaidBy               *string     `json:"paidBy,omitempty"`
 	CreatedAt            time.Time   `json:"createdAt"`
 	UpdatedAt            time.Time   `json:"updatedAt"`
 }

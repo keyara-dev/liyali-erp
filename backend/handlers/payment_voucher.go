@@ -666,13 +666,19 @@ func modelToPaymentVoucherResponse(voucher models.PaymentVoucher) types.PaymentV
 	}
 
 	actionHistory := voucher.ActionHistory.Data()
-	
+
 	// Unmarshal bank details
 	var bankDetails interface{}
 	if len(voucher.BankDetails) > 0 {
 		_ = json.Unmarshal(voucher.BankDetails, &bankDetails)
 	}
-	
+
+	// Unmarshal proof of payment
+	var proofOfPayment interface{}
+	if len(voucher.ProofOfPayment) > 0 {
+		_ = json.Unmarshal(voucher.ProofOfPayment, &proofOfPayment)
+	}
+
 	items := voucher.Items.Data()
 
 	return types.PaymentVoucherResponse{
@@ -713,6 +719,10 @@ func modelToPaymentVoucherResponse(voucher models.PaymentVoucher) types.PaymentV
 		PaidAmount:           voucher.PaidAmount,
 		BankDetails:          bankDetails,
 		Items:                items,
+		RoutingType:          voucher.RoutingType,
+		ProofOfPayment:       proofOfPayment,
+		PaidAt:               voucher.PaidAt,
+		PaidBy:               voucher.PaidBy,
 		CreatedAt:            voucher.CreatedAt,
 		UpdatedAt:            voucher.UpdatedAt,
 	}

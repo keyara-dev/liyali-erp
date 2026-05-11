@@ -344,6 +344,8 @@ func SetupRoutes(app *fiber.App, handlerRegistry *handlers.HandlerRegistry, rbac
 	pvs.Post("/:id/submit", middleware.RequirePermission(rbacService, "payment_voucher", "edit"), handlers.SubmitPaymentVoucher)
 	pvs.Post("/:id/withdraw", middleware.RequirePermission(rbacService, "payment_voucher", "edit"), handlers.WithdrawPaymentVoucher)
 	pvs.Post("/:id/mark-paid", middleware.RequirePermission(rbacService, "payment_voucher", "edit"), handlers.MarkPaymentVoucherPaid)
+	pvs.Post("/:id/mark-paid-with-pop", middleware.RequirePermission(rbacService, "payment_voucher", "edit"), handlers.MarkPaidWithPOP)
+	pvs.Post("/recover-from-po/:poId", middleware.RequirePermission(rbacService, "payment_voucher", "edit"), handlers.RecoverPVFromPO)
 
 	// GRN routes (tenant-scoped)
 	grns := tenant.Group("/grns", middleware.InjectWorkflowExecutionService(handlerRegistry.WorkflowExecutionService))
