@@ -2618,7 +2618,18 @@ func (s *WorkflowExecutionService) getDocumentPriority(tx *gorm.DB, entityID, en
 				return strings.ToLower(pv.Priority)
 			}
 		}
-		// budget and goods_received_note don't have priority field - use default
+	case "grn", "goods_received_note":
+		var grn models.GoodsReceivedNote
+		if err := tx.Where("id = ?", entityID).First(&grn).Error; err == nil {
+			if grn.PODocumentNumber != "" {
+				var po models.PurchaseOrder
+				if err := tx.Where("document_number = ?", grn.PODocumentNumber).First(&po).Error; err == nil {
+					if po.Priority != "" {
+						return strings.ToLower(po.Priority)
+					}
+				}
+			}
+		}
 	}
 
 	return defaultPriority
@@ -2650,6 +2661,21 @@ func (s *WorkflowExecutionService) getDocumentDueDate(tx *gorm.DB, entityID, ent
 		if err := tx.Where("id = ?", entityID).First(&pv).Error; err == nil {
 			if pv.PaymentDueDate != nil {
 				return pv.PaymentDueDate
+			}
+		}
+	case "grn", "goods_received_note":
+		var grn models.GoodsReceivedNote
+		if err := tx.Where("id = ?", entityID).First(&grn).Error; err == nil {
+			if grn.PODocumentNumber != "" {
+				var po models.PurchaseOrder
+				if err := tx.Where("document_number = ?", grn.PODocumentNumber).First(&po).Error; err == nil {
+					if po.RequiredByDate != nil {
+						return po.RequiredByDate
+					}
+					if !po.DeliveryDate.IsZero() {
+						return &po.DeliveryDate
+					}
+				}
 			}
 		}
 	}
