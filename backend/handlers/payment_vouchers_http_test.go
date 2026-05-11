@@ -1008,3 +1008,88 @@ func TestPV_ProcurementUserCannotSeeDirectPayment(t *testing.T) {
 		t.Errorf("procurement user: expected 200 for procurement PV, got %d; body=%v", resp2.StatusCode, body)
 	}
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// POST /payment-vouchers/:id/submit — scope gate (Task 4)
+// ─────────────────────────────────────────────────────────────────────────────
+
+// makePaymentVoucherWithCreator creates a draft PV owned by the given userID.
+func makePaymentVoucherWithCreator(t *testing.T, docNum, createdBy string) models.PaymentVoucher {
+	t.Helper()
+	voucher := models.PaymentVoucher{
+		ID:             uuid.New().String(),
+		OrganizationID: testOrgID,
+		DocumentNumber: docNum,
+		InvoiceNumber:  "INV-" + uuid.New().String()[:8],
+		Status:         "DRAFT",
+		Amount:         500.00,
+		Currency:       "ZMW",
+		PaymentMethod:  "bank_transfer",
+		GLCode:         "GL-001",
+		Description:    "Scope gate test PV",
+		CreatedBy:      createdBy,
+		ApprovalStage:  0,
+		CreatedAt:      time.Now(),
+		UpdatedAt:      time.Now(),
+	}
+	voucher.ApprovalHistory = datatypes.NewJSONType([]types.ApprovalRecord{})
+	voucher.ActionHistory = datatypes.NewJSONType([]types.ActionHistoryEntry{})
+	if err := config.DB.Create(&voucher).Error; err != nil {
+		t.Fatalf("makePaymentVoucherWithCreator: %v", err)
+	}
+	return voucher
+}
+
+// TestSubmitPaymentVoucher_NonOwnerNonPrivileged_Forbidden verifies that a
+// requester-role user who is not the PV owner and has no workflow task on it
+// receives 403 when attempting to submit.
+func TestSubmitPaymentVoucher_NonOwnerNonPrivileged_Forbidden(t *testing.T) {
+	db := setupTestDB(t)
+	defer teardownTestDB(t, db)
+	setupWorkflowTasksTable(t, db)
+
+	ownerID := "owner-user-001"
+	otherID := "other-user-002"
+
+	// PV created by ownerID; we will authenticate as otherID (requester role).
+	voucher := makePaymentVoucherWithCreator(t, "PV-SCOPE-NOTOWN-001", ownerID)
+
+	// Use fiberrecover so panics (e.g. missing workflowExecutionService) become 500,
+	// not a test crash.
+	app := fiber.New()
+	app.Use(fiberrecover.New())
+	otherAuth := withTenantCtx(testOrgID, otherID, "requester")
+	app.Post("/payment-vouchers/:id/submit", otherAuth, SubmitPaymentVoucher)
+
+	resp := testRequest(app, http.MethodPost, "/payment-vouchers/"+voucher.ID+"/submit", map[string]interface{}{
+		"workflowId": uuid.New().String(),
+	})
+	if resp.StatusCode != http.StatusForbidden {
+		t.Errorf("expected 403 for non-owner non-privileged requester, got %d", resp.StatusCode)
+	}
+}
+
+// TestSubmitPaymentVoucher_Owner_Allowed verifies that the PV creator can submit
+// their own PV (regression guard: direct-payment auto-PV flow must still work).
+func TestSubmitPaymentVoucher_Owner_Allowed(t *testing.T) {
+	db := setupTestDB(t)
+	defer teardownTestDB(t, db)
+	setupWorkflowTasksTable(t, db)
+
+	ownerID := "owner-user-001"
+	voucher := makePaymentVoucherWithCreator(t, "PV-SCOPE-OWNER-001", ownerID)
+
+	// Use fiberrecover so the handler can panic at workflowExecutionService (no service
+	// injected in this unit test) — the important thing is it must NOT return 403.
+	app := fiber.New()
+	app.Use(fiberrecover.New())
+	ownerAuth := withTenantCtx(testOrgID, ownerID, "requester")
+	app.Post("/payment-vouchers/:id/submit", ownerAuth, SubmitPaymentVoucher)
+
+	resp := testRequest(app, http.MethodPost, "/payment-vouchers/"+voucher.ID+"/submit", map[string]interface{}{
+		"workflowId": uuid.New().String(),
+	})
+	if resp.StatusCode == http.StatusForbidden {
+		t.Errorf("owner must not be blocked by scope gate, got 403")
+	}
+}
