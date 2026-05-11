@@ -61,6 +61,7 @@ const AttachmentPreviewDialog = dynamic(
 );
 import { PaymentVoucherSubmitDialog } from "../../_components/payment-voucher-submit-dialog";
 import { MarkPaidDialog } from "../../_components/mark-paid-dialog";
+import { MarkPaidWithPOPModal } from "../../_components/mark-paid-with-pop-modal";
 import { ConfirmationModal } from "@/components/modals/confirmation-modal";
 import { Badge } from "@/components";
 import { DocumentLoadingPage } from "@/components/base/document-loading-page";
@@ -128,6 +129,9 @@ export function PVDetailClient({
 }: PVDetailClientProps) {
   const router = useRouter();
   const [showMarkPaidDialog, setShowMarkPaidDialog] = useState(false);
+  const [showMarkPaidWithPOPModal, setShowMarkPaidWithPOPModal] = useState(false);
+
+  const FINANCE_ADMIN_ROLES = ["finance", "admin"];
 
   const { data: auditEventsData } = useQuery({
     queryKey: ["audit-events", "payment_voucher", pvId],
@@ -289,6 +293,17 @@ export function PVDetailClient({
               Mark as Paid
             </Button>
           )}
+          {paymentVoucher.status?.toUpperCase() === "APPROVED" &&
+            FINANCE_ADMIN_ROLES.includes(userRole?.toLowerCase()) && (
+              <Button
+                onClick={() => setShowMarkPaidWithPOPModal(true)}
+                variant="outline"
+                className="gap-2 h-11 border-emerald-500 text-emerald-700 hover:bg-emerald-50"
+              >
+                <CheckSquare className="h-4 w-4" />
+                Upload Proof of Payment
+              </Button>
+            )}
         </div>
       </div>
 
@@ -768,6 +783,14 @@ export function PVDetailClient({
         paymentVoucher={paymentVoucher}
         userId={userId}
         userRole={userRole}
+        onSuccess={handleApprovalComplete}
+      />
+
+      {/* Mark as Paid with Proof of Payment Modal */}
+      <MarkPaidWithPOPModal
+        pvId={pvId}
+        open={showMarkPaidWithPOPModal}
+        onOpenChange={setShowMarkPaidWithPOPModal}
         onSuccess={handleApprovalComplete}
       />
     </div>
