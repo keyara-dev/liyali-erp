@@ -186,6 +186,9 @@ type PurchaseOrder struct {
 	ProjectCode   string     `json:"projectCode,omitempty"`   // Project code - ADDED
 	CreatedBy     string     `json:"createdBy,omitempty"`     // Creator user ID - ADDED
 	
+	// Physical delivery tracking — independent of workflow Status.
+	DeliveryStatus string `gorm:"column:delivery_status;type:text;not null;default:'NOT_DELIVERED';index" json:"deliveryStatus"`
+
 	// Direct-payment routing
 	RoutingType string `gorm:"type:text;not null;default:'procurement';index" json:"routingType"`
 
