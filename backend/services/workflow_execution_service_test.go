@@ -45,6 +45,7 @@ func setupExecutionTestDB(t *testing.T) *gorm.DB {
 		&models.Requisition{},
 		&models.PurchaseOrder{},
 		&models.PaymentVoucher{},
+		&models.GoodsReceivedNote{},
 	)
 	require.NoError(t, err, "auto-migrate models")
 
@@ -91,6 +92,7 @@ func setupExecutionTestDB(t *testing.T) *gorm.DB {
 			entity_type TEXT NOT NULL DEFAULT '',
 			stage_number INTEGER NOT NULL DEFAULT 0,
 			stage_name TEXT NOT NULL DEFAULT '',
+			kind TEXT NOT NULL DEFAULT 'approval',
 			assignment_type TEXT DEFAULT 'role',
 			assigned_role TEXT,
 			assigned_user_id TEXT,
@@ -104,6 +106,25 @@ func setupExecutionTestDB(t *testing.T) *gorm.DB {
 			version INTEGER DEFAULT 1,
 			updated_by TEXT,
 			claim_expiry DATETIME,
+			updated_at DATETIME
+		)`,
+		`CREATE TABLE IF NOT EXISTS stage_approval_records (
+			id TEXT PRIMARY KEY,
+			organization_id TEXT NOT NULL DEFAULT '',
+			workflow_task_id TEXT NOT NULL DEFAULT '',
+			stage_number INTEGER NOT NULL DEFAULT 0,
+			approver_id TEXT NOT NULL DEFAULT '',
+			approver_name TEXT NOT NULL DEFAULT '',
+			approver_role TEXT NOT NULL DEFAULT '',
+			man_number TEXT NOT NULL DEFAULT '',
+			position TEXT NOT NULL DEFAULT '',
+			action TEXT NOT NULL DEFAULT '',
+			comments TEXT NOT NULL DEFAULT '',
+			signature TEXT NOT NULL DEFAULT '',
+			approved_at DATETIME,
+			ip_address TEXT NOT NULL DEFAULT '',
+			user_agent TEXT NOT NULL DEFAULT '',
+			created_at DATETIME,
 			updated_at DATETIME
 		)`,
 		`CREATE TABLE IF NOT EXISTS audit_logs (
@@ -405,4 +426,170 @@ func TestSubmitRequisitionWithRouting_DirectPayment_PVFailureDoesNotRollbackPO(t
 	var po2 models.PurchaseOrder
 	require.NoError(t, db.First(&po2, "id = ?", res2.AutoCreatedPOID).Error,
 		"PO must survive a PV creation failure")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Helpers for GRN cascade tests
+// ─────────────────────────────────────────────────────────────────────────────
+
+// seedApprovedPOWithItems creates an APPROVED PurchaseOrder with the given items.
+func seedApprovedPOWithItems(t *testing.T, db *gorm.DB, orgID string, items []types.POItem) models.PurchaseOrder {
+	t.Helper()
+	docNum := "PO-" + uuid.New().String()[:8]
+	po := models.PurchaseOrder{
+		ID:             uuid.New().String(),
+		OrganizationID: orgID,
+		DocumentNumber: docNum,
+		Status:         models.StatusApproved,
+		Currency:       "ZMW",
+		TotalAmount:    999.0,
+		DeliveryStatus: models.DeliveryStatusNotDelivered,
+		CreatedAt:      time.Now(),
+		UpdatedAt:      time.Now(),
+	}
+	po.Items = datatypes.NewJSONType(items)
+	po.ApprovalHistory = datatypes.NewJSONType([]types.ApprovalRecord{})
+	require.NoError(t, db.Create(&po).Error)
+	return po
+}
+
+// seedPendingGRN creates a PENDING GoodsReceivedNote linked to the given PO.
+func seedPendingGRN(t *testing.T, db *gorm.DB, orgID string, po models.PurchaseOrder, grnItems []types.GRNItem) models.GoodsReceivedNote {
+	t.Helper()
+	grn := models.GoodsReceivedNote{
+		ID:               uuid.New().String(),
+		OrganizationID:   orgID,
+		DocumentNumber:   "GRN-" + uuid.New().String()[:8],
+		PODocumentNumber: po.DocumentNumber,
+		Status:           models.StatusPending,
+		ReceivedDate:     time.Now(),
+		ReceivedBy:       "warehouse-user",
+		CreatedAt:        time.Now(),
+		UpdatedAt:        time.Now(),
+	}
+	grn.Items = datatypes.NewJSONType(grnItems)
+	grn.QualityIssues = datatypes.NewJSONType([]types.QualityIssue{})
+	grn.ApprovalHistory = datatypes.NewJSONType([]types.ApprovalRecord{})
+	require.NoError(t, db.Create(&grn).Error)
+	return grn
+}
+
+// seedGRNWorkflowAndClaim creates a 1-stage workflow assignment + claimed task for a GRN,
+// and returns (assignmentID, taskID, approverUserID).
+func seedGRNWorkflowAndClaim(t *testing.T, db *gorm.DB, orgID, grnID string) (string, string, string) {
+	t.Helper()
+	approverID := "approver-" + uuid.New().String()[:8]
+	// Must have role="approver" to pass the permission check in ApproveWorkflowTaskWithVersion.
+	require.NoError(t, db.Exec(
+		`INSERT INTO users (id, email, name, role, active, created_at, updated_at) VALUES (?,?,?,?,?,datetime('now'),datetime('now'))`,
+		approverID, approverID+"@test.local", "Test Approver", "approver", true,
+	).Error)
+
+	now := time.Now()
+	nowStr := now.Format(time.RFC3339)
+
+	wfID := uuid.New().String()
+	stages, _ := json.Marshal([]models.WorkflowStage{{
+		StageNumber: 1, StageName: "Review", RequiredRole: "approver",
+	}})
+	require.NoError(t, db.Exec(`INSERT INTO workflows
+		(id, organization_id, name, description, document_type, entity_type, version,
+		 is_active, is_default, conditions, stages, created_by, created_at, updated_at)
+		VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+		wfID, orgID, "GRN Workflow", "", "grn", "grn",
+		1, 1, 0, `{}`, string(stages), "system", nowStr, nowStr,
+	).Error)
+
+	assignID := uuid.New().String()
+	require.NoError(t, db.Exec(`INSERT INTO workflow_assignments
+		(id, organization_id, entity_id, entity_type, workflow_id, workflow_version,
+		 current_stage, status, assigned_at, assigned_by, created_at, updated_at)
+		VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
+		assignID, orgID, grnID, "grn", wfID, 1,
+		1, "IN_PROGRESS", nowStr, approverID, nowStr, nowStr,
+	).Error)
+
+	taskID := uuid.New().String()
+	expiry := now.Add(30 * time.Minute).Format(time.RFC3339)
+	require.NoError(t, db.Exec(`INSERT INTO workflow_tasks
+		(id, organization_id, workflow_assignment_id, entity_id, entity_type,
+		 stage_number, stage_name, kind, assignment_type, assigned_role,
+		 status, priority, version, claimed_at, claimed_by, claim_expiry, created_at, updated_at)
+		VALUES (?,?,?,?,?, ?,?,?,?,?, ?,?,?,?,?,?,?,?)`,
+		taskID, orgID, assignID, grnID, "grn",
+		1, "Review", "approval", "role", "approver",
+		"CLAIMED", "MEDIUM", 1, nowStr, approverID, expiry, nowStr, nowStr,
+	).Error)
+
+	return assignID, taskID, approverID
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GRN Approval Cascade Tests
+// ─────────────────────────────────────────────────────────────────────────────
+
+func TestGRNApprovalCascadesToPO_SingleFullGRN_FullyDelivered(t *testing.T) {
+	db := setupExecutionTestDB(t)
+	const orgID = "org-cascade-full-001"
+	seedOrg(t, db, orgID)
+
+	items := []types.POItem{{Description: "Widget", Quantity: 10, UnitPrice: 5.0, Amount: 50.0}}
+	po := seedApprovedPOWithItems(t, db, orgID, items)
+
+	grnItems := []types.GRNItem{{
+		Description:      "Widget",
+		QuantityOrdered:  10,
+		QuantityReceived: 10,
+		Variance:         0,
+		Condition:        "good",
+	}}
+	grn := seedPendingGRN(t, db, orgID, po, grnItems)
+	_, taskID, approverID := seedGRNWorkflowAndClaim(t, db, orgID, grn.ID)
+
+	svc := newExecutionService(t, db)
+	err := svc.ApproveWorkflowTaskWithVersion(context.Background(), taskID, approverID, "LGTM", "", 1)
+	require.NoError(t, err)
+
+	var updatedPO models.PurchaseOrder
+	require.NoError(t, db.First(&updatedPO, "id = ?", po.ID).Error)
+	assert.Equal(t, models.DeliveryStatusFullyDelivered, updatedPO.DeliveryStatus,
+		"PO delivery_status must be FULLY_DELIVERED after full GRN approval")
+
+	poItems := updatedPO.Items.Data()
+	require.Len(t, poItems, 1)
+	assert.Equal(t, 10, poItems[0].ReceivedQuantity,
+		"POItem.ReceivedQuantity must equal GRN QuantityReceived")
+}
+
+func TestGRNApprovalCascadesToPO_PartialGRN_PartiallyDelivered(t *testing.T) {
+	db := setupExecutionTestDB(t)
+	const orgID = "org-cascade-partial-001"
+	seedOrg(t, db, orgID)
+
+	items := []types.POItem{{Description: "Gadget", Quantity: 10, UnitPrice: 8.0, Amount: 80.0}}
+	po := seedApprovedPOWithItems(t, db, orgID, items)
+
+	grnItems := []types.GRNItem{{
+		Description:      "Gadget",
+		QuantityOrdered:  10,
+		QuantityReceived: 4,
+		Variance:         6,
+		Condition:        "good",
+	}}
+	grn := seedPendingGRN(t, db, orgID, po, grnItems)
+	_, taskID, approverID := seedGRNWorkflowAndClaim(t, db, orgID, grn.ID)
+
+	svc := newExecutionService(t, db)
+	err := svc.ApproveWorkflowTaskWithVersion(context.Background(), taskID, approverID, "partial receipt", "", 1)
+	require.NoError(t, err)
+
+	var updatedPO models.PurchaseOrder
+	require.NoError(t, db.First(&updatedPO, "id = ?", po.ID).Error)
+	assert.Equal(t, models.DeliveryStatusPartiallyDelivered, updatedPO.DeliveryStatus,
+		"PO delivery_status must be PARTIALLY_DELIVERED when GRN covers only part of the order")
+
+	poItems := updatedPO.Items.Data()
+	require.Len(t, poItems, 1)
+	assert.Equal(t, 4, poItems[0].ReceivedQuantity,
+		"POItem.ReceivedQuantity must equal partial GRN QuantityReceived")
 }

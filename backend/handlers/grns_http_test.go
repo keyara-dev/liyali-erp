@@ -615,3 +615,85 @@ func TestGRN_ProcurementUserCannotSeeDirectPaymentGRN(t *testing.T) {
 		t.Errorf("procurement user: expected 200 for procurement GRN, got %d; body=%v", resp2.StatusCode, body)
 	}
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// POST /grns — item-level + over-receipt validation (Task 5)
+// ─────────────────────────────────────────────────────────────────────────────
+
+// TestCreateGRN_OverReceiptVsPO_Rejected verifies that receiving more than the
+// ordered quantity for an item is rejected with 400.
+func TestCreateGRN_OverReceiptVsPO_Rejected(t *testing.T) {
+	db := setupTestDB(t)
+	defer teardownTestDB(t, db)
+
+	// PO has "Widget A" with quantity=10.
+	po := makeApprovedPO(t, "PO-2024-OVER-001")
+
+	app := newGRNApp(t)
+	body := map[string]interface{}{
+		"poDocumentNumber": po.DocumentNumber,
+		"receivedBy":       testUserID,
+		"items": []map[string]interface{}{
+			{"description": "Widget A", "quantityOrdered": 10, "quantityReceived": 15, "condition": "good"},
+		},
+	}
+	resp := testRequest(app, http.MethodPost, "/grns", body)
+	if resp.StatusCode != http.StatusBadRequest {
+		body := decodeResponse(resp)
+		t.Errorf("expected 400 for over-receipt, got %d; body=%v", resp.StatusCode, body)
+	}
+}
+
+// TestCreateGRN_UnknownItemDescription_Rejected verifies that a GRN item whose
+// description is not on the PO is rejected with 400.
+func TestCreateGRN_UnknownItemDescription_Rejected(t *testing.T) {
+	db := setupTestDB(t)
+	defer teardownTestDB(t, db)
+
+	po := makeApprovedPO(t, "PO-2024-UNKNWN-001")
+
+	app := newGRNApp(t)
+	body := map[string]interface{}{
+		"poDocumentNumber": po.DocumentNumber,
+		"receivedBy":       testUserID,
+		"items": []map[string]interface{}{
+			{"description": "NotOnPO Item", "quantityOrdered": 5, "quantityReceived": 5, "condition": "good"},
+		},
+	}
+	resp := testRequest(app, http.MethodPost, "/grns", body)
+	if resp.StatusCode != http.StatusBadRequest {
+		respBody := decodeResponse(resp)
+		t.Errorf("expected 400 for unknown item description, got %d; body=%v", resp.StatusCode, respBody)
+	}
+}
+
+// TestCreateGRN_ValidReceipt_Accepted verifies that a GRN with valid items and
+// quantities within PO limits is accepted.
+func TestCreateGRN_ValidReceipt_Accepted(t *testing.T) {
+	db := setupTestDB(t)
+	defer teardownTestDB(t, db)
+
+	po := makeApprovedPO(t, "PO-2024-VALID-001")
+
+	app := newGRNApp(t)
+	body := map[string]interface{}{
+		"poDocumentNumber": po.DocumentNumber,
+		"receivedBy":       testUserID,
+		"items": []map[string]interface{}{
+			{"description": "Widget A", "quantityOrdered": 10, "quantityReceived": 5, "condition": "good"},
+		},
+	}
+	resp := testRequest(app, http.MethodPost, "/grns", body)
+	if resp.StatusCode != http.StatusCreated {
+		respBody := decodeResponse(resp)
+		t.Fatalf("expected 201 for valid receipt, got %d; body=%v", resp.StatusCode, respBody)
+	}
+}
+
+// TestCreateGRN_CrossGRN_OverReceipt_Skipped documents the cross-GRN aggregate
+// guard.  The current one-to-one GRN-per-PO unique constraint prevents creating
+// a second GRN for the same PO, so an end-to-end integration test requires
+// multi-GRN-per-PO support.  This test is skipped until that constraint is relaxed.
+func TestCreateGRN_CrossGRN_OverReceipt_Skipped(t *testing.T) {
+	t.Skip("requires multi-GRN-per-PO support: the one-to-one unique index on (po_document_number, status!=CANCELLED) prevents a second GRN")
+}

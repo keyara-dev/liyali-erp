@@ -770,6 +770,29 @@ func SubmitPaymentVoucher(c *fiber.Ctx) error {
 		})
 	}
 
+	// Scope gate: only the PV owner, a privileged role, or a user with an
+	// assigned/claimed workflow task on this PV may submit it.
+	userRole := strings.ToLower(c.Locals("userRole").(string))
+	scope := utils.GetDocumentScope(config.DB, userID, userRole, organizationID)
+	if !scope.CanViewAll && !scope.IsProcurement {
+		isOwner := strings.EqualFold(voucher.CreatedBy, userID)
+		if !isOwner {
+			var taskCount int64
+			if err := config.DB.Table("workflow_tasks").
+				Where("entity_id = ? AND entity_type = ? AND organization_id = ?", id, "payment_voucher", organizationID).
+				Where("assigned_user_id = ? OR claimed_by = ?", userID, userID).
+				Count(&taskCount).Error; err != nil {
+				return utils.SendInternalError(c, "failed to verify task assignment", err)
+			}
+			if taskCount == 0 {
+				return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
+					"success": false,
+					"message": "You do not have permission to submit this payment voucher",
+				})
+			}
+		}
+	}
+
 	// Check if payment voucher is in draft status
 	if strings.ToUpper(voucher.Status) != "DRAFT" {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{

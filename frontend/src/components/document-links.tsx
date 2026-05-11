@@ -94,7 +94,7 @@ export function DocumentLinks({
           {
             label: "Purchase Order",
             docNumber: chain.poDocumentNumber,
-            href: showViewLinks && chain.poId ? `/purchase-orders` : undefined,
+            href: showViewLinks && chain.poId ? `/purchase-orders/${chain.poId}` : undefined,
             status: chain.poStatus,
             exists: !!chain.poId,
             placeholder: "Not yet created",
@@ -110,7 +110,7 @@ export function DocumentLinks({
           {
             label: "Payment Voucher",
             docNumber: chain.pvDocumentNumber,
-            href: showViewLinks && chain.pvId ? `/payment-vouchers` : undefined,
+            href: showViewLinks && chain.pvId ? `/payment-vouchers/${chain.pvId}` : undefined,
             status: chain.pvStatus,
             exists: !!chain.pvId,
             placeholder: "Awaiting PO approval",
@@ -120,7 +120,7 @@ export function DocumentLinks({
           {
             label: "Purchase Order (Auto-approved)",
             docNumber: chain.poDocumentNumber,
-            href: showViewLinks && chain.poId ? `/purchase-orders` : undefined,
+            href: showViewLinks && chain.poId ? `/purchase-orders/${chain.poId}` : undefined,
             status: chain.poStatus,
             exists: !!chain.poId,
             placeholder: "Auto-generating on approval",
@@ -136,7 +136,7 @@ export function DocumentLinks({
           {
             label: "Payment Voucher",
             docNumber: chain.pvDocumentNumber,
-            href: showViewLinks && chain.pvId ? `/payment-vouchers` : undefined,
+            href: showViewLinks && chain.pvId ? `/payment-vouchers/${chain.pvId}` : undefined,
             status: chain.pvStatus,
             exists: !!chain.pvId,
             placeholder: "Awaiting GRN approval",
@@ -210,7 +210,7 @@ export function DocumentLinks({
                 <p className="text-sm text-muted-foreground">Purchase Order</p>
                 <p className="font-medium">{purchaseOrder.documentNumber}</p>
               </div>
-              <Link href={`/purchase-orders`}>
+              <Link href={`/purchase-orders/${purchaseOrder.id}`}>
                 <Button variant="outline" size="sm">View</Button>
               </Link>
             </div>
@@ -232,7 +232,7 @@ export function DocumentLinks({
                 <p className="text-sm text-muted-foreground">Payment Voucher</p>
                 <p className="font-medium">{paymentVoucher.documentNumber}</p>
               </div>
-              <Link href={`/payment-vouchers`}>
+              <Link href={`/payment-vouchers/${paymentVoucher.id}`}>
                 <Button variant="outline" size="sm">View</Button>
               </Link>
             </div>

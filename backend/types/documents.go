@@ -253,10 +253,11 @@ type UpdatePurchaseOrderRequest struct {
 
 // POItem represents an item in a purchase order
 type POItem struct {
-	Description string  `json:"description"`
-	Quantity    int     `json:"quantity"`
-	UnitPrice   float64 `json:"unitPrice"`
-	Amount      float64 `json:"amount"`
+	Description      string  `json:"description"`
+	Quantity         int     `json:"quantity"`
+	ReceivedQuantity int     `json:"receivedQuantity,omitempty"` // Running total received across all non-cancelled GRNs. Set by cascadeGRNApprovalToPO.
+	UnitPrice        float64 `json:"unitPrice"`
+	Amount           float64 `json:"amount"`
 
 	// Frontend compatibility fields - CRITICAL: These must match frontend exactly
 	ID         string  `json:"id,omitempty"`         // Item identifier - ADDED

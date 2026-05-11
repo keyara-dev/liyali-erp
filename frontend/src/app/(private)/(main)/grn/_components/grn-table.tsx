@@ -87,8 +87,10 @@ function GrnOptionsMenu({
           <Eye className="mr-2 h-4 w-4" />
           View Details
         </DropdownMenuItem>
-        {grn.status?.toUpperCase() !== "APPROVED" && canModify && (
-          <DropdownMenuItem onClick={() => router.push(`/grn/${grn.id}/edit`)}>
+        {/* Edit is only meaningful on DRAFT GRNs. Route to detail page for now;
+            a dedicated edit dialog on the detail page can be added later. */}
+        {grn.status?.toUpperCase() === "DRAFT" && canModify && (
+          <DropdownMenuItem onClick={() => router.push(`/grn/${grn.id}`)}>
             <Pencil className="mr-2 h-4 w-4" />
             Edit
           </DropdownMenuItem>

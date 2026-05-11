@@ -19,6 +19,13 @@ const (
 	StatusCancelled = "CANCELLED"
 )
 
+// PO delivery_status: tracks physical receipt independent of workflow status.
+const (
+	DeliveryStatusNotDelivered       = "NOT_DELIVERED"
+	DeliveryStatusPartiallyDelivered = "PARTIALLY_DELIVERED"
+	DeliveryStatusFullyDelivered     = "FULLY_DELIVERED"
+)
+
 // PaymentVoucher-scoped alias for clarity at call sites.
 const PaymentVoucherStatusPaid = StatusPaid
 

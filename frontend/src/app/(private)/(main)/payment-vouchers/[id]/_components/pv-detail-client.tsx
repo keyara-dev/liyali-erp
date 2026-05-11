@@ -68,10 +68,13 @@ import { DocumentLoadingPage } from "@/components/base/document-loading-page";
 import ErrorDisplay from "@/components/base/error-display";
 import { usePaymentVoucherDetail } from "@/hooks/use-payment-voucher-detail";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import Link from "next/link";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getAuditEvents, type AuditEvent } from "@/app/_actions/audit";
 import { formatCurrency } from "@/lib/utils";
+import { useGRNs } from "@/hooks/use-grn-queries";
+import type { GoodsReceivedNote } from "@/hooks/use-grn-queries";
 
 /**
  * Props for the PVDetailClient component
@@ -175,6 +178,17 @@ export function PVDetailClient({
     userRole,
     initialPaymentVoucher,
   });
+
+  // Resolve linkedGRN doc number → GRN id for navigation.
+  // GRN list is fetched with a large limit so the cache is usually warm.
+  const { data: grns = [] } = useGRNs(1, 100);
+  const linkedGRNRecord = useMemo(() => {
+    const docNum = paymentVoucher?.linkedGRN;
+    if (!docNum) return undefined;
+    return (grns as GoodsReceivedNote[]).find(
+      (g) => g.documentNumber === docNum,
+    );
+  }, [grns, paymentVoucher?.linkedGRN]);
 
   // Show loading state while fetching initial data
   if (isLoading) return <DocumentLoadingPage />;
@@ -518,6 +532,23 @@ export function PVDetailClient({
       <div className="px-1">
         <ProcurementFlowIndicator paymentVoucher={paymentVoucher} />
       </div>
+
+      {/* Linked GRN row — goods-first flow */}
+      {paymentVoucher.linkedGRN && (
+        <div className="flex items-center justify-between bg-background p-3 rounded border">
+          <div>
+            <p className="text-sm text-muted-foreground">Linked Goods Received Note</p>
+            <p className="font-medium font-mono">{paymentVoucher.linkedGRN}</p>
+          </div>
+          {linkedGRNRecord?.id && (
+            <Link href={`/grn/${linkedGRNRecord.id}`}>
+              <Button variant="outline" size="sm">
+                View GRN
+              </Button>
+            </Link>
+          )}
+        </div>
+      )}
 
       {/* Document Chain — only shown once PV is approved or paid */}
       {(paymentVoucher.status?.toUpperCase() === "APPROVED" ||
