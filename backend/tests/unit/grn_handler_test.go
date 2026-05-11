@@ -122,11 +122,13 @@ func TestGRNNumberGeneration(t *testing.T) {
 // TestGRNStatusValidation tests status field
 func TestGRNStatusValidation(t *testing.T) {
 	validStatuses := map[string]bool{
-		"DRAFT":    true,
-		"PENDING":  true,
-		"APPROVED": true,
-		"REJECTED": true,
-		"RECEIVED": true,
+		"DRAFT":     true,
+		"PENDING":   true,
+		"APPROVED":  true,
+		"REJECTED":  true,
+		"REVISION":  true,
+		"COMPLETED": true,
+		"CANCELLED": true,
 	}
 
 	tests := []struct {
@@ -137,8 +139,12 @@ func TestGRNStatusValidation(t *testing.T) {
 		{"Draft", "DRAFT", true},
 		{"Pending", "PENDING", true},
 		{"Approved", "APPROVED", true},
-		{"Received", "RECEIVED", true},
-		{"Invalid", "CANCELLED", false},
+		{"Rejected", "REJECTED", true},
+		{"Revision", "REVISION", true},
+		{"Completed", "COMPLETED", true},
+		{"Cancelled", "CANCELLED", true},
+		{"Invalid RECEIVED", "RECEIVED", false},
+		{"Invalid PAID", "PAID", false},
 	}
 
 	for _, tt := range tests {
@@ -297,20 +303,20 @@ func TestGRNStateTransitions(t *testing.T) {
 		{"Draft to Pending", "DRAFT", "PENDING", true},
 		{"Pending to Approved", "PENDING", "APPROVED", true},
 		{"Pending to Rejected", "PENDING", "REJECTED", true},
-		{"Approved to Received", "APPROVED", "RECEIVED", true},
+		{"Approved to Completed", "APPROVED", "COMPLETED", true},
 		{"Approved to Draft", "APPROVED", "DRAFT", false},
-		{"Received to Approved", "RECEIVED", "APPROVED", false},
+		{"Completed to Approved", "COMPLETED", "APPROVED", false},
 		{"Rejected to Draft", "REJECTED", "DRAFT", true},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			validTransitions := map[string][]string{
-				"DRAFT":    {"PENDING"},
-				"PENDING":  {"APPROVED", "REJECTED"},
-				"REJECTED": {"DRAFT"},
-				"APPROVED": {"RECEIVED"},
-				"RECEIVED": {},
+				"DRAFT":     {"PENDING"},
+				"PENDING":   {"APPROVED", "REJECTED"},
+				"REJECTED":  {"DRAFT"},
+				"APPROVED":  {"COMPLETED"},
+				"COMPLETED": {},
 			}
 
 			allowed := false
@@ -486,7 +492,7 @@ func TestGRNUpdateValidation(t *testing.T) {
 		{"Update draft GRN", "DRAFT", true},
 		{"Update pending GRN", "PENDING", true},
 		{"Cannot update approved GRN", "APPROVED", false},
-		{"Cannot update received GRN", "RECEIVED", false},
+		{"Cannot update completed GRN", "COMPLETED", false},
 	}
 
 	for _, tt := range tests {

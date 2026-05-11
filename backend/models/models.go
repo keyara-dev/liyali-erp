@@ -280,7 +280,7 @@ type GoodsReceivedNote struct {
 	DocumentNumber    string          `gorm:"uniqueIndex" json:"documentNumber"`
 	PODocumentNumber  string          `json:"poDocumentNumber"`
 	PurchaseOrder     *PurchaseOrder  `gorm:"foreignKey:PODocumentNumber;references:DocumentNumber" json:"purchaseOrder,omitempty"`
-	Status            string          `json:"status"` // draft, pending, approved, rejected, paid, completed, cancelled
+	Status            string          `json:"status"` // DRAFT, PENDING, APPROVED, REJECTED, REVISION, COMPLETED, CANCELLED — see models/status.go
 	ReceivedDate      time.Time       `json:"receivedDate"`
 	ReceivedBy        string          `json:"receivedBy"`
 	Items             datatypes.JSONType[[]types.GRNItem] `gorm:"type:jsonb" json:"items"`
