@@ -49,7 +49,7 @@ export interface WorkflowConditions {
   categories?: string[];
   customFields?: Record<string, unknown>;
   // Routing behavior
-  routingType?: "procurement" | "accounting";
+  routingType?: "procurement" | "accounting" | "direct_payment";
   autoApprove?: boolean;
   autoGeneratePO?: boolean;
   autoApprovePO?: boolean;

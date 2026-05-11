@@ -5,6 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { SelectField } from "@/components/ui/select-field";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Info } from "lucide-react";
 import type { WorkflowFormData, WorkflowConditions } from "@/types/workflow-config";
 
 interface WorkflowDetailsFormProps {
@@ -22,8 +24,9 @@ const DOCUMENT_TYPES = [
 ];
 
 const ROUTING_TYPES = [
-  { value: "procurement", name: "Procurement (Standard)" },
-  { value: "accounting", name: "Accounting (Direct Payment)" },
+  { value: "procurement", name: "Procurement" },
+  { value: "accounting", name: "Accounting" },
+  { value: "direct_payment", name: "Direct Payment" },
 ];
 
 export function WorkflowDetailsForm({
@@ -116,10 +119,22 @@ export function WorkflowDetailsForm({
               placeholder="Select routing type"
               value={conditions.routingType || "procurement"}
               onValueChange={(value) =>
-                updateConditions({ routingType: value as "procurement" | "accounting" })
+                updateConditions({ routingType: value as "procurement" | "accounting" | "direct_payment" })
               }
               options={ROUTING_TYPES}
             />
+
+            {conditions.routingType === "direct_payment" && (
+              <Alert className="border-blue-200 bg-blue-50 dark:bg-blue-950/30 dark:border-blue-800">
+                <Info className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                <AlertTitle className="text-blue-800 dark:text-blue-300">Direct payment workflow</AlertTitle>
+                <AlertDescription className="text-blue-700 dark:text-blue-400">
+                  No approval stages needed. The system will auto-approve the requisition, auto-create an approved
+                  Purchase Order (for audit), and auto-create a draft Payment Voucher for finance to action.
+                  Procurement users will not see any of these documents.
+                </AlertDescription>
+              </Alert>
+            )}
 
             {conditions.routingType === "accounting" && (
               <div className="space-y-4 pl-2 border-l-2 border-amber-300 ml-1">
