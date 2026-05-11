@@ -34,6 +34,8 @@ import { useGRNDetail } from "@/hooks/use-grn-detail";
 import { useOrganizationMembersQuery } from "@/hooks/use-organization-queries";
 import { usePurchaseOrders } from "@/hooks/use-purchase-order-queries";
 import type { PurchaseOrder } from "@/types/purchase-order";
+import { usePaymentVouchers } from "@/hooks/use-payment-voucher-queries";
+import type { PaymentVoucher } from "@/types/payment-voucher";
 import { Badge } from "@/components";
 import type { QualityIssue } from "@/types/goods-received-note";
 import { GRNSubmitDialog } from "./grn-submit-dialog";
@@ -87,6 +89,15 @@ export function GRNDetailClient({
       (po) => po.documentNumber === grn.poDocumentNumber,
     );
   }, [purchaseOrders, grn?.poDocumentNumber]);
+
+  // Resolve linkedPV doc number → PV id for navigation.
+  const { data: paymentVouchers = [] } = usePaymentVouchers();
+  const linkedPVRecord = useMemo(() => {
+    if (!grn?.linkedPV) return undefined;
+    return (paymentVouchers as PaymentVoucher[]).find(
+      (pv) => pv.documentNumber === grn.linkedPV,
+    );
+  }, [paymentVouchers, grn?.linkedPV]);
 
   // Org members for resolving user IDs → names (Received By, Approved By).
   // Backend returns a paginated shape { members, total, ... } for page >= 1 —
@@ -343,7 +354,18 @@ export function GRNDetailClient({
               <InfoField
                 icon={<LinkIcon className="h-3.5 w-3.5" />}
                 label="Source Payment Voucher"
-                value={<span className="font-mono">{grn.linkedPV}</span>}
+                value={
+                  linkedPVRecord?.id ? (
+                    <Link
+                      href={`/payment-vouchers/${linkedPVRecord.id}`}
+                      className="font-mono text-blue-600 hover:underline"
+                    >
+                      {grn.linkedPV}
+                    </Link>
+                  ) : (
+                    <span className="font-mono">{grn.linkedPV}</span>
+                  )
+                }
               />
             )}
           </div>
