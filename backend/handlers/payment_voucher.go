@@ -45,15 +45,17 @@ func GetPaymentVouchers(c *fiber.Ctx) error {
 
 	status := c.Query("status")
 	vendorID := c.Query("vendorId")
+	hasPoP := c.Query("hasProofOfPayment")
 
 	// Add query parameters to context
 	logging.AddFieldsToRequest(c, map[string]interface{}{
-		"operation":       "get_payment_vouchers",
-		"page":            page,
-		"limit":           limit,
-		"status":          status,
-		"vendor_id":       vendorID,
-		"organization_id": tenant.OrganizationID,
+		"operation":            "get_payment_vouchers",
+		"page":                 page,
+		"limit":                limit,
+		"status":               status,
+		"vendor_id":            vendorID,
+		"has_proof_of_payment": hasPoP,
+		"organization_id":      tenant.OrganizationID,
 	})
 
 	scope := utils.GetDocumentScope(config.DB, tenant.UserID, tenant.UserRole, tenant.OrganizationID)
@@ -167,11 +169,14 @@ func GetPaymentVouchers(c *fiber.Ctx) error {
 
 	var vouchers []models.PaymentVoucher
 	if len(ids) > 0 {
-		if err := config.DB.
-			Where("id IN ?", ids).
-			Preload("Vendor").
-			Order("created_at DESC").
-			Find(&vouchers).Error; err != nil {
+		q := config.DB.Where("id IN ?", ids).Preload("Vendor").Order("created_at DESC")
+		// Filter by proof_of_payment presence when hasProofOfPayment query param is provided
+		if hasPoP == "false" {
+			q = q.Where("proof_of_payment IS NULL OR proof_of_payment::text = 'null' OR proof_of_payment::text = '{}'")
+		} else if hasPoP == "true" {
+			q = q.Where("proof_of_payment IS NOT NULL AND proof_of_payment::text != 'null' AND proof_of_payment::text != '{}'")
+		}
+		if err := q.Find(&vouchers).Error; err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 				"success": false,
 				"message": "Failed to fetch payment vouchers",

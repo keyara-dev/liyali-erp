@@ -136,6 +136,7 @@ export async function getPaymentVouchers(
   filters?: {
     status?: string;
     department?: string;
+    hasProofOfPayment?: boolean;
   },
 ): Promise<APIResponse<PaymentVoucher[]>> {
   const params = new URLSearchParams();
@@ -147,6 +148,9 @@ export async function getPaymentVouchers(
   }
   if (filters?.department) {
     params.set("department", filters.department);
+  }
+  if (filters?.hasProofOfPayment !== undefined) {
+    params.set("hasProofOfPayment", filters.hasProofOfPayment.toString());
   }
 
   const url = `/api/v1/payment-vouchers?${params.toString()}`;

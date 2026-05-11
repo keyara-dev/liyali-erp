@@ -7,6 +7,8 @@ import { PageHeader } from "@/components/base/page-header";
 import { RecentTasks } from "./recent-tasks";
 import { GreetingCard } from "./greeting-card";
 import { MetricsCards } from "./metrics-cards";
+import { AwaitingPaymentWidget } from "./awaiting-payment";
+import { DirectPaymentPipeline } from "./direct-payment-pipeline";
 import LoadingDashboardPage, { LoadingDashboard } from "../loading";
 import CustomAlert from "@/components/ui/custom-alert";
 import type { DashboardMetrics, ApprovalTask } from "@/types";
@@ -96,6 +98,11 @@ export function DashboardClient({
       {/* Admin: show org-wide metrics cards */}
       {variant === "admin" && metrics && <MetricsCards metrics={metrics} />}
 
+      {/* Finance/Admin: show approved PVs awaiting payment upload */}
+      {(variant === "admin" || variant === "approver") && (
+        <AwaitingPaymentWidget />
+      )}
+
       {/* Requesters don't need the approval tasks widget */}
       {variant !== "requester" && (
         <RecentTasks
@@ -103,6 +110,11 @@ export function DashboardClient({
           userRole={userRole}
           initialTasks={initialTasks}
         />
+      )}
+
+      {/* Requesters: show direct-payment requisition pipeline */}
+      {variant === "requester" && (
+        <DirectPaymentPipeline userId={userId} />
       )}
     </div>
   );
