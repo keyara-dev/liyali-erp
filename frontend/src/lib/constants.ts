@@ -158,6 +158,12 @@ export const QUERY_KEYS = {
     BY_ID: "vendor-by-id",
   },
 
+  // Payees
+  PAYEES: {
+    ALL: "payees-all",
+    BY_ID: "payee-by-id",
+  },
+
   // Approval Tasks (Backend-powered)
   APPROVALS: {
     ALL: "approvals-all",
