@@ -249,6 +249,64 @@ func CreateGRN(c *fiber.Ctx) error {
 		}
 	}
 
+	// Item-level validation: each GRN item must match a PO line by description and
+	// must not exceed the ordered quantity on that line.
+	{
+		poItems := po.Items.Data()
+		poByDesc := make(map[string]int, len(poItems))
+		for _, it := range poItems {
+			poByDesc[strings.TrimSpace(strings.ToLower(it.Description))] += it.Quantity
+		}
+
+		for _, ln := range req.Items {
+			key := strings.TrimSpace(strings.ToLower(ln.Description))
+			ordered, ok := poByDesc[key]
+			if !ok {
+				return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+					"success": false,
+					"message": fmt.Sprintf("GRN item %q does not match any line on PO %s", ln.Description, po.DocumentNumber),
+				})
+			}
+			if ln.QuantityReceived <= 0 {
+				return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+					"success": false,
+					"message": fmt.Sprintf("GRN item %q must have quantityReceived > 0", ln.Description),
+				})
+			}
+			if ln.QuantityReceived > ordered {
+				return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+					"success": false,
+					"message": fmt.Sprintf("GRN item %q: quantityReceived %d exceeds ordered %d on PO %s",
+						ln.Description, ln.QuantityReceived, ordered, po.DocumentNumber),
+				})
+			}
+		}
+
+		// Cross-GRN aggregate guard: total received across all non-cancelled GRNs
+		// for this PO must not exceed the PO ordered quantity for any item.
+		var existingGRNs []models.GoodsReceivedNote
+		config.DB.Where("po_document_number = ? AND organization_id = ? AND UPPER(status) != ?",
+			req.PODocumentNumber, tenant.OrganizationID, "CANCELLED").
+			Find(&existingGRNs)
+		receivedByDesc := make(map[string]int)
+		for _, g := range existingGRNs {
+			for _, it := range g.Items.Data() {
+				receivedByDesc[strings.TrimSpace(strings.ToLower(it.Description))] += it.QuantityReceived
+			}
+		}
+		for _, ln := range req.Items {
+			key := strings.TrimSpace(strings.ToLower(ln.Description))
+			total := receivedByDesc[key] + ln.QuantityReceived
+			if total > poByDesc[key] {
+				return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+					"success": false,
+					"message": fmt.Sprintf("GRN item %q: total received across GRNs would be %d, exceeds PO %s ordered %d",
+						ln.Description, total, po.DocumentNumber, poByDesc[key]),
+				})
+			}
+		}
+	}
+
 	// Payment-first enforcement: require an approved PV before goods can be received
 	var linkedPVDoc *models.PaymentVoucher
 	if effectiveFlow == "payment_first" {
