@@ -1172,6 +1172,14 @@ func (s *WorkflowExecutionService) ApproveWorkflowTaskWithVersion(ctx context.Co
 					return fmt.Errorf("failed to create payment execution task: %w", err)
 				}
 			}
+
+			// GRNs: cascade final approval to parent PO delivery tracking.
+			if strings.EqualFold(assignment.EntityType, "grn") {
+				if err := s.cascadeGRNApprovalToPO(tx, assignment.EntityID); err != nil {
+					tx.Rollback()
+					return fmt.Errorf("post-approval GRN cascade: %w", err)
+				}
+			}
 		} else {
 			// Move to next stage
 			nextStageNumber := task.StageNumber + 1
@@ -2169,6 +2177,68 @@ type ApproverInfo struct {
 // that belongs to another org. An empty orgID falls back to ID-only matching
 // for backward compatibility (e.g. utility callers that do not yet have org
 // context), so do not remove the empty check without auditing every call site.
+// cascadeGRNApprovalToPO recomputes the parent PO's delivery_status and per-item
+// received quantities from the set of non-cancelled GRNs for that PO. Called
+// from the terminal-approve path when entity_type == "grn".
+func (s *WorkflowExecutionService) cascadeGRNApprovalToPO(tx *gorm.DB, grnID string) error {
+	var grn models.GoodsReceivedNote
+	if err := tx.Where("id = ?", grnID).First(&grn).Error; err != nil {
+		return fmt.Errorf("cascade: load GRN: %w", err)
+	}
+	if grn.PODocumentNumber == "" {
+		return nil // payment-first GRN with no PO link
+	}
+
+	var po models.PurchaseOrder
+	if err := tx.Where("document_number = ? AND organization_id = ?",
+		grn.PODocumentNumber, grn.OrganizationID).First(&po).Error; err != nil {
+		return fmt.Errorf("cascade: load PO: %w", err)
+	}
+
+	var grns []models.GoodsReceivedNote
+	if err := tx.Where("po_document_number = ? AND organization_id = ? AND UPPER(status) != ?",
+		po.DocumentNumber, po.OrganizationID, "CANCELLED").Find(&grns).Error; err != nil {
+		return fmt.Errorf("cascade: list GRNs: %w", err)
+	}
+
+	receivedByDesc := make(map[string]int)
+	for _, g := range grns {
+		for _, it := range g.Items.Data() {
+			key := strings.TrimSpace(strings.ToLower(it.Description))
+			receivedByDesc[key] += it.QuantityReceived
+		}
+	}
+
+	items := po.Items.Data()
+	allFull, anyReceived := true, false
+	for i := range items {
+		key := strings.TrimSpace(strings.ToLower(items[i].Description))
+		items[i].ReceivedQuantity = receivedByDesc[key]
+		if items[i].ReceivedQuantity > 0 {
+			anyReceived = true
+		}
+		if items[i].ReceivedQuantity < items[i].Quantity {
+			allFull = false
+		}
+	}
+
+	newDeliveryStatus := models.DeliveryStatusNotDelivered
+	switch {
+	case allFull && anyReceived:
+		newDeliveryStatus = models.DeliveryStatusFullyDelivered
+	case anyReceived:
+		newDeliveryStatus = models.DeliveryStatusPartiallyDelivered
+	}
+
+	return tx.Model(&models.PurchaseOrder{}).
+		Where("id = ?", po.ID).
+		Updates(map[string]interface{}{
+			"items":           datatypes.NewJSONType(items),
+			"delivery_status": newDeliveryStatus,
+			"updated_at":      time.Now(),
+		}).Error
+}
+
 func (s *WorkflowExecutionService) updateDocumentStatus(tx *gorm.DB, entityType, entityID, newStatus string) error {
 	return s.updateDocumentStatusScopedAs(tx, entityType, entityID, "", newStatus, "")
 }
