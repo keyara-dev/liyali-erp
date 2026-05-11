@@ -61,6 +61,7 @@ func setupTestDB(t *testing.T) *gorm.DB {
 		&models.GoodsReceivedNote{},
 		&models.Organization{},
 		&models.User{},
+		&models.Payee{},
 	)
 	if err != nil {
 		t.Fatalf("failed to auto-migrate models: %v", err)

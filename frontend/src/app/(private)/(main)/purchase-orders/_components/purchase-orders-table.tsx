@@ -12,6 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 import { DataList, DataListColumn } from "@/components/ui/data-list";
 import { FilterBar } from "@/components/ui/filter-bar";
 import { StatusBadge } from "@/components/status-badge";
@@ -84,6 +85,7 @@ export function PurchaseOrdersTable({
   // Filter state
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [routingFilter, setRoutingFilter] = useState<string>("all");
   const debouncedSearch = useDebounce(searchQuery, 500);
 
   // Client-side filtering
@@ -94,6 +96,10 @@ export function PurchaseOrdersTable({
       filtered = filtered.filter(
         (p) => p.status?.toLowerCase() === statusFilter,
       );
+    }
+
+    if (routingFilter !== "all") {
+      filtered = filtered.filter((p) => p.routingType === routingFilter);
     }
 
     if (debouncedSearch) {
@@ -108,13 +114,15 @@ export function PurchaseOrdersTable({
     }
 
     return filtered;
-  }, [purchaseOrders, statusFilter, debouncedSearch]);
+  }, [purchaseOrders, statusFilter, routingFilter, debouncedSearch]);
 
-  const hasActiveFilters = Boolean(searchQuery) || statusFilter !== "all";
+  const hasActiveFilters =
+    Boolean(searchQuery) || statusFilter !== "all" || routingFilter !== "all";
 
   const clearFilters = useCallback(() => {
     setSearchQuery("");
     setStatusFilter("all");
+    setRoutingFilter("all");
   }, []);
 
   const columns: DataListColumn<PurchaseOrder>[] = [
@@ -160,7 +168,21 @@ export function PurchaseOrdersTable({
     {
       id: "status",
       header: "Status",
-      cell: (row) => <StatusBadge status={row.status} type="document" />,
+      cell: (row) => (
+        <div className="flex flex-col gap-1">
+          <StatusBadge status={row.status} type="document" />
+          {row.routingType === "direct_payment" && (
+            <Badge variant="outline" className="border-purple-500 text-purple-700 text-[10px] px-1.5 py-0 w-fit">
+              Direct Payment
+            </Badge>
+          )}
+          {row.routingType === "accounting" && (
+            <Badge variant="outline" className="border-amber-500 text-amber-700 text-[10px] px-1.5 py-0 w-fit">
+              Accounting
+            </Badge>
+          )}
+        </div>
+      ),
     },
     {
       id: "deliveryDate",
@@ -193,21 +215,35 @@ export function PurchaseOrdersTable({
           </div>
         }
         filters={
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-40">
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All statuses</SelectItem>
-              <SelectItem value="draft">Draft</SelectItem>
-              <SelectItem value="pending">Pending</SelectItem>
-              <SelectItem value="approved">Approved</SelectItem>
-              <SelectItem value="rejected">Rejected</SelectItem>
-              <SelectItem value="revision">Revision</SelectItem>
-              <SelectItem value="fulfilled">Fulfilled</SelectItem>
-              <SelectItem value="cancelled">Cancelled</SelectItem>
-            </SelectContent>
-          </Select>
+          <>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-40">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All statuses</SelectItem>
+                <SelectItem value="draft">Draft</SelectItem>
+                <SelectItem value="pending">Pending</SelectItem>
+                <SelectItem value="approved">Approved</SelectItem>
+                <SelectItem value="rejected">Rejected</SelectItem>
+                <SelectItem value="revision">Revision</SelectItem>
+                <SelectItem value="fulfilled">Fulfilled</SelectItem>
+                <SelectItem value="cancelled">Cancelled</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select value={routingFilter} onValueChange={setRoutingFilter}>
+              <SelectTrigger className="w-44">
+                <SelectValue placeholder="Routing type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All types</SelectItem>
+                <SelectItem value="procurement">Procurement</SelectItem>
+                <SelectItem value="accounting">Accounting</SelectItem>
+                <SelectItem value="direct_payment">Direct Payment</SelectItem>
+              </SelectContent>
+            </Select>
+          </>
         }
         hasActiveFilters={hasActiveFilters}
         onReset={clearFilters}
@@ -243,7 +279,19 @@ export function PurchaseOrdersTable({
                   {row.vendor?.name ?? row.vendorName}
                 </div>
               </div>
-              <StatusBadge status={row.status} type="document" />
+              <div className="flex flex-col items-end gap-1">
+                <StatusBadge status={row.status} type="document" />
+                {row.routingType === "direct_payment" && (
+                  <Badge variant="outline" className="border-purple-500 text-purple-700 text-[10px] px-1.5 py-0">
+                    Direct Payment
+                  </Badge>
+                )}
+                {row.routingType === "accounting" && (
+                  <Badge variant="outline" className="border-amber-500 text-amber-700 text-[10px] px-1.5 py-0">
+                    Accounting
+                  </Badge>
+                )}
+              </div>
             </div>
             <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
               <span>{formatCurrency(row.total ?? row.totalAmount ?? 0, row.currency)}</span>

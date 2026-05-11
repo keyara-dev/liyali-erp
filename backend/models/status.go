@@ -19,6 +19,9 @@ const (
 	StatusCancelled = "CANCELLED"
 )
 
+// PaymentVoucher-scoped alias for clarity at call sites.
+const PaymentVoucherStatusPaid = StatusPaid
+
 // WorkflowTask.Kind values. "approval" is the default for every task created
 // prior to this column's introduction and for all approval-stage tasks going
 // forward. "payment_execution" is created as a post-approval side-effect task

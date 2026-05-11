@@ -67,7 +67,12 @@ func GetPurchaseOrders(c *fiber.Ctx) error {
 	var ids []string
 
 	if scope.CanViewAll || scope.IsProcurement {
-		total, err = config.Queries.CountPurchaseOrdersAll(ctx, tenant.OrganizationID, status, vendorID)
+		total, err = config.Queries.CountPurchaseOrdersAll(ctx, db.CountPurchaseOrdersAllParams{
+			OrganizationID:    tenant.OrganizationID,
+			Column2:           status,
+			Column3:           vendorID,
+			HideDirectPayment: scope.HideDirectPayment,
+		})
 		if err != nil {
 			logging.LogError(c, err, "failed_to_count_purchase_orders", map[string]interface{}{"error_type": "database_error"})
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
@@ -76,7 +81,14 @@ func GetPurchaseOrders(c *fiber.Ctx) error {
 				"error":   err.Error(),
 			})
 		}
-		ids, err = config.Queries.ListPurchaseOrderIDsAll(ctx, tenant.OrganizationID, status, vendorID, int32(limit), offset)
+		ids, err = config.Queries.ListPurchaseOrderIDsAll(ctx, db.ListPurchaseOrderIDsAllParams{
+			OrganizationID:    tenant.OrganizationID,
+			Column2:           status,
+			Column3:           vendorID,
+			HideDirectPayment: scope.HideDirectPayment,
+			Limit:             int32(limit),
+			Offset:            offset,
+		})
 		if err != nil {
 			logging.LogError(c, err, "failed_to_fetch_purchase_orders", map[string]interface{}{"error_type": "database_error", "offset": offset, "limit": limit})
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{

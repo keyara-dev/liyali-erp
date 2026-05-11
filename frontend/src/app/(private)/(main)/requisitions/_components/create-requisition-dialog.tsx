@@ -17,6 +17,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { SelectField } from "@/components/ui/select-field";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   Plus,
   Trash2,
@@ -27,12 +28,15 @@ import {
   Paperclip,
   ChevronRight,
   ChevronLeft,
+  ShoppingCart,
+  Banknote,
 } from "lucide-react";
 import {
   RequisitionItem,
   RequisitionPriority,
   RequisitionAttachment,
   Requisition,
+  RoutingType,
 } from "@/types/requisition";
 import { uploadToImageKit } from "@/lib/imagekit";
 import {
@@ -46,6 +50,11 @@ import { cn } from "@/lib/utils";
 import { DatePicker } from "@/components/ui/date-picker";
 import { useConfigurationStatus } from "@/hooks/use-configuration-status";
 import { ConfigurationChecklistBanner } from "@/components/ui/configuration-checklist-banner";
+import {
+  PayeeBlock,
+  PayeeBlockValues,
+  persistNewPayeeIfNeeded,
+} from "@/components/requisitions/payee-block";
 
 interface CreateRequisitionDialogProps {
   open: boolean;
@@ -115,6 +124,15 @@ export function CreateRequisitionDialog({
     categoryId: "OTHER",
     otherCategoryText: "",
     attachments: [] as RequisitionAttachment[],
+    // Direct payment
+    routingType: "procurement" as RoutingType,
+  });
+
+  const [payeeBlockValues, setPayeeBlockValues] = useState<PayeeBlockValues>({
+    payeeSource: "new",
+    payeeId: undefined,
+    payeeSnapshot: undefined,
+    newPayeeInput: undefined,
   });
   const [uploadingFile, setUploadingFile] = useState(false);
   const [step, setStep] = useState<"details" | "items">("details");
@@ -138,6 +156,13 @@ export function CreateRequisitionDialog({
       categoryId: "OTHER",
       otherCategoryText: "",
       attachments: [],
+      routingType: "procurement",
+    });
+    setPayeeBlockValues({
+      payeeSource: "new",
+      payeeId: undefined,
+      payeeSnapshot: undefined,
+      newPayeeInput: undefined,
     });
     setUploadingFile(false);
     setStep("details");
@@ -198,7 +223,27 @@ export function CreateRequisitionDialog({
           (editingRequisition.metadata
             ?.attachments as RequisitionAttachment[]) ||
           [],
+        routingType: editingRequisition.routingType || "procurement",
       });
+      // Restore payee block when editing a direct_payment requisition
+      if (
+        editingRequisition.routingType === "direct_payment" &&
+        editingRequisition.payeeSnapshot
+      ) {
+        setPayeeBlockValues({
+          payeeSource: editingRequisition.payeeId ? "other" : "new",
+          payeeId: editingRequisition.payeeId,
+          payeeSnapshot: editingRequisition.payeeSnapshot,
+          newPayeeInput: undefined,
+        });
+      } else {
+        setPayeeBlockValues({
+          payeeSource: "new",
+          payeeId: undefined,
+          payeeSnapshot: undefined,
+          newPayeeInput: undefined,
+        });
+      }
       setStep(initialStep);
     } else if (!isEditing && open) {
       resetForm();
@@ -361,6 +406,17 @@ export function CreateRequisitionDialog({
       return;
     }
 
+    // Direct payment: require a payee
+    if (formData.routingType === "direct_payment") {
+      const hasPayee =
+        payeeBlockValues.payeeId ||
+        payeeBlockValues.payeeSnapshot?.name?.trim();
+      if (!hasPayee) {
+        toast.error("Direct payment requires a payee — please fill in payee details");
+        return;
+      }
+    }
+
     // Validate all items have descriptions and quantities
     const allItemsValid = formData.items.every(
       (item) =>
@@ -372,64 +428,75 @@ export function CreateRequisitionDialog({
       return;
     }
 
+    // For direct_payment: persist a "new" payee if needed before sending
+    let resolvedPayeeId: string | undefined = payeeBlockValues.payeeId;
+    let resolvedPayeeSnapshot = payeeBlockValues.payeeSnapshot;
+
+    if (
+      formData.routingType === "direct_payment" &&
+      payeeBlockValues.payeeSource === "new" &&
+      !payeeBlockValues.payeeId
+    ) {
+      try {
+        const resolved = await persistNewPayeeIfNeeded(payeeBlockValues);
+        resolvedPayeeId = resolved.payeeId;
+        resolvedPayeeSnapshot = resolved.payeeSnapshot;
+      } catch (err: any) {
+        toast.error(err?.message || "Failed to save payee");
+        return;
+      }
+    }
+
+    const sharedPayload = {
+      title: formData.title,
+      description: formData.justification,
+      department: formData.department,
+      departmentId: formData.departmentId || formData.department,
+      priority: formData.priority,
+      items: formData.items,
+      totalAmount: totalAmount,
+      currency: formData.currency,
+      categoryId:
+        formData.categoryId === "OTHER"
+          ? undefined
+          : formData.categoryId || undefined,
+      preferredVendorId: undefined,
+      isEstimate: formData.isEstimate,
+      requiredByDate: formData.requiredByDate,
+      budgetCode: formData.budgetCode,
+      costCenter: formData.costCenter || formData.budgetCode,
+      projectCode: formData.projectCode || formData.budgetCode,
+      requestedFor: formData.requestedFor,
+      otherCategoryText:
+        formData.categoryId === "OTHER"
+          ? formData.otherCategoryText
+          : undefined,
+      attachments:
+        formData.attachments.length > 0 ? formData.attachments : undefined,
+      routingType:
+        formData.routingType !== "procurement"
+          ? formData.routingType
+          : undefined,
+      payeeId:
+        formData.routingType === "direct_payment"
+          ? resolvedPayeeId
+          : undefined,
+      payeeSnapshot:
+        formData.routingType === "direct_payment"
+          ? resolvedPayeeSnapshot
+          : undefined,
+    };
+
     // Use the appropriate mutation hook based on mode
     if (isEditing && editingRequisition) {
       updateMutation.mutate({
         requisitionId: editingRequisition.id,
-        title: formData.title,
-        description: formData.justification,
-        department: formData.department,
-        departmentId: formData.departmentId || formData.department,
-        priority: formData.priority,
-        items: formData.items,
-        totalAmount: totalAmount,
-        currency: formData.currency,
-        categoryId:
-          formData.categoryId === "OTHER"
-            ? undefined
-            : formData.categoryId || undefined,
-        preferredVendorId: undefined,
-        isEstimate: formData.isEstimate,
-        requiredByDate: formData.requiredByDate,
-        budgetCode: formData.budgetCode,
-        costCenter: formData.costCenter || formData.budgetCode,
-        projectCode: formData.projectCode || formData.budgetCode,
-        requestedFor: formData.requestedFor,
-        otherCategoryText:
-          formData.categoryId === "OTHER"
-            ? formData.otherCategoryText
-            : undefined,
-        attachments:
-          formData.attachments.length > 0 ? formData.attachments : undefined,
+        ...sharedPayload,
       });
     } else {
       createMutation.mutate({
-        title: formData.title,
-        description: formData.justification,
-        department: formData.department,
-        departmentId: formData.departmentId || formData.department,
-        priority: formData.priority,
-        items: formData.items,
-        totalAmount: totalAmount,
-        currency: formData.currency,
-        categoryId:
-          formData.categoryId === "OTHER"
-            ? undefined
-            : formData.categoryId || undefined,
-        preferredVendorId: undefined,
-        isEstimate: formData.isEstimate,
-        requiredByDate: formData.requiredByDate,
-        budgetCode: formData.budgetCode,
+        ...sharedPayload,
         sourceOfFunds: formData.sourceOfFunds,
-        costCenter: formData.costCenter || formData.budgetCode,
-        projectCode: formData.projectCode || formData.budgetCode,
-        requestedFor: formData.requestedFor,
-        otherCategoryText:
-          formData.categoryId === "OTHER"
-            ? formData.otherCategoryText
-            : undefined,
-        attachments:
-          formData.attachments.length > 0 ? formData.attachments : undefined,
       });
     }
   };
@@ -561,6 +628,74 @@ export function CreateRequisitionDialog({
           {/* ── Step 1: Details ── */}
           {step === "details" && (
             <>
+              {/* ── Request Type ── */}
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold">Request Type</Label>
+                <RadioGroup
+                  value={formData.routingType}
+                  onValueChange={(v) =>
+                    setFormData({
+                      ...formData,
+                      routingType: v as RoutingType,
+                    })
+                  }
+                  className="grid grid-cols-1 sm:grid-cols-2 gap-3"
+                >
+                  {/* Goods / Services */}
+                  <label
+                    className={`flex items-start gap-3 cursor-pointer rounded-lg border p-3 transition-colors ${
+                      formData.routingType !== "direct_payment"
+                        ? "border-primary bg-primary/5"
+                        : "border-border hover:border-foreground/30"
+                    }`}
+                  >
+                    <RadioGroupItem value="procurement" className="mt-0.5" />
+                    <div>
+                      <div className="flex items-center gap-1.5 font-medium text-sm">
+                        <ShoppingCart className="h-4 w-4" />
+                        Goods / Services
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        Standard purchase — goes through procurement or
+                        accounting workflow.
+                      </p>
+                    </div>
+                  </label>
+
+                  {/* Direct Payment */}
+                  <label
+                    className={`flex items-start gap-3 cursor-pointer rounded-lg border p-3 transition-colors ${
+                      formData.routingType === "direct_payment"
+                        ? "border-primary bg-primary/5"
+                        : "border-border hover:border-foreground/30"
+                    }`}
+                  >
+                    <RadioGroupItem
+                      value="direct_payment"
+                      className="mt-0.5"
+                    />
+                    <div>
+                      <div className="flex items-center gap-1.5 font-medium text-sm">
+                        <Banknote className="h-4 w-4" />
+                        Direct Payment
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        Wages, allowances, or individual payouts — routed
+                        directly to finance.
+                      </p>
+                    </div>
+                  </label>
+                </RadioGroup>
+              </div>
+
+              {/* ── Payee Block (only for direct_payment) ── */}
+              {formData.routingType === "direct_payment" && (
+                <PayeeBlock
+                  value={payeeBlockValues}
+                  onChange={setPayeeBlockValues}
+                />
+              )}
+
               {/* Basic Information */}
               <div className="space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

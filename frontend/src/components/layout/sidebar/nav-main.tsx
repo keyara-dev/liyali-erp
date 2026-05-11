@@ -92,7 +92,7 @@ export const routes: NavGroup[] = [
         requiredPermissions: ["budget.view"],
       },
       {
-        title: "Procurement",
+        title: "Source to Pay",
         href: "/(procurement)",
         icon: ClipboardCopy,
         items: [

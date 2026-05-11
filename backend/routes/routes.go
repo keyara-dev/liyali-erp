@@ -344,6 +344,8 @@ func SetupRoutes(app *fiber.App, handlerRegistry *handlers.HandlerRegistry, rbac
 	pvs.Post("/:id/submit", middleware.RequirePermission(rbacService, "payment_voucher", "edit"), handlers.SubmitPaymentVoucher)
 	pvs.Post("/:id/withdraw", middleware.RequirePermission(rbacService, "payment_voucher", "edit"), handlers.WithdrawPaymentVoucher)
 	pvs.Post("/:id/mark-paid", middleware.RequirePermission(rbacService, "payment_voucher", "edit"), handlers.MarkPaymentVoucherPaid)
+	pvs.Post("/:id/mark-paid-with-pop", middleware.RequirePermission(rbacService, "payment_voucher", "edit"), handlers.MarkPaidWithPOP)
+	pvs.Post("/recover-from-po/:poId", middleware.RequirePermission(rbacService, "payment_voucher", "edit"), handlers.RecoverPVFromPO)
 
 	// GRN routes (tenant-scoped)
 	grns := tenant.Group("/grns", middleware.InjectWorkflowExecutionService(handlerRegistry.WorkflowExecutionService))
@@ -380,6 +382,14 @@ func SetupRoutes(app *fiber.App, handlerRegistry *handlers.HandlerRegistry, rbac
 	vendors.Post("/", middleware.RequirePermission(rbacService, "vendor", "create"), middleware.CheckLimit("vendor"), handlers.CreateVendor)
 	vendors.Get("/:id", middleware.RequirePermission(rbacService, "vendor", "view"), handlers.GetVendor)
 	vendors.Put("/:id", middleware.RequirePermission(rbacService, "vendor", "edit"), handlers.UpdateVendor)
+
+	// Payee routes (tenant-scoped)
+	payees := tenant.Group("/payees")
+	payees.Get("/", middleware.RequirePermission(rbacService, "vendor", "view"), handlers.GetPayees)
+	payees.Post("/", middleware.RequirePermission(rbacService, "vendor", "create"), handlers.CreatePayee)
+	payees.Get("/:id", middleware.RequirePermission(rbacService, "vendor", "view"), handlers.GetPayee)
+	payees.Put("/:id", middleware.RequirePermission(rbacService, "vendor", "edit"), handlers.UpdatePayee)
+	payees.Delete("/:id", middleware.RequirePermission(rbacService, "vendor", "edit"), handlers.DeletePayee)
 
 	// Approval Tasks routes (tenant-scoped) - Updated to use new handler
 	approvals := tenant.Group("/approvals", middleware.InjectWorkflowExecutionService(handlerRegistry.WorkflowExecutionService))

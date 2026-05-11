@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -30,6 +30,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { StageItem } from "./workflow-stage-item";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { toast } from "sonner";
 
 interface WorkflowBuilderProps {
@@ -95,6 +96,25 @@ export function WorkflowBuilder({
       coordinateGetter: sortableKeyboardCoordinates,
     })
   );
+
+  const routingType = formData.conditions?.routingType;
+
+  // When direct_payment is selected: force all auto-flags to true and clear stages
+  useEffect(() => {
+    if (routingType === "direct_payment") {
+      setFormData((prev) => ({
+        ...prev,
+        stages: [],
+        conditions: {
+          ...prev.conditions,
+          routingType: "direct_payment",
+          autoApprove: true,
+          autoGeneratePO: true,
+          autoApprovePO: true,
+        },
+      }));
+    }
+  }, [routingType]);
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
@@ -231,9 +251,10 @@ export function WorkflowBuilder({
     if (!formData.entityType && !formData.documentType) {
       errors.entityType = "Document type is required";
     }
-    // Allow 0 stages when auto-approve is enabled (accounting workflow)
+    // Allow 0 stages when auto-approve is enabled (accounting/direct_payment workflow)
     const hasAutoApprove = formData.conditions?.autoApprove === true;
-    if (formData.stages.length === 0 && !hasAutoApprove) {
+    const isDirectPayment = formData.conditions?.routingType === "direct_payment";
+    if (formData.stages.length === 0 && !hasAutoApprove && !isDirectPayment) {
       errors.stages = "At least one stage is required (or enable auto-approval)";
     }
 
@@ -270,71 +291,82 @@ export function WorkflowBuilder({
       />
 
       {/* Stages Section */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0">
-          <CardTitle>Approval Stages</CardTitle>
-          <Button onClick={handleAddStage} size="sm" className="gap-2">
-            <Plus className="h-4 w-4" />
-            Add Stage
-          </Button>
-        </CardHeader>
-        <CardContent>
-          {formData.stages.length === 0 ? (
-            <div className="py-8 text-center">
-              <p className="text-muted-foreground mb-4">
-                No stages added yet. Create your first approval stage.
-              </p>
-              <Button onClick={handleAddStage} variant="outline">
-                Add First Stage
-              </Button>
-            </div>
-          ) : (
-            <DndContext
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              onDragEnd={handleDragEnd}
-            >
-              <SortableContext
-                items={formData.stages.map(
-                  (s) => s.id || `stage-${s.stageNumber || s.order || 0}`
-                )}
-                strategy={verticalListSortingStrategy}
+      {routingType === "direct_payment" ? (
+        <Alert className="border-blue-200 bg-blue-50 dark:bg-blue-950/30 dark:border-blue-800">
+          <AlertTitle className="text-blue-800 dark:text-blue-300">No approval stages required</AlertTitle>
+          <AlertDescription className="text-blue-700 dark:text-blue-400">
+            Direct payment workflows are fully automated. The system will auto-approve the requisition,
+            auto-create an approved Purchase Order (for audit trail), and auto-create a draft Payment Voucher
+            for finance to action. Procurement users will not see any of these documents.
+          </AlertDescription>
+        </Alert>
+      ) : (
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0">
+            <CardTitle>Approval Stages</CardTitle>
+            <Button onClick={handleAddStage} size="sm" className="gap-2">
+              <Plus className="h-4 w-4" />
+              Add Stage
+            </Button>
+          </CardHeader>
+          <CardContent>
+            {formData.stages.length === 0 ? (
+              <div className="py-8 text-center">
+                <p className="text-muted-foreground mb-4">
+                  No stages added yet. Create your first approval stage.
+                </p>
+                <Button onClick={handleAddStage} variant="outline">
+                  Add First Stage
+                </Button>
+              </div>
+            ) : (
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEnd}
               >
-                <div className="space-y-3">
-                  {formData.stages.map((stage, index) => (
-                    <div
-                      key={stage.id}
-                      className="flex flex-col items-center w-full"
-                    >
-                      <StageItem
-                        stage={stage}
-                        onEdit={() =>
-                          handleEditStage(
-                            stage.id ||
-                              `stage-${stage.stageNumber || stage.order || 0}`
-                          )
-                        }
-                        onDelete={() =>
-                          handleDeleteStage(
-                            stage.id ||
-                              `stage-${stage.stageNumber || stage.order || 0}`
-                          )
-                        }
-                      />
-                      {index < formData.stages.length - 1 && (
-                        <ArrowRight className="h-4 w-4 text-muted-foreground rotate-90 mt-2" />
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </SortableContext>
-            </DndContext>
-          )}
-          {formErrors.stages && (
-            <p className="text-sm text-destructive mt-4">{formErrors.stages}</p>
-          )}
-        </CardContent>
-      </Card>
+                <SortableContext
+                  items={formData.stages.map(
+                    (s) => s.id || `stage-${s.stageNumber || s.order || 0}`
+                  )}
+                  strategy={verticalListSortingStrategy}
+                >
+                  <div className="space-y-3">
+                    {formData.stages.map((stage, index) => (
+                      <div
+                        key={stage.id}
+                        className="flex flex-col items-center w-full"
+                      >
+                        <StageItem
+                          stage={stage}
+                          onEdit={() =>
+                            handleEditStage(
+                              stage.id ||
+                                `stage-${stage.stageNumber || stage.order || 0}`
+                            )
+                          }
+                          onDelete={() =>
+                            handleDeleteStage(
+                              stage.id ||
+                                `stage-${stage.stageNumber || stage.order || 0}`
+                            )
+                          }
+                        />
+                        {index < formData.stages.length - 1 && (
+                          <ArrowRight className="h-4 w-4 text-muted-foreground rotate-90 mt-2" />
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </SortableContext>
+              </DndContext>
+            )}
+            {formErrors.stages && (
+              <p className="text-sm text-destructive mt-4">{formErrors.stages}</p>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Action Buttons */}
       <div className="flex gap-3 justify-end">

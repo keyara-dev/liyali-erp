@@ -45,15 +45,17 @@ func GetPaymentVouchers(c *fiber.Ctx) error {
 
 	status := c.Query("status")
 	vendorID := c.Query("vendorId")
+	hasPoP := c.Query("hasProofOfPayment")
 
 	// Add query parameters to context
 	logging.AddFieldsToRequest(c, map[string]interface{}{
-		"operation":       "get_payment_vouchers",
-		"page":            page,
-		"limit":           limit,
-		"status":          status,
-		"vendor_id":       vendorID,
-		"organization_id": tenant.OrganizationID,
+		"operation":            "get_payment_vouchers",
+		"page":                 page,
+		"limit":                limit,
+		"status":               status,
+		"vendor_id":            vendorID,
+		"has_proof_of_payment": hasPoP,
+		"organization_id":      tenant.OrganizationID,
 	})
 
 	scope := utils.GetDocumentScope(config.DB, tenant.UserID, tenant.UserRole, tenant.OrganizationID)
@@ -70,7 +72,12 @@ func GetPaymentVouchers(c *fiber.Ctx) error {
 
 	switch {
 	case scope.CanViewAll:
-		total, err = config.Queries.CountPaymentVouchersAll(ctx, tenant.OrganizationID, status, vendorID)
+		total, err = config.Queries.CountPaymentVouchersAll(ctx, db.CountPaymentVouchersAllParams{
+			OrganizationID:    tenant.OrganizationID,
+			Column2:           status,
+			Column3:           vendorID,
+			HideDirectPayment: scope.HideDirectPayment,
+		})
 		if err != nil {
 			logging.LogError(c, err, "failed_to_count_payment_vouchers", map[string]interface{}{"error_type": "database_error"})
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
@@ -79,7 +86,14 @@ func GetPaymentVouchers(c *fiber.Ctx) error {
 				"error":   err.Error(),
 			})
 		}
-		ids, err = config.Queries.ListPaymentVoucherIDsAll(ctx, tenant.OrganizationID, status, vendorID, int32(limit), offset)
+		ids, err = config.Queries.ListPaymentVoucherIDsAll(ctx, db.ListPaymentVoucherIDsAllParams{
+			OrganizationID:    tenant.OrganizationID,
+			Column2:           status,
+			Column3:           vendorID,
+			HideDirectPayment: scope.HideDirectPayment,
+			Limit:             int32(limit),
+			Offset:            offset,
+		})
 		if err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 				"success": false,
@@ -88,7 +102,12 @@ func GetPaymentVouchers(c *fiber.Ctx) error {
 			})
 		}
 	case scope.IsProcurement:
-		total, err = config.Queries.CountPaymentVouchersProcurement(ctx, tenant.OrganizationID, status, vendorID)
+		total, err = config.Queries.CountPaymentVouchersProcurement(ctx, db.CountPaymentVouchersProcurementParams{
+			OrganizationID:    tenant.OrganizationID,
+			Column2:           status,
+			Column3:           vendorID,
+			HideDirectPayment: scope.HideDirectPayment,
+		})
 		if err != nil {
 			logging.LogError(c, err, "failed_to_count_payment_vouchers", map[string]interface{}{"error_type": "database_error"})
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
@@ -97,7 +116,14 @@ func GetPaymentVouchers(c *fiber.Ctx) error {
 				"error":   err.Error(),
 			})
 		}
-		ids, err = config.Queries.ListPaymentVoucherIDsProcurement(ctx, tenant.OrganizationID, status, vendorID, int32(limit), offset)
+		ids, err = config.Queries.ListPaymentVoucherIDsProcurement(ctx, db.ListPaymentVoucherIDsProcurementParams{
+			OrganizationID:    tenant.OrganizationID,
+			Column2:           status,
+			Column3:           vendorID,
+			HideDirectPayment: scope.HideDirectPayment,
+			Limit:             int32(limit),
+			Offset:            offset,
+		})
 		if err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 				"success": false,
@@ -143,11 +169,14 @@ func GetPaymentVouchers(c *fiber.Ctx) error {
 
 	var vouchers []models.PaymentVoucher
 	if len(ids) > 0 {
-		if err := config.DB.
-			Where("id IN ?", ids).
-			Preload("Vendor").
-			Order("created_at DESC").
-			Find(&vouchers).Error; err != nil {
+		q := config.DB.Where("id IN ?", ids).Preload("Vendor").Order("created_at DESC")
+		// Filter by proof_of_payment presence when hasProofOfPayment query param is provided
+		if hasPoP == "false" {
+			q = q.Where("proof_of_payment IS NULL OR proof_of_payment::text = 'null' OR proof_of_payment::text = '{}'")
+		} else if hasPoP == "true" {
+			q = q.Where("proof_of_payment IS NOT NULL AND proof_of_payment::text != 'null' AND proof_of_payment::text != '{}'")
+		}
+		if err := q.Find(&vouchers).Error; err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 				"success": false,
 				"message": "Failed to fetch payment vouchers",
@@ -642,13 +671,19 @@ func modelToPaymentVoucherResponse(voucher models.PaymentVoucher) types.PaymentV
 	}
 
 	actionHistory := voucher.ActionHistory.Data()
-	
+
 	// Unmarshal bank details
 	var bankDetails interface{}
 	if len(voucher.BankDetails) > 0 {
 		_ = json.Unmarshal(voucher.BankDetails, &bankDetails)
 	}
-	
+
+	// Unmarshal proof of payment
+	var proofOfPayment interface{}
+	if len(voucher.ProofOfPayment) > 0 {
+		_ = json.Unmarshal(voucher.ProofOfPayment, &proofOfPayment)
+	}
+
 	items := voucher.Items.Data()
 
 	return types.PaymentVoucherResponse{
@@ -689,6 +724,10 @@ func modelToPaymentVoucherResponse(voucher models.PaymentVoucher) types.PaymentV
 		PaidAmount:           voucher.PaidAmount,
 		BankDetails:          bankDetails,
 		Items:                items,
+		RoutingType:          voucher.RoutingType,
+		ProofOfPayment:       proofOfPayment,
+		PaidAt:               voucher.PaidAt,
+		PaidBy:               voucher.PaidBy,
 		CreatedAt:            voucher.CreatedAt,
 		UpdatedAt:            voucher.UpdatedAt,
 	}

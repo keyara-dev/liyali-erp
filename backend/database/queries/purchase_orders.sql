@@ -6,15 +6,17 @@
 SELECT COUNT(*) FROM purchase_orders
 WHERE organization_id = $1
   AND ($2::text = '' OR UPPER(status)    = UPPER($2))
-  AND ($3::text = '' OR vendor_id        = $3);
+  AND ($3::text = '' OR vendor_id        = $3)
+  AND (NOT $4::bool OR routing_type != 'direct_payment');
 
 -- name: ListPurchaseOrderIDsAll :many
 SELECT id FROM purchase_orders
 WHERE organization_id = $1
   AND ($2::text = '' OR UPPER(status)    = UPPER($2))
   AND ($3::text = '' OR vendor_id        = $3)
+  AND (NOT $4::bool OR routing_type != 'direct_payment')
 ORDER BY created_at DESC
-LIMIT $4 OFFSET $5;
+LIMIT $5 OFFSET $6;
 
 -- name: CountPurchaseOrdersLimited :one
 SELECT COUNT(*) FROM purchase_orders po

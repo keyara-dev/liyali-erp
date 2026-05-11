@@ -207,12 +207,16 @@ type SubmitRoutingResult struct {
 	Assignment      *models.WorkflowAssignment  `json:"assignment,omitempty"`
 	AutoCreatedPO   *AutomationResult           `json:"autoCreatedPO,omitempty"`
 	AutoCreatedPOID string                      `json:"autoCreatedPoId,omitempty"`
+	AutoCreatedPVID string                      `json:"autoCreatedPvId,omitempty"`
+	RoutingType     string                      `json:"routingType"`
 }
 
 // SubmitRequisitionWithRouting handles requisition submission with conditional routing.
 // It checks the selected workflow's conditions and either:
-//   - Auto-approves + auto-generates PO (accounting path with 0 stages + criteria met), or
+//   - Auto-approves + auto-generates PO (accounting/direct_payment path with 0 stages + criteria met), or
 //   - Assigns the normal workflow stages (procurement or accounting with stages)
+//
+// For direct_payment routing a draft PaymentVoucher is also created after the PO.
 func (s *WorkflowExecutionService) SubmitRequisitionWithRouting(
 	ctx context.Context,
 	organizationID, entityID, workflowID, userID string,
@@ -240,23 +244,52 @@ func (s *WorkflowExecutionService) SubmitRequisitionWithRouting(
 	// 2. Parse workflow conditions
 	conditions, _ := workflow.GetConditions()
 
-	// 3. Determine routing path
-	isAccountingPath := conditions != nil && strings.EqualFold(conditions.RoutingType, "accounting")
+	// 3. Derive routing type from conditions (default: procurement).
+	routingType := models.RoutingTypeProcurement
+	if conditions != nil && conditions.RoutingType != "" {
+		routingType = strings.ToLower(conditions.RoutingType)
+	}
 
-	if !isAccountingPath {
+	// 4. direct_payment-specific validation: payee must be present, and workflow must have 0 stages.
+	if routingType == models.RoutingTypeDirectPayment {
+		hasPayee := (requisition.PayeeID != nil && *requisition.PayeeID != "") ||
+			len(requisition.PayeeSnapshot) > 0
+		if !hasPayee {
+			return nil, fmt.Errorf("direct_payment requisition requires a payee: set payeeId or payeeSnapshot")
+		}
+		stages, _ := workflow.GetStages()
+		if len(stages) > 0 {
+			return nil, fmt.Errorf("direct_payment workflow %s must have 0 approval stages, has %d", workflow.ID, len(stages))
+		}
+	}
+
+	// 5. Denormalize routing_type onto the requisition row.
+	if err := s.db.WithContext(ctx).Model(&models.Requisition{}).
+		Where("id = ?", entityID).
+		Update("routing_type", routingType).Error; err != nil {
+		log.Printf("Warning: failed to denormalize routing_type on requisition %s: %v", entityID, err)
+	}
+	requisition.RoutingType = routingType
+
+	// 6. Determine whether this is an auto-approve path (accounting OR direct_payment).
+	isAutoPath := routingType == models.RoutingTypeAccounting ||
+		routingType == models.RoutingTypeDirectPayment
+
+	if !isAutoPath {
 		// PROCUREMENT PATH: Standard workflow assignment
 		assignment, err := s.assignWorkflow(ctx, organizationID, entityID, "requisition", userID, workflow)
 		if err != nil {
 			return nil, err
 		}
 		return &SubmitRoutingResult{
-			RoutingPath:  "procurement",
+			RoutingPath:  routingType,
+			RoutingType:  routingType,
 			AutoApproved: false,
 			Assignment:   assignment,
 		}, nil
 	}
 
-	// ACCOUNTING PATH: Check auto-approval eligibility
+	// AUTO PATH (accounting or direct_payment): check auto-approval eligibility.
 	stages, _ := workflow.GetStages()
 	categoryID := ""
 	if requisition.CategoryID != nil {
@@ -266,21 +299,110 @@ func (s *WorkflowExecutionService) SubmitRequisitionWithRouting(
 	shouldAutoApprove := conditions.MeetsAutoApprovalCriteria(requisition.TotalAmount, categoryID) && len(stages) == 0
 
 	if !shouldAutoApprove {
-		// Accounting workflow but either has stages or doesn't meet auto-criteria.
-		// Run through the workflow stages (lightweight approval).
+		// Has stages — run through the normal stage workflow.
 		assignment, err := s.assignWorkflow(ctx, organizationID, entityID, "requisition", userID, workflow)
 		if err != nil {
 			return nil, err
 		}
 		return &SubmitRoutingResult{
-			RoutingPath:  "accounting",
+			RoutingPath:  routingType,
+			RoutingType:  routingType,
 			AutoApproved: false,
 			Assignment:   assignment,
 		}, nil
 	}
 
 	// AUTO-APPROVE PATH: 0 stages + criteria met
-	return s.autoApproveAndGeneratePO(ctx, organizationID, entityID, userID, requisition, workflow, conditions)
+	result, err := s.autoApproveAndGeneratePO(ctx, organizationID, entityID, userID, requisition, workflow, conditions)
+	if err != nil {
+		return nil, err
+	}
+	// Stamp routing type on result (autoApproveAndGeneratePO doesn't know routingType).
+	result.RoutingType = routingType
+
+	// 7. For direct_payment: chain auto-creation of a draft PV.
+	if routingType == models.RoutingTypeDirectPayment && result.AutoCreatedPOID != "" {
+		pvID, pvErr := s.autoCreateDraftPV(ctx, requisition, result.AutoCreatedPOID)
+		if pvErr != nil {
+			log.Printf("Warning: auto-create draft PV failed for req=%s po=%s: %v (PO preserved)", entityID, result.AutoCreatedPOID, pvErr)
+		} else {
+			result.AutoCreatedPVID = pvID
+		}
+	}
+
+	return result, nil
+}
+
+// autoCreateDraftPV creates a PaymentVoucher in DRAFT status linked to the auto-generated PO.
+// It also propagates routing_type=direct_payment to the PO row.
+// Returns the new PV's ID. Failure here does NOT roll back the PO (audit trail preserved).
+func (s *WorkflowExecutionService) autoCreateDraftPV(
+	ctx context.Context,
+	req *models.Requisition,
+	poID string,
+) (string, error) {
+	// Load PO so we can use its DocumentNumber as LinkedPO.
+	var po models.PurchaseOrder
+	if err := s.db.WithContext(ctx).First(&po, "id = ?", poID).Error; err != nil {
+		return "", fmt.Errorf("load po: %w", err)
+	}
+
+	// Propagate routing_type and procurement_flow to the PO row.
+	if err := s.db.WithContext(ctx).Model(&po).Updates(map[string]any{
+		"routing_type":     models.RoutingTypeDirectPayment,
+		"procurement_flow": "payment_first",
+	}).Error; err != nil {
+		return "", fmt.Errorf("set po routing/procurement flow: %w", err)
+	}
+
+	// Derive payee display name from PayeeSnapshot.
+	name := "Direct Payment"
+	if len(req.PayeeSnapshot) > 0 {
+		var snap map[string]interface{}
+		if err := json.Unmarshal(req.PayeeSnapshot, &snap); err == nil {
+			if v, ok := snap["name"].(string); ok && v != "" {
+				name = v
+			}
+		}
+	}
+
+	// Build metadata via json.Marshal to avoid injection from raw payeeSnapshot.
+	metaPayload := map[string]interface{}{
+		"autoCreated": true,
+		"sourceReqID": req.ID,
+	}
+	if len(req.PayeeSnapshot) > 0 {
+		metaPayload["payeeSnapshot"] = json.RawMessage(req.PayeeSnapshot)
+	} else {
+		metaPayload["payeeSnapshot"] = nil
+	}
+	metaBytes, err := json.Marshal(metaPayload)
+	if err != nil {
+		return "", fmt.Errorf("marshal pv metadata: %w", err)
+	}
+
+	pvDocNum := utils.GenerateDocumentNumber("PV")
+	pv := models.PaymentVoucher{
+		ID:             uuid.New().String(),
+		DocumentNumber: pvDocNum,
+		OrganizationID: req.OrganizationID,
+		Status:         models.StatusDraft,
+		CreatedBy:      req.RequesterId,
+		LinkedPO:       po.DocumentNumber,
+		RoutingType:    models.RoutingTypeDirectPayment,
+		VendorName:     name,
+		Amount:         req.TotalAmount,
+		Currency:       req.Currency,
+		Metadata:       datatypes.JSON(metaBytes),
+		CreatedAt:      time.Now(),
+		UpdatedAt:      time.Now(),
+	}
+	pv.ApprovalHistory = datatypes.NewJSONType([]types.ApprovalRecord{})
+
+	if err := s.db.WithContext(ctx).Create(&pv).Error; err != nil {
+		return "", fmt.Errorf("create draft pv: %w", err)
+	}
+	return pv.ID, nil
 }
 
 // autoApproveAndGeneratePO handles instant auto-approval of a requisition and optional PO generation.
@@ -310,7 +432,7 @@ func (s *WorkflowExecutionService) autoApproveAndGeneratePO(
 		WorkflowVersion: workflow.Version,
 		CurrentStage:    0,
 		Status: "COMPLETED",
-		StageHistory:    datatypes.JSON{},
+		StageHistory:    datatypes.JSON("[]"),
 		AssignedAt:      now,
 		AssignedBy:      userID,
 		CompletedAt:     &now,

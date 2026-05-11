@@ -11,12 +11,13 @@ import (
 
 // DocumentScope represents what level of document access a user has.
 type DocumentScope struct {
-	CanViewAll    bool     // admin/super_admin/manager/finance/approver: no filtering
-	IsProcurement bool     // procurement role: sees only procurement-chain documents
-	UserID        string   // used for owner/involvement filter when neither flag is set
-	OrgID         string
-	UserRole      string
-	OrgRoleIDs    []string // custom org role UUIDs for the user (for UUID-stored assigned_role matching)
+	CanViewAll        bool     // admin/super_admin/manager/finance/approver: no filtering
+	IsProcurement     bool     // procurement role: sees only procurement-chain documents
+	HideDirectPayment bool     // true for procurement role (and non-privileged non-finance users): hides direct_payment routing type
+	UserID            string   // used for owner/involvement filter when neither flag is set
+	OrgID             string
+	UserRole          string
+	OrgRoleIDs        []string // custom org role UUIDs for the user (for UUID-stored assigned_role matching)
 }
 
 // privilegeRoles grant unrestricted document visibility (CanViewAll = true).
@@ -89,6 +90,16 @@ func GetDocumentScope(db *gorm.DB, userID, userRole, orgID string) DocumentScope
 		scope.IsProcurement = true
 	}
 
+	// 4. HideDirectPayment: procurement-role users must never see the direct_payment
+	// chain (requisitions, POs, PVs, GRNs with routing_type=direct_payment).
+	// finance and admin/privileged roles (CanViewAll) can see everything — they
+	// exit above via the privilegeRoles loop, so CanViewAll is already true if
+	// applicable.  All remaining users who are procurement (or similar limited roles)
+	// should not see direct_payment documents.
+	if !scope.CanViewAll {
+		scope.HideDirectPayment = true
+	}
+
 	return scope
 }
 
@@ -99,11 +110,30 @@ func GetDocumentScope(db *gorm.DB, userID, userRole, orgID string) DocumentScope
 //   - entityType:      workflow entity_type string (e.g. "requisition", "purchase_order")
 //   - extraOwnerField: optional second owner column (e.g. "received_by" for GRNs; pass "" to skip)
 //
-// When CanViewAll is true the query is returned unchanged.
-// When IsProcurement is true the query is returned unchanged — the caller is
-// responsible for adding the procurement-specific subquery.
-// Otherwise the owner + workflow-involvement filter is appended.
+// When CanViewAll is true only the HideDirectPayment filter (if set) is applied.
+// When IsProcurement is true only the HideDirectPayment filter is applied — the
+// caller is responsible for adding any further procurement-specific subquery.
+// Otherwise both the owner+workflow-involvement filter and HideDirectPayment are appended.
 func (s DocumentScope) ApplyToQuery(query *gorm.DB, ownerField, entityType, extraOwnerField string) *gorm.DB {
+	// Apply routing_type exclusion first — this is independent of owner/involvement.
+	if s.HideDirectPayment {
+		switch entityType {
+		case "requisition":
+			query = query.Where("routing_type != ?", "direct_payment")
+		case "purchase_order":
+			query = query.Where("routing_type != ?", "direct_payment")
+		case "payment_voucher":
+			query = query.Where("routing_type != ?", "direct_payment")
+		case "grn":
+			// GRN has no routing_type column; infer via the linked PO.
+			query = query.Where(
+				"EXISTS (SELECT 1 FROM purchase_orders po WHERE po.document_number = po_document_number AND po.routing_type != ?)",
+				"direct_payment",
+			)
+		}
+		// budget: unaffected — direct payments still consume budgets.
+	}
+
 	if s.CanViewAll || s.IsProcurement {
 		return query
 	}

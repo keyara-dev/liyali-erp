@@ -55,7 +55,12 @@ func GetGRNs(c *fiber.Ctx) error {
 	var ids []string
 
 	if scope.CanViewAll || scope.IsProcurement {
-		total, err = config.Queries.CountGRNsAll(ctx, tenant.OrganizationID, status, poDocumentNumber)
+		total, err = config.Queries.CountGRNsAll(ctx, db.CountGRNsAllParams{
+			OrganizationID:    tenant.OrganizationID,
+			Column2:           status,
+			Column3:           poDocumentNumber,
+			HideDirectPayment: scope.HideDirectPayment,
+		})
 		if err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 				"success": false,
@@ -63,7 +68,14 @@ func GetGRNs(c *fiber.Ctx) error {
 				"error":   err.Error(),
 			})
 		}
-		ids, err = config.Queries.ListGRNIDsAll(ctx, tenant.OrganizationID, status, poDocumentNumber, int32(limit), offset)
+		ids, err = config.Queries.ListGRNIDsAll(ctx, db.ListGRNIDsAllParams{
+			OrganizationID:    tenant.OrganizationID,
+			Column2:           status,
+			Column3:           poDocumentNumber,
+			HideDirectPayment: scope.HideDirectPayment,
+			Limit:             int32(limit),
+			Offset:            offset,
+		})
 		if err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 				"success": false,

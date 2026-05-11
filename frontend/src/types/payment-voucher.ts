@@ -6,6 +6,22 @@
 // Import shared types from core
 import type { PaymentMethod, ActionHistoryEntry, ApprovalRecord, Vendor } from "./core";
 import type { WorkflowDocument } from "./workflow";
+import type { RoutingType } from "./requisition";
+
+// ============================================================================
+// PROOF OF PAYMENT
+// ============================================================================
+
+export interface ProofOfPayment {
+  fileId?: string;
+  fileName?: string;
+  fileUrl?: string;
+  /** Backend stores base64-encoded file content in JSONB */
+  fileBase64?: string;
+  mimeType?: string;
+  uploadedBy?: string;
+  uploadedAt?: string;
+}
 
 // ============================================================================
 // CORE PAYMENT VOUCHER TYPES
@@ -139,6 +155,16 @@ export interface PaymentVoucher extends WorkflowDocument {
   approvalChain?: ApprovalRecord[];
   /** User entity who created this PV */
   createdByUser?: any;
+
+  // ── Direct Payment Fields ──
+  /** Routing type: procurement | accounting | direct_payment */
+  routingType?: RoutingType;
+  /** Proof of payment file metadata (uploaded when marking as paid) */
+  proofOfPayment?: ProofOfPayment;
+  /** ISO timestamp when payment was marked as paid */
+  paidAt?: string;
+  /** User ID who marked the payment as paid */
+  paidBy?: string;
 }
 
 /**

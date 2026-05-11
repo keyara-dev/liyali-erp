@@ -136,6 +136,7 @@ export async function getPaymentVouchers(
   filters?: {
     status?: string;
     department?: string;
+    hasProofOfPayment?: boolean;
   },
 ): Promise<APIResponse<PaymentVoucher[]>> {
   const params = new URLSearchParams();
@@ -147,6 +148,9 @@ export async function getPaymentVouchers(
   }
   if (filters?.department) {
     params.set("department", filters.department);
+  }
+  if (filters?.hasProofOfPayment !== undefined) {
+    params.set("hasProofOfPayment", filters.hasProofOfPayment.toString());
   }
 
   const url = `/api/v1/payment-vouchers?${params.toString()}`;
@@ -308,6 +312,38 @@ export async function markPaymentVoucherAsPaid(
         markedByName: data.markedByName,
         markedByRole: data.markedByRole,
       },
+    });
+
+    return successResponse(
+      response.data?.data,
+      "Payment voucher marked as paid successfully",
+    );
+  } catch (error: any) {
+    return handleError(error, "POST", url);
+  }
+}
+
+/**
+ * Mark Payment Voucher as Paid with Proof of Payment (multipart)
+ * Calls: POST /api/v1/payment-vouchers/{id}/mark-paid-with-pop
+ *
+ * Accepts a FormData object from the client containing:
+ *   - popFile: File (PDF, JPG, or PNG, max 10MB)
+ *   - paidDate: string (ISO date YYYY-MM-DD)
+ *   - notes: string (optional)
+ */
+export async function markPaidWithPOP(
+  pvId: string,
+  formData: FormData,
+): Promise<APIResponse<PaymentVoucher>> {
+  const url = `/api/v1/payment-vouchers/${pvId}/mark-paid-with-pop`;
+
+  try {
+    const response = await authenticatedApiClient({
+      method: "POST",
+      url,
+      data: formData,
+      contentType: "multipart/form-data",
     });
 
     return successResponse(

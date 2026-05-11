@@ -4,6 +4,7 @@ import { useCallback, useMemo, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Download, Eye, FileText, MoreVertical, Pencil, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -99,6 +100,7 @@ export function PaymentVouchersTable({
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [methodFilter, setMethodFilter] = useState<string>("all");
+  const [routingFilter, setRoutingFilter] = useState<string>("all");
   const debouncedSearch = useDebounce(searchQuery, 500);
 
   // Client-side filtering
@@ -117,6 +119,10 @@ export function PaymentVouchersTable({
       );
     }
 
+    if (routingFilter !== "all") {
+      filtered = filtered.filter((p) => p.routingType === routingFilter);
+    }
+
     if (debouncedSearch) {
       const s = debouncedSearch.toLowerCase();
       filtered = filtered.filter(
@@ -128,15 +134,19 @@ export function PaymentVouchersTable({
     }
 
     return filtered;
-  }, [pvs, statusFilter, methodFilter, debouncedSearch]);
+  }, [pvs, statusFilter, methodFilter, routingFilter, debouncedSearch]);
 
   const hasActiveFilters =
-    Boolean(searchQuery) || statusFilter !== "all" || methodFilter !== "all";
+    Boolean(searchQuery) ||
+    statusFilter !== "all" ||
+    methodFilter !== "all" ||
+    routingFilter !== "all";
 
   const clearFilters = useCallback(() => {
     setSearchQuery("");
     setStatusFilter("all");
     setMethodFilter("all");
+    setRoutingFilter("all");
   }, []);
 
   const columns: DataListColumn<PaymentVoucher>[] = [
@@ -180,7 +190,28 @@ export function PaymentVouchersTable({
     {
       id: "status",
       header: "Status",
-      cell: (row) => <StatusBadge status={row.status} type="document" />,
+      cell: (row) => (
+        <div className="flex flex-col gap-1">
+          <StatusBadge status={row.status} type="document" />
+          {row.routingType === "direct_payment" && (
+            <div className="flex flex-col gap-0.5">
+              <Badge variant="outline" className="border-purple-500 text-purple-700 text-[10px] px-1.5 py-0 w-fit">
+                Direct Payment
+              </Badge>
+              {(row.metadata as any)?.autoCreated && (row.metadata as any)?.sourceReqID && (
+                <span className="text-[10px] text-muted-foreground">
+                  Auto from REQ-{String((row.metadata as any).sourceReqID).slice(0, 8)}
+                </span>
+              )}
+            </div>
+          )}
+          {row.routingType === "accounting" && (
+            <Badge variant="outline" className="border-amber-500 text-amber-700 text-[10px] px-1.5 py-0 w-fit">
+              Accounting
+            </Badge>
+          )}
+        </div>
+      ),
     },
     {
       id: "dueDate",
@@ -261,6 +292,18 @@ export function PaymentVouchersTable({
                 <SelectItem value="mobile_money">Mobile Money</SelectItem>
               </SelectContent>
             </Select>
+
+            <Select value={routingFilter} onValueChange={setRoutingFilter}>
+              <SelectTrigger className="w-44">
+                <SelectValue placeholder="Routing type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All types</SelectItem>
+                <SelectItem value="procurement">Procurement</SelectItem>
+                <SelectItem value="accounting">Accounting</SelectItem>
+                <SelectItem value="direct_payment">Direct Payment</SelectItem>
+              </SelectContent>
+            </Select>
           </>
         }
         hasActiveFilters={hasActiveFilters}
@@ -300,7 +343,19 @@ export function PaymentVouchersTable({
                     {row.vendorName}
                   </div>
                 </div>
-                <StatusBadge status={row.status} type="document" />
+                <div className="flex flex-col items-end gap-1">
+                  <StatusBadge status={row.status} type="document" />
+                  {row.routingType === "direct_payment" && (
+                    <Badge variant="outline" className="border-purple-500 text-purple-700 text-[10px] px-1.5 py-0">
+                      Direct Payment
+                    </Badge>
+                  )}
+                  {row.routingType === "accounting" && (
+                    <Badge variant="outline" className="border-amber-500 text-amber-700 text-[10px] px-1.5 py-0">
+                      Accounting
+                    </Badge>
+                  )}
+                </div>
               </div>
               <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                 <span>
