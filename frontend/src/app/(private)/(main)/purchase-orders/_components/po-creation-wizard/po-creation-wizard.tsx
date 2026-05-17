@@ -184,7 +184,17 @@ export function POCreationWizard({
       }
 
       // Req 3.3: deep-merge metadata — quotations + shippingMeta + selected quotation file
+      // Also update totalAmount to include tax + delivery so the stored value is always the true grand total.
       const selectedQuotationFileId = wizardState.step2.selectedQuotationFileId;
+      const itemsSubtotal = requisition.totalAmount ?? 0;
+      const wizardTaxAmount =
+        !isNaN(taxRateNum) && taxRateNum > 0
+          ? Math.round(((itemsSubtotal * taxRateNum) / 100) * 100) / 100
+          : 0;
+      const wizardDeliveryCost =
+        !isNaN(deliveryCostNum) && deliveryCostNum > 0 ? deliveryCostNum : 0;
+      const grandTotal = itemsSubtotal + wizardTaxAmount + wizardDeliveryCost;
+
       updatePurchaseOrder({
         poId: createdPO.id,
         purchaseOrderId: createdPO.id,
@@ -195,6 +205,8 @@ export function POCreationWizard({
             ? { selectedQuotationFileUrl: selectedQuotationFileId }
             : {}),
         },
+        // Only update totalAmount if tax or delivery was entered — otherwise leave as-is
+        ...(grandTotal > itemsSubtotal ? { totalAmount: grandTotal } : {}),
       }).catch(() => {
         toast.warning(
           "Purchase order created, but quotations could not be saved. You can add them from the PO detail page.",

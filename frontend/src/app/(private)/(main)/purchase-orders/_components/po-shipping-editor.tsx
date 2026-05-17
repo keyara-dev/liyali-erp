@@ -152,6 +152,8 @@ export function POShippingEditor({
         poId,
         purchaseOrderId: poId,
         metadata: updatedMeta,
+        // Keep totalAmount in sync: items subtotal + tax + delivery
+        totalAmount: grandTotal > 0 ? grandTotal : undefined,
       });
 
       if (!result.success) throw new Error(result.message || "Failed to save");

@@ -937,6 +937,9 @@ export function PurchaseOrderDetailClient({
                   notes: item.notes,
                 }))}
                 currency={purchaseOrder.currency || "ZMW"}
+                metadata={
+                  purchaseOrder.metadata as Record<string, unknown> | undefined
+                }
                 reqItems={linkedRequisitionItems}
                 onSaved={() => setEditingItems(false)}
                 onCancel={() => setEditingItems(false)}

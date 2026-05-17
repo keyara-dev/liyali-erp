@@ -149,7 +149,9 @@ const PurchaseOrderPDF: React.FC<PurchaseOrderPDFProps> = ({
     ? (subtotal * taxRate) / 100
     : (purchaseOrder.tax ?? 0);
   const deliveryCost = (meta.deliveryCost as number) ?? 0;
-  const totalValue = purchaseOrder.totalAmount ?? 0;
+  // Always compute the true grand total from parts so the PDF is consistent
+  // regardless of whether totalAmount in the DB includes tax/delivery or not.
+  const totalValue = subtotal + taxAmount + deliveryCost;
 
   // Metadata table fields
   const sourceReq = purchaseOrder.linkedRequisition || "—";

@@ -18,9 +18,12 @@ interface POItemsEditorProps {
   poId: string;
   items: POItem[];
   currency: string;
+  /** PO metadata — used to factor in existing taxRate and deliveryCost when computing totalAmount */
+  metadata?: Record<string, unknown>;
+  /** Optional REQ items for price comparison — matched by array index */
+  reqItems?: RequisitionItem[];
   onSaved: (updatedItems: POItem[]) => void;
   onCancel: () => void;
-  reqItems?: RequisitionItem[];
 }
 
 function newItem(): POItem {
@@ -43,6 +46,7 @@ export function POItemsEditor({
   poId,
   items: initialItems,
   currency,
+  metadata,
   onSaved,
   onCancel,
   reqItems,
@@ -57,10 +61,26 @@ export function POItemsEditor({
 
   const hasReqItems = reqItems !== undefined && reqItems.length > 0;
 
-  const totalAmount = items.reduce(
+  // Items-only subtotal (live, updates as user edits)
+  const itemsSubtotal = items.reduce(
     (sum, item) => sum + item.quantity * item.unitPrice,
     0,
   );
+
+  // Factor in existing tax/delivery from metadata for the grand total display
+  const metaTaxRate = metadata?.taxRate
+    ? parseFloat(String(metadata.taxRate))
+    : 0;
+  const metaDeliveryCost = metadata?.deliveryCost
+    ? parseFloat(String(metadata.deliveryCost))
+    : 0;
+  const metaTaxAmount =
+    !isNaN(metaTaxRate) && metaTaxRate > 0
+      ? Math.round(((itemsSubtotal * metaTaxRate) / 100) * 100) / 100
+      : 0;
+  const metaDeliveryCostValue = !isNaN(metaDeliveryCost) ? metaDeliveryCost : 0;
+  const grandTotal = itemsSubtotal + metaTaxAmount + metaDeliveryCostValue;
+  const hasTaxOrDelivery = metaTaxAmount > 0 || metaDeliveryCostValue > 0;
 
   // ── item mutations ─────────────────────────────────────────────────────────
 
@@ -111,7 +131,22 @@ export function POItemsEditor({
       amount: i.quantity * i.unitPrice,
       totalPrice: i.quantity * i.unitPrice,
     }));
-    const total = finalItems.reduce((s, i) => s + i.amount, 0);
+    const itemsSubtotal = finalItems.reduce((s, i) => s + i.amount, 0);
+
+    // Factor in existing tax and delivery from PO metadata so totalAmount
+    // stays consistent with what the Shipping & Tax tab has set.
+    const taxRate = metadata?.taxRate
+      ? parseFloat(String(metadata.taxRate))
+      : 0;
+    const deliveryCost = metadata?.deliveryCost
+      ? parseFloat(String(metadata.deliveryCost))
+      : 0;
+    const taxAmount =
+      !isNaN(taxRate) && taxRate > 0
+        ? Math.round(((itemsSubtotal * taxRate) / 100) * 100) / 100
+        : 0;
+    const deliveryCostValue = !isNaN(deliveryCost) ? deliveryCost : 0;
+    const total = itemsSubtotal + taxAmount + deliveryCostValue;
 
     setSaving(true);
     try {
@@ -318,16 +353,65 @@ export function POItemsEditor({
       {/* Summary — gradient footer matching REQ dialog */}
       {items.length > 0 && (
         <div className="gradient-primary rounded-lg p-4">
-          <div className="flex items-center justify-between">
-            <span className="font-semibold text-white">Total Amount</span>
-            <span className="text-2xl font-bold text-white tracking-tight">
-              {currency}{" "}
-              {totalAmount.toLocaleString("en-ZM", {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2,
-              })}
-            </span>
-          </div>
+          {hasTaxOrDelivery ? (
+            <div className="space-y-1.5 text-sm text-white">
+              <div className="flex justify-between">
+                <span className="opacity-80">Items Subtotal</span>
+                <span className="font-mono">
+                  {currency}{" "}
+                  {itemsSubtotal.toLocaleString("en-ZM", {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}
+                </span>
+              </div>
+              {metaTaxAmount > 0 && (
+                <div className="flex justify-between">
+                  <span className="opacity-80">Tax ({metaTaxRate}%)</span>
+                  <span className="font-mono">
+                    {currency}{" "}
+                    {metaTaxAmount.toLocaleString("en-ZM", {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })}
+                  </span>
+                </div>
+              )}
+              {metaDeliveryCostValue > 0 && (
+                <div className="flex justify-between">
+                  <span className="opacity-80">Delivery Cost</span>
+                  <span className="font-mono">
+                    {currency}{" "}
+                    {metaDeliveryCostValue.toLocaleString("en-ZM", {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })}
+                  </span>
+                </div>
+              )}
+              <div className="flex items-center justify-between border-t border-white/30 pt-1.5">
+                <span className="font-semibold">Total Amount</span>
+                <span className="text-2xl font-bold tracking-tight">
+                  {currency}{" "}
+                  {grandTotal.toLocaleString("en-ZM", {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}
+                </span>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between">
+              <span className="font-semibold text-white">Total Amount</span>
+              <span className="text-2xl font-bold text-white tracking-tight">
+                {currency}{" "}
+                {itemsSubtotal.toLocaleString("en-ZM", {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}
+              </span>
+            </div>
+          )}
         </div>
       )}
 
