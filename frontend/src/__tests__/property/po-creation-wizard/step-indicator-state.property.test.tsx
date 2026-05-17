@@ -2,7 +2,7 @@
  * Property-Based Tests for WizardStepIndicator — Step State Consistency
  *
  * **Property 1: Step indicator state is consistent with current step**
- * For any current step value (1, 2, or 3), every step before the current step
+ * For any current step value (1, 2, 3, or 4), every step before the current step
  * SHALL be marked "Completed", the current step SHALL be marked "Current", and
  * every step after SHALL be marked "Upcoming".
  *
@@ -17,6 +17,7 @@ import { WizardStepIndicator } from "@/app/(private)/(main)/purchase-orders/_com
 const STEPS = [
   { label: "PO Details" },
   { label: "Vendor & Quotes" },
+  { label: "Shipping & Tax" },
   { label: "Review & Confirm" },
 ];
 
@@ -26,7 +27,7 @@ describe("Property 1: Step indicator state is consistent with current step", () 
   });
 
   /**
-   * For any currentStep in {1, 2, 3}:
+   * For any currentStep in {1, 2, 3, 4}:
    * - Steps before currentStep show "Completed"
    * - The currentStep shows "Current"
    * - Steps after currentStep show "Upcoming"
@@ -36,7 +37,7 @@ describe("Property 1: Step indicator state is consistent with current step", () 
   it("should show correct state labels for every possible currentStep", () => {
     fc.assert(
       fc.property(
-        fc.integer({ min: 1, max: 3 }) as fc.Arbitrary<1 | 2 | 3>,
+        fc.integer({ min: 1, max: 4 }) as fc.Arbitrary<1 | 2 | 3 | 4>,
         (currentStep) => {
           const { container } = render(
             <WizardStepIndicator currentStep={currentStep} steps={STEPS} />,

@@ -8,6 +8,7 @@ import {
   Loader2,
   CheckCircle2,
   Users,
+  Truck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -20,16 +21,16 @@ import { CostComparisonPanel } from "@/components/purchase-orders/cost-compariso
 import { useConfigurationStatus } from "@/hooks/use-configuration-status";
 import { formatCurrency } from "@/lib/utils";
 import type { Requisition } from "@/types/requisition";
-import type { WizardState, WizardStep3State } from "./types";
+import type { WizardState, WizardStep4State } from "./types";
 
 // ============================================================================
 // TYPES
 // ============================================================================
 
-export interface Step3Props {
+export interface Step4Props {
   wizardState: WizardState;
   requisition: Requisition;
-  onChange: (step3: WizardStep3State) => void;
+  onChange: (step4: WizardStep4State) => void;
   onSubmit: () => Promise<void>;
   onBack: () => void;
   isSubmitting: boolean;
@@ -46,31 +47,45 @@ const PRIORITY_LABELS: Record<string, string> = {
   URGENT: "Urgent",
 };
 
+/** Human-readable labels for Step 3 shipping fields */
+const SHIPPING_FIELD_LABELS: Record<string, string> = {
+  receiverName: "Receiver Name",
+  receiverDept: "Department",
+  receiverAddress: "Address",
+  receiverContact: "Contact / Phone",
+  receiverEmail: "Email Address",
+  purchaseType: "Purchase Type",
+  fundSource: "Fund Source",
+  taxRate: "Tax Rate (%)",
+  deliveryCost: "Delivery Cost",
+};
+
 // ============================================================================
 // COMPONENT
 // ============================================================================
 
 /**
- * Step 3 of the PO Creation Wizard — Review & Confirm.
+ * Step 4 of the PO Creation Wizard — Review & Confirm.
  *
- * Renders read-only summaries of Steps 1 and 2, procurement flow radio group,
- * CostComparisonPanel for the selected vendor, ConfigurationChecklistBanner
- * when config is incomplete, and the "Create Purchase Order" submit button.
+ * Renders read-only summaries of Steps 1, 2, and 3 (Shipping & Tax),
+ * procurement flow radio group, CostComparisonPanel for the selected vendor,
+ * ConfigurationChecklistBanner when config is incomplete, and the
+ * "Create Purchase Order" submit button.
  *
  * Workflow selection is deferred to the submit-for-approval dialog on the PO
  * detail page — no workflow is required to create the PO itself.
  */
-export function Step3ReviewConfirm({
+export function Step4ReviewConfirm({
   wizardState,
   requisition,
   onChange,
   onSubmit,
   onBack,
   isSubmitting,
-}: Step3Props) {
+}: Step4Props) {
   const [submitError, setSubmitError] = useState<string | null>(null);
 
-  const { step1, step2, step3 } = wizardState;
+  const { step1, step2, step3, step4 } = wizardState;
 
   // Configuration status check — workflow is picked at submit time, so skip it here
   const configStatus = useConfigurationStatus({
@@ -107,12 +122,21 @@ export function Step3ReviewConfirm({
   const isConfigIncomplete = !configStatus.allConfigured;
   const isDisabled = isConfigIncomplete || isSubmitting;
 
+  // Collect non-empty Step 3 shipping fields for display
+  const shippingFieldKeys = Object.keys(SHIPPING_FIELD_LABELS) as Array<
+    keyof typeof SHIPPING_FIELD_LABELS
+  >;
+  const nonEmptyShippingFields = shippingFieldKeys.filter((key) => {
+    const value = step3[key as keyof typeof step3];
+    return typeof value === "string" && value.trim() !== "";
+  });
+
   // ── handlers ───────────────────────────────────────────────────────────────
 
   const handleProcurementFlowChange = (
     value: "" | "goods_first" | "payment_first",
   ) => {
-    onChange({ ...step3, procurementFlow: value });
+    onChange({ ...step4, procurementFlow: value });
   };
 
   const handleSubmit = async () => {
@@ -136,7 +160,7 @@ export function Step3ReviewConfirm({
   return (
     <div
       className="flex flex-col flex-1 min-h-0 px-2"
-      data-testid="step3-review-confirm"
+      data-testid="step4-review-confirm"
     >
       <div className="flex-1 overflow-y-auto p-4 space-y-6 min-w-0">
         {/* ── Configuration Checklist Banner (Req 6.1, 6.2) ── */}
@@ -255,6 +279,36 @@ export function Step3ReviewConfirm({
           />
         )}
 
+        {/* ── Step 3 Shipping & Tax Summary (Req 4.1, 4.2, 4.3) ── */}
+        <section
+          aria-label="Step 3 summary"
+          className="rounded-lg border bg-muted/40 p-4 space-y-3"
+        >
+          <div className="flex items-center gap-2">
+            <Truck className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm font-semibold">Shipping &amp; Tax</span>
+            <Badge variant="secondary" className="text-xs">
+              Step 3
+            </Badge>
+          </div>
+          <Separator />
+          {nonEmptyShippingFields.length === 0 ? (
+            <p className="text-sm text-muted-foreground italic">
+              No shipping details provided.
+            </p>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-sm">
+              {nonEmptyShippingFields.map((key) => (
+                <SummaryRow
+                  key={key}
+                  label={SHIPPING_FIELD_LABELS[key]}
+                  value={String(step3[key as keyof typeof step3])}
+                />
+              ))}
+            </div>
+          )}
+        </section>
+
         {/* ── Procurement Flow (Req 5.10) ── */}
         <div className="space-y-2">
           <Label className="flex items-center gap-1.5 text-sm font-medium">
@@ -265,7 +319,7 @@ export function Step3ReviewConfirm({
             Override the organization default for this purchase order only.
           </p>
           <RadioGroup
-            value={step3.procurementFlow}
+            value={step4.procurementFlow}
             onValueChange={(v) =>
               handleProcurementFlowChange(
                 v as "" | "goods_first" | "payment_first",
@@ -277,10 +331,10 @@ export function Step3ReviewConfirm({
             <div className="flex items-start gap-2.5 rounded-md border p-3 cursor-pointer hover:bg-muted/50 transition-colors">
               <RadioGroupItem
                 value=""
-                id="step3-flow-default"
+                id="step4-flow-default"
                 className="mt-0.5"
               />
-              <Label htmlFor="step3-flow-default" className="cursor-pointer">
+              <Label htmlFor="step4-flow-default" className="cursor-pointer">
                 <span className="font-medium text-sm">
                   Use organization default
                 </span>
@@ -292,10 +346,10 @@ export function Step3ReviewConfirm({
             <div className="flex items-start gap-2.5 rounded-md border p-3 cursor-pointer hover:bg-muted/50 transition-colors">
               <RadioGroupItem
                 value="goods_first"
-                id="step3-flow-goods"
+                id="step4-flow-goods"
                 className="mt-0.5"
               />
-              <Label htmlFor="step3-flow-goods" className="cursor-pointer">
+              <Label htmlFor="step4-flow-goods" className="cursor-pointer">
                 <span className="font-medium text-sm">Goods-First</span>
                 <p className="text-xs text-muted-foreground font-normal">
                   GRN must be approved before payment can be processed
@@ -305,10 +359,10 @@ export function Step3ReviewConfirm({
             <div className="flex items-start gap-2.5 rounded-md border p-3 cursor-pointer hover:bg-muted/50 transition-colors">
               <RadioGroupItem
                 value="payment_first"
-                id="step3-flow-payment"
+                id="step4-flow-payment"
                 className="mt-0.5"
               />
-              <Label htmlFor="step3-flow-payment" className="cursor-pointer">
+              <Label htmlFor="step4-flow-payment" className="cursor-pointer">
                 <span className="font-medium text-sm">Payment-First</span>
                 <p className="text-xs text-muted-foreground font-normal">
                   Payment is processed upfront; GRN confirms delivery later
@@ -335,7 +389,7 @@ export function Step3ReviewConfirm({
           onClick={onBack}
           disabled={isSubmitting}
           className="w-full sm:w-auto"
-          data-testid="step3-back-button"
+          data-testid="step4-back-button"
         >
           Back
         </Button>
@@ -344,7 +398,7 @@ export function Step3ReviewConfirm({
           onClick={handleSubmit}
           disabled={isDisabled}
           className="w-full sm:w-auto"
-          data-testid="step3-submit-button"
+          data-testid="step4-submit-button"
         >
           {isSubmitting ? (
             <>

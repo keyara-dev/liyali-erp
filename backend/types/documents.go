@@ -229,6 +229,12 @@ type CreatePurchaseOrderRequest struct {
 	ProjectCode  string `json:"projectCode"`
 }
 
+// UpdatePurchaseOrderItemsRequest represents a request to update only the line items of a PO
+type UpdatePurchaseOrderItemsRequest struct {
+	Items       []POItem `json:"items" validate:"required,min=1"`
+	TotalAmount float64  `json:"totalAmount" validate:"required,gt=0"`
+}
+
 // UpdatePurchaseOrderRequest represents a PO update request
 type UpdatePurchaseOrderRequest struct {
 	VendorID                string                 `json:"vendorId"`

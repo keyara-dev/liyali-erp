@@ -82,6 +82,7 @@ import { usePurchaseOrderDetail } from "@/hooks/use-purchase-order-detail";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { getAuditEvents, type AuditEvent } from "@/app/_actions/audit";
+import { getRequisitionById } from "@/app/_actions/requisitions";
 import { uploadToImageKit } from "@/lib/imagekit";
 import { updatePurchaseOrder } from "@/app/_actions/purchase-orders";
 import { createPaymentVoucherFromPurchaseOrder } from "@/app/_actions/payment-vouchers";
@@ -197,6 +198,18 @@ export function PurchaseOrderDetailClient({
     userRole,
     initialPurchaseOrder,
   });
+
+  // Fetch linked requisition items when PO was created from a requisition
+  const { data: linkedRequisitionData } = useQuery({
+    queryKey: ["requisition", purchaseOrder?.sourceRequisitionId],
+    queryFn: async () => {
+      if (!purchaseOrder?.sourceRequisitionId) return null;
+      const res = await getRequisitionById(purchaseOrder.sourceRequisitionId);
+      return res.success ? res.data : null;
+    },
+    enabled: !!purchaseOrder?.sourceRequisitionId,
+  });
+  const linkedRequisitionItems = linkedRequisitionData?.items;
 
   // Show loading state while fetching initial data
   if (isLoading) return <DocumentLoadingPage />;
@@ -896,10 +909,11 @@ export function PurchaseOrderDetailClient({
               <h2 className="text-lg font-semibold">
                 Items ({purchaseOrder.items?.length || 0})
               </h2>
-              {permissions.canEdit && !editingItems && (
+              {permissions.canEdit && !editingItems && isDraft && (
                 <Button
                   variant="outline"
                   size="sm"
+                  aria-label="Edit line items"
                   onClick={() => setEditingItems(true)}
                 >
                   <Pencil className="h-3.5 w-3.5 mr-1" />
@@ -908,7 +922,7 @@ export function PurchaseOrderDetailClient({
               )}
             </div>
 
-            {editingItems ? (
+            {editingItems && isDraft ? (
               <POItemsEditor
                 poId={purchaseOrderId}
                 items={(purchaseOrder.items ?? []).map((item, index) => ({
@@ -923,6 +937,7 @@ export function PurchaseOrderDetailClient({
                   notes: item.notes,
                 }))}
                 currency={purchaseOrder.currency || "ZMW"}
+                reqItems={linkedRequisitionItems}
                 onSaved={() => setEditingItems(false)}
                 onCancel={() => setEditingItems(false)}
               />

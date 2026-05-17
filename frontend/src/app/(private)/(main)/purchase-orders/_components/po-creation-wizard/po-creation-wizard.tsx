@@ -20,7 +20,8 @@ import type { Requisition } from "@/types/requisition";
 import { WizardStepIndicator } from "./wizard-step-indicator";
 import { Step1PODetails } from "./step1-po-details";
 import { Step2VendorQuotes } from "./step2-vendor-quotes";
-import { Step3ReviewConfirm } from "./step3-review-confirm";
+import { Step3ShippingTax } from "./step3-shipping-tax";
+import { Step4ReviewConfirm } from "./step4-review-confirm";
 import { useWizardState } from "./use-wizard-state";
 
 // ============================================================================
@@ -40,6 +41,7 @@ export interface POCreationWizardProps {
 const WIZARD_STEPS = [
   { label: "PO Details" },
   { label: "Vendor & Quotes" },
+  { label: "Shipping & Tax" },
   { label: "Review & Confirm" },
 ];
 
@@ -48,15 +50,15 @@ const WIZARD_STEPS = [
 // ============================================================================
 
 /**
- * POCreationWizard — root dialog component that wires all three wizard steps.
+ * POCreationWizard — root dialog component that wires all four wizard steps.
  *
  * Owns the WizardState via useWizardState. Handles step navigation with
  * validation gating on Step 1. On close, resets all state back to Step 1.
  * On submit, calls createPurchaseOrderFromRequisition, then patches quotations
- * via updatePurchaseOrder (non-blocking), invalidates the purchase orders
- * cache, and shows a success toast.
+ * and shipping metadata via updatePurchaseOrder (non-blocking), invalidates
+ * the purchase orders cache, and shows a success toast.
  *
- * Requirements: 1.1, 1.3, 1.4, 1.5, 1.6, 1.7, 5.5, 5.6, 5.7, 5.8
+ * Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 3.1, 3.3
  */
 export function POCreationWizard({
   open,
@@ -65,10 +67,10 @@ export function POCreationWizard({
 }: POCreationWizardProps) {
   const queryClient = useQueryClient();
   const router = useRouter();
-  const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
+  const [currentStep, setCurrentStep] = useState<1 | 2 | 3 | 4>(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { wizardState, setStep1, setStep2, setStep3, resetWizard } =
+  const { wizardState, setStep1, setStep2, setStep3, setStep4, resetWizard } =
     useWizardState(requisition);
 
   // ── navigation ─────────────────────────────────────────────────────────────
@@ -78,7 +80,7 @@ export function POCreationWizard({
     setCurrentStep(2);
   };
 
-  // Step 2 → Step 3
+  // Step 2 → Step 3 (Req 1.3)
   const handleStep2Next = () => {
     setCurrentStep(3);
   };
@@ -88,9 +90,19 @@ export function POCreationWizard({
     setCurrentStep(1);
   };
 
-  // Step 3 → Step 2
+  // Step 3 → Step 4 (Req 1.5)
+  const handleStep3Next = () => {
+    setCurrentStep(4);
+  };
+
+  // Step 3 → Step 2 (Req 1.4)
   const handleStep3Back = () => {
     setCurrentStep(2);
+  };
+
+  // Step 4 → Step 3 (Req 1.6)
+  const handleStep4Back = () => {
+    setCurrentStep(3);
   };
 
   // ── close / reset ──────────────────────────────────────────────────────────
@@ -120,10 +132,10 @@ export function POCreationWizard({
       // Req 5.5: call createPurchaseOrderFromRequisition with wizard state
       const result = await createPurchaseOrderFromRequisition(
         requisition,
-        wizardState.step3.workflowId,
+        wizardState.step4.workflowId,
         selectedVendor?.vendorId || undefined,
         selectedVendor?.vendorName || undefined,
-        wizardState.step3.procurementFlow,
+        wizardState.step4.procurementFlow,
       );
 
       if (!result.success || !result.data) {
@@ -139,17 +151,48 @@ export function POCreationWizard({
         (requisition.metadata?.quotations as any[]) ??
         [];
 
-      // Always patch metadata: quotations + selected quotation file URL
+      // Req 3.1, 3.3: Build shippingMeta from step3 — include only non-empty
+      // string fields (trim check) and numeric fields > 0
+      const step3 = wizardState.step3;
+      const shippingMeta: Record<string, string | number> = {};
+
+      const stringFields = [
+        "receiverName",
+        "receiverDept",
+        "receiverAddress",
+        "receiverContact",
+        "receiverEmail",
+        "purchaseType",
+        "fundSource",
+      ] as const;
+
+      for (const field of stringFields) {
+        const val = step3[field];
+        if (typeof val === "string" && val.trim() !== "") {
+          shippingMeta[field] = val;
+        }
+      }
+
+      const taxRateNum = parseFloat(step3.taxRate);
+      if (!isNaN(taxRateNum) && taxRateNum > 0) {
+        shippingMeta.taxRate = taxRateNum;
+      }
+
+      const deliveryCostNum = parseFloat(step3.deliveryCost);
+      if (!isNaN(deliveryCostNum) && deliveryCostNum > 0) {
+        shippingMeta.deliveryCost = deliveryCostNum;
+      }
+
+      // Req 3.3: deep-merge metadata — quotations + shippingMeta + selected quotation file
+      const selectedQuotationFileId = wizardState.step2.selectedQuotationFileId;
       updatePurchaseOrder({
         poId: createdPO.id,
         purchaseOrderId: createdPO.id,
         metadata: {
           quotations: liveQuotations,
-          ...(wizardState.step2.selectedQuotationFileId
-            ? {
-                selectedQuotationFileUrl:
-                  wizardState.step2.selectedQuotationFileId,
-              }
+          ...shippingMeta,
+          ...(selectedQuotationFileId
+            ? { selectedQuotationFileUrl: selectedQuotationFileId }
             : {}),
         },
       }).catch(() => {
@@ -168,7 +211,7 @@ export function POCreationWizard({
       handleOpenChange(false);
       router.push(`/purchase-orders/${createdPO.id}`);
     } catch (err) {
-      // Req 5.8: re-throw so Step3 can display the inline error
+      // Req 5.8: re-throw so Step4 can display the inline error
       throw err;
     } finally {
       setIsSubmitting(false);
@@ -219,13 +262,25 @@ export function POCreationWizard({
           />
         )}
 
+        {/* Req 1.3, 1.4, 1.5: Step 3 — Shipping & Tax */}
         {currentStep === 3 && (
-          <Step3ReviewConfirm
-            wizardState={wizardState}
+          <Step3ShippingTax
+            data={wizardState.step3}
             requisition={requisition}
             onChange={setStep3}
-            onSubmit={handleSubmit}
+            onNext={handleStep3Next}
             onBack={handleStep3Back}
+          />
+        )}
+
+        {/* Req 1.5, 1.6: Step 4 — Review & Confirm */}
+        {currentStep === 4 && (
+          <Step4ReviewConfirm
+            wizardState={wizardState}
+            requisition={requisition}
+            onChange={setStep4}
+            onSubmit={handleSubmit}
+            onBack={handleStep4Back}
             isSubmitting={isSubmitting}
           />
         )}

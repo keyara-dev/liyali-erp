@@ -4,10 +4,15 @@ import { useState, useCallback } from "react";
 import { Plus, Trash2, Loader2, Check, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { updatePurchaseOrder } from "@/app/_actions/purchase-orders";
+import { updatePurchaseOrderItems } from "@/app/_actions/purchase-orders";
 import { useQueryClient } from "@tanstack/react-query";
 import { QUERY_KEYS } from "@/lib/constants";
 import type { POItem } from "@/types/purchase-order";
+import type { RequisitionItem } from "@/types/requisition";
+import {
+  computeLineItemVariance,
+  lineItemVarianceColorClass,
+} from "@/app/(private)/(main)/purchase-orders/_components/po-creation-wizard/types";
 
 interface POItemsEditorProps {
   poId: string;
@@ -15,6 +20,7 @@ interface POItemsEditorProps {
   currency: string;
   onSaved: (updatedItems: POItem[]) => void;
   onCancel: () => void;
+  reqItems?: RequisitionItem[];
 }
 
 function newItem(): POItem {
@@ -30,7 +36,7 @@ function newItem(): POItem {
 /**
  * Inline item editor for PO detail page.
  * Matches the exact UI pattern from create-requisition-dialog.tsx.
- * On save, calls updatePurchaseOrder — the backend automatically records
+ * On save, calls updatePurchaseOrderItems — the backend automatically records
  * a full audit snapshot with old/new item values.
  */
 export function POItemsEditor({
@@ -39,6 +45,7 @@ export function POItemsEditor({
   currency,
   onSaved,
   onCancel,
+  reqItems,
 }: POItemsEditorProps) {
   const [items, setItems] = useState<POItem[]>(
     initialItems.length > 0
@@ -47,6 +54,8 @@ export function POItemsEditor({
   );
   const [saving, setSaving] = useState(false);
   const queryClient = useQueryClient();
+
+  const hasReqItems = reqItems !== undefined && reqItems.length > 0;
 
   const totalAmount = items.reduce(
     (sum, item) => sum + item.quantity * item.unitPrice,
@@ -106,12 +115,7 @@ export function POItemsEditor({
 
     setSaving(true);
     try {
-      const result = await updatePurchaseOrder({
-        poId,
-        purchaseOrderId: poId,
-        items: finalItems,
-        totalAmount: total,
-      });
+      const result = await updatePurchaseOrderItems(poId, finalItems, total);
       if (!result.success) throw new Error(result.message || "Failed to save");
 
       // Refetch immediately so the header total updates without waiting
@@ -135,11 +139,17 @@ export function POItemsEditor({
 
   // ── render ─────────────────────────────────────────────────────────────────
 
+  const gridCols = hasReqItems
+    ? "grid-cols-[1.75rem_1fr_3.5rem_8rem_6rem_6rem_1.75rem]"
+    : "grid-cols-[1.75rem_1fr_3.5rem_8rem_6.5rem_1.75rem]";
+
   return (
     <div className="space-y-3">
       <div className="rounded-lg border border-border overflow-hidden">
         {/* Column headers — exact match to REQ dialog */}
-        <div className="grid grid-cols-[1.75rem_1fr_3.5rem_8rem_6.5rem_1.75rem] gap-x-3 px-3 py-2 bg-muted/60 border-b border-border">
+        <div
+          className={`grid ${gridCols} gap-x-3 px-3 py-2 bg-muted/60 border-b border-border`}
+        >
           <span className="text-xs font-medium text-muted-foreground">#</span>
           <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
             Description
@@ -153,81 +163,145 @@ export function POItemsEditor({
           <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider text-right">
             Total
           </span>
+          {hasReqItems && (
+            <>
+              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider text-right">
+                REQ Est. Price
+              </span>
+              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider text-right">
+                Variance
+              </span>
+            </>
+          )}
           <span />
         </div>
 
         {/* Item rows */}
         <div className="divide-y divide-border/60">
-          {items.map((item, index) => (
-            <div
-              key={item.id}
-              className="grid grid-cols-[1.75rem_1fr_3.5rem_8rem_6.5rem_1.75rem] gap-x-3 px-3 py-2 items-center hover:bg-muted/20 transition-colors"
-            >
-              {/* # */}
-              <span className="text-xs text-muted-foreground/50 font-mono tabular-nums">
-                {String(index + 1).padStart(2, "0")}
-              </span>
+          {items.map((item, index) => {
+            const reqItem = reqItems?.[index];
+            const reqEstPrice = reqItem?.unitPrice ?? 0;
 
-              {/* Description */}
-              <input
-                className="min-w-0 w-full bg-transparent text-sm placeholder:text-muted-foreground/40 focus:outline-none focus:bg-muted/30 rounded px-1.5 py-1 -mx-1.5 border border-transparent focus:border-border transition-colors"
-                placeholder="Item description…"
-                value={item.description}
-                onChange={(e) =>
-                  handleUpdateItem(item.id!, "description", e.target.value)
+            // Variance computation
+            let varianceLabel: string | null = null;
+            let varianceColorCls = "text-muted-foreground";
+            if (hasReqItems) {
+              if (!reqItem) {
+                varianceLabel = null; // will render "—"
+              } else if (reqEstPrice === 0) {
+                varianceLabel = null; // guard against division by zero → "—"
+              } else {
+                const variance = computeLineItemVariance(
+                  item.unitPrice,
+                  reqEstPrice,
+                );
+                varianceColorCls = lineItemVarianceColorClass(
+                  variance,
+                  reqEstPrice,
+                );
+                const pct = Math.abs((variance / reqEstPrice) * 100).toFixed(1);
+                if (variance > 0) {
+                  varianceLabel = `▲ +${pct}%`;
+                } else if (variance < 0) {
+                  varianceLabel = `▼ -${pct}%`;
+                } else {
+                  varianceLabel = `= 0%`;
                 }
-              />
+              }
+            }
 
-              {/* Qty */}
-              <input
-                type="number"
-                min="1"
-                className="w-full bg-transparent text-sm text-center tabular-nums placeholder:text-muted-foreground/40 focus:outline-none focus:bg-muted/30 rounded px-1 py-1 border border-transparent focus:border-border transition-colors"
-                value={item.quantity}
-                onChange={(e) =>
-                  handleUpdateItem(
-                    item.id!,
-                    "quantity",
-                    parseInt(e.target.value) || 1,
-                  )
-                }
-              />
-
-              {/* Unit price */}
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                placeholder="0.00"
-                className="w-full bg-transparent text-sm text-right tabular-nums placeholder:text-muted-foreground/40 focus:outline-none focus:bg-muted/30 rounded px-1.5 py-1 border border-transparent focus:border-border transition-colors"
-                value={item.unitPrice || ""}
-                onChange={(e) =>
-                  handleUpdateItem(
-                    item.id!,
-                    "unitPrice",
-                    parseFloat(e.target.value) || 0,
-                  )
-                }
-              />
-
-              {/* Line total */}
-              <span className="text-sm font-semibold text-right tabular-nums">
-                {(item.quantity * item.unitPrice).toLocaleString("en-ZM", {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
-                })}
-              </span>
-
-              {/* Delete */}
-              <button
-                type="button"
-                onClick={() => handleRemoveItem(item.id!)}
-                className="text-muted-foreground/30 hover:text-red-500 transition-colors flex items-center justify-center"
+            return (
+              <div
+                key={item.id}
+                className={`grid ${gridCols} gap-x-3 px-3 py-2 items-center hover:bg-muted/20 transition-colors`}
               >
-                <Trash2 className="h-3.5 w-3.5" />
-              </button>
-            </div>
-          ))}
+                {/* # */}
+                <span className="text-xs text-muted-foreground/50 font-mono tabular-nums">
+                  {String(index + 1).padStart(2, "0")}
+                </span>
+
+                {/* Description */}
+                <input
+                  className="min-w-0 w-full bg-transparent text-sm placeholder:text-muted-foreground/40 focus:outline-none focus:bg-muted/30 rounded px-1.5 py-1 -mx-1.5 border border-transparent focus:border-border transition-colors"
+                  placeholder="Item description…"
+                  value={item.description}
+                  onChange={(e) =>
+                    handleUpdateItem(item.id!, "description", e.target.value)
+                  }
+                />
+
+                {/* Qty */}
+                <input
+                  type="number"
+                  min="1"
+                  className="w-full bg-transparent text-sm text-center tabular-nums placeholder:text-muted-foreground/40 focus:outline-none focus:bg-muted/30 rounded px-1 py-1 border border-transparent focus:border-border transition-colors"
+                  value={item.quantity}
+                  onChange={(e) =>
+                    handleUpdateItem(
+                      item.id!,
+                      "quantity",
+                      parseInt(e.target.value) || 1,
+                    )
+                  }
+                />
+
+                {/* Unit price */}
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  placeholder="0.00"
+                  className="w-full bg-transparent text-sm text-right tabular-nums placeholder:text-muted-foreground/40 focus:outline-none focus:bg-muted/30 rounded px-1.5 py-1 border border-transparent focus:border-border transition-colors"
+                  value={item.unitPrice || ""}
+                  onChange={(e) =>
+                    handleUpdateItem(
+                      item.id!,
+                      "unitPrice",
+                      parseFloat(e.target.value) || 0,
+                    )
+                  }
+                />
+
+                {/* Line total */}
+                <span className="text-sm font-semibold text-right tabular-nums">
+                  {(item.quantity * item.unitPrice).toLocaleString("en-ZM", {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}
+                </span>
+
+                {/* REQ Est. Price (conditional) */}
+                {hasReqItems && (
+                  <span className="text-sm text-right tabular-nums text-muted-foreground">
+                    {reqItem
+                      ? reqEstPrice.toLocaleString("en-ZM", {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })
+                      : "—"}
+                  </span>
+                )}
+
+                {/* Variance (conditional) */}
+                {hasReqItems && (
+                  <span
+                    className={`text-xs font-medium text-right tabular-nums ${varianceLabel !== null ? varianceColorCls : "text-muted-foreground"}`}
+                  >
+                    {varianceLabel !== null ? varianceLabel : "—"}
+                  </span>
+                )}
+
+                {/* Delete */}
+                <button
+                  type="button"
+                  onClick={() => handleRemoveItem(item.id!)}
+                  className="text-muted-foreground/30 hover:text-red-500 transition-colors flex items-center justify-center"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            );
+          })}
 
           {/* Add item row */}
           <button

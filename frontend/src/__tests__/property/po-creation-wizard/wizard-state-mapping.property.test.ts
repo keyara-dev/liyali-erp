@@ -38,10 +38,10 @@ function mapWizardStateToCreatePOArgs(wizardState: WizardState): {
     : null;
 
   return {
-    workflowId: wizardState.step3.workflowId,
+    workflowId: wizardState.step4.workflowId,
     vendorId: selectedVendor?.vendorId || undefined,
     vendorName: selectedVendor?.vendorName || undefined,
-    procurementFlow: wizardState.step3.procurementFlow,
+    procurementFlow: wizardState.step4.procurementFlow,
   };
 }
 
@@ -89,6 +89,18 @@ const wizardStateWithSelectedVendorArb: fc.Arbitrary<WizardState> = fc
         selectedVendorLocalId: vendors[idx].localId,
       },
       step3: {
+        receiverName: "",
+        receiverDept: "",
+        receiverAddress: "",
+        receiverContact: "",
+        receiverEmail: "",
+        purchaseType: "",
+        fundSource: "",
+        taxRate: "",
+        deliveryCost: "",
+        userEnteredTaxOrDelivery: false,
+      },
+      step4: {
         workflowId: `wf-${idx}`,
         procurementFlow: "" as const,
       },
@@ -119,6 +131,18 @@ const wizardStateNoVendorArb: fc.Arbitrary<WizardState> = fc
       selectedVendorLocalId: null,
     },
     step3: {
+      receiverName: "",
+      receiverDept: "",
+      receiverAddress: "",
+      receiverContact: "",
+      receiverEmail: "",
+      purchaseType: "",
+      fundSource: "",
+      taxRate: "",
+      deliveryCost: "",
+      userEnteredTaxOrDelivery: false,
+    },
+    step4: {
       workflowId,
       procurementFlow,
     },
@@ -162,6 +186,18 @@ const wizardStateArb: fc.Arbitrary<WizardState> = fc
           selectedVendorLocalId: selectedLocalId,
         },
         step3: {
+          receiverName: "",
+          receiverDept: "",
+          receiverAddress: "",
+          receiverContact: "",
+          receiverEmail: "",
+          purchaseType: "",
+          fundSource: "",
+          taxRate: "",
+          deliveryCost: "",
+          userEnteredTaxOrDelivery: false,
+        },
+        step4: {
           workflowId,
           procurementFlow,
         },
@@ -226,14 +262,14 @@ describe("Property 9: WizardState maps correctly to CreatePurchaseOrderRequest",
     fc.assert(
       fc.property(wizardStateArb, (wizardState) => {
         const args = mapWizardStateToCreatePOArgs(wizardState);
-        expect(args.workflowId).toBe(wizardState.step3.workflowId);
+        expect(args.workflowId).toBe(wizardState.step4.workflowId);
       }),
       { numRuns: 100 },
     );
   });
 
   /**
-   * The procurementFlow in the mapped args SHALL always equal wizardState.step3.procurementFlow.
+   * The procurementFlow in the mapped args SHALL always equal wizardState.step4.procurementFlow.
    *
    * **Validates: Requirements 5.5**
    */
@@ -241,7 +277,7 @@ describe("Property 9: WizardState maps correctly to CreatePurchaseOrderRequest",
     fc.assert(
       fc.property(wizardStateArb, (wizardState) => {
         const args = mapWizardStateToCreatePOArgs(wizardState);
-        expect(args.procurementFlow).toBe(wizardState.step3.procurementFlow);
+        expect(args.procurementFlow).toBe(wizardState.step4.procurementFlow);
       }),
       { numRuns: 100 },
     );

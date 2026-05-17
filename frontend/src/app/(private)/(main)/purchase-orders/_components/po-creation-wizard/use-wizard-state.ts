@@ -7,6 +7,7 @@ import type {
   WizardStep1State,
   WizardStep2State,
   WizardStep3State,
+  WizardStep4State,
 } from "./types";
 
 // ============================================================================
@@ -44,9 +45,44 @@ const INITIAL_STEP2: WizardStep2State = {
 };
 
 const INITIAL_STEP3: WizardStep3State = {
+  receiverName: "",
+  receiverDept: "",
+  receiverAddress: "",
+  receiverContact: "",
+  receiverEmail: "",
+  purchaseType: "",
+  fundSource: "",
+  taxRate: "",
+  deliveryCost: "",
+  userEnteredTaxOrDelivery: false,
+};
+
+const INITIAL_STEP4: WizardStep4State = {
   workflowId: "",
   procurementFlow: "",
 };
+
+/**
+ * Derives the initial Step 3 state from a source Requisition.
+ * Pre-populates receiver name, department, and fund source from the requisition
+ * so the user doesn't have to re-enter information already captured on the REQ.
+ *
+ * Requirements: 2.2, 2.3
+ */
+export function buildInitialStep3(requisition: Requisition): WizardStep3State {
+  return {
+    receiverName: requisition.requesterName ?? "",
+    receiverDept: requisition.department ?? "",
+    receiverAddress: "",
+    receiverContact: "",
+    receiverEmail: "",
+    purchaseType: "",
+    fundSource: requisition.costCenter ?? requisition.budgetCode ?? "",
+    taxRate: "",
+    deliveryCost: "",
+    userEnteredTaxOrDelivery: false,
+  };
+}
 
 // ============================================================================
 // HOOK
@@ -57,6 +93,7 @@ export interface UseWizardStateReturn {
   setStep1: (step1: WizardStep1State) => void;
   setStep2: (step2: WizardStep2State) => void;
   setStep3: (step3: WizardStep3State) => void;
+  setStep4: (step4: WizardStep4State) => void;
   resetWizard: () => void;
 }
 
@@ -81,7 +118,8 @@ export function useWizardState(requisition: Requisition): UseWizardStateReturn {
   const [wizardState, setWizardState] = useState<WizardState>(() => ({
     step1: buildInitialStep1(requisition),
     step2: INITIAL_STEP2,
-    step3: INITIAL_STEP3,
+    step3: buildInitialStep3(requisition),
+    step4: INITIAL_STEP4,
   }));
 
   const setStep1 = useCallback((step1: WizardStep1State) => {
@@ -96,13 +134,18 @@ export function useWizardState(requisition: Requisition): UseWizardStateReturn {
     setWizardState((prev) => ({ ...prev, step3 }));
   }, []);
 
+  const setStep4 = useCallback((step4: WizardStep4State) => {
+    setWizardState((prev) => ({ ...prev, step4 }));
+  }, []);
+
   const resetWizard = useCallback(() => {
     setWizardState({
       step1: initialStep1,
       step2: INITIAL_STEP2,
-      step3: INITIAL_STEP3,
+      step3: buildInitialStep3(requisition),
+      step4: INITIAL_STEP4,
     });
-  }, [initialStep1]);
+  }, [initialStep1, requisition]);
 
-  return { wizardState, setStep1, setStep2, setStep3, resetWizard };
+  return { wizardState, setStep1, setStep2, setStep3, setStep4, resetWizard };
 }

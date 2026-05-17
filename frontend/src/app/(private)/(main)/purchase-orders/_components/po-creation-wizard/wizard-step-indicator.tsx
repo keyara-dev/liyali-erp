@@ -2,7 +2,7 @@ import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export interface WizardStepIndicatorProps {
-  currentStep: 1 | 2 | 3;
+  currentStep: 1 | 2 | 3 | 4;
   steps: Array<{ label: string }>;
 }
 

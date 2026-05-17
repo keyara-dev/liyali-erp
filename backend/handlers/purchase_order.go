@@ -781,6 +781,77 @@ func convertReqItemsToPOItems(reqItems []types.RequisitionItem) []types.POItem {
 	return poItems
 }
 
+// buildItemChanges compares two slices of POItem by index and returns a slice
+// of per-item change maps. Each map contains: itemId, field, old, new.
+// Only fields that differ between the old and new item are included.
+// Returns an empty slice when there are no changes.
+func buildItemChanges(oldItems, newItems []types.POItem) []map[string]interface{} {
+	changes := []map[string]interface{}{}
+
+	minLen := len(oldItems)
+	if len(newItems) < minLen {
+		minLen = len(newItems)
+	}
+
+	for i := 0; i < minLen; i++ {
+		old := oldItems[i]
+		nw := newItems[i]
+
+		// Determine a stable item identifier: prefer the ID field, fall back to index.
+		itemID := old.ID
+		if itemID == "" {
+			itemID = nw.ID
+		}
+		if itemID == "" {
+			itemID = fmt.Sprintf("%d", i)
+		}
+
+		if old.Description != nw.Description {
+			changes = append(changes, map[string]interface{}{
+				"itemId": itemID,
+				"field":  "description",
+				"old":    old.Description,
+				"new":    nw.Description,
+			})
+		}
+		if old.Quantity != nw.Quantity {
+			changes = append(changes, map[string]interface{}{
+				"itemId": itemID,
+				"field":  "quantity",
+				"old":    old.Quantity,
+				"new":    nw.Quantity,
+			})
+		}
+		if old.UnitPrice != nw.UnitPrice {
+			changes = append(changes, map[string]interface{}{
+				"itemId": itemID,
+				"field":  "unitPrice",
+				"old":    old.UnitPrice,
+				"new":    nw.UnitPrice,
+			})
+		}
+		// Compare TotalPrice; fall back to Amount when TotalPrice is zero.
+		oldTotal := old.TotalPrice
+		if oldTotal == 0 {
+			oldTotal = old.Amount
+		}
+		newTotal := nw.TotalPrice
+		if newTotal == 0 {
+			newTotal = nw.Amount
+		}
+		if oldTotal != newTotal {
+			changes = append(changes, map[string]interface{}{
+				"itemId": itemID,
+				"field":  "totalPrice",
+				"old":    oldTotal,
+				"new":    newTotal,
+			})
+		}
+	}
+
+	return changes
+}
+
 func modelToPurchaseOrderResponse(order models.PurchaseOrder) types.PurchaseOrderResponse {
 	var items []types.POItem
 	if len(order.Items.Data()) > 0 {
@@ -850,6 +921,155 @@ func modelToPurchaseOrderResponse(order models.PurchaseOrder) types.PurchaseOrde
 		CreatedAt:               order.CreatedAt,
 		UpdatedAt:               order.UpdatedAt,
 	}
+}
+
+// UpdatePurchaseOrderItems updates only the line items and total amount of a DRAFT purchase order
+func UpdatePurchaseOrderItems(c *fiber.Ctx) error {
+	logger := logging.FromContext(c)
+	logger.Info("update_purchase_order_items_request")
+
+	tenant, err := middleware.GetTenantContext(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"success": false,
+			"message": "Organization context required",
+			"error":   err.Error(),
+		})
+	}
+
+	id := c.Params("id")
+
+	var req types.UpdatePurchaseOrderItemsRequest
+	if err := c.BodyParser(&req); err != nil {
+		logging.LogError(c, err, "invalid_request_body", map[string]interface{}{
+			"error_type": "parsing_error",
+		})
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"success": false,
+			"message": "Invalid request body",
+			"error":   err.Error(),
+		})
+	}
+
+	if len(req.Items) == 0 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"success": false,
+			"message": "At least one item is required",
+		})
+	}
+	for _, item := range req.Items {
+		if item.Quantity <= 0 {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"success": false,
+				"message": "All items must have positive quantities",
+			})
+		}
+	}
+	if req.TotalAmount <= 0 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"success": false,
+			"message": "Total amount must be greater than 0",
+		})
+	}
+
+	var order models.PurchaseOrder
+	if err := config.DB.Where("id = ? AND organization_id = ?", id, tenant.OrganizationID).First(&order).Error; err != nil {
+		logging.LogError(c, err, "purchase_order_not_found", map[string]interface{}{
+			"order_id":   id,
+			"error_type": "not_found",
+		})
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
+			"success": false,
+			"message": "Purchase order not found",
+		})
+	}
+
+	if strings.ToUpper(order.Status) != "DRAFT" {
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
+			"success": false,
+			"message": "Line items can only be edited on DRAFT purchase orders",
+		})
+	}
+
+	oldItems := order.Items.Data()
+	oldTotalAmount := order.TotalAmount
+
+	order.Items = datatypes.NewJSONType(req.Items)
+	order.TotalAmount = req.TotalAmount
+
+	actorID := tenant.UserID
+	actorRole := tenant.UserRole
+	var actorUser models.User
+	config.DB.Where("id = ?", actorID).First(&actorUser)
+
+	updateNow := time.Now()
+	existingHistory := order.ActionHistory.Data()
+	existingHistory = append(existingHistory, types.ActionHistoryEntry{
+		ID:              uuid.New().String(),
+		Action:          "UPDATE",
+		ActionType:      "UPDATE",
+		PerformedBy:     actorID,
+		PerformedByName: actorUser.Name,
+		PerformedByRole: actorRole,
+		Timestamp:       updateNow,
+		PerformedAt:     updateNow,
+		Comments:        "Line items updated",
+		NewStatus:       order.Status,
+	})
+	order.ActionHistory = datatypes.NewJSONType(existingHistory)
+
+	order.UpdatedAt = time.Now()
+
+	if err := config.DB.Save(&order).Error; err != nil {
+		logging.LogError(c, err, "failed_to_update_purchase_order_items", map[string]interface{}{
+			"error_type":      "database_error",
+			"document_number": order.DocumentNumber,
+		})
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"success": false,
+			"message": "Failed to update purchase order items",
+			"error":   err.Error(),
+		})
+	}
+
+	itemChanges := buildItemChanges(oldItems, req.Items)
+
+	changes := map[string]interface{}{
+		"items": map[string]interface{}{
+			"old": oldItems,
+			"new": req.Items,
+		},
+		"itemChanges": itemChanges,
+	}
+	if req.TotalAmount != oldTotalAmount {
+		changes["totalAmount"] = map[string]float64{
+			"old": oldTotalAmount,
+			"new": req.TotalAmount,
+		}
+	}
+
+	snapshot := services.CreateDocumentSnapshot(order)
+
+	go services.LogDocumentEvent(config.DB, services.DocumentEvent{
+		OrganizationID: tenant.OrganizationID,
+		DocumentID:     order.ID,
+		DocumentType:   "purchase_order",
+		UserID:         actorID,
+		ActorName:      actorUser.Name,
+		ActorRole:      actorRole,
+		Action:         "line_items_updated",
+		Changes:        changes,
+		Snapshot:       snapshot,
+	})
+
+	config.DB.Preload("Vendor").First(&order)
+
+	logger.Info("purchase_order_items_updated_successfully")
+
+	return c.JSON(types.DetailResponse{
+		Success: true,
+		Data:    modelToPurchaseOrderResponse(order),
+	})
 }
 
 // SubmitPurchaseOrder submits a purchase order for approval using the workflow system

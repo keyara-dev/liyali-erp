@@ -3,6 +3,7 @@
 import { cache } from "react";
 import {
   PurchaseOrder,
+  POItem,
   CreatePurchaseOrderRequest,
   UpdatePurchaseOrderRequest,
   SubmitPurchaseOrderRequest,
@@ -357,5 +358,32 @@ export async function getPurchaseOrderChain(
     );
   } catch (error: any) {
     return handleError(error, "GET", url);
+  }
+}
+
+/**
+ * Update only the line items of a DRAFT purchase order
+ * Calls: PUT /api/v1/purchase-orders/{id}/items
+ */
+export async function updatePurchaseOrderItems(
+  poId: string,
+  items: POItem[],
+  totalAmount: number,
+): Promise<APIResponse<PurchaseOrder>> {
+  const url = `/api/v1/purchase-orders/${poId}/items`;
+
+  try {
+    const response = await authenticatedApiClient({
+      method: "PUT",
+      url,
+      data: { items, totalAmount },
+    });
+
+    return successResponse(
+      response.data?.data,
+      "Purchase order items updated successfully",
+    );
+  } catch (error: any) {
+    return handleError(error, "PUT", url);
   }
 }
