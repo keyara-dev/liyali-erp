@@ -86,8 +86,8 @@ export function computeLineItemVariance(
  * Returns the Tailwind colour class for a line-item variance value.
  *
  * Four-tier logic:
- * - Green   : variance ≤ 0  (PO price at or under REQ estimate)
- * - Neutral : reqEstPrice === 0  (no reference price to compare against)
+ * - Green   : variance < 0  (PO price under REQ estimate)
+ * - Neutral : variance === 0 or reqEstPrice === 0  (matched estimate, or no reference)
  * - Amber   : variance > 0 and variance / reqEstPrice ≤ 0.10  (up to 10% over)
  * - Red     : variance / reqEstPrice > 0.10  (more than 10% over)
  *
@@ -97,7 +97,8 @@ export function lineItemVarianceColorClass(
   variance: number,
   reqEstPrice: number,
 ): string {
-  if (variance <= 0) return "text-green-600 dark:text-green-400";
+  if (variance < 0) return "text-green-600 dark:text-green-400";
+  if (variance === 0) return "text-muted-foreground";
   if (reqEstPrice === 0) return "text-muted-foreground";
   const ratio = variance / reqEstPrice;
   if (ratio <= 0.1) return "text-amber-600 dark:text-amber-400";
