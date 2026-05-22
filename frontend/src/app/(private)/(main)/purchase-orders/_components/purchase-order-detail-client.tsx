@@ -30,6 +30,7 @@ import {
   Minus,
   AlertTriangle,
   Truck,
+  Trash2,
 } from "lucide-react";
 import { StatusBadge } from "@/components/status-badge";
 import { PageHeader } from "@/components/base/page-header";
@@ -73,6 +74,7 @@ import { ConfirmationModal } from "@/components/modals/confirmation-modal";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { QuotationCollectionSection } from "@/app/(private)/(main)/requisitions/_components/quotation-collection-section";
 import { POShippingEditor } from "./po-shipping-editor";
+import { LinkedDocumentsPDFSection } from "./linked-documents-pdf-section";
 import { useVendors } from "@/hooks/use-vendor-queries";
 import type { Quotation } from "@/types/core";
 import { Badge } from "@/components";
@@ -271,6 +273,21 @@ export function PurchaseOrderDetailClient({
     } finally {
       setIsUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  const handleDeleteAttachment = async (fileId: string) => {
+    const updated = attachments.filter((a) => a.fileId !== fileId);
+    try {
+      await updatePurchaseOrder({
+        purchaseOrderId: purchaseOrderId,
+        poId: purchaseOrderId,
+        metadata: { ...purchaseOrder.metadata, attachments: updated },
+      });
+      handleDocumentUpdated();
+      toast.success("Document removed");
+    } catch {
+      toast.error("Failed to remove document");
     }
   };
 
@@ -998,18 +1015,22 @@ export function PurchaseOrderDetailClient({
             {attachments.length > 0 ? (
               <div className="space-y-2">
                 {attachments.map((attachment) => (
-                  <button
+                  <div
                     key={attachment.fileId}
-                    type="button"
-                    onClick={() => handleAttachmentPreview(attachment)}
-                    className="flex items-center justify-between gap-3 p-3 rounded-lg border hover:bg-muted/50 transition group w-full text-left"
+                    className="flex items-center gap-2 p-3 rounded-lg border hover:bg-muted/50 transition group"
                   >
-                    <div className="flex items-center gap-3 min-w-0">
-                      {attachment.mimeType === "application/pdf" ? (
-                        <FileText className="h-5 w-5 text-red-500 shrink-0" />
-                      ) : (
-                        <ImageIcon className="h-5 w-5 text-blue-500 shrink-0" />
-                      )}
+                    <button
+                      type="button"
+                      onClick={() => handleAttachmentPreview(attachment)}
+                      className="flex items-center gap-3 min-w-0 flex-1 text-left"
+                    >
+                      <div className="shrink-0">
+                        {attachment.mimeType === "application/pdf" ? (
+                          <FileText className="h-5 w-5 text-red-500" />
+                        ) : (
+                          <ImageIcon className="h-5 w-5 text-blue-500" />
+                        )}
+                      </div>
                       <div className="min-w-0">
                         <p className="text-sm font-medium truncate">
                           {attachment.fileName}
@@ -1030,9 +1051,21 @@ export function PurchaseOrderDetailClient({
                           )}
                         </div>
                       </div>
-                    </div>
-                    <Eye className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition shrink-0" />
-                  </button>
+                      <Eye className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition shrink-0 ml-auto" />
+                    </button>
+                    {isDraft && (
+                      <button
+                        type="button"
+                        title="Remove document"
+                        onClick={() =>
+                          handleDeleteAttachment(attachment.fileId)
+                        }
+                        className="shrink-0 text-muted-foreground/40 hover:text-red-500 transition-colors p-1"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    )}
+                  </div>
                 ))}
               </div>
             ) : (
@@ -1069,6 +1102,13 @@ export function PurchaseOrderDetailClient({
                 showVendorSelection={isDraft}
               />
             )}
+
+            {/* Linked procurement chain documents — preview/download PDFs on demand */}
+            <LinkedDocumentsPDFSection
+              sourceRequisitionId={purchaseOrder.sourceRequisitionId}
+              chain={chain}
+              currentPoId={purchaseOrderId}
+            />
           </TabsContent>
 
           {/* ── Tab 3: Approval Action ── */}
