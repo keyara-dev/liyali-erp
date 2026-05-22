@@ -47,6 +47,8 @@ interface LinkedDoc {
 interface LinkedDocumentsPDFSectionProps {
   /** The current PO's source requisition ID */
   sourceRequisitionId?: string;
+  /** The source requisition's document number (e.g. REQ-20260522-001) */
+  sourceRequisitionDocumentNumber?: string;
   /** Chain data from usePurchaseOrderChain */
   chain?: PurchaseOrderChain;
   /** The current PO's own ID — excluded from the linked list */
@@ -62,6 +64,7 @@ interface LinkedDocumentsPDFSectionProps {
  */
 export function LinkedDocumentsPDFSection({
   sourceRequisitionId,
+  sourceRequisitionDocumentNumber,
   chain,
   currentPoId,
 }: LinkedDocumentsPDFSectionProps) {
@@ -79,7 +82,10 @@ export function LinkedDocumentsPDFSection({
       type: "requisition",
       label: "Source Requisition",
       id: sourceRequisitionId,
-      documentNumber: chain?.requisitionDocumentNumber || sourceRequisitionId,
+      documentNumber:
+        sourceRequisitionDocumentNumber ||
+        chain?.requisitionDocumentNumber ||
+        sourceRequisitionId,
       status: chain?.requisitionStatus,
     });
   }

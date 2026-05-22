@@ -1106,6 +1106,9 @@ export function PurchaseOrderDetailClient({
             {/* Linked procurement chain documents — preview/download PDFs on demand */}
             <LinkedDocumentsPDFSection
               sourceRequisitionId={purchaseOrder.sourceRequisitionId}
+              sourceRequisitionDocumentNumber={
+                linkedRequisitionData?.documentNumber
+              }
               chain={chain}
               currentPoId={purchaseOrderId}
             />
