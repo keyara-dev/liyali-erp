@@ -620,7 +620,10 @@ export function PurchaseOrderDetailClient({
               {purchaseOrder.currentStage &&
               approvalData?.workflowStatus?.totalStages
                 ? `${purchaseOrder.currentStage}/${approvalData.workflowStatus.totalStages}`
-                : `${purchaseOrder.approvalStage || 0}/1`}
+                : approvalData?.workflowStatus?.currentStage &&
+                    approvalData?.workflowStatus?.totalStages
+                  ? `${approvalData.workflowStatus.currentStage}/${approvalData.workflowStatus.totalStages}`
+                  : `${purchaseOrder.approvalStage || 0}/1`}
             </p>
           </div>
 

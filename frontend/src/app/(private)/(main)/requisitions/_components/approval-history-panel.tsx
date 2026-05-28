@@ -689,14 +689,17 @@ export function ApprovalChainContent({
                               ? "COMPLETED"
                               : "PENDING"}
                     </Badge>
-                    {stage.isCurrentStage && (
-                      <Badge
-                        variant="outline"
-                        className="text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300"
-                      >
-                        Awaiting Action
-                      </Badge>
-                    )}
+                    {stage.isCurrentStage &&
+                      stage.status?.toUpperCase() !== "APPROVED" &&
+                      stage.status?.toUpperCase() !== "COMPLETED" &&
+                      stage.status?.toUpperCase() !== "REJECTED" && (
+                        <Badge
+                          variant="outline"
+                          className="text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300"
+                        >
+                          Awaiting Action
+                        </Badge>
+                      )}
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">

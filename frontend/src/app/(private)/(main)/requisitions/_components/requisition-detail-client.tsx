@@ -497,10 +497,13 @@ export function RequisitionDetailClient({
               Approval Stage
             </label>
             <p className="text-sm font-medium font-mono bg-white/10 px-2 py-1 rounded text-primary-foreground">
-              {requisition.currentApprovalStage &&
-              requisition.totalApprovalStages
-                ? `${requisition.currentApprovalStage}/${requisition.totalApprovalStages}`
-                : `${requisition.approvalStage || 0}/1`}
+              {approvalData?.workflowStatus?.currentStage &&
+              approvalData?.workflowStatus?.totalStages
+                ? `${approvalData.workflowStatus.currentStage}/${approvalData.workflowStatus.totalStages}`
+                : requisition.currentApprovalStage &&
+                    requisition.totalApprovalStages
+                  ? `${requisition.currentApprovalStage}/${requisition.totalApprovalStages}`
+                  : `${requisition.approvalStage || 0}/1`}
             </p>
           </div>
 

@@ -132,7 +132,8 @@ export function PVDetailClient({
 }: PVDetailClientProps) {
   const router = useRouter();
   const [showMarkPaidDialog, setShowMarkPaidDialog] = useState(false);
-  const [showMarkPaidWithPOPModal, setShowMarkPaidWithPOPModal] = useState(false);
+  const [showMarkPaidWithPOPModal, setShowMarkPaidWithPOPModal] =
+    useState(false);
 
   const FINANCE_ADMIN_ROLES = ["finance", "admin"];
 
@@ -507,10 +508,13 @@ export function PVDetailClient({
               Approval Stage
             </label>
             <p className="text-sm font-medium font-mono bg-white/10 px-2 py-1 rounded text-primary-foreground">
-              {paymentVoucher.currentStage &&
+              {approvalData?.workflowStatus?.currentStage &&
               approvalData?.workflowStatus?.totalStages
-                ? `${paymentVoucher.currentStage}/${approvalData.workflowStatus.totalStages}`
-                : `${paymentVoucher.approvalStage || 0}/1`}
+                ? `${approvalData.workflowStatus.currentStage}/${approvalData.workflowStatus.totalStages}`
+                : paymentVoucher.currentStage &&
+                    approvalData?.workflowStatus?.totalStages
+                  ? `${paymentVoucher.currentStage}/${approvalData.workflowStatus.totalStages}`
+                  : `${paymentVoucher.approvalStage || 0}/1`}
             </p>
           </div>
         </div>
@@ -537,7 +541,9 @@ export function PVDetailClient({
       {paymentVoucher.linkedGRN && (
         <div className="flex items-center justify-between bg-background p-3 rounded border">
           <div>
-            <p className="text-sm text-muted-foreground">Linked Goods Received Note</p>
+            <p className="text-sm text-muted-foreground">
+              Linked Goods Received Note
+            </p>
             <p className="font-medium font-mono">{paymentVoucher.linkedGRN}</p>
           </div>
           {linkedGRNRecord?.id && (
