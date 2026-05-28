@@ -617,12 +617,12 @@ export function PurchaseOrderDetailClient({
               Approval Stage
             </label>
             <p className="text-sm font-medium font-mono bg-white/10 px-2 py-1 rounded text-primary-foreground">
-              {purchaseOrder.currentStage &&
+              {approvalData?.workflowStatus?.currentStage &&
               approvalData?.workflowStatus?.totalStages
-                ? `${purchaseOrder.currentStage}/${approvalData.workflowStatus.totalStages}`
-                : approvalData?.workflowStatus?.currentStage &&
+                ? `${approvalData.workflowStatus.currentStage}/${approvalData.workflowStatus.totalStages}`
+                : purchaseOrder.currentStage &&
                     approvalData?.workflowStatus?.totalStages
-                  ? `${approvalData.workflowStatus.currentStage}/${approvalData.workflowStatus.totalStages}`
+                  ? `${purchaseOrder.currentStage}/${approvalData.workflowStatus.totalStages}`
                   : `${purchaseOrder.approvalStage || 0}/1`}
             </p>
           </div>

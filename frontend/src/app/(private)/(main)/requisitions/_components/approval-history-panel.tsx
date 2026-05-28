@@ -673,9 +673,11 @@ export function ApprovalChainContent({
                           ? "default"
                           : stage.status?.toUpperCase() === "REJECTED"
                             ? "destructive"
-                            : stage.isCurrentStage
-                              ? "secondary"
-                              : "outline"
+                            : stage.status?.toUpperCase() === "COMPLETED"
+                              ? "default"
+                              : stage.isCurrentStage
+                                ? "secondary"
+                                : "outline"
                       }
                       className="text-xs"
                     >
@@ -683,10 +685,10 @@ export function ApprovalChainContent({
                         ? "APPROVED"
                         : stage.status?.toUpperCase() === "REJECTED"
                           ? "REJECTED"
-                          : stage.isCurrentStage
-                            ? "CURRENT STAGE"
-                            : stage.status?.toUpperCase() === "COMPLETED"
-                              ? "COMPLETED"
+                          : stage.status?.toUpperCase() === "COMPLETED"
+                            ? "COMPLETED"
+                            : stage.isCurrentStage
+                              ? "CURRENT STAGE"
                               : "PENDING"}
                     </Badge>
                     {stage.isCurrentStage &&
@@ -773,6 +775,8 @@ export function ApprovalChainContent({
                     <CheckCircle className="h-6 w-6 text-green-600 dark:text-green-400" />
                   ) : stage.status?.toUpperCase() === "REJECTED" ? (
                     <XCircle className="h-6 w-6 text-red-600 dark:text-red-400" />
+                  ) : stage.status?.toUpperCase() === "COMPLETED" ? (
+                    <CheckCircle className="h-6 w-6 text-green-600 dark:text-green-400" />
                   ) : stage.isCurrentStage ? (
                     <Clock className="h-6 w-6 text-blue-600 dark:text-blue-400 animate-pulse" />
                   ) : (
@@ -1057,7 +1061,10 @@ export function WorkflowStatusSummary({
                       : "bg-blue-500"
                 }`}
                 style={{
-                  width: `${Math.max(10, (workflowStatus.currentStage / Math.max(1, workflowStatus.totalStages)) * 100)}%`,
+                  width:
+                    workflowStatus.status?.toUpperCase() === "COMPLETED"
+                      ? "100%"
+                      : `${Math.max(10, (workflowStatus.currentStage / Math.max(1, workflowStatus.totalStages)) * 100)}%`,
                 }}
               />
             </div>
