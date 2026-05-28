@@ -3,7 +3,14 @@
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useCallback, useMemo, useEffect, useState } from "react";
-import { Download, Eye, FileText, MoreVertical, Pencil, Search } from "lucide-react";
+import {
+  Download,
+  Eye,
+  FileText,
+  MoreVertical,
+  Pencil,
+  Search,
+} from "lucide-react";
 
 import { DataList, DataListColumn } from "@/components/ui/data-list";
 import { FilterBar } from "@/components/ui/filter-bar";
@@ -51,7 +58,8 @@ function computeReceivedAmount(
   if (!po) return undefined;
   const priceByDesc = new Map<string, number>();
   for (const item of po.items ?? []) {
-    if (item.description) priceByDesc.set(item.description, item.unitPrice ?? 0);
+    if (item.description)
+      priceByDesc.set(item.description, item.unitPrice ?? 0);
   }
   return (grn.items ?? []).reduce((total, item) => {
     const price = priceByDesc.get(item.description) ?? 0;
@@ -81,9 +89,7 @@ function GrnOptionsMenu({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem
-          onClick={() => router.push(`/grn/${grn.id}`)}
-        >
+        <DropdownMenuItem onClick={() => router.push(`/grn/${grn.id}`)}>
           <Eye className="mr-2 h-4 w-4" />
           View Details
         </DropdownMenuItem>
@@ -147,7 +153,10 @@ export function GrnTable({
           g.poDocumentNumber?.toLowerCase().includes(s) ||
           g.receivedBy?.toLowerCase().includes(s) ||
           // vendorName is on the linked PO, not on the GRN itself
-          posByDocNumber.get(g.poDocumentNumber)?.vendorName?.toLowerCase().includes(s),
+          posByDocNumber
+            .get(g.poDocumentNumber)
+            ?.vendorName?.toLowerCase()
+            .includes(s),
       );
     }
 
@@ -188,7 +197,23 @@ export function GrnTable({
             {poDoc}
           </Link>
         ) : (
-          <span className="font-mono text-sm text-muted-foreground">{poDoc}</span>
+          <span className="font-mono text-sm text-muted-foreground">
+            {poDoc}
+          </span>
+        );
+      },
+    },
+    {
+      id: "poTitle",
+      header: "Title",
+      priority: "lg",
+      cell: (row) => {
+        const po = posByDocNumber.get(row.poDocumentNumber);
+        const title = po?.title || row.notes;
+        return (
+          <span className="font-medium capitalize line-clamp-1">
+            {title || "—"}
+          </span>
         );
       },
     },
@@ -197,10 +222,10 @@ export function GrnTable({
       header: "Vendor",
       priority: "lg",
       cell: (row) => {
-        const vendor = posByDocNumber.get(row.poDocumentNumber)?.vendorName?.trim();
-        return (
-          <span className="font-medium capitalize">{vendor || "—"}</span>
-        );
+        const vendor = posByDocNumber
+          .get(row.poDocumentNumber)
+          ?.vendorName?.trim();
+        return <span className="font-medium capitalize">{vendor || "—"}</span>;
       },
     },
     {
@@ -321,6 +346,7 @@ export function GrnTable({
         mobileCard={(row) => {
           const po = posByDocNumber.get(row.poDocumentNumber);
           const vendor = po?.vendorName?.trim();
+          const title = po?.title || row.notes;
           const canModify =
             row.createdBy === userId ||
             row.receivedBy === userId ||
@@ -332,6 +358,11 @@ export function GrnTable({
                   <div className="font-medium text-primary line-clamp-1 uppercase">
                     {row.documentNumber || row.id}
                   </div>
+                  {title && (
+                    <div className="text-xs font-medium line-clamp-1 capitalize">
+                      {title}
+                    </div>
+                  )}
                   <div className="text-xs text-muted-foreground line-clamp-1">
                     {row.poDocumentNumber ? `PO ${row.poDocumentNumber}` : "—"}
                   </div>
@@ -343,12 +374,18 @@ export function GrnTable({
                 {row.receivedBy && <span>{row.receivedBy}</span>}
                 {(row.receivedDate || row.createdAt) && (
                   <span>
-                    {new Date(row.receivedDate || row.createdAt).toLocaleDateString()}
+                    {new Date(
+                      row.receivedDate || row.createdAt,
+                    ).toLocaleDateString()}
                   </span>
                 )}
               </div>
               <div className="pt-1">
-                <GrnOptionsMenu grn={row} router={router} canModify={canModify} />
+                <GrnOptionsMenu
+                  grn={row}
+                  router={router}
+                  canModify={canModify}
+                />
               </div>
             </div>
           );

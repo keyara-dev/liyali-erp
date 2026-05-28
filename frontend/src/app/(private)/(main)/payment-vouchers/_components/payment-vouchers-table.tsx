@@ -2,7 +2,14 @@
 
 import { useCallback, useMemo, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Download, Eye, FileText, MoreVertical, Pencil, Search } from "lucide-react";
+import {
+  Download,
+  Eye,
+  FileText,
+  MoreVertical,
+  Pencil,
+  Search,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -59,17 +66,23 @@ function PvOptionsMenu({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-44">
-        <DropdownMenuItem onClick={() => router.push(`/payment-vouchers/${pv.id}`)}>
+        <DropdownMenuItem
+          onClick={() => router.push(`/payment-vouchers/${pv.id}`)}
+        >
           <Eye className="mr-2 h-4 w-4" />
           View Details
         </DropdownMenuItem>
         {canEdit && (
-          <DropdownMenuItem onClick={() => router.push(`/payment-vouchers/${pv.id}/edit`)}>
+          <DropdownMenuItem
+            onClick={() => router.push(`/payment-vouchers/${pv.id}/edit`)}
+          >
             <Pencil className="mr-2 h-4 w-4" />
             Edit
           </DropdownMenuItem>
         )}
-        <DropdownMenuItem onClick={() => console.log("Download PDF for PV:", pv.id)}>
+        <DropdownMenuItem
+          onClick={() => console.log("Download PDF for PV:", pv.id)}
+        >
           <Download className="mr-2 h-4 w-4" />
           Download
         </DropdownMenuItem>
@@ -85,11 +98,7 @@ export function PaymentVouchersTable({
   onRefresh: _onRefresh,
 }: PaymentVouchersTableProps) {
   const router = useRouter();
-  const {
-    data: pvs = [],
-    isLoading,
-    refetch,
-  } = usePaymentVouchers();
+  const { data: pvs = [], isLoading, refetch } = usePaymentVouchers();
 
   // Refetch when refreshTrigger changes
   useEffect(() => {
@@ -161,6 +170,16 @@ export function PaymentVouchersTable({
       ),
     },
     {
+      id: "title",
+      header: "Title",
+      priority: "md",
+      cell: (row) => (
+        <span className="font-medium capitalize line-clamp-1">
+          {row.title || "—"}
+        </span>
+      ),
+    },
+    {
       id: "payee",
       header: "Payee",
       priority: "md",
@@ -195,18 +214,26 @@ export function PaymentVouchersTable({
           <StatusBadge status={row.status} type="document" />
           {row.routingType === "direct_payment" && (
             <div className="flex flex-col gap-0.5">
-              <Badge variant="outline" className="border-purple-500 text-purple-700 text-[10px] px-1.5 py-0 w-fit">
+              <Badge
+                variant="outline"
+                className="border-purple-500 text-purple-700 text-[10px] px-1.5 py-0 w-fit"
+              >
                 Direct Payment
               </Badge>
-              {(row.metadata as any)?.autoCreated && (row.metadata as any)?.sourceReqID && (
-                <span className="text-[10px] text-muted-foreground">
-                  Auto from REQ-{String((row.metadata as any).sourceReqID).slice(0, 8)}
-                </span>
-              )}
+              {(row.metadata as any)?.autoCreated &&
+                (row.metadata as any)?.sourceReqID && (
+                  <span className="text-[10px] text-muted-foreground">
+                    Auto from REQ-
+                    {String((row.metadata as any).sourceReqID).slice(0, 8)}
+                  </span>
+                )}
             </div>
           )}
           {row.routingType === "accounting" && (
-            <Badge variant="outline" className="border-amber-500 text-amber-700 text-[10px] px-1.5 py-0 w-fit">
+            <Badge
+              variant="outline"
+              className="border-amber-500 text-amber-700 text-[10px] px-1.5 py-0 w-fit"
+            >
               Accounting
             </Badge>
           )}
@@ -221,8 +248,7 @@ export function PaymentVouchersTable({
         if (!row.paymentDueDate)
           return <span className="text-muted-foreground">—</span>;
         const d = new Date(row.paymentDueDate);
-        const overdue =
-          d < new Date() && row.status?.toLowerCase() !== "paid";
+        const overdue = d < new Date() && row.status?.toLowerCase() !== "paid";
         return (
           <span className={overdue ? "text-rose-600 font-medium" : ""}>
             {d.toLocaleDateString()}
@@ -339,6 +365,11 @@ export function PaymentVouchersTable({
                   <div className="font-medium text-primary line-clamp-1 uppercase">
                     {row.documentNumber || row.id}
                   </div>
+                  {row.title && (
+                    <div className="text-xs font-medium line-clamp-1 capitalize">
+                      {row.title}
+                    </div>
+                  )}
                   <div className="text-xs text-muted-foreground line-clamp-1">
                     {row.vendorName}
                   </div>
@@ -346,12 +377,18 @@ export function PaymentVouchersTable({
                 <div className="flex flex-col items-end gap-1">
                   <StatusBadge status={row.status} type="document" />
                   {row.routingType === "direct_payment" && (
-                    <Badge variant="outline" className="border-purple-500 text-purple-700 text-[10px] px-1.5 py-0">
+                    <Badge
+                      variant="outline"
+                      className="border-purple-500 text-purple-700 text-[10px] px-1.5 py-0"
+                    >
                       Direct Payment
                     </Badge>
                   )}
                   {row.routingType === "accounting" && (
-                    <Badge variant="outline" className="border-amber-500 text-amber-700 text-[10px] px-1.5 py-0">
+                    <Badge
+                      variant="outline"
+                      className="border-amber-500 text-amber-700 text-[10px] px-1.5 py-0"
+                    >
                       Accounting
                     </Badge>
                   )}
@@ -359,7 +396,10 @@ export function PaymentVouchersTable({
               </div>
               <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                 <span>
-                  {formatCurrency(row.totalAmount ?? row.amount ?? 0, row.currency)}
+                  {formatCurrency(
+                    row.totalAmount ?? row.amount ?? 0,
+                    row.currency,
+                  )}
                 </span>
                 {row.paymentDueDate &&
                   (() => {
@@ -367,7 +407,9 @@ export function PaymentVouchersTable({
                     const overdue =
                       d < new Date() && row.status?.toLowerCase() !== "paid";
                     return (
-                      <span className={overdue ? "text-rose-600 font-medium" : ""}>
+                      <span
+                        className={overdue ? "text-rose-600 font-medium" : ""}
+                      >
                         Due {d.toLocaleDateString()}
                         {overdue && " (overdue)"}
                       </span>

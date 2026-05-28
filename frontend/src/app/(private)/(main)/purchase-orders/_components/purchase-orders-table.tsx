@@ -55,7 +55,9 @@ function PoOptionsMenu({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-44">
-        <DropdownMenuItem onClick={() => router.push(`/purchase-orders/${po.id}`)}>
+        <DropdownMenuItem
+          onClick={() => router.push(`/purchase-orders/${po.id}`)}
+        >
           <Eye className="mr-2 h-4 w-4" />
           View Details
         </DropdownMenuItem>
@@ -71,11 +73,7 @@ export function PurchaseOrdersTable({
   onRefresh: _onRefresh,
 }: PurchaseOrdersTableProps) {
   const router = useRouter();
-  const {
-    data: purchaseOrders = [],
-    isLoading,
-    refetch,
-  } = usePurchaseOrders();
+  const { data: purchaseOrders = [], isLoading, refetch } = usePurchaseOrders();
 
   // Refetch when refreshTrigger changes
   useEffect(() => {
@@ -137,11 +135,23 @@ export function PurchaseOrdersTable({
       ),
     },
     {
+      id: "title",
+      header: "Title",
+      priority: "md",
+      cell: (row) => (
+        <span className="font-medium capitalize line-clamp-1">
+          {row.title || "—"}
+        </span>
+      ),
+    },
+    {
       id: "vendor",
       header: "Vendor",
       priority: "md",
       cell: (row) => (
-        <span className="font-medium">{row.vendor?.name ?? row.vendorName ?? "—"}</span>
+        <span className="font-medium">
+          {row.vendor?.name ?? row.vendorName ?? "—"}
+        </span>
       ),
     },
     {
@@ -172,12 +182,18 @@ export function PurchaseOrdersTable({
         <div className="flex flex-col gap-1">
           <StatusBadge status={row.status} type="document" />
           {row.routingType === "direct_payment" && (
-            <Badge variant="outline" className="border-purple-500 text-purple-700 text-[10px] px-1.5 py-0 w-fit">
+            <Badge
+              variant="outline"
+              className="border-purple-500 text-purple-700 text-[10px] px-1.5 py-0 w-fit"
+            >
               Direct Payment
             </Badge>
           )}
           {row.routingType === "accounting" && (
-            <Badge variant="outline" className="border-amber-500 text-amber-700 text-[10px] px-1.5 py-0 w-fit">
+            <Badge
+              variant="outline"
+              className="border-amber-500 text-amber-700 text-[10px] px-1.5 py-0 w-fit"
+            >
               Accounting
             </Badge>
           )}
@@ -275,6 +291,11 @@ export function PurchaseOrdersTable({
                 <div className="font-medium text-primary line-clamp-1 uppercase">
                   {row.documentNumber || row.id}
                 </div>
+                {row.title && (
+                  <div className="text-xs font-medium line-clamp-1 capitalize">
+                    {row.title}
+                  </div>
+                )}
                 <div className="text-xs text-muted-foreground line-clamp-1">
                   {row.vendor?.name ?? row.vendorName}
                 </div>
@@ -282,19 +303,30 @@ export function PurchaseOrdersTable({
               <div className="flex flex-col items-end gap-1">
                 <StatusBadge status={row.status} type="document" />
                 {row.routingType === "direct_payment" && (
-                  <Badge variant="outline" className="border-purple-500 text-purple-700 text-[10px] px-1.5 py-0">
+                  <Badge
+                    variant="outline"
+                    className="border-purple-500 text-purple-700 text-[10px] px-1.5 py-0"
+                  >
                     Direct Payment
                   </Badge>
                 )}
                 {row.routingType === "accounting" && (
-                  <Badge variant="outline" className="border-amber-500 text-amber-700 text-[10px] px-1.5 py-0">
+                  <Badge
+                    variant="outline"
+                    className="border-amber-500 text-amber-700 text-[10px] px-1.5 py-0"
+                  >
                     Accounting
                   </Badge>
                 )}
               </div>
             </div>
             <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-              <span>{formatCurrency(row.total ?? row.totalAmount ?? 0, row.currency)}</span>
+              <span>
+                {formatCurrency(
+                  row.total ?? row.totalAmount ?? 0,
+                  row.currency,
+                )}
+              </span>
               {row.deliveryDate && (
                 <span>{new Date(row.deliveryDate).toLocaleDateString()}</span>
               )}

@@ -178,6 +178,7 @@ export function ApprovedPurchaseOrdersTable({
               <TableHeader>
                 <TableRow>
                   <TableHead>PO Number</TableHead>
+                  <TableHead>Title</TableHead>
                   <TableHead>Vendor</TableHead>
                   <TableHead>Department</TableHead>
                   <TableHead>Amount</TableHead>
@@ -191,6 +192,9 @@ export function ApprovedPurchaseOrdersTable({
                   <TableRow key={po.id}>
                     <TableCell className="font-mono text-sm">
                       {po.documentNumber}
+                    </TableCell>
+                    <TableCell className="font-medium capitalize max-w-[180px] truncate">
+                      {po.title || "—"}
                     </TableCell>
                     <TableCell className="font-medium">
                       {po.vendorName}
