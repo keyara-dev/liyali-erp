@@ -1,6 +1,6 @@
-'use client'
+"use client";
 
-import { useState } from 'react'
+import { useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -8,24 +8,24 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
-import { Label } from '@/components/ui/label'
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 
 interface ApprovalConfirmationDialogProps {
-  open: boolean
-  documentId: string
-  documentType: 'GRN' | 'PAYMENT_VOUCHER' | 'PURCHASE_ORDER' | 'REQUISITION'
-  documentNumber: string
-  vendor: string
-  amount: string
-  stageNumber: number
-  totalStages: number
-  stageName: string
-  onApprove: (data: any) => Promise<void>
-  onCancel: () => void
+  open: boolean;
+  documentId: string;
+  documentType: "GRN" | "PAYMENT_VOUCHER" | "PURCHASE_ORDER" | "REQUISITION";
+  documentNumber: string;
+  vendor: string;
+  amount: string;
+  stageNumber: number;
+  totalStages: number;
+  stageName: string;
+  onApprove: (data: any) => Promise<void>;
+  onCancel: () => void;
 }
 
 export function ApprovalConfirmationDialog({
@@ -41,34 +41,34 @@ export function ApprovalConfirmationDialog({
   onApprove,
   onCancel,
 }: ApprovalConfirmationDialogProps) {
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [approvalComments, setApprovalComments] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [approvalComments, setApprovalComments] = useState("");
 
   const handleSubmit = async () => {
-    setIsSubmitting(true)
+    setIsSubmitting(true);
     try {
       await onApprove({
         documentId,
         documentType,
         comments: approvalComments,
-      })
-      setApprovalComments('')
+      });
+      setApprovalComments("");
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
-  }
+  };
 
   return (
     <Dialog open={open} onOpenChange={onCancel}>
-      <DialogContent className="sm:max-w-[500px]">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-[500px] max-h-[90svh] flex flex-col p-0 overflow-hidden">
+        <DialogHeader className="shrink-0 px-6 pt-6 pb-4 border-b">
           <DialogTitle>Approve {documentType}</DialogTitle>
           <DialogDescription>
             Stage {stageNumber} of {totalStages}: {stageName}
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 py-4">
+        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label className="text-xs text-muted-foreground">Document</Label>
@@ -94,15 +94,26 @@ export function ApprovalConfirmationDialog({
           />
         </div>
 
-        <DialogFooter className="gap-2">
-          <Button variant="outline" onClick={onCancel} disabled={isSubmitting}>
+        <div className="shrink-0 border-t bg-background px-6 py-4 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+          <Button
+            variant="outline"
+            onClick={onCancel}
+            disabled={isSubmitting}
+            className="w-full sm:w-auto"
+          >
             Cancel
           </Button>
-          <Button onClick={handleSubmit} disabled={isSubmitting} isLoading={isSubmitting} loadingText="Approving...">
+          <Button
+            onClick={handleSubmit}
+            disabled={isSubmitting}
+            isLoading={isSubmitting}
+            loadingText="Approving..."
+            className="w-full sm:w-auto"
+          >
             Approve
           </Button>
-        </DialogFooter>
+        </div>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

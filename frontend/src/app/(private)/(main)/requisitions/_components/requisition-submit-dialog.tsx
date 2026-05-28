@@ -144,10 +144,10 @@ export function RequisitionSubmitDialog({
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent
-        className="max-w-lg max-h-[90vh] overflow-y-auto"
+        className="max-w-lg max-h-[90svh] flex flex-col p-0 overflow-hidden"
         onInteractOutside={(e) => e.preventDefault()}
       >
-        <DialogHeader>
+        <DialogHeader className="shrink-0 px-6 pt-6 pb-4 border-b">
           <DialogTitle className="flex items-center gap-2">
             <Send className="h-5 w-5" />
             Submit Requisition for Approval
@@ -157,7 +157,7 @@ export function RequisitionSubmitDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
           {/* Workflow Requirement Banner - Shows if no workflows configured */}
           <WorkflowRequirementBanner entityType="requisition" />
 
@@ -280,12 +280,13 @@ export function RequisitionSubmitDialog({
         </div>
 
         {/* Sticky Footer */}
-        <div className="bg-card/5 backdrop-blur-xs sticky bottom-0 flex flex-col-reverse justify-end gap-3 p-4 rounded-b-lg border-t py-6 sm:flex-row sm:py-6">
+        <div className="shrink-0 border-t bg-background px-6 py-4 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
           <Button
             type="button"
             variant="outline"
             onClick={handleClose}
             disabled={isSubmitting}
+            className="w-full sm:w-auto"
           >
             Cancel
           </Button>
@@ -294,6 +295,7 @@ export function RequisitionSubmitDialog({
             disabled={isSubmitting || !canSubmit}
             isLoading={isSubmitting}
             loadingText="Submitting..."
+            className="w-full sm:w-auto"
           >
             <Send className="mr-2 h-4 w-4" />
             {routingPreview?.type === "auto"

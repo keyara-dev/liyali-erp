@@ -37,8 +37,8 @@ export function ClaimTaskModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-md max-h-[90svh] flex flex-col p-0 overflow-hidden">
+        <DialogHeader className="shrink-0 px-6 pt-6 pb-4 border-b">
           <DialogTitle className="flex items-center gap-2">
             <Users className="h-5 w-5 text-blue-600" />
             Claim Task for Review
@@ -111,7 +111,7 @@ export function ClaimTaskModal({
           </DialogDescription>
         </DialogHeader>
 
-        <DialogFooter className="flex-col sm:flex-row gap-2">
+        <div className="shrink-0 border-t bg-background px-6 py-4 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
           <Button
             variant="outline"
             onClick={onClose}
@@ -127,12 +127,10 @@ export function ClaimTaskModal({
             isLoading={isLoading}
             loadingText="Claiming Task..."
           >
-            <>
-              <Users className="h-4 w-4 mr-2" />
-              Claim Task ({claimDuration} min)
-            </>
+            <Users className="h-4 w-4 mr-2" />
+            Claim Task ({claimDuration} min)
           </Button>
-        </DialogFooter>
+        </div>
       </DialogContent>
     </Dialog>
   );

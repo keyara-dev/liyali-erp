@@ -58,7 +58,7 @@ export function ReassignmentModal({
   const availableUsers = useMemo(() => {
     if (!usersData) return [];
     return usersData.filter(
-      (u: any) => u.id !== task.assignedUserId && u.id !== task.claimedBy
+      (u: any) => u.id !== task.assignedUserId && u.id !== task.claimedBy,
     );
   }, [usersData, task.assignedUserId, task.claimedBy]);
 
@@ -104,8 +104,8 @@ export function ReassignmentModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
+      <DialogContent className="max-w-md max-h-[90svh] flex flex-col p-0 overflow-hidden">
+        <DialogHeader className="shrink-0 px-6 pt-6 pb-4 border-b">
           <DialogTitle>Reassign Approval Task</DialogTitle>
           <DialogDescription>
             Transfer this task to another user. The current assignee will be
@@ -113,7 +113,7 @@ export function ReassignmentModal({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
           {/* Current Task Info */}
           <div className="p-3 bg-muted rounded-lg text-sm">
             <div className="grid grid-cols-2 gap-2">
@@ -123,7 +123,7 @@ export function ReassignmentModal({
                 </span>
                 <p className="font-mono">
                   {capitalize(
-                    task?.entityType || task?.documentType || "Document"
+                    task?.entityType || task?.documentType || "Document",
                   )}
                 </p>
               </div>
@@ -209,11 +209,12 @@ export function ReassignmentModal({
           </Alert>
         </div>
 
-        <DialogFooter className="flex gap-2 sm:flex-row sm:justify-end">
+        <div className="shrink-0 border-t bg-background px-6 py-4 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
           <Button
             variant="outline"
             onClick={() => onOpenChange(false)}
             disabled={isLoading}
+            className="w-full sm:w-auto"
           >
             Cancel
           </Button>
@@ -222,10 +223,11 @@ export function ReassignmentModal({
             disabled={isLoading || !selectedUserId || !reason.trim()}
             isLoading={isLoading}
             loadingText="Reassigning..."
+            className="w-full sm:w-auto"
           >
             Confirm Reassignment
           </Button>
-        </DialogFooter>
+        </div>
       </DialogContent>
     </Dialog>
   );

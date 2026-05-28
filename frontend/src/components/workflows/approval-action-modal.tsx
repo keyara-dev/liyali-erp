@@ -108,52 +108,6 @@ export function ApprovalActionModal({
     </span>
   );
 
-  const modalDescription = (
-    <div className="space-y-3">
-      <div
-        className={`bg-${actionColor}-50 p-3 rounded-lg border border-${actionColor}-200 dark:bg-${actionColor}-950/30 dark:border-${actionColor}-800`}
-      >
-        <p
-          className={`font-semibold uppercase text-${actionColor}-900 dark:text-${actionColor}-200`}
-        >
-          {taskDetails.entityType} #{taskDetails.entityId}
-        </p>
-        <p
-          className={`text-sm text-${actionColor}-700 dark:text-${actionColor}-300`}
-        >
-          Stage:{" "}
-          <span className="font-medium">{taskDetails.stageName}</span>
-        </p>
-        <p
-          className={`text-xs text-${actionColor}-700 dark:text-${actionColor}-400`}
-        >
-          Claimed by: {taskDetails.claimedBy} ({minutesRemaining} min
-          remaining)
-        </p>
-      </div>
-
-      {isApprove ? (
-        <div className="bg-green-50 dark:bg-green-950/30 p-3 rounded-lg border border-green-200 dark:border-green-800">
-          <p className="text-sm text-green-800 dark:text-green-200">
-            <strong>Approving this task will:</strong>
-          </p>
-          <ul className="text-sm text-green-700 dark:text-green-300 mt-1 space-y-1">
-            <li>• Move the document to the next approval stage</li>
-            <li>• Send notifications to relevant stakeholders</li>
-            <li>• Create a permanent audit record of your approval</li>
-            <li>• Progress the workflow according to defined rules</li>
-          </ul>
-        </div>
-      ) : (
-        <div className="bg-red-50 dark:bg-red-950/30 p-3 rounded-lg border border-red-200 dark:border-red-800">
-          <p className="text-sm text-red-800 dark:text-red-200">
-            <strong>Choose a rejection action below.</strong>
-          </p>
-        </div>
-      )}
-    </div>
-  );
-
   const modalFooter = (
     <div className="flex flex-wrap items-center justify-end gap-2">
       <Button
@@ -208,12 +162,53 @@ export function ApprovalActionModal({
       open={isOpen}
       onOpenChange={handleClose}
       title={modalTitle}
-      description={modalDescription}
       desktopMaxWidth="sm:max-w-lg"
       dismissibleOnOutsideClick={false}
       footer={modalFooter}
     >
       <div className="space-y-4">
+        {/* Task context banner — in scrollable body so it doesn't bloat the header */}
+        <div
+          className={`bg-${actionColor}-50 p-3 rounded-lg border border-${actionColor}-200 dark:bg-${actionColor}-950/30 dark:border-${actionColor}-800`}
+        >
+          <p
+            className={`font-semibold uppercase text-${actionColor}-900 dark:text-${actionColor}-200`}
+          >
+            {taskDetails.entityType} #{taskDetails.entityId}
+          </p>
+          <p
+            className={`text-sm text-${actionColor}-700 dark:text-${actionColor}-300`}
+          >
+            Stage: <span className="font-medium">{taskDetails.stageName}</span>
+          </p>
+          <p
+            className={`text-xs text-${actionColor}-700 dark:text-${actionColor}-400`}
+          >
+            Claimed by: {taskDetails.claimedBy} ({minutesRemaining} min
+            remaining)
+          </p>
+        </div>
+
+        {isApprove ? (
+          <div className="bg-green-50 dark:bg-green-950/30 p-3 rounded-lg border border-green-200 dark:border-green-800">
+            <p className="text-sm text-green-800 dark:text-green-200">
+              <strong>Approving this task will:</strong>
+            </p>
+            <ul className="text-sm text-green-700 dark:text-green-300 mt-1 space-y-1">
+              <li>• Move the document to the next approval stage</li>
+              <li>• Send notifications to relevant stakeholders</li>
+              <li>• Create a permanent audit record of your approval</li>
+              <li>• Progress the workflow according to defined rules</li>
+            </ul>
+          </div>
+        ) : (
+          <div className="bg-red-50 dark:bg-red-950/30 p-3 rounded-lg border border-red-200 dark:border-red-800">
+            <p className="text-sm text-red-800 dark:text-red-200">
+              <strong>Choose a rejection action below.</strong>
+            </p>
+          </div>
+        )}
+
         {/* Rejection Type Picker - Only for Rejections */}
         {!isApprove && (
           <div className="space-y-3">
@@ -224,7 +219,10 @@ export function ApprovalActionModal({
               value={rejectionType}
               onValueChange={(v) =>
                 setRejectionType(
-                  v as "reject" | "return_to_draft" | "return_to_previous_stage"
+                  v as
+                    | "reject"
+                    | "return_to_draft"
+                    | "return_to_previous_stage",
                 )
               }
               className="space-y-2"
@@ -252,8 +250,8 @@ export function ApprovalActionModal({
                       </span>
                     </div>
                     <p className="text-xs text-muted-foreground mt-1">
-                      Send back to the previous approval stage for revision.
-                      The workflow stays active.
+                      Send back to the previous approval stage for revision. The
+                      workflow stays active.
                     </p>
                   </div>
                 </label>
@@ -275,9 +273,7 @@ export function ApprovalActionModal({
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
                     <RotateCcw className="h-4 w-4 text-amber-600" />
-                    <span className="font-medium text-sm">
-                      Return to Draft
-                    </span>
+                    <span className="font-medium text-sm">Return to Draft</span>
                   </div>
                   <p className="text-xs text-muted-foreground mt-1">
                     Send the document back to the requester. They can edit and
@@ -294,11 +290,7 @@ export function ApprovalActionModal({
                     : "border-border hover:bg-muted/50"
                 }`}
               >
-                <RadioGroupItem
-                  value="reject"
-                  id="reject"
-                  className="mt-0.5"
-                />
+                <RadioGroupItem value="reject" id="reject" className="mt-0.5" />
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
                     <Ban className="h-4 w-4 text-red-600" />

@@ -5,10 +5,9 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -44,8 +43,7 @@ export function MarkPaidWithPOPModal({
   const mutation = useMutation({
     mutationFn: async () => {
       if (!file) throw new Error("Proof of payment file is required");
-      if (file.size > MAX_FILE_SIZE)
-        throw new Error("File exceeds 10MB limit");
+      if (file.size > MAX_FILE_SIZE) throw new Error("File exceeds 10MB limit");
       if (!ALLOWED_MIME_TYPES.includes(file.type))
         throw new Error("File must be PDF, JPG, or PNG");
       if (!paidDate) throw new Error("Paid date is required");
@@ -56,9 +54,8 @@ export function MarkPaidWithPOPModal({
       if (notes.trim()) fd.append("notes", notes.trim());
 
       const result = await markPaidWithPOP(pvId, fd);
-      if (!result.success) {
+      if (!result.success)
         throw new Error(result.message || "Failed to mark as paid");
-      }
       return result;
     },
     onSuccess: () => {
@@ -69,7 +66,6 @@ export function MarkPaidWithPOPModal({
       });
       qc.invalidateQueries({ queryKey: [QUERY_KEYS.PAYMENT_VOUCHERS.STATS] });
       qc.invalidateQueries({ queryKey: [QUERY_KEYS.DASHBOARD.METRICS] });
-      // Reset form
       setFile(null);
       setPaidDate(new Date().toISOString().slice(0, 10));
       setNotes("");
@@ -85,15 +81,17 @@ export function MarkPaidWithPOPModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
+      <DialogContent className="max-w-md max-h-[90svh] flex flex-col p-0 overflow-hidden">
+        {/* Header */}
+        <DialogHeader className="shrink-0 px-6 pt-6 pb-4 border-b">
           <DialogTitle>Mark as Paid</DialogTitle>
-          <DialogDescription asChild>
-            <div>Upload proof of payment to complete this voucher.</div>
+          <DialogDescription>
+            Upload proof of payment to complete this voucher.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 py-2">
+        {/* Scrollable body */}
+        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
           <div className="space-y-2">
             <Label htmlFor="popFile">
               Proof of payment file <span className="text-destructive">*</span>
@@ -121,34 +119,37 @@ export function MarkPaidWithPOPModal({
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="popNotes">Notes</Label>
-            <Textarea
-              id="popNotes"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Optional additional notes about this payment"
-              rows={3}
-            />
-          </div>
+          <Textarea
+            id="popNotes"
+            label="Notes (optional)"
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            placeholder="Optional additional notes about this payment"
+            rows={3}
+          />
         </div>
 
-        <DialogFooter>
+        {/* Sticky footer */}
+        <div className="shrink-0 border-t bg-background px-6 py-4 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
           <Button
+            type="button"
             variant="outline"
             onClick={() => onOpenChange(false)}
             disabled={mutation.isPending}
+            className="w-full sm:w-auto"
           >
             Cancel
           </Button>
           <Button
             onClick={() => mutation.mutate()}
             disabled={!canSubmit}
-            className="bg-emerald-600 hover:bg-emerald-700"
+            isLoading={mutation.isPending}
+            loadingText="Submitting…"
+            className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700"
           >
-            {mutation.isPending ? "Submitting…" : "Confirm paid"}
+            Confirm Paid
           </Button>
-        </DialogFooter>
+        </div>
       </DialogContent>
     </Dialog>
   );

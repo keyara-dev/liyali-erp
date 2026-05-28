@@ -7,7 +7,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -98,20 +97,23 @@ export function MarkPaidDialog({
   };
 
   const approvedAmount = paymentVoucher.totalAmount || paymentVoucher.amount;
-  const enteredAmount = parseFloat(paidAmount) || 0;
-  const hasMismatch = enteredAmount > 0 && enteredAmount !== approvedAmount;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
+      <DialogContent
+        className="max-w-md max-h-[90svh] flex flex-col p-0 overflow-hidden"
+        onInteractOutside={(e) => e.preventDefault()}
+      >
+        {/* Header */}
+        <DialogHeader className="shrink-0 px-6 pt-6 pb-4 border-b">
           <DialogTitle>Record Payment</DialogTitle>
           <p className="text-sm text-muted-foreground">
             {paymentVoucher.documentNumber}
           </p>
         </DialogHeader>
 
-        <div className="space-y-4 py-2">
+        {/* Scrollable body */}
+        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
           {/* Approved amount reference */}
           <div className="rounded-lg bg-muted/50 p-3 text-sm">
             <span className="text-muted-foreground">Approved Amount: </span>
@@ -120,7 +122,7 @@ export function MarkPaidDialog({
             </span>
           </div>
 
-          {/* Paid Amount — locked to approved amount, backend enforces exact match */}
+          {/* Paid Amount */}
           <div className="space-y-2">
             <Label htmlFor="paidAmount">
               Paid Amount <span className="text-destructive">*</span>
@@ -180,19 +182,16 @@ export function MarkPaidDialog({
           </div>
 
           {/* Comments */}
-          <div className="space-y-2">
-            <Textarea
-              id="comments"
-              label="Comments (optional)"
-              placeholder="Any additional notes about this payment..."
-              rows={2}
-              value={comments}
-              onChange={(e) => setComments(e.target.value)}
-            />
-          </div>
+          <Textarea
+            id="comments"
+            label="Comments (optional)"
+            placeholder="Any additional notes about this payment..."
+            rows={2}
+            value={comments}
+            onChange={(e) => setComments(e.target.value)}
+          />
 
-          {/* Signature — executing a payment now records an attributed,
-              signed ActionHistory entry through the workflow task engine. */}
+          {/* Signature */}
           <div className="space-y-2">
             <Label>
               Signature <span className="text-destructive">*</span>
@@ -201,11 +200,14 @@ export function MarkPaidDialog({
           </div>
         </div>
 
-        <DialogFooter className="gap-2">
+        {/* Sticky footer */}
+        <div className="shrink-0 border-t bg-background px-6 py-4 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
           <Button
+            type="button"
             variant="outline"
             onClick={() => onOpenChange(false)}
             disabled={mutation.isPending}
+            className="w-full sm:w-auto"
           >
             Cancel
           </Button>
@@ -214,11 +216,12 @@ export function MarkPaidDialog({
             disabled={mutation.isPending}
             isLoading={mutation.isPending}
             loadingText="Recording..."
+            className="w-full sm:w-auto"
           >
             <CheckCircle className="mr-2 h-4 w-4" />
             Mark as Paid
           </Button>
-        </DialogFooter>
+        </div>
       </DialogContent>
     </Dialog>
   );
