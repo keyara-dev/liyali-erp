@@ -364,6 +364,9 @@ type UpdatePaymentVoucherRequest struct {
 	BudgetCode   string `json:"budgetCode"`
 	CostCenter   string `json:"costCenter"`
 	ProjectCode  string `json:"projectCode"`
+	// Line items — only persisted when the voucher is in DRAFT status.
+	// nil means "unchanged"; an empty slice clears all items.
+	Items *[]PaymentItem `json:"items,omitempty"`
 }
 
 // PaymentVoucherResponse represents a payment voucher in responses

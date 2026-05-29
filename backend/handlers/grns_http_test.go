@@ -29,7 +29,7 @@ func newGRNApp(t *testing.T) *fiber.App {
 	app.Put("/grns/:id", auth, UpdateGRN)
 	app.Delete("/grns/:id", auth, DeleteGRN)
 	app.Post("/grns/:id/submit", auth, SubmitGRN)
-	app.Post("/grns/:id/confirm", auth, ConfirmGRN)
+	// Confirm endpoint removed — workflow approval auto-cascades to COMPLETED.
 	return app
 }
 
@@ -500,67 +500,9 @@ func TestSubmitGRN_AlreadyPending(t *testing.T) {
 // POST /grns/:id/confirm
 // ─────────────────────────────────────────────────────────────────────────────
 
-func TestConfirmGRN_NoAuth(t *testing.T) {
-	db := setupTestDB(t)
-	defer teardownTestDB(t, db)
-
-	app := fiber.New()
-	app.Post("/grns/:id/confirm", ConfirmGRN)
-
-	resp := testRequest(app, http.MethodPost, "/grns/some-id/confirm", nil)
-	if resp.StatusCode != http.StatusUnauthorized {
-		t.Errorf("expected 401, got %d", resp.StatusCode)
-	}
-}
-
-func TestConfirmGRN_NotFound(t *testing.T) {
-	db := setupTestDB(t)
-	defer teardownTestDB(t, db)
-
-	app := newGRNApp(t)
-	resp := testRequest(app, http.MethodPost, "/grns/non-existent-id/confirm", nil)
-	if resp.StatusCode != http.StatusNotFound {
-		t.Errorf("expected 404, got %d", resp.StatusCode)
-	}
-}
-
-func TestConfirmGRN_NotApproved(t *testing.T) {
-	db := setupTestDB(t)
-	defer teardownTestDB(t, db)
-
-	// Only APPROVED GRNs can be confirmed
-	grn := makeGRN(t, "GRN-CONF-001", "PO-2024-0001", "DRAFT")
-
-	app := newGRNApp(t)
-	resp := testRequest(app, http.MethodPost, "/grns/"+grn.ID+"/confirm", nil)
-	if resp.StatusCode != http.StatusBadRequest {
-		t.Errorf("expected 400 when confirming non-APPROVED GRN, got %d", resp.StatusCode)
-	}
-}
-
-func TestConfirmGRN_Success(t *testing.T) {
-	db := setupTestDB(t)
-	defer teardownTestDB(t, db)
-
-	// GRN must be APPROVED for confirm to succeed
-	grn := makeGRN(t, "GRN-CONF-002", "PO-2024-0001", "APPROVED")
-
-	// Seed the test user so action history lookup succeeds
-	seedTestUser(t)
-
-	app := newGRNApp(t)
-	resp := testRequest(app, http.MethodPost, "/grns/"+grn.ID+"/confirm", map[string]interface{}{
-		"comments": "Goods received and verified",
-	})
-	if resp.StatusCode != http.StatusOK {
-		body := decodeResponse(resp)
-		t.Fatalf("expected 200, got %d; body=%v", resp.StatusCode, body)
-	}
-	body := decodeResponse(resp)
-	if body["success"] != true {
-		t.Errorf("expected success=true, got %v", body["success"])
-	}
-}
+// ConfirmGRN endpoint removed: workflow approval now auto-cascades
+// APPROVED → COMPLETED. MarkGRNComplete covers the skip-workflow path.
+// Legacy tests deleted to avoid drift; see grn_signoff_http_test.go.
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Scope isolation: procurement role cannot see GRNs linked to direct_payment POs

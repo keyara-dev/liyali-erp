@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { PageHeader } from "@/components/base/page-header";
 import { PaymentVoucherItemsList } from "../../_components/payment-voucher-items-list";
+import { PVItemsEditor } from "./pv-items-editor";
 import { ProcurementFlowIndicator } from "../../_components/procurement-flow-indicator";
 import { PaymentVoucher } from "@/types/payment-voucher";
 import {
@@ -640,7 +641,18 @@ export function PVDetailClient({
               </h2>
             </div>
 
-            {paymentVoucher.items && paymentVoucher.items.length > 0 ? (
+            {paymentVoucher.status?.toUpperCase() === "DRAFT" &&
+            permissions.isCreator ? (
+              // DRAFT + creator → inline editable line-item table.
+              // The backend rejects item edits on any other status (403),
+              // so we don't render the editor for them either.
+              <PVItemsEditor
+                pvId={pvId}
+                items={paymentVoucher.items}
+                currency={paymentVoucher.currency}
+                userId={userId}
+              />
+            ) : paymentVoucher.items && paymentVoucher.items.length > 0 ? (
               <PaymentVoucherItemsList
                 items={paymentVoucher.items}
                 currency={paymentVoucher.currency}

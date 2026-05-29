@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import { ResponsiveSheet } from "@/components/ui/responsive-sheet";
 import { Button } from "@/components/ui/button";
@@ -70,11 +70,26 @@ export function CreatePVFromPODialog({
   const { data: allGRNs = [] } = useGRNs(1, 50, {
     poDocumentNumber: purchaseOrder.documentNumber,
   });
+  // Eligible GRNs: APPROVED kept for back-compat (pre-workflow-auto-complete
+  // GRNs) plus COMPLETED (the new workflow-terminal state since the legacy
+  // ConfirmGRN step was removed) and MarkComplete skip-workflow path.
   const grns = useMemo(
     () =>
-      allGRNs.filter((g: any) => g.status?.toUpperCase() === "APPROVED"),
+      allGRNs.filter((g: any) => {
+        const s = g.status?.toUpperCase();
+        return s === "APPROVED" || s === "COMPLETED";
+      }),
     [allGRNs],
   );
+
+  // Auto-select when exactly one eligible GRN exists — common case in
+  // goods_first where one PO maps to one GRN one-to-one.
+  useEffect(() => {
+    if (!selectedGRNDocNumber && grns.length === 1) {
+      setSelectedGRNDocNumber(grns[0].documentNumber);
+    }
+  }, [grns, selectedGRNDocNumber]);
+
   const pendingGRNs = useMemo(
     () =>
       allGRNs.filter(

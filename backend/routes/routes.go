@@ -356,7 +356,6 @@ func SetupRoutes(app *fiber.App, handlerRegistry *handlers.HandlerRegistry, rbac
 	grns.Put("/:id", middleware.RequirePermission(rbacService, "grn", "edit"), handlers.UpdateGRN)
 	grns.Delete("/:id", middleware.RequirePermission(rbacService, "grn", "delete"), handlers.DeleteGRN)
 	grns.Post("/:id/submit", middleware.RequirePermission(rbacService, "grn", "edit"), handlers.SubmitGRN)
-	grns.Post("/:id/confirm", middleware.RequirePermission(rbacService, "grn", "edit"), handlers.ConfirmGRN)
 	// Two-signature sign-off + optional workflow-less completion
 	grns.Post("/:id/sign-receive", middleware.RequirePermission(rbacService, "grn", "edit"), handlers.SignReceiveGRN)
 	grns.Post("/:id/certify", middleware.RequirePermission(rbacService, "grn", "edit"), handlers.CertifyGRN)

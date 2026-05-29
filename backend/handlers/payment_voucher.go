@@ -277,9 +277,12 @@ func CreatePaymentVoucher(c *fiber.Ctx) error {
 				"Cannot create PV: linked PO %s is in %s status and must be APPROVED first.",
 				req.LinkedPO, linkedPO.Status))
 		}
+		// Block re-creation only when a *live* PV exists. CANCELLED and
+		// REJECTED PVs are terminal-failure states; the user must be able to
+		// retry with a fresh PV.
 		var existingPV models.PaymentVoucher
 		if err := config.DB.
-			Where("linked_po = ? AND organization_id = ? AND UPPER(status) != 'CANCELLED'",
+			Where("linked_po = ? AND organization_id = ? AND UPPER(status) NOT IN ('CANCELLED','REJECTED')",
 				req.LinkedPO, tenant.OrganizationID).
 			First(&existingPV).Error; err == nil {
 			return utils.SendConflictError(c, fmt.Sprintf(
@@ -316,9 +319,12 @@ func CreatePaymentVoucher(c *fiber.Ctx) error {
 				return utils.SendBadRequestError(c, fmt.Sprintf(
 					"GRN %s is not linked to PO %s", req.LinkedGRN, req.LinkedPO))
 			}
-			if strings.ToUpper(linkedGRN.Status) != "APPROVED" {
+			// COMPLETED is now the terminal state (workflow auto-advances
+			// past APPROVED). Both states satisfy the "goods received" gate.
+			grnStatus := strings.ToUpper(linkedGRN.Status)
+			if grnStatus != "APPROVED" && grnStatus != "COMPLETED" {
 				return utils.SendBadRequestError(c, fmt.Sprintf(
-					"Cannot create PV: linked GRN %s is in %s status and must be APPROVED first.",
+					"Cannot create PV: linked GRN %s is in %s status and must be APPROVED or COMPLETED first.",
 					req.LinkedGRN, linkedGRN.Status))
 			}
 
@@ -420,6 +426,61 @@ func CreatePaymentVoucher(c *fiber.Ctx) error {
 		Action:         "created",
 		Details:        map[string]interface{}{"documentNumber": voucher.DocumentNumber},
 	})
+
+	// Optional auto-submit: when the org has enabled AutoSubmitPVToWorkflow,
+	// hand the PV straight to the default workflow on creation.
+	if pvOrgSettings, _ := services.NewOrganizationService(config.DB).
+		GetOrganizationSettings(tenant.OrganizationID); pvOrgSettings != nil && pvOrgSettings.AutoSubmitPVToWorkflow {
+		if wfSvc, ok := c.Locals("workflowExecutionService").(*services.WorkflowExecutionService); ok && wfSvc != nil {
+			if defaultWF, _ := services.NewWorkflowService(nil, nil, config.DB).
+				GetDefaultWorkflowForEntity(tenant.OrganizationID, "payment_voucher"); defaultWF != nil {
+				autoTx := config.DB.Begin()
+				autoSubmitOK := false
+				if _, err := wfSvc.AssignWorkflowToDocumentWithIDTx(
+					c.Context(), autoTx, tenant.OrganizationID, voucher.ID, "payment_voucher",
+					defaultWF.ID.String(), tenant.UserID,
+				); err == nil {
+					_ = autoTx.Model(&models.PaymentVoucher{}).
+						Where("id = ?", voucher.ID).
+						Update("status", models.StatusPending).Error
+					if commitErr := autoTx.Commit().Error; commitErr == nil {
+						autoSubmitOK = true
+					}
+					_ = config.DB.Where("id = ?", voucher.ID).First(&voucher).Error
+				} else {
+					autoTx.Rollback()
+				}
+
+				// Post-commit: append a system-actor audit entry so the
+				// trail reflects that no human signed off this submission.
+				if autoSubmitOK {
+					pvAutoNow := time.Now()
+					pvAutoHistory := voucher.ActionHistory.Data()
+					pvAutoHistory = append(pvAutoHistory, types.ActionHistoryEntry{
+						ID:              uuid.New().String(),
+						Action:          "AUTO_SUBMIT",
+						ActionType:      "SUBMIT",
+						PerformedBy:     "system",
+						PerformedByName: "System (auto-submit)",
+						PerformedByRole: "system",
+						Timestamp:       pvAutoNow,
+						PerformedAt:     pvAutoNow,
+						PreviousStatus:  models.StatusDraft,
+						NewStatus:       models.StatusPending,
+						Comments:        "Auto-submitted via AutoSubmitPVToWorkflow org setting",
+						Metadata: map[string]interface{}{
+							"triggeredBy":    tenant.UserID,
+							"orgSettingFlag": "AutoSubmitPVToWorkflow",
+						},
+					})
+					voucher.ActionHistory = datatypes.NewJSONType(pvAutoHistory)
+					_ = config.DB.Model(&voucher).
+						Where("id = ?", voucher.ID).
+						Update("action_history", voucher.ActionHistory).Error
+				}
+			}
+		}
+	}
 
 	return c.Status(fiber.StatusCreated).JSON(types.DetailResponse{
 		Success: true,
@@ -569,6 +630,28 @@ func UpdatePaymentVoucher(c *fiber.Ctx) error {
 	}
 	if req.ProjectCode != "" {
 		voucher.ProjectCode = req.ProjectCode
+	}
+
+	// Line-item edits are only allowed while the voucher is still a DRAFT.
+	// Once submitted, the items become part of the approval record and must
+	// not change underneath approvers.
+	if req.Items != nil {
+		if strings.ToUpper(voucher.Status) != "DRAFT" {
+			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
+				"success": false,
+				"message": "Line items can only be edited while the payment voucher is in DRAFT status",
+			})
+		}
+		items := *req.Items
+		voucher.Items = datatypes.NewJSONType(items)
+
+		// Keep the headline Amount in sync with the line items so that
+		// totals on the PV detail, list, and PDF stay consistent.
+		var itemsTotal float64
+		for _, it := range items {
+			itemsTotal += it.Amount
+		}
+		voucher.Amount = itemsTotal
 	}
 
 	var pvUpdateUser models.User
@@ -841,9 +924,10 @@ func SubmitPaymentVoucher(c *fiber.Ctx) error {
 			First(&linkedGRN).Error; err != nil {
 			return utils.SendBadRequestError(c, "Linked goods received note not found")
 		}
-		if strings.ToUpper(linkedGRN.Status) != "APPROVED" {
+		grnStatusSub := strings.ToUpper(linkedGRN.Status)
+		if grnStatusSub != "APPROVED" && grnStatusSub != "COMPLETED" {
 			return utils.SendBadRequestError(c, fmt.Sprintf(
-				"Cannot submit PV: linked GRN %s is in %s status and must be APPROVED.",
+				"Cannot submit PV: linked GRN %s is in %s status and must be APPROVED or COMPLETED.",
 				voucher.LinkedGRN, linkedGRN.Status))
 		}
 	}

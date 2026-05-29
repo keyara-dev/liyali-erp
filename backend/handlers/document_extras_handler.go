@@ -904,84 +904,9 @@ func GetApproverWorkload(c *fiber.Ctx) error {
 	}, "Approver workload retrieved successfully")
 }
 
-// ============================================================================
-// GRN CONFIRM
-// POST /api/v1/grns/:id/confirm
-// ============================================================================
-
-// ConfirmGRN marks an approved GRN as confirmed/completed.
-func ConfirmGRN(c *fiber.Ctx) error {
-	logger := logging.FromContext(c)
-	logger.Info("confirm_grn_request")
-
-	tenant, err := middleware.GetTenantContext(c)
-	if err != nil {
-		return utils.SendUnauthorizedError(c, "Organization context required")
-	}
-
-	id := c.Params("id")
-	if id == "" {
-		return utils.SendBadRequestError(c, "GRN ID is required")
-	}
-
-	var req struct {
-		Comments string `json:"comments"`
-	}
-	c.BodyParser(&req) // optional body
-
-	var grn models.GoodsReceivedNote
-	if err := config.DB.Where("id = ? AND organization_id = ?", id, tenant.OrganizationID).First(&grn).Error; err != nil {
-		return utils.SendNotFoundError(c, "GRN not found")
-	}
-
-	if strings.ToUpper(grn.Status) != "APPROVED" {
-		return utils.SendBadRequestError(c, "Only approved GRNs can be confirmed")
-	}
-
-	userID := c.Locals("userID").(string)
-	var user models.User
-	config.DB.Where("id = ?", userID).First(&user)
-
-	now := time.Now()
-	grn.Status = models.StatusCompleted
-	grn.SignoffStatus = "COMPLETED"
-	grn.UpdatedAt = now
-
-	actionHistory := grn.ActionHistory.Data()
-	actionHistory = append(actionHistory, types.ActionHistoryEntry{
-		ID:              uuid.New().String(),
-		Action:          "CONFIRM",
-		PerformedBy:     userID,
-		PerformedByName: user.Name,
-		PerformedByRole: user.Role,
-		Timestamp:       now,
-		Comments:        req.Comments,
-		ActionType:      "CONFIRM",
-		PreviousStatus:  models.StatusApproved,
-		NewStatus:       models.StatusCompleted,
-	})
-	grn.ActionHistory = datatypes.NewJSONType(actionHistory)
-
-	if err := config.DB.Save(&grn).Error; err != nil {
-		logging.LogError(c, err, "confirm_grn_failed", nil)
-		return utils.SendInternalError(c, "Failed to confirm GRN", err)
-	}
-
-	go utils.SyncDocumentAs(config.DB, "GRN", grn.ID, userID)
-	go services.LogDocumentEvent(config.DB, services.DocumentEvent{
-		OrganizationID: tenant.OrganizationID,
-		DocumentID:     grn.ID,
-		DocumentType:   "grn",
-		UserID:         userID,
-		ActorName:      user.Name,
-		ActorRole:      user.Role,
-		Action:         "confirmed",
-		Details:        map[string]interface{}{"documentNumber": grn.DocumentNumber},
-	})
-
-	logger.Info("grn_confirmed")
-	return utils.SendSimpleSuccess(c, modelToGRNResponse(grn), "GRN confirmed successfully")
-}
+// GRN /confirm endpoint removed: workflow approval now auto-transitions the
+// GRN to COMPLETED via cascadeGRNApprovalToPO + status update in
+// workflow_execution_service.go. The skip-workflow path uses MarkGRNComplete.
 
 // ============================================================================
 // PAYMENT VOUCHER — MARK PAID WITH PROOF OF PAYMENT (direct-payment flow)
@@ -1158,6 +1083,14 @@ func MarkPaidWithPOP(c *fiber.Ctx) error {
 							"updated_at": now,
 						})
 				}
+			}
+		}
+
+		// Cascade parent PO to COMPLETED when delivery is full + all PVs PAID
+		// (closes both procurement flows: goods_first and payment_first).
+		if wfSvc, ok := c.Locals("workflowExecutionService").(*services.WorkflowExecutionService); ok && wfSvc != nil {
+			if err := wfSvc.CascadePVPaidToPO(tx, voucher.ID); err != nil {
+				return fmt.Errorf("cascade PV→PO: %w", err)
 			}
 		}
 

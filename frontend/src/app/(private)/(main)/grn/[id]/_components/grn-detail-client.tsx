@@ -129,11 +129,6 @@ export function GRNDetailClient({
     return hit?.name || hit?.email || id;
   };
 
-  const handleConfirm = () => {
-    toast.success("Navigating to confirmation...");
-    router.push(`/grn/${grnId}/confirmation`);
-  };
-
   const handleBack = () => {
     router.back();
   };
@@ -149,10 +144,17 @@ export function GRNDetailClient({
       const res = await completeGRNAction({ grnId });
       if (res.success) {
         toast.success("GRN marked complete");
+        // Completion cascades to PO.delivery_status + may auto-create a PV
+        // via AutoCreatePVFromPO. Invalidate everything downstream.
         queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.GRN.ALL] });
         queryClient.invalidateQueries({
           queryKey: [QUERY_KEYS.GRN.BY_ID, grnId],
         });
+        queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PURCHASE_ORDERS.ALL] });
+        queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PURCHASE_ORDERS.BY_ID] });
+        queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PAYMENT_VOUCHERS.ALL] });
+        queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PAYMENT_VOUCHERS.BY_ID] });
+        queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.DASHBOARD.METRICS] });
       } else {
         toast.error(res.message || "Failed to complete GRN");
       }
@@ -263,16 +265,6 @@ export function GRNDetailClient({
             Mark Complete
           </Button>
         </>
-      )}
-      {statusKey === "APPROVED" && (
-        <Button
-          size="sm"
-          onClick={handleConfirm}
-          className="gap-1.5 bg-blue-600 hover:bg-blue-700"
-        >
-          <CheckCircle2 className="h-3.5 w-3.5" />
-          Confirm Receipt
-        </Button>
       )}
     </div>
   );

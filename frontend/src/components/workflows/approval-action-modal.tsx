@@ -16,6 +16,7 @@ import {
   Undo2,
 } from "lucide-react";
 import { DigitalSignaturePad } from "@/components/ui/digital-signature-pad";
+import { useGRNById } from "@/hooks/use-grn-queries";
 
 interface ApprovalActionModalProps {
   isOpen: boolean;
@@ -189,6 +190,13 @@ export function ApprovalActionModal({
           </p>
         </div>
 
+        {/* GRN-specific: surface the two captured signatures + sign-off state
+            so the approver doesn't have to navigate to the GRN detail to
+            verify the receiver/certifier already signed. */}
+        {taskDetails.entityType?.toLowerCase() === "grn" && (
+          <GRNSignoffSnapshot grnId={taskDetails.entityId} />
+        )}
+
         {isApprove ? (
           <div className="bg-green-50 dark:bg-green-950/30 p-3 rounded-lg border border-green-200 dark:border-green-800">
             <p className="text-sm text-green-800 dark:text-green-200">
@@ -361,5 +369,90 @@ export function ApprovalActionModal({
         )}
       </div>
     </ResponsiveSheet>
+  );
+}
+
+function GRNSignoffSnapshot({ grnId }: { grnId: string }) {
+  const { data: grn } = useGRNById(grnId);
+  if (!grn) return null;
+
+  type GRN = typeof grn & {
+    signoffStatus?: string;
+    receivedByName?: string;
+    receivedBySignature?: string;
+    receivedAt?: string | Date;
+    certifiedByName?: string;
+    certifiedBySignature?: string;
+    certifiedAt?: string | Date;
+  };
+  const g = grn as GRN;
+
+  const fmt = (v?: string | Date) => {
+    if (!v) return "—";
+    const d = typeof v === "string" ? new Date(v) : v;
+    return Number.isNaN(d.getTime()) ? "—" : d.toLocaleString();
+  };
+
+  return (
+    <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-2 text-sm">
+      <div className="flex items-center justify-between">
+        <span className="font-semibold">GRN sign-off</span>
+        <span className="text-xs text-muted-foreground uppercase">
+          {g.signoffStatus ?? "—"}
+        </span>
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <SignoffCell
+          label="Received By"
+          name={g.receivedByName}
+          signature={g.receivedBySignature}
+          at={g.receivedAt}
+          format={fmt}
+        />
+        <SignoffCell
+          label="Certified By"
+          name={g.certifiedByName}
+          signature={g.certifiedBySignature}
+          at={g.certifiedAt}
+          format={fmt}
+        />
+      </div>
+    </div>
+  );
+}
+
+function SignoffCell({
+  label,
+  name,
+  signature,
+  at,
+  format,
+}: {
+  label: string;
+  name?: string;
+  signature?: string;
+  at?: string | Date;
+  format: (v?: string | Date) => string;
+}) {
+  return (
+    <div className="rounded border border-border/60 bg-background p-2">
+      <p className="text-[10px] font-semibold uppercase text-muted-foreground tracking-wider">
+        {label}
+      </p>
+      <p className="text-xs font-medium truncate">{name || "—"}</p>
+      {signature ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={signature}
+          alt={`${label} signature`}
+          className="mt-1 max-h-10 object-contain"
+        />
+      ) : (
+        <p className="text-[10px] text-muted-foreground italic mt-1">
+          Not yet signed
+        </p>
+      )}
+      <p className="text-[10px] text-muted-foreground mt-1">{format(at)}</p>
+    </div>
   );
 }

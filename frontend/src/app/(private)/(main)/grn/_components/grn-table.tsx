@@ -42,6 +42,8 @@ interface GrnTableProps {
   userRole: string;
   refreshTrigger: number;
   onRefresh: () => void;
+  /** When set, only GRNs linked to this PO doc number are shown. */
+  poFilter?: string;
 }
 
 const GRN_EDIT_ROLES = ["admin", "finance"];
@@ -111,6 +113,7 @@ export function GrnTable({
   userRole,
   refreshTrigger,
   onRefresh: _onRefresh,
+  poFilter,
 }: GrnTableProps) {
   const router = useRouter();
   const { data: grns = [], isLoading, refetch } = useGRNs(1, 50);
@@ -139,6 +142,12 @@ export function GrnTable({
   const filteredGrns = useMemo(() => {
     let filtered = grns;
 
+    if (poFilter) {
+      filtered = filtered.filter(
+        (g) => g.poDocumentNumber === poFilter,
+      );
+    }
+
     if (statusFilter !== "all") {
       filtered = filtered.filter(
         (g) => g.status?.toLowerCase() === statusFilter,
@@ -161,7 +170,7 @@ export function GrnTable({
     }
 
     return filtered;
-  }, [grns, statusFilter, debouncedSearch, posByDocNumber]);
+  }, [grns, statusFilter, debouncedSearch, posByDocNumber, poFilter]);
 
   const hasActiveFilters = Boolean(searchQuery) || statusFilter !== "all";
 

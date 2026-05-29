@@ -281,7 +281,7 @@ func CreateGRN(c *fiber.Ctx) error {
 	if effectiveFlow == "payment_first" && req.LinkedPV != "" {
 		var existingGRN models.GoodsReceivedNote
 		if err := config.DB.
-			Where("linked_pv = ? AND organization_id = ? AND UPPER(status) != 'CANCELLED'",
+			Where("linked_pv = ? AND organization_id = ? AND UPPER(status) NOT IN ('CANCELLED','REJECTED')",
 				req.LinkedPV, tenant.OrganizationID).
 			First(&existingGRN).Error; err == nil {
 			return utils.SendConflictError(c, fmt.Sprintf(
@@ -291,7 +291,7 @@ func CreateGRN(c *fiber.Ctx) error {
 	} else {
 		var existingGRN models.GoodsReceivedNote
 		if err := config.DB.
-			Where("po_document_number = ? AND organization_id = ? AND UPPER(status) != 'CANCELLED'",
+			Where("po_document_number = ? AND organization_id = ? AND UPPER(status) NOT IN ('CANCELLED','REJECTED')",
 				req.PODocumentNumber, tenant.OrganizationID).
 			First(&existingGRN).Error; err == nil {
 			return utils.SendConflictError(c, fmt.Sprintf(
@@ -1209,6 +1209,63 @@ func CertifyGRN(c *fiber.Ctx) error {
 	// Optional auto-submit: when the org has enabled AutoSubmitGRNToWorkflow,
 	// hand the GRN straight to the default workflow on certification.
 	// (Manual submit endpoint is still available.)
+	orgSvc := services.NewOrganizationService(config.DB)
+	orgSettings, _ := orgSvc.GetOrganizationSettings(tenant.OrganizationID)
+	if orgSettings != nil && orgSettings.AutoSubmitGRNToWorkflow {
+		if wfSvc, ok := c.Locals("workflowExecutionService").(*services.WorkflowExecutionService); ok && wfSvc != nil {
+			if wfRegSvc := services.NewWorkflowService(nil, nil, config.DB); wfRegSvc != nil {
+				if defaultWF, _ := wfRegSvc.GetDefaultWorkflowForEntity(tenant.OrganizationID, "grn"); defaultWF != nil {
+					autoTx := config.DB.Begin()
+					autoSubmitOK := false
+					if _, err := wfSvc.AssignWorkflowToDocumentWithIDTx(
+						c.Context(), autoTx, tenant.OrganizationID, grn.ID, "grn",
+						defaultWF.ID.String(), tenant.UserID,
+					); err == nil {
+						_ = autoTx.Model(&models.GoodsReceivedNote{}).
+							Where("id = ?", grn.ID).
+							Update("status", models.StatusPending).Error
+						if commitErr := autoTx.Commit().Error; commitErr == nil {
+							autoSubmitOK = true
+						}
+					} else {
+						autoTx.Rollback()
+					}
+
+					// Post-commit: append a system-actor audit entry so the
+					// trail reflects that no human signed off this submission.
+					if autoSubmitOK {
+						var autoGRN models.GoodsReceivedNote
+						if err := config.DB.Where("id = ?", grn.ID).First(&autoGRN).Error; err == nil {
+							autoNow := time.Now()
+							autoHistory := autoGRN.ActionHistory.Data()
+							autoHistory = append(autoHistory, types.ActionHistoryEntry{
+								ID:              uuid.New().String(),
+								Action:          "AUTO_SUBMIT",
+								ActionType:      "SUBMIT",
+								PerformedBy:     "system",
+								PerformedByName: "System (auto-submit)",
+								PerformedByRole: "system",
+								Timestamp:       autoNow,
+								PerformedAt:     autoNow,
+								PreviousStatus:  models.StatusDraft,
+								NewStatus:       models.StatusPending,
+								Comments:        "Auto-submitted via AutoSubmitGRNToWorkflow org setting",
+								Metadata: map[string]interface{}{
+									"triggeredBy":    tenant.UserID,
+									"orgSettingFlag": "AutoSubmitGRNToWorkflow",
+								},
+							})
+							autoGRN.ActionHistory = datatypes.NewJSONType(autoHistory)
+							_ = config.DB.Model(&autoGRN).
+								Where("id = ?", autoGRN.ID).
+								Update("action_history", autoGRN.ActionHistory).Error
+						}
+					}
+				}
+			}
+		}
+	}
+
 	go services.LogDocumentEvent(config.DB, services.DocumentEvent{
 		OrganizationID: tenant.OrganizationID,
 		DocumentID:     grn.ID,
@@ -1262,8 +1319,15 @@ func MarkGRNComplete(c *fiber.Ctx) error {
 	grn.SignoffStatus = "COMPLETED"
 	grn.UpdatedAt = now
 
+	tx := config.DB.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
 	var actor models.User
-	_ = config.DB.Where("id = ?", tenant.UserID).First(&actor).Error
+	_ = tx.Where("id = ?", tenant.UserID).First(&actor).Error
 	history := grn.ActionHistory.Data()
 	comments := req.Comments
 	if comments == "" {
@@ -1284,8 +1348,27 @@ func MarkGRNComplete(c *fiber.Ctx) error {
 	})
 	grn.ActionHistory = datatypes.NewJSONType(history)
 
-	if err := config.DB.Save(&grn).Error; err != nil {
+	if err := tx.Save(&grn).Error; err != nil {
+		tx.Rollback()
 		return utils.SendInternalError(c, "Failed to complete GRN", err)
+	}
+
+	// Cascade the same way the workflow terminal-approve path does — keeps
+	// PO.delivery_status, per-item received quantities, and PO-terminal
+	// auto-completion in sync regardless of which path closed the GRN.
+	if wfSvc, ok := c.Locals("workflowExecutionService").(*services.WorkflowExecutionService); ok && wfSvc != nil {
+		if err := wfSvc.CascadeGRNApprovalToPO(tx, grn.ID); err != nil {
+			tx.Rollback()
+			return utils.SendInternalError(c, "Failed to cascade GRN completion to PO", err)
+		}
+		// Mirror the workflow path: fire AutoCreatePVFromPO if enabled.
+		if err := wfSvc.AutoCreatePVFromCompletedGRN(tx, grn.ID); err != nil {
+			fmt.Printf("Warning: AutoCreatePVFromCompletedGRN failed: %v\n", err)
+		}
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		return utils.SendInternalError(c, "Failed to commit GRN completion", err)
 	}
 
 	go utils.SyncDocumentAs(config.DB, "GRN", grn.ID, tenant.UserID)

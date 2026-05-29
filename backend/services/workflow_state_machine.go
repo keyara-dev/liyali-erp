@@ -16,13 +16,15 @@ import (
 type WorkflowState string
 
 const (
-	StateDraft    WorkflowState = "DRAFT"
-	StatePending  WorkflowState = "PENDING"
-	StateApproved WorkflowState = "APPROVED"
-	StateRejected WorkflowState = "REJECTED"
+	StateDraft     WorkflowState = "DRAFT"
+	StatePending   WorkflowState = "PENDING"
+	StateApproved  WorkflowState = "APPROVED"
+	StateRejected  WorkflowState = "REJECTED"
+	StateRevision  WorkflowState = "REVISION"
+	StateCancelled WorkflowState = "CANCELLED"
 	StateFulfilled WorkflowState = "FULFILLED" // For PO
 	StatePaid      WorkflowState = "PAID"      // For PV
-	StateCompleted WorkflowState = "COMPLETED" // For GRN
+	StateCompleted WorkflowState = "COMPLETED" // For GRN / PO terminal
 )
 
 // WorkflowTransition defines valid state transitions
@@ -94,8 +96,25 @@ func (wsm *WorkflowStateMachine) initializeTransitions() {
 		{From: StateDraft, To: StatePending, Action: "submit", RequiredRole: ""},
 		{From: StatePending, To: StateApproved, Action: "approve", RequiredRole: "approver"},
 		{From: StatePending, To: StateRejected, Action: "reject", RequiredRole: "approver"},
+		{From: StatePending, To: StateRevision, Action: "return_for_revision", RequiredRole: "approver"},
+		// Workflow now auto-advances APPROVED → COMPLETED in the same step
+		// (see workflow_execution_service GRN auto-complete), so the explicit
+		// "complete" transition is kept for backfill of older GRNs.
 		{From: StateApproved, To: StateCompleted, Action: "complete", RequiredRole: ""},
+		// Revision cycles back to DRAFT after the user re-submits the form.
+		{From: StateRevision, To: StateDraft, Action: "resubmit", RequiredRole: ""},
+		// DRAFT or REVISION GRNs can be cancelled by the creator.
+		{From: StateDraft, To: StateCancelled, Action: "cancel", RequiredRole: ""},
+		{From: StateRevision, To: StateCancelled, Action: "cancel", RequiredRole: ""},
 		{From: StateDraft, To: "deleted", Action: "delete", RequiredRole: ""},
+	}
+
+	// Cross-document cancellation transitions for REQ/PO/PV symmetry.
+	for _, k := range []string{"requisition", "po", "pv"} {
+		wsm.transitions[k] = append(wsm.transitions[k],
+			WorkflowTransition{From: StateDraft, To: StateCancelled, Action: "cancel", RequiredRole: ""},
+			WorkflowTransition{From: StateRevision, To: StateCancelled, Action: "cancel", RequiredRole: ""},
+		)
 	}
 }
 

@@ -90,7 +90,7 @@ func newExtrasTestApp() *fiber.App {
 	grp.Get("/requisitions/stats", GetRequisitionStats)
 	grp.Get("/purchase-orders/stats", GetPurchaseOrderStats)
 	grp.Get("/payment-vouchers/stats", GetPaymentVoucherStats)
-	grp.Post("/grn/:id/confirm", ConfirmGRN)
+	// ConfirmGRN removed; workflow auto-cascades APPROVED → COMPLETED.
 	return app
 }
 
@@ -677,53 +677,9 @@ func TestGetPaymentVoucherStats_WithData(t *testing.T) {
 	assert.GreaterOrEqual(t, data["cancelled"].(float64), float64(1))
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// ConfirmGRN — extra coverage
-// Core paths (NoAuth/NotFound/NotApproved/Success) live in grns_http_test.go
-// ─────────────────────────────────────────────────────────────────────────────
-
-func TestConfirmGRN_StatusBecomesCompleted(t *testing.T) {
-	db := setupTestDB(t)
-	defer teardownTestDB(t, db)
-	if sqlDB, err := db.DB(); err == nil {
-		sqlDB.SetMaxOpenConns(1)
-	}
-
-	grn := models.GoodsReceivedNote{
-		ID: "grn-status-check", OrganizationID: testOrgID, DocumentNumber: "GRN-STATUS-CHECK",
-		Status: "APPROVED", ReceivedDate: time.Now(), ReceivedBy: testUserID,
-	}
-	grn.Items = emptyGRNItems()
-	grn.ActionHistory = emptyActionHistory()
-	require.NoError(t, db.Create(&grn).Error)
-
-	app := newExtrasTestApp()
-	resp := testRequest(app, http.MethodPost, "/api/v1/grn/grn-status-check/confirm", map[string]interface{}{
-		"comments": "All items verified",
-	})
-	require.Equal(t, http.StatusOK, resp.StatusCode)
-
-	var updated models.GoodsReceivedNote
-	require.NoError(t, db.First(&updated, "id = ?", "grn-status-check").Error)
-	assert.Equal(t, "COMPLETED", updated.Status)
-}
-
-func TestConfirmGRN_DraftStatus_Rejected(t *testing.T) {
-	db := setupTestDB(t)
-	defer teardownTestDB(t, db)
-
-	grn := models.GoodsReceivedNote{
-		ID: "grn-draft-confirm", OrganizationID: testOrgID, DocumentNumber: "GRN-DRAFT-CONFIRM",
-		Status: "DRAFT", ReceivedDate: time.Now(), ReceivedBy: testUserID,
-	}
-	grn.Items = emptyGRNItems()
-	grn.ActionHistory = emptyActionHistory()
-	require.NoError(t, db.Create(&grn).Error)
-
-	app := newExtrasTestApp()
-	resp := testRequest(app, http.MethodPost, "/api/v1/grn/grn-draft-confirm/confirm", nil)
-	require.Equal(t, http.StatusBadRequest, resp.StatusCode)
-}
+// ConfirmGRN tests removed alongside the endpoint. Workflow approval now
+// auto-cascades APPROVED → COMPLETED (see workflow_execution_service.go),
+// and MarkGRNComplete covers the skip-workflow path.
 
 // ─────────────────────────────────────────────────────────────────────────────
 // GetSystemStatistics (reports.go)

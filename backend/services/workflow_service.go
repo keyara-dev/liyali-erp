@@ -198,6 +198,26 @@ func (s *WorkflowService) CreateWorkflow(ctx context.Context, organizationID, us
 	return workflow, nil
 }
 
+// GetDefaultWorkflowForEntity returns the active is_default=true workflow for
+// the given entity type in the org, or nil if none exists. Used by the
+// auto-submit / auto-create automation flags so the caller doesn't have to
+// know the workflow ID up front.
+func (s *WorkflowService) GetDefaultWorkflowForEntity(organizationID, entityType string) (*models.Workflow, error) {
+	var wf models.Workflow
+	err := s.db.Model(&models.Workflow{}).
+		Where("organization_id = ? AND entity_type = ? AND is_default = ? AND is_active = ?",
+			organizationID, entityType, true, true).
+		Order("version DESC").
+		First(&wf).Error
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &wf, nil
+}
+
 // GetWorkflow retrieves a workflow by ID
 func (s *WorkflowService) GetWorkflow(ctx context.Context, id uuid.UUID, organizationID string) (*models.Workflow, error) {
 	var workflow models.Workflow

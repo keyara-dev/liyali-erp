@@ -950,6 +950,13 @@ func (s *WorkflowExecutionService) completePaymentExecutionTask(
 		return fmt.Errorf("failed to mark payment voucher as paid: %w", err)
 	}
 
+	// Symmetric to the GRN→PO cascade — when a PV becomes PAID, check whether
+	// the parent PO is now fully delivered + all PVs paid and advance it to
+	// COMPLETED. Closes both procurement chains.
+	if err := s.CascadePVPaidToPO(tx, voucher.ID); err != nil {
+		return fmt.Errorf("cascade PV paid → PO: %w", err)
+	}
+
 	go utils.SyncDocumentAs(s.db, "PAYMENT_VOUCHER", voucher.ID, userID)
 	go LogDocumentEvent(s.db, DocumentEvent{
 		OrganizationID: voucher.OrganizationID,
@@ -1173,11 +1180,30 @@ func (s *WorkflowExecutionService) ApproveWorkflowTaskWithVersion(ctx context.Co
 				}
 			}
 
-			// GRNs: cascade final approval to parent PO delivery tracking.
+			// GRNs: cascade final approval to parent PO delivery tracking, then
+			// auto-advance to COMPLETED — the old ConfirmGRN step was a vestige
+			// of the pre-sign-off design and is no longer needed (the
+			// receiver + certifier signatures captured before submit already
+			// stand in for the warehouse-clerk confirmation).
 			if strings.EqualFold(assignment.EntityType, "grn") {
 				if err := s.cascadeGRNApprovalToPO(tx, assignment.EntityID); err != nil {
 					tx.Rollback()
 					return fmt.Errorf("post-approval GRN cascade: %w", err)
+				}
+				if err := tx.Model(&models.GoodsReceivedNote{}).
+					Where("id = ?", assignment.EntityID).
+					Updates(map[string]interface{}{
+						"status":         models.StatusCompleted,
+						"signoff_status": "COMPLETED",
+						"updated_at":     now,
+					}).Error; err != nil {
+					tx.Rollback()
+					return fmt.Errorf("auto-complete GRN: %w", err)
+				}
+				// Fire auto-PV-create if the org opted in. Logged but
+				// non-fatal — primary GRN approval is the source of truth.
+				if err := s.AutoCreatePVFromCompletedGRN(tx, assignment.EntityID); err != nil {
+					fmt.Printf("Warning: AutoCreatePVFromCompletedGRN failed: %v\n", err)
 				}
 			}
 		} else {
@@ -1556,6 +1582,29 @@ func (s *WorkflowExecutionService) RejectWorkflowTaskWithVersion(ctx context.Con
 		if err := s.updateDocumentStatusScopedAs(tx, assignment.EntityType, assignment.EntityID, assignment.OrganizationID, models.StatusRevision, userID); err != nil {
 			tx.Rollback()
 			return fmt.Errorf("failed to update document status: %w", err)
+		}
+
+		// GRN-specific: revising the document invalidates the captured
+		// receiver + certifier signatures because line items can change.
+		// Reset the sign-off lifecycle so the new revision walks the same
+		// PENDING_RECEIVER → PENDING_CERTIFIER → READY path again.
+		if strings.EqualFold(assignment.EntityType, "grn") {
+			if err := tx.Model(&models.GoodsReceivedNote{}).
+				Where("id = ?", assignment.EntityID).
+				Updates(map[string]interface{}{
+					"signoff_status":         "PENDING_RECEIVER",
+					"received_by_name":       "",
+					"received_by_signature":  "",
+					"received_at":            nil,
+					"certified_by_id":        "",
+					"certified_by_name":      "",
+					"certified_by_signature": "",
+					"certified_at":           nil,
+					"updated_at":             time.Now(),
+				}).Error; err != nil {
+				tx.Rollback()
+				return fmt.Errorf("reset GRN signoff on revision: %w", err)
+			}
 		}
 
 		// Create a new task at the previous stage
@@ -2180,6 +2229,12 @@ type ApproverInfo struct {
 // cascadeGRNApprovalToPO recomputes the parent PO's delivery_status and per-item
 // received quantities from the set of non-cancelled GRNs for that PO. Called
 // from the terminal-approve path when entity_type == "grn".
+// CascadeGRNApprovalToPO is the exported wrapper used by handlers that
+// complete a GRN outside the workflow (e.g. MarkGRNComplete).
+func (s *WorkflowExecutionService) CascadeGRNApprovalToPO(tx *gorm.DB, grnID string) error {
+	return s.cascadeGRNApprovalToPO(tx, grnID)
+}
+
 func (s *WorkflowExecutionService) cascadeGRNApprovalToPO(tx *gorm.DB, grnID string) error {
 	var grn models.GoodsReceivedNote
 	if err := tx.Where("id = ?", grnID).First(&grn).Error; err != nil {
@@ -2230,12 +2285,204 @@ func (s *WorkflowExecutionService) cascadeGRNApprovalToPO(tx *gorm.DB, grnID str
 		newDeliveryStatus = models.DeliveryStatusPartiallyDelivered
 	}
 
+	updates := map[string]interface{}{
+		"items":           datatypes.NewJSONType(items),
+		"delivery_status": newDeliveryStatus,
+		"updated_at":      time.Now(),
+	}
+
+	// Terminal cascade: once goods are fully received, advance the PO status
+	// based on payment side. Three branches, all gated on APPROVED today (the
+	// only state from which delivery can land):
+	//   - zero linked PVs           → leave APPROVED (PV doesn't exist yet)
+	//   - some PVs not PAID         → FULFILLED (goods in, money pending)
+	//   - all PVs PAID              → COMPLETED (procurement chain closed)
+	// Applies to both procurement flows (goods_first and payment_first).
+	if newDeliveryStatus == models.DeliveryStatusFullyDelivered &&
+		strings.ToUpper(po.Status) == "APPROVED" {
+		var pvs []models.PaymentVoucher
+		if err := tx.Where("linked_po = ? AND organization_id = ? AND UPPER(status) != ?",
+			po.DocumentNumber, po.OrganizationID, "CANCELLED").Find(&pvs).Error; err != nil {
+			return fmt.Errorf("cascade: list linked PVs: %w", err)
+		}
+		if len(pvs) > 0 {
+			allPaid := true
+			for _, pv := range pvs {
+				if strings.ToUpper(pv.Status) != "PAID" {
+					allPaid = false
+					break
+				}
+			}
+			if allPaid {
+				updates["status"] = models.StatusCompleted
+			} else {
+				updates["status"] = models.StatusFulfilled
+			}
+		}
+	}
+
+	return tx.Model(&models.PurchaseOrder{}).
+		Where("id = ?", po.ID).
+		Updates(updates).Error
+}
+
+// AutoCreatePVFromCompletedGRN inspects the org settings + procurement flow
+// and creates a draft PV from the GRN's parent PO when AutoCreatePVFromPO is
+// on. Safe to call after a GRN reaches COMPLETED — it no-ops when:
+//   - the org flag is off
+//   - flow is payment_first (PV already exists upstream by definition)
+//   - a non-CANCELLED/non-REJECTED PV already exists for this PO
+//   - no PO is linked
+func (s *WorkflowExecutionService) AutoCreatePVFromCompletedGRN(tx *gorm.DB, grnID string) error {
+	var grn models.GoodsReceivedNote
+	if err := tx.Where("id = ?", grnID).First(&grn).Error; err != nil {
+		return nil
+	}
+	if grn.PODocumentNumber == "" {
+		return nil
+	}
+	var po models.PurchaseOrder
+	if err := tx.Where("document_number = ? AND organization_id = ?",
+		grn.PODocumentNumber, grn.OrganizationID).First(&po).Error; err != nil {
+		return nil
+	}
+
+	// Resolve flow + automation flags.
+	flow := strings.ToLower(strings.TrimSpace(po.ProcurementFlow))
+	var settings models.OrganizationSettings
+	if err := tx.Where("organization_id = ?", grn.OrganizationID).First(&settings).Error; err != nil {
+		return nil
+	}
+	if flow == "" && settings.ProcurementFlow != "" {
+		flow = strings.ToLower(settings.ProcurementFlow)
+	}
+	if flow == "payment_first" {
+		return nil
+	}
+	if !settings.AutoCreatePVFromPO {
+		return nil
+	}
+
+	// Skip if a usable PV already exists.
+	var existing int64
+	tx.Model(&models.PaymentVoucher{}).
+		Where("linked_po = ? AND organization_id = ? AND UPPER(status) NOT IN ('CANCELLED','REJECTED')",
+			po.DocumentNumber, po.OrganizationID).
+		Count(&existing)
+	if existing > 0 {
+		return nil
+	}
+
+	// Build PV line items from the GRN: for each GRN line, look up the
+	// matching PO line by trimmed-lowercase description and compute
+	// amount = qtyReceived * unitPrice. Skip zero-quantity lines.
+	poItemByDesc := make(map[string]types.POItem)
+	for _, it := range po.Items.Data() {
+		key := strings.TrimSpace(strings.ToLower(it.Description))
+		poItemByDesc[key] = it
+	}
+	pvItems := make([]types.PaymentItem, 0)
+	var pvTotal float64
+	for _, gi := range grn.Items.Data() {
+		if gi.QuantityReceived <= 0 {
+			continue
+		}
+		key := strings.TrimSpace(strings.ToLower(gi.Description))
+		poItem, ok := poItemByDesc[key]
+		var unitPrice float64
+		if ok {
+			unitPrice = poItem.UnitPrice
+		}
+		amount := float64(gi.QuantityReceived) * unitPrice
+		pvItems = append(pvItems, types.PaymentItem{
+			Description: gi.Description,
+			Amount:      amount,
+			GLCode:      po.GLCode,
+			TaxAmount:   0,
+		})
+		pvTotal += amount
+	}
+
+	now := time.Now()
+	docNum := utils.GenerateDocumentNumber("PV")
+	pv := models.PaymentVoucher{
+		ID:             uuid.New().String(),
+		OrganizationID: po.OrganizationID,
+		DocumentNumber: docNum,
+		LinkedPO:       po.DocumentNumber,
+		LinkedGRN:      grn.DocumentNumber,
+		VendorID:       po.VendorID,
+		VendorName:     po.VendorName,
+		Amount:         pvTotal,
+		Currency:       po.Currency,
+		Status:         models.StatusDraft,
+		CreatedBy:      grn.CreatedBy,
+		Description:    fmt.Sprintf("Auto-created from PO %s after GRN %s completion", po.DocumentNumber, grn.DocumentNumber),
+		CreatedAt:      now,
+		UpdatedAt:      now,
+	}
+	pv.Items = datatypes.NewJSONType(pvItems)
+	pv.ApprovalHistory = datatypes.NewJSONType([]types.ApprovalRecord{})
+	pv.ActionHistory = datatypes.NewJSONType([]types.ActionHistoryEntry{{
+		ID:          uuid.New().String(),
+		Action:      "AUTO_CREATED",
+		ActionType:  "CREATE",
+		Timestamp:   now,
+		PerformedAt: now,
+		Comments:    "Auto-created via AutoCreatePVFromPO setting",
+		NewStatus:   models.StatusDraft,
+		Metadata: map[string]interface{}{
+			"itemsCopiedFromGRN": grn.DocumentNumber,
+			"lineCount":          len(pvItems),
+		},
+	}})
+	return tx.Create(&pv).Error
+}
+
+// CascadePVPaidToPO is the symmetric trigger called after a PV transitions
+// to PAID. It advances the parent PO to COMPLETED when delivery is already
+// FULLY_DELIVERED and every other linked PV is also PAID. Accepts both
+// APPROVED (payment-first: PV paid before/at the same time as final delivery)
+// and FULFILLED (goods-first: PO was parked at FULFILLED awaiting payment)
+// as the source state. Without this, the PO would stay stuck indefinitely.
+func (s *WorkflowExecutionService) CascadePVPaidToPO(tx *gorm.DB, pvID string) error {
+	var pv models.PaymentVoucher
+	if err := tx.Where("id = ?", pvID).First(&pv).Error; err != nil {
+		return fmt.Errorf("cascade: load PV: %w", err)
+	}
+	if pv.LinkedPO == "" {
+		return nil
+	}
+
+	var po models.PurchaseOrder
+	if err := tx.Where("document_number = ? AND organization_id = ?",
+		pv.LinkedPO, pv.OrganizationID).First(&po).Error; err != nil {
+		return fmt.Errorf("cascade: load PO: %w", err)
+	}
+	poStatus := strings.ToUpper(po.Status)
+	if poStatus != "APPROVED" && poStatus != models.StatusFulfilled {
+		return nil
+	}
+	if po.DeliveryStatus != models.DeliveryStatusFullyDelivered {
+		return nil
+	}
+
+	var pvs []models.PaymentVoucher
+	if err := tx.Where("linked_po = ? AND organization_id = ? AND UPPER(status) != ?",
+		po.DocumentNumber, po.OrganizationID, "CANCELLED").Find(&pvs).Error; err != nil {
+		return fmt.Errorf("cascade: list linked PVs: %w", err)
+	}
+	for _, p := range pvs {
+		if strings.ToUpper(p.Status) != "PAID" {
+			return nil
+		}
+	}
+
 	return tx.Model(&models.PurchaseOrder{}).
 		Where("id = ?", po.ID).
 		Updates(map[string]interface{}{
-			"items":           datatypes.NewJSONType(items),
-			"delivery_status": newDeliveryStatus,
-			"updated_at":      time.Now(),
+			"status":     models.StatusCompleted,
+			"updated_at": time.Now(),
 		}).Error
 }
 

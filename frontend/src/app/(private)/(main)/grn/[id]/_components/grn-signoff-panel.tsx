@@ -104,8 +104,16 @@ export function GRNSignoffPanel({
   const isCertifierDone = Boolean(grn.certifiedAt && grn.certifiedBySignature);
 
   const invalidate = () => {
+    // GRN sign-off can flip cross-document eligibility (PV detail "GRN ready"
+    // chip, PO delivery progress). Invalidate parent caches alongside the
+    // GRN-local ones so detail pages don't go stale.
     queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.GRN.ALL] });
     queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.GRN.BY_ID, grn.id] });
+    queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PURCHASE_ORDERS.ALL] });
+    queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PURCHASE_ORDERS.BY_ID] });
+    queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PAYMENT_VOUCHERS.ALL] });
+    queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PAYMENT_VOUCHERS.BY_ID] });
+    queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.DASHBOARD.METRICS] });
   };
 
   const handleReceiverSubmit = async () => {

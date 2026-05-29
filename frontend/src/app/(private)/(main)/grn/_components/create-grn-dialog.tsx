@@ -229,6 +229,10 @@ export function CreateGRNDialog({
         queryClient.invalidateQueries({
           queryKey: [QUERY_KEYS.PAYMENT_VOUCHERS.ALL],
         });
+        // payment_first: linked PV "GRN received" chip needs to flip — was missing.
+        queryClient.invalidateQueries({
+          queryKey: [QUERY_KEYS.PAYMENT_VOUCHERS.BY_ID],
+        });
         queryClient.invalidateQueries({
           queryKey: [QUERY_KEYS.DASHBOARD.METRICS],
         });
