@@ -127,6 +127,7 @@ export async function createGRNAction(
   warehouseLocation?: string,
   notes?: string,
   linkedPV?: string,
+  consignmentNote?: string,
 ): Promise<APIResponse<GoodsReceivedNote>> {
   const url = `/api/v1/grns`;
 
@@ -138,6 +139,7 @@ export async function createGRNAction(
       warehouseLocation: warehouseLocation || "",
       notes: notes || "",
       linkedPV: linkedPV || "",
+      consignmentNote: consignmentNote || "",
     };
 
     const response = await authenticatedApiClient({
@@ -165,6 +167,7 @@ export async function updateGRNAction(
     qualityIssues?: QualityIssue[];
     warehouseLocation?: string;
     notes?: string;
+    consignmentNote?: string;
   },
 ): Promise<APIResponse<GoodsReceivedNote>> {
   const url = `/api/v1/grns/${grnId}`;
@@ -335,6 +338,83 @@ export async function submitGRNForApproval(data: {
       response.data?.data,
       "GRN submitted for approval successfully",
     );
+  } catch (error: any) {
+    return handleError(error, "POST", url);
+  }
+}
+
+/**
+ * Receiver sign-off: capture name + digital signature.
+ * Calls: POST /api/v1/grns/{id}/sign-receive
+ */
+export async function signReceiveGRNAction(data: {
+  grnId: string;
+  receivedByName: string;
+  signature: string;
+}): Promise<APIResponse<GoodsReceivedNote>> {
+  const url = `/api/v1/grns/${data.grnId}/sign-receive`;
+  try {
+    const response = await authenticatedApiClient({
+      method: "POST",
+      url,
+      data: {
+        receivedByName: data.receivedByName,
+        signature: data.signature,
+      },
+    });
+    return successResponse(
+      response.data?.data,
+      "Receiver sign-off recorded",
+    );
+  } catch (error: any) {
+    return handleError(error, "POST", url);
+  }
+}
+
+/**
+ * Certifying officer sign-off (issuing officer "CERTIFIED BY" block).
+ * Requires admin / finance / manager / approver role on the backend.
+ * Calls: POST /api/v1/grns/{id}/certify
+ */
+export async function certifyGRNAction(data: {
+  grnId: string;
+  signature: string;
+  comments?: string;
+  stampImageUrl?: string;
+}): Promise<APIResponse<GoodsReceivedNote>> {
+  const url = `/api/v1/grns/${data.grnId}/certify`;
+  try {
+    const response = await authenticatedApiClient({
+      method: "POST",
+      url,
+      data: {
+        signature: data.signature,
+        comments: data.comments ?? "",
+        stampImageUrl: data.stampImageUrl ?? "",
+      },
+    });
+    return successResponse(response.data?.data, "GRN certified");
+  } catch (error: any) {
+    return handleError(error, "POST", url);
+  }
+}
+
+/**
+ * Close a GRN without sending it through a workflow.
+ * Requires SignoffStatus = "READY". Calls: POST /api/v1/grns/{id}/complete
+ */
+export async function completeGRNAction(data: {
+  grnId: string;
+  comments?: string;
+}): Promise<APIResponse<GoodsReceivedNote>> {
+  const url = `/api/v1/grns/${data.grnId}/complete`;
+  try {
+    const response = await authenticatedApiClient({
+      method: "POST",
+      url,
+      data: { comments: data.comments ?? "" },
+    });
+    return successResponse(response.data?.data, "GRN marked complete");
   } catch (error: any) {
     return handleError(error, "POST", url);
   }

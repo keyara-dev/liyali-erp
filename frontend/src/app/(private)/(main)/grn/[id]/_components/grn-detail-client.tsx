@@ -39,8 +39,12 @@ import type { PaymentVoucher } from "@/types/payment-voucher";
 import { Badge } from "@/components";
 import type { QualityIssue } from "@/types/goods-received-note";
 import { GRNSubmitDialog } from "./grn-submit-dialog";
+import { GRNSignoffPanel } from "./grn-signoff-panel";
 import { PDFPreviewDialog } from "@/components/modals/pdf-preview-dialog";
 import { cn } from "@/lib/utils";
+import { completeGRNAction } from "@/app/_actions/grn-actions";
+import { useQueryClient } from "@tanstack/react-query";
+import { QUERY_KEYS } from "@/lib/constants";
 
 interface GRNDetailClientProps {
   grnId: string;
@@ -54,7 +58,9 @@ export function GRNDetailClient({
   userRole,
 }: GRNDetailClientProps) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [isQualityDialogOpen, setIsQualityDialogOpen] = useState(false);
+  const [isCompleting, setIsCompleting] = useState(false);
 
   const {
     document: grn,
@@ -130,6 +136,29 @@ export function GRNDetailClient({
 
   const handleBack = () => {
     router.back();
+  };
+
+  const handleMarkComplete = async () => {
+    if (!grn) return;
+    if (grn.signoffStatus !== "READY") {
+      toast.error("Both signatures are required before completing the GRN");
+      return;
+    }
+    setIsCompleting(true);
+    try {
+      const res = await completeGRNAction({ grnId });
+      if (res.success) {
+        toast.success("GRN marked complete");
+        queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.GRN.ALL] });
+        queryClient.invalidateQueries({
+          queryKey: [QUERY_KEYS.GRN.BY_ID, grnId],
+        });
+      } else {
+        toast.error(res.message || "Failed to complete GRN");
+      }
+    } finally {
+      setIsCompleting(false);
+    }
   };
 
   const handleAddQualityIssue = async (issue: Omit<QualityIssue, "id">) => {
@@ -211,15 +240,29 @@ export function GRNDetailClient({
         <Download className="h-3.5 w-3.5" />
         Export PDF
       </Button>
-      {permissions.canSubmit && (
-        <Button
-          size="sm"
-          onClick={() => setShowSubmitDialog(true)}
-          className="gap-1.5"
-        >
-          <Send className="h-3.5 w-3.5" />
-          Submit for Approval
-        </Button>
+      {permissions.canSubmit && grn.signoffStatus === "READY" && (
+        <>
+          <Button
+            size="sm"
+            onClick={() => setShowSubmitDialog(true)}
+            className="gap-1.5"
+          >
+            <Send className="h-3.5 w-3.5" />
+            Submit to Workflow
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handleMarkComplete}
+            disabled={isCompleting}
+            isLoading={isCompleting}
+            loadingText="Completing..."
+            className="gap-1.5"
+          >
+            <CheckCircle2 className="h-3.5 w-3.5" />
+            Mark Complete
+          </Button>
+        </>
       )}
       {statusKey === "APPROVED" && (
         <Button
@@ -289,6 +332,17 @@ export function GRNDetailClient({
           />
         </CardContent>
       </Card>
+
+      {/* Sign-off (Received By + Certified By). Only relevant while DRAFT;
+          completed / approved GRNs render the signature blocks inside the PDF. */}
+      {isDraft && (
+        <GRNSignoffPanel
+          grn={grn}
+          userId={userId}
+          userRole={userRole}
+          defaultReceiverName={resolveUser(grn.receivedBy)}
+        />
+      )}
 
       {/* GRN Information — compact inline */}
       <Card className="border-border/60">

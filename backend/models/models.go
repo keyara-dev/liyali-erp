@@ -189,6 +189,10 @@ type PurchaseOrder struct {
 	// Physical delivery tracking — independent of workflow Status.
 	DeliveryStatus string `gorm:"column:delivery_status;type:text;not null;default:'NOT_DELIVERED';index" json:"deliveryStatus"`
 
+	// Soft-delete column — already present in the production schema; declaring
+	// it on the model so AutoMigrate creates it on test SQLite DBs.
+	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
+
 	// Direct-payment routing
 	RoutingType string `gorm:"type:text;not null;default:'procurement';index" json:"routingType"`
 
@@ -306,6 +310,33 @@ type GoodsReceivedNote struct {
 	ApprovedBy        string                                    `json:"approvedBy,omitempty"`        // Who approved the GRN
 	// Payment-First flow: references the PV that was paid before goods were received
 	LinkedPV          string                                    `gorm:"column:linked_pv;default:''" json:"linkedPV"`
+
+	// Delivery / consignment note number printed on the GRN PDF
+	ConsignmentNote   string `gorm:"column:consignment_note;default:''" json:"consignmentNote"`
+
+	// Vendor snapshot captured at GRN creation (audit-safe — vendor renames do not mutate historical PDFs).
+	VendorName    string `gorm:"column:vendor_name;default:''"    json:"vendorName"`
+	VendorAddress string `gorm:"column:vendor_address;default:''" json:"vendorAddress"`
+
+	// Receiver sign-off (physical receipt acknowledgement)
+	ReceivedByName      string     `gorm:"column:received_by_name;default:''"      json:"receivedByName"`
+	ReceivedBySignature string     `gorm:"column:received_by_signature;default:''" json:"receivedBySignature"`
+	ReceivedAt          *time.Time `gorm:"column:received_at"                       json:"receivedAt,omitempty"`
+
+	// Certifier sign-off (issuing officer certification — distinct from approval)
+	CertifiedByID        string     `gorm:"column:certified_by_id;default:''"        json:"certifiedById"`
+	CertifiedByName      string     `gorm:"column:certified_by_name;default:''"      json:"certifiedByName"`
+	CertifiedBySignature string     `gorm:"column:certified_by_signature;default:''" json:"certifiedBySignature"`
+	CertifiedAt          *time.Time `gorm:"column:certified_at"                      json:"certifiedAt,omitempty"`
+
+	// Sign-off state machine, independent of workflow Status:
+	//   PENDING_RECEIVER -> PENDING_CERTIFIER -> READY -> COMPLETED
+	// Workflow submission is only allowed when SignoffStatus = 'READY'.
+	SignoffStatus string `gorm:"column:signoff_status;default:PENDING_RECEIVER" json:"signoffStatus"`
+
+	// Per-GRN stamp image (data URI or URL). When empty, the PDF falls back to
+	// OrganizationSettings.StampImageURL. Captured at certification time.
+	StampImageURL string `gorm:"column:stamp_image_url;default:''" json:"stampImageUrl"`
 
 	AutomationUsed    bool                                      `json:"automationUsed,omitempty"`    // Whether automation was used
 	AutoCreatedPV     datatypes.JSON                           `gorm:"type:jsonb" json:"autoCreatedPV,omitempty"` // Auto-created Payment Voucher

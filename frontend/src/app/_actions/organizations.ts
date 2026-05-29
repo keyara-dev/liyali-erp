@@ -63,6 +63,8 @@ export interface OrganizationSettings {
     push: boolean;
   };
   procurementFlow?: "goods_first" | "payment_first";
+  /** "Stamp of Issuing Officer" image rendered on every GRN PDF as fallback. */
+  stampImageUrl?: string;
 }
 
 /**
@@ -335,6 +337,7 @@ export async function updateOrganizationSettings(
         workflowEnabled: data.workflowEnabled,
         notifications: data.notifications,
         procurementFlow: data.procurementFlow,
+        stampImageUrl: data.stampImageUrl,
       },
     });
 

@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"fmt"
 	"net/http/httptest"
 	"testing"
 
@@ -27,7 +28,9 @@ func TestCheckLimit_UnderLimit(t *testing.T) {
 		MaxDocuments:   100,
 		IsActive:       true,
 	}
-	db.Create(&tier)
+	if err := seedTier(db, tier); err != nil {
+		t.Fatalf("Failed to seed tier: %v", err)
+	}
 
 	// Create test organization
 	org := models.Organization{
@@ -76,7 +79,9 @@ func TestCheckLimit_AtLimit(t *testing.T) {
 		MaxTeamMembers: 2,
 		IsActive:       true,
 	}
-	db.Create(&tier)
+	if err := seedTier(db, tier); err != nil {
+		t.Fatalf("Failed to seed tier: %v", err)
+	}
 
 	// Create test organization
 	org := models.Organization{
@@ -139,7 +144,9 @@ func TestCheckLimit_Unlimited(t *testing.T) {
 		MaxDocuments:   -1, // Unlimited
 		IsActive:       true,
 	}
-	db.Create(&tier)
+	if err := seedTier(db, tier); err != nil {
+		t.Fatalf("Failed to seed tier: %v", err)
+	}
 
 	// Create test organization
 	org := models.Organization{
@@ -188,7 +195,9 @@ func TestCheckLimit_WithOverride(t *testing.T) {
 		MaxDocuments:   10,
 		IsActive:       true,
 	}
-	db.Create(&tier)
+	if err := seedTier(db, tier); err != nil {
+		t.Fatalf("Failed to seed tier: %v", err)
+	}
 
 	// Create test organization
 	org := models.Organization{
@@ -207,7 +216,9 @@ func TestCheckLimit_WithOverride(t *testing.T) {
 		Reason:         "Test override",
 		AdminUserID:    "admin-test",
 	}
-	db.Create(&override)
+	if err := seedOverride(db, override); err != nil {
+		t.Fatalf("Failed to seed override: %v", err)
+	}
 
 	// Create Fiber app
 	app := fiber.New()
@@ -253,7 +264,9 @@ func TestGetEffectiveLimits_Cache(t *testing.T) {
 		MaxCustomRoles: 10,
 		IsActive:       true,
 	}
-	db.Create(&tier)
+	if err := seedTier(db, tier); err != nil {
+		t.Fatalf("Failed to seed tier: %v", err)
+	}
 
 	// Create test organization
 	org := models.Organization{
@@ -304,19 +317,21 @@ func TestGetCurrentUsage_TeamMembers(t *testing.T) {
 	// Create 3 active team members
 	for i := 1; i <= 3; i++ {
 		db.Table("organization_members").Create(&models.OrganizationMember{
-			ID:             fiber.NewError(i).Error(),
+			ID:             fmt.Sprintf("member-active-%d", i),
 			OrganizationID: "org-test",
-			UserID:         fiber.NewError(i).Error(),
+			UserID:         fmt.Sprintf("user-active-%d", i),
 			Active:         true,
 		})
 	}
 
-	// Create 1 inactive member (should not be counted)
-	db.Table("organization_members").Create(&models.OrganizationMember{
-		ID:             "member-inactive",
-		OrganizationID: "org-test",
-		UserID:         "user-inactive",
-		Active:         false,
+	// Create 1 inactive member (should not be counted). Insert via map so the
+	// GORM `default:true` tag on Active doesn't override the zero-value bool.
+	db.Table("organization_members").Create(map[string]interface{}{
+		"id":              "member-inactive",
+		"organization_id": "org-test",
+		"user_id":         "user-inactive",
+		"role":            "requester",
+		"active":          false,
 	})
 
 	// Test

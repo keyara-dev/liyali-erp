@@ -109,7 +109,7 @@ func queryFeatureAccess(orgID, featureName string) (bool, error) {
 
 	// Check for organization-specific overrides
 	var override models.OrganizationLimitOverride
-	err = db.Where("organization_id = ? AND (expires_at IS NULL OR expires_at > NOW())", orgID).
+	err = db.Where("organization_id = ? AND (expires_at IS NULL OR expires_at > CURRENT_TIMESTAMP)", orgID).
 		First(&override).Error
 
 	if err == nil && override.Features != nil {
@@ -162,7 +162,7 @@ func GetOrganizationFeatures(orgID string) ([]string, error) {
 
 	// Add override features if they exist
 	var override models.OrganizationLimitOverride
-	err = db.Where("organization_id = ? AND (expires_at IS NULL OR expires_at > NOW())", orgID).
+	err = db.Where("organization_id = ? AND (expires_at IS NULL OR expires_at > CURRENT_TIMESTAMP)", orgID).
 		First(&override).Error
 
 	if err == nil && override.Features != nil {

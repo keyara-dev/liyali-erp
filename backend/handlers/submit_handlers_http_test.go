@@ -177,6 +177,9 @@ func TestSubmitGRN_DraftWithInvalidWorkflowUUID(t *testing.T) {
 	db := setupTestDB(t)
 	defer teardownTestDB(t, db)
 	seedTestUser(t)
+	// SubmitGRN gates on linked PO existing + APPROVED before reaching the
+	// workflow service. Seed one so the invalid-UUID branch is actually hit.
+	makeApprovedPO(t, "PO-001")
 
 	grn := makeGRN(t, "GRN-SUBMIT-INVWF", "PO-001", "DRAFT")
 	app := newGRNAppWithWF(db)
@@ -311,7 +314,9 @@ func TestSubmitPurchaseOrder_DraftWithInvalidWorkflowUUID(t *testing.T) {
 	resp := testRequest(app, http.MethodPost, "/purchase-orders/"+order.ID+"/submit", map[string]interface{}{
 		"workflowId": "not-a-valid-uuid",
 	})
-	assert.Equal(t, http.StatusInternalServerError, resp.StatusCode)
+	// Workflow service rejects invalid UUID before assignment; handler maps
+	// the failure to 422 Unprocessable Entity.
+	assert.Equal(t, http.StatusUnprocessableEntity, resp.StatusCode)
 	body := decodeResponse(resp)
 	assert.Equal(t, false, body["success"])
 }

@@ -313,6 +313,7 @@ func UpdateOrganizationSettings(c *fiber.Ctx) error {
 		EnableBudgetValidation   bool    `json:"enableBudgetValidation"`
 		BudgetVarianceThreshold  float64 `json:"budgetVarianceThreshold"`
 		ProcurementFlow          string  `json:"procurementFlow"`
+		StampImageURL            string  `json:"stampImageUrl"`
 	}
 
 	if err := c.BodyParser(&settings); err != nil {
@@ -329,6 +330,7 @@ func UpdateOrganizationSettings(c *fiber.Ctx) error {
 		EnableBudgetValidation:   settings.EnableBudgetValidation,
 		BudgetVarianceThreshold:  settings.BudgetVarianceThreshold,
 		ProcurementFlow:          settings.ProcurementFlow,
+		StampImageURL:            settings.StampImageURL,
 	}
 
 	if err := orgService.UpdateOrganizationSettings(tenant.OrganizationID, orgSettings); err != nil {

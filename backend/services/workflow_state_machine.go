@@ -3,6 +3,7 @@ package services
 import (
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -150,9 +151,17 @@ func (wsm *WorkflowStateMachine) TransitionDocument(
 			Where("id = ?", documentID).
 			Update("status", string(toState))
 	case "grn":
+		grnUpdates := map[string]interface{}{"status": string(toState)}
+		// Keep signoff_status in sync once the workflow terminates the GRN.
+		// PENDING_RECEIVER / PENDING_CERTIFIER / READY only describe the
+		// pre-workflow form sign-off lifecycle.
+		upper := strings.ToUpper(string(toState))
+		if upper == "APPROVED" || upper == "COMPLETED" || upper == "REJECTED" || upper == "CANCELLED" {
+			grnUpdates["signoff_status"] = "COMPLETED"
+		}
 		result = wsm.db.Model(&models.GoodsReceivedNote{}).
 			Where("id = ?", documentID).
-			Update("status", string(toState))
+			Updates(grnUpdates)
 	default:
 		return fmt.Errorf("unknown document type: %s", docType)
 	}

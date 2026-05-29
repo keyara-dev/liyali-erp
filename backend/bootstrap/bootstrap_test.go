@@ -177,11 +177,19 @@ func TestBootstrapCancellation(t *testing.T) {
 func setupTestDB(t *testing.T) *gorm.DB {
 	// Use test database configuration
 	dsn := getTestDSN(t)
-	
+
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
 		Logger: logger.Default.LogMode(logger.Silent),
 	})
-	require.NoError(t, err)
+	if err != nil {
+		t.Skipf("Skipping: no Postgres test DB available (%v). Set TEST_DB_* env vars or run `createdb liyali_gateway_test`.", err)
+	}
+	// Ping to surface auth/network failures as skips, not panics.
+	if sqlDB, perr := db.DB(); perr == nil {
+		if perr := sqlDB.Ping(); perr != nil {
+			t.Skipf("Skipping: Postgres test DB unreachable: %v", perr)
+		}
+	}
 
 	// Run migrations (simplified for testing)
 	err = db.Exec(`
@@ -260,11 +268,18 @@ func setupTestDB(t *testing.T) *gorm.DB {
 // setupTestDBWithoutMigrations creates a test database connection without running migrations
 func setupTestDBWithoutMigrations(t *testing.T) *gorm.DB {
 	dsn := getTestDSN(t)
-	
+
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
 		Logger: logger.Default.LogMode(logger.Silent),
 	})
-	require.NoError(t, err)
+	if err != nil {
+		t.Skipf("Skipping: no Postgres test DB available (%v).", err)
+	}
+	if sqlDB, perr := db.DB(); perr == nil {
+		if perr := sqlDB.Ping(); perr != nil {
+			t.Skipf("Skipping: Postgres test DB unreachable: %v", perr)
+		}
+	}
 
 	return db
 }

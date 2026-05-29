@@ -34,14 +34,22 @@ func newGRNApp(t *testing.T) *fiber.App {
 }
 
 // makeGRN creates and saves a GoodsReceivedNote with the given status.
+// For DRAFT GRNs the receiver + certifier sign-off lifecycle is short-circuited
+// to "READY" so existing submit/complete tests don't have to walk every state
+// transition. Sign-off-specific tests can override grn.SignoffStatus directly.
 func makeGRN(t *testing.T, docNum, poDocNum, status string) models.GoodsReceivedNote {
 	t.Helper()
+	signoff := "READY"
+	if status != "DRAFT" {
+		signoff = "COMPLETED"
+	}
 	grn := models.GoodsReceivedNote{
 		ID:               uuid.New().String(),
 		OrganizationID:   testOrgID,
 		DocumentNumber:   docNum,
 		PODocumentNumber: poDocNum,
 		Status:           status,
+		SignoffStatus:    signoff,
 		ReceivedDate:     time.Now(),
 		ReceivedBy:       testUserID,
 		ApprovalStage:    0,

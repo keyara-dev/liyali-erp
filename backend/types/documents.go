@@ -424,15 +424,43 @@ type CreateGRNRequest struct {
 	ReceivedBy        string    `json:"receivedBy" validate:"required"`
 	WarehouseLocation string    `json:"warehouseLocation"`
 	Notes             string    `json:"notes"`
+	// Delivery / consignment note number printed on the GRN PDF
+	ConsignmentNote   string    `json:"consignmentNote"`
 	// Payment-first flow: PV document number that was approved before goods were received
 	LinkedPV          string    `json:"linkedPV"`
 }
 
 // UpdateGRNRequest represents a GRN update request
 type UpdateGRNRequest struct {
-	Items         []GRNItem      `json:"items"`
-	ReceivedBy    string         `json:"receivedBy"`
-	QualityIssues []QualityIssue `json:"qualityIssues"`
+	Items             []GRNItem      `json:"items"`
+	ReceivedBy        string         `json:"receivedBy"`
+	QualityIssues     []QualityIssue `json:"qualityIssues"`
+	WarehouseLocation *string        `json:"warehouseLocation,omitempty"`
+	Notes             *string        `json:"notes,omitempty"`
+	ConsignmentNote   *string        `json:"consignmentNote,omitempty"`
+}
+
+// SignReceiveGRNRequest captures the receiver's sign-off ("RECEIVED BY" on the printed form).
+// Signature is a base64 data-URI from the digital pad.
+type SignReceiveGRNRequest struct {
+	ReceivedByName string `json:"receivedByName" validate:"required"`
+	Signature      string `json:"signature"      validate:"required"`
+}
+
+// CertifyGRNRequest captures the issuing officer's certification ("CERTIFIED BY").
+// Certifier must hold a privileged role (admin/finance/manager/approver).
+type CertifyGRNRequest struct {
+	Signature string `json:"signature" validate:"required"`
+	Comments  string `json:"comments,omitempty"`
+	// Optional per-GRN stamp image (data URI or URL). Falls back to the
+	// organisation-level stamp when blank.
+	StampImageURL string `json:"stampImageUrl,omitempty"`
+}
+
+// CompleteGRNRequest finalises a GRN without going through workflow approval.
+// Allowed only when SignoffStatus = "READY".
+type CompleteGRNRequest struct {
+	Comments string `json:"comments,omitempty"`
 }
 
 // GRNItem represents an item in a GRN
@@ -443,6 +471,9 @@ type GRNItem struct {
 	Variance         int     `json:"variance"`
 	Condition        string  `json:"condition"`       // good, damaged, defective
 	Notes            *string `json:"notes,omitempty"` // Optional notes for the item
+	// PDF form fields
+	ItemCode string `json:"itemCode,omitempty"` // SKU / catalog code, snapshotted from PO line
+	Remarks  string `json:"remarks,omitempty"`  // Per-line remarks printed in the PDF "Remarks" column
 }
 
 // QualityIssue represents a quality issue in GRN
@@ -482,8 +513,31 @@ type GRNResponse struct {
 	AutomationUsed    bool                   `json:"automationUsed,omitempty"`
 	AutoCreatedPV     interface{}            `json:"autoCreatedPV,omitempty"`
 	Metadata          map[string]interface{} `json:"metadata,omitempty"`
-	CreatedAt         time.Time              `json:"createdAt"`
-	UpdatedAt         time.Time              `json:"updatedAt"`
+
+	// PDF form fields
+	ConsignmentNote string `json:"consignmentNote,omitempty"`
+	VendorName      string `json:"vendorName,omitempty"`
+	VendorAddress   string `json:"vendorAddress,omitempty"`
+
+	// Receiver sign-off
+	ReceivedByName      string     `json:"receivedByName,omitempty"`
+	ReceivedBySignature string     `json:"receivedBySignature,omitempty"`
+	ReceivedAt          *time.Time `json:"receivedAt,omitempty"`
+
+	// Certifier sign-off
+	CertifiedByID        string     `json:"certifiedById,omitempty"`
+	CertifiedByName      string     `json:"certifiedByName,omitempty"`
+	CertifiedBySignature string     `json:"certifiedBySignature,omitempty"`
+	CertifiedAt          *time.Time `json:"certifiedAt,omitempty"`
+
+	// PENDING_RECEIVER | PENDING_CERTIFIER | READY | COMPLETED
+	SignoffStatus string `json:"signoffStatus,omitempty"`
+
+	// Per-GRN stamp; PDF falls back to org settings stamp when empty.
+	StampImageURL string `json:"stampImageUrl,omitempty"`
+
+	CreatedAt time.Time `json:"createdAt"`
+	UpdatedAt time.Time `json:"updatedAt"`
 }
 
 // ================== QUOTATION TYPES ==================

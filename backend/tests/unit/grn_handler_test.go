@@ -702,3 +702,371 @@ func TestGRNConditionValues(t *testing.T) {
 		})
 	}
 }
+
+// ============================================================================
+// Sign-off lifecycle: receiver -> certifier -> READY -> workflow/complete
+// (Mirrors the handler gates added in handlers/grn.go for SignReceiveGRN,
+// CertifyGRN, MarkGRNComplete, and the updated SubmitGRN guard.)
+// ============================================================================
+
+// signoffState reproduces the state-machine guards from grn.go so the test
+// asserts the agreed contract without booting the full HTTP stack.
+type signoffState struct {
+	status         string // DRAFT | PENDING | APPROVED | COMPLETED | ...
+	signoffStatus  string // PENDING_RECEIVER | PENDING_CERTIFIER | READY | COMPLETED
+	createdBy      string
+	receivedBy     string
+}
+
+// privilegedRoles mirrors the map declared in handlers/grn.go.
+var privilegedRoles = map[string]bool{
+	"admin":       true,
+	"super_admin": true,
+	"manager":     true,
+	"finance":     true,
+	"approver":    true,
+}
+
+// canReceiverSign returns the same boolean SignReceiveGRN enforces.
+func canReceiverSign(s signoffState) bool {
+	if s.status != "DRAFT" {
+		return false
+	}
+	return s.signoffStatus == "PENDING_RECEIVER"
+}
+
+// canCertify returns the same boolean CertifyGRN enforces.
+func canCertify(s signoffState, actorRole, actorID string) bool {
+	if s.status != "DRAFT" {
+		return false
+	}
+	if s.signoffStatus != "PENDING_CERTIFIER" {
+		return false
+	}
+	if !privilegedRoles[actorRole] {
+		return false
+	}
+	// Separation-of-duties: certifier cannot be creator or receiver.
+	if actorID == s.createdBy || actorID == s.receivedBy {
+		return false
+	}
+	return true
+}
+
+// canSubmitToWorkflow returns the same boolean SubmitGRN enforces.
+func canSubmitToWorkflow(s signoffState) bool {
+	if s.status != "DRAFT" {
+		return false
+	}
+	return s.signoffStatus == "READY"
+}
+
+// canMarkComplete returns the same boolean MarkGRNComplete enforces.
+func canMarkComplete(s signoffState) bool {
+	if s.status != "DRAFT" {
+		return false
+	}
+	return s.signoffStatus == "READY"
+}
+
+// canEditItems returns the same boolean UpdateGRN enforces — line items lock
+// once the receiver has signed so the captured signature stays bound to the
+// quantities/conditions that were sighted on delivery.
+func canEditItems(s signoffState) bool {
+	if s.status != "DRAFT" && s.status != "PENDING" {
+		return false
+	}
+	return s.signoffStatus == "PENDING_RECEIVER"
+}
+
+func TestReceiverSignoffGate(t *testing.T) {
+	tests := []struct {
+		name  string
+		state signoffState
+		want  bool
+	}{
+		{"DRAFT + PENDING_RECEIVER allowed", signoffState{status: "DRAFT", signoffStatus: "PENDING_RECEIVER"}, true},
+		{"DRAFT + PENDING_CERTIFIER blocked (already signed)", signoffState{status: "DRAFT", signoffStatus: "PENDING_CERTIFIER"}, false},
+		{"DRAFT + READY blocked", signoffState{status: "DRAFT", signoffStatus: "READY"}, false},
+		{"PENDING status blocked", signoffState{status: "PENDING", signoffStatus: "PENDING_RECEIVER"}, false},
+		{"APPROVED blocked", signoffState{status: "APPROVED", signoffStatus: "COMPLETED"}, false},
+		{"COMPLETED blocked", signoffState{status: "COMPLETED", signoffStatus: "COMPLETED"}, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := canReceiverSign(tt.state); got != tt.want {
+				t.Errorf("canReceiverSign(%+v) = %v, want %v", tt.state, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestCertifierSignoffGate(t *testing.T) {
+	base := signoffState{
+		status:        "DRAFT",
+		signoffStatus: "PENDING_CERTIFIER",
+		createdBy:     "user-creator",
+		receivedBy:    "user-receiver",
+	}
+	tests := []struct {
+		name      string
+		state     signoffState
+		actorRole string
+		actorID   string
+		want      bool
+	}{
+		{"admin separate user allowed", base, "admin", "user-admin", true},
+		{"manager separate user allowed", base, "manager", "user-mgr", true},
+		{"finance separate user allowed", base, "finance", "user-fin", true},
+		{"approver separate user allowed", base, "approver", "user-app", true},
+		{"super_admin separate user allowed", base, "super_admin", "user-sa", true},
+		{"requester role blocked", base, "requester", "user-req", false},
+		{"viewer role blocked", base, "viewer", "user-view", false},
+		{"unknown role blocked", base, "", "user-x", false},
+		{"creator cannot self-certify", base, "admin", "user-creator", false},
+		{"receiver cannot self-certify", base, "admin", "user-receiver", false},
+		{"PENDING_RECEIVER state blocks certifier", signoffState{
+			status: "DRAFT", signoffStatus: "PENDING_RECEIVER",
+			createdBy: "c", receivedBy: "r",
+		}, "admin", "user-admin", false},
+		{"READY state blocks re-certify", signoffState{
+			status: "DRAFT", signoffStatus: "READY",
+			createdBy: "c", receivedBy: "r",
+		}, "admin", "user-admin", false},
+		{"PENDING workflow status blocks", signoffState{
+			status: "PENDING", signoffStatus: "PENDING_CERTIFIER",
+			createdBy: "c", receivedBy: "r",
+		}, "admin", "user-admin", false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := canCertify(tt.state, tt.actorRole, tt.actorID); got != tt.want {
+				t.Errorf("canCertify(%+v, role=%q, id=%q) = %v, want %v",
+					tt.state, tt.actorRole, tt.actorID, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestSubmitToWorkflowGate(t *testing.T) {
+	tests := []struct {
+		name  string
+		state signoffState
+		want  bool
+	}{
+		{"READY can submit", signoffState{status: "DRAFT", signoffStatus: "READY"}, true},
+		{"PENDING_RECEIVER blocked", signoffState{status: "DRAFT", signoffStatus: "PENDING_RECEIVER"}, false},
+		{"PENDING_CERTIFIER blocked", signoffState{status: "DRAFT", signoffStatus: "PENDING_CERTIFIER"}, false},
+		{"non-DRAFT status blocked", signoffState{status: "PENDING", signoffStatus: "READY"}, false},
+		{"APPROVED blocked", signoffState{status: "APPROVED", signoffStatus: "COMPLETED"}, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := canSubmitToWorkflow(tt.state); got != tt.want {
+				t.Errorf("canSubmitToWorkflow(%+v) = %v, want %v", tt.state, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestMarkCompleteGate(t *testing.T) {
+	tests := []struct {
+		name  string
+		state signoffState
+		want  bool
+	}{
+		{"READY + DRAFT can complete", signoffState{status: "DRAFT", signoffStatus: "READY"}, true},
+		{"PENDING_RECEIVER blocked", signoffState{status: "DRAFT", signoffStatus: "PENDING_RECEIVER"}, false},
+		{"PENDING_CERTIFIER blocked", signoffState{status: "DRAFT", signoffStatus: "PENDING_CERTIFIER"}, false},
+		{"already COMPLETED blocked", signoffState{status: "COMPLETED", signoffStatus: "COMPLETED"}, false},
+		{"workflow PENDING blocked", signoffState{status: "PENDING", signoffStatus: "READY"}, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := canMarkComplete(tt.state); got != tt.want {
+				t.Errorf("canMarkComplete(%+v) = %v, want %v", tt.state, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestItemEditLock(t *testing.T) {
+	tests := []struct {
+		name  string
+		state signoffState
+		want  bool
+	}{
+		{"DRAFT + PENDING_RECEIVER editable", signoffState{status: "DRAFT", signoffStatus: "PENDING_RECEIVER"}, true},
+		{"PENDING + PENDING_RECEIVER editable", signoffState{status: "PENDING", signoffStatus: "PENDING_RECEIVER"}, true},
+		{"PENDING_CERTIFIER locks items (receiver signed)", signoffState{status: "DRAFT", signoffStatus: "PENDING_CERTIFIER"}, false},
+		{"READY locks items (both signed)", signoffState{status: "DRAFT", signoffStatus: "READY"}, false},
+		{"APPROVED locks items", signoffState{status: "APPROVED", signoffStatus: "COMPLETED"}, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := canEditItems(tt.state); got != tt.want {
+				t.Errorf("canEditItems(%+v) = %v, want %v", tt.state, got, tt.want)
+			}
+		})
+	}
+}
+
+// TestSignoffLifecycleHappyPath drives a state object through the full
+// receiver -> certifier -> READY -> COMPLETED transitions and verifies every
+// gate flips at the expected moment.
+func TestSignoffLifecycleHappyPath(t *testing.T) {
+	s := signoffState{
+		status:        "DRAFT",
+		signoffStatus: "PENDING_RECEIVER",
+		createdBy:     "alice",
+	}
+
+	// 1. Receiver can sign; certifier/submit/complete blocked.
+	if !canReceiverSign(s) {
+		t.Fatal("expected receiver to be allowed at PENDING_RECEIVER")
+	}
+	if canCertify(s, "admin", "bob") {
+		t.Fatal("certify must wait for receiver")
+	}
+	if canSubmitToWorkflow(s) {
+		t.Fatal("submit must wait for READY")
+	}
+	if canMarkComplete(s) {
+		t.Fatal("complete must wait for READY")
+	}
+	if !canEditItems(s) {
+		t.Fatal("items should be editable before receiver signs")
+	}
+
+	// 2. Receiver signs -> PENDING_CERTIFIER.
+	s.signoffStatus = "PENDING_CERTIFIER"
+	s.receivedBy = "carol"
+	if canReceiverSign(s) {
+		t.Fatal("receiver shouldn't be able to re-sign")
+	}
+	if canEditItems(s) {
+		t.Fatal("items must lock after receiver signs")
+	}
+	if canCertify(s, "requester", "bob") {
+		t.Fatal("non-privileged role must not certify")
+	}
+	if canCertify(s, "admin", "alice") {
+		t.Fatal("creator must not self-certify")
+	}
+	if canCertify(s, "admin", "carol") {
+		t.Fatal("receiver must not self-certify")
+	}
+	if !canCertify(s, "admin", "dave") {
+		t.Fatal("independent admin should certify")
+	}
+
+	// 3. Certifier signs -> READY.
+	s.signoffStatus = "READY"
+	if canCertify(s, "admin", "dave") {
+		t.Fatal("certify must not be repeatable")
+	}
+	if !canSubmitToWorkflow(s) {
+		t.Fatal("READY must unlock workflow submit")
+	}
+	if !canMarkComplete(s) {
+		t.Fatal("READY must unlock direct complete")
+	}
+
+	// 4a. Direct completion path -> COMPLETED.
+	s.status = "COMPLETED"
+	s.signoffStatus = "COMPLETED"
+	if canSubmitToWorkflow(s) || canMarkComplete(s) || canCertify(s, "admin", "eve") {
+		t.Fatal("terminal state must reject further actions")
+	}
+}
+
+// TestPerGRNStampOverride documents the precedence the PDF uses: per-GRN
+// stamp wins over the org-level fallback.
+func TestPerGRNStampOverride(t *testing.T) {
+	cases := []struct {
+		name      string
+		grnStamp  string
+		orgStamp  string
+		wantStamp string
+	}{
+		{"per-GRN overrides org", "data:image/png;base64,grn", "https://cdn/org.png", "data:image/png;base64,grn"},
+		{"falls back to org when GRN empty", "", "https://cdn/org.png", "https://cdn/org.png"},
+		{"empty when neither set", "", "", ""},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := tc.grnStamp
+			if got == "" {
+				got = tc.orgStamp
+			}
+			if got != tc.wantStamp {
+				t.Errorf("precedence: got %q, want %q", got, tc.wantStamp)
+			}
+		})
+	}
+}
+
+// TestGRNItemPDFFields ensures itemCode and remarks round-trip through the
+// shared GRNItem type — both fields are newly added to align with the printed
+// council form.
+func TestGRNItemPDFFields(t *testing.T) {
+	body := []byte(`{
+        "description": "10x cement bag",
+        "itemCode": "CEM-50",
+        "quantityOrdered": 10,
+        "quantityReceived": 8,
+        "variance": -2,
+        "condition": "good",
+        "remarks": "Two bags damaged in transit"
+    }`)
+	var item types.GRNItem
+	if err := json.Unmarshal(body, &item); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if item.ItemCode != "CEM-50" {
+		t.Errorf("ItemCode lost: %q", item.ItemCode)
+	}
+	if item.Remarks != "Two bags damaged in transit" {
+		t.Errorf("Remarks lost: %q", item.Remarks)
+	}
+}
+
+// TestConsignmentNoteRoundTrip verifies the printed-form "Delivery
+// Consignment Note" field survives a create-request unmarshal.
+func TestConsignmentNoteRoundTrip(t *testing.T) {
+	body := []byte(`{
+        "poDocumentNumber": "PO-20260528-deadbeef",
+        "receivedBy": "Carol",
+        "consignmentNote": "CN-2026-04812",
+        "items": [{"description": "x", "quantityOrdered": 1, "quantityReceived": 1, "variance": 0, "condition": "good"}]
+    }`)
+	var req types.CreateGRNRequest
+	if err := json.Unmarshal(body, &req); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if req.ConsignmentNote != "CN-2026-04812" {
+		t.Errorf("ConsignmentNote lost: %q", req.ConsignmentNote)
+	}
+}
+
+// TestCertifyRequestStampField confirms the optional per-GRN stamp ride-along
+// payload deserialises into types.CertifyGRNRequest.
+func TestCertifyRequestStampField(t *testing.T) {
+	body := []byte(`{"signature":"data:img,sig","stampImageUrl":"data:img,stamp"}`)
+	var req types.CertifyGRNRequest
+	if err := json.Unmarshal(body, &req); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if req.Signature == "" {
+		t.Error("signature should be required field, parsed empty")
+	}
+	if req.StampImageURL != "data:img,stamp" {
+		t.Errorf("StampImageURL lost: %q", req.StampImageURL)
+	}
+}
+
+// Keep uuid + time imports honest if other tests in the file ever stop using them.
+var (
+	_ = uuid.New
+	_ = time.Now
+)

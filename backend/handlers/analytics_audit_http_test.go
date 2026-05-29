@@ -21,13 +21,17 @@ func setupAuditLogsTable(t *testing.T) {
 	t.Helper()
 	sql := `CREATE TABLE IF NOT EXISTS audit_logs (
 		id TEXT PRIMARY KEY,
-		action TEXT,
-		user_id TEXT,
+		organization_id TEXT NOT NULL DEFAULT '',
 		document_id TEXT,
 		document_type TEXT,
+		user_id TEXT,
+		actor_name TEXT NOT NULL DEFAULT '',
+		actor_role TEXT NOT NULL DEFAULT '',
+		action TEXT,
 		old_value TEXT,
 		new_value TEXT,
 		changes TEXT,
+		details TEXT,
 		created_at DATETIME
 	)`
 	if err := config.DB.Exec(sql).Error; err != nil {
@@ -36,6 +40,8 @@ func setupAuditLogsTable(t *testing.T) {
 }
 
 // insertAuditLog seeds a single AuditLog row for use in filter tests.
+// Always tags the row with testOrgID so it matches handler queries scoped to
+// the same tenant.
 func insertAuditLog(t *testing.T, action, documentType, userID, documentID string) {
 	t.Helper()
 	log := models.AuditLog{
@@ -47,9 +53,9 @@ func insertAuditLog(t *testing.T, action, documentType, userID, documentID strin
 		CreatedAt:    time.Now(),
 	}
 	if err := config.DB.Exec(
-		`INSERT INTO audit_logs (id, action, document_type, user_id, document_id, created_at)
-		 VALUES (?, ?, ?, ?, ?, ?)`,
-		log.ID, log.Action, log.DocumentType, log.UserID, log.DocumentID, log.CreatedAt,
+		`INSERT INTO audit_logs (id, organization_id, action, document_type, user_id, document_id, created_at)
+		 VALUES (?, ?, ?, ?, ?, ?, ?)`,
+		log.ID, testOrgID, log.Action, log.DocumentType, log.UserID, log.DocumentID, log.CreatedAt,
 	).Error; err != nil {
 		t.Fatalf("insertAuditLog: %v", err)
 	}

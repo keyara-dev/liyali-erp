@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useOrganizationContext } from "./use-organization";
+import { useOrganizationSettingsQuery } from "./use-organization-queries";
 
 export interface DocumentDetailConfig<TDocument, TAttachment = any> {
   documentId: string;
@@ -81,6 +82,9 @@ export function useDocumentDetail<
 >(config: DocumentDetailConfig<TDocument, TAttachment>) {
   const router = useRouter();
   const { currentOrganization } = useOrganizationContext();
+  // Pulled in so the GRN PDF can render the "Stamp of Issuing Officer" image.
+  // Settings live on a separate endpoint from the org record itself.
+  const { data: orgSettings } = useOrganizationSettingsQuery();
 
   // State
   const [isExporting, setIsExporting] = useState(false);
@@ -155,6 +159,7 @@ export function useDocumentDetail<
         logoUrl: currentOrganization?.logoUrl,
         orgName: currentOrganization?.name,
         tagline: currentOrganization?.tagline,
+        stampImageUrl: (orgSettings as { stampImageUrl?: string } | undefined)?.stampImageUrl,
       });
       setPreviewBlob(blob);
       setPreviewOpen(true);
@@ -178,6 +183,7 @@ export function useDocumentDetail<
         logoUrl: currentOrganization?.logoUrl,
         orgName: currentOrganization?.name,
         tagline: currentOrganization?.tagline,
+        stampImageUrl: (orgSettings as { stampImageUrl?: string } | undefined)?.stampImageUrl,
       });
       toast.success(`${config.documentType.replace("-", " ")} exported as PDF`);
     } catch (error) {

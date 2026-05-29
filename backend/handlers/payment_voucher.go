@@ -70,8 +70,24 @@ func GetPaymentVouchers(c *fiber.Ctx) error {
 	var total int64
 	var ids []string
 
-	switch {
-	case scope.CanViewAll:
+	if config.Queries == nil {
+		total, ids, err = utils.ListDocumentIDsFallback(config.DB, "payment_vouchers", utils.DocumentListFilters{
+			OrganizationID:    tenant.OrganizationID,
+			Status:            status,
+			RefField:          "vendor_id",
+			RefValue:          vendorID,
+			HideDirectPayment: scope.HideDirectPayment,
+		}, scope, limit, int(offset))
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"success": false,
+				"message": "Failed to fetch payment vouchers",
+				"error":   err.Error(),
+			})
+		}
+	} else {
+		switch {
+		case scope.CanViewAll:
 		total, err = config.Queries.CountPaymentVouchersAll(ctx, db.CountPaymentVouchersAllParams{
 			OrganizationID:    tenant.OrganizationID,
 			Column2:           status,
@@ -164,6 +180,7 @@ func GetPaymentVouchers(c *fiber.Ctx) error {
 				"message": "Failed to fetch payment vouchers",
 				"error":   err.Error(),
 			})
+		}
 		}
 	}
 
@@ -857,8 +874,9 @@ func SubmitPaymentVoucher(c *fiber.Ctx) error {
 	voucher.Status = models.StatusPending
 	voucher.UpdatedAt = time.Now()
 
+	// Use the open tx to avoid deadlock under single-conn DB pools.
 	var user models.User
-	_ = config.DB.Where("id = ?", userID).First(&user).Error
+	_ = tx.Where("id = ?", userID).First(&user).Error
 	actionHistory := voucher.ActionHistory.Data()
 	actionHistory = append(actionHistory, types.ActionHistoryEntry{
 		ID:              uuid.New().String(),

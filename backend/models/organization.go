@@ -63,6 +63,9 @@ type OrganizationSettings struct {
 	// When enabled, PVs are automatically created from approved POs in payment-first flow
 	AutoCreatePVFromPO bool `gorm:"column:auto_create_pv_from_po;default:false" json:"autoCreatePVFromPO"`
 
+	// "Stamp of Issuing Officer" image URL printed on every GRN PDF.
+	StampImageURL string `gorm:"column:stamp_image_url;default:''" json:"stampImageUrl"`
+
 	CreatedAt time.Time `json:"createdAt"`
 	UpdatedAt time.Time `json:"updatedAt"`
 }

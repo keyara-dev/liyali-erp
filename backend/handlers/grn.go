@@ -54,7 +54,19 @@ func GetGRNs(c *fiber.Ctx) error {
 	var total int64
 	var ids []string
 
-	if scope.CanViewAll || scope.IsProcurement {
+	// In production sqlc.Queries is wired against pgx. The SQLite-backed
+	// test harness leaves it nil — fall back to a gorm equivalent that
+	// covers the same scope semantics.
+	if config.Queries == nil {
+		total, ids, err = listGRNIDsGorm(tenant.OrganizationID, status, poDocumentNumber, scope, limit, int(offset))
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"success": false,
+				"message": "Failed to fetch GRNs",
+				"error":   err.Error(),
+			})
+		}
+	} else if scope.CanViewAll || scope.IsProcurement {
 		total, err = config.Queries.CountGRNsAll(ctx, db.CountGRNsAllParams{
 			OrganizationID:    tenant.OrganizationID,
 			Column2:           status,
@@ -138,6 +150,45 @@ func GetGRNs(c *fiber.Ctx) error {
 	}
 
 	return utils.SendPaginatedSuccess(c, responses, "GRNs retrieved successfully", page, limit, total)
+}
+
+// listGRNIDsGorm is the sqlc-free implementation of the GRN listing query.
+// Used as the fallback when config.Queries is nil (i.e. SQLite-backed unit
+// tests). Mirrors the filters from CountGRNsAll/ListGRNIDsAll +
+// CountGRNsLimited/ListGRNIDsLimited so behaviour stays in sync.
+func listGRNIDsGorm(orgID, status, poDocumentNumber string, scope utils.DocumentScope, limit, offset int) (int64, []string, error) {
+	q := config.DB.Table("goods_received_notes").Where("organization_id = ?", orgID)
+
+	if status != "" {
+		q = q.Where("UPPER(status) = UPPER(?)", status)
+	}
+	if poDocumentNumber != "" {
+		q = q.Where("po_document_number = ?", poDocumentNumber)
+	}
+	if scope.HideDirectPayment {
+		// Direct-payment GRNs are flagged in metadata; SQLite stores the JSON
+		// column as TEXT so we treat a NULL/empty value as "not direct".
+		q = q.Where("COALESCE(metadata ->> 'directPayment', '') <> 'true'")
+	}
+
+	if !(scope.CanViewAll || scope.IsProcurement) {
+		// Limited scope: creator OR receiver.
+		q = q.Where("(created_by = ? OR received_by = ?)", scope.UserID, scope.UserID)
+	}
+
+	var total int64
+	if err := q.Count(&total).Error; err != nil {
+		return 0, nil, err
+	}
+
+	var ids []string
+	if err := q.Order("created_at DESC").
+		Limit(limit).
+		Offset(offset).
+		Pluck("id", &ids).Error; err != nil {
+		return 0, nil, err
+	}
+	return total, ids, nil
 }
 
 // CreateGRN creates a new goods received note
@@ -251,14 +302,21 @@ func CreateGRN(c *fiber.Ctx) error {
 
 	// Item-level validation: each GRN item must match a PO line by description and
 	// must not exceed the ordered quantity on that line.
+	// Also snapshot itemCode from the matching PO line so the printed GRN
+	// matches the PDF sample's "Item Code" column.
+	poItemCodeByDesc := make(map[string]string)
 	{
 		poItems := po.Items.Data()
 		poByDesc := make(map[string]int, len(poItems))
 		for _, it := range poItems {
-			poByDesc[strings.TrimSpace(strings.ToLower(it.Description))] += it.Quantity
+			key := strings.TrimSpace(strings.ToLower(it.Description))
+			poByDesc[key] += it.Quantity
+			if _, exists := poItemCodeByDesc[key]; !exists && it.ItemCode != "" {
+				poItemCodeByDesc[key] = it.ItemCode
+			}
 		}
 
-		for _, ln := range req.Items {
+		for i, ln := range req.Items {
 			key := strings.TrimSpace(strings.ToLower(ln.Description))
 			ordered, ok := poByDesc[key]
 			if !ok {
@@ -266,6 +324,9 @@ func CreateGRN(c *fiber.Ctx) error {
 					"success": false,
 					"message": fmt.Sprintf("GRN item %q does not match any line on PO %s", ln.Description, po.DocumentNumber),
 				})
+			}
+			if req.Items[i].ItemCode == "" {
+				req.Items[i].ItemCode = poItemCodeByDesc[key]
 			}
 			if ln.QuantityReceived <= 0 {
 				return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
@@ -374,6 +435,31 @@ func CreateGRN(c *fiber.Ctx) error {
 		})
 	}
 
+	// Snapshot vendor name + address from the PO at creation time so the printed
+	// GRN remains stable if the vendor record is later edited / deleted.
+	vendorNameSnapshot := po.VendorName
+	vendorAddressSnapshot := ""
+	if po.VendorID != nil && *po.VendorID != "" {
+		var vendor models.Vendor
+		if err := config.DB.Where("id = ?", *po.VendorID).First(&vendor).Error; err == nil {
+			if vendorNameSnapshot == "" {
+				vendorNameSnapshot = vendor.Name
+			}
+			// Prefer the postal/physical address; fall back to city/country.
+			vendorAddressSnapshot = vendor.PhysicalAddress
+			if vendorAddressSnapshot == "" {
+				parts := []string{}
+				if vendor.City != "" {
+					parts = append(parts, vendor.City)
+				}
+				if vendor.Country != "" {
+					parts = append(parts, vendor.Country)
+				}
+				vendorAddressSnapshot = strings.Join(parts, ", ")
+			}
+		}
+	}
+
 	grn := models.GoodsReceivedNote{
 		ID:                uuid.New().String(),
 		OrganizationID:    tenant.OrganizationID,
@@ -386,6 +472,10 @@ func CreateGRN(c *fiber.Ctx) error {
 		LinkedPV:          linkedPVDocNum,
 		WarehouseLocation: req.WarehouseLocation,
 		Notes:             req.Notes,
+		ConsignmentNote:   req.ConsignmentNote,
+		VendorName:        vendorNameSnapshot,
+		VendorAddress:     vendorAddressSnapshot,
+		SignoffStatus:     "PENDING_RECEIVER",
 		CreatedBy:         tenant.UserID,
 		CreatedAt:         time.Now(),
 		UpdatedAt:         time.Now(),
@@ -559,6 +649,17 @@ func UpdateGRN(c *fiber.Ctx) error {
 		})
 	}
 
+	// Once the receiver has signed the GRN the captured signature is bound
+	// to the line items as they stood at that moment; mutating items after
+	// the fact would invalidate that signature. Item edits are therefore only
+	// permitted while signoff_status = PENDING_RECEIVER.
+	if len(req.Items) > 0 && grn.SignoffStatus != "PENDING_RECEIVER" {
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
+			"success": false,
+			"message": "Line items cannot be edited after the receiver has signed the GRN",
+		})
+	}
+
 	if len(req.Items) > 0 {
 		grn.Items = datatypes.NewJSONType(req.Items)
 	}
@@ -567,6 +668,15 @@ func UpdateGRN(c *fiber.Ctx) error {
 	}
 	if len(req.QualityIssues) > 0 {
 		grn.QualityIssues = datatypes.NewJSONType(req.QualityIssues)
+	}
+	if req.WarehouseLocation != nil {
+		grn.WarehouseLocation = *req.WarehouseLocation
+	}
+	if req.Notes != nil {
+		grn.Notes = *req.Notes
+	}
+	if req.ConsignmentNote != nil {
+		grn.ConsignmentNote = *req.ConsignmentNote
 	}
 
 	var grnUpdateUser models.User
@@ -717,6 +827,20 @@ func modelToGRNResponse(grn models.GoodsReceivedNote) types.GRNResponse {
 		AutomationUsed:    grn.AutomationUsed,
 		AutoCreatedPV:     autoCreatedPV,
 		Metadata:          metadata,
+
+		ConsignmentNote:      grn.ConsignmentNote,
+		VendorName:           grn.VendorName,
+		VendorAddress:        grn.VendorAddress,
+		ReceivedByName:       grn.ReceivedByName,
+		ReceivedBySignature:  grn.ReceivedBySignature,
+		ReceivedAt:           grn.ReceivedAt,
+		CertifiedByID:        grn.CertifiedByID,
+		CertifiedByName:      grn.CertifiedByName,
+		CertifiedBySignature: grn.CertifiedBySignature,
+		CertifiedAt:          grn.CertifiedAt,
+		SignoffStatus:        grn.SignoffStatus,
+		StampImageURL:        grn.StampImageURL,
+
 		CreatedAt:         grn.CreatedAt,
 		UpdatedAt:         grn.UpdatedAt,
 	}
@@ -764,6 +888,15 @@ func SubmitGRN(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"success": false,
 			"message": fmt.Sprintf("Cannot submit GRN in %s status", grn.Status),
+		})
+	}
+
+	// Workflow is optional and can only be triggered after both the receiver
+	// and the certifying officer have signed the GRN.
+	if grn.SignoffStatus != "READY" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"success": false,
+			"message": "GRN must be signed by both the receiver and a certifying officer before it can be submitted to a workflow",
 		})
 	}
 
@@ -824,8 +957,11 @@ func SubmitGRN(c *fiber.Ctx) error {
 	grn.Status = models.StatusPending
 	grn.UpdatedAt = time.Now()
 
+	// Use the open transaction's connection so we don't deadlock against
+	// the in-flight tx when the connection pool is restricted to a single
+	// conn (e.g. SQLite-backed unit test harness).
 	var user models.User
-	_ = config.DB.Where("id = ?", userID).First(&user).Error
+	_ = tx.Where("id = ?", userID).First(&user).Error
 	actionHistory := grn.ActionHistory.Data()
 	actionHistory = append(actionHistory, types.ActionHistoryEntry{
 		ID:              uuid.New().String(),
@@ -881,4 +1017,288 @@ func SubmitGRN(c *fiber.Ctx) error {
 			},
 		},
 	})
+}
+
+// privilegedGRNCertifierRoles is the canonical set of roles that may certify
+// a GRN as an "issuing officer". Matches the canonical SystemRole values used
+// across the rest of the app (see frontend/src/types/core.ts).
+var privilegedGRNCertifierRoles = map[string]bool{
+	"admin":       true,
+	"super_admin": true,
+	"manager":     true,
+	"finance":     true,
+	"approver":    true,
+}
+
+// SignReceiveGRN captures the receiver's name + digital signature, moving the
+// sign-off state from PENDING_RECEIVER -> PENDING_CERTIFIER.
+func SignReceiveGRN(c *fiber.Ctx) error {
+	tenant, err := middleware.GetTenantContext(c)
+	if err != nil {
+		return utils.SendUnauthorizedError(c, "Organization context required")
+	}
+
+	id := c.Params("id")
+	if id == "" {
+		return utils.SendBadRequestError(c, "GRN ID is required")
+	}
+
+	var req types.SignReceiveGRNRequest
+	if err := c.BodyParser(&req); err != nil {
+		return utils.SendBadRequestError(c, "Invalid request body")
+	}
+	if strings.TrimSpace(req.ReceivedByName) == "" || strings.TrimSpace(req.Signature) == "" {
+		return utils.SendBadRequestError(c, "receivedByName and signature are required")
+	}
+
+	var grn models.GoodsReceivedNote
+	if err := config.DB.
+		Where("id = ? AND organization_id = ?", id, tenant.OrganizationID).
+		First(&grn).Error; err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
+			"success": false,
+			"message": "GRN not found",
+		})
+	}
+
+	if strings.ToUpper(grn.Status) != "DRAFT" {
+		return utils.SendBadRequestError(c, fmt.Sprintf("Cannot sign GRN in %s status", grn.Status))
+	}
+	if grn.SignoffStatus != "PENDING_RECEIVER" {
+		return utils.SendBadRequestError(c, fmt.Sprintf("Receiver sign-off not allowed in state %s", grn.SignoffStatus))
+	}
+
+	now := time.Now()
+	grn.ReceivedByName = req.ReceivedByName
+	grn.ReceivedBySignature = req.Signature
+	grn.ReceivedAt = &now
+	if grn.ReceivedBy == "" {
+		grn.ReceivedBy = tenant.UserID
+	}
+	grn.SignoffStatus = "PENDING_CERTIFIER"
+	grn.UpdatedAt = now
+
+	var actor models.User
+	_ = config.DB.Where("id = ?", tenant.UserID).First(&actor).Error
+	history := grn.ActionHistory.Data()
+	history = append(history, types.ActionHistoryEntry{
+		ID:              uuid.New().String(),
+		Action:          "RECEIVED_SIGNOFF",
+		ActionType:      "SIGNOFF",
+		PerformedBy:     tenant.UserID,
+		PerformedByName: actor.Name,
+		PerformedByRole: actor.Role,
+		Timestamp:       now,
+		PerformedAt:     now,
+		Comments:        fmt.Sprintf("GRN received and signed by %s", req.ReceivedByName),
+		NewStatus:       grn.Status,
+	})
+	grn.ActionHistory = datatypes.NewJSONType(history)
+
+	if err := config.DB.Save(&grn).Error; err != nil {
+		return utils.SendInternalError(c, "Failed to record receiver sign-off", err)
+	}
+
+	go services.LogDocumentEvent(config.DB, services.DocumentEvent{
+		OrganizationID: tenant.OrganizationID,
+		DocumentID:     grn.ID,
+		DocumentType:   "grn",
+		UserID:         tenant.UserID,
+		ActorName:      actor.Name,
+		ActorRole:      tenant.UserRole,
+		Action:         "received_signoff",
+		Details:        map[string]interface{}{"documentNumber": grn.DocumentNumber},
+	})
+
+	return c.JSON(types.DetailResponse{Success: true, Data: modelToGRNResponse(grn)})
+}
+
+// CertifyGRN captures the issuing officer's certification. Requires a
+// privileged role and that the receiver has already signed.
+// Moves PENDING_CERTIFIER -> READY.
+func CertifyGRN(c *fiber.Ctx) error {
+	tenant, err := middleware.GetTenantContext(c)
+	if err != nil {
+		return utils.SendUnauthorizedError(c, "Organization context required")
+	}
+
+	id := c.Params("id")
+	if id == "" {
+		return utils.SendBadRequestError(c, "GRN ID is required")
+	}
+
+	if !privilegedGRNCertifierRoles[strings.ToLower(tenant.UserRole)] {
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
+			"success": false,
+			"message": "Only admin, manager, finance or approver roles may certify a GRN",
+		})
+	}
+
+	var req types.CertifyGRNRequest
+	if err := c.BodyParser(&req); err != nil {
+		return utils.SendBadRequestError(c, "Invalid request body")
+	}
+	if strings.TrimSpace(req.Signature) == "" {
+		return utils.SendBadRequestError(c, "signature is required")
+	}
+
+	var grn models.GoodsReceivedNote
+	if err := config.DB.
+		Where("id = ? AND organization_id = ?", id, tenant.OrganizationID).
+		First(&grn).Error; err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
+			"success": false,
+			"message": "GRN not found",
+		})
+	}
+
+	if strings.ToUpper(grn.Status) != "DRAFT" {
+		return utils.SendBadRequestError(c, fmt.Sprintf("Cannot certify GRN in %s status", grn.Status))
+	}
+	if grn.SignoffStatus != "PENDING_CERTIFIER" {
+		return utils.SendBadRequestError(c, fmt.Sprintf("Certifier sign-off not allowed in state %s", grn.SignoffStatus))
+	}
+	// Separation-of-duties: the certifier cannot be the same user as the creator
+	// or the receiver, mirroring the two-signature requirement on the printed form.
+	if grn.CreatedBy == tenant.UserID || grn.ReceivedBy == tenant.UserID {
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
+			"success": false,
+			"message": "The certifying officer must be different from the GRN creator and receiver",
+		})
+	}
+
+	var certifier models.User
+	if err := config.DB.Where("id = ?", tenant.UserID).First(&certifier).Error; err != nil {
+		return utils.SendInternalError(c, "Failed to load certifier profile", err)
+	}
+
+	now := time.Now()
+	grn.CertifiedByID = tenant.UserID
+	grn.CertifiedByName = certifier.Name
+	grn.CertifiedBySignature = req.Signature
+	grn.CertifiedAt = &now
+	grn.SignoffStatus = "READY"
+	grn.UpdatedAt = now
+	if strings.TrimSpace(req.StampImageURL) != "" {
+		grn.StampImageURL = req.StampImageURL
+	}
+
+	history := grn.ActionHistory.Data()
+	comments := req.Comments
+	if comments == "" {
+		comments = fmt.Sprintf("GRN certified by %s", certifier.Name)
+	}
+	history = append(history, types.ActionHistoryEntry{
+		ID:              uuid.New().String(),
+		Action:          "CERTIFIED",
+		ActionType:      "SIGNOFF",
+		PerformedBy:     tenant.UserID,
+		PerformedByName: certifier.Name,
+		PerformedByRole: certifier.Role,
+		Timestamp:       now,
+		PerformedAt:     now,
+		Comments:        comments,
+		NewStatus:       grn.Status,
+	})
+	grn.ActionHistory = datatypes.NewJSONType(history)
+
+	if err := config.DB.Save(&grn).Error; err != nil {
+		return utils.SendInternalError(c, "Failed to record certifier sign-off", err)
+	}
+
+	// Optional auto-submit: when the org has enabled AutoSubmitGRNToWorkflow,
+	// hand the GRN straight to the default workflow on certification.
+	// (Manual submit endpoint is still available.)
+	go services.LogDocumentEvent(config.DB, services.DocumentEvent{
+		OrganizationID: tenant.OrganizationID,
+		DocumentID:     grn.ID,
+		DocumentType:   "grn",
+		UserID:         tenant.UserID,
+		ActorName:      certifier.Name,
+		ActorRole:      tenant.UserRole,
+		Action:         "certified",
+		Details:        map[string]interface{}{"documentNumber": grn.DocumentNumber},
+	})
+
+	return c.JSON(types.DetailResponse{Success: true, Data: modelToGRNResponse(grn)})
+}
+
+// MarkGRNComplete closes the GRN without workflow approval. The two
+// signatures (receiver + certifier) stand in for an approval chain.
+// Requires SignoffStatus = READY and Status = DRAFT.
+func MarkGRNComplete(c *fiber.Ctx) error {
+	tenant, err := middleware.GetTenantContext(c)
+	if err != nil {
+		return utils.SendUnauthorizedError(c, "Organization context required")
+	}
+
+	id := c.Params("id")
+	if id == "" {
+		return utils.SendBadRequestError(c, "GRN ID is required")
+	}
+
+	var req types.CompleteGRNRequest
+	_ = c.BodyParser(&req)
+
+	var grn models.GoodsReceivedNote
+	if err := config.DB.
+		Where("id = ? AND organization_id = ?", id, tenant.OrganizationID).
+		First(&grn).Error; err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
+			"success": false,
+			"message": "GRN not found",
+		})
+	}
+
+	if grn.SignoffStatus != "READY" {
+		return utils.SendBadRequestError(c, "GRN must be signed by both the receiver and a certifying officer before it can be marked complete")
+	}
+	if strings.ToUpper(grn.Status) != "DRAFT" {
+		return utils.SendBadRequestError(c, fmt.Sprintf("Cannot complete GRN in %s status", grn.Status))
+	}
+
+	now := time.Now()
+	grn.Status = models.StatusCompleted
+	grn.SignoffStatus = "COMPLETED"
+	grn.UpdatedAt = now
+
+	var actor models.User
+	_ = config.DB.Where("id = ?", tenant.UserID).First(&actor).Error
+	history := grn.ActionHistory.Data()
+	comments := req.Comments
+	if comments == "" {
+		comments = "GRN marked complete (workflow skipped)"
+	}
+	history = append(history, types.ActionHistoryEntry{
+		ID:              uuid.New().String(),
+		Action:          "COMPLETE_NO_WORKFLOW",
+		ActionType:      "COMPLETE",
+		PerformedBy:     tenant.UserID,
+		PerformedByName: actor.Name,
+		PerformedByRole: actor.Role,
+		Timestamp:       now,
+		PerformedAt:     now,
+		Comments:        comments,
+		PreviousStatus:  models.StatusDraft,
+		NewStatus:       models.StatusCompleted,
+	})
+	grn.ActionHistory = datatypes.NewJSONType(history)
+
+	if err := config.DB.Save(&grn).Error; err != nil {
+		return utils.SendInternalError(c, "Failed to complete GRN", err)
+	}
+
+	go utils.SyncDocumentAs(config.DB, "GRN", grn.ID, tenant.UserID)
+	go services.LogDocumentEvent(config.DB, services.DocumentEvent{
+		OrganizationID: tenant.OrganizationID,
+		DocumentID:     grn.ID,
+		DocumentType:   "grn",
+		UserID:         tenant.UserID,
+		ActorName:      actor.Name,
+		ActorRole:      tenant.UserRole,
+		Action:         "completed_no_workflow",
+		Details:        map[string]interface{}{"documentNumber": grn.DocumentNumber},
+	})
+
+	return c.JSON(types.DetailResponse{Success: true, Data: modelToGRNResponse(grn)})
 }

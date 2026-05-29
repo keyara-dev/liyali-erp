@@ -433,10 +433,13 @@ func UpdateBudget(c *fiber.Ctx) error {
 
 	// Add action history entry if there were updates
 	if len(updates) > 0 {
-		// Get user name from database
+		// Get user name. Use the open transaction's connection — issuing the
+		// query against config.DB instead would deadlock against the open tx
+		// when the connection pool is restricted to a single connection (e.g.
+		// the SQLite-backed unit-test harness).
 		var user models.User
 		userName := "System Administrator"
-		if err := config.DB.Where("id = ?", userID).First(&user).Error; err == nil {
+		if err := tx.Where("id = ?", userID).First(&user).Error; err == nil {
 			userName = user.Name
 		}
 

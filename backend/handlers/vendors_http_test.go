@@ -337,6 +337,8 @@ func TestCreateVendor_MissingCity(t *testing.T) {
 }
 
 func TestCreateVendor_MissingBankAccount(t *testing.T) {
+	// bankAccount is optional in the current vendor model (banking moved to a
+	// separate "bank accounts" relation). The handler accepts the create.
 	db := setupTestDB(t)
 	defer teardownTestDB(t, db)
 
@@ -346,10 +348,10 @@ func TestCreateVendor_MissingBankAccount(t *testing.T) {
 	delete(payload, "bankAccount")
 
 	resp := testRequest(app, http.MethodPost, "/vendors/", payload)
-	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
+	assert.Equal(t, http.StatusCreated, resp.StatusCode)
 
 	body := decodeResponse(resp)
-	assert.Equal(t, false, body["success"])
+	assert.Equal(t, true, body["success"])
 }
 
 func TestCreateVendor_MissingTaxID(t *testing.T) {

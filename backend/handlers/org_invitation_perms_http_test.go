@@ -76,6 +76,10 @@ func setupOrgSettingsTable(t *testing.T) {
 		enable_budget_validation BOOLEAN DEFAULT true,
 		budget_variance_threshold REAL DEFAULT 5.0,
 		procurement_flow TEXT DEFAULT 'goods_first',
+		auto_submit_grn_to_workflow BOOLEAN DEFAULT false,
+		auto_submit_pv_to_workflow BOOLEAN DEFAULT false,
+		auto_create_pv_from_po BOOLEAN DEFAULT false,
+		stamp_image_url TEXT NOT NULL DEFAULT '',
 		created_at DATETIME,
 		updated_at DATETIME
 	)`

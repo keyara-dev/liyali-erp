@@ -49,6 +49,10 @@ function buildItemsFromPOItems(poItems: PurchaseOrder["items"]): ItemRow[] {
     variance: 0,
     condition: "good",
     notes: "",
+    // Snapshot SKU/catalog code from the matching PO line so the printed
+    // GRN can render the "Item Code" column from the standard form.
+    itemCode: (item as { itemCode?: string }).itemCode ?? "",
+    remarks: "",
   }));
 }
 
@@ -68,6 +72,7 @@ export function CreateGRNDialog({
   const [items, setItems] = useState<ItemRow[]>([]);
   const [warehouseLocation, setWarehouseLocation] = useState("");
   const [notes, setNotes] = useState("");
+  const [consignmentNote, setConsignmentNote] = useState("");
   const [isCreating, setIsCreating] = useState(false);
 
   const orgFlow = orgSettings?.procurementFlow ?? "goods_first";
@@ -166,6 +171,8 @@ export function CreateGRNDialog({
         variance: 0,
         condition: "good",
         notes: "",
+        itemCode: "",
+        remarks: "",
       },
     ]);
   };
@@ -205,6 +212,7 @@ export function CreateGRNDialog({
         warehouseLocation,
         notes,
         orgFlow === "payment_first" ? selectedPVDocNumber : undefined,
+        consignmentNote,
       );
 
       if (response.success) {
@@ -243,6 +251,7 @@ export function CreateGRNDialog({
       setItems([]);
       setWarehouseLocation("");
       setNotes("");
+      setConsignmentNote("");
       onOpenChange(false);
     }
   };
@@ -428,9 +437,12 @@ export function CreateGRNDialog({
 
               <div className="rounded-lg border border-border overflow-hidden">
                 {/* Column headers */}
-                <div className="grid grid-cols-[1.75rem_1fr_4rem_4rem_7rem_1.75rem] gap-x-3 px-3 py-2 bg-muted/60 border-b border-border">
+                <div className="grid grid-cols-[1.75rem_5rem_1fr_4rem_4rem_6rem_1fr_1.75rem] gap-x-3 px-3 py-2 bg-muted/60 border-b border-border">
                   <span className="text-xs font-medium text-muted-foreground">
                     #
+                  </span>
+                  <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    Code
                   </span>
                   <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
                     Description
@@ -444,6 +456,9 @@ export function CreateGRNDialog({
                   <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
                     Condition
                   </span>
+                  <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    Remarks
+                  </span>
                   <span />
                 </div>
 
@@ -452,12 +467,23 @@ export function CreateGRNDialog({
                   {items.map((item, index) => (
                     <div
                       key={item._key}
-                      className="grid grid-cols-[1.75rem_1fr_4rem_4rem_7rem_1.75rem] gap-x-3 px-3 py-2 items-center hover:bg-muted/20 transition-colors"
+                      className="grid grid-cols-[1.75rem_5rem_1fr_4rem_4rem_6rem_1fr_1.75rem] gap-x-3 px-3 py-2 items-center hover:bg-muted/20 transition-colors"
                     >
                       {/* # */}
                       <span className="text-xs text-muted-foreground/50 font-mono tabular-nums">
                         {String(index + 1).padStart(2, "0")}
                       </span>
+
+                      {/* Item Code */}
+                      <input
+                        className="min-w-0 w-full bg-transparent text-sm font-mono placeholder:text-muted-foreground/40 focus:outline-none focus:bg-muted/30 rounded px-1.5 py-1 -mx-1.5 border border-transparent focus:border-border transition-colors"
+                        placeholder="SKU"
+                        value={item.itemCode ?? ""}
+                        disabled={isCreating}
+                        onChange={(e) =>
+                          updateItem(item._key, "itemCode", e.target.value)
+                        }
+                      />
 
                       {/* Description */}
                       <input
@@ -516,6 +542,17 @@ export function CreateGRNDialog({
                         <option value="missing">Missing</option>
                       </select>
 
+                      {/* Remarks */}
+                      <input
+                        className="min-w-0 w-full bg-transparent text-sm placeholder:text-muted-foreground/40 focus:outline-none focus:bg-muted/30 rounded px-1.5 py-1 -mx-1.5 border border-transparent focus:border-border transition-colors"
+                        placeholder="Per-line remarks"
+                        value={item.remarks ?? ""}
+                        disabled={isCreating}
+                        onChange={(e) =>
+                          updateItem(item._key, "remarks", e.target.value)
+                        }
+                      />
+
                       {/* Delete */}
                       <button
                         type="button"
@@ -546,6 +583,16 @@ export function CreateGRNDialog({
           <Separator />
 
           {/* Receipt details */}
+
+          <Input
+            label="Delivery Consignment Note"
+            id="consignment-note"
+            value={consignmentNote}
+            onChange={(e) => setConsignmentNote(e.target.value)}
+            placeholder="e.g. CN-2026-04812"
+            descriptionText="Carrier / supplier delivery note reference printed on the GRN."
+            disabled={isCreating}
+          />
 
           <Input
             label="Warehouse Location"

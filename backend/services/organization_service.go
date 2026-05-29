@@ -323,6 +323,7 @@ func (s *OrganizationService) UpdateOrganizationSettings(orgID string, settings 
 			"enable_budget_validation":   settings.EnableBudgetValidation,
 			"budget_variance_threshold":  settings.BudgetVarianceThreshold,
 			"procurement_flow":           settings.ProcurementFlow,
+			"stamp_image_url":            settings.StampImageURL,
 		}).Error
 }
 

@@ -157,6 +157,7 @@ func setupWorkflowTasksTable(t *testing.T, db *gorm.DB) {
 		assigned_user_id TEXT,
 		status TEXT DEFAULT 'PENDING',
 		priority TEXT DEFAULT 'MEDIUM',
+		kind TEXT NOT NULL DEFAULT 'approval',
 		created_at DATETIME,
 		claimed_at DATETIME,
 		claimed_by TEXT,

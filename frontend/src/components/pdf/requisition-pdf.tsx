@@ -10,6 +10,8 @@ export interface DocumentHeader {
   logoUrl?: string;
   orgName?: string;
   tagline?: string;
+  /** Organization-wide rubber-stamp image rendered in the GRN PDF "Stamp of Issuing Officer" box. */
+  stampImageUrl?: string;
 }
 
 interface RequisitionPDFProps {

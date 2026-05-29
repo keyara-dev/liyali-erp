@@ -40,8 +40,12 @@ import {
   Building2,
   FileText,
   ArrowDownUp,
+  Stamp,
+  Upload,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
+import { uploadToImageKit, validateImageFile } from "@/lib/imagekit";
 
 export function WorkspaceSettings() {
   const { currentOrganization } = useOrganizationContext();
@@ -66,6 +70,12 @@ export function WorkspaceSettings() {
     "goods_first" | "payment_first"
   >("goods_first");
 
+  // "Stamp of Issuing Officer" — rendered as a fallback in every GRN PDF
+  // when the certifying officer does not upload a per-GRN stamp.
+  const [stampImageUrl, setStampImageUrl] = useState<string>("");
+  const [stampUploading, setStampUploading] = useState(false);
+  const [stampHasChanges, setStampHasChanges] = useState(false);
+
   // Sync form data when currentOrganization changes
   useEffect(() => {
     if (currentOrganization) {
@@ -85,6 +95,12 @@ export function WorkspaceSettings() {
       setProcurementFlow(settingsData.procurementFlow);
     }
   }, [settingsData]);
+
+  // Sync stamp image from settings on load (and on remote refresh)
+  useEffect(() => {
+    setStampImageUrl(settingsData?.stampImageUrl ?? "");
+    setStampHasChanges(false);
+  }, [settingsData?.stampImageUrl]);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -140,6 +156,42 @@ export function WorkspaceSettings() {
       await updateSettings({ ...settingsData, procurementFlow });
     } catch (error) {
       console.error("Failed to update procurement flow:", error);
+    }
+  };
+
+  const handleStampFile = async (file: File | null) => {
+    if (!file) return;
+    const validation = validateImageFile(file);
+    if (!validation.valid) {
+      toast.error(validation.error ?? "Invalid image");
+      return;
+    }
+    setStampUploading(true);
+    try {
+      const response = await uploadToImageKit(file, "organizations/stamps");
+      setStampImageUrl(response.url);
+      setStampHasChanges(true);
+      toast.success("Stamp uploaded — remember to save");
+    } catch (error: any) {
+      console.error("Stamp upload failed:", error);
+      toast.error(error.message || "Failed to upload stamp");
+    } finally {
+      setStampUploading(false);
+    }
+  };
+
+  const handleClearStamp = () => {
+    setStampImageUrl("");
+    setStampHasChanges(true);
+  };
+
+  const handleSaveStamp = async () => {
+    if (!settingsData) return;
+    try {
+      await updateSettings({ ...settingsData, stampImageUrl });
+      setStampHasChanges(false);
+    } catch (error) {
+      console.error("Failed to update stamp:", error);
     }
   };
 
@@ -404,6 +456,89 @@ export function WorkspaceSettings() {
             >
               <Save className="h-4 w-4" />
               Save Flow Setting
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Stamp of Issuing Officer */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Stamp className="h-5 w-5" />
+            Stamp of Issuing Officer
+          </CardTitle>
+          <CardDescription>
+            Rubber-stamp image printed on every Goods Received Note PDF.
+            Certifying officers can override this on a per-GRN basis when
+            signing.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-[140px_1fr] gap-4 items-start">
+            <div className="h-32 w-32 rounded-md border border-dashed bg-white flex items-center justify-center overflow-hidden">
+              {stampImageUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={stampImageUrl}
+                  alt="Organization stamp"
+                  className="max-h-full max-w-full object-contain"
+                />
+              ) : (
+                <div className="flex flex-col items-center text-muted-foreground">
+                  <Stamp className="h-8 w-8 mb-1" />
+                  <span className="text-[10px]">No stamp uploaded</span>
+                </div>
+              )}
+            </div>
+            <div className="space-y-3">
+              <div className="flex flex-wrap gap-2">
+                <label className="inline-flex items-center gap-1.5 cursor-pointer rounded-md border px-3 py-2 text-sm hover:bg-muted/50">
+                  {stampUploading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Upload className="h-4 w-4" />
+                  )}
+                  {stampImageUrl ? "Replace stamp" : "Upload stamp"}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    disabled={stampUploading || isSavingSettings}
+                    onChange={(e) =>
+                      handleStampFile(e.target.files?.[0] ?? null)
+                    }
+                  />
+                </label>
+                {stampImageUrl ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleClearStamp}
+                    disabled={stampUploading || isSavingSettings}
+                  >
+                    <X className="h-4 w-4 mr-1" />
+                    Remove
+                  </Button>
+                ) : null}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Transparent PNG recommended. JPG, PNG, GIF or WebP up to 10 MB.
+              </p>
+            </div>
+          </div>
+          <div className="flex justify-end pt-2">
+            <Button
+              onClick={handleSaveStamp}
+              disabled={
+                !stampHasChanges || isSavingSettings || stampUploading
+              }
+              isLoading={isSavingSettings}
+              loadingText="Saving..."
+            >
+              <Save className="h-4 w-4" />
+              Save Stamp
             </Button>
           </div>
         </CardContent>

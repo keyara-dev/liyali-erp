@@ -944,6 +944,7 @@ func ConfirmGRN(c *fiber.Ctx) error {
 
 	now := time.Now()
 	grn.Status = models.StatusCompleted
+	grn.SignoffStatus = "COMPLETED"
 	grn.UpdatedAt = now
 
 	actionHistory := grn.ActionHistory.Data()

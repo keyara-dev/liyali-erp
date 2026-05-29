@@ -165,7 +165,9 @@ func queryEffectiveLimits(orgID string) (*models.EffectiveLimits, error) {
 
 	// Check for overrides
 	var override models.OrganizationLimitOverride
-	err := db.Where("organization_id = ? AND (expires_at IS NULL OR expires_at > NOW())", orgID).
+	// CURRENT_TIMESTAMP is ANSI SQL (works in both Postgres and SQLite),
+	// unlike NOW() which is Postgres-specific.
+	err := db.Where("organization_id = ? AND (expires_at IS NULL OR expires_at > CURRENT_TIMESTAMP)", orgID).
 		First(&override).Error
 
 	if err == nil {
