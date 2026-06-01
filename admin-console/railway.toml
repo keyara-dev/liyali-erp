@@ -1,0 +1,12 @@
+# Railway configuration — Liyali Admin Console
+# Runtime vars (Railway service variables): NEXT_PUBLIC_API_URL, AUTH_SECRET.
+# Container listens on PORT 3001 (set in Dockerfile).
+[build]
+builder = "dockerfile"
+dockerfilePath = "Dockerfile"
+watchPatterns = ["admin-console/**"]
+
+[deploy]
+healthcheckTimeout = 120
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 10

@@ -1,0 +1,15 @@
+# Railway configuration — Liyali Gateway Frontend
+# Build-time vars (Railway service variables, passed as Docker build args):
+# NEXT_PUBLIC_API_URL, NEXT_PUBLIC_APP_URL, NEXT_PUBLIC_IMAGEKIT_PUBLIC_KEY,
+# NEXT_PUBLIC_IMAGEKIT_URL_ENDPOINT.
+# Runtime secrets: AUTH_SECRET (or NEXTAUTH_SECRET), IMAGEKIT_PRIVATE_KEY, BASE_URL.
+[build]
+builder = "dockerfile"
+dockerfilePath = "Dockerfile"
+watchPatterns = ["frontend/**"]
+
+[deploy]
+healthcheckPath = "/api/health"
+healthcheckTimeout = 120
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 10
