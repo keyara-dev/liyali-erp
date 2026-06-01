@@ -80,21 +80,22 @@ func (s *DocumentAutomationService) CreatePurchaseOrderFromRequisition(
 	var vendorID *string
 	var vendorName string = "To Be Determined"
 
-	placeholder := "vendor-placeholder-001"
 	if requisition.PreferredVendorID != nil && *requisition.PreferredVendorID != "" {
 		// Verify vendor exists if provided
 		var vendor models.Vendor
 		if err := s.db.Where("id = ?", *requisition.PreferredVendorID).First(&vendor).Error; err != nil {
-			// If vendor not found, use placeholder vendor
-			vendorID = &placeholder
+			// Vendor not found — leave vendor unset (vendor_id is a nullable FK,
+			// ON DELETE SET NULL). Referencing a non-existent placeholder row
+			// would violate the foreign key on a clean production database.
+			vendorID = nil
 			vendorName = "To Be Determined (Invalid Vendor)"
 		} else {
 			vendorID = &vendor.ID
 			vendorName = vendor.Name
 		}
 	} else {
-		// No vendor specified - use placeholder vendor
-		vendorID = &placeholder
+		// No vendor specified — leave unset (nullable FK).
+		vendorID = nil
 		vendorName = "To Be Determined"
 	}
 

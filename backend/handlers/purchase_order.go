@@ -481,8 +481,22 @@ func UpdatePurchaseOrder(c *fiber.Ctx) error {
 		"order_id":  id,
 	})
 
+	tenant, terr := middleware.GetTenantContext(c)
+	if terr != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"success": false,
+			"message": "Organization context required",
+		})
+	}
+
+	// SECURITY: scope to org + owner/involvement — prevents cross-tenant (IDOR)
+	// and cross-user edits of a purchase order.
+	scope := utils.GetDocumentScope(config.DB, tenant.UserID, tenant.UserRole, tenant.OrganizationID)
+	loadQuery := config.DB.Where("id = ? AND organization_id = ?", id, tenant.OrganizationID)
+	loadQuery = scope.ApplyToQuery(loadQuery, "created_by", "purchase_order", "")
+
 	var order models.PurchaseOrder
-	if err := config.DB.Where("id = ?", id).First(&order).Error; err != nil {
+	if err := loadQuery.First(&order).Error; err != nil {
 		logging.LogError(c, err, "purchase_order_not_found", map[string]interface{}{
 			"order_id":   id,
 			"error_type": "not_found",
@@ -719,8 +733,21 @@ func DeletePurchaseOrder(c *fiber.Ctx) error {
 		"order_id":  id,
 	})
 
+	tenant, terr := middleware.GetTenantContext(c)
+	if terr != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"success": false,
+			"message": "Organization context required",
+		})
+	}
+
+	// SECURITY: scope to org + owner/involvement (cross-tenant + cross-user guard).
+	scope := utils.GetDocumentScope(config.DB, tenant.UserID, tenant.UserRole, tenant.OrganizationID)
+	loadQuery := config.DB.Where("id = ? AND organization_id = ?", id, tenant.OrganizationID)
+	loadQuery = scope.ApplyToQuery(loadQuery, "created_by", "purchase_order", "")
+
 	var order models.PurchaseOrder
-	if err := config.DB.Where("id = ?", id).First(&order).Error; err != nil {
+	if err := loadQuery.First(&order).Error; err != nil {
 		logging.LogError(c, err, "purchase_order_not_found", map[string]interface{}{
 			"order_id":   id,
 			"error_type": "not_found",
@@ -759,6 +786,116 @@ func DeletePurchaseOrder(c *fiber.Ctx) error {
 	return c.JSON(types.MessageResponse{
 		Success: true,
 		Message: "Purchase order deleted successfully",
+	})
+}
+
+// WithdrawPurchaseOrder lets the creator pull a PENDING purchase order back to
+// DRAFT, cancelling its in-flight workflow. Mirrors the payment voucher flow.
+func WithdrawPurchaseOrder(c *fiber.Ctx) error {
+	logger := logging.FromContext(c)
+	logger.Info("withdraw_purchase_order_request")
+
+	id := c.Params("id")
+	if id == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"success": false,
+			"message": "Purchase Order ID is required",
+		})
+	}
+
+	tenant, terr := middleware.GetTenantContext(c)
+	if terr != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"success": false,
+			"message": "Organization context required",
+		})
+	}
+
+	var order models.PurchaseOrder
+	if err := config.DB.Where("id = ? AND organization_id = ?", id, tenant.OrganizationID).First(&order).Error; err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
+			"success": false,
+			"message": "Purchase order not found",
+		})
+	}
+
+	// Only the creator (or a privileged role) may withdraw.
+	scope := utils.GetDocumentScope(config.DB, tenant.UserID, tenant.UserRole, tenant.OrganizationID)
+	if order.CreatedBy != "" && order.CreatedBy != tenant.UserID && !scope.CanViewAll {
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
+			"success": false,
+			"message": "Only the creator can withdraw this purchase order",
+		})
+	}
+
+	// Only PENDING purchase orders can be withdrawn.
+	if strings.ToUpper(order.Status) != "PENDING" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"success": false,
+			"message": fmt.Sprintf("Cannot withdraw purchase order in %s status. Only pending purchase orders can be withdrawn.", order.Status),
+		})
+	}
+
+	// Block withdrawal once an approver has actively claimed the review task.
+	var task models.WorkflowTask
+	if err := config.DB.Where(
+		"entity_id = ? AND entity_type = ? AND UPPER(status) IN (?, ?)",
+		id, "purchase_order", "PENDING", "CLAIMED",
+	).First(&task).Error; err == nil {
+		if strings.ToUpper(task.Status) == "CLAIMED" && task.ClaimedBy != nil {
+			return c.Status(fiber.StatusConflict).JSON(fiber.Map{
+				"success": false,
+				"message": "Cannot withdraw purchase order. It is currently being reviewed by an approver.",
+			})
+		}
+	}
+
+	tx := config.DB.Begin()
+	if tx.Error != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"success": false,
+			"message": "Failed to start transaction",
+		})
+	}
+
+	if err := tx.Where("entity_id = ? AND entity_type = ?", id, "purchase_order").
+		Delete(&models.WorkflowTask{}).Error; err != nil {
+		tx.Rollback()
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"success": false,
+			"message": "Failed to remove workflow tasks",
+		})
+	}
+	if err := tx.Where("entity_id = ? AND entity_type = ?", id, "purchase_order").
+		Delete(&models.WorkflowAssignment{}).Error; err != nil {
+		tx.Rollback()
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"success": false,
+			"message": "Failed to remove workflow assignments",
+		})
+	}
+
+	order.Status = "DRAFT"
+	order.ApprovalStage = 0
+	if err := tx.Save(&order).Error; err != nil {
+		tx.Rollback()
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"success": false,
+			"message": "Failed to update purchase order status",
+		})
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"success": false,
+			"message": "Failed to commit changes",
+		})
+	}
+
+	logger.Info("purchase_order_withdrawn_successfully")
+	return c.JSON(types.DetailResponse{
+		Success: true,
+		Data:    modelToPurchaseOrderResponse(order),
 	})
 }
 

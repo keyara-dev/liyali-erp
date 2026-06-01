@@ -524,9 +524,13 @@ func UpdateRequisition(c *fiber.Ctx) error {
 	// Get organization ID from context
 	organizationID := c.Locals("organizationID").(string)
 
-	// Get existing requisition - SECURITY FIX: filter by organization_id
+	// Get existing requisition — scope to org + owner/involvement so a user can
+	// only edit a requisition they own or are assigned to.
+	scope := utils.GetDocumentScope(config.DB, c.Locals("userID").(string), c.Locals("userRole").(string), organizationID)
+	loadQuery := config.DB.Where("id = ? AND organization_id = ?", id, organizationID)
+	loadQuery = scope.ApplyToQuery(loadQuery, "requester_id", "requisition", "")
 	var requisition models.Requisition
-	if err := config.DB.Where("id = ? AND organization_id = ?", id, organizationID).First(&requisition).Error; err != nil {
+	if err := loadQuery.First(&requisition).Error; err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
 			"success": false,
 			"message": "Requisition not found",
@@ -718,8 +722,12 @@ func DeleteRequisition(c *fiber.Ctx) error {
 	// Get organization ID from context
 	organizationID := c.Locals("organizationID").(string)
 
+	// Scope to org + owner/involvement so a user can only delete their own requisition.
+	scope := utils.GetDocumentScope(config.DB, c.Locals("userID").(string), c.Locals("userRole").(string), organizationID)
+	loadQuery := config.DB.Where("id = ? AND organization_id = ?", id, organizationID)
+	loadQuery = scope.ApplyToQuery(loadQuery, "requester_id", "requisition", "")
 	var requisition models.Requisition
-	if err := config.DB.Where("id = ? AND organization_id = ?", id, organizationID).First(&requisition).Error; err != nil {
+	if err := loadQuery.First(&requisition).Error; err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
 			"success": false,
 			"message": "Requisition not found",
@@ -1105,9 +1113,12 @@ func SubmitRequisition(c *fiber.Ctx) error {
 		})
 	}
 
-	// Get existing requisition
+	// Get existing requisition — scope to org + owner so only the owner can submit it.
+	scope := utils.GetDocumentScope(config.DB, userID, c.Locals("userRole").(string), organizationID)
+	loadQuery := config.DB.Where("id = ? AND organization_id = ?", id, organizationID)
+	loadQuery = scope.ApplyToQuery(loadQuery, "requester_id", "requisition", "")
 	var requisition models.Requisition
-	if err := config.DB.Where("id = ? AND organization_id = ?", id, organizationID).First(&requisition).Error; err != nil {
+	if err := loadQuery.First(&requisition).Error; err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
 			"success": false,
 			"message": "Requisition not found",

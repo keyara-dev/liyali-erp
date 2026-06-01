@@ -633,9 +633,12 @@ func UpdateGRN(c *fiber.Ctx) error {
 		})
 	}
 
+	// Scope to org + owner/involvement (created_by or received_by) for edit access.
+	scope := utils.GetDocumentScope(config.DB, tenant.UserID, tenant.UserRole, tenant.OrganizationID)
+	loadQuery := config.DB.Where("id = ? AND organization_id = ?", id, tenant.OrganizationID)
+	loadQuery = scope.ApplyToQuery(loadQuery, "created_by", "grn", "received_by")
 	var grn models.GoodsReceivedNote
-	// SECURITY FIX: Filter by organization ID
-	if err := config.DB.Where("id = ? AND organization_id = ?", id, tenant.OrganizationID).First(&grn).Error; err != nil {
+	if err := loadQuery.First(&grn).Error; err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
 			"success": false,
 			"message": "GRN not found",
@@ -744,9 +747,12 @@ func DeleteGRN(c *fiber.Ctx) error {
 		})
 	}
 
+	// Scope to org + owner/involvement (created_by or received_by) for delete access.
+	scope := utils.GetDocumentScope(config.DB, tenant.UserID, tenant.UserRole, tenant.OrganizationID)
+	loadQuery := config.DB.Where("id = ? AND organization_id = ?", id, tenant.OrganizationID)
+	loadQuery = scope.ApplyToQuery(loadQuery, "created_by", "grn", "received_by")
 	var grn models.GoodsReceivedNote
-	// SECURITY FIX: Filter by organization ID
-	if err := config.DB.Where("id = ? AND organization_id = ?", id, tenant.OrganizationID).First(&grn).Error; err != nil {
+	if err := loadQuery.First(&grn).Error; err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
 			"success": false,
 			"message": "GRN not found",

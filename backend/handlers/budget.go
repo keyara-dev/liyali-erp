@@ -526,9 +526,12 @@ func DeleteBudget(c *fiber.Ctx) error {
 
 	logger.Debug("fetching_budget_for_deletion")
 
+	// Scope to org + owner/involvement so a user can only delete their own budget.
+	scope := utils.GetDocumentScope(config.DB, tenant.UserID, tenant.UserRole, tenant.OrganizationID)
+	loadQuery := config.DB.Where("id = ? AND organization_id = ?", id, tenant.OrganizationID)
+	loadQuery = scope.ApplyToQuery(loadQuery, "created_by", "budget", "")
 	var budget models.Budget
-	// SECURITY FIX: Filter by organization ID
-	if err := config.DB.Where("id = ? AND organization_id = ?", id, tenant.OrganizationID).First(&budget).Error; err != nil {
+	if err := loadQuery.First(&budget).Error; err != nil {
 		logging.LogError(c, err, "budget_not_found_for_deletion")
 		return utils.SendNotFoundError(c, "Budget")
 	}

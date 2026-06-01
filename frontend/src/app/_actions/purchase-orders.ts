@@ -344,7 +344,7 @@ export async function withdrawPurchaseOrder(
 export async function getPurchaseOrderChain(
   poId: string,
 ): Promise<APIResponse<any>> {
-  const url = `/api/document-chain/${poId}?documentType=purchase_order`;
+  const url = `/api/v1/document-chain/${poId}?documentType=purchase_order`;
 
   try {
     const response = await authenticatedApiClient({

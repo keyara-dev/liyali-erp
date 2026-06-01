@@ -91,6 +91,19 @@ func TenantMiddleware() fiber.Handler {
 			})
 		}
 
+		// 5b. Block access to suspended organizations (org-level enforcement).
+		var org models.Organization
+		if err := config.DB.Select("id", "active").Where("id = ?", orgID).First(&org).Error; err != nil {
+			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
+				"error": "Organization not found",
+			})
+		}
+		if !org.Active {
+			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
+				"error": "This organization is suspended. Please contact support.",
+			})
+		}
+
 		// 6. Store tenant context
 		tenantCtx := &utils.TenantContext{
 			OrganizationID: orgID,

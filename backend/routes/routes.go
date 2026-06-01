@@ -332,6 +332,7 @@ func SetupRoutes(app *fiber.App, handlerRegistry *handlers.HandlerRegistry, rbac
 	pos.Delete("/:id", middleware.RequirePermission(rbacService, "purchase_order", "delete"), handlers.DeletePurchaseOrder)
 	pos.Put("/:id/items", middleware.RequirePermission(rbacService, "purchase_order", "edit"), handlers.UpdatePurchaseOrderItems)
 	pos.Post("/:id/submit", middleware.RequirePermission(rbacService, "purchase_order", "edit"), handlers.SubmitPurchaseOrder)
+	pos.Post("/:id/withdraw", middleware.RequirePermission(rbacService, "purchase_order", "edit"), handlers.WithdrawPurchaseOrder)
 
 	// Payment Voucher routes (tenant-scoped)
 	pvs := tenant.Group("/payment-vouchers", middleware.InjectWorkflowExecutionService(handlerRegistry.WorkflowExecutionService))

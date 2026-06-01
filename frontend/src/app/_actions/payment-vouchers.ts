@@ -412,7 +412,7 @@ export async function getPaymentVoucherStats(): Promise<
 export async function getPaymentVoucherChain(
   pvId: string,
 ): Promise<APIResponse<any>> {
-  const url = `/api/document-chain/${pvId}?documentType=payment_voucher`;
+  const url = `/api/v1/document-chain/${pvId}?documentType=payment_voucher`;
 
   try {
     const response = await authenticatedApiClient({

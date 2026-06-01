@@ -570,9 +570,12 @@ func UpdatePaymentVoucher(c *fiber.Ctx) error {
 		})
 	}
 
+	// Scope to org + owner/involvement so a user can only edit their own PV.
+	scope := utils.GetDocumentScope(config.DB, tenant.UserID, tenant.UserRole, tenant.OrganizationID)
+	loadQuery := config.DB.Where("id = ? AND organization_id = ?", id, tenant.OrganizationID)
+	loadQuery = scope.ApplyToQuery(loadQuery, "created_by", "payment_voucher", "")
 	var voucher models.PaymentVoucher
-	// SECURITY FIX: Filter by organization ID
-	if err := config.DB.Where("id = ? AND organization_id = ?", id, tenant.OrganizationID).First(&voucher).Error; err != nil {
+	if err := loadQuery.First(&voucher).Error; err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
 			"success": false,
 			"message": "Payment voucher not found",
@@ -721,9 +724,12 @@ func DeletePaymentVoucher(c *fiber.Ctx) error {
 		})
 	}
 
+	// Scope to org + owner/involvement so a user can only delete their own PV.
+	scope := utils.GetDocumentScope(config.DB, tenant.UserID, tenant.UserRole, tenant.OrganizationID)
+	loadQuery := config.DB.Where("id = ? AND organization_id = ?", id, tenant.OrganizationID)
+	loadQuery = scope.ApplyToQuery(loadQuery, "created_by", "payment_voucher", "")
 	var voucher models.PaymentVoucher
-	// SECURITY FIX: Filter by organization ID
-	if err := config.DB.Where("id = ? AND organization_id = ?", id, tenant.OrganizationID).First(&voucher).Error; err != nil {
+	if err := loadQuery.First(&voucher).Error; err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
 			"success": false,
 			"message": "Payment voucher not found",

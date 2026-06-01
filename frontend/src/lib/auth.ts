@@ -25,7 +25,7 @@ export type { AuthUser } from "@/types";
 // ============================================================================
 
 const getSecretKey = () => {
-  const secretKey = process.env.AUTH_SECRET;
+  const secretKey = process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET;
   if (!secretKey || secretKey.length < 32) {
     throw new Error(
       "JWT_SECRET or AUTH_SECRET environment variable must be at least 32 characters",

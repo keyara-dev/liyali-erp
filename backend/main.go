@@ -5,7 +5,6 @@ import (
 	"log"
 	"os"
 	"os/signal"
-	"strings"
 	"syscall"
 	"time"
 
@@ -54,23 +53,15 @@ func init() {
 	appEnv := os.Getenv("APP_ENV")
 	isProduction := appEnv == "production" || appEnv == "prod"
 
-	// JWT_SECRET handling - temporarily more lenient for debugging
-	jwtSecret := os.Getenv("JWT_SECRET")
-	if jwtSecret == "" {
+	// JWT_SECRET handling: fail fast in production, dev-only fallback otherwise.
+	// Never substitute a hardcoded secret in production — a known fallback lets
+	// anyone forge tokens for any tenant.
+	if os.Getenv("JWT_SECRET") == "" {
 		if isProduction {
-			println("WARNING: JWT_SECRET not found, using temporary fallback")
-			println("Available environment variables:")
-			for _, env := range os.Environ() {
-				if strings.Contains(strings.ToUpper(env), "JWT") || strings.Contains(strings.ToUpper(env), "SECRET") {
-					println(env)
-				}
-			}
-			// Use a temporary secret for now
-			os.Setenv("JWT_SECRET", "temp-production-secret-change-me")
-		} else {
-			// Development default
-			os.Setenv("JWT_SECRET", "dev-only-secret-do-not-use-in-production")
+			log.Fatal("FATAL: JWT_SECRET environment variable must be set in production")
 		}
+		// Development default — never reachable in production.
+		os.Setenv("JWT_SECRET", "dev-only-secret-do-not-use-in-production")
 	}
 
 	// SSL mode defaults: require in production, disable in development

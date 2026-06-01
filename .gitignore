@@ -56,3 +56,9 @@ claude
 scripts/
 scripts
 .kiro/*
+
+# build artifacts / compiled binaries (never commit)
+backend/liyali-backend
+backend/bin/
+*.exe
+coverage*.out
