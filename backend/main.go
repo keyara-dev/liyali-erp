@@ -251,8 +251,17 @@ func customErrorHandler(c *fiber.Ctx, err error) error {
 		"path":          c.Path(),
 	}).Error("global_error_handler!!")
 
+	// Client response: never leak internal 5xx detail in production. 4xx
+	// messages are intentional/safe and kept. The full error, method, path and
+	// request_id are in the server log above — debug via the request_id, which
+	// is returned to the client so it can be quoted in a support request.
+	clientMessage := message
+	if appEnv := os.Getenv("APP_ENV"); (appEnv == "production" || appEnv == "prod") && code >= fiber.StatusInternalServerError {
+		clientMessage = "Internal Server Error"
+	}
+
 	return c.Status(code).JSON(fiber.Map{
-		"error":      message,
+		"error":      clientMessage,
 		"request_id": logger.GetRequestID(),
 	})
 }

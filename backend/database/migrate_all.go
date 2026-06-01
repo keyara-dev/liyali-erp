@@ -25,7 +25,7 @@ func main() {
 
 	var connStr string
 	
-	// Check if DATABASE_URL is provided (Fly.io style)
+	// Check if DATABASE_URL is provided (PaaS style)
 	if databaseURL := os.Getenv("DATABASE_URL"); databaseURL != "" {
 		connStr = databaseURL
 		log.Println("Using DATABASE_URL for connection")

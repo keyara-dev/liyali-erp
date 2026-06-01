@@ -276,13 +276,13 @@ make pre-deploy          # Verify env, build, test, migrate
 make deploy              # Deploy all apps
 ```
 
-### Fly.io (Direct)
+### Railway (Direct)
 
 ```bash
-# Deploy from each app directory (uses local .dockerignore)
-cd backend && flyctl deploy --app liyali-gateway-api
-cd frontend && flyctl deploy --app liyali-gateway-frontend
-cd admin-console && flyctl deploy --app liyali-admin-console
+# Each app is a Railway service (link once with `railway link`)
+cd backend && railway up
+cd frontend && railway up
+cd admin-console && railway up
 ```
 
 ### Manual
@@ -407,10 +407,10 @@ npx shadcn@latest add button      # Add UI component
 psql $DATABASE_URL                # Connect
 psql $DATABASE_URL -c "SELECT 1"  # Test connection
 
-# Fly.io
-fly logs --app <app-name>         # View logs
-fly status --app <app-name>       # Check status
-fly ssh console --app <app-name>  # SSH
+# Railway
+railway logs                      # View logs
+railway status                    # Check status
+railway open                      # Open dashboard
 ```
 
 ---

@@ -24,7 +24,7 @@ var (
 // InitDatabase initializes both GORM and pgx database connections with proper bootstrap
 func InitDatabase() {
 	// Prefer DATABASE_URL if set; otherwise build DSN from individual DB_* vars.
-	// This keeps the config simple for PaaS deployments (Railway, Fly.io, etc.)
+	// This keeps the config simple for PaaS deployments (Railway, etc.)
 	// that inject a single DATABASE_URL secret.
 	databaseURL := os.Getenv("DATABASE_URL")
 
@@ -53,10 +53,17 @@ func InitDatabase() {
 		)
 	}
 
-	// Initialize GORM connection (for existing functionality)
+	// Initialize GORM connection (for existing functionality).
+	// SQL logging is verbose (Info) in dev but warnings-only in production —
+	// Info logs every query incl. parameter values, which can leak PII/secrets.
+	gormLogLevel := logger.Info
+	if appEnv := os.Getenv("APP_ENV"); appEnv == "production" || appEnv == "prod" {
+		gormLogLevel = logger.Warn
+	}
+
 	var err error
 	DB, err = gorm.Open(postgres.Open(dsn), &gorm.Config{
-		Logger: logger.Default.LogMode(logger.Info),
+		Logger: logger.Default.LogMode(gormLogLevel),
 	})
 
 	if err != nil {
