@@ -314,10 +314,25 @@ func UpdateOrganizationSettings(c *fiber.Ctx) error {
 		BudgetVarianceThreshold  float64 `json:"budgetVarianceThreshold"`
 		ProcurementFlow          string  `json:"procurementFlow"`
 		StampImageURL            string  `json:"stampImageUrl"`
+		AutoCreateGRNFromPO      bool    `json:"autoCreateGRNFromPO"`
+		AutoCreatePVFromGRN      bool    `json:"autoCreatePVFromGRN"`
+		AutoCreatePVFromPO       bool    `json:"autoCreatePVFromPO"`
+		GRNAutomationLevel       string  `json:"grnAutomationLevel"`
+		PVAutomationLevel        string  `json:"pvAutomationLevel"`
+		AutoApproveMaxAmount     float64 `json:"autoApproveMaxAmount"`
 	}
 
 	if err := c.BodyParser(&settings); err != nil {
 		return utils.SendBadRequestError(c, "Invalid request body")
+	}
+
+	// Validate automation level values
+	validAutomationLevels := map[string]bool{"": true, "manual": true, "auto_submit": true, "auto_approve": true}
+	if !validAutomationLevels[settings.GRNAutomationLevel] {
+		return utils.SendBadRequestError(c, "Invalid grnAutomationLevel: must be one of manual, auto_submit, auto_approve")
+	}
+	if !validAutomationLevels[settings.PVAutomationLevel] {
+		return utils.SendBadRequestError(c, "Invalid pvAutomationLevel: must be one of manual, auto_submit, auto_approve")
 	}
 
 	orgService := services.NewOrganizationService(config.DB)
@@ -331,6 +346,12 @@ func UpdateOrganizationSettings(c *fiber.Ctx) error {
 		BudgetVarianceThreshold:  settings.BudgetVarianceThreshold,
 		ProcurementFlow:          settings.ProcurementFlow,
 		StampImageURL:            settings.StampImageURL,
+		AutoCreateGRNFromPO:      settings.AutoCreateGRNFromPO,
+		AutoCreatePVFromGRN:      settings.AutoCreatePVFromGRN,
+		AutoCreatePVFromPO:       settings.AutoCreatePVFromPO,
+		GRNAutomationLevel:       settings.GRNAutomationLevel,
+		PVAutomationLevel:        settings.PVAutomationLevel,
+		AutoApproveMaxAmount:     settings.AutoApproveMaxAmount,
 	}
 
 	if err := orgService.UpdateOrganizationSettings(tenant.OrganizationID, orgSettings); err != nil {

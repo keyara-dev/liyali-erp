@@ -79,6 +79,11 @@ func setupOrgSettingsTable(t *testing.T) {
 		auto_submit_grn_to_workflow BOOLEAN DEFAULT false,
 		auto_submit_pv_to_workflow BOOLEAN DEFAULT false,
 		auto_create_pv_from_po BOOLEAN DEFAULT false,
+		auto_create_grn_from_po BOOLEAN DEFAULT false,
+		auto_create_pv_from_grn BOOLEAN DEFAULT false,
+		grn_automation_level TEXT DEFAULT 'manual',
+		pv_automation_level TEXT DEFAULT 'manual',
+		auto_approve_max_amount REAL DEFAULT 0,
 		stamp_image_url TEXT NOT NULL DEFAULT '',
 		created_at DATETIME,
 		updated_at DATETIME

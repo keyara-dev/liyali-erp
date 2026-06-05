@@ -324,6 +324,12 @@ func (s *OrganizationService) UpdateOrganizationSettings(orgID string, settings 
 			"budget_variance_threshold":  settings.BudgetVarianceThreshold,
 			"procurement_flow":           settings.ProcurementFlow,
 			"stamp_image_url":            settings.StampImageURL,
+			"auto_create_grn_from_po":    settings.AutoCreateGRNFromPO,
+			"auto_create_pv_from_grn":    settings.AutoCreatePVFromGRN,
+			"auto_create_pv_from_po":     settings.AutoCreatePVFromPO,
+			"grn_automation_level":       settings.GRNAutomationLevel,
+			"pv_automation_level":        settings.PVAutomationLevel,
+			"auto_approve_max_amount":    settings.AutoApproveMaxAmount,
 		}).Error
 }
 
