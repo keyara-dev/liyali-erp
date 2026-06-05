@@ -954,11 +954,11 @@ func MarkPaidWithPOP(c *fiber.Ctx) error {
 		return utils.SendUnauthorizedError(c, "Organization context required")
 	}
 
-	// Authorization is enforced by the route guard, which requires the
-	// "payment_voucher.approve" permission. That permission is held by the
-	// built-in finance/admin/approver roles AND by any custom org role the
-	// tenant grants it — so custom "payments" roles can facilitate payment
-	// without being hard-coded here.
+	// Authorization is enforced by the route guard, which requires the dedicated
+	// "payment_voucher.pay" permission (separate from "approve" for separation of
+	// duties). Held by built-in admin/super_admin/finance AND any custom org role
+	// the tenant grants it — so custom "payments" roles can disburse without being
+	// hard-coded here, and approvers cannot pay what they approved.
 
 	id := c.Params("id")
 	if id == "" {

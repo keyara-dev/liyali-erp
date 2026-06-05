@@ -68,6 +68,7 @@ import { Badge } from "@/components";
 import { DocumentLoadingPage } from "@/components/base/document-loading-page";
 import ErrorDisplay from "@/components/base/error-display";
 import { usePaymentVoucherDetail } from "@/hooks/use-payment-voucher-detail";
+import { usePermissions } from "@/hooks/use-permissions";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useMemo, useState } from "react";
@@ -136,7 +137,11 @@ export function PVDetailClient({
   const [showMarkPaidWithPOPModal, setShowMarkPaidWithPOPModal] =
     useState(false);
 
-  const FINANCE_ADMIN_ROLES = ["finance", "admin"];
+  // Payment execution (disbursement) is gated on the dedicated
+  // "payment_voucher.pay" permission so custom org roles granted it can pay,
+  // while approvers (approve-only) cannot — mirrors the backend route guard.
+  const { hasPermission } = usePermissions();
+  const canPay = hasPermission("payment_voucher", "pay");
 
   const { data: auditEventsData } = useQuery({
     queryKey: ["audit-events", "payment_voucher", pvId],
@@ -300,7 +305,7 @@ export function PVDetailClient({
               Withdraw
             </Button>
           )}
-          {paymentVoucher.status?.toUpperCase() === "APPROVED" && (
+          {paymentVoucher.status?.toUpperCase() === "APPROVED" && canPay && (
             <Button
               onClick={() => setShowMarkPaidDialog(true)}
               className="gap-2 h-11 bg-emerald-600 hover:bg-emerald-700"
@@ -310,7 +315,7 @@ export function PVDetailClient({
             </Button>
           )}
           {paymentVoucher.status?.toUpperCase() === "APPROVED" &&
-            FINANCE_ADMIN_ROLES.includes(userRole?.toLowerCase()) && (
+            canPay && (
               <Button
                 onClick={() => setShowMarkPaidWithPOPModal(true)}
                 variant="outline"

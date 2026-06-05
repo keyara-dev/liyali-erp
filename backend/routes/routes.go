@@ -345,11 +345,12 @@ func SetupRoutes(app *fiber.App, handlerRegistry *handlers.HandlerRegistry, rbac
 	pvs.Delete("/:id", middleware.RequirePermission(rbacService, "payment_voucher", "delete"), handlers.DeletePaymentVoucher)
 	pvs.Post("/:id/submit", middleware.RequirePermission(rbacService, "payment_voucher", "edit"), handlers.SubmitPaymentVoucher)
 	pvs.Post("/:id/withdraw", middleware.RequirePermission(rbacService, "payment_voucher", "edit"), handlers.WithdrawPaymentVoucher)
-	pvs.Post("/:id/mark-paid", middleware.RequirePermission(rbacService, "payment_voucher", "approve"), handlers.MarkPaymentVoucherPaid)
-	// Payment execution requires the payment-authorization permission, not just
-	// edit — so custom org roles granted "payment_voucher.approve" can facilitate
-	// payment, while edit-only roles cannot disburse funds.
-	pvs.Post("/:id/mark-paid-with-pop", middleware.RequirePermission(rbacService, "payment_voucher", "approve"), handlers.MarkPaidWithPOP)
+	// Payment execution (disbursement) requires the dedicated "payment_voucher.pay"
+	// permission — separate from "approve" so payer ≠ approver (separation of
+	// duties). Built-in: admin/super_admin/finance hold it; approver/manager do
+	// not. Custom org roles can be granted it to facilitate payment.
+	pvs.Post("/:id/mark-paid", middleware.RequirePermission(rbacService, "payment_voucher", "pay"), handlers.MarkPaymentVoucherPaid)
+	pvs.Post("/:id/mark-paid-with-pop", middleware.RequirePermission(rbacService, "payment_voucher", "pay"), handlers.MarkPaidWithPOP)
 	pvs.Post("/recover-from-po/:poId", middleware.RequirePermission(rbacService, "payment_voucher", "edit"), handlers.RecoverPVFromPO)
 
 	// GRN routes (tenant-scoped)
