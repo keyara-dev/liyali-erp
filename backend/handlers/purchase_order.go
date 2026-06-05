@@ -3,6 +3,8 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
+	"math"
+	"strconv"
 	"strings"
 	"time"
 
@@ -1077,6 +1079,44 @@ func modelToPurchaseOrderResponse(order models.PurchaseOrder) types.PurchaseOrde
 	}
 }
 
+// metaFloat extracts a float from a metadata value that may be a JSON number or
+// a numeric string (the frontend stores taxRate/deliveryCost either way).
+func metaFloat(v interface{}) float64 {
+	switch n := v.(type) {
+	case float64:
+		return n
+	case string:
+		if f, err := strconv.ParseFloat(strings.TrimSpace(n), 64); err == nil {
+			return f
+		}
+	}
+	return 0
+}
+
+// recomputePOTotal returns the authoritative PO total: Σ(quantity × unitPrice)
+// plus tax (taxRate% of the subtotal) and deliveryCost read from the PO
+// metadata. Mirrors the frontend items-editor computation so server and client
+// agree, while never trusting a client-sent total.
+func recomputePOTotal(items []types.POItem, meta datatypes.JSON) float64 {
+	var subtotal float64
+	for _, it := range items {
+		subtotal += float64(it.Quantity) * it.UnitPrice
+	}
+	var taxRate, deliveryCost float64
+	if len(meta) > 0 {
+		var m map[string]interface{}
+		if json.Unmarshal(meta, &m) == nil {
+			taxRate = metaFloat(m["taxRate"])
+			deliveryCost = metaFloat(m["deliveryCost"])
+		}
+	}
+	tax := 0.0
+	if taxRate > 0 {
+		tax = math.Round((subtotal*taxRate/100.0)*100) / 100
+	}
+	return subtotal + tax + deliveryCost
+}
+
 // UpdatePurchaseOrderItems updates only the line items and total amount of a DRAFT purchase order
 func UpdatePurchaseOrderItems(c *fiber.Ctx) error {
 	logger := logging.FromContext(c)
@@ -1155,7 +1195,10 @@ func UpdatePurchaseOrderItems(c *fiber.Ctx) error {
 	oldTotalAmount := order.TotalAmount
 
 	order.Items = datatypes.NewJSONType(req.Items)
-	order.TotalAmount = req.TotalAmount
+	// Recompute the total server-side from the submitted line items plus the PO's
+	// existing tax/delivery, so the stored total can never diverge from the items.
+	// The client-sent totalAmount is treated as a hint, not the source of truth.
+	order.TotalAmount = recomputePOTotal(req.Items, order.Metadata)
 
 	actorID := tenant.UserID
 	actorRole := tenant.UserRole

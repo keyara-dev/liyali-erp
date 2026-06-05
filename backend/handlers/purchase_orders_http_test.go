@@ -124,6 +124,53 @@ func TestUpdatePurchaseOrderItems_NonOwnerScopedOut(t *testing.T) {
 	}
 }
 
+func TestUpdatePurchaseOrderItems_RecomputesTotalServerSide(t *testing.T) {
+	db := setupTestDB(t)
+	defer teardownTestDB(t, db)
+	setupWorkflowTasksTable(t, db)
+
+	order := models.PurchaseOrder{
+		ID:             uuid.New().String(),
+		OrganizationID: testOrgID,
+		DocumentNumber: "PO-RECOMPUTE-1",
+		Status:         "DRAFT",
+		TotalAmount:    1000.00,
+		Currency:       "ZMW",
+		CreatedBy:      testUserID,
+		DeliveryDate:   time.Now().Add(30 * 24 * time.Hour),
+		CreatedAt:      time.Now(),
+		UpdatedAt:      time.Now(),
+	}
+	order.Items = datatypes.NewJSONType([]types.POItem{{Description: "Widget A", Quantity: 10, UnitPrice: 100.0, Amount: 1000.0}})
+	order.ApprovalHistory = datatypes.NewJSONType([]types.ApprovalRecord{})
+	order.ActionHistory = datatypes.NewJSONType([]types.ActionHistoryEntry{})
+	if err := db.Create(&order).Error; err != nil {
+		t.Fatalf("create PO: %v", err)
+	}
+
+	app := fiber.New()
+	auth := withTenantCtx(testOrgID, testUserID, testUserRole)
+	app.Put("/purchase-orders/:id/items", auth, UpdatePurchaseOrderItems)
+
+	// Client sends a lying totalAmount (999) for items that sum to 500.
+	body := map[string]interface{}{
+		"items":       []types.POItem{{Description: "Widget A", Quantity: 5, UnitPrice: 100.0, Amount: 500.0}},
+		"totalAmount": 999.0,
+	}
+	resp := testRequest(app, http.MethodPut, "/purchase-orders/"+order.ID+"/items", body)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("expected 200, got %d", resp.StatusCode)
+	}
+	data, _ := decodeResponse(resp)["data"].(map[string]interface{})
+	if data == nil {
+		t.Fatalf("no data in response")
+	}
+	total, _ := data["totalAmount"].(float64)
+	if total != 500.0 {
+		t.Fatalf("expected server-recomputed total 500, got %v", total)
+	}
+}
+
 func TestUpdatePurchaseOrderItems_OwnerCanEdit(t *testing.T) {
 	db := setupTestDB(t)
 	defer teardownTestDB(t, db)
