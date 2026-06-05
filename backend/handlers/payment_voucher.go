@@ -17,7 +17,91 @@ import (
 	"github.com/liyali/liyali-gateway/types"
 	"github.com/liyali/liyali-gateway/utils"
 	"gorm.io/datatypes"
+	"gorm.io/gorm"
 )
+
+// validateProcurementPVGate enforces the rules for creating a Payment Voucher
+// against a linked Purchase Order (and GRN in goods-first flow):
+//   - the linked PO must exist and be APPROVED;
+//   - no *live* PV may already exist for that PO (CANCELLED/REJECTED allow retry);
+//   - in goods-first, an APPROVED or COMPLETED GRN must back the PV and the
+//     amount may not exceed the received value;
+//   - the amount may never exceed the PO total.
+//
+// Returns ("", 0) when valid, otherwise (message, httpStatus). It is the single
+// source of truth shared by the manual, from-PO, and auto-create PV paths.
+// `tx` is any query handle (config.DB or a transaction).
+func validateProcurementPVGate(tx *gorm.DB, orgID, linkedPO, linkedGRN string, amount float64) (string, int) {
+	if linkedPO == "" {
+		return "", 0
+	}
+
+	var po models.PurchaseOrder
+	if err := tx.Where("document_number = ? AND organization_id = ?", linkedPO, orgID).First(&po).Error; err != nil {
+		return "Linked purchase order not found", fiber.StatusBadRequest
+	}
+	if strings.ToUpper(po.Status) != "APPROVED" {
+		return fmt.Sprintf("Cannot create PV: linked PO %s is in %s status and must be APPROVED first.", linkedPO, po.Status), fiber.StatusBadRequest
+	}
+
+	// Block re-creation only when a *live* PV exists. CANCELLED/REJECTED are
+	// terminal-failure states; the user must be able to retry with a fresh PV.
+	var existingPV models.PaymentVoucher
+	if err := tx.Where("linked_po = ? AND organization_id = ? AND UPPER(status) NOT IN ('CANCELLED','REJECTED')", linkedPO, orgID).First(&existingPV).Error; err == nil {
+		return fmt.Sprintf("Payment voucher %s already exists for PO %s (status: %s).", existingPV.DocumentNumber, linkedPO, existingPV.Status), fiber.StatusConflict
+	}
+
+	// Resolve effective flow: PO override → org default → "goods_first".
+	orgDefaultFlow := ""
+	if strings.TrimSpace(po.ProcurementFlow) == "" {
+		orgSvc := services.NewOrganizationService(tx)
+		if s, _ := orgSvc.GetOrganizationSettings(orgID); s != nil {
+			orgDefaultFlow = s.ProcurementFlow
+		}
+	}
+	effectiveFlow := utils.ResolveProcurementFlow(po.ProcurementFlow, orgDefaultFlow)
+
+	if effectiveFlow == "goods_first" {
+		if linkedGRN == "" {
+			return fmt.Sprintf("Cannot create PV for PO %s: goods-first flow requires an APPROVED GRN first. Link the GRN via linkedGRN.", linkedPO), fiber.StatusBadRequest
+		}
+		var grn models.GoodsReceivedNote
+		if err := tx.Where("document_number = ? AND organization_id = ?", linkedGRN, orgID).First(&grn).Error; err != nil {
+			return "Linked GRN not found", fiber.StatusBadRequest
+		}
+		if grn.PODocumentNumber != linkedPO {
+			return fmt.Sprintf("GRN %s is not linked to PO %s", linkedGRN, linkedPO), fiber.StatusBadRequest
+		}
+		// COMPLETED is the terminal GRN state (workflow auto-advances past
+		// APPROVED). Both states satisfy the "goods received" gate.
+		grnStatus := strings.ToUpper(grn.Status)
+		if grnStatus != "APPROVED" && grnStatus != "COMPLETED" {
+			return fmt.Sprintf("Cannot create PV: linked GRN %s is in %s status and must be APPROVED or COMPLETED first.", linkedGRN, grn.Status), fiber.StatusBadRequest
+		}
+
+		// Over-invoicing guard: PV amount may not exceed the received value
+		// = Σ (grnItem.quantityReceived × poItem.unitPrice), matched by description.
+		poItems := po.Items.Data()
+		grnItems := grn.Items.Data()
+		unitPriceByDesc := make(map[string]float64, len(poItems))
+		for _, pi := range poItems {
+			unitPriceByDesc[pi.Description] = pi.UnitPrice
+		}
+		var receivedValue float64
+		for _, gi := range grnItems {
+			receivedValue += float64(gi.QuantityReceived) * unitPriceByDesc[gi.Description]
+		}
+		if amount > receivedValue+0.01 {
+			return fmt.Sprintf("PV amount %.2f exceeds received value %.2f on GRN %s. Adjust the invoice amount to match goods actually received.", amount, receivedValue, linkedGRN), fiber.StatusBadRequest
+		}
+	}
+
+	// Final backstop: a PV against an approved PO can never exceed that PO's total.
+	if amount > po.TotalAmount+0.01 {
+		return fmt.Sprintf("PV amount %.2f exceeds linked PO %s total %.2f.", amount, linkedPO, po.TotalAmount), fiber.StatusBadRequest
+	}
+	return "", 0
+}
 
 // GetPaymentVouchers retrieves all payment vouchers with pagination and filtering
 func GetPaymentVouchers(c *fiber.Ctx) error {
@@ -264,96 +348,10 @@ func CreatePaymentVoucher(c *fiber.Ctx) error {
 		vendorIDPtr = &req.VendorID
 	}
 
-	// One-to-one guard + PO APPROVED gate
-	if req.LinkedPO != "" {
-		var linkedPO models.PurchaseOrder
-		if err := config.DB.
-			Where("document_number = ? AND organization_id = ?", req.LinkedPO, tenant.OrganizationID).
-			First(&linkedPO).Error; err != nil {
-			return utils.SendBadRequestError(c, "Linked purchase order not found")
-		}
-		if strings.ToUpper(linkedPO.Status) != "APPROVED" {
-			return utils.SendBadRequestError(c, fmt.Sprintf(
-				"Cannot create PV: linked PO %s is in %s status and must be APPROVED first.",
-				req.LinkedPO, linkedPO.Status))
-		}
-		// Block re-creation only when a *live* PV exists. CANCELLED and
-		// REJECTED PVs are terminal-failure states; the user must be able to
-		// retry with a fresh PV.
-		var existingPV models.PaymentVoucher
-		if err := config.DB.
-			Where("linked_po = ? AND organization_id = ? AND UPPER(status) NOT IN ('CANCELLED','REJECTED')",
-				req.LinkedPO, tenant.OrganizationID).
-			First(&existingPV).Error; err == nil {
-			return utils.SendConflictError(c, fmt.Sprintf(
-				"Payment voucher %s already exists for PO %s (status: %s).",
-				existingPV.DocumentNumber, req.LinkedPO, existingPV.Status))
-		}
-
-		// Goods-first flow: require an APPROVED GRN before allowing PV creation.
-		// Resolve effective flow: PO override → org default → "goods_first".
-		effectiveFlow := strings.ToLower(strings.TrimSpace(linkedPO.ProcurementFlow))
-		if effectiveFlow == "" {
-			orgSvc := services.NewOrganizationService(config.DB)
-			orgSettings, _ := orgSvc.GetOrganizationSettings(tenant.OrganizationID)
-			if orgSettings != nil && orgSettings.ProcurementFlow != "" {
-				effectiveFlow = strings.ToLower(strings.TrimSpace(orgSettings.ProcurementFlow))
-			} else {
-				effectiveFlow = "goods_first"
-			}
-		}
-
-		if effectiveFlow == "goods_first" {
-			if req.LinkedGRN == "" {
-				return utils.SendBadRequestError(c, fmt.Sprintf(
-					"Cannot create PV for PO %s: goods-first flow requires an APPROVED GRN first. Link the GRN via linkedGRN.",
-					req.LinkedPO))
-			}
-			var linkedGRN models.GoodsReceivedNote
-			if err := config.DB.
-				Where("document_number = ? AND organization_id = ?", req.LinkedGRN, tenant.OrganizationID).
-				First(&linkedGRN).Error; err != nil {
-				return utils.SendBadRequestError(c, "Linked GRN not found")
-			}
-			if linkedGRN.PODocumentNumber != req.LinkedPO {
-				return utils.SendBadRequestError(c, fmt.Sprintf(
-					"GRN %s is not linked to PO %s", req.LinkedGRN, req.LinkedPO))
-			}
-			// COMPLETED is now the terminal state (workflow auto-advances
-			// past APPROVED). Both states satisfy the "goods received" gate.
-			grnStatus := strings.ToUpper(linkedGRN.Status)
-			if grnStatus != "APPROVED" && grnStatus != "COMPLETED" {
-				return utils.SendBadRequestError(c, fmt.Sprintf(
-					"Cannot create PV: linked GRN %s is in %s status and must be APPROVED or COMPLETED first.",
-					req.LinkedGRN, linkedGRN.Status))
-			}
-
-			// Guard against over-invoicing: PV amount may not exceed the value of
-			// what was actually received. received_value = Σ (grnItem.quantityReceived × poItem.unitPrice),
-			// matched by description. 0.01 tolerance absorbs FP rounding.
-			poItems := linkedPO.Items.Data()
-			grnItems := linkedGRN.Items.Data()
-			unitPriceByDesc := make(map[string]float64, len(poItems))
-			for _, pi := range poItems {
-				unitPriceByDesc[pi.Description] = pi.UnitPrice
-			}
-			var receivedValue float64
-			for _, gi := range grnItems {
-				receivedValue += float64(gi.QuantityReceived) * unitPriceByDesc[gi.Description]
-			}
-			if req.Amount > receivedValue+0.01 {
-				return utils.SendBadRequestError(c, fmt.Sprintf(
-					"PV amount %.2f exceeds received value %.2f on GRN %s. Adjust the invoice amount to match goods actually received.",
-					req.Amount, receivedValue, req.LinkedGRN))
-			}
-		}
-
-		// Final backstop: a PV against an approved PO can never exceed that PO's total.
-		if req.Amount > linkedPO.TotalAmount+0.01 {
-			return utils.SendBadRequestError(c, fmt.Sprintf(
-				"PV amount %.2f exceeds linked PO %s total %.2f.",
-				req.Amount, req.LinkedPO, linkedPO.TotalAmount))
-		}
+	// Enforce the PV-creation gate (PO APPROVED, no live duplicate, amount caps,
+	// goods-first GRN). Shared with the from-PO and auto-create PV paths.
+	if msg, code := validateProcurementPVGate(config.DB, tenant.OrganizationID, req.LinkedPO, req.LinkedGRN, req.Amount); code != 0 {
+		return c.Status(code).JSON(fiber.Map{"success": false, "message": msg})
 	}
 
 	// Generate voucher number
