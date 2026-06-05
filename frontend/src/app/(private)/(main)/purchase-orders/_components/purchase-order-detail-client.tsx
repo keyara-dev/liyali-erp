@@ -81,6 +81,7 @@ import { Badge } from "@/components";
 import { DocumentLoadingPage } from "@/components/base/document-loading-page";
 import ErrorDisplay from "@/components/base/error-display";
 import { usePurchaseOrderDetail } from "@/hooks/use-purchase-order-detail";
+import { usePermissions } from "@/hooks/use-permissions";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { getAuditEvents, type AuditEvent } from "@/app/_actions/audit";
@@ -153,6 +154,7 @@ export function PurchaseOrderDetailClient({
   const [isCreatingPV, setIsCreatingPV] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { data: vendors = [] } = useVendors({ active: true });
+  const { hasPermission } = usePermissions();
 
   // Use the custom hook to manage all document detail logic
   // This hook handles data fetching, mutations, UI state, and permissions
@@ -240,6 +242,25 @@ export function PurchaseOrderDetailClient({
   const vendorDetails = vendors.find((v) => v.id === purchaseOrder.vendorId);
 
   const canEditQuotations = isDraft;
+
+  // Line-item editing authority mirrors the backend `/items` endpoint, which
+  // gates on `purchase_order:edit` + DRAFT status (no creator/owner scope).
+  // So any authorized user — not just the literal creator — may reconcile
+  // unit price / quantity on a DRAFT PO to reach zero variance against the REQ.
+  const canEditItems =
+    isDraft &&
+    (permissions.canEdit || hasPermission("purchase_order", "edit"));
+
+  // Toolbar "Edit" (metadata dialog: title/dept/priority/budget/vendor). Backend
+  // PUT /:id allows privileged/procurement (CanViewAll/IsProcurement) to edit any
+  // org PO — only super_admin/admin/finance hold purchase_order:edit and all are
+  // CanViewAll, so the permission proxy never 404s. Editable statuses match the
+  // dialog's own guard (DRAFT/REJECTED).
+  const isEditableStatus =
+    isDraft || purchaseOrder.status?.toUpperCase() === "REJECTED";
+  const canEditPO =
+    permissions.canEdit ||
+    (isEditableStatus && hasPermission("purchase_order", "edit"));
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -408,7 +429,7 @@ export function PurchaseOrderDetailClient({
               <Download className="h-4 w-4" />
               Export PDF
             </Button>
-            {permissions.canEdit && (
+            {canEditPO && (
               <Button
                 onClick={handleEdit}
                 variant="outline"
@@ -929,7 +950,7 @@ export function PurchaseOrderDetailClient({
               <h2 className="text-lg font-semibold">
                 Items ({purchaseOrder.items?.length || 0})
               </h2>
-              {permissions.canEdit && !editingItems && isDraft && (
+              {canEditItems && !editingItems && (
                 <Button
                   variant="outline"
                   size="sm"
