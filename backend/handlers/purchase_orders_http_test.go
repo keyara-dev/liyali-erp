@@ -72,6 +72,97 @@ func makePurchaseOrder(t *testing.T, docNum, status string) models.PurchaseOrder
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// PUT /purchase-orders/:id/items — ownership scope (IDOR)
+// ─────────────────────────────────────────────────────────────────────────────
+
+func TestUpdatePurchaseOrderItems_NonOwnerScopedOut(t *testing.T) {
+	db := setupTestDB(t)
+	defer teardownTestDB(t, db)
+	setupWorkflowTasksTable(t, db) // GetDocumentScope subquery targets this table
+
+	// DRAFT PO owned by testUserID.
+	order := models.PurchaseOrder{
+		ID:             uuid.New().String(),
+		OrganizationID: testOrgID,
+		DocumentNumber: "PO-IDOR-1",
+		Status:         "DRAFT",
+		TotalAmount:    1000.00,
+		Currency:       "ZMW",
+		CreatedBy:      testUserID,
+		DeliveryDate:   time.Now().Add(30 * 24 * time.Hour),
+		CreatedAt:      time.Now(),
+		UpdatedAt:      time.Now(),
+	}
+	order.Items = datatypes.NewJSONType([]types.POItem{{Description: "Widget A", Quantity: 10, UnitPrice: 100.0, Amount: 1000.0}})
+	order.ApprovalHistory = datatypes.NewJSONType([]types.ApprovalRecord{})
+	order.ActionHistory = datatypes.NewJSONType([]types.ActionHistoryEntry{})
+	if err := db.Create(&order).Error; err != nil {
+		t.Fatalf("create PO: %v", err)
+	}
+
+	// Caller is a different, non-privileged, uninvolved user.
+	app := fiber.New()
+	auth := withTenantCtx(testOrgID, "other-user-002", "requester")
+	app.Put("/purchase-orders/:id/items", auth, UpdatePurchaseOrderItems)
+
+	body := map[string]interface{}{
+		"items":       []types.POItem{{Description: "Widget A", Quantity: 5, UnitPrice: 100.0, Amount: 500.0}},
+		"totalAmount": 500.0,
+	}
+	resp := testRequest(app, http.MethodPut, "/purchase-orders/"+order.ID+"/items", body)
+	if resp.StatusCode == http.StatusOK {
+		t.Fatalf("expected non-200 (scoped out), got 200")
+	}
+
+	// Items must be unchanged in the DB.
+	var reloaded models.PurchaseOrder
+	if err := db.Where("id = ?", order.ID).First(&reloaded).Error; err != nil {
+		t.Fatalf("reload PO: %v", err)
+	}
+	if reloaded.TotalAmount != 1000.00 {
+		t.Fatalf("expected total unchanged at 1000, got %.2f", reloaded.TotalAmount)
+	}
+}
+
+func TestUpdatePurchaseOrderItems_OwnerCanEdit(t *testing.T) {
+	db := setupTestDB(t)
+	defer teardownTestDB(t, db)
+	setupWorkflowTasksTable(t, db)
+
+	order := models.PurchaseOrder{
+		ID:             uuid.New().String(),
+		OrganizationID: testOrgID,
+		DocumentNumber: "PO-IDOR-2",
+		Status:         "DRAFT",
+		TotalAmount:    1000.00,
+		Currency:       "ZMW",
+		CreatedBy:      "owner-user-003",
+		DeliveryDate:   time.Now().Add(30 * 24 * time.Hour),
+		CreatedAt:      time.Now(),
+		UpdatedAt:      time.Now(),
+	}
+	order.Items = datatypes.NewJSONType([]types.POItem{{Description: "Widget A", Quantity: 10, UnitPrice: 100.0, Amount: 1000.0}})
+	order.ApprovalHistory = datatypes.NewJSONType([]types.ApprovalRecord{})
+	order.ActionHistory = datatypes.NewJSONType([]types.ActionHistoryEntry{})
+	if err := db.Create(&order).Error; err != nil {
+		t.Fatalf("create PO: %v", err)
+	}
+
+	app := fiber.New()
+	auth := withTenantCtx(testOrgID, "owner-user-003", "requester")
+	app.Put("/purchase-orders/:id/items", auth, UpdatePurchaseOrderItems)
+
+	body := map[string]interface{}{
+		"items":       []types.POItem{{Description: "Widget A", Quantity: 5, UnitPrice: 100.0, Amount: 500.0}},
+		"totalAmount": 500.0,
+	}
+	resp := testRequest(app, http.MethodPut, "/purchase-orders/"+order.ID+"/items", body)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("owner edit: expected 200, got %d", resp.StatusCode)
+	}
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // GET /purchase-orders
 // ─────────────────────────────────────────────────────────────────────────────
 

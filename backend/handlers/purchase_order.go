@@ -1126,8 +1126,14 @@ func UpdatePurchaseOrderItems(c *fiber.Ctx) error {
 		})
 	}
 
+	// SECURITY: scope to org + owner/involvement — prevents cross-tenant (IDOR)
+	// and cross-user edits of a purchase order's line items. Mirrors UpdatePurchaseOrder.
+	scope := utils.GetDocumentScope(config.DB, tenant.UserID, tenant.UserRole, tenant.OrganizationID)
+	loadQuery := config.DB.Where("id = ? AND organization_id = ?", id, tenant.OrganizationID)
+	loadQuery = scope.ApplyToQuery(loadQuery, "created_by", "purchase_order", "")
+
 	var order models.PurchaseOrder
-	if err := config.DB.Where("id = ? AND organization_id = ?", id, tenant.OrganizationID).First(&order).Error; err != nil {
+	if err := loadQuery.First(&order).Error; err != nil {
 		logging.LogError(c, err, "purchase_order_not_found", map[string]interface{}{
 			"order_id":   id,
 			"error_type": "not_found",
