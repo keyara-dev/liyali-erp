@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 
@@ -265,6 +266,42 @@ func TestCreateGRN_Success(t *testing.T) {
 	}
 	if data["status"] != "DRAFT" {
 		t.Errorf("expected status DRAFT, got %v", data["status"])
+	}
+}
+
+// payment_first must also require the PO to be APPROVED before a GRN is created.
+func TestCreateGRN_PaymentFirst_RequiresApprovedPO(t *testing.T) {
+	db := setupTestDB(t)
+	defer teardownTestDB(t, db)
+
+	po := models.PurchaseOrder{
+		ID: uuid.New().String(), OrganizationID: testOrgID, DocumentNumber: "PO-PF-GRN-1",
+		Status: "PENDING", ProcurementFlow: "payment_first", TotalAmount: 1000, Currency: "ZMW",
+		DeliveryDate: time.Now().Add(30 * 24 * time.Hour), CreatedAt: time.Now(), UpdatedAt: time.Now(),
+	}
+	po.Items = datatypes.NewJSONType([]types.POItem{{Description: "Widget A", Quantity: 10, UnitPrice: 100, Amount: 1000}})
+	po.ApprovalHistory = datatypes.NewJSONType([]types.ApprovalRecord{})
+	po.ActionHistory = datatypes.NewJSONType([]types.ActionHistoryEntry{})
+	if err := db.Create(&po).Error; err != nil {
+		t.Fatalf("seed PO: %v", err)
+	}
+
+	app := newGRNApp(t)
+	body := map[string]interface{}{
+		"poDocumentNumber": po.DocumentNumber,
+		"receivedBy":       testUserID,
+		"items": []map[string]interface{}{
+			{"description": "Widget A", "quantityOrdered": 10, "quantityReceived": 10, "condition": "good"},
+		},
+	}
+	resp := testRequest(app, http.MethodPost, "/grns", body)
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d", resp.StatusCode)
+	}
+	respBody := decodeResponse(resp)
+	msg, _ := respBody["message"].(string)
+	if !strings.Contains(msg, "must be APPROVED") {
+		t.Fatalf("expected PO-approved gate message, got %q", msg)
 	}
 }
 

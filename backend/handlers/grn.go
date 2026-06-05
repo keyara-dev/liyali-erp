@@ -267,9 +267,11 @@ func CreateGRN(c *fiber.Ctx) error {
 	}
 	effectiveFlow := utils.ResolveProcurementFlow(po.ProcurementFlow, orgDefaultFlow)
 
-	// Goods-first: the PO must be APPROVED before goods can be received against it.
-	// Payment-first enforces the PV-approval gate further down; no PO-status gate there.
-	if effectiveFlow != "payment_first" && strings.ToUpper(po.Status) != "APPROVED" {
+	// The PO must be APPROVED before goods can be received against it — in BOTH
+	// flows. Previously payment_first was exempt, which let a GRN be created
+	// against a non-approved PO from which it could never be submitted (SubmitGRN
+	// requires an APPROVED PO) nor close the PO via the cascades.
+	if strings.ToUpper(po.Status) != "APPROVED" {
 		return utils.SendBadRequestError(c, fmt.Sprintf(
 			"Cannot create GRN: linked PO %s is in %s status and must be APPROVED first.",
 			po.DocumentNumber, po.Status))
