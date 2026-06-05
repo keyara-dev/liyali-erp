@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -941,11 +942,11 @@ func MarkPaidWithPOP(c *fiber.Ctx) error {
 		return utils.SendUnauthorizedError(c, "Organization context required")
 	}
 
-	// Role gate: only finance or admin may execute payment.
-	userRole, _ := c.Locals("userRole").(string)
-	if userRole != "finance" && userRole != "admin" && userRole != "super_admin" {
-		return utils.SendForbiddenError(c, "Only finance or admin users can mark a payment voucher as paid")
-	}
+	// Authorization is enforced by the route guard, which requires the
+	// "payment_voucher.approve" permission. That permission is held by the
+	// built-in finance/admin/approver roles AND by any custom org role the
+	// tenant grants it — so custom "payments" roles can facilitate payment
+	// without being hard-coded here.
 
 	id := c.Params("id")
 	if id == "" {
@@ -965,6 +966,25 @@ func MarkPaidWithPOP(c *fiber.Ctx) error {
 			"success": false,
 			"message": fmt.Sprintf("Payment voucher must be in APPROVED status to mark as paid (current: %s)", voucher.Status),
 		})
+	}
+
+	// Optional amount-match: when the client supplies paidAmount it must equal
+	// the approved voucher amount (within 0.01). Mirrors MarkPaymentVoucherPaid
+	// so the proof-of-payment path enforces the same financial-integrity check.
+	if pa := strings.TrimSpace(c.FormValue("paidAmount")); pa != "" {
+		parsed, perr := strconv.ParseFloat(pa, 64)
+		if perr != nil {
+			return utils.SendBadRequestError(c, "paidAmount must be a number")
+		}
+		if parsed < voucher.Amount-0.01 || parsed > voucher.Amount+0.01 {
+			return c.Status(fiber.StatusUnprocessableEntity).JSON(fiber.Map{
+				"success":        false,
+				"error":          "amount_mismatch",
+				"message":        fmt.Sprintf("Paid amount (%.2f) does not match the approved voucher amount (%.2f). Please enter the exact approved amount.", parsed, voucher.Amount),
+				"approvedAmount": voucher.Amount,
+				"paidAmount":     parsed,
+			})
+		}
 	}
 
 	// Require popFile field.
@@ -1063,6 +1083,19 @@ func MarkPaidWithPOP(c *fiber.Ctx) error {
 		if err := tx.Save(&voucher).Error; err != nil {
 			return fmt.Errorf("update voucher: %w", err)
 		}
+
+		// Close any open payment_execution task for this PV so the proof-of-
+		// payment path doesn't leave a dangling task (procurement PVs get one at
+		// final approval). Idempotent — direct_payment PVs have none.
+		tx.Model(&models.WorkflowTask{}).
+			Where("entity_id = ? AND organization_id = ? AND kind = ? AND UPPER(status) IN ('PENDING','CLAIMED')",
+				voucher.ID, voucher.OrganizationID, models.TaskKindPaymentExecution).
+			Updates(map[string]interface{}{
+				"status":       "COMPLETED",
+				"completed_at": now,
+				"updated_by":   userID,
+				"updated_at":   now,
+			})
 
 		// Cascade requisition to COMPLETED for direct_payment chain.
 		if strings.EqualFold(voucher.RoutingType, models.RoutingTypeDirectPayment) && len(voucher.Metadata) > 0 {

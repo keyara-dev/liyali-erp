@@ -346,7 +346,10 @@ func SetupRoutes(app *fiber.App, handlerRegistry *handlers.HandlerRegistry, rbac
 	pvs.Post("/:id/submit", middleware.RequirePermission(rbacService, "payment_voucher", "edit"), handlers.SubmitPaymentVoucher)
 	pvs.Post("/:id/withdraw", middleware.RequirePermission(rbacService, "payment_voucher", "edit"), handlers.WithdrawPaymentVoucher)
 	pvs.Post("/:id/mark-paid", middleware.RequirePermission(rbacService, "payment_voucher", "edit"), handlers.MarkPaymentVoucherPaid)
-	pvs.Post("/:id/mark-paid-with-pop", middleware.RequirePermission(rbacService, "payment_voucher", "edit"), handlers.MarkPaidWithPOP)
+	// Payment execution requires the payment-authorization permission, not just
+	// edit — so custom org roles granted "payment_voucher.approve" can facilitate
+	// payment, while edit-only roles cannot disburse funds.
+	pvs.Post("/:id/mark-paid-with-pop", middleware.RequirePermission(rbacService, "payment_voucher", "approve"), handlers.MarkPaidWithPOP)
 	pvs.Post("/recover-from-po/:poId", middleware.RequirePermission(rbacService, "payment_voucher", "edit"), handlers.RecoverPVFromPO)
 
 	// GRN routes (tenant-scoped)

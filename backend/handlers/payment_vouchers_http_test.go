@@ -856,6 +856,28 @@ func TestMarkPaid_RequiresPOPFile(t *testing.T) {
 	}
 }
 
+func TestMarkPaid_RejectsAmountMismatch(t *testing.T) {
+	db := setupTestDB(t)
+	defer teardownTestDB(t, db)
+
+	// PV amount is 500; a paidAmount of 999 must be rejected as a mismatch.
+	pv := makePaymentVoucherWithRouting(t, "PV-MKP-AMT-001", models.StatusApproved, models.RoutingTypeDirectPayment)
+
+	body, ct := testMultipartWithField(t, "popFile", "slip.pdf", "application/pdf", []byte("%PDF-1.4"), map[string]string{
+		"paidAmount": "999.00",
+	})
+	req := multipartRequest(http.MethodPost, "/payment-vouchers/"+pv.ID+"/mark-paid-with-pop", body, ct)
+
+	app := newPaymentVoucherApp(t)
+	resp, err := app.Test(req, -1)
+	if err != nil {
+		t.Fatalf("app.Test: %v", err)
+	}
+	if resp.StatusCode != http.StatusUnprocessableEntity {
+		t.Fatalf("status=%d want 422 (amount mismatch)", resp.StatusCode)
+	}
+}
+
 func TestMarkPaid_HappyPath(t *testing.T) {
 	db := setupTestDB(t)
 	defer teardownTestDB(t, db)
