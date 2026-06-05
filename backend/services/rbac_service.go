@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/google/uuid"
 	sqlc "github.com/liyali/liyali-gateway/database/sqlc"
@@ -524,12 +525,12 @@ func (s *RBACService) GetUserPermissions(ctx context.Context, userID, organizati
 			// Support for denied permissions (prefixed with "!")
 			if len(permission) > 0 && permission[0] == '!' {
 				// This is a denied permission
-				deniedPermission := permission[1:] // Remove the "!" prefix
+				deniedPermission := canonicalPermission(permission[1:]) // Remove the "!" prefix
 				deniedPermissions[deniedPermission] = true
 				delete(permissionSet, deniedPermission) // Remove from granted permissions
 			} else {
 				// This is a granted permission
-				permissionSet[permission] = true
+				permissionSet[canonicalPermission(permission)] = true
 			}
 		}
 	}
@@ -562,6 +563,14 @@ func (s *RBACService) GetUserPermissions(ctx context.Context, userID, organizati
 	}
 
 	return permissions, nil
+}
+
+// canonicalPermission normalizes a permission string to the "resource.action"
+// form that HasPermission looks up. Custom org roles are assigned via the UI in
+// "resource:action" (colon) form; without this normalization those granted
+// permissions would never match the dot-form lookups and would silently fail.
+func canonicalPermission(p string) string {
+	return strings.ReplaceAll(p, ":", ".")
 }
 
 // HasPermission checks if a user has a specific permission

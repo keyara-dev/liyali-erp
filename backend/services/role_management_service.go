@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
+	"sort"
 	"strings"
 
 	"github.com/google/uuid"
@@ -256,18 +257,15 @@ func (rms *RoleManagementService) GetRolePermissions(roleID string) ([]string, e
 
 // GetOrganizationPermissions retrieves all available permissions (simplified version)
 func (rms *RoleManagementService) GetOrganizationPermissions(organizationID string) ([]string, error) {
-	// Return standard permissions that are available in the system
-	permissions := []string{
-		"requisition:view", "requisition:create", "requisition:edit", "requisition:delete", "requisition:approve", "requisition:reject",
-		"budget:view", "budget:create", "budget:edit", "budget:delete", "budget:approve", "budget:reject",
-		"purchase_order:view", "purchase_order:create", "purchase_order:edit", "purchase_order:delete", "purchase_order:approve", "purchase_order:reject",
-		"payment_voucher:view", "payment_voucher:create", "payment_voucher:edit", "payment_voucher:delete", "payment_voucher:approve", "payment_voucher:reject",
-		"grn:view", "grn:create", "grn:edit", "grn:delete",
-		"vendor:view", "vendor:create", "vendor:edit", "vendor:delete",
-		"category:view", "category:create", "category:edit", "category:delete",
-		"organization:view", "organization:edit", "organization:manage_users", "organization:manage_workflows",
-		"analytics:view", "audit_log:view",
+	// Single source of truth: derive the full grantable permission catalog from
+	// SystemPermissions so new permissions (e.g. payment_voucher:pay, grn:approve)
+	// appear in the role-builder UI automatically and never drift from the RBAC
+	// definitions. Emit "resource:action" to match the UI's permission parser.
+	permissions := make([]string, 0, len(SystemPermissions))
+	for _, p := range SystemPermissions {
+		permissions = append(permissions, fmt.Sprintf("%s:%s", p.Resource, p.Action))
 	}
+	sort.Strings(permissions)
 
 	return permissions, nil
 }
