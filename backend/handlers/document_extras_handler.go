@@ -334,35 +334,31 @@ func CreatePaymentVoucherFromPO(c *fiber.Ctx) error {
 		req.Currency = po.Currency
 	}
 
-	// Resolve effective procurement flow: PO override → org default → "goods_first"
-	effectiveFlow := po.ProcurementFlow
-	if effectiveFlow == "" {
-		orgSvc := services.NewOrganizationService(config.DB)
-		orgSettings, _ := orgSvc.GetOrganizationSettings(tenant.OrganizationID)
-		if orgSettings != nil && orgSettings.ProcurementFlow != "" {
-			effectiveFlow = orgSettings.ProcurementFlow
-		} else {
-			effectiveFlow = "goods_first"
-		}
+	// Enforce the shared PV-creation gate: PO must be APPROVED, no live duplicate
+	// PV may exist, the amount is capped at the PO total (and received value in
+	// goods-first), and in goods-first the linked GRN must be APPROVED or
+	// COMPLETED. Single source of truth shared with the manual + auto paths.
+	if msg, code := validateProcurementPVGate(config.DB, tenant.OrganizationID, po.DocumentNumber, req.LinkedGRNDocumentNumber, req.TotalAmount); code != 0 {
+		return c.Status(code).JSON(fiber.Map{"success": false, "message": msg})
 	}
 
-	// Goods-first enforcement: require an approved GRN before creating PV
+	// Resolve effective flow + load the linked GRN (goods-first) purely for
+	// audit-trail wiring below — all gating was done by the validator above.
+	orgDefaultFlow := ""
+	if strings.TrimSpace(po.ProcurementFlow) == "" {
+		orgSvc := services.NewOrganizationService(config.DB)
+		if s, _ := orgSvc.GetOrganizationSettings(tenant.OrganizationID); s != nil {
+			orgDefaultFlow = s.ProcurementFlow
+		}
+	}
+	effectiveFlow := utils.ResolveProcurementFlow(po.ProcurementFlow, orgDefaultFlow)
+
 	var linkedGRN *models.GoodsReceivedNote
-	if effectiveFlow == "goods_first" {
-		if req.LinkedGRNDocumentNumber == "" {
-			return utils.SendBadRequestError(c, "A linked GRN document number is required for goods-first procurement flow")
-		}
+	if req.LinkedGRNDocumentNumber != "" {
 		var grn models.GoodsReceivedNote
-		if err := config.DB.Where("document_number = ? AND organization_id = ?", req.LinkedGRNDocumentNumber, tenant.OrganizationID).First(&grn).Error; err != nil {
-			return utils.SendBadRequestError(c, "Linked GRN not found")
+		if err := config.DB.Where("document_number = ? AND organization_id = ?", req.LinkedGRNDocumentNumber, tenant.OrganizationID).First(&grn).Error; err == nil {
+			linkedGRN = &grn
 		}
-		if strings.ToUpper(grn.Status) != "APPROVED" {
-			return utils.SendBadRequestError(c, "Linked GRN must be approved before creating a payment voucher (goods-first flow)")
-		}
-		if grn.PODocumentNumber != po.DocumentNumber {
-			return utils.SendBadRequestError(c, "Linked GRN does not belong to the selected purchase order")
-		}
-		linkedGRN = &grn
 	}
 
 	// Verify vendor belongs to this org if provided
@@ -381,10 +377,7 @@ func CreatePaymentVoucherFromPO(c *fiber.Ctx) error {
 	var pvFromPOUser models.User
 	config.DB.Where("id = ?", tenant.UserID).First(&pvFromPOUser)
 
-	linkedGRNDocNum := ""
-	if linkedGRN != nil {
-		linkedGRNDocNum = linkedGRN.DocumentNumber
-	}
+	linkedGRNDocNum := req.LinkedGRNDocumentNumber
 
 	voucher := models.PaymentVoucher{
 		ID:             uuid.New().String(),

@@ -493,7 +493,8 @@ func TestCreatePVFromPO_GoodsFirst_Success(t *testing.T) {
 		ID: "po-gf-002", OrganizationID: testOrgID, DocumentNumber: "PO-GF-002",
 		Status: "APPROVED", TotalAmount: 300.0, Currency: "ZMW", ProcurementFlow: "goods_first",
 	}
-	po.Items = emptyPOItems()
+	// Real goods so the received-value cap (PV amount ≤ Σ received×unitPrice) is met.
+	po.Items = datatypes.NewJSONType([]types.POItem{{Description: "Item", Quantity: 3, UnitPrice: 100, Amount: 300}})
 	po.ActionHistory = emptyActionHistory()
 	require.NoError(t, db.Create(&po).Error)
 
@@ -502,7 +503,7 @@ func TestCreatePVFromPO_GoodsFirst_Success(t *testing.T) {
 		PODocumentNumber: "PO-GF-002", Status: "APPROVED",
 		ReceivedDate: time.Now(), ReceivedBy: testUserID,
 	}
-	grn.Items = emptyGRNItems()
+	grn.Items = datatypes.NewJSONType([]types.GRNItem{{Description: "Item", QuantityOrdered: 3, QuantityReceived: 3, Condition: "good"}})
 	grn.ActionHistory = emptyActionHistory()
 	require.NoError(t, db.Create(&grn).Error)
 
