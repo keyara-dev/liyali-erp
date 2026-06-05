@@ -258,16 +258,14 @@ func CreateGRN(c *fiber.Ctx) error {
 	}
 
 	// Resolve effective procurement flow: PO override → org default → "goods_first"
-	effectiveFlow := po.ProcurementFlow
-	if effectiveFlow == "" {
+	orgDefaultFlow := ""
+	if strings.TrimSpace(po.ProcurementFlow) == "" {
 		orgSvc := services.NewOrganizationService(config.DB)
-		orgSettings, _ := orgSvc.GetOrganizationSettings(tenant.OrganizationID)
-		if orgSettings != nil && orgSettings.ProcurementFlow != "" {
-			effectiveFlow = orgSettings.ProcurementFlow
-		} else {
-			effectiveFlow = "goods_first"
+		if orgSettings, _ := orgSvc.GetOrganizationSettings(tenant.OrganizationID); orgSettings != nil {
+			orgDefaultFlow = orgSettings.ProcurementFlow
 		}
 	}
+	effectiveFlow := utils.ResolveProcurementFlow(po.ProcurementFlow, orgDefaultFlow)
 
 	// Goods-first: the PO must be APPROVED before goods can be received against it.
 	// Payment-first enforces the PV-approval gate further down; no PO-status gate there.
