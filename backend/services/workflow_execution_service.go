@@ -2385,7 +2385,7 @@ func (s *WorkflowExecutionService) AutoCreatePVFromCompletedGRN(tx *gorm.DB, grn
 	if flow == "payment_first" {
 		return nil
 	}
-	if !settings.AutoCreatePVFromPO {
+	if !settings.AutoCreatePVFromGRN {
 		return nil
 	}
 
@@ -2747,6 +2747,16 @@ func (s *WorkflowExecutionService) addActionHistoryEntryWithMeta(
 
 // triggerPostApprovalAutomation triggers automation after document approval
 func (s *WorkflowExecutionService) triggerPostApprovalAutomation(ctx context.Context, entityType, entityID string) error {
+	// Phase B: org-settings-driven chain automation (independent of the legacy
+	// automationService). Runs post-commit, so submit/approve use their own
+	// transactions — no nesting inside the approval that triggered this.
+	switch strings.ToLower(entityType) {
+	case "purchase_order":
+		return s.autoCreateFromApprovedPO(ctx, entityID)
+	case "grn":
+		return s.applyPVLevelForCompletedGRN(ctx, entityID)
+	}
+
 	if s.automationService == nil {
 		return nil // No automation service configured
 	}
