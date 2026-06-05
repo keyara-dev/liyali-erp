@@ -346,9 +346,14 @@ func UpdateBudget(c *fiber.Ctx) error {
 
 	logger.Debug("fetching_budget_for_update")
 
+	// SECURITY: scope to org + owner/involvement (mirrors GetBudgets/DeleteBudget)
+	// to prevent cross-user edits of another user's budget (IDOR).
+	scope := utils.GetDocumentScope(config.DB, tenant.UserID, tenant.UserRole, tenant.OrganizationID)
+	loadQuery := config.DB.Where("id = ? AND organization_id = ?", id, tenant.OrganizationID)
+	loadQuery = scope.ApplyToQuery(loadQuery, "created_by", "budget", "")
+
 	var budget models.Budget
-	// SECURITY FIX: Filter by organization ID
-	if err := config.DB.Where("id = ? AND organization_id = ?", id, tenant.OrganizationID).First(&budget).Error; err != nil {
+	if err := loadQuery.First(&budget).Error; err != nil {
 		logging.LogError(c, err, "budget_not_found_for_update")
 		return utils.SendNotFoundError(c, "Budget")
 	}
