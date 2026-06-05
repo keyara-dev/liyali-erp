@@ -33,6 +33,14 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Switch } from "@/components/ui/switch";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Loader2,
   Trash2,
@@ -43,6 +51,7 @@ import {
   Stamp,
   Upload,
   X,
+  Zap,
 } from "lucide-react";
 import { toast } from "sonner";
 import { uploadToImageKit, validateImageFile } from "@/lib/imagekit";
@@ -76,6 +85,18 @@ export function WorkspaceSettings() {
   const [stampUploading, setStampUploading] = useState(false);
   const [stampHasChanges, setStampHasChanges] = useState(false);
 
+  // Procurement automation state
+  const [autoCreateGRNFromPO, setAutoCreateGRNFromPO] = useState(false);
+  const [autoCreatePVFromPO, setAutoCreatePVFromPO] = useState(false);
+  const [autoCreatePVFromGRN, setAutoCreatePVFromGRN] = useState(false);
+  const [pvAutomationLevel, setPvAutomationLevel] = useState<
+    "manual" | "auto_submit" | "auto_approve"
+  >("manual");
+  const [autoApproveMaxAmount, setAutoApproveMaxAmount] = useState<
+    number | ""
+  >("");
+  const [automationHasChanges, setAutomationHasChanges] = useState(false);
+
   // Sync form data when currentOrganization changes
   useEffect(() => {
     if (currentOrganization) {
@@ -101,6 +122,23 @@ export function WorkspaceSettings() {
     setStampImageUrl(settingsData?.stampImageUrl ?? "");
     setStampHasChanges(false);
   }, [settingsData?.stampImageUrl]);
+
+  // Sync procurement automation settings on load
+  useEffect(() => {
+    if (!settingsData) return;
+    setAutoCreateGRNFromPO(settingsData.autoCreateGRNFromPO ?? false);
+    setAutoCreatePVFromPO(settingsData.autoCreatePVFromPO ?? false);
+    setAutoCreatePVFromGRN(settingsData.autoCreatePVFromGRN ?? false);
+    setPvAutomationLevel(settingsData.pvAutomationLevel ?? "manual");
+    setAutoApproveMaxAmount(settingsData.autoApproveMaxAmount ?? "");
+    setAutomationHasChanges(false);
+  }, [
+    settingsData?.autoCreateGRNFromPO,
+    settingsData?.autoCreatePVFromPO,
+    settingsData?.autoCreatePVFromGRN,
+    settingsData?.pvAutomationLevel,
+    settingsData?.autoApproveMaxAmount,
+  ]);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -156,6 +194,25 @@ export function WorkspaceSettings() {
       await updateSettings({ ...settingsData, procurementFlow });
     } catch (error) {
       console.error("Failed to update procurement flow:", error);
+    }
+  };
+
+  const handleSaveAutomation = async () => {
+    if (!settingsData) return;
+    try {
+      await updateSettings({
+        ...settingsData,
+        autoCreateGRNFromPO,
+        autoCreatePVFromPO,
+        autoCreatePVFromGRN,
+        pvAutomationLevel,
+        autoApproveMaxAmount:
+          autoApproveMaxAmount === "" ? undefined : autoApproveMaxAmount,
+      });
+      setAutomationHasChanges(false);
+      toast.success("Automation settings saved");
+    } catch (error) {
+      console.error("Failed to update automation settings:", error);
     }
   };
 
@@ -456,6 +513,188 @@ export function WorkspaceSettings() {
             >
               <Save className="h-4 w-4" />
               Save Flow Setting
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Procurement Automation */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Zap className="h-5 w-5" />
+            Procurement Automation
+          </CardTitle>
+          <CardDescription>
+            Control which documents are created automatically and how far they
+            progress without manual intervention.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* Flow chain explainer */}
+          <div className="rounded-lg border bg-muted/40 px-4 py-3 space-y-2">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+              Procurement chains
+            </p>
+            <div className="flex flex-wrap gap-3 text-xs">
+              <div className="flex items-center gap-1.5">
+                <span className="inline-flex items-center rounded-full border px-2 py-0.5 font-medium bg-background text-foreground">
+                  Goods-first
+                </span>
+                <span className="text-muted-foreground font-mono">
+                  PO → GRN → PV
+                </span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="inline-flex items-center rounded-full border px-2 py-0.5 font-medium bg-background text-foreground">
+                  Payment-first
+                </span>
+                <span className="text-muted-foreground font-mono">
+                  PO → PV → GRN
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Toggle controls */}
+          <div className="space-y-4">
+            {/* autoCreatePVFromPO */}
+            <div className="flex items-start justify-between gap-4 rounded-lg border p-4">
+              <div className="space-y-0.5">
+                <p className="text-sm font-medium leading-none">
+                  Auto-create PV from approved PO
+                </p>
+                <p className="text-xs text-muted-foreground pt-1">
+                  Payment-first chain — a Payment Voucher is created
+                  automatically once a PO is approved.
+                </p>
+              </div>
+              <Switch
+                checked={autoCreatePVFromPO}
+                onCheckedChange={(v) => {
+                  setAutoCreatePVFromPO(v);
+                  setAutomationHasChanges(true);
+                }}
+              />
+            </div>
+
+            {/* autoCreatePVFromGRN */}
+            <div className="flex items-start justify-between gap-4 rounded-lg border p-4">
+              <div className="space-y-0.5">
+                <p className="text-sm font-medium leading-none">
+                  Auto-create PV after GRN completes
+                </p>
+                <p className="text-xs text-muted-foreground pt-1">
+                  Goods-first chain — a Payment Voucher is created automatically
+                  once a GRN is fully signed off and approved.
+                </p>
+              </div>
+              <Switch
+                checked={autoCreatePVFromGRN}
+                onCheckedChange={(v) => {
+                  setAutoCreatePVFromGRN(v);
+                  setAutomationHasChanges(true);
+                }}
+              />
+            </div>
+
+            {/* autoCreateGRNFromPO */}
+            <div className="flex items-start justify-between gap-4 rounded-lg border p-4">
+              <div className="space-y-0.5">
+                <p className="text-sm font-medium leading-none">
+                  Auto-create draft GRN from approved PO
+                </p>
+                <p className="text-xs text-muted-foreground pt-1">
+                  Goods-first chain — creates a draft GRN placeholder for the
+                  receiver to sign. Goods receipt still requires two human
+                  signatures before submission.
+                </p>
+              </div>
+              <Switch
+                checked={autoCreateGRNFromPO}
+                onCheckedChange={(v) => {
+                  setAutoCreateGRNFromPO(v);
+                  setAutomationHasChanges(true);
+                }}
+              />
+            </div>
+          </div>
+
+          {/* PV automation level */}
+          <div className="space-y-2">
+            <div>
+              <p className="text-sm font-medium">
+                Payment Voucher automation level
+              </p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                How far auto-created Payment Vouchers progress without manual
+                intervention.
+              </p>
+            </div>
+            <Select
+              value={pvAutomationLevel}
+              onValueChange={(v) => {
+                setPvAutomationLevel(
+                  v as "manual" | "auto_submit" | "auto_approve",
+                );
+                setAutomationHasChanges(true);
+              }}
+            >
+              <SelectTrigger className="w-full sm:w-72">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="manual">Manual</SelectItem>
+                <SelectItem value="auto_submit">
+                  Auto-submit to approval
+                </SelectItem>
+                <SelectItem value="auto_approve">
+                  Auto-approve under cap
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Auto-approve cap — only when auto_approve is selected */}
+          {pvAutomationLevel === "auto_approve" && (
+            <div className="space-y-2">
+              <div>
+                <p className="text-sm font-medium">
+                  Auto-approve maximum amount
+                </p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  PVs at or below this amount are auto-approved; larger ones are
+                  only submitted for human approval.
+                </p>
+              </div>
+              <Input
+                id="auto-approve-max-amount"
+                type="number"
+                min={0}
+                step={1}
+                value={autoApproveMaxAmount}
+                onChange={(e) => {
+                  const parsed = parseFloat(e.target.value);
+                  setAutoApproveMaxAmount(
+                    isNaN(parsed) ? "" : parsed,
+                  );
+                  setAutomationHasChanges(true);
+                }}
+                placeholder="e.g. 50000"
+                className="w-full sm:w-72"
+              />
+            </div>
+          )}
+
+          <div className="flex justify-end pt-2">
+            <Button
+              onClick={handleSaveAutomation}
+              disabled={!automationHasChanges || isSavingSettings || !settingsData}
+              isLoading={isSavingSettings}
+              loadingText="Saving..."
+            >
+              <Save className="h-4 w-4" />
+              Save Automation
             </Button>
           </div>
         </CardContent>

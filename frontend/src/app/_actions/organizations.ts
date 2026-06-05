@@ -65,6 +65,11 @@ export interface OrganizationSettings {
   procurementFlow?: "goods_first" | "payment_first";
   /** "Stamp of Issuing Officer" image rendered on every GRN PDF as fallback. */
   stampImageUrl?: string;
+  autoCreateGRNFromPO?: boolean;
+  autoCreatePVFromPO?: boolean;
+  autoCreatePVFromGRN?: boolean;
+  pvAutomationLevel?: "manual" | "auto_submit" | "auto_approve";
+  autoApproveMaxAmount?: number;
 }
 
 /**
@@ -338,6 +343,11 @@ export async function updateOrganizationSettings(
         notifications: data.notifications,
         procurementFlow: data.procurementFlow,
         stampImageUrl: data.stampImageUrl,
+        autoCreateGRNFromPO: data.autoCreateGRNFromPO,
+        autoCreatePVFromPO: data.autoCreatePVFromPO,
+        autoCreatePVFromGRN: data.autoCreatePVFromGRN,
+        pvAutomationLevel: data.pvAutomationLevel,
+        autoApproveMaxAmount: data.autoApproveMaxAmount,
       },
     });
 
