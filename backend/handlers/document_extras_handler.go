@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io"
 	"strconv"
 	"strings"
 	"time"
@@ -1016,7 +1017,7 @@ func MarkPaidWithPOP(c *fiber.Ctx) error {
 	defer f.Close()
 
 	var buf = make([]byte, fileHeader.Size)
-	if _, err := f.Read(buf); err != nil {
+	if _, err := io.ReadFull(f, buf); err != nil {
 		return utils.SendInternalError(c, "Failed to read uploaded file", err)
 	}
 	encoded := base64.StdEncoding.EncodeToString(buf)
@@ -1152,9 +1153,9 @@ func RecoverPVFromPO(c *fiber.Ctx) error {
 		return utils.SendUnauthorizedError(c, "Organization context required")
 	}
 
-	// Role gate: only admin or finance.
+	// Role gate: only admin or finance (super_admin is not a gateway role).
 	userRole, _ := c.Locals("userRole").(string)
-	if userRole != "admin" && userRole != "super_admin" && userRole != "finance" {
+	if userRole != "admin" && userRole != "finance" {
 		return utils.SendForbiddenError(c, "Only admin or finance users can recover a payment voucher from a PO")
 	}
 

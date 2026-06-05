@@ -354,6 +354,17 @@ func CreatePaymentVoucher(c *fiber.Ctx) error {
 		return c.Status(code).JSON(fiber.Map{"success": false, "message": msg})
 	}
 
+	// Inherit the linked PO's currency when the client didn't specify one, so a
+	// PO-linked PV can't drift to a different/empty currency than its PO.
+	if req.LinkedPO != "" && strings.TrimSpace(req.Currency) == "" {
+		var lpo models.PurchaseOrder
+		if err := config.DB.Select("currency").
+			Where("document_number = ? AND organization_id = ?", req.LinkedPO, tenant.OrganizationID).
+			First(&lpo).Error; err == nil && lpo.Currency != "" {
+			req.Currency = lpo.Currency
+		}
+	}
+
 	// Generate voucher number
 	documentNumber := utils.GenerateDocumentNumber("PV")
 
@@ -1042,23 +1053,17 @@ func WithdrawPaymentVoucher(c *fiber.Ctx) error {
 		})
 	}
 
-	// Verify that the current user is the creator (only the submitter can withdraw)
-	// Note: PaymentVoucher doesn't have a CreatedBy field, so we check the first action history entry
-	var actionHistory []types.ActionHistoryEntry
-	actionHistory = voucher.ActionHistory.Data()
-	if actionHistory == nil || len(actionHistory) == 0 {
-		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
-			"success": false,
-			"message": "Cannot determine payment voucher creator",
-		})
-	}
-
-	// Find the CREATE action to determine the creator
-	creatorID := ""
-	for _, action := range actionHistory {
-		if strings.ToUpper(action.ActionType) == "CREATE" {
-			creatorID = action.PerformedBy
-			break
+	// Only the creator may withdraw. Prefer the persisted CreatedBy; fall back to
+	// the CREATE action-history entry for legacy vouchers that predate the field.
+	// (Auto-created PVs set CreatedBy but leave the history PerformedBy blank, so
+	// the old history-only logic made them un-withdrawable.)
+	creatorID := voucher.CreatedBy
+	if creatorID == "" {
+		for _, action := range voucher.ActionHistory.Data() {
+			if strings.ToUpper(action.ActionType) == "CREATE" {
+				creatorID = action.PerformedBy
+				break
+			}
 		}
 	}
 
@@ -1134,9 +1139,7 @@ func WithdrawPaymentVoucher(c *fiber.Ctx) error {
 	voucher.ApprovalHistory = datatypes.NewJSONType([]types.ApprovalRecord{})
 
 	// Add action history entry for withdrawal
-	if actionHistory == nil {
-		actionHistory = []types.ActionHistoryEntry{}
-	}
+	actionHistory := voucher.ActionHistory.Data()
 
 	// Get user info for action history
 	performerName := "Unknown User"
