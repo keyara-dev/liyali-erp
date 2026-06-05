@@ -243,6 +243,8 @@ func TestMarkGRNComplete_Success(t *testing.T) {
 	defer teardownTestDB(t, db)
 	seedTestUser(t)
 
+	// Completion now re-validates the linked PO — seed it as APPROVED.
+	makeApprovedPO(t, "PO-SIGNOFF-001")
 	grn := makeDraftGRNInState(t, "GRN-COMPLETE-OK", "READY")
 
 	app := newGRNSignoffApp(t, withTenantCtx(testOrgID, testUserID, testUserRole))

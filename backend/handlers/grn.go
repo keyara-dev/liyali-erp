@@ -906,35 +906,9 @@ func SubmitGRN(c *fiber.Ctx) error {
 		})
 	}
 
-	// Gate: linked PO must still be APPROVED before GRN can be submitted
-	if grn.PODocumentNumber != "" {
-		var linkedPO models.PurchaseOrder
-		if err := config.DB.
-			Where("document_number = ? AND organization_id = ?", grn.PODocumentNumber, organizationID).
-			First(&linkedPO).Error; err != nil {
-			return utils.SendBadRequestError(c, "Linked purchase order not found")
-		}
-		if strings.ToUpper(linkedPO.Status) != "APPROVED" {
-			return utils.SendBadRequestError(c, fmt.Sprintf(
-				"Cannot submit GRN: linked PO %s is in %s status and must be APPROVED.",
-				grn.PODocumentNumber, linkedPO.Status))
-		}
-	}
-
-	// Gate: payment-first — linked PV must still be APPROVED or PAID
-	if grn.LinkedPV != "" {
-		var linkedPV models.PaymentVoucher
-		if err := config.DB.
-			Where("document_number = ? AND organization_id = ?", grn.LinkedPV, organizationID).
-			First(&linkedPV).Error; err != nil {
-			return utils.SendBadRequestError(c, "Linked payment voucher not found")
-		}
-		pvStatus := strings.ToUpper(linkedPV.Status)
-		if pvStatus != "APPROVED" && pvStatus != "PAID" {
-			return utils.SendBadRequestError(c, fmt.Sprintf(
-				"Cannot submit GRN: linked PV %s is in %s status and must be APPROVED or PAID.",
-				grn.LinkedPV, linkedPV.Status))
-		}
+	// Gate: linked PO must still be APPROVED and linked PV (if any) APPROVED/PAID.
+	if msg := revalidateGRNLinks(&grn, organizationID, "submit"); msg != "" {
+		return utils.SendBadRequestError(c, msg)
 	}
 
 	// Get workflow execution service from context
@@ -1286,6 +1260,40 @@ func CertifyGRN(c *fiber.Ctx) error {
 	return c.JSON(types.DetailResponse{Success: true, Data: modelToGRNResponse(grn)})
 }
 
+// revalidateGRNLinks ensures, just before a completion path cascades, that the
+// GRN's linked PO is still APPROVED and the linked PV (if any) is still APPROVED
+// or PAID. Returns "" when valid, otherwise a caller-facing message. `verb`
+// ("submit" / "complete") is interpolated so each path reads naturally. Shared
+// by SubmitGRN and MarkGRNComplete so both enforce identical preconditions.
+func revalidateGRNLinks(grn *models.GoodsReceivedNote, orgID, verb string) string {
+	if grn.PODocumentNumber != "" {
+		var linkedPO models.PurchaseOrder
+		if err := config.DB.
+			Where("document_number = ? AND organization_id = ?", grn.PODocumentNumber, orgID).
+			First(&linkedPO).Error; err != nil {
+			return "Linked purchase order not found"
+		}
+		if strings.ToUpper(linkedPO.Status) != "APPROVED" {
+			return fmt.Sprintf("Cannot %s GRN: linked PO %s is in %s status and must be APPROVED.",
+				verb, grn.PODocumentNumber, linkedPO.Status)
+		}
+	}
+	if grn.LinkedPV != "" {
+		var linkedPV models.PaymentVoucher
+		if err := config.DB.
+			Where("document_number = ? AND organization_id = ?", grn.LinkedPV, orgID).
+			First(&linkedPV).Error; err != nil {
+			return "Linked payment voucher not found"
+		}
+		pvStatus := strings.ToUpper(linkedPV.Status)
+		if pvStatus != "APPROVED" && pvStatus != "PAID" {
+			return fmt.Sprintf("Cannot %s GRN: linked PV %s is in %s status and must be APPROVED or PAID.",
+				verb, grn.LinkedPV, linkedPV.Status)
+		}
+	}
+	return ""
+}
+
 // MarkGRNComplete closes the GRN without workflow approval. The two
 // signatures (receiver + certifier) stand in for an approval chain.
 // Requires SignoffStatus = READY and Status = DRAFT.
@@ -1318,6 +1326,12 @@ func MarkGRNComplete(c *fiber.Ctx) error {
 	}
 	if strings.ToUpper(grn.Status) != "DRAFT" {
 		return utils.SendBadRequestError(c, fmt.Sprintf("Cannot complete GRN in %s status", grn.Status))
+	}
+
+	// Re-validate links before cascading — a GRN signed READY while its PO was
+	// APPROVED must not force-complete if the PO/PV later changed state.
+	if msg := revalidateGRNLinks(&grn, tenant.OrganizationID, "complete"); msg != "" {
+		return utils.SendBadRequestError(c, msg)
 	}
 
 	now := time.Now()

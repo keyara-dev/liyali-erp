@@ -269,6 +269,47 @@ func TestCreateGRN_Success(t *testing.T) {
 	}
 }
 
+// MarkGRNComplete must re-validate the linked PO/PV before cascading, so a GRN
+// signed READY against a PO that was later cancelled cannot force-complete.
+func TestMarkGRNComplete_RevalidatesPO(t *testing.T) {
+	db := setupTestDB(t)
+	defer teardownTestDB(t, db)
+
+	po := models.PurchaseOrder{
+		ID: uuid.New().String(), OrganizationID: testOrgID, DocumentNumber: "PO-MC-1",
+		Status: "CANCELLED", TotalAmount: 1000, Currency: "ZMW",
+		CreatedAt: time.Now(), UpdatedAt: time.Now(),
+	}
+	po.Items = datatypes.NewJSONType([]types.POItem{{Description: "Widget A", Quantity: 10, UnitPrice: 100, Amount: 1000}})
+	po.ApprovalHistory = datatypes.NewJSONType([]types.ApprovalRecord{})
+	po.ActionHistory = datatypes.NewJSONType([]types.ActionHistoryEntry{})
+	if err := db.Create(&po).Error; err != nil {
+		t.Fatalf("seed PO: %v", err)
+	}
+
+	grn := makeGRN(t, "GRN-MC-1", "PO-MC-1", "DRAFT") // signoff READY, status DRAFT
+
+	app := fiber.New()
+	auth := withTenantCtx(testOrgID, testUserID, testUserRole)
+	app.Post("/grns/:id/complete", auth, MarkGRNComplete)
+	resp := testRequest(app, http.MethodPost, "/grns/"+grn.ID+"/complete", map[string]interface{}{})
+
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d", resp.StatusCode)
+	}
+	msg, _ := decodeResponse(resp)["message"].(string)
+	if !strings.Contains(msg, "must be APPROVED") {
+		t.Fatalf("expected PO-revalidation message, got %q", msg)
+	}
+	var reloaded models.GoodsReceivedNote
+	if err := db.Where("id = ?", grn.ID).First(&reloaded).Error; err != nil {
+		t.Fatalf("reload GRN: %v", err)
+	}
+	if strings.ToUpper(reloaded.Status) != "DRAFT" {
+		t.Fatalf("GRN must remain DRAFT, got %s", reloaded.Status)
+	}
+}
+
 // payment_first must also require the PO to be APPROVED before a GRN is created.
 func TestCreateGRN_PaymentFirst_RequiresApprovedPO(t *testing.T) {
 	db := setupTestDB(t)
