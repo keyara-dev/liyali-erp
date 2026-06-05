@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"math"
 	"strings"
 	"time"
 
@@ -2435,9 +2436,17 @@ func (s *WorkflowExecutionService) AutoCreatePVFromCompletedGRN(tx *gorm.DB, grn
 		pvTotal += amount
 	}
 
-	// Backstop: an auto-created PV may never exceed the PO total.
+	// Backstop: an auto-created PV may never exceed the PO total. Scale the line
+	// items proportionally so the PV's Amount always equals Σ(item amounts) — never
+	// leave the header total and line items inconsistent.
 	if po.TotalAmount > 0 && pvTotal > po.TotalAmount+0.01 {
-		pvTotal = po.TotalAmount
+		scale := po.TotalAmount / pvTotal
+		var scaledTotal float64
+		for i := range pvItems {
+			pvItems[i].Amount = math.Round(pvItems[i].Amount*scale*100) / 100
+			scaledTotal += pvItems[i].Amount
+		}
+		pvTotal = scaledTotal
 	}
 
 	now := time.Now()
