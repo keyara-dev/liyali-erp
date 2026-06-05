@@ -2235,6 +2235,49 @@ func (s *WorkflowExecutionService) CascadeGRNApprovalToPO(tx *gorm.DB, grnID str
 	return s.cascadeGRNApprovalToPO(tx, grnID)
 }
 
+// resolveDeliveryFromGRNs sets ReceivedQuantity on each PO line by aggregating
+// quantities received across all GRN lines. Lines are matched by ItemCode when
+// present (a stable SKU snapshotted from the PO line, so it survives description
+// edits and disambiguates duplicate descriptions) and fall back to a normalized
+// Description otherwise. Returns the updated items plus whether all / any lines
+// are received.
+func resolveDeliveryFromGRNs(items []types.POItem, grnItemLists [][]types.GRNItem) ([]types.POItem, bool, bool) {
+	receivedByCode := make(map[string]int)
+	receivedByDesc := make(map[string]int)
+	for _, list := range grnItemLists {
+		for _, it := range list {
+			if code := strings.TrimSpace(strings.ToLower(it.ItemCode)); code != "" {
+				receivedByCode[code] += it.QuantityReceived
+			}
+			receivedByDesc[strings.TrimSpace(strings.ToLower(it.Description))] += it.QuantityReceived
+		}
+	}
+
+	allFull, anyReceived := true, false
+	for i := range items {
+		code := strings.TrimSpace(strings.ToLower(items[i].ItemCode))
+		desc := strings.TrimSpace(strings.ToLower(items[i].Description))
+		received := 0
+		if code != "" {
+			if v, ok := receivedByCode[code]; ok {
+				received = v
+			} else {
+				received = receivedByDesc[desc]
+			}
+		} else {
+			received = receivedByDesc[desc]
+		}
+		items[i].ReceivedQuantity = received
+		if received > 0 {
+			anyReceived = true
+		}
+		if received < items[i].Quantity {
+			allFull = false
+		}
+	}
+	return items, allFull, anyReceived
+}
+
 func (s *WorkflowExecutionService) cascadeGRNApprovalToPO(tx *gorm.DB, grnID string) error {
 	var grn models.GoodsReceivedNote
 	if err := tx.Where("id = ?", grnID).First(&grn).Error; err != nil {
@@ -2256,26 +2299,11 @@ func (s *WorkflowExecutionService) cascadeGRNApprovalToPO(tx *gorm.DB, grnID str
 		return fmt.Errorf("cascade: list GRNs: %w", err)
 	}
 
-	receivedByDesc := make(map[string]int)
+	grnItemLists := make([][]types.GRNItem, 0, len(grns))
 	for _, g := range grns {
-		for _, it := range g.Items.Data() {
-			key := strings.TrimSpace(strings.ToLower(it.Description))
-			receivedByDesc[key] += it.QuantityReceived
-		}
+		grnItemLists = append(grnItemLists, g.Items.Data())
 	}
-
-	items := po.Items.Data()
-	allFull, anyReceived := true, false
-	for i := range items {
-		key := strings.TrimSpace(strings.ToLower(items[i].Description))
-		items[i].ReceivedQuantity = receivedByDesc[key]
-		if items[i].ReceivedQuantity > 0 {
-			anyReceived = true
-		}
-		if items[i].ReceivedQuantity < items[i].Quantity {
-			allFull = false
-		}
-	}
+	items, allFull, anyReceived := resolveDeliveryFromGRNs(po.Items.Data(), grnItemLists)
 
 	newDeliveryStatus := models.DeliveryStatusNotDelivered
 	switch {
