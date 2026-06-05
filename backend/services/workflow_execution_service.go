@@ -2348,18 +2348,22 @@ func (s *WorkflowExecutionService) AutoCreatePVFromCompletedGRN(tx *gorm.DB, grn
 	}
 
 	// Resolve flow + automation flags.
-	flow := strings.ToLower(strings.TrimSpace(po.ProcurementFlow))
 	var settings models.OrganizationSettings
 	if err := tx.Where("organization_id = ?", grn.OrganizationID).First(&settings).Error; err != nil {
 		return nil
 	}
-	if flow == "" && settings.ProcurementFlow != "" {
-		flow = strings.ToLower(settings.ProcurementFlow)
-	}
+	flow := utils.ResolveProcurementFlow(po.ProcurementFlow, settings.ProcurementFlow)
 	if flow == "payment_first" {
 		return nil
 	}
 	if !settings.AutoCreatePVFromPO {
+		return nil
+	}
+
+	// Defense-in-depth: only auto-create once goods are actually received.
+	// (Mirrors the GRN-status gate the manual/from-po validators enforce.)
+	grnStatus := strings.ToUpper(grn.Status)
+	if grnStatus != "APPROVED" && grnStatus != "COMPLETED" {
 		return nil
 	}
 
@@ -2401,6 +2405,11 @@ func (s *WorkflowExecutionService) AutoCreatePVFromCompletedGRN(tx *gorm.DB, grn
 			TaxAmount:   0,
 		})
 		pvTotal += amount
+	}
+
+	// Backstop: an auto-created PV may never exceed the PO total.
+	if po.TotalAmount > 0 && pvTotal > po.TotalAmount+0.01 {
+		pvTotal = po.TotalAmount
 	}
 
 	now := time.Now()
