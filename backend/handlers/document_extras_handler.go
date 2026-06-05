@@ -355,10 +355,13 @@ func CreatePaymentVoucherFromPO(c *fiber.Ctx) error {
 	}
 	effectiveFlow := utils.ResolveProcurementFlow(po.ProcurementFlow, orgDefaultFlow)
 
+	// Load the linked GRN for audit wiring only when it exists AND belongs to
+	// this PO — never persist a foreign/unvalidated GRN reference onto the PV.
 	var linkedGRN *models.GoodsReceivedNote
 	if req.LinkedGRNDocumentNumber != "" {
 		var grn models.GoodsReceivedNote
-		if err := config.DB.Where("document_number = ? AND organization_id = ?", req.LinkedGRNDocumentNumber, tenant.OrganizationID).First(&grn).Error; err == nil {
+		if err := config.DB.Where("document_number = ? AND organization_id = ?", req.LinkedGRNDocumentNumber, tenant.OrganizationID).First(&grn).Error; err == nil &&
+			grn.PODocumentNumber == po.DocumentNumber {
 			linkedGRN = &grn
 		}
 	}
@@ -379,7 +382,12 @@ func CreatePaymentVoucherFromPO(c *fiber.Ctx) error {
 	var pvFromPOUser models.User
 	config.DB.Where("id = ?", tenant.UserID).First(&pvFromPOUser)
 
-	linkedGRNDocNum := req.LinkedGRNDocumentNumber
+	// Derive from the validated record (empty unless a PO-owned GRN loaded), so
+	// payment_first PVs don't carry a bogus GRN link.
+	linkedGRNDocNum := ""
+	if linkedGRN != nil {
+		linkedGRNDocNum = linkedGRN.DocumentNumber
+	}
 
 	voucher := models.PaymentVoucher{
 		ID:             uuid.New().String(),
@@ -393,8 +401,11 @@ func CreatePaymentVoucherFromPO(c *fiber.Ctx) error {
 		PaymentMethod:  "bank_transfer",
 		Description:    req.Description,
 		ApprovalStage:  0,
-		LinkedPO:       req.PurchaseOrderDocumentNumber,
-		LinkedGRN:      linkedGRNDocNum,
+		// Use the canonical, server-loaded PO document number so the duplicate-PV
+		// guard (which keys on linked_po) stays reliable even if the client sent a
+		// mismatched/empty purchaseOrderDocumentNumber.
+		LinkedPO:  po.DocumentNumber,
+		LinkedGRN: linkedGRNDocNum,
 		Title:          req.Title,
 		Department:     req.Department,
 		DepartmentID:   req.DepartmentID,
