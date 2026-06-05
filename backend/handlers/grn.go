@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -1389,6 +1390,14 @@ func MarkGRNComplete(c *fiber.Ctx) error {
 
 	if err := tx.Commit().Error; err != nil {
 		return utils.SendInternalError(c, "Failed to commit GRN completion", err)
+	}
+
+	// Post-commit: honor PVAutomationLevel on the PV that AutoCreatePVFromCompletedGRN
+	// created in-tx (submit / auto-approve), matching the workflow GRN-completion path.
+	if wfSvc, ok := c.Locals("workflowExecutionService").(*services.WorkflowExecutionService); ok && wfSvc != nil {
+		if err := wfSvc.ApplyPVAutomationForCompletedGRN(context.Background(), grn.ID); err != nil {
+			fmt.Printf("Warning: ApplyPVAutomationForCompletedGRN failed: %v\n", err)
+		}
 	}
 
 	go utils.SyncDocumentAs(config.DB, "GRN", grn.ID, tenant.UserID)

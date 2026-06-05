@@ -89,6 +89,16 @@ func (s *WorkflowExecutionService) createDraftPVFromPO(po *models.PurchaseOrder)
 		return "", nil
 	}
 
+	// Copy PO lines into PV payment items so the PV isn't an empty-lined doc.
+	pvItems := make([]types.PaymentItem, 0)
+	for _, it := range po.Items.Data() {
+		pvItems = append(pvItems, types.PaymentItem{
+			Description: it.Description,
+			Amount:      float64(it.Quantity) * it.UnitPrice,
+			GLCode:      po.GLCode,
+		})
+	}
+
 	now := time.Now()
 	pv := models.PaymentVoucher{
 		ID:             uuid.New().String(),
@@ -105,6 +115,7 @@ func (s *WorkflowExecutionService) createDraftPVFromPO(po *models.PurchaseOrder)
 		CreatedAt:      now,
 		UpdatedAt:      now,
 	}
+	pv.Items = datatypes.NewJSONType(pvItems)
 	pv.ApprovalHistory = datatypes.NewJSONType([]types.ApprovalRecord{})
 	pv.ActionHistory = datatypes.NewJSONType([]types.ActionHistoryEntry{{
 		ID:          uuid.New().String(),
@@ -118,6 +129,7 @@ func (s *WorkflowExecutionService) createDraftPVFromPO(po *models.PurchaseOrder)
 	if err := s.db.Create(&pv).Error; err != nil {
 		return "", fmt.Errorf("create draft PV from PO: %w", err)
 	}
+	go utils.SyncDocumentAs(s.db, "PAYMENT_VOUCHER", pv.ID, "system")
 	return pv.ID, nil
 }
 
@@ -172,6 +184,7 @@ func (s *WorkflowExecutionService) createDraftGRNFromPO(po *models.PurchaseOrder
 	if err := s.db.Create(&grn).Error; err != nil {
 		return fmt.Errorf("create draft GRN from PO: %w", err)
 	}
+	go utils.SyncDocumentAs(s.db, "GRN", grn.ID, "system")
 	return nil
 }
 
@@ -186,8 +199,12 @@ func (s *WorkflowExecutionService) applyPVAutomation(ctx context.Context, pvID, 
 			fmt.Printf("auto-submit PV %s: no workflow assigned (left DRAFT): %v\n", pvID, err)
 			return nil
 		}
-		return s.db.Model(&models.PaymentVoucher{}).Where("id = ?", pvID).
-			Update("status", models.StatusPending).Error
+		if err := s.db.Model(&models.PaymentVoucher{}).Where("id = ?", pvID).
+			Update("status", models.StatusPending).Error; err != nil {
+			return err
+		}
+		go utils.SyncDocumentAs(s.db, "PAYMENT_VOUCHER", pvID, "system")
+		return nil
 	case "approve":
 		return s.autoApprovePV(ctx, pvID, orgID)
 	default:
@@ -234,7 +251,18 @@ func (s *WorkflowExecutionService) autoApprovePV(ctx context.Context, pvID, orgI
 		tx.Rollback()
 		return err
 	}
-	return tx.Commit().Error
+	if err := tx.Commit().Error; err != nil {
+		return err
+	}
+	go utils.SyncDocumentAs(s.db, "PAYMENT_VOUCHER", pvID, "system")
+	return nil
+}
+
+// ApplyPVAutomationForCompletedGRN is the exported, post-commit entry point used
+// by the no-workflow MarkGRNComplete handler path so it honors PVAutomationLevel
+// the same way the workflow GRN-completion path does.
+func (s *WorkflowExecutionService) ApplyPVAutomationForCompletedGRN(ctx context.Context, grnID string) error {
+	return s.applyPVLevelForCompletedGRN(ctx, grnID)
 }
 
 // applyPVLevelForCompletedGRN runs POST-COMMIT after a GRN completes. The DRAFT

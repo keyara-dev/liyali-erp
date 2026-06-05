@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"encoding/json"
+
 	"github.com/gofiber/fiber/v2"
 	"github.com/liyali/liyali-gateway/config"
 	"github.com/liyali/liyali-gateway/logging"
@@ -337,21 +339,60 @@ func UpdateOrganizationSettings(c *fiber.Ctx) error {
 
 	orgService := services.NewOrganizationService(config.DB)
 
-	orgSettings := &models.OrganizationSettings{
-		RequireDigitalSignatures: settings.RequireDigitalSignatures,
-		DefaultApprovalChain:     settings.DefaultApprovalChain,
-		Currency:                 settings.Currency,
-		FiscalYearStart:          settings.FiscalYearStart,
-		EnableBudgetValidation:   settings.EnableBudgetValidation,
-		BudgetVarianceThreshold:  settings.BudgetVarianceThreshold,
-		ProcurementFlow:          settings.ProcurementFlow,
-		StampImageURL:            settings.StampImageURL,
-		AutoCreateGRNFromPO:      settings.AutoCreateGRNFromPO,
-		AutoCreatePVFromGRN:      settings.AutoCreatePVFromGRN,
-		AutoCreatePVFromPO:       settings.AutoCreatePVFromPO,
-		GRNAutomationLevel:       settings.GRNAutomationLevel,
-		PVAutomationLevel:        settings.PVAutomationLevel,
-		AutoApproveMaxAmount:     settings.AutoApproveMaxAmount,
+	// Partial update: start from the existing settings and override ONLY the
+	// fields present in the request body. The service does a full-column write,
+	// so omitting a field must NOT silently reset it (e.g. tweaking automation
+	// from its own card must not disable requireDigitalSignatures or budget
+	// validation).
+	var raw map[string]json.RawMessage
+	_ = json.Unmarshal(c.Body(), &raw)
+	present := func(k string) bool { _, ok := raw[k]; return ok }
+
+	orgSettings := &models.OrganizationSettings{}
+	if existing, _ := orgService.GetOrganizationSettings(tenant.OrganizationID); existing != nil {
+		*orgSettings = *existing
+	}
+	if present("requireDigitalSignatures") {
+		orgSettings.RequireDigitalSignatures = settings.RequireDigitalSignatures
+	}
+	if present("defaultApprovalChain") {
+		orgSettings.DefaultApprovalChain = settings.DefaultApprovalChain
+	}
+	if present("currency") {
+		orgSettings.Currency = settings.Currency
+	}
+	if present("fiscalYearStart") {
+		orgSettings.FiscalYearStart = settings.FiscalYearStart
+	}
+	if present("enableBudgetValidation") {
+		orgSettings.EnableBudgetValidation = settings.EnableBudgetValidation
+	}
+	if present("budgetVarianceThreshold") {
+		orgSettings.BudgetVarianceThreshold = settings.BudgetVarianceThreshold
+	}
+	if present("procurementFlow") {
+		orgSettings.ProcurementFlow = settings.ProcurementFlow
+	}
+	if present("stampImageUrl") {
+		orgSettings.StampImageURL = settings.StampImageURL
+	}
+	if present("autoCreateGRNFromPO") {
+		orgSettings.AutoCreateGRNFromPO = settings.AutoCreateGRNFromPO
+	}
+	if present("autoCreatePVFromGRN") {
+		orgSettings.AutoCreatePVFromGRN = settings.AutoCreatePVFromGRN
+	}
+	if present("autoCreatePVFromPO") {
+		orgSettings.AutoCreatePVFromPO = settings.AutoCreatePVFromPO
+	}
+	if present("grnAutomationLevel") {
+		orgSettings.GRNAutomationLevel = settings.GRNAutomationLevel
+	}
+	if present("pvAutomationLevel") {
+		orgSettings.PVAutomationLevel = settings.PVAutomationLevel
+	}
+	if present("autoApproveMaxAmount") {
+		orgSettings.AutoApproveMaxAmount = settings.AutoApproveMaxAmount
 	}
 
 	if err := orgService.UpdateOrganizationSettings(tenant.OrganizationID, orgSettings); err != nil {
