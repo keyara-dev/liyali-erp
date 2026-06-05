@@ -63,6 +63,15 @@ type OrganizationSettings struct {
 	// When enabled, PVs are automatically created from approved POs in payment-first flow
 	AutoCreatePVFromPO bool `gorm:"column:auto_create_pv_from_po;default:false" json:"autoCreatePVFromPO"`
 
+	// Auto-create the next document in the chain when a PO/GRN is approved.
+	AutoCreateGRNFromPO bool `gorm:"column:auto_create_grn_from_po;default:false" json:"autoCreateGRNFromPO"` // goods_first: PO approved → GRN
+	AutoCreatePVFromGRN bool `gorm:"column:auto_create_pv_from_grn;default:false" json:"autoCreatePVFromGRN"` // goods_first: GRN completed → PV
+	// Automation level applied to an auto-created document: "manual" | "auto_submit" | "auto_approve".
+	GRNAutomationLevel string `gorm:"column:grn_automation_level;default:'manual'" json:"grnAutomationLevel"`
+	PVAutomationLevel  string `gorm:"column:pv_automation_level;default:'manual'" json:"pvAutomationLevel"`
+	// auto_approve only applies at/below this amount; above it falls back to auto_submit. 0 = never auto-approve.
+	AutoApproveMaxAmount float64 `gorm:"column:auto_approve_max_amount;default:0" json:"autoApproveMaxAmount"`
+
 	// "Stamp of Issuing Officer" image URL printed on every GRN PDF.
 	StampImageURL string `gorm:"column:stamp_image_url;default:''" json:"stampImageUrl"`
 
