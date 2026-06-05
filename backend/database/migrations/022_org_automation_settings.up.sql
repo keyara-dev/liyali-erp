@@ -1,0 +1,6 @@
+ALTER TABLE organization_settings
+  ADD COLUMN IF NOT EXISTS auto_create_grn_from_po BOOLEAN NOT NULL DEFAULT FALSE,
+  ADD COLUMN IF NOT EXISTS auto_create_pv_from_grn BOOLEAN NOT NULL DEFAULT FALSE,
+  ADD COLUMN IF NOT EXISTS grn_automation_level VARCHAR(20) NOT NULL DEFAULT 'manual',
+  ADD COLUMN IF NOT EXISTS pv_automation_level  VARCHAR(20) NOT NULL DEFAULT 'manual',
+  ADD COLUMN IF NOT EXISTS auto_approve_max_amount DOUBLE PRECISION NOT NULL DEFAULT 0;
