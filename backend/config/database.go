@@ -64,14 +64,39 @@ func InitDatabase() {
 	var err error
 	DB, err = gorm.Open(postgres.Open(dsn), &gorm.Config{
 		Logger: logger.Default.LogMode(gormLogLevel),
+		// Single-statement writes don't need GORM's implicit BEGIN/COMMIT wrapper,
+		// which costs two extra round-trips per write — painful on a high-latency DB.
+		SkipDefaultTransaction: true,
+		// Cache prepared statements across calls instead of re-parsing each query.
+		PrepareStmt: true,
 	})
 
 	if err != nil {
 		log.Fatalf("Failed to connect to database with GORM: %v", err)
 	}
 
-	// Initialize pgx connection pool (for new enhanced features)
-	PgxDB, err = pgxpool.New(context.Background(), pgxDSN)
+	// Tune the GORM connection pool. Without this, database/sql keeps only 2 idle
+	// connections, so under any concurrency connections are constantly closed and
+	// re-opened — each reopen pays a TCP/TLS/auth handshake against the DB host.
+	if sqlDB, dbErr := DB.DB(); dbErr == nil {
+		sqlDB.SetMaxOpenConns(25)
+		sqlDB.SetMaxIdleConns(10)
+		sqlDB.SetConnMaxIdleTime(5 * time.Minute)
+		sqlDB.SetConnMaxLifetime(time.Hour)
+	}
+
+	// Initialize pgx connection pool (for new enhanced features).
+	// MinConns keeps warm connections so the first query after an idle period
+	// doesn't pay full connection-establishment latency.
+	pgxConfig, err := pgxpool.ParseConfig(pgxDSN)
+	if err != nil {
+		log.Fatalf("Failed to parse pgx pool config: %v", err)
+	}
+	pgxConfig.MaxConns = 20
+	pgxConfig.MinConns = 2
+	pgxConfig.MaxConnIdleTime = 30 * time.Minute
+	pgxConfig.MaxConnLifetime = time.Hour
+	PgxDB, err = pgxpool.NewWithConfig(context.Background(), pgxConfig)
 	if err != nil {
 		log.Fatalf("Failed to connect to database with pgx: %v", err)
 	}

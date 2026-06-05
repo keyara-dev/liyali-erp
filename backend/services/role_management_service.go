@@ -3,6 +3,7 @@ package services
 import (
 	"encoding/json"
 	"fmt"
+	"reflect"
 	"strings"
 
 	"github.com/google/uuid"
@@ -384,9 +385,15 @@ func (rms *RoleManagementService) EnsureGlobalSystemRoles() error {
 		var existingRole models.OrganizationRole
 		err := rms.db.Where("name = ? AND is_system_role = ? AND organization_id IS NULL", roleData.name, true).First(&existingRole).Error
 		if err == nil {
-			// Role exists — sync permissions to the current definition
-			permissionsJSON, _ := json.Marshal(roleData.permissions)
-			rms.db.Model(&existingRole).Update("permissions", datatypes.JSON(permissionsJSON))
+			// Role exists — only write when the permission set actually changed.
+			// Previously this UPDATE ran unconditionally on every startup, costing
+			// one WAL fsync per system role (6 writes) even when nothing changed.
+			var existingPerms []string
+			_ = json.Unmarshal(existingRole.Permissions, &existingPerms)
+			if !reflect.DeepEqual(existingPerms, roleData.permissions) {
+				permissionsJSON, _ := json.Marshal(roleData.permissions)
+				rms.db.Model(&existingRole).Update("permissions", datatypes.JSON(permissionsJSON))
+			}
 			continue
 		}
 
