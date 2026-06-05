@@ -143,7 +143,10 @@ AutoApproveMaxAmount  float64   // auto_approve applies at/below; above → auto
 - Add the fields to `UpdateOrganizationSettings` request struct, model-build, and
   service update column map.
 - Add a frontend Settings UI section (workspace-settings) for the flags +
-  per-document level selects + the cap.
+  per-document level selects + the cap. **Build with the frontend-design skill**
+  so the tenant-admin can clearly set up how their procurement flows are handled
+  (mode, per-document automation level, auto-approve cap) — explicit user
+  requirement (2026-06-05).
 - Retire `document_automation_service.AutomationConfig` duplication or have it read
   from `OrganizationSettings` (single source of truth).
 
