@@ -345,7 +345,9 @@ func UpdateOrganizationSettings(c *fiber.Ctx) error {
 	// from its own card must not disable requireDigitalSignatures or budget
 	// validation).
 	var raw map[string]json.RawMessage
-	_ = json.Unmarshal(c.Body(), &raw)
+	if err := json.Unmarshal(c.Body(), &raw); err != nil {
+		return utils.SendBadRequestError(c, "Invalid request body")
+	}
 	present := func(k string) bool { _, ok := raw[k]; return ok }
 
 	orgSettings := &models.OrganizationSettings{}

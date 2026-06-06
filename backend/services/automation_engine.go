@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"fmt"
+	"math"
 	"strings"
 	"time"
 
@@ -91,10 +92,22 @@ func (s *WorkflowExecutionService) createDraftPVFromPO(po *models.PurchaseOrder)
 
 	// Copy PO lines into PV payment items so the PV isn't an empty-lined doc.
 	pvItems := make([]types.PaymentItem, 0)
+	var itemsTotal float64
 	for _, it := range po.Items.Data() {
+		amt := float64(it.Quantity) * it.UnitPrice
 		pvItems = append(pvItems, types.PaymentItem{
 			Description: it.Description,
-			Amount:      float64(it.Quantity) * it.UnitPrice,
+			Amount:      amt,
+			GLCode:      po.GLCode,
+		})
+		itemsTotal += amt
+	}
+	// The PO header total is tax/delivery-inclusive while the lines are not.
+	// Add an explicit adjustment line so Σ(items) reconciles to the PV header.
+	if diff := math.Round((po.TotalAmount-itemsTotal)*100) / 100; diff > 0.01 || diff < -0.01 {
+		pvItems = append(pvItems, types.PaymentItem{
+			Description: "Tax / delivery / adjustments",
+			Amount:      diff,
 			GLCode:      po.GLCode,
 		})
 	}
