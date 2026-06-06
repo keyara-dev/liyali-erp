@@ -2862,94 +2862,12 @@ func (s *WorkflowExecutionService) triggerPostApprovalAutomation(ctx context.Con
 			"auto_created_po": datatypes.JSON(autoCreatedJSON),
 		})
 
-	case "PURCHASE_ORDER", "purchase_order":
-		if !config.AutoCreateGRNFromPO {
-			return nil // Automation disabled
-		}
-
-		// Get the approved purchase order
-		var po models.PurchaseOrder
-		if err := s.db.Where("id = ?", entityID).First(&po).Error; err != nil {
-			return fmt.Errorf("failed to get purchase order: %w", err)
-		}
-
-		// Validate automation prerequisites
-		if err := s.automationService.ValidateAutomationPrerequisites("purchase_order", &po); err != nil {
-			return fmt.Errorf("automation prerequisites not met: %w", err)
-		}
-
-		// Create GRN
-		result, err := s.automationService.CreateGRNFromPurchaseOrder(ctx, &po, config)
-		if err != nil {
-			return fmt.Errorf("failed to create GRN: %w", err)
-		}
-
-		if !result.Success {
-			return fmt.Errorf("GRN creation failed: %s", result.Error)
-		}
-
-		// Update PO with auto-created GRN info
-		autoCreatedGRN := map[string]interface{}{
-			"id":      result.DocumentID,
-			"created": true,
-		}
-
-		if result.CreatedDocument != nil {
-			if grn, ok := result.CreatedDocument.(*models.GoodsReceivedNote); ok {
-				autoCreatedGRN["documentNumber"] = grn.DocumentNumber
-			}
-		}
-
-		autoCreatedJSON, _ := datatypes.NewJSONType(autoCreatedGRN).MarshalJSON()
-		s.db.Model(&po).Updates(map[string]interface{}{
-			"automation_used":  true,
-			"auto_created_grn": datatypes.JSON(autoCreatedJSON),
-		})
-
-	case "GRN", "grn":
-		if !config.AutoCreatePVFromGRN {
-			return nil // Automation disabled
-		}
-
-		// Get the approved GRN
-		var grn models.GoodsReceivedNote
-		if err := s.db.Where("id = ?", entityID).First(&grn).Error; err != nil {
-			return fmt.Errorf("failed to get GRN: %w", err)
-		}
-
-		// Validate automation prerequisites
-		if err := s.automationService.ValidateAutomationPrerequisites("grn", &grn); err != nil {
-			return fmt.Errorf("automation prerequisites not met: %w", err)
-		}
-
-		// Create Payment Voucher
-		result, err := s.automationService.CreatePaymentVoucherFromGRN(ctx, &grn, config)
-		if err != nil {
-			return fmt.Errorf("failed to create payment voucher: %w", err)
-		}
-
-		if !result.Success {
-			return fmt.Errorf("payment voucher creation failed: %s", result.Error)
-		}
-
-		// Update GRN with auto-created PV info
-		autoCreatedPV := map[string]interface{}{
-			"id":      result.DocumentID,
-			"created": true,
-		}
-
-		if result.CreatedDocument != nil {
-			if pv, ok := result.CreatedDocument.(*models.PaymentVoucher); ok {
-				autoCreatedPV["documentNumber"] = pv.DocumentNumber
-				autoCreatedPV["amount"] = pv.Amount
-			}
-		}
-
-		autoCreatedJSON, _ := datatypes.NewJSONType(autoCreatedPV).MarshalJSON()
-		s.db.Model(&grn).Updates(map[string]interface{}{
-			"automation_used": true,
-			"auto_created_pv": datatypes.JSON(autoCreatedJSON),
-		})
+		// Purchase-order and GRN chain automation is handled post-commit by
+		// the OrganizationSettings-driven engine (autoCreateFromApprovedPO /
+		// applyPVLevelForCompletedGRN), which intercepts those entity types at
+		// the top of this function. The legacy AutomationConfig-driven PO->GRN
+		// and GRN->PV branches that used to live here were dead (their flags
+		// were hardcoded false) and have been removed.
 	}
 
 	return nil
