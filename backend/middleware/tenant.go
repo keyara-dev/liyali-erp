@@ -113,6 +113,9 @@ func TenantMiddleware() fiber.Handler {
 		}
 		c.Locals("tenant", tenantCtx)
 		c.Locals("organizationID", orgID)
+		// Cache the resolved membership role so RBAC permission checks downstream
+		// don't re-query organization_members for the same row this request.
+		c.Locals("orgMemberRole", membership.Role)
 
 		return c.Next()
 	}

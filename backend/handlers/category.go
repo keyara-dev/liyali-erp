@@ -62,10 +62,15 @@ func GetCategories(c *fiber.Ctx) error {
 		return utils.SendInternalError(c, "Failed to fetch categories", err)
 	}
 
+	categoryIDs := make([]string, 0, len(categories))
+	for _, category := range categories {
+		categoryIDs = append(categoryIDs, category.ID)
+	}
+	budgetCodesByCategory := getCategoryBudgetCodesBatch(categoryIDs)
+
 	responses := make([]types.CategoryResponse, 0, len(categories))
 	for _, category := range categories {
-		budgetCodes, _ := getCategoryBudgetCodes(category.ID)
-		responses = append(responses, modelToCategoryResponse(category, budgetCodes))
+		responses = append(responses, modelToCategoryResponse(category, budgetCodesByCategory[category.ID]))
 	}
 
 	return utils.SendPaginatedSuccess(c, responses, "Categories retrieved successfully", page, limit, total)
@@ -519,6 +524,26 @@ func getCategoryBudgetCodes(categoryID string) ([]string, error) {
 	}
 
 	return budgetCodes, nil
+}
+
+// getCategoryBudgetCodesBatch retrieves budget codes for many categories in a
+// single query, returning a map keyed by category ID. Avoids the N+1 pattern of
+// calling getCategoryBudgetCodes once per category when building a list response.
+func getCategoryBudgetCodesBatch(categoryIDs []string) map[string][]string {
+	result := make(map[string][]string, len(categoryIDs))
+	if len(categoryIDs) == 0 {
+		return result
+	}
+
+	var mappings []models.CategoryBudgetCode
+	if err := config.DB.Where("category_id IN ? AND active = ?", categoryIDs, true).Find(&mappings).Error; err != nil {
+		return result
+	}
+
+	for _, mapping := range mappings {
+		result[mapping.CategoryID] = append(result[mapping.CategoryID], mapping.BudgetCode)
+	}
+	return result
 }
 
 // modelToCategoryResponse converts a Category model to a CategoryResponse

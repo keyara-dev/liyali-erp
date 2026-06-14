@@ -434,10 +434,12 @@ func (s *WorkflowService) GetWorkflows(ctx context.Context, organizationID strin
 		return nil, fmt.Errorf("failed to retrieve workflows: %w", err)
 	}
 
-	// Load computed fields for each workflow
+	// Resolve per-workflow stage role names, then load usage counts for all
+	// workflows in a single grouped query (avoids one COUNT per workflow — N+1).
 	for i := range workflows {
-		s.loadComputedFields(&workflows[i])
+		s.resolveStageRoleNames(&workflows[i])
 	}
+	s.loadUsageCounts(workflows)
 
 	return workflows, nil
 }
@@ -823,6 +825,19 @@ func (s *WorkflowService) updateDefaultWorkflow(tx *gorm.DB, organizationID stri
 }
 
 func (s *WorkflowService) loadComputedFields(workflow *models.Workflow) {
+	s.resolveStageRoleNames(workflow)
+
+	// Load usage count
+	var count int64
+	s.db.Model(&models.WorkflowAssignment{}).
+		Where("workflow_id = ? AND organization_id = ?", workflow.ID, workflow.OrganizationID).
+		Count(&count)
+	workflow.UsageCount = int(count)
+}
+
+// resolveStageRoleNames sets TotalStages and resolves any UUID-typed stage roles
+// to their display names.
+func (s *WorkflowService) resolveStageRoleNames(workflow *models.Workflow) {
 	// Load total stages and resolve role names
 	stages, err := workflow.GetStages()
 	if err == nil {
@@ -864,11 +879,38 @@ func (s *WorkflowService) loadComputedFields(workflow *models.Workflow) {
 			}
 		}
 	}
+}
 
-	// Load usage count
-	var count int64
+// loadUsageCounts fetches workflow_assignment counts for all given workflows in a
+// single grouped query and assigns UsageCount on each, avoiding one COUNT per
+// workflow (N+1). Assumes all workflows belong to the same organization.
+func (s *WorkflowService) loadUsageCounts(workflows []models.Workflow) {
+	if len(workflows) == 0 {
+		return
+	}
+
+	ids := make([]uuid.UUID, 0, len(workflows))
+	for i := range workflows {
+		ids = append(ids, workflows[i].ID)
+	}
+	orgID := workflows[0].OrganizationID
+
+	type usageRow struct {
+		WorkflowID uuid.UUID
+		Count      int64
+	}
+	var rows []usageRow
 	s.db.Model(&models.WorkflowAssignment{}).
-		Where("workflow_id = ? AND organization_id = ?", workflow.ID, workflow.OrganizationID).
-		Count(&count)
-	workflow.UsageCount = int(count)
+		Select("workflow_id, count(*) as count").
+		Where("workflow_id IN ? AND organization_id = ?", ids, orgID).
+		Group("workflow_id").
+		Scan(&rows)
+
+	countByID := make(map[uuid.UUID]int64, len(rows))
+	for _, r := range rows {
+		countByID[r.WorkflowID] = r.Count
+	}
+	for i := range workflows {
+		workflows[i].UsageCount = int(countByID[workflows[i].ID])
+	}
 }
