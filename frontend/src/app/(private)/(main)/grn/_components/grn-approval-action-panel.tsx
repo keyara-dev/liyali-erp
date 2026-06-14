@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { SignatureCanvas } from "@/components/ui/signature-canvas";
+import { DigitalSignaturePad } from "@/components/ui/digital-signature-pad";
 import { Upload, Send, XCircle } from "lucide-react";
 import {
   useApprovalTasks,
@@ -156,10 +156,15 @@ export function GRNApprovalActionPanel({
             disabled={isLoading}
           />
 
-          <SignatureCanvas
-            onSignatureChange={setSignature}
-            disabled={isLoading}
-          />
+          <div className="space-y-1.5">
+            <p className="text-sm font-medium text-foreground">
+              Digital Signature <span className="text-destructive">*</span>
+            </p>
+            <DigitalSignaturePad
+              onSignatureChange={setSignature}
+              disabled={isLoading}
+            />
+          </div>
         </>
       ) : (
         <Textarea

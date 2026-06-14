@@ -16,6 +16,7 @@ import {
   Undo2,
 } from "lucide-react";
 import { DigitalSignaturePad } from "@/components/ui/digital-signature-pad";
+import { InfoHint } from "@/components/ui/info-hint";
 import { useGRNById } from "@/hooks/use-grn-queries";
 
 interface ApprovalActionModalProps {
@@ -102,10 +103,33 @@ export function ApprovalActionModal({
     : 0;
   const minutesRemaining = Math.max(0, Math.floor(remainingTime / (1000 * 60)));
 
+  const approveSummary = (
+    <ul className="space-y-1">
+      <li>• Move the document to the next stage</li>
+      <li>• Notify relevant stakeholders</li>
+      <li>• Create a permanent audit record</li>
+    </ul>
+  );
+
   const modalTitle = (
     <span className="flex items-center gap-2">
       <ActionIcon className={`h-5 w-5 text-${actionColor}-600`} />
       {actionText} Task
+      {/* Mobile-only affordance for approvals; the same detail is shown
+          inline on md+ screens (see the body below). */}
+      {isApprove && (
+        <InfoHint
+          label="What happens when you approve"
+          side="bottom"
+          align="start"
+          className="md:hidden"
+        >
+          <div className="space-y-1.5">
+            <p className="font-medium text-foreground">Approving will:</p>
+            <div className="text-muted-foreground">{approveSummary}</div>
+          </div>
+        </InfoHint>
+      )}
     </span>
   );
 
@@ -197,31 +221,48 @@ export function ApprovalActionModal({
           <GRNSignoffSnapshot grnId={taskDetails.entityId} />
         )}
 
-        {isApprove ? (
-          <div className="bg-green-50 dark:bg-green-950/30 p-3 rounded-lg border border-green-200 dark:border-green-800">
-            <p className="text-sm text-green-800 dark:text-green-200">
-              <strong>Approving this task will:</strong>
+        {/* Approve: detail inline on desktop; mobile uses the title hint */}
+        {isApprove && (
+          <div className="hidden md:block bg-green-50 dark:bg-green-950/30 p-3 rounded-lg border border-green-200 dark:border-green-800">
+            <p className="text-sm font-medium text-green-800 dark:text-green-200">
+              Approving this task will:
             </p>
-            <ul className="text-sm text-green-700 dark:text-green-300 mt-1 space-y-1">
-              <li>• Move the document to the next approval stage</li>
-              <li>• Send notifications to relevant stakeholders</li>
-              <li>• Create a permanent audit record of your approval</li>
-              <li>• Progress the workflow according to defined rules</li>
-            </ul>
-          </div>
-        ) : (
-          <div className="bg-red-50 dark:bg-red-950/30 p-3 rounded-lg border border-red-200 dark:border-red-800">
-            <p className="text-sm text-red-800 dark:text-red-200">
-              <strong>Choose a rejection action below.</strong>
-            </p>
+            <div className="mt-1 text-sm text-green-700 dark:text-green-300">
+              {approveSummary}
+            </div>
           </div>
         )}
 
         {/* Rejection Type Picker - Only for Rejections */}
         {!isApprove && (
           <div className="space-y-3">
-            <Label className="flex text-sxs md:text-sm items-center gap-2">
+            <Label className="flex text-xs md:text-sm items-center gap-2">
               Rejection Action *
+              <InfoHint
+                label="About rejection actions"
+                side="top"
+                triggerLabel="What do these mean?"
+                className="md:hidden"
+              >
+                <div className="space-y-2 text-muted-foreground">
+                  <p>
+                    <span className="font-medium text-foreground">
+                      Return to previous stage
+                    </span>{" "}
+                    — back one stage; workflow stays active.
+                  </p>
+                  <p>
+                    <span className="font-medium text-foreground">
+                      Return to draft
+                    </span>{" "}
+                    — back to the requester to edit and resubmit.
+                  </p>
+                  <p>
+                    <span className="font-medium text-foreground">Reject</span>{" "}
+                    — permanently end the workflow.
+                  </p>
+                </div>
+              </InfoHint>
             </Label>
             <RadioGroup
               value={rejectionType}
@@ -252,12 +293,12 @@ export function ApprovalActionModal({
                   />
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
-                      <Undo2 className="h-4 w-4 text-blue-600" />
+                      <Undo2 className="h-4 w-4 text-blue-600 shrink-0" />
                       <span className="font-medium text-sm">
                         Return to Previous Stage
                       </span>
                     </div>
-                    <p className="text-xs text-muted-foreground mt-1">
+                    <p className="hidden md:block text-xs text-muted-foreground mt-1">
                       Send back to the previous approval stage for revision. The
                       workflow stays active.
                     </p>
@@ -280,10 +321,10 @@ export function ApprovalActionModal({
                 />
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
-                    <RotateCcw className="h-4 w-4 text-amber-600" />
+                    <RotateCcw className="h-4 w-4 text-amber-600 shrink-0" />
                     <span className="font-medium text-sm">Return to Draft</span>
                   </div>
-                  <p className="text-xs text-muted-foreground mt-1">
+                  <p className="hidden md:block text-xs text-muted-foreground mt-1">
                     Send the document back to the requester. They can edit and
                     resubmit it.
                   </p>
@@ -298,15 +339,19 @@ export function ApprovalActionModal({
                     : "border-border hover:bg-muted/50"
                 }`}
               >
-                <RadioGroupItem value="reject" id="reject" className="mt-0.5" />
+                <RadioGroupItem
+                  value="reject"
+                  id="reject"
+                  className="mt-0.5"
+                />
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
-                    <Ban className="h-4 w-4 text-red-600" />
+                    <Ban className="h-4 w-4 text-red-600 shrink-0" />
                     <span className="font-medium text-sm">
                       Reject (End Workflow)
                     </span>
                   </div>
-                  <p className="text-xs text-muted-foreground mt-1">
+                  <p className="hidden md:block text-xs text-muted-foreground mt-1">
                     Permanently reject the document and terminate the process.
                   </p>
                 </div>
@@ -319,7 +364,7 @@ export function ApprovalActionModal({
         <div className="space-y-2">
           <Label
             htmlFor="comments"
-            className="flex text-sxs md:text-sm items-center gap-2"
+            className="flex text-xs md:text-sm items-center gap-2"
           >
             <MessageSquare className="h-4 w-4" />
             {isApprove
@@ -353,7 +398,7 @@ export function ApprovalActionModal({
         {/* Digital Signature Section - Only for Approvals */}
         {isApprove && (
           <div className="space-y-2">
-            <Label className="flex items-center text-sxs md:text-sm gap-2">
+            <Label className="flex items-center text-xs md:text-sm gap-2">
               <FileSignature className="h-4 w-4" />
               Digital Signature *
             </Label>

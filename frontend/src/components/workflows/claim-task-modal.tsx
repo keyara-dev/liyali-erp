@@ -9,7 +9,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Clock, Users, AlertTriangle } from "lucide-react";
+import { InfoHint } from "@/components/ui/info-hint";
+import { Clock, Users } from "lucide-react";
 import { addMinutes } from "date-fns";
 
 interface ClaimTaskModalProps {
@@ -35,6 +36,27 @@ export function ClaimTaskModal({
   const claimDuration = 30; // 30 minutes
   const expiryTime = addMinutes(new Date(), claimDuration);
 
+  const claimNotes = (
+    <div className="space-y-2">
+      <div>
+        <p className="font-medium text-foreground">While claimed</p>
+        <ul className="mt-1 space-y-1">
+          <li>• Only you can approve or reject this task</li>
+          <li>• Others see that you&apos;re reviewing it</li>
+          <li>• The claim expires after {claimDuration} min of inactivity</li>
+          <li>• You can unclaim it anytime to step away</li>
+        </ul>
+      </div>
+      <div>
+        <p className="font-medium text-foreground">Next steps</p>
+        <p className="mt-1">
+          After claiming you&apos;ll see Approve and Reject buttons. Each needs
+          comments and your digital signature.
+        </p>
+      </div>
+    </div>
+  );
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-md max-h-[90svh] flex flex-col p-0 overflow-hidden">
@@ -53,59 +75,31 @@ export function ClaimTaskModal({
                   Stage: {taskDetails.stageName}
                 </p>
                 <p className="text-sm text-blue-700 dark:text-blue-300">
-                  Required Role: {taskDetails.assignedRole}
+                  Required role: {taskDetails.assignedRole}
                 </p>
               </div>
 
-              <div className="space-y-2">
-                <div className="flex items-start gap-2">
-                  <Clock className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
-                  <div>
-                    <p className="font-medium text-foreground">
-                      Time Commitment
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      You will have <strong>{claimDuration} minutes</strong> to
-                      review and take action on this task.
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      Expires at: {expiryTime.toLocaleTimeString()}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-2">
-                  <AlertTriangle className="h-4 w-4 text-orange-600 mt-0.5 shrink-0" />
-                  <div>
-                    <p className="font-medium text-foreground">
-                      Important Notes
-                    </p>
-                    <ul className="text-sm text-muted-foreground space-y-1 mt-1">
-                      <li>
-                        • Only you will be able to approve or reject this task
-                        once claimed
-                      </li>
-                      <li>
-                        • Other users will see that you are reviewing this task
-                      </li>
-                      <li>
-                        • If you don't take action within {claimDuration}{" "}
-                        minutes, the claim will expire
-                      </li>
-                      <li>
-                        • You can unclaim the task if you need to step away
-                      </li>
-                    </ul>
-                  </div>
-                </div>
+              <div className="flex items-center gap-2 rounded-lg border bg-muted/40 p-3">
+                <Clock className="h-4 w-4 text-amber-600 shrink-0" />
+                <span className="text-sm text-foreground">
+                  <strong>{claimDuration} min</strong> to act · expires{" "}
+                  {expiryTime.toLocaleTimeString()}
+                </span>
+                {/* Mobile-only; full notes shown inline on md+ screens */}
+                <InfoHint
+                  label="What claiming a task means"
+                  side="top"
+                  align="end"
+                  triggerLabel="Details"
+                  className="ml-auto md:hidden"
+                >
+                  <div className="text-muted-foreground">{claimNotes}</div>
+                </InfoHint>
               </div>
 
-              <div className="bg-muted/50 p-3 rounded-lg border">
-                <p className="text-sm text-muted-foreground">
-                  <strong>Next Steps:</strong> After claiming, you'll see
-                  Approve and Reject buttons. Each action will require comments
-                  and your digital signature.
-                </p>
+              {/* Desktop: the same notes, always visible */}
+              <div className="hidden md:block rounded-lg border bg-muted/30 p-3 text-muted-foreground">
+                {claimNotes}
               </div>
             </div>
           </DialogDescription>

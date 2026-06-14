@@ -2,7 +2,7 @@
 
 import React, { useRef, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { RotateCcw, Check, Upload, Pencil, UploadCloud } from "lucide-react";
+import { RotateCcw, Check, Upload, Pencil, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -196,7 +196,7 @@ export function DigitalSignaturePad({
         </TabsList>
 
         <TabsContent value="draw" className="mt-2">
-          <div className="relative border-2 border-dashed border-border rounded-lg p-2 bg-background">
+          <div className="relative min-h-32 border-2 border-dashed border-border rounded-lg p-2 bg-background">
             <canvas
               ref={canvasRef}
               width={width}
@@ -225,7 +225,7 @@ export function DigitalSignaturePad({
         </TabsContent>
 
         <TabsContent value="upload" className="mt-2">
-          <div className="relative border-2 h-30 border-dashed border-border rounded-lg p-4 bg-background">
+          <div className="relative flex min-h-32 items-center justify-center overflow-hidden rounded-lg border-2 border-dashed border-border bg-background p-3">
             <input
               ref={fileInputRef}
               type="file"
@@ -236,27 +236,39 @@ export function DigitalSignaturePad({
             />
 
             {uploadedImage ? (
-              <div className="flex flex-col items-center gap-2">
+              <div className="relative w-full">
                 <img
                   src={uploadedImage}
                   alt="Uploaded signature"
-                  className="h-[200px] max-w-full object-contain"
+                  className="mx-auto max-h-24 max-w-full object-contain"
                 />
+                {!disabled && (
+                  <button
+                    type="button"
+                    onClick={clearSignature}
+                    aria-label="Remove uploaded signature"
+                    className="absolute right-0 top-0 inline-flex size-6 items-center justify-center rounded-full border bg-background text-muted-foreground shadow-sm transition-colors hover:text-foreground"
+                  >
+                    <X className="size-3.5" />
+                  </button>
+                )}
               </div>
             ) : (
-              <div className="flex flex-col items-center justify-center  gap-2">
-                <Upload className="h-8 w-8 text-muted-foreground" />
+              <div className="flex flex-col items-center justify-center gap-2">
+                <Upload className="h-7 w-7 text-muted-foreground" />
                 <Button
                   type="button"
                   variant="outline"
-                  size={"sm"}
+                  size="sm"
                   onClick={triggerFileUpload}
                   disabled={disabled}
-                  className="mt-2"
                 >
                   <Upload className="h-4 w-4 mr-2" />
                   Upload Signature
                 </Button>
+                <p className="text-[11px] text-muted-foreground">
+                  PNG or JPG, max 2 MB
+                </p>
               </div>
             )}
           </div>
@@ -283,10 +295,6 @@ export function DigitalSignaturePad({
           </div>
         )}
       </div>
-
-      <p className="text-xs text-muted-foreground">
-        Your signature will be securely stored and used for audit purposes.
-      </p>
     </div>
   );
 }
