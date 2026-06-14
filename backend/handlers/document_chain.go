@@ -8,7 +8,6 @@ import (
 	"github.com/liyali/liyali-gateway/config"
 	"github.com/liyali/liyali-gateway/middleware"
 	"github.com/liyali/liyali-gateway/models"
-	"github.com/liyali/liyali-gateway/services"
 )
 
 // GetDocumentChain retrieves the complete document chain for any workflow document
@@ -48,16 +47,13 @@ func GetDocumentChain(c *fiber.Ctx) error {
 		})
 	}
 
-	// Build chain using document linking service
-	dls := services.NewDocumentLinkingService(config.DB)
-	rawChain, err := dls.GetDocumentRelationshipChain(documentID)
-	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"success": false,
-			"message": "Failed to retrieve document chain",
-			"error":   err.Error(),
-		})
-	}
+	// Resolve the chain from the document's own link fields, anchored on the
+	// requested document. The legacy DocumentLink-based walker is
+	// requisition-rooted and reads a table nothing in the live flow populates,
+	// so it 500s when handed a non-requisition id and otherwise returns an
+	// empty chain. The direct fields (source_requisition_id, linked_po,
+	// po_document_number, linked_grn) are the real source of truth.
+	rawChain := resolveDocumentChain(documentID, documentType, orgID)
 
 	// Build response based on document type
 	chain := buildDocumentChain(documentID, documentType, rawChain, orgID)
@@ -86,6 +82,84 @@ func verifyDocumentOwnership(documentID, documentType, orgID string) error {
 	default:
 		return fiber.NewError(fiber.StatusBadRequest, "Invalid document type")
 	}
+}
+
+// resolveDocumentChain builds the raw chain (requisitionId / poId /
+// poDocumentNumber / grnId) for any document type using the documents' direct
+// link fields, anchored on the requested document. All lookups are scoped to
+// the org and tolerate missing related documents (partial chains are fine).
+func resolveDocumentChain(documentID, documentType, orgID string) fiber.Map {
+	raw := fiber.Map{}
+	db := config.DB
+
+	// addPOAndAncestors records a PO (by model) plus its source requisition.
+	addPOAndAncestors := func(po *models.PurchaseOrder) {
+		raw["poId"] = po.ID
+		raw["poDocumentNumber"] = po.DocumentNumber
+		if po.SourceRequisitionId != nil && *po.SourceRequisitionId != "" {
+			raw["requisitionId"] = *po.SourceRequisitionId
+		}
+		// GRN linked to this PO (goods receipt), if any.
+		var grn models.GoodsReceivedNote
+		if err := db.Where("po_document_number = ? AND organization_id = ?",
+			po.DocumentNumber, orgID).First(&grn).Error; err == nil {
+			raw["grnId"] = grn.ID
+		}
+	}
+
+	findPOByDocNumber := func(docNum string) {
+		if docNum == "" {
+			return
+		}
+		var po models.PurchaseOrder
+		if err := db.Where("document_number = ? AND organization_id = ?",
+			docNum, orgID).First(&po).Error; err == nil {
+			addPOAndAncestors(&po)
+		} else {
+			raw["poDocumentNumber"] = docNum
+		}
+	}
+
+	switch strings.ToLower(documentType) {
+	case "requisition":
+		raw["requisitionId"] = documentID
+		var po models.PurchaseOrder
+		if err := db.Where("source_requisition_id = ? AND organization_id = ?",
+			documentID, orgID).First(&po).Error; err == nil {
+			addPOAndAncestors(&po)
+		}
+
+	case "purchase_order", "purchase-order":
+		var po models.PurchaseOrder
+		if err := db.Where("id = ? AND organization_id = ?",
+			documentID, orgID).First(&po).Error; err == nil {
+			addPOAndAncestors(&po)
+		}
+
+	case "payment_voucher", "payment-voucher":
+		var pv models.PaymentVoucher
+		if err := db.Where("id = ? AND organization_id = ?",
+			documentID, orgID).First(&pv).Error; err == nil {
+			findPOByDocNumber(pv.LinkedPO)
+			if pv.LinkedGRN != "" {
+				var grn models.GoodsReceivedNote
+				if err := db.Where("document_number = ? AND organization_id = ?",
+					pv.LinkedGRN, orgID).First(&grn).Error; err == nil {
+					raw["grnId"] = grn.ID
+				}
+			}
+		}
+
+	case "grn", "goods_received_note":
+		var grn models.GoodsReceivedNote
+		if err := db.Where("id = ? AND organization_id = ?",
+			documentID, orgID).First(&grn).Error; err == nil {
+			raw["grnId"] = grn.ID
+			findPOByDocNumber(grn.PODocumentNumber)
+		}
+	}
+
+	return raw
 }
 
 // buildDocumentChain constructs the document chain response
