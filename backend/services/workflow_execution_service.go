@@ -40,9 +40,15 @@ func NewWorkflowExecutionService(db *gorm.DB, workflowService *WorkflowService, 
 // StartClaimExpiryWorker runs a background goroutine that periodically resets
 // expired claimed tasks back to pending status so other users can claim them.
 func (s *WorkflowExecutionService) StartClaimExpiryWorker(ctx context.Context) {
-	ticker := time.NewTicker(60 * time.Second)
+	// Claims live 30 minutes and GetApprovalTasks also expires stale claims
+	// on-demand before every listing, so this sweep is only a safety net for
+	// when nobody is listing tasks. A 5-minute tick is ample and avoids a
+	// per-minute 0-row UPDATE (one WAL fsync) that otherwise just produced
+	// slow-query log noise on every tick.
+	const sweepInterval = 5 * time.Minute
+	ticker := time.NewTicker(sweepInterval)
 	defer ticker.Stop()
-	log.Println("[ClaimExpiry] Background claim expiry worker started (interval: 60s)")
+	log.Printf("[ClaimExpiry] Background claim expiry worker started (interval: %s)", sweepInterval)
 	for {
 		select {
 		case <-ctx.Done():

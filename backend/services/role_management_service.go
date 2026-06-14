@@ -378,11 +378,22 @@ func (rms *RoleManagementService) EnsureGlobalSystemRoles() error {
 		},
 	}
 
+	// Load all existing global system roles in ONE query instead of one SELECT per
+	// role. The per-role lookup fired 6-7 sequential round-trips at every startup;
+	// on a high-latency DB (~350ms/round-trip) that added ~2.5s of pure wait to
+	// boot. A single Find + in-memory map gives the same result in one round-trip.
+	var existingRoles []models.OrganizationRole
+	if err := rms.db.Where("is_system_role = ? AND organization_id IS NULL", true).Find(&existingRoles).Error; err != nil {
+		return fmt.Errorf("failed to load existing global system roles: %w", err)
+	}
+	existingByName := make(map[string]models.OrganizationRole, len(existingRoles))
+	for _, r := range existingRoles {
+		existingByName[r.Name] = r
+	}
+
 	for _, roleData := range defaultRoles {
 		// Check if global system role already exists
-		var existingRole models.OrganizationRole
-		err := rms.db.Where("name = ? AND is_system_role = ? AND organization_id IS NULL", roleData.name, true).First(&existingRole).Error
-		if err == nil {
+		if existingRole, ok := existingByName[roleData.name]; ok {
 			// Role exists — only write when the permission set actually changed.
 			// Previously this UPDATE ran unconditionally on every startup, costing
 			// one WAL fsync per system role (6 writes) even when nothing changed.
