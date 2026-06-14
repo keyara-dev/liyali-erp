@@ -54,6 +54,7 @@ import {
   Zap,
 } from "lucide-react";
 import { toast } from "sonner";
+import { ProcurementFlowInfo } from "@/components/purchase-orders/procurement-flow-info";
 import { uploadToImageKit, validateImageFile } from "@/lib/imagekit";
 
 export function WorkspaceSettings() {
@@ -445,6 +446,7 @@ export function WorkspaceSettings() {
           <CardTitle className="flex items-center gap-2">
             <ArrowDownUp className="h-5 w-5" />
             Procurement Flow
+            <ProcurementFlowInfo />
           </CardTitle>
           <CardDescription>
             Set the default document ordering for all purchase orders in this

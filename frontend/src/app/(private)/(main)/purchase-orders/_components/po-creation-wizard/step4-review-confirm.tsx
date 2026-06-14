@@ -18,6 +18,7 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { ConfigurationChecklistBanner } from "@/components/ui/configuration-checklist-banner";
 import { CostComparisonPanel } from "@/components/purchase-orders/cost-comparison-panel";
+import { ProcurementFlowInfo } from "@/components/purchase-orders/procurement-flow-info";
 import { useConfigurationStatus } from "@/hooks/use-configuration-status";
 import { formatCurrency } from "@/lib/utils";
 import type { Requisition } from "@/types/requisition";
@@ -314,6 +315,7 @@ export function Step4ReviewConfirm({
           <Label className="flex items-center gap-1.5 text-sm font-medium">
             <ArrowDownUp className="h-4 w-4" />
             Procurement Flow
+            <ProcurementFlowInfo className="ml-0.5" />
           </Label>
           <p className="text-xs text-muted-foreground">
             Override the organization default for this purchase order only.
