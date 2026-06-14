@@ -316,6 +316,7 @@ func CreatePurchaseOrder(c *fiber.Ctx) error {
 		DeliveryDate:      req.DeliveryDate.Time,
 		ApprovalStage:     0,
 		LinkedRequisition: req.LinkedRequisition,
+		ProcurementFlow:   req.ProcurementFlow,
 		EstimatedCost:     req.EstimatedCost,
 		CreatedBy:         tenant.UserID,
 		Title:             req.Title,
