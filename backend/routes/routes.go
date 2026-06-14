@@ -95,8 +95,11 @@ func SetupRoutes(app *fiber.App, handlerRegistry *handlers.HandlerRegistry, rbac
 	orgSubs.Post("/trial/reset", middleware.AdminMiddleware(), handlerRegistry.Subscription.ResetOrganizationTrial)
 	orgSubs.Get("/features/check", handlerRegistry.Subscription.CheckFeatureAccess)
 
-	// Tenant-scoped routes (authentication + tenant context required)
-	tenant := apiV1.Group("", middleware.AuthMiddleware(), middleware.TenantMiddleware())
+	// Tenant-scoped routes (authentication + tenant context required).
+	// Nested under `protected` so AuthMiddleware runs ONCE; mounting a second
+	// apiV1 group with its own AuthMiddleware made every request validate the
+	// session twice (two DB round-trips) since both groups share the "" prefix.
+	tenant := protected.Group("", middleware.TenantMiddleware())
 
 	// Current user's own permissions — no permission gate, just auth + tenant
 	tenant.Get("/me/permissions", func(c *fiber.Ctx) error {
@@ -501,7 +504,10 @@ func SetupRoutes(app *fiber.App, handlerRegistry *handlers.HandlerRegistry, rbac
 	tenant.Get("/audit-events", handlers.GetDocumentAuditEvents)
 
 	// Admin-only routes (system-wide access)
-	admin := apiV1.Group("/admin", middleware.AuthMiddleware(), middleware.SuperAdminMiddleware())
+	// Nested under `protected` so AuthMiddleware runs once (the "" -prefixed
+	// `protected` group already matches /admin/* — a second AuthMiddleware here
+	// validated the session twice per admin request).
+	admin := protected.Group("/admin", middleware.SuperAdminMiddleware())
 
 	// Admin dashboard and analytics
 	admin.Get("/dashboard", handlers.GetAdminDashboard)

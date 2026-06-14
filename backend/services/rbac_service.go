@@ -486,6 +486,30 @@ func (s *RBACService) GetUserRoles(ctx context.Context, userID, organizationID s
 	return s.roleRepo.GetUserRoles(ctx, userID, organizationID)
 }
 
+// orgRoleCtxKey is the context key under which a caller may stash the user's
+// already-resolved organization system role.
+type orgRoleCtxKey struct{}
+
+// WithOrgRole returns a context carrying the user's resolved organization system
+// role. When present, GetUserPermissions skips its organization_members lookup —
+// TenantMiddleware already fetched that exact row earlier in the request, so the
+// repeat query is pure round-trip waste on a high-latency DB.
+func WithOrgRole(ctx context.Context, role string) context.Context {
+	if role == "" {
+		return ctx
+	}
+	return context.WithValue(ctx, orgRoleCtxKey{}, role)
+}
+
+// orgRoleFromContext returns the cached organization system role, if any.
+func orgRoleFromContext(ctx context.Context) (string, bool) {
+	if ctx == nil {
+		return "", false
+	}
+	role, ok := ctx.Value(orgRoleCtxKey{}).(string)
+	return role, ok && role != ""
+}
+
 // GetUserPermissions gets all permissions for a user in an organization
 func (s *RBACService) GetUserPermissions(ctx context.Context, userID, organizationID string) ([]string, error) {
 	// Get custom organization roles from database
@@ -535,16 +559,22 @@ func (s *RBACService) GetUserPermissions(ctx context.Context, userID, organizati
 		}
 	}
 
-	// IMPORTANT: Also check system roles based on user's organization membership role
-	// Get user's role in the organization from organization_members table
-	var member models.OrganizationMember
-	err = s.db.Where("user_id = ? AND organization_id = ? AND active = ?", userID, organizationID, true).First(&member).Error
-	if err == nil {
+	// IMPORTANT: Also check system roles based on user's organization membership role.
+	// Prefer a role cached on the context by TenantMiddleware (which already fetched
+	// this exact organization_members row for the request); fall back to a query.
+	systemRole, cached := orgRoleFromContext(ctx)
+	if !cached {
+		var member models.OrganizationMember
+		if dbErr := s.db.Where("user_id = ? AND organization_id = ? AND active = ?", userID, organizationID, true).First(&member).Error; dbErr == nil {
+			systemRole = member.Role
+		}
+	}
+	if systemRole != "" {
 		// Check if user has a system role (admin, manager, approver, etc.)
-		if systemPermissions, exists := SystemRoles[member.Role]; exists {
+		if systemPermissions, exists := SystemRoles[systemRole]; exists {
 			for _, permission := range systemPermissions {
 				// System role permissions override denials (admins and super_admins can't be denied)
-				if member.Role == "admin" || member.Role == "super_admin" || !deniedPermissions[permission] {
+				if systemRole == "admin" || systemRole == "super_admin" || !deniedPermissions[permission] {
 					permissionSet[permission] = true
 				}
 			}

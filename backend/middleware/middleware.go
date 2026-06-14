@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"context"
 	"log"
 	"os"
 	"strings"
@@ -384,7 +385,7 @@ func EnhancedRBACMiddleware(rbacService *services.RBACService, resource, action 
 		}
 
 		// Check permission using enhanced RBAC service
-		hasPermission, err := rbacService.HasPermission(c.Context(), userID, *organizationID, resource, action)
+		hasPermission, err := rbacService.HasPermission(permissionCtx(c), userID, *organizationID, resource, action)
 		if err != nil {
 			log.Printf("Error checking permission: %v", err)
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
@@ -402,6 +403,18 @@ func EnhancedRBACMiddleware(rbacService *services.RBACService, resource, action 
 
 		return c.Next()
 	}
+}
+
+// permissionCtx returns the request context enriched with the user's cached
+// organization system role when TenantMiddleware has stashed it. This lets the
+// RBAC service skip a redundant organization_members lookup on every
+// permission-gated request.
+func permissionCtx(c *fiber.Ctx) context.Context {
+	var ctx context.Context = c.Context()
+	if role, _ := c.Locals("orgMemberRole").(string); role != "" {
+		ctx = services.WithOrgRole(ctx, role)
+	}
+	return ctx
 }
 
 // RequirePermission checks if user has specific permission(s) using RBAC service
@@ -438,7 +451,7 @@ func RequirePermission(rbacService *services.RBACService, requiredPermissions ..
 			resource := requiredPermissions[i]
 			action := requiredPermissions[i+1]
 
-			hasPermission, err := rbacService.HasPermission(c.Context(), userID, organizationID, resource, action)
+			hasPermission, err := rbacService.HasPermission(permissionCtx(c), userID, organizationID, resource, action)
 			if err != nil {
 				log.Printf("Error checking permission %s.%s for user %s: %v", resource, action, userID, err)
 				return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
@@ -537,7 +550,7 @@ func RequirePermissionOr(rbacService *services.RBACService, requiredPermissions 
 		}
 
 		// Check if user has any of the required permissions
-		hasAnyPermission, err := rbacService.HasAnyPermission(c.Context(), userID, organizationID, requiredPermissions)
+		hasAnyPermission, err := rbacService.HasAnyPermission(permissionCtx(c), userID, organizationID, requiredPermissions)
 		if err != nil {
 			log.Printf("Error checking permissions for user %s: %v", userID, err)
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
