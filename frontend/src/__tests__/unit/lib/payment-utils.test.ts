@@ -1,5 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { generatePaymentReference } from "@/lib/payment-utils";
+import {
+  generatePaymentReference,
+  hasBlockingPaymentVoucher,
+} from "@/lib/payment-utils";
 
 /**
  * generatePaymentReference() → string
@@ -82,4 +85,36 @@ describe("generatePaymentReference", () => {
       expect(ref).toMatch(/^PV-202512-/);
     });
   });
+});
+
+/**
+ * hasBlockingPaymentVoucher(po) → boolean
+ *
+ * Mirrors the backend one-live-PV-per-PO gate: a PO already has a *live* PV
+ * (and so cannot get a new one) when a linked PV exists whose status is NOT a
+ * terminal-failure state (CANCELLED / REJECTED).
+ */
+describe("hasBlockingPaymentVoucher", () => {
+  const po = (status?: string) =>
+    status === undefined
+      ? {}
+      : { linkedPV: { id: "pv-1", documentNumber: "PV-1", status } };
+
+  it("returns false when there is no linked PV", () => {
+    expect(hasBlockingPaymentVoucher(po())).toBe(false);
+  });
+
+  it.each(["PAID", "APPROVED", "PENDING", "DRAFT", "paid", "Approved"])(
+    "blocks when a live PV exists (status %s)",
+    (status) => {
+      expect(hasBlockingPaymentVoucher(po(status))).toBe(true);
+    },
+  );
+
+  it.each(["CANCELLED", "REJECTED", "cancelled", "rejected"])(
+    "does not block when the only PV is terminal-failure (status %s)",
+    (status) => {
+      expect(hasBlockingPaymentVoucher(po(status))).toBe(false);
+    },
+  );
 });

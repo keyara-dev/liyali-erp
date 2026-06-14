@@ -28,6 +28,7 @@ import { createPaymentVoucherFromPurchaseOrder } from "@/app/_actions/payment-vo
 import { toast } from "sonner";
 import { Card } from "@/components/ui/card";
 import { formatCurrency } from "@/lib/utils";
+import { hasBlockingPaymentVoucher } from "@/lib/payment-utils";
 
 interface ApprovedPurchaseOrdersTableProps {
   userId: string;
@@ -62,6 +63,14 @@ export function ApprovedPurchaseOrdersTable({
   });
 
   const handleCreatePV = (po: PurchaseOrder) => {
+    // Guard: the backend enforces one live PV per PO. Don't open the dialog for
+    // a PO that already has one — the row offers "View PV" instead.
+    if (hasBlockingPaymentVoucher(po)) {
+      toast.info(
+        `PO ${po.documentNumber} already has payment voucher ${po.linkedPV?.documentNumber ?? ""} (${po.linkedPV?.status ?? ""}).`,
+      );
+      return;
+    }
     setSelectedPO(po);
     setIsCreateDialogOpen(true);
   };
@@ -223,14 +232,29 @@ export function ApprovedPurchaseOrdersTable({
                           <Eye className="h-4 w-4 mr-1" />
                           View
                         </Button>
-                        <Button
-                          variant="default"
-                          size="sm"
-                          onClick={() => handleCreatePV(po)}
-                        >
-                          <FileText className="h-4 w-4 mr-1" />
-                          Create PV
-                        </Button>
+                        {hasBlockingPaymentVoucher(po) ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() =>
+                              po.linkedPV &&
+                              router.push(`/payment-vouchers/${po.linkedPV.id}`)
+                            }
+                            title={`Payment voucher ${po.linkedPV?.documentNumber ?? ""} already exists (${po.linkedPV?.status ?? ""})`}
+                          >
+                            <FileText className="h-4 w-4 mr-1" />
+                            View PV
+                          </Button>
+                        ) : (
+                          <Button
+                            variant="default"
+                            size="sm"
+                            onClick={() => handleCreatePV(po)}
+                          >
+                            <FileText className="h-4 w-4 mr-1" />
+                            Create PV
+                          </Button>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>

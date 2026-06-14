@@ -36,6 +36,7 @@ import { useGRNs } from "@/hooks/use-grn-queries";
 import { useOrganizationSettingsQuery } from "@/hooks/use-organization-queries";
 import { CreatePaymentVoucherRequest } from "@/types/payment-voucher";
 import { PurchaseOrder } from "@/types/purchase-order";
+import { hasBlockingPaymentVoucher } from "@/lib/payment-utils";
 import { toast } from "sonner";
 
 // The narrow GRN shape this page actually reads. `useGRNs` returns the slim
@@ -82,6 +83,8 @@ export function PVCreateClient({
   const approvedPOs =
     purchaseOrders?.filter((po) => {
       if (po.status?.toUpperCase() !== "APPROVED") return false;
+      // Already has a live PV — the backend would 409 on a second one.
+      if (hasBlockingPaymentVoucher(po)) return false;
       const poFlow = po.procurementFlow || orgFlow;
       if (poFlow === "goods_first") return hasApprovedGrnForPo(po);
       return true;
