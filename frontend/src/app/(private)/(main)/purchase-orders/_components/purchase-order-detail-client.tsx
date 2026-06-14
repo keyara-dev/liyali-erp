@@ -31,6 +31,7 @@ import {
   AlertTriangle,
   Truck,
   Trash2,
+  Info,
 } from "lucide-react";
 import { StatusBadge } from "@/components/status-badge";
 import { PageHeader } from "@/components/base/page-header";
@@ -72,6 +73,11 @@ const AttachmentPreviewDialog = dynamic(
 import { PurchaseOrderSubmitDialog } from "./purchase-order-submit-dialog";
 import { ConfirmationModal } from "@/components/modals/confirmation-modal";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { QuotationCollectionSection } from "@/app/(private)/(main)/requisitions/_components/quotation-collection-section";
 import { POShippingEditor } from "./po-shipping-editor";
 import { LinkedDocumentsPDFSection } from "./linked-documents-pdf-section";
@@ -248,8 +254,7 @@ export function PurchaseOrderDetailClient({
   // So any authorized user — not just the literal creator — may reconcile
   // unit price / quantity on a DRAFT PO to reach zero variance against the REQ.
   const canEditItems =
-    isDraft &&
-    (permissions.canEdit || hasPermission("purchase_order", "edit"));
+    isDraft && (permissions.canEdit || hasPermission("purchase_order", "edit"));
 
   // Toolbar "Edit" (metadata dialog: title/dept/priority/budget/vendor). Backend
   // PUT /:id allows privileged/procurement (CanViewAll/IsProcurement) to edit any
@@ -523,8 +528,26 @@ export function PurchaseOrderDetailClient({
 
           <div className="space-y-1">
             <label className="text-xs font-semibold text-primary-foreground/80 uppercase tracking-wider flex items-center gap-1">
+              <FileText className="h-3 w-3" />
+              REQ Estimated Cost
+            </label>
+            <p className="text-base font-medium text-primary-foreground">
+              {(() => {
+                const reqEstimated =
+                  purchaseOrder.estimatedCost ||
+                  linkedRequisitionData?.totalAmount ||
+                  0;
+                return reqEstimated > 0
+                  ? formatCurrency(reqEstimated, purchaseOrder.currency)
+                  : "—";
+              })()}
+            </p>
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-xs font-semibold text-primary-foreground/80 uppercase tracking-wider flex items-center gap-1">
               <DollarSign className="h-3 w-3" />
-              Estimated Cost
+              Total Amount
             </label>
             <p className="text-base font-bold text-primary-foreground">
               {formatCurrency(
@@ -689,8 +712,14 @@ export function PurchaseOrderDetailClient({
 
           {/* Cost Comparison Section — always shown when vendor is selected */}
           {(() => {
-            const estimated =
-              purchaseOrder.estimatedCost || purchaseOrder.totalAmount;
+            // REQ Estimated Cost: snapshot captured on the PO at creation time;
+            // fall back to the live linked REQ total when no snapshot was stored.
+            const reqEstimated =
+              purchaseOrder.estimatedCost ||
+              linkedRequisitionData?.totalAmount ||
+              0;
+            const hasReqEstimate = reqEstimated > 0;
+            const poTotal = purchaseOrder.totalAmount;
             const selectedFileUrl = purchaseOrder.metadata
               ?.selectedQuotationFileUrl as string | undefined;
             const selectedQuotation = selectedFileUrl
@@ -698,8 +727,12 @@ export function PurchaseOrderDetailClient({
               : undefined;
             const actual =
               selectedQuotation?.amount ?? purchaseOrder.totalAmount;
-            const diff = actual - estimated;
-            const pct = estimated > 0 ? (diff / estimated) * 100 : 0;
+
+            // Primary variance (shown on the component): Supplier vs REQ Estimate.
+            const baseForVariance = hasReqEstimate ? reqEstimated : poTotal;
+            const diff = actual - baseForVariance;
+            const pct =
+              baseForVariance > 0 ? (diff / baseForVariance) * 100 : 0;
             const isOver = diff > 0;
             const isUnder = diff < 0;
             const color = isUnder
@@ -708,20 +741,38 @@ export function PurchaseOrderDetailClient({
                 ? "text-amber-600 dark:text-amber-400"
                 : "text-red-600 dark:text-red-400";
             const Icon = isUnder ? TrendingDown : isOver ? TrendingUp : Minus;
+
+            // Secondary variance (in popover): Supplier vs PO Total Amount.
+            const diffPo = actual - poTotal;
+            const pctPo = poTotal > 0 ? (diffPo / poTotal) * 100 : 0;
+            const signed = (v: number) =>
+              `${v > 0 ? "+" : v < 0 ? "−" : ""}${formatCurrency(
+                Math.abs(v),
+                purchaseOrder.currency,
+              )}`;
+
             return (
               <div className="rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/30 p-3 space-y-3">
                 <h4 className="text-xs font-semibold text-blue-900 dark:text-blue-100 uppercase tracking-wider">
                   Cost Comparison
                 </h4>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                   <div>
                     <span className="text-xs text-blue-700 dark:text-blue-300 font-medium">
-                      {purchaseOrder.estimatedCost
-                        ? "Estimated Cost (from REQ)"
-                        : "PO Estimated Cost"}
+                      REQ Estimated Cost
                     </span>
                     <p className="text-base font-bold text-blue-900 dark:text-blue-100">
-                      {formatCurrency(estimated, purchaseOrder.currency)}
+                      {hasReqEstimate
+                        ? formatCurrency(reqEstimated, purchaseOrder.currency)
+                        : "—"}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-xs text-blue-700 dark:text-blue-300 font-medium">
+                      PO Total Amount
+                    </span>
+                    <p className="text-base font-bold text-blue-900 dark:text-blue-100">
+                      {formatCurrency(poTotal, purchaseOrder.currency)}
                     </p>
                   </div>
                   <div>
@@ -735,7 +786,59 @@ export function PurchaseOrderDetailClient({
                   <div>
                     <span className="text-xs text-blue-700 dark:text-blue-300 font-medium flex items-center gap-1">
                       <Icon className="h-3 w-3" />
-                      Variance
+                      Price Variance
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <button
+                            type="button"
+                            aria-label="Variance breakdown"
+                            className="inline-flex text-blue-700/80 dark:text-blue-300/80 hover:text-blue-900 dark:hover:text-blue-100 transition-colors focus-visible:outline-none"
+                          >
+                            <Info className="h-3 w-3" />
+                          </button>
+                        </PopoverTrigger>
+                        <PopoverContent align="end" className="w-72 space-y-3">
+                          <p className="text-sm font-semibold">
+                            Price Variance breakdown
+                          </p>
+                          <div className="space-y-2 text-xs">
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="text-muted-foreground">
+                                vs REQ Estimated Cost
+                              </span>
+                              <span className="font-semibold">
+                                {hasReqEstimate ? (
+                                  <>
+                                    {signed(diff)} (
+                                    {pct > 0 ? "+" : pct < 0 ? "−" : ""}
+                                    {Math.abs(pct).toFixed(1)}%)
+                                  </>
+                                ) : (
+                                  "—"
+                                )}
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="text-muted-foreground">
+                                vs PO Total Amount
+                              </span>
+                              <span className="font-semibold">
+                                {signed(diffPo)} (
+                                {pctPo > 0 ? "+" : pctPo < 0 ? "−" : ""}
+                                {Math.abs(pctPo).toFixed(1)}%)
+                              </span>
+                            </div>
+                          </div>
+                          <p className="text-[11px] text-muted-foreground">
+                            The figure on the card compares the selected
+                            supplier price against the{" "}
+                            {hasReqEstimate
+                              ? "requisition estimate"
+                              : "PO total"}
+                            .
+                          </p>
+                        </PopoverContent>
+                      </Popover>
                     </span>
                     <p className={`text-base font-bold ${color}`}>
                       {isUnder ? "−" : isOver ? "+" : ""}
@@ -919,6 +1022,13 @@ export function PurchaseOrderDetailClient({
                 <span className="hidden sm:inline">Approval</span> Chain
               </TabsTrigger>
               <TabsTrigger
+                value="shipping"
+                className="gap-1.5 text-xs sm:text-sm px-2 py-2 flex-1 shrink-0 whitespace-nowrap"
+              >
+                <Truck className="h-4 w-4 shrink-0" />
+                <span className="hidden sm:inline">Shipping</span> &amp; Tax
+              </TabsTrigger>
+              <TabsTrigger
                 value="activity"
                 className="gap-1.5 text-xs sm:text-sm px-2 py-2 flex-1 shrink-0 whitespace-nowrap"
               >
@@ -933,13 +1043,6 @@ export function PurchaseOrderDetailClient({
                       {purchaseOrder.actionHistory.length}
                     </Badge>
                   )}
-              </TabsTrigger>
-              <TabsTrigger
-                value="shipping"
-                className="gap-1.5 text-xs sm:text-sm px-2 py-2 flex-1 shrink-0 whitespace-nowrap"
-              >
-                <Truck className="h-4 w-4 shrink-0" />
-                <span className="hidden sm:inline">Shipping</span> &amp; Tax
               </TabsTrigger>
             </TabsList>
           </div>
