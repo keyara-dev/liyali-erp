@@ -32,6 +32,14 @@ export async function createPurchaseOrderFromRequisition(
   vendorIdOverride?: string,
   vendorNameOverride?: string,
   procurementFlow?: "" | "goods_first" | "payment_first",
+  /**
+   * Edited PO line items (a copy of the REQ items adjusted in the wizard).
+   * When omitted, the REQ's items are used as-is. The source requisition is
+   * never modified — these become the new PO's items only.
+   */
+  itemsOverride?: POItem[],
+  /** Items-derived total to match itemsOverride (excludes tax/delivery). */
+  totalAmountOverride?: number,
 ): Promise<APIResponse<PurchaseOrder>> {
   const url = `/api/v1/purchase-orders/from-requisition`;
 
@@ -54,8 +62,8 @@ export async function createPurchaseOrderFromRequisition(
         departmentId: requisition.departmentId,
         requiredByDate: requisition.requiredByDate,
         priority: requisition.priority,
-        items: requisition.items,
-        totalAmount: requisition.totalAmount,
+        items: itemsOverride ?? requisition.items,
+        totalAmount: totalAmountOverride ?? requisition.totalAmount,
         currency: requisition.currency,
         budgetCode: requisition.budgetCode,
         costCenter: requisition.costCenter,

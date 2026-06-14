@@ -19,6 +19,7 @@ import {
 import type { Requisition } from "@/types/requisition";
 import { WizardStepIndicator } from "./wizard-step-indicator";
 import { Step1PODetails } from "./step1-po-details";
+import { StepLineItems } from "./step-line-items";
 import { Step2VendorQuotes } from "./step2-vendor-quotes";
 import { Step3ShippingTax } from "./step3-shipping-tax";
 import { Step4ReviewConfirm } from "./step4-review-confirm";
@@ -40,6 +41,7 @@ export interface POCreationWizardProps {
 
 const WIZARD_STEPS = [
   { label: "PO Details" },
+  { label: "Line Items" },
   { label: "Vendor & Quotes" },
   { label: "Shipping & Tax" },
   { label: "Review & Confirm" },
@@ -67,42 +69,61 @@ export function POCreationWizard({
 }: POCreationWizardProps) {
   const queryClient = useQueryClient();
   const router = useRouter();
-  const [currentStep, setCurrentStep] = useState<1 | 2 | 3 | 4>(1);
+  const [currentStep, setCurrentStep] = useState<1 | 2 | 3 | 4 | 5>(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { wizardState, setStep1, setStep2, setStep3, setStep4, resetWizard } =
-    useWizardState(requisition);
+  const {
+    wizardState,
+    setStep1,
+    setItems,
+    setStep2,
+    setStep3,
+    setStep4,
+    resetWizard,
+  } = useWizardState(requisition);
 
   // ── navigation ─────────────────────────────────────────────────────────────
+  // Visual order: 1 PO Details · 2 Line Items · 3 Vendor & Quotes ·
+  //               4 Shipping & Tax · 5 Review & Confirm
 
-  // Step 1 → Step 2: only called by Step1PODetails after its own validation passes
+  // Step 1 (PO Details) → Step 2 (Line Items): called after Step 1 validation passes
   const handleStep1Next = () => {
     setCurrentStep(2);
   };
 
-  // Step 2 → Step 3 (Req 1.3)
-  const handleStep2Next = () => {
+  // Step 2 (Line Items) → Step 3 (Vendor & Quotes)
+  const handleLineItemsNext = () => {
     setCurrentStep(3);
   };
 
-  // Step 2 → Step 1
-  const handleStep2Back = () => {
+  // Step 2 (Line Items) → Step 1 (PO Details)
+  const handleLineItemsBack = () => {
     setCurrentStep(1);
   };
 
-  // Step 3 → Step 4 (Req 1.5)
-  const handleStep3Next = () => {
+  // Step 3 (Vendor & Quotes) → Step 4 (Shipping & Tax)
+  const handleStep2Next = () => {
     setCurrentStep(4);
   };
 
-  // Step 3 → Step 2 (Req 1.4)
-  const handleStep3Back = () => {
+  // Step 3 (Vendor & Quotes) → Step 2 (Line Items)
+  const handleStep2Back = () => {
     setCurrentStep(2);
   };
 
-  // Step 4 → Step 3 (Req 1.6)
-  const handleStep4Back = () => {
+  // Step 4 (Shipping & Tax) → Step 5 (Review & Confirm)
+  const handleStep3Next = () => {
+    setCurrentStep(5);
+  };
+
+  // Step 4 (Shipping & Tax) → Step 3 (Vendor & Quotes)
+  const handleStep3Back = () => {
     setCurrentStep(3);
+  };
+
+  // Step 5 (Review & Confirm) → Step 4 (Shipping & Tax)
+  const handleStep4Back = () => {
+    setCurrentStep(4);
   };
 
   // ── close / reset ──────────────────────────────────────────────────────────
@@ -128,6 +149,16 @@ export function POCreationWizard({
         )
       : null;
 
+    // Edited PO line items (a copy of the REQ items adjusted in the Line Items
+    // step). Normalize amounts and derive the items-only subtotal. The source
+    // requisition is never touched — these become the new PO's items only.
+    const editedItems = wizardState.items.map((i) => ({
+      ...i,
+      amount: i.quantity * i.unitPrice,
+      totalPrice: i.quantity * i.unitPrice,
+    }));
+    const itemsSubtotal = editedItems.reduce((s, i) => s + i.amount, 0);
+
     try {
       // Req 5.5: call createPurchaseOrderFromRequisition with wizard state
       const result = await createPurchaseOrderFromRequisition(
@@ -136,6 +167,8 @@ export function POCreationWizard({
         selectedVendor?.vendorId || undefined,
         selectedVendor?.vendorName || undefined,
         wizardState.step4.procurementFlow,
+        editedItems,
+        itemsSubtotal,
       );
 
       if (!result.success || !result.data) {
@@ -185,8 +218,8 @@ export function POCreationWizard({
 
       // Req 3.3: deep-merge metadata — quotations + shippingMeta + selected quotation file
       // Also update totalAmount to include tax + delivery so the stored value is always the true grand total.
+      // itemsSubtotal here is the edited line-items subtotal computed above.
       const selectedQuotationFileId = wizardState.step2.selectedQuotationFileId;
-      const itemsSubtotal = requisition.totalAmount ?? 0;
       const wizardTaxAmount =
         !isNaN(taxRateNum) && taxRateNum > 0
           ? Math.round(((itemsSubtotal * taxRateNum) / 100) * 100) / 100
@@ -264,7 +297,19 @@ export function POCreationWizard({
           />
         )}
 
+        {/* Step 2 — Line Items (editable copy of the REQ items) */}
         {currentStep === 2 && (
+          <StepLineItems
+            items={wizardState.items}
+            requisition={requisition}
+            currency={wizardState.step1.currency || requisition.currency || ""}
+            onChange={setItems}
+            onNext={handleLineItemsNext}
+            onBack={handleLineItemsBack}
+          />
+        )}
+
+        {currentStep === 3 && (
           <Step2VendorQuotes
             data={wizardState.step2}
             requisition={requisition}
@@ -274,8 +319,8 @@ export function POCreationWizard({
           />
         )}
 
-        {/* Req 1.3, 1.4, 1.5: Step 3 — Shipping & Tax */}
-        {currentStep === 3 && (
+        {/* Step 4 — Shipping & Tax */}
+        {currentStep === 4 && (
           <Step3ShippingTax
             data={wizardState.step3}
             requisition={requisition}
@@ -285,8 +330,8 @@ export function POCreationWizard({
           />
         )}
 
-        {/* Req 1.5, 1.6: Step 4 — Review & Confirm */}
-        {currentStep === 4 && (
+        {/* Step 5 — Review & Confirm */}
+        {currentStep === 5 && (
           <Step4ReviewConfirm
             wizardState={wizardState}
             requisition={requisition}

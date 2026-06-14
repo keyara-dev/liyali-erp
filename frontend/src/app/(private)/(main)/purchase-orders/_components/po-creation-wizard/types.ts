@@ -1,4 +1,5 @@
 import type { Quotation } from "@/types/core";
+import type { POItem } from "@/types/purchase-order";
 
 // ================== WIZARD STATE INTERFACES ==================
 
@@ -63,6 +64,12 @@ export interface WizardStep4State {
 
 export interface WizardState {
   step1: WizardStep1State;
+  /**
+   * Editable PO line items. Seeded as a deep copy of the source REQ's items so
+   * the user can adjust descriptions / quantities / unit prices for the PO
+   * without ever mutating the original requisition document.
+   */
+  items: POItem[];
   step2: WizardStep2State;
   step3: WizardStep3State; // NEW — Shipping & Tax
   step4: WizardStep4State; // RENAMED from step3

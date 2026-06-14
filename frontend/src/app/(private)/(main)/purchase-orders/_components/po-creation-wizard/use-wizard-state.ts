@@ -2,6 +2,7 @@
 
 import { useCallback, useMemo, useState } from "react";
 import type { Requisition } from "@/types/requisition";
+import type { POItem } from "@/types/purchase-order";
 import type {
   WizardState,
   WizardStep1State,
@@ -9,6 +10,28 @@ import type {
   WizardStep3State,
   WizardStep4State,
 } from "./types";
+
+/**
+ * Builds the wizard's initial PO line items as a DEEP COPY of the source REQ's
+ * items. Each entry is a brand-new object with a fresh local id, so editing the
+ * PO items in the wizard never mutates the original requisition document
+ * (in memory or on the server — the REQ items are only ever read, never sent).
+ */
+function buildInitialItems(requisition: Requisition): POItem[] {
+  return (requisition.items ?? []).map((ri, idx) => {
+    const quantity = ri.quantity ?? 1;
+    const unitPrice = ri.unitPrice ?? 0;
+    const amount = quantity * unitPrice;
+    return {
+      id: `req-item-${ri.id ?? idx}`,
+      description: ri.description ?? ri.itemDescription ?? "",
+      quantity,
+      unitPrice,
+      amount,
+      totalPrice: amount,
+    };
+  });
+}
 
 // ============================================================================
 // HELPERS
@@ -91,6 +114,7 @@ export function buildInitialStep3(requisition: Requisition): WizardStep3State {
 export interface UseWizardStateReturn {
   wizardState: WizardState;
   setStep1: (step1: WizardStep1State) => void;
+  setItems: (items: POItem[]) => void;
   setStep2: (step2: WizardStep2State) => void;
   setStep3: (step3: WizardStep3State) => void;
   setStep4: (step4: WizardStep4State) => void;
@@ -117,6 +141,7 @@ export function useWizardState(requisition: Requisition): UseWizardStateReturn {
 
   const [wizardState, setWizardState] = useState<WizardState>(() => ({
     step1: buildInitialStep1(requisition),
+    items: buildInitialItems(requisition),
     step2: INITIAL_STEP2,
     step3: buildInitialStep3(requisition),
     step4: INITIAL_STEP4,
@@ -124,6 +149,10 @@ export function useWizardState(requisition: Requisition): UseWizardStateReturn {
 
   const setStep1 = useCallback((step1: WizardStep1State) => {
     setWizardState((prev) => ({ ...prev, step1 }));
+  }, []);
+
+  const setItems = useCallback((items: POItem[]) => {
+    setWizardState((prev) => ({ ...prev, items }));
   }, []);
 
   const setStep2 = useCallback((step2: WizardStep2State) => {
@@ -141,11 +170,20 @@ export function useWizardState(requisition: Requisition): UseWizardStateReturn {
   const resetWizard = useCallback(() => {
     setWizardState({
       step1: initialStep1,
+      items: buildInitialItems(requisition),
       step2: INITIAL_STEP2,
       step3: buildInitialStep3(requisition),
       step4: INITIAL_STEP4,
     });
   }, [initialStep1, requisition]);
 
-  return { wizardState, setStep1, setStep2, setStep3, setStep4, resetWizard };
+  return {
+    wizardState,
+    setStep1,
+    setItems,
+    setStep2,
+    setStep3,
+    setStep4,
+    resetWizard,
+  };
 }
