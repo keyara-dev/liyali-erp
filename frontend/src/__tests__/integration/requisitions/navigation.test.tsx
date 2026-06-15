@@ -128,8 +128,9 @@ vi.mock("@/components/ui/empty", () => ({
   EmptyMedia: ({ children }: any) => <div>{children}</div>,
 }));
 
-vi.mock("@/components/document-links", () => ({
-  DocumentLinks: () => <div>Document Links</div>,
+vi.mock("@/components/linked-documents", () => ({
+  LinkedDocuments: () => <div>Linked Documents</div>,
+  buildChainLinks: () => [],
 }));
 
 vi.mock("@/components/base/document-loading-page", () => ({

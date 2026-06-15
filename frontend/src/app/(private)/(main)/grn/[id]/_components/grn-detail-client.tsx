@@ -41,6 +41,7 @@ import type { QualityIssue } from "@/types/goods-received-note";
 import { GRNSubmitDialog } from "./grn-submit-dialog";
 import { GRNSignoffPanel } from "./grn-signoff-panel";
 import { PDFPreviewDialog } from "@/components/modals/pdf-preview-dialog";
+import { LinkedDocuments, type LinkedDoc } from "@/components/linked-documents";
 import { cn } from "@/lib/utils";
 import { completeGRNAction } from "@/app/_actions/grn-actions";
 import { useQueryClient } from "@tanstack/react-query";
@@ -104,6 +105,40 @@ export function GRNDetailClient({
       (pv) => pv.documentNumber === grn.linkedPV,
     );
   }, [paymentVouchers, grn?.linkedPV]);
+
+  // Linked procurement documents — REQ (via the PO) → PO → PV. GRN carries no
+  // chain object, so resolve from the cross-referenced PO and PV records.
+  const grnLinkedDocs = useMemo<LinkedDoc[]>(() => {
+    const links: LinkedDoc[] = [];
+    if (linkedPO?.sourceRequisitionId) {
+      links.push({
+        type: "requisition",
+        label: "Requisition",
+        id: linkedPO.sourceRequisitionId,
+        documentNumber:
+          linkedPO.linkedRequisition || linkedPO.sourceRequisitionId,
+      });
+    }
+    if (linkedPO?.id) {
+      links.push({
+        type: "purchase-order",
+        label: "Purchase Order",
+        id: linkedPO.id,
+        documentNumber: grn?.poDocumentNumber || linkedPO.documentNumber,
+        status: linkedPO.status,
+      });
+    }
+    if (linkedPVRecord?.id) {
+      links.push({
+        type: "payment-voucher",
+        label: "Payment Voucher",
+        id: linkedPVRecord.id,
+        documentNumber: grn?.linkedPV || linkedPVRecord.documentNumber,
+        status: linkedPVRecord.status,
+      });
+    }
+    return links;
+  }, [linkedPO, linkedPVRecord, grn?.poDocumentNumber, grn?.linkedPV]);
 
   // Org members for resolving user IDs → names (Received By, Approved By).
   // Backend returns a paginated shape { members, total, ... } for page >= 1 —
@@ -450,6 +485,12 @@ export function GRNDetailClient({
           )}
         </div>
       )}
+
+      {/* Linked procurement chain documents — view / preview / download */}
+      <LinkedDocuments
+        docs={grnLinkedDocs}
+        showViewLinks={userRole.toLowerCase() !== "requester"}
+      />
 
       {/* Tabs: Items / Reports & Issues */}
       <Tabs defaultValue="items" className="w-full">

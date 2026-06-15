@@ -37,8 +37,7 @@ import {
 import { CreateRequisitionDialog } from "./create-requisition-dialog";
 import { POCreationWizard } from "@/app/(private)/(main)/purchase-orders/_components/po-creation-wizard";
 import { toast } from "sonner";
-import { DocumentLinks } from "@/components/document-links";
-import { WorkflowDocument } from "@/types";
+import { LinkedDocuments, buildChainLinks } from "@/components/linked-documents";
 import {
   Empty,
   EmptyContent,
@@ -645,11 +644,10 @@ export function RequisitionDetailClient({
         )}
       </div>
 
-      {/* Document Chain — only shown once requisition is approved */}
+      {/* Linked procurement chain documents — only once requisition is approved */}
       {requisition.status?.toUpperCase() === "APPROVED" && (
-        <DocumentLinks
-          currentDocument={requisition as unknown as WorkflowDocument}
-          chain={chain}
+        <LinkedDocuments
+          docs={buildChainLinks(chain, "requisition")}
           showViewLinks={userRole.toLowerCase() !== "requester"}
         />
       )}

@@ -23,7 +23,6 @@ import {
   CheckSquare,
   GitBranch,
   Activity,
-  ArrowRight,
   Upload,
   TrendingUp,
   TrendingDown,
@@ -33,7 +32,6 @@ import {
   Trash2,
   Info,
 } from "lucide-react";
-import { StatusBadge } from "@/components/status-badge";
 import { PageHeader } from "@/components/base/page-header";
 import { PurchaseOrderItemsList } from "./purchase-order-items-list";
 import { POItemsEditor } from "./po-items-editor";
@@ -44,8 +42,6 @@ import {
   ApprovalActionContent,
   WorkflowStatusSummary,
 } from "@/app/(private)/(main)/requisitions/_components/approval-history-panel";
-import { DocumentLinks } from "@/components/document-links";
-import { WorkflowDocument } from "@/types";
 import {
   Empty,
   EmptyContent,
@@ -80,7 +76,7 @@ import {
 } from "@/components/ui/popover";
 import { QuotationCollectionSection } from "@/app/(private)/(main)/requisitions/_components/quotation-collection-section";
 import { POShippingEditor } from "./po-shipping-editor";
-import { LinkedDocumentsPDFSection } from "./linked-documents-pdf-section";
+import { LinkedDocuments, buildChainLinks } from "@/components/linked-documents";
 import { useVendors } from "@/hooks/use-vendor-queries";
 import type { Quotation } from "@/types/core";
 import { Badge } from "@/components";
@@ -914,63 +910,53 @@ export function PurchaseOrderDetailClient({
         </div>
       )}
 
-      {/* Document Chain — shown once PO is pending or approved */}
-      {["APPROVED", "PENDING"].includes(
-        purchaseOrder.status?.toUpperCase() ?? "",
-      ) && (
-        <DocumentLinks
-          currentDocument={purchaseOrder as unknown as WorkflowDocument}
-          chain={chain}
-          showViewLinks={userRole.toLowerCase() !== "requester"}
-        />
-      )}
+      {/* Linked procurement chain documents — view / preview / download */}
+      <LinkedDocuments
+        docs={(() => {
+          const links = buildChainLinks(chain, "purchase-order");
+          // Chain may omit the source requisition — backfill from the PO.
+          if (
+            !links.some((l) => l.type === "requisition") &&
+            purchaseOrder.sourceRequisitionId
+          ) {
+            links.unshift({
+              type: "requisition",
+              label: "Requisition",
+              id: purchaseOrder.sourceRequisitionId,
+              documentNumber:
+                linkedRequisitionData?.documentNumber ||
+                purchaseOrder.sourceRequisitionId,
+              status: linkedRequisitionData?.status,
+            });
+          }
+          return links;
+        })()}
+        showViewLinks={userRole.toLowerCase() !== "requester"}
+      />
 
-      {/* Payment Voucher — shown only when PO is APPROVED */}
-      {purchaseOrder.status?.toUpperCase() === "APPROVED" && (
-        <Card className="p-4 border-0 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-sm font-semibold">Payment Voucher</h3>
-              <p className="text-xs text-muted-foreground">
-                {purchaseOrder.linkedPV
-                  ? "A payment voucher is linked to this PO"
-                  : "No payment voucher yet"}
-              </p>
+      {/* Create Payment Voucher CTA — only when none exists yet.
+          An existing PV is shown in the LinkedDocuments section above. */}
+      {purchaseOrder.status?.toUpperCase() === "APPROVED" &&
+        !purchaseOrder.linkedPV && (
+          <Card className="p-4 border-0 shadow-sm">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-semibold">Payment Voucher</h3>
+                <p className="text-xs text-muted-foreground">
+                  No payment voucher yet
+                </p>
+              </div>
+              <Button
+                variant="default"
+                size="sm"
+                onClick={() => setIsCreatePVDialogOpen(true)}
+              >
+                <FileText className="h-4 w-4 mr-1" />
+                Create PV
+              </Button>
             </div>
-            <div className="flex items-center gap-2">
-              {purchaseOrder.linkedPV ? (
-                <>
-                  <StatusBadge
-                    status={purchaseOrder.linkedPV.status}
-                    type="document"
-                  />
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() =>
-                      router.push(
-                        `/payment-vouchers/${purchaseOrder.linkedPV!.id}`,
-                      )
-                    }
-                  >
-                    View PV
-                    <ArrowRight className="h-3 w-3 ml-1" />
-                  </Button>
-                </>
-              ) : (
-                <Button
-                  variant="default"
-                  size="sm"
-                  onClick={() => setIsCreatePVDialogOpen(true)}
-                >
-                  <FileText className="h-4 w-4 mr-1" />
-                  Create PV
-                </Button>
-              )}
-            </div>
-          </div>
-        </Card>
-      )}
+          </Card>
+        )}
 
       {/* ── Tabbed Content ──────────────────────────────────────────── */}
       <Card className="p-6 border-0 shadow-sm">
@@ -1230,15 +1216,6 @@ export function PurchaseOrderDetailClient({
               />
             )}
 
-            {/* Linked procurement chain documents — preview/download PDFs on demand */}
-            <LinkedDocumentsPDFSection
-              sourceRequisitionId={purchaseOrder.sourceRequisitionId}
-              sourceRequisitionDocumentNumber={
-                linkedRequisitionData?.documentNumber
-              }
-              chain={chain}
-              currentPoId={purchaseOrderId}
-            />
           </TabsContent>
 
           {/* ── Tab 3: Approval Action ── */}

@@ -34,8 +34,7 @@ import {
   ApprovalActionContent,
   WorkflowStatusSummary,
 } from "@/app/(private)/(main)/requisitions/_components/approval-history-panel";
-import { DocumentLinks } from "@/components/document-links";
-import { WorkflowDocument } from "@/types";
+import { LinkedDocuments, buildChainLinks } from "@/components/linked-documents";
 import {
   Empty,
   EmptyContent,
@@ -543,34 +542,28 @@ export function PVDetailClient({
         <ProcurementFlowIndicator paymentVoucher={paymentVoucher} />
       </div>
 
-      {/* Linked GRN row — goods-first flow */}
-      {paymentVoucher.linkedGRN && (
-        <div className="flex items-center justify-between bg-background p-3 rounded border">
-          <div>
-            <p className="text-sm text-muted-foreground">
-              Linked Goods Received Note
-            </p>
-            <p className="font-medium font-mono">{paymentVoucher.linkedGRN}</p>
-          </div>
-          {linkedGRNRecord?.id && (
-            <Link href={`/grn/${linkedGRNRecord.id}`}>
-              <Button variant="outline" size="sm">
-                View GRN
-              </Button>
-            </Link>
-          )}
-        </div>
-      )}
-
-      {/* Document Chain — only shown once PV is approved or paid */}
-      {(paymentVoucher.status?.toUpperCase() === "APPROVED" ||
-        paymentVoucher.status?.toUpperCase() === "PAID") && (
-        <DocumentLinks
-          currentDocument={paymentVoucher as unknown as WorkflowDocument}
-          chain={chain}
-          showViewLinks={userRole.toLowerCase() !== "requester"}
-        />
-      )}
+      {/* Linked procurement chain documents — view / preview / download */}
+      <LinkedDocuments
+        docs={(() => {
+          const links = buildChainLinks(chain, "payment-voucher");
+          // Goods-first PVs carry a GRN link before the chain is populated.
+          if (
+            !links.some((l) => l.type === "grn") &&
+            linkedGRNRecord?.id
+          ) {
+            links.push({
+              type: "grn",
+              label: "Goods Received Note",
+              id: linkedGRNRecord.id,
+              documentNumber:
+                paymentVoucher.linkedGRN || linkedGRNRecord.documentNumber,
+              status: linkedGRNRecord.status,
+            });
+          }
+          return links;
+        })()}
+        showViewLinks={userRole.toLowerCase() !== "requester"}
+      />
 
       {/* ── Tabbed Content ──────────────────────────────────────────── */}
       <Card className="p-6 border-0 shadow-sm">
