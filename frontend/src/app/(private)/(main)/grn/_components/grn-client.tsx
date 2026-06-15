@@ -5,7 +5,9 @@ import { useSearchParams } from 'next/navigation'
 import { PageHeader } from '@/components/base/page-header'
 import { GrnTable } from './grn-table'
 import { CreateGRNDialog } from './create-grn-dialog'
+import { ReadyForGrnSection } from './ready-for-grn-section'
 import { Button } from '@/components/ui/button'
+import { Separator } from '@/components/ui/separator'
 import { Plus } from 'lucide-react'
 
 interface GrnClientProps {
@@ -41,6 +43,36 @@ export function GrnClient({ userId, userRole }: GrnClientProps) {
           Create GRN
         </Button>
       </div>
+
+      {/* Ready for GRN — approved POs (goods-first) + approved/paid PVs
+          (payment-first) awaiting goods receipt. Hidden when deep-linked
+          from a PO so the filtered view stays focused. */}
+      {!poFilter && (
+        <>
+          <div className="space-y-3">
+            <div>
+              <h2 className="text-lg font-semibold">Ready for GRN</h2>
+              <p className="text-sm text-muted-foreground">
+                Select an approved document to record goods received
+              </p>
+            </div>
+            <ReadyForGrnSection
+              userId={userId}
+              userRole={userRole}
+              onChanged={handleRefresh}
+            />
+          </div>
+
+          <Separator className="my-8" />
+
+          <div>
+            <h2 className="text-lg font-semibold">All Goods Received Notes</h2>
+            <p className="text-sm text-muted-foreground">
+              View and manage all goods received notes
+            </p>
+          </div>
+        </>
+      )}
 
       <GrnTable
         userId={userId}

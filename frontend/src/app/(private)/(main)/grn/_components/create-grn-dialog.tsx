@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { QUERY_KEYS } from "@/lib/constants";
 import { ResponsiveSheet } from "@/components/ui/responsive-sheet";
@@ -34,6 +34,13 @@ interface CreateGRNDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess?: () => void;
+  /**
+   * Preselect a source document (from the "Ready for GRN" list). Passing one of
+   * these forces the matching flow regardless of the org default and prefills
+   * the items, so the user lands on a ready-to-confirm form.
+   */
+  initialPurchaseOrder?: PurchaseOrder;
+  initialPaymentVoucher?: PaymentVoucher;
 }
 
 interface ItemRow extends GRNItem {
@@ -60,6 +67,8 @@ export function CreateGRNDialog({
   open,
   onOpenChange,
   onSuccess,
+  initialPurchaseOrder,
+  initialPaymentVoucher,
 }: CreateGRNDialogProps) {
   const { user } = useSession();
   const queryClient = useQueryClient();
@@ -76,6 +85,16 @@ export function CreateGRNDialog({
   const [isCreating, setIsCreating] = useState(false);
 
   const orgFlow = orgSettings?.procurementFlow ?? "goods_first";
+  // A row-launched dialog forces the flow that matches its preselected source,
+  // overriding the org default (e.g. open a PO in a payment-first org).
+  const isSourcePreselected = Boolean(
+    initialPurchaseOrder || initialPaymentVoucher,
+  );
+  const effectiveFlow = initialPaymentVoucher
+    ? "payment_first"
+    : initialPurchaseOrder
+      ? "goods_first"
+      : orgFlow;
 
   // Approved POs for goods_first mode
   const approvedPOs = useMemo(
@@ -117,7 +136,24 @@ export function CreateGRNDialog({
   }, [selectedPV, purchaseOrders]);
 
   // The effective PO for item population
-  const effectivePO = orgFlow === "payment_first" ? pvLinkedPO : selectedPO;
+  const effectivePO =
+    effectiveFlow === "payment_first" ? pvLinkedPO : selectedPO;
+
+  // Preselect + prefill when launched from a "Ready for GRN" row.
+  useEffect(() => {
+    if (!open) return;
+    if (initialPurchaseOrder) {
+      setSelectedPOId(initialPurchaseOrder.id);
+      setItems(buildItemsFromPOItems(initialPurchaseOrder.items));
+    } else if (initialPaymentVoucher) {
+      setSelectedPVDocNumber(initialPaymentVoucher.documentNumber);
+      const linkedPO = (purchaseOrders as PurchaseOrder[]).find(
+        (po) => po.documentNumber === initialPaymentVoucher.linkedPO,
+      );
+      setItems(buildItemsFromPOItems(linkedPO?.items ?? []));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, initialPurchaseOrder?.id, initialPaymentVoucher?.documentNumber]);
 
   const handlePOSelect = (poId: string) => {
     setSelectedPOId(poId);
@@ -182,7 +218,7 @@ export function CreateGRNDialog({
   };
 
   const poDocumentNumber =
-    orgFlow === "payment_first"
+    effectiveFlow === "payment_first"
       ? (pvLinkedPO?.documentNumber ?? "")
       : (selectedPO?.documentNumber ?? "");
 
@@ -197,7 +233,7 @@ export function CreateGRNDialog({
         Number(i.quantityReceived) >= 0 &&
         Number(i.quantityReceived) <= Number(i.quantityOrdered),
     ) &&
-    (orgFlow === "goods_first" || selectedPVDocNumber !== "");
+    (effectiveFlow === "goods_first" || selectedPVDocNumber !== "");
 
   const handleCreate = async () => {
     if (!canCreate || !user) return;
@@ -211,7 +247,7 @@ export function CreateGRNDialog({
         user.id,
         warehouseLocation,
         notes,
-        orgFlow === "payment_first" ? selectedPVDocNumber : undefined,
+        effectiveFlow === "payment_first" ? selectedPVDocNumber : undefined,
         consignmentNote,
       );
 
@@ -260,7 +296,7 @@ export function CreateGRNDialog({
     }
   };
 
-  const isGoodsFirst = orgFlow === "goods_first";
+  const isGoodsFirst = effectiveFlow === "goods_first";
   const FlowIcon = isGoodsFirst ? Truck : Wallet;
 
   return (
@@ -322,7 +358,7 @@ export function CreateGRNDialog({
                   {isGoodsFirst ? "Goods-First" : "Payment-First"}
                 </span>
                 <span className="text-xs text-muted-foreground">
-                  Organization default
+                  {isSourcePreselected ? "Selected source" : "Organization default"}
                 </span>
               </div>
               <p className="text-xs text-muted-foreground mt-0.5">
