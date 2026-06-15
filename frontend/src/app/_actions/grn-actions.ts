@@ -15,6 +15,7 @@ import {
 } from "./api-config";
 import authenticatedApiClient from "./api-config";
 import type { QualityIssue, GRNItem } from "@/types/goods-received-note";
+import type { UserRef } from "@/types/core";
 
 export interface GoodsReceivedNote {
   id: string;
@@ -31,6 +32,7 @@ export interface GoodsReceivedNote {
   warehouseLocation: string;
   receivedDate: string;
   receivedBy: string;
+  receivedByName?: string;
   approvedBy?: string;
   items: GRNItem[];
   qualityIssues: QualityIssue[];
@@ -39,6 +41,16 @@ export interface GoodsReceivedNote {
   stageName: string;
   createdAt: string;
   updatedAt: string;
+
+  /** Payment-first flow: PV document number approved/paid before this GRN. */
+  linkedPV?: string;
+
+  // Resolved user objects {id,name,email,role} from the API — render name+role,
+  // never the bare *By ID.
+  receiver?: UserRef;
+  creator?: UserRef;
+  approver?: UserRef;
+  certifier?: UserRef;
 
   // Additional fields for compatibility
   approvalStage: number; // Maps to currentStage

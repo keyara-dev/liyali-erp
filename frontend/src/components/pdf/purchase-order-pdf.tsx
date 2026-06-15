@@ -142,15 +142,28 @@ const PurchaseOrderPDF: React.FC<PurchaseOrderPDFProps> = ({
   const receiverDept =
     (meta.receiverDept as string) || purchaseOrder.department || null;
 
-  // Financial breakdown
-  const subtotal = purchaseOrder.subtotal ?? purchaseOrder.totalAmount ?? 0;
-  const taxRate = (meta.taxRate as number) ?? null;
-  const taxAmount = taxRate
-    ? (subtotal * taxRate) / 100
-    : (purchaseOrder.tax ?? 0);
-  const deliveryCost = (meta.deliveryCost as number) ?? 0;
-  // Always compute the true grand total from parts so the PDF is consistent
-  // regardless of whether totalAmount in the DB includes tax/delivery or not.
+  // Financial breakdown — compute the subtotal straight from the line items
+  // (Σ qty × unit price) so the PDF always shows the freshest edited amounts,
+  // independent of any stored subtotal/total that may lag behind an edit. The
+  // API response also omits `subtotal`, so trusting it would fall back to the
+  // grand total and double-count tax/delivery below.
+  const itemsList = (purchaseOrder.items as any[]) || [];
+  const itemsSubtotal = itemsList.reduce((sum, it) => {
+    const up = Number(it.unitPrice ?? it.estimatedCost ?? 0) || 0;
+    const qty = Number(it.quantity ?? 0) || 0;
+    return sum + qty * up;
+  }, 0);
+  const subtotal = itemsList.length
+    ? itemsSubtotal
+    : (purchaseOrder.subtotal ?? purchaseOrder.totalAmount ?? 0);
+
+  const taxRateRaw = meta.taxRate != null ? Number(meta.taxRate) : 0;
+  const taxRate = Number.isFinite(taxRateRaw) ? taxRateRaw : 0;
+  const deliveryRaw = meta.deliveryCost != null ? Number(meta.deliveryCost) : 0;
+  const deliveryCost = Number.isFinite(deliveryRaw) ? deliveryRaw : 0;
+  const taxAmount =
+    taxRate > 0 ? (subtotal * taxRate) / 100 : (purchaseOrder.tax ?? 0);
+  // Grand total rebuilt from the freshly computed parts.
   const totalValue = subtotal + taxAmount + deliveryCost;
 
   // Metadata table fields
@@ -420,12 +433,12 @@ const PurchaseOrderPDF: React.FC<PurchaseOrderPDFProps> = ({
               {/* Rows */}
               {purchaseOrder.items.map((item: any, index: number) => {
                 const desc = item.description || item.itemDescription || "—";
-                const unitPrice = item.unitPrice ?? item.estimatedCost ?? 0;
-                const total =
-                  (item.totalPrice ??
-                    item.amount ??
-                    item.quantity * unitPrice) ||
-                  0;
+                const unitPrice =
+                  Number(item.unitPrice ?? item.estimatedCost ?? 0) || 0;
+                const qty = Number(item.quantity ?? 0) || 0;
+                // Compute the row total from qty × unit price so it always
+                // reflects the latest edit, never a stale stored line total.
+                const total = qty * unitPrice;
                 return (
                   <View
                     key={item.id || index}
