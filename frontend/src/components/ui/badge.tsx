@@ -38,7 +38,10 @@ function Badge({
   ...props
 }: React.ComponentProps<"span"> &
   VariantProps<typeof badgeVariants> & { asChild?: boolean }) {
-  const Comp = asChild ? Slot : "span";
+  // Cast to ElementType so the Slot|"span" union doesn't trip the @types/react
+  // ref-variance check (HTMLSpanElement vs HTMLElement) that surfaces when a
+  // duplicate @types/react is resolved in the dependency tree (e.g. bun on CI).
+  const Comp = (asChild ? Slot : "span") as React.ElementType;
 
   return (
     <Comp
