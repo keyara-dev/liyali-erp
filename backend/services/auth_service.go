@@ -204,6 +204,7 @@ func (s *AuthService) Login(ctx context.Context, email, password, ipAddress, use
 	// Use a timeout context for background cleanup to ensure it doesn't run indefinitely
 	cleanupCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	go func() {
+		defer utils.RecoverPanic("auth.cleanup-old-sessions")
 		defer cancel()
 		s.cleanupOldSessions(cleanupCtx, user.ID)
 	}()

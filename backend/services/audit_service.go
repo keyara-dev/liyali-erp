@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/liyali/liyali-gateway/logging"
 	"github.com/liyali/liyali-gateway/models"
+	"github.com/liyali/liyali-gateway/utils"
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
 )
@@ -47,6 +48,10 @@ type FieldChange struct {
 // LogDocumentEvent persists a single audit event for a document.
 // It is safe to call inside or outside a transaction.
 func LogDocumentEvent(db *gorm.DB, evt DocumentEvent) {
+	// Almost always launched as `go LogDocumentEvent(...)` — recover so a panic
+	// here (bad JSON, nil deref) can't crash the process.
+	defer utils.RecoverPanic("audit.LogDocumentEvent")
+
 	var detailsJSON datatypes.JSON
 	if len(evt.Details) > 0 {
 		if b, err := json.Marshal(evt.Details); err == nil {

@@ -158,9 +158,9 @@ func (h *SubscriptionHandler) ExtendOrganizationTrial(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse("Invalid request body"))
 	}
 
-	// Get user info from context (set by auth middleware)
-	userID := c.Locals("user_id").(string)
-	
+	// Get user info from context (set by auth middleware — key is "userID")
+	userID, _ := c.Locals("userID").(string)
+
 	logger.Info("Extending organization trial")
 
 	err := h.subscriptionService.ExtendOrganizationTrial(organizationID, request.DaysToAdd, request.Reason, userID)
@@ -202,9 +202,9 @@ func (h *SubscriptionHandler) ResetOrganizationTrial(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse("Invalid request body"))
 	}
 
-	// Get user info from context (set by auth middleware)
-	userID := c.Locals("user_id").(string)
-	
+	// Get user info from context (set by auth middleware — key is "userID")
+	userID, _ := c.Locals("userID").(string)
+
 	logger.Info("Resetting organization trial")
 
 	err := h.subscriptionService.ResetOrganizationTrial(organizationID, request.TrialDays, request.Reason, userID)

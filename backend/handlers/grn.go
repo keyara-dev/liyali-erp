@@ -1198,18 +1198,22 @@ func CertifyGRN(c *fiber.Ctx) error {
 				if defaultWF, _ := wfRegSvc.GetDefaultWorkflowForEntity(tenant.OrganizationID, "grn"); defaultWF != nil {
 					autoTx := config.DB.Begin()
 					autoSubmitOK := false
-					if _, err := wfSvc.AssignWorkflowToDocumentWithIDTx(
+					if autoTx.Error != nil {
+						// Couldn't open the transaction — skip auto-submit; the
+						// GRN stays DRAFT and can be submitted manually.
+					} else if _, err := wfSvc.AssignWorkflowToDocumentWithIDTx(
 						c.Context(), autoTx, tenant.OrganizationID, grn.ID, "grn",
 						defaultWF.ID.String(), tenant.UserID,
-					); err == nil {
-						_ = autoTx.Model(&models.GoodsReceivedNote{}).
-							Where("id = ?", grn.ID).
-							Update("status", models.StatusPending).Error
-						if commitErr := autoTx.Commit().Error; commitErr == nil {
-							autoSubmitOK = true
-						}
-					} else {
+					); err != nil {
 						autoTx.Rollback()
+					} else if updErr := autoTx.Model(&models.GoodsReceivedNote{}).
+						Where("id = ?", grn.ID).
+						Update("status", models.StatusPending).Error; updErr != nil {
+						// Status flip failed: roll back so we don't leave a workflow
+						// assigned to a GRN that's still DRAFT, and don't report success.
+						autoTx.Rollback()
+					} else if commitErr := autoTx.Commit().Error; commitErr == nil {
+						autoSubmitOK = true
 					}
 
 					// Post-commit: append a system-actor audit entry so the

@@ -663,6 +663,7 @@ func UpdateRequisition(c *fiber.Ctx) error {
 	if req.Metadata != nil {
 		if _, hasQuotations := req.Metadata["quotations"]; hasQuotations {
 			go func(reqID string, orgID string, newMeta []byte) {
+				defer utils.RecoverPanic("requisition.backfill-po-metadata")
 				var po models.PurchaseOrder
 				if err := config.DB.Where("source_requisition_id = ? AND organization_id = ?", reqID, orgID).
 					First(&po).Error; err != nil {

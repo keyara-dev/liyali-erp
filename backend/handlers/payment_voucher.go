@@ -445,19 +445,23 @@ func CreatePaymentVoucher(c *fiber.Ctx) error {
 				GetDefaultWorkflowForEntity(tenant.OrganizationID, "payment_voucher"); defaultWF != nil {
 				autoTx := config.DB.Begin()
 				autoSubmitOK := false
-				if _, err := wfSvc.AssignWorkflowToDocumentWithIDTx(
+				if autoTx.Error != nil {
+					// Couldn't open the transaction — skip auto-submit; the PV
+					// stays DRAFT and the caller can submit it manually.
+				} else if _, err := wfSvc.AssignWorkflowToDocumentWithIDTx(
 					c.Context(), autoTx, tenant.OrganizationID, voucher.ID, "payment_voucher",
 					defaultWF.ID.String(), tenant.UserID,
-				); err == nil {
-					_ = autoTx.Model(&models.PaymentVoucher{}).
-						Where("id = ?", voucher.ID).
-						Update("status", models.StatusPending).Error
-					if commitErr := autoTx.Commit().Error; commitErr == nil {
-						autoSubmitOK = true
-					}
-					_ = config.DB.Where("id = ?", voucher.ID).First(&voucher).Error
-				} else {
+				); err != nil {
 					autoTx.Rollback()
+				} else if updErr := autoTx.Model(&models.PaymentVoucher{}).
+					Where("id = ?", voucher.ID).
+					Update("status", models.StatusPending).Error; updErr != nil {
+					// Status flip failed: roll back so we don't leave a workflow
+					// assigned to a PV that's still DRAFT, and don't report success.
+					autoTx.Rollback()
+				} else if commitErr := autoTx.Commit().Error; commitErr == nil {
+					autoSubmitOK = true
+					_ = config.DB.Where("id = ?", voucher.ID).First(&voucher).Error
 				}
 
 				// Post-commit: append a system-actor audit entry so the

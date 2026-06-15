@@ -7,6 +7,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/liyali/liyali-gateway/logging"
 	"github.com/liyali/liyali-gateway/models"
+	"github.com/liyali/liyali-gateway/utils"
 	"gorm.io/gorm"
 )
 
@@ -34,6 +35,10 @@ func NewNotificationService(db *gorm.DB) *NotificationService {
 
 // HandleWorkflowEvent processes workflow events and creates notifications
 func (ns *NotificationService) HandleWorkflowEvent(event NotificationEvent) error {
+	// Always dispatched in a fire-and-forget goroutine — recover so a panic in
+	// any notification path can't crash the process.
+	defer utils.RecoverPanic("notification.HandleWorkflowEvent")
+
 	switch event.Type {
 	case "approval_required":
 		return ns.notifyApprovalRequired(event)
@@ -62,8 +67,8 @@ func (ns *NotificationService) notifyApprovalRequired(event NotificationEvent) e
 	// Get workflow tasks for this document
 	var tasks []models.WorkflowTask
 	if err := ns.db.Where(
-		"entity_id = ? AND status = ?",
-		event.DocumentID, "pending",
+		"entity_id = ? AND UPPER(status) IN ('PENDING','CLAIMED')",
+		event.DocumentID,
 	).Find(&tasks).Error; err != nil {
 		return fmt.Errorf("failed to fetch workflow tasks: %v", err)
 	}

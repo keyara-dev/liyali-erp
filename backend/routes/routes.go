@@ -86,13 +86,18 @@ func SetupRoutes(app *fiber.App, handlerRegistry *handlers.HandlerRegistry, rbac
 	// Subscription routes (authentication required, no tenant middleware)
 	// subscriptions := protected.Group("/subscriptions")
 
-	// Organization-specific subscription routes
-	orgSubs := protected.Group("/organizations/:id")
+	// Organization-specific subscription routes.
+	// The org is taken from the :id path param (not the tenant header), so every
+	// route MUST authorize the caller against that specific org — otherwise any
+	// authenticated user could read/upgrade an arbitrary org by guessing its ID
+	// (cross-tenant IDOR + free tier escalation). Reads require membership;
+	// mutations (upgrade / trial changes) require org-admin.
+	orgSubs := protected.Group("/organizations/:id", middleware.RequireOrgParamMembership(false))
 	orgSubs.Get("/subscription", handlerRegistry.Subscription.GetOrganizationSubscription)
 	orgSubs.Get("/trial-status", handlerRegistry.Subscription.GetOrganizationTrialStatus)
-	orgSubs.Post("/upgrade", handlerRegistry.Subscription.UpgradeOrganization)
-	orgSubs.Post("/trial/extend", middleware.AdminMiddleware(), handlerRegistry.Subscription.ExtendOrganizationTrial)
-	orgSubs.Post("/trial/reset", middleware.AdminMiddleware(), handlerRegistry.Subscription.ResetOrganizationTrial)
+	orgSubs.Post("/upgrade", middleware.RequireOrgParamMembership(true), handlerRegistry.Subscription.UpgradeOrganization)
+	orgSubs.Post("/trial/extend", middleware.RequireOrgParamMembership(true), handlerRegistry.Subscription.ExtendOrganizationTrial)
+	orgSubs.Post("/trial/reset", middleware.RequireOrgParamMembership(true), handlerRegistry.Subscription.ResetOrganizationTrial)
 	orgSubs.Get("/features/check", handlerRegistry.Subscription.CheckFeatureAccess)
 
 	// Tenant-scoped routes (authentication + tenant context required).

@@ -14,6 +14,7 @@ import (
 
 	"github.com/liyali/liyali-gateway/models"
 	"github.com/liyali/liyali-gateway/repository"
+	"github.com/liyali/liyali-gateway/utils"
 )
 
 const defaultRetentionDays = 90
@@ -59,6 +60,7 @@ func (s *ActivityService) LogActivity(ctx context.Context, entry *models.UserAct
 		// Queue is full — fall back to direct async write so we don't lose the entry
 		log.Printf("[ActivityService] Log queue full, falling back to direct write: action=%s user=%s", entry.ActionType, entry.UserID)
 		go func() {
+			defer utils.RecoverPanic("activity.direct-write")
 			writeCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cancel()
 			if err := s.repo.Create(writeCtx, entry); err != nil {

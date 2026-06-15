@@ -26,6 +26,10 @@ func SyncDocument(db *gorm.DB, entityType, entityID string) {
 // approver, editor). Pass "" for system/automated mutations — UpdatedBy stays
 // NULL in that case.
 func SyncDocumentAs(db *gorm.DB, entityType, entityID, updaterID string) {
+	// Almost always launched as `go SyncDocumentAs(...)` — recover so a panic
+	// here can't crash the process.
+	defer RecoverPanic("document_sync.SyncDocumentAs")
+
 	if err := syncDocument(db, strings.ToUpper(entityType), entityID, updaterID); err != nil {
 		log.Printf("[document_sync] failed to sync %s %s: %v", entityType, entityID, err)
 	}

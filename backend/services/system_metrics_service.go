@@ -235,6 +235,7 @@ func (s *SystemMetricsService) UpdateServiceStatus(serviceName, status string, r
 func (s *SystemMetricsService) StartMetricsCollection(interval time.Duration) {
 	ticker := time.NewTicker(interval)
 	go func() {
+		defer utils.RecoverPanic("system-metrics.collection-worker")
 		for range ticker.C {
 			if err := s.CollectMetrics(); err != nil {
 				log.Printf("Error collecting metrics: %v", err)

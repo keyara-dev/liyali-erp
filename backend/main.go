@@ -17,6 +17,7 @@ import (
 	"github.com/liyali/liyali-gateway/repository"
 	"github.com/liyali/liyali-gateway/routes"
 	"github.com/liyali/liyali-gateway/services"
+	"github.com/liyali/liyali-gateway/utils"
 )
 
 func init() {
@@ -137,6 +138,7 @@ func main() {
 	invExpiryCtx, cancelInvExpiry := context.WithCancel(context.Background())
 	defer cancelInvExpiry()
 	go func() {
+		defer utils.RecoverPanic("invitation-expiry-worker")
 		invSvc := services.NewInvitationService(config.DB)
 		ticker := time.NewTicker(time.Hour)
 		defer ticker.Stop()

@@ -1066,7 +1066,28 @@ func (s *WorkflowExecutionService) ApproveWorkflowTaskWithVersion(ctx context.Co
 		return fmt.Errorf("failed to get workflow stages: %w", err)
 	}
 
+	if task.StageNumber < 1 || task.StageNumber > len(stages) {
+		tx.Rollback()
+		return fmt.Errorf("task stage %d out of range for workflow with %d stage(s)", task.StageNumber, len(stages))
+	}
 	currentStage := stages[task.StageNumber-1]
+
+	// Guard against the same approver counting twice toward a multi-approval
+	// stage. Partial approvals return the task to PENDING (see below), so
+	// without this an approver could re-claim and re-approve, inflating the
+	// count for "all"/"majority"/"quorum"/count criteria.
+	var priorApprovals int64
+	if err := tx.Model(&models.StageApprovalRecord{}).
+		Where("workflow_task_id = ? AND stage_number = ? AND approver_id = ? AND action = ?",
+			taskID, task.StageNumber, userID, "approved").
+		Count(&priorApprovals).Error; err != nil {
+		tx.Rollback()
+		return fmt.Errorf("failed to check existing approvals: %w", err)
+	}
+	if priorApprovals > 0 {
+		tx.Rollback()
+		return fmt.Errorf("you have already approved this stage")
+	}
 
 	// Record this approval in stage approval records
 	now := time.Now()
@@ -1282,13 +1303,22 @@ func (s *WorkflowExecutionService) ApproveWorkflowTaskWithVersion(ctx context.Co
 			s.handleStageProgression(ctx, assignment, userID)
 		}
 	} else {
-		// Stage not complete yet, update task status to partially approved
+		// Stage needs more approvals. Return the task to a claimable PENDING
+		// state (clearing this approver's claim) so the remaining required
+		// approvers can see and claim it. Writing a non-canonical
+		// "partially_approved" status here previously made the task vanish from
+		// every task-list query (all of which filter
+		// UPPER(status) IN ('PENDING','CLAIMED')) — a permanent deadlock for any
+		// multi-approver stage.
 		result := tx.Model(&task).
 			Where("id = ? AND version = ?", taskID, task.Version).
 			Updates(map[string]interface{}{
-				"status":     "partially_approved",
-				"updated_by": userID,
-				"version":    task.Version + 1,
+				"status":       "PENDING",
+				"claimed_by":   nil,
+				"claimed_at":   nil,
+				"claim_expiry": nil,
+				"updated_by":   userID,
+				"version":      task.Version + 1,
 			})
 
 		if result.Error != nil {

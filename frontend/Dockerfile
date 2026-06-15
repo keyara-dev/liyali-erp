@@ -8,7 +8,7 @@ RUN apk add --no-cache libc6-compat openssl
 WORKDIR /app
 
 # Copy package files
-COPY package.json bun.lockb* ./
+COPY package.json bun.lock ./
 
 # Dependencies stage
 FROM base AS deps

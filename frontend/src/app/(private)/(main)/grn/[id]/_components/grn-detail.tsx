@@ -19,6 +19,7 @@ import { useGRNById } from "@/hooks/use-grn-queries";
 import { DocumentLoadingPage } from "@/components/base/document-loading-page";
 import ErrorDisplay from "@/components/base/error-display";
 import { QUERY_KEYS } from "@/lib/constants";
+import { toast } from "sonner";
 import Link from "next/link";
 
 interface GrnDetailProps {
@@ -73,6 +74,7 @@ export function GrnDetail({ grnId, userId, userRole }: GrnDetailProps) {
       setShowApprovalDialog(false);
     } catch (error) {
       console.error("Error approving GRN:", error);
+      toast.error("Failed to approve GRN. Please try again.");
     }
   };
 

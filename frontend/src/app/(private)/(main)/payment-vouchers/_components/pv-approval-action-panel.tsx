@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { DigitalSignaturePad } from "@/components/ui/digital-signature-pad";
 import { Upload, Send, XCircle } from "lucide-react";
+import { toast } from "sonner";
 import {
   useApprovalTasks,
   useApproveTask,
@@ -75,6 +76,7 @@ export function PVApprovalActionPanel({
       });
     } catch (error) {
       console.error("Approval error:", error);
+      toast.error("Failed to approve payment voucher. Please try again.");
     }
   };
 
@@ -91,6 +93,7 @@ export function PVApprovalActionPanel({
       });
     } catch (error) {
       console.error("Rejection error:", error);
+      toast.error("Failed to reject payment voucher. Please try again.");
     }
   };
 
