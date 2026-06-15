@@ -15,6 +15,7 @@ import {
 import { DataList, DataListColumn } from "@/components/ui/data-list";
 import { FilterBar } from "@/components/ui/filter-bar";
 import { StatusBadge } from "@/components/status-badge";
+import { UserCell } from "@/components/ui/user-cell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -160,7 +161,7 @@ export function GrnTable({
         (g) =>
           g.documentNumber?.toLowerCase().includes(s) ||
           g.poDocumentNumber?.toLowerCase().includes(s) ||
-          g.receivedBy?.toLowerCase().includes(s) ||
+          (g.receiver?.name || g.receivedByName)?.toLowerCase().includes(s) ||
           // vendorName is on the linked PO, not on the GRN itself
           posByDocNumber
             .get(g.poDocumentNumber)
@@ -260,7 +261,7 @@ export function GrnTable({
       header: "Received by",
       priority: "lg",
       cell: (row) => (
-        <span className="text-muted-foreground">{row.receivedBy || "—"}</span>
+        <UserCell user={row.receiver} fallbackName={row.receivedByName} />
       ),
     },
     {
@@ -380,7 +381,9 @@ export function GrnTable({
               </div>
               <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                 {vendor && <span className="capitalize">{vendor}</span>}
-                {row.receivedBy && <span>{row.receivedBy}</span>}
+                {(row.receiver?.name || row.receivedByName) && (
+                  <span>{row.receiver?.name || row.receivedByName}</span>
+                )}
                 {(row.receivedDate || row.createdAt) && (
                   <span>
                     {new Date(

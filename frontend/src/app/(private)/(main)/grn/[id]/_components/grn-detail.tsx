@@ -187,7 +187,14 @@ export function GrnDetail({ grnId, userId, userRole }: GrnDetailProps) {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Received By</p>
-                <p className="font-medium">{grn.receivedBy || "N/A"}</p>
+                <p className="font-medium">
+                  {grn.receiver?.name || grn.receivedByName || "N/A"}
+                </p>
+                {grn.receiver?.role && (
+                  <p className="text-xs text-muted-foreground capitalize">
+                    {grn.receiver.role}
+                  </p>
+                )}
               </div>
             </CardContent>
           </Card>

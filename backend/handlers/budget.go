@@ -110,6 +110,29 @@ func GetBudgets(c *fiber.Ctx) error {
 		"total_count":  total,
 	}).Info("budgets_retrieved_successfully")
 
+	// Resolve owner/creator into {id,name,email,role} objects.
+	if len(responses) > 0 {
+		ids := make([]string, 0, len(responses)*2)
+		for _, r := range responses {
+			ids = append(ids, r.OwnerID, r.CreatedBy)
+		}
+		users := utils.ResolveUserRefs(db, tenant.OrganizationID, ids)
+		for i := range responses {
+			if u, ok := users[responses[i].OwnerID]; ok {
+				owner := u
+				responses[i].Owner = &owner
+			}
+			creatorID := responses[i].CreatedBy
+			if creatorID == "" {
+				creatorID = responses[i].OwnerID
+			}
+			if u, ok := users[creatorID]; ok {
+				creator := u
+				responses[i].Creator = &creator
+			}
+		}
+	}
+
 	return utils.SendPaginatedSuccess(c, responses, "Budgets retrieved successfully", page, limit, total)
 }
 

@@ -110,6 +110,18 @@ export type QualityIssueSeverity = "low" | "medium" | "high";
 
 // ================== CORE USER & ORGANIZATION TYPES ==================
 
+/**
+ * Compact user projection embedded in document responses (received_by,
+ * created_by, approved_by, etc.) so tables can render a name + role instead of
+ * a bare user ID. `role` is the user's role in the document's organization.
+ */
+export interface UserRef {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+}
+
 export interface User {
   id: string;
   email: string;

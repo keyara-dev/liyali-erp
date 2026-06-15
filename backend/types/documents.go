@@ -7,6 +7,18 @@ import (
 	"time"
 )
 
+// UserRef is a compact {id,name,email,role} projection of a user, embedded in
+// document responses so clients can render a name + role instead of a bare user
+// ID. The Role is resolved to the user's role in the document's organization
+// (falling back to the global account role). Populated by
+// utils.ResolveUserRefs during response enrichment.
+type UserRef struct {
+	ID    string `json:"id"`
+	Name  string `json:"name"`
+	Email string `json:"email"`
+	Role  string `json:"role"`
+}
+
 // ================== REQUISITION TYPES ==================
 
 // CreateRequisitionRequest represents a requisition creation request
@@ -113,6 +125,10 @@ type RequisitionResponse struct {
 	// Linked PO (populated on list responses for approved-req table)
 	LinkedPO *LinkedPOSummary `json:"linkedPO,omitempty"`
 
+	// Resolved user objects {id,name,email,role}.
+	Requester *UserRef `json:"requester,omitempty"`
+	Creator   *UserRef `json:"creator,omitempty"`
+
 	CreatedAt time.Time `json:"createdAt"`
 	UpdatedAt time.Time `json:"updatedAt"`
 }
@@ -164,6 +180,11 @@ type BudgetResponse struct {
 	Currency        string               `json:"currency,omitempty"`
 	CreatedBy       string               `json:"createdBy,omitempty"`
 	Items           []interface{}        `json:"items"`
+
+	// Resolved user objects {id,name,email,role}.
+	Owner   *UserRef `json:"owner,omitempty"`
+	Creator *UserRef `json:"creator,omitempty"`
+
 	CreatedAt       time.Time            `json:"createdAt"`
 	UpdatedAt       time.Time            `json:"updatedAt"`
 }
@@ -317,6 +338,10 @@ type PurchaseOrderResponse struct {
 	CostCenter   string `json:"costCenter,omitempty"`
 	ProjectCode  string `json:"projectCode,omitempty"`
 	CreatedBy    string `json:"createdBy,omitempty"`
+
+	// Resolved user object {id,name,email,role}.
+	Creator *UserRef `json:"creator,omitempty"`
+
 	CreatedAt    time.Time `json:"createdAt"`
 	UpdatedAt    time.Time `json:"updatedAt"`
 }
@@ -414,6 +439,11 @@ type PaymentVoucherResponse struct {
 	ProofOfPayment       interface{} `json:"proofOfPayment,omitempty"`
 	PaidAt               *time.Time  `json:"paidAt,omitempty"`
 	PaidBy               *string     `json:"paidBy,omitempty"`
+
+	// Resolved user objects {id,name,email,role}.
+	Creator    *UserRef `json:"creator,omitempty"`
+	PaidByUser *UserRef `json:"paidByUser,omitempty"`
+
 	CreatedAt            time.Time   `json:"createdAt"`
 	UpdatedAt            time.Time   `json:"updatedAt"`
 }
@@ -538,6 +568,13 @@ type GRNResponse struct {
 
 	// Per-GRN stamp; PDF falls back to org settings stamp when empty.
 	StampImageURL string `json:"stampImageUrl,omitempty"`
+
+	// Resolved user objects {id,name,email,role} so clients show name + role
+	// instead of the bare *By IDs above. Populated during response enrichment.
+	Receiver  *UserRef `json:"receiver,omitempty"`
+	Creator   *UserRef `json:"creator,omitempty"`
+	Approver  *UserRef `json:"approver,omitempty"`
+	Certifier *UserRef `json:"certifier,omitempty"`
 
 	CreatedAt time.Time `json:"createdAt"`
 	UpdatedAt time.Time `json:"updatedAt"`

@@ -224,6 +224,26 @@ reqLoad:
 		}
 	}
 
+	// Resolve the requester (= creator) into a {id,name,email,role} object so
+	// clients render a name + role instead of a bare user ID.
+	if len(responses) > 0 {
+		ids := make([]string, 0, len(responses))
+		for _, r := range responses {
+			ids = append(ids, r.RequesterID)
+		}
+		users := utils.ResolveUserRefs(config.DB, organizationID, ids)
+		for i := range responses {
+			u, ok := users[responses[i].RequesterID]
+			if !ok {
+				continue
+			}
+			requester := u
+			creator := u
+			responses[i].Requester = &requester
+			responses[i].Creator = &creator
+		}
+	}
+
 	pagination := utils.CalculatePagination(page, pageSize, total)
 	return utils.SendSuccess(c, fiber.StatusOK, responses, "Requisitions retrieved successfully", pagination)
 }

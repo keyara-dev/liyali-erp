@@ -8,6 +8,7 @@ import type {
   ItemCondition,
   QualityIssueType,
   QualityIssueSeverity,
+  UserRef,
 } from "./core";
 
 // ============================================================================
@@ -82,6 +83,13 @@ export interface GoodsReceivedNote {
   metadata?: Record<string, any>;
   type?: string;
   createdByUser?: any;
+
+  // Resolved user objects {id,name,email,role} from the API — render name+role,
+  // never the bare *By ID.
+  receiver?: UserRef;
+  creator?: UserRef;
+  approver?: UserRef;
+  certifier?: UserRef;
 
   // Printed-form fields (PDF sample alignment)
   consignmentNote?: string;

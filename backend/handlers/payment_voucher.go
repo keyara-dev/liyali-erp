@@ -291,6 +291,30 @@ func GetPaymentVouchers(c *fiber.Ctx) error {
 		responses = append(responses, modelToPaymentVoucherResponse(voucher))
 	}
 
+	// Resolve creator / paid-by into {id,name,email,role} objects.
+	if len(responses) > 0 {
+		ids := make([]string, 0, len(responses)*2)
+		for _, r := range responses {
+			ids = append(ids, r.CreatedBy)
+			if r.PaidBy != nil {
+				ids = append(ids, *r.PaidBy)
+			}
+		}
+		users := utils.ResolveUserRefs(config.DB, tenant.OrganizationID, ids)
+		for i := range responses {
+			if u, ok := users[responses[i].CreatedBy]; ok {
+				creator := u
+				responses[i].Creator = &creator
+			}
+			if responses[i].PaidBy != nil {
+				if u, ok := users[*responses[i].PaidBy]; ok {
+					paidBy := u
+					responses[i].PaidByUser = &paidBy
+				}
+			}
+		}
+	}
+
 	return utils.SendPaginatedSuccess(c, responses, "Payment vouchers retrieved successfully", page, limit, total)
 }
 

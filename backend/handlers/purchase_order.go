@@ -204,6 +204,21 @@ func GetPurchaseOrders(c *fiber.Ctx) error {
 
 	logger.Info("purchase_orders_retrieved_successfully")
 
+	// Resolve creator into a {id,name,email,role} object.
+	if len(responses) > 0 {
+		ids := make([]string, 0, len(responses))
+		for _, r := range responses {
+			ids = append(ids, r.CreatedBy)
+		}
+		users := utils.ResolveUserRefs(config.DB, tenant.OrganizationID, ids)
+		for i := range responses {
+			if u, ok := users[responses[i].CreatedBy]; ok {
+				creator := u
+				responses[i].Creator = &creator
+			}
+		}
+	}
+
 	return utils.SendPaginatedSuccess(c, responses, "Purchase orders retrieved successfully", page, limit, total)
 }
 

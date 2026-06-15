@@ -149,8 +149,43 @@ func GetGRNs(c *fiber.Ctx) error {
 	for _, grn := range grns {
 		responses = append(responses, modelToGRNResponse(grn))
 	}
+	enrichGRNUsers(responses, tenant.OrganizationID)
 
 	return utils.SendPaginatedSuccess(c, responses, "GRNs retrieved successfully", page, limit, total)
+}
+
+// enrichGRNUsers batch-resolves the user-reference IDs on each GRN response into
+// {id,name,email,role} objects (single query) so clients render a name + role
+// instead of a bare UUID. Safe to call with a one-element slice for detail
+// responses.
+func enrichGRNUsers(responses []types.GRNResponse, orgID string) {
+	if len(responses) == 0 {
+		return
+	}
+	ids := make([]string, 0, len(responses)*5)
+	for _, r := range responses {
+		ids = append(ids, r.ReceivedBy, r.CreatedBy, r.OwnerID, r.ApprovedBy, r.CertifiedByID)
+	}
+	users := utils.ResolveUserRefs(config.DB, orgID, ids)
+	for i := range responses {
+		r := &responses[i]
+		if u, ok := users[r.ReceivedBy]; ok {
+			r.Receiver = &u
+		}
+		creatorID := r.CreatedBy
+		if creatorID == "" {
+			creatorID = r.OwnerID
+		}
+		if u, ok := users[creatorID]; ok {
+			r.Creator = &u
+		}
+		if u, ok := users[r.ApprovedBy]; ok {
+			r.Approver = &u
+		}
+		if u, ok := users[r.CertifiedByID]; ok {
+			r.Certifier = &u
+		}
+	}
 }
 
 // listGRNIDsGorm is the sqlc-free implementation of the GRN listing query.
@@ -599,6 +634,9 @@ func GetGRN(c *fiber.Ctx) error {
 	if liveHistory := utils.GetDocumentApprovalHistory(config.DB, grn.ID, "grn"); len(liveHistory) > 0 {
 		response.ApprovalHistory = liveHistory
 	}
+	single := []types.GRNResponse{response}
+	enrichGRNUsers(single, tenant.OrganizationID)
+	response = single[0]
 	return c.JSON(types.DetailResponse{
 		Success: true,
 		Data:    response,
