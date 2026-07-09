@@ -383,6 +383,8 @@ type Vendor struct {
 	City           string        `json:"city"`
 	BankAccount    string        `json:"bankAccount"` // Legacy — kept for backward compat
 	TaxID          string        `json:"taxId"`
+	ZraTpin        string        `gorm:"column:zra_tpin;default:''" json:"zraTpin"`
+	PacraRegNumber string        `gorm:"column:pacra_reg_number;default:''" json:"pacraRegNumber"`
 	Active         bool          `json:"active"`
 	CreatedBy      string        `json:"createdBy"` // User who created the vendor
 

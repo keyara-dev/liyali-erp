@@ -642,13 +642,15 @@ type PayeeResponse struct {
 
 // CreateVendorRequest represents a vendor creation request
 type CreateVendorRequest struct {
-	Name        string `json:"name" validate:"required,min=3"`
-	Email       string `json:"email" validate:"required,email"`
-	Phone       string `json:"phone" validate:"required"`
-	Country     string `json:"country" validate:"required"`
-	City        string `json:"city" validate:"required"`
-	BankAccount string `json:"bankAccount" validate:"required"`
-	TaxID       string `json:"taxId" validate:"required"`
+	Name           string `json:"name" validate:"required,min=3"`
+	Email          string `json:"email" validate:"required,email"`
+	Phone          string `json:"phone" validate:"required"`
+	Country        string `json:"country" validate:"required"`
+	City           string `json:"city" validate:"required"`
+	BankAccount    string `json:"bankAccount" validate:"required"`
+	TaxID          string `json:"taxId"` // Legacy — kept for backward compat, mirrored from ZraTpin when omitted
+	ZraTpin        string `json:"zraTpin" validate:"required"`
+	PacraRegNumber string `json:"pacraRegNumber" validate:"required"`
 	// Bank details (optional)
 	BankName      string `json:"bankName"`
 	AccountName   string `json:"accountName"`
@@ -662,14 +664,16 @@ type CreateVendorRequest struct {
 
 // UpdateVendorRequest represents a vendor update request
 type UpdateVendorRequest struct {
-	Name        string `json:"name"`
-	Email       string `json:"email"`
-	Phone       string `json:"phone"`
-	Country     string `json:"country"`
-	City        string `json:"city"`
-	BankAccount string `json:"bankAccount"`
-	TaxID       string `json:"taxId"`
-	Active      bool   `json:"active"`
+	Name           string `json:"name"`
+	Email          string `json:"email"`
+	Phone          string `json:"phone"`
+	Country        string `json:"country"`
+	City           string `json:"city"`
+	BankAccount    string `json:"bankAccount"`
+	TaxID          string `json:"taxId"`
+	ZraTpin        string `json:"zraTpin"`
+	PacraRegNumber string `json:"pacraRegNumber"`
+	Active         bool   `json:"active"`
 	// Bank details
 	BankName      string `json:"bankName"`
 	AccountName   string `json:"accountName"`
@@ -683,16 +687,18 @@ type UpdateVendorRequest struct {
 
 // VendorResponse represents a vendor in responses
 type VendorResponse struct {
-	ID          string    `json:"id"`
-	VendorCode  string    `json:"vendorCode"`
-	Name        string    `json:"name"`
-	Email       string    `json:"email"`
-	Phone       string    `json:"phone"`
-	Country     string    `json:"country"`
-	City        string    `json:"city"`
-	BankAccount string    `json:"bankAccount"`
-	TaxID       string    `json:"taxId"`
-	Active      bool      `json:"active"`
+	ID             string `json:"id"`
+	VendorCode     string `json:"vendorCode"`
+	Name           string `json:"name"`
+	Email          string `json:"email"`
+	Phone          string `json:"phone"`
+	Country        string `json:"country"`
+	City           string `json:"city"`
+	BankAccount    string `json:"bankAccount"`
+	TaxID          string `json:"taxId"`
+	ZraTpin        string `json:"zraTpin"`
+	PacraRegNumber string `json:"pacraRegNumber"`
+	Active         bool   `json:"active"`
 	// Bank details
 	BankName      string `json:"bankName,omitempty"`
 	AccountName   string `json:"accountName,omitempty"`

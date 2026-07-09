@@ -43,13 +43,14 @@ func newVendorsApp(tenantMiddleware ...fiber.Handler) *fiber.App {
 // validVendorPayload returns a map with all required vendor fields.
 func validVendorPayload() map[string]interface{} {
 	return map[string]interface{}{
-		"name":        "Acme Supplies Ltd",
-		"email":       "acme@example.com",
-		"phone":       "+260971000001",
-		"country":     "Zambia",
-		"city":        "Lusaka",
-		"bankAccount": "ACC-1234567",
-		"taxId":       "TAX-9999",
+		"name":           "Acme Supplies Ltd",
+		"email":          "acme@example.com",
+		"phone":          "+260971000001",
+		"country":        "Zambia",
+		"city":           "Lusaka",
+		"bankAccount":    "ACC-1234567",
+		"zraTpin":        "1000000000",
+		"pacraRegNumber": "PACRA-REG-000111",
 	}
 }
 
@@ -354,20 +355,52 @@ func TestCreateVendor_MissingBankAccount(t *testing.T) {
 	assert.Equal(t, true, body["success"])
 }
 
-func TestCreateVendor_MissingTaxID(t *testing.T) {
+func TestCreateVendor_MissingZraTpin(t *testing.T) {
 	db := setupTestDB(t)
 	defer teardownTestDB(t, db)
 
 	app := newVendorsApp(withTenantCtx(testOrgID, testUserID, testUserRole))
 
 	payload := validVendorPayload()
-	delete(payload, "taxId")
+	delete(payload, "zraTpin")
 
 	resp := testRequest(app, http.MethodPost, "/vendors/", payload)
 	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
 
 	body := decodeResponse(resp)
 	assert.Equal(t, false, body["success"])
+}
+
+func TestCreateVendor_MissingPacraRegNumber(t *testing.T) {
+	db := setupTestDB(t)
+	defer teardownTestDB(t, db)
+
+	app := newVendorsApp(withTenantCtx(testOrgID, testUserID, testUserRole))
+
+	payload := validVendorPayload()
+	delete(payload, "pacraRegNumber")
+
+	resp := testRequest(app, http.MethodPost, "/vendors/", payload)
+	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
+
+	body := decodeResponse(resp)
+	assert.Equal(t, false, body["success"])
+}
+
+// TaxID is legacy and no longer required on its own — a create request that
+// omits it entirely (but sends the new compliance fields) still succeeds,
+// with taxId mirrored from zraTpin. See TestCreateVendor_Success.
+func TestCreateVendor_TaxIDOptional(t *testing.T) {
+	db := setupTestDB(t)
+	defer teardownTestDB(t, db)
+
+	app := newVendorsApp(withTenantCtx(testOrgID, testUserID, testUserRole))
+
+	payload := validVendorPayload()
+	delete(payload, "taxId") // already absent, but explicit for clarity
+
+	resp := testRequest(app, http.MethodPost, "/vendors/", payload)
+	assert.Equal(t, http.StatusCreated, resp.StatusCode)
 }
 
 func TestCreateVendor_Success(t *testing.T) {
@@ -391,6 +424,9 @@ func TestCreateVendor_Success(t *testing.T) {
 	assert.NotEmpty(t, data["id"])
 	assert.NotEmpty(t, data["vendorCode"])
 	assert.Equal(t, true, data["active"])
+	assert.Equal(t, "1000000000", data["zraTpin"])
+	assert.Equal(t, "PACRA-REG-000111", data["pacraRegNumber"])
+	assert.Equal(t, "1000000000", data["taxId"], "legacy taxId should mirror zraTpin when the caller omits it")
 
 	// Verify persisted to DB.
 	var count int64
@@ -535,6 +571,47 @@ func TestUpdateVendor_NameTooShort(t *testing.T) {
 
 	body := decodeResponse(resp)
 	assert.Equal(t, false, body["success"])
+}
+
+func TestUpdateVendor_SetsComplianceFields(t *testing.T) {
+	db := setupTestDB(t)
+	defer teardownTestDB(t, db)
+
+	vendor := models.Vendor{
+		ID:             uuid.New().String(),
+		OrganizationID: testOrgID,
+		VendorCode:     "VND-CMP-001",
+		Name:           "Compliance Vendor",
+		Email:          "compliance@example.com",
+		Phone:          "+260979999999",
+		Country:        "Zambia",
+		City:           "Lusaka",
+		BankAccount:    "ACC-CMP",
+		TaxID:          "TAX-CMP",
+		Active:         true,
+		CreatedBy:      testUserID,
+		CreatedAt:      time.Now(),
+		UpdatedAt:      time.Now(),
+	}
+	assert.NoError(t, db.Create(&vendor).Error)
+
+	app := newVendorsApp(withTenantCtx(testOrgID, testUserID, testUserRole))
+
+	resp := testRequest(app, http.MethodPut, "/vendors/"+vendor.ID, map[string]interface{}{
+		"zraTpin":        "2000000000",
+		"pacraRegNumber": "PACRA-REG-999",
+	})
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+
+	body := decodeResponse(resp)
+	assert.Equal(t, true, body["success"])
+
+	data, ok := body["data"].(map[string]interface{})
+	assert.True(t, ok, "data should be an object")
+	assert.Equal(t, "2000000000", data["zraTpin"])
+	assert.Equal(t, "PACRA-REG-999", data["pacraRegNumber"])
+	// Fields not in the update payload should be unchanged.
+	assert.Equal(t, "Compliance Vendor", data["name"])
 }
 
 func TestUpdateVendor_DuplicateEmail(t *testing.T) {

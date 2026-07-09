@@ -151,10 +151,16 @@ func CreateVendor(c *fiber.Ctx) error {
 			"message": "City is required",
 		})
 	}
-	if req.TaxID == "" {
+	if req.ZraTpin == "" {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"success": false,
-			"message": "Tax ID is required",
+			"message": "ZRA TPIN is required",
+		})
+	}
+	if req.PacraRegNumber == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"success": false,
+			"message": "PACRA registration number is required",
 		})
 	}
 
@@ -170,6 +176,12 @@ func CreateVendor(c *fiber.Ctx) error {
 	// Generate vendor code
 	vendorCode := utils.GenerateVendorCode()
 
+	// Legacy taxId mirrors the new ZRA TPIN when the caller doesn't send one.
+	taxID := req.TaxID
+	if taxID == "" {
+		taxID = req.ZraTpin
+	}
+
 	vendor := models.Vendor{
 		ID:              uuid.New().String(),
 		OrganizationID:  tenant.OrganizationID, // SECURITY: Set organization ID
@@ -180,7 +192,9 @@ func CreateVendor(c *fiber.Ctx) error {
 		Country:         req.Country,
 		City:            req.City,
 		BankAccount:     req.BankAccount,
-		TaxID:           req.TaxID,
+		TaxID:           taxID,
+		ZraTpin:         req.ZraTpin,
+		PacraRegNumber:  req.PacraRegNumber,
 		Active:          true,
 		CreatedBy:       tenant.UserID,
 		BankName:        req.BankName,
@@ -312,6 +326,12 @@ func UpdateVendor(c *fiber.Ctx) error {
 	if req.TaxID != "" {
 		vendor.TaxID = req.TaxID
 	}
+	if req.ZraTpin != "" {
+		vendor.ZraTpin = req.ZraTpin
+	}
+	if req.PacraRegNumber != "" {
+		vendor.PacraRegNumber = req.PacraRegNumber
+	}
 	if req.BankName != "" {
 		vendor.BankName = req.BankName
 	}
@@ -412,6 +432,8 @@ func modelToVendorResponse(vendor models.Vendor) types.VendorResponse {
 		City:            vendor.City,
 		BankAccount:     vendor.BankAccount,
 		TaxID:           vendor.TaxID,
+		ZraTpin:         vendor.ZraTpin,
+		PacraRegNumber:  vendor.PacraRegNumber,
 		Active:          vendor.Active,
 		BankName:        vendor.BankName,
 		AccountName:     vendor.AccountName,
@@ -423,4 +445,19 @@ func modelToVendorResponse(vendor models.Vendor) types.VendorResponse {
 		CreatedAt:       vendor.CreatedAt,
 		UpdatedAt:       vendor.UpdatedAt,
 	}
+}
+
+// vendorComplianceWarnings returns human-readable warnings for missing ZRA
+// TPIN / PACRA registration data. Compliance is warn-only — a vendor missing
+// this data can still be used (e.g. for PO creation); callers surface these
+// warnings rather than blocking on them.
+func vendorComplianceWarnings(v *models.Vendor) []string {
+	var warnings []string
+	if v.ZraTpin == "" && v.TaxID == "" {
+		warnings = append(warnings, "Vendor is missing a ZRA TPIN")
+	}
+	if v.PacraRegNumber == "" {
+		warnings = append(warnings, "Vendor is missing a PACRA registration number")
+	}
+	return warnings
 }
