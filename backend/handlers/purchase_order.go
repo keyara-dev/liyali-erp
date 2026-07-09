@@ -293,9 +293,10 @@ func CreatePurchaseOrder(c *fiber.Ctx) error {
 
 	// Verify vendor exists if provided
 	var vendorIDPtr *string
+	var vendor *models.Vendor
 	if req.VendorID != "" {
-		var vendor models.Vendor
-		if err := config.DB.Where("id = ? AND organization_id = ?", req.VendorID, tenant.OrganizationID).First(&vendor).Error; err != nil {
+		var v models.Vendor
+		if err := config.DB.Where("id = ? AND organization_id = ?", req.VendorID, tenant.OrganizationID).First(&v).Error; err != nil {
 			logging.LogError(c, err, "vendor_not_found", map[string]interface{}{
 				"vendor_id":       req.VendorID,
 				"organization_id": tenant.OrganizationID,
@@ -307,6 +308,7 @@ func CreatePurchaseOrder(c *fiber.Ctx) error {
 			})
 		}
 		vendorIDPtr = &req.VendorID
+		vendor = &v
 	}
 
 	// Generate PO number
@@ -346,8 +348,26 @@ func CreatePurchaseOrder(c *fiber.Ctx) error {
 		UpdatedAt:         time.Now(),
 	}
 
-	if len(req.Metadata) > 0 {
-		if metaBytes, err := json.Marshal(req.Metadata); err == nil {
+	meta := map[string]interface{}{}
+	for k, v := range req.Metadata {
+		meta[k] = v
+	}
+	// Snapshot the vendor's compliance fields at PO creation time for audit
+	// purposes. WARN-ONLY: a missing ZRA TPIN / PACRA number is surfaced via
+	// complianceWarnings but never blocks PO creation.
+	if vendor != nil {
+		meta["vendorCompliance"] = map[string]interface{}{
+			"zraTpin":        vendor.ZraTpin,
+			"pacraRegNumber": vendor.PacraRegNumber,
+			"taxId":          vendor.TaxID,
+			"snapshotAt":     time.Now().Format(time.RFC3339),
+		}
+		if w := vendorComplianceWarnings(vendor); len(w) > 0 {
+			meta["complianceWarnings"] = w
+		}
+	}
+	if len(meta) > 0 {
+		if metaBytes, err := json.Marshal(meta); err == nil {
 			order.Metadata = datatypes.JSON(metaBytes)
 		}
 	}
@@ -1038,10 +1058,14 @@ func modelToPurchaseOrderResponse(order models.PurchaseOrder) types.PurchaseOrde
 	}
 	vendorName := order.VendorName              // stored fallback
 	var vendorResp *types.VendorResponse
+	var complianceWarnings []string
 	if order.Vendor != nil {
 		vendorName = order.Vendor.Name           // canonical wins when relation present
 		vr := modelToVendorResponse(*order.Vendor)
 		vendorResp = &vr
+		// Live compliance check — reflects the vendor's CURRENT ZRA TPIN /
+		// PACRA fields, not the metadata snapshot captured at PO creation.
+		complianceWarnings = vendorComplianceWarnings(order.Vendor)
 	}
 
 	actionHistory := order.ActionHistory.Data()
@@ -1080,6 +1104,7 @@ func modelToPurchaseOrderResponse(order models.PurchaseOrder) types.PurchaseOrde
 		AutomationUsed:          order.AutomationUsed,
 		QuotationGateOverridden: order.QuotationGateOverridden,
 		BypassJustification:     order.BypassJustification,
+		ComplianceWarnings:      complianceWarnings,
 		// Add missing fields that are stored in DB but not returned
 		Title:                   order.Title,
 		Description:             order.Description,

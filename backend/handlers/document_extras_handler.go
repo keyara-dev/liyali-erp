@@ -97,12 +97,14 @@ func CreatePurchaseOrderFromRequisition(c *fiber.Ctx) error {
 
 	// Verify vendor belongs to this org if provided
 	var vendorIDPtr *string
+	var vendor *models.Vendor
 	if req.VendorID != "" {
-		var vendor models.Vendor
-		if err := config.DB.Where("id = ? AND organization_id = ?", req.VendorID, tenant.OrganizationID).First(&vendor).Error; err != nil {
+		var v models.Vendor
+		if err := config.DB.Where("id = ? AND organization_id = ?", req.VendorID, tenant.OrganizationID).First(&v).Error; err != nil {
 			return utils.SendBadRequestError(c, "Vendor not found")
 		}
 		vendorIDPtr = &req.VendorID
+		vendor = &v
 	}
 
 	documentNumber := utils.GenerateDocumentNumber("PO")
@@ -133,6 +135,21 @@ func CreatePurchaseOrderFromRequisition(c *fiber.Ctx) error {
 			if quotations, ok := reqMeta["quotations"]; ok {
 				poMetadata["quotations"] = quotations
 			}
+		}
+	}
+
+	// Snapshot the vendor's compliance fields at PO creation time for audit
+	// purposes. WARN-ONLY: a missing ZRA TPIN / PACRA number is surfaced via
+	// complianceWarnings but never blocks PO creation.
+	if vendor != nil {
+		poMetadata["vendorCompliance"] = map[string]interface{}{
+			"zraTpin":        vendor.ZraTpin,
+			"pacraRegNumber": vendor.PacraRegNumber,
+			"taxId":          vendor.TaxID,
+			"snapshotAt":     time.Now().Format(time.RFC3339),
+		}
+		if w := vendorComplianceWarnings(vendor); len(w) > 0 {
+			poMetadata["complianceWarnings"] = w
 		}
 	}
 

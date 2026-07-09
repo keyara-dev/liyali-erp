@@ -328,6 +328,10 @@ type PurchaseOrderResponse struct {
 	AutomationUsed          bool                   `json:"automationUsed,omitempty"`
 	QuotationGateOverridden bool                   `json:"quotationGateOverridden,omitempty"`
 	BypassJustification     string                 `json:"bypassJustification,omitempty"`
+	// ComplianceWarnings is computed live from the vendor's current ZRA TPIN /
+	// PACRA registration fields (warn-only — never blocks PO creation). Only
+	// populated when the response mapper has the Vendor relation loaded.
+	ComplianceWarnings []string `json:"complianceWarnings,omitempty"`
 	// Business requirement fields
 	Title        string `json:"title,omitempty"`
 	Description  string `json:"description,omitempty"`
