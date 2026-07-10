@@ -386,6 +386,10 @@ export interface Vendor {
   city?: string;
   bankAccount?: string;
   taxId?: string;
+  /** ZRA Tax Payer Identification Number — required on create; legacy vendors may have this empty */
+  zraTpin?: string;
+  /** PACRA (Patents and Companies Registration Agency) registration number */
+  pacraRegNumber?: string;
   active: boolean;
   createdBy?: string;
   // Bank details

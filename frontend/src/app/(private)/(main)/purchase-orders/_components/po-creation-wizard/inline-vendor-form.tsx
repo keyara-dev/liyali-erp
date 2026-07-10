@@ -25,7 +25,8 @@ interface FormState {
   physicalAddress: string;
   city: string;
   country: string;
-  taxId: string;
+  zraTpin: string;
+  pacraRegNumber: string;
   bankName: string;
   branchCode: string;
   accountName: string;
@@ -39,7 +40,8 @@ interface FormErrors {
   physicalAddress?: string;
   city?: string;
   country?: string;
-  taxId?: string;
+  zraTpin?: string;
+  pacraRegNumber?: string;
 }
 
 const EMPTY_FORM: FormState = {
@@ -49,7 +51,8 @@ const EMPTY_FORM: FormState = {
   physicalAddress: "",
   city: "",
   country: "",
-  taxId: "",
+  zraTpin: "",
+  pacraRegNumber: "",
   bankName: "",
   branchCode: "",
   accountName: "",
@@ -100,7 +103,9 @@ export function InlineVendorForm({ onSaved, onCancel }: InlineVendorFormProps) {
       next.physicalAddress = "Physical address is required";
     if (!form.city.trim()) next.city = "City is required";
     if (!form.country.trim()) next.country = "Country is required";
-    if (!form.taxId.trim()) next.taxId = "Tax ID / TPIN is required";
+    if (!form.zraTpin.trim()) next.zraTpin = "ZRA TPIN is required";
+    if (!form.pacraRegNumber.trim())
+      next.pacraRegNumber = "PACRA registration number is required";
     setErrors(next);
     return Object.keys(next).length === 0;
   }
@@ -120,7 +125,9 @@ export function InlineVendorForm({ onSaved, onCancel }: InlineVendorFormProps) {
         physicalAddress: form.physicalAddress.trim(),
         city: form.city.trim(),
         country: form.country.trim(),
-        taxId: form.taxId.trim(),
+        zraTpin: form.zraTpin.trim(),
+        pacraRegNumber: form.pacraRegNumber.trim(),
+        taxId: form.zraTpin.trim(),
         bankName: form.bankName.trim() || "",
         accountName: form.accountName.trim() || "",
         accountNumber: form.accountNumber.trim() || "",
@@ -272,21 +279,40 @@ export function InlineVendorForm({ onSaved, onCancel }: InlineVendorFormProps) {
         </div>
       </div>
 
-      {/* ── Tax ID / TPIN (required) ── */}
-      <div className="space-y-1.5">
-        <Label htmlFor="inline-vendor-taxid">
-          Tax ID / TPIN <span className="text-destructive">*</span>
-        </Label>
-        <Input
-          id="inline-vendor-taxid"
-          value={form.taxId}
-          onChange={(e) => set("taxId", e.target.value)}
-          placeholder="Tax / TPIN number"
-          disabled={isPending}
-        />
-        {errors.taxId && (
-          <p className="text-xs text-destructive">{errors.taxId}</p>
-        )}
+      {/* ── ZRA TPIN & PACRA Reg. No. (required) ── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="space-y-1.5">
+          <Label htmlFor="inline-vendor-zratpin">
+            ZRA TPIN <span className="text-destructive">*</span>
+          </Label>
+          <Input
+            id="inline-vendor-zratpin"
+            value={form.zraTpin}
+            onChange={(e) => set("zraTpin", e.target.value)}
+            placeholder="TPIN number"
+            disabled={isPending}
+          />
+          {errors.zraTpin && (
+            <p className="text-xs text-destructive">{errors.zraTpin}</p>
+          )}
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="inline-vendor-pacra">
+            PACRA Reg. No. <span className="text-destructive">*</span>
+          </Label>
+          <Input
+            id="inline-vendor-pacra"
+            value={form.pacraRegNumber}
+            onChange={(e) => set("pacraRegNumber", e.target.value)}
+            placeholder="PACRA registration number"
+            disabled={isPending}
+          />
+          {errors.pacraRegNumber && (
+            <p className="text-xs text-destructive">
+              {errors.pacraRegNumber}
+            </p>
+          )}
+        </div>
       </div>
 
       {/* ── Bank fields (optional) ── */}

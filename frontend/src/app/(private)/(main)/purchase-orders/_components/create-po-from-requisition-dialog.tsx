@@ -20,6 +20,7 @@ import { useConfigurationStatus } from "@/hooks/use-configuration-status";
 import { ConfigurationChecklistBanner } from "@/components/ui/configuration-checklist-banner";
 import { useVendors } from "@/hooks/use-vendor-queries";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { VendorComplianceWarning } from "@/components/vendor-compliance-warning";
 import type { Quotation } from "@/types/core";
 
 interface CreatePOFromRequisitionDialogProps {
@@ -111,6 +112,12 @@ export function CreatePOFromRequisitionDialog({
       setSelectedVendorName(vendor?.name ?? "");
     }
   };
+
+  // Full vendor entity for the selected supplier — compliance warning is
+  // derived from its ZRA TPIN / PACRA fields (warn-only, never blocks).
+  const selectedVendor = selectedVendorId
+    ? vendors.find((v) => v.id === selectedVendorId)
+    : undefined;
 
   return (
     <ResponsiveSheet
@@ -241,6 +248,9 @@ export function CreatePOFromRequisitionDialog({
             />
           </>
         )}
+
+        {/* Vendor compliance warning — warn-only, never blocks PO creation */}
+        {selectedVendor && <VendorComplianceWarning vendor={selectedVendor} />}
 
         {/* Procurement Flow Override */}
         <div className="space-y-2">

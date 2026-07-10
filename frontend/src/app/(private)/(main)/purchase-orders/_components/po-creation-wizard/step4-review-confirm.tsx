@@ -19,7 +19,9 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { ConfigurationChecklistBanner } from "@/components/ui/configuration-checklist-banner";
 import { CostComparisonPanel } from "@/components/purchase-orders/cost-comparison-panel";
 import { ProcurementFlowInfo } from "@/components/purchase-orders/procurement-flow-info";
+import { VendorComplianceWarning } from "@/components/vendor-compliance-warning";
 import { useConfigurationStatus } from "@/hooks/use-configuration-status";
+import { useVendors } from "@/hooks/use-vendor-queries";
 import { formatCurrency } from "@/lib/utils";
 import type { Requisition } from "@/types/requisition";
 import type { WizardState, WizardStep4State } from "./types";
@@ -97,6 +99,13 @@ export function Step4ReviewConfirm({
   const selectedVendorEntry = step2.selectedVendorLocalId
     ? step2.vendors.find((v) => v.localId === step2.selectedVendorLocalId)
     : null;
+
+  // Full vendor entity (for compliance fields) — WizardVendorEntry only
+  // carries id/name/quotation data, not ZRA TPIN / PACRA.
+  const { data: vendors = [] } = useVendors();
+  const selectedVendorFull = selectedVendorEntry?.vendorId
+    ? vendors.find((v) => v.id === selectedVendorEntry.vendorId)
+    : undefined;
 
   // Use step2.selectedQuotedAmount as the authoritative quoted amount only
   // when it was set by selecting THIS vendor's quotation row. If the vendor
@@ -268,6 +277,9 @@ export function Step4ReviewConfirm({
                 );
               })}
             </div>
+          )}
+          {selectedVendorEntry && (
+            <VendorComplianceWarning vendor={selectedVendorFull} />
           )}
         </div>
 

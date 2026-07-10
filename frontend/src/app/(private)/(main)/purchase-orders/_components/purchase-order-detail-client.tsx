@@ -78,6 +78,10 @@ import { QuotationCollectionSection } from "@/app/(private)/(main)/requisitions/
 import { POShippingEditor } from "./po-shipping-editor";
 import { LinkedDocuments, buildChainLinks } from "@/components/linked-documents";
 import { useVendors } from "@/hooks/use-vendor-queries";
+import {
+  VendorComplianceWarning,
+  deriveVendorComplianceWarnings,
+} from "@/components/vendor-compliance-warning";
 import type { Quotation } from "@/types/core";
 import { Badge } from "@/components";
 import { DocumentLoadingPage } from "@/components/base/document-loading-page";
@@ -242,6 +246,13 @@ export function PurchaseOrderDetailClient({
 
   // Look up full vendor details from the vendors list
   const vendorDetails = vendors.find((v) => v.id === purchaseOrder.vendorId);
+
+  // Vendor compliance (warn-only): prefer the live backend-computed warnings
+  // on the PO response (present only when non-empty); fall back to deriving
+  // from the vendor record's ZRA TPIN / PACRA fields.
+  const complianceWarnings =
+    purchaseOrder.complianceWarnings ??
+    deriveVendorComplianceWarnings(vendorDetails);
 
   const canEditQuotations = isDraft;
 
@@ -698,13 +709,27 @@ export function PurchaseOrderDetailClient({
       {/* Vendor Details Card — shown when vendor is selected */}
       {purchaseOrder.vendorId && (
         <div className="rounded-lg border p-4 space-y-4 bg-muted/30">
-          <h3 className="text-sm font-semibold flex items-center gap-2">
+          <h3 className="text-sm font-semibold flex items-center gap-2 flex-wrap">
             <Building className="h-4 w-4" />
             Supplier Details —{" "}
             {purchaseOrder.vendorName ||
               vendorDetails?.name ||
               "Unknown Vendor"}
+            {complianceWarnings.length > 0 && (
+              <Badge
+                variant="outline"
+                className="border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-300"
+              >
+                <AlertTriangle className="h-3 w-3 mr-1" />
+                Compliance incomplete
+              </Badge>
+            )}
           </h3>
+
+          {/* Vendor compliance warning — warn-only, never blocks the PO */}
+          {complianceWarnings.length > 0 && (
+            <VendorComplianceWarning warnings={complianceWarnings} />
+          )}
 
           {/* Cost Comparison Section — always shown when vendor is selected */}
           {(() => {
@@ -857,7 +882,10 @@ export function PurchaseOrderDetailClient({
               vendorDetails.phone ||
               vendorDetails.physicalAddress ||
               vendorDetails.bankName ||
-              vendorDetails.accountNumber) && (
+              vendorDetails.accountNumber ||
+              vendorDetails.zraTpin ||
+              vendorDetails.taxId ||
+              vendorDetails.pacraRegNumber) && (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-sm">
                 {vendorDetails.contactPerson && (
                   <div>
@@ -902,6 +930,26 @@ export function PurchaseOrderDetailClient({
                     </span>
                     <p className="font-medium font-mono">
                       {vendorDetails.accountNumber}
+                    </p>
+                  </div>
+                )}
+                {(vendorDetails.zraTpin || vendorDetails.taxId) && (
+                  <div>
+                    <span className="text-xs text-muted-foreground">
+                      ZRA TPIN
+                    </span>
+                    <p className="font-medium font-mono">
+                      {vendorDetails.zraTpin || vendorDetails.taxId}
+                    </p>
+                  </div>
+                )}
+                {vendorDetails.pacraRegNumber && (
+                  <div>
+                    <span className="text-xs text-muted-foreground">
+                      PACRA Reg. No.
+                    </span>
+                    <p className="font-medium font-mono">
+                      {vendorDetails.pacraRegNumber}
                     </p>
                   </div>
                 )}

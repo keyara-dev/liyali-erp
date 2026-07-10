@@ -200,6 +200,8 @@ export interface PurchaseOrder extends WorkflowDocument {
   bypassJustification?: string;
   /** Routing type inherited from source requisition */
   routingType?: RoutingType;
+  /** Human-readable warnings for missing vendor ZRA TPIN / PACRA data (warn-only, present only when non-empty) */
+  complianceWarnings?: string[];
 }
 
 /**

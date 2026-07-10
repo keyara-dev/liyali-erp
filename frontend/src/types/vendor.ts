@@ -16,7 +16,10 @@ export interface CreateVendorRequest {
   physicalAddress: string;
   city: string;
   country: string;
-  taxId: string;
+  /** Legacy — kept for backward compat, mirrored from zraTpin when omitted */
+  taxId?: string;
+  zraTpin: string;
+  pacraRegNumber: string;
   bankName: string;
   branchCode?: string;
   accountName: string;
@@ -33,6 +36,8 @@ export interface UpdateVendorRequest {
   city?: string;
   country?: string;
   taxId?: string;
+  zraTpin?: string;
+  pacraRegNumber?: string;
   bankName?: string;
   branchCode?: string;
   accountName?: string;

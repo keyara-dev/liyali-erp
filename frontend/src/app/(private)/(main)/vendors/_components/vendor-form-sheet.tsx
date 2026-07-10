@@ -25,7 +25,8 @@ const EMPTY_FORM = {
   physicalAddress: "",
   city: "",
   country: "",
-  taxId: "",
+  zraTpin: "",
+  pacraRegNumber: "",
   bankName: "",
   branchCode: "",
   accountName: "",
@@ -63,7 +64,8 @@ export function VendorFormDialog({
           physicalAddress: vendor.physicalAddress ?? "",
           city: vendor.city ?? "",
           country: vendor.country ?? "",
-          taxId: vendor.taxId ?? "",
+          zraTpin: vendor.zraTpin ?? vendor.taxId ?? "",
+          pacraRegNumber: vendor.pacraRegNumber ?? "",
           bankName: vendor.bankName ?? "",
           branchCode: vendor.branchCode ?? "",
           accountName: vendor.accountName ?? "",
@@ -94,7 +96,9 @@ export function VendorFormDialog({
     if (!form.country.trim()) next.country = "Country is required";
     if (!form.email.trim()) next.email = "Email is required";
     if (!form.phone.trim()) next.phone = "Phone number is required";
-    if (!form.taxId.trim()) next.taxId = "Tax ID / TPIN is required";
+    if (!form.zraTpin.trim()) next.zraTpin = "ZRA TPIN is required";
+    if (!form.pacraRegNumber.trim())
+      next.pacraRegNumber = "PACRA registration number is required";
     if (!form.bankName.trim()) next.bankName = "Bank name is required";
     if (!form.accountName.trim()) next.accountName = "Account name is required";
     if (!form.accountNumber.trim())
@@ -109,10 +113,13 @@ export function VendorFormDialog({
 
     if (isEdit && vendor) {
       const { active, ...rest } = form;
-      updateMutation.mutate({ id: vendor.id, data: { ...rest, active } });
+      updateMutation.mutate({
+        id: vendor.id,
+        data: { ...rest, active, taxId: form.zraTpin },
+      });
     } else {
       const { active, ...createData } = form;
-      createMutation.mutate(createData);
+      createMutation.mutate({ ...createData, taxId: form.zraTpin });
     }
   }
 
@@ -273,20 +280,39 @@ export function VendorFormDialog({
               Tax &amp; Registration
             </p>
 
-            <div className="space-y-1.5">
-              <Label htmlFor="taxId">
-                Tax ID / TPIN <span className="text-destructive">*</span>
-              </Label>
-              <Input
-                id="taxId"
-                value={form.taxId}
-                onChange={(e) => set("taxId", e.target.value)}
-                placeholder="Tax / TPIN number"
-                disabled={isPending}
-              />
-              {errors.taxId && (
-                <p className="text-xs text-destructive">{errors.taxId}</p>
-              )}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="zraTpin">
+                  ZRA TPIN <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="zraTpin"
+                  value={form.zraTpin}
+                  onChange={(e) => set("zraTpin", e.target.value)}
+                  placeholder="TPIN number"
+                  disabled={isPending}
+                />
+                {errors.zraTpin && (
+                  <p className="text-xs text-destructive">{errors.zraTpin}</p>
+                )}
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="pacraRegNumber">
+                  PACRA Reg. No. <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="pacraRegNumber"
+                  value={form.pacraRegNumber}
+                  onChange={(e) => set("pacraRegNumber", e.target.value)}
+                  placeholder="PACRA registration number"
+                  disabled={isPending}
+                />
+                {errors.pacraRegNumber && (
+                  <p className="text-xs text-destructive">
+                    {errors.pacraRegNumber}
+                  </p>
+                )}
+              </div>
             </div>
           </section>
 

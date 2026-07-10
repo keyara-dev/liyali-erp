@@ -130,10 +130,20 @@ const PurchaseOrderPDF: React.FC<PurchaseOrderPDFProps> = ({
     vendorAddressParts.length > 0 ? vendorAddressParts.join(", ") : null;
   const vendorContact = vendor?.phone || null;
   const vendorEmail = vendor?.email || null;
-  const vendorTpin = vendor?.taxId || null;
 
   // Shipping / receiver — from metadata only (set via Shipping & Tax tab)
   const meta = purchaseOrder.metadata || {};
+
+  // Compliance identifiers — live vendor fields first (zraTpin, legacy taxId),
+  // then the vendorCompliance snapshot captured in metadata at PO creation.
+  const vendorCompliance =
+    (meta.vendorCompliance as
+      | { zraTpin?: string; pacraRegNumber?: string }
+      | undefined) || undefined;
+  const vendorTpin =
+    vendor?.zraTpin || vendor?.taxId || vendorCompliance?.zraTpin || null;
+  const vendorPacra =
+    vendor?.pacraRegNumber || vendorCompliance?.pacraRegNumber || null;
   const receiverName =
     (meta.receiverName as string) || documentHeader?.orgName || "—";
   const receiverAddress = (meta.receiverAddress as string) || null;
@@ -283,6 +293,9 @@ const PurchaseOrderPDF: React.FC<PurchaseOrderPDFProps> = ({
               )}
               {vendorEmail && <LabelValue label="EMAIL" value={vendorEmail} />}
               {vendorTpin && <LabelValue label="TPIN" value={vendorTpin} />}
+              {vendorPacra && (
+                <LabelValue label="PACRA REG" value={vendorPacra} />
+              )}
             </View>
           </View>
 

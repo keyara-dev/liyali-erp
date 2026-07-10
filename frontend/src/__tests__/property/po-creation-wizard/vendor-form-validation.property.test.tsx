@@ -3,9 +3,10 @@
  *
  * **Property 10: VendorFormDialog required field validation**
  * For any submission of VendorFormDialog where at least one of
- * (name, physicalAddress, city, country, taxId, bankName, accountName,
- * accountNumber) is empty, the form SHALL display a validation error on each
- * empty required field and SHALL NOT call the create/update mutation.
+ * (name, email, phone, physicalAddress, city, country, zraTpin,
+ * pacraRegNumber, bankName, accountName, accountNumber) is empty, the form
+ * SHALL display a validation error on each empty required field and SHALL NOT
+ * call the create/update mutation.
  *
  * **Validates: Requirements 9.2, 9.3, 9.4, 9.5, 9.6**
  */
@@ -48,20 +49,26 @@ vi.mock("@/hooks/use-vendor-queries", () => ({
 
 type RequiredField =
   | "name"
+  | "email"
+  | "phone"
   | "physicalAddress"
   | "city"
   | "country"
-  | "taxId"
+  | "zraTpin"
+  | "pacraRegNumber"
   | "bankName"
   | "accountName"
   | "accountNumber";
 
 const REQUIRED_FIELDS: RequiredField[] = [
   "name",
+  "email",
+  "phone",
   "physicalAddress",
   "city",
   "country",
-  "taxId",
+  "zraTpin",
+  "pacraRegNumber",
   "bankName",
   "accountName",
   "accountNumber",
@@ -70,10 +77,13 @@ const REQUIRED_FIELDS: RequiredField[] = [
 /** Maps each required field to its input element id */
 const FIELD_INPUT_ID: Record<RequiredField, string> = {
   name: "name",
+  email: "email",
+  phone: "phone",
   physicalAddress: "physicalAddress",
   city: "city",
   country: "country",
-  taxId: "taxId",
+  zraTpin: "zraTpin",
+  pacraRegNumber: "pacraRegNumber",
   bankName: "bankName",
   accountName: "accountName",
   accountNumber: "accountNumber",
@@ -82,10 +92,13 @@ const FIELD_INPUT_ID: Record<RequiredField, string> = {
 /** A fully valid form payload — all required fields populated */
 const VALID_VALUES: Record<RequiredField, string> = {
   name: "Acme Supplies Ltd",
+  email: "acme@example.com",
+  phone: "+260971234567",
   physicalAddress: "123 Cairo Road, Lusaka",
   city: "Lusaka",
   country: "Zambia",
-  taxId: "1234567890",
+  zraTpin: "1234567890",
+  pacraRegNumber: "PACRA-120100012345",
   bankName: "Zanaco",
   accountName: "Acme Supplies Ltd",
   accountNumber: "0012345678",
@@ -212,10 +225,14 @@ describe("Property 10: VendorFormDialog required field validation", () => {
       id: "vendor-1",
       vendorCode: "V-001",
       name: "Existing Vendor",
+      email: "existing@example.com",
+      phone: "+260961234567",
       physicalAddress: "456 Independence Ave",
       city: "Lusaka",
       country: "Zambia",
       taxId: "9876543210",
+      zraTpin: "9876543210",
+      pacraRegNumber: "PACRA-119990009876",
       bankName: "First National Bank",
       accountName: "Existing Vendor Ltd",
       accountNumber: "9876543210",

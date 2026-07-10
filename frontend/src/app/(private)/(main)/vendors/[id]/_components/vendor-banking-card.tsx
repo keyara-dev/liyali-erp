@@ -42,7 +42,8 @@ export function VendorBankingCard({ vendor }: VendorBankingCardProps) {
           <Row label="Account name" value={vendor.accountName} />
           <Row label="Account number" value={vendor.accountNumber} />
           <Row label="SWIFT" value={vendor.swiftCode} />
-          <Row label="Tax ID" value={vendor.taxId} />
+          <Row label="ZRA TPIN" value={vendor.zraTpin || vendor.taxId} />
+          <Row label="PACRA Reg. No." value={vendor.pacraRegNumber} />
         </div>
       </CardContent>
     </Card>
