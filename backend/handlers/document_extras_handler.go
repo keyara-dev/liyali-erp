@@ -353,162 +353,175 @@ func CreatePaymentVoucherFromPO(c *fiber.Ctx) error {
 		req.Currency = po.Currency
 	}
 
-	// Enforce the shared PV-creation gate: PO must be APPROVED, no live duplicate
-	// PV may exist, the amount is capped at the PO total (and received value in
-	// goods-first), and in goods-first the linked GRN must be APPROVED or
-	// COMPLETED. Single source of truth shared with the manual + auto paths.
-	if msg, code := validateProcurementPVGate(config.DB, tenant.OrganizationID, po.DocumentNumber, req.LinkedGRNDocumentNumber, req.TotalAmount); code != 0 {
-		return c.Status(code).JSON(fiber.Map{"success": false, "message": msg})
-	}
-
-	// Resolve effective flow + load the linked GRN (goods-first) purely for
-	// audit-trail wiring below — all gating was done by the validator above.
-	orgDefaultFlow := ""
-	if strings.TrimSpace(po.ProcurementFlow) == "" {
-		orgSvc := services.NewOrganizationService(config.DB)
-		if s, _ := orgSvc.GetOrganizationSettings(tenant.OrganizationID); s != nil {
-			orgDefaultFlow = s.ProcurementFlow
-		}
-	}
-	effectiveFlow := utils.ResolveProcurementFlow(po.ProcurementFlow, orgDefaultFlow)
-
-	// Load the linked GRN for audit wiring only when it exists AND belongs to
-	// this PO — never persist a foreign/unvalidated GRN reference onto the PV.
+	// Enforce the shared PV-creation gate (PO must be APPROVED, remaining-
+	// balance cap, goods-first GRN) and the PV insert inside one transaction:
+	// the gate locks the PO row FOR UPDATE, so this must run in the same
+	// transaction as the insert for the lock to actually serialize concurrent
+	// requests against the same PO. Single source of truth shared with the
+	// manual + auto paths.
+	var effectiveFlow string
 	var linkedGRN *models.GoodsReceivedNote
-	if req.LinkedGRNDocumentNumber != "" {
-		var grn models.GoodsReceivedNote
-		if err := config.DB.Where("document_number = ? AND organization_id = ?", req.LinkedGRNDocumentNumber, tenant.OrganizationID).First(&grn).Error; err == nil &&
-			grn.PODocumentNumber == po.DocumentNumber {
-			linkedGRN = &grn
-		}
-	}
-
-	// Verify vendor belongs to this org if provided
-	var vendorIDPtr *string
-	if req.VendorID != "" {
-		var vendor models.Vendor
-		if err := config.DB.Where("id = ? AND organization_id = ?", req.VendorID, tenant.OrganizationID).First(&vendor).Error; err != nil {
-			return utils.SendBadRequestError(c, "Vendor not found")
-		}
-		vendorIDPtr = &req.VendorID
-	}
-
-	documentNumber := utils.GenerateDocumentNumber("PV")
-	invoiceRef := "INV-" + po.DocumentNumber
-
+	var voucher models.PaymentVoucher
 	var pvFromPOUser models.User
-	config.DB.Where("id = ?", tenant.UserID).First(&pvFromPOUser)
-
-	// Derive from the validated record (empty unless a PO-owned GRN loaded), so
-	// payment_first PVs don't carry a bogus GRN link.
-	linkedGRNDocNum := ""
-	if linkedGRN != nil {
-		linkedGRNDocNum = linkedGRN.DocumentNumber
-	}
-
-	voucher := models.PaymentVoucher{
-		ID:             uuid.New().String(),
-		OrganizationID: tenant.OrganizationID,
-		DocumentNumber: documentNumber,
-		VendorID:       vendorIDPtr,
-		InvoiceNumber:  invoiceRef,
-		Status:         models.StatusDraft,
-		Amount:         req.TotalAmount,
-		Currency:       req.Currency,
-		PaymentMethod:  "bank_transfer",
-		Description:    req.Description,
-		ApprovalStage:  0,
-		// Use the canonical, server-loaded PO document number so the duplicate-PV
-		// guard (which keys on linked_po) stays reliable even if the client sent a
-		// mismatched/empty purchaseOrderDocumentNumber.
-		LinkedPO:  po.DocumentNumber,
-		LinkedGRN: linkedGRNDocNum,
-		Title:          req.Title,
-		Department:     req.Department,
-		DepartmentID:   req.DepartmentID,
-		BudgetCode:     req.BudgetCode,
-		CostCenter:     req.CostCenter,
-		ProjectCode:    req.ProjectCode,
-		CreatedBy:      tenant.UserID,
-		CreatedAt:      time.Now(),
-		UpdatedAt:      time.Now(),
-	}
-
-	if len(req.Items) > 0 {
-		voucher.Items = datatypes.NewJSONType(req.Items)
-	}
-	voucher.ApprovalHistory = datatypes.NewJSONType([]types.ApprovalRecord{})
-
-	// Build initial action history — chain origin + vendor change if applicable
-	var pvInitialHistory []types.ActionHistoryEntry
-
-	// Record which document this PV was created from
-	if linkedGRN != nil {
-		pvInitialHistory = append(pvInitialHistory, types.ActionHistoryEntry{
-			ID:          uuid.New().String(),
-			Action:      "CREATED_FROM_GRN",
-			PerformedBy: tenant.UserID,
-			Timestamp:   time.Now(),
-			Metadata: map[string]interface{}{
-				"linkedDocNumber": linkedGRN.DocumentNumber,
-				"linkedDocType":   "grn",
-				"flow":            "goods_first",
-			},
-		})
-	} else {
-		pvInitialHistory = append(pvInitialHistory, types.ActionHistoryEntry{
-			ID:          uuid.New().String(),
-			Action:      "CREATED_FROM_PO",
-			PerformedBy: tenant.UserID,
-			Timestamp:   time.Now(),
-			Metadata: map[string]interface{}{
-				"linkedDocNumber": po.DocumentNumber,
-				"linkedDocType":   "purchase_order",
-				"flow":            "payment_first",
-			},
-		})
-	}
-
-	poVendorID := ""
-	if po.VendorID != nil {
-		poVendorID = *po.VendorID
-	}
-	if req.VendorID != poVendorID && poVendorID != "" {
-		oldVendorName := ""
-		if po.Vendor != nil {
-			oldVendorName = po.Vendor.Name
+	txErr := config.DB.Transaction(func(tx *gorm.DB) error {
+		if msg, code := validateProcurementPVGate(tx, tenant.OrganizationID, po.DocumentNumber, req.LinkedGRNDocumentNumber, req.TotalAmount); code != 0 {
+			return &pvGateError{status: code, msg: msg}
 		}
-		pvInitialHistory = append(pvInitialHistory, types.ActionHistoryEntry{
-			ID:          uuid.New().String(),
-			Action:      "VENDOR_CHANGED",
-			PerformedBy: tenant.UserID,
-			Timestamp:   time.Now(),
-			ChangedFields: map[string]interface{}{
-				"vendor": map[string]interface{}{
-					"from": oldVendorName,
-					"to":   req.VendorName,
-				},
-			},
-		})
-	}
-	pvFromPONow := time.Now()
-	pvInitialHistory = append(pvInitialHistory, types.ActionHistoryEntry{
-		ID:              uuid.New().String(),
-		Action:          "CREATE",
-		ActionType:      "CREATE",
-		PerformedBy:     tenant.UserID,
-		PerformedByName: pvFromPOUser.Name,
-		PerformedByRole: pvFromPOUser.Role,
-		Timestamp:       pvFromPONow,
-		PerformedAt:     pvFromPONow,
-		Comments:        "Payment voucher created from purchase order",
-		NewStatus:       models.StatusDraft,
-	})
-	voucher.ActionHistory = datatypes.NewJSONType(pvInitialHistory)
 
-	if err := config.DB.Create(&voucher).Error; err != nil {
-		logging.LogError(c, err, "create_pv_from_po_failed", nil)
-		return utils.SendInternalError(c, "Failed to create payment voucher", err)
+		// Resolve effective flow + load the linked GRN (goods-first) purely for
+		// audit-trail wiring below — all gating was done by the validator above.
+		orgDefaultFlow := ""
+		if strings.TrimSpace(po.ProcurementFlow) == "" {
+			orgSvc := services.NewOrganizationService(tx)
+			if s, _ := orgSvc.GetOrganizationSettings(tenant.OrganizationID); s != nil {
+				orgDefaultFlow = s.ProcurementFlow
+			}
+		}
+		effectiveFlow = utils.ResolveProcurementFlow(po.ProcurementFlow, orgDefaultFlow)
+
+		// Load the linked GRN for audit wiring only when it exists AND belongs to
+		// this PO — never persist a foreign/unvalidated GRN reference onto the PV.
+		if req.LinkedGRNDocumentNumber != "" {
+			var grn models.GoodsReceivedNote
+			if err := tx.Where("document_number = ? AND organization_id = ?", req.LinkedGRNDocumentNumber, tenant.OrganizationID).First(&grn).Error; err == nil &&
+				grn.PODocumentNumber == po.DocumentNumber {
+				linkedGRN = &grn
+			}
+		}
+
+		// Verify vendor belongs to this org if provided
+		var vendorIDPtr *string
+		if req.VendorID != "" {
+			var vendor models.Vendor
+			if err := tx.Where("id = ? AND organization_id = ?", req.VendorID, tenant.OrganizationID).First(&vendor).Error; err != nil {
+				return &pvGateError{status: fiber.StatusBadRequest, msg: "Vendor not found"}
+			}
+			vendorIDPtr = &req.VendorID
+		}
+
+		documentNumber := utils.GenerateDocumentNumber("PV")
+		invoiceRef := "INV-" + po.DocumentNumber
+
+		tx.Where("id = ?", tenant.UserID).First(&pvFromPOUser)
+
+		// Derive from the validated record (empty unless a PO-owned GRN loaded), so
+		// payment_first PVs don't carry a bogus GRN link.
+		linkedGRNDocNum := ""
+		if linkedGRN != nil {
+			linkedGRNDocNum = linkedGRN.DocumentNumber
+		}
+
+		voucher = models.PaymentVoucher{
+			ID:             uuid.New().String(),
+			OrganizationID: tenant.OrganizationID,
+			DocumentNumber: documentNumber,
+			VendorID:       vendorIDPtr,
+			InvoiceNumber:  invoiceRef,
+			Status:         models.StatusDraft,
+			Amount:         req.TotalAmount,
+			Currency:       req.Currency,
+			PaymentMethod:  "bank_transfer",
+			Description:    req.Description,
+			ApprovalStage:  0,
+			// Use the canonical, server-loaded PO document number so the balance
+			// guard (which keys on linked_po) stays reliable even if the client
+			// sent a mismatched/empty purchaseOrderDocumentNumber.
+			LinkedPO:       po.DocumentNumber,
+			LinkedGRN:      linkedGRNDocNum,
+			Title:          req.Title,
+			Department:     req.Department,
+			DepartmentID:   req.DepartmentID,
+			BudgetCode:     req.BudgetCode,
+			CostCenter:     req.CostCenter,
+			ProjectCode:    req.ProjectCode,
+			CreatedBy:      tenant.UserID,
+			CreatedAt:      time.Now(),
+			UpdatedAt:      time.Now(),
+		}
+
+		if len(req.Items) > 0 {
+			voucher.Items = datatypes.NewJSONType(req.Items)
+		}
+		voucher.ApprovalHistory = datatypes.NewJSONType([]types.ApprovalRecord{})
+
+		// Build initial action history — chain origin + vendor change if applicable
+		var pvInitialHistory []types.ActionHistoryEntry
+
+		// Record which document this PV was created from
+		if linkedGRN != nil {
+			pvInitialHistory = append(pvInitialHistory, types.ActionHistoryEntry{
+				ID:          uuid.New().String(),
+				Action:      "CREATED_FROM_GRN",
+				PerformedBy: tenant.UserID,
+				Timestamp:   time.Now(),
+				Metadata: map[string]interface{}{
+					"linkedDocNumber": linkedGRN.DocumentNumber,
+					"linkedDocType":   "grn",
+					"flow":            "goods_first",
+				},
+			})
+		} else {
+			pvInitialHistory = append(pvInitialHistory, types.ActionHistoryEntry{
+				ID:          uuid.New().String(),
+				Action:      "CREATED_FROM_PO",
+				PerformedBy: tenant.UserID,
+				Timestamp:   time.Now(),
+				Metadata: map[string]interface{}{
+					"linkedDocNumber": po.DocumentNumber,
+					"linkedDocType":   "purchase_order",
+					"flow":            "payment_first",
+				},
+			})
+		}
+
+		poVendorID := ""
+		if po.VendorID != nil {
+			poVendorID = *po.VendorID
+		}
+		if req.VendorID != poVendorID && poVendorID != "" {
+			oldVendorName := ""
+			if po.Vendor != nil {
+				oldVendorName = po.Vendor.Name
+			}
+			pvInitialHistory = append(pvInitialHistory, types.ActionHistoryEntry{
+				ID:          uuid.New().String(),
+				Action:      "VENDOR_CHANGED",
+				PerformedBy: tenant.UserID,
+				Timestamp:   time.Now(),
+				ChangedFields: map[string]interface{}{
+					"vendor": map[string]interface{}{
+						"from": oldVendorName,
+						"to":   req.VendorName,
+					},
+				},
+			})
+		}
+		pvFromPONow := time.Now()
+		pvInitialHistory = append(pvInitialHistory, types.ActionHistoryEntry{
+			ID:              uuid.New().String(),
+			Action:          "CREATE",
+			ActionType:      "CREATE",
+			PerformedBy:     tenant.UserID,
+			PerformedByName: pvFromPOUser.Name,
+			PerformedByRole: pvFromPOUser.Role,
+			Timestamp:       pvFromPONow,
+			PerformedAt:     pvFromPONow,
+			Comments:        "Payment voucher created from purchase order",
+			NewStatus:       models.StatusDraft,
+		})
+		voucher.ActionHistory = datatypes.NewJSONType(pvInitialHistory)
+
+		if err := tx.Create(&voucher).Error; err != nil {
+			return err
+		}
+		return nil
+	})
+	if txErr != nil {
+		if ge, ok := txErr.(*pvGateError); ok {
+			return c.Status(ge.status).JSON(fiber.Map{"success": false, "message": ge.msg})
+		}
+		logging.LogError(c, txErr, "create_pv_from_po_failed", nil)
+		return utils.SendInternalError(c, "Failed to create payment voucher", txErr)
 	}
 
 	// Record PV_CREATED on the parent document (GRN for goods_first, PO for payment_first)

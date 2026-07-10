@@ -35,7 +35,12 @@ func TestCreatePVFromPO_RejectsNonApprovedPO(t *testing.T) {
 	}
 }
 
-func TestCreatePVFromPO_RejectsDuplicate(t *testing.T) {
+// B2: the old "one live PV per PO" 409 is gone. A second PV against the same
+// PO now succeeds as long as it fits the remaining balance (here: PO total
+// 1000, an existing live PV of 500 leaves 500 remaining, and the new request
+// is exactly 500). Requesting more than the remaining balance still fails —
+// see TestCreatePVFromPO_RejectsAmountOverRemainingBalance.
+func TestCreatePVFromPO_AllowsSecondPVWithinRemainingBalance(t *testing.T) {
 	db := setupTestDB(t)
 	defer teardownTestDB(t, db)
 	po := seedPO(t, "PO-FP-2", "APPROVED", "payment_first", 1000)
@@ -54,8 +59,33 @@ func TestCreatePVFromPO_RejectsDuplicate(t *testing.T) {
 		"totalAmount":                 500,
 	}
 	resp := testRequest(fromPOApp(), http.MethodPost, "/payment-vouchers/from-po", body)
-	if resp.StatusCode != http.StatusConflict {
-		t.Fatalf("expected 409 for duplicate PV, got %d", resp.StatusCode)
+	if resp.StatusCode != http.StatusCreated {
+		t.Fatalf("expected 201 for second PV within remaining balance, got %d", resp.StatusCode)
+	}
+}
+
+func TestCreatePVFromPO_RejectsAmountOverRemainingBalance(t *testing.T) {
+	db := setupTestDB(t)
+	defer teardownTestDB(t, db)
+	po := seedPO(t, "PO-FP-2B", "APPROVED", "payment_first", 1000)
+	live := models.PaymentVoucher{
+		ID: uuid.New().String(), OrganizationID: testOrgID, DocumentNumber: "PV-FP-2B",
+		LinkedPO: po.DocumentNumber, Status: "APPROVED", Amount: 600,
+		CreatedAt: time.Now(), UpdatedAt: time.Now(),
+	}
+	if err := db.Create(&live).Error; err != nil {
+		t.Fatalf("seed live PV: %v", err)
+	}
+
+	// Remaining balance is 400; requesting 500 must be rejected.
+	body := map[string]interface{}{
+		"purchaseOrderId":             po.ID,
+		"purchaseOrderDocumentNumber": po.DocumentNumber,
+		"totalAmount":                 500,
+	}
+	resp := testRequest(fromPOApp(), http.MethodPost, "/payment-vouchers/from-po", body)
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Fatalf("expected 400 for amount over remaining balance, got %d", resp.StatusCode)
 	}
 }
 

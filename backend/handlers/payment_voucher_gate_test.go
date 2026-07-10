@@ -41,7 +41,11 @@ func TestValidateProcurementPVGate(t *testing.T) {
 		}
 	})
 
-	t.Run("duplicate live PV -> 409", func(t *testing.T) {
+	// B2: the old "one live PV per PO" 409 is gone — a second PV is allowed as
+	// long as it fits within the PO's remaining balance (PO total minus what's
+	// already committed by live PVs). Exceeding-remaining-balance behavior is
+	// covered in payment_voucher_balance_test.go.
+	t.Run("second live PV within remaining balance -> ok", func(t *testing.T) {
 		po := seedPO(t, "PO-GATE-2", "APPROVED", "payment_first", 1000)
 		pv := models.PaymentVoucher{
 			ID:             uuid.New().String(),
@@ -56,9 +60,11 @@ func TestValidateProcurementPVGate(t *testing.T) {
 		if err := db.Create(&pv).Error; err != nil {
 			t.Fatalf("seed PV: %v", err)
 		}
+		// Committed so far = 500; remaining balance = 500. Requesting exactly the
+		// remaining balance must succeed now that multiple PVs per PO are allowed.
 		msg, code := validateProcurementPVGate(db, testOrgID, po.DocumentNumber, "", 500)
-		if code != http.StatusConflict {
-			t.Fatalf("expected 409, got %d (%s)", code, msg)
+		if code != 0 {
+			t.Fatalf("expected ok (0), got %d (%s)", code, msg)
 		}
 	})
 

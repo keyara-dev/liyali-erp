@@ -18,37 +18,50 @@ import (
 	"github.com/liyali/liyali-gateway/utils"
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 // validateProcurementPVGate enforces the rules for creating a Payment Voucher
 // against a linked Purchase Order (and GRN in goods-first flow):
 //   - the linked PO must exist and be APPROVED;
-//   - no *live* PV may already exist for that PO (CANCELLED/REJECTED allow retry);
 //   - in goods-first, an APPROVED or COMPLETED GRN must back the PV and the
-//     amount may not exceed the received value;
-//   - the amount may never exceed the PO total.
+//     amount may not exceed the *remaining* received value (received value
+//     minus what earlier live PVs already committed);
+//   - the amount may not push the PO's running committed total past its
+//     total — multiple partial PVs against the same PO are allowed as long as
+//     their sum stays within the PO's remaining balance. CANCELLED/REJECTED
+//     PVs never consume budget, so a fresh PV can always retry a failed one.
 //
 // Returns ("", 0) when valid, otherwise (message, httpStatus). It is the single
 // source of truth shared by the manual, from-PO, and auto-create PV paths.
-// `tx` is any query handle (config.DB or a transaction).
+// `tx` is any query handle (config.DB or a transaction). The PO row is locked
+// FOR UPDATE below, so callers creating a PV should pass a transaction and run
+// the gate + the PV insert inside it: that's what makes concurrent requests
+// against the same PO serialize instead of racing past the remaining-balance
+// check now that the DB unique index capping a PO at one live PV is gone
+// (migration 023). SQLite (test harness) ignores the lock — single connection,
+// no real concurrency to race.
 func validateProcurementPVGate(tx *gorm.DB, orgID, linkedPO, linkedGRN string, amount float64) (string, int) {
 	if linkedPO == "" {
 		return "", 0
 	}
 
 	var po models.PurchaseOrder
-	if err := tx.Where("document_number = ? AND organization_id = ?", linkedPO, orgID).First(&po).Error; err != nil {
+	if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+		Where("document_number = ? AND organization_id = ?", linkedPO, orgID).
+		First(&po).Error; err != nil {
 		return "Linked purchase order not found", fiber.StatusBadRequest
 	}
 	if strings.ToUpper(po.Status) != "APPROVED" {
 		return fmt.Sprintf("Cannot create PV: linked PO %s is in %s status and must be APPROVED first.", linkedPO, po.Status), fiber.StatusBadRequest
 	}
 
-	// Block re-creation only when a *live* PV exists. CANCELLED/REJECTED are
-	// terminal-failure states; the user must be able to retry with a fresh PV.
-	var existingPV models.PaymentVoucher
-	if err := tx.Where("linked_po = ? AND organization_id = ? AND UPPER(status) NOT IN ('CANCELLED','REJECTED')", linkedPO, orgID).First(&existingPV).Error; err == nil {
-		return fmt.Sprintf("Payment voucher %s already exists for PO %s (status: %s).", existingPV.DocumentNumber, linkedPO, existingPV.Status), fiber.StatusConflict
+	// Committed = Σ amount of every live (non CANCELLED/REJECTED) PV already
+	// linked to this PO. Multiple partial PVs are fine as long as the new one
+	// doesn't push the running total past the PO (or GRN) ceiling below.
+	sum, err := services.ComputePOPaymentSummary(tx, orgID, linkedPO)
+	if err != nil {
+		return "Failed to compute PO payment summary", fiber.StatusInternalServerError
 	}
 
 	// Resolve effective flow: PO override → org default → "goods_first".
@@ -79,8 +92,9 @@ func validateProcurementPVGate(tx *gorm.DB, orgID, linkedPO, linkedGRN string, a
 			return fmt.Sprintf("Cannot create PV: linked GRN %s is in %s status and must be APPROVED or COMPLETED first.", linkedGRN, grn.Status), fiber.StatusBadRequest
 		}
 
-		// Over-invoicing guard: PV amount may not exceed the received value
-		// = Σ (grnItem.quantityReceived × poItem.unitPrice), matched by description.
+		// Over-invoicing guard: PV amount may not exceed the *remaining*
+		// received value = Σ (grnItem.quantityReceived × poItem.unitPrice),
+		// matched by description, minus what's already committed.
 		poItems := po.Items.Data()
 		grnItems := grn.Items.Data()
 		unitPriceByDesc := make(map[string]float64, len(poItems))
@@ -91,17 +105,35 @@ func validateProcurementPVGate(tx *gorm.DB, orgID, linkedPO, linkedGRN string, a
 		for _, gi := range grnItems {
 			receivedValue += float64(gi.QuantityReceived) * unitPriceByDesc[gi.Description]
 		}
-		if amount > receivedValue+0.01 {
-			return fmt.Sprintf("PV amount %.2f exceeds received value %.2f on GRN %s. Adjust the invoice amount to match goods actually received.", amount, receivedValue, linkedGRN), fiber.StatusBadRequest
+		if amount > receivedValue-sum.Committed+0.01 {
+			return fmt.Sprintf("PV amount %.2f exceeds remaining received value %.2f on GRN %s (received value %.2f, already committed %.2f across %d voucher(s)). Adjust the invoice amount to match goods actually received.",
+				amount, receivedValue-sum.Committed, linkedGRN, receivedValue, sum.Committed, sum.LivePVs), fiber.StatusBadRequest
 		}
 	}
 
-	// Final backstop: a PV against an approved PO can never exceed that PO's total.
-	if amount > po.TotalAmount+0.01 {
-		return fmt.Sprintf("PV amount %.2f exceeds linked PO %s total %.2f.", amount, linkedPO, po.TotalAmount), fiber.StatusBadRequest
+	// Final backstop: the sum of every live PV against an approved PO can
+	// never exceed that PO's total. This remaining-balance cap replaces the
+	// old "one live PV per PO" rule — it's what makes partial payments
+	// (multiple PVs against a single PO) possible.
+	remaining := po.TotalAmount - sum.Committed
+	if amount > remaining+0.01 {
+		return fmt.Sprintf("PV amount %.2f exceeds remaining balance %.2f on PO %s (PO total %.2f, already committed %.2f across %d voucher(s)).",
+			amount, remaining, linkedPO, po.TotalAmount, sum.Committed, sum.LivePVs), fiber.StatusBadRequest
 	}
 	return "", 0
 }
+
+// pvGateError carries an HTTP status + message out of a config.DB.Transaction
+// closure so the outer HTTP handler can turn it back into the original
+// response after the transaction rolls back. Used by the two PV-creation
+// handlers that wrap validateProcurementPVGate + the PV insert in a
+// transaction (see the gate's doc comment for why).
+type pvGateError struct {
+	status int
+	msg    string
+}
+
+func (e *pvGateError) Error() string { return e.msg }
 
 // GetPaymentVouchers retrieves all payment vouchers with pagination and filtering
 func GetPaymentVouchers(c *fiber.Ctx) error {
@@ -372,77 +404,91 @@ func CreatePaymentVoucher(c *fiber.Ctx) error {
 		vendorIDPtr = &req.VendorID
 	}
 
-	// Enforce the PV-creation gate (PO APPROVED, no live duplicate, amount caps,
-	// goods-first GRN). Shared with the from-PO and auto-create PV paths.
-	if msg, code := validateProcurementPVGate(config.DB, tenant.OrganizationID, req.LinkedPO, req.LinkedGRN, req.Amount); code != 0 {
-		return c.Status(code).JSON(fiber.Map{"success": false, "message": msg})
-	}
-
-	// Inherit the linked PO's currency when the client didn't specify one, so a
-	// PO-linked PV can't drift to a different/empty currency than its PO.
-	if req.LinkedPO != "" && strings.TrimSpace(req.Currency) == "" {
-		var lpo models.PurchaseOrder
-		if err := config.DB.Select("currency").
-			Where("document_number = ? AND organization_id = ?", req.LinkedPO, tenant.OrganizationID).
-			First(&lpo).Error; err == nil && lpo.Currency != "" {
-			req.Currency = lpo.Currency
-		}
-	}
-
-	// Generate voucher number
-	documentNumber := utils.GenerateDocumentNumber("PV")
-
+	// Enforce the PV-creation gate (PO APPROVED, remaining-balance cap,
+	// goods-first GRN) and the PV insert inside one transaction: the gate
+	// locks the PO row FOR UPDATE, so this must run in the same transaction
+	// as the insert for the lock to actually serialize concurrent requests
+	// against the same PO. Shared gate with the from-PO and auto-create PV
+	// paths.
+	var voucher models.PaymentVoucher
 	var pvCreateUser models.User
-	config.DB.Where("id = ?", tenant.UserID).First(&pvCreateUser)
+	txErr := config.DB.Transaction(func(tx *gorm.DB) error {
+		if msg, code := validateProcurementPVGate(tx, tenant.OrganizationID, req.LinkedPO, req.LinkedGRN, req.Amount); code != 0 {
+			return &pvGateError{status: code, msg: msg}
+		}
 
-	voucher := models.PaymentVoucher{
-		ID:             uuid.New().String(),
-		OrganizationID: tenant.OrganizationID,
-		DocumentNumber: documentNumber,
-		VendorID:       vendorIDPtr,
-		VendorName:     req.VendorName,
-		InvoiceNumber:  req.InvoiceNumber,
-		Status:         models.StatusDraft,
-		Amount:         req.Amount,
-		Currency:       req.Currency,
-		PaymentMethod:  req.PaymentMethod,
-		GLCode:         req.GLCode,
-		Description:    req.Description,
-		ApprovalStage:  0,
-		LinkedPO:       req.LinkedPO,
-		LinkedGRN:      req.LinkedGRN,
-		CreatedBy:      tenant.UserID,
-		Title:          req.Title,
-		Department:     req.Department,
-		DepartmentID:   req.DepartmentID,
-		Priority:       req.Priority,
-		BudgetCode:     req.BudgetCode,
-		CostCenter:     req.CostCenter,
-		ProjectCode:    req.ProjectCode,
-		CreatedAt:      time.Now(),
-		UpdatedAt:      time.Now(),
-	}
+		// Inherit the linked PO's currency when the client didn't specify one,
+		// so a PO-linked PV can't drift to a different/empty currency than its PO.
+		if req.LinkedPO != "" && strings.TrimSpace(req.Currency) == "" {
+			var lpo models.PurchaseOrder
+			if err := tx.Select("currency").
+				Where("document_number = ? AND organization_id = ?", req.LinkedPO, tenant.OrganizationID).
+				First(&lpo).Error; err == nil && lpo.Currency != "" {
+				req.Currency = lpo.Currency
+			}
+		}
 
-	voucher.ApprovalHistory = datatypes.NewJSONType([]types.ApprovalRecord{})
-	pvCreateNow := time.Now()
-	voucher.ActionHistory = datatypes.NewJSONType([]types.ActionHistoryEntry{{
-		ID:              uuid.New().String(),
-		Action:          "CREATE",
-		ActionType:      "CREATE",
-		PerformedBy:     tenant.UserID,
-		PerformedByName: pvCreateUser.Name,
-		PerformedByRole: pvCreateUser.Role,
-		Timestamp:       pvCreateNow,
-		PerformedAt:     pvCreateNow,
-		Comments:        "Payment voucher created",
-		NewStatus:       models.StatusDraft,
-	}})
+		// Generate voucher number
+		documentNumber := utils.GenerateDocumentNumber("PV")
 
-	if err := config.DB.Create(&voucher).Error; err != nil {
+		tx.Where("id = ?", tenant.UserID).First(&pvCreateUser)
+
+		voucher = models.PaymentVoucher{
+			ID:             uuid.New().String(),
+			OrganizationID: tenant.OrganizationID,
+			DocumentNumber: documentNumber,
+			VendorID:       vendorIDPtr,
+			VendorName:     req.VendorName,
+			InvoiceNumber:  req.InvoiceNumber,
+			Status:         models.StatusDraft,
+			Amount:         req.Amount,
+			Currency:       req.Currency,
+			PaymentMethod:  req.PaymentMethod,
+			GLCode:         req.GLCode,
+			Description:    req.Description,
+			ApprovalStage:  0,
+			LinkedPO:       req.LinkedPO,
+			LinkedGRN:      req.LinkedGRN,
+			CreatedBy:      tenant.UserID,
+			Title:          req.Title,
+			Department:     req.Department,
+			DepartmentID:   req.DepartmentID,
+			Priority:       req.Priority,
+			BudgetCode:     req.BudgetCode,
+			CostCenter:     req.CostCenter,
+			ProjectCode:    req.ProjectCode,
+			CreatedAt:      time.Now(),
+			UpdatedAt:      time.Now(),
+		}
+
+		voucher.ApprovalHistory = datatypes.NewJSONType([]types.ApprovalRecord{})
+		pvCreateNow := time.Now()
+		voucher.ActionHistory = datatypes.NewJSONType([]types.ActionHistoryEntry{{
+			ID:              uuid.New().String(),
+			Action:          "CREATE",
+			ActionType:      "CREATE",
+			PerformedBy:     tenant.UserID,
+			PerformedByName: pvCreateUser.Name,
+			PerformedByRole: pvCreateUser.Role,
+			Timestamp:       pvCreateNow,
+			PerformedAt:     pvCreateNow,
+			Comments:        "Payment voucher created",
+			NewStatus:       models.StatusDraft,
+		}})
+
+		if err := tx.Create(&voucher).Error; err != nil {
+			return err
+		}
+		return nil
+	})
+	if txErr != nil {
+		if ge, ok := txErr.(*pvGateError); ok {
+			return c.Status(ge.status).JSON(fiber.Map{"success": false, "message": ge.msg})
+		}
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"success": false,
 			"message": "Failed to create payment voucher",
-			"error":   err.Error(),
+			"error":   txErr.Error(),
 		})
 	}
 
