@@ -224,3 +224,56 @@ func TestCreatePaymentVoucherFromGRN_NoExistingPVAllowsAutoCreate(t *testing.T) 
 	assert.Equal(t, "payment_voucher", result.DocumentType)
 	assert.NotEmpty(t, result.DocumentID)
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Regression tests for createDraftPVFromPO (WorkflowExecutionService) — the
+// payment-first auto-create path keeps its own one-live-PV-per-PO skip guard
+// (automation_engine.go:84). These lock the skip behavior in place after the
+// balance-gate rework (multiple PVs are now allowed via the HTTP gate, but
+// AUTO-creation still fires only when no live PV exists yet).
+// ─────────────────────────────────────────────────────────────────────────────
+
+// TestCreateDraftPVFromPO_SkipsWhenLivePVExists verifies createDraftPVFromPO
+// returns ("", nil) — a skip, not an error — when a live PV already exists for
+// the PO, so automation never produces a second PV behind the user's back.
+func TestCreateDraftPVFromPO_SkipsWhenLivePVExists(t *testing.T) {
+	db := setupDocAutomationTestDB(t)
+	orgID := "org-draftpv-skip"
+
+	po := seedPO(t, db, orgID)
+	seedPV(t, db, orgID, po.DocumentNumber, "DRAFT") // live PV
+
+	svc := &WorkflowExecutionService{db: db}
+	pvID, err := svc.createDraftPVFromPO(&po)
+
+	require.NoError(t, err)
+	assert.Equal(t, "", pvID, "createDraftPVFromPO must skip (return empty id) when a live PV exists")
+
+	// No new PV was created — the seeded one is the only row.
+	var count int64
+	require.NoError(t, db.Model(&models.PaymentVoucher{}).
+		Where("linked_po = ? AND organization_id = ?", po.DocumentNumber, orgID).Count(&count).Error)
+	assert.Equal(t, int64(1), count, "no additional PV should be created")
+}
+
+// TestCreateDraftPVFromPO_CreatesWhenOnlyRejectedPVExists verifies the skip
+// guard excludes REJECTED (and CANCELLED) PVs, so a rejected auto-PV can be
+// re-created rather than blocking the payment-first flow forever.
+func TestCreateDraftPVFromPO_CreatesWhenOnlyRejectedPVExists(t *testing.T) {
+	db := setupDocAutomationTestDB(t)
+	orgID := "org-draftpv-rejected"
+
+	po := seedPO(t, db, orgID)
+	seedPV(t, db, orgID, po.DocumentNumber, "REJECTED") // terminal, must not block
+
+	svc := &WorkflowExecutionService{db: db}
+	pvID, err := svc.createDraftPVFromPO(&po)
+
+	require.NoError(t, err)
+	assert.NotEqual(t, "", pvID, "createDraftPVFromPO should create when only a REJECTED PV exists")
+
+	var count int64
+	require.NoError(t, db.Model(&models.PaymentVoucher{}).
+		Where("linked_po = ? AND organization_id = ?", po.DocumentNumber, orgID).Count(&count).Error)
+	assert.Equal(t, int64(2), count, "a new DRAFT PV should be created alongside the REJECTED one")
+}
