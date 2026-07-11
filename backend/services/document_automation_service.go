@@ -369,10 +369,10 @@ func (s *DocumentAutomationService) CreatePaymentVoucherFromGRN(
 		}, nil
 	}
 
-	// One-to-one: skip if any non-cancelled PV already exists for this PO
+	// One-to-one: skip if any non-cancelled/rejected PV already exists for this PO
 	var existingPV models.PaymentVoucher
 	if err := s.db.
-		Where("linked_po = ? AND organization_id = ? AND UPPER(status) != 'CANCELLED'",
+		Where("linked_po = ? AND organization_id = ? AND UPPER(status) NOT IN ('CANCELLED','REJECTED')",
 			purchaseOrder.DocumentNumber, grn.OrganizationID).
 		First(&existingPV).Error; err == nil {
 		return &AutomationResult{
