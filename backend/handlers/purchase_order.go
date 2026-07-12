@@ -19,6 +19,7 @@ import (
 	"github.com/liyali/liyali-gateway/types"
 	"github.com/liyali/liyali-gateway/utils"
 	"gorm.io/datatypes"
+	"gorm.io/gorm"
 )
 
 // GetPurchaseOrders retrieves all purchase orders with pagination and filtering
@@ -172,35 +173,10 @@ func GetPurchaseOrders(c *fiber.Ctx) error {
 		responses = append(responses, modelToPurchaseOrderResponse(order))
 	}
 
-	// Batch-enrich responses with linked PV info (single query, not N+1).
-	// Skip when sqlc Queries handle is unavailable (test harness) — enrichment
-	// is best-effort decoration and is safe to omit.
-	if len(responses) > 0 && config.Queries != nil {
-		poDocNumbers := make([]string, len(responses))
-		for i, r := range responses {
-			poDocNumbers[i] = r.DocumentNumber
-		}
-		pvRows, _ := config.Queries.GetLinkedPVsForPurchaseOrders(ctx, poDocNumbers, tenant.OrganizationID)
-		pvMap := make(map[string]db.GetLinkedPVsForPurchaseOrdersRow, len(pvRows))
-		for _, r := range pvRows {
-			if r.LinkedPo != nil {
-				pvMap[*r.LinkedPo] = r
-			}
-		}
-		for i, r := range responses {
-			if row, ok := pvMap[r.DocumentNumber]; ok {
-				pvStatus := ""
-				if row.Status != nil {
-					pvStatus = *row.Status
-				}
-				responses[i].LinkedPV = &types.LinkedPVSummary{
-					ID:             row.ID,
-					DocumentNumber: row.DocumentNumber,
-					Status:         pvStatus,
-				}
-			}
-		}
-	}
+	// Batch-enrich responses with derived payment status + linked PV info
+	// (exactly one query, not N+1). Pure GORM — runs unconditionally,
+	// including under the SQLite test harness where config.Queries is nil.
+	enrichPOResponsesWithPayments(config.DB, tenant.OrganizationID, responses)
 
 	logger.Info("purchase_orders_retrieved_successfully")
 
@@ -220,6 +196,93 @@ func GetPurchaseOrders(c *fiber.Ctx) error {
 	}
 
 	return utils.SendPaginatedSuccess(c, responses, "Purchase orders retrieved successfully", page, limit, total)
+}
+
+// poPaymentVoucherRow is the projection fetched by enrichPOResponsesWithPayments
+// — just the columns needed to derive payment status, no full PV hydration.
+type poPaymentVoucherRow struct {
+	ID             string
+	DocumentNumber string
+	Status         string
+	Amount         float64
+	LinkedPO       string
+	CreatedAt      time.Time
+}
+
+// enrichPOResponsesWithPayments batch-derives payment status
+// (unpaid/partially_paid/fully_paid), amountPaid, amountCommitted, balance,
+// and the linkedPVs list for a page of PO responses using exactly one query
+// regardless of how many POs are on the page (no N+1). Pure GORM (CASE WHEN
+// done in Go, not SQL) so it runs unmodified against Postgres and the
+// SQLite test harness — unlike the sqlc query it replaces, which was gated
+// behind `config.Queries != nil` and never executed in tests.
+//
+// A PV counts toward committed/paid/linkedPVs only when its status is not
+// CANCELLED or REJECTED — mirroring services.ComputePOPaymentSummary's
+// "live PV" definition. REJECTED PVs never consumed PO budget, so excluding
+// them from linkedPVs too (not just from the committed sum) keeps the list
+// consistent with what the balance/paymentStatus actually reflect.
+//
+// LinkedPV (singular, back-compat) is set to the latest (most recently
+// created) live PV — mirroring the old DISTINCT ON ... ORDER BY created_at
+// DESC semantics.
+func enrichPOResponsesWithPayments(dbh *gorm.DB, orgID string, responses []types.PurchaseOrderResponse) {
+	if len(responses) == 0 || dbh == nil {
+		return
+	}
+
+	poDocNumbers := make([]string, len(responses))
+	for i, r := range responses {
+		poDocNumbers[i] = r.DocumentNumber
+	}
+
+	var rows []poPaymentVoucherRow
+	err := dbh.Model(&models.PaymentVoucher{}).
+		Where("linked_po IN ? AND organization_id = ? AND UPPER(status) NOT IN ('CANCELLED','REJECTED')", poDocNumbers, orgID).
+		Select("id, document_number, status, amount, linked_po, created_at").
+		Order("created_at ASC").
+		Find(&rows).Error
+	if err != nil {
+		// Best-effort decoration — leave responses with zero-value payment
+		// fields (paymentStatus "unpaid" equivalent) rather than failing the
+		// whole list/detail request.
+		return
+	}
+
+	pvsByPO := make(map[string][]poPaymentVoucherRow, len(responses))
+	for _, row := range rows {
+		pvsByPO[row.LinkedPO] = append(pvsByPO[row.LinkedPO], row)
+	}
+
+	for i := range responses {
+		pvs := pvsByPO[responses[i].DocumentNumber]
+
+		var committed, paid float64
+		linkedPVs := make([]types.LinkedPVSummary, 0, len(pvs))
+		for _, pv := range pvs {
+			committed += pv.Amount
+			if s := strings.ToUpper(pv.Status); s == "PAID" || s == "COMPLETED" {
+				paid += pv.Amount
+			}
+			linkedPVs = append(linkedPVs, types.LinkedPVSummary{
+				ID:             pv.ID,
+				DocumentNumber: pv.DocumentNumber,
+				Status:         pv.Status,
+				Amount:         pv.Amount,
+			})
+		}
+
+		responses[i].LinkedPVs = linkedPVs
+		responses[i].AmountPaid = paid
+		responses[i].AmountCommitted = committed
+		responses[i].Balance = responses[i].TotalAmount - committed
+		responses[i].PaymentStatus = services.DerivePaymentStatus(responses[i].TotalAmount, paid)
+
+		if len(linkedPVs) > 0 {
+			latest := linkedPVs[len(linkedPVs)-1]
+			responses[i].LinkedPV = &latest
+		}
+	}
 }
 
 // CreatePurchaseOrder creates a new purchase order
@@ -416,9 +479,15 @@ func CreatePurchaseOrder(c *fiber.Ctx) error {
 
 	logger.Info("purchase_order_created_successfully")
 
+	// A brand-new PO has no linked PVs yet, but running it through the same
+	// batch helper (on a 1-element slice) keeps paymentStatus/balance
+	// consistent with list/detail instead of leaving them zero-valued.
+	createdResponses := []types.PurchaseOrderResponse{modelToPurchaseOrderResponse(order)}
+	enrichPOResponsesWithPayments(config.DB, tenant.OrganizationID, createdResponses)
+
 	return c.Status(fiber.StatusCreated).JSON(types.DetailResponse{
 		Success: true,
-		Data:    modelToPurchaseOrderResponse(order),
+		Data:    createdResponses[0],
 	})
 }
 
@@ -482,6 +551,15 @@ func GetPurchaseOrder(c *fiber.Ctx) error {
 	if liveHistory := utils.GetDocumentApprovalHistory(config.DB, order.ID, "purchase_order"); len(liveHistory) > 0 {
 		response.ApprovalHistory = liveHistory
 	}
+
+	// Derive payment status + linked PVs (1-element slice reuses the same
+	// batch helper the list endpoint uses — no separate single-PO query path
+	// to drift out of sync). Fixes a pre-existing gap where the detail
+	// endpoint never populated linkedPV (only the list endpoint did).
+	detailResponses := []types.PurchaseOrderResponse{response}
+	enrichPOResponsesWithPayments(config.DB, tenant.OrganizationID, detailResponses)
+	response = detailResponses[0]
+
 	return c.JSON(types.DetailResponse{
 		Success: true,
 		Data:    response,

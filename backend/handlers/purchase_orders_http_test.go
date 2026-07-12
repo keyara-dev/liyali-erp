@@ -770,6 +770,151 @@ func makePurchaseOrderWithRouting(t *testing.T, docNum, status, routingType stri
 	return order
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Derived payment status (amountPaid/amountCommitted/balance/linkedPVs) — B5
+// ─────────────────────────────────────────────────────────────────────────────
+
+// makePaymentVoucherForPO creates and saves a PaymentVoucher linked to poDocNum.
+func makePaymentVoucherForPO(t *testing.T, poDocNum, docNum, status string, amount float64) models.PaymentVoucher {
+	t.Helper()
+	pv := models.PaymentVoucher{
+		ID:             uuid.New().String(),
+		OrganizationID: testOrgID,
+		DocumentNumber: docNum,
+		LinkedPO:       poDocNum,
+		Status:         status,
+		Amount:         amount,
+		Currency:       "ZMW",
+		CreatedAt:      time.Now(),
+		UpdatedAt:      time.Now(),
+	}
+	pv.ApprovalHistory = datatypes.NewJSONType([]types.ApprovalRecord{})
+	if err := config.DB.Create(&pv).Error; err != nil {
+		t.Fatalf("makePaymentVoucherForPO: %v", err)
+	}
+	return pv
+}
+
+// TestGetPurchaseOrder_DerivedPaymentStatus_PartiallyPaid seeds a PO with
+// total=1000 and three PVs (PAID 400, DRAFT 600, REJECTED 100). REJECTED PVs
+// are excluded from both the committed total and linkedPVs (they never
+// consumed PO budget), so the response should reflect only the PAID + DRAFT
+// pair: amountPaid=400, amountCommitted=1000, balance=0,
+// paymentStatus="partially_paid", linkedPVs len 2, linkedPV = latest (DRAFT).
+func TestGetPurchaseOrder_DerivedPaymentStatus_PartiallyPaid(t *testing.T) {
+	db := setupTestDB(t)
+	defer teardownTestDB(t, db)
+
+	order := makePurchaseOrder(t, "PO-PAY-STATUS-001", "PENDING")
+	makePaymentVoucherForPO(t, order.DocumentNumber, "PV-PAY-STATUS-001", "PAID", 400.0)
+	makePaymentVoucherForPO(t, order.DocumentNumber, "PV-PAY-STATUS-002", "DRAFT", 600.0)
+	makePaymentVoucherForPO(t, order.DocumentNumber, "PV-PAY-STATUS-003", "REJECTED", 100.0)
+
+	app := newPurchaseOrderApp(t)
+
+	// Detail endpoint.
+	resp := testRequest(app, http.MethodGet, "/purchase-orders/"+order.ID, nil)
+	if resp.StatusCode != http.StatusOK {
+		body := decodeResponse(resp)
+		t.Fatalf("expected 200, got %d; body=%v", resp.StatusCode, body)
+	}
+	var detail struct {
+		Data types.PurchaseOrderResponse `json:"data"`
+	}
+	decodeJSON(t, resp, &detail)
+
+	if detail.Data.AmountPaid != 400.0 {
+		t.Errorf("detail: expected amountPaid=400, got %v", detail.Data.AmountPaid)
+	}
+	if detail.Data.AmountCommitted != 1000.0 {
+		t.Errorf("detail: expected amountCommitted=1000, got %v", detail.Data.AmountCommitted)
+	}
+	if detail.Data.Balance != 0.0 {
+		t.Errorf("detail: expected balance=0, got %v", detail.Data.Balance)
+	}
+	if detail.Data.PaymentStatus != "partially_paid" {
+		t.Errorf("detail: expected paymentStatus=partially_paid, got %q", detail.Data.PaymentStatus)
+	}
+	if len(detail.Data.LinkedPVs) != 2 {
+		t.Fatalf("detail: expected linkedPVs len 2, got %d (%+v)", len(detail.Data.LinkedPVs), detail.Data.LinkedPVs)
+	}
+	if detail.Data.LinkedPV == nil || detail.Data.LinkedPV.Status != "DRAFT" {
+		t.Errorf("detail: expected linkedPV=latest (DRAFT), got %+v", detail.Data.LinkedPV)
+	}
+
+	// List endpoint returns the same derived fields.
+	listResp := testRequest(app, http.MethodGet, "/purchase-orders", nil)
+	if listResp.StatusCode != http.StatusOK {
+		t.Fatalf("expected 200, got %d", listResp.StatusCode)
+	}
+	var list struct {
+		Data []types.PurchaseOrderResponse `json:"data"`
+	}
+	decodeJSON(t, listResp, &list)
+
+	var found *types.PurchaseOrderResponse
+	for i := range list.Data {
+		if list.Data[i].ID == order.ID {
+			found = &list.Data[i]
+			break
+		}
+	}
+	if found == nil {
+		t.Fatalf("list: PO %s not found in response", order.ID)
+	}
+	if found.AmountPaid != 400.0 {
+		t.Errorf("list: expected amountPaid=400, got %v", found.AmountPaid)
+	}
+	if found.AmountCommitted != 1000.0 {
+		t.Errorf("list: expected amountCommitted=1000, got %v", found.AmountCommitted)
+	}
+	if found.Balance != 0.0 {
+		t.Errorf("list: expected balance=0, got %v", found.Balance)
+	}
+	if found.PaymentStatus != "partially_paid" {
+		t.Errorf("list: expected paymentStatus=partially_paid, got %q", found.PaymentStatus)
+	}
+	if len(found.LinkedPVs) != 2 {
+		t.Errorf("list: expected linkedPVs len 2, got %d", len(found.LinkedPVs))
+	}
+}
+
+// TestCreatePurchaseOrder_DerivedPaymentStatus_Unpaid verifies the cheap
+// create-path enrichment: a brand-new PO with no PVs is "unpaid" with
+// balance == totalAmount.
+func TestCreatePurchaseOrder_DerivedPaymentStatus_Unpaid(t *testing.T) {
+	db := setupTestDB(t)
+	defer teardownTestDB(t, db)
+
+	app := newPurchaseOrderApp(t)
+	body := map[string]interface{}{
+		"totalAmount":  500.0,
+		"currency":     "ZMW",
+		"deliveryDate": time.Now().Add(30 * 24 * time.Hour).Format(time.RFC3339),
+		"items": []map[string]interface{}{
+			{"description": "Widget A", "quantity": 5, "unitPrice": 100.0, "amount": 500.0},
+		},
+	}
+	resp := testRequest(app, http.MethodPost, "/purchase-orders", body)
+	if resp.StatusCode != http.StatusCreated {
+		t.Fatalf("expected 201, got %d", resp.StatusCode)
+	}
+	var created struct {
+		Data types.PurchaseOrderResponse `json:"data"`
+	}
+	decodeJSON(t, resp, &created)
+
+	if created.Data.PaymentStatus != "unpaid" {
+		t.Errorf("expected paymentStatus=unpaid, got %q", created.Data.PaymentStatus)
+	}
+	if created.Data.Balance != 500.0 {
+		t.Errorf("expected balance=500, got %v", created.Data.Balance)
+	}
+	if created.Data.AmountPaid != 0.0 {
+		t.Errorf("expected amountPaid=0, got %v", created.Data.AmountPaid)
+	}
+}
+
 // TestPO_ProcurementUserCannotSeeDirectPayment verifies that a procurement-role
 // user receives 404 when fetching a direct_payment PO by ID (single-get endpoint).
 // The list endpoint is sqlc-backed and cannot be exercised in SQLite tests.

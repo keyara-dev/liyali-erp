@@ -298,30 +298,42 @@ type POItem struct {
 
 // LinkedPVSummary is a compact PV reference embedded in PurchaseOrderResponse
 type LinkedPVSummary struct {
-	ID             string `json:"id"`
-	DocumentNumber string `json:"documentNumber"`
-	Status         string `json:"status"`
+	ID             string  `json:"id"`
+	DocumentNumber string  `json:"documentNumber"`
+	Status         string  `json:"status"`
+	Amount         float64 `json:"amount"`
 }
 
 // PurchaseOrderResponse represents a PO in responses
 type PurchaseOrderResponse struct {
-	ID                      string                 `json:"id"`
-	OrganizationID          string                 `json:"organizationId"`
-	DocumentNumber          string                 `json:"documentNumber"`
-	VendorID                string                 `json:"vendorId"`
-	VendorName              string                 `json:"vendorName"`
-	Vendor                  *VendorResponse        `json:"vendor,omitempty"`
-	Status                  string                 `json:"status"`
-	Items                   []POItem               `json:"items"`
-	TotalAmount             float64                `json:"totalAmount"`
-	Currency                string                 `json:"currency"`
-	DeliveryDate            time.Time              `json:"deliveryDate"`
-	ApprovalStage           int                    `json:"approvalStage"`
-	ApprovalHistory         []ApprovalRecord       `json:"approvalHistory"`
-	ActionHistory           []ActionHistoryEntry   `json:"actionHistory,omitempty"`
-	LinkedRequisition       string                 `json:"linkedRequisition"`
-	SourceRequisitionId     string                 `json:"sourceRequisitionId,omitempty"`
-	LinkedPV                *LinkedPVSummary       `json:"linkedPV,omitempty"`
+	ID                  string               `json:"id"`
+	OrganizationID      string               `json:"organizationId"`
+	DocumentNumber      string               `json:"documentNumber"`
+	VendorID            string               `json:"vendorId"`
+	VendorName          string               `json:"vendorName"`
+	Vendor              *VendorResponse      `json:"vendor,omitempty"`
+	Status              string               `json:"status"`
+	Items               []POItem             `json:"items"`
+	TotalAmount         float64              `json:"totalAmount"`
+	Currency            string               `json:"currency"`
+	DeliveryDate        time.Time            `json:"deliveryDate"`
+	ApprovalStage       int                  `json:"approvalStage"`
+	ApprovalHistory     []ApprovalRecord     `json:"approvalHistory"`
+	ActionHistory       []ActionHistoryEntry `json:"actionHistory,omitempty"`
+	LinkedRequisition   string               `json:"linkedRequisition"`
+	SourceRequisitionId string               `json:"sourceRequisitionId,omitempty"`
+	LinkedPV            *LinkedPVSummary     `json:"linkedPV,omitempty"`
+	// LinkedPVs lists every live (non-cancelled, non-rejected) PV linked to
+	// this PO, ordered oldest-first — supports partial payments (multiple
+	// PVs per PO). LinkedPV (above) is kept for back-compat and always
+	// mirrors the latest entry in this slice.
+	LinkedPVs []LinkedPVSummary `json:"linkedPVs,omitempty"`
+	// PaymentStatus is derived from AmountPaid vs TotalAmount — see
+	// services.DerivePaymentStatus. Not a models/status.go enum value.
+	PaymentStatus           string                 `json:"paymentStatus,omitempty"`
+	AmountPaid              float64                `json:"amountPaid"`
+	AmountCommitted         float64                `json:"amountCommitted"`
+	Balance                 float64                `json:"balance"`
 	ProcurementFlow         string                 `json:"procurementFlow"` // "" | "goods_first" | "payment_first"
 	Metadata                map[string]interface{} `json:"metadata,omitempty"`
 	EstimatedCost           float64                `json:"estimatedCost,omitempty"`
