@@ -5,6 +5,7 @@ import {
   type ChainDocumentType,
   type ChainAttachmentsResponse,
 } from "@/app/_actions/document-chain";
+import { toDocChain, type DocChain } from "@/components/linked-documents";
 
 /**
  * Fetch every supporting-document attachment aggregated across the full
@@ -41,18 +42,22 @@ export const useChainAttachments = (
  * same shape/endpoint as usePurchaseOrderChain / usePaymentVoucherChain.
  * Used by the requisition detail page in place of the dead
  * /requisitions/:id/chain endpoint. See getDocumentChain.
+ *
+ * The backend returns the nested {parentDocuments, childDocuments} shape;
+ * this adapts it to the flat DocChain slots buildChainLinks/LinkedDocuments
+ * need (see toDocChain in @/components/linked-documents for the rationale).
  */
 export const useDocumentChain = (
   docId: string,
   docType: ChainDocumentType,
-  initialData?: any,
+  initialData?: DocChain,
 ) =>
   useQuery({
     queryKey: ["document-chain", docId, docType],
     queryFn: async () => {
       const response = await getDocumentChain(docId, docType);
       if (!response.success) throw new Error(response.message);
-      return response.data;
+      return toDocChain(response.data);
     },
     initialData,
     enabled: !!docId,

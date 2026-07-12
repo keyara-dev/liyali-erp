@@ -70,7 +70,7 @@ interface LinkedDocumentsProps {
  * carries an id, a document number and a status. Both interfaces are
  * structurally compatible with this subset.
  */
-interface DocChain {
+export interface DocChain {
   requisitionId?: string;
   requisitionDocumentNumber?: string;
   requisitionStatus?: string;
@@ -83,6 +83,149 @@ interface DocChain {
   pvId?: string;
   pvDocumentNumber?: string;
   pvStatus?: string;
+}
+
+/**
+ * One entry in the nested GetDocumentChain response's parentDocuments /
+ * childDocuments arrays (backend/handlers/document_chain.go
+ * buildDocumentChain, ~166-297): `{id, type, documentNumber, status, ...}`.
+ * `type` is the backend's underscored form ("purchase_order",
+ * "payment_voucher") — never the hyphenated LinkedDocType form.
+ */
+interface RawChainDoc {
+  id?: string;
+  type?: string;
+  documentNumber?: string;
+  status?: string;
+  [key: string]: unknown;
+}
+
+/**
+ * Raw shape of GET /api/v1/document-chain/:id?documentType=... — the
+ * unwrapped `data` payload (or, tolerantly, the still-wrapped
+ * `{success, data}` response). Every field is nested (parentDocuments /
+ * childDocuments arrays); there is no flat poId/grnId/pvId anywhere on it.
+ */
+interface RawDocumentChain {
+  documentId?: string;
+  documentType?: string;
+  documentNumber?: string;
+  status?: string;
+  parentDocuments?: RawChainDoc[];
+  childDocuments?: RawChainDoc[];
+  procurementFlow?: string;
+  routingType?: string;
+  [key: string]: unknown;
+}
+
+/** Maps a backend chain-doc `type` string (either underscored or hyphenated)
+ * to the DocChain slot it fills. Returns undefined for anything unrecognized
+ * so malformed entries are silently skipped rather than crashing. */
+function chainSlotFor(
+  type: string | undefined,
+): "requisition" | "purchase-order" | "grn" | "payment-voucher" | undefined {
+  switch ((type || "").toLowerCase()) {
+    case "requisition":
+      return "requisition";
+    case "purchase_order":
+    case "purchase-order":
+      return "purchase-order";
+    case "grn":
+    case "goods_received_note":
+      return "grn";
+    case "payment_voucher":
+    case "payment-voucher":
+      return "payment-voucher";
+    default:
+      return undefined;
+  }
+}
+
+/**
+ * Adapts the NESTED GetDocumentChain response
+ * (`{documentId, documentType, parentDocuments: [...], childDocuments: [...]}`)
+ * into the FLAT DocChain slots buildChainLinks expects. This is the fix for
+ * the empty Linked Documents ribbon: the chain hooks (usePurchaseOrderChain,
+ * usePaymentVoucherChain, useDocumentChain) feed buildChainLinks the raw
+ * backend response, whose shape never matches DocChain's flat fields, so
+ * every slot silently reads as undefined and the ribbon renders nothing.
+ *
+ * Tolerant of:
+ * - the `{success, data}` response wrapper as well as the already-unwrapped
+ *   chain object (server actions in this codebase typically unwrap before
+ *   returning, but this defends against either);
+ * - missing/empty parentDocuments / childDocuments arrays;
+ * - multiple documents of the same type in childDocuments (multi-partial-
+ *   payments means a PO can have several live PVs) — childDocuments is
+ *   ordered created_at ASC, and slots are filled in parent → self → child
+ *   order, so the LAST matching entry (the newest) wins a slot. The full
+ *   multi-PV list is still available elsewhere (PO detail's linked-PVs list,
+ *   the chain-attachments zone); this single-slot ribbon intentionally shows
+ *   only the latest.
+ * - the anchor document itself: included from documentId/documentType/
+ *   documentNumber/status when present, so a slot is still filled if a
+ *   caller ever passes a chain to buildChainLinks for a *different*
+ *   document's type than the one it was fetched for. buildChainLinks always
+ *   filters out `currentType`, so for the normal call pattern (chain fetched
+ *   for the same doc whose page renders it) this is inert.
+ */
+export function toDocChain(raw: unknown): DocChain {
+  if (!raw || typeof raw !== "object") return {};
+
+  const maybeWrapped = raw as { success?: boolean; data?: unknown };
+  const source: RawDocumentChain =
+    maybeWrapped.data && typeof maybeWrapped.data === "object"
+      ? (maybeWrapped.data as RawDocumentChain)
+      : (raw as RawDocumentChain);
+
+  const chain: DocChain = {};
+
+  const applySlot = (doc: RawChainDoc | undefined) => {
+    if (!doc || !doc.id) return;
+    const slot = chainSlotFor(doc.type);
+    if (!slot) return;
+
+    switch (slot) {
+      case "requisition":
+        chain.requisitionId = doc.id;
+        chain.requisitionDocumentNumber = doc.documentNumber;
+        chain.requisitionStatus = doc.status;
+        break;
+      case "purchase-order":
+        chain.poId = doc.id;
+        chain.poDocumentNumber = doc.documentNumber;
+        chain.poStatus = doc.status;
+        break;
+      case "grn":
+        chain.grnId = doc.id;
+        chain.grnDocumentNumber = doc.documentNumber;
+        chain.grnStatus = doc.status;
+        break;
+      case "payment-voucher":
+        chain.pvId = doc.id;
+        chain.pvDocumentNumber = doc.documentNumber;
+        chain.pvStatus = doc.status;
+        break;
+    }
+  };
+
+  const parents = Array.isArray(source.parentDocuments)
+    ? source.parentDocuments
+    : [];
+  const children = Array.isArray(source.childDocuments)
+    ? source.childDocuments
+    : [];
+
+  parents.forEach(applySlot);
+  applySlot({
+    id: source.documentId,
+    type: source.documentType,
+    documentNumber: source.documentNumber,
+    status: source.status,
+  });
+  children.forEach(applySlot);
+
+  return chain;
 }
 
 const LABELS: Record<LinkedDocType, string> = {

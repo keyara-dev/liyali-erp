@@ -15,12 +15,12 @@ import {
 import {
   PurchaseOrder,
   PurchaseOrderStats,
-  PurchaseOrderChain,
   CreatePurchaseOrderRequest,
   UpdatePurchaseOrderRequest,
   SubmitPurchaseOrderRequest,
 } from "@/types/purchase-order";
 import { toast } from "sonner";
+import { toDocChain, type DocChain } from "@/components/linked-documents";
 
 /**
  * Fetch all purchase orders
@@ -304,14 +304,16 @@ export const useDeletePurchaseOrder = (onSuccess?: () => void) => {
  */
 export const usePurchaseOrderChain = (
   poId: string,
-  initialData?: PurchaseOrderChain,
+  initialData?: DocChain,
 ) =>
   useQuery({
     queryKey: [QUERY_KEYS.PURCHASE_ORDERS.BY_ID, poId, "chain"],
     queryFn: async () => {
       const response = await getPurchaseOrderChain(poId);
       if (!response.success) throw new Error(response.message);
-      return response.data as PurchaseOrderChain;
+      // Backend returns the nested {parentDocuments, childDocuments} shape —
+      // adapt to the flat DocChain slots buildChainLinks/LinkedDocuments need.
+      return toDocChain(response.data);
     },
     initialData,
     enabled: !!poId,

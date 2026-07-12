@@ -18,6 +18,7 @@ import {
   UpdatePaymentVoucherRequest,
 } from "@/types/payment-voucher";
 import { toast } from "sonner";
+import { toDocChain, type DocChain } from "@/components/linked-documents";
 
 // Re-export mutation hooks from mutations file
 export {
@@ -169,13 +170,15 @@ export const useDeletePaymentVoucher = (onSuccess?: () => void) => {
  *
  * **Validates: Requirements 8.1, 8.7, 17.3, 17.4**
  */
-export const usePaymentVoucherChain = (pvId: string, initialData?: any) =>
+export const usePaymentVoucherChain = (pvId: string, initialData?: DocChain) =>
   useQuery({
     queryKey: [QUERY_KEYS.PAYMENT_VOUCHERS.BY_ID, pvId, "chain"],
     queryFn: async () => {
       const response = await getPaymentVoucherChain(pvId);
       if (!response.success) throw new Error(response.message);
-      return response.data;
+      // Backend returns the nested {parentDocuments, childDocuments} shape —
+      // adapt to the flat DocChain slots buildChainLinks/LinkedDocuments need.
+      return toDocChain(response.data);
     },
     initialData,
     enabled: !!pvId,
