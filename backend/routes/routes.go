@@ -305,6 +305,8 @@ func SetupRoutes(app *fiber.App, handlerRegistry *handlers.HandlerRegistry, rbac
 
 	// Document chain route (generic endpoint for all workflow documents)
 	tenant.Get("/document-chain/:id", handlers.GetDocumentChain)
+	// Chain-wide supporting-document attachments (REQ + PO + all GRNs + all PVs)
+	tenant.Get("/document-chain/:id/attachments", handlers.GetDocumentChainAttachments)
 
 	// Requisition routes (tenant-scoped)
 	requisitions := tenant.Group("/requisitions", middleware.InjectWorkflowExecutionService(handlerRegistry.WorkflowExecutionService))

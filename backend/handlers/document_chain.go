@@ -8,6 +8,7 @@ import (
 	"github.com/liyali/liyali-gateway/config"
 	"github.com/liyali/liyali-gateway/middleware"
 	"github.com/liyali/liyali-gateway/models"
+	"gorm.io/datatypes"
 )
 
 // GetDocumentChain retrieves the complete document chain for any workflow document
@@ -236,12 +237,19 @@ func buildDocumentChain(documentID, documentType string, rawChain fiber.Map, org
 		}
 	}
 
-	// For requisitions, POs, and GRNs, add PV if it exists
+	// For requisitions, POs, and GRNs, add PV(s) if any exist. Partial
+	// payments (Task B) mean a PO can have MULTIPLE live PVs, so this looks
+	// up ALL of them (not just the first) ordered oldest-first. childDocuments
+	// is already an array, so this is purely additive — a consumer that only
+	// reads the first entry still gets a valid single PV, unchanged from
+	// before this patch.
 	if strings.ToLower(documentType) != "payment_voucher" && strings.ToLower(documentType) != "payment-voucher" {
-		// Look up PV linked to the PO
+		// Look up PVs linked to the PO
 		if poDocNum, ok := rawChain["poDocumentNumber"].(string); ok && poDocNum != "" {
-			var pv models.PaymentVoucher
-			if err := config.DB.Where("linked_po = ? AND organization_id = ?", poDocNum, orgID).First(&pv).Error; err == nil {
+			var pvs []models.PaymentVoucher
+			config.DB.Where("linked_po = ? AND organization_id = ?", poDocNum, orgID).
+				Order("created_at ASC").Find(&pvs)
+			for _, pv := range pvs {
 				childDocs = append(childDocs, fiber.Map{
 					"id":             pv.ID,
 					"type":           "payment_voucher",
@@ -286,4 +294,371 @@ func buildDocumentChain(documentID, documentType string, rawChain fiber.Map, org
 	}
 
 	return chain
+}
+
+// ============================================================================
+// CHAIN-WIDE SUPPORTING-DOCUMENT ATTACHMENTS
+// GET /api/v1/document-chain/:id/attachments
+// ============================================================================
+
+// chainDocRef is a compact reference to one document in the resolved chain.
+type chainDocRef struct {
+	ID             string `json:"id"`
+	Type           string `json:"type"`
+	DocumentNumber string `json:"documentNumber"`
+}
+
+// ChainAttachment is one supporting-document attachment aggregated from
+// anywhere in a procurement chain (requisition, PO, GRN, or PV), including
+// proof-of-payment. See GetDocumentChainAttachments.
+type ChainAttachment struct {
+	Kind            string `json:"kind"` // attachment | quotation | proof_of_payment
+	SourceDocType   string `json:"sourceDocType"`
+	SourceDocID     string `json:"sourceDocId"`
+	SourceDocNumber string `json:"sourceDocNumber"`
+	FileID          string `json:"fileId,omitempty"`
+	FileName        string `json:"fileName"`
+	FileURL         string `json:"fileUrl,omitempty"` // empty for POP — never a downloadable URL
+	FileSize        int64  `json:"fileSize,omitempty"`
+	MimeType        string `json:"mimeType,omitempty"`
+	UploadedAt      string `json:"uploadedAt,omitempty"`
+	UploadedBy      string `json:"uploadedBy,omitempty"`
+	FromRequisition bool   `json:"fromRequisition,omitempty"`
+	Category        string `json:"category,omitempty"`
+	DownloadRef     string `json:"downloadRef,omitempty"` // POP: "/payment-vouchers/{id}"
+}
+
+// resolveChainDocumentSet returns EVERY live document in the procurement
+// chain anchored on the requested document: the source requisition (0..1),
+// the purchase order (0..1), every non-cancelled GRN raised against that PO
+// (0..n), and every non-cancelled PV raised against that PO (0..n), ordered
+// oldest-first within each group.
+//
+// This intentionally does NOT reuse/overload resolveDocumentChain, which is
+// single-slot (one grnId/pvId) and used by the existing GetDocumentChain
+// endpoint — changing its shape would ripple into every consumer of that
+// response. Since partial payments (Task B) mean a PO can now have multiple
+// live PVs, and payment-first flows allow one GRN per PV (so GRNs can be
+// plural too), this resolver anchors to the PO the same way
+// resolveDocumentChain does and then Find()s the full set instead of
+// First()ing a single row.
+func resolveChainDocumentSet(documentID, documentType, orgID string) []chainDocRef {
+	db := config.DB
+	refs := []chainDocRef{}
+
+	var po models.PurchaseOrder
+	havePO := false
+
+	switch strings.ToLower(documentType) {
+	case "requisition":
+		var req models.Requisition
+		if err := db.Where("id = ? AND organization_id = ?", documentID, orgID).First(&req).Error; err == nil {
+			refs = append(refs, chainDocRef{ID: req.ID, Type: "requisition", DocumentNumber: req.DocumentNumber})
+		}
+		if err := db.Where("source_requisition_id = ? AND organization_id = ?", documentID, orgID).First(&po).Error; err == nil {
+			havePO = true
+		}
+
+	case "purchase_order", "purchase-order":
+		if err := db.Where("id = ? AND organization_id = ?", documentID, orgID).First(&po).Error; err == nil {
+			havePO = true
+		}
+
+	case "payment_voucher", "payment-voucher":
+		var pv models.PaymentVoucher
+		if err := db.Where("id = ? AND organization_id = ?", documentID, orgID).First(&pv).Error; err == nil && pv.LinkedPO != "" {
+			if err := db.Where("document_number = ? AND organization_id = ?", pv.LinkedPO, orgID).First(&po).Error; err == nil {
+				havePO = true
+			}
+		}
+
+	case "grn", "goods_received_note":
+		var grn models.GoodsReceivedNote
+		if err := db.Where("id = ? AND organization_id = ?", documentID, orgID).First(&grn).Error; err == nil && grn.PODocumentNumber != "" {
+			if err := db.Where("document_number = ? AND organization_id = ?", grn.PODocumentNumber, orgID).First(&po).Error; err == nil {
+				havePO = true
+			}
+		}
+	}
+
+	if !havePO {
+		return refs
+	}
+
+	// Source requisition — skip when the anchor IS the requisition (already
+	// added above) to avoid a duplicate entry.
+	if strings.ToLower(documentType) != "requisition" && po.SourceRequisitionId != nil && *po.SourceRequisitionId != "" {
+		var req models.Requisition
+		if err := db.Where("id = ? AND organization_id = ?", *po.SourceRequisitionId, orgID).First(&req).Error; err == nil {
+			refs = append(refs, chainDocRef{ID: req.ID, Type: "requisition", DocumentNumber: req.DocumentNumber})
+		}
+	}
+
+	refs = append(refs, chainDocRef{ID: po.ID, Type: "purchase_order", DocumentNumber: po.DocumentNumber})
+
+	var grns []models.GoodsReceivedNote
+	db.Where("po_document_number = ? AND organization_id = ? AND UPPER(status) != 'CANCELLED'",
+		po.DocumentNumber, orgID).Order("created_at ASC").Find(&grns)
+	for _, g := range grns {
+		refs = append(refs, chainDocRef{ID: g.ID, Type: "grn", DocumentNumber: g.DocumentNumber})
+	}
+
+	var pvs []models.PaymentVoucher
+	db.Where("linked_po = ? AND organization_id = ? AND UPPER(status) != 'CANCELLED'",
+		po.DocumentNumber, orgID).Order("created_at ASC").Find(&pvs)
+	for _, p := range pvs {
+		refs = append(refs, chainDocRef{ID: p.ID, Type: "payment_voucher", DocumentNumber: p.DocumentNumber})
+	}
+
+	return refs
+}
+
+// chainAttachmentFromMap tolerantly extracts one attachment/quotation entry
+// from the loosely-typed JSON blobs stored in metadata.attachments /
+// metadata.quotations. The live upload paths (requisition, PO, PV detail
+// clients — see frontend/src/types/{requisition,purchase-order}.ts) all
+// write fileId/fileName/fileUrl/fileSize/mimeType/uploadedAt, but this also
+// tolerates the shorter id/name/url/size aliases defensively so older or
+// hand-crafted metadata blobs still surface instead of being silently
+// dropped.
+func chainAttachmentFromMap(m map[string]interface{}, sourceDocType, sourceDocID, sourceDocNumber, kind, category string) ChainAttachment {
+	str := func(keys ...string) string {
+		for _, k := range keys {
+			if v, ok := m[k]; ok {
+				if s, ok2 := v.(string); ok2 && s != "" {
+					return s
+				}
+			}
+		}
+		return ""
+	}
+
+	var size int64
+	for _, k := range []string{"fileSize", "size", "sizeBytes"} {
+		if v, ok := m[k]; ok {
+			switch n := v.(type) {
+			case float64:
+				size = int64(n)
+			case int64:
+				size = n
+			case int:
+				size = int64(n)
+			}
+			if size != 0 {
+				break
+			}
+		}
+	}
+
+	fromReq, _ := m["fromRequisition"].(bool)
+
+	cat := category
+	if cat == "" {
+		cat = str("category")
+	}
+
+	return ChainAttachment{
+		Kind:            kind,
+		SourceDocType:   sourceDocType,
+		SourceDocID:     sourceDocID,
+		SourceDocNumber: sourceDocNumber,
+		FileID:          str("fileId", "id"),
+		FileName:        str("fileName", "name"),
+		FileURL:         str("fileUrl", "url"),
+		FileSize:        size,
+		MimeType:        str("mimeType", "mimetype", "contentType"),
+		UploadedAt:      str("uploadedAt"),
+		UploadedBy:      str("uploadedBy"),
+		FromRequisition: fromReq,
+		Category:        cat,
+	}
+}
+
+// parseDocMetadataAttachments extracts every attachment (kind="attachment")
+// and quotation (kind="quotation", category="quotation") entry from a
+// document's metadata JSONB blob. Applies to all four document types —
+// requisition attachments live ONLY in metadata (there is no top-level
+// column), and PO/GRN/PV follow the same convention.
+func parseDocMetadataAttachments(metadata datatypes.JSON, sourceDocType, sourceDocID, sourceDocNumber string) []ChainAttachment {
+	out := []ChainAttachment{}
+	if len(metadata) == 0 {
+		return out
+	}
+
+	var meta map[string]interface{}
+	if err := json.Unmarshal(metadata, &meta); err != nil {
+		return out
+	}
+
+	appendEntries := func(raw interface{}, kind, category string) {
+		slice, ok := raw.([]interface{})
+		if !ok {
+			return
+		}
+		for _, item := range slice {
+			m, ok := item.(map[string]interface{})
+			if !ok {
+				continue
+			}
+			att := chainAttachmentFromMap(m, sourceDocType, sourceDocID, sourceDocNumber, kind, category)
+			if att.FileID == "" && att.FileName == "" && att.FileURL == "" {
+				continue // skip empty/malformed entries
+			}
+			out = append(out, att)
+		}
+	}
+
+	if raw, ok := meta["attachments"]; ok {
+		appendEntries(raw, "attachment", "")
+	}
+	if raw, ok := meta["quotations"]; ok {
+		appendEntries(raw, "quotation", "quotation")
+	}
+
+	return out
+}
+
+// chainPOPMeta mirrors the JSON keys MarkPaidWithPOP writes into
+// PaymentVoucher.ProofOfPayment (document_extras_handler.go, ~1095-1103):
+// id/fileName/mimeType/sizeBytes/uploadedAt/uploadedBy. The base64 file
+// content is stored under "dataBase64" — deliberately NOT a field on this
+// struct, so json.Unmarshal silently discards it and it can never reach an
+// API response.
+type chainPOPMeta struct {
+	ID         string `json:"id"`
+	FileName   string `json:"fileName"`
+	MimeType   string `json:"mimeType"`
+	SizeBytes  int64  `json:"sizeBytes"`
+	UploadedAt string `json:"uploadedAt"`
+	UploadedBy string `json:"uploadedBy"`
+}
+
+// GetDocumentChainAttachments aggregates every supporting-document
+// attachment across the FULL procurement chain anchored on the requested
+// document: the source requisition, the PO, every GRN, and every PV
+// (partial payments mean a PO can have more than one live PV — see
+// resolveChainDocumentSet). Each PV's proof-of-payment (if any) is also
+// surfaced as a "proof_of_payment" entry with a downloadRef instead of the
+// raw base64 blob.
+//
+// Dedupe: entries are deduped by FileID, first occurrence wins, in
+// REQ -> PO -> GRN(s) -> PV(s) order — so a PO attachment copied from its
+// source requisition (fromRequisition=true, same fileId) collapses to the
+// requisition's entry rather than appearing twice.
+func GetDocumentChainAttachments(c *fiber.Ctx) error {
+	documentID := c.Params("id")
+	if documentID == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"success": false,
+			"message": "Document ID is required",
+		})
+	}
+
+	documentType := c.Query("documentType", "")
+	if documentType == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"success": false,
+			"message": "documentType query parameter is required",
+		})
+	}
+
+	tenant, err := middleware.GetTenantContext(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"success": false,
+			"message": "Organization context required",
+		})
+	}
+	orgID := tenant.OrganizationID
+
+	if err := verifyDocumentOwnership(documentID, documentType, orgID); err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
+			"success": false,
+			"message": "Document not found",
+		})
+	}
+
+	docs := resolveChainDocumentSet(documentID, documentType, orgID)
+
+	attachments := []ChainAttachment{}
+	seenFileIDs := map[string]bool{}
+	addUnique := func(att ChainAttachment) {
+		if att.FileID != "" {
+			if seenFileIDs[att.FileID] {
+				return
+			}
+			seenFileIDs[att.FileID] = true
+		}
+		attachments = append(attachments, att)
+	}
+
+	db := config.DB
+
+	for _, d := range docs {
+		switch d.Type {
+		case "requisition":
+			var req models.Requisition
+			if err := db.Where("id = ? AND organization_id = ?", d.ID, orgID).First(&req).Error; err == nil {
+				for _, att := range parseDocMetadataAttachments(req.Metadata, "requisition", req.ID, req.DocumentNumber) {
+					addUnique(att)
+				}
+			}
+
+		case "purchase_order":
+			var po models.PurchaseOrder
+			if err := db.Where("id = ? AND organization_id = ?", d.ID, orgID).First(&po).Error; err == nil {
+				for _, att := range parseDocMetadataAttachments(po.Metadata, "purchase_order", po.ID, po.DocumentNumber) {
+					addUnique(att)
+				}
+			}
+
+		case "grn":
+			var grn models.GoodsReceivedNote
+			if err := db.Where("id = ? AND organization_id = ?", d.ID, orgID).First(&grn).Error; err == nil {
+				for _, att := range parseDocMetadataAttachments(grn.Metadata, "grn", grn.ID, grn.DocumentNumber) {
+					addUnique(att)
+				}
+			}
+
+		case "payment_voucher":
+			var pv models.PaymentVoucher
+			if err := db.Where("id = ? AND organization_id = ?", d.ID, orgID).First(&pv).Error; err == nil {
+				// PV's own uploaded attachments (metadata.attachments) — the
+				// live PV detail page supports these independently of proof
+				// of payment. See pv-detail-client.tsx.
+				for _, att := range parseDocMetadataAttachments(pv.Metadata, "payment_voucher", pv.ID, pv.DocumentNumber) {
+					addUnique(att)
+				}
+
+				// Proof of payment — NEVER unmarshal the base64 "dataBase64"
+				// field into a response-bound struct (see chainPOPMeta).
+				if len(pv.ProofOfPayment) > 0 {
+					var pop chainPOPMeta
+					if err := json.Unmarshal(pv.ProofOfPayment, &pop); err == nil && (pop.ID != "" || pop.FileName != "") {
+						addUnique(ChainAttachment{
+							Kind:            "proof_of_payment",
+							SourceDocType:   "payment_voucher",
+							SourceDocID:     pv.ID,
+							SourceDocNumber: pv.DocumentNumber,
+							FileID:          pop.ID,
+							FileName:        pop.FileName,
+							FileSize:        pop.SizeBytes,
+							MimeType:        pop.MimeType,
+							UploadedAt:      pop.UploadedAt,
+							UploadedBy:      pop.UploadedBy,
+							DownloadRef:     "/payment-vouchers/" + pv.ID,
+						})
+					}
+				}
+			}
+		}
+	}
+
+	return c.JSON(fiber.Map{
+		"success": true,
+		"data": fiber.Map{
+			"attachments": attachments,
+			"documents":   docs,
+		},
+	})
 }
