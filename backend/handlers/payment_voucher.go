@@ -681,6 +681,11 @@ func UpdatePaymentVoucher(c *fiber.Ctx) error {
 	// UpdatePurchaseOrder. isMetadataOnly requires every other field on the
 	// request to be absent/zero; a single non-metadata field falls through to
 	// the status guard below.
+	//
+	// SECURITY: this expression must enumerate EVERY non-metadata field of
+	// types.UpdatePaymentVoucherRequest. Adding a field to that struct without
+	// adding it here silently lets requests carrying it bypass the status
+	// guard on approved PVs. Keep in lockstep with the struct definition.
 	isMetadataOnly := len(req.Metadata) > 0 &&
 		req.VendorID == "" &&
 		req.VendorName == "" &&

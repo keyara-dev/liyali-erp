@@ -415,6 +415,10 @@ type UpdatePaymentVoucherRequest struct {
 	// Metadata-only updates (e.g. supporting-document attachments) bypass the
 	// status guard in UpdatePaymentVoucher — see isMetadataOnly there. Merged
 	// (not replaced) into the existing metadata column, same as PO's carve-out.
+	//
+	// SECURITY: any NEW field added to this struct MUST also be added to the
+	// isMetadataOnly enumeration in handlers/payment_voucher.go UpdatePaymentVoucher,
+	// or requests carrying it will bypass the status guard on approved PVs.
 	Metadata map[string]interface{} `json:"metadata"`
 }
 
@@ -500,6 +504,10 @@ type UpdateGRNRequest struct {
 	// Metadata-only updates (e.g. supporting-document attachments) bypass the
 	// status guard in UpdateGRN — see isMetadataOnly there. Merged (not
 	// replaced) into the existing metadata column, same as PO's carve-out.
+	//
+	// SECURITY: any NEW field added to this struct MUST also be added to the
+	// isMetadataOnly enumeration in handlers/grn.go UpdateGRN, or requests
+	// carrying it will bypass the status guard on approved GRNs.
 	Metadata map[string]interface{} `json:"metadata"`
 }
 

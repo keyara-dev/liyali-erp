@@ -689,6 +689,11 @@ func UpdateGRN(c *fiber.Ctx) error {
 	// UpdatePurchaseOrder. isMetadataOnly requires every other field on the
 	// request to be absent/zero; a single non-metadata field falls through to
 	// the status guard below.
+	//
+	// SECURITY: this expression must enumerate EVERY non-metadata field of
+	// types.UpdateGRNRequest. Adding a field to that struct without adding it
+	// here silently lets requests carrying it bypass the status guard on
+	// approved GRNs. Keep in lockstep with the struct definition.
 	isMetadataOnly := len(req.Metadata) > 0 &&
 		len(req.Items) == 0 &&
 		req.ReceivedBy == "" &&
