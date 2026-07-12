@@ -32,6 +32,9 @@ export async function createPaymentVoucherFromPurchaseOrder(
   vendorIdOverride?: string,
   vendorNameOverride?: string,
   linkedGRNDocumentNumber?: string,
+  amount?: number,
+  paymentType?: "full" | "partial",
+  narration?: string,
 ): Promise<APIResponse<PaymentVoucher>> {
   const url = `/api/v1/payment-vouchers/from-po`;
 
@@ -53,7 +56,7 @@ export async function createPaymentVoucherFromPurchaseOrder(
         requestedByName: po.requestedByName,
         requestedByRole: po.requestedByRole,
         items: po.items,
-        totalAmount: po.totalAmount,
+        totalAmount: amount ?? po.totalAmount,
         currency: po.currency,
         budgetCode: po.budgetCode,
         costCenter: po.costCenter,
@@ -61,6 +64,8 @@ export async function createPaymentVoucherFromPurchaseOrder(
         sourceRequisitionId: po.sourceRequisitionId,
         workflowId, // Store for later use when submitting
         linkedGRNDocumentNumber, // goods_first flow: approved GRN that must precede payment
+        paymentType, // "full" | "partial" — inferred server-side when omitted
+        narration, // free-text reason for the amount (deposit, milestone, final, etc.)
       },
     });
 
@@ -104,6 +109,8 @@ export async function createPaymentVoucher(
         glCode: data.glCode,
         linkedPO: data.linkedPO,
         linkedGRN: data.linkedGRNDocumentNumber,
+        paymentType: data.paymentType,
+        narration: data.narration,
         budgetCode: data.budgetCode,
         costCenter: data.costCenter,
         projectCode: data.projectCode,

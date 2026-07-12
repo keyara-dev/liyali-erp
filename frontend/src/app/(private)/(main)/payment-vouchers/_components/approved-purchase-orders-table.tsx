@@ -23,12 +23,15 @@ import {
   Loader2,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { CreatePVFromPODialog } from "./create-pv-from-po-dialog";
+import {
+  CreatePVFromPODialog,
+  type CreatePVFromPOOptions,
+} from "./create-pv-from-po-dialog";
 import { createPaymentVoucherFromPurchaseOrder } from "@/app/_actions/payment-vouchers";
 import { toast } from "sonner";
 import { Card } from "@/components/ui/card";
 import { formatCurrency } from "@/lib/utils";
-import { hasBlockingPaymentVoucher } from "@/lib/payment-utils";
+import { canCreateAnotherPV } from "@/lib/payment-utils";
 
 interface ApprovedPurchaseOrdersTableProps {
   userId: string;
@@ -63,24 +66,25 @@ export function ApprovedPurchaseOrdersTable({
   });
 
   const handleCreatePV = (po: PurchaseOrder) => {
-    // Guard: the backend enforces one live PV per PO. Don't open the dialog for
-    // a PO that already has one — the row offers "View PV" instead.
-    if (hasBlockingPaymentVoucher(po)) {
-      toast.info(
-        `PO ${po.documentNumber} already has payment voucher ${po.linkedPV?.documentNumber ?? ""} (${po.linkedPV?.status ?? ""}).`,
-      );
+    // Guard: the backend caps PVs at the PO's remaining balance. Don't open
+    // the dialog for a PO with nothing left to pay.
+    if (!canCreateAnotherPV(po)) {
+      toast.info(`PO ${po.documentNumber} has no remaining balance to pay.`);
       return;
     }
     setSelectedPO(po);
     setIsCreateDialogOpen(true);
   };
 
-  const handleConfirmCreate = async (
-    workflowId: string,
-    vendorId?: string,
-    vendorName?: string,
-    linkedGRNDocumentNumber?: string,
-  ) => {
+  const handleConfirmCreate = async ({
+    workflowId,
+    vendorId,
+    vendorName,
+    linkedGRNDocumentNumber,
+    amount,
+    paymentType,
+    narration,
+  }: CreatePVFromPOOptions) => {
     if (!selectedPO) return;
 
     setIsCreating(true);
@@ -91,6 +95,9 @@ export function ApprovedPurchaseOrdersTable({
         vendorId,
         vendorName,
         linkedGRNDocumentNumber,
+        amount,
+        paymentType,
+        narration,
       );
 
       if (response.success && response.data) {
@@ -232,7 +239,7 @@ export function ApprovedPurchaseOrdersTable({
                           <Eye className="h-4 w-4 mr-1" />
                           View
                         </Button>
-                        {hasBlockingPaymentVoucher(po) ? (
+                        {po.linkedPV && (
                           <Button
                             variant="outline"
                             size="sm"
@@ -240,12 +247,13 @@ export function ApprovedPurchaseOrdersTable({
                               po.linkedPV &&
                               router.push(`/payment-vouchers/${po.linkedPV.id}`)
                             }
-                            title={`Payment voucher ${po.linkedPV?.documentNumber ?? ""} already exists (${po.linkedPV?.status ?? ""})`}
+                            title={`Payment voucher ${po.linkedPV?.documentNumber ?? ""} (${po.linkedPV?.status ?? ""})`}
                           >
                             <FileText className="h-4 w-4 mr-1" />
                             View PV
                           </Button>
-                        ) : (
+                        )}
+                        {canCreateAnotherPV(po) && (
                           <Button
                             variant="default"
                             size="sm"

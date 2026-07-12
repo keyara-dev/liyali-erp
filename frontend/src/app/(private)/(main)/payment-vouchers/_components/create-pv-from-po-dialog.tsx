@@ -7,6 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Label } from "@/components/ui/label";
 import { SelectField } from "@/components/ui/select-field";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { PurchaseOrder } from "@/types/purchase-order";
 import {
   FileText,
@@ -15,6 +18,8 @@ import {
   Package,
   Truck,
   Wallet,
+  Coins,
+  Banknote,
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { useConfigurationStatus } from "@/hooks/use-configuration-status";
@@ -23,17 +28,23 @@ import { useVendors } from "@/hooks/use-vendor-queries";
 import { useGRNs } from "@/hooks/use-grn-queries";
 import { useOrganizationSettingsQuery } from "@/hooks/use-organization-queries";
 import { formatCurrency } from "@/lib/utils";
+import { poRemainingBalance } from "@/lib/payment-utils";
+
+export interface CreatePVFromPOOptions {
+  workflowId: string;
+  vendorId?: string;
+  vendorName?: string;
+  linkedGRNDocumentNumber?: string;
+  amount: number;
+  paymentType: "full" | "partial";
+  narration?: string;
+}
 
 interface CreatePVFromPODialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   purchaseOrder: PurchaseOrder;
-  onConfirm: (
-    workflowId: string,
-    vendorId?: string,
-    vendorName?: string,
-    linkedGRNDocumentNumber?: string,
-  ) => Promise<void>;
+  onConfirm: (options: CreatePVFromPOOptions) => Promise<void>;
   isCreating: boolean;
 }
 
@@ -51,6 +62,33 @@ export function CreatePVFromPODialog({
     purchaseOrder.vendorName ?? "",
   );
   const [selectedGRNDocNumber, setSelectedGRNDocNumber] = useState("");
+
+  // Remaining balance available for a new PV on this PO (multi-PV / partial payments).
+  const remainingBalance = useMemo(
+    () => poRemainingBalance(purchaseOrder),
+    [purchaseOrder],
+  );
+
+  const [paymentType, setPaymentType] = useState<"full" | "partial">("full");
+  const [amount, setAmount] = useState<number>(remainingBalance);
+  const [narration, setNarration] = useState("");
+
+  // Keep the amount in sync with the remaining balance while on "full" (or when
+  // the dialog is reopened for a different PO) — partial amounts stay user-driven.
+  useEffect(() => {
+    if (paymentType === "full") {
+      setAmount(remainingBalance);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [remainingBalance, paymentType]);
+
+  const amountError =
+    paymentType === "partial" &&
+    (amount <= 0 || amount > remainingBalance + 0.01)
+      ? amount <= 0
+        ? "Amount must be greater than 0"
+        : `Amount cannot exceed the remaining balance of ${formatCurrency(remainingBalance, purchaseOrder.currency)}`
+      : undefined;
 
   const { data: vendors = [] } = useVendors();
   const { data: orgSettings } = useOrganizationSettingsQuery();
@@ -109,7 +147,18 @@ export function CreatePVFromPODialog({
   const canCreate =
     purchaseOrder.status?.toUpperCase() === "APPROVED" &&
     configStatus.allConfigured &&
-    (!isGoodsFirst || selectedGRNDocNumber !== "");
+    (!isGoodsFirst || selectedGRNDocNumber !== "") &&
+    remainingBalance > 0.01 &&
+    !amountError;
+
+  const resetLocalState = () => {
+    setSelectedVendorId(purchaseOrder.vendorId ?? "");
+    setSelectedVendorName(purchaseOrder.vendorName ?? "");
+    setSelectedGRNDocNumber("");
+    setPaymentType("full");
+    setAmount(remainingBalance);
+    setNarration("");
+  };
 
   const handleConfirm = async () => {
     if (isGoodsFirst && !selectedGRNDocNumber) {
@@ -120,22 +169,21 @@ export function CreatePVFromPODialog({
 
     // Pass empty workflowId — it's stored but unused at creation (see
     // payment-vouchers.ts); the submit dialog captures the real workflow.
-    await onConfirm(
-      "",
-      selectedVendorId || undefined,
-      selectedVendorName || undefined,
-      isGoodsFirst ? selectedGRNDocNumber : undefined,
-    );
-    setSelectedVendorId(purchaseOrder.vendorId ?? "");
-    setSelectedVendorName(purchaseOrder.vendorName ?? "");
-    setSelectedGRNDocNumber("");
+    await onConfirm({
+      workflowId: "",
+      vendorId: selectedVendorId || undefined,
+      vendorName: selectedVendorName || undefined,
+      linkedGRNDocumentNumber: isGoodsFirst ? selectedGRNDocNumber : undefined,
+      amount: paymentType === "full" ? remainingBalance : amount,
+      paymentType,
+      narration: narration.trim() || undefined,
+    });
+    resetLocalState();
   };
 
   const handleClose = () => {
     if (!isCreating) {
-      setSelectedVendorId(purchaseOrder.vendorId ?? "");
-      setSelectedVendorName(purchaseOrder.vendorName ?? "");
-      setSelectedGRNDocNumber("");
+      resetLocalState();
       onOpenChange(false);
     }
   };
@@ -340,6 +388,101 @@ export function CreatePVFromPODialog({
 
           <Separator />
 
+          {/* Payment Type — Full or Part */}
+          <div className="space-y-2">
+            <Label className="flex items-center gap-1.5">
+              <Coins className="h-4 w-4" />
+              Payment Type
+            </Label>
+            <RadioGroup
+              value={paymentType}
+              onValueChange={(v) => setPaymentType(v as "full" | "partial")}
+              className="grid grid-cols-1 sm:grid-cols-2 gap-2"
+            >
+              <label
+                htmlFor="pv-payment-full"
+                className={`flex items-start gap-3 rounded-lg border p-3 cursor-pointer transition-colors ${
+                  paymentType === "full"
+                    ? "border-green-500 bg-green-50 dark:bg-green-950/20"
+                    : "border-border hover:bg-muted/50"
+                } ${isCreating ? "pointer-events-none opacity-60" : ""}`}
+              >
+                <RadioGroupItem
+                  value="full"
+                  id="pv-payment-full"
+                  disabled={isCreating}
+                  className="mt-0.5"
+                />
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <Banknote className="h-4 w-4 text-green-600 shrink-0" />
+                    <span className="font-medium text-sm">Full</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Pay the entire remaining balance now.
+                  </p>
+                </div>
+              </label>
+
+              <label
+                htmlFor="pv-payment-partial"
+                className={`flex items-start gap-3 rounded-lg border p-3 cursor-pointer transition-colors ${
+                  paymentType === "partial"
+                    ? "border-amber-500 bg-amber-50 dark:bg-amber-950/20"
+                    : "border-border hover:bg-muted/50"
+                } ${isCreating ? "pointer-events-none opacity-60" : ""}`}
+              >
+                <RadioGroupItem
+                  value="partial"
+                  id="pv-payment-partial"
+                  disabled={isCreating}
+                  className="mt-0.5"
+                />
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <Coins className="h-4 w-4 text-amber-600 shrink-0" />
+                    <span className="font-medium text-sm">Part</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Pay a portion of the remaining balance.
+                  </p>
+                </div>
+              </label>
+            </RadioGroup>
+          </div>
+
+          {/* Amount */}
+          <Input
+            type="number"
+            label="Amount"
+            required={paymentType === "partial"}
+            min={0}
+            max={remainingBalance}
+            step="0.01"
+            value={paymentType === "full" ? remainingBalance : amount}
+            onChange={(e) => setAmount(parseFloat(e.target.value) || 0)}
+            isDisabled={isCreating || paymentType === "full"}
+            isInvalid={!!amountError}
+            errorText={amountError}
+            descriptionText={
+              !amountError
+                ? `Remaining balance: ${formatCurrency(remainingBalance, purchaseOrder.currency)}`
+                : undefined
+            }
+          />
+
+          {/* Narration (optional) */}
+          <Textarea
+            label="Narration"
+            placeholder="Reason for this amount (e.g. deposit, milestone payment, final settlement)…"
+            value={narration}
+            onChange={(e) => setNarration(e.target.value)}
+            isDisabled={isCreating}
+            rows={2}
+          />
+
+          <Separator />
+
           {/* Purchase Order Summary */}
           <div className="space-y-3 rounded-lg border p-4 bg-muted/50">
             <div className="flex items-center justify-between mb-2">
@@ -369,12 +512,21 @@ export function CreatePVFromPODialog({
             <Separator />
 
             <div className="flex justify-between items-center">
-              <span className="text-sm font-medium">Total Amount:</span>
-              <span className="text-sm font-mono text-blue-600">
+              <span className="text-xs text-muted-foreground">
+                PO Total Amount:
+              </span>
+              <span className="text-xs font-mono text-muted-foreground">
                 {formatCurrency(
                   purchaseOrder.totalAmount,
                   purchaseOrder.currency,
                 )}
+              </span>
+            </div>
+
+            <div className="flex justify-between items-center">
+              <span className="text-sm font-medium">Remaining Balance:</span>
+              <span className="text-sm font-mono font-semibold text-blue-600">
+                {formatCurrency(remainingBalance, purchaseOrder.currency)}
               </span>
             </div>
 
@@ -424,6 +576,17 @@ export function CreatePVFromPODialog({
               </AlertDescription>
             </Alert>
           )}
+
+          {purchaseOrder.status?.toUpperCase() === "APPROVED" &&
+            remainingBalance <= 0.01 && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  This purchase order has no remaining balance — it is fully
+                  paid by its existing payment voucher(s).
+                </AlertDescription>
+              </Alert>
+            )}
         </div>
     </ResponsiveSheet>
   );

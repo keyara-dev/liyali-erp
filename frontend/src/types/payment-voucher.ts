@@ -201,6 +201,10 @@ export interface CreatePaymentVoucherRequest {
   linkedPO: string;
   /** Goods-first flow: GRN document number approved before this PV */
   linkedGRNDocumentNumber?: string;
+  /** "full" | "partial" — inferred server-side against the linked PO total when omitted */
+  paymentType?: "full" | "partial";
+  /** Free-text reason for the amount (deposit, milestone, final settlement, etc.) */
+  narration?: string;
 
   // Business requirement fields
   title: string;

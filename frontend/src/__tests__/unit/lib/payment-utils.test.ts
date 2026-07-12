@@ -2,6 +2,8 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import {
   generatePaymentReference,
   hasBlockingPaymentVoucher,
+  poRemainingBalance,
+  canCreateAnotherPV,
 } from "@/lib/payment-utils";
 
 /**
@@ -117,4 +119,82 @@ describe("hasBlockingPaymentVoucher", () => {
       expect(hasBlockingPaymentVoucher(po(status))).toBe(false);
     },
   );
+});
+
+/**
+ * poRemainingBalance(po) → number
+ *
+ * Prefers the backend-computed `balance` field; falls back to
+ * `totalAmount - amountCommitted` when `balance` is absent.
+ */
+describe("poRemainingBalance", () => {
+  it("returns `balance` when present, even when it disagrees with totalAmount - amountCommitted", () => {
+    expect(
+      poRemainingBalance({
+        totalAmount: 1000,
+        amountCommitted: 200,
+        balance: 750,
+      }),
+    ).toBe(750);
+  });
+
+  it("returns 0 balance as-is (not falling back), since 0 is a valid number", () => {
+    expect(
+      poRemainingBalance({ totalAmount: 1000, amountCommitted: 1000, balance: 0 }),
+    ).toBe(0);
+  });
+
+  it("falls back to totalAmount - amountCommitted when balance is undefined", () => {
+    expect(
+      poRemainingBalance({ totalAmount: 1000, amountCommitted: 300 }),
+    ).toBe(700);
+  });
+
+  it("treats missing totalAmount/amountCommitted as 0", () => {
+    expect(poRemainingBalance({})).toBe(0);
+  });
+
+  it("can go negative when amountCommitted exceeds totalAmount (fallback path)", () => {
+    expect(
+      poRemainingBalance({ totalAmount: 500, amountCommitted: 600 }),
+    ).toBe(-100);
+  });
+});
+
+/**
+ * canCreateAnotherPV(po) → boolean
+ *
+ * True when poRemainingBalance(po) > 0.01 — replaces hasBlockingPaymentVoucher
+ * as the "Create PV" gate now that a PO can carry multiple PVs.
+ */
+describe("canCreateAnotherPV", () => {
+  it("returns true when there is meaningful remaining balance", () => {
+    expect(canCreateAnotherPV({ totalAmount: 1000, amountCommitted: 400 })).toBe(
+      true,
+    );
+  });
+
+  it("returns false when fully committed (balance = 0)", () => {
+    expect(canCreateAnotherPV({ totalAmount: 1000, amountCommitted: 1000 })).toBe(
+      false,
+    );
+  });
+
+  it("returns false when balance is within the 0.01 epsilon (floating point noise)", () => {
+    expect(canCreateAnotherPV({ balance: 0.005 })).toBe(false);
+  });
+
+  it("returns true when balance is just above the 0.01 epsilon", () => {
+    expect(canCreateAnotherPV({ balance: 0.02 })).toBe(true);
+  });
+
+  it("returns false when balance is negative (overpaid/over-committed edge case)", () => {
+    expect(canCreateAnotherPV({ balance: -50 })).toBe(false);
+  });
+
+  it("uses the explicit `balance` field over totalAmount/amountCommitted when present", () => {
+    expect(
+      canCreateAnotherPV({ totalAmount: 1000, amountCommitted: 1000, balance: 300 }),
+    ).toBe(true);
+  });
 });

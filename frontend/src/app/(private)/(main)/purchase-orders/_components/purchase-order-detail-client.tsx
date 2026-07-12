@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
+import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -31,6 +32,7 @@ import {
   Truck,
   Trash2,
   Info,
+  Wallet,
 } from "lucide-react";
 import { PageHeader } from "@/components/base/page-header";
 import { PurchaseOrderItemsList } from "./purchase-order-items-list";
@@ -98,7 +100,11 @@ import { createPaymentVoucherFromPurchaseOrder } from "@/app/_actions/payment-vo
 import { toast } from "sonner";
 import { formatCurrency } from "@/lib/utils";
 import { EditPurchaseOrderDialog } from "./edit-purchase-order-dialog";
-import { CreatePVFromPODialog } from "@/app/(private)/(main)/payment-vouchers/_components/create-pv-from-po-dialog";
+import {
+  CreatePVFromPODialog,
+  type CreatePVFromPOOptions,
+} from "@/app/(private)/(main)/payment-vouchers/_components/create-pv-from-po-dialog";
+import { poRemainingBalance, canCreateAnotherPV } from "@/lib/payment-utils";
 
 /**
  * Props for the PurchaseOrderDetailClient component
@@ -353,12 +359,15 @@ export function PurchaseOrderDetailClient({
     handleDocumentUpdated();
   };
 
-  const handleConfirmCreatePV = async (
-    workflowId: string,
-    vendorId?: string,
-    vendorName?: string,
-    linkedGRNDocumentNumber?: string,
-  ) => {
+  const handleConfirmCreatePV = async ({
+    workflowId,
+    vendorId,
+    vendorName,
+    linkedGRNDocumentNumber,
+    amount,
+    paymentType,
+    narration,
+  }: CreatePVFromPOOptions) => {
     setIsCreatingPV(true);
     try {
       const response = await createPaymentVoucherFromPurchaseOrder(
@@ -367,6 +376,9 @@ export function PurchaseOrderDetailClient({
         vendorId,
         vendorName,
         linkedGRNDocumentNumber,
+        amount,
+        paymentType,
+        narration,
       );
       if (response.success && response.data) {
         toast.success("Payment Voucher created successfully");
@@ -982,29 +994,121 @@ export function PurchaseOrderDetailClient({
         showViewLinks={userRole.toLowerCase() !== "requester"}
       />
 
-      {/* Create Payment Voucher CTA — only when none exists yet.
-          An existing PV is shown in the LinkedDocuments section above. */}
-      {purchaseOrder.status?.toUpperCase() === "APPROVED" &&
-        !purchaseOrder.linkedPV && (
-          <Card className="p-4 border-0 shadow-sm">
-            <div className="flex items-center justify-between">
+      {/* Payment Voucher summary — status chip, paid/committed/balance amounts,
+          and the list of linked PVs when this PO has multiple (partial payments).
+          The "Create PV" action is gated on remaining balance, not "no PV exists
+          yet", since a PO can now carry several PVs up to its total. */}
+      {(purchaseOrder.status?.toUpperCase() === "APPROVED" ||
+        purchaseOrder.status?.toUpperCase() === "FULFILLED" ||
+        !!purchaseOrder.linkedPV ||
+        (purchaseOrder.linkedPVs?.length ?? 0) > 0) && (
+        <Card className="p-4 border-0 shadow-sm space-y-3">
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <div className="flex items-center gap-2">
+              <Wallet className="h-4 w-4 text-muted-foreground" />
+              <h3 className="text-sm font-semibold">Payment Voucher</h3>
+              {(() => {
+                const paymentStatus = purchaseOrder.paymentStatus ?? "unpaid";
+                const styles: Record<string, string> = {
+                  fully_paid:
+                    "bg-green-100 text-green-800 border-green-200 dark:bg-green-950/40 dark:text-green-300 dark:border-green-800",
+                  partially_paid:
+                    "bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800",
+                  unpaid:
+                    "bg-gray-100 text-gray-800 border-gray-200 dark:bg-gray-800/40 dark:text-gray-300 dark:border-gray-700",
+                };
+                const labels: Record<string, string> = {
+                  fully_paid: "Fully Paid",
+                  partially_paid: "Partially Paid",
+                  unpaid: "Unpaid",
+                };
+                return (
+                  <span
+                    className={`text-xs px-2 py-1 rounded-full border font-medium ${styles[paymentStatus]}`}
+                  >
+                    {labels[paymentStatus]}
+                  </span>
+                );
+              })()}
+            </div>
+            {purchaseOrder.status?.toUpperCase() === "APPROVED" &&
+              canCreateAnotherPV(purchaseOrder) && (
+                <Button
+                  variant="default"
+                  size="sm"
+                  onClick={() => setIsCreatePVDialogOpen(true)}
+                >
+                  <FileText className="h-4 w-4 mr-1" />
+                  Create PV
+                </Button>
+              )}
+          </div>
+
+          {(purchaseOrder.amountPaid !== undefined ||
+            purchaseOrder.amountCommitted !== undefined ||
+            purchaseOrder.balance !== undefined) && (
+            <div className="grid grid-cols-3 gap-3 text-center rounded-lg border bg-muted/30 p-3">
               <div>
-                <h3 className="text-sm font-semibold">Payment Voucher</h3>
-                <p className="text-xs text-muted-foreground">
-                  No payment voucher yet
+                <p className="text-xs text-muted-foreground">Paid</p>
+                <p className="text-sm font-semibold font-mono">
+                  {formatCurrency(
+                    purchaseOrder.amountPaid ?? 0,
+                    purchaseOrder.currency,
+                  )}
                 </p>
               </div>
-              <Button
-                variant="default"
-                size="sm"
-                onClick={() => setIsCreatePVDialogOpen(true)}
-              >
-                <FileText className="h-4 w-4 mr-1" />
-                Create PV
-              </Button>
+              <div>
+                <p className="text-xs text-muted-foreground">Committed</p>
+                <p className="text-sm font-semibold font-mono">
+                  {formatCurrency(
+                    purchaseOrder.amountCommitted ?? 0,
+                    purchaseOrder.currency,
+                  )}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Balance</p>
+                <p className="text-sm font-semibold font-mono">
+                  {formatCurrency(
+                    poRemainingBalance(purchaseOrder),
+                    purchaseOrder.currency,
+                  )}
+                </p>
+              </div>
             </div>
-          </Card>
-        )}
+          )}
+
+          {purchaseOrder.linkedPVs && purchaseOrder.linkedPVs.length > 0 ? (
+            <div className="space-y-1.5">
+              {purchaseOrder.linkedPVs.map((pv) => (
+                <Link
+                  key={pv.id}
+                  href={`/payment-vouchers/${pv.id}`}
+                  className="flex items-center justify-between gap-2 rounded-md border p-2 text-sm hover:bg-muted/50 transition-colors"
+                >
+                  <span className="font-mono truncate">
+                    {pv.documentNumber}
+                  </span>
+                  <span className="text-xs text-muted-foreground shrink-0">
+                    {pv.status}
+                  </span>
+                  <span className="font-mono text-xs shrink-0">
+                    {pv.amount !== undefined
+                      ? formatCurrency(pv.amount, purchaseOrder.currency)
+                      : "—"}
+                  </span>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            !purchaseOrder.linkedPV && (
+              <p className="text-xs text-muted-foreground">
+                No payment voucher yet
+              </p>
+            )
+          )}
+        </Card>
+      )}
 
       {/* ── Tabbed Content ──────────────────────────────────────────── */}
       <Card className="p-6 border-0 shadow-sm">
