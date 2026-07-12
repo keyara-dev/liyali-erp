@@ -29,8 +29,6 @@ import {
   FileText,
   Search,
   LayoutDashboard,
-  ShieldAlert,
-  Zap,
   FileCheck,
   CheckSquare,
   MailOpen,
@@ -198,17 +196,6 @@ export const routes: NavGroup[] = [
             title: "Categories",
             href: "/admin/categories",
             icon: Blocks,
-          },
-
-          {
-            title: "System Monitoring",
-            href: "/admin/monitoring",
-            icon: Zap,
-          },
-          {
-            title: "Compliance Tracking",
-            href: "/admin/compliance/tracking",
-            icon: ShieldAlert,
           },
         ],
       },
