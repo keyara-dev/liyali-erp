@@ -39,6 +39,22 @@ vi.mock('@/hooks/use-requisition-queries', () => ({
   })),
 }));
 
+// useRequisitionDetail now sources its chain via the generic document-chain
+// hook (documentType=requisition) instead of useRequisitionChain — see
+// use-requisition-detail.ts.
+vi.mock('@/hooks/use-document-chain-queries', () => ({
+  useDocumentChain: vi.fn(() => ({
+    data: undefined,
+    isLoading: false,
+  })),
+  useChainAttachments: vi.fn(() => ({
+    data: { attachments: [], documents: [] },
+    isLoading: false,
+    isError: false,
+    refetch: vi.fn(),
+  })),
+}));
+
 vi.mock('@/hooks/use-requisition-mutations', () => ({
   useWithdrawRequisition: vi.fn(() => ({
     mutateAsync: vi.fn(),

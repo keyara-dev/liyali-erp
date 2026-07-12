@@ -204,7 +204,8 @@ export async function getPaymentVoucherById(
 }
 
 /**
- * Update Payment Voucher (DRAFT only)
+ * Update Payment Voucher (DRAFT/PENDING, or metadata-only patches on any
+ * status — see UpdatePaymentVoucher's isMetadataOnly carve-out).
  * Calls: PUT /api/v1/payment-vouchers/{id}
  */
 export async function updatePaymentVoucher(
@@ -227,6 +228,7 @@ export async function updatePaymentVoucher(
         bankDetails: data.bankDetails,
         items: data.items,
         updatedBy: data.updatedBy,
+        metadata: data.metadata,
       },
     });
 

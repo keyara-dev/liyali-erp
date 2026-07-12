@@ -150,6 +150,10 @@ vi.mock("@/components/modals/pdf-preview-dialog", () => ({
   PdfPreviewDialog: () => null,
 }));
 
+vi.mock("@/components/supporting-documents", () => ({
+  SupportingDocuments: () => <div>Supporting Documents</div>,
+}));
+
 vi.mock("@/hooks/use-quality-issue-mutations", () => ({
   useAddQualityIssueMutation: vi.fn(() => ({
     mutateAsync: vi.fn(),

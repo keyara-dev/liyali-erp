@@ -180,6 +180,12 @@ export async function updateGRNAction(
     warehouseLocation?: string;
     notes?: string;
     consignmentNote?: string;
+    /** Metadata-only patches (e.g. supporting-document attachments) are
+     * allowed on any GRN status — see UpdateGRN's isMetadataOnly carve-out
+     * in backend/handlers/grn.go. The backend deep-merges this object's
+     * top-level keys into the existing metadata, so only the changed keys
+     * (e.g. { attachments }) need to be sent. */
+    metadata?: Record<string, unknown>;
   },
 ): Promise<APIResponse<GoodsReceivedNote>> {
   const url = `/api/v1/grns/${grnId}`;

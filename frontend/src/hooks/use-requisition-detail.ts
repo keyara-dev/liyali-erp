@@ -2,8 +2,8 @@ import { useDocumentDetail } from "./use-document-detail";
 import {
   useRequisitionById,
   useSubmitRequisitionForApproval,
-  useRequisitionChain,
 } from "./use-requisition-queries";
+import { useDocumentChain } from "./use-document-chain-queries";
 import { useWithdrawRequisition } from "./use-requisition-mutations";
 import { useRequisitionStorage } from "./use-requisition-storage";
 import { useApprovalPanelData } from "./use-approval-history";
@@ -35,7 +35,11 @@ export function useRequisitionDetail({
 
     // Query hooks
     useDocumentQuery: useRequisitionById,
-    useChainQuery: useRequisitionChain,
+    // Generic document-chain endpoint (documentType=requisition) — the old
+    // /requisitions/:id/chain endpoint reads a legacy DocumentLink table
+    // nothing in the live flow populates. See getDocumentChain,
+    // use-document-chain-queries.ts.
+    useChainQuery: (id: string) => useDocumentChain(id, "requisition"),
     useApprovalDataQuery: useApprovalPanelData,
 
     // Mutation hooks

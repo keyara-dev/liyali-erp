@@ -19,7 +19,6 @@ import {
   FileText,
   Undo2,
   Paperclip,
-  ImageIcon,
   ShoppingCart,
   CheckSquare,
   GitBranch,
@@ -37,7 +36,11 @@ import {
 import { CreateRequisitionDialog } from "./create-requisition-dialog";
 import { POCreationWizard } from "@/app/(private)/(main)/purchase-orders/_components/po-creation-wizard";
 import { toast } from "sonner";
-import { LinkedDocuments, buildChainLinks } from "@/components/linked-documents";
+import { buildChainLinks } from "@/components/linked-documents";
+import {
+  SupportingDocuments,
+  type UploadedAttachment,
+} from "@/components/supporting-documents";
 import {
   Empty,
   EmptyContent,
@@ -55,13 +58,6 @@ const PDFPreviewDialog = dynamic(
   { ssr: false },
 );
 
-const AttachmentPreviewDialog = dynamic(
-  () =>
-    import("@/components/modals/attachment-preview-dialog").then(
-      (mod) => mod.AttachmentPreviewDialog,
-    ),
-  { ssr: false },
-);
 import { RequisitionSubmitDialog } from "./requisition-submit-dialog";
 import { ConfirmationModal } from "@/components/modals/confirmation-modal";
 import { Badge } from "@/components";
@@ -125,9 +121,6 @@ export function RequisitionDetailClient({
     setShowSubmitDialog,
     showWithdrawModal,
     setShowWithdrawModal,
-    attachmentPreviewOpen,
-    setAttachmentPreviewOpen,
-    selectedAttachment,
     handlePreviewPDF,
     handleExportPDF,
     handleSubmitForApproval: handleSubmit,
@@ -135,7 +128,6 @@ export function RequisitionDetailClient({
     handleDocumentUpdated,
     handleWithdraw,
     handleApprovalComplete,
-    handleAttachmentPreview,
     permissions,
     submitMutation,
     withdrawMutation,
@@ -175,6 +167,13 @@ export function RequisitionDetailClient({
     ["admin", "finance", "approver"].includes(userRole.toLowerCase()) ||
     requisition.requesterId === userId;
 
+  // Chain-doc rows only exist once the requisition has a PO/GRN/PV to link —
+  // mirrors the old gating on the standalone LinkedDocuments mount.
+  const reqChainDocs =
+    requisition.status?.toUpperCase() === "APPROVED"
+      ? buildChainLinks(chain, "requisition")
+      : [];
+
   const handleSaveQuotations = async (newQuotations: Quotation[]) => {
     await updateRequisition({
       requisitionId: requisition.id,
@@ -185,12 +184,14 @@ export function RequisitionDetailClient({
     });
   };
 
-  const formatBytes = (bytes: number) => {
-    if (bytes === 0) return "0 B";
-    const k = 1024;
-    const sizes = ["B", "KB", "MB"];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
+  // Persists a SupportingDocuments upload (already on ImageKit) into the
+  // requisition's own attachments — read-modify-write via updateRequisition.
+  const handleSupportingDocUpload = async (att: UploadedAttachment) => {
+    await updateRequisition({
+      requisitionId: requisition.id,
+      attachments: [...attachments, att],
+    });
+    handleDocumentUpdated();
   };
 
   // Custom submit handler to pass additional requisition data
@@ -644,14 +645,6 @@ export function RequisitionDetailClient({
         )}
       </div>
 
-      {/* Linked procurement chain documents — only once requisition is approved */}
-      {requisition.status?.toUpperCase() === "APPROVED" && (
-        <LinkedDocuments
-          docs={buildChainLinks(chain, "requisition")}
-          showViewLinks={userRole.toLowerCase() !== "requester"}
-        />
-      )}
-
       {/* ── Tabbed Content ──────────────────────────────────────────── */}
       <Card className="p-6 border-0 shadow-sm">
         <Tabs defaultValue="items" className="w-full">
@@ -766,74 +759,15 @@ export function RequisitionDetailClient({
           </TabsContent>
 
           {/* ── Tab 2: Supporting Documents ── */}
-          <TabsContent value="documents" className="mt-6">
-            {attachments.length > 0 ? (
-              <div className="space-y-2">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-lg font-semibold">
-                    Supporting Documents ({attachments.length})
-                  </h2>
-                  {permissions.canEdit && (
-                    <Button
-                      onClick={handleEdit}
-                      variant="outline"
-                      size="sm"
-                      className="gap-2"
-                    >
-                      <Paperclip className="h-3.5 w-3.5" />
-                      Add Documents
-                    </Button>
-                  )}
-                </div>
-                {attachments.map((attachment) => (
-                  <button
-                    key={attachment.fileId}
-                    type="button"
-                    onClick={() => handleAttachmentPreview(attachment)}
-                    className="flex items-center justify-between gap-3 p-3 rounded-lg border hover:bg-muted/50 transition group w-full text-left"
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      {attachment.mimeType === "application/pdf" ? (
-                        <FileText className="h-5 w-5 text-red-500 shrink-0" />
-                      ) : (
-                        <ImageIcon className="h-5 w-5 text-blue-500 shrink-0" />
-                      )}
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium truncate">
-                          {attachment.fileName}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {formatBytes(attachment.fileSize)}
-                        </p>
-                      </div>
-                    </div>
-                    <Eye className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition shrink-0" />
-                  </button>
-                ))}
-              </div>
-            ) : (
-              <Empty>
-                <EmptyMedia variant="icon">
-                  <Paperclip className="h-6 w-6" />
-                </EmptyMedia>
-                <EmptyContent>
-                  <EmptyDescription>
-                    No supporting documents attached
-                  </EmptyDescription>
-                  {permissions.canEdit && (
-                    <Button
-                      onClick={handleEdit}
-                      variant="outline"
-                      size="sm"
-                      className="gap-2 mt-3"
-                    >
-                      <Paperclip className="h-3.5 w-3.5" />
-                      Add Documents
-                    </Button>
-                  )}
-                </EmptyContent>
-              </Empty>
-            )}
+          <TabsContent value="documents" className="mt-6 space-y-6">
+            <SupportingDocuments
+              documentId={requisition.id}
+              documentType="requisition"
+              chainDocs={reqChainDocs}
+              canUpload={permissions.canEdit}
+              onUpload={handleSupportingDocUpload}
+              showViewLinks={userRole.toLowerCase() !== "requester"}
+            />
 
             {/* ── Quotations section — shown only on APPROVED reqs ── */}
             {requisition.status?.toUpperCase() === "APPROVED" && (
@@ -960,14 +894,6 @@ export function RequisitionDetailClient({
         title="Withdraw Requisition"
         description={`Are you sure you want to withdraw requisition ${requisition.documentNumber || requisition.id}? It will be reverted to draft status and you can edit and re-submit it later.`}
         isLoading={withdrawMutation?.isPending || false}
-      />
-
-      {/* Attachment Preview Dialog */}
-      <AttachmentPreviewDialog
-        open={attachmentPreviewOpen}
-        onOpenChange={setAttachmentPreviewOpen}
-        attachment={selectedAttachment}
-        attachments={attachments}
       />
     </div>
   );

@@ -133,6 +133,10 @@ vi.mock("@/components/linked-documents", () => ({
   buildChainLinks: () => [],
 }));
 
+vi.mock("@/components/supporting-documents", () => ({
+  SupportingDocuments: () => <div>Supporting Documents</div>,
+}));
+
 vi.mock("@/components/base/document-loading-page", () => ({
   DocumentLoadingPage: () => <div>Loading...</div>,
 }));

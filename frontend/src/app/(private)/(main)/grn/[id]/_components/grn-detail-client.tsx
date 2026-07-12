@@ -41,9 +41,14 @@ import type { QualityIssue } from "@/types/goods-received-note";
 import { GRNSubmitDialog } from "./grn-submit-dialog";
 import { GRNSignoffPanel } from "./grn-signoff-panel";
 import { PDFPreviewDialog } from "@/components/modals/pdf-preview-dialog";
-import { LinkedDocuments, type LinkedDoc } from "@/components/linked-documents";
+import { type LinkedDoc } from "@/components/linked-documents";
+import {
+  SupportingDocuments,
+  type UploadedAttachment,
+} from "@/components/supporting-documents";
 import { cn } from "@/lib/utils";
-import { completeGRNAction } from "@/app/_actions/grn-actions";
+import { completeGRNAction, updateGRNAction } from "@/app/_actions/grn-actions";
+import { usePermissions } from "@/hooks/use-permissions";
 import { useQueryClient } from "@tanstack/react-query";
 import { QUERY_KEYS } from "@/lib/constants";
 
@@ -77,11 +82,14 @@ export function GRNDetailClient({
     previewBlob,
     handlePreviewPDF,
     handleExportPDF,
+    refetch,
   } = useGRNDetail({
     grnId,
     userId,
     userRole,
   });
+
+  const { hasPermission } = usePermissions();
 
   const addQualityIssueMutation = useAddQualityIssueMutation(grnId);
 
@@ -217,6 +225,24 @@ export function GRNDetailClient({
         message="The goods received note you're looking for doesn't exist."
       />
     );
+
+  // GRN never had its own attachments UI before — metadata.attachments is a
+  // new read path introduced alongside SupportingDocuments (Task C3).
+  const grnAttachments: UploadedAttachment[] =
+    (grn.metadata?.attachments as UploadedAttachment[]) ?? [];
+
+  // Task C2 made GRN metadata-only patches (e.g. attachments) allowed on any
+  // status, specifically so uploads aren't blocked once the GRN leaves DRAFT.
+  const canUploadGRN = permissions.isCreator || hasPermission("grn", "edit");
+
+  // Persists a SupportingDocuments upload (already on ImageKit) into the
+  // GRN's own metadata.attachments — read-modify-write via updateGRNAction.
+  const handleSupportingDocUpload = async (att: UploadedAttachment) => {
+    await updateGRNAction(grnId, {
+      metadata: { attachments: [...grnAttachments, att] },
+    });
+    refetch();
+  };
 
   const qualityIssues = grn.qualityIssues ?? [];
   const hasQualityIssues = qualityIssues.length > 0;
@@ -486,9 +512,13 @@ export function GRNDetailClient({
         </div>
       )}
 
-      {/* Linked procurement chain documents — view / preview / download */}
-      <LinkedDocuments
-        docs={grnLinkedDocs}
+      {/* Linked procurement chain documents + chain-wide supporting files */}
+      <SupportingDocuments
+        documentId={grnId}
+        documentType="grn"
+        chainDocs={grnLinkedDocs}
+        canUpload={canUploadGRN}
+        onUpload={handleSupportingDocUpload}
         showViewLinks={userRole.toLowerCase() !== "requester"}
       />
 

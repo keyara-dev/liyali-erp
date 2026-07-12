@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -19,18 +19,15 @@ import {
   FileText,
   Undo2,
   Paperclip,
-  ImageIcon,
   ShoppingCart,
   CheckSquare,
   GitBranch,
   Activity,
-  Upload,
   TrendingUp,
   TrendingDown,
   Minus,
   AlertTriangle,
   Truck,
-  Trash2,
   Info,
   Wallet,
 } from "lucide-react";
@@ -61,13 +58,6 @@ const PDFPreviewDialog = dynamic(
   { ssr: false },
 );
 
-const AttachmentPreviewDialog = dynamic(
-  () =>
-    import("@/components/modals/attachment-preview-dialog").then(
-      (mod) => mod.AttachmentPreviewDialog,
-    ),
-  { ssr: false },
-);
 import { PurchaseOrderSubmitDialog } from "./purchase-order-submit-dialog";
 import { ConfirmationModal } from "@/components/modals/confirmation-modal";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -78,7 +68,12 @@ import {
 } from "@/components/ui/popover";
 import { QuotationCollectionSection } from "@/app/(private)/(main)/requisitions/_components/quotation-collection-section";
 import { POShippingEditor } from "./po-shipping-editor";
-import { LinkedDocuments, buildChainLinks } from "@/components/linked-documents";
+import { buildChainLinks } from "@/components/linked-documents";
+import {
+  SupportingDocuments,
+  type UploadedAttachment,
+} from "@/components/supporting-documents";
+import type { ChainAttachment } from "@/app/_actions/document-chain";
 import { useVendors } from "@/hooks/use-vendor-queries";
 import {
   VendorComplianceWarning,
@@ -94,7 +89,6 @@ import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { getAuditEvents, type AuditEvent } from "@/app/_actions/audit";
 import { getRequisitionById } from "@/app/_actions/requisitions";
-import { uploadToImageKit } from "@/lib/imagekit";
 import { updatePurchaseOrder } from "@/app/_actions/purchase-orders";
 import { createPaymentVoucherFromPurchaseOrder } from "@/app/_actions/payment-vouchers";
 import { toast } from "sonner";
@@ -160,11 +154,9 @@ export function PurchaseOrderDetailClient({
   initialPurchaseOrder,
 }: PurchaseOrderDetailClientProps) {
   const router = useRouter();
-  const [isUploading, setIsUploading] = useState(false);
   const [editingItems, setEditingItems] = useState(false);
   const [isCreatePVDialogOpen, setIsCreatePVDialogOpen] = useState(false);
   const [isCreatingPV, setIsCreatingPV] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const { data: vendors = [] } = useVendors({ active: true });
   const { hasPermission } = usePermissions();
 
@@ -194,9 +186,6 @@ export function PurchaseOrderDetailClient({
     setShowSubmitDialog,
     showWithdrawModal,
     setShowWithdrawModal,
-    attachmentPreviewOpen,
-    setAttachmentPreviewOpen,
-    selectedAttachment,
     handlePreviewPDF,
     handleExportPDF,
     handleSubmitForApproval: handleSubmit,
@@ -204,7 +193,6 @@ export function PurchaseOrderDetailClient({
     handleDocumentUpdated,
     handleWithdraw,
     handleApprovalComplete,
-    handleAttachmentPreview,
     permissions,
     submitMutation,
     withdrawMutation,
@@ -248,6 +236,28 @@ export function PurchaseOrderDetailClient({
   const quotations: Quotation[] =
     (purchaseOrder.metadata?.quotations as Quotation[]) ?? [];
 
+  // Chain-doc rows (Req/PO/GRN/PV) fed into SupportingDocuments' zone (a) —
+  // mechanism unchanged from the old standalone LinkedDocuments mount.
+  const poChainDocs = (() => {
+    const links = buildChainLinks(chain, "purchase-order");
+    // Chain may omit the source requisition — backfill from the PO.
+    if (
+      !links.some((l) => l.type === "requisition") &&
+      purchaseOrder.sourceRequisitionId
+    ) {
+      links.unshift({
+        type: "requisition",
+        label: "Requisition",
+        id: purchaseOrder.sourceRequisitionId,
+        documentNumber:
+          linkedRequisitionData?.documentNumber ||
+          purchaseOrder.sourceRequisitionId,
+        status: linkedRequisitionData?.status,
+      });
+    }
+    return links;
+  })();
+
   const isDraft = purchaseOrder.status?.toUpperCase() === "DRAFT";
 
   // Look up full vendor details from the vendors list
@@ -280,55 +290,38 @@ export function PurchaseOrderDetailClient({
     permissions.canEdit ||
     (isEditableStatus && hasPermission("purchase_order", "edit"));
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setIsUploading(true);
-    try {
-      const result = await uploadToImageKit(
-        file,
-        "purchase-orders/attachments",
-      );
-      const newAttachment: PurchaseOrderAttachment = {
-        fileId: result.fileId,
-        fileName: result.name,
-        fileUrl: result.url,
-        fileSize: result.size,
-        mimeType: file.type,
-        uploadedAt: new Date().toISOString(),
-      };
-      const existingOwn = attachments.filter((a) => !a.fromRequisition);
-      const fromReq = attachments.filter((a) => a.fromRequisition);
-      const merged = [...existingOwn, newAttachment, ...fromReq];
-      await updatePurchaseOrder({
-        purchaseOrderId: purchaseOrderId,
-        poId: purchaseOrderId,
-        metadata: { ...purchaseOrder.metadata, attachments: merged },
-      });
-      handleDocumentUpdated();
-      toast.success("Document uploaded successfully");
-    } catch {
-      toast.error("Failed to upload document");
-    } finally {
-      setIsUploading(false);
-      if (fileInputRef.current) fileInputRef.current.value = "";
-    }
+  // Persists a SupportingDocuments upload (already on ImageKit) into the PO's
+  // own metadata.attachments — read-modify-write, keeping REQ-copied entries
+  // last so the PO's own uploads sort first. SupportingDocuments does the
+  // ImageKit upload + success/error toast itself; this only persists.
+  const handleSupportingDocUpload = async (att: UploadedAttachment) => {
+    const existingOwn = attachments.filter((a) => !a.fromRequisition);
+    const fromReq = attachments.filter((a) => a.fromRequisition);
+    const merged = [...existingOwn, att, ...fromReq];
+    await updatePurchaseOrder({
+      purchaseOrderId: purchaseOrderId,
+      poId: purchaseOrderId,
+      metadata: { ...purchaseOrder.metadata, attachments: merged },
+    });
+    handleDocumentUpdated();
   };
 
   const handleDeleteAttachment = async (fileId: string) => {
     const updated = attachments.filter((a) => a.fileId !== fileId);
-    try {
-      await updatePurchaseOrder({
-        purchaseOrderId: purchaseOrderId,
-        poId: purchaseOrderId,
-        metadata: { ...purchaseOrder.metadata, attachments: updated },
-      });
-      handleDocumentUpdated();
-      toast.success("Document removed");
-    } catch {
-      toast.error("Failed to remove document");
-    }
+    await updatePurchaseOrder({
+      purchaseOrderId: purchaseOrderId,
+      poId: purchaseOrderId,
+      metadata: { ...purchaseOrder.metadata, attachments: updated },
+    });
+    handleDocumentUpdated();
   };
+
+  // Own-doc, non-copied files only — mirrors the old tab's isDraft gate.
+  const canDeleteAttachment = (att: ChainAttachment) =>
+    isDraft &&
+    att.sourceDocType === "purchase_order" &&
+    att.sourceDocId === purchaseOrderId &&
+    !att.fromRequisition;
 
   const handleSaveQuotations = async (updated: Quotation[]) => {
     await updatePurchaseOrder({
@@ -394,17 +387,6 @@ export function PurchaseOrderDetailClient({
     } finally {
       setIsCreatingPV(false);
     }
-  };
-
-  /**
-   * Formats file size in bytes to human-readable format (B, KB, MB)
-   */
-  const formatBytes = (bytes: number) => {
-    if (bytes === 0) return "0 B";
-    const k = 1024;
-    const sizes = ["B", "KB", "MB"];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
   };
 
   /**
@@ -970,30 +952,6 @@ export function PurchaseOrderDetailClient({
         </div>
       )}
 
-      {/* Linked procurement chain documents — view / preview / download */}
-      <LinkedDocuments
-        docs={(() => {
-          const links = buildChainLinks(chain, "purchase-order");
-          // Chain may omit the source requisition — backfill from the PO.
-          if (
-            !links.some((l) => l.type === "requisition") &&
-            purchaseOrder.sourceRequisitionId
-          ) {
-            links.unshift({
-              type: "requisition",
-              label: "Requisition",
-              id: purchaseOrder.sourceRequisitionId,
-              documentNumber:
-                linkedRequisitionData?.documentNumber ||
-                purchaseOrder.sourceRequisitionId,
-              status: linkedRequisitionData?.status,
-            });
-          }
-          return links;
-        })()}
-        showViewLinks={userRole.toLowerCase() !== "requester"}
-      />
-
       {/* Payment Voucher summary — status chip, paid/committed/balance amounts,
           and the list of linked PVs when this PO has multiple (partial payments).
           The "Create PV" action is gated on remaining balance, not "no PV exists
@@ -1244,109 +1202,17 @@ export function PurchaseOrderDetailClient({
           </TabsContent>
 
           {/* ── Tab 2: Supporting Documents ── */}
-          <TabsContent value="documents" className="mt-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold">
-                Supporting Documents
-                {attachments.length > 0 && (
-                  <span className="ml-2 text-sm font-normal text-muted-foreground">
-                    ({attachments.length})
-                  </span>
-                )}
-              </h2>
-              {isDraft && (
-                <>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    className="hidden"
-                    accept="application/pdf,image/*"
-                    onChange={handleFileUpload}
-                  />
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="gap-2"
-                    disabled={isUploading}
-                    isLoading={isUploading}
-                    onClick={() => fileInputRef.current?.click()}
-                  >
-                    <Upload className="h-4 w-4" />
-                    Upload Document
-                  </Button>
-                </>
-              )}
-            </div>
-            {attachments.length > 0 ? (
-              <div className="space-y-2">
-                {attachments.map((attachment) => (
-                  <div
-                    key={attachment.fileId}
-                    className="flex items-center gap-2 p-3 rounded-lg border hover:bg-muted/50 transition group"
-                  >
-                    <button
-                      type="button"
-                      onClick={() => handleAttachmentPreview(attachment)}
-                      className="flex items-center gap-3 min-w-0 flex-1 text-left"
-                    >
-                      <div className="shrink-0">
-                        {attachment.mimeType === "application/pdf" ? (
-                          <FileText className="h-5 w-5 text-red-500" />
-                        ) : (
-                          <ImageIcon className="h-5 w-5 text-blue-500" />
-                        )}
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium truncate">
-                          {attachment.fileName}
-                        </p>
-                        <div className="flex items-center gap-2">
-                          <p className="text-xs text-muted-foreground">
-                            {formatBytes(attachment.fileSize)}
-                          </p>
-                          {attachment.fromRequisition && (
-                            <span className="text-xs px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 font-medium">
-                              From Requisition
-                            </span>
-                          )}
-                          {attachment.category && (
-                            <span className="text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground capitalize">
-                              {attachment.category.replace(/_/g, " ")}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                      <Eye className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition shrink-0 ml-auto" />
-                    </button>
-                    {isDraft && (
-                      <button
-                        type="button"
-                        title="Remove document"
-                        onClick={() =>
-                          handleDeleteAttachment(attachment.fileId)
-                        }
-                        className="shrink-0 text-muted-foreground/40 hover:text-red-500 transition-colors p-1"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    )}
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <Empty>
-                <EmptyMedia variant="icon">
-                  <Paperclip className="h-6 w-6" />
-                </EmptyMedia>
-                <EmptyContent>
-                  <EmptyDescription>
-                    {isDraft
-                      ? "No documents yet — upload supporting documents above"
-                      : "No supporting documents attached"}
-                  </EmptyDescription>
-                </EmptyContent>
-              </Empty>
-            )}
+          <TabsContent value="documents" className="mt-6 space-y-6">
+            <SupportingDocuments
+              documentId={purchaseOrderId}
+              documentType="purchase-order"
+              chainDocs={poChainDocs}
+              canUpload={isDraft}
+              onUpload={handleSupportingDocUpload}
+              canDeleteFile={canDeleteAttachment}
+              onDeleteFile={handleDeleteAttachment}
+              showViewLinks={userRole.toLowerCase() !== "requester"}
+            />
 
             {/* Quotations section */}
             {!purchaseOrder.automationUsed && (
@@ -1496,13 +1362,6 @@ export function PurchaseOrderDetailClient({
         isLoading={withdrawMutation?.isPending || false}
       />
 
-      {/* Attachment Preview Dialog */}
-      <AttachmentPreviewDialog
-        open={attachmentPreviewOpen}
-        onOpenChange={setAttachmentPreviewOpen}
-        attachment={selectedAttachment}
-        attachments={attachments}
-      />
 
       {/* Edit Purchase Order Dialog */}
       <EditPurchaseOrderDialog

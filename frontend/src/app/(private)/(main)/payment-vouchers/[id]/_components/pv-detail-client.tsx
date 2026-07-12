@@ -17,7 +17,6 @@ import {
   FileText,
   Undo2,
   Paperclip,
-  ImageIcon,
   Receipt,
   CheckSquare,
   GitBranch,
@@ -34,7 +33,11 @@ import {
   ApprovalActionContent,
   WorkflowStatusSummary,
 } from "@/app/(private)/(main)/requisitions/_components/approval-history-panel";
-import { LinkedDocuments, buildChainLinks } from "@/components/linked-documents";
+import { buildChainLinks } from "@/components/linked-documents";
+import {
+  SupportingDocuments,
+  type UploadedAttachment,
+} from "@/components/supporting-documents";
 import {
   Empty,
   EmptyContent,
@@ -52,13 +55,6 @@ const PDFPreviewDialog = dynamic(
   { ssr: false },
 );
 
-const AttachmentPreviewDialog = dynamic(
-  () =>
-    import("@/components/modals/attachment-preview-dialog").then(
-      (mod) => mod.AttachmentPreviewDialog,
-    ),
-  { ssr: false },
-);
 import { PaymentVoucherSubmitDialog } from "../../_components/payment-voucher-submit-dialog";
 import { MarkPaidDialog } from "../../_components/mark-paid-dialog";
 import { MarkPaidWithPOPModal } from "../../_components/mark-paid-with-pop-modal";
@@ -73,6 +69,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getAuditEvents, type AuditEvent } from "@/app/_actions/audit";
+import { updatePaymentVoucher } from "@/app/_actions/payment-vouchers";
 import { formatCurrency } from "@/lib/utils";
 import { useGRNs } from "@/hooks/use-grn-queries";
 import type { GoodsReceivedNote } from "@/hooks/use-grn-queries";
@@ -165,16 +162,13 @@ export function PVDetailClient({
     setShowSubmitDialog,
     showWithdrawModal,
     setShowWithdrawModal,
-    attachmentPreviewOpen,
-    setAttachmentPreviewOpen,
-    selectedAttachment,
     handlePreviewPDF,
     handleExportPDF,
     handleSubmitForApproval: handleSubmit,
     handleEdit,
+    handleDocumentUpdated,
     handleWithdraw,
     handleApprovalComplete,
-    handleAttachmentPreview,
     permissions,
     submitMutation,
     withdrawMutation,
@@ -210,18 +204,35 @@ export function PVDetailClient({
     );
 
   // Extract attachments from metadata
-  const attachments: any[] =
-    (paymentVoucher.metadata?.attachments as any[]) || [];
+  const attachments: UploadedAttachment[] =
+    (paymentVoucher.metadata?.attachments as UploadedAttachment[]) || [];
 
-  /**
-   * Formats file size in bytes to human-readable format (B, KB, MB)
-   */
-  const formatBytes = (bytes: number) => {
-    if (bytes === 0) return "0 B";
-    const k = 1024;
-    const sizes = ["B", "KB", "MB"];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
+  // Chain-doc rows (Req/PO/GRN/PV) fed into SupportingDocuments' zone (a) —
+  // mechanism unchanged from the old standalone LinkedDocuments mount.
+  const pvChainDocs = (() => {
+    const links = buildChainLinks(chain, "payment-voucher");
+    // Goods-first PVs carry a GRN link before the chain is populated.
+    if (!links.some((l) => l.type === "grn") && linkedGRNRecord?.id) {
+      links.push({
+        type: "grn",
+        label: "Goods Received Note",
+        id: linkedGRNRecord.id,
+        documentNumber: paymentVoucher.linkedGRN || linkedGRNRecord.documentNumber,
+        status: linkedGRNRecord.status,
+      });
+    }
+    return links;
+  })();
+
+  // Persists a SupportingDocuments upload (already on ImageKit) into the
+  // PV's own metadata.attachments — read-modify-write via updatePaymentVoucher.
+  const handleSupportingDocUpload = async (att: UploadedAttachment) => {
+    await updatePaymentVoucher({
+      paymentVoucherId: pvId,
+      pvId,
+      metadata: { attachments: [...attachments, att] },
+    });
+    handleDocumentUpdated();
   };
 
   /**
@@ -542,29 +553,6 @@ export function PVDetailClient({
         <ProcurementFlowIndicator paymentVoucher={paymentVoucher} />
       </div>
 
-      {/* Linked procurement chain documents — view / preview / download */}
-      <LinkedDocuments
-        docs={(() => {
-          const links = buildChainLinks(chain, "payment-voucher");
-          // Goods-first PVs carry a GRN link before the chain is populated.
-          if (
-            !links.some((l) => l.type === "grn") &&
-            linkedGRNRecord?.id
-          ) {
-            links.push({
-              type: "grn",
-              label: "Goods Received Note",
-              id: linkedGRNRecord.id,
-              documentNumber:
-                paymentVoucher.linkedGRN || linkedGRNRecord.documentNumber,
-              status: linkedGRNRecord.status,
-            });
-          }
-          return links;
-        })()}
-        showViewLinks={userRole.toLowerCase() !== "requester"}
-      />
-
       {/* ── Tabbed Content ──────────────────────────────────────────── */}
       <Card className="p-6 border-0 shadow-sm">
         <Tabs defaultValue="items" className="w-full">
@@ -672,51 +660,14 @@ export function PVDetailClient({
 
           {/* ── Tab 2: Supporting Documents ── */}
           <TabsContent value="documents" className="mt-6">
-            {attachments.length > 0 ? (
-              <div className="space-y-2">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-lg font-semibold">
-                    Supporting Documents ({attachments.length})
-                  </h2>
-                </div>
-                {attachments.map((attachment: any) => (
-                  <button
-                    key={attachment.fileId}
-                    type="button"
-                    onClick={() => handleAttachmentPreview(attachment)}
-                    className="flex items-center justify-between gap-3 p-3 rounded-lg border hover:bg-muted/50 transition group w-full text-left"
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      {attachment.mimeType === "application/pdf" ? (
-                        <FileText className="h-5 w-5 text-red-500 shrink-0" />
-                      ) : (
-                        <ImageIcon className="h-5 w-5 text-blue-500 shrink-0" />
-                      )}
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium truncate">
-                          {attachment.fileName}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {formatBytes(attachment.fileSize)}
-                        </p>
-                      </div>
-                    </div>
-                    <Eye className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition shrink-0" />
-                  </button>
-                ))}
-              </div>
-            ) : (
-              <Empty>
-                <EmptyMedia variant="icon">
-                  <Paperclip className="h-6 w-6" />
-                </EmptyMedia>
-                <EmptyContent>
-                  <EmptyDescription>
-                    No supporting documents attached
-                  </EmptyDescription>
-                </EmptyContent>
-              </Empty>
-            )}
+            <SupportingDocuments
+              documentId={pvId}
+              documentType="payment-voucher"
+              chainDocs={pvChainDocs}
+              canUpload={permissions.canEdit}
+              onUpload={handleSupportingDocUpload}
+              showViewLinks={userRole.toLowerCase() !== "requester"}
+            />
           </TabsContent>
 
           {/* ── Tab 3: Approval Action ── */}
@@ -815,13 +766,6 @@ export function PVDetailClient({
         isLoading={withdrawMutation?.isPending || false}
       />
 
-      {/* Attachment Preview Dialog */}
-      <AttachmentPreviewDialog
-        open={attachmentPreviewOpen}
-        onOpenChange={setAttachmentPreviewOpen}
-        attachment={selectedAttachment}
-        attachments={attachments}
-      />
 
       {/* Mark as Paid Dialog */}
       <MarkPaidDialog

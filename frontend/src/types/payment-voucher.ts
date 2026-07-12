@@ -248,6 +248,12 @@ export interface UpdatePaymentVoucherRequest {
   paymentDueDate?: Date;
   bankDetails?: any;
   updatedBy?: string;
+  /** Metadata-only patches (e.g. supporting-document attachments) are
+   * allowed on any PV status — see UpdatePaymentVoucher's isMetadataOnly
+   * carve-out in backend/handlers/payment_voucher.go. The backend
+   * deep-merges this object's top-level keys into the existing metadata, so
+   * only the changed keys (e.g. { attachments }) need to be sent. */
+  metadata?: Record<string, unknown>;
 }
 
 export interface SubmitPaymentVoucherRequest {
