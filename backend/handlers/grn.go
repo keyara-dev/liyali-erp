@@ -684,7 +684,20 @@ func UpdateGRN(c *fiber.Ctx) error {
 		})
 	}
 
-	if strings.ToUpper(grn.Status) != "DRAFT" && strings.ToUpper(grn.Status) != "PENDING" {
+	// Metadata-only updates (e.g. supporting-document attachments) are allowed
+	// on any status — mirrors the PO carve-out in purchase_order.go
+	// UpdatePurchaseOrder. isMetadataOnly requires every other field on the
+	// request to be absent/zero; a single non-metadata field falls through to
+	// the status guard below.
+	isMetadataOnly := len(req.Metadata) > 0 &&
+		len(req.Items) == 0 &&
+		req.ReceivedBy == "" &&
+		len(req.QualityIssues) == 0 &&
+		req.WarehouseLocation == nil &&
+		req.Notes == nil &&
+		req.ConsignmentNote == nil
+
+	if strings.ToUpper(grn.Status) != "DRAFT" && strings.ToUpper(grn.Status) != "PENDING" && !isMetadataOnly {
 		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
 			"success": false,
 			"message": fmt.Sprintf("Cannot update GRN in %s status", grn.Status),
@@ -719,6 +732,21 @@ func UpdateGRN(c *fiber.Ctx) error {
 	}
 	if req.ConsignmentNote != nil {
 		grn.ConsignmentNote = *req.ConsignmentNote
+	}
+	if len(req.Metadata) > 0 {
+		// Deep-merge incoming metadata with existing — never wipe keys other
+		// parts of the system manage independently. Mirrors the PO carve-out
+		// in purchase_order.go UpdatePurchaseOrder.
+		existingMeta := map[string]interface{}{}
+		if len(grn.Metadata) > 0 {
+			_ = json.Unmarshal(grn.Metadata, &existingMeta)
+		}
+		for k, v := range req.Metadata {
+			existingMeta[k] = v
+		}
+		if metaBytes, err := json.Marshal(existingMeta); err == nil {
+			grn.Metadata = datatypes.JSON(metaBytes)
+		}
 	}
 
 	var grnUpdateUser models.User

@@ -412,6 +412,10 @@ type UpdatePaymentVoucherRequest struct {
 	// Line items — only persisted when the voucher is in DRAFT status.
 	// nil means "unchanged"; an empty slice clears all items.
 	Items *[]PaymentItem `json:"items,omitempty"`
+	// Metadata-only updates (e.g. supporting-document attachments) bypass the
+	// status guard in UpdatePaymentVoucher — see isMetadataOnly there. Merged
+	// (not replaced) into the existing metadata column, same as PO's carve-out.
+	Metadata map[string]interface{} `json:"metadata"`
 }
 
 // PaymentVoucherResponse represents a payment voucher in responses
@@ -493,6 +497,10 @@ type UpdateGRNRequest struct {
 	WarehouseLocation *string        `json:"warehouseLocation,omitempty"`
 	Notes             *string        `json:"notes,omitempty"`
 	ConsignmentNote   *string        `json:"consignmentNote,omitempty"`
+	// Metadata-only updates (e.g. supporting-document attachments) bypass the
+	// status guard in UpdateGRN — see isMetadataOnly there. Merged (not
+	// replaced) into the existing metadata column, same as PO's carve-out.
+	Metadata map[string]interface{} `json:"metadata"`
 }
 
 // SignReceiveGRNRequest captures the receiver's sign-off ("RECEIVED BY" on the printed form).

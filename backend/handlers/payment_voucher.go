@@ -676,7 +676,30 @@ func UpdatePaymentVoucher(c *fiber.Ctx) error {
 		})
 	}
 
-	if strings.ToUpper(voucher.Status) != "DRAFT" && strings.ToUpper(voucher.Status) != "PENDING" {
+	// Metadata-only updates (e.g. supporting-document attachments) are allowed
+	// on any status — mirrors the PO carve-out in purchase_order.go
+	// UpdatePurchaseOrder. isMetadataOnly requires every other field on the
+	// request to be absent/zero; a single non-metadata field falls through to
+	// the status guard below.
+	isMetadataOnly := len(req.Metadata) > 0 &&
+		req.VendorID == "" &&
+		req.VendorName == "" &&
+		req.InvoiceNumber == "" &&
+		req.Amount == 0 &&
+		req.Currency == "" &&
+		req.PaymentMethod == "" &&
+		req.GLCode == "" &&
+		req.Description == "" &&
+		req.Title == "" &&
+		req.Department == "" &&
+		req.DepartmentID == "" &&
+		req.Priority == "" &&
+		req.BudgetCode == "" &&
+		req.CostCenter == "" &&
+		req.ProjectCode == "" &&
+		req.Items == nil
+
+	if strings.ToUpper(voucher.Status) != "DRAFT" && strings.ToUpper(voucher.Status) != "PENDING" && !isMetadataOnly {
 		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
 			"success": false,
 			"message": fmt.Sprintf("Cannot update payment voucher in %s status", voucher.Status),
@@ -727,6 +750,22 @@ func UpdatePaymentVoucher(c *fiber.Ctx) error {
 	}
 	if req.ProjectCode != "" {
 		voucher.ProjectCode = req.ProjectCode
+	}
+	if len(req.Metadata) > 0 {
+		// Deep-merge incoming metadata with existing — never wipe keys other
+		// parts of the system manage independently (e.g. B4's paymentType /
+		// narration written at PV creation). Mirrors the PO carve-out in
+		// purchase_order.go UpdatePurchaseOrder.
+		existingMeta := map[string]interface{}{}
+		if len(voucher.Metadata) > 0 {
+			_ = json.Unmarshal(voucher.Metadata, &existingMeta)
+		}
+		for k, v := range req.Metadata {
+			existingMeta[k] = v
+		}
+		if metaBytes, err := json.Marshal(existingMeta); err == nil {
+			voucher.Metadata = datatypes.JSON(metaBytes)
+		}
 	}
 
 	// Line-item edits are only allowed while the voucher is still a DRAFT.

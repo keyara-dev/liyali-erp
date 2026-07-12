@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"net/http"
 	"strings"
 	"testing"
@@ -441,6 +442,120 @@ func TestUpdateGRN_Success(t *testing.T) {
 	body := decodeResponse(resp)
 	if body["success"] != true {
 		t.Errorf("expected success=true, got %v", body["success"])
+	}
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PUT /grns/:id — metadata-only carve-out (Task C2)
+// ─────────────────────────────────────────────────────────────────────────────
+
+// TestUpdateGRN_MetadataOnly_ApprovedStatus_Succeeds verifies that a request
+// containing ONLY metadata bypasses the DRAFT/PENDING status guard, so
+// supporting documents can be attached to an already-APPROVED GRN, and that
+// no other field is mutated by the request.
+func TestUpdateGRN_MetadataOnly_ApprovedStatus_Succeeds(t *testing.T) {
+	db := setupTestDB(t)
+	defer teardownTestDB(t, db)
+
+	grn := makeGRN(t, "GRN-META-001", "PO-2024-0003", "APPROVED")
+
+	app := newGRNApp(t)
+	resp := testRequest(app, http.MethodPut, "/grns/"+grn.ID, map[string]interface{}{
+		"metadata": map[string]interface{}{
+			"attachments": []map[string]interface{}{
+				{"name": "invoice.pdf", "url": "https://example.com/invoice.pdf"},
+			},
+		},
+	})
+	if resp.StatusCode != http.StatusOK {
+		body := decodeResponse(resp)
+		t.Fatalf("expected 200 for metadata-only update on APPROVED GRN, got %d; body=%v", resp.StatusCode, body)
+	}
+
+	var reloaded models.GoodsReceivedNote
+	if err := db.Where("id = ?", grn.ID).First(&reloaded).Error; err != nil {
+		t.Fatalf("reload GRN: %v", err)
+	}
+	if strings.ToUpper(reloaded.Status) != "APPROVED" {
+		t.Fatalf("status must be untouched, want APPROVED, got %s", reloaded.Status)
+	}
+	if reloaded.ReceivedBy != grn.ReceivedBy {
+		t.Fatalf("receivedBy must be untouched, want %q, got %q", grn.ReceivedBy, reloaded.ReceivedBy)
+	}
+
+	var meta map[string]interface{}
+	if err := json.Unmarshal(reloaded.Metadata, &meta); err != nil {
+		t.Fatalf("unmarshal metadata: %v", err)
+	}
+	attachments, ok := meta["attachments"].([]interface{})
+	if !ok || len(attachments) != 1 {
+		t.Fatalf("expected 1 attachment persisted, got %v", meta["attachments"])
+	}
+}
+
+// TestUpdateGRN_NonMetadataField_ApprovedStatus_StillBlocked verifies that a
+// request carrying metadata PLUS any other field (e.g. notes) is still
+// rejected by the status guard on an APPROVED GRN — the carve-out must be
+// strictly metadata-only.
+func TestUpdateGRN_NonMetadataField_ApprovedStatus_StillBlocked(t *testing.T) {
+	db := setupTestDB(t)
+	defer teardownTestDB(t, db)
+
+	grn := makeGRN(t, "GRN-META-002", "PO-2024-0004", "APPROVED")
+
+	app := newGRNApp(t)
+	resp := testRequest(app, http.MethodPut, "/grns/"+grn.ID, map[string]interface{}{
+		"notes":    "sneaking a field change past the guard",
+		"metadata": map[string]interface{}{"attachments": []map[string]interface{}{{"name": "x.pdf"}}},
+	})
+	if resp.StatusCode != http.StatusForbidden {
+		body := decodeResponse(resp)
+		t.Fatalf("expected 403 when a non-metadata field is present on an APPROVED GRN, got %d; body=%v", resp.StatusCode, body)
+	}
+	msg, _ := decodeResponse(resp)["message"].(string)
+	if !strings.Contains(msg, "Cannot update GRN in APPROVED status") {
+		t.Fatalf("expected status-guard message, got %q", msg)
+	}
+
+	var reloaded models.GoodsReceivedNote
+	if err := db.Where("id = ?", grn.ID).First(&reloaded).Error; err != nil {
+		t.Fatalf("reload GRN: %v", err)
+	}
+	if reloaded.Notes != "" {
+		t.Fatalf("notes must be untouched, got %q", reloaded.Notes)
+	}
+	if len(reloaded.Metadata) > 0 {
+		t.Fatalf("metadata must not be persisted when the request also carries a blocked field, got %s", string(reloaded.Metadata))
+	}
+}
+
+// TestUpdateGRN_MetadataOnly_DraftStatus_StillWorks is a regression guard: the
+// carve-out must not break the normal DRAFT/PENDING update path.
+func TestUpdateGRN_MetadataOnly_DraftStatus_StillWorks(t *testing.T) {
+	db := setupTestDB(t)
+	defer teardownTestDB(t, db)
+
+	grn := makeGRN(t, "GRN-META-003", "PO-2024-0005", "DRAFT")
+
+	app := newGRNApp(t)
+	resp := testRequest(app, http.MethodPut, "/grns/"+grn.ID, map[string]interface{}{
+		"metadata": map[string]interface{}{"attachments": []map[string]interface{}{{"name": "draft.pdf"}}},
+	})
+	if resp.StatusCode != http.StatusOK {
+		body := decodeResponse(resp)
+		t.Fatalf("expected 200 for metadata-only update on DRAFT GRN, got %d; body=%v", resp.StatusCode, body)
+	}
+
+	var reloaded models.GoodsReceivedNote
+	if err := db.Where("id = ?", grn.ID).First(&reloaded).Error; err != nil {
+		t.Fatalf("reload GRN: %v", err)
+	}
+	var meta map[string]interface{}
+	if err := json.Unmarshal(reloaded.Metadata, &meta); err != nil {
+		t.Fatalf("unmarshal metadata: %v", err)
+	}
+	if _, ok := meta["attachments"]; !ok {
+		t.Fatalf("expected attachments key in metadata, got %v", meta)
 	}
 }
 

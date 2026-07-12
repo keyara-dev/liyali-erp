@@ -6,6 +6,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -375,6 +376,163 @@ func TestUpdatePaymentVoucher_Success(t *testing.T) {
 	body := decodeResponse(resp)
 	if body["success"] != true {
 		t.Errorf("expected success=true, got %v", body["success"])
+	}
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PUT /payment-vouchers/:id — metadata-only carve-out (Task C2)
+// ─────────────────────────────────────────────────────────────────────────────
+
+// TestUpdatePaymentVoucher_MetadataOnly_ApprovedStatus_Succeeds verifies that
+// a request containing ONLY metadata bypasses the DRAFT/PENDING status guard,
+// so supporting documents can be attached to an already-APPROVED PV, without
+// mutating any other field (e.g. amount).
+func TestUpdatePaymentVoucher_MetadataOnly_ApprovedStatus_Succeeds(t *testing.T) {
+	db := setupTestDB(t)
+	defer teardownTestDB(t, db)
+
+	voucher := makePaymentVoucher(t, "PV-META-001", "APPROVED")
+
+	app := newPaymentVoucherApp(t)
+	resp := testRequest(app, http.MethodPut, "/payment-vouchers/"+voucher.ID, map[string]interface{}{
+		"metadata": map[string]interface{}{
+			"attachments": []map[string]interface{}{
+				{"name": "receipt.pdf", "url": "https://example.com/receipt.pdf"},
+			},
+		},
+	})
+	if resp.StatusCode != http.StatusOK {
+		body := decodeResponse(resp)
+		t.Fatalf("expected 200 for metadata-only update on APPROVED PV, got %d; body=%v", resp.StatusCode, body)
+	}
+
+	var reloaded models.PaymentVoucher
+	if err := db.Where("id = ?", voucher.ID).First(&reloaded).Error; err != nil {
+		t.Fatalf("reload PV: %v", err)
+	}
+	if strings.ToUpper(reloaded.Status) != "APPROVED" {
+		t.Fatalf("status must be untouched, want APPROVED, got %s", reloaded.Status)
+	}
+	if reloaded.Amount != voucher.Amount {
+		t.Fatalf("amount must be untouched, want %v, got %v", voucher.Amount, reloaded.Amount)
+	}
+
+	var meta map[string]interface{}
+	if err := json.Unmarshal(reloaded.Metadata, &meta); err != nil {
+		t.Fatalf("unmarshal metadata: %v", err)
+	}
+	attachments, ok := meta["attachments"].([]interface{})
+	if !ok || len(attachments) != 1 {
+		t.Fatalf("expected 1 attachment persisted, got %v", meta["attachments"])
+	}
+}
+
+// TestUpdatePaymentVoucher_NonMetadataField_ApprovedStatus_StillBlocked
+// verifies that a request carrying metadata PLUS any other field (e.g.
+// amount) is still rejected by the status guard on an APPROVED PV — the
+// carve-out must be strictly metadata-only.
+func TestUpdatePaymentVoucher_NonMetadataField_ApprovedStatus_StillBlocked(t *testing.T) {
+	db := setupTestDB(t)
+	defer teardownTestDB(t, db)
+
+	voucher := makePaymentVoucher(t, "PV-META-002", "APPROVED")
+
+	app := newPaymentVoucherApp(t)
+	resp := testRequest(app, http.MethodPut, "/payment-vouchers/"+voucher.ID, map[string]interface{}{
+		"amount":   9999.0,
+		"metadata": map[string]interface{}{"attachments": []map[string]interface{}{{"name": "x.pdf"}}},
+	})
+	if resp.StatusCode != http.StatusForbidden {
+		body := decodeResponse(resp)
+		t.Fatalf("expected 403 when a non-metadata field is present on an APPROVED PV, got %d; body=%v", resp.StatusCode, body)
+	}
+	msg, _ := decodeResponse(resp)["message"].(string)
+	if !strings.Contains(msg, "Cannot update payment voucher in APPROVED status") {
+		t.Fatalf("expected status-guard message, got %q", msg)
+	}
+
+	var reloaded models.PaymentVoucher
+	if err := db.Where("id = ?", voucher.ID).First(&reloaded).Error; err != nil {
+		t.Fatalf("reload PV: %v", err)
+	}
+	if reloaded.Amount != voucher.Amount {
+		t.Fatalf("amount must be untouched, want %v, got %v", voucher.Amount, reloaded.Amount)
+	}
+	if len(reloaded.Metadata) > 0 {
+		t.Fatalf("metadata must not be persisted when the request also carries a blocked field, got %s", string(reloaded.Metadata))
+	}
+}
+
+// TestUpdatePaymentVoucher_MetadataOnly_DraftStatus_StillWorks is a
+// regression guard: the carve-out must not break the normal DRAFT/PENDING
+// update path.
+func TestUpdatePaymentVoucher_MetadataOnly_DraftStatus_StillWorks(t *testing.T) {
+	db := setupTestDB(t)
+	defer teardownTestDB(t, db)
+
+	voucher := makePaymentVoucher(t, "PV-META-003", "DRAFT")
+
+	app := newPaymentVoucherApp(t)
+	resp := testRequest(app, http.MethodPut, "/payment-vouchers/"+voucher.ID, map[string]interface{}{
+		"metadata": map[string]interface{}{"attachments": []map[string]interface{}{{"name": "draft.pdf"}}},
+	})
+	if resp.StatusCode != http.StatusOK {
+		body := decodeResponse(resp)
+		t.Fatalf("expected 200 for metadata-only update on DRAFT PV, got %d; body=%v", resp.StatusCode, body)
+	}
+
+	var reloaded models.PaymentVoucher
+	if err := db.Where("id = ?", voucher.ID).First(&reloaded).Error; err != nil {
+		t.Fatalf("reload PV: %v", err)
+	}
+	var meta map[string]interface{}
+	if err := json.Unmarshal(reloaded.Metadata, &meta); err != nil {
+		t.Fatalf("unmarshal metadata: %v", err)
+	}
+	if _, ok := meta["attachments"]; !ok {
+		t.Fatalf("expected attachments key in metadata, got %v", meta)
+	}
+}
+
+// TestUpdatePaymentVoucher_MetadataMerge_PreservesExistingKeys verifies the
+// merge semantics mirrored from the PO carve-out: a metadata-only update adds
+// new keys without clobbering keys written by other flows (e.g. B4's
+// paymentType/narration written at PV creation).
+func TestUpdatePaymentVoucher_MetadataMerge_PreservesExistingKeys(t *testing.T) {
+	db := setupTestDB(t)
+	defer teardownTestDB(t, db)
+
+	voucher := makePaymentVoucher(t, "PV-META-004", "APPROVED")
+	existing, _ := json.Marshal(map[string]interface{}{"paymentType": "partial", "narration": "Deposit"})
+	if err := db.Model(&voucher).Update("metadata", existing).Error; err != nil {
+		t.Fatalf("seed existing metadata: %v", err)
+	}
+
+	app := newPaymentVoucherApp(t)
+	resp := testRequest(app, http.MethodPut, "/payment-vouchers/"+voucher.ID, map[string]interface{}{
+		"metadata": map[string]interface{}{"attachments": []map[string]interface{}{{"name": "receipt.pdf"}}},
+	})
+	if resp.StatusCode != http.StatusOK {
+		body := decodeResponse(resp)
+		t.Fatalf("expected 200, got %d; body=%v", resp.StatusCode, body)
+	}
+
+	var reloaded models.PaymentVoucher
+	if err := db.Where("id = ?", voucher.ID).First(&reloaded).Error; err != nil {
+		t.Fatalf("reload PV: %v", err)
+	}
+	var meta map[string]interface{}
+	if err := json.Unmarshal(reloaded.Metadata, &meta); err != nil {
+		t.Fatalf("unmarshal metadata: %v", err)
+	}
+	if meta["paymentType"] != "partial" {
+		t.Fatalf("paymentType must survive the merge, got %v", meta["paymentType"])
+	}
+	if meta["narration"] != "Deposit" {
+		t.Fatalf("narration must survive the merge, got %v", meta["narration"])
+	}
+	if _, ok := meta["attachments"]; !ok {
+		t.Fatalf("expected attachments key in merged metadata, got %v", meta)
 	}
 }
 
