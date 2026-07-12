@@ -417,14 +417,23 @@ func CreatePaymentVoucher(c *fiber.Ctx) error {
 			return &pvGateError{status: code, msg: msg}
 		}
 
-		// Inherit the linked PO's currency when the client didn't specify one,
-		// so a PO-linked PV can't drift to a different/empty currency than its PO.
-		if req.LinkedPO != "" && strings.TrimSpace(req.Currency) == "" {
+		// When PO-linked, load its total + currency once: currency is inherited
+		// (a PV can't drift to a different/empty currency than its PO) and the
+		// total + already-committed amount snapshot the payment schedule for the
+		// PV metadata built below.
+		var poTotal, committedBefore float64
+		if req.LinkedPO != "" {
 			var lpo models.PurchaseOrder
-			if err := tx.Select("currency").
+			if err := tx.Select("currency", "total_amount").
 				Where("document_number = ? AND organization_id = ?", req.LinkedPO, tenant.OrganizationID).
-				First(&lpo).Error; err == nil && lpo.Currency != "" {
-				req.Currency = lpo.Currency
+				First(&lpo).Error; err == nil {
+				poTotal = lpo.TotalAmount
+				if strings.TrimSpace(req.Currency) == "" && lpo.Currency != "" {
+					req.Currency = lpo.Currency
+				}
+			}
+			if sum, err := services.ComputePOPaymentSummary(tx, tenant.OrganizationID, req.LinkedPO); err == nil {
+				committedBefore = sum.Committed
 			}
 		}
 
@@ -475,6 +484,8 @@ func CreatePaymentVoucher(c *fiber.Ctx) error {
 			Comments:        "Payment voucher created",
 			NewStatus:       models.StatusDraft,
 		}})
+
+		voucher.Metadata = buildPVCreationMetadata(req.PaymentType, req.Narration, req.Amount, poTotal, committedBefore)
 
 		if err := tx.Create(&voucher).Error; err != nil {
 			return err
@@ -840,7 +851,35 @@ func DeletePaymentVoucher(c *fiber.Ctx) error {
 	})
 }
 
-// Helper function to convert model to response
+// buildPVCreationMetadata records how a PV maps onto its linked PO's payment
+// schedule: whether it is a full or partial payment, the free-text narration
+// explaining the amount, and a snapshot of the PO total + amount already
+// committed across earlier PVs at creation time. Stored in
+// PaymentVoucher.Metadata (JSONB) for the partial-payment UI and audit trail.
+// poTotal<=0 means the PV isn't PO-linked, so the amount can't be classified
+// against a PO total and defaults to "full". Shared by the manual and from-PO
+// creation paths so both persist an identical metadata shape.
+func buildPVCreationMetadata(explicitType, narration string, amount, poTotal, committedBefore float64) datatypes.JSON {
+	paymentType := strings.ToLower(strings.TrimSpace(explicitType))
+	if paymentType != "full" && paymentType != "partial" {
+		paymentType = "full"
+		if poTotal > 0 && amount < poTotal-0.01 {
+			paymentType = "partial"
+		}
+	}
+	meta := map[string]interface{}{"paymentType": paymentType}
+	if n := strings.TrimSpace(narration); n != "" {
+		meta["narration"] = n
+	}
+	if poTotal > 0 {
+		meta["poTotalAtCreation"] = poTotal
+		meta["committedBefore"] = committedBefore
+	}
+	b, _ := json.Marshal(meta)
+	return datatypes.JSON(b)
+}
+
+// modelToPaymentVoucherResponse converts a PaymentVoucher model to its API response.
 func modelToPaymentVoucherResponse(voucher models.PaymentVoucher) types.PaymentVoucherResponse {
 	var approvalHistory []types.ApprovalRecord
 	if len(voucher.ApprovalHistory.Data()) > 0 {
@@ -871,6 +910,12 @@ func modelToPaymentVoucherResponse(voucher models.PaymentVoucher) types.PaymentV
 	var proofOfPayment interface{}
 	if len(voucher.ProofOfPayment) > 0 {
 		_ = json.Unmarshal(voucher.ProofOfPayment, &proofOfPayment)
+	}
+
+	// Unmarshal generic metadata (paymentType, narration, ...)
+	var metadata map[string]interface{}
+	if len(voucher.Metadata) > 0 {
+		_ = json.Unmarshal(voucher.Metadata, &metadata)
 	}
 
 	items := voucher.Items.Data()
@@ -917,6 +962,7 @@ func modelToPaymentVoucherResponse(voucher models.PaymentVoucher) types.PaymentV
 		ProofOfPayment:       proofOfPayment,
 		PaidAt:               voucher.PaidAt,
 		PaidBy:               voucher.PaidBy,
+		Metadata:             metadata,
 		CreatedAt:            voucher.CreatedAt,
 		UpdatedAt:            voucher.UpdatedAt,
 	}

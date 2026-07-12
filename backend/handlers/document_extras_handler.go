@@ -327,6 +327,10 @@ func CreatePaymentVoucherFromPO(c *fiber.Ctx) error {
 		WorkflowID                  string              `json:"workflowId"`
 		// Goods-first flow: required GRN document number (e.g. "GRN-20240101-001")
 		LinkedGRNDocumentNumber string `json:"linkedGRNDocumentNumber"`
+		// Partial-payment fields: "full" | "partial" (inferred when empty) and a
+		// free-text reason for the amount (deposit, milestone, final, etc.).
+		PaymentType string `json:"paymentType"`
+		Narration   string `json:"narration"`
 	}
 
 	if err := c.BodyParser(&req); err != nil {
@@ -510,6 +514,14 @@ func CreatePaymentVoucherFromPO(c *fiber.Ctx) error {
 			NewStatus:       models.StatusDraft,
 		})
 		voucher.ActionHistory = datatypes.NewJSONType(pvInitialHistory)
+
+		// Snapshot payment type + narration + PO payment schedule into metadata.
+		// committedBefore reflects PVs already on this PO before this insert.
+		var committedBefore float64
+		if sum, err := services.ComputePOPaymentSummary(tx, tenant.OrganizationID, po.DocumentNumber); err == nil {
+			committedBefore = sum.Committed
+		}
+		voucher.Metadata = buildPVCreationMetadata(req.PaymentType, req.Narration, req.TotalAmount, po.TotalAmount, committedBefore)
 
 		if err := tx.Create(&voucher).Error; err != nil {
 			return err

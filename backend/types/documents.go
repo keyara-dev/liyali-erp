@@ -365,6 +365,10 @@ type CreatePaymentVoucherRequest struct {
 	LinkedPO      string  `json:"linkedPO"`
 	// Goods-first flow: GRN document number that was approved before this PV
 	LinkedGRN string `json:"linkedGRN"`
+	// Partial-payment fields: "full" | "partial" (inferred when empty) and a
+	// free-text reason for the amount (deposit, milestone, final, etc.).
+	PaymentType string `json:"paymentType"`
+	Narration   string `json:"narration"`
 	// Business fields
 	Title        string `json:"title"`
 	Department   string `json:"department"`
@@ -443,6 +447,8 @@ type PaymentVoucherResponse struct {
 	ProofOfPayment       interface{} `json:"proofOfPayment,omitempty"`
 	PaidAt               *time.Time  `json:"paidAt,omitempty"`
 	PaidBy               *string     `json:"paidBy,omitempty"`
+	// Generic metadata (paymentType, narration, poTotalAtCreation, etc.)
+	Metadata             map[string]interface{} `json:"metadata,omitempty"`
 
 	// Resolved user objects {id,name,email,role}.
 	Creator    *UserRef `json:"creator,omitempty"`
