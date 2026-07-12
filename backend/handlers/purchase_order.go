@@ -623,11 +623,32 @@ func UpdatePurchaseOrder(c *fiber.Ctx) error {
 		})
 	}
 
-	// Metadata-only updates (quotations, attachments, bypass fields) are allowed on any status
+	// Metadata-only updates (e.g. supporting-document attachments) are allowed
+	// on any status. isMetadataOnly requires every other field on the request
+	// to be absent/zero; a single non-metadata field falls through to the
+	// status guard below.
+	//
+	// SECURITY: this expression must enumerate EVERY non-metadata field of
+	// types.UpdatePurchaseOrderRequest. Adding a field to that struct without
+	// adding it here silently lets requests carrying it bypass the status
+	// guard on approved POs. Keep in lockstep with the struct definition.
 	isMetadataOnly := len(req.Metadata) > 0 &&
 		req.VendorID == "" &&
-		len(req.Items) == 0 && req.TotalAmount == 0 &&
-		req.Currency == "" && req.DeliveryDate.Time.IsZero()
+		req.VendorName == "" &&
+		len(req.Items) == 0 &&
+		req.TotalAmount == 0 &&
+		req.Currency == "" &&
+		req.DeliveryDate.Time.IsZero() &&
+		req.QuotationGateOverridden == nil &&
+		req.BypassJustification == "" &&
+		req.Title == "" &&
+		req.Description == "" &&
+		req.Department == "" &&
+		req.DepartmentID == "" &&
+		req.Priority == "" &&
+		req.BudgetCode == "" &&
+		req.CostCenter == "" &&
+		req.ProjectCode == ""
 	if strings.ToUpper(order.Status) != "DRAFT" && strings.ToUpper(order.Status) != "PENDING" && !isMetadataOnly {
 		logging.LogWarn(c, "invalid_status_for_update", map[string]interface{}{
 			"current_status":  order.Status,

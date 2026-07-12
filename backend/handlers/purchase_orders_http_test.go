@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 
@@ -534,6 +535,133 @@ func TestUpdatePurchaseOrder_Success(t *testing.T) {
 	body := decodeResponse(resp)
 	if body["success"] != true {
 		t.Errorf("expected success=true, got %v", body["success"])
+	}
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PUT /purchase-orders/:id — metadata-only guard enumeration (security fix)
+// ─────────────────────────────────────────────────────────────────────────────
+
+// TestUpdatePurchaseOrder_MetadataOnly_ApprovedStatus_Succeeds verifies that a
+// request containing ONLY metadata bypasses the DRAFT/PENDING status guard, so
+// supporting documents can be attached to an already-APPROVED PO, and that no
+// other field is mutated by the request.
+func TestUpdatePurchaseOrder_MetadataOnly_ApprovedStatus_Succeeds(t *testing.T) {
+	db := setupTestDB(t)
+	defer teardownTestDB(t, db)
+	setupWorkflowTasksTable(t, db)
+
+	order := makePurchaseOrder(t, "PO-META-001", "APPROVED")
+
+	app := newPurchaseOrderApp(t)
+	resp := testRequest(app, http.MethodPut, "/purchase-orders/"+order.ID, map[string]interface{}{
+		"metadata": map[string]interface{}{
+			"attachments": []map[string]interface{}{
+				{"name": "invoice.pdf", "url": "https://example.com/invoice.pdf"},
+			},
+		},
+	})
+	if resp.StatusCode != http.StatusOK {
+		body := decodeResponse(resp)
+		t.Fatalf("expected 200 for metadata-only update on APPROVED PO, got %d; body=%v", resp.StatusCode, body)
+	}
+
+	var reloaded models.PurchaseOrder
+	if err := db.Where("id = ?", order.ID).First(&reloaded).Error; err != nil {
+		t.Fatalf("reload PO: %v", err)
+	}
+	if reloaded.Status != "APPROVED" {
+		t.Fatalf("status must be untouched, want APPROVED, got %s", reloaded.Status)
+	}
+	if reloaded.TotalAmount != order.TotalAmount {
+		t.Fatalf("totalAmount must be untouched, want %v, got %v", order.TotalAmount, reloaded.TotalAmount)
+	}
+	if reloaded.Title != order.Title {
+		t.Fatalf("title must be untouched, want %q, got %q", order.Title, reloaded.Title)
+	}
+
+	var meta map[string]interface{}
+	if err := json.Unmarshal(reloaded.Metadata, &meta); err != nil {
+		t.Fatalf("unmarshal metadata: %v", err)
+	}
+	attachments, ok := meta["attachments"].([]interface{})
+	if !ok || len(attachments) != 1 {
+		t.Fatalf("expected 1 attachment persisted, got %v", meta["attachments"])
+	}
+}
+
+// TestUpdatePurchaseOrder_NonMetadataField_ApprovedStatus_StillBlocked is a
+// regression test for a bypass where isMetadataOnly only enumerated ~5 of the
+// ~17 request fields: a request carrying metadata PLUS an unchecked field
+// (title) was classified as "metadata-only" and slipped past the status
+// guard, letting the handler mutate title on an APPROVED purchase order. The
+// carve-out must be strictly metadata-only across EVERY field.
+func TestUpdatePurchaseOrder_NonMetadataField_ApprovedStatus_StillBlocked(t *testing.T) {
+	db := setupTestDB(t)
+	defer teardownTestDB(t, db)
+	setupWorkflowTasksTable(t, db)
+
+	order := makePurchaseOrder(t, "PO-META-002", "APPROVED")
+
+	app := newPurchaseOrderApp(t)
+	resp := testRequest(app, http.MethodPut, "/purchase-orders/"+order.ID, map[string]interface{}{
+		"title":    "sneaking a field change past the guard",
+		"metadata": map[string]interface{}{"attachments": []map[string]interface{}{{"name": "x.pdf"}}},
+	})
+	if resp.StatusCode != http.StatusForbidden {
+		body := decodeResponse(resp)
+		t.Fatalf("expected 403 when a non-metadata field is present on an APPROVED PO, got %d; body=%v", resp.StatusCode, body)
+	}
+	msg, _ := decodeResponse(resp)["message"].(string)
+	if !strings.Contains(msg, "Cannot update purchase order in APPROVED status") {
+		t.Fatalf("expected status-guard message, got %q", msg)
+	}
+
+	var reloaded models.PurchaseOrder
+	if err := db.Where("id = ?", order.ID).First(&reloaded).Error; err != nil {
+		t.Fatalf("reload PO: %v", err)
+	}
+	if reloaded.Title != order.Title {
+		t.Fatalf("title must be untouched, want %q, got %q", order.Title, reloaded.Title)
+	}
+	if len(reloaded.Metadata) > 0 {
+		t.Fatalf("metadata must not be persisted when the request also carries a blocked field, got %s", string(reloaded.Metadata))
+	}
+}
+
+// TestUpdatePurchaseOrder_FullUpdate_DraftStatus_StillWorks is a regression
+// guard: the enumerated carve-out must not break the normal DRAFT/PENDING
+// full-update path.
+func TestUpdatePurchaseOrder_FullUpdate_DraftStatus_StillWorks(t *testing.T) {
+	db := setupTestDB(t)
+	defer teardownTestDB(t, db)
+	setupWorkflowTasksTable(t, db)
+
+	order := makePurchaseOrder(t, "PO-META-003", "DRAFT")
+
+	app := newPurchaseOrderApp(t)
+	resp := testRequest(app, http.MethodPut, "/purchase-orders/"+order.ID, map[string]interface{}{
+		"title":       "Updated Title",
+		"totalAmount": 2500.0,
+		"currency":    "USD",
+	})
+	if resp.StatusCode != http.StatusOK {
+		body := decodeResponse(resp)
+		t.Fatalf("expected 200 for full update on DRAFT PO, got %d; body=%v", resp.StatusCode, body)
+	}
+
+	var reloaded models.PurchaseOrder
+	if err := db.Where("id = ?", order.ID).First(&reloaded).Error; err != nil {
+		t.Fatalf("reload PO: %v", err)
+	}
+	if reloaded.Title != "Updated Title" {
+		t.Fatalf("expected title updated, got %q", reloaded.Title)
+	}
+	if reloaded.TotalAmount != 2500.0 {
+		t.Fatalf("expected totalAmount updated to 2500, got %v", reloaded.TotalAmount)
+	}
+	if reloaded.Currency != "USD" {
+		t.Fatalf("expected currency updated to USD, got %q", reloaded.Currency)
 	}
 }
 

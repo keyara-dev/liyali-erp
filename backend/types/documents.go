@@ -258,15 +258,14 @@ type UpdatePurchaseOrderItemsRequest struct {
 
 // UpdatePurchaseOrderRequest represents a PO update request
 type UpdatePurchaseOrderRequest struct {
-	VendorID                string                 `json:"vendorId"`
-	VendorName              string                 `json:"vendorName"`
-	Items                   []POItem               `json:"items"`
-	TotalAmount             float64                `json:"totalAmount"`
-	Currency                string                 `json:"currency"`
-	DeliveryDate            FlexibleDate           `json:"deliveryDate"`
-	Metadata                map[string]interface{} `json:"metadata"`
-	QuotationGateOverridden *bool                  `json:"quotationGateOverridden"`
-	BypassJustification     string                 `json:"bypassJustification"`
+	VendorID                string       `json:"vendorId"`
+	VendorName              string       `json:"vendorName"`
+	Items                   []POItem     `json:"items"`
+	TotalAmount             float64      `json:"totalAmount"`
+	Currency                string       `json:"currency"`
+	DeliveryDate            FlexibleDate `json:"deliveryDate"`
+	QuotationGateOverridden *bool        `json:"quotationGateOverridden"`
+	BypassJustification     string       `json:"bypassJustification"`
 	// Business fields
 	Title        string `json:"title"`
 	Description  string `json:"description"`
@@ -276,6 +275,15 @@ type UpdatePurchaseOrderRequest struct {
 	BudgetCode   string `json:"budgetCode"`
 	CostCenter   string `json:"costCenter"`
 	ProjectCode  string `json:"projectCode"`
+	// Metadata-only updates (e.g. supporting-document attachments) bypass the
+	// status guard in UpdatePurchaseOrder — see isMetadataOnly there. Merged
+	// (not replaced) into the existing metadata column.
+	//
+	// SECURITY: any NEW field added to this struct MUST also be added to the
+	// isMetadataOnly enumeration in handlers/purchase_order.go
+	// UpdatePurchaseOrder, or requests carrying it will bypass the status
+	// guard on approved POs.
+	Metadata map[string]interface{} `json:"metadata"`
 }
 
 // POItem represents an item in a purchase order
