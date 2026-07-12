@@ -2523,10 +2523,12 @@ func (s *WorkflowExecutionService) AutoCreatePVFromCompletedGRN(tx *gorm.DB, grn
 
 // CascadePVPaidToPO is the symmetric trigger called after a PV transitions
 // to PAID. It advances the parent PO to COMPLETED when delivery is already
-// FULLY_DELIVERED and every other linked PV is also PAID. Accepts both
-// APPROVED (payment-first: PV paid before/at the same time as final delivery)
-// and FULFILLED (goods-first: PO was parked at FULFILLED awaiting payment)
-// as the source state. Without this, the PO would stay stuck indefinitely.
+// FULLY_DELIVERED, every live (non-CANCELLED, non-REJECTED) linked PV is
+// PAID/COMPLETED, AND those PVs' amounts together cover the PO total — a
+// single paid deposit is not enough. Accepts both APPROVED (payment-first:
+// PV paid before/at the same time as final delivery) and FULFILLED
+// (goods-first: PO was parked at FULFILLED awaiting payment) as the source
+// state. Without this, the PO would stay stuck indefinitely.
 func (s *WorkflowExecutionService) CascadePVPaidToPO(tx *gorm.DB, pvID string) error {
 	var pv models.PaymentVoucher
 	if err := tx.Where("id = ?", pvID).First(&pv).Error; err != nil {
@@ -2550,14 +2552,23 @@ func (s *WorkflowExecutionService) CascadePVPaidToPO(tx *gorm.DB, pvID string) e
 	}
 
 	var pvs []models.PaymentVoucher
-	if err := tx.Where("linked_po = ? AND organization_id = ? AND UPPER(status) != ?",
-		po.DocumentNumber, po.OrganizationID, "CANCELLED").Find(&pvs).Error; err != nil {
+	if err := tx.Where("linked_po = ? AND organization_id = ? AND UPPER(status) NOT IN ?",
+		po.DocumentNumber, po.OrganizationID, []string{"CANCELLED", "REJECTED"}).Find(&pvs).Error; err != nil {
 		return fmt.Errorf("cascade: list linked PVs: %w", err)
 	}
+	var paidSum float64
 	for _, p := range pvs {
-		if strings.ToUpper(p.Status) != "PAID" {
+		s := strings.ToUpper(p.Status)
+		if s != "PAID" && s != models.StatusCompleted {
 			return nil
 		}
+		paidSum += p.Amount
+	}
+	if paidSum < po.TotalAmount-0.01 {
+		// A deposit (or other partial coverage) is fully paid, but the linked
+		// PVs don't yet cover the PO total — leave the PO open until the
+		// remaining balance is paid off via another PV.
+		return nil
 	}
 
 	return tx.Model(&models.PurchaseOrder{}).
