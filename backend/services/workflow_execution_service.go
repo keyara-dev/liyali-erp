@@ -2360,25 +2360,30 @@ func (s *WorkflowExecutionService) cascadeGRNApprovalToPO(tx *gorm.DB, grnID str
 	// based on payment side. Three branches, all gated on APPROVED today (the
 	// only state from which delivery can land):
 	//   - zero linked PVs           → leave APPROVED (PV doesn't exist yet)
-	//   - some PVs not PAID         → FULFILLED (goods in, money pending)
-	//   - all PVs PAID              → COMPLETED (procurement chain closed)
+	//   - PVs don't cover the total → FULFILLED (goods in, money pending)
+	//   - PVs cover the total       → COMPLETED (procurement chain closed)
+	// Mirrors CascadePVPaidToPO's coverage semantics: REJECTED (and
+	// CANCELLED) PVs are excluded from the fetch, PAID/COMPLETED PVs count
+	// toward coverage, and completion requires paidSum >= po.TotalAmount
+	// (epsilon-adjusted) rather than merely "every live PV is PAID" — a
+	// single fully-paid deposit must not complete the PO.
 	// Applies to both procurement flows (goods_first and payment_first).
 	if newDeliveryStatus == models.DeliveryStatusFullyDelivered &&
 		strings.ToUpper(po.Status) == "APPROVED" {
 		var pvs []models.PaymentVoucher
-		if err := tx.Where("linked_po = ? AND organization_id = ? AND UPPER(status) != ?",
-			po.DocumentNumber, po.OrganizationID, "CANCELLED").Find(&pvs).Error; err != nil {
+		if err := tx.Where("linked_po = ? AND organization_id = ? AND UPPER(status) NOT IN ?",
+			po.DocumentNumber, po.OrganizationID, []string{"CANCELLED", "REJECTED"}).Find(&pvs).Error; err != nil {
 			return fmt.Errorf("cascade: list linked PVs: %w", err)
 		}
 		if len(pvs) > 0 {
-			allPaid := true
+			var paidSum float64
 			for _, pv := range pvs {
-				if strings.ToUpper(pv.Status) != "PAID" {
-					allPaid = false
-					break
+				s := strings.ToUpper(pv.Status)
+				if s == "PAID" || s == models.StatusCompleted {
+					paidSum += pv.Amount
 				}
 			}
-			if allPaid {
+			if paidSum >= po.TotalAmount-0.01 {
 				updates["status"] = models.StatusCompleted
 			} else {
 				updates["status"] = models.StatusFulfilled
