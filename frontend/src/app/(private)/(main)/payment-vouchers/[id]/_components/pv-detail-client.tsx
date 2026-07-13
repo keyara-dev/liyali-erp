@@ -179,6 +179,15 @@ export function PVDetailClient({
     initialPaymentVoucher,
   });
 
+  // Supporting-document uploads must NOT be tied to permissions.canEdit
+  // (isCreator && DRAFT/REJECTED only) — the backend's metadata-only
+  // carve-out (UpdatePaymentVoucher's isMetadataOnly branch) explicitly
+  // allows attachment updates on a PV in ANY status, so post-approval
+  // uploads (e.g. attaching an invoice after the PV is APPROVED/PAID) must
+  // stay possible. Mirrors GRNDetailClient's status-independent
+  // `isCreator || hasPermission(resource, "edit")` gate.
+  const canUploadPV = permissions.isCreator || hasPermission("payment_voucher", "edit");
+
   // Resolve linkedGRN doc number → GRN id for navigation.
   // GRN list is fetched with a large limit so the cache is usually warm.
   const { data: grns = [] } = useGRNs(1, 100);
@@ -664,7 +673,7 @@ export function PVDetailClient({
               documentId={pvId}
               documentType="payment-voucher"
               chainDocs={pvChainDocs}
-              canUpload={permissions.canEdit}
+              canUpload={canUploadPV}
               onUpload={handleSupportingDocUpload}
               showViewLinks={userRole.toLowerCase() !== "requester"}
             />
