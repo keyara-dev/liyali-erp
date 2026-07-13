@@ -113,6 +113,40 @@ func TestGRNApprovalCascadesToPO_RejectedPVDoesNotBlockCompletion(t *testing.T) 
 		"a REJECTED PV must neither count toward coverage nor block completion once live PVs cover the total")
 }
 
+// A live-but-unpaid PV blocks completion even when paid PVs alone cover the
+// total (reachable only within the balance-cap epsilon, but the invariant must
+// match CascadePVPaidToPO exactly: all live PVs settled AND full coverage).
+func TestGRNApprovalCascadesToPO_LiveUnpaidPVBlocksCompletion(t *testing.T) {
+	db := setupExecutionTestDB(t)
+	const orgID = "org-cascade-grn-cov-4"
+	seedOrg(t, db, orgID)
+
+	items := []types.POItem{{Description: "Widget", Quantity: 10, UnitPrice: 5.0, Amount: 50.0}}
+	po := seedApprovedPOWithItems(t, db, orgID, items)
+
+	// Paid coverage reaches the 999 total, but a DRAFT PV is still live.
+	seedSummaryPV(t, db, orgID, po.DocumentNumber, "PAID", 999)
+	seedSummaryPV(t, db, orgID, po.DocumentNumber, "DRAFT", 100)
+
+	grnItems := []types.GRNItem{{
+		Description:      "Widget",
+		QuantityOrdered:  10,
+		QuantityReceived: 10,
+		Variance:         0,
+		Condition:        "good",
+	}}
+	grn := seedPendingGRN(t, db, orgID, po, grnItems)
+	_, taskID, approverID := seedGRNWorkflowAndClaim(t, db, orgID, grn.ID)
+
+	svc := newExecutionService(t, db)
+	require.NoError(t, svc.ApproveWorkflowTaskWithVersion(context.Background(), taskID, approverID, "LGTM", "", 1))
+
+	var updatedPO models.PurchaseOrder
+	require.NoError(t, db.First(&updatedPO, "id = ?", po.ID).Error)
+	assert.Equal(t, models.StatusFulfilled, updatedPO.Status,
+		"a live unpaid PV must park the PO at FULFILLED even when paid PVs cover the total")
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Fix 2 end-to-end invariant: deposit -> full delivery (FULFILLED) -> balance
 // PV -> both paid -> COMPLETED. Exercises both cascades together: the

@@ -98,23 +98,24 @@ func validateProcurementPVGate(tx *gorm.DB, orgID, linkedPO, linkedGRN string, a
 
 		// Over-invoicing guard: PV amount may not exceed the *remaining*
 		// received value, computed PO-wide (not just against the single
-		// linkedGRN above) as Σ over every live GRN linked to this PO of
+		// linkedGRN above) as Σ over every confirmed GRN linked to this PO of
 		// (grnItem.quantityReceived × poItem.unitPrice), matched by
 		// description, minus what's already committed. PO-wide is required
 		// for multi-delivery POs: a second/third GRN's received value on its
 		// own is usually already fully "committed" by an earlier PV, which
 		// would wrongly block that delivery's PV if only that one GRN's value
-		// were considered. REJECTED GRNs are excluded — a rejected delivery
-		// was never accepted, so it shouldn't count as goods received;
-		// CANCELLED is excluded for the same reason as everywhere else.
+		// were considered. Only APPROVED/COMPLETED GRNs count — the same bar
+		// the specific linkedGRN must meet above. A DRAFT/PENDING GRN is an
+		// unverified delivery claim; letting it raise the payment ceiling
+		// would allow invoicing against goods no approver has confirmed.
 		poItems := po.Items.Data()
 		unitPriceByDesc := make(map[string]float64, len(poItems))
 		for _, pi := range poItems {
 			unitPriceByDesc[pi.Description] = pi.UnitPrice
 		}
 		var poGRNs []models.GoodsReceivedNote
-		if err := tx.Where("po_document_number = ? AND organization_id = ? AND UPPER(status) NOT IN ?",
-			linkedPO, orgID, []string{"CANCELLED", "REJECTED"}).Find(&poGRNs).Error; err != nil {
+		if err := tx.Where("po_document_number = ? AND organization_id = ? AND UPPER(status) IN ?",
+			linkedPO, orgID, []string{"APPROVED", "COMPLETED"}).Find(&poGRNs).Error; err != nil {
 			return "Failed to compute received value", fiber.StatusInternalServerError
 		}
 		var receivedValue float64

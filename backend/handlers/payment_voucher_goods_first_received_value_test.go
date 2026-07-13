@@ -138,3 +138,40 @@ func TestValidateProcurementPVGate_GoodsFirst_RejectedGRNNotCounted(t *testing.T
 		t.Fatalf("expected 400: REJECTED GRN must not count toward received value, got %d (%s)", code, msg)
 	}
 }
+
+// A DRAFT/PENDING GRN is an unverified delivery claim — it must not raise the
+// payment ceiling. Only APPROVED/COMPLETED GRNs count toward the cumulative
+// received value, the same bar the specific linkedGRN has to meet.
+func TestValidateProcurementPVGate_GoodsFirst_PendingGRNNotCounted(t *testing.T) {
+	db := setupTestDB(t)
+	defer teardownTestDB(t, db)
+
+	po := seedGoodsFirstPO(t, "PO-GF-5", 20, 50, 1000)
+	grn1 := seedGRNForPO(t, "GRN-GF-5A", po, 10, 10, "APPROVED") // 500 received, confirmed
+	seedGRNForPO(t, "GRN-GF-5B", po, 10, 10, "PENDING")          // 500 claimed, unconfirmed
+	seedGRNForPO(t, "GRN-GF-5C", po, 10, 10, "DRAFT")            // 500 claimed, unconfirmed
+
+	// If unapproved GRNs counted, cumulative received value would be 1500 and
+	// this 600 PV would pass. Only the APPROVED 500 counts.
+	msg, code := validateProcurementPVGate(db, testOrgID, po.DocumentNumber, grn1.DocumentNumber, 600)
+	if code != http.StatusBadRequest {
+		t.Fatalf("expected 400: PENDING/DRAFT GRNs must not count toward received value, got %d (%s)", code, msg)
+	}
+
+	// A PV within the confirmed 500 still passes.
+	msg, code = validateProcurementPVGate(db, testOrgID, po.DocumentNumber, grn1.DocumentNumber, 500)
+	if code != 0 {
+		t.Fatalf("expected ok (0) within confirmed received value, got %d (%s)", code, msg)
+	}
+
+	// COMPLETED GRNs count too (terminal confirmed state): completing the
+	// second delivery raises the ceiling to 1000.
+	if err := config.DB.Model(&models.GoodsReceivedNote{}).
+		Where("document_number = ?", "GRN-GF-5B").Update("status", "COMPLETED").Error; err != nil {
+		t.Fatalf("promote GRN-GF-5B: %v", err)
+	}
+	msg, code = validateProcurementPVGate(db, testOrgID, po.DocumentNumber, grn1.DocumentNumber, 1000)
+	if code != 0 {
+		t.Fatalf("expected ok (0) once second GRN is COMPLETED, got %d (%s)", code, msg)
+	}
+}

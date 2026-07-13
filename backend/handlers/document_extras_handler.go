@@ -357,8 +357,8 @@ func CreatePaymentVoucherFromPO(c *fiber.Ctx) error {
 		req.Currency = po.Currency
 	}
 
-	// Enforce the shared PV-creation gate (PO must be APPROVED, remaining-
-	// balance cap, goods-first GRN) and the PV insert inside one transaction:
+	// Enforce the shared PV-creation gate (PO must be APPROVED or FULFILLED,
+	// remaining-balance cap, goods-first GRN) and the PV insert inside one transaction:
 	// the gate locks the PO row FOR UPDATE, so this must run in the same
 	// transaction as the insert for the lock to actually serialize concurrent
 	// requests against the same PO. Single source of truth shared with the

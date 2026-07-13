@@ -2376,14 +2376,22 @@ func (s *WorkflowExecutionService) cascadeGRNApprovalToPO(tx *gorm.DB, grnID str
 			return fmt.Errorf("cascade: list linked PVs: %w", err)
 		}
 		if len(pvs) > 0 {
+			// Same two-part completion rule as CascadePVPaidToPO: every live PV
+			// must itself be settled (PAID/COMPLETED) AND together they must
+			// cover the PO total. A live unpaid PV — even alongside full paid
+			// coverage (possible only within the balance-cap epsilon) — parks
+			// the PO at FULFILLED, never COMPLETED.
+			allPaid := true
 			var paidSum float64
 			for _, pv := range pvs {
 				s := strings.ToUpper(pv.Status)
 				if s == "PAID" || s == models.StatusCompleted {
 					paidSum += pv.Amount
+				} else {
+					allPaid = false
 				}
 			}
-			if paidSum >= po.TotalAmount-0.01 {
+			if allPaid && paidSum >= po.TotalAmount-0.01 {
 				updates["status"] = models.StatusCompleted
 			} else {
 				updates["status"] = models.StatusFulfilled
