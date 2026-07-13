@@ -97,21 +97,35 @@ func validateProcurementPVGate(tx *gorm.DB, orgID, linkedPO, linkedGRN string, a
 		}
 
 		// Over-invoicing guard: PV amount may not exceed the *remaining*
-		// received value = Σ (grnItem.quantityReceived × poItem.unitPrice),
-		// matched by description, minus what's already committed.
+		// received value, computed PO-wide (not just against the single
+		// linkedGRN above) as Σ over every live GRN linked to this PO of
+		// (grnItem.quantityReceived × poItem.unitPrice), matched by
+		// description, minus what's already committed. PO-wide is required
+		// for multi-delivery POs: a second/third GRN's received value on its
+		// own is usually already fully "committed" by an earlier PV, which
+		// would wrongly block that delivery's PV if only that one GRN's value
+		// were considered. REJECTED GRNs are excluded — a rejected delivery
+		// was never accepted, so it shouldn't count as goods received;
+		// CANCELLED is excluded for the same reason as everywhere else.
 		poItems := po.Items.Data()
-		grnItems := grn.Items.Data()
 		unitPriceByDesc := make(map[string]float64, len(poItems))
 		for _, pi := range poItems {
 			unitPriceByDesc[pi.Description] = pi.UnitPrice
 		}
+		var poGRNs []models.GoodsReceivedNote
+		if err := tx.Where("po_document_number = ? AND organization_id = ? AND UPPER(status) NOT IN ?",
+			linkedPO, orgID, []string{"CANCELLED", "REJECTED"}).Find(&poGRNs).Error; err != nil {
+			return "Failed to compute received value", fiber.StatusInternalServerError
+		}
 		var receivedValue float64
-		for _, gi := range grnItems {
-			receivedValue += float64(gi.QuantityReceived) * unitPriceByDesc[gi.Description]
+		for _, g := range poGRNs {
+			for _, gi := range g.Items.Data() {
+				receivedValue += float64(gi.QuantityReceived) * unitPriceByDesc[gi.Description]
+			}
 		}
 		if amount > receivedValue-sum.Committed+0.01 {
-			return fmt.Sprintf("PV amount %.2f exceeds remaining received value %.2f on GRN %s (received value %.2f, already committed %.2f across %d voucher(s)). Adjust the invoice amount to match goods actually received.",
-				amount, receivedValue-sum.Committed, linkedGRN, receivedValue, sum.Committed, sum.LivePVs), fiber.StatusBadRequest
+			return fmt.Sprintf("PV amount %.2f exceeds remaining received value %.2f across %d GRN(s) on PO %s (received value %.2f, already committed %.2f across %d voucher(s)). Adjust the invoice amount to match goods actually received.",
+				amount, receivedValue-sum.Committed, len(poGRNs), linkedPO, receivedValue, sum.Committed, sum.LivePVs), fiber.StatusBadRequest
 		}
 	}
 
