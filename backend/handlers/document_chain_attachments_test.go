@@ -316,6 +316,110 @@ func TestGetDocumentChainAttachments(t *testing.T) {
 	}
 }
 
+// Fix 4 regression: an unlinked PV (linked_po=="", e.g. a direct/payment-first
+// PV never tied to a PO) has no PO to resolve a chain from, so
+// resolveChainDocumentSet used to return zero refs — dropping the anchor PV
+// itself and hiding its own metadata.attachments/proof-of-payment. The anchor
+// must always be present in the resolved set even with no chain around it.
+func TestGetDocumentChainAttachments_UnlinkedPV_ReturnsOwnAttachments(t *testing.T) {
+	db := setupTestDB(t)
+	defer teardownTestDB(t, db)
+
+	now := time.Now()
+
+	pvMetadata := mustJSON(t, map[string]interface{}{
+		"attachments": []map[string]interface{}{
+			{
+				"fileId":     "file-unlinked-pv-1",
+				"fileName":   "invoice.pdf",
+				"fileUrl":    "https://files.example.com/invoice.pdf",
+				"fileSize":   float64(2048),
+				"mimeType":   "application/pdf",
+				"uploadedAt": "2026-07-05T10:00:00Z",
+			},
+		},
+	})
+	popPayload := mustJSON(t, map[string]interface{}{
+		"id":         "pop-unlinked-1",
+		"fileName":   "unlinked-pop.png",
+		"mimeType":   "image/png",
+		"sizeBytes":  float64(333),
+		"dataBase64": popBlobMarker,
+		"uploadedAt": "2026-07-05T11:00:00Z",
+		"uploadedBy": "user-finance-2",
+	})
+
+	pv := models.PaymentVoucher{
+		ID: uuid.New().String(), OrganizationID: testOrgID, DocumentNumber: "PV-UNLINKED-1",
+		LinkedPO: "", Status: "PAID", Amount: 250, Currency: "ZMW",
+		Metadata:       pvMetadata,
+		ProofOfPayment: popPayload,
+		CreatedAt:      now, UpdatedAt: now,
+	}
+	if err := db.Create(&pv).Error; err != nil {
+		t.Fatalf("seed unlinked PV: %v", err)
+	}
+
+	resp := testRequest(documentChainAttachmentsApp(), http.MethodGet,
+		"/document-chain/"+pv.ID+"/attachments?documentType=payment_voucher", nil)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("expected 200, got %d", resp.StatusCode)
+	}
+
+	rawBody, err := readAllAndDecode(resp)
+	if err != nil {
+		t.Fatalf("read body: %v", err)
+	}
+	if strings.Contains(rawBody, popBlobMarker) {
+		t.Fatalf("proof-of-payment base64 blob leaked into response body: %s", rawBody)
+	}
+
+	type attachmentDTO struct {
+		Kind        string `json:"kind"`
+		SourceDocID string `json:"sourceDocId"`
+		FileID      string `json:"fileId"`
+		DownloadRef string `json:"downloadRef"`
+	}
+	type docDTO struct {
+		ID   string `json:"id"`
+		Type string `json:"type"`
+	}
+	type respBody struct {
+		Success bool `json:"success"`
+		Data    struct {
+			Attachments []attachmentDTO `json:"attachments"`
+			Documents   []docDTO        `json:"documents"`
+		} `json:"data"`
+	}
+	var body respBody
+	if err := json.Unmarshal([]byte(rawBody), &body); err != nil {
+		t.Fatalf("decode body: %v", err)
+	}
+	if !body.Success {
+		t.Fatalf("expected success=true, got body=%s", rawBody)
+	}
+
+	if len(body.Data.Documents) != 1 || body.Data.Documents[0].ID != pv.ID || body.Data.Documents[0].Type != "payment_voucher" {
+		t.Fatalf("expected the unlinked PV itself as the sole document, got %+v", body.Data.Documents)
+	}
+
+	var attachmentEntry, popEntry *attachmentDTO
+	for i := range body.Data.Attachments {
+		switch body.Data.Attachments[i].Kind {
+		case "attachment":
+			attachmentEntry = &body.Data.Attachments[i]
+		case "proof_of_payment":
+			popEntry = &body.Data.Attachments[i]
+		}
+	}
+	if attachmentEntry == nil || attachmentEntry.FileID != "file-unlinked-pv-1" {
+		t.Fatalf("expected the unlinked PV's own attachment to be present, got %+v", body.Data.Attachments)
+	}
+	if popEntry == nil || popEntry.SourceDocID != pv.ID || popEntry.DownloadRef != "/payment-vouchers/"+pv.ID {
+		t.Fatalf("expected the unlinked PV's own proof-of-payment to be present, got %+v", body.Data.Attachments)
+	}
+}
+
 // readAllAndDecode reads the full response body as a string (once) so tests
 // can both scan the raw text (for base64-leak assertions) and JSON-decode it.
 func readAllAndDecode(resp *http.Response) (string, error) {

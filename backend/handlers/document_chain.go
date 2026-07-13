@@ -349,11 +349,22 @@ func resolveChainDocumentSet(documentID, documentType, orgID string) []chainDocR
 	var po models.PurchaseOrder
 	havePO := false
 
+	// anchor is the requested document's own ref. It must ALWAYS end up in
+	// the returned set — even when it has no PO to resolve a chain from
+	// (e.g. a payment-first PV with linked_po=="", or a GRN with an empty
+	// po_document_number) — otherwise the endpoint returns zero attachments
+	// and hides the anchor's own metadata.attachments/POP. Appended via
+	// appendAnchor() below, which no-ops if the anchor already made it into
+	// refs through the normal PO -> GRNs -> PVs resolution.
+	var anchor *chainDocRef
+
 	switch strings.ToLower(documentType) {
 	case "requisition":
 		var req models.Requisition
 		if err := db.Where("id = ? AND organization_id = ?", documentID, orgID).First(&req).Error; err == nil {
-			refs = append(refs, chainDocRef{ID: req.ID, Type: "requisition", DocumentNumber: req.DocumentNumber})
+			ref := chainDocRef{ID: req.ID, Type: "requisition", DocumentNumber: req.DocumentNumber}
+			refs = append(refs, ref)
+			anchor = &ref
 		}
 		if err := db.Where("source_requisition_id = ? AND organization_id = ?", documentID, orgID).First(&po).Error; err == nil {
 			havePO = true
@@ -362,27 +373,49 @@ func resolveChainDocumentSet(documentID, documentType, orgID string) []chainDocR
 	case "purchase_order", "purchase-order":
 		if err := db.Where("id = ? AND organization_id = ?", documentID, orgID).First(&po).Error; err == nil {
 			havePO = true
+			ref := chainDocRef{ID: po.ID, Type: "purchase_order", DocumentNumber: po.DocumentNumber}
+			anchor = &ref
 		}
 
 	case "payment_voucher", "payment-voucher":
 		var pv models.PaymentVoucher
-		if err := db.Where("id = ? AND organization_id = ?", documentID, orgID).First(&pv).Error; err == nil && pv.LinkedPO != "" {
-			if err := db.Where("document_number = ? AND organization_id = ?", pv.LinkedPO, orgID).First(&po).Error; err == nil {
-				havePO = true
+		if err := db.Where("id = ? AND organization_id = ?", documentID, orgID).First(&pv).Error; err == nil {
+			ref := chainDocRef{ID: pv.ID, Type: "payment_voucher", DocumentNumber: pv.DocumentNumber}
+			anchor = &ref
+			if pv.LinkedPO != "" {
+				if err := db.Where("document_number = ? AND organization_id = ?", pv.LinkedPO, orgID).First(&po).Error; err == nil {
+					havePO = true
+				}
 			}
 		}
 
 	case "grn", "goods_received_note":
 		var grn models.GoodsReceivedNote
-		if err := db.Where("id = ? AND organization_id = ?", documentID, orgID).First(&grn).Error; err == nil && grn.PODocumentNumber != "" {
-			if err := db.Where("document_number = ? AND organization_id = ?", grn.PODocumentNumber, orgID).First(&po).Error; err == nil {
-				havePO = true
+		if err := db.Where("id = ? AND organization_id = ?", documentID, orgID).First(&grn).Error; err == nil {
+			ref := chainDocRef{ID: grn.ID, Type: "grn", DocumentNumber: grn.DocumentNumber}
+			anchor = &ref
+			if grn.PODocumentNumber != "" {
+				if err := db.Where("document_number = ? AND organization_id = ?", grn.PODocumentNumber, orgID).First(&po).Error; err == nil {
+					havePO = true
+				}
 			}
 		}
 	}
 
+	appendAnchor := func(rs []chainDocRef) []chainDocRef {
+		if anchor == nil {
+			return rs
+		}
+		for _, r := range rs {
+			if r.ID == anchor.ID && r.Type == anchor.Type {
+				return rs
+			}
+		}
+		return append(rs, *anchor)
+	}
+
 	if !havePO {
-		return refs
+		return appendAnchor(refs)
 	}
 
 	// Source requisition — skip when the anchor IS the requisition (already
@@ -410,7 +443,7 @@ func resolveChainDocumentSet(documentID, documentType, orgID string) []chainDocR
 		refs = append(refs, chainDocRef{ID: p.ID, Type: "payment_voucher", DocumentNumber: p.DocumentNumber})
 	}
 
-	return refs
+	return appendAnchor(refs)
 }
 
 // chainAttachmentFromMap tolerantly extracts one attachment/quotation entry
