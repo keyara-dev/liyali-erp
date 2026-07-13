@@ -142,3 +142,30 @@ func TestCreatePVFromPO_AcceptsCompletedGRN(t *testing.T) {
 		t.Fatalf("expected 201 for COMPLETED GRN, got %d", resp.StatusCode)
 	}
 }
+
+// Fix 2: a fully-delivered, partially-paid PO parks at FULFILLED, not
+// APPROVED. The balance PV must still be creatable via from-po, otherwise a
+// FULFILLED PO can never receive its remaining payment.
+func TestCreatePVFromPO_AcceptsFulfilledPOForBalancePV(t *testing.T) {
+	db := setupTestDB(t)
+	defer teardownTestDB(t, db)
+	po := seedPO(t, "PO-FP-5", "FULFILLED", "payment_first", 1000)
+	deposit := models.PaymentVoucher{
+		ID: uuid.New().String(), OrganizationID: testOrgID, DocumentNumber: "PV-FP-5",
+		LinkedPO: po.DocumentNumber, Status: "PAID", Amount: 500,
+		CreatedAt: time.Now(), UpdatedAt: time.Now(),
+	}
+	if err := db.Create(&deposit).Error; err != nil {
+		t.Fatalf("seed deposit PV: %v", err)
+	}
+
+	body := map[string]interface{}{
+		"purchaseOrderId":             po.ID,
+		"purchaseOrderDocumentNumber": po.DocumentNumber,
+		"totalAmount":                 500,
+	}
+	resp := testRequest(fromPOApp(), http.MethodPost, "/payment-vouchers/from-po", body)
+	if resp.StatusCode != http.StatusCreated {
+		t.Fatalf("expected 201 for balance PV against FULFILLED PO, got %d", resp.StatusCode)
+	}
+}

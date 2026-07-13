@@ -98,7 +98,11 @@ export function PVCreateClient({
 
   const approvedPOs =
     purchaseOrders?.filter((po) => {
-      if (po.status?.toUpperCase() !== "APPROVED") return false;
+      const poStatus = po.status?.toUpperCase();
+      // FULFILLED = fully delivered but the balance is still outstanding
+      // (partial-payment PO parked awaiting the remaining PV) — still
+      // eligible for a new PV, same as APPROVED.
+      if (poStatus !== "APPROVED" && poStatus !== "FULFILLED") return false;
       // No remaining balance — the backend would reject a new PV over the cap.
       if (!canCreateAnotherPV(po)) return false;
       const poFlow = po.procurementFlow || orgFlow;

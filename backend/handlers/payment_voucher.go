@@ -23,7 +23,10 @@ import (
 
 // validateProcurementPVGate enforces the rules for creating a Payment Voucher
 // against a linked Purchase Order (and GRN in goods-first flow):
-//   - the linked PO must exist and be APPROVED;
+//   - the linked PO must exist and be APPROVED or FULFILLED (FULFILLED means
+//     goods are fully delivered but the balance is still outstanding — a
+//     partially-paid PO parks there and must still be able to receive the
+//     remaining PV(s); see CascadePVPaidToPO, which accepts the same pair);
 //   - in goods-first, an APPROVED or COMPLETED GRN must back the PV and the
 //     amount may not exceed the *remaining* received value (received value
 //     minus what earlier live PVs already committed);
@@ -52,8 +55,9 @@ func validateProcurementPVGate(tx *gorm.DB, orgID, linkedPO, linkedGRN string, a
 		First(&po).Error; err != nil {
 		return "Linked purchase order not found", fiber.StatusBadRequest
 	}
-	if strings.ToUpper(po.Status) != "APPROVED" {
-		return fmt.Sprintf("Cannot create PV: linked PO %s is in %s status and must be APPROVED first.", linkedPO, po.Status), fiber.StatusBadRequest
+	poStatus := strings.ToUpper(po.Status)
+	if poStatus != "APPROVED" && poStatus != models.StatusFulfilled {
+		return fmt.Sprintf("Cannot create PV: linked PO %s is in %s status and must be APPROVED or FULFILLED first.", linkedPO, po.Status), fiber.StatusBadRequest
 	}
 
 	// Committed = Σ amount of every live (non CANCELLED/REJECTED) PV already
@@ -1080,7 +1084,8 @@ func SubmitPaymentVoucher(c *fiber.Ctx) error {
 		})
 	}
 
-	// Gate: if linked to a PO, it must still be APPROVED before PV can be submitted
+	// Gate: if linked to a PO, it must still be APPROVED or FULFILLED (goods
+	// fully delivered, balance still outstanding) before PV can be submitted.
 	if voucher.LinkedPO != "" {
 		var linkedPO models.PurchaseOrder
 		if err := config.DB.
@@ -1088,9 +1093,10 @@ func SubmitPaymentVoucher(c *fiber.Ctx) error {
 			First(&linkedPO).Error; err != nil {
 			return utils.SendBadRequestError(c, "Linked purchase order not found")
 		}
-		if strings.ToUpper(linkedPO.Status) != "APPROVED" {
+		linkedPOStatus := strings.ToUpper(linkedPO.Status)
+		if linkedPOStatus != "APPROVED" && linkedPOStatus != models.StatusFulfilled {
 			return utils.SendBadRequestError(c, fmt.Sprintf(
-				"Cannot submit PV: linked PO %s is in %s status and must be APPROVED.",
+				"Cannot submit PV: linked PO %s is in %s status and must be APPROVED or FULFILLED.",
 				voucher.LinkedPO, linkedPO.Status))
 		}
 	}

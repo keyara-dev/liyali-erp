@@ -299,6 +299,30 @@ func TestSubmitPaymentVoucher_ApprovedStatus(t *testing.T) {
 	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
 }
 
+// Fix 2: a DRAFT PV linked to a FULFILLED PO (fully delivered, balance still
+// outstanding) must still be submittable — the old gate only accepted
+// APPROVED and would deadlock the balance PV forever.
+func TestSubmitPaymentVoucher_LinkedPOFulfilled_Allowed(t *testing.T) {
+	db := setupTestDB(t)
+	defer teardownTestDB(t, db)
+	seedTestUser(t)
+
+	po := seedPO(t, "PO-SUBMIT-FULFILLED", "FULFILLED", "payment_first", 1000)
+	voucher := makePaymentVoucher(t, "PV-SUBMIT-FULFILLED", "DRAFT")
+	voucher.LinkedPO = po.DocumentNumber
+	if err := db.Save(&voucher).Error; err != nil {
+		t.Fatalf("link PV to PO: %v", err)
+	}
+	app := newPaymentVoucherAppWithWF(db)
+
+	resp := testRequest(app, http.MethodPost, "/payment-vouchers/"+voucher.ID+"/submit", map[string]interface{}{
+		"workflowId": "not-a-valid-uuid",
+	})
+	// Reaches the workflow-service call (which then fails on the bogus UUID) —
+	// i.e. it must NOT be rejected at the linked-PO status gate with 400.
+	assert.Equal(t, http.StatusInternalServerError, resp.StatusCode)
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // SubmitPurchaseOrder — additional code paths
 // ─────────────────────────────────────────────────────────────────────────────

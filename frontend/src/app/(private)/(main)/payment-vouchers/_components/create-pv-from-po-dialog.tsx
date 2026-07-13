@@ -144,8 +144,15 @@ export function CreatePVFromPODialog({
     includeWorkflow: false,
   });
 
+  // FULFILLED = fully delivered but the balance is still outstanding (a
+  // partial-payment PO parked awaiting the remaining PV) — same eligibility
+  // as APPROVED.
+  const poStatusUpper = purchaseOrder.status?.toUpperCase();
+  const isEligiblePOStatus =
+    poStatusUpper === "APPROVED" || poStatusUpper === "FULFILLED";
+
   const canCreate =
-    purchaseOrder.status?.toUpperCase() === "APPROVED" &&
+    isEligiblePOStatus &&
     configStatus.allConfigured &&
     (!isGoodsFirst || selectedGRNDocNumber !== "") &&
     remainingBalance > 0.01 &&
@@ -567,17 +574,17 @@ export function CreatePVFromPODialog({
             </Alert>
           )}
 
-          {purchaseOrder.status?.toUpperCase() !== "APPROVED" && (
+          {!isEligiblePOStatus && (
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>
-                Only approved purchase orders can be converted to payment
-                vouchers.
+                Only approved or fulfilled purchase orders can be converted
+                to payment vouchers.
               </AlertDescription>
             </Alert>
           )}
 
-          {purchaseOrder.status?.toUpperCase() === "APPROVED" &&
+          {isEligiblePOStatus &&
             remainingBalance <= 0.01 && (
               <Alert variant="destructive">
                 <AlertCircle className="h-4 w-4" />

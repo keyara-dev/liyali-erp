@@ -989,7 +989,8 @@ export function PurchaseOrderDetailClient({
                 );
               })()}
             </div>
-            {purchaseOrder.status?.toUpperCase() === "APPROVED" &&
+            {(purchaseOrder.status?.toUpperCase() === "APPROVED" ||
+              purchaseOrder.status?.toUpperCase() === "FULFILLED") &&
               canCreateAnotherPV(purchaseOrder) && (
                 <Button
                   variant="default"

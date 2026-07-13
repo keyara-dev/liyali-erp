@@ -90,4 +90,28 @@ func TestValidateProcurementPVGate(t *testing.T) {
 			t.Fatalf("expected ok (0), got %d (%s)", code, msg)
 		}
 	})
+
+	// Fix 2: a fully-delivered, partially-paid PO parks at FULFILLED (not
+	// APPROVED) awaiting the remaining balance. It must still accept a PV for
+	// that remaining balance, otherwise the PO can never be paid off.
+	t.Run("FULFILLED PO with remaining balance -> ok", func(t *testing.T) {
+		po := seedPO(t, "PO-GATE-5", "FULFILLED", "payment_first", 1000)
+		pv := models.PaymentVoucher{
+			ID:             uuid.New().String(),
+			OrganizationID: testOrgID,
+			DocumentNumber: "PV-GATE-5",
+			LinkedPO:       po.DocumentNumber,
+			Status:         "PAID",
+			Amount:         500,
+			CreatedAt:      time.Now(),
+			UpdatedAt:      time.Now(),
+		}
+		if err := db.Create(&pv).Error; err != nil {
+			t.Fatalf("seed deposit PV: %v", err)
+		}
+		msg, code := validateProcurementPVGate(db, testOrgID, po.DocumentNumber, "", 500)
+		if code != 0 {
+			t.Fatalf("expected ok (0) for balance PV against FULFILLED PO, got %d (%s)", code, msg)
+		}
+	})
 }

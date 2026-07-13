@@ -49,18 +49,24 @@ export function ApprovedPurchaseOrdersTable({
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
 
-  // Fetch approved purchase orders
+  // Fetch purchase orders eligible for a new PV: APPROVED, plus FULFILLED
+  // (fully delivered but still carrying an outstanding balance from a
+  // partial payment). The backend list endpoint only matches a single exact
+  // status, so both are fetched and merged client-side.
   const {
     data: purchaseOrders = [],
     isLoading,
     refetch,
   } = useQuery({
-    queryKey: [QUERY_KEYS.PURCHASE_ORDERS.ALL, page, limit, "approved"],
+    queryKey: [QUERY_KEYS.PURCHASE_ORDERS.ALL, page, limit, "approved+fulfilled"],
     queryFn: async () => {
-      const response = await getPurchaseOrders(page, limit, {
-        status: "APPROVED",
-      });
-      return response.success ? response.data || [] : [];
+      const [approvedRes, fulfilledRes] = await Promise.all([
+        getPurchaseOrders(page, limit, { status: "APPROVED" }),
+        getPurchaseOrders(page, limit, { status: "FULFILLED" }),
+      ]);
+      const approved = approvedRes.success ? approvedRes.data || [] : [];
+      const fulfilled = fulfilledRes.success ? fulfilledRes.data || [] : [];
+      return [...approved, ...fulfilled].slice(0, limit);
     },
     staleTime: 2 * 60 * 1000, // 2 minutes
   });
