@@ -155,7 +155,7 @@ dev-backend:
 # Run backend with air (hot-reload)
 air:
 	@echo "🔥 Starting backend with air (hot-reload)..."
-	@cd backend && air
+	@cd backend && $$(go env GOPATH)/bin/air
 
 # Run web frontend in dev mode
 dev-web:
@@ -185,6 +185,8 @@ clean:
 install:
 	@echo "📦 Installing dependencies..."
 	@cd backend && go mod download
+	@echo "📦 Installing air (hot-reload)..."
+	@go install github.com/air-verse/air@latest
 	@cd frontend && npm install
 	@cd admin-console && npm install
 	@echo "✅ Dependencies installed!"
