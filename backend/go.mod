@@ -1,6 +1,6 @@
 module github.com/liyali/liyali-gateway
 
-go 1.22
+go 1.23
 
 require (
 	github.com/go-playground/validator/v10 v10.22.1
@@ -50,6 +50,7 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/power-devops/perfstat v0.0.0-20210106213030-5aafc221ea8c // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
+	github.com/resend/resend-go/v3 v3.10.1 // indirect
 	github.com/rivo/uniseg v0.2.0 // indirect
 	github.com/rogpeppe/go-internal v1.12.0 // indirect
 	github.com/shoenig/go-m1cpu v0.1.6 // indirect
