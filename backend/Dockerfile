@@ -1,8 +1,12 @@
 # Multi-stage build for Go backend
+# Build cache bust: 2026-07-17
 FROM golang:1.23-alpine AS builder
 
 # Install build dependencies
 RUN apk add --no-cache git make ca-certificates tzdata
+
+# Ensure Go uses the bundled toolchain and doesn't try to download one
+ENV GOTOOLCHAIN=local
 
 # Set working directory
 WORKDIR /app

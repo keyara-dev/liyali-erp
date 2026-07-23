@@ -1,7 +1,7 @@
 # Railway backend build
 # Build context is the repo root; all paths are relative to here.
 
-FROM golang:1.22-alpine AS builder
+FROM golang:1.23-alpine AS builder
 
 RUN apk add --no-cache git make ca-certificates tzdata
 
