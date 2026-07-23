@@ -408,8 +408,8 @@ export function NotificationsClient() {
       {pagination && pagination.totalPages > 1 && (
         <div className="flex items-center justify-between">
           <p className="text-sm text-muted-foreground">
-            Showing {(pagination.page - 1) * pagination.limit + 1} to{" "}
-            {Math.min(pagination.page * pagination.limit, pagination.total)} of{" "}
+            Showing {(pagination.page - 1) * (pagination.limit ?? 20) + 1} to{" "}
+            {Math.min(pagination.page * (pagination.limit ?? 20), pagination.total)} of{" "}
             {pagination.total} notifications
           </p>
           <div className="flex items-center gap-2">

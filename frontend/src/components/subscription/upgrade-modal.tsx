@@ -207,7 +207,7 @@ export function UpgradeModal({
               onBillingCycleChange={setBillingCycle}
               onUpgrade={handleUpgrade}
               onBack={() => setStep("plans")}
-              isLoading={upgradeMutation.isPending}
+              isLoading={false}
               yearlyDiscount={yearlyDiscount}
             />
           )}
