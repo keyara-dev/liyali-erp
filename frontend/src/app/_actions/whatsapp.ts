@@ -2,59 +2,36 @@
 
 import { APIResponse, WhatsAppConfig } from '@/types'
 
+const NOT_IMPLEMENTED = 'WhatsApp integration is not yet implemented. Contact your administrator.'
+
 export async function fetchWhatsAppConfig(): Promise<APIResponse<WhatsAppConfig | null>> {
-  try {
-    return {
-      success: true,
-      message: 'WhatsApp config retrieved',
-      data: null,
-      status: 200,
-    }
-  } catch (error) {
-    return {
-      success: false,
-      message: 'Failed to fetch WhatsApp config',
-      data: null,
-      status: 500,
-    }
+  return {
+    success: false,
+    message: NOT_IMPLEMENTED,
+    data: null,
+    status: 501,
   }
 }
 
 export async function updateWhatsAppConfig(
-  configId: string,
-  data: Partial<WhatsAppConfig>
+  _configId: string,
+  _data: Partial<WhatsAppConfig>
 ): Promise<APIResponse<WhatsAppConfig | null>> {
-  try {
-    return {
-      success: true,
-      message: 'WhatsApp config updated',
-      data: null,
-      status: 200,
-    }
-  } catch (error) {
-    return {
-      success: false,
-      message: 'Failed to update WhatsApp config',
-      data: null,
-      status: 500,
-    }
+  return {
+    success: false,
+    message: NOT_IMPLEMENTED,
+    data: null,
+    status: 501,
   }
 }
 
-export async function testWhatsAppConnection(configId: string): Promise<APIResponse<{ connected: boolean } | null>> {
-  try {
-    return {
-      success: true,
-      message: 'WhatsApp connection test successful',
-      data: { connected: true },
-      status: 200,
-    }
-  } catch (error) {
-    return {
-      success: false,
-      message: 'WhatsApp connection test failed',
-      data: null,
-      status: 500,
-    }
+export async function testWhatsAppConnection(
+  _configId: string
+): Promise<APIResponse<{ connected: boolean } | null>> {
+  return {
+    success: false,
+    message: NOT_IMPLEMENTED,
+    data: null,
+    status: 501,
   }
 }

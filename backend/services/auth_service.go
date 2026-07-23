@@ -34,7 +34,7 @@ type AuthService struct {
 
 // Configuration constants
 const (
-	AccessTokenDuration     = 24 * time.Hour     // 24 hours
+	AccessTokenDuration     = 1 * time.Hour      // 1 hour (security best practice)
 	RefreshTokenDuration    = 7 * 24 * time.Hour // 7 days
 	PasswordResetExpiry     = 1 * time.Hour
 	EmailVerificationExpiry = 24 * time.Hour
@@ -378,9 +378,26 @@ func (s *AuthService) CreatePasswordReset(ctx context.Context, email string) (st
 	}
 
 	// Create password reset record
-	_, err = s.passwordResetRepo.Create(ctx, user.ID, token, time.Now().Add(PasswordResetExpiry))
+	resetRecord, err := s.passwordResetRepo.Create(ctx, user.ID, token, time.Now().Add(PasswordResetExpiry))
 	if err != nil {
 		return "", fmt.Errorf("failed to create password reset: %w", err)
+	}
+
+	// Convert pgtype.Timestamptz to time.Time for email
+	expiresAt := time.Now().Add(PasswordResetExpiry)
+	if resetRecord.ExpiresAt.Valid {
+		expiresAt = resetRecord.ExpiresAt.Time
+	}
+
+	// Send password reset email
+	emailService := NewEmailService()
+	err = emailService.SendPasswordResetEmail(user.Email, token, expiresAt)
+	if err != nil {
+		// Log the error but don't fail the request - token is already created
+		logging.WithFields(map[string]interface{}{
+			"operation": "send_password_reset_email",
+			"user_id":   user.ID,
+		}).WithError(err).Warn("failed_to_send_password_reset_email")
 	}
 
 	// Log audit event

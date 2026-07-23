@@ -15,12 +15,17 @@ import (
 
 // AuditService handles audit logging and compliance features
 type AuditService struct {
-	// TODO: Add repository dependencies
+	db *gorm.DB
 }
 
 // NewAuditService creates a new audit service
 func NewAuditService() *AuditService {
 	return &AuditService{}
+}
+
+// NewAuditServiceWithDB creates a new audit service with database
+func NewAuditServiceWithDB(db *gorm.DB) *AuditService {
+	return &AuditService{db: db}
 }
 
 // DocumentEvent holds all fields needed to write one audit_log row.
@@ -155,9 +160,58 @@ func CreateDocumentSnapshot(doc interface{}) map[string]interface{} {
 	return snapshot
 }
 
-// LogAuthEvent logs an authentication-related event
+// LogAuthEvent logs an authentication-related event to admin_audit_logs table
 func (s *AuditService) LogAuthEvent(ctx context.Context, userID, email string, organizationID *string, action string, success bool, details, ipAddress, userAgent string) error {
-	// TODO: Implement audit logging
+	defer utils.RecoverPanic("audit.LogAuthEvent")
+
+	// Build details map
+	detailsMap := map[string]interface{}{
+		"success":    success,
+		"ip_address": ipAddress,
+		"user_agent": userAgent,
+		"email":      email,
+	}
+	if details != "" {
+		detailsMap["details"] = details
+	}
+
+	detailsJSON, err := json.Marshal(detailsMap)
+	if err != nil {
+		logging.WithError(err).Error("failed to marshal auth event details")
+		return err
+	}
+
+	// Create audit log record
+	record := map[string]interface{}{
+		"id":             uuid.New().String(),
+		"organization_id": nil, // Auth events may not have org context yet
+		"action":         action,
+		"old_value":      nil,
+		"new_value":      nil,
+		"details":        datatypes.JSON(detailsJSON),
+		"reason":         details,
+		"admin_user_id":  userID,
+		"created_at":     time.Now(),
+	}
+
+	if organizationID != nil {
+		record["organization_id"] = *organizationID
+	}
+
+	// Write to database if available
+	if s.db != nil {
+		if err := s.db.Table("admin_audit_logs").Create(record).Error; err != nil {
+			logging.WithFields(map[string]interface{}{
+				"operation": "log_auth_event",
+				"user_id":   userID,
+				"action":    action,
+				"error":     err.Error(),
+			}).Error("admin_audit_log_write_failed")
+			return err
+		}
+	}
+
+	// Also log to structured logger for debugging
 	logging.WithFields(map[string]interface{}{
 		"operation":       "audit_auth_event",
 		"user_id":         userID,
@@ -168,12 +222,60 @@ func (s *AuditService) LogAuthEvent(ctx context.Context, userID, email string, o
 		"user_agent":      userAgent,
 		"organization_id": organizationID,
 	}).Info("audit_auth_event_logged")
+
 	return nil
 }
 
-// LogEvent logs a general audit event
+// LogEvent logs a general audit event to admin_audit_logs table
 func (s *AuditService) LogEvent(ctx context.Context, userID, organizationID, action, resourceType, resourceID, details, ipAddress, userAgent string) error {
-	// TODO: Implement audit logging
+	defer utils.RecoverPanic("audit.LogEvent")
+
+	// Build details map
+	detailsMap := map[string]interface{}{
+		"resource_type": resourceType,
+		"resource_id":   resourceID,
+		"ip_address":    ipAddress,
+		"user_agent":    userAgent,
+	}
+	if details != "" {
+		detailsMap["details"] = details
+	}
+
+	detailsJSON, err := json.Marshal(detailsMap)
+	if err != nil {
+		logging.WithError(err).Error("failed to marshal audit event details")
+		return err
+	}
+
+	// Create audit log record
+	record := map[string]interface{}{
+		"id":              uuid.New().String(),
+		"organization_id": organizationID,
+		"action":          action,
+		"old_value":       nil,
+		"new_value":       nil,
+		"details":         datatypes.JSON(detailsJSON),
+		"reason":          details,
+		"admin_user_id":   userID,
+		"created_at":      time.Now(),
+	}
+
+	// Write to database if available
+	if s.db != nil {
+		if err := s.db.Table("admin_audit_logs").Create(record).Error; err != nil {
+			logging.WithFields(map[string]interface{}{
+				"operation":     "log_audit_event",
+				"user_id":       userID,
+				"action":        action,
+				"resource_type": resourceType,
+				"resource_id":   resourceID,
+				"error":         err.Error(),
+			}).Error("admin_audit_log_write_failed")
+			return err
+		}
+	}
+
+	// Also log to structured logger for debugging
 	logging.WithFields(map[string]interface{}{
 		"operation":       "audit_event",
 		"user_id":         userID,
@@ -185,6 +287,7 @@ func (s *AuditService) LogEvent(ctx context.Context, userID, organizationID, act
 		"ip_address":      ipAddress,
 		"user_agent":      userAgent,
 	}).Info("audit_event_logged")
+
 	return nil
 }
 

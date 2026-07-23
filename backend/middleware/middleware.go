@@ -93,8 +93,21 @@ var (
 // RateLimitMiddleware applies rate limiting to routes
 func RateLimitMiddleware(limiter *RateLimiter) fiber.Handler {
 	return func(c *fiber.Ctx) error {
-		// Use IP address as the rate limit key
-		key := c.IP()
+		// Resolve real client IP — behind a load balancer or reverse proxy the
+		// direct connection IP is the proxy's address, not the client's.
+		// Check X-Real-IP first (set by Nginx), then X-Forwarded-For first hop,
+		// then fall back to the direct connection IP.
+		key := c.Get("X-Real-IP")
+		if key == "" {
+			key = c.Get("X-Forwarded-For")
+			// X-Forwarded-For can be comma-separated; take the first (client) IP
+			if idx := strings.Index(key, ","); idx != -1 {
+				key = strings.TrimSpace(key[:idx])
+			}
+		}
+		if key == "" {
+			key = c.IP()
+		}
 
 		if !limiter.Allow(key) {
 			return c.Status(fiber.StatusTooManyRequests).JSON(fiber.Map{
@@ -277,8 +290,12 @@ func AuthMiddleware() fiber.Handler {
 				Where("id = ? AND expires_at > ?", claims.SessionID, time.Now()).
 				Count(&sessionCount).Error
 			if dbErr != nil {
-				// DB unreachable — fail open to avoid locking out users on transient errors
-				log.Printf("[AuthMiddleware] session check DB error (fail-open): %v", dbErr)
+				// DB unreachable — reject the request with 503 Service Unavailable
+				// This prevents revoked sessions from being accepted during DB outages
+				log.Printf("[AuthMiddleware] session check DB error (rejecting request): %v", dbErr)
+				return c.Status(fiber.StatusServiceUnavailable).JSON(fiber.Map{
+					"error": "Service temporarily unavailable. Please try again.",
+				})
 			} else if sessionCount == 0 {
 				return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 					"error": "Session has been terminated",

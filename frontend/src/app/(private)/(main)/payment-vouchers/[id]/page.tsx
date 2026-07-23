@@ -26,7 +26,7 @@ export default async function PVDetailPage({ params }: PVDetailPageProps) {
     <PVDetailClient
       pvId={pvId}
       userId={session.user.id}
-      userRole={(session.user as any).role}
+      userRole={session.user.role}
     />
   );
 }

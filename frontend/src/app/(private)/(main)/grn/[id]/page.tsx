@@ -26,7 +26,7 @@ export default async function GRNDetailPage({ params }: GRNDetailPageProps) {
     <GRNDetailClient
       grnId={grnId}
       userId={session.user.id}
-      userRole={(session.user as any).role}
+      userRole={session.user.role}
     />
   );
 }

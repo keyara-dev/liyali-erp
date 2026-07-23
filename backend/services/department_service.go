@@ -303,42 +303,22 @@ func (s *DepartmentService) DepartmentCodeExistsExcluding(organizationID, code, 
 	return count > 0, nil
 }
 
-// GetDepartmentModules retrieves modules assigned to a department
+// GetDepartmentModules retrieves modules assigned to a department.
+// Module assignment is not yet fully implemented — returns empty list until
+// a department_modules table and module system are designed.
 func (s *DepartmentService) GetDepartmentModules(organizationID, departmentID string) ([]interface{}, error) {
-	// This is a placeholder implementation
-	// You'll need to implement the actual module assignment logic based on your module system
-	
-	// For now, return an empty slice
-	// In a real implementation, you would:
-	// 1. Query the department_modules table (if it exists)
-	// 2. Join with modules table to get module details
-	// 3. Return the list of modules assigned to this department
-	
 	modules := make([]interface{}, 0)
 	return modules, nil
 }
 
-// AssignModuleToDepartment assigns a module to a department
+// AssignModuleToDepartment assigns a module to a department.
+// Not yet implemented — requires a department_modules table and module registry.
 func (s *DepartmentService) AssignModuleToDepartment(organizationID, departmentID, moduleID string) error {
-	// This is a placeholder implementation
-	// You'll need to implement the actual module assignment logic based on your module system
-	
-	// In a real implementation, you would:
-	// 1. Check if the module exists
-	// 2. Check if the assignment already exists
-	// 3. Create a new record in department_modules table
-	
-	return nil
+	return fmt.Errorf("department module assignment is not yet implemented")
 }
 
-// RemoveModuleFromDepartment removes a module assignment from a department
+// RemoveModuleFromDepartment removes a module assignment from a department.
+// Not yet implemented — requires a department_modules table and module registry.
 func (s *DepartmentService) RemoveModuleFromDepartment(organizationID, departmentID, moduleID string) error {
-	// This is a placeholder implementation
-	// You'll need to implement the actual module removal logic based on your module system
-	
-	// In a real implementation, you would:
-	// 1. Check if the assignment exists
-	// 2. Delete the record from department_modules table
-	
-	return nil
+	return fmt.Errorf("department module removal is not yet implemented")
 }

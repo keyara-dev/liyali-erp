@@ -18,7 +18,7 @@ export default async function CreatePaymentVoucherPage() {
     <PVCreateClient
       userId={session.user.id}
       userName={session.user.name || "User"}
-      userRole={(session.user as any).role || "USER"}
+      userRole={session.user.role || "USER"}
     />
   );
 }

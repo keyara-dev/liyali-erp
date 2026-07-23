@@ -17,7 +17,7 @@ export default async function VendorsPage() {
   return (
     <VendorsClient
       userId={session.user.id}
-      userRole={(session.user as any).role}
+      userRole={session.user.role}
     />
   );
 }

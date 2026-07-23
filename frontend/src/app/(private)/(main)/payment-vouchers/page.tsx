@@ -17,7 +17,7 @@ export default async function PaymentVouchersPage() {
   return (
     <PaymentVouchersClient
       userId={session.user.id}
-      userRole={(session.user as any).role}
+      userRole={session.user.role}
     />
   );
 }

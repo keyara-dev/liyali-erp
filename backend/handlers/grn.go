@@ -11,6 +11,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/liyali/liyali-gateway/config"
 	db "github.com/liyali/liyali-gateway/database/sqlc"
+	"github.com/liyali/liyali-gateway/logging"
 	"github.com/liyali/liyali-gateway/middleware"
 	"github.com/liyali/liyali-gateway/models"
 	"github.com/liyali/liyali-gateway/services"
@@ -1459,7 +1460,11 @@ func MarkGRNComplete(c *fiber.Ctx) error {
 		}
 		// Mirror the workflow path: fire AutoCreatePVFromPO if enabled.
 		if err := wfSvc.AutoCreatePVFromCompletedGRN(tx, grn.ID); err != nil {
-			fmt.Printf("Warning: AutoCreatePVFromCompletedGRN failed: %v\n", err)
+			logging.WithFields(map[string]interface{}{
+				"operation": "auto_create_pv_from_completed_grn",
+				"grn_id":    grn.ID,
+				"error":     err.Error(),
+			}).Warn("auto_pv_creation_from_grn_failed")
 		}
 	}
 
@@ -1471,7 +1476,11 @@ func MarkGRNComplete(c *fiber.Ctx) error {
 	// created in-tx (submit / auto-approve), matching the workflow GRN-completion path.
 	if wfSvc, ok := c.Locals("workflowExecutionService").(*services.WorkflowExecutionService); ok && wfSvc != nil {
 		if err := wfSvc.ApplyPVAutomationForCompletedGRN(context.Background(), grn.ID); err != nil {
-			fmt.Printf("Warning: ApplyPVAutomationForCompletedGRN failed: %v\n", err)
+			logging.WithFields(map[string]interface{}{
+				"operation": "apply_pv_automation_for_completed_grn",
+				"grn_id":    grn.ID,
+				"error":     err.Error(),
+			}).Warn("pv_automation_for_grn_failed")
 		}
 	}
 

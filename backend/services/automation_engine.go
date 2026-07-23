@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/liyali/liyali-gateway/logging"
 	"github.com/liyali/liyali-gateway/models"
 	"github.com/liyali/liyali-gateway/types"
 	"github.com/liyali/liyali-gateway/utils"
@@ -209,7 +210,11 @@ func (s *WorkflowExecutionService) applyPVAutomation(ctx context.Context, pvID, 
 	switch action {
 	case "submit":
 		if _, err := s.AssignWorkflowToDocument(ctx, orgID, pvID, "payment_voucher", "system"); err != nil {
-			fmt.Printf("auto-submit PV %s: no workflow assigned (left DRAFT): %v\n", pvID, err)
+			logging.WithFields(map[string]interface{}{
+				"operation": "auto_submit_pv",
+				"pv_id":     pvID,
+				"error":     err.Error(),
+			}).Warn("pv_auto_submit_no_workflow_left_draft")
 			return nil
 		}
 		if err := s.db.Model(&models.PaymentVoucher{}).Where("id = ?", pvID).
@@ -232,7 +237,11 @@ func (s *WorkflowExecutionService) applyPVAutomation(ctx context.Context, pvID, 
 func (s *WorkflowExecutionService) autoApprovePV(ctx context.Context, pvID, orgID string) error {
 	assignment, err := s.AssignWorkflowToDocument(ctx, orgID, pvID, "payment_voucher", "system")
 	if err != nil || assignment == nil {
-		fmt.Printf("auto-approve PV %s: no workflow assigned (left DRAFT): %v\n", pvID, err)
+		logging.WithFields(map[string]interface{}{
+			"operation": "auto_approve_pv",
+			"pv_id":     pvID,
+			"error":     fmt.Sprintf("%v", err),
+		}).Warn("pv_auto_approve_no_workflow_left_draft")
 		return nil
 	}
 

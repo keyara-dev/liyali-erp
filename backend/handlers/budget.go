@@ -422,18 +422,13 @@ func UpdateBudget(c *fiber.Ctx) error {
 	}
 	// Update items if provided
 	if req.Items != nil {
-		fmt.Printf("Received items in update request: %+v\n", req.Items)
 		itemsJSON, err := json.Marshal(req.Items)
 		if err != nil {
 			logging.LogError(c, err, "failed_to_marshal_budget_items")
 			return utils.SendBadRequestError(c, "Invalid items format")
 		}
-		fmt.Printf("Marshaled items JSON: %s\n", string(itemsJSON))
 		budget.Items = itemsJSON
-		fmt.Printf("Budget items field updated. Length: %d\n", len(budget.Items))
 		updates = append(updates, "budget items")
-	} else {
-		fmt.Printf("No items provided in update request\n")
 	}
 
 	budget.RemainingAmount = budget.TotalBudget - budget.AllocatedAmount
@@ -723,17 +718,14 @@ func modelToBudgetResponse(budget models.Budget) types.BudgetResponse {
 
 	if budget.Items != nil && len(budget.Items) > 0 {
 		if err := json.Unmarshal(budget.Items, &items); err != nil {
-			// Log the error for debugging
-			fmt.Printf("Error unmarshaling budget items: %v\n", err)
-			fmt.Printf("Raw items data: %s\n", string(budget.Items))
-			// Keep empty array on error
+			// Keep empty array on error — log through structured logger
+			logging.WithFields(map[string]interface{}{
+				"operation": "unmarshal_budget_items",
+				"budget_id": budget.ID,
+				"error":     err.Error(),
+			}).Warn("failed_to_unmarshal_budget_items")
 			items = make([]interface{}, 0)
-		} else {
-			fmt.Printf("Successfully unmarshaled %d budget items\n", len(items))
-			fmt.Printf("Items: %+v\n", items)
 		}
-	} else {
-		fmt.Printf("No items found in budget. Items field is nil or empty\n")
 	}
 
 	ownerName := ""
@@ -764,9 +756,6 @@ func modelToBudgetResponse(budget models.Budget) types.BudgetResponse {
 		CreatedAt:       budget.CreatedAt,
 		UpdatedAt:       budget.UpdatedAt,
 	}
-
-	fmt.Printf("Final response items: %+v (length: %d)\n", response.Items, len(response.Items))
-	fmt.Printf("Final response action history: %+v (length: %d)\n", response.ActionHistory, len(response.ActionHistory))
 
 	return response
 }

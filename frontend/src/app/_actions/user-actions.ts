@@ -441,30 +441,38 @@ export async function toggleUserStatus(
 }
 
 export async function deactivateUser(id: string): Promise<APIResponse> {
-  const url = `/api/v1/users/${id}/deactivate`;
+  const url = `/api/v1/organization/users/${id}/status`;
   try {
     const response = await authenticatedApiClient({
       url: url,
-      method: "PATCH",
+      method: "PUT",
+      data: {
+        status: "suspended",
+        reason: "Deactivated by administrator",
+      },
     });
     revalidatePath("/dashboard/system-configs/users");
     return successResponse(response.data.data);
   } catch (error) {
-    return handleError(error, "PATCH", url);
+    return handleError(error, "PUT", url);
   }
 }
 
 export async function activateUser(id: string): Promise<APIResponse> {
-  const url = `/api/v1/users/${id}/activate`;
+  const url = `/api/v1/organization/users/${id}/status`;
   try {
     const response = await authenticatedApiClient({
       url: url,
-      method: "PATCH",
+      method: "PUT",
+      data: {
+        status: "active",
+        reason: "Activated by administrator",
+      },
     });
     revalidatePath("/dashboard/system-configs/users");
     return successResponse(response.data.data);
   } catch (error) {
-    return handleError(error, "PATCH", url);
+    return handleError(error, "PUT", url);
   }
 }
 

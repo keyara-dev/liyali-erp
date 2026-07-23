@@ -407,8 +407,8 @@ export function SessionTimeoutContainer({
       hasAccessToken: !!session?.access_token,
       session: session
         ? {
-            user_id: (session as any)?.user_id,
-            user_type: (session as any)?.user_type,
+            user_id: session?.user_id,
+            user_type: session?.role,
           }
         : null,
     });

@@ -26,7 +26,7 @@ export default async function PVApprovalPage({ params }: PVApprovalPageProps) {
     <PVApprovalClient
       pvId={id}
       userId={session.user.id}
-      userRole={(session.user as any).role}
+      userRole={session.user.role}
     />
   );
 }

@@ -32,7 +32,7 @@ export default async function PODetailPage({ params }: PODetailPageProps) {
     <PurchaseOrderDetailClient
       purchaseOrderId={purchaseOrderId}
       userId={session.user.id}
-      userRole={(session.user as any).role}
+      userRole={session.user.role}
       initialPurchaseOrder={initialPurchaseOrder}
     />
   );

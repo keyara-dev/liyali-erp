@@ -4,7 +4,6 @@ import { useState } from "react";
 import {
   Crown,
   Check,
-  CreditCard,
   Mail,
   Zap,
   Building2,
@@ -36,8 +35,6 @@ import { Spinner } from "@/components/ui/spinner";
 import { useOrganizationContext } from "@/hooks/use-organization";
 import {
   useSubscriptionPlans,
-  useUpgradeOrganization,
-  type UpgradeRequest,
 } from "@/hooks/use-subscription-queries";
 
 const TIER_ICONS = {
@@ -78,8 +75,6 @@ export function UpgradeModal({
   } = useSubscriptionPlans();
 
   const plansError = plansQueryError?.message || null;
-
-  const upgradeMutation = useUpgradeOrganization();
 
   // Show all plans and highlight the current one
   const allPlans = plans || [];
@@ -122,23 +117,15 @@ export function UpgradeModal({
   const handleUpgrade = async () => {
     if (!currentOrganization || !selectedPlan) return;
 
-    const request: UpgradeRequest = {
-      targetPlanSlug: selectedPlan as "PRO_PLAN" | "ENTERPRISE",
-      billingCycle,
-      // TODO: Add payment method integration
-    };
-
-    try {
-      await upgradeMutation.mutateAsync({
-        organizationId: currentOrganization.id,
-        request,
-      });
-      onClose();
-      setStep("plans");
-      setSelectedPlan("");
-    } catch (error) {
-      // Error is handled by the mutation hook
-    }
+    // Payment processor not yet integrated — redirect to contact sales
+    // instead of attempting a tier change without charging.
+    window.open(
+      `mailto:sales@liyali.com?subject=Upgrade Request - ${selectedPlan}&body=Organization: ${currentOrganization.name}%0APlan: ${selectedPlan}%0ABilling: ${billingCycle}`,
+      "_blank",
+    );
+    onClose();
+    setStep("plans");
+    setSelectedPlan("");
   };
 
   const selectedPlanData = plans?.find((p: any) => p.slug === selectedPlan);
@@ -664,17 +651,15 @@ function PaymentStep({
           loadingText="Processing..."
           className="flex-1 bg-purple-600 hover:bg-purple-500 text-white"
         >
-          <CreditCard className="h-4 w-4 mr-2" />
-          Complete Upgrade
+          <Mail className="h-4 w-4 mr-2" />
+          Contact Sales to Upgrade
         </Button>
       </div>
 
       {/* Note */}
       <div className="text-xs text-slate-400 text-center flex items-center justify-center">
         <Lock className="h-4 w-4 mr-2" />
-        Your payment information is securely processed by Stripe. By upgrading,
-        you agree to our Terms of Service and Privacy Policy. You can cancel or
-        change your plan at any time.
+        Our sales team will reach out to complete your upgrade and set up billing.
       </div>
     </div>
   );

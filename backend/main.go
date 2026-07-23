@@ -80,6 +80,56 @@ func main() {
 	loggingConfig := logging.SetupLogging()
 	logger := &logging.Logger{}
 
+	// Validate critical environment variables before proceeding
+	appEnv := os.Getenv("APP_ENV")
+	isProduction := appEnv == "production" || appEnv == "prod"
+	
+	// Database connection validation
+	databaseURL := os.Getenv("DATABASE_URL")
+	dbPassword := os.Getenv("DB_PASSWORD")
+	
+	if databaseURL == "" && dbPassword == "" && isProduction {
+		log.Fatal("FATAL: Either DATABASE_URL or DB_PASSWORD must be set in production")
+	}
+	
+	if databaseURL == "" {
+		// Using individual DB_* vars - ensure DB_PASSWORD is set in production
+		if dbPassword == "" && isProduction {
+			log.Fatal("FATAL: DB_PASSWORD environment variable must be set in production")
+		}
+		// Warn if DB_NAME is not set (will use default which might not be intended)
+		if os.Getenv("DB_NAME") == "" {
+			log.Println("WARNING: DB_NAME not set, database connection may fail")
+		}
+	}
+	
+	// Frontend URL validation (required for CORS and email links)
+	frontendURL := os.Getenv("FRONTEND_URL")
+	if frontendURL == "" || frontendURL == "http://localhost:3000" {
+		if isProduction {
+			log.Fatal("FATAL: FRONTEND_URL must be set to your production frontend URL (currently set to dev default)")
+		}
+		log.Println("WARNING: FRONTEND_URL not configured, using development default")
+	}
+	
+	// JWT secret validation (already done in init(), but double-check)
+	if os.Getenv("JWT_SECRET") == "" {
+		log.Fatal("FATAL: JWT_SECRET must be set (should have been caught in init)")
+	}
+	
+	// Warn about optional but recommended settings
+	if isProduction {
+		if os.Getenv("SMTP_HOST") == "" && os.Getenv("EMAIL_ENABLED") == "true" {
+			log.Println("WARNING: EMAIL_ENABLED=true but SMTP_HOST not configured - emails will not be sent")
+		}
+		if os.Getenv("REDIS_HOST") == "" {
+			log.Println("INFO: REDIS_HOST not set, caching will be limited")
+		}
+	}
+	
+	log.Printf("Environment: %s", appEnv)
+	log.Println("Starting Liyali Gateway...")
+
 	// Initialize database (both GORM and pgx)
 	config.InitDatabase()
 
@@ -95,7 +145,7 @@ func main() {
 	reportsRepo := repository.NewReportsRepository(config.PgxDB)
 
 	// Initialize audit service
-	auditService := &services.AuditService{}
+	auditService := services.NewAuditServiceWithDB(config.DB)
 
 	// Initialize enhanced services
 	authService := services.NewAuthService(

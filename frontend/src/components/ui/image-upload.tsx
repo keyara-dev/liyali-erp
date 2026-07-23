@@ -27,8 +27,8 @@ export function ImageUpload({
     setUploadProgress(0);
 
     try {
-      // Placeholder: In production, this would upload to ImageKit or another service
-      toast.success("Image upload placeholder - install @imagekit/next to enable uploads");
+      // Image upload is not yet implemented. Wire an image storage service to enable uploads.
+      toast.error("Image upload is not configured. Contact your administrator.");
       setUploadProgress(100);
     } catch {
       toast.error("Failed to upload image. Please try again.");

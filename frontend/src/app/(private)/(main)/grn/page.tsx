@@ -15,6 +15,6 @@ export default async function GrnPage() {
   }
 
   return (
-    <GrnClient userId={session.user.id} userRole={(session.user as any).role} />
+    <GrnClient userId={session.user.id} userRole={session.user.role} />
   );
 }

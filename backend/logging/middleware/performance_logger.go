@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"fmt"
+	"runtime"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -206,13 +207,11 @@ func PerformanceLoggerForTesting() fiber.Handler {
 	return PerformanceLogger(cfg)
 }
 
-// getCurrentMemoryUsage returns current memory usage in bytes
-// This is a simplified implementation - in production you might want to use
-// more sophisticated memory tracking
+// getCurrentMemoryUsage returns current memory usage in bytes using runtime stats
 func getCurrentMemoryUsage() uint64 {
-	// This is a placeholder implementation
-	// In a real implementation, you would use runtime.MemStats or similar
-	return 0
+	var m runtime.MemStats
+	runtime.ReadMemStats(&m)
+	return m.Alloc
 }
 
 // formatFloat formats a float to specified decimal places

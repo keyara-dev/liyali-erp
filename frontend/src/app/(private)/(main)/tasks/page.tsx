@@ -17,7 +17,7 @@ export default async function TasksPage() {
   return (
     <TasksClient
       userId={session.user.id}
-      userRole={(session.user as any).role}
+      userRole={session.user.role}
     />
   );
 }

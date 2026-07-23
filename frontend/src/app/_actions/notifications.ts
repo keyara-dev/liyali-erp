@@ -112,10 +112,23 @@ export async function getNotifications(
       url,
     });
 
-    return successResponse(
-      response.data?.data || [],
-      "Notifications retrieved successfully",
-    );
+    const raw = response.data;
+    // Backend returns SendPaginatedSuccess which wraps pagination metadata
+    const pagination = raw?.pagination
+      ? {
+          page: raw.pagination.page ?? params.page ?? 1,
+          limit: raw.pagination.limit ?? params.limit ?? 20,
+          total: raw.pagination.total ?? 0,
+          totalPages: raw.pagination.totalPages ?? 1,
+          hasNext: raw.pagination.hasNext ?? false,
+          hasPrev: raw.pagination.hasPrev ?? false,
+        }
+      : undefined;
+
+    return {
+      ...successResponse(raw?.data || [], "Notifications retrieved successfully"),
+      pagination,
+    };
   } catch (error: any) {
     return handleError(error, "GET", url);
   }

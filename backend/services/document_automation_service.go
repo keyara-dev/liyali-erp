@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/liyali/liyali-gateway/logging"
 	"github.com/liyali/liyali-gateway/models"
 	"github.com/liyali/liyali-gateway/types"
 	"github.com/liyali/liyali-gateway/utils"
@@ -227,7 +228,12 @@ func (s *DocumentAutomationService) CreatePurchaseOrderFromRequisitionWithStatus
 				"status":     targetStatus,
 				"updated_at": time.Now(),
 			}).Error; err != nil {
-			fmt.Printf("Warning: failed to update auto-PO status to %s: %v\n", targetStatus, err)
+			logging.WithFields(map[string]interface{}{
+				"operation":   "auto_po_status_update",
+				"po_id":       result.DocumentID,
+				"target_status": targetStatus,
+				"error":       err.Error(),
+			}).Warn("failed_to_update_auto_po_status")
 		}
 
 		if s.auditService != nil {

@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/liyali/liyali-gateway/logging"
 	"github.com/liyali/liyali-gateway/models"
 	"github.com/liyali/liyali-gateway/types"
 	"github.com/liyali/liyali-gateway/utils"
@@ -476,7 +477,12 @@ func (s *WorkflowExecutionService) autoApproveAndGeneratePO(
 	// 3. Add action history entry
 	if err := s.addActionHistoryEntry(tx, "requisition", entityID, "system", "AUTO_APPROVED",
 		"Requisition auto-approved via accounting workflow"); err != nil {
-		fmt.Printf("Warning: failed to add action history: %v\n", err)
+		logging.WithFields(map[string]interface{}{
+			"operation":   "add_action_history",
+			"entity_id":   entityID,
+			"entity_type": "requisition",
+			"error":       err.Error(),
+		}).Warn("failed_to_add_action_history")
 	}
 
 	// Commit the requisition approval
@@ -504,7 +510,11 @@ func (s *WorkflowExecutionService) autoApproveAndGeneratePO(
 			ctx, requisition, targetStatus,
 		)
 		if err != nil {
-			fmt.Printf("Warning: auto-PO generation failed: %v\n", err)
+			logging.WithFields(map[string]interface{}{
+				"operation":      "auto_po_generation",
+				"requisition_id": requisition.ID,
+				"error":          err.Error(),
+			}).Warn("auto_po_generation_failed")
 		} else if poResult != nil && poResult.Success {
 			result.AutoCreatedPO = poResult
 			result.AutoCreatedPOID = poResult.DocumentID
@@ -667,11 +677,18 @@ func (s *WorkflowExecutionService) assignWorkflow(
 
 			select {
 			case <-notifyCtx.Done():
-				fmt.Printf("Notification timed out for %s\n", event.DocumentID)
+				logging.WithFields(map[string]interface{}{
+					"operation":   "notification_timeout",
+					"document_id": event.DocumentID,
+				}).Warn("notification_timed_out")
 				return
 			default:
 				if err := s.notificationService.HandleWorkflowEvent(event); err != nil {
-					fmt.Printf("Failed to send approval required notification: %v\n", err)
+					logging.WithFields(map[string]interface{}{
+						"operation":   "send_approval_notification",
+						"document_id": event.DocumentID,
+						"error":       err.Error(),
+					}).Error("failed_to_send_approval_required_notification")
 				}
 			}
 		}(notificationEvent)
@@ -1174,7 +1191,13 @@ func (s *WorkflowExecutionService) ApproveWorkflowTaskWithVersion(ctx context.Co
 		actionMessage := fmt.Sprintf("Stage %d (%s) approved by %s", task.StageNumber, task.StageName, user.Name)
 		if err := s.addActionHistoryEntry(tx, assignment.EntityType, assignment.EntityID, userID, "STAGE_APPROVED", actionMessage); err != nil {
 			// Log error but don't fail the approval
-			fmt.Printf("Warning: failed to add action history entry for stage approval: %v\n", err)
+			logging.WithFields(map[string]interface{}{
+				"operation":    "add_stage_approval_history",
+				"entity_id":    assignment.EntityID,
+				"entity_type":  assignment.EntityType,
+				"stage_number": task.StageNumber,
+				"error":        err.Error(),
+			}).Warn("failed_to_add_stage_approval_history")
 		}
 
 		// Check if this is the last stage
@@ -1195,7 +1218,12 @@ func (s *WorkflowExecutionService) ApproveWorkflowTaskWithVersion(ctx context.Co
 			// Add action history entry to the document
 			if err := s.addActionHistoryEntry(tx, assignment.EntityType, assignment.EntityID, userID, "WORKFLOW_COMPLETED", "Document approved through workflow system"); err != nil {
 				// Log error but don't fail the approval
-				fmt.Printf("Warning: failed to add action history entry: %v\n", err)
+				logging.WithFields(map[string]interface{}{
+					"operation":   "add_workflow_completed_history",
+					"entity_id":   assignment.EntityID,
+					"entity_type": assignment.EntityType,
+					"error":       err.Error(),
+				}).Warn("failed_to_add_workflow_completed_history")
 			}
 
 			// Payment vouchers: after final approval, create a payment_execution
@@ -1231,7 +1259,11 @@ func (s *WorkflowExecutionService) ApproveWorkflowTaskWithVersion(ctx context.Co
 				// Fire auto-PV-create if the org opted in. Logged but
 				// non-fatal — primary GRN approval is the source of truth.
 				if err := s.AutoCreatePVFromCompletedGRN(tx, assignment.EntityID); err != nil {
-					fmt.Printf("Warning: AutoCreatePVFromCompletedGRN failed: %v\n", err)
+					logging.WithFields(map[string]interface{}{
+						"operation": "auto_create_pv_from_grn",
+						"grn_id":    assignment.EntityID,
+						"error":     err.Error(),
+					}).Warn("auto_pv_creation_failed")
 				}
 			}
 		} else {
@@ -1366,7 +1398,12 @@ func (s *WorkflowExecutionService) handleWorkflowCompletion(ctx context.Context,
 				return
 			default:
 				if err := s.notificationService.HandleWorkflowEvent(event); err != nil {
-					fmt.Printf("Failed to send approval notification: %v\n", err)
+					logging.WithFields(map[string]interface{}{
+						"operation":   "send_approval_notification",
+						"entity_id":   assignment.EntityID,
+						"entity_type": assignment.EntityType,
+						"error":       err.Error(),
+					}).Error("failed_to_send_approval_notification")
 				}
 			}
 		}(notificationEvent)
@@ -1374,7 +1411,12 @@ func (s *WorkflowExecutionService) handleWorkflowCompletion(ctx context.Context,
 
 	// Trigger automation
 	if err := s.triggerPostApprovalAutomation(ctx, assignment.EntityType, assignment.EntityID); err != nil {
-		fmt.Printf("Post-approval automation failed for %s %s: %v\n", assignment.EntityType, assignment.EntityID, err)
+		logging.WithFields(map[string]interface{}{
+			"operation":   "post_approval_automation",
+			"entity_type": assignment.EntityType,
+			"entity_id":   assignment.EntityID,
+			"error":       err.Error(),
+		}).Error("post_approval_automation_failed")
 	}
 }
 
@@ -1399,7 +1441,12 @@ func (s *WorkflowExecutionService) handleStageProgression(ctx context.Context, a
 				return
 			default:
 				if err := s.notificationService.HandleWorkflowEvent(event); err != nil {
-					fmt.Printf("Failed to send next stage approval notification: %v\n", err)
+					logging.WithFields(map[string]interface{}{
+						"operation":   "send_next_stage_notification",
+						"entity_id":   assignment.EntityID,
+						"entity_type": assignment.EntityType,
+						"error":       err.Error(),
+					}).Error("failed_to_send_next_stage_approval_notification")
 				}
 			}
 		}(notificationEvent)
@@ -1427,7 +1474,12 @@ func (s *WorkflowExecutionService) handlePartialApproval(ctx context.Context, as
 				return
 			default:
 				if err := s.notificationService.HandleWorkflowEvent(event); err != nil {
-					fmt.Printf("Failed to send partial approval notification: %v\n", err)
+					logging.WithFields(map[string]interface{}{
+						"operation":   "send_partial_approval_notification",
+						"entity_id":   assignment.EntityID,
+						"entity_type": assignment.EntityType,
+						"error":       err.Error(),
+					}).Error("failed_to_send_partial_approval_notification")
 				}
 			}
 		}(notificationEvent)
@@ -1684,7 +1736,13 @@ func (s *WorkflowExecutionService) RejectWorkflowTaskWithVersion(ctx context.Con
 		// Add action history
 		actionMessage := fmt.Sprintf("Returned to %s (Stage %d) for revision by %s: %s", prevStage.StageName, prevStageNumber, user.Name, reason)
 		if err := s.addActionHistoryEntry(tx, assignment.EntityType, assignment.EntityID, userID, "RETURNED_FOR_REVISION", actionMessage); err != nil {
-			fmt.Printf("Warning: failed to add action history entry: %v\n", err)
+			logging.WithFields(map[string]interface{}{
+				"operation":   "add_return_for_revision_history",
+				"entity_id":   assignment.EntityID,
+				"entity_type": assignment.EntityType,
+				"prev_stage":  prevStageNumber,
+				"error":       err.Error(),
+			}).Warn("failed_to_add_return_for_revision_history")
 		}
 
 		log.Printf("[Workflow] Task %s returned to stage %d (%s) by user %s: %s", taskID, prevStageNumber, prevStage.StageName, userID, reason)
@@ -1706,7 +1764,12 @@ func (s *WorkflowExecutionService) RejectWorkflowTaskWithVersion(ctx context.Con
 		// Add action history
 		actionMessage := fmt.Sprintf("Returned to draft by %s: %s", user.Name, reason)
 		if err := s.addActionHistoryEntry(tx, assignment.EntityType, assignment.EntityID, userID, "RETURNED_TO_DRAFT", actionMessage); err != nil {
-			fmt.Printf("Warning: failed to add action history entry: %v\n", err)
+			logging.WithFields(map[string]interface{}{
+				"operation":   "add_return_to_draft_history",
+				"entity_id":   assignment.EntityID,
+				"entity_type": assignment.EntityType,
+				"error":       err.Error(),
+			}).Warn("failed_to_add_return_to_draft_history")
 		}
 
 		log.Printf("[Workflow] Task %s returned to draft by user %s: %s", taskID, userID, reason)
@@ -1735,7 +1798,11 @@ func (s *WorkflowExecutionService) RejectWorkflowTaskWithVersion(ctx context.Con
 				prevStatus, "DRAFT",
 				map[string]interface{}{"approvalStage": map[string]interface{}{"from": task.StageNumber, "to": 0}},
 			); err != nil {
-				fmt.Printf("Warning: failed to add PO action history entry: %v\n", err)
+				logging.WithFields(map[string]interface{}{
+					"operation": "add_po_rejection_history",
+					"po_id":     assignment.EntityID,
+					"error":     err.Error(),
+				}).Warn("failed_to_add_po_action_history_entry")
 			}
 
 			// Revert the linked REQ to DRAFT as well
@@ -1760,7 +1827,11 @@ func (s *WorkflowExecutionService) RejectWorkflowTaskWithVersion(ctx context.Con
 						prevReqStatus, "DRAFT",
 						map[string]interface{}{"triggeredBy": map[string]interface{}{"type": "purchase_order", "id": po.ID, "documentNumber": po.DocumentNumber}},
 					); err != nil {
-						fmt.Printf("Warning: failed to add REQ action history entry: %v\n", err)
+						logging.WithFields(map[string]interface{}{
+							"operation":      "add_req_rejection_history",
+							"requisition_id": reqID,
+							"error":          err.Error(),
+						}).Warn("failed_to_add_req_action_history_entry")
 					}
 				}
 			}
@@ -1783,7 +1854,11 @@ func (s *WorkflowExecutionService) RejectWorkflowTaskWithVersion(ctx context.Con
 				prevStatus, "DRAFT",
 				map[string]interface{}{"approvalStage": map[string]interface{}{"from": task.StageNumber, "to": 0}},
 			); err != nil {
-				fmt.Printf("Warning: failed to add PV action history entry: %v\n", err)
+				logging.WithFields(map[string]interface{}{
+					"operation": "add_pv_rejection_history",
+					"pv_id":     assignment.EntityID,
+					"error":     err.Error(),
+				}).Warn("failed_to_add_pv_action_history_entry")
 			}
 
 			// Goods-first: also revert the linked GRN to DRAFT (receiving must be redone)
@@ -1810,7 +1885,11 @@ func (s *WorkflowExecutionService) RejectWorkflowTaskWithVersion(ctx context.Con
 						prevGRNStatus, "DRAFT",
 						map[string]interface{}{"triggeredBy": map[string]interface{}{"type": "payment_voucher", "id": pv.ID, "documentNumber": pv.DocumentNumber}},
 					); err != nil {
-						fmt.Printf("Warning: failed to add GRN action history entry: %v\n", err)
+						logging.WithFields(map[string]interface{}{
+							"operation": "add_grn_rejection_history",
+							"grn_id":    grn.ID,
+							"error":     err.Error(),
+						}).Warn("failed_to_add_grn_action_history_entry")
 					}
 				}
 			}
@@ -1831,7 +1910,11 @@ func (s *WorkflowExecutionService) RejectWorkflowTaskWithVersion(ctx context.Con
 				prevStatus, "DRAFT",
 				map[string]interface{}{"approvalStage": map[string]interface{}{"from": task.StageNumber, "to": 0}},
 			); err != nil {
-				fmt.Printf("Warning: failed to add GRN action history entry: %v\n", err)
+				logging.WithFields(map[string]interface{}{
+					"operation": "add_grn_final_rejection_history",
+					"grn_id":    assignment.EntityID,
+					"error":     err.Error(),
+				}).Warn("failed_to_add_grn_final_action_history_entry")
 			}
 		} else if strings.EqualFold(assignment.EntityType, "requisition") {
 			// REQ: revert to DRAFT — user corrects and re-submits; no cascade up
@@ -1850,7 +1933,11 @@ func (s *WorkflowExecutionService) RejectWorkflowTaskWithVersion(ctx context.Con
 				prevStatus, "DRAFT",
 				map[string]interface{}{"approvalStage": map[string]interface{}{"from": task.StageNumber, "to": 0}},
 			); err != nil {
-				fmt.Printf("Warning: failed to add REQ action history entry: %v\n", err)
+				logging.WithFields(map[string]interface{}{
+					"operation":      "add_req_final_rejection_history",
+					"requisition_id": assignment.EntityID,
+					"error":          err.Error(),
+				}).Warn("failed_to_add_req_final_action_history_entry")
 			}
 		} else {
 			// Standard: all other document types → REJECTED permanently
@@ -1859,7 +1946,12 @@ func (s *WorkflowExecutionService) RejectWorkflowTaskWithVersion(ctx context.Con
 				return fmt.Errorf("failed to update document status: %w", err)
 			}
 			if err := s.addActionHistoryEntry(tx, assignment.EntityType, assignment.EntityID, userID, "WORKFLOW_REJECTED", reason); err != nil {
-				fmt.Printf("Warning: failed to add action history entry: %v\n", err)
+				logging.WithFields(map[string]interface{}{
+					"operation":   "add_final_rejection_history",
+					"entity_id":   assignment.EntityID,
+					"entity_type": assignment.EntityType,
+					"error":       err.Error(),
+				}).Warn("failed_to_add_final_rejection_history")
 			}
 		}
 	}
@@ -1895,7 +1987,11 @@ func (s *WorkflowExecutionService) RejectWorkflowTaskWithVersion(ctx context.Con
 				return
 			default:
 				if err := s.notificationService.HandleWorkflowEvent(event); err != nil {
-					fmt.Printf("Failed to send rejection notification: %v\n", err)
+					logging.WithFields(map[string]interface{}{
+						"operation": "send_rejection_notification",
+						"entity_id": assignment.EntityID,
+						"error":     err.Error(),
+					}).Error("failed_to_send_rejection_notification")
 				}
 			}
 		}(notificationEvent)

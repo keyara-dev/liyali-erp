@@ -72,9 +72,9 @@ export function NotificationsClient() {
 
   const stats = statsResponse?.data;
   const notifications = notificationsResponse?.data || [];
-  // TODO: Backend should return PaginatedResponse<Notification[]> with pagination info
-  const pagination = {
-    page: 1,
+  // Use real pagination metadata from the backend response
+  const pagination = notificationsResponse?.pagination ?? {
+    page: currentPage,
     limit: 20,
     total: notifications.length,
     totalPages: 1,

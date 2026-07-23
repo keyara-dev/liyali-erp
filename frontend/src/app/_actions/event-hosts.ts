@@ -2,77 +2,45 @@
 
 import { APIResponse, EventHost } from '@/types'
 
+const NOT_IMPLEMENTED = 'Event hosts feature is not yet implemented.'
+
 export async function fetchEventHosts(): Promise<APIResponse<EventHost[] | null>> {
-  try {
-    return {
-      success: true,
-      message: 'Event hosts retrieved',
-      data: null,
-      status: 200,
-    }
-  } catch (error) {
-    return {
-      success: false,
-      message: 'Failed to fetch event hosts',
-      data: null,
-      status: 500,
-    }
+  return {
+    success: false,
+    message: NOT_IMPLEMENTED,
+    data: null,
+    status: 501,
   }
 }
 
-export async function createEventHost(data: EventHost): Promise<APIResponse<EventHost | null>> {
-  try {
-    return {
-      success: true,
-      message: 'Event host created',
-      data: null,
-      status: 201,
-    }
-  } catch (error) {
-    return {
-      success: false,
-      message: 'Failed to create event host',
-      data: null,
-      status: 500,
-    }
+export async function createEventHost(
+  _data: EventHost
+): Promise<APIResponse<EventHost | null>> {
+  return {
+    success: false,
+    message: NOT_IMPLEMENTED,
+    data: null,
+    status: 501,
   }
 }
 
 export async function updateEventHost(
-  hostId: string,
-  data: Partial<EventHost>
+  _hostId: string,
+  _data: Partial<EventHost>
 ): Promise<APIResponse<EventHost | null>> {
-  try {
-    return {
-      success: true,
-      message: 'Event host updated',
-      data: null,
-      status: 200,
-    }
-  } catch (error) {
-    return {
-      success: false,
-      message: 'Failed to update event host',
-      data: null,
-      status: 500,
-    }
+  return {
+    success: false,
+    message: NOT_IMPLEMENTED,
+    data: null,
+    status: 501,
   }
 }
 
-export async function deleteEventHost(hostId: string): Promise<APIResponse<null>> {
-  try {
-    return {
-      success: true,
-      message: 'Event host deleted',
-      data: null,
-      status: 200,
-    }
-  } catch (error) {
-    return {
-      success: false,
-      message: 'Failed to delete event host',
-      data: null,
-      status: 500,
-    }
+export async function deleteEventHost(_hostId: string): Promise<APIResponse<null>> {
+  return {
+    success: false,
+    message: NOT_IMPLEMENTED,
+    data: null,
+    status: 501,
   }
 }

@@ -23,7 +23,7 @@ export default async function BudgetsPage() {
 
   return (
     <BudgetsClient
-      userRole={(session.user as any).role}
+      userRole={session.user.role}
       initialData={response?.data || []}
     />
   );

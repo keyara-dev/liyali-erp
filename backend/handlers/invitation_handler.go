@@ -126,13 +126,22 @@ func SendInvitation(c *fiber.Ctx) error {
 		return utils.SendConflictError(c, err.Error())
 	}
 
-	// Stub email (non-fatal).
+	// Send invitation email (non-fatal if it fails)
 	emailSvc := services.NewEmailService()
 	var token string
 	if inv.Token != nil {
 		token = *inv.Token
 	}
-	_ = emailSvc.SendInvitationEmail(inv.InvitedEmail, adminID, tenant.OrganizationID, inv.Role, token, inv.ExpiresAt)
+	emailErr := emailSvc.SendInvitationEmail(inv.InvitedEmail, adminID, tenant.OrganizationID, inv.Role, token, inv.ExpiresAt)
+	if emailErr != nil {
+		// Log warning but don't fail the request - invitation is already persisted
+		logging.WithFields(fiber.Map{
+			"invitation_id": inv.ID,
+			"email":         inv.InvitedEmail,
+			"error":         emailErr.Error(),
+		}).Warn("invitation_email_failed")
+		logger.WithError(emailErr).Warn("failed to send invitation email - email service may not be configured")
+	}
 
 	logging.AddFieldsToRequest(c, fiber.Map{
 		"invitation_id":   inv.ID,
@@ -255,7 +264,15 @@ func ResendInvitation(c *fiber.Ctx) error {
 	if newInv.Token != nil {
 		token = *newInv.Token
 	}
-	_ = emailSvc.SendInvitationEmail(newInv.InvitedEmail, adminID, tenant.OrganizationID, newInv.Role, token, newInv.ExpiresAt)
+	emailErr := emailSvc.SendInvitationEmail(newInv.InvitedEmail, adminID, tenant.OrganizationID, newInv.Role, token, newInv.ExpiresAt)
+	if emailErr != nil {
+		// Log warning but don't fail the request - invitation is already persisted
+		logging.WithFields(fiber.Map{
+			"invitation_id": newInv.ID,
+			"email":         newInv.InvitedEmail,
+			"error":         emailErr.Error(),
+		}).Warn("resend_invitation_email_failed")
+	}
 
 	return utils.SendCreatedSuccess(c, fiber.Map{
 		"id":           newInv.ID,

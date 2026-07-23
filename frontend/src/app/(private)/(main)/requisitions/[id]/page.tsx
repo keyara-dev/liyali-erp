@@ -36,7 +36,7 @@ export default async function RequisitionDetailPage({
     <RequisitionDetailClient
       requisitionId={requisitionId}
       userId={session.user.id}
-      userRole={(session.user as any).role}
+      userRole={session.user.role}
       initialRequisition={initialRequisition}
     />
   );

@@ -26,7 +26,7 @@ export default async function POApprovalPage({ params }: POApprovalPageProps) {
     <POApprovalClient
       poId={id}
       userId={session.user.id}
-      userRole={(session.user as any).role}
+      userRole={session.user.role}
     />
   );
 }
