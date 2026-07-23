@@ -27,7 +27,7 @@ export default async function BudgetDetailPage({
     <BudgetDetailClientEnhanced
       budgetId={resolvedParams.id}
       userId={session.user.id}
-      userRole={(session.user as any).role}
+      userRole={session.user.role}
     />
   );
 }
